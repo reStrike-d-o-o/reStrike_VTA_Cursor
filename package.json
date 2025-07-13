@@ -10,11 +10,9 @@
   "author": "damjanZGB",
   "license": "MIT",
   "dependencies": {
-    "node-fetch": "^2.7.0",
-    "obs-websocket-js": "^5.0.0"
+    "obs-websocket-js": "^5.0.3"
   },
   "devDependencies": {
-    "eslint": "^9.31.0",
-    "react-scripts": "^5.0.1"
+    "eslint": "^8.57.0"
   }
 }

@@ -23,7 +23,7 @@ reStrike_VTA/
 
 ## Development Environment
 - **OS:** Windows 10/11, Mac, Linux (Windows recommended for OBS/mpv integration)
-- **Node.js:** v18+
+- **Node.js:** v24+ (latest LTS recommended)
 - **Rust:** Stable (install via [rustup.rs](https://rustup.rs/))
 - **Tauri CLI:** Install with `cargo install tauri-cli`
 - **Frontend:** React 18 + TypeScript + Zustand + Tailwind CSS + framer-motion
