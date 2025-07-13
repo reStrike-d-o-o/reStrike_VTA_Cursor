@@ -17,12 +17,26 @@
     "zustand": "^5.0.6"
   },
   "devDependencies": {
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
     "@typescript-eslint/eslint-plugin": "^8.36.0",
     "@typescript-eslint/parser": "^8.36.0",
     "eslint": "^8.57.1",
     "eslint-plugin-react": "^7.37.5",
-    "react-scripts": "^5.0.1",
+    "react-scripts": "^0.0.0",
     "typescript": "^4.9.5"
   },
-  "type": "module"
+  "type": "module",
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
 }
