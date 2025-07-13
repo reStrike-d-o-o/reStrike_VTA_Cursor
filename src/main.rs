@@ -7,6 +7,7 @@ mod plugin_obs;
 mod plugin_playback;
 mod plugin_store;
 mod plugin_udp;
+mod tauri_commands;
 
 fn handle_client(mut stream: TcpStream) {
     let mut buffer = [0; 1024];
