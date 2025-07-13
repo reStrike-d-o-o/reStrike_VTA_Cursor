@@ -1,4 +1,5 @@
 When opening a new chat, always include the previous chat history, README.md, the project root folder, and documentation in the context.
 alwaysApply: true
 ---
+
 When opening new chat allway include in context old chat + readme.md + project root folder + documentation
