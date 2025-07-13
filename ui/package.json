@@ -18,8 +18,8 @@
     "@typescript-eslint/parser": "^8.36.0",
     "eslint": "^9.31.0",
     "eslint-plugin-react": "^7.37.5",
+    "react-scripts": "^5.0.1",
     "typescript": "^5.0.0"
-  }
-  ,
+  },
   "type": "module"
 }
