@@ -12,5 +12,7 @@
   "dependencies": {
     "obs-websocket-js": "^5.0.0"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "eslint": "^9.31.0"
+  }
 }
