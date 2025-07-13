@@ -8,6 +8,28 @@
       "version": "stable"
     }
   },
-  "forwardPorts": [3000, 1420],
+  "forwardPorts": [3000, 1420, 6000, 4455, 8080],
+  "portsAttributes": {
+    "3000": {
+      "label": "React Frontend",
+      "onAutoForward": "notify"
+    },
+    "1420": {
+      "label": "Tauri Backend",
+      "onAutoForward": "notify"
+    },
+    "6000": {
+      "label": "UDP PSS Protocol",
+      "onAutoForward": "notify"
+    },
+    "4455": {
+      "label": "OBS WebSocket",
+      "onAutoForward": "notify"
+    },
+    "8080": {
+      "label": "Development Server",
+      "onAutoForward": "notify"
+    }
+  },
   "postCreateCommand": "npm install && cd ui && npm install && cd .. && cargo install tauri-cli"
 }
