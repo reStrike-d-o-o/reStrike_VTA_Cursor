@@ -2,7 +2,7 @@
 
 ## Prerequisites
 - **Operating System:** Windows 10/11, Mac, Linux (Windows recommended for full feature support)
-- **Node.js:** v18 or higher
+- **Node.js:** v24 or higher (latest LTS recommended)
 - **Rust:** Stable (install via [rustup.rs](https://rustup.rs/))
 - **Tauri CLI:** Install with `cargo install tauri-cli`
 - **Frontend:** React 18, TypeScript, Zustand, Tailwind CSS, framer-motion

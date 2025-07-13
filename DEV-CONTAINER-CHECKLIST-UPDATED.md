@@ -8,7 +8,7 @@
 
 | Component | Status | Version | Notes |
 |-----------|--------|---------|-------|
-| Node.js | ✅ PASS | v18.20.8 | Working correctly |
+| Node.js | ✅ PASS | v24.4.0 | Working correctly |
 | Rust | ✅ PASS | 1.88.0 | Working correctly |
 | Cargo | ✅ PASS | 1.88.0 | Working correctly |
 | Tauri CLI | ❌ FAIL | Not found | Needs installation |
