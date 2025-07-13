@@ -34,7 +34,7 @@ reStrike_VTA/
 1. **Clone the repository:**
    ```bash
    git clone https://github.com/reStrike-d-o-o/reStrike_VTA_Cursor
-   cd reStrike_VTA
+   cd reStrike_VTA_Cursor
    ```
 2. **Install Rust and Cargo:**
    - Download and run the installer from [https://rustup.rs/](https://rustup.rs/)
