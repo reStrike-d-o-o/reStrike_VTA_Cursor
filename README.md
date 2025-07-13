@@ -68,6 +68,12 @@ reStrike_VTA/
    npm run start
    ```
 
+## Dev Container Verification & Automation
+
+- For a step-by-step checklist to verify and automate your development environment, see [DEV-CONTAINER-CHECKLIST.md](./DEV-CONTAINER-CHECKLIST.md).
+- This checklist is also included in `.devcontainer/README-devcontainer.md` and should be followed after every environment update or on first setup.
+- You can automate these checks using scripts or CI as needed.
+
 ## Troubleshooting
 - **'cargo' is not recognized:**
   - Rust is not installed or not in your PATH. Install from [https://rustup.rs/](https://rustup.rs/), then restart your terminal.

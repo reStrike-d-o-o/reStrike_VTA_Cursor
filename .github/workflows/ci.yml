@@ -45,3 +45,23 @@ jobs:
       - name: Run Rust tests
         run: cargo test
 
+  devcontainer-checklist:
+    name: Dev Container Verification Checklist
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Run Dev Container CLI Checks
+        uses: devcontainers/ci@v0.3
+        with:
+          runCmd: |
+            node --version
+            rustc --version
+            cargo --version
+            mpv --version
+            cd ui && npm install && npm run lint && npm run test && cd ..
+            npm install
+            cargo build --release
+            # Optionally, check tauri CLI if installed
+            cargo install tauri-cli || true
+            tauri --version || echo 'Tauri CLI not found (optional)'
+

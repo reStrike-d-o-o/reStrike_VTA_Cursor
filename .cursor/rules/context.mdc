@@ -3,3 +3,5 @@ alwaysApply: true
 ---
 
 When opening new chat allway include in context old chat + readme.md + project root folder + documentation
+
+Always include the latest DEV-CONTAINER-CHECKLIST.md and its automation steps in project onboarding, documentation, and when opening new chats or onboarding new contributors.
