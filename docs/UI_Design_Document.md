@@ -1,5 +1,17 @@
 # User Interface Design Document
 
+## Frontend Setup
+- **Navigate to the UI directory:**
+  ```bash
+  cd reStrike_VTA_Cursor/ui
+  npm install
+  npm run start
+  ```
+- **First Launch:**
+  - The app will show a blank page with a heading (`reStrike VTA Overlay`) until you add more UI components.
+  - Ensure `react-scripts` is installed at version 5.0.1 for React 18 compatibility.
+  - If you see errors about missing types, install `@types/react` and `@types/react-dom` as dev dependencies.
+
 ## Layout Structure
 
 - **Docked Sidebar Mode**

@@ -1,5 +1,14 @@
 # Software Requirements Specification
 
+## Prerequisites
+- **Operating System:** Windows 10/11, Mac, Linux (Windows recommended for full feature support)
+- **Node.js:** v18 or higher
+- **Rust:** Stable (install via [rustup.rs](https://rustup.rs/))
+- **Tauri CLI:** Install with `cargo install tauri-cli`
+- **Frontend:** React 18, TypeScript, Zustand, Tailwind CSS, framer-motion
+- **Bundler:** Tauri
+- **react-scripts:** 5.0.1 (required for React 18 compatibility)
+
 ## System Design
 - **Modules & Responsibilities**  
   - **Core Bus (Microkernel)**  
@@ -86,3 +95,11 @@
 
   #[tauri::command]
   fn replay_play(recording_id: i64) -> Result<(), Error> { /* … */ }
+```
+
+## Known Issues & Compatibility
+- **'cargo' is not recognized:** Rust is not installed or not in PATH. Install from [https://rustup.rs/](https://rustup.rs/), restart terminal.
+- **'react-scripts' is not recognized:** Run `npm install react-scripts@5.0.1 --save-dev` in `ui`, then `npm install`.
+- **TypeScript/JSX errors:** Install `@types/react` and `@types/react-dom` as dev dependencies in `ui`.
+- **Directory confusion:** Always run commands from the correct project root (`reStrike_VTA_Cursor`).
+- **Windows is recommended** for OBS and mpv integration; some features may not work on Mac/Linux.

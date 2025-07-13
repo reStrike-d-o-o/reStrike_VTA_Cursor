@@ -1,5 +1,8 @@
 # Instant Video Replay Manager & AI Data Analyzer – Product Requirements Document
 
+> **Note:**
+> The finalized stack is: **Tauri (Rust backend), React 18 (TypeScript), Zustand (state), Tailwind CSS (styling), framer-motion (animation)**. Development is primarily on Windows for best compatibility with OBS and mpv. Some features may not work on Mac/Linux.
+
 ## 1. Elevator Pitch
 
 A cross-platform Instant Video Replay Manager designed for taekwondo referees, enabling rapid video review and AI-assisted data analysis. The app integrates with taekwondo PSS systems via UDP, controls OBS Studio over WebSocket, and manages local video playback using mpv. With built-in automation, an intuitive manual mode, AI-ready architecture, and a licensing system tied to local hardware, it empowers referees to resolve match challenges within seconds.
