@@ -1,0 +1,40 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "rust",
+      "request": "launch",
+      "name": "Debug Rust Backend",
+      "program": "${workspaceFolder}/src/${input:rustProgram}",
+      "preLaunchTask": "cargo build",
+      "cwd": "${workspaceFolder}/src"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug React UI",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "start"
+      ],
+      "cwd": "${workspaceFolder}/ui",
+      "console": "integratedTerminal"
+    }
+  ],
+  "inputs": [
+    {
+      "type": "pickString",
+      "id": "rustProgram",
+      "description": "Select the Rust file to debug",
+      "options": [
+        "main.rs",
+        "plugin_license.rs",
+        "plugin_obs.rs",
+        "plugin_playback.rs",
+        "plugin_store.rs",
+        "plugin_udp.rs"
+      ]
+    }
+  ]
+}
