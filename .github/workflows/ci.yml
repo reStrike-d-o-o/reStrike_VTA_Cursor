@@ -1,23 +1,44 @@
+
+---
+
 name: CI
-on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+
+on: [push, pull_request]
+
 jobs:
-  build:
+  lint-and-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Set up Node.js
+
+      - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '20'
-      - name: Install dependencies
-        run: npm install
-      - name: Lint
-        run: echo "No linter configured yet"
-      - name: Test
+          node-version: '18'
+
+      - name: Install UI dependencies
+        working-directory: ui
+        run: npm ci
+
+      - name: Lint UI
+        working-directory: ui
+        run: npm run lint
+
+      - name: Test UI
+        working-directory: ui
         run: npm test
-      - name: Build
-        run: echo "No build step yet"
+
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Format check
+        run: cargo fmt -- --check
+
+      - name: Lint Rust
+        run: cargo clippy -- -D warnings
+
+      - name: Run Rust tests
+        run: cargo test
+

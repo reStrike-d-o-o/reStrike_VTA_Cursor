@@ -1,6 +1,7 @@
 ---
 name: Bug Report
-description: File a bug report
+about: Create a report to help us improve
+title: "[BUG] "
 labels: bug
 ---
 
@@ -17,13 +18,10 @@ Steps to reproduce the behavior:
 **Expected behavior**
 A clear and concise description of what you expected to happen.
 
+**Environment:**
+- OS: [e.g. Windows 10, macOS 12]
+- App version: [e.g. v1.0.0]
+- Any other relevant info
+
 **Screenshots**
 If applicable, add screenshots to help explain your problem.
-
-**Environment (please complete the following information):**
- - OS: [e.g. Windows, Mac, Linux]
- - Browser [e.g. chrome, safari]
- - Version [e.g. 22]
-
-**Additional context**
-Add any other context about the problem here.
