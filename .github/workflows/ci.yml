@@ -1,9 +1,6 @@
 
 ---
 
-## 3. CI Workflow (`.github/workflows/ci.yml`)
-
-```yaml
 name: CI
 
 on: [push, pull_request]
@@ -44,3 +41,4 @@ jobs:
 
       - name: Run Rust tests
         run: cargo test
+
