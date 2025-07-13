@@ -1,0 +1,2 @@
+# Sample UDP protocol schema for VTA
+# Define message formats and fields here

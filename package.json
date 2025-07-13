@@ -1,0 +1,16 @@
+{
+  "name": "reStrike_VTA",
+  "version": "0.1.0",
+  "description": "Overlay and automation toolkit for VTA using Tauri and React",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "tauri dev",
+    "test": "echo \"No tests yet\" && exit 0"
+  },
+  "author": "damjanZGB",
+  "license": "MIT",
+  "dependencies": {
+    "obs-websocket-js": "^5.0.0"
+  },
+  "devDependencies": {}
+}
