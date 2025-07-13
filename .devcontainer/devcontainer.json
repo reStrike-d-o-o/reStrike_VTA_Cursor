@@ -8,5 +8,6 @@
       "version": "stable"
     }
   },
-  "postCreateCommand": "cargo install tauri-cli"
+  "forwardPorts": [3000, 1420],
+  "postCreateCommand": "npm install && cd ui && npm install && cd .. && cargo install tauri-cli"
 }
