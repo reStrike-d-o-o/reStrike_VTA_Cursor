@@ -55,7 +55,7 @@ echo "📋 Checking Required Services:"
 check_service "Node.js" "node"
 check_service "Rust" "rustc"
 check_service "Cargo" "cargo"
-check_service "Tauri CLI" "tauri"
+check_service "Tauri CLI" "cargo tauri"
 check_service "mpv" "mpv"
 
 echo ""
