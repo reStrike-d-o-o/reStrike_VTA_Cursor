@@ -68,11 +68,61 @@ reStrike_VTA/
    npm run start
    ```
 
-## Dev Container Verification & Automation
+## Project Structure
 
-- For a step-by-step checklist to verify and automate your development environment, see [DEV-CONTAINER-CHECKLIST.md](./DEV-CONTAINER-CHECKLIST.md).
-- This checklist is also included in `.devcontainer/README-devcontainer.md` and should be followed after every environment update or on first setup.
-- You can automate these checks using scripts or CI as needed.
+The project follows a well-organized structure for maintainability and clarity:
+
+```
+reStrike_VTA/
+├── 📁 docs/                    # Documentation (organized by category)
+│   ├── 📁 api/                # API documentation
+│   ├── 📁 development/        # Development guides and checklists
+│   ├── 📁 project/            # Project management
+│   ├── 📁 requirements/       # Requirements and specifications
+│   └── 📁 integration/        # Integration guides
+├── 📁 scripts/                 # Automation scripts (categorized)
+│   ├── 📁 development/        # Development environment scripts
+│   ├── 📁 obs/                # OBS integration scripts
+│   ├── 📁 project/            # Project management scripts
+│   └── 📁 media/              # Media processing scripts
+├── 📁 src/                     # Rust backend (organized modules)
+│   ├── 📁 plugins/            # Plugin modules
+│   └── 📁 commands/           # Tauri command handlers
+└── 📁 ui/                      # React frontend
+```
+
+For detailed structure information, see [Project Structure Guide](./docs/PROJECT_STRUCTURE.md).
+
+## Development Environment
+
+### Dev Container Verification & Automation
+
+- **Checklists**: See [Development Checklists](./docs/development/checklists/) for verification steps
+- **Container Restart**: See [Container Restart Guide](./docs/development/container-restart.md) for framework updates
+- **Environment Management**: See [Development Management](./docs/development/development-management.md) for tools and scripts
+
+### Quick Start Commands
+
+```bash
+# Main development wrapper
+./scripts/development/dev.sh help
+
+# Start all services
+./scripts/development/dev.sh start-all
+
+# Check status
+./scripts/development/dev.sh status
+
+# Clean up environment
+./scripts/development/dev.sh cleanup
+```
+
+## Project Management & Tracking
+
+- **Project Tracker**: Use the comprehensive [Feature Request Template](./.github/ISSUE_TEMPLATE/feature_request.md) as a project tracker
+- **Tracker Guide**: See [Project Tracker Guide](./docs/project/project-tracker-guide.md) for detailed instructions
+- **Quick Reference**: See [Tracker Quick Reference](./docs/project/tracker-quick-reference.md) for common commands
+- **Management Scripts**: Use `scripts/project/project-tracker.py` for automated issue management
 
 ## Troubleshooting
 - **'cargo' is not recognized:**

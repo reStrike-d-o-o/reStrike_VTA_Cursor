@@ -2,12 +2,17 @@ use std::net::{TcpListener, TcpStream};
 use std::io::{Read, Write};
 use std::thread;
 
-mod plugin_license;
-mod plugin_obs;
-mod plugin_playback;
-mod plugin_store;
-mod plugin_udp;
-mod tauri_commands;
+// Plugin modules
+mod plugins;
+use plugins::plugin_license;
+use plugins::plugin_obs;
+use plugins::plugin_playback;
+use plugins::plugin_store;
+use plugins::plugin_udp;
+
+// Command modules
+mod commands;
+use commands::tauri_commands;
 
 fn handle_client(mut stream: TcpStream) {
     let mut buffer = [0; 1024];
