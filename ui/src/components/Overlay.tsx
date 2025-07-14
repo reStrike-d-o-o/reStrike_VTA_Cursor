@@ -154,14 +154,13 @@ const Overlay: React.FC = () => {
           )}
 
           {/* Video Controls Overlay */}
-          <AnimatePresence>
-            {showControls && currentClip && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center"
-              >
+          {showControls && currentClip && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center"
+            >
                 <div className="bg-gray-900 bg-opacity-90 rounded-lg p-4 w-80">
                   <div className="space-y-4">
                     {/* Progress Bar */}
@@ -218,7 +217,6 @@ const Overlay: React.FC = () => {
                 </div>
               </motion.div>
             )}
-          </AnimatePresence>
         </div>
 
         {/* Status Bar */}
@@ -252,14 +250,13 @@ const Overlay: React.FC = () => {
       </motion.div>
 
       {/* Quick Actions */}
-      <AnimatePresence>
-        {showControls && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            className="mt-2 flex justify-center space-x-2"
-          >
+      {showControls && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 10 }}
+          className="mt-2 flex justify-center space-x-2"
+        >
             <button
               onClick={() => useAppStore.getState().setCurrentView('clips')}
               className="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm transition-colors"
@@ -280,10 +277,9 @@ const Overlay: React.FC = () => {
             </button>
           </motion.div>
         )}
-      </AnimatePresence>
 
       {/* Custom CSS for slider */}
-      <style jsx>{`
+      <style>{`
         .slider::-webkit-slider-thumb {
           appearance: none;
           height: 16px;

@@ -44,7 +44,7 @@ export interface AppState {
   isPlaying: boolean;
   
   // UI State
-  currentView: 'overlay' | 'settings' | 'clips' | 'obs-manager';
+  currentView: 'sidebar-test' | 'overlay' | 'settings' | 'clips' | 'obs-manager';
   isLoading: boolean;
   error: string | null;
 }
@@ -89,7 +89,7 @@ const initialState: AppState = {
   videoClips: [],
   currentClip: null,
   isPlaying: false,
-  currentView: 'overlay',
+  currentView: 'sidebar-test',
   isLoading: false,
   error: null,
 };

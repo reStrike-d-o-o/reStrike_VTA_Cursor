@@ -5,6 +5,7 @@ import Overlay from './components/Overlay';
 import ObsWebSocketManager from './components/ObsWebSocketManager';
 import VideoClips from './components/VideoClips';
 import Settings from './components/Settings';
+import SidebarTest from './components/SidebarTest';
 
 function App() {
   const {
@@ -47,17 +48,21 @@ function App() {
         switch (e.key) {
           case '1':
             e.preventDefault();
-            setCurrentView('overlay');
+            setCurrentView('sidebar-test');
             break;
           case '2':
             e.preventDefault();
-            setCurrentView('clips');
+            setCurrentView('overlay');
             break;
           case '3':
             e.preventDefault();
-            setCurrentView('obs-manager');
+            setCurrentView('clips');
             break;
           case '4':
+            e.preventDefault();
+            setCurrentView('obs-manager');
+            break;
+          case '5':
             e.preventDefault();
             setCurrentView('settings');
             break;
@@ -78,14 +83,17 @@ function App() {
   }, [error, clearError]);
 
   const navigationItems = [
-    { id: 'overlay', label: 'Overlay', icon: '🎬', shortcut: 'Ctrl+1' },
-    { id: 'clips', label: 'Video Clips', icon: '📁', shortcut: 'Ctrl+2' },
-    { id: 'obs-manager', label: 'OBS Manager', icon: '🎥', shortcut: 'Ctrl+3' },
-    { id: 'settings', label: 'Settings', icon: '⚙️', shortcut: 'Ctrl+4' },
+    { id: 'sidebar-test', label: 'Sidebar Test', icon: '🧪', shortcut: 'Ctrl+1' },
+    { id: 'overlay', label: 'Overlay', icon: '🎬', shortcut: 'Ctrl+2' },
+    { id: 'clips', label: 'Video Clips', icon: '📁', shortcut: 'Ctrl+3' },
+    { id: 'obs-manager', label: 'OBS Manager', icon: '🎥', shortcut: 'Ctrl+4' },
+    { id: 'settings', label: 'Settings', icon: '⚙️', shortcut: 'Ctrl+5' },
   ] as const;
 
   const renderCurrentView = () => {
     switch (currentView) {
+      case 'sidebar-test':
+        return <SidebarTest />;
       case 'overlay':
         return <Overlay />;
       case 'clips':
@@ -95,53 +103,49 @@ function App() {
       case 'settings':
         return <Settings />;
       default:
-        return <Overlay />;
+        return <SidebarTest />;
     }
   };
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">
       {/* Error Toast */}
-      <AnimatePresence>
-        {error && (
-          <motion.div
-            initial={{ opacity: 0, y: -50 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -50 }}
-            className="fixed top-4 right-4 z-50 bg-red-600 text-white px-6 py-3 rounded-lg shadow-lg max-w-md"
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <span>🚨</span>
-                <span>{error}</span>
-              </div>
-              <button
-                onClick={clearError}
-                className="ml-4 text-white hover:text-gray-200"
-              >
-                ✕
-              </button>
+      {error && (
+        <motion.div
+          initial={{ opacity: 0, y: -50 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -50 }}
+          className="fixed top-4 right-4 z-50 bg-red-600 text-white px-6 py-3 rounded-lg shadow-lg max-w-md"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <span>🚨</span>
+              <span>{error}</span>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            <button
+              onClick={clearError}
+              className="ml-4 text-white hover:text-gray-200"
+            >
+              ✕
+            </button>
+          </div>
+        </motion.div>
+      )}
 
       {/* Loading Overlay */}
-      <AnimatePresence>
-        {isLoading && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-          >
-            <div className="bg-gray-900 p-6 rounded-lg flex items-center space-x-3">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
-              <span>Loading...</span>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {isLoading && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+        >
+          <div className="bg-gray-900 p-6 rounded-lg flex items-center space-x-3">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+            <span>Loading...</span>
+          </div>
+        </motion.div>
+      )}
 
       {/* Header */}
       <header className="bg-gray-900 border-b border-gray-800">
@@ -226,17 +230,15 @@ function App() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={currentView}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.2 }}
-          >
-            {renderCurrentView()}
-          </motion.div>
-        </AnimatePresence>
+        <motion.div
+          key={currentView}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -20 }}
+          transition={{ duration: 0.2 }}
+        >
+          {renderCurrentView()}
+        </motion.div>
       </main>
 
       {/* Footer */}
