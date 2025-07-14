@@ -90,12 +90,13 @@ pub struct VideoPlayer {
 
 impl VideoPlayer {
     pub fn new(config: PlaybackConfig, event_tx: mpsc::UnboundedSender<PlaybackEvent>) -> Self {
+        let initial_volume = config.volume;
         Self {
             config,
             current_clip: Arc::new(Mutex::new(None)),
             status: Arc::new(Mutex::new(PlaybackStatus::Stopped)),
             position: Arc::new(Mutex::new(0.0)),
-            volume: Arc::new(Mutex::new(config.volume)),
+            volume: Arc::new(Mutex::new(initial_volume)),
             mpv_process: Arc::new(Mutex::new(None)),
             event_tx,
         }
@@ -220,7 +221,7 @@ impl VideoPlayer {
             let mut process_guard = self.mpv_process.lock().unwrap();
             if let Some(mut process) = process_guard.take() {
                 // Try to terminate gracefully
-                if let Err(_) = process.terminate() {
+                if let Err(_) = process.kill() {
                     // Force kill if graceful termination fails
                     let _ = process.kill();
                 }
