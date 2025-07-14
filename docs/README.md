@@ -23,7 +23,8 @@ Welcome to the reStrike VTA project documentation. This directory contains compr
 ## 📚 Documentation Categories
 
 ### ✅ **GitHub Integration Complete!**
-**📊 Status**: 18/18 issues created successfully | [View Issues](https://github.com/damjanZGB/reStrike_VTA_Cursor/issues) | [Setup Guide](./project/github-integration-status.md)
+**📊 Status**: 18/18 issues created successfully | [View Issues](https://github.com/damjanZGB/reStrike_VTA_Cursor/issues) | [Project Board](https://github.com/users/damjanZGB/projects/3)  
+**📋 Setup Guides**: [Integration Status](./project/github-integration-status.md) | [Automation Setup](./project/github-automation-setup.md)
 
 ### 🚀 [Development](./development/)
 Development guides, checklists, and environment management documentation.
@@ -39,6 +40,8 @@ Development guides, checklists, and environment management documentation.
 ### 📋 [Project Management](./project/)
 Project tracking, management, and coordination documentation.
 
+- **[GitHub Integration Status](./project/github-integration-status.md)** - **COMPLETE**: Status of GitHub project board integration (18 issues created)
+- **[GitHub Automation Setup](./project/github-automation-setup.md)** - **NEW**: Step-by-step automation configuration guide
 - **[Project Tracker Guide](./project/project-tracker-guide.md)** - Comprehensive guide to using the project tracker
 - **[Project Management Summary](./project/project-management-summary.md)** - Overview of the project management system
 - **[Tracker Quick Reference](./project/tracker-quick-reference.md)** - Quick reference for common tracker commands
