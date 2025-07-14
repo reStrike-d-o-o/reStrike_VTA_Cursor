@@ -987,7 +987,7 @@ Technical documentation for professional tournament environments and IT departme
 def main():
     """Main function to create GitHub issues"""
     # Configuration
-    repo_owner = "damjanZGB"  # Replace with actual repo owner
+    repo_owner = "reStrike-d-o-o"  # Replace with actual repo owner
     repo_name = "reStrike_VTA_Cursor"  # Replace with actual repo name
     
     # Get GitHub token from environment
