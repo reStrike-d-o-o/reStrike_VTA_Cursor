@@ -17,9 +17,9 @@
 - **Docked Sidebar Mode**
   - App docks to **left or right edge** of the screen
   - Occupies **100% of screen height**
-  - Width dynamically changes based on mode:
-    - **Collapsed:** 150x150 px floating panel
-    - **Expanded:** ~30–40% of screen width for full recording list view
+  - **Dynamic Width:**
+    - **Collapsed:** 150x150px floating panel
+    - **Expanded:** ~30-40% of screen width - not limited, if needed can go full screen
 
 - **Expanded View**
   - Top: Live Control Buttons (grid layout)
