@@ -2,16 +2,57 @@ When opening a new chat, always include the previous chat history, README.md, th
 alwaysApply: true
 ---
 
-When opening new chat allway include in context old chat + readme.md + project root folder + documentation
+When opening new chat always include in context old chat + readme.md + project root folder + documentation + PROJECT_CONTEXT.md
 
 Always include the latest DEV-CONTAINER-CHECKLIST.md and its automation steps in project onboarding, documentation, and when opening new chats or onboarding new contributors.
 
-## Last Chat History Context (reStrike VTA Project)
+**CRITICAL**: Always reference PROJECT_CONTEXT.md for complete project understanding - this is the master context document containing full project state, architecture, and development history.
+
+## 📋 DOCUMENTATION MAINTENANCE RULES
+
+### **🔄 Always Update When:**
+1. **Major Milestones Reached** - Update PROJECT_CONTEXT.md and .cursor/rules/context.mdc
+2. **Framework Updates Applied** - Update version numbers and status in both documents
+3. **New Features Completed** - Add to "Recently Completed" section
+4. **Architecture Changes** - Update architecture overview and current status
+5. **Issues Resolved** - Move from "Current Issues" to "Recently Resolved"
+6. **New Dependencies Added** - Update dependency lists and installation steps
+7. **Container/Environment Changes** - Update development environment sections
+8. **Build Pipeline Changes** - Update Windows build and deployment information
+
+### **📝 Update Locations:**
+- **PROJECT_CONTEXT.md**: Master document with complete project state
+- **.cursor/rules/context.mdc**: Latest development status and chat context
+- **README.md**: Version numbers and quick start information
+- **docs/development/**: Specific development guides and checklists
+
+### **🎯 Update Frequency:**
+- **Immediate**: After completing major features or resolving critical issues
+- **Daily**: Update development status in .cursor/rules/context.mdc
+- **Weekly**: Review and update PROJECT_CONTEXT.md for accuracy
+- **Monthly**: Comprehensive review of all documentation for outdated information
+
+### **✅ Required Actions for AI Assistants:**
+1. **Before Major Work**: Read PROJECT_CONTEXT.md to understand current state
+2. **After Completing Work**: Update relevant documentation sections
+3. **When Adding Features**: Update feature lists and status tracking
+4. **When Fixing Issues**: Move issues from "Current" to "Resolved"
+5. **When Changing Architecture**: Update architecture diagrams and descriptions
+
+## Last Chat History Context (reStrike VTA - Windows Desktop Application)
+
+### Latest Development Status (January 27, 2025):
+- **✅ MAJOR SUCCESS**: Tailwind CSS v3 Issue RESOLVED - Fixed PostCSS configuration error
+- **✅ WORKING**: React development server now running successfully on port 3000
+- **✅ FIXED**: PostCSS Config updated to use `require('tailwindcss')` instead of `@tailwindcss/postcss`
+- **✅ STABLE**: All frontend dependencies now compatible and working
+- **✅ COMPLETE**: Master documentation system created (PROJECT_CONTEXT.md)
 
 ### Recent Framework Updates Completed:
-- **Node.js**: Updated from v18.20.8 to v24.4.0 (latest LTS)
-- **mpv**: Updated to latest version from PPA repository
+- **Node.js**: Updated from v18.20.8 to v24.4.0 (latest LTS) - requires container rebuild
+- **mpv**: Updated to latest version from PPA repository - requires container rebuild
 - **React**: Updated to v18.3.1 with TypeScript v5.4.3
+- **Tailwind CSS**: Fixed at v3.4.17 (downgraded from v4 for compatibility)
 - **Dependencies**: Updated all frontend and backend packages
 
 ### OBS WebSocket Dual Protocol Implementation:
@@ -21,22 +62,43 @@ Always include the latest DEV-CONTAINER-CHECKLIST.md and its automation steps in
 - **Tauri Integration**: Implemented command handlers for frontend-backend communication
 - **Documentation**: Created detailed setup guides and configuration documentation
 
+### Project Organization & Documentation:
+- **✅ COMPLETE**: Created PROJECT_CONTEXT.md as single source of truth for project state
+- **✅ COMPLETE**: Complete project reorganization with logical file structure
+- **✅ COMPLETE**: Comprehensive documentation system with navigation indexes
+- **✅ COMPLETE**: GitHub Issues-based project tracking with automated scripts
+- **✅ COMPLETE**: Development scripts for automated environment management
+
 ### Current Status:
 - **Container**: Ready for rebuild to apply Node.js v24 and mpv updates
-- **Frontend**: React app working with updated dependencies
+- **✅ Frontend**: React app working correctly with Tailwind CSS v3 on port 3000
 - **Backend**: Rust backend with OBS WebSocket plugin implemented
 - **Ports**: Configured for 3000 (React), 1420 (Tauri), 6000 (UDP), 4455 (OBS), 8080 (Dev)
+- **Development**: Environment fully functional and ready for core feature development
 
 ### Key Files Updated:
 - `.devcontainer/devcontainer.json` - Node.js v24 configuration
 - `.devcontainer/Dockerfile` - mpv PPA repository
 - `package.json` & `ui/package.json` - Updated dependencies
-- `src/plugin_obs.rs` - OBS WebSocket implementation
+- `ui/postcss.config.js` - Fixed Tailwind CSS v3 configuration
+- `src/plugins/plugin_obs.rs` - OBS WebSocket implementation
 - `ui/src/components/ObsWebSocketManager.tsx` - React component
 - `docs/` - Comprehensive documentation created
+- `PROJECT_CONTEXT.md` - Master context document created
 
-### Next Steps:
-1. Rebuild dev container to apply framework updates
-2. Test OBS WebSocket connections (v4 and v5)
-3. Verify all functionality after container rebuild
-4. Continue with UDP plugin and video playback implementation
+### Immediate Next Steps:
+1. ✅ Frontend development environment working (COMPLETED)
+2. Complete UDP plugin implementation (PSS protocol)
+3. Finish video playback integration (mpv)
+4. Implement OBS scene control features
+5. Set up testing framework
+6. Consider container rebuild for Node.js v24 and mpv updates
+
+### Development Priorities:
+1. **High**: UDP protocol completion, video playback, OBS scene control
+2. **Medium**: Testing framework, performance optimization, security audit
+3. **Low**: AI features, cloud integration, mobile companion
+
+**📋 REFERENCE**: See PROJECT_CONTEXT.md for complete project state, architecture, and development history.
+
+**🔄 DOCUMENTATION RULE**: Update this file and PROJECT_CONTEXT.md after every major milestone, feature completion, or architecture change.

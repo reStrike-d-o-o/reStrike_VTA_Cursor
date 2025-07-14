@@ -7,6 +7,7 @@ Welcome to the reStrike VTA project documentation. This directory contains compr
 ### 🚀 [Development](./development/)
 Development guides, checklists, and environment management documentation.
 
+- **[Documentation Maintenance Guide](./development/documentation-maintenance-guide.md)** - **CRITICAL**: How to use and maintain the documentation system
 - **[Container Restart Guide](./development/container-restart.md)** - How to restart the dev container for framework updates
 - **[Development Management](./development/development-management.md)** - Tools and scripts for managing the development environment
 - **[Framework Updates](./development/framework-updates.md)** - Procedures for updating Node.js, mpv, and other frameworks

@@ -1,9 +1,9 @@
 # reStrike VTA
 
-Overlay and automation toolkit for VTA using Tauri and React.
+**Native Windows Desktop Application** - Overlay and automation toolkit for VTA using Tauri and React.
 
 ## Project Overview
-reStrike VTA is designed to provide a modern overlay and automation solution for VTA, integrating UDP ingestion, OBS control, and license management.
+reStrike VTA is a **native Windows desktop application** designed to provide a modern overlay and automation solution for VTA, integrating UDP ingestion, OBS control, and license management. Built with Tauri framework for native Windows performance.
 
 ## Directory Structure
 ```
@@ -22,12 +22,15 @@ reStrike_VTA/
 ```
 
 ## Development Environment
-- **OS:** Windows 10/11, Mac, Linux (Windows recommended for OBS/mpv integration)
+- **Target Platform:** **Windows 10/11 (Primary)** - Native Windows desktop application
+- **Development OS:** Windows 10/11, WSL2, or Docker dev containers
 - **Node.js:** v24+ (latest LTS recommended)
 - **Rust:** Stable (install via [rustup.rs](https://rustup.rs/))
 - **Tauri CLI:** Install with `cargo install tauri-cli`
-- **Frontend:** React 18 + TypeScript + Zustand + Tailwind CSS + framer-motion
-- **Bundler:** Tauri (for native desktop app)
+- **Frontend:** React 18 + TypeScript + Zustand + Tailwind CSS + framer-motion (embedded in Windows app)
+- **Bundler:** Tauri (for native Windows desktop app)
+- **Build Output:** Windows executable (.exe) with MSI installer
+- **Dependencies:** Windows OBS Studio, mpv (Windows build)
 - **Linting:** ESLint (with TypeScript and React plugin)
 
 ## Quick Start
