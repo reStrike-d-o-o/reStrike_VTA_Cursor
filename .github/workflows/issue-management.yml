@@ -1,0 +1,136 @@
+name: Issue Management
+
+on:
+  issues:
+    types: [opened, edited, labeled, unlabeled]
+  issue_comment:
+    types: [created]
+
+jobs:
+  auto-label:
+    runs-on: ubuntu-latest
+    if: github.event.action == 'opened'
+    steps:
+      - name: Auto-label based on title
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { issue } = context.payload;
+            const title = issue.title.toLowerCase();
+            const labels = [];
+
+            // Auto-label based on title prefix
+            if (title.includes('[bug]')) labels.push('bug');
+            if (title.includes('[feature]')) labels.push('enhancement');
+            if (title.includes('[task]')) labels.push('task');
+            if (title.includes('[epic]')) labels.push('epic');
+            if (title.includes('[docs]')) labels.push('documentation');
+
+            // Auto-label based on content
+            if (title.includes('frontend') || title.includes('react') || title.includes('ui')) {
+              labels.push('frontend');
+            }
+            if (title.includes('backend') || title.includes('rust') || title.includes('tauri')) {
+              labels.push('backend');
+            }
+            if (title.includes('obs') || title.includes('websocket')) {
+              labels.push('integration');
+            }
+            if (title.includes('test') || title.includes('testing')) {
+              labels.push('testing');
+            }
+            if (title.includes('ci') || title.includes('cd') || title.includes('workflow')) {
+              labels.push('ci/cd');
+            }
+
+            // Priority labels based on keywords
+            if (title.includes('critical') || title.includes('urgent') || title.includes('blocker')) {
+              labels.push('priority:high');
+            } else if (title.includes('important') || title.includes('medium')) {
+              labels.push('priority:medium');
+            } else if (title.includes('low') || title.includes('nice-to-have')) {
+              labels.push('priority:low');
+            }
+
+            if (labels.length > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                labels: labels
+              });
+            }
+
+  auto-assign:
+    runs-on: ubuntu-latest
+    if: github.event.action == 'opened'
+    steps:
+      - name: Auto-assign based on labels
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { issue } = context.payload;
+            
+            // Auto-assign issues to project board
+            // This would require project board automation or manual setup
+
+  add-to-project:
+    runs-on: ubuntu-latest
+    if: github.event.action == 'opened'
+    steps:
+      - name: Add issue to project board
+        uses: actions/add-to-project@v0.5.0
+        with:
+          project-url: https://github.com/users/damjanZGB/projects/1
+          github-token: ${{ secrets.PAT_TOKEN }}
+
+  validate-epic:
+    runs-on: ubuntu-latest
+    if: contains(github.event.issue.labels.*.name, 'epic')
+    steps:
+      - name: Validate epic format
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { issue } = context.payload;
+            const body = issue.body || '';
+            
+            const requiredSections = [
+              'Epic Overview',
+              'Business Value', 
+              'User Stories',
+              'Acceptance Criteria'
+            ];
+            
+            const missingSections = requiredSections.filter(section => 
+              !body.includes(section)
+            );
+            
+            if (missingSections.length > 0) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: `⚠️ **Epic Template Validation**\n\nThis epic is missing the following required sections:\n${missingSections.map(s => `- ${s}`).join('\n')}\n\nPlease update the issue description to include all required sections.`
+              });
+            }
+
+  update-project-status:
+    runs-on: ubuntu-latest
+    if: github.event.action == 'labeled' || github.event.action == 'unlabeled'
+    steps:
+      - name: Update project status based on labels
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { issue } = context.payload;
+            const labels = issue.labels.map(label => label.name);
+            
+            // Update project board status based on labels
+            if (labels.includes('status:in-progress')) {
+              console.log('Issue marked as in progress');
+            } else if (labels.includes('status:review')) {
+              console.log('Issue marked for review');
+            } else if (labels.includes('status:done')) {
+              console.log('Issue marked as done');
+            } 
