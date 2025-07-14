@@ -1,0 +1,51 @@
+name: New GitHub Projects Automation
+
+on:
+  issues:
+    types: [opened, reopened, closed]
+  pull_request:
+    types: [opened, reopened, closed]
+
+env:
+  PROJECT_ID: 3
+  GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+
+jobs:
+  # Add issues and PRs to project when opened
+  add-to-project:
+    if: github.event.action == 'opened' || github.event.action == 'reopened'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add to project
+        uses: actions/add-to-project@v0.5.0
+        with:
+          project-url: https://github.com/users/damjanZGB/projects/3
+          github-token: ${{ secrets.PAT_TOKEN }}
+
+  # Set status for issues
+  set-issue-status:
+    if: github.event_name == 'issues'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set issue status
+        uses: leonsteinhaeuser/project-beta-automations@v2.2.1
+        with:
+          gh_token: ${{ secrets.PAT_TOKEN }}
+          user: damjanZGB
+          project_id: 3
+          resource_node_id: ${{ github.event.issue.node_id }}
+          status_value: ${{ github.event.action == 'closed' && 'Done' || 'Todo' }}
+
+  # Set status for pull requests  
+  set-pr-status:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set PR status
+        uses: leonsteinhaeuser/project-beta-automations@v2.2.1
+        with:
+          gh_token: ${{ secrets.PAT_TOKEN }}
+          user: damjanZGB
+          project_id: 3
+          resource_node_id: ${{ github.event.pull_request.node_id }}
+          status_value: ${{ github.event.action == 'closed' && 'Done' || 'In Progress' }} 

@@ -244,7 +244,7 @@ This board uses GitHub Actions for automated issue management, project board upd
 def main():
     """Main function to set up GitHub project board"""
     # Configuration
-    repo_owner = "damjanZGB"  # Replace with actual repo owner
+    repo_owner = "reStrike-d-o-o"  # Replace with actual repo owner
     repo_name = "reStrike_VTA_Cursor"  # Replace with actual repo name
     
     # Get GitHub token from environment

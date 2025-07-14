@@ -2,7 +2,7 @@
 
 ## 🤖 **AUTOMATION CONFIGURATION**
 
-This guide provides step-by-step instructions for configuring automated status synchronization between GitHub issues and the project board.
+This guide provides step-by-step instructions for configuring automated status synchronization between GitHub issues and the **new GitHub Projects** (Projects v2).
 
 ---
 
@@ -13,255 +13,282 @@ This guide provides step-by-step instructions for configuring automated status s
 
 The automation system uses:
 - **GitHub Labels** for status tracking
-- **Built-in Project Workflows** for column automation
-- **GitHub Actions** for advanced automation
-- **Automatic Status Sync** between labels and board columns
+- **New GitHub Projects built-in automation** for column management
+- **GitHub Actions** for advanced workflow automation
+- **Automatic Status Sync** between labels and project fields
 
 ---
 
-## ⚙️ **STEP 1: CONFIGURE PROJECT BOARD AUTOMATION**
+## ⚙️ **STEP 1: CONFIGURE NEW GITHUB PROJECTS AUTOMATION**
 
 ### **Access Project Settings**
 1. **Navigate to Project Board**: https://github.com/users/damjanZGB/projects/3
 2. **Click "⚙️" (Settings)** in the top-right corner of the project board
 3. **Select "Workflows" tab** from the left sidebar
 
-### **Configure Column Automation**
+### **Configure Built-in Workflows**
 
-#### **🗂️ Backlog Column**
-- **Auto-add items**: No automation needed (manual management)
-- **Auto-archive**: Never
+Unlike classic projects, the new GitHub Projects use **built-in workflows** that are much more powerful:
 
-#### **📋 Todo Column**  
-- **Auto-add items**: ✅ Enable
-  - **Trigger**: "When issues are labeled with `status:todo`"
-- **Auto-archive**: Never
+#### **🔧 Auto-add to Project Workflow**
+1. **Click "Add workflow"**
+2. **Select "Auto-add to project"**
+3. **Configure filters**:
+   - **Repository**: `damjanZGB/reStrike_VTA_Cursor`
+   - **Issue or PR state**: `open`
+   - **Labels**: (optional) specific labels to auto-add
 
-#### **🔄 In Progress Column**
-- **Auto-add items**: ✅ Enable
-  - **Trigger**: "When issues are labeled with `status:in-progress`"
-- **Auto-archive**: Never
+#### **🔄 Auto-archive Workflow**
+1. **Click "Add workflow"**  
+2. **Select "Auto-archive"**
+3. **Configure trigger**: "When items are closed"
 
-#### **👀 Review Column**
-- **Auto-add items**: ✅ Enable
-  - **Trigger**: "When issues are labeled with `status:review`"
-- **Auto-archive**: Never
-
-#### **✅ Done Column**
-- **Auto-add items**: ✅ Enable
-  - **Trigger**: "When issues are closed"
-- **Auto-archive**: After 1 week (optional)
-
-#### **🚫 Blocked Column**
-- **Auto-add items**: ✅ Enable
-  - **Trigger**: "When issues are labeled with `status:blocked`"
-- **Auto-archive**: Never
+#### **📝 Set Status Workflow**
+1. **Click "Add workflow"**
+2. **Select "Set status"**  
+3. **Configure multiple rules**:
+   - **When**: Issue opened → **Set Status**: Todo
+   - **When**: PR opened → **Set Status**: In Progress  
+   - **When**: Issue/PR closed → **Set Status**: Done
 
 ---
 
-## 🏷️ **STEP 2: UNDERSTAND LABEL SYSTEM**
+## 🏷️ **STEP 2: UPDATE GITHUB ACTIONS WORKFLOWS**
 
-### **Status Labels** (Primary Automation)
-- `status:todo` → **📋 Todo** column
-- `status:in-progress` → **🔄 In Progress** column
-- `status:review` → **👀 Review** column
-- `status:done` → **✅ Done** column (also triggered by closing issue)
-- `status:blocked` → **🚫 Blocked** column
+The current workflows need to be updated for new GitHub Projects. Here's the corrected configuration:
 
-### **Component Labels**
-- `frontend` - React/TypeScript components
-- `backend` - Rust plugins and core logic
-- `integration` - OBS WebSocket, external systems
-- `testing` - Testing and validation tasks
-- `ci/cd` - Continuous integration/deployment
-- `infrastructure` - System setup and configuration
+### **Update `.github/workflows/project-board.yml`**
 
-### **Priority Labels**
-- `priority:high` - Critical path items (red)
-- `priority:medium` - Important items (yellow)
-- `priority:low` - Nice to have items (green)
+```yaml
+name: Project Board Management
 
-### **Effort Labels**
-- `effort:small` - Less than 4 hours (light green)
-- `effort:medium` - 4-16 hours (light yellow)
-- `effort:large` - More than 16 hours (light red)
+on:
+  issues:
+    types: [opened, closed, reopened, labeled, unlabeled]
+  pull_request:
+    types: [opened, closed, merged, labeled, unlabeled]
 
-### **Phase Labels**
-- `phase:testing` - Core system testing phase
-- `phase:production` - Windows production deployment
-- `phase:enhancement` - Future enhancement features
+jobs:
+  update-project:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add to project
+        uses: actions/add-to-project@v0.5.0
+        with:
+          project-url: https://github.com/users/damjanZGB/projects/3
+          github-token: ${{ secrets.PAT_TOKEN }}
 
----
+      - name: Update project fields
+        uses: titoportas/update-project-fields@v0.1.0
+        with:
+          project-url: https://github.com/users/damjanZGB/projects/3
+          github-token: ${{ secrets.PAT_TOKEN }}
+          item-id: ${{ steps.add-to-project.outputs.itemId }}
+          field-keys: Status
+          field-values: |
+            ${{ 
+              (github.event.action == 'opened' && github.event_name == 'issues') && 'Todo' ||
+              (github.event.action == 'opened' && github.event_name == 'pull_request') && 'In Progress' ||
+              (github.event.action == 'closed') && 'Done' ||
+              'Todo'
+            }}
+```
 
-## 🔧 **STEP 3: TEST AUTOMATION**
+### **Alternative: Use Specialized Action for New Projects**
 
-### **Test Status Movement**
-1. **Select Any Issue**: Go to https://github.com/damjanZGB/reStrike_VTA_Cursor/issues
-2. **Add Status Label**: 
-   - Click "Labels" in the right sidebar
-   - Add `status:in-progress` label
-3. **Verify Movement**: Check project board - issue should move to "In Progress" column
-4. **Test Completion**:
-   - Close the issue (or add `status:done` label)
-   - Verify it moves to "Done" column
+For more robust automation, use the `project-beta-automations` action:
 
-### **Test Issue Creation**
-1. **Create New Issue**: Use any issue template
-2. **Add Labels**: Add appropriate component and priority labels
-3. **Verify**: Check that issue appears in "Backlog" initially
-4. **Move to Todo**: Add `status:todo` label and verify movement
+```yaml
+name: Project Board Automation
 
----
+on:
+  issues:
+    types: [opened, reopened, closed]
+  pull_request:
+    types: [opened, reopened, closed]
 
-## 🤖 **STEP 4: ADVANCED AUTOMATION (GitHub Actions)**
+env:
+  PROJECT_ID: 3  # Your project number
+  ORG: damjanZGB
+  TODO: "📋 Todo"
+  IN_PROGRESS: "🔄 In Progress" 
+  DONE: "✅ Done"
 
-The repository includes advanced automation workflows:
+jobs:
+  issue-opened:
+    if: github.event_name == 'issues' && (github.event.action == 'opened' || github.event.action == 'reopened')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Move issue to Todo
+        uses: leonsteinhaeuser/project-beta-automations@v2.2.1
+        with:
+          gh_token: ${{ secrets.PAT_TOKEN }}
+          user: ${{ env.ORG }}
+          project_id: ${{ env.PROJECT_ID }}
+          resource_node_id: ${{ github.event.issue.node_id }}
+          status_value: ${{ env.TODO }}
 
-### **Auto-Labeling** (`.github/workflows/issue-management.yml`)
-- **Triggers**: When issues are opened
-- **Function**: Automatically adds labels based on title keywords
-- **Examples**:
-  - Title contains "frontend" → adds `frontend` label
-  - Title contains "critical" → adds `priority:high` label
-  - Title contains "obs" → adds `integration` label
+  issue-closed:
+    if: github.event_name == 'issues' && github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Move issue to Done
+        uses: leonsteinhaeuser/project-beta-automations@v2.2.1
+        with:
+          gh_token: ${{ secrets.PAT_TOKEN }}
+          user: ${{ env.ORG }}
+          project_id: ${{ env.PROJECT_ID }}
+          resource_node_id: ${{ github.event.issue.node_id }}
+          status_value: ${{ env.DONE }}
 
-### **Project Board Sync** (`.github/workflows/project-board.yml`)
-- **Triggers**: When issues are labeled or unlabeled
-- **Function**: Ensures issues move between columns based on labels
-- **Features**: Auto-close issues marked as done
+  pr-opened:
+    if: github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'reopened')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Move PR to In Progress
+        uses: leonsteinhaeuser/project-beta-automations@v2.2.1
+        with:
+          gh_token: ${{ secrets.PAT_TOKEN }}
+          user: ${{ env.ORG }}
+          project_id: ${{ env.PROJECT_ID }}
+          resource_node_id: ${{ github.event.pull_request.node_id }}
+          status_value: ${{ env.IN_PROGRESS }}
 
-### **Label Management** (`.github/workflows/labels.yml`)
-- **Triggers**: When `.github/labels.yml` is updated
-- **Function**: Synchronizes repository labels with configuration
-- **Benefit**: Maintains consistent labeling across team
-
----
-
-## 📊 **STEP 5: DAILY WORKFLOW**
-
-### **🚀 Starting Work**
-1. **Choose Task**: Select issue from "Todo" column
-2. **Assign Yourself**: Add yourself as assignee
-3. **Start Work**: Add `status:in-progress` label or drag to "In Progress"
-4. **Update**: Regular progress updates in issue comments
-
-### **📝 Requesting Review**
-1. **Complete Work**: Finish implementation
-2. **Request Review**: Add `status:review` label or drag to "Review"
-3. **Documentation**: Update issue with completion details
-4. **Link PR**: If applicable, link pull request to issue
-
-### **✅ Completing Tasks**
-1. **Final Review**: Ensure all acceptance criteria met
-2. **Close Issue**: Close issue (automatically moves to "Done")
-3. **Follow-up**: Create new issues for related work if needed
-
-### **🚫 Handling Blockers**
-1. **Identify Blocker**: Determine what's blocking progress
-2. **Mark Blocked**: Add `status:blocked` label or drag to "Blocked"
-3. **Document**: Explain blocker in issue comments
-4. **Escalate**: Mention team members if help needed
-
----
-
-## 🎯 **STEP 6: PROJECT MANAGEMENT BEST PRACTICES**
-
-### **🏷️ Consistent Labeling**
-- **Always Use Status Labels**: Keep status current
-- **Component Labeling**: Help with filtering and organization
-- **Priority Setting**: Use priority labels for planning
-- **Effort Estimation**: Add effort labels for capacity planning
-
-### **📊 Progress Tracking**
-- **Daily Updates**: Check project board daily
-- **Weekly Reviews**: Review "Done" column progress
-- **Blocked Items**: Address blocked items promptly
-- **Backlog Grooming**: Regularly update backlog priorities
-
-### **👥 Team Collaboration**
-- **Assign Issues**: Assign team members to issues
-- **Comment Updates**: Regular progress comments
-- **Mention Team**: Use @mentions for collaboration
-- **Link PRs**: Connect pull requests to issues
+  pr-closed:
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Move PR to Done
+        uses: leonsteinhaeuser/project-beta-automations@v2.2.1
+        with:
+          gh_token: ${{ secrets.PAT_TOKEN }}
+          user: ${{ env.ORG }}
+          project_id: ${{ env.PROJECT_ID }}
+          resource_node_id: ${{ github.event.pull_request.node_id }}
+          status_value: ${{ env.DONE }}
+```
 
 ---
 
-## 🔍 **STEP 7: FILTERING AND VIEWS**
+## 🔧 **STEP 3: UPDATE PAT TOKEN PERMISSIONS**
 
-### **Useful Filters**
-1. **By Priority**: Filter issues by `priority:high`, `priority:medium`, `priority:low`
-2. **By Component**: Filter by `frontend`, `backend`, `integration`
-3. **By Phase**: Filter by `phase:testing`, `phase:production`
-4. **By Assignee**: Filter by team member
-5. **By Status**: Use board columns for visual status
+For new GitHub Projects, your PAT token needs different scopes:
 
-### **Creating Custom Views**
-1. **Click "View" dropdown** on project board
-2. **Select "New view"**
-3. **Choose filters** and sorting preferences
-4. **Save view** with descriptive name
+### **Required Scopes for New Projects:**
+- ✅ **`project`** - Read and write access to projects
+- ✅ **`repo`** - Full control of repositories
+- ✅ **`org:read`** - Read organization membership (for org projects)
 
----
-
-## 🛠️ **TROUBLESHOOTING**
-
-### **Issues Not Moving Between Columns**
-- **Check Labels**: Ensure correct status labels are applied
-- **Verify Workflows**: Check that project workflows are enabled
-- **Manual Move**: Drag issues manually if automation fails
-- **Refresh Board**: Reload project board page
-
-### **Labels Not Syncing**
-- **Check Permissions**: Ensure PAT has proper permissions
-- **Workflow Status**: Check GitHub Actions tab for errors
-- **Manual Labels**: Add labels manually if automation fails
-- **Repository Settings**: Verify workflow permissions
-
-### **Automation Not Working**
-- **GitHub Actions**: Check workflow runs in Actions tab
-- **Permissions**: Verify PAT token has required scopes
-- **Rate Limits**: Check for API rate limiting
-- **Workflow Files**: Ensure `.github/workflows/` files are present
+### **Update Your PAT Token:**
+1. Go to https://github.com/settings/tokens
+2. Edit your existing token or create a new one
+3. Ensure the **`project`** scope is selected (not just classic project scopes)
+4. Update the `PAT_TOKEN` secret in your repository
 
 ---
 
-## 📚 **ADDITIONAL RESOURCES**
+## 🎯 **STEP 4: CONFIGURE STATUS FIELD VALUES**
 
-### **Documentation Links**
-- **Project Board**: https://github.com/users/damjanZGB/projects/3
-- **Issues**: https://github.com/damjanZGB/reStrike_VTA_Cursor/issues
-- **Actions**: https://github.com/damjanZGB/reStrike_VTA_Cursor/actions
-- **Integration Status**: [GitHub Integration Status](./github-integration-status.md)
+Make sure your project's Status field has the correct options:
 
-### **Configuration Files**
-- **Issue Templates**: [.github/ISSUE_TEMPLATE/](../../.github/ISSUE_TEMPLATE/)
-- **Workflow Files**: [.github/workflows/](../../.github/workflows/)
-- **Labels Config**: [.github/labels.yml](../../.github/labels.yml)
-- **Automation Scripts**: [scripts/github/](../../scripts/github/)
-
-### **Support**
-- **GitHub Docs**: [GitHub Projects Documentation](https://docs.github.com/en/issues/planning-and-tracking-with-projects)
-- **Automation Help**: [GitHub Actions Documentation](https://docs.github.com/en/actions)
-- **Project Issues**: Create issue in repository for automation problems
+1. **Go to Project Settings**: https://github.com/users/damjanZGB/projects/3/settings
+2. **Click on "Status" field**
+3. **Ensure these options exist**:
+   - 📋 Todo (or Backlog)
+   - 🔄 In Progress  
+   - 👀 Review (optional)
+   - ✅ Done
+   - 🚫 Blocked (optional)
 
 ---
 
-## 🎉 **SUCCESS CRITERIA**
+## 🧪 **STEP 5: TEST THE AUTOMATION**
 
-After completing this setup, you should have:
+### **Test Issue Workflow**
+1. **Create a test issue** in your repository
+2. **Verify** it automatically appears in the project
+3. **Check** that it's assigned to the "Todo" status
+4. **Close the issue** and verify it moves to "Done"
 
-✅ **Automated Column Movement**: Issues automatically move between columns based on labels  
-✅ **Status Synchronization**: Labels sync with project board status  
-✅ **Auto-Labeling**: New issues get appropriate labels automatically  
-✅ **Workflow Integration**: GitHub Actions handle automation tasks  
-✅ **Team Productivity**: Reduced manual project management overhead  
+### **Test PR Workflow**  
+1. **Create a test pull request**
+2. **Verify** it appears in "In Progress" 
+3. **Close/merge the PR** and verify it moves to "Done"
+
+---
+
+## 🔍 **STEP 6: TROUBLESHOOTING**
+
+### **Common Issues with New Projects:**
+
+#### **❌ "Project not found" Error**
+- **Solution**: Use the project **number** (3) not the full URL
+- **Check**: Ensure PAT has `project` scope, not just classic project scopes
+
+#### **❌ Items not moving between columns**
+- **Solution**: Check that Status field values match exactly (case-sensitive)
+- **Verify**: Built-in workflows are properly configured
+
+#### **❌ "Insufficient permissions" Error**
+- **Solution**: Regenerate PAT with `project` scope
+- **Note**: Classic project permissions don't work for new projects
+
+### **Verification Commands**
+```bash
+# Test with GitHub CLI (requires project scope)
+gh project list --owner damjanZGB
+
+# View project items
+gh project item-list 3 --owner damjanZGB
+```
+
+---
+
+## 📚 **KEY DIFFERENCES: Classic vs New Projects**
+
+| Feature | Classic Projects | New Projects (v2) |
+|---------|------------------|-------------------|
+| **Scope** | Repository-level | User/Org-level |
+| **API** | REST API | GraphQL API |
+| **Automation** | Basic workflows | Built-in workflows + Actions |
+| **Fields** | Status only | Custom fields (Status, Priority, etc.) |
+| **PAT Scopes** | `repo`, `admin:org` | `project`, `repo` |
+
+---
+
+## 🎉 **RECOMMENDED QUICK FIX**
+
+Since you already have the project set up, the **fastest solution** is:
+
+### **1. Update PAT Token Scopes**
+- Add `project` scope to your existing PAT
+- Update `PAT_TOKEN` secret in repository
+
+### **2. Use Built-in Workflows (Recommended)**
+- Go to project settings → Workflows
+- Add "Auto-add to project" workflow
+- Add "Set status" workflows for different triggers
+- This requires **no code changes**
+
+### **3. Alternative: Update GitHub Actions**
+- Replace current workflow files with the new project automation above
+- Use the `leonsteinhaeuser/project-beta-automations@v2.2.1` action
+
+---
+
+## 📝 **IMMEDIATE ACTION ITEMS**
+
+1. ✅ **Update PAT Token**: Add `project` scope
+2. ✅ **Configure Built-in Workflows**: Use project settings
+3. ✅ **Test Automation**: Create test issue/PR
+4. ✅ **Update Documentation**: Reflect new setup
 
 ---
 
 **📝 Last Updated**: January 27, 2025  
 **👤 Created by**: Development Team  
-**🔧 Automation Status**: Ready for Implementation
+**🔧 Automation Status**: Updated for New GitHub Projects (v2)
 
 ---
 
-*This automation setup ensures professional project management with minimal manual overhead, allowing the team to focus on development while maintaining clear visibility into project progress.* 
+*This automation setup is specifically designed for the new GitHub Projects and will work correctly with your current project board structure.* 
