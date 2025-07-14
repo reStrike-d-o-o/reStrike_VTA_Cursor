@@ -4,7 +4,7 @@ const SidebarTest: React.FC = () => {
   const [manualMode, setManualMode] = useState(false);
 
   return (
-    <div className="min-h-screen flex bg-[#101820] text-white" style={{ fontFamily: 'Segoe UI, Roboto, sans-serif' }}>
+    <div className="min-h-screen flex bg-[#101820] text-white border-4 border-green-500" style={{ fontFamily: 'Segoe UI, Roboto, sans-serif' }}>
       {/* Left Control Column */}
       <div className="flex flex-col items-center justify-between py-8 px-4 bg-[#181F26] w-40 shadow-lg">
         <div className="flex flex-col items-center space-y-8">
