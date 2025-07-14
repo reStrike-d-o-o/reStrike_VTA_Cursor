@@ -1,0 +1,179 @@
+{
+  "development_environment": {
+    "name": "reStrike VTA Development Environment",
+    "version": "1.0.0",
+    "last_updated": "2025-01-27",
+    "description": "Configuration for reStrike VTA development resources"
+  },
+  "ports": {
+    "frontend": {
+      "port": 3000,
+      "service": "React Frontend",
+      "protocol": "HTTP",
+      "description": "React development server",
+      "url": "http://localhost:3000",
+      "status": "available",
+      "forwarded": true,
+      "auto_start": true
+    },
+    "backend": {
+      "port": 1420,
+      "service": "Tauri Backend",
+      "protocol": "HTTP/WebSocket",
+      "description": "Tauri development server",
+      "url": "http://localhost:1420",
+      "status": "available",
+      "forwarded": true,
+      "auto_start": false
+    },
+    "udp_pss": {
+      "port": 6000,
+      "service": "UDP PSS Protocol",
+      "protocol": "UDP",
+      "description": "WT competition data collection",
+      "status": "available",
+      "forwarded": true,
+      "auto_start": false,
+      "config_file": "protocol/pss_schema.txt"
+    },
+    "obs_websocket": {
+      "port": 4455,
+      "service": "OBS WebSocket",
+      "protocol": "WebSocket",
+      "description": "OBS Studio WebSocket control",
+      "status": "available",
+      "forwarded": true,
+      "auto_start": false,
+      "protocols": ["v4", "v5"],
+      "default_protocol": "v5"
+    },
+    "dev_server": {
+      "port": 8080,
+      "service": "Development Server",
+      "protocol": "HTTP",
+      "description": "Additional development services",
+      "url": "http://localhost:8080",
+      "status": "available",
+      "forwarded": true,
+      "auto_start": false
+    }
+  },
+  "services": {
+    "react_frontend": {
+      "name": "React Frontend",
+      "command": "npm start",
+      "directory": "ui",
+      "status": "stopped",
+      "auto_restart": true,
+      "health_check": "http://localhost:3000",
+      "dependencies": ["node_modules"]
+    },
+    "rust_backend": {
+      "name": "Rust Backend",
+      "command": "cargo run",
+      "directory": ".",
+      "status": "stopped",
+      "auto_restart": false,
+      "health_check": "http://localhost:1420",
+      "dependencies": ["Cargo.toml"]
+    },
+    "mpv_player": {
+      "name": "mpv Player",
+      "command": "mpv",
+      "status": "stopped",
+      "auto_restart": false,
+      "version_check": "mpv --version",
+      "dependencies": ["mpv"]
+    },
+    "obs_studio": {
+      "name": "OBS Studio",
+      "status": "external",
+      "websocket_plugin_required": true,
+      "supported_protocols": ["v4", "v5"],
+      "default_port": 4455,
+      "authentication": true
+    }
+  },
+  "processes": {
+    "development_servers": [
+      "npm start",
+      "cargo run",
+      "cargo tauri dev",
+      "tauri dev"
+    ],
+    "media_players": [
+      "mpv"
+    ],
+    "build_processes": [
+      "cargo build",
+      "npm run build",
+      "npm run dev"
+    ]
+  },
+  "directories": {
+    "frontend": "ui",
+    "backend": "src",
+    "scripts": "scripts",
+    "config": "config",
+    "docs": "docs",
+    "protocol": "protocol",
+    "build": "target",
+    "cache": "ui/node_modules/.cache"
+  },
+  "files": {
+    "package_json": "package.json",
+    "ui_package_json": "ui/package.json",
+    "cargo_toml": "Cargo.toml",
+    "devcontainer_config": ".devcontainer/devcontainer.json",
+    "dockerfile": ".devcontainer/Dockerfile",
+    "readme": "README.md",
+    "protocol_schema": "protocol/pss_schema.txt"
+  },
+  "environment": {
+    "node_version": "24.4.0",
+    "rust_version": "1.88.0",
+    "cargo_version": "1.88.0",
+    "mpv_version": "latest",
+    "container_type": "devcontainer",
+    "os": "linux"
+  },
+  "cleanup": {
+    "temp_files": [
+      "*.tmp",
+      "*.log",
+      "target/",
+      "ui/node_modules/.cache/"
+    ],
+    "processes_to_kill": [
+      "npm start",
+      "cargo",
+      "tauri",
+      "mpv",
+      "node.*3000",
+      "node.*1420"
+    ],
+    "ports_to_check": [3000, 1420, 6000, 4455, 8080]
+  },
+  "monitoring": {
+    "health_checks": {
+      "frontend": "curl -f http://localhost:3000",
+      "backend": "curl -f http://localhost:1420",
+      "mpv": "mpv --version"
+    },
+    "status_indicators": {
+      "running": "✅",
+      "stopped": "❌",
+      "warning": "⚠️",
+      "error": "🚨"
+    }
+  },
+  "scripts": {
+    "cleanup": "scripts/development/cleanup-dev-environment.sh",
+    "verify_ports": "scripts/development/verify-ports.sh",
+    "update_frameworks": "scripts/development/update-frameworks.sh",
+    "install_mpv": "scripts/development/install-mpv-latest.sh",
+    "setup_obs": "scripts/obs/setup-obs-websocket.sh",
+    "project_tracker": "scripts/project/project-tracker.py",
+    "dev_wrapper": "scripts/development/dev.sh"
+  }
+} 
