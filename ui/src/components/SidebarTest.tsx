@@ -1,73 +1,112 @@
-import React from 'react';
-import SidebarSecondColumn from './SidebarSecondColumn';
+import React, { useState } from 'react';
 
 const SidebarTest: React.FC = () => {
+  const [manualMode, setManualMode] = useState(false);
+
   return (
-    <div className="min-h-screen bg-gray-950 flex">
-      {/* First Column (Controls) - Narrow */}
-      <div className="w-16 bg-gray-900 p-2 flex flex-col items-center space-y-4">
-        {/* Big Red Replay Button */}
-        <button className="w-12 h-12 bg-red-600 hover:bg-red-700 rounded-lg flex items-center justify-center text-white font-bold animate-pulse">
-          ●
-        </button>
-        
-        {/* Manual Mode Toggle */}
-        <div className="flex flex-col items-center space-y-1">
-          <span className="text-xs text-gray-400">Manual</span>
-          <div className="w-8 h-4 bg-gray-700 rounded-full relative">
-            <div className="w-4 h-4 bg-blue-500 rounded-full absolute left-0 transition-transform"></div>
+    <div className="min-h-screen flex bg-[#101820] text-white" style={{ fontFamily: 'Segoe UI, Roboto, sans-serif' }}>
+      {/* Left Control Column */}
+      <div className="flex flex-col items-center justify-between py-8 px-4 bg-[#181F26] w-40 shadow-lg">
+        <div className="flex flex-col items-center space-y-8">
+          {/* REPLAY Button */}
+          <button
+            className="w-28 h-28 rounded-full bg-red-600 shadow-xl flex items-center justify-center text-2xl font-bold text-white border-4 border-[#2B2B2B] animate-pulse focus:outline-none mb-2"
+            style={{ boxShadow: '0 0 0 6px #2B2B2B' }}
+          >
+            REPLAY
+          </button>
+
+          {/* Manual Mode Toggle */}
+          <div className="flex flex-col items-center space-y-2">
+            <span className="text-base text-gray-200">Manual Mode</span>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={manualMode}
+                onChange={() => setManualMode((v) => !v)}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-gray-700 rounded-full peer peer-focus:ring-2 peer-focus:ring-blue-500 transition-all duration-200" />
+              <div
+                className={`absolute left-0 top-0 w-6 h-6 rounded-full transition-transform duration-200 ${manualMode ? 'translate-x-5 bg-blue-500' : 'bg-gray-400'}`}
+              />
+            </label>
           </div>
+
+          {/* Advanced Button */}
+          <button className="w-32 h-10 mt-4 bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded-lg text-base text-gray-200 font-medium transition-colors">
+            Advanced
+          </button>
         </div>
-        
-        {/* Advanced Button */}
-        <button className="w-12 h-8 bg-gray-700 hover:bg-gray-600 rounded text-xs text-gray-300">
-          Advanced
-        </button>
+        {/* Status Bar (bottom left) */}
+        <div className="w-full flex justify-between items-center text-xs text-gray-400 mt-8">
+          <span>OBS Recording</span>
+          <span>CP 5%</span>
+        </div>
       </div>
-      
-      {/* Second Column (Info) - Wider */}
-      <SidebarSecondColumn />
-      
-      {/* Main Content Area */}
-      <div className="flex-1 p-8">
-        <div className="max-w-4xl mx-auto">
-          <h1 className="text-3xl font-bold text-white mb-6">Sidebar Second Column - Visual Review</h1>
-          
-          <div className="bg-gray-800 rounded-lg p-6 space-y-6">
-            <div>
-              <h2 className="text-xl font-semibold text-white mb-3">✅ What's Implemented:</h2>
-              <ul className="text-gray-300 space-y-2">
-                <li>• <strong>MatchInfoSection:</strong> Athletes with flags (🇺🇸 Benjamin Smith, 🇯🇵 Kei Tanaka)</li>
-                <li>• <strong>Category & Stage:</strong> M-75kg and Semi-final stacked on the left</li>
-                <li>• <strong>Match Number:</strong> Large "1254" right-aligned in red</li>
-                <li>• <strong>EventTable:</strong> Header with subtle accent (RND | TIME | EVENT)</li>
-                <li>• <strong>Event Rows:</strong> With colored dots (red, blue, yellow, green)</li>
-                <li>• <strong>"Go to Top" Arrow:</strong> Positioned at bottom right of table</li>
-                <li>• <strong>StatusBar:</strong> OBS Recording, CP 5%, PSS with colored dots</li>
-              </ul>
+
+      {/* Right Info Column */}
+      <div className="flex-1 flex flex-col justify-between bg-[#101820] px-10 py-8 min-w-[340px] max-w-[480px]">
+        <div>
+          {/* Athlete Info */}
+          <div className="flex flex-col space-y-1 mb-2">
+            <div className="flex items-center space-x-2 text-lg font-semibold">
+              <span className="text-2xl">🇺🇸</span>
+              <span>Benjamin Smith</span>
             </div>
-            
-            <div>
-              <h2 className="text-xl font-semibold text-white mb-3">🎨 Design Features:</h2>
-              <ul className="text-gray-300 space-y-2">
-                <li>• <strong>Two-Column Layout:</strong> Narrow controls (left) + Wide info (right)</li>
-                <li>• <strong>Color Coding:</strong> Red/green dots for status indicators</li>
-                <li>• <strong>Typography:</strong> Proper hierarchy with different text sizes</li>
-                <li>• <strong>Spacing:</strong> Consistent padding and margins</li>
-                <li>• <strong>Scrollable Event Table:</strong> For multiple events</li>
-              </ul>
+            <div className="flex items-center space-x-2 text-lg font-semibold">
+              <span className="text-2xl">🇯🇵</span>
+              <span>Kei Tanaka</span>
             </div>
-            
-            <div>
-              <h2 className="text-xl font-semibold text-white mb-3">📋 Next Steps:</h2>
-              <ul className="text-gray-300 space-y-2">
-                <li>• <strong>Review:</strong> Please check the visual layout and styling</li>
-                <li>• <strong>Approval:</strong> Once approved, we'll add real data and logic</li>
-                <li>• <strong>Integration:</strong> Connect with backend and state management</li>
-              </ul>
+          </div>
+          {/* Match Metadata */}
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex flex-col text-gray-400 text-base">
+              <span>M-75kg</span>
+              <span>Semi-final</span>
+            </div>
+            <div className="text-5xl font-bold text-right text-white tracking-tight">1254</div>
+          </div>
+          <hr className="border-gray-700 my-4" />
+          {/* Event Table */}
+          <div className="flex flex-col">
+            <div className="flex items-center justify-between text-gray-400 text-sm mb-2">
+              <span className="">RND</span>
+              <span className="">TIME</span>
+              <span className="">EVENT</span>
+            </div>
+            {/* Event Rows */}
+            <div className="flex items-center justify-between py-1">
+              <span className="font-bold text-white">R1</span>
+              <span className="text-gray-200">02.00.343</span>
+              <span className="flex items-center space-x-2">
+                <span className="w-3 h-3 rounded-full bg-red-500 inline-block"></span>
+                <span className="text-white">Punch</span>
+              </span>
+            </div>
+            <div className="flex items-center justify-between py-1">
+              <span className="font-bold text-white">R2</span>
+              <span className="text-gray-200">02.10.343</span>
+              <span className="flex items-center space-x-2">
+                <span className="w-3 h-3 rounded-full bg-blue-400 inline-block"></span>
+                <span className="text-white">Head Kick</span>
+              </span>
+            </div>
+            <div className="flex items-center justify-between py-1">
+              <span className="font-bold text-white">R3</span>
+              <span className="text-gray-200">02.20.343</span>
+              <span className="flex items-center space-x-2">
+                <span className="w-3 h-3 rounded-full bg-yellow-400 inline-block"></span>
+                <span className="text-white">Referee</span>
+              </span>
+            </div>
+            {/* Up Arrow */}
+            <div className="flex justify-end mt-2">
+              <span className="text-gray-500 text-xl">↑</span>
             </div>
           </div>
         </div>
+        {/* Status Bar (bottom right) - already handled in left column for this design */}
       </div>
     </div>
   );
