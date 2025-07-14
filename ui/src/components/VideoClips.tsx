@@ -83,14 +83,13 @@ const VideoClips: React.FC = () => {
       </div>
 
       {/* Add New Clip Form */}
-      <AnimatePresence>
-        {isAddingClip && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="mb-6 p-4 bg-gray-800 rounded-lg"
-          >
+      {isAddingClip && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          exit={{ opacity: 0, height: 0 }}
+          className="mb-6 p-4 bg-gray-800 rounded-lg"
+        >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Clip Name *</label>
@@ -156,7 +155,6 @@ const VideoClips: React.FC = () => {
             </div>
           </motion.div>
         )}
-      </AnimatePresence>
 
       {/* Search and Filter */}
       <div className="mb-6 space-y-4">

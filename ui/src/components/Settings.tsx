@@ -376,7 +376,7 @@ const Settings: React.FC = () => {
       </motion.div>
 
       {/* Custom CSS for slider */}
-      <style jsx>{`
+      <style>{`
         .slider::-webkit-slider-thumb {
           appearance: none;
           height: 16px;
