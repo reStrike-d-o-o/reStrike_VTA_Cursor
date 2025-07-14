@@ -1,4 +1,4 @@
-use crate::plugin_obs::{ObsPlugin, ObsConnectionConfig, ObsWebSocketVersion, ObsEvent};
+use crate::plugin_obs::{ObsPlugin, ObsConnectionConfig, ObsWebSocketVersion};
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc;
