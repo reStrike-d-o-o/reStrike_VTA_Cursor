@@ -1,2 +1,197 @@
-// Store index stub
-// TODO: Add global state management (e.g., Zustand, Redux)
+import { create } from 'zustand';
+import { devtools } from 'zustand/middleware';
+
+// Types
+export interface ObsConnection {
+  name: string;
+  host: string;
+  port: number;
+  password?: string;
+  protocol_version: 'v4' | 'v5';
+  enabled: boolean;
+  status: 'Disconnected' | 'Connecting' | 'Connected' | 'Authenticating' | 'Authenticated' | 'Error';
+  error?: string;
+}
+
+export interface OverlaySettings {
+  opacity: number;
+  position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'center';
+  scale: number;
+  visible: boolean;
+  theme: 'dark' | 'light' | 'transparent';
+}
+
+export interface VideoClip {
+  id: string;
+  name: string;
+  path: string;
+  duration: number;
+  timestamp: Date;
+  tags: string[];
+}
+
+export interface AppState {
+  // OBS Connections
+  obsConnections: ObsConnection[];
+  activeObsConnection: string | null;
+  
+  // Overlay Settings
+  overlaySettings: OverlaySettings;
+  
+  // Video Clips
+  videoClips: VideoClip[];
+  currentClip: VideoClip | null;
+  isPlaying: boolean;
+  
+  // UI State
+  currentView: 'overlay' | 'settings' | 'clips' | 'obs-manager';
+  isLoading: boolean;
+  error: string | null;
+}
+
+export interface AppActions {
+  // OBS Actions
+  addObsConnection: (connection: Omit<ObsConnection, 'status' | 'error'>) => void;
+  removeObsConnection: (name: string) => void;
+  updateObsConnectionStatus: (name: string, status: ObsConnection['status'], error?: string) => void;
+  setActiveObsConnection: (name: string | null) => void;
+  
+  // Overlay Actions
+  updateOverlaySettings: (settings: Partial<OverlaySettings>) => void;
+  toggleOverlayVisibility: () => void;
+  
+  // Video Actions
+  addVideoClip: (clip: Omit<VideoClip, 'id' | 'timestamp'>) => void;
+  removeVideoClip: (id: string) => void;
+  setCurrentClip: (clip: VideoClip | null) => void;
+  setPlaying: (playing: boolean) => void;
+  
+  // UI Actions
+  setCurrentView: (view: AppState['currentView']) => void;
+  setLoading: (loading: boolean) => void;
+  setError: (error: string | null) => void;
+  clearError: () => void;
+}
+
+export type AppStore = AppState & AppActions;
+
+// Initial state
+const initialState: AppState = {
+  obsConnections: [],
+  activeObsConnection: null,
+  overlaySettings: {
+    opacity: 0.9,
+    position: 'bottom-right',
+    scale: 1.0,
+    visible: true,
+    theme: 'dark',
+  },
+  videoClips: [],
+  currentClip: null,
+  isPlaying: false,
+  currentView: 'overlay',
+  isLoading: false,
+  error: null,
+};
+
+// Create store
+export const useAppStore = create<AppStore>()(
+  devtools(
+    (set, get) => ({
+      ...initialState,
+
+      // OBS Actions
+      addObsConnection: (connection) => {
+        const newConnection: ObsConnection = {
+          ...connection,
+          status: 'Disconnected',
+        };
+        set((state) => ({
+          obsConnections: [...state.obsConnections, newConnection],
+        }));
+      },
+
+      removeObsConnection: (name) => {
+        set((state) => ({
+          obsConnections: state.obsConnections.filter(c => c.name !== name),
+          activeObsConnection: state.activeObsConnection === name ? null : state.activeObsConnection,
+        }));
+      },
+
+      updateObsConnectionStatus: (name, status, error) => {
+        set((state) => ({
+          obsConnections: state.obsConnections.map(c =>
+            c.name === name ? { ...c, status, error } : c
+          ),
+        }));
+      },
+
+      setActiveObsConnection: (name) => {
+        set({ activeObsConnection: name });
+      },
+
+      // Overlay Actions
+      updateOverlaySettings: (settings) => {
+        set((state) => ({
+          overlaySettings: { ...state.overlaySettings, ...settings },
+        }));
+      },
+
+      toggleOverlayVisibility: () => {
+        set((state) => ({
+          overlaySettings: {
+            ...state.overlaySettings,
+            visible: !state.overlaySettings.visible,
+          },
+        }));
+      },
+
+      // Video Actions
+      addVideoClip: (clip) => {
+        const newClip: VideoClip = {
+          ...clip,
+          id: crypto.randomUUID(),
+          timestamp: new Date(),
+        };
+        set((state) => ({
+          videoClips: [newClip, ...state.videoClips],
+        }));
+      },
+
+      removeVideoClip: (id) => {
+        set((state) => ({
+          videoClips: state.videoClips.filter(c => c.id !== id),
+          currentClip: state.currentClip?.id === id ? null : state.currentClip,
+        }));
+      },
+
+      setCurrentClip: (clip) => {
+        set({ currentClip: clip });
+      },
+
+      setPlaying: (playing) => {
+        set({ isPlaying: playing });
+      },
+
+      // UI Actions
+      setCurrentView: (view) => {
+        set({ currentView: view });
+      },
+
+      setLoading: (loading) => {
+        set({ isLoading: loading });
+      },
+
+      setError: (error) => {
+        set({ error });
+      },
+
+      clearError: () => {
+        set({ error: null });
+      },
+    }),
+    {
+      name: 'restrike-vta-store',
+    }
+  )
+);
