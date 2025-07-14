@@ -484,6 +484,14 @@ impl VideoUtils {
         
         valid_extensions.iter().any(|&ext| path_lower.ends_with(ext))
     }
+
+    pub fn has_valid_video_extension(path: &str) -> bool {
+        // Only check extension, not file existence
+        let valid_extensions = [".mp4", ".avi", ".mkv", ".mov", ".wmv", ".flv", ".webm", ".m4v"];
+        let path_lower = path.to_lowercase();
+        
+        valid_extensions.iter().any(|&ext| path_lower.ends_with(ext))
+    }
 }
 
 // Public API functions
@@ -558,10 +566,25 @@ mod tests {
 
     #[test]
     fn test_video_validation() {
-        assert!(VideoUtils::validate_video_file("test.mp4"));
-        assert!(VideoUtils::validate_video_file("test.AVI"));
-        assert!(!VideoUtils::validate_video_file("test.txt"));
+        // Test extension validation (without file existence check)
+        assert!(VideoUtils::has_valid_video_extension("test.mp4"));
+        assert!(VideoUtils::has_valid_video_extension("test.AVI"));
+        assert!(VideoUtils::has_valid_video_extension("test.mkv"));
+        assert!(VideoUtils::has_valid_video_extension("test.mov"));
+        assert!(VideoUtils::has_valid_video_extension("test.wmv"));
+        assert!(VideoUtils::has_valid_video_extension("test.flv"));
+        assert!(VideoUtils::has_valid_video_extension("test.webm"));
+        assert!(VideoUtils::has_valid_video_extension("test.m4v"));
+        
+        // Test invalid extensions
+        assert!(!VideoUtils::has_valid_video_extension("test.txt"));
+        assert!(!VideoUtils::has_valid_video_extension("test.pdf"));
+        assert!(!VideoUtils::has_valid_video_extension("test.doc"));
+        
+        // Test full validation (including file existence)
+        // These should return false because the files don't exist
         assert!(!VideoUtils::validate_video_file("nonexistent.mp4"));
+        assert!(!VideoUtils::validate_video_file("/path/to/nonexistent/video.avi"));
     }
 
     #[test]
