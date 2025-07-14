@@ -23,7 +23,7 @@ pub struct ObsConnectionConfig {
 }
 
 // OBS Connection Status
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum ObsConnectionStatus {
     Disconnected,
     Connecting,
@@ -114,14 +114,21 @@ impl ObsPlugin {
 
     // Connect to OBS instance
     pub async fn connect_obs(&self, connection_name: &str) -> Result<(), String> {
-        let mut connections = self.connections.lock().unwrap();
-        
-        let connection = connections.get_mut(connection_name)
-            .ok_or_else(|| format!("Connection '{}' not found", connection_name))?;
+        // Get connection config first
+        let config = {
+            let connections = self.connections.lock().unwrap();
+            let connection = connections.get(connection_name)
+                .ok_or_else(|| format!("Connection '{}' not found", connection_name))?;
+            connection.config.clone()
+        };
 
         // Update status to connecting
-        connection.status = ObsConnectionStatus::Connecting;
-        drop(connections);
+        {
+            let mut connections = self.connections.lock().unwrap();
+            if let Some(connection) = connections.get_mut(connection_name) {
+                connection.status = ObsConnectionStatus::Connecting;
+            }
+        }
 
         // Send status change event
         let _ = self.event_tx.send(ObsEvent::ConnectionStatusChanged {
@@ -132,8 +139,8 @@ impl ObsPlugin {
         // Build WebSocket URL
         let ws_url = format!(
             "ws://{}:{}/",
-            connection.config.host,
-            connection.config.port
+            config.host,
+            config.port
         );
 
         // Connect to WebSocket
@@ -148,7 +155,7 @@ impl ObsPlugin {
         connection.status = ObsConnectionStatus::Connected;
 
         // Handle protocol-specific authentication
-        match connection.config.protocol_version {
+        match config.protocol_version {
             ObsWebSocketVersion::V4 => {
                 self.authenticate_v4(connection_name).await?;
             }
@@ -168,8 +175,8 @@ impl ObsPlugin {
         connection.status = ObsConnectionStatus::Authenticating;
 
         // V4 authentication is simpler - just send password if required
-        if let Some(password) = &connection.config.password {
-            let auth_request = serde_json::json!({
+        if let Some(_password) = &connection.config.password {
+            let _auth_request = serde_json::json!({
                 "request-type": "GetAuthRequired",
                 "message-id": self.generate_request_id(connection)
             });
