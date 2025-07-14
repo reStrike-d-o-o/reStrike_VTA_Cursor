@@ -1,0 +1,133 @@
+# GitHub Labels Configuration
+# This file defines all labels used in the reStrike VTA project
+
+# Type Labels
+- name: "bug"
+  color: "d73a4a"
+  description: "Something isn't working"
+
+- name: "enhancement"
+  color: "a2eeef"
+  description: "New feature or request"
+
+- name: "task"
+  color: "0075ca"
+  description: "Development task"
+
+- name: "epic"
+  color: "8b5dba"
+  description: "Large feature set or initiative"
+
+- name: "documentation"
+  color: "0075ca"
+  description: "Improvements or additions to documentation"
+
+# Component Labels
+- name: "frontend"
+  color: "61dafb"
+  description: "React frontend related"
+
+- name: "backend"
+  color: "ce422b"
+  description: "Rust backend related"
+
+- name: "integration"
+  color: "fbca04"
+  description: "OBS WebSocket or external integration"
+
+- name: "testing"
+  color: "1d76db"
+  description: "Testing related"
+
+- name: "ci/cd"
+  color: "2ea44f"
+  description: "Continuous integration/deployment"
+
+- name: "infrastructure"
+  color: "5319e7"
+  description: "Infrastructure and deployment"
+
+# Priority Labels
+- name: "priority:high"
+  color: "b60205"
+  description: "High priority - critical path"
+
+- name: "priority:medium"
+  color: "fbca04"
+  description: "Medium priority - important"
+
+- name: "priority:low"
+  color: "0e8a16"
+  description: "Low priority - nice to have"
+
+# Status Labels
+- name: "status:todo"
+  color: "ededed"
+  description: "Task not yet started"
+
+- name: "status:in-progress"
+  color: "fbca04"
+  description: "Currently being worked on"
+
+- name: "status:review"
+  color: "0052cc"
+  description: "Ready for review"
+
+- name: "status:done"
+  color: "0e8a16"
+  description: "Completed"
+
+- name: "status:blocked"
+  color: "d93f0b"
+  description: "Blocked by external dependency"
+
+# Effort Labels
+- name: "effort:small"
+  color: "c2e0c6"
+  description: "Less than 4 hours"
+
+- name: "effort:medium"
+  color: "fef2c0"
+  description: "4-16 hours"
+
+- name: "effort:large"
+  color: "f9d0c4"
+  description: "More than 16 hours"
+
+# Special Labels
+- name: "good first issue"
+  color: "7057ff"
+  description: "Good for newcomers"
+
+- name: "help wanted"
+  color: "008672"
+  description: "Extra attention is needed"
+
+- name: "question"
+  color: "d876e3"
+  description: "Further information is requested"
+
+- name: "duplicate"
+  color: "cfd3d7"
+  description: "This issue or pull request already exists"
+
+- name: "invalid"
+  color: "e4e669"
+  description: "This doesn't seem right"
+
+- name: "wontfix"
+  color: "ffffff"
+  description: "This will not be worked on"
+
+# Phase Labels (based on current todos)
+- name: "phase:testing"
+  color: "1f77b4"
+  description: "Core system testing phase"
+
+- name: "phase:production"
+  color: "ff7f0e"
+  description: "Windows production deployment"
+
+- name: "phase:enhancement"
+  color: "2ca02c"
+  description: "Future enhancement features" 

@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 Discussion Forum
+    url: https://github.com/damjanZGB/reStrike_VTA_Cursor/discussions
+    about: Ask questions and discuss ideas with the community
+  - name: 📖 Documentation
+    url: https://github.com/damjanZGB/reStrike_VTA_Cursor/blob/main/docs/README.md
+    about: Browse the complete project documentation
+  - name: 🚀 Project Board
+    url: https://github.com/damjanZGB/reStrike_VTA_Cursor/projects
+    about: View the project board for development progress 
