@@ -261,22 +261,32 @@ impl UdpServer {
         let mut buffer = [0; 1024];
 
         loop {
-            // Check if socket is still available
-            let socket_option = {
+            // Check if socket is still available and get a reference
+            let socket_ref = {
                 let socket_guard = socket.lock().unwrap();
-                socket_guard.as_ref().cloned()
+                if socket_guard.is_some() {
+                    true
+                } else {
+                    false
+                }
             };
 
-            let socket = match socket_option {
-                Some(s) => s,
-                None => {
-                    // Socket has been removed, stop listening
+            if !socket_ref {
+                // Socket has been removed, stop listening
+                break;
+            }
+
+            // Receive data (we need to access socket directly)
+            let recv_result = {
+                let socket_guard = socket.lock().unwrap();
+                if let Some(ref s) = *socket_guard {
+                    s.recv_from(&mut buffer)
+                } else {
                     break;
                 }
             };
 
-            // Receive data
-            match socket.recv_from(&mut buffer) {
+            match recv_result {
                 Ok((size, addr)) => {
                     let data = String::from_utf8_lossy(&buffer[..size]);
                     let message = data.trim().to_string();
