@@ -53,7 +53,7 @@ const SidebarTest: React.FC = () => {
           return;
         }
 
-        if (isWindows()) {
+        if (isWindows) {
           try {
             // Use environment-aware OBS operations
             const status = await obsOperation('get_status');
