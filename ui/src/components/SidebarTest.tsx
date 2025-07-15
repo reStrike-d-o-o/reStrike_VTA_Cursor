@@ -54,24 +54,23 @@ const SidebarTest: React.FC = () => {
       {/* Right Info Column */}
       <div className="flex-1 flex flex-col justify-between bg-[#101820] px-8 py-6 min-w-[360px] max-w-[500px]">
         <div>
-          {/* Athlete Info */}
-          <div className="flex flex-col space-y-2 mb-4">
-            <div className="flex items-center space-x-3 text-lg font-semibold">
-              <span className="text-2xl">🇺🇸</span>
-              <span className="text-white">Benjamin Smith</span>
-            </div>
-            <div className="flex items-center space-x-3 text-lg font-semibold">
-              <span className="text-2xl">🇯🇵</span>
-              <span className="text-white">Kei Tanaka</span>
-            </div>
-          </div>
-          {/* Match Metadata */}
+          {/* Athlete Info and Match Number */}
           <div className="flex items-center justify-between mb-4">
-            <div className="flex flex-col text-gray-400 text-sm">
-              <span className="font-medium">M-75kg</span>
-              <span>Semi-final</span>
+            <div className="flex flex-col space-y-1">
+              <div className="flex items-center space-x-3 text-lg font-semibold">
+                <span className="text-2xl">🇺🇸</span>
+                <span className="text-white">Benjamin Smith</span>
+              </div>
+              <div className="flex items-center space-x-3 text-lg font-semibold">
+                <span className="text-2xl">🇯🇵</span>
+                <span className="text-white">Kei Tanaka</span>
+              </div>
+              <div className="flex flex-col text-gray-400 text-sm mt-1">
+                <span className="font-medium">M-75kg</span>
+                <span>Semi-final</span>
+              </div>
             </div>
-            <div className="text-6xl font-bold text-right text-white tracking-tight">1254</div>
+            <div className="text-6xl font-bold text-white tracking-tight">1254</div>
           </div>
           <hr className="border-gray-700 my-6" />
           {/* Event Table */}
