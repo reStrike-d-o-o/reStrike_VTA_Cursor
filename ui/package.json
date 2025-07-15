@@ -5,10 +5,15 @@
   "main": "src/App.tsx",
   "scripts": {
     "start": "react-scripts start",
+    "start:fast": "GENERATE_SOURCEMAP=false react-scripts start",
     "build": "react-scripts build",
+    "build:fast": "GENERATE_SOURCEMAP=false react-scripts build",
     "test": "react-scripts test",
     "lint": "eslint .",
-    "format": "prettier --write src/**/*.{ts,tsx,js,jsx}"
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write src/**/*.{ts,tsx,js,jsx}",
+    "clean": "rm -rf build node_modules/.cache",
+    "analyze": "npm run build && npx webpack-bundle-analyzer build/static/js/*.js"
   },
   "dependencies": {
     "framer-motion": "^11.18.2",
