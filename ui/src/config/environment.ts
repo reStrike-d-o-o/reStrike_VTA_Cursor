@@ -196,17 +196,4 @@ export const log = (message: string, data?: any) => {
 export const logError = (message: string, error?: any) => {
   const prefix = `[${env.environment.toUpperCase()}]`;
   console.error(`${prefix} ERROR: ${message}`, error || '');
-};
-
-// Environment detection hook for React
-export const useEnvironment = () => {
-  return {
-    environment: env.environment,
-    isWindows: env.isWindows,
-    isWeb: env.isWeb,
-    isProduction: env.isProduction,
-    isDevelopment: env.isDevelopment,
-    config: env.config,
-    info: env.getInfo(),
-  };
 }; 

@@ -1,14 +1,23 @@
 import { useState, useEffect } from 'react';
-import { env, useEnvironment as useEnvConfig } from '../config/environment';
+import { env } from '../config/environment';
 
 // React hook for environment-aware components
 export const useEnvironment = () => {
   const [isClient, setIsClient] = useState(false);
-  const envConfig = useEnvConfig();
 
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  const envConfig = {
+    environment: env.environment,
+    isWindows: env.isWindows,
+    isWeb: env.isWeb,
+    isProduction: env.isProduction,
+    isDevelopment: env.isDevelopment,
+    config: env.config,
+    info: env.getInfo(),
+  };
 
   return {
     ...envConfig,
