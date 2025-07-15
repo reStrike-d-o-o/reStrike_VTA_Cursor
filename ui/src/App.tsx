@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useAppStore } from './stores';
 import Overlay from './components/Overlay';
 import ObsWebSocketManager from './components/ObsWebSocketManager';
@@ -87,17 +87,14 @@ function App() {
         </div>
       </nav>
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={currentView}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.3 }}
-          >
-            {renderCurrentView()}
-          </motion.div>
-        </AnimatePresence>
+        <motion.div
+          key={currentView}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          {renderCurrentView()}
+        </motion.div>
       </main>
     </div>
   );
