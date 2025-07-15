@@ -95,7 +95,7 @@ const ObsWebSocketManager: React.FC = () => {
         throw new Error('Connection not found');
       }
 
-      if (isWindows()) {
+      if (isWindows) {
         // Use environment-aware OBS operations
         console.log(`Using environment-aware OBS operations for ${connectionName}`);
         try {
@@ -179,7 +179,7 @@ const ObsWebSocketManager: React.FC = () => {
     try {
       console.log(`Disconnecting from OBS: ${connectionName} (Environment: ${environment})`);
 
-      if (isWindows()) {
+      if (isWindows) {
         // Use environment-aware OBS operations
         console.log(`Using environment-aware OBS disconnect for ${connectionName}`);
         try {
@@ -195,7 +195,7 @@ const ObsWebSocketManager: React.FC = () => {
         if (ws) {
           ws.close();
           delete (window as any)[`obs_ws_${connectionName}`];
-          log(`WebSocket closed for ${connectionName}`);
+          console.log(`WebSocket closed for ${connectionName}`);
         }
       }
 
