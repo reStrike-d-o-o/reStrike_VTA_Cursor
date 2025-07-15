@@ -87,7 +87,26 @@ export type AppStore = AppState & AppActions;
 
 // Initial state
 const initialState: AppState = {
-  obsConnections: [],
+  obsConnections: [
+    {
+      name: 'OBS_REC',
+      host: 'localhost',
+      port: 4455,
+      password: 'cekPIbj@245',
+      protocol_version: 'v5',
+      enabled: true,
+      status: 'Disconnected',
+    },
+    {
+      name: 'OBS_STR',
+      host: 'localhost',
+      port: 4466,
+      password: 'cekPIbj@245',
+      protocol_version: 'v5',
+      enabled: true,
+      status: 'Disconnected',
+    },
+  ],
   activeObsConnection: null,
   obsStatus: null,
   overlaySettings: {

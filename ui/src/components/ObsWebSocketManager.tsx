@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { useAppStore, ObsConnection } from '../stores';
 
 interface ObsConnectionConfig {
   name: string;
@@ -10,15 +11,14 @@ interface ObsConnectionConfig {
   enabled: boolean;
 }
 
-interface ObsConnectionStatus {
-  connection_name: string;
-  status: 'Disconnected' | 'Connecting' | 'Connected' | 'Authenticating' | 'Authenticated' | 'Error';
-  error?: string;
-}
-
 const ObsWebSocketManager: React.FC = () => {
-  const [connections, setConnections] = useState<ObsConnectionConfig[]>([]);
-  const [statuses, setStatuses] = useState<ObsConnectionStatus[]>([]);
+  const { 
+    obsConnections, 
+    addObsConnection, 
+    removeObsConnection, 
+    updateObsConnectionStatus 
+  } = useAppStore();
+  
   const [newConnection, setNewConnection] = useState<ObsConnectionConfig>({
     name: '',
     host: 'localhost',
@@ -29,39 +29,13 @@ const ObsWebSocketManager: React.FC = () => {
   });
   const [isAddingConnection, setIsAddingConnection] = useState(false);
 
-  // Load connections from storage on component mount
-  useEffect(() => {
-    loadConnections();
-  }, []);
-
-  const loadConnections = async () => {
-    try {
-      // In a real implementation, this would load from the backend
-      const savedConnections = localStorage.getItem('obs_connections');
-      if (savedConnections) {
-        setConnections(JSON.parse(savedConnections));
-      }
-    } catch (error) {
-      console.error('Failed to load OBS connections:', error);
-    }
-  };
-
-  const saveConnections = async (newConnections: ObsConnectionConfig[]) => {
-    try {
-      localStorage.setItem('obs_connections', JSON.stringify(newConnections));
-      setConnections(newConnections);
-    } catch (error) {
-      console.error('Failed to save OBS connections:', error);
-    }
-  };
-
   const addConnection = async () => {
     if (!newConnection.name.trim()) {
       alert('Connection name is required');
       return;
     }
 
-    if (connections.some(c => c.name === newConnection.name)) {
+    if (obsConnections.some(c => c.name === newConnection.name)) {
       alert('Connection name must be unique');
       return;
     }
@@ -71,8 +45,7 @@ const ObsWebSocketManager: React.FC = () => {
       password: newConnection.password || undefined,
     };
 
-    const updatedConnections = [...connections, connectionToAdd];
-    await saveConnections(updatedConnections);
+    addObsConnection(connectionToAdd);
 
     // Reset form
     setNewConnection({
@@ -92,55 +65,54 @@ const ObsWebSocketManager: React.FC = () => {
   };
 
   const removeConnection = async (name: string) => {
-    const updatedConnections = connections.filter(c => c.name !== name);
-    await saveConnections(updatedConnections);
+    // Disconnect first if connected
+    const connection = obsConnections.find(c => c.name === name);
+    if (connection && (connection.status === 'Connected' || connection.status === 'Authenticated')) {
+      await disconnectFromObs(name);
+    }
     
-    // Remove from statuses
-    setStatuses(prev => prev.filter(s => s.connection_name !== name));
+    removeObsConnection(name);
   };
 
   const connectToObs = async (connectionName: string) => {
     try {
       // Update status to connecting
-      setStatuses(prev => [
-        ...prev.filter(s => s.connection_name !== connectionName),
-        { connection_name: connectionName, status: 'Connecting' }
-      ]);
+      updateObsConnectionStatus(connectionName, 'Connecting');
 
-      // In a real implementation, this would call the backend
-      // await window.__TAURI__.invoke('obs_connect', { connectionName });
-
-      // Simulate connection process
-      setTimeout(() => {
-        setStatuses(prev => [
-          ...prev.filter(s => s.connection_name !== connectionName),
-          { connection_name: connectionName, status: 'Connected' }
-        ]);
-      }, 1000);
+      // Call the backend to connect
+      if (window.__TAURI__) {
+        await window.__TAURI__.invoke('obs_connect', { connectionName });
+      } else {
+        // Fallback for development
+        console.log('Tauri not available, simulating connection...');
+        setTimeout(() => {
+          updateObsConnectionStatus(connectionName, 'Connected');
+        }, 1000);
+      }
 
     } catch (error) {
-      setStatuses(prev => [
-        ...prev.filter(s => s.connection_name !== connectionName),
-        { 
-          connection_name: connectionName, 
-          status: 'Error',
-          error: error instanceof Error ? error.message : 'Unknown error'
-        }
-      ]);
+      updateObsConnectionStatus(
+        connectionName, 
+        'Error', 
+        error instanceof Error ? error.message : 'Unknown error'
+      );
     }
   };
 
   const disconnectFromObs = async (connectionName: string) => {
     try {
-      // In a real implementation, this would call the backend
-      // await window.__TAURI__.invoke('obs_disconnect', { connectionName });
+      // Call the backend to disconnect
+      if (window.__TAURI__) {
+        await window.__TAURI__.invoke('obs_disconnect', { connectionName });
+      } else {
+        // Fallback for development
+        console.log('Tauri not available, simulating disconnection...');
+      }
 
-      setStatuses(prev => [
-        ...prev.filter(s => s.connection_name !== connectionName),
-        { connection_name: connectionName, status: 'Disconnected' }
-      ]);
+      updateObsConnectionStatus(connectionName, 'Disconnected');
     } catch (error) {
       console.error('Failed to disconnect:', error);
+      updateObsConnectionStatus(connectionName, 'Error', 'Failed to disconnect');
     }
   };
 
@@ -290,14 +262,13 @@ const ObsWebSocketManager: React.FC = () => {
       <div className="space-y-4">
         <h3 className="text-xl font-semibold">Active Connections</h3>
         
-        {connections.length === 0 ? (
+        {obsConnections.length === 0 ? (
           <div className="text-gray-400 text-center py-8">
             No OBS connections configured. Add your first connection above.
           </div>
         ) : (
-          connections.map((connection) => {
-            const status = statuses.find(s => s.connection_name === connection.name);
-            const currentStatus = status?.status || 'Disconnected';
+          obsConnections.map((connection) => {
+            const currentStatus = connection.status || 'Disconnected';
             const isConnected = currentStatus === 'Connected' || currentStatus === 'Authenticated';
 
             return (
@@ -317,7 +288,7 @@ const ObsWebSocketManager: React.FC = () => {
                       </p>
                       <p className={`text-sm ${getStatusColor(currentStatus)}`}>
                         {currentStatus}
-                        {status?.error && ` - ${status.error}`}
+                        {connection.error && ` - ${connection.error}`}
                       </p>
                     </div>
                   </div>
