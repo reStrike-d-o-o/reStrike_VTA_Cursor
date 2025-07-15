@@ -4,7 +4,8 @@
   "private": true,
   "main": "src/App.tsx",
   "scripts": {
-    "start": "react-scripts start",
+    "start": "CHOKIDAR_USEPOLLING=true FAST_REFRESH=true WATCHPACK_POLLING=true react-scripts start",
+    "start:docker": "CHOKIDAR_USEPOLLING=true CHOKIDAR_INTERVAL=1000 FAST_REFRESH=true WATCHPACK_POLLING=true HOST=0.0.0.0 react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "lint": "eslint ."
