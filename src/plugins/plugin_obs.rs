@@ -369,6 +369,34 @@ impl ObsPlugin {
         }
     }
 
+    // Get streaming status
+    pub async fn get_streaming_status(&self, connection_name: &str) -> Result<bool, String> {
+        let response = self.send_request(connection_name, "GetStreamStatus", None).await?;
+        
+        match self.get_protocol_version(connection_name)? {
+            ObsWebSocketVersion::V4 => {
+                Ok(response["streaming"].as_bool().unwrap_or(false))
+            }
+            ObsWebSocketVersion::V5 => {
+                Ok(response["outputActive"].as_bool().unwrap_or(false))
+            }
+        }
+    }
+
+    // Get OBS CPU usage
+    pub async fn get_obs_cpu_usage(&self, connection_name: &str) -> Result<f64, String> {
+        let response = self.send_request(connection_name, "GetStats", None).await?;
+        
+        match self.get_protocol_version(connection_name)? {
+            ObsWebSocketVersion::V4 => {
+                Ok(response["cpu-usage"].as_f64().unwrap_or(0.0))
+            }
+            ObsWebSocketVersion::V5 => {
+                Ok(response["cpuUsage"].as_f64().unwrap_or(0.0))
+            }
+        }
+    }
+
     // Get replay buffer status
     pub async fn get_replay_buffer_status(&self, connection_name: &str) -> Result<bool, String> {
         let response = self.send_request(connection_name, "GetReplayBufferStatus", None).await?;
@@ -445,6 +473,101 @@ impl ObsPlugin {
             Err(format!("Connection '{}' not found", connection_name))
         }
     }
+
+    // Get OBS connection roles (OBS_REC, OBS_STR, OBS_SINGLE)
+    pub fn get_connection_roles(&self) -> Vec<(String, String)> {
+        let connections = self.connections.lock().unwrap();
+        let connection_names: Vec<String> = connections.keys().cloned().collect();
+        
+        match connection_names.len() {
+            0 => vec![],
+            1 => vec![(connection_names[0].clone(), "OBS_SINGLE".to_string())],
+            _ => {
+                // Multiple connections: first is REC, second is STR
+                let mut roles = vec![];
+                if connection_names.len() >= 1 {
+                    roles.push((connection_names[0].clone(), "OBS_REC".to_string()));
+                }
+                if connection_names.len() >= 2 {
+                    roles.push((connection_names[1].clone(), "OBS_STR".to_string()));
+                }
+                roles
+            }
+        }
+    }
+
+    // Get comprehensive OBS status for status bar
+    pub async fn get_obs_status(&self) -> Result<ObsStatusInfo, String> {
+        let roles = self.get_connection_roles();
+        
+        let mut status = ObsStatusInfo {
+            is_recording: false,
+            is_streaming: false,
+            cpu_usage: 0.0,
+            recording_connection: None,
+            streaming_connection: None,
+        };
+
+        for (connection_name, role) in roles {
+            match role.as_str() {
+                "OBS_SINGLE" => {
+                    // Single connection handles both recording and streaming
+                    if let Ok(is_recording) = self.get_recording_status(&connection_name).await {
+                        status.is_recording = is_recording;
+                        if is_recording {
+                            status.recording_connection = Some(connection_name.clone());
+                        }
+                    }
+                    
+                    if let Ok(is_streaming) = self.get_streaming_status(&connection_name).await {
+                        status.is_streaming = is_streaming;
+                        if is_streaming {
+                            status.streaming_connection = Some(connection_name.clone());
+                        }
+                    }
+                    
+                    if let Ok(cpu_usage) = self.get_obs_cpu_usage(&connection_name).await {
+                        status.cpu_usage = cpu_usage;
+                    }
+                }
+                "OBS_REC" => {
+                    // Recording connection
+                    if let Ok(is_recording) = self.get_recording_status(&connection_name).await {
+                        status.is_recording = is_recording;
+                        if is_recording {
+                            status.recording_connection = Some(connection_name.clone());
+                        }
+                    }
+                    
+                    if let Ok(cpu_usage) = self.get_obs_cpu_usage(&connection_name).await {
+                        status.cpu_usage = cpu_usage;
+                    }
+                }
+                "OBS_STR" => {
+                    // Streaming connection
+                    if let Ok(is_streaming) = self.get_streaming_status(&connection_name).await {
+                        status.is_streaming = is_streaming;
+                        if is_streaming {
+                            status.streaming_connection = Some(connection_name.clone());
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        Ok(status)
+    }
+}
+
+// OBS Status Information for Status Bar
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ObsStatusInfo {
+    pub is_recording: bool,
+    pub is_streaming: bool,
+    pub cpu_usage: f64,
+    pub recording_connection: Option<String>,
+    pub streaming_connection: Option<String>,
 }
 
 // Legacy function for backward compatibility
