@@ -2,6 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useAppStore, ObsConnection } from '../stores';
 
+// TypeScript declarations for Tauri
+declare global {
+  interface Window {
+    __TAURI__?: {
+      invoke: (command: string, args?: any) => Promise<any>;
+    };
+  }
+}
+
 interface ObsConnectionConfig {
   name: string;
   host: string;
@@ -85,10 +94,10 @@ const ObsWebSocketManager: React.FC = () => {
         throw new Error('Connection not found');
       }
 
-      // Call the backend to connect
-      if (window.__TAURI__) {
-        await window.__TAURI__.invoke('obs_connect', { connectionName });
-      } else {
+      // Call the backend to connect (Tauri not available in web environment)
+      // // if (window.__TAURI__) {
+      //   // await window.__TAURI__.invoke('obs_connect', { connectionName });
+      // } else {
         // Fallback for development - test WebSocket connection directly
         console.log(`Testing WebSocket connection to ${connection.host}:${connection.port}...`);
         
@@ -161,13 +170,13 @@ const ObsWebSocketManager: React.FC = () => {
         delete (window as any)[`obs_ws_${connectionName}`];
       }
 
-      // Call the backend to disconnect
-      if (window.__TAURI__) {
-        await window.__TAURI__.invoke('obs_disconnect', { connectionName });
-      } else {
+      // Call the backend to disconnect (Tauri not available in web environment)
+      // // if (window.__TAURI__) {
+      //   // await window.__TAURI__.invoke('obs_disconnect', { connectionName });
+      // } else {
         // Fallback for development
         console.log('Tauri not available, WebSocket closed directly');
-      }
+      // }
 
       updateObsConnectionStatus(connectionName, 'Disconnected');
     } catch (error) {
