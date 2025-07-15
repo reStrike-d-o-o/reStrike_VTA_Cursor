@@ -1,0 +1,227 @@
+{
+  "download_date": "2025-07-15 03:48:22",
+  "total_african_countries": 54,
+  "flags_found_on_wikipedia": 48,
+  "successfully_downloaded": 47,
+  "failed_downloads": 0,
+  "downloaded_flags": [
+    {
+      "country": "Algeria",
+      "ioc_code": "ALG"
+    },
+    {
+      "country": "Angola",
+      "ioc_code": "ANG"
+    },
+    {
+      "country": "Benin",
+      "ioc_code": "BEN"
+    },
+    {
+      "country": "Botswana",
+      "ioc_code": "BOT"
+    },
+    {
+      "country": "Burkina Faso",
+      "ioc_code": "BUR"
+    },
+    {
+      "country": "Burundi",
+      "ioc_code": "BDI"
+    },
+    {
+      "country": "Cameroon",
+      "ioc_code": "CMR"
+    },
+    {
+      "country": "Cape Verde",
+      "ioc_code": "CPV"
+    },
+    {
+      "country": "Chad",
+      "ioc_code": "CHA"
+    },
+    {
+      "country": "Djibouti",
+      "ioc_code": "DJI"
+    },
+    {
+      "country": "Egypt",
+      "ioc_code": "EGY"
+    },
+    {
+      "country": "Equatorial Guinea",
+      "ioc_code": "GNQ"
+    },
+    {
+      "country": "Eritrea",
+      "ioc_code": "ERI"
+    },
+    {
+      "country": "Ethiopia",
+      "ioc_code": "ETH"
+    },
+    {
+      "country": "Gabon",
+      "ioc_code": "GAB"
+    },
+    {
+      "country": "Ghana",
+      "ioc_code": "GHA"
+    },
+    {
+      "country": "Guinea",
+      "ioc_code": "GIN"
+    },
+    {
+      "country": "Guinea-Bissau",
+      "ioc_code": "GNB"
+    },
+    {
+      "country": "Kenya",
+      "ioc_code": "KEN"
+    },
+    {
+      "country": "Lesotho",
+      "ioc_code": "LES"
+    },
+    {
+      "country": "Liberia",
+      "ioc_code": "LBR"
+    },
+    {
+      "country": "Libya",
+      "ioc_code": "LBY"
+    },
+    {
+      "country": "Madagascar",
+      "ioc_code": "MDG"
+    },
+    {
+      "country": "Malawi",
+      "ioc_code": "MWI"
+    },
+    {
+      "country": "Mali",
+      "ioc_code": "MLI"
+    },
+    {
+      "country": "Mauritania",
+      "ioc_code": "MRT"
+    },
+    {
+      "country": "Mauritius",
+      "ioc_code": "MUS"
+    },
+    {
+      "country": "Morocco",
+      "ioc_code": "MAR"
+    },
+    {
+      "country": "Mozambique",
+      "ioc_code": "MOZ"
+    },
+    {
+      "country": "Namibia",
+      "ioc_code": "NAM"
+    },
+    {
+      "country": "Niger",
+      "ioc_code": "NER"
+    },
+    {
+      "country": "Nigeria",
+      "ioc_code": "NGA"
+    },
+    {
+      "country": "Rwanda",
+      "ioc_code": "RWA"
+    },
+    {
+      "country": "São Tomé and Príncipe",
+      "ioc_code": "STP"
+    },
+    {
+      "country": "Senegal",
+      "ioc_code": "SEN"
+    },
+    {
+      "country": "Seychelles",
+      "ioc_code": "SYC"
+    },
+    {
+      "country": "Sierra Leone",
+      "ioc_code": "SLE"
+    },
+    {
+      "country": "Somalia",
+      "ioc_code": "SOM"
+    },
+    {
+      "country": "South Africa",
+      "ioc_code": "ZAF"
+    },
+    {
+      "country": "South Sudan",
+      "ioc_code": "SSD"
+    },
+    {
+      "country": "Sudan",
+      "ioc_code": "SDN"
+    },
+    {
+      "country": "Swaziland",
+      "ioc_code": "SWZ"
+    },
+    {
+      "country": "Tanzania",
+      "ioc_code": "TAN"
+    },
+    {
+      "country": "Togo",
+      "ioc_code": "TGO"
+    },
+    {
+      "country": "Tunisia",
+      "ioc_code": "TUN"
+    },
+    {
+      "country": "Uganda",
+      "ioc_code": "UGA"
+    },
+    {
+      "country": "Zambia",
+      "ioc_code": "ZMB"
+    },
+    {
+      "country": "Zimbabwe",
+      "ioc_code": "ZWE"
+    }
+  ],
+  "missing_flags": [
+    {
+      "country": "Central African Republic",
+      "ioc_code": "CAF"
+    },
+    {
+      "country": "Comoros",
+      "ioc_code": "COM"
+    },
+    {
+      "country": "Congo",
+      "ioc_code": "CGO"
+    },
+    {
+      "country": "Democratic Republic of the Congo",
+      "ioc_code": "COD"
+    },
+    {
+      "country": "Gambia",
+      "ioc_code": "GAM"
+    },
+    {
+      "country": "Ivory Coast",
+      "ioc_code": "CIV"
+    }
+  ]
+}
