@@ -103,22 +103,7 @@ const ObsWebSocketManager: React.FC = () => {
       
       ws.onopen = () => {
         console.log(`WebSocket connected to ${connectionName}`);
-        updateObsConnectionStatus(connectionName, 'Connected');
-        
-        // Send OBS WebSocket v5 identify request
-        const identifyRequest = {
-          op: 1,
-          d: {
-            rpcVersion: 1,
-            authentication: connection.password ? {
-              challenge: "test_challenge",
-              salt: "test_salt"
-            } : null,
-            eventSubscriptions: 0
-          }
-        };
-        
-        ws.send(JSON.stringify(identifyRequest));
+        updateObsConnectionStatus(connectionName, 'Connecting');
       };
       
       ws.onmessage = (event) => {
@@ -126,8 +111,47 @@ const ObsWebSocketManager: React.FC = () => {
           const response = JSON.parse(event.data);
           console.log(`OBS Response for ${connectionName}:`, response);
           
-          if (response.op === 2) { // Identify response
+          if (response.op === 0) { // Hello message
+            // Handle authentication challenge
+            if (response.d.authentication && connection.password) {
+              const { challenge, salt } = response.d.authentication;
+              
+              try {
+                // Generate proper authentication response
+                const authResponse = await generateAuthResponse(connection.password, challenge, salt);
+                
+                const identifyRequest = {
+                  op: 1,
+                  d: {
+                    rpcVersion: 1,
+                    authentication: authResponse,
+                    eventSubscriptions: 0
+                  }
+                };
+                
+                ws.send(JSON.stringify(identifyRequest));
+              } catch (error) {
+                console.error(`Authentication failed for ${connectionName}:`, error);
+                updateObsConnectionStatus(connectionName, 'Error', 'Authentication failed');
+              }
+            } else {
+              // No authentication required
+              const identifyRequest = {
+                op: 1,
+                d: {
+                  rpcVersion: 1,
+                  authentication: null,
+                  eventSubscriptions: 0
+                }
+              };
+              
+              ws.send(JSON.stringify(identifyRequest));
+            }
+          } else if (response.op === 2) { // Identify response
             updateObsConnectionStatus(connectionName, 'Authenticated');
+            console.log(`Successfully authenticated with ${connectionName}`);
+          } else if (response.op === 7) { // RequestResponse
+            console.log(`Request response from ${connectionName}:`, response);
           }
         } catch (error) {
           console.error(`Failed to parse OBS response for ${connectionName}:`, error);
@@ -173,6 +197,25 @@ const ObsWebSocketManager: React.FC = () => {
       console.error('Failed to disconnect:', error);
       updateObsConnectionStatus(connectionName, 'Error', 'Failed to disconnect');
     }
+  };
+
+  // Generate authentication response for OBS WebSocket v5
+  const generateAuthResponse = async (password: string, challenge: string, salt: string): Promise<string> => {
+    // OBS WebSocket v5 uses SHA256(challenge + salt + password)
+    const combined = challenge + salt + password;
+    
+    // Convert string to ArrayBuffer
+    const encoder = new TextEncoder();
+    const data = encoder.encode(combined);
+    
+    // Generate SHA256 hash
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    
+    // Convert to base64
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashBase64 = btoa(String.fromCharCode(...hashArray));
+    
+    return hashBase64;
   };
 
   // Test OBS status polling
