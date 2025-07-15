@@ -231,7 +231,7 @@ export const executeTauriCommand = async <T = any>(
       return { success: false, error: 'Tauri not available' };
     }
 
-    const result = await window.__TAURI__.invoke(command, args);
+    const result = await window.__TAURI__!.invoke(command, args);
     return { success: true, data: result };
   } catch (error) {
     return { success: false, error: String(error) };
