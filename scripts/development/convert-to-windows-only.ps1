@@ -1,5 +1,6 @@
 # reStrike VTA - Windows-Only Conversion Script
 # This script converts the project from dual-environment to Windows-only
+# Starting Point: Commit 4d222ceed0cd698b7e3ba0d7037f51388d553803
 
 param(
     [switch]$DryRun,

@@ -1,0 +1,30 @@
+{
+  "recommendations": [
+    // Rust Development
+    "rust-lang.rust-analyzer",
+    "tamasfe.even-better-toml",
+    "serayuzgur.crates",
+    
+    // TypeScript/React Development
+    "ms-vscode.vscode-typescript-next",
+    "bradlc.vscode-tailwindcss",
+    "esbenp.prettier-vscode",
+    "ms-vscode.vscode-eslint",
+    
+    // Tauri Development
+    "tauri-apps.tauri-vscode",
+    
+    // Git & Project Management
+    "eamodio.gitlens",
+    "ms-vscode.vscode-github",
+    
+    // Debugging & Testing
+    "ms-vscode.vscode-json",
+    "ms-vscode.test-adapter-converter",
+    
+    // Productivity
+    "formulahendry.auto-rename-tag",
+    "christian-kohler.path-intellisense",
+    "ms-vscode.vscode-npm-script"
+  ]
+} 

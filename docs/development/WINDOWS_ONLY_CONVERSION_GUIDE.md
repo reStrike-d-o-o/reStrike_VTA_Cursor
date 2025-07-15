@@ -4,6 +4,8 @@
 
 This guide provides step-by-step instructions to convert the reStrike VTA project from a dual-environment (Web/Windows) system to a **Windows-only native desktop application**.
 
+> **Starting Point**: This conversion is based on commit `4d222ceed0cd698b7e3ba0d7037f51388d553803` which represents the final state of the dual environment system before Windows-only conversion.
+
 ---
 
 ## 📋 **Conversion Overview**

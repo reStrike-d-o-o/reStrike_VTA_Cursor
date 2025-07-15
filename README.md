@@ -86,7 +86,11 @@ reStrike_VTA/
 ### **📖 Development Setup Guides**
 - **[Windows + VSCode Setup Guide](./docs/development/WINDOWS_VSCODE_SETUP_GUIDE.md)** - Complete step-by-step guide for Windows development
 - **[AI Agent Quick Reference](./docs/development/AI_AGENT_WINDOWS_GUIDE.md)** - Essential information for AI agents
-- **[Windows-Only Conversion Guide](./docs/development/WINDOWS_ONLY_CONVERSION_GUIDE.md)** - Convert to Windows-only application
+- **[Windows-Only Conversion Guide](./docs/development/WINDOWS_ONLY_CONVERSION_GUIDE.md)** - Convert to Windows-only application (from commit `4d222ceed0cd698b7e3ba0d7037f51388d553803`)
+- **[Windows Conversion Tracking](./docs/development/WINDOWS_CONVERSION_TRACKING.md)** - Track conversion process and progress
+- **[AI Models Guide](./docs/development/AI_MODELS_GUIDE.md)** - Best AI models for development (performance & budget)
+- **[AI Models Quick Reference](./docs/development/AI_MODELS_QUICK_REFERENCE.md)** - Quick AI model selection guide
+- **[AI + VSCode Integration](./docs/development/AI_VSCODE_INTEGRATION.md)** - Practical AI integration with VSCode
 - **[Environment System Guide](./docs/development/environment-system.md)** - Dual environment (Web/Windows) documentation
 
 ## 🌐 **Environment System**

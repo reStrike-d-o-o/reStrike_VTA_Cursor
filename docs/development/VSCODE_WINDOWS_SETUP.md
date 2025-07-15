@@ -2,6 +2,8 @@
 
 Complete guide for developing and debugging the reStrike VTA Windows desktop application using VSCode.
 
+> **Note**: This setup is designed for the Windows-only version of reStrike VTA, converted from the dual environment system at commit `4d222ceed0cd698b7e3ba0d7037f51388d553803`.
+
 ## 🚀 **Essential VSCode Extensions**
 
 ### **Core Development Extensions**
