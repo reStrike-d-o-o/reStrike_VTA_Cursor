@@ -155,7 +155,7 @@ function App() {
             <div className="flex items-center space-x-3">
               <div className="text-2xl">🎯</div>
               <div>
-                <h1 className="text-xl font-bold">reStrike VTA</h1>
+                <h1 className="text-xl font-bold">reStrike VTA Overlay - Hot Reload Test</h1>
                 <p className="text-sm text-gray-400">Overlay & Automation Toolkit</p>
               </div>
             </div>
