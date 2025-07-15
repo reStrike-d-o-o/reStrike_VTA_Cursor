@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useAppStore } from '../stores';
+import { useAppStore, ObsStatusInfo } from '../stores';
 
 // Static dummy data
 const dummyAthletes = [
