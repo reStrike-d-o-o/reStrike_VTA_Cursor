@@ -1,10 +1,10 @@
-# Docker Hot Reload Setup for reStrike VTA
+# Development Server Setup for reStrike VTA
 
 ## 🚀 Problem Solved
-This document addresses the issue where React development server doesn't automatically reload changes in Docker/container environments, requiring manual server restarts.
+This document addresses the issue where React development server doesn't automatically reload changes in different environments (Docker, Windows containers, WSL2, etc.), requiring manual server restarts.
 
 ## 🔧 Root Cause
-In Docker environments, file system events (inotify) don't work properly across container boundaries, causing React's default file watching to fail. This results in:
+In containerized or virtualized environments, file system events (inotify) don't work properly across boundaries, causing React's default file watching to fail. This results in:
 - No automatic reloading when files change
 - Need to manually restart the development server
 - Poor development experience
@@ -12,7 +12,7 @@ In Docker environments, file system events (inotify) don't work properly across 
 ## ✅ Solution Implemented
 
 ### 1. **Updated Package.json Scripts**
-Modified `ui/package.json` to include Docker-specific environment variables:
+Modified `ui/package.json` to include environment-specific scripts:
 
 ```json
 {
@@ -38,13 +38,45 @@ Modified `ui/package.json` to include Docker-specific environment variables:
 
 ## 🎯 Usage Instructions
 
-### **For Docker/Container Development:**
+### **For Containerized Environments (Docker, WSL2, Windows Containers):**
 ```bash
 cd ui
 npm run start:docker
 ```
 
-### **For Local Development:**
+### **For Local Development (Native Linux/macOS/Windows):**
+```bash
+cd ui
+npm start
+```
+
+### **For Different Development Setups:**
+
+#### **Docker/Dev Container:**
+```bash
+cd ui
+npm run start:docker
+```
+
+#### **WSL2 with Windows:**
+```bash
+cd ui
+npm run start:docker
+```
+
+#### **Native Linux Development:**
+```bash
+cd ui
+npm start
+```
+
+#### **Native macOS Development:**
+```bash
+cd ui
+npm start
+```
+
+#### **Native Windows Development:**
 ```bash
 cd ui
 npm start
@@ -54,7 +86,7 @@ npm start
 
 ### **File Watching Mechanism:**
 1. **Default Behavior**: React uses `inotify` (Linux) or `FSEvents` (macOS) for file watching
-2. **Docker Issue**: Container file systems don't properly forward these events
+2. **Container Issue**: Container file systems don't properly forward these events
 3. **Solution**: Switch to polling-based file watching with `chokidar`
 
 ### **Polling Configuration:**
@@ -83,24 +115,36 @@ npm start
 
 ### **If Hot Reload Still Doesn't Work:**
 
-1. **Check Container Permissions:**
+1. **Check Environment Type:**
+   ```bash
+   # Check if running in container
+   cat /proc/1/cgroup | grep docker
+   # Check if running in WSL2
+   uname -a | grep Microsoft
+   ```
+
+2. **Use Appropriate Command:**
+   - **Container/WSL2**: `npm run start:docker`
+   - **Native**: `npm start`
+
+3. **Check Container Permissions:**
    ```bash
    ls -la ui/src/
    ```
 
-2. **Verify File Watching:**
+4. **Verify File Watching:**
    ```bash
    # Check if files are being watched
    tail -f ui/src/App.tsx
    ```
 
-3. **Clear Cache:**
+5. **Clear Cache:**
    ```bash
    rm -rf ui/node_modules/.cache
    npm start
    ```
 
-4. **Check Port Forwarding:**
+6. **Check Port Forwarding:**
    ```bash
    netstat -tulpn | grep :3000
    ```
@@ -109,7 +153,7 @@ npm start
 
 | Issue | Solution |
 |-------|----------|
-| Changes not detected | Use `npm run start:docker` instead of `npm start` |
+| Changes not detected | Use `npm run start:docker` in container environments |
 | Slow reloading | Reduce `CHOKIDAR_INTERVAL` to 500ms |
 | Port conflicts | Check if port 3000 is already in use |
 | Permission errors | Ensure proper file permissions in container |
@@ -142,10 +186,20 @@ volumes:
 ## 📈 Best Practices
 
 ### **Development Workflow:**
-1. Always use `npm run start:docker` in container environments
+1. **Identify your environment** and use the appropriate command
 2. Keep polling interval at 1000ms for optimal performance
 3. Monitor CPU usage if performance becomes an issue
 4. Use Fast Refresh for component development
+
+### **Environment Detection:**
+```bash
+# Check if in Docker
+if [ -f /.dockerenv ]; then
+    npm run start:docker
+else
+    npm start
+fi
+```
 
 ### **File Organization:**
 - Keep source files in `src/` directory
@@ -176,6 +230,7 @@ volumes:
 - [React Fast Refresh](https://react.dev/learn/fast-refresh)
 - [Chokidar File Watching](https://github.com/paulmillr/chokidar)
 - [Docker Development Best Practices](https://docs.docker.com/develop/dev-best-practices/)
+- [WSL2 Development Setup](https://docs.microsoft.com/en-us/windows/wsl/develop-on-wsl)
 - [Webpack Dev Server](https://webpack.js.org/configuration/dev-server/)
 
 ---
