@@ -1,0 +1,1 @@
+// manager.rs - OBS WebSocket connection management 
