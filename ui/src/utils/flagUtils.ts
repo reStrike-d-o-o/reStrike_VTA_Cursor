@@ -30,6 +30,12 @@ export const FLAG_CONFIGS: Record<string, FlagConfig> = {
   'PHI': { countryCode: 'PHI', fallbackEmoji: '🇵🇭', altText: 'Philippines Flag' },
   'MAS': { countryCode: 'MAS', fallbackEmoji: '🇲🇾', altText: 'Malaysia Flag' },
   'SGP': { countryCode: 'SGP', fallbackEmoji: '🇸🇬', altText: 'Singapore Flag' },
+  // Newly recognized countries from enhanced recognition
+  'PAK': { countryCode: 'PAK', fallbackEmoji: '🇵🇰', altText: 'Pakistan Flag' },
+  'KAZ': { countryCode: 'KAZ', fallbackEmoji: '🇰🇿', altText: 'Kazakhstan Flag' },
+  'ISR': { countryCode: 'ISR', fallbackEmoji: '🇮🇱', altText: 'Israel Flag' },
+  'IND': { countryCode: 'IND', fallbackEmoji: '🇮🇳', altText: 'India Flag' },
+  'KSA': { countryCode: 'KSA', fallbackEmoji: '🇸🇦', altText: 'Saudi Arabia Flag' }
 };
 
 /**
