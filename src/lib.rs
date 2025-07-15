@@ -14,10 +14,10 @@ pub mod plugins;
 
 // Re-export commonly used items
 pub use core::app::App;
-pub use plugins::plugin_obs::manager::ObsManager;
-pub use plugins::plugin_store::protocol::PssProtocol;
+pub use obs::manager::ObsManager;
+pub use video::player::VideoPlayer;
+pub use pss::protocol::PssProtocol;
 pub use types::*;
-pub use plugins::plugin_playback::player::VideoPlayer;
 
 /// Application version
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
