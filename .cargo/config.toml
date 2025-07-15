@@ -1,0 +1,46 @@
+[build]
+# Use MSVC toolchain (fastest on Windows)
+target = "x86_64-pc-windows-msvc"
+
+# Parallel compilation
+jobs = 0  # Use all available cores
+
+# Incremental compilation for faster rebuilds
+incremental = true
+
+[target.x86_64-pc-windows-msvc]
+# Fastest linker for Windows
+linker = "link.exe"
+
+# Optimize for speed in development
+rustflags = [
+    "-C", "codegen-units=256",
+    "-C", "debuginfo=1",
+    "-C", "opt-level=1",
+    "-C", "lto=false",
+    "-C", "panic=unwind",
+]
+
+[profile.dev]
+# Development profile optimized for speed
+opt-level = 1
+debug = true
+strip = false
+debug-assertions = true
+overflow-checks = true
+lto = false
+panic = "unwind"
+codegen-units = 256
+incremental = true
+
+[profile.release]
+# Production profile optimized for performance
+opt-level = 3
+debug = false
+strip = true
+debug-assertions = false
+overflow-checks = false
+lto = true
+panic = "abort"
+codegen-units = 1
+incremental = false 
