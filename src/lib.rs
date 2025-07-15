@@ -5,11 +5,11 @@
 
 pub mod commands;
 pub mod core;
-// pub mod obs;
-// pub mod pss;
+pub mod obs;
+pub mod video;
+pub mod pss;
 pub mod types;
 // pub mod utils;
-// pub mod video;
 pub mod plugins;
 
 // Re-export commonly used items
@@ -31,9 +31,9 @@ pub fn init() -> Result<(), Box<dyn std::error::Error>> {
 
     // Initialize core systems
     core::init()?;
-    // obs::init()?;
-    // video::init()?;
-    // pss::init()?;
+    obs::init()?;
+    video::init()?;
+    pss::init()?;
 
     println!("✅ {} library initialized successfully", APP_NAME);
     Ok(())
