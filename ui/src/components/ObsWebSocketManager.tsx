@@ -1,704 +1,316 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { useAppStore, ObsConnection } from '../stores';
-import { env, isWindows, invokeTauri, log, logError } from '../config/environment';
+import { useAppStore } from '../stores';
+import { createComponentLogger } from '../utils/logger';
 
-// TypeScript declarations for Tauri
-declare global {
-  interface Window {
-    __TAURI__?: {
-      invoke: (command: string, args?: any) => Promise<any>;
-    };
-  }
-}
+const logger = createComponentLogger('ObsWebSocketManager');
 
-interface ObsConnectionConfig {
+interface ObsConnection {
   name: string;
   host: string;
   port: number;
-  password?: string;
-  protocol_version: 'v4' | 'v5';
-  enabled: boolean;
+  status: 'disconnected' | 'connecting' | 'connected' | 'error';
+  error?: string;
 }
 
 const ObsWebSocketManager: React.FC = () => {
-  const { 
-    obsConnections, 
-    addObsConnection, 
-    removeObsConnection, 
-    updateObsConnectionStatus 
-  } = useAppStore();
-  
-  const [newConnection, setNewConnection] = useState<ObsConnectionConfig>({
-    name: '',
-    host: 'localhost',
-    port: 4455,
-    password: '',
-    protocol_version: 'v5',
-    enabled: true,
-  });
-  const [isAddingConnection, setIsAddingConnection] = useState(false);
+  const { obsConnections, updateObsConnections } = useAppStore();
+  const [connections, setConnections] = useState<ObsConnection[]>([
+    { name: 'OBS Studio', host: 'localhost', port: 4455, status: 'disconnected' }
+  ]);
 
-  const addConnection = async () => {
-    if (!newConnection.name.trim()) {
-      alert('Connection name is required');
-      return;
+  // Windows-specific initialization
+  useEffect(() => {
+    logger.info('Initializing Windows-only OBS WebSocket Manager');
+    initializeWindowsFeatures();
+  }, []);
+
+  const initializeWindowsFeatures = async () => {
+    try {
+      // Initialize Tauri commands for OBS integration
+      if (window.__TAURI__) {
+        logger.info('✅ Tauri environment detected for OBS integration');
+        
+        // Initialize OBS WebSocket connection
+        // Initialize video playback system
+        // Initialize PSS protocol listener
+      }
+    } catch (error) {
+      logger.error('❌ Failed to initialize Windows features:', error);
     }
-
-    if (obsConnections.some(c => c.name === newConnection.name)) {
-      alert('Connection name must be unique');
-      return;
-    }
-
-    const connectionToAdd = {
-      ...newConnection,
-      password: newConnection.password || undefined,
-    };
-
-    addObsConnection(connectionToAdd);
-
-    // Reset form
-    setNewConnection({
-      name: '',
-      host: 'localhost',
-      port: 4455,
-      password: '',
-      protocol_version: 'v5',
-      enabled: true,
-    });
-    setIsAddingConnection(false);
-
-    // Connect if enabled
-    if (connectionToAdd.enabled) {
-      await connectToObs(connectionToAdd.name);
-    }
-  };
-
-  const removeConnection = async (name: string) => {
-    // Disconnect first if connected
-    const connection = obsConnections.find(c => c.name === name);
-    if (connection && (connection.status === 'Connected' || connection.status === 'Authenticated')) {
-      await disconnectFromObs(name);
-    }
-    
-    removeObsConnection(name);
   };
 
   const connectToObs = async (connectionName: string) => {
+    logger.info(`Connecting to OBS: ${connectionName}`);
+    
     try {
-      log(`Connecting to OBS: ${connectionName} (Environment: ${env.environment})`);
-      
-      // Update status to connecting
-      updateObsConnectionStatus(connectionName, 'Connecting');
-
-      // Find the connection configuration
-      const connection = obsConnections.find(c => c.name === connectionName);
-      if (!connection) {
-        throw new Error('Connection not found');
-      }
-
-      if (isWindows()) {
-        // Use Tauri commands for Windows environment
-        log(`Using Tauri commands for ${connectionName}`);
-        try {
-          await invokeTauri('obs_connect', { connectionName });
-          log(`Tauri connection successful for ${connectionName}`);
-        } catch (error) {
-          logError(`Tauri connection failed for ${connectionName}`, error);
-          updateObsConnectionStatus(connectionName, 'Error', `Tauri connection failed: ${error}`);
+      // Use Tauri command for OBS connection
+      if (window.__TAURI__) {
+        const result = await window.__TAURI__.invoke('obs_connect', {
+          url: `ws://localhost:4455`
+        });
+        
+        if (result.success) {
+          logger.info(`✅ Successfully connected to OBS: ${connectionName}`);
+          updateConnectionStatus(connectionName, 'connected');
+        } else {
+          logger.error(`❌ Failed to connect to OBS: ${connectionName}`, result.error);
+          updateConnectionStatus(connectionName, 'error', result.error);
         }
       } else {
-        // Use direct WebSocket for web environment
-        log(`Using direct WebSocket for ${connectionName}`);
-        await connectWebSocketDirect(connectionName, connection);
+        logger.error('❌ Tauri not available for OBS connection');
+        updateConnectionStatus(connectionName, 'error', 'Tauri not available');
       }
-
     } catch (error) {
-      logError(`Connection failed for ${connectionName}`, error);
-      updateObsConnectionStatus(
-        connectionName, 
-        'Error', 
-        error instanceof Error ? error.message : 'Unknown error'
-      );
+      logger.error(`❌ Error connecting to OBS: ${connectionName}`, error);
+      updateConnectionStatus(connectionName, 'error', error.message);
     }
-  };
-
-  // Direct WebSocket connection for web environment
-  const connectWebSocketDirect = async (connectionName: string, connection: ObsConnection) => {
-    console.log(`Testing WebSocket connection to ${connection.host}:${connection.port}...`);
-    
-    // Create a simple WebSocket test
-    const wsUrl = `ws://${connection.host}:${connection.port}`;
-    const ws = new WebSocket(wsUrl);
-    
-    ws.onopen = () => {
-      console.log(`WebSocket connected to ${connectionName}`);
-      updateObsConnectionStatus(connectionName, 'Connected');
-    };
-    
-    ws.onerror = (error) => {
-      console.error(`WebSocket error for ${connectionName}:`, error);
-      updateObsConnectionStatus(connectionName, 'Error', 'WebSocket connection failed');
-    };
-    
-    ws.onclose = () => {
-      console.log(`WebSocket closed for ${connectionName}`);
-      updateObsConnectionStatus(connectionName, 'Disconnected');
-    };
-    
-    // Handle authentication based on protocol version
-    if (connection.protocol_version === 'v5') {
-      try {
-        await handleV5Authentication(ws, connection, connectionName);
-      } catch (error) {
-        console.error(`V5 authentication failed for ${connectionName}:`, error);
-        updateObsConnectionStatus(connectionName, 'Error', `Authentication failed: ${error}`);
-        ws.close();
-        return;
-      }
-    } else if (connection.protocol_version === 'v4') {
-      try {
-        await handleV4Authentication(ws, connection, connectionName);
-      } catch (error) {
-        console.error(`V4 authentication failed for ${connectionName}:`, error);
-        updateObsConnectionStatus(connectionName, 'Error', `Authentication failed: ${error}`);
-        ws.close();
-        return;
-      }
-    } else {
-      // Unknown protocol version
-      console.error(`Unknown protocol version for ${connectionName}: ${connection.protocol_version}`);
-      updateObsConnectionStatus(connectionName, 'Error', `Unknown protocol version: ${connection.protocol_version}`);
-      ws.close();
-      return;
-    }
-    
-    // Store WebSocket reference for later disconnection
-    (window as any)[`obs_ws_${connectionName}`] = ws;
   };
 
   const disconnectFromObs = async (connectionName: string) => {
-    try {
-      log(`Disconnecting from OBS: ${connectionName} (Environment: ${env.environment})`);
-
-      if (isWindows()) {
-        // Use Tauri commands for Windows environment
-        log(`Using Tauri disconnect for ${connectionName}`);
-        try {
-          await invokeTauri('obs_disconnect', { connectionName });
-          log(`Tauri disconnect successful for ${connectionName}`);
-        } catch (error) {
-          logError(`Tauri disconnect failed for ${connectionName}`, error);
-        }
-      } else {
-        // Use direct WebSocket disconnect for web environment
-        log(`Using direct WebSocket disconnect for ${connectionName}`);
-        const ws = (window as any)[`obs_ws_${connectionName}`];
-        if (ws) {
-          ws.close();
-          delete (window as any)[`obs_ws_${connectionName}`];
-          log(`WebSocket closed for ${connectionName}`);
-        }
-      }
-
-      updateObsConnectionStatus(connectionName, 'Disconnected');
-    } catch (error) {
-      logError(`Disconnect failed for ${connectionName}`, error);
-      updateObsConnectionStatus(connectionName, 'Error', 'Failed to disconnect');
-    }
-  };
-
-  // Generate authentication response for OBS WebSocket v5
-  const generateAuthResponse = async (password: string, challenge: string, salt: string): Promise<string> => {
-    try {
-      // OBS WebSocket v5 uses SHA256(challenge + salt + password)
-      const combined = challenge + salt + password;
-      
-      // Convert string to ArrayBuffer
-      const encoder = new TextEncoder();
-      const data = encoder.encode(combined);
-      
-      // Generate SHA256 hash
-      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-      
-      // Convert to base64 using a more reliable method
-      const hashArray = new Uint8Array(hashBuffer);
-      let binary = '';
-      for (let i = 0; i < hashArray.length; i++) {
-        binary += String.fromCharCode(hashArray[i]);
-      }
-      const hashBase64 = btoa(binary);
-      
-      console.log('Auth debug:', {
-        challenge: challenge.substring(0, 20) + '...',
-        salt: salt.substring(0, 20) + '...',
-        password: password.substring(0, 3) + '***', // Don't log full password
-        combinedLength: combined.length,
-        hashBase64: hashBase64.substring(0, 20) + '...'
-      });
-      
-      return hashBase64;
-    } catch (error) {
-      console.error('Authentication generation failed:', error);
-      throw error;
-    }
-  };
-
-  // Handle OBS WebSocket v5 authentication properly
-  const handleV5Authentication = async (ws: WebSocket, connection: ObsConnection, connectionName: string) => {
-    return new Promise<void>((resolve, reject) => {
-      const messageHandler = async (event: MessageEvent) => {
-        try {
-          const response = JSON.parse(event.data);
-          console.log(`OBS Response for ${connectionName}:`, response);
-          
-          if (response.op === 0) { // Hello message
-            // Handle authentication challenge
-            if (response.d.authentication && connection.password) {
-              const { challenge, salt } = response.d.authentication;
-              
-              try {
-                // Generate proper authentication response
-                const authResponse = await generateAuthResponse(connection.password, challenge, salt);
-                
-                const identifyRequest = {
-                  op: 1,
-                  d: {
-                    rpcVersion: 1,
-                    authentication: authResponse,
-                    eventSubscriptions: 0
-                  }
-                };
-                
-                console.log(`Sending authentication for ${connectionName}:`, identifyRequest);
-                ws.send(JSON.stringify(identifyRequest));
-              } catch (error) {
-                console.error(`Authentication failed for ${connectionName}:`, error);
-                reject(new Error(`Authentication failed: ${error}`));
-              }
-            } else {
-              // No authentication required
-              const identifyRequest = {
-                op: 1,
-                d: {
-                  rpcVersion: 1,
-                  authentication: null,
-                  eventSubscriptions: 0
-                }
-              };
-              
-              console.log(`No authentication required for ${connectionName}`);
-              ws.send(JSON.stringify(identifyRequest));
-            }
-          } else if (response.op === 2) { // Identified message
-            console.log(`Successfully authenticated with ${connectionName}`);
-            updateObsConnectionStatus(connectionName, 'Authenticated');
-            ws.removeEventListener('message', messageHandler);
-            resolve();
-          } else if (response.op === 7) { // RequestResponse
-            console.log(`Request response from ${connectionName}:`, response);
-          }
-        } catch (error) {
-          console.error(`Failed to parse OBS response for ${connectionName}:`, error);
-          reject(error);
-        }
-      };
-      
-      ws.addEventListener('message', messageHandler);
-      
-      // Set a timeout for authentication
-      setTimeout(() => {
-        ws.removeEventListener('message', messageHandler);
-        reject(new Error('Authentication timeout'));
-      }, 10000); // 10 second timeout
-    });
-  };
-
-  // Handle OBS WebSocket v4 authentication
-  const handleV4Authentication = async (ws: WebSocket, connection: ObsConnection, connectionName: string) => {
-    return new Promise<void>((resolve, reject) => {
-      const messageHandler = async (event: MessageEvent) => {
-        try {
-          const response = JSON.parse(event.data);
-          console.log(`OBS v4 Response for ${connectionName}:`, response);
-          
-          // V4 authentication is simpler - just check if we get a valid response
-          if (response['error'] || response['error-id']) {
-            console.error(`V4 authentication failed for ${connectionName}:`, response);
-            reject(new Error(`V4 authentication failed: ${response['error'] || response['error-id']}`));
-          } else {
-            console.log(`V4 authentication successful for ${connectionName}`);
-            updateObsConnectionStatus(connectionName, 'Authenticated');
-            ws.removeEventListener('message', messageHandler);
-            resolve();
-          }
-        } catch (error) {
-          console.error(`Failed to parse OBS v4 response for ${connectionName}:`, error);
-          reject(error);
-        }
-      };
-      
-      ws.addEventListener('message', messageHandler);
-      
-      // For v4, we can send a simple request to test authentication
-      if (connection.password) {
-        const authRequest = {
-          "request-type": "GetAuthRequired",
-          "message-id": `auth_${Date.now()}`
-        };
-        ws.send(JSON.stringify(authRequest));
-      } else {
-        // No password required, just resolve
-        updateObsConnectionStatus(connectionName, 'Authenticated');
-        ws.removeEventListener('message', messageHandler);
-        resolve();
-      }
-      
-      // Set a timeout for authentication
-      setTimeout(() => {
-        ws.removeEventListener('message', messageHandler);
-        reject(new Error('V4 authentication timeout'));
-      }, 10000); // 10 second timeout
-    });
-  };
-
-  // Test OBS status polling
-  const testObsStatus = async () => {
-    log(`Testing OBS status (Environment: ${env.environment})`);
+    logger.info(`Disconnecting from OBS: ${connectionName}`);
     
-    if (isWindows()) {
-      // Use Tauri commands for Windows environment
-      log('Using Tauri commands for OBS status');
-      try {
-        const { updateObsStatus } = useAppStore.getState();
-        const status = await invokeTauri('obs_get_status');
-        if (status.success && status.data) {
-          updateObsStatus(status.data);
-          log('OBS status updated via Tauri');
+    try {
+      // Use Tauri command for OBS disconnection
+      if (window.__TAURI__) {
+        const result = await window.__TAURI__.invoke('obs_disconnect', {
+          connectionName
+        });
+        
+        if (result.success) {
+          logger.info(`✅ Successfully disconnected from OBS: ${connectionName}`);
+          updateConnectionStatus(connectionName, 'disconnected');
+        } else {
+          logger.error(`❌ Failed to disconnect from OBS: ${connectionName}`, result.error);
         }
-      } catch (error) {
-        logError('Tauri OBS status failed', error);
+      } else {
+        logger.error('❌ Tauri not available for OBS disconnection');
+        updateConnectionStatus(connectionName, 'disconnected');
       }
-    } else {
-      // Use direct WebSocket for web environment
-      log('Using direct WebSocket for OBS status');
-      const { updateObsStatus } = useAppStore.getState();
-      
-      // Check if we have any connected OBS instances
-      const connectedConnections = obsConnections.filter(c => 
-        c.status === 'Connected' || c.status === 'Authenticated'
-      );
-      
-      if (connectedConnections.length === 0) {
-        log('No connected OBS instances to test status');
-        return;
-      }
-      
-      log(`Testing OBS status for ${connectedConnections.length} connections...`);
-      
-      // For each connected connection, try to get status
-      for (const connection of connectedConnections) {
-        const ws = (window as any)[`obs_ws_${connection.name}`];
-        if (ws && ws.readyState === WebSocket.OPEN) {
-          try {
-            // Send GetRecordStatus request
-            const recordStatusRequest = {
-              op: 6,
-              d: {
-                requestType: "GetRecordStatus",
-                requestId: `record_${Date.now()}`
-              }
-            };
-            ws.send(JSON.stringify(recordStatusRequest));
-            
-            // Send GetStreamStatus request
-            const streamStatusRequest = {
-              op: 6,
-              d: {
-                requestType: "GetStreamStatus",
-                requestId: `stream_${Date.now()}`
-              }
-            };
-            ws.send(JSON.stringify(streamStatusRequest));
-            
-            // Send GetStats request for CPU usage
-            const statsRequest = {
-              op: 6,
-              d: {
-                requestType: "GetStats",
-                requestId: `stats_${Date.now()}`
-              }
-            };
-            ws.send(JSON.stringify(statsRequest));
-            
-          } catch (error) {
-            logError(`Failed to send status requests to ${connection.name}`, error);
-          }
-        }
-      }
+    } catch (error) {
+      logger.error(`❌ Error disconnecting from OBS: ${connectionName}`, error);
+      updateConnectionStatus(connectionName, 'disconnected');
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Connected':
-      case 'Authenticated':
-        return 'text-green-500';
-      case 'Connecting':
-      case 'Authenticating':
-        return 'text-yellow-500';
-      case 'Error':
-        return 'text-red-500';
-      default:
-        return 'text-gray-500';
+  const testObsStatus = async () => {
+    logger.info('Testing OBS status');
+    
+    try {
+      // Use Tauri command for OBS status
+      if (window.__TAURI__) {
+        const result = await window.__TAURI__.invoke('obs_get_status');
+        
+        if (result.success) {
+          logger.info('✅ OBS status retrieved successfully', result.data);
+          return result.data;
+        } else {
+          logger.error('❌ Failed to get OBS status', result.error);
+          return null;
+        }
+      } else {
+        logger.error('❌ Tauri not available for OBS status');
+        return null;
+      }
+    } catch (error) {
+      logger.error('❌ Error getting OBS status', error);
+      return null;
     }
   };
 
-  const getStatusIcon = (status: string) => {
+  const updateConnectionStatus = (name: string, status: ObsConnection['status'], error?: string) => {
+    setConnections(prev => prev.map(conn => 
+      conn.name === name 
+        ? { ...conn, status, error }
+        : conn
+    ));
+  };
+
+  const addConnection = () => {
+    const newConnection: ObsConnection = {
+      name: `OBS Studio ${connections.length + 1}`,
+      host: 'localhost',
+      port: 4455,
+      status: 'disconnected'
+    };
+    setConnections(prev => [...prev, newConnection]);
+  };
+
+  const removeConnection = (name: string) => {
+    setConnections(prev => prev.filter(conn => conn.name !== name));
+  };
+
+  const getStatusColor = (status: ObsConnection['status']) => {
     switch (status) {
-      case 'Connected':
-      case 'Authenticated':
-        return '🟢';
-      case 'Connecting':
-      case 'Authenticating':
-        return '🟡';
-      case 'Error':
-        return '🔴';
-      default:
-        return '⚪';
+      case 'connected': return 'bg-green-500';
+      case 'connecting': return 'bg-yellow-500';
+      case 'error': return 'bg-red-500';
+      default: return 'bg-gray-500';
+    }
+  };
+
+  const getStatusText = (status: ObsConnection['status']) => {
+    switch (status) {
+      case 'connected': return 'Connected';
+      case 'connecting': return 'Connecting...';
+      case 'error': return 'Error';
+      default: return 'Disconnected';
     }
   };
 
   return (
-    <div className="p-6 bg-gray-900 text-white rounded-lg">
-      <h2 className="text-2xl font-bold mb-6">OBS WebSocket Manager</h2>
-      
-      {/* Test Controls */}
-      <div className="mb-6 flex gap-2">
-        <button
-          onClick={testObsStatus}
-          className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg transition-colors"
-        >
-          🧪 Test OBS Status
-        </button>
-        <button
-          onClick={() => {
-            const { updateObsStatus } = useAppStore.getState();
-            updateObsStatus({
-              is_recording: true,
-              is_streaming: false,
-              cpu_usage: 45,
-              recording_connection: 'OBS_REC',
-            });
-          }}
-          className="bg-orange-600 hover:bg-orange-700 px-4 py-2 rounded-lg transition-colors"
-        >
-          📹 Test Recording Status
-        </button>
-      </div>
-      
-      {/* Add New Connection */}
-      <div className="mb-8">
-        <button
-          onClick={() => setIsAddingConnection(!isAddingConnection)}
-          className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-colors"
-        >
-          {isAddingConnection ? 'Cancel' : '+ Add OBS Connection'}
-        </button>
-
-        {isAddingConnection && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="mt-4 p-4 bg-gray-800 rounded-lg"
-          >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Connection Name *</label>
-                <input
-                  type="text"
-                  value={newConnection.name}
-                  onChange={(e) => setNewConnection(prev => ({ ...prev, name: e.target.value }))}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500"
-                  placeholder="e.g., Main OBS, Backup OBS"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">Protocol Version</label>
-                <select
-                  value={newConnection.protocol_version}
-                  onChange={(e) => setNewConnection(prev => ({ 
-                    ...prev, 
-                    protocol_version: e.target.value as 'v4' | 'v5',
-                    port: e.target.value === 'v4' ? 4444 : 4455
-                  }))}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500"
-                >
-                  <option value="v5">OBS WebSocket v5 (Latest)</option>
-                  <option value="v4">OBS WebSocket v4 (Legacy)</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">Host</label>
-                <input
-                  type="text"
-                  value={newConnection.host}
-                  onChange={(e) => setNewConnection(prev => ({ ...prev, host: e.target.value }))}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500"
-                  placeholder="localhost"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">Port</label>
-                <input
-                  type="number"
-                  value={newConnection.port}
-                  onChange={(e) => setNewConnection(prev => ({ ...prev, port: parseInt(e.target.value) }))}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500"
-                  placeholder={newConnection.protocol_version === 'v4' ? '4444' : '4455'}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">Password (Optional)</label>
-                <input
-                  type="password"
-                  value={newConnection.password}
-                  onChange={(e) => setNewConnection(prev => ({ ...prev, password: e.target.value }))}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500"
-                  placeholder="Leave empty if disabled"
-                />
-              </div>
-
-              <div className="flex items-center">
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={newConnection.enabled}
-                    onChange={(e) => setNewConnection(prev => ({ ...prev, enabled: e.target.checked }))}
-                    className="mr-2"
-                  />
-                  <span className="text-sm">Connect automatically</span>
-                </label>
-              </div>
-            </div>
-
-            <div className="mt-4 flex gap-2">
-              <button
-                onClick={addConnection}
-                className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg transition-colors"
-              >
-                Add Connection
-              </button>
-              <button
-                onClick={() => setIsAddingConnection(false)}
-                className="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </div>
-
-      {/* Connection List */}
-      <div className="space-y-4">
-        <h3 className="text-xl font-semibold">Active Connections</h3>
-        
-        {obsConnections.length === 0 ? (
-          <div className="text-gray-400 text-center py-8">
-            No OBS connections configured. Add your first connection above.
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="bg-gray-800 rounded-lg p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-white">OBS WebSocket Manager</h2>
+            <p className="text-gray-400 mt-1">Manage OBS Studio connections for Windows desktop application</p>
           </div>
-        ) : (
-          obsConnections.map((connection) => {
-            const currentStatus = connection.status || 'Disconnected';
-            const isConnected = currentStatus === 'Connected' || currentStatus === 'Authenticated';
+          <div className="flex items-center space-x-4">
+            <span className="px-3 py-1 bg-blue-600 text-white text-sm rounded-full">
+              Windows Native
+            </span>
+            <span className="px-3 py-1 bg-green-600 text-white text-sm rounded-full">
+              {connections.filter(c => c.status === 'connected').length}/{connections.length} Connected
+            </span>
+          </div>
+        </div>
+      </div>
 
-            return (
-              <motion.div
-                key={connection.name}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="p-4 bg-gray-800 rounded-lg border border-gray-700"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <span className="text-lg">{getStatusIcon(currentStatus)}</span>
-                    <div>
-                      <h4 className="font-semibold">{connection.name}</h4>
-                      <p className="text-sm text-gray-400">
-                        {connection.host}:{connection.port} ({connection.protocol_version.toUpperCase()})
-                      </p>
-                      <p className={`text-sm ${getStatusColor(currentStatus)}`}>
-                        {currentStatus}
-                        {connection.error && ` - ${connection.error}`}
-                      </p>
-                    </div>
+      {/* Connection Management */}
+      <div className="bg-gray-800 rounded-lg p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-semibold text-white">OBS Connections</h3>
+          <button
+            onClick={addConnection}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+          >
+            Add Connection
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          {connections.map((connection) => (
+            <motion.div
+              key={connection.name}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-gray-700 rounded-lg p-4"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <div className={`w-3 h-3 rounded-full ${getStatusColor(connection.status)}`} />
+                  <div>
+                    <h4 className="text-white font-medium">{connection.name}</h4>
+                    <p className="text-gray-400 text-sm">
+                      {connection.host}:{connection.port}
+                    </p>
                   </div>
-
-                  <div className="flex items-center space-x-2">
-                    {isConnected ? (
-                      <button
-                        onClick={() => disconnectFromObs(connection.name)}
-                        className="bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-sm transition-colors"
-                      >
-                        Disconnect
-                      </button>
-                    ) : (
+                </div>
+                
+                <div className="flex items-center space-x-3">
+                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    connection.status === 'connected' 
+                      ? 'bg-green-600 text-white'
+                      : connection.status === 'connecting'
+                      ? 'bg-yellow-600 text-white'
+                      : connection.status === 'error'
+                      ? 'bg-red-600 text-white'
+                      : 'bg-gray-600 text-gray-300'
+                  }`}>
+                    {getStatusText(connection.status)}
+                  </span>
+                  
+                  <div className="flex space-x-2">
+                    {connection.status === 'disconnected' && (
                       <button
                         onClick={() => connectToObs(connection.name)}
-                        className="bg-green-600 hover:bg-green-700 px-3 py-1 rounded text-sm transition-colors"
+                        className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-sm rounded transition-colors"
                       >
                         Connect
                       </button>
                     )}
                     
+                    {connection.status === 'connected' && (
+                      <button
+                        onClick={() => disconnectFromObs(connection.name)}
+                        className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded transition-colors"
+                      >
+                        Disconnect
+                      </button>
+                    )}
+                    
+                    <button
+                      onClick={() => testObsStatus()}
+                      className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded transition-colors"
+                    >
+                      Test
+                    </button>
+                    
                     <button
                       onClick={() => removeConnection(connection.name)}
-                      className="bg-gray-600 hover:bg-gray-700 px-3 py-1 rounded text-sm transition-colors"
+                      className="px-3 py-1 bg-gray-600 hover:bg-gray-500 text-white text-sm rounded transition-colors"
                     >
                       Remove
                     </button>
                   </div>
                 </div>
-              </motion.div>
-            );
-          })
-        )}
+              </div>
+              
+              {connection.error && (
+                <div className="mt-3 p-3 bg-red-900 border border-red-700 rounded-lg">
+                  <p className="text-red-300 text-sm">{connection.error}</p>
+                </div>
+              )}
+            </motion.div>
+          ))}
+        </div>
       </div>
 
-      {/* Protocol Information */}
-      <div className="mt-8 p-4 bg-gray-800 rounded-lg">
-        <h3 className="text-lg font-semibold mb-3">Protocol Information</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-          <div>
-            <h4 className="font-medium text-blue-400 mb-2">OBS WebSocket v5 (Recommended)</h4>
-            <ul className="text-gray-300 space-y-1">
-              <li>• Latest protocol with enhanced features</li>
-              <li>• SHA256 challenge-response authentication</li>
-              <li>• Batch requests and event subscriptions</li>
-              <li>• Better error handling and status codes</li>
-              <li>• Default port: 4455</li>
-            </ul>
+      {/* OBS Status Information */}
+      <div className="bg-gray-800 rounded-lg p-6">
+        <h3 className="text-lg font-semibold text-white mb-4">OBS Status</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-gray-700 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-gray-300">Recording</span>
+              <span className="w-3 h-3 bg-red-500 rounded-full"></span>
+            </div>
+            <p className="text-white font-medium mt-1">Not Recording</p>
           </div>
-          <div>
-            <h4 className="font-medium text-yellow-400 mb-2">OBS WebSocket v4 (Legacy)</h4>
-            <ul className="text-gray-300 space-y-1">
-              <li>• Legacy protocol for older OBS versions</li>
-              <li>• Simple password-based authentication</li>
-              <li>• Basic request/response functionality</li>
-              <li>• Compatible with older plugins</li>
-              <li>• Default port: 4444</li>
-            </ul>
+          
+          <div className="bg-gray-700 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-gray-300">Streaming</span>
+              <span className="w-3 h-3 bg-red-500 rounded-full"></span>
+            </div>
+            <p className="text-white font-medium mt-1">Not Streaming</p>
           </div>
+          
+          <div className="bg-gray-700 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-gray-300">CPU Usage</span>
+              <span className="w-3 h-3 bg-green-500 rounded-full"></span>
+            </div>
+            <p className="text-white font-medium mt-1">0.0%</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Connection Instructions */}
+      <div className="bg-gray-800 rounded-lg p-6">
+        <h3 className="text-lg font-semibold text-white mb-4">Setup Instructions</h3>
+        <div className="space-y-3 text-gray-300">
+          <p>1. Open OBS Studio on your Windows machine</p>
+          <p>2. Go to Tools → WebSocket Server Settings</p>
+          <p>3. Enable WebSocket server on port 4455</p>
+          <p>4. <strong>Important:</strong> Disable authentication (no password)</p>
+          <p>5. Click "Connect" above to establish connection</p>
         </div>
       </div>
     </div>
   );
 };
 
-export default ObsWebSocketManager; 
+export default ObsWebSocketManager;

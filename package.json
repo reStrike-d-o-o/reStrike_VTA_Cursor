@@ -1,11 +1,18 @@
 {
   "name": "reStrike_VTA",
   "version": "0.1.0",
-  "description": "Overlay and automation toolkit for VTA using Tauri and React",
+  "description": "Windows desktop application for taekwondo referees using Tauri and React",
   "main": "src/index.js",
   "scripts": {
     "start": "tauri dev",
-    "test": "echo \"No tests yet\" && exit 0"
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "preview": "tauri dev --no-watch",
+    "test": "cd ui && npm test",
+    "test:backend": "cargo test",
+    "clean": "cargo clean && cd ui && npm run build -- --clean",
+    "lint": "cd ui && npm run lint",
+    "format": "cargo fmt && cd ui && npm run format"
   },
   "author": "damjanZGB",
   "license": "MIT",
