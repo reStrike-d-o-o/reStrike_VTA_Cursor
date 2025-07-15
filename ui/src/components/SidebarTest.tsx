@@ -73,41 +73,171 @@ const SidebarTest: React.FC = () => {
             <div className="text-6xl font-bold text-white tracking-tight -ml-[1000px] flex items-center justify-center w-[200px]">1254</div>
           </div>
           <hr className="border-gray-700 my-6" />
-          {/* Event Table */}
-          <div className="flex flex-col">
-            <div className="flex items-center justify-between text-gray-400 text-xs font-medium mb-3 px-1">
-              <span className="w-8">RND</span>
-              <span className="w-20 text-center">TIME</span>
-              <span className="flex-1">EVENT</span>
+          {/* Event Table with Filters */}
+          <div className="flex gap-3">
+            {/* Event Table */}
+            <div className="flex-1 flex flex-col h-64 overflow-y-auto">
+              <div className="flex items-center justify-between text-gray-400 text-xs font-medium mb-3 px-1 sticky top-0 bg-[#101820] py-2 z-10">
+                <span className="w-8">RND</span>
+                <span className="w-20 text-center">TIME</span>
+                <span className="flex-1">EVENT</span>
+              </div>
+              {/* Event Rows - 15 total rows, only last 10 visible */}
+              <div className="flex items-center justify-between py-2 px-1 hover:bg-gray-800 rounded transition-colors">
+                <span className="font-bold text-white w-8">R1</span>
+                <span className="text-gray-300 w-20 text-center text-sm">01.05.123</span>
+                <span className="flex items-center space-x-3 flex-1">
+                  <span className="w-3 h-3 rounded-full bg-red-500 inline-block shadow-sm"></span>
+                  <span className="text-white text-sm">Punch</span>
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-2 px-1 hover:bg-gray-800 rounded transition-colors">
+                <span className="font-bold text-white w-8">R1</span>
+                <span className="text-gray-300 w-20 text-center text-sm">01.18.456</span>
+                <span className="flex items-center space-x-3 flex-1">
+                  <span className="w-3 h-3 rounded-full bg-blue-500 inline-block shadow-sm"></span>
+                  <span className="text-white text-sm">Kick</span>
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-2 px-1 hover:bg-gray-800 rounded transition-colors">
+                <span className="font-bold text-white w-8">R1</span>
+                <span className="text-gray-300 w-20 text-center text-sm">01.32.789</span>
+                <span className="flex items-center space-x-3 flex-1">
+                  <span className="w-3 h-3 rounded-full bg-yellow-400 inline-block shadow-sm"></span>
+                  <span className="text-white text-sm">Foul</span>
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-2 px-1 hover:bg-gray-800 rounded transition-colors">
+                <span className="font-bold text-white w-8">R1</span>
+                <span className="text-gray-300 w-20 text-center text-sm">01.45.234</span>
+                <span className="flex items-center space-x-3 flex-1">
+                  <span className="w-3 h-3 rounded-full bg-red-500 inline-block shadow-sm"></span>
+                  <span className="text-white text-sm">Head</span>
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-2 px-1 hover:bg-gray-800 rounded transition-colors">
+                <span className="font-bold text-white w-8">R1</span>
+                <span className="text-gray-300 w-20 text-center text-sm">02.00.343</span>
+                <span className="flex items-center space-x-3 flex-1">
+                  <span className="w-3 h-3 rounded-full bg-blue-500 inline-block shadow-sm"></span>
+                  <span className="text-white text-sm">Spinning Kick</span>
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-2 px-1 hover:bg-gray-800 rounded transition-colors">
+                <span className="font-bold text-white w-8">R1</span>
+                <span className="text-gray-300 w-20 text-center text-sm">02.15.127</span>
+                <span className="flex items-center space-x-3 flex-1">
+                  <span className="w-3 h-3 rounded-full bg-red-500 inline-block shadow-sm"></span>
+                  <span className="text-white text-sm">Kick</span>
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-2 px-1 hover:bg-gray-800 rounded transition-colors">
+                <span className="font-bold text-white w-8">R1</span>
+                <span className="text-gray-300 w-20 text-center text-sm">02.32.891</span>
+                <span className="flex items-center space-x-3 flex-1">
+                  <span className="w-3 h-3 rounded-full bg-yellow-400 inline-block shadow-sm"></span>
+                  <span className="text-white text-sm">Foul</span>
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-2 px-1 hover:bg-gray-800 rounded transition-colors">
+                <span className="font-bold text-white w-8">R1</span>
+                <span className="text-gray-300 w-20 text-center text-sm">02.45.234</span>
+                <span className="flex items-center space-x-3 flex-1">
+                  <span className="w-3 h-3 rounded-full bg-blue-500 inline-block shadow-sm"></span>
+                  <span className="text-white text-sm">Head</span>
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-2 px-1 hover:bg-gray-800 rounded transition-colors">
+                <span className="font-bold text-white w-8">R1</span>
+                <span className="text-gray-300 w-20 text-center text-sm">03.12.567</span>
+                <span className="flex items-center space-x-3 flex-1">
+                  <span className="w-3 h-3 rounded-full bg-red-500 inline-block shadow-sm"></span>
+                  <span className="text-white text-sm">Punch</span>
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-2 px-1 hover:bg-gray-800 rounded transition-colors">
+                <span className="font-bold text-white w-8">R2</span>
+                <span className="text-gray-300 w-20 text-center text-sm">03.25.890</span>
+                <span className="flex items-center space-x-3 flex-1">
+                  <span className="w-3 h-3 rounded-full bg-blue-500 inline-block shadow-sm"></span>
+                  <span className="text-white text-sm">Kick</span>
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-2 px-1 hover:bg-gray-800 rounded transition-colors">
+                <span className="font-bold text-white w-8">R2</span>
+                <span className="text-gray-300 w-20 text-center text-sm">03.38.123</span>
+                <span className="flex items-center space-x-3 flex-1">
+                  <span className="w-3 h-3 rounded-full bg-red-500 inline-block shadow-sm"></span>
+                  <span className="text-white text-sm">Spinning Kick</span>
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-2 px-1 hover:bg-gray-800 rounded transition-colors">
+                <span className="font-bold text-white w-8">R2</span>
+                <span className="text-gray-300 w-20 text-center text-sm">03.52.456</span>
+                <span className="flex items-center space-x-3 flex-1">
+                  <span className="w-3 h-3 rounded-full bg-yellow-400 inline-block shadow-sm"></span>
+                  <span className="text-white text-sm">Foul</span>
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-2 px-1 hover:bg-gray-800 rounded transition-colors">
+                <span className="font-bold text-white w-8">R2</span>
+                <span className="text-gray-300 w-20 text-center text-sm">04.05.789</span>
+                <span className="flex items-center space-x-3 flex-1">
+                  <span className="w-3 h-3 rounded-full bg-blue-500 inline-block shadow-sm"></span>
+                  <span className="text-white text-sm">Head</span>
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-2 px-1 hover:bg-gray-800 rounded transition-colors">
+                <span className="font-bold text-white w-8">R2</span>
+                <span className="text-gray-300 w-20 text-center text-sm">04.18.234</span>
+                <span className="flex items-center space-x-3 flex-1">
+                  <span className="w-3 h-3 rounded-full bg-red-500 inline-block shadow-sm"></span>
+                  <span className="text-white text-sm">Kick</span>
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-2 px-1 hover:bg-gray-800 rounded transition-colors">
+                <span className="font-bold text-white w-8">R3</span>
+                <span className="text-gray-300 w-20 text-center text-sm">04.32.567</span>
+                <span className="flex items-center space-x-3 flex-1">
+                  <span className="w-3 h-3 rounded-full bg-blue-500 inline-block shadow-sm"></span>
+                  <span className="text-white text-sm">Punch</span>
+                </span>
+              </div>
             </div>
-            {/* Event Rows */}
-            <div className="flex items-center justify-between py-2 px-1 hover:bg-gray-800 rounded transition-colors">
-              <span className="font-bold text-white w-8">R1</span>
-              <span className="text-gray-300 w-20 text-center text-sm">02.00.343</span>
-              <span className="flex items-center space-x-3 flex-1">
-                <span className="w-3 h-3 rounded-full bg-red-500 inline-block shadow-sm"></span>
-                <span className="text-white text-sm">Punch</span>
-              </span>
-            </div>
-            <div className="flex items-center justify-between py-2 px-1 hover:bg-gray-800 rounded transition-colors">
-              <span className="font-bold text-white w-8">R2</span>
-              <span className="text-gray-300 w-20 text-center text-sm">02.10.343</span>
-              <span className="flex items-center space-x-3 flex-1">
-                <span className="w-3 h-3 rounded-full bg-blue-400 inline-block shadow-sm"></span>
-                <span className="text-white text-sm">Head Kick</span>
-              </span>
-            </div>
-            <div className="flex items-center justify-between py-2 px-1 hover:bg-gray-800 rounded transition-colors">
-              <span className="font-bold text-white w-8">R3</span>
-              <span className="text-gray-300 w-20 text-center text-sm">02.20.343</span>
-              <span className="flex items-center space-x-3 flex-1">
-                <span className="w-3 h-3 rounded-full bg-yellow-400 inline-block shadow-sm"></span>
-                <span className="text-white text-sm">Referee</span>
-              </span>
-            </div>
-            {/* Up Arrow */}
-            <div className="flex justify-end mt-4">
-              <span className="text-gray-500 text-lg hover:text-gray-400 cursor-pointer transition-colors">↑</span>
+            
+            {/* Filter Buttons Stack */}
+            <div className="flex flex-col gap-1">
+              {/* Clear Filter Button (Up Arrow) */}
+              <button className="w-8 h-8 bg-gray-700 hover:bg-gray-600 rounded flex items-center justify-center transition-colors">
+                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                </svg>
+              </button>
+              
+              {/* Player Filter Buttons */}
+              <button className="w-8 h-8 bg-red-600 hover:bg-red-500 rounded text-white text-xs font-bold transition-colors">
+                RED
+              </button>
+              <button className="w-8 h-8 bg-blue-600 hover:bg-blue-500 rounded text-white text-xs font-bold transition-colors">
+                BLUE
+              </button>
+              <button className="w-8 h-8 bg-yellow-500 hover:bg-yellow-400 rounded text-white text-xs font-bold transition-colors">
+                YELLOW
+              </button>
+              
+              {/* Event Type Filter Buttons */}
+              <button className="w-8 h-8 bg-gray-700 hover:bg-gray-600 rounded text-white text-xs font-bold transition-colors">
+                Head
+              </button>
+              <button className="w-8 h-8 bg-gray-700 hover:bg-gray-600 rounded text-white text-xs font-bold transition-colors">
+                Punch
+              </button>
+              <button className="w-8 h-8 bg-gray-700 hover:bg-gray-600 rounded text-white text-xs font-bold transition-colors">
+                Kick
+              </button>
+              <button className="w-8 h-8 bg-gray-700 hover:bg-gray-600 rounded text-white text-xs font-bold transition-colors">
+                SPINNING
+              </button>
             </div>
           </div>
         </div>
