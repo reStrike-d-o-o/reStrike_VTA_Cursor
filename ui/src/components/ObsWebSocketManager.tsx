@@ -94,63 +94,58 @@ const ObsWebSocketManager: React.FC = () => {
         throw new Error('Connection not found');
       }
 
-      // Call the backend to connect (Tauri not available in web environment)
-      // // if (window.__TAURI__) {
-      //   // await window.__TAURI__.invoke('obs_connect', { connectionName });
-      // } else {
-        // Fallback for development - test WebSocket connection directly
-        console.log(`Testing WebSocket connection to ${connection.host}:${connection.port}...`);
+      // Fallback for development - test WebSocket connection directly
+      console.log(`Testing WebSocket connection to ${connection.host}:${connection.port}...`);
+      
+      // Create a simple WebSocket test
+      const wsUrl = `ws://${connection.host}:${connection.port}`;
+      const ws = new WebSocket(wsUrl);
+      
+      ws.onopen = () => {
+        console.log(`WebSocket connected to ${connectionName}`);
+        updateObsConnectionStatus(connectionName, 'Connected');
         
-        // Create a simple WebSocket test
-        const wsUrl = `ws://${connection.host}:${connection.port}`;
-        const ws = new WebSocket(wsUrl);
-        
-        ws.onopen = () => {
-          console.log(`WebSocket connected to ${connectionName}`);
-          updateObsConnectionStatus(connectionName, 'Connected');
-          
-          // Send OBS WebSocket v5 identify request
-          const identifyRequest = {
-            op: 1,
-            d: {
-              rpcVersion: 1,
-              authentication: connection.password ? {
-                challenge: "test_challenge",
-                salt: "test_salt"
-              } : null,
-              eventSubscriptions: 0
-            }
-          };
-          
-          ws.send(JSON.stringify(identifyRequest));
-        };
-        
-        ws.onmessage = (event) => {
-          try {
-            const response = JSON.parse(event.data);
-            console.log(`OBS Response for ${connectionName}:`, response);
-            
-            if (response.op === 2) { // Identify response
-              updateObsConnectionStatus(connectionName, 'Authenticated');
-            }
-          } catch (error) {
-            console.error(`Failed to parse OBS response for ${connectionName}:`, error);
+        // Send OBS WebSocket v5 identify request
+        const identifyRequest = {
+          op: 1,
+          d: {
+            rpcVersion: 1,
+            authentication: connection.password ? {
+              challenge: "test_challenge",
+              salt: "test_salt"
+            } : null,
+            eventSubscriptions: 0
           }
         };
         
-        ws.onerror = (error) => {
-          console.error(`WebSocket error for ${connectionName}:`, error);
-          updateObsConnectionStatus(connectionName, 'Error', 'WebSocket connection failed');
-        };
-        
-        ws.onclose = () => {
-          console.log(`WebSocket closed for ${connectionName}`);
-          updateObsConnectionStatus(connectionName, 'Disconnected');
-        };
-        
-        // Store WebSocket reference for later disconnection
-        (window as any)[`obs_ws_${connectionName}`] = ws;
-      }
+        ws.send(JSON.stringify(identifyRequest));
+      };
+      
+      ws.onmessage = (event) => {
+        try {
+          const response = JSON.parse(event.data);
+          console.log(`OBS Response for ${connectionName}:`, response);
+          
+          if (response.op === 2) { // Identify response
+            updateObsConnectionStatus(connectionName, 'Authenticated');
+          }
+        } catch (error) {
+          console.error(`Failed to parse OBS response for ${connectionName}:`, error);
+        }
+      };
+      
+      ws.onerror = (error) => {
+        console.error(`WebSocket error for ${connectionName}:`, error);
+        updateObsConnectionStatus(connectionName, 'Error', 'WebSocket connection failed');
+      };
+      
+      ws.onclose = () => {
+        console.log(`WebSocket closed for ${connectionName}`);
+        updateObsConnectionStatus(connectionName, 'Disconnected');
+      };
+      
+      // Store WebSocket reference for later disconnection
+      (window as any)[`obs_ws_${connectionName}`] = ws;
 
     } catch (error) {
       updateObsConnectionStatus(
@@ -170,13 +165,8 @@ const ObsWebSocketManager: React.FC = () => {
         delete (window as any)[`obs_ws_${connectionName}`];
       }
 
-      // Call the backend to disconnect (Tauri not available in web environment)
-      // // if (window.__TAURI__) {
-      //   // await window.__TAURI__.invoke('obs_disconnect', { connectionName });
-      // } else {
-        // Fallback for development
-        console.log('Tauri not available, WebSocket closed directly');
-      // }
+      // Fallback for development
+      console.log('Tauri not available, WebSocket closed directly');
 
       updateObsConnectionStatus(connectionName, 'Disconnected');
     } catch (error) {
