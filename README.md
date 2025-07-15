@@ -83,6 +83,11 @@ reStrike_VTA/
 - **Dependencies:** Windows OBS Studio, mpv (Windows build)
 - **Linting:** ESLint (with TypeScript and React plugin)
 
+### **📖 Development Setup Guides**
+- **[Windows + VSCode Setup Guide](./docs/development/WINDOWS_VSCODE_SETUP_GUIDE.md)** - Complete step-by-step guide for Windows development
+- **[AI Agent Quick Reference](./docs/development/AI_AGENT_WINDOWS_GUIDE.md)** - Essential information for AI agents
+- **[Environment System Guide](./docs/development/environment-system.md)** - Dual environment (Web/Windows) documentation
+
 ## 🌐 **Environment System**
 
 The project supports **dual environment operation** - **Web** and **Windows** modes with automatic detection and environment-specific features.
