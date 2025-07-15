@@ -219,12 +219,11 @@ const ObsWebSocketManager: React.FC = () => {
           console.log(`OBS Response for ${connectionName}:`, response);
           
           if (response.op === 0) { // Hello message
-            // No authentication required - send Identify without auth
+            // No authentication required - send Identify without auth field
             const identifyRequest = {
               op: 1,
               d: {
                 rpcVersion: 1,
-                authentication: null,
                 eventSubscriptions: 0
               }
             };

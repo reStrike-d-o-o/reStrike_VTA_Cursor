@@ -9,7 +9,6 @@ import VideoClips from './components/VideoClips';
 import Settings from './components/Settings';
 import SidebarTest from './components/SidebarTest';
 import EnvironmentTest from './components/EnvironmentTest';
-import SimpleTest from './components/SimpleTest';
 
 // Error Boundary for global error handling
 class GlobalErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean, error: any}> {
@@ -131,11 +130,6 @@ function App() {
   ] as const;
 
   const renderCurrentView = () => {
-    // Temporarily return simple test to debug rendering
-    return <SimpleTest />;
-    
-    // Original switch statement (commented out for debugging)
-    /*
     switch (currentView) {
       case 'sidebar-test':
         return <SidebarTest />;
@@ -152,7 +146,6 @@ function App() {
       default:
         return <SidebarTest />;
     }
-    */
   };
 
   return (
@@ -204,7 +197,7 @@ function App() {
               <div className="flex items-center space-x-3">
                 <div className="text-2xl">🎯</div>
                 <div>
-                  <h1 className="text-xl font-bold">reStrike VTA Overlay - Hot Reload Test</h1>
+                  <h1 className="text-xl font-bold">reStrike VTA Overlay</h1>
                   <div className="flex items-center space-x-2">
                     <p className="text-sm text-gray-400">Overlay & Automation Toolkit</p>
                     <span className={`px-2 py-1 text-xs rounded-full font-medium ${
