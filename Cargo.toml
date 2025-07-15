@@ -1,14 +1,48 @@
 [package]
-name = "restrike-vta-backend"
+name = "reStrike_VTA"
 version = "0.1.0"
+description = "Windows desktop application for taekwondo referees using Tauri and React"
+authors = ["damjanZGB"]
+license = "MIT"
+repository = "https://github.com/reStrike-d-o-o/reStrike_VTA_Cursor"
 edition = "2021"
 
+[lib]
+name = "reStrike_VTA"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.6.2", features = [] }
+
 [dependencies]
-tokio = { version = "1.0", features = ["full"] }
-rusqlite = { version = "0.29", features = ["bundled"] }
-reqwest = { version = "0.11", features = ["json"] }
-sysinfo = "0.29"
+tauri = { version = "2.6.2", features = ["api-all"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-tokio-tungstenite = { version = "0.20", features = ["native-tls"] }
-uuid = { version = "1.0", features = ["v4"] } 
+tokio = { version = "1.0", features = ["full"] }
+reqwest = { version = "0.11", features = ["json"] }
+uuid = { version = "1.0", features = ["v4"] }
+
+[features]
+custom-protocol = ["tauri/custom-protocol"]
+
+[profile.dev]
+opt-level = 1
+debug = true
+strip = false
+debug-assertions = true
+overflow-checks = true
+lto = false
+panic = "unwind"
+codegen-units = 256
+incremental = true
+
+[profile.release]
+opt-level = 3
+debug = false
+strip = true
+debug-assertions = false
+overflow-checks = false
+lto = true
+panic = "abort"
+codegen-units = 1
+incremental = false 

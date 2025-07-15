@@ -6,13 +6,17 @@
   "scripts": {
     "start": "tauri dev",
     "dev": "tauri dev",
+    "dev:fast": "cd ui && npm run start:fast && cd .. && cargo tauri dev --no-watch",
     "build": "tauri build",
+    "build:fast": "cd ui && npm run build:fast && cd .. && cargo tauri build --release",
     "preview": "tauri dev --no-watch",
     "test": "cd ui && npm test",
     "test:backend": "cargo test",
     "clean": "cargo clean && cd ui && npm run build -- --clean",
+    "clean:all": "rm -rf target ui/build node_modules/.cache && cargo clean && cd ui && npm run clean",
     "lint": "cd ui && npm run lint",
-    "format": "cargo fmt && cd ui && npm run format"
+    "format": "cargo fmt && cd ui && npm run format",
+    "optimize": "npm run clean:all && npm run build:fast"
   },
   "author": "damjanZGB",
   "license": "MIT",
