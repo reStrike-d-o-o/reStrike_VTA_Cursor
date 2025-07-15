@@ -64,10 +64,7 @@ command_exists() {
 # Function to start frontend
 start_frontend() {
     echo -e "${BLUE}Starting React frontend...${NC}"
-    cd ui
-    npm start &
-    cd ..
-    echo -e "${GREEN}React frontend started on http://localhost:3000${NC}"
+    ./scripts/development/start-frontend-final.sh
 }
 
 # Function to start backend

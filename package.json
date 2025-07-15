@@ -5,6 +5,13 @@
   "main": "src/index.js",
   "scripts": {
     "start": "tauri dev",
+    "start:frontend": "./scripts/development/start-frontend-final.sh",
+    "start:frontend:auto": "./scripts/development/start-frontend-final.sh",
+    "dev": "./scripts/development/dev.sh start-all",
+    "dev:frontend": "./scripts/development/dev.sh start-frontend",
+    "dev:backend": "./scripts/development/dev.sh start-backend",
+    "cleanup": "./scripts/development/dev.sh cleanup",
+    "status": "./scripts/development/dev.sh status",
     "test": "echo \"No tests yet\" && exit 0"
   },
   "author": "damjanZGB",

@@ -5,6 +5,7 @@
   "main": "src/App.tsx",
   "scripts": {
     "start": "CHOKIDAR_USEPOLLING=true FAST_REFRESH=true WATCHPACK_POLLING=true react-scripts start",
+    "start:auto": "../scripts/development/start-frontend.sh",
     "start:docker": "CHOKIDAR_USEPOLLING=true CHOKIDAR_INTERVAL=1000 FAST_REFRESH=true WATCHPACK_POLLING=true HOST=0.0.0.0 react-scripts start",
     "start:web": "REACT_APP_ENVIRONMENT=web CHOKIDAR_USEPOLLING=true FAST_REFRESH=true WATCHPACK_POLLING=true react-scripts start",
     "start:windows": "REACT_APP_ENVIRONMENT=windows react-scripts start",
