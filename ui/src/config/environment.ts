@@ -1,5 +1,6 @@
 // Global Environment Configuration
 // This file controls whether the app runs in web mode or Windows desktop mode
+// No React hooks or browser-only code at the top level!
 
 export type Environment = 'web' | 'windows';
 
@@ -23,27 +24,24 @@ export class EnvironmentConfig {
 
   // Detect the current environment
   private detectEnvironment(): Environment {
-    // Check if we're running in a Tauri environment
+    // Only check for Tauri in browser context
     if (typeof window !== 'undefined' && (window as any).__TAURI__) {
       return 'windows';
     }
-
     // Check for environment variables
-    if (process.env.REACT_APP_ENVIRONMENT === 'windows') {
+    if (typeof process !== 'undefined' && process.env.REACT_APP_ENVIRONMENT === 'windows') {
       return 'windows';
     }
-
-    if (process.env.REACT_APP_ENVIRONMENT === 'web') {
+    if (typeof process !== 'undefined' && process.env.REACT_APP_ENVIRONMENT === 'web') {
       return 'web';
     }
-
     // Default to web for development
     return 'web';
   }
 
   // Detect if we're in production
   private detectProduction(): boolean {
-    return process.env.NODE_ENV === 'production';
+    return typeof process !== 'undefined' && process.env.NODE_ENV === 'production';
   }
 
   // Get current environment
@@ -79,28 +77,24 @@ export class EnvironmentConfig {
       isDevelopment: !this._isProduction,
       isWindows: this.isWindows,
       isWeb: this.isWeb,
-      
       // API endpoints
       api: {
         baseUrl: this.isWindows ? 'tauri://localhost' : 'http://localhost:1420',
         timeout: this.isWindows ? 30000 : 10000,
       },
-
       // OBS WebSocket configuration
       obs: {
         useTauriCommands: this.isWindows,
         useWebSocketDirect: this.isWeb,
-        defaultPort: this.isWindows ? 4455 : 4455,
-        defaultHost: this.isWindows ? 'localhost' : 'localhost',
+        defaultPort: 4455,
+        defaultHost: 'localhost',
       },
-
       // Development settings
       dev: {
         hotReload: this.isWeb,
         polling: this.isWeb,
         port: this.isWeb ? 3000 : 1420,
       },
-
       // Feature flags
       features: {
         tauriCommands: this.isWindows,
@@ -125,8 +119,8 @@ export class EnvironmentConfig {
       userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
       platform: typeof navigator !== 'undefined' ? navigator.platform : 'unknown',
       hasTauri: typeof window !== 'undefined' && !!(window as any).__TAURI__,
-      nodeEnv: process.env.NODE_ENV,
-      reactAppEnv: process.env.REACT_APP_ENVIRONMENT,
+      nodeEnv: typeof process !== 'undefined' ? process.env.NODE_ENV : undefined,
+      reactAppEnv: typeof process !== 'undefined' ? process.env.REACT_APP_ENVIRONMENT : undefined,
     };
   }
 }
@@ -149,20 +143,18 @@ export const getObsConfig = () => config.obs;
 export const getDevConfig = () => config.dev;
 export const getFeatures = () => config.features;
 
-// Tauri command wrapper
+// Tauri command wrapper (guarded)
 export const invokeTauri = async (command: string, args?: any): Promise<any> => {
   if (!isWindows()) {
     throw new Error(`Tauri command '${command}' not available in web environment`);
   }
-
   if (typeof window !== 'undefined' && (window as any).__TAURI__) {
     return await (window as any).__TAURI__.invoke(command, args);
   }
-
   throw new Error('Tauri not available');
 };
 
-// Environment-aware API calls
+// Environment-aware API calls (guarded)
 export const apiCall = async (endpoint: string, options?: RequestInit): Promise<any> => {
   if (isWindows()) {
     // Use Tauri commands for Windows
@@ -176,11 +168,9 @@ export const apiCall = async (endpoint: string, options?: RequestInit): Promise<
         ...options?.headers,
       },
     });
-    
     if (!response.ok) {
       throw new Error(`API call failed: ${response.statusText}`);
     }
-    
     return await response.json();
   }
 };

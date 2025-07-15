@@ -4,11 +4,7 @@ import { env } from '../config/environment';
 // React hook for environment-aware components
 export const useEnvironment = () => {
   const [isClient, setIsClient] = useState(false);
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-
+  useEffect(() => { setIsClient(true); }, []);
   const envConfig = {
     environment: env.environment,
     isWindows: env.isWindows,
@@ -18,7 +14,6 @@ export const useEnvironment = () => {
     config: env.config,
     info: env.getInfo(),
   };
-
   return {
     ...envConfig,
     isClient,
@@ -26,30 +21,22 @@ export const useEnvironment = () => {
     canUseTauri: isClient && envConfig.isWindows,
     canUseWebSocket: isClient && envConfig.isWeb,
     canUseNativeFeatures: isClient && envConfig.isWindows,
-    
     // Environment-specific rendering
     renderForEnvironment: (windowsComponent: React.ReactNode, webComponent: React.ReactNode) => {
       if (!isClient) return null;
       return envConfig.isWindows ? windowsComponent : webComponent;
     },
-    
-    // Conditional feature rendering
     renderIfWindows: (component: React.ReactNode) => {
       if (!isClient || !envConfig.isWindows) return null;
       return component;
     },
-    
     renderIfWeb: (component: React.ReactNode) => {
       if (!isClient || !envConfig.isWeb) return null;
       return component;
     },
-    
-    // Environment-specific class names
     getEnvironmentClass: (baseClass: string) => {
       return `${baseClass} ${baseClass}--${envConfig.environment}`;
     },
-    
-    // Environment-specific styles
     getEnvironmentStyles: (baseStyles: React.CSSProperties, webOverrides?: React.CSSProperties, windowsOverrides?: React.CSSProperties) => {
       if (envConfig.isWeb && webOverrides) {
         return { ...baseStyles, ...webOverrides };
@@ -65,7 +52,6 @@ export const useEnvironment = () => {
 // Hook for environment-specific API calls
 export const useEnvironmentApi = () => {
   const { isWindows, isWeb } = useEnvironment();
-  
   const apiCall = async (endpoint: string, options?: RequestInit): Promise<any> => {
     if (isWindows) {
       // Use Tauri commands for Windows
@@ -81,22 +67,18 @@ export const useEnvironmentApi = () => {
           ...options?.headers,
         },
       });
-      
       if (!response.ok) {
         throw new Error(`API call failed: ${response.statusText}`);
       }
-      
       return await response.json();
     }
   };
-
   return { apiCall };
 };
 
 // Hook for environment-specific OBS operations
 export const useEnvironmentObs = () => {
-  const { isWindows, isWeb } = useEnvironment();
-  
+  const { isWindows } = useEnvironment();
   const obsOperation = async (operation: string, params?: any): Promise<any> => {
     if (isWindows) {
       // Use Tauri commands for Windows
@@ -104,18 +86,15 @@ export const useEnvironmentObs = () => {
       return await invokeTauri(`obs_${operation}`, params);
     } else {
       // Use direct WebSocket for web
-      // This would need to be implemented based on your WebSocket setup
       throw new Error(`OBS operation '${operation}' not implemented for web environment`);
     }
   };
-
   return { obsOperation };
 };
 
 // Hook for environment-specific file operations
 export const useEnvironmentFileSystem = () => {
   const { isWindows, isWeb } = useEnvironment();
-  
   const fileOperation = async (operation: string, params?: any): Promise<any> => {
     if (isWindows) {
       // Use Tauri commands for Windows
@@ -125,7 +104,6 @@ export const useEnvironmentFileSystem = () => {
       // Use browser APIs for web
       switch (operation) {
         case 'read':
-          // Use FileReader API
           return new Promise((resolve, reject) => {
             const input = document.createElement('input');
             input.type = 'file';
@@ -143,7 +121,6 @@ export const useEnvironmentFileSystem = () => {
             input.click();
           });
         case 'save':
-          // Use download link
           const { data, filename } = params;
           const blob = new Blob([data], { type: 'text/plain' });
           const url = URL.createObjectURL(blob);
@@ -158,6 +135,5 @@ export const useEnvironmentFileSystem = () => {
       }
     }
   };
-
   return { fileOperation };
 }; 

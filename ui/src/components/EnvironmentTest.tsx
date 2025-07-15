@@ -40,20 +40,28 @@ const EnvironmentTest: React.FC = () => {
       // Test 4: API Call Test
       try {
         addResult('Testing API call...');
-        // This will fail in web mode since we don't have a backend server
-        await apiCall('test');
-        addResult('✅ API call successful');
+        if (isWindows) {
+          await apiCall('test');
+          addResult('✅ API call successful (Windows/Tauri)');
+        } else {
+          await apiCall('test');
+          addResult('✅ API call successful (Web)');
+        }
       } catch (error) {
-        addResult(`❌ API call failed (expected): ${error}`);
+        addResult(`❌ API call failed (expected in web mode): ${error}`);
       }
       
       // Test 5: OBS Operation Test
       try {
         addResult('Testing OBS operation...');
-        await obsOperation('test');
-        addResult('✅ OBS operation successful');
+        if (isWindows) {
+          await obsOperation('test');
+          addResult('✅ OBS operation successful (Windows/Tauri)');
+        } else {
+          throw new Error('OBS operation not available in web mode');
+        }
       } catch (error) {
-        addResult(`❌ OBS operation failed (expected): ${error}`);
+        addResult(`❌ OBS operation failed (expected in web mode): ${error}`);
       }
       
       // Test 6: File Operation Test (Web only)

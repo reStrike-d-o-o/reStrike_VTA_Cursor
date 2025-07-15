@@ -76,6 +76,9 @@ const ObsWebSocketManager: React.FC = () => {
     removeObsConnection(name);
   };
 
+  // All Tauri/OBS/native code is strictly guarded by isWindows()
+  // No Tauri/OBS code runs in web mode or outside browser
+
   const connectToObs = async (connectionName: string) => {
     try {
       log(`Connecting to OBS: ${connectionName} (Environment: ${env.environment})`);
@@ -93,8 +96,12 @@ const ObsWebSocketManager: React.FC = () => {
         // Use Tauri commands for Windows environment
         log(`Using Tauri commands for ${connectionName}`);
         try {
-          await invokeTauri('obs_connect', { connectionName });
-          log(`Tauri connection successful for ${connectionName}`);
+          if (typeof window !== 'undefined' && (window as any).__TAURI__) {
+            await invokeTauri('obs_connect', { connectionName });
+            log(`Tauri connection successful for ${connectionName}`);
+          } else {
+            throw new Error('Tauri not available in this environment');
+          }
         } catch (error) {
           logError(`Tauri connection failed for ${connectionName}`, error);
           updateObsConnectionStatus(connectionName, 'Error', `Tauri connection failed: ${error}`);
@@ -177,8 +184,12 @@ const ObsWebSocketManager: React.FC = () => {
         // Use Tauri commands for Windows environment
         log(`Using Tauri disconnect for ${connectionName}`);
         try {
-          await invokeTauri('obs_disconnect', { connectionName });
-          log(`Tauri disconnect successful for ${connectionName}`);
+          if (typeof window !== 'undefined' && (window as any).__TAURI__) {
+            await invokeTauri('obs_disconnect', { connectionName });
+            log(`Tauri disconnect successful for ${connectionName}`);
+          } else {
+            throw new Error('Tauri not available in this environment');
+          }
         } catch (error) {
           logError(`Tauri disconnect failed for ${connectionName}`, error);
         }
