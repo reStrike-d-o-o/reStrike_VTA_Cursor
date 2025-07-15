@@ -1,9 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../stores';
-import { createComponentLogger } from '../utils/logger';
-
-const logger = createComponentLogger('Overlay');
 
 const Overlay: React.FC = () => {
   const {
@@ -48,7 +45,7 @@ const Overlay: React.FC = () => {
     if (!video) return;
 
     if (isPlaying) {
-      video.play().catch(logger.error);
+      video.play().catch(console.error);
     } else {
       video.pause();
     }

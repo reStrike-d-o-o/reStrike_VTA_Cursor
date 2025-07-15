@@ -1,9 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useAppStore } from '../stores';
-import { createComponentLogger } from '../utils/logger';
-
-const logger = createComponentLogger('SidebarTest');
 
 interface Event {
   id: string;
@@ -23,7 +20,7 @@ const SidebarTest: React.FC = () => {
 
   // Windows-specific initialization
   useEffect(() => {
-    logger.info('Initializing Windows-only sidebar component');
+    console.log('Initializing Windows-only sidebar component');
     initializeWindowsFeatures();
   }, []);
 
@@ -31,14 +28,14 @@ const SidebarTest: React.FC = () => {
     try {
       // Initialize Tauri commands for real-time data
       if (window.__TAURI__) {
-        logger.info('✅ Tauri environment detected for sidebar');
+        console.log('✅ Tauri environment detected for sidebar');
         
         // Initialize PSS protocol listener
         // Initialize real-time event processing
         // Initialize OBS status monitoring
       }
     } catch (error) {
-      logger.error('❌ Failed to initialize Windows features:', error);
+      console.error('❌ Failed to initialize Windows features:', error);
     }
   };
 

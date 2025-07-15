@@ -1,9 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useAppStore } from '../stores';
-import { createComponentLogger } from '../utils/logger';
-
-const logger = createComponentLogger('ObsWebSocketManager');
 
 interface ObsConnection {
   name: string;
@@ -14,14 +11,14 @@ interface ObsConnection {
 }
 
 const ObsWebSocketManager: React.FC = () => {
-  const { obsConnections, updateObsConnections } = useAppStore();
+  const { obsConnections } = useAppStore();
   const [connections, setConnections] = useState<ObsConnection[]>([
     { name: 'OBS Studio', host: 'localhost', port: 4455, status: 'disconnected' }
   ]);
 
   // Windows-specific initialization
   useEffect(() => {
-    logger.info('Initializing Windows-only OBS WebSocket Manager');
+    console.log('Initializing Windows-only OBS WebSocket Manager');
     initializeWindowsFeatures();
   }, []);
 
@@ -29,19 +26,19 @@ const ObsWebSocketManager: React.FC = () => {
     try {
       // Initialize Tauri commands for OBS integration
       if (window.__TAURI__) {
-        logger.info('✅ Tauri environment detected for OBS integration');
+        console.log('✅ Tauri environment detected for OBS integration');
         
         // Initialize OBS WebSocket connection
         // Initialize video playback system
         // Initialize PSS protocol listener
       }
     } catch (error) {
-      logger.error('❌ Failed to initialize Windows features:', error);
+      console.error('❌ Failed to initialize Windows features:', error);
     }
   };
 
   const connectToObs = async (connectionName: string) => {
-    logger.info(`Connecting to OBS: ${connectionName}`);
+    console.log(`Connecting to OBS: ${connectionName}`);
     
     try {
       // Use Tauri command for OBS connection
@@ -51,24 +48,24 @@ const ObsWebSocketManager: React.FC = () => {
         });
         
         if (result.success) {
-          logger.info(`✅ Successfully connected to OBS: ${connectionName}`);
+          console.log(`✅ Successfully connected to OBS: ${connectionName}`);
           updateConnectionStatus(connectionName, 'connected');
         } else {
-          logger.error(`❌ Failed to connect to OBS: ${connectionName}`, result.error);
+          console.error(`❌ Failed to connect to OBS: ${connectionName}`, result.error);
           updateConnectionStatus(connectionName, 'error', result.error);
         }
       } else {
-        logger.error('❌ Tauri not available for OBS connection');
+        console.error('❌ Tauri not available for OBS connection');
         updateConnectionStatus(connectionName, 'error', 'Tauri not available');
       }
     } catch (error) {
-      logger.error(`❌ Error connecting to OBS: ${connectionName}`, error);
-      updateConnectionStatus(connectionName, 'error', error.message);
+      console.error(`❌ Error connecting to OBS: ${connectionName}`, error);
+      updateConnectionStatus(connectionName, 'error', (error as Error)?.message || String(error));
     }
   };
 
   const disconnectFromObs = async (connectionName: string) => {
-    logger.info(`Disconnecting from OBS: ${connectionName}`);
+    console.log(`Disconnecting from OBS: ${connectionName}`);
     
     try {
       // Use Tauri command for OBS disconnection
@@ -78,23 +75,23 @@ const ObsWebSocketManager: React.FC = () => {
         });
         
         if (result.success) {
-          logger.info(`✅ Successfully disconnected from OBS: ${connectionName}`);
+          console.log(`✅ Successfully disconnected from OBS: ${connectionName}`);
           updateConnectionStatus(connectionName, 'disconnected');
         } else {
-          logger.error(`❌ Failed to disconnect from OBS: ${connectionName}`, result.error);
+          console.error(`❌ Failed to disconnect from OBS: ${connectionName}`, result.error);
         }
       } else {
-        logger.error('❌ Tauri not available for OBS disconnection');
+        console.error('❌ Tauri not available for OBS disconnection');
         updateConnectionStatus(connectionName, 'disconnected');
       }
     } catch (error) {
-      logger.error(`❌ Error disconnecting from OBS: ${connectionName}`, error);
+      console.error('❌ Error disconnecting from OBS: ' + connectionName, error);
       updateConnectionStatus(connectionName, 'disconnected');
     }
   };
 
   const testObsStatus = async () => {
-    logger.info('Testing OBS status');
+    console.log('Testing OBS status');
     
     try {
       // Use Tauri command for OBS status
@@ -102,18 +99,18 @@ const ObsWebSocketManager: React.FC = () => {
         const result = await window.__TAURI__.invoke('obs_get_status');
         
         if (result.success) {
-          logger.info('✅ OBS status retrieved successfully', result.data);
+          console.log('✅ OBS status retrieved successfully', result.data);
           return result.data;
         } else {
-          logger.error('❌ Failed to get OBS status', result.error);
+          console.error('❌ Failed to get OBS status', result.error);
           return null;
         }
       } else {
-        logger.error('❌ Tauri not available for OBS status');
+        console.error('❌ Tauri not available for OBS status');
         return null;
       }
     } catch (error) {
-      logger.error('❌ Error getting OBS status', error);
+      console.error('❌ Error getting OBS status', error);
       return null;
     }
   };

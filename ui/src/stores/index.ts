@@ -53,7 +53,7 @@ export interface AppState {
   isPlaying: boolean;
   
   // UI State
-  currentView: 'sidebar-test' | 'overlay' | 'settings' | 'clips' | 'obs-manager' | 'environment-test';
+  currentView: 'sidebar-test' | 'overlay' | 'settings' | 'clips' | 'obs-manager';
   isLoading: boolean;
   error: string | null;
 }
