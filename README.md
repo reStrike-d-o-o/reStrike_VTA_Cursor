@@ -10,11 +10,39 @@
 - **Rust Backend**: All core plugins implemented with zero compilation errors
 - **GitHub Integration**: Professional project management with 18 issues created
 - **Project Board**: Kanban workflow with automated status synchronization
+- **🏁 Flag Management System**: 253 IOC flags downloaded and integrated
 
 ### 🎯 **GitHub Project Management**
 **📋 Project Board**: https://github.com/users/damjanZGB/projects/3  
 **📊 Issues**: https://github.com/damjanZGB/reStrike_VTA_Cursor/issues  
 **📈 Progress**: 18 comprehensive issues covering all development aspects
+
+---
+
+## 🏁 **Flag Management System**
+
+### ✅ **IOC Flag Download System - COMPLETED**
+- **253 Flags Downloaded**: Complete IOC (International Olympic Committee) flag collection
+- **Source**: Direct scraping from Wikipedia IOC codes page
+- **Format**: All flags saved as `{IOC}.png` (e.g., `USA.png`, `GBR.png`)
+- **Coverage**: Current NOCs, Historic NOCs, Special Olympic/Paralympic codes
+- **Integration**: React flag utility with automatic emoji fallbacks
+- **Script**: `scripts/media/download_official_ioc_flags.py`
+
+#### **Flag Categories Downloaded:**
+- **Current NOCs (Table 1)**: 206 flags - Main Olympic countries
+- **Additional Territories (Table 2)**: 2 flags - Faroe Islands, Macau
+- **Historic NOCs (Table 3)**: 12 flags - Soviet Union, Yugoslavia, East/West Germany
+- **Historic Country Names (Table 4)**: 18 flags - Burma, Ceylon, Zaire, etc.
+- **Special Olympic Codes (Table 5)**: 10 flags - Refugee Olympic Team, Independent Athletes
+- **Special Paralympic Codes (Table 6)**: 5 flags - Refugee Paralympic Team, etc.
+
+#### **Technical Implementation:**
+- **Script**: Python-based Wikipedia scraper with BeautifulSoup
+- **Strategy**: Prioritized Current NOCs, then downloaded from other tables only if IOC code not already present
+- **Reports**: JSON and Markdown reports generated automatically
+- **React Integration**: `ui/src/utils/flagUtils.tsx` updated with all 253 IOC codes
+- **Fallbacks**: Emoji flags for all codes with automatic error handling
 
 ---
 
@@ -28,6 +56,7 @@ reStrike_VTA/
 ├── tests/          # Unit and integration tests
 ├── public/         # Static assets (if applicable)
 ├── scripts/        # Automation scripts (build, deploy)
+│   └── media/      # Media processing scripts (flag downloads)
 ├── .github/
 │   ├── workflows/  # CI/CD workflows
 │   └── ISSUE_TEMPLATE/  # GitHub issue templates
@@ -134,10 +163,13 @@ reStrike_VTA/
 │   ├── 📁 obs/                # OBS integration scripts
 │   ├── 📁 project/            # Project management scripts
 │   └── 📁 media/              # Media processing scripts
+│       └── download_official_ioc_flags.py  # IOC flag downloader
 ├── 📁 src/                     # Rust backend (organized modules)
 │   ├── 📁 plugins/            # Plugin modules
 │   └── 📁 commands/           # Tauri command handlers
 └── 📁 ui/                      # React frontend
+    ├── 📁 public/assets/flags/ # 253 IOC flag images
+    └── 📁 src/utils/           # Flag utility functions
 ```
 
 For detailed structure information, see [Project Structure Guide](./docs/PROJECT_STRUCTURE.md).
@@ -237,6 +269,7 @@ MIT
 - **Issues**: 18 comprehensive development tasks
 - **Documentation**: 25+ organized documentation files
 - **Scripts**: 15+ automation and development scripts
+- **🏁 Flags**: 253 IOC flags downloaded and integrated
 
 **🏆 Status**: Ready for Windows production deployment with comprehensive enhancement roadmap established.
 
