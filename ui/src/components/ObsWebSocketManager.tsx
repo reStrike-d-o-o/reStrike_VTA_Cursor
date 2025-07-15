@@ -268,6 +268,30 @@ const ObsWebSocketManager: React.FC = () => {
     <div className="p-6 bg-gray-900 text-white rounded-lg">
       <h2 className="text-2xl font-bold mb-6">OBS WebSocket Manager</h2>
       
+      {/* Test Controls */}
+      <div className="mb-6 flex gap-2">
+        <button
+          onClick={testObsStatus}
+          className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg transition-colors"
+        >
+          🧪 Test OBS Status
+        </button>
+        <button
+          onClick={() => {
+            const { updateObsStatus } = useAppStore.getState();
+            updateObsStatus({
+              is_recording: true,
+              is_streaming: false,
+              cpu_usage: 45,
+              recording_connection: 'OBS_REC',
+            });
+          }}
+          className="bg-orange-600 hover:bg-orange-700 px-4 py-2 rounded-lg transition-colors"
+        >
+          📹 Test Recording Status
+        </button>
+      </div>
+      
       {/* Add New Connection */}
       <div className="mb-8">
         <button
