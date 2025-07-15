@@ -376,6 +376,15 @@ const ObsWebSocketManager: React.FC = () => {
   return (
     <div className="p-6 bg-gray-900 text-white min-h-screen">
       <div className="max-w-6xl mx-auto">
+        {/* Password warning */}
+        <div className="mb-6 p-4 bg-yellow-700 bg-opacity-80 rounded-lg flex items-center gap-3 border-l-4 border-yellow-400">
+          <span className="text-2xl">⚠️</span>
+          <div>
+            <span className="font-semibold">Password authentication is currently disabled.</span>
+            <br />
+            <span className="text-yellow-200 text-sm">OBS connections do <b>not</b> accept passwords. All authentication is disabled for this version. Please ensure your OBS WebSocket server does not require a password.</span>
+          </div>
+        </div>
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-blue-400 mb-2">

@@ -105,7 +105,13 @@ const initialState: AppState = {
     },
   ],
   activeObsConnection: null,
-  obsStatus: null,
+  obsStatus: {
+    is_recording: false,
+    is_streaming: false,
+    cpu_usage: 15,
+    recording_connection: undefined,
+    streaming_connection: undefined,
+  },
   overlaySettings: {
     opacity: 0.9,
     position: 'bottom-right',

@@ -1,5 +1,8 @@
 # reStrike VTA - Windows Desktop Application 
 
+> ⚠️ **Password authentication for OBS WebSocket is currently not supported.**
+> All OBS WebSocket servers must have authentication disabled. Do not set a password in OBS WebSocket settings or the connection will fail.
+
 ## 🎯 **PROJECT MISSION**
 reStrike VTA is a **native Windows desktop application** for taekwondo referees that provides:
 - **Instant Video Replay** with 10-second buffer and slow-motion playback
@@ -172,6 +175,8 @@ await apiCall('obs/status');
 - **🏁 Flag Integration**: React components with flag display ✅ **COMPLETED**
 - **Status**: ✅ All integration points tested and operational
 
+### **OBS Integration**: Password authentication is currently not supported. All OBS WebSocket servers must have authentication disabled.
+
 ---
 
 ## 📋 **PROJECT MANAGEMENT**
@@ -210,6 +215,7 @@ await apiCall('obs/status');
 - **Connection Management**: Multiple OBS connections with status monitoring ✅ **READY**
 - **Scene Control**: Scene switching and source management ✅ **IMPLEMENTED**
 - **Recording/Streaming**: Start/stop recording and streaming ✅ **READY**
+- **Password Authentication**: ❌ **NOT SUPPORTED** (all servers must have authentication disabled)
 
 ### **PSS Protocol**
 - **Real-time Parsing**: UDP message parsing for competition data ✅ **TESTED**

@@ -1,5 +1,8 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { motion } from 'framer-motion';
+import { useAppStore, ObsStatusInfo } from '../stores';
 import { FlagImage } from '../utils/flagUtils';
+import { isWindows, invokeTauri, logError } from '../config/environment';
 
 // Event data structure
 interface EventData {
@@ -11,10 +14,13 @@ interface EventData {
 }
 
 const SidebarTest: React.FC = () => {
-  const [manualMode, setManualMode] = useState(false);
-  const eventTableRef = useRef<HTMLDivElement>(null);
+  const { 
+    obsStatus, 
+    updateObsStatus, 
+    obsConnections 
+  } = useAppStore();
   
-  // Filter state
+  const [manualMode, setManualMode] = useState(false);
   const [activeFilters, setActiveFilters] = useState<{
     players: Set<'red' | 'blue' | 'yellow'>;
     events: Set<'head' | 'punch' | 'kick' | 'spinning kick' | 'foul'>;
@@ -22,6 +28,56 @@ const SidebarTest: React.FC = () => {
     players: new Set(),
     events: new Set()
   });
+  
+  const eventTableRef = useRef<HTMLDivElement>(null);
+
+  // OBS Status Polling - Uses existing connections from OBS Manager
+  useEffect(() => {
+    const pollObsStatus = async () => {
+      try {
+        // Check if we have any active OBS connections
+        const activeConnections = obsConnections.filter(
+          conn => conn.status === 'Connected' || conn.status === 'Authenticated'
+        );
+
+        if (activeConnections.length === 0) {
+          // No active connections, set default status
+          updateObsStatus({
+            is_recording: false,
+            is_streaming: false,
+            cpu_usage: 0,
+          });
+          return;
+        }
+
+        if (isWindows()) {
+          // Use Tauri commands for Windows environment
+          const status = await invokeTauri('obs_get_status');
+          if (status.success && status.data) {
+            updateObsStatus(status.data);
+          }
+        } else {
+          // For web environment, get status from active WebSocket connections
+          // The status should be updated by the OBS WebSocket Manager
+          // We can get the latest status from the store
+          if (obsStatus) {
+            // Status is already available from OBS Manager
+            // No need to make additional requests
+          }
+        }
+      } catch (error) {
+        logError('OBS status polling failed', error);
+      }
+    };
+
+    // Poll immediately
+    pollObsStatus();
+
+    // Then poll every 3 seconds
+    const interval = setInterval(pollObsStatus, 3000);
+
+    return () => clearInterval(interval);
+  }, [updateObsStatus, obsConnections, obsStatus]);
 
   // Sample event data
   const allEvents: EventData[] = [
@@ -107,6 +163,31 @@ const SidebarTest: React.FC = () => {
     }
   };
 
+  // Get CPU color based on usage
+  const getCpuColor = (cpuUsage: number) => {
+    if (cpuUsage <= 30) return 'bg-green-500';
+    if (cpuUsage <= 70) return 'bg-yellow-500';
+    return 'bg-red-500';
+  };
+
+  // Get recording status color
+  const getRecordingColor = (isRecording: boolean) => {
+    return isRecording ? 'bg-red-500' : 'bg-green-500';
+  };
+
+  // Get streaming status color
+  const getStreamingColor = (isStreaming: boolean) => {
+    return isStreaming ? 'bg-red-500' : 'bg-green-500';
+  };
+
+  // Get status from OBS Manager connections
+  const isRecording = obsStatus?.is_recording ?? false;
+  const isStreaming = obsStatus?.is_streaming ?? false;
+  const cpuUsage = obsStatus?.cpu_usage ?? 0;
+  const hasObsConnections = obsConnections.some(
+    conn => conn.status === 'Connected' || conn.status === 'Authenticated'
+  );
+
   return (
     <div className="min-h-screen flex bg-[#101820] text-white" style={{ fontFamily: 'Segoe UI, Roboto, sans-serif' }}>
       {/* Left Control Column */}
@@ -145,13 +226,43 @@ const SidebarTest: React.FC = () => {
             Advanced
           </button>
         </div>
+        
         {/* Status Bar (bottom left) */}
         <div className="w-full flex justify-between items-center text-xs text-gray-500 mt-8 px-2">
-          <span className="flex items-center">
-            <div className="w-2 h-2 bg-red-500 rounded-full mr-2 animate-pulse"></div>
-            OBS Recording
-          </span>
-          <span>CP 5%</span>
+          {/* OBS Recording Status */}
+          <div className="flex items-center space-x-1">
+            <span 
+              className={`w-2 h-2 rounded-full ${getRecordingColor(isRecording)} ${
+                !hasObsConnections ? 'opacity-50' : ''
+              }`}
+              title={hasObsConnections ? `Recording: ${isRecording ? 'ON' : 'OFF'}` : 'No OBS connection'}
+            ></span>
+            <span className={!hasObsConnections ? 'opacity-50' : ''}>REC</span>
+          </div>
+          
+          {/* OBS Streaming Status */}
+          <div className="flex items-center space-x-1">
+            <span 
+              className={`w-2 h-2 rounded-full ${getStreamingColor(isStreaming)} ${
+                !hasObsConnections ? 'opacity-50' : ''
+              }`}
+              title={hasObsConnections ? `Streaming: ${isStreaming ? 'ON' : 'OFF'}` : 'No OBS connection'}
+            ></span>
+            <span className={!hasObsConnections ? 'opacity-50' : ''}>STR</span>
+          </div>
+          
+          {/* OBS CPU Usage */}
+          <div className="flex items-center space-x-1">
+            <span 
+              className={`w-2 h-2 rounded-full ${getCpuColor(cpuUsage)} ${
+                !hasObsConnections ? 'opacity-50' : ''
+              }`}
+              title={hasObsConnections ? `CPU: ${cpuUsage.toFixed(1)}%` : 'No OBS connection'}
+            ></span>
+            <span className={!hasObsConnections ? 'opacity-50' : ''}>
+              CPU {hasObsConnections ? `${cpuUsage.toFixed(0)}%` : '--'}
+            </span>
+          </div>
         </div>
       </div>
 

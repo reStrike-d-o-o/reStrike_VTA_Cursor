@@ -1,4 +1,7 @@
-# OBS WebSocket Configuration Guide - Dual Protocol Support
+# OBS WebSocket Integration Configuration
+
+> ⚠️ **Password authentication is currently not supported.**
+> All OBS WebSocket servers must have authentication disabled. Do not set a password in OBS WebSocket settings or the connection will fail.
 
 ## Overview
 

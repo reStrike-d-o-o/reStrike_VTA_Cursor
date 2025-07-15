@@ -2,6 +2,9 @@
 
 **Native Windows Desktop Application** - Professional overlay and automation toolkit for VTA using Tauri and React.
 
+> ⚠️ **Password authentication for OBS WebSocket is currently not supported.**
+> All OBS WebSocket servers must have authentication disabled. Do not set a password in OBS WebSocket settings or the connection will fail.
+
 ## 🚀 **PROJECT STATUS: 99% COMPLETE - PRODUCTION READY**
 
 ### ✅ **Latest Achievements**
@@ -148,6 +151,10 @@ function MyComponent() {
 
 **📖 Full Documentation**: [Environment System Guide](./docs/development/environment-system.md)
 
+## OBS Integration
+
+> **Note:** Password authentication is currently not supported. Please ensure your OBS WebSocket server does not require a password.
+
 ## Quick Start
 1. **Clone the repository:**
    ```bash
@@ -185,6 +192,8 @@ function MyComponent() {
    cd ..
    npm run start
    ```
+
+**Important:** If you are using OBS WebSocket, make sure authentication is disabled (no password set) in OBS Studio settings.
 
 ## 🧪 **Testing & Development Roadmap**
 
