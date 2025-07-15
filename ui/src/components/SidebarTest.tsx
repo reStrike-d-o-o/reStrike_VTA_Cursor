@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { useAppStore, ObsStatusInfo } from '../stores';
+import { useAppStore } from '../stores';
+import { useEnvironment } from '../hooks/useEnvironment';
+import { logError } from '../config/environment';
 import { FlagImage } from '../utils/flagUtils';
-import { useEnvironment, useEnvironmentObs } from '../hooks/useEnvironment';
 
 // Event data structure
 interface EventData {
@@ -62,7 +63,7 @@ const SidebarTest: React.FC = () => {
             }
           } catch (obsError) {
             // OBS operation failed, use default status
-            console.error('OBS status operation failed', obsError);
+            logError('OBS status operation failed', obsError);
             updateObsStatus({
               is_recording: false,
               is_streaming: false,
@@ -79,7 +80,7 @@ const SidebarTest: React.FC = () => {
           }
         }
       } catch (error) {
-        console.error('OBS status polling failed', error);
+        logError('OBS status polling failed', error);
         // Set default status on error
         updateObsStatus({
           is_recording: false,

@@ -124,24 +124,24 @@ const ObsWebSocketManager: React.FC = () => {
 
   // Direct WebSocket connection for web environment
   const connectWebSocketDirect = async (connectionName: string, connection: ObsConnection) => {
-    console.log(`Testing WebSocket connection to ${connection.host}:${connection.port}...`);
+    log(`Testing WebSocket connection to ${connection.host}:${connection.port}...`);
     
     // Create a simple WebSocket test
     const wsUrl = `ws://${connection.host}:${connection.port}`;
     const ws = new WebSocket(wsUrl);
     
     ws.onopen = () => {
-      console.log(`WebSocket connected to ${connectionName}`);
+      log(`WebSocket connected to ${connectionName}`);
       updateObsConnectionStatus(connectionName, 'Connected');
     };
     
     ws.onerror = (error) => {
-      console.error(`WebSocket error for ${connectionName}:`, error);
+      logError(`WebSocket error for ${connectionName}:`, error);
       updateObsConnectionStatus(connectionName, 'Error', 'WebSocket connection failed');
     };
     
     ws.onclose = () => {
-      console.log(`WebSocket closed for ${connectionName}`);
+      log(`WebSocket closed for ${connectionName}`);
       updateObsConnectionStatus(connectionName, 'Disconnected');
     };
     
@@ -150,7 +150,7 @@ const ObsWebSocketManager: React.FC = () => {
       try {
         await handleV5Connection(ws, connection, connectionName);
       } catch (error) {
-        console.error(`V5 connection failed for ${connectionName}:`, error);
+        logError(`V5 connection failed for ${connectionName}:`, error);
         updateObsConnectionStatus(connectionName, 'Error', `Connection failed: ${error}`);
         ws.close();
         return;
@@ -159,14 +159,14 @@ const ObsWebSocketManager: React.FC = () => {
       try {
         await handleV4Connection(ws, connection, connectionName);
       } catch (error) {
-        console.error(`V4 connection failed for ${connectionName}:`, error);
+        logError(`V4 connection failed for ${connectionName}:`, error);
         updateObsConnectionStatus(connectionName, 'Error', `Connection failed: ${error}`);
         ws.close();
         return;
       }
     } else {
       // Unknown protocol version
-      console.error(`Unknown protocol version for ${connectionName}: ${connection.protocol_version}`);
+      logError(`Unknown protocol version for ${connectionName}: ${connection.protocol_version}`);
       updateObsConnectionStatus(connectionName, 'Error', `Unknown protocol version: ${connection.protocol_version}`);
       ws.close();
       return;
@@ -212,7 +212,7 @@ const ObsWebSocketManager: React.FC = () => {
       const messageHandler = async (event: MessageEvent) => {
         try {
           const response = JSON.parse(event.data);
-          console.log(`OBS Response for ${connectionName}:`, response);
+          log(`OBS Response for ${connectionName}:`, response);
           
           if (response.op === 0) { // Hello message
             // No authentication required - send Identify without auth field
@@ -224,18 +224,18 @@ const ObsWebSocketManager: React.FC = () => {
               }
             };
             
-            console.log(`Sending Identify for ${connectionName} (no auth):`, identifyRequest);
+            log(`Sending Identify for ${connectionName} (no auth):`, identifyRequest);
             ws.send(JSON.stringify(identifyRequest));
           } else if (response.op === 2) { // Identified message
-            console.log(`Successfully connected to ${connectionName}`);
+            log(`Successfully connected to ${connectionName}`);
             updateObsConnectionStatus(connectionName, 'Authenticated');
             ws.removeEventListener('message', messageHandler);
             resolve();
           } else if (response.op === 7) { // RequestResponse
-            console.log(`Request response from ${connectionName}:`, response);
+            log(`Request response from ${connectionName}:`, response);
           }
         } catch (error) {
-          console.error(`Failed to parse OBS response for ${connectionName}:`, error);
+          logError(`Failed to parse OBS response for ${connectionName}:`, error);
           reject(error);
         }
       };
@@ -256,20 +256,20 @@ const ObsWebSocketManager: React.FC = () => {
       const messageHandler = async (event: MessageEvent) => {
         try {
           const response = JSON.parse(event.data);
-          console.log(`OBS v4 Response for ${connectionName}:`, response);
+          log(`OBS v4 Response for ${connectionName}:`, response);
           
           // V4 connection is simpler - just check if we get a valid response
           if (response['error'] || response['error-id']) {
-            console.error(`V4 connection failed for ${connectionName}:`, response);
+            logError(`V4 connection failed for ${connectionName}:`, response);
             reject(new Error(`V4 connection failed: ${response['error'] || response['error-id']}`));
           } else {
-            console.log(`V4 connection successful for ${connectionName}`);
+            log(`V4 connection successful for ${connectionName}`);
             updateObsConnectionStatus(connectionName, 'Authenticated');
             ws.removeEventListener('message', messageHandler);
             resolve();
           }
         } catch (error) {
-          console.error(`Failed to parse OBS v4 response for ${connectionName}:`, error);
+          logError(`Failed to parse OBS v4 response for ${connectionName}:`, error);
           reject(error);
         }
       };
