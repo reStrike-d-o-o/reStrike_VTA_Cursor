@@ -1,9 +1,9 @@
 //! Main application class and lifecycle management
 
 use crate::types::{AppResult, AppState, AppView};
-use crate::plugins::plugin_obs::manager::ObsManager;
-use crate::plugins::plugin_playback::player::VideoPlayer;
-use crate::plugins::plugin_store::protocol::PssProtocol;
+use crate::obs::manager::ObsManager;
+use crate::video::player::VideoPlayer;
+use crate::pss::protocol::PssProtocol;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
