@@ -11,6 +11,7 @@ Welcome to the reStrike VTA project documentation. This directory contains compr
 - **Instant Video Replay**: Complete mpv integration with professional controls
 - **OBS Integration**: Dual WebSocket protocol support (v4/v5)
 - **Modern UI**: Professional interface with keyboard shortcuts and animations
+- **Sidebar System**: Professional event table with advanced filtering ✅ **NEW**
 
 ### **🎯 Immediate Next Steps**
 1. **Core System Testing** - Verify all implemented features
@@ -35,6 +36,7 @@ Development guides, checklists, and environment management documentation.
 - **[Framework Updates](./development/framework-updates.md)** - Procedures for updating Node.js, mpv, and other frameworks
 - **[Port Forwarding](./development/port-forwarding.md)** - Port configuration and management
 - **[Framework Update Summary](./development/framework-update-summary.md)** - Summary of recent framework updates
+- **[Sidebar Filter Implementation](./development/sidebar-filter-implementation.md)** - **NEW**: Complete documentation of sidebar filter system
 - **[Checklists](./development/checklists/)** - Development verification checklists
 
 ### 📋 [Project Management](./project/)
@@ -80,6 +82,7 @@ Comprehensive guide to the project's organized file structure and organization p
 - [ ] **Overlay.tsx** (306 lines) - Video overlay system
 - [ ] **ObsWebSocketManager.tsx** - OBS connection management
 - [ ] **App.tsx** (268 lines) - Main application navigation
+- [ ] **SidebarTest.tsx** (250+ lines) - **NEW**: Event table and filtering system
 - [ ] **Keyboard Shortcuts** - All Ctrl+1-5, Space, F11 combinations
 - [ ] **State Management** - Zustand store operations
 - [ ] **Error Handling** - Toast notifications and error recovery
@@ -97,6 +100,7 @@ Comprehensive guide to the project's organized file structure and organization p
 - [ ] **Video Playback Chain** - React → Tauri → mpv integration
 - [ ] **OBS Connection** - React interface → Rust plugin → OBS Studio
 - [ ] **Real-Time Data** - PSS protocol → Rust parser → React display
+- [ ] **Sidebar Integration** - **NEW**: Event filtering with real-time data
 
 ### **Phase 2: Windows Desktop Application** 🏆 **PRODUCTION READY**
 
@@ -180,6 +184,11 @@ Comprehensive guide to the project's organized file structure and organization p
 2. Proceed to **Phase 2: Windows Desktop Application** deployment
 3. Reference **Future Enhancement Roadmap** for continued development
 
+### For UI/UX Development
+1. Review **[Sidebar Filter Implementation](./development/sidebar-filter-implementation.md)** for filter system details
+2. Check **[UI Design Document](./requirements/ui-design-document.md)** for design specifications
+3. Reference **[Project Structure](./PROJECT_STRUCTURE.md)** for component organization
+
 ---
 
 ## 📝 Documentation Standards
@@ -205,6 +214,7 @@ See [OBS Configuration](./integration/obs-websocket-config.md)
 
 ## 🔄 Recent Updates
 
+- **2025-01-27**: **MAJOR MILESTONE** - Sidebar filter system implementation complete
 - **2025-01-27**: **MAJOR MILESTONE** - Complete application stack verified operational (98% complete)
 - **2025-01-27**: Added comprehensive Testing & Development Roadmap (100+ features planned)
 - **2025-01-27**: Established 6 major enhancement categories with detailed feature lists
@@ -218,11 +228,12 @@ See [OBS Configuration](./integration/obs-websocket-config.md)
 - **Missing Information**: Check if it's covered in the requirements or integration guides
 - **Structure Questions**: Refer to the [Project Structure Guide](./PROJECT_STRUCTURE.md)
 - **Testing Questions**: Follow the Testing & Development Roadmap above
+- **UI/UX Questions**: Check the [Sidebar Filter Implementation](./development/sidebar-filter-implementation.md) guide
 
 ---
 
 **📝 Note**: This documentation reflects a production-ready Windows desktop application with comprehensive enhancement planning. The reStrike VTA project is ready for immediate production testing and deployment.
 
-**🔄 Last Updated**: Current session - Application stack verification complete
+**🔄 Last Updated**: Current session - Sidebar filter system implementation complete
 **👤 Maintained by**: Development Team 
 **✅ Status**: 98% Complete - Production Testing Phase 
