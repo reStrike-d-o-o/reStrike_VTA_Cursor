@@ -23,6 +23,8 @@
     - Persists events in SQLite; superfast bulk writes; exposes query API.  
   - **AI Analysis Plugin**  
     - Tags incoming events; prepares for future video-content AI modules.  
+  - **Flag Management Plugin**  
+    - Manages IOC flag recognition and display; handles flag downloads and updates.
   - **UI Overlay**  
     - Tauri + React front-end; docks left/right; global shortcuts; collapsed/expanded modes.  
   - **License Plugin**  
@@ -36,14 +38,14 @@
   - Plugins are independently testable, updatable, and deployable.  
 - **Layered within Plugins**  
   1. **Infrastructure** (Rust/Node I/O, WebSocket, SQLite)  
-  2. **Domain Logic** (parsing, OBS commands, licensing rules)  
+  2. **Domain Logic** (parsing, OBS commands, licensing rules, flag management)  
   3. **Application API** (commands/events published to bus)  
   4. **Presentation** (UI plugin subscribes to events, issues commands)
 
 ## State management
 - **Frontend (React)**  
   - **Zustand** for simple, scalable stores:  
-    - `useUdpEventsStore`, `useObsStatusStore`, `useUiStore`, `useLicenseStore`  
+    - `useUdpEventsStore`, `useObsStatusStore`, `useUiStore`, `useLicenseStore`, `useFlagStore`  
   - Plugins expose commands via Tauri; UI subscribes to bus events.  
 - **Backend (Rust)**  
   - **tokio::sync::broadcast** channel for inter-plugin events.  
@@ -52,9 +54,10 @@
 ## Data flow
 1. **UDP datagram** → UDP Plugin parses → emits `EventParsed` on bus.  
 2. **EventParsed** → Event Store persists → emits `EventStored` → UI subscribes → updates table.  
-3. **User clicks “Replay”** → UI invokes Tauri command → Core Bus → OBS Plugin extracts buffer clip → emits `ClipReady` → Playback Plugin launches `mpv`.  
+3. **User clicks "Replay"** → UI invokes Tauri command → Core Bus → OBS Plugin extracts buffer clip → emits `ClipReady` → Playback Plugin launches `mpv`.  
 4. **OBS status change** → OBS Plugin emits `ObsStatus` → UI store updates record button animation.  
 5. **Manual Mode toggle** → UI confirms → emits `ManualModeToggled` → Core Bus → UI enters editable mode.
+6. **Flag display** → UI requests flag → Flag Plugin provides flag URL → UI displays flag image.
 
 ## Technical Stack
 - **Shell & IPC**: Tauri (Rust backend + Node.js runtime)  
@@ -63,9 +66,10 @@
 - **Protocol Parsing**: Rust module loading TXT schema at runtime  
 - **Database**: SQLite via `rusqlite` (backend)  
 - **OBS Integration**: `obs-websocket-rs` plugin  
-- **Playback**: `mpv` via Tauri’s `shell` API  
+- **Playback**: `mpv` via Tauri's `shell` API  
 - **Licensing**: Rust HTTP client (`reqwest`) for REST; fingerprint via `sysinfo` + `machine_uid`  
 - **Hotkeys**: `tauri-plugin-global-shortcut`
+- **Flag Management**: IOC flag recognition and display system
 
 ## Authentication Process
 - **Activation Flow**  
@@ -79,9 +83,9 @@
 
 ## Route Design
 - **Internal (Tauri Commands)**  
-  - `udp:start(iface,port)`, `obs:cmd(action,params)`, `replay:play(recId)`, `license:activate(key)`, `settings:update(opts)`  
+  - `udp:start(iface,port)`, `obs:cmd(action,params)`, `replay:play(recId)`, `license:activate(key)`, `settings:update(opts)`, `flag:get(iocCode)`  
 - **Event Topics**  
-  - `EventParsed`, `EventStored`, `ObsStatus`, `ClipReady`, `LicenseStatus`, `UiStateChange`  
+  - `EventParsed`, `EventStored`, `ObsStatus`, `ClipReady`, `LicenseStatus`, `UiStateChange`, `FlagUpdated`  
 - **External REST**  
   - `POST /api/activate`  
   - `POST /api/validate`  
@@ -95,6 +99,9 @@
 
   #[tauri::command]
   fn replay_play(recording_id: i64) -> Result<(), Error> { /* … */ }
+
+  #[tauri::command]
+  fn get_flag_url(ioc_code: String) -> Result<String, Error> { /* … */ }
 ```
 
 ## Known Issues & Compatibility

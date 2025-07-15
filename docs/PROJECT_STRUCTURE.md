@@ -48,11 +48,16 @@ reStrike_VTA/
 │   ├── 📁 requirements/       # Requirements and specifications
 │   │   ├── instant-video-replay-prd.md # Product requirements
 │   │   ├── software-requirements.md # Technical requirements
-│   │   └── ui-design-document.md # UI/UX specifications
+│   │   ├── ui-design-document.md # UI/UX specifications
+│   │   └── FLAG_MANAGEMENT_MODULE.md # Flag management specifications
 │   │
-│   └── 📁 integration/        # Integration guides
-│       ├── obs-dual-protocol.md # OBS WebSocket implementation
-│       └── obs-websocket-config.md # OBS configuration guide
+│   ├── 📁 integration/        # Integration guides
+│   │   ├── obs-dual-protocol.md # OBS WebSocket implementation
+│   │   └── obs-websocket-config.md # OBS configuration guide
+│   │
+│   ├── FLAG_MANAGEMENT_SYSTEM.md # Complete flag management documentation
+│   ├── PROJECT_STRUCTURE.md   # This file
+│   └── README.md              # Main documentation index
 │
 ├── 📁 protocol/                # Protocol definitions
 │   └── pss_schema.txt        # PSS protocol schema
@@ -73,7 +78,8 @@ reStrike_VTA/
 │   │   └── project-tracker.py # GitHub issue management
 │   │
 │   ├── 📁 media/              # Media processing scripts
-│   │   └── generate-clip.sh   # Video clip generation
+│   │   ├── generate-clip.sh   # Video clip generation
+│   │   └── download_ioc_flags.py # IOC flag download script
 │   │
 │   └── 📁 workflows/          # CI/CD workflows
 │       └── ci.yml            # Continuous integration
@@ -93,15 +99,23 @@ reStrike_VTA/
 │
 ├── 📁 ui/                      # React frontend
 │   ├── 📁 public/             # Static assets
-│   │   └── index.html         # HTML template
+│   │   ├── index.html         # HTML template
+│   │   └── 📁 assets/         # Static assets
+│   │       └── 📁 flags/      # IOC flag images (253 flags)
+│   │           ├── {IOC}.png  # Individual flag files
+│   │           └── README.md  # Flag management documentation
 │   │
 │   ├── 📁 src/                # React source code
 │   │   ├── 📁 components/     # React components
 │   │   │   ├── ObsWebSocketManager.tsx # OBS connection manager
-│   │   │   └── Overlay.tsx    # Main overlay component
+│   │   │   ├── Overlay.tsx    # Main overlay component
+│   │   │   └── SidebarTest.tsx # Event table and filtering
 │   │   │
 │   │   ├── 📁 stores/         # State management
 │   │   │   └── index.ts       # Zustand stores
+│   │   │
+│   │   ├── 📁 utils/          # Utility functions
+│   │   │   └── flagUtils.tsx  # Flag management utilities
 │   │   │
 │   │   ├── App.tsx            # Main application component
 │   │   └── index.tsx          # React entry point
@@ -121,6 +135,7 @@ reStrike_VTA/
 ├── LICENSE                     # Project license
 ├── package-lock.json           # Node.js dependency lock
 ├── package.json                # Root project configuration
+├── PROJECT_CONTEXT.md          # Project context and status
 └── README.md                   # Project overview
 ```
 
@@ -131,12 +146,14 @@ reStrike_VTA/
 - **Frontend**: React code in `ui/`
 - **Documentation**: Organized by category in `docs/`
 - **Scripts**: Categorized by purpose in `scripts/`
+- **Assets**: Static files in `ui/public/assets/`
 
 ### 2. **Logical Grouping**
 - **Development**: Container, VS Code, scripts
 - **Documentation**: API, guides, requirements, integration
 - **Source Code**: Backend plugins, frontend components
 - **Configuration**: Environment and project settings
+- **Media Assets**: Flags, images, and static content
 
 ### 3. **Scalability**
 - **Modular Structure**: Easy to add new components
@@ -165,6 +182,11 @@ reStrike_VTA/
 - **TypeScript/React**: `PascalCase.tsx` for components, `camelCase.ts` for utilities
 - **Configuration**: `kebab-case.json` or `kebab-case.toml`
 
+### Assets
+- **Flags**: `{IOC}.png` (3-letter IOC country codes)
+- **Images**: `kebab-case.png` or `kebab-case.jpg`
+- **Documents**: `kebab-case.md` or `kebab-case.pdf`
+
 ## Import/Reference Paths
 
 ### Frontend Imports
@@ -174,6 +196,9 @@ import ObsWebSocketManager from './components/ObsWebSocketManager';
 
 // Stores
 import { useAppStore } from './stores/index';
+
+// Utilities
+import { getFlagUrl } from './utils/flagUtils';
 
 // Types
 import { ObsConnectionConfig } from './types/obs';
@@ -196,6 +221,16 @@ use commands::tauri_commands::*;
 <!-- Cross-references -->
 See [Container Restart Guide](../development/container-restart.md)
 See [OBS Configuration](../integration/obs-websocket-config.md)
+See [Flag Management System](../FLAG_MANAGEMENT_SYSTEM.md)
+```
+
+### Asset References
+```typescript
+// Flag images
+const flagUrl = '/assets/flags/USA.png';
+
+// Static assets
+const imageUrl = '/assets/images/logo.png';
 ```
 
 ## Maintenance Guidelines
@@ -246,5 +281,5 @@ See [OBS Configuration](../integration/obs-websocket-config.md)
 
 **📝 Note**: This structure should be maintained and updated as the project evolves. All team members should follow these guidelines when adding or modifying files.
 
-**🔄 Last Updated**: $(date)
+**🔄 Last Updated**: Current session - Flag management system implementation complete
 **👤 Maintained by**: Development Team 

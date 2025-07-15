@@ -28,6 +28,7 @@
     - Scrollable
     - Most recent recording is always at the top
     - Auto-selected and visually highlighted
+    - **Flag Display**: Country flags shown next to athlete names
 
 - **Collapsed View**
   - Small square (150x150 px) at docked edge
@@ -59,8 +60,15 @@
     - Timestamp
     - Match #
     - Players or event summary
+    - **Country flags** for athletes (IOC codes)
   - **Newest entry always at the top, selected, and visually distinct**
   - Clicking an item launches the corresponding video via `mpv`
+
+- **Flag Management Components**
+  - **Flag Display**: Country flags shown as small icons next to athlete names
+  - **Flag Fallback**: Emoji flags displayed when image files are unavailable
+  - **Flag Utility**: Centralized flag management with IOC code support
+  - **Flag Download**: Automated IOC flag download and management system
 
 ## Interaction Patterns
 
@@ -87,6 +95,11 @@
   - Designed for use with StreamDeck or similar devices
   - Mappable keys via Settings UI (e.g. Ctrl+Alt+1 = Start Replay)
 
+- **Flag Display**
+  - Flags automatically load and display based on IOC codes
+  - Fallback to emoji flags if image files are missing
+  - Optimized loading for performance with 253+ flag images
+
 ## Visual Design Elements & Color Scheme
 
 - **Dark Theme**
@@ -101,6 +114,7 @@
   - Blinking record button
   - Smooth transitions for expansion/collapse
   - Highlight fade on new recording entry
+  - Flag loading animations
 
 ## Mobile, Web App, Desktop Considerations
 
@@ -121,6 +135,7 @@
 - **Visual Cues:**
   - Consistent icon + text usage
   - High-contrast backgrounds for readability
+  - Flag icons sized appropriately for UI context
 
 ## Accessibility
 
@@ -133,5 +148,7 @@
   - All elements minimum 44x44 px
 - **Screen Reader-Friendly Labels**
   - Accessible labeling for all buttons and list items
+  - Flag alt-text includes country names
 - **Color-Blind Friendly Mode**
   - High-contrast toggle available in Settings
+  - Flag fallbacks ensure visibility for all users
