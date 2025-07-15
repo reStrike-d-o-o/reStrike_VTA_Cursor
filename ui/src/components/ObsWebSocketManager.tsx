@@ -129,10 +129,21 @@ const ObsWebSocketManager: React.FC = () => {
                   }
                 };
                 
+                console.log(`Sending authentication for ${connectionName}:`, identifyRequest);
                 ws.send(JSON.stringify(identifyRequest));
               } catch (error) {
                 console.error(`Authentication failed for ${connectionName}:`, error);
-                updateObsConnectionStatus(connectionName, 'Error', 'Authentication failed');
+                // Try without authentication as fallback
+                console.log(`Trying without authentication for ${connectionName}...`);
+                const identifyRequest = {
+                  op: 1,
+                  d: {
+                    rpcVersion: 1,
+                    authentication: null,
+                    eventSubscriptions: 0
+                  }
+                };
+                ws.send(JSON.stringify(identifyRequest));
               }
             } else {
               // No authentication required
@@ -145,6 +156,7 @@ const ObsWebSocketManager: React.FC = () => {
                 }
               };
               
+              console.log(`No authentication required for ${connectionName}`);
               ws.send(JSON.stringify(identifyRequest));
             }
           } else if (response.op === 2) { // Identify response
@@ -201,21 +213,38 @@ const ObsWebSocketManager: React.FC = () => {
 
   // Generate authentication response for OBS WebSocket v5
   const generateAuthResponse = async (password: string, challenge: string, salt: string): Promise<string> => {
-    // OBS WebSocket v5 uses SHA256(challenge + salt + password)
-    const combined = challenge + salt + password;
-    
-    // Convert string to ArrayBuffer
-    const encoder = new TextEncoder();
-    const data = encoder.encode(combined);
-    
-    // Generate SHA256 hash
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    
-    // Convert to base64
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const hashBase64 = btoa(String.fromCharCode(...hashArray));
-    
-    return hashBase64;
+    try {
+      // OBS WebSocket v5 uses SHA256(challenge + salt + password)
+      const combined = challenge + salt + password;
+      
+      // Convert string to ArrayBuffer
+      const encoder = new TextEncoder();
+      const data = encoder.encode(combined);
+      
+      // Generate SHA256 hash
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      
+      // Convert to base64 using a more reliable method
+      const hashArray = new Uint8Array(hashBuffer);
+      let binary = '';
+      for (let i = 0; i < hashArray.length; i++) {
+        binary += String.fromCharCode(hashArray[i]);
+      }
+      const hashBase64 = btoa(binary);
+      
+      console.log('Auth debug:', {
+        challenge,
+        salt,
+        password: password.substring(0, 3) + '***', // Don't log full password
+        combined: combined.substring(0, 20) + '...',
+        hashBase64
+      });
+      
+      return hashBase64;
+    } catch (error) {
+      console.error('Authentication generation failed:', error);
+      throw error;
+    }
   };
 
   // Test OBS status polling
