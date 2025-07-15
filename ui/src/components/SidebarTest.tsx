@@ -266,7 +266,7 @@ const SidebarTest: React.FC = () => {
               <div className="flex flex-col gap-1">
                 <button 
                   onClick={() => toggleEventFilter('head')}
-                  className={`w-[35px] h-8 rounded text-white text-xs font-bold transition-colors ${
+                  className={`w-[140px] h-8 rounded text-white text-xs font-bold transition-colors ${
                     activeFilters.events.has('head') 
                       ? 'bg-blue-600 ring-2 ring-blue-400' 
                       : 'bg-gray-700 hover:bg-gray-600'
@@ -277,7 +277,7 @@ const SidebarTest: React.FC = () => {
                 </button>
                 <button 
                   onClick={() => toggleEventFilter('punch')}
-                  className={`w-[35px] h-8 rounded text-white text-xs font-bold transition-colors ${
+                  className={`w-[140px] h-8 rounded text-white text-xs font-bold transition-colors ${
                     activeFilters.events.has('punch') 
                       ? 'bg-blue-600 ring-2 ring-blue-400' 
                       : 'bg-gray-700 hover:bg-gray-600'
@@ -288,7 +288,7 @@ const SidebarTest: React.FC = () => {
                 </button>
                 <button 
                   onClick={() => toggleEventFilter('kick')}
-                  className={`w-[35px] h-8 rounded text-white text-xs font-bold transition-colors ${
+                  className={`w-[140px] h-8 rounded text-white text-xs font-bold transition-colors ${
                     activeFilters.events.has('kick') 
                       ? 'bg-blue-600 ring-2 ring-blue-400' 
                       : 'bg-gray-700 hover:bg-gray-600'
@@ -299,7 +299,7 @@ const SidebarTest: React.FC = () => {
                 </button>
                 <button 
                   onClick={() => toggleEventFilter('spinning kick')}
-                  className={`w-[35px] h-8 rounded text-white text-xs font-bold transition-colors ${
+                  className={`w-[140px] h-8 rounded text-white text-xs font-bold transition-colors ${
                     activeFilters.events.has('spinning kick') 
                       ? 'bg-blue-600 ring-2 ring-blue-400' 
                       : 'bg-gray-700 hover:bg-gray-600'
