@@ -2,6 +2,8 @@
 // This file controls whether the app runs in web mode or Windows desktop mode
 // No React hooks or browser-only code at the top level!
 
+import { logger } from '../utils/logger';
+
 export type Environment = 'web' | 'windows';
 
 // Environment detection and configuration
@@ -177,13 +179,9 @@ export const apiCall = async (endpoint: string, options?: RequestInit): Promise<
 
 // Environment-specific logging
 export const log = (message: string, data?: any) => {
-  const prefix = `[${env.environment.toUpperCase()}]`;
-  if (isDevelopment()) {
-    console.log(`${prefix} ${message}`, data || '');
-  }
+  logger.info(message, data, 'Environment');
 };
 
 export const logError = (message: string, error?: any) => {
-  const prefix = `[${env.environment.toUpperCase()}]`;
-  console.error(`${prefix} ERROR: ${message}`, error || '');
+  logger.error(message, { error }, 'Environment', error instanceof Error ? error : undefined);
 }; 

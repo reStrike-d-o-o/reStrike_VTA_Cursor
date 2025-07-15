@@ -1,5 +1,8 @@
-import React from 'react';
+import React, { Component, ReactNode } from 'react';
 import { useEnvironment } from '../hooks/useEnvironment';
+import { createComponentLogger } from '../utils/logger';
+
+const logger = createComponentLogger('EnvironmentWrapper');
 
 interface EnvironmentWrapperProps {
   children: React.ReactNode;
@@ -141,7 +144,7 @@ class ErrorBoundaryClass extends React.Component<
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('Error caught by boundary:', error, errorInfo);
+    logger.error('Error caught by boundary:', error, errorInfo);
     this.props.onError?.(error, errorInfo);
   }
 
@@ -165,7 +168,7 @@ export const ErrorBoundary: React.FC<{
     <ErrorBoundaryClass
       fallback={fallback}
       onError={(error: Error, errorInfo: React.ErrorInfo) => {
-        console.error(`Error in ${isWindows ? 'Windows' : 'Web'} environment:`, error, errorInfo);
+        logger.error(`Error in ${isWindows ? 'Windows' : 'Web'} environment:`, error, errorInfo);
         onError?.(error, errorInfo);
       }}
     >

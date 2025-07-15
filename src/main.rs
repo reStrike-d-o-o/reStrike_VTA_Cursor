@@ -3,49 +3,67 @@ use std::net::{TcpListener, TcpStream};
 use std::thread;
 use tokio::sync::mpsc;
 
+mod utils;
 mod plugins;
-use plugins::plugin_udp::{start_udp_server, PssEvent};
-use plugins::plugin_obs::ObsPlugin;
-
 mod commands;
+
+use plugins::{udp::UdpPlugin, obs::ObsPlugin, playback::PlaybackPlugin};
+use utils::logger::{log_info, log_error, log_warn, create_component_logger};
 
 #[tokio::main]
 async fn main() {
-    println!("🎯 reStrike VTA - Starting Windows Desktop Application...");
+    let logger = create_component_logger("Main");
+    
+    logger.info("🎯 reStrike VTA - Starting Windows Desktop Application...", None);
     
     // Create event channel for PSS events
-    let (pss_event_tx, mut pss_event_rx) = mpsc::unbounded_channel::<PssEvent>();
+    let (pss_event_tx, mut pss_event_rx) = mpsc::unbounded_channel::<plugins::plugin_udp::PssEvent>();
     
-    // Start UDP PSS Protocol Server
-    println!("🚀 Starting UDP PSS Protocol Server on port 6000...");
-    match start_udp_server() {
-        Ok(udp_server) => {
-            println!("✅ UDP PSS Server started successfully");
+    // Initialize UDP PSS Protocol Server
+    logger.info("🚀 Starting UDP PSS Protocol Server on port 6000...", None);
+    match UdpPlugin::new("0.0.0.0:6000") {
+        Ok(mut udp_plugin) => {
+            logger.info("✅ UDP PSS Server started successfully", None);
             
-            // Log server status
-            match udp_server.get_status() {
-                plugins::plugin_udp::UdpServerStatus::Running => {
-                    println!("📊 UDP Server Status: Running");
-                    let stats = udp_server.get_stats();
-                    println!("📈 UDP Server Stats: {} packets received, {} parsed", 
-                             stats.packets_received, stats.packets_parsed);
+            // Start UDP server in background
+            std::thread::spawn(move || {
+                if let Err(e) = udp_plugin.start() {
+                    logger.error("Failed to start UDP server", Some(&e.to_string()));
                 }
-                status => {
-                    println!("⚠️ UDP Server Status: {:?}", status);
+            });
+            
+            // Monitor UDP server status
+            std::thread::spawn(move || {
+                loop {
+                    std::thread::sleep(std::time::Duration::from_secs(30));
+                    match udp_plugin.get_status() {
+                        Ok(status) => {
+                            logger.info("📊 UDP Server Status: Running", None);
+                            logger.info("📈 UDP Server Stats", Some(&format!("{} packets received, {} parsed", 
+                                status.packets_received, status.packets_parsed)));
+                        }
+                        Err(e) => {
+                            logger.warn("⚠️ UDP Server Status", Some(&format!("{:?}", e)));
+                        }
+                    }
                 }
-            }
+            });
         }
         Err(e) => {
-            println!("❌ Failed to start UDP PSS Server: {}", e);
-            println!("🔧 Make sure port 6000 is available");
+            logger.error("❌ Failed to start UDP PSS Server", Some(&e.to_string()));
+            logger.error("🔧 Make sure port 6000 is available", None);
+            return;
         }
     }
     
-    // Initialize OBS Plugin
-    println!("🎥 Initializing OBS WebSocket Plugin...");
+    // Initialize OBS WebSocket Plugin
+    logger.info("🎥 Initializing OBS WebSocket Plugin...", None);
     let (obs_event_tx, mut obs_event_rx) = mpsc::unbounded_channel();
     let obs_plugin = ObsPlugin::new(obs_event_tx);
-    println!("✅ OBS Plugin initialized");
+    logger.info("✅ OBS Plugin initialized", None);
+    
+    // Initialize Playback Plugin
+    let playback_plugin = PlaybackPlugin::new();
     
     // Start event processing tasks
     tokio::spawn(async move {
@@ -61,7 +79,6 @@ async fn main() {
     });
     
     // Start TCP server for legacy compatibility
-    println!("🌐 Starting TCP server on port 7878...");
     let tcp_listener = TcpListener::bind("127.0.0.1:7878")
         .expect("Failed to bind TCP listener");
     
@@ -73,92 +90,94 @@ async fn main() {
     }
 }
 
-async fn handle_pss_event(event: PssEvent) {
+async fn handle_pss_event(event: plugins::plugin_udp::PssEvent) {
+    let logger = create_component_logger("PSS");
+    
     match event {
-        PssEvent::Points { athlete, point_type } => {
-            println!("🥋 Point scored! Athlete {} scored {} points", athlete, get_point_value(point_type));
+        plugins::plugin_udp::PssEvent::Points { athlete, point_type } => {
+            logger.info("🥋 Point scored!", Some(&format!("Athlete {} scored {} points", athlete, get_point_value(point_type))));
             // Here you could trigger OBS recording, save clip, etc.
         }
         
-        PssEvent::HitLevel { athlete, level } => {
-            println!("💥 Hit detected! Athlete {} hit level: {}", athlete, level);
+        plugins::plugin_udp::PssEvent::HitLevel { athlete, level } => {
+            logger.info("💥 Hit detected!", Some(&format!("Athlete {} hit level: {}", athlete, level)));
             // Trigger video replay if hit level is high enough
             if level >= 80 {
-                println!("🎬 High impact hit! Consider saving replay buffer");
+                logger.info("🎬 High impact hit! Consider saving replay buffer", None);
             }
         }
         
-        PssEvent::Warnings { athlete1_warnings, athlete2_warnings } => {
-            println!("⚠️ Warnings updated: Athlete 1: {}, Athlete 2: {}", 
-                     athlete1_warnings, athlete2_warnings);
+        plugins::plugin_udp::PssEvent::Warnings { athlete1_warnings, athlete2_warnings } => {
+            logger.info("⚠️ Warnings updated", Some(&format!("Athlete 1: {}, Athlete 2: {}", athlete1_warnings, athlete2_warnings)));
         }
         
-        PssEvent::Clock { time, action } => {
+        plugins::plugin_udp::PssEvent::Clock { time, action } => {
             if let Some(action) = action {
-                println!("⏰ Clock {}: {}", action, time);
+                logger.info("⏰ Clock event", Some(&format!("{}: {}", action, time)));
                 if action == "stop" {
-                    println!("🛑 Match paused - good time for instant replay");
+                    logger.info("🛑 Match paused - good time for instant replay", None);
                 }
             }
         }
         
-        PssEvent::Winner { name, classification } => {
-            println!("🏆 Winner: {}", name);
+        plugins::plugin_udp::PssEvent::Winner { name, classification } => {
+            logger.info("🏆 Winner", Some(&format!("{}", name)));
             if let Some(class) = classification {
-                println!("📊 Classification: {}", class);
+                logger.info("📊 Classification", Some(&format!("{}", class)));
             }
-            println!("🎬 Match ended - saving final highlights");
+            logger.info("🎬 Match ended - saving final highlights", None);
         }
         
-        PssEvent::FightLoaded => {
-            println!("📋 Fight loaded - ready for competition");
+        plugins::plugin_udp::PssEvent::FightLoaded => {
+            logger.info("📋 Fight loaded - ready for competition", None);
         }
         
-        PssEvent::FightReady => {
-            println!("🚀 Fight ready - starting monitoring");
+        plugins::plugin_udp::PssEvent::FightReady => {
+            logger.info("🚀 Fight ready - starting monitoring", None);
         }
         
-        PssEvent::Athletes { athlete1_short, athlete1_long, athlete1_country, 
-                           athlete2_short, athlete2_long, athlete2_country } => {
-            println!("🥋 Athletes: {} ({}) vs {} ({})", 
-                     athlete1_short, athlete1_country, 
-                     athlete2_short, athlete2_country);
+        plugins::plugin_udp::PssEvent::Athletes { athlete1_short, athlete1_long, athlete1_country, 
+                            athlete2_short, athlete2_long, athlete2_country } => {
+            logger.info("🥋 Athletes", Some(&format!("{} ({}) vs {} ({})", 
+                athlete1_short, athlete1_country, athlete2_short, athlete2_country)));
         }
         
-        PssEvent::Raw(message) => {
-            println!("📨 Raw PSS message: {}", message);
+        plugins::plugin_udp::PssEvent::Raw(message) => {
+            logger.info("📨 Raw PSS message", Some(&message));
         }
         
-        _ => {
-            println!("📡 PSS Event: {:?}", event);
+        plugins::plugin_udp::PssEvent::Parsed(event_data) => {
+            logger.info("📡 PSS Event", Some(&format!("{:?}", event_data)));
         }
     }
 }
 
 async fn handle_obs_event(event: plugins::plugin_obs::ObsEvent) {
+    let logger = create_component_logger("OBS");
+    
     match event {
         plugins::plugin_obs::ObsEvent::ConnectionStatusChanged { connection_name, status } => {
-            println!("🎥 OBS Connection '{}' status: {:?}", connection_name, status);
+            logger.info("🎥 OBS Connection status", Some(&format!("'{}' status: {:?}", connection_name, status)));
         }
         
         plugins::plugin_obs::ObsEvent::RecordingStateChanged { connection_name, is_recording } => {
             if is_recording {
-                println!("🔴 OBS '{}' started recording", connection_name);
+                logger.info("🔴 OBS started recording", Some(&connection_name));
             } else {
-                println!("⏹️ OBS '{}' stopped recording", connection_name);
+                logger.info("⏹️ OBS stopped recording", Some(&connection_name));
             }
         }
         
         plugins::plugin_obs::ObsEvent::ReplayBufferStateChanged { connection_name, is_active } => {
             if is_active {
-                println!("📹 OBS '{}' replay buffer activated", connection_name);
+                logger.info("📹 OBS replay buffer activated", Some(&connection_name));
             } else {
-                println!("📹 OBS '{}' replay buffer deactivated", connection_name);
+                logger.info("📹 OBS replay buffer deactivated", Some(&connection_name));
             }
         }
         
         _ => {
-            println!("🎥 OBS Event: {:?}", event);
+            logger.info("🎥 OBS Event", Some(&format!("{:?}", event)));
         }
     }
 }
@@ -175,19 +194,21 @@ fn get_point_value(point_type: u8) -> &'static str {
 }
 
 fn handle_tcp_client(mut stream: TcpStream) {
+    let logger = create_component_logger("TCP");
     let mut buffer = [0; 1024];
+    
     match stream.read(&mut buffer) {
         Ok(size) => {
             let request = String::from_utf8_lossy(&buffer[..size]);
-            println!("📡 TCP Request: {}", request);
+            logger.info("📡 TCP Request", Some(&request));
 
             let response = "HTTP/1.1 200 OK\r\n\r\nreStrike VTA Windows Desktop App - Running!";
             if let Err(e) = stream.write(response.as_bytes()) {
-                println!("❌ Failed to send TCP response: {}", e);
+                logger.error("❌ Failed to send TCP response", Some(&e.to_string()));
             }
         }
         Err(e) => {
-            println!("❌ Failed to read TCP stream: {}", e);
+            logger.error("❌ Failed to read TCP stream", Some(&e.to_string()));
         }
     }
 }

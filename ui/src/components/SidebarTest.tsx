@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useAppStore } from '../stores';
-import { useEnvironment } from '../hooks/useEnvironment';
+import { useEnvironment, useEnvironmentObs } from '../hooks/useEnvironment';
 import { logError } from '../config/environment';
 import { FlagImage } from '../utils/flagUtils';
 
