@@ -1,321 +1,283 @@
-import React, { useState, useMemo, useRef } from 'react';
-import { FlagImage } from '../utils/flagUtils';
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { useAppStore } from '../stores';
+import { createComponentLogger } from '../utils/logger';
 
-// Event data structure
-interface EventData {
+const logger = createComponentLogger('SidebarTest');
+
+interface Event {
   id: string;
-  round: string;
   timestamp: string;
-  player: 'red' | 'blue' | 'yellow';
-  eventType: 'head' | 'punch' | 'kick' | 'spinning kick' | 'foul';
+  type: 'point' | 'warning' | 'clock' | 'round' | 'score' | 'athlete';
+  player: 'RED' | 'BLUE' | 'YELLOW' | 'NONE';
+  description: string;
+  value?: string;
 }
 
 const SidebarTest: React.FC = () => {
-  const [manualMode, setManualMode] = useState(false);
-  const eventTableRef = useRef<HTMLDivElement>(null);
-  
-  // Filter state
-  const [activeFilters, setActiveFilters] = useState<{
-    players: Set<'red' | 'blue' | 'yellow'>;
-    events: Set<'head' | 'punch' | 'kick' | 'spinning kick' | 'foul'>;
-  }>({
-    players: new Set(),
-    events: new Set()
-  });
+  const { obsConnections } = useAppStore();
+  const [events, setEvents] = useState<Event[]>([]);
+  const [filteredEvents, setFilteredEvents] = useState<Event[]>([]);
+  const [selectedPlayer, setSelectedPlayer] = useState<'ALL' | 'RED' | 'BLUE' | 'YELLOW'>('ALL');
+  const [selectedType, setSelectedType] = useState<'ALL' | Event['type']>('ALL');
 
-  // Sample event data
-  const allEvents: EventData[] = [
-    { id: '1', round: 'R1', timestamp: '01.05.123', player: 'red', eventType: 'punch' },
-    { id: '2', round: 'R1', timestamp: '01.18.456', player: 'blue', eventType: 'kick' },
-    { id: '3', round: 'R1', timestamp: '01.32.789', player: 'yellow', eventType: 'foul' },
-    { id: '4', round: 'R1', timestamp: '01.45.234', player: 'red', eventType: 'head' },
-    { id: '5', round: 'R1', timestamp: '02.00.343', player: 'blue', eventType: 'spinning kick' },
-    { id: '6', round: 'R1', timestamp: '02.15.127', player: 'red', eventType: 'kick' },
-    { id: '7', round: 'R1', timestamp: '02.32.891', player: 'yellow', eventType: 'foul' },
-    { id: '8', round: 'R1', timestamp: '02.45.234', player: 'blue', eventType: 'head' },
-    { id: '9', round: 'R1', timestamp: '03.12.567', player: 'red', eventType: 'punch' },
-    { id: '10', round: 'R2', timestamp: '03.25.890', player: 'blue', eventType: 'kick' },
-    { id: '11', round: 'R2', timestamp: '03.38.123', player: 'red', eventType: 'spinning kick' },
-    { id: '12', round: 'R2', timestamp: '03.52.456', player: 'yellow', eventType: 'foul' },
-    { id: '13', round: 'R2', timestamp: '04.05.789', player: 'blue', eventType: 'head' },
-    { id: '14', round: 'R2', timestamp: '04.18.234', player: 'red', eventType: 'kick' },
-    { id: '15', round: 'R3', timestamp: '04.32.567', player: 'blue', eventType: 'punch' },
-  ];
+  // Windows-specific initialization
+  useEffect(() => {
+    logger.info('Initializing Windows-only sidebar component');
+    initializeWindowsFeatures();
+  }, []);
 
-  // Filter events based on active filters
-  const filteredEvents = useMemo(() => {
-    return allEvents.filter(event => {
-      const playerMatch = activeFilters.players.size === 0 || activeFilters.players.has(event.player);
-      const eventMatch = activeFilters.events.size === 0 || activeFilters.events.has(event.eventType);
-      return playerMatch && eventMatch;
-    });
-  }, [activeFilters]);
-
-  // Filter toggle functions
-  const togglePlayerFilter = (player: 'red' | 'blue' | 'yellow') => {
-    setActiveFilters(prev => {
-      const newPlayers = new Set(prev.players);
-      if (newPlayers.has(player)) {
-        newPlayers.delete(player);
-      } else {
-        newPlayers.add(player);
+  const initializeWindowsFeatures = async () => {
+    try {
+      // Initialize Tauri commands for real-time data
+      if (window.__TAURI__) {
+        logger.info('✅ Tauri environment detected for sidebar');
+        
+        // Initialize PSS protocol listener
+        // Initialize real-time event processing
+        // Initialize OBS status monitoring
       }
-      return { ...prev, players: newPlayers };
-    });
+    } catch (error) {
+      logger.error('❌ Failed to initialize Windows features:', error);
+    }
   };
 
-  const toggleEventFilter = (eventType: 'head' | 'punch' | 'kick' | 'spinning kick' | 'foul') => {
-    setActiveFilters(prev => {
-      const newEvents = new Set(prev.events);
-      if (newEvents.has(eventType)) {
-        newEvents.delete(eventType);
-      } else {
-        newEvents.add(eventType);
+  // Generate sample events for demonstration
+  useEffect(() => {
+    const sampleEvents: Event[] = [
+      {
+        id: '1',
+        timestamp: '14:30:15',
+        type: 'point',
+        player: 'RED',
+        description: 'Point scored',
+        value: '3 points'
+      },
+      {
+        id: '2',
+        timestamp: '14:30:20',
+        type: 'warning',
+        player: 'BLUE',
+        description: 'Warning issued',
+        value: 'Kyong-go'
+      },
+      {
+        id: '3',
+        timestamp: '14:30:25',
+        type: 'clock',
+        player: 'NONE',
+        description: 'Time remaining',
+        value: '1:45'
+      },
+      {
+        id: '4',
+        timestamp: '14:30:30',
+        type: 'round',
+        player: 'NONE',
+        description: 'Round start',
+        value: 'Round 2'
+      },
+      {
+        id: '5',
+        timestamp: '14:30:35',
+        type: 'score',
+        player: 'RED',
+        description: 'Score update',
+        value: '15-12'
       }
-      return { ...prev, events: newEvents };
-    });
-  };
+    ];
+    setEvents(sampleEvents);
+    setFilteredEvents(sampleEvents);
+  }, []);
 
-  const clearAllFilters = () => {
-    // Only clear filters if any are active
-    if (activeFilters.players.size > 0 || activeFilters.events.size > 0) {
-      setActiveFilters({
-        players: new Set(),
-        events: new Set()
-      });
+  // Filter events based on selection
+  useEffect(() => {
+    let filtered = events;
+    
+    if (selectedPlayer !== 'ALL') {
+      filtered = filtered.filter(event => event.player === selectedPlayer);
     }
     
-    // Focus on the first row of the event table
-    if (eventTableRef.current) {
-      const firstEventRow = eventTableRef.current.querySelector('[data-event-row]') as HTMLElement;
-      if (firstEventRow) {
-        firstEventRow.focus();
-      } else {
-        // If no events, focus on the event table container
-        eventTableRef.current.focus();
-      }
+    if (selectedType !== 'ALL') {
+      filtered = filtered.filter(event => event.type === selectedType);
+    }
+    
+    setFilteredEvents(filtered);
+  }, [events, selectedPlayer, selectedType]);
+
+  const clearFilters = () => {
+    setSelectedPlayer('ALL');
+    setSelectedType('ALL');
+  };
+
+  const getPlayerColor = (player: string) => {
+    switch (player) {
+      case 'RED': return 'text-red-400';
+      case 'BLUE': return 'text-blue-400';
+      case 'YELLOW': return 'text-yellow-400';
+      default: return 'text-gray-400';
     }
   };
 
-  // Helper function to get dot color
-  const getDotColor = (player: 'red' | 'blue' | 'yellow') => {
-    switch (player) {
-      case 'red': return 'bg-red-500';
-      case 'blue': return 'bg-blue-500';
-      case 'yellow': return 'bg-yellow-400';
-      default: return 'bg-gray-500';
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case 'point': return '🎯';
+      case 'warning': return '⚠️';
+      case 'clock': return '⏰';
+      case 'round': return '🔄';
+      case 'score': return '📊';
+      case 'athlete': return '👤';
+      default: return '📝';
     }
   };
 
   return (
-    <div className="min-h-screen flex bg-[#101820] text-white" style={{ fontFamily: 'Segoe UI, Roboto, sans-serif' }}>
-      {/* Left Control Column */}
-      <div className="flex flex-col items-center justify-between py-8 px-4 bg-[#181F26] w-40 shadow-lg">
-        <div className="flex flex-col items-center space-y-8">
-          {/* REPLAY Button */}
-          <button
-            className="w-32 h-32 rounded-full bg-red-600 shadow-2xl flex items-center justify-center text-xl font-bold text-white border-4 border-red-700 hover:bg-red-700 focus:outline-none mb-4 transition-all duration-200"
-            style={{ 
-              boxShadow: '0 0 20px rgba(220, 38, 38, 0.6), 0 0 0 4px #2B2B2B',
-              animation: 'pulse 2s infinite'
-            }}
-          >
-            REPLAY
-          </button>
-
-          {/* Manual Mode Toggle */}
-          <div className="flex flex-col items-center space-y-3">
-            <span className="text-sm text-gray-300 font-medium">Manual Mode</span>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={manualMode}
-                onChange={() => setManualMode((v) => !v)}
-                className="sr-only peer"
-              />
-              <div className="w-12 h-6 bg-gray-700 rounded-full peer peer-focus:ring-2 peer-focus:ring-blue-500 transition-all duration-200 border border-gray-600" />
-              <div
-                className={`absolute left-0.5 top-0.5 w-5 h-5 rounded-full transition-transform duration-200 ${manualMode ? 'translate-x-6 bg-blue-500 shadow-lg' : 'bg-gray-400'}`}
-              />
-            </label>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="bg-gray-800 rounded-lg p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-white">Event Sidebar</h2>
+            <p className="text-gray-400 mt-1">Real-time competition events and status</p>
           </div>
-
-          {/* Advanced Button */}
-          <button className="w-32 h-10 mt-6 bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded-lg text-sm text-gray-200 font-medium transition-all duration-200 hover:border-gray-500">
-            Advanced
-          </button>
-        </div>
-        {/* Status Bar (bottom left) */}
-        <div className="w-full flex justify-between items-center text-xs text-gray-500 mt-8 px-2">
-          <span className="flex items-center">
-            <div className="w-2 h-2 bg-red-500 rounded-full mr-2 animate-pulse"></div>
-            OBS Recording
-          </span>
-          <span>CP 5%</span>
+          <div className="flex items-center space-x-4">
+            <span className="px-3 py-1 bg-blue-600 text-white text-sm rounded-full">
+              Windows Native
+            </span>
+            <span className="px-3 py-1 bg-green-600 text-white text-sm rounded-full">
+              {filteredEvents.length} Events
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* Right Info Column */}
-      <div className="flex-1 flex flex-col justify-between bg-[#101820] px-8 py-6 min-w-[360px] max-w-[500px]">
-        <div>
-          {/* Athlete Info and Match Number */}
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex flex-col space-y-1">
-              <div className="flex items-center space-x-3 text-lg font-semibold">
-                <FlagImage countryCode="USA" />
-                <span className="text-white">Benjamin Smith</span>
+      {/* OBS Status */}
+      <div className="bg-gray-800 rounded-lg p-6">
+        <h3 className="text-lg font-semibold text-white mb-4">OBS Status</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {obsConnections.map((connection) => (
+            <div key={connection.name} className="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
+              <div className="flex items-center space-x-3">
+                <div className={`w-3 h-3 rounded-full ${
+                  connection.status === 'Connected' || connection.status === 'Authenticated'
+                    ? 'bg-green-500'
+                    : connection.status === 'Error'
+                    ? 'bg-red-500'
+                    : 'bg-yellow-500'
+                }`} />
+                <span className="text-white font-medium">{connection.name}</span>
               </div>
-              <div className="flex items-center space-x-3 text-lg font-semibold">
-                <FlagImage countryCode="JPN" />
-                <span className="text-white">Kei Tanaka</span>
-              </div>
-              <div className="flex flex-col text-gray-400 text-sm mt-1">
-                <span className="font-medium">M-75kg</span>
-                <span>Semi-final</span>
-              </div>
+              <span className="text-gray-400 text-sm">{connection.status}</span>
             </div>
-            <div className="text-6xl font-bold text-white tracking-tight -ml-[1000px] flex items-center justify-center w-[200px]">1254</div>
+          ))}
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="bg-gray-800 rounded-lg p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-white">Event Filters</h3>
+          <button
+            onClick={clearFilters}
+            className="flex items-center space-x-2 px-3 py-1 bg-gray-600 hover:bg-gray-500 text-white text-sm rounded transition-colors"
+          >
+            <span>↑</span>
+            <span>Clear Filters</span>
+          </button>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Player Filter */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Player</label>
+            <select
+              value={selectedPlayer}
+              onChange={(e) => setSelectedPlayer(e.target.value as any)}
+              className="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="ALL">All Players</option>
+              <option value="RED">Red Player</option>
+              <option value="BLUE">Blue Player</option>
+              <option value="YELLOW">Yellow Player</option>
+            </select>
           </div>
-          <hr className="border-gray-700 my-6" />
-          {/* Event Table with Filters */}
-          <div className="flex gap-3">
-            {/* Event Table */}
-            <div ref={eventTableRef} className="flex-1 flex flex-col h-64 overflow-y-auto" tabIndex={-1}>
-              <div className="flex items-center justify-between text-gray-400 text-xs font-medium mb-3 px-1 sticky top-0 bg-[#101820] py-2 z-10">
-                <span className="w-8">RND</span>
-                <span className="w-20 text-center">TIME</span>
-                <span className="flex-1">EVENT</span>
-                <span className="text-xs text-gray-500 ml-2">
-                  {filteredEvents.length}/{allEvents.length}
-                </span>
-              </div>
-              {/* Event Rows - Dynamic based on filters */}
-              {filteredEvents.length > 0 ? (
-                filteredEvents.map((event) => (
-                  <div 
-                    key={event.id} 
-                    data-event-row
-                    className="flex items-center justify-between py-2 px-1 hover:bg-gray-800 rounded transition-colors focus:outline-none focus:bg-gray-800 focus:ring-2 focus:ring-blue-500"
-                    tabIndex={0}
-                  >
-                    <span className="font-bold text-white w-8">{event.round}</span>
-                    <span className="text-gray-300 w-20 text-center text-sm">{event.timestamp}</span>
-                    <span className="flex items-center space-x-3 flex-1">
-                      <span className={`w-3 h-3 rounded-full ${getDotColor(event.player)} inline-block shadow-sm`}></span>
-                      <span className="text-white text-sm capitalize">{event.eventType}</span>
-                    </span>
-                  </div>
-                ))
-              ) : (
-                <div className="flex items-center justify-center py-8 text-gray-500 text-sm">
-                  No events match the current filters
-                </div>
-              )}
-            </div>
-            
-            {/* Filter Buttons Stack */}
-            <div className="flex flex-col gap-1">
-              {/* Top Row: Clear Filter + Player Filter Buttons */}
-              <div className="flex gap-1">
-                {/* Clear Filter Button (Up Arrow) */}
-                <button 
-                  onClick={clearAllFilters}
-                  className={`w-8 h-8 rounded flex items-center justify-center transition-all duration-200 ${
-                    activeFilters.players.size === 0 && activeFilters.events.size === 0 
-                      ? 'bg-gray-700 hover:bg-gray-600 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 focus:ring-offset-gray-800' 
-                      : 'bg-gray-700 hover:bg-gray-600 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 focus:ring-offset-gray-800'
-                  }`}
-                  title={activeFilters.players.size === 0 && activeFilters.events.size === 0 ? "Move focus to first event row" : "Clear all filters and move to first event row"}
-                >
-                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                  </svg>
-                </button>
-                
-                {/* Player Filter Buttons */}
-                <button 
-                  onClick={() => togglePlayerFilter('red')}
-                  className={`w-8 h-8 rounded transition-colors ${
-                    activeFilters.players.has('red') 
-                      ? 'bg-red-700 ring-2 ring-red-400' 
-                      : 'bg-red-600 hover:bg-red-500'
-                  }`}
-                  title="Filter Red player events"
-                ></button>
-                <button 
-                  onClick={() => togglePlayerFilter('blue')}
-                  className={`w-8 h-8 rounded transition-colors ${
-                    activeFilters.players.has('blue') 
-                      ? 'bg-blue-700 ring-2 ring-blue-400' 
-                      : 'bg-blue-600 hover:bg-blue-500'
-                  }`}
-                  title="Filter Blue player events"
-                ></button>
-                <button 
-                  onClick={() => togglePlayerFilter('yellow')}
-                  className={`w-8 h-8 rounded transition-colors ${
-                    activeFilters.players.has('yellow') 
-                      ? 'bg-yellow-600 ring-2 ring-yellow-400' 
-                      : 'bg-yellow-500 hover:bg-yellow-400'
-                  }`}
-                  title="Filter Referee events"
-                ></button>
-              </div>
-              
-              {/* Bottom Row: Event Type Filter Buttons (Full Width) */}
-              <div className="flex flex-col gap-1">
-                <button 
-                  onClick={() => toggleEventFilter('head')}
-                  className={`w-[140px] h-8 rounded text-white text-xs font-bold transition-colors ${
-                    activeFilters.events.has('head') 
-                      ? 'bg-blue-600 ring-2 ring-blue-400' 
-                      : 'bg-gray-700 hover:bg-gray-600'
-                  }`}
-                  title="Filter Head events"
-                >
-                  Head
-                </button>
-                <button 
-                  onClick={() => toggleEventFilter('punch')}
-                  className={`w-[140px] h-8 rounded text-white text-xs font-bold transition-colors ${
-                    activeFilters.events.has('punch') 
-                      ? 'bg-blue-600 ring-2 ring-blue-400' 
-                      : 'bg-gray-700 hover:bg-gray-600'
-                  }`}
-                  title="Filter Punch events"
-                >
-                  Punch
-                </button>
-                <button 
-                  onClick={() => toggleEventFilter('kick')}
-                  className={`w-[140px] h-8 rounded text-white text-xs font-bold transition-colors ${
-                    activeFilters.events.has('kick') 
-                      ? 'bg-blue-600 ring-2 ring-blue-400' 
-                      : 'bg-gray-700 hover:bg-gray-600'
-                  }`}
-                  title="Filter Kick events"
-                >
-                  Kick
-                </button>
-                <button 
-                  onClick={() => toggleEventFilter('spinning kick')}
-                  className={`w-[140px] h-8 rounded text-white text-xs font-bold transition-colors ${
-                    activeFilters.events.has('spinning kick') 
-                      ? 'bg-blue-600 ring-2 ring-blue-400' 
-                      : 'bg-gray-700 hover:bg-gray-600'
-                  }`}
-                  title="Filter Spinning Kick events"
-                >
-                  SPIN
-                </button>
-              </div>
-            </div>
+
+          {/* Type Filter */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Event Type</label>
+            <select
+              value={selectedType}
+              onChange={(e) => setSelectedType(e.target.value as any)}
+              className="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="ALL">All Events</option>
+              <option value="point">Points</option>
+              <option value="warning">Warnings</option>
+              <option value="clock">Clock</option>
+              <option value="round">Rounds</option>
+              <option value="score">Scores</option>
+              <option value="athlete">Athletes</option>
+            </select>
           </div>
         </div>
-        {/* Status Bar (bottom right) - already handled in left column for this design */}
+      </div>
+
+      {/* Events Table */}
+      <div className="bg-gray-800 rounded-lg p-6">
+        <h3 className="text-lg font-semibold text-white mb-4">Recent Events</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-gray-700">
+                <th className="text-left py-3 px-4 text-gray-300 font-medium">Time</th>
+                <th className="text-left py-3 px-4 text-gray-300 font-medium">Type</th>
+                <th className="text-left py-3 px-4 text-gray-300 font-medium">Player</th>
+                <th className="text-left py-3 px-4 text-gray-300 font-medium">Description</th>
+                <th className="text-left py-3 px-4 text-gray-300 font-medium">Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredEvents.map((event) => (
+                <motion.tr
+                  key={event.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="border-b border-gray-700 hover:bg-gray-700 transition-colors"
+                >
+                  <td className="py-3 px-4 text-gray-400 font-mono text-sm">
+                    {event.timestamp}
+                  </td>
+                  <td className="py-3 px-4">
+                    <span className="flex items-center space-x-2">
+                      <span>{getTypeIcon(event.type)}</span>
+                      <span className="text-white capitalize">{event.type}</span>
+                    </span>
+                  </td>
+                  <td className="py-3 px-4">
+                    <span className={`font-medium ${getPlayerColor(event.player)}`}>
+                      {event.player}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4 text-white">
+                    {event.description}
+                  </td>
+                  <td className="py-3 px-4 text-gray-400">
+                    {event.value || '-'}
+                  </td>
+                </motion.tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        
+        {filteredEvents.length === 0 && (
+          <div className="text-center py-8 text-gray-400">
+            No events match the current filters
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
-export default SidebarTest; 
+export default SidebarTest;
