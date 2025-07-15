@@ -1,17 +1,114 @@
 {
-  "download_date": "2025-07-15 03:58:08",
+  "download_date": "2025-07-15 04:01:27",
   "source_url": "https://en.wikipedia.org/wiki/Flags_of_Asia",
   "statistics": {
-    "total_found": 1,
-    "downloaded": 0,
+    "total_found": 25,
+    "downloaded": 12,
     "failed": 0,
-    "success_rate": 0.0
+    "success_rate": 48.0
   },
-  "downloaded_flags": [],
+  "downloaded_flags": [
+    {
+      "ioc_code": "CHN",
+      "country_name": "China"
+    },
+    {
+      "ioc_code": "IND",
+      "country_name": "India"
+    },
+    {
+      "ioc_code": "IDN",
+      "country_name": "Indonesia"
+    },
+    {
+      "ioc_code": "JPN",
+      "country_name": "Japan"
+    },
+    {
+      "ioc_code": "KAZ",
+      "country_name": "Kazakhstan"
+    },
+    {
+      "ioc_code": "MYS",
+      "country_name": "Malaysia"
+    },
+    {
+      "ioc_code": "MMR",
+      "country_name": "Myanmar"
+    },
+    {
+      "ioc_code": "PHL",
+      "country_name": "Philippines"
+    },
+    {
+      "ioc_code": "SGP",
+      "country_name": "Singapore"
+    },
+    {
+      "ioc_code": "TWN",
+      "country_name": "Taiwan"
+    },
+    {
+      "ioc_code": "THA",
+      "country_name": "Thailand"
+    },
+    {
+      "ioc_code": "ARE",
+      "country_name": "United Arab Emirates"
+    }
+  ],
   "failed_downloads": [
     {
       "country_name": "Akrotiri And Dhekelia",
       "url": "https://upload.wikimedia.org/wikipedia/en/thumb/a/ae/Flag_of_the_United_Kingdom.svg/120px-Flag_of_the_United_Kingdom.svg.png"
+    },
+    {
+      "country_name": "Baku, Azerbaijan",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/48/Flag_of_Baku%2C_Azerbaijan.svg/250px-Flag_of_Baku%2C_Azerbaijan.svg.png"
+    },
+    {
+      "country_name": "Busan, South Korea",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b1/Flag_of_Busan.svg/250px-Flag_of_Busan.svg.png"
+    },
+    {
+      "country_name": "Chelyabinsk, Russia",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/81/Flag_of_Chelyabinsk.svg/250px-Flag_of_Chelyabinsk.svg.png"
+    },
+    {
+      "country_name": "Daegu, South Korea",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/Flag_of_Daegu.svg/250px-Flag_of_Daegu.svg.png"
+    },
+    {
+      "country_name": "Incheon, South Korea",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0c/Flag_of_Incheon.svg/250px-Flag_of_Incheon.svg.png"
+    },
+    {
+      "country_name": "Krasnoyarsk, Russia",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/ff/Flag_of_Krasnoyarsk.svg/250px-Flag_of_Krasnoyarsk.svg.png"
+    },
+    {
+      "country_name": "Novosibirsk, Russia",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Flag_of_Novosibirsk.svg/250px-Flag_of_Novosibirsk.svg.png"
+    },
+    {
+      "country_name": "Omsk, Russia",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/Flag_of_Omsk.svg/250px-Flag_of_Omsk.svg.png"
+    },
+    {
+      "country_name": "Seoul, South Korea",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/Flag_of_Seoul.svg/250px-Flag_of_Seoul.svg.png"
+    },
+    {
+      "country_name": "Tbilisi, Georgia",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/Flag_of_Tbilisi.svg/250px-Flag_of_Tbilisi.svg.png"
+    },
+    {
+      "country_name": "Yekaterinburg, Russia",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Flag_of_Yekaterinburg_%28Sverdlovsk_oblast%29.svg/250px-Flag_of_Yekaterinburg_%28Sverdlovsk_oblast%29.svg.png"
+    },
+    {
+      "country_name": "Yerevan, Armenia",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/43/Flag_of_Yerevan.svg/250px-Flag_of_Yerevan.svg.png"
     }
   ]
 }
