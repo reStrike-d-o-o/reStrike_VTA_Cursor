@@ -1,7 +1,95 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+
+// Event data structure
+interface EventData {
+  id: string;
+  round: string;
+  timestamp: string;
+  player: 'red' | 'blue' | 'yellow';
+  eventType: 'head' | 'punch' | 'kick' | 'spinning kick' | 'foul';
+}
 
 const SidebarTest: React.FC = () => {
   const [manualMode, setManualMode] = useState(false);
+  
+  // Filter state
+  const [activeFilters, setActiveFilters] = useState<{
+    players: Set<'red' | 'blue' | 'yellow'>;
+    events: Set<'head' | 'punch' | 'kick' | 'spinning kick' | 'foul'>;
+  }>({
+    players: new Set(),
+    events: new Set()
+  });
+
+  // Sample event data
+  const allEvents: EventData[] = [
+    { id: '1', round: 'R1', timestamp: '01.05.123', player: 'red', eventType: 'punch' },
+    { id: '2', round: 'R1', timestamp: '01.18.456', player: 'blue', eventType: 'kick' },
+    { id: '3', round: 'R1', timestamp: '01.32.789', player: 'yellow', eventType: 'foul' },
+    { id: '4', round: 'R1', timestamp: '01.45.234', player: 'red', eventType: 'head' },
+    { id: '5', round: 'R1', timestamp: '02.00.343', player: 'blue', eventType: 'spinning kick' },
+    { id: '6', round: 'R1', timestamp: '02.15.127', player: 'red', eventType: 'kick' },
+    { id: '7', round: 'R1', timestamp: '02.32.891', player: 'yellow', eventType: 'foul' },
+    { id: '8', round: 'R1', timestamp: '02.45.234', player: 'blue', eventType: 'head' },
+    { id: '9', round: 'R1', timestamp: '03.12.567', player: 'red', eventType: 'punch' },
+    { id: '10', round: 'R2', timestamp: '03.25.890', player: 'blue', eventType: 'kick' },
+    { id: '11', round: 'R2', timestamp: '03.38.123', player: 'red', eventType: 'spinning kick' },
+    { id: '12', round: 'R2', timestamp: '03.52.456', player: 'yellow', eventType: 'foul' },
+    { id: '13', round: 'R2', timestamp: '04.05.789', player: 'blue', eventType: 'head' },
+    { id: '14', round: 'R2', timestamp: '04.18.234', player: 'red', eventType: 'kick' },
+    { id: '15', round: 'R3', timestamp: '04.32.567', player: 'blue', eventType: 'punch' },
+  ];
+
+  // Filter events based on active filters
+  const filteredEvents = useMemo(() => {
+    return allEvents.filter(event => {
+      const playerMatch = activeFilters.players.size === 0 || activeFilters.players.has(event.player);
+      const eventMatch = activeFilters.events.size === 0 || activeFilters.events.has(event.eventType);
+      return playerMatch && eventMatch;
+    });
+  }, [activeFilters]);
+
+  // Filter toggle functions
+  const togglePlayerFilter = (player: 'red' | 'blue' | 'yellow') => {
+    setActiveFilters(prev => {
+      const newPlayers = new Set(prev.players);
+      if (newPlayers.has(player)) {
+        newPlayers.delete(player);
+      } else {
+        newPlayers.add(player);
+      }
+      return { ...prev, players: newPlayers };
+    });
+  };
+
+  const toggleEventFilter = (eventType: 'head' | 'punch' | 'kick' | 'spinning kick' | 'foul') => {
+    setActiveFilters(prev => {
+      const newEvents = new Set(prev.events);
+      if (newEvents.has(eventType)) {
+        newEvents.delete(eventType);
+      } else {
+        newEvents.add(eventType);
+      }
+      return { ...prev, events: newEvents };
+    });
+  };
+
+  const clearAllFilters = () => {
+    setActiveFilters({
+      players: new Set(),
+      events: new Set()
+    });
+  };
+
+  // Helper function to get dot color
+  const getDotColor = (player: 'red' | 'blue' | 'yellow') => {
+    switch (player) {
+      case 'red': return 'bg-red-500';
+      case 'blue': return 'bg-blue-500';
+      case 'yellow': return 'bg-yellow-400';
+      default: return 'bg-gray-500';
+    }
+  };
 
   return (
     <div className="min-h-screen flex bg-[#101820] text-white" style={{ fontFamily: 'Segoe UI, Roboto, sans-serif' }}>
@@ -81,163 +169,125 @@ const SidebarTest: React.FC = () => {
                 <span className="w-8">RND</span>
                 <span className="w-20 text-center">TIME</span>
                 <span className="flex-1">EVENT</span>
-              </div>
-              {/* Event Rows - 15 total rows, only last 10 visible */}
-              <div className="flex items-center justify-between py-2 px-1 hover:bg-gray-800 rounded transition-colors">
-                <span className="font-bold text-white w-8">R1</span>
-                <span className="text-gray-300 w-20 text-center text-sm">01.05.123</span>
-                <span className="flex items-center space-x-3 flex-1">
-                  <span className="w-3 h-3 rounded-full bg-red-500 inline-block shadow-sm"></span>
-                  <span className="text-white text-sm">Punch</span>
+                <span className="text-xs text-gray-500 ml-2">
+                  {filteredEvents.length}/{allEvents.length}
                 </span>
               </div>
-              <div className="flex items-center justify-between py-2 px-1 hover:bg-gray-800 rounded transition-colors">
-                <span className="font-bold text-white w-8">R1</span>
-                <span className="text-gray-300 w-20 text-center text-sm">01.18.456</span>
-                <span className="flex items-center space-x-3 flex-1">
-                  <span className="w-3 h-3 rounded-full bg-blue-500 inline-block shadow-sm"></span>
-                  <span className="text-white text-sm">Kick</span>
-                </span>
-              </div>
-              <div className="flex items-center justify-between py-2 px-1 hover:bg-gray-800 rounded transition-colors">
-                <span className="font-bold text-white w-8">R1</span>
-                <span className="text-gray-300 w-20 text-center text-sm">01.32.789</span>
-                <span className="flex items-center space-x-3 flex-1">
-                  <span className="w-3 h-3 rounded-full bg-yellow-400 inline-block shadow-sm"></span>
-                  <span className="text-white text-sm">Foul</span>
-                </span>
-              </div>
-              <div className="flex items-center justify-between py-2 px-1 hover:bg-gray-800 rounded transition-colors">
-                <span className="font-bold text-white w-8">R1</span>
-                <span className="text-gray-300 w-20 text-center text-sm">01.45.234</span>
-                <span className="flex items-center space-x-3 flex-1">
-                  <span className="w-3 h-3 rounded-full bg-red-500 inline-block shadow-sm"></span>
-                  <span className="text-white text-sm">Head</span>
-                </span>
-              </div>
-              <div className="flex items-center justify-between py-2 px-1 hover:bg-gray-800 rounded transition-colors">
-                <span className="font-bold text-white w-8">R1</span>
-                <span className="text-gray-300 w-20 text-center text-sm">02.00.343</span>
-                <span className="flex items-center space-x-3 flex-1">
-                  <span className="w-3 h-3 rounded-full bg-blue-500 inline-block shadow-sm"></span>
-                  <span className="text-white text-sm">Spinning Kick</span>
-                </span>
-              </div>
-              <div className="flex items-center justify-between py-2 px-1 hover:bg-gray-800 rounded transition-colors">
-                <span className="font-bold text-white w-8">R1</span>
-                <span className="text-gray-300 w-20 text-center text-sm">02.15.127</span>
-                <span className="flex items-center space-x-3 flex-1">
-                  <span className="w-3 h-3 rounded-full bg-red-500 inline-block shadow-sm"></span>
-                  <span className="text-white text-sm">Kick</span>
-                </span>
-              </div>
-              <div className="flex items-center justify-between py-2 px-1 hover:bg-gray-800 rounded transition-colors">
-                <span className="font-bold text-white w-8">R1</span>
-                <span className="text-gray-300 w-20 text-center text-sm">02.32.891</span>
-                <span className="flex items-center space-x-3 flex-1">
-                  <span className="w-3 h-3 rounded-full bg-yellow-400 inline-block shadow-sm"></span>
-                  <span className="text-white text-sm">Foul</span>
-                </span>
-              </div>
-              <div className="flex items-center justify-between py-2 px-1 hover:bg-gray-800 rounded transition-colors">
-                <span className="font-bold text-white w-8">R1</span>
-                <span className="text-gray-300 w-20 text-center text-sm">02.45.234</span>
-                <span className="flex items-center space-x-3 flex-1">
-                  <span className="w-3 h-3 rounded-full bg-blue-500 inline-block shadow-sm"></span>
-                  <span className="text-white text-sm">Head</span>
-                </span>
-              </div>
-              <div className="flex items-center justify-between py-2 px-1 hover:bg-gray-800 rounded transition-colors">
-                <span className="font-bold text-white w-8">R1</span>
-                <span className="text-gray-300 w-20 text-center text-sm">03.12.567</span>
-                <span className="flex items-center space-x-3 flex-1">
-                  <span className="w-3 h-3 rounded-full bg-red-500 inline-block shadow-sm"></span>
-                  <span className="text-white text-sm">Punch</span>
-                </span>
-              </div>
-              <div className="flex items-center justify-between py-2 px-1 hover:bg-gray-800 rounded transition-colors">
-                <span className="font-bold text-white w-8">R2</span>
-                <span className="text-gray-300 w-20 text-center text-sm">03.25.890</span>
-                <span className="flex items-center space-x-3 flex-1">
-                  <span className="w-3 h-3 rounded-full bg-blue-500 inline-block shadow-sm"></span>
-                  <span className="text-white text-sm">Kick</span>
-                </span>
-              </div>
-              <div className="flex items-center justify-between py-2 px-1 hover:bg-gray-800 rounded transition-colors">
-                <span className="font-bold text-white w-8">R2</span>
-                <span className="text-gray-300 w-20 text-center text-sm">03.38.123</span>
-                <span className="flex items-center space-x-3 flex-1">
-                  <span className="w-3 h-3 rounded-full bg-red-500 inline-block shadow-sm"></span>
-                  <span className="text-white text-sm">Spinning Kick</span>
-                </span>
-              </div>
-              <div className="flex items-center justify-between py-2 px-1 hover:bg-gray-800 rounded transition-colors">
-                <span className="font-bold text-white w-8">R2</span>
-                <span className="text-gray-300 w-20 text-center text-sm">03.52.456</span>
-                <span className="flex items-center space-x-3 flex-1">
-                  <span className="w-3 h-3 rounded-full bg-yellow-400 inline-block shadow-sm"></span>
-                  <span className="text-white text-sm">Foul</span>
-                </span>
-              </div>
-              <div className="flex items-center justify-between py-2 px-1 hover:bg-gray-800 rounded transition-colors">
-                <span className="font-bold text-white w-8">R2</span>
-                <span className="text-gray-300 w-20 text-center text-sm">04.05.789</span>
-                <span className="flex items-center space-x-3 flex-1">
-                  <span className="w-3 h-3 rounded-full bg-blue-500 inline-block shadow-sm"></span>
-                  <span className="text-white text-sm">Head</span>
-                </span>
-              </div>
-              <div className="flex items-center justify-between py-2 px-1 hover:bg-gray-800 rounded transition-colors">
-                <span className="font-bold text-white w-8">R2</span>
-                <span className="text-gray-300 w-20 text-center text-sm">04.18.234</span>
-                <span className="flex items-center space-x-3 flex-1">
-                  <span className="w-3 h-3 rounded-full bg-red-500 inline-block shadow-sm"></span>
-                  <span className="text-white text-sm">Kick</span>
-                </span>
-              </div>
-              <div className="flex items-center justify-between py-2 px-1 hover:bg-gray-800 rounded transition-colors">
-                <span className="font-bold text-white w-8">R3</span>
-                <span className="text-gray-300 w-20 text-center text-sm">04.32.567</span>
-                <span className="flex items-center space-x-3 flex-1">
-                  <span className="w-3 h-3 rounded-full bg-blue-500 inline-block shadow-sm"></span>
-                  <span className="text-white text-sm">Punch</span>
-                </span>
-              </div>
+              {/* Event Rows - Dynamic based on filters */}
+              {filteredEvents.length > 0 ? (
+                filteredEvents.map((event) => (
+                  <div key={event.id} className="flex items-center justify-between py-2 px-1 hover:bg-gray-800 rounded transition-colors">
+                    <span className="font-bold text-white w-8">{event.round}</span>
+                    <span className="text-gray-300 w-20 text-center text-sm">{event.timestamp}</span>
+                    <span className="flex items-center space-x-3 flex-1">
+                      <span className={`w-3 h-3 rounded-full ${getDotColor(event.player)} inline-block shadow-sm`}></span>
+                      <span className="text-white text-sm capitalize">{event.eventType}</span>
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <div className="flex items-center justify-center py-8 text-gray-500 text-sm">
+                  No events match the current filters
+                </div>
+              )}
             </div>
             
             {/* Filter Buttons Stack */}
             <div className="flex flex-col gap-1">
-              {/* Clear Filter Button (Up Arrow) */}
-              <button className="w-8 h-8 bg-gray-700 hover:bg-gray-600 rounded flex items-center justify-center transition-colors">
-                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                </svg>
-              </button>
+              {/* Top Row: Clear Filter + Player Filter Buttons */}
+              <div className="flex gap-1">
+                {/* Clear Filter Button (Up Arrow) */}
+                <button 
+                  onClick={clearAllFilters}
+                  className={`w-8 h-8 rounded flex items-center justify-center transition-colors ${
+                    activeFilters.players.size === 0 && activeFilters.events.size === 0 
+                      ? 'bg-gray-600' 
+                      : 'bg-gray-700 hover:bg-gray-600'
+                  }`}
+                  title="Clear all filters"
+                >
+                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                  </svg>
+                </button>
+                
+                {/* Player Filter Buttons */}
+                <button 
+                  onClick={() => togglePlayerFilter('red')}
+                  className={`w-8 h-8 rounded transition-colors ${
+                    activeFilters.players.has('red') 
+                      ? 'bg-red-700 ring-2 ring-red-400' 
+                      : 'bg-red-600 hover:bg-red-500'
+                  }`}
+                  title="Filter Red player events"
+                ></button>
+                <button 
+                  onClick={() => togglePlayerFilter('blue')}
+                  className={`w-8 h-8 rounded transition-colors ${
+                    activeFilters.players.has('blue') 
+                      ? 'bg-blue-700 ring-2 ring-blue-400' 
+                      : 'bg-blue-600 hover:bg-blue-500'
+                  }`}
+                  title="Filter Blue player events"
+                ></button>
+                <button 
+                  onClick={() => togglePlayerFilter('yellow')}
+                  className={`w-8 h-8 rounded transition-colors ${
+                    activeFilters.players.has('yellow') 
+                      ? 'bg-yellow-600 ring-2 ring-yellow-400' 
+                      : 'bg-yellow-500 hover:bg-yellow-400'
+                  }`}
+                  title="Filter Referee events"
+                ></button>
+              </div>
               
-              {/* Player Filter Buttons */}
-              <button className="w-8 h-8 bg-red-600 hover:bg-red-500 rounded text-white text-xs font-bold transition-colors">
-                RED
-              </button>
-              <button className="w-8 h-8 bg-blue-600 hover:bg-blue-500 rounded text-white text-xs font-bold transition-colors">
-                BLUE
-              </button>
-              <button className="w-8 h-8 bg-yellow-500 hover:bg-yellow-400 rounded text-white text-xs font-bold transition-colors">
-                YELLOW
-              </button>
-              
-              {/* Event Type Filter Buttons */}
-              <button className="w-8 h-8 bg-gray-700 hover:bg-gray-600 rounded text-white text-xs font-bold transition-colors">
-                Head
-              </button>
-              <button className="w-8 h-8 bg-gray-700 hover:bg-gray-600 rounded text-white text-xs font-bold transition-colors">
-                Punch
-              </button>
-              <button className="w-8 h-8 bg-gray-700 hover:bg-gray-600 rounded text-white text-xs font-bold transition-colors">
-                Kick
-              </button>
-              <button className="w-8 h-8 bg-gray-700 hover:bg-gray-600 rounded text-white text-xs font-bold transition-colors">
-                SPINNING
-              </button>
+              {/* Bottom Row: Event Type Filter Buttons (Full Width) */}
+              <div className="flex flex-col gap-1">
+                <button 
+                  onClick={() => toggleEventFilter('head')}
+                  className={`w-32 h-8 rounded text-white text-xs font-bold transition-colors ${
+                    activeFilters.events.has('head') 
+                      ? 'bg-blue-600 ring-2 ring-blue-400' 
+                      : 'bg-gray-700 hover:bg-gray-600'
+                  }`}
+                  title="Filter Head events"
+                >
+                  Head
+                </button>
+                <button 
+                  onClick={() => toggleEventFilter('punch')}
+                  className={`w-32 h-8 rounded text-white text-xs font-bold transition-colors ${
+                    activeFilters.events.has('punch') 
+                      ? 'bg-blue-600 ring-2 ring-blue-400' 
+                      : 'bg-gray-700 hover:bg-gray-600'
+                  }`}
+                  title="Filter Punch events"
+                >
+                  Punch
+                </button>
+                <button 
+                  onClick={() => toggleEventFilter('kick')}
+                  className={`w-32 h-8 rounded text-white text-xs font-bold transition-colors ${
+                    activeFilters.events.has('kick') 
+                      ? 'bg-blue-600 ring-2 ring-blue-400' 
+                      : 'bg-gray-700 hover:bg-gray-600'
+                  }`}
+                  title="Filter Kick events"
+                >
+                  Kick
+                </button>
+                <button 
+                  onClick={() => toggleEventFilter('spinning kick')}
+                  className={`w-32 h-8 rounded text-white text-xs font-bold transition-colors ${
+                    activeFilters.events.has('spinning kick') 
+                      ? 'bg-blue-600 ring-2 ring-blue-400' 
+                      : 'bg-gray-700 hover:bg-gray-600'
+                  }`}
+                  title="Filter Spinning Kick events"
+                >
+                  SPINNING
+                </button>
+              </div>
             </div>
           </div>
         </div>
