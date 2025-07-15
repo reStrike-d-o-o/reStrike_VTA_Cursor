@@ -45,6 +45,7 @@ Built with **Tauri (Rust + React)** for optimal Windows performance and native d
 - **Documentation**: Comprehensive guides and status tracking
 - **Sidebar Component**: Professional filter system implemented
 - **🏁 Flag Management System**: 253 IOC flags downloaded and integrated ✅ **COMPLETED**
+- **🌐 Environment System**: Global environment identifier for web/Windows switching ✅ **COMPLETED**
 
 ### **🎯 IMMEDIATE PRIORITIES**
 1. **Configure Workflows**: Set up project board automation
@@ -82,15 +83,57 @@ Built with **Tauri (Rust + React)** for optimal Windows performance and native d
 
 ---
 
+## 🌐 **ENVIRONMENT SYSTEM - COMPLETED**
+
+### **✅ Global Environment Identifier System**
+- **Dual Environment Support**: Seamless switching between Web and Windows modes
+- **Automatic Detection**: Detects Tauri availability and environment variables
+- **Environment-Aware Components**: Conditional rendering based on environment
+- **Environment-Specific APIs**: Different API calls for web vs Windows
+- **Build Scripts**: Separate scripts for each environment
+
+#### **Environment Features:**
+- **Web Environment**: Direct WebSocket, HTTP APIs, browser features, hot reload
+- **Windows Environment**: Tauri commands, native file system, system tray, auto updates
+- **Environment Detection**: Automatic via `window.__TAURI__` or manual override
+- **Component Wrappers**: `WindowsOnly`, `WebOnly`, `FeatureWrapper` components
+- **React Hooks**: `useEnvironment()`, `useEnvironmentApi()`, `useEnvironmentObs()`
+
+#### **Technical Implementation:**
+- **Core Configuration**: `ui/src/config/environment.ts` - Singleton environment detection
+- **React Hooks**: `ui/src/hooks/useEnvironment.ts` - Environment-aware hooks
+- **Component Wrappers**: `ui/src/components/EnvironmentWrapper.tsx` - Conditional rendering
+- **Test Component**: `ui/src/components/EnvironmentTest.tsx` - Comprehensive testing
+- **Build Scripts**: `npm run start:web`, `npm run start:windows`, `npm run build:web`, `npm run build:windows`
+- **Documentation**: Complete system documentation in `docs/development/environment-system.md`
+- **Integration**: Updated App.tsx with environment display, ObsWebSocketManager with environment-aware connections
+
+#### **Usage Examples:**
+```typescript
+// Environment detection
+const { environment, isWindows, isWeb } = useEnvironment();
+
+// Environment-aware API calls
+const { apiCall } = useEnvironmentApi();
+await apiCall('obs/status');
+
+// Conditional rendering
+<WindowsOnly><NativeFeature /></WindowsOnly>
+<WebOnly><WebFeature /></WebOnly>
+```
+
+---
+
 ## 🚀 **DEVELOPMENT STATUS**
 
 ### **✅ Frontend (React) - COMPLETE & TESTED**
-- **Components**: 5 React components (1,691 lines total) ✅ **VERIFIED**
+- **Components**: 6 React components (2,000+ lines total) ✅ **VERIFIED**
   - `VideoClips.tsx` (315 lines) - Clip management interface ✅
   - `Settings.tsx` (402 lines) - Configuration and settings ✅
   - `Overlay.tsx` (306 lines) - Video overlay system ✅
   - `ObsWebSocketManager.tsx` (455 lines) - OBS integration ✅
   - `App.tsx` (213 lines) - Main application ✅
+  - `EnvironmentTest.tsx` (200+ lines) - Environment system testing ✅ **NEW**
 - **Sidebar Component**: Professional filter system implemented ✅ **NEW**
   - `SidebarTest.tsx` - Advanced sidebar with event table and filters ✅
   - Event filtering by player (RED/BLUE/YELLOW) and event type ✅
@@ -102,6 +145,13 @@ Built with **Tauri (Rust + React)** for optimal Windows performance and native d
   - 253 flag images in `ui/public/assets/flags/` ✅
   - Emoji fallbacks for all IOC codes ✅
   - Complete system documentation ✅
+- **🌐 Environment System**: Global environment identifier implemented ✅ **COMPLETED**
+  - `environment.ts` - Core environment configuration and detection ✅
+  - `useEnvironment.ts` - React hooks for environment awareness ✅
+  - `EnvironmentWrapper.tsx` - Component wrappers for conditional rendering ✅
+  - `EnvironmentTest.tsx` - Comprehensive testing component ✅
+  - Environment-specific build scripts and configuration ✅
+  - Complete documentation and usage examples ✅
 - **State Management**: Zustand with TypeScript types ✅ **OPERATIONAL**
 - **UI/UX**: Modern interface with Tailwind CSS and Framer Motion ✅ **VERIFIED**
 - **Status**: ✅ Running on port 3000, fully tested and operational
