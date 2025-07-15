@@ -123,6 +123,37 @@ export const LoadingWrapper: React.FC<{
 };
 
 // Environment-aware error boundary
+class ErrorBoundaryClass extends React.Component<
+  { 
+    children: React.ReactNode; 
+    fallback: React.ReactNode;
+    onError?: (error: Error, errorInfo: React.ErrorInfo) => void;
+  },
+  { hasError: boolean }
+> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('Error caught by boundary:', error, errorInfo);
+    this.props.onError?.(error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback;
+    }
+
+    return this.props.children;
+  }
+}
+
 export const ErrorBoundary: React.FC<{
   children: React.ReactNode;
   fallback?: React.ReactNode;
@@ -131,14 +162,14 @@ export const ErrorBoundary: React.FC<{
   const { isWindows, isWeb } = useEnvironment();
   
   return (
-    <React.ErrorBoundary
+    <ErrorBoundaryClass
       fallback={fallback}
-      onError={(error, errorInfo) => {
+      onError={(error: Error, errorInfo: React.ErrorInfo) => {
         console.error(`Error in ${isWindows ? 'Windows' : 'Web'} environment:`, error, errorInfo);
         onError?.(error, errorInfo);
       }}
     >
       {children}
-    </React.ErrorBoundary>
+    </ErrorBoundaryClass>
   );
 }; 

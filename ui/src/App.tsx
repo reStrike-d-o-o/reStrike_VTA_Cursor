@@ -177,7 +177,7 @@ function App() {
                   }`}>
                     {environment.toUpperCase()}
                   </span>
-                  {isDevelopment && (
+                  {config.isDevelopment && (
                     <span className="px-2 py-1 text-xs rounded-full font-medium bg-yellow-600 text-black">
                       DEV
                     </span>
