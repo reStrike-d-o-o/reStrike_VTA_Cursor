@@ -9,6 +9,7 @@ import VideoClips from './components/VideoClips';
 import Settings from './components/Settings';
 import SidebarTest from './components/SidebarTest';
 import EnvironmentTest from './components/EnvironmentTest';
+import SimpleTest from './components/SimpleTest';
 
 // Error Boundary for global error handling
 class GlobalErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean, error: any}> {
@@ -130,6 +131,11 @@ function App() {
   ] as const;
 
   const renderCurrentView = () => {
+    // Temporarily return simple test to debug rendering
+    return <SimpleTest />;
+    
+    // Original switch statement (commented out for debugging)
+    /*
     switch (currentView) {
       case 'sidebar-test':
         return <SidebarTest />;
@@ -146,6 +152,7 @@ function App() {
       default:
         return <SidebarTest />;
     }
+    */
   };
 
   return (
