@@ -13,7 +13,6 @@ pub struct AddConnectionRequest {
     pub name: String,
     pub host: String,
     pub port: u16,
-    pub password: Option<String>,
     pub protocol_version: String,
     pub enabled: bool,
 }
@@ -213,36 +212,27 @@ pub async fn add_obs_connection(
     plugin: &mut ObsPlugin,
     request: AddConnectionRequest,
 ) -> Result<ObsResponse, String> {
-    // Convert protocol version string to enum
     let protocol_version = match request.protocol_version.as_str() {
         "v4" => ObsWebSocketVersion::V4,
         "v5" => ObsWebSocketVersion::V5,
-        _ => return Err("Invalid protocol version. Must be 'v4' or 'v5'".to_string()),
+        _ => return Err("Invalid protocol version".to_string()),
     };
 
-    // Create connection config
     let config = ObsConnectionConfig {
         name: request.name,
         host: request.host,
         port: request.port,
-        password: request.password,
         protocol_version,
         enabled: request.enabled,
     };
 
-    // Add connection
-    match plugin.add_connection(config).await {
-        Ok(_) => Ok(ObsResponse {
-            success: true,
-            data: None,
-            error: None,
-        }),
-        Err(e) => Ok(ObsResponse {
-            success: false,
-            data: None,
-            error: Some(e),
-        }),
-    }
+    plugin.add_connection(config).await?;
+
+    Ok(ObsResponse {
+        success: true,
+        data: None,
+        error: None,
+    })
 }
 
 // Get comprehensive OBS status for status bar

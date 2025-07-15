@@ -269,7 +269,7 @@ const Settings: React.FC = () => {
                   <h4 className="font-medium text-blue-400 mb-2">OBS WebSocket v5</h4>
                   <ul className="text-gray-300 space-y-1">
                     <li>• Default port: 4455</li>
-                    <li>• SHA256 authentication</li>
+                    <li>• Simple connection</li>
                     <li>• Enhanced features</li>
                   </ul>
                 </div>
@@ -277,7 +277,7 @@ const Settings: React.FC = () => {
                   <h4 className="font-medium text-yellow-400 mb-2">OBS WebSocket v4</h4>
                   <ul className="text-gray-300 space-y-1">
                     <li>• Default port: 4444</li>
-                    <li>• Password authentication</li>
+                    <li>• Simple connection</li>
                     <li>• Legacy support</li>
                   </ul>
                 </div>

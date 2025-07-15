@@ -17,7 +17,6 @@ pub struct ObsConnectionConfig {
     pub name: String,
     pub host: String,
     pub port: u16,
-    pub password: Option<String>,
     pub protocol_version: ObsWebSocketVersion,
     pub enabled: bool,
 }
@@ -174,17 +173,7 @@ impl ObsPlugin {
         
         connection.status = ObsConnectionStatus::Authenticating;
 
-        // V4 authentication is simpler - just send password if required
-        if let Some(_password) = &connection.config.password {
-            let _auth_request = serde_json::json!({
-                "request-type": "GetAuthRequired",
-                "message-id": self.generate_request_id(connection)
-            });
-
-            // Send authentication request
-            // Implementation would send the request and handle response
-        }
-
+        // V4 connection - no authentication required
         connection.status = ObsConnectionStatus::Authenticated;
         drop(connections);
 
@@ -204,14 +193,7 @@ impl ObsPlugin {
         
         connection.status = ObsConnectionStatus::Authenticating;
 
-        // V5 uses a more complex authentication flow
-        // 1. Wait for Hello message
-        // 2. Send Identify with authentication if required
-        // 3. Wait for Identified message
-
-        // For now, we'll implement a basic version
-        // In a full implementation, you'd handle the full v5 authentication flow
-
+        // V5 connection - no authentication required
         connection.status = ObsConnectionStatus::Authenticated;
         drop(connections);
 

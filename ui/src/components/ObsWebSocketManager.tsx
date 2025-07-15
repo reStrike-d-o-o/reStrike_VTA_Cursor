@@ -16,7 +16,6 @@ interface ObsConnectionConfig {
   name: string;
   host: string;
   port: number;
-  password?: string;
   protocol_version: 'v4' | 'v5';
   enabled: boolean;
 }
@@ -33,7 +32,6 @@ const ObsWebSocketManager: React.FC = () => {
     name: '',
     host: 'localhost',
     port: 4455,
-    password: '',
     protocol_version: 'v5',
     enabled: true,
   });
@@ -50,27 +48,21 @@ const ObsWebSocketManager: React.FC = () => {
       return;
     }
 
-    const connectionToAdd = {
-      ...newConnection,
-      password: newConnection.password || undefined,
-    };
-
-    addObsConnection(connectionToAdd);
+    addObsConnection(newConnection);
 
     // Reset form
     setNewConnection({
       name: '',
       host: 'localhost',
       port: 4455,
-      password: '',
       protocol_version: 'v5',
       enabled: true,
     });
     setIsAddingConnection(false);
 
     // Connect if enabled
-    if (connectionToAdd.enabled) {
-      await connectToObs(connectionToAdd.name);
+    if (newConnection.enabled) {
+      await connectToObs(newConnection.name);
     }
   };
 
@@ -146,22 +138,22 @@ const ObsWebSocketManager: React.FC = () => {
       updateObsConnectionStatus(connectionName, 'Disconnected');
     };
     
-    // Handle authentication based on protocol version
+    // Handle protocol-specific connection
     if (connection.protocol_version === 'v5') {
       try {
-        await handleV5Authentication(ws, connection, connectionName);
+        await handleV5Connection(ws, connection, connectionName);
       } catch (error) {
-        console.error(`V5 authentication failed for ${connectionName}:`, error);
-        updateObsConnectionStatus(connectionName, 'Error', `Authentication failed: ${error}`);
+        console.error(`V5 connection failed for ${connectionName}:`, error);
+        updateObsConnectionStatus(connectionName, 'Error', `Connection failed: ${error}`);
         ws.close();
         return;
       }
     } else if (connection.protocol_version === 'v4') {
       try {
-        await handleV4Authentication(ws, connection, connectionName);
+        await handleV4Connection(ws, connection, connectionName);
       } catch (error) {
-        console.error(`V4 authentication failed for ${connectionName}:`, error);
-        updateObsConnectionStatus(connectionName, 'Error', `Authentication failed: ${error}`);
+        console.error(`V4 connection failed for ${connectionName}:`, error);
+        updateObsConnectionStatus(connectionName, 'Error', `Connection failed: ${error}`);
         ws.close();
         return;
       }
@@ -204,48 +196,11 @@ const ObsWebSocketManager: React.FC = () => {
       updateObsConnectionStatus(connectionName, 'Disconnected');
     } catch (error) {
       logError(`Disconnect failed for ${connectionName}`, error);
-      updateObsConnectionStatus(connectionName, 'Error', 'Failed to disconnect');
     }
   };
 
-  // Generate authentication response for OBS WebSocket v5
-  const generateAuthResponse = async (password: string, challenge: string, salt: string): Promise<string> => {
-    try {
-      // OBS WebSocket v5 uses SHA256(challenge + salt + password)
-      const combined = challenge + salt + password;
-      
-      // Convert string to ArrayBuffer
-      const encoder = new TextEncoder();
-      const data = encoder.encode(combined);
-      
-      // Generate SHA256 hash
-      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-      
-      // Convert to base64 using a more reliable method
-      const hashArray = new Uint8Array(hashBuffer);
-      let binary = '';
-      for (let i = 0; i < hashArray.length; i++) {
-        binary += String.fromCharCode(hashArray[i]);
-      }
-      const hashBase64 = btoa(binary);
-      
-      console.log('Auth debug:', {
-        challenge: challenge.substring(0, 20) + '...',
-        salt: salt.substring(0, 20) + '...',
-        password: password.substring(0, 3) + '***', // Don't log full password
-        combinedLength: combined.length,
-        hashBase64: hashBase64.substring(0, 20) + '...'
-      });
-      
-      return hashBase64;
-    } catch (error) {
-      console.error('Authentication generation failed:', error);
-      throw error;
-    }
-  };
-
-  // Handle OBS WebSocket v5 authentication properly
-  const handleV5Authentication = async (ws: WebSocket, connection: ObsConnection, connectionName: string) => {
+  // Handle OBS WebSocket v5 connection (no authentication)
+  const handleV5Connection = async (ws: WebSocket, connection: ObsConnection, connectionName: string) => {
     return new Promise<void>((resolve, reject) => {
       const messageHandler = async (event: MessageEvent) => {
         try {
@@ -253,45 +208,20 @@ const ObsWebSocketManager: React.FC = () => {
           console.log(`OBS Response for ${connectionName}:`, response);
           
           if (response.op === 0) { // Hello message
-            // Handle authentication challenge
-            if (response.d.authentication && connection.password) {
-              const { challenge, salt } = response.d.authentication;
-              
-              try {
-                // Generate proper authentication response
-                const authResponse = await generateAuthResponse(connection.password, challenge, salt);
-                
-                const identifyRequest = {
-                  op: 1,
-                  d: {
-                    rpcVersion: 1,
-                    authentication: authResponse,
-                    eventSubscriptions: 0
-                  }
-                };
-                
-                console.log(`Sending authentication for ${connectionName}:`, identifyRequest);
-                ws.send(JSON.stringify(identifyRequest));
-              } catch (error) {
-                console.error(`Authentication failed for ${connectionName}:`, error);
-                reject(new Error(`Authentication failed: ${error}`));
+            // No authentication required - send Identify without auth
+            const identifyRequest = {
+              op: 1,
+              d: {
+                rpcVersion: 1,
+                authentication: null,
+                eventSubscriptions: 0
               }
-            } else {
-              // No authentication required
-              const identifyRequest = {
-                op: 1,
-                d: {
-                  rpcVersion: 1,
-                  authentication: null,
-                  eventSubscriptions: 0
-                }
-              };
-              
-              console.log(`No authentication required for ${connectionName}`);
-              ws.send(JSON.stringify(identifyRequest));
-            }
+            };
+            
+            console.log(`Sending Identify for ${connectionName} (no auth):`, identifyRequest);
+            ws.send(JSON.stringify(identifyRequest));
           } else if (response.op === 2) { // Identified message
-            console.log(`Successfully authenticated with ${connectionName}`);
+            console.log(`Successfully connected to ${connectionName}`);
             updateObsConnectionStatus(connectionName, 'Authenticated');
             ws.removeEventListener('message', messageHandler);
             resolve();
@@ -306,28 +236,28 @@ const ObsWebSocketManager: React.FC = () => {
       
       ws.addEventListener('message', messageHandler);
       
-      // Set a timeout for authentication
+      // Set a timeout for connection
       setTimeout(() => {
         ws.removeEventListener('message', messageHandler);
-        reject(new Error('Authentication timeout'));
+        reject(new Error('Connection timeout'));
       }, 10000); // 10 second timeout
     });
   };
 
-  // Handle OBS WebSocket v4 authentication
-  const handleV4Authentication = async (ws: WebSocket, connection: ObsConnection, connectionName: string) => {
+  // Handle OBS WebSocket v4 connection (no authentication)
+  const handleV4Connection = async (ws: WebSocket, connection: ObsConnection, connectionName: string) => {
     return new Promise<void>((resolve, reject) => {
       const messageHandler = async (event: MessageEvent) => {
         try {
           const response = JSON.parse(event.data);
           console.log(`OBS v4 Response for ${connectionName}:`, response);
           
-          // V4 authentication is simpler - just check if we get a valid response
+          // V4 connection is simpler - just check if we get a valid response
           if (response['error'] || response['error-id']) {
-            console.error(`V4 authentication failed for ${connectionName}:`, response);
-            reject(new Error(`V4 authentication failed: ${response['error'] || response['error-id']}`));
+            console.error(`V4 connection failed for ${connectionName}:`, response);
+            reject(new Error(`V4 connection failed: ${response['error'] || response['error-id']}`));
           } else {
-            console.log(`V4 authentication successful for ${connectionName}`);
+            console.log(`V4 connection successful for ${connectionName}`);
             updateObsConnectionStatus(connectionName, 'Authenticated');
             ws.removeEventListener('message', messageHandler);
             resolve();
@@ -340,24 +270,17 @@ const ObsWebSocketManager: React.FC = () => {
       
       ws.addEventListener('message', messageHandler);
       
-      // For v4, we can send a simple request to test authentication
-      if (connection.password) {
-        const authRequest = {
-          "request-type": "GetAuthRequired",
-          "message-id": `auth_${Date.now()}`
-        };
-        ws.send(JSON.stringify(authRequest));
-      } else {
-        // No password required, just resolve
-        updateObsConnectionStatus(connectionName, 'Authenticated');
-        ws.removeEventListener('message', messageHandler);
-        resolve();
-      }
+      // For v4, send a simple request to test connection
+      const testRequest = {
+        "request-type": "GetVersion",
+        "message-id": `test_${Date.now()}`
+      };
+      ws.send(JSON.stringify(testRequest));
       
-      // Set a timeout for authentication
+      // Set a timeout for connection
       setTimeout(() => {
         ws.removeEventListener('message', messageHandler);
-        reject(new Error('V4 authentication timeout'));
+        reject(new Error('V4 connection timeout'));
       }, 10000); // 10 second timeout
     });
   };
@@ -409,30 +332,11 @@ const ObsWebSocketManager: React.FC = () => {
                 requestId: `record_${Date.now()}`
               }
             };
+            
             ws.send(JSON.stringify(recordStatusRequest));
-            
-            // Send GetStreamStatus request
-            const streamStatusRequest = {
-              op: 6,
-              d: {
-                requestType: "GetStreamStatus",
-                requestId: `stream_${Date.now()}`
-              }
-            };
-            ws.send(JSON.stringify(streamStatusRequest));
-            
-            // Send GetStats request for CPU usage
-            const statsRequest = {
-              op: 6,
-              d: {
-                requestType: "GetStats",
-                requestId: `stats_${Date.now()}`
-              }
-            };
-            ws.send(JSON.stringify(statsRequest));
-            
+            log(`Sent record status request to ${connection.name}`);
           } catch (error) {
-            logError(`Failed to send status requests to ${connection.name}`, error);
+            logError(`Failed to send status request to ${connection.name}`, error);
           }
         }
       }
@@ -470,230 +374,207 @@ const ObsWebSocketManager: React.FC = () => {
   };
 
   return (
-    <div className="p-6 bg-gray-900 text-white rounded-lg">
-      <h2 className="text-2xl font-bold mb-6">OBS WebSocket Manager</h2>
-      
-      {/* Test Controls */}
-      <div className="mb-6 flex gap-2">
-        <button
-          onClick={testObsStatus}
-          className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg transition-colors"
-        >
-          🧪 Test OBS Status
-        </button>
-        <button
-          onClick={() => {
-            const { updateObsStatus } = useAppStore.getState();
-            updateObsStatus({
-              is_recording: true,
-              is_streaming: false,
-              cpu_usage: 45,
-              recording_connection: 'OBS_REC',
-            });
-          }}
-          className="bg-orange-600 hover:bg-orange-700 px-4 py-2 rounded-lg transition-colors"
-        >
-          📹 Test Recording Status
-        </button>
-      </div>
-      
-      {/* Add New Connection */}
-      <div className="mb-8">
-        <button
-          onClick={() => setIsAddingConnection(!isAddingConnection)}
-          className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-colors"
-        >
-          {isAddingConnection ? 'Cancel' : '+ Add OBS Connection'}
-        </button>
+    <div className="p-6 bg-gray-900 text-white min-h-screen">
+      <div className="max-w-6xl mx-auto">
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-blue-400 mb-2">
+              OBS WebSocket Manager
+            </h1>
+            <p className="text-gray-400">
+              Manage OBS Studio connections and monitor status
+            </p>
+          </div>
+          <div className="flex gap-4">
+            <button
+              onClick={testObsStatus}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+            >
+              Test Status
+            </button>
+            <button
+              onClick={() => setIsAddingConnection(true)}
+              className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
+            >
+              Add Connection
+            </button>
+          </div>
+        </div>
 
+        {/* Add Connection Modal */}
         {isAddingConnection && (
           <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="mt-4 p-4 bg-gray-800 rounded-lg"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
           >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Connection Name *</label>
-                <input
-                  type="text"
-                  value={newConnection.name}
-                  onChange={(e) => setNewConnection(prev => ({ ...prev, name: e.target.value }))}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500"
-                  placeholder="e.g., Main OBS, Backup OBS"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">Protocol Version</label>
-                <select
-                  value={newConnection.protocol_version}
-                  onChange={(e) => setNewConnection(prev => ({ 
-                    ...prev, 
-                    protocol_version: e.target.value as 'v4' | 'v5',
-                    port: e.target.value === 'v4' ? 4444 : 4455
-                  }))}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500"
-                >
-                  <option value="v5">OBS WebSocket v5 (Latest)</option>
-                  <option value="v4">OBS WebSocket v4 (Legacy)</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">Host</label>
-                <input
-                  type="text"
-                  value={newConnection.host}
-                  onChange={(e) => setNewConnection(prev => ({ ...prev, host: e.target.value }))}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500"
-                  placeholder="localhost"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">Port</label>
-                <input
-                  type="number"
-                  value={newConnection.port}
-                  onChange={(e) => setNewConnection(prev => ({ ...prev, port: parseInt(e.target.value) }))}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500"
-                  placeholder={newConnection.protocol_version === 'v4' ? '4444' : '4455'}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">Password (Optional)</label>
-                <input
-                  type="password"
-                  value={newConnection.password}
-                  onChange={(e) => setNewConnection(prev => ({ ...prev, password: e.target.value }))}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500"
-                  placeholder="Leave empty if disabled"
-                />
-              </div>
-
-              <div className="flex items-center">
-                <label className="flex items-center">
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="bg-gray-800 p-6 rounded-lg w-96"
+            >
+              <h2 className="text-xl font-bold mb-4">Add OBS Connection</h2>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Connection Name</label>
+                  <input
+                    type="text"
+                    value={newConnection.name}
+                    onChange={(e) => setNewConnection(prev => ({ ...prev, name: e.target.value }))}
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500"
+                    placeholder="e.g., Main OBS"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium mb-1">Host</label>
+                  <input
+                    type="text"
+                    value={newConnection.host}
+                    onChange={(e) => setNewConnection(prev => ({ ...prev, host: e.target.value }))}
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500"
+                    placeholder="localhost"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium mb-1">Port</label>
+                  <input
+                    type="number"
+                    value={newConnection.port}
+                    onChange={(e) => setNewConnection(prev => ({ ...prev, port: parseInt(e.target.value) || 4455 }))}
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500"
+                    placeholder="4455"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium mb-1">Protocol Version</label>
+                  <select
+                    value={newConnection.protocol_version}
+                    onChange={(e) => setNewConnection(prev => ({ ...prev, protocol_version: e.target.value as 'v4' | 'v5' }))}
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500"
+                  >
+                    <option value="v5">v5 (Recommended)</option>
+                    <option value="v4">v4 (Legacy)</option>
+                  </select>
+                </div>
+                
+                <div className="flex items-center">
                   <input
                     type="checkbox"
+                    id="enabled"
                     checked={newConnection.enabled}
                     onChange={(e) => setNewConnection(prev => ({ ...prev, enabled: e.target.checked }))}
                     className="mr-2"
                   />
-                  <span className="text-sm">Connect automatically</span>
-                </label>
+                  <label htmlFor="enabled" className="text-sm">Connect automatically</label>
+                </div>
               </div>
-            </div>
-
-            <div className="mt-4 flex gap-2">
-              <button
-                onClick={addConnection}
-                className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg transition-colors"
-              >
-                Add Connection
-              </button>
-              <button
-                onClick={() => setIsAddingConnection(false)}
-                className="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
+              
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={addConnection}
+                  className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
+                >
+                  Add Connection
+                </button>
+                <button
+                  onClick={() => setIsAddingConnection(false)}
+                  className="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
           </motion.div>
         )}
-      </div>
 
-      {/* Connection List */}
-      <div className="space-y-4">
-        <h3 className="text-xl font-semibold">Active Connections</h3>
-        
-        {obsConnections.length === 0 ? (
-          <div className="text-gray-400 text-center py-8">
-            No OBS connections configured. Add your first connection above.
-          </div>
-        ) : (
-          obsConnections.map((connection) => {
-            const currentStatus = connection.status || 'Disconnected';
-            const isConnected = currentStatus === 'Connected' || currentStatus === 'Authenticated';
-
-            return (
-              <motion.div
-                key={connection.name}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="p-4 bg-gray-800 rounded-lg border border-gray-700"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <span className="text-lg">{getStatusIcon(currentStatus)}</span>
-                    <div>
-                      <h4 className="font-semibold">{connection.name}</h4>
-                      <p className="text-sm text-gray-400">
-                        {connection.host}:{connection.port} ({connection.protocol_version.toUpperCase()})
-                      </p>
-                      <p className={`text-sm ${getStatusColor(currentStatus)}`}>
-                        {currentStatus}
-                        {connection.error && ` - ${connection.error}`}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    {isConnected ? (
-                      <button
-                        onClick={() => disconnectFromObs(connection.name)}
-                        className="bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-sm transition-colors"
-                      >
-                        Disconnect
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => connectToObs(connection.name)}
-                        className="bg-green-600 hover:bg-green-700 px-3 py-1 rounded text-sm transition-colors"
-                      >
-                        Connect
-                      </button>
-                    )}
-                    
-                    <button
-                      onClick={() => removeConnection(connection.name)}
-                      className="bg-gray-600 hover:bg-gray-700 px-3 py-1 rounded text-sm transition-colors"
-                    >
-                      Remove
-                    </button>
+        {/* Connections List */}
+        <div className="grid gap-6">
+          {obsConnections.map((connection) => (
+            <motion.div
+              key={connection.name}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-gray-800 p-6 rounded-lg border border-gray-700"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">{getStatusIcon(connection.status)}</span>
+                  <div>
+                    <h3 className="text-xl font-semibold">{connection.name}</h3>
+                    <p className="text-gray-400">
+                      {connection.host}:{connection.port} ({connection.protocol_version})
+                    </p>
                   </div>
                 </div>
-              </motion.div>
-            );
-          })
-        )}
-      </div>
+                
+                <div className="flex items-center gap-3">
+                  <span className={`font-medium ${getStatusColor(connection.status)}`}>
+                    {connection.status}
+                  </span>
+                  
+                  {connection.status === 'Disconnected' && (
+                    <button
+                      onClick={() => connectToObs(connection.name)}
+                      className="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm transition-colors"
+                    >
+                      Connect
+                    </button>
+                  )}
+                  
+                  {(connection.status === 'Connected' || connection.status === 'Authenticated') && (
+                    <button
+                      onClick={() => disconnectFromObs(connection.name)}
+                      className="px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-sm transition-colors"
+                    >
+                      Disconnect
+                    </button>
+                  )}
+                  
+                  <button
+                    onClick={() => removeConnection(connection.name)}
+                    className="px-3 py-1 bg-gray-600 hover:bg-gray-700 rounded text-sm transition-colors"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+              
+              {connection.error && (
+                <div className="mt-3 p-3 bg-red-900 border border-red-700 rounded text-red-200 text-sm">
+                  Error: {connection.error}
+                </div>
+              )}
+            </motion.div>
+          ))}
+        </div>
 
-      {/* Protocol Information */}
-      <div className="mt-8 p-4 bg-gray-800 rounded-lg">
-        <h3 className="text-lg font-semibold mb-3">Protocol Information</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-          <div>
-            <h4 className="font-medium text-blue-400 mb-2">OBS WebSocket v5 (Recommended)</h4>
-            <ul className="text-gray-300 space-y-1">
-              <li>• Latest protocol with enhanced features</li>
-              <li>• SHA256 challenge-response authentication</li>
-              <li>• Batch requests and event subscriptions</li>
-              <li>• Better error handling and status codes</li>
-              <li>• Default port: 4455</li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="font-medium text-yellow-400 mb-2">OBS WebSocket v4 (Legacy)</h4>
-            <ul className="text-gray-300 space-y-1">
-              <li>• Legacy protocol for older OBS versions</li>
-              <li>• Simple password-based authentication</li>
-              <li>• Basic request/response functionality</li>
-              <li>• Compatible with older plugins</li>
-              <li>• Default port: 4444</li>
-            </ul>
+        {/* Features List */}
+        <div className="mt-12 bg-gray-800 p-6 rounded-lg border border-gray-700">
+          <h2 className="text-xl font-bold mb-4 text-blue-400">OBS WebSocket Features</h2>
+          <div className="grid md:grid-cols-2 gap-6">
+            <div>
+              <h3 className="font-semibold mb-2 text-green-400">Protocol v5 Support</h3>
+              <ul className="text-sm text-gray-300 space-y-1">
+                <li>• Modern WebSocket protocol</li>
+                <li>• Enhanced error handling</li>
+                <li>• Better performance</li>
+                <li>• Future-proof compatibility</li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="font-semibold mb-2 text-yellow-400">Protocol v4 Support</h3>
+              <ul className="text-sm text-gray-300 space-y-1">
+                <li>• Legacy protocol support</li>
+                <li>• Backward compatibility</li>
+                <li>• Simple connection handling</li>
+                <li>• Basic OBS control</li>
+              </ul>
+            </div>
           </div>
         </div>
       </div>
