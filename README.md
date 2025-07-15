@@ -182,16 +182,17 @@ function MyComponent() {
    npm install react-scripts@5.0.1 --save-dev
    npm install
    ```
-5. **Start the development server:**
+5. **Start the development server (React frontend only):**
    ```bash
-   cd ui
-   npm run start
+   npm start
    ```
-6. **Run backend (Tauri):**
+   This will start the React frontend on port 3000 for development.
+
+6. **For Windows desktop development (requires Windows):**
    ```bash
-   cd ..
-   npm run start
+   npm run start:tauri
    ```
+   This runs the full Tauri application (React + Rust backend) for Windows desktop development.
 
 **Important:** If you are using OBS WebSocket, make sure authentication is disabled (no password set) in OBS Studio settings.
 

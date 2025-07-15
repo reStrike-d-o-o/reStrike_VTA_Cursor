@@ -4,7 +4,8 @@
   "description": "Overlay and automation toolkit for VTA using Tauri and React",
   "main": "src/index.js",
   "scripts": {
-    "start": "tauri dev",
+    "start": "cd ui && npm start",
+    "start:tauri": "tauri dev",
     "start:frontend": "./scripts/development/start-frontend-final.sh",
     "start:frontend:auto": "./scripts/development/start-frontend-final.sh",
     "dev": "./scripts/development/dev.sh start-all",
