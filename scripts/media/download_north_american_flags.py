@@ -86,15 +86,47 @@ class NorthAmericanFlagDownloader:
                             flag_urls[country_name_clean] = urljoin('https:', src)
         return flag_urls
 
-    def match_and_download_flags(self):
-        flag_urls = self.scrape_wikipedia_flags()
+    def download_sovereign_state_flags(self):
+        try:
+            response = requests.get(self.wikipedia_url)
+            response.raise_for_status()
+        except requests.RequestException as e:
+            print(f"Error fetching Wikipedia page: {e}")
+            return
+        
+        soup = BeautifulSoup(response.content, 'html.parser')
+        # Find the section header for sovereign states
+        header = soup.find('h2', id='Flags_of_North_American_sovereign_states')
+        if not header:
+            print("Could not find the sovereign states section header!")
+            return
+        # Find the next table after the header
+        table = header.find_next('table', {'class': 'wikitable'})
+        if not table:
+            print("No sovereign states table found!")
+            return
+        flag_map = {}
+        for row in table.find_all('tr')[1:]:  # skip header
+            cells = row.find_all('td')
+            if len(cells) >= 3:
+                img = cells[0].find('img')
+                country_tag = cells[2].find('b')
+                country_name = None
+                if country_tag:
+                    a_tag = country_tag.find('a')
+                    if a_tag:
+                        country_name = a_tag.get_text(strip=True)
+                if img and country_name:
+                    src = img.get('src')
+                    if src and not src.startswith('data:'):
+                        flag_map[country_name] = urljoin('https:', src)
+        # Download flags for IOC countries
         for ioc, info in self.ioc_db.items():
             country = info['name']
-            # Try direct match
-            url = flag_urls.get(country)
-            # Try alternative match (case-insensitive, partial)
+            url = flag_map.get(country)
             if not url:
-                for k, v in flag_urls.items():
+                # Try alternative match (case-insensitive, partial)
+                for k, v in flag_map.items():
                     if country.lower() in k.lower() or k.lower() in country.lower():
                         url = v
                         break
@@ -114,10 +146,10 @@ class NorthAmericanFlagDownloader:
             else:
                 print(f"No flag found for {country} ({ioc})")
                 self.failed_count += 1
+        print(f"\nDownload complete: {self.downloaded_count} flags downloaded, {self.failed_count} failed.")
 
     def run(self):
-        self.match_and_download_flags()
-        print(f"\nDownload complete: {self.downloaded_count} flags downloaded, {self.failed_count} failed.")
+        self.download_sovereign_state_flags()
 
 if __name__ == "__main__":
     downloader = NorthAmericanFlagDownloader()
