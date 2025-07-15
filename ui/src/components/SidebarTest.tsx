@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { FlagImage } from '../utils/flagUtils';
 
 // Event data structure
 interface EventData {
@@ -75,10 +76,19 @@ const SidebarTest: React.FC = () => {
   };
 
   const clearAllFilters = () => {
-    setActiveFilters({
-      players: new Set(),
-      events: new Set()
-    });
+    // Only clear filters if any are active
+    if (activeFilters.players.size > 0 || activeFilters.events.size > 0) {
+      setActiveFilters({
+        players: new Set(),
+        events: new Set()
+      });
+    }
+    
+    // Always move focus to the top row (first player filter button)
+    const firstPlayerButton = document.querySelector('[title="Filter Red player events"]') as HTMLButtonElement;
+    if (firstPlayerButton) {
+      firstPlayerButton.focus();
+    }
   };
 
   // Helper function to get dot color
@@ -146,11 +156,11 @@ const SidebarTest: React.FC = () => {
           <div className="flex items-center justify-between mb-4">
             <div className="flex flex-col space-y-1">
               <div className="flex items-center space-x-3 text-lg font-semibold">
-                <span className="text-2xl">🇺🇸</span>
+                <FlagImage countryCode="USA" />
                 <span className="text-white">Benjamin Smith</span>
               </div>
               <div className="flex items-center space-x-3 text-lg font-semibold">
-                <span className="text-2xl">🇯🇵</span>
+                <FlagImage countryCode="JPN" />
                 <span className="text-white">Kei Tanaka</span>
               </div>
               <div className="flex flex-col text-gray-400 text-sm mt-1">
@@ -199,12 +209,12 @@ const SidebarTest: React.FC = () => {
                 {/* Clear Filter Button (Up Arrow) */}
                 <button 
                   onClick={clearAllFilters}
-                  className={`w-8 h-8 rounded flex items-center justify-center transition-colors ${
+                  className={`w-8 h-8 rounded flex items-center justify-center transition-all duration-200 ${
                     activeFilters.players.size === 0 && activeFilters.events.size === 0 
-                      ? 'bg-gray-600' 
-                      : 'bg-gray-700 hover:bg-gray-600'
+                      ? 'bg-gray-700 hover:bg-gray-600 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 focus:ring-offset-gray-800' 
+                      : 'bg-gray-700 hover:bg-gray-600 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 focus:ring-offset-gray-800'
                   }`}
-                  title="Clear all filters"
+                  title={activeFilters.players.size === 0 && activeFilters.events.size === 0 ? "Move focus to top row" : "Clear all filters and move to top row"}
                 >
                   <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
@@ -245,7 +255,7 @@ const SidebarTest: React.FC = () => {
               <div className="flex flex-col gap-1">
                 <button 
                   onClick={() => toggleEventFilter('head')}
-                  className={`w-32 h-8 rounded text-white text-xs font-bold transition-colors ${
+                  className={`w-[35px] h-8 rounded text-white text-xs font-bold transition-colors ${
                     activeFilters.events.has('head') 
                       ? 'bg-blue-600 ring-2 ring-blue-400' 
                       : 'bg-gray-700 hover:bg-gray-600'
@@ -256,7 +266,7 @@ const SidebarTest: React.FC = () => {
                 </button>
                 <button 
                   onClick={() => toggleEventFilter('punch')}
-                  className={`w-32 h-8 rounded text-white text-xs font-bold transition-colors ${
+                  className={`w-[35px] h-8 rounded text-white text-xs font-bold transition-colors ${
                     activeFilters.events.has('punch') 
                       ? 'bg-blue-600 ring-2 ring-blue-400' 
                       : 'bg-gray-700 hover:bg-gray-600'
@@ -267,7 +277,7 @@ const SidebarTest: React.FC = () => {
                 </button>
                 <button 
                   onClick={() => toggleEventFilter('kick')}
-                  className={`w-32 h-8 rounded text-white text-xs font-bold transition-colors ${
+                  className={`w-[35px] h-8 rounded text-white text-xs font-bold transition-colors ${
                     activeFilters.events.has('kick') 
                       ? 'bg-blue-600 ring-2 ring-blue-400' 
                       : 'bg-gray-700 hover:bg-gray-600'
@@ -278,7 +288,7 @@ const SidebarTest: React.FC = () => {
                 </button>
                 <button 
                   onClick={() => toggleEventFilter('spinning kick')}
-                  className={`w-32 h-8 rounded text-white text-xs font-bold transition-colors ${
+                  className={`w-[35px] h-8 rounded text-white text-xs font-bold transition-colors ${
                     activeFilters.events.has('spinning kick') 
                       ? 'bg-blue-600 ring-2 ring-blue-400' 
                       : 'bg-gray-700 hover:bg-gray-600'
