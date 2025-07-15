@@ -1,3 +1,5 @@
+import React from 'react';
+
 // Flag utility functions for the sidebar component
 
 export interface FlagConfig {
