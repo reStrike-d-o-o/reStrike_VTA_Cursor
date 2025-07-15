@@ -106,7 +106,7 @@ const ObsWebSocketManager: React.FC = () => {
         updateObsConnectionStatus(connectionName, 'Connecting');
       };
       
-      ws.onmessage = (event) => {
+      ws.onmessage = async (event) => {
         try {
           const response = JSON.parse(event.data);
           console.log(`OBS Response for ${connectionName}:`, response);
