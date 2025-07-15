@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useAppStore, ObsConnection } from '../stores';
+import { env, isWindows, invokeTauri, log, logError } from '../config/environment';
 
 // TypeScript declarations for Tauri
 declare global {
@@ -85,6 +86,8 @@ const ObsWebSocketManager: React.FC = () => {
 
   const connectToObs = async (connectionName: string) => {
     try {
+      log(`Connecting to OBS: ${connectionName} (Environment: ${env.environment})`);
+      
       // Update status to connecting
       updateObsConnectionStatus(connectionName, 'Connecting');
 
@@ -94,96 +97,24 @@ const ObsWebSocketManager: React.FC = () => {
         throw new Error('Connection not found');
       }
 
-      // Fallback for development - test WebSocket connection directly
-      console.log(`Testing WebSocket connection to ${connection.host}:${connection.port}...`);
-      
-      // Create a simple WebSocket test
-      const wsUrl = `ws://${connection.host}:${connection.port}`;
-      const ws = new WebSocket(wsUrl);
-      
-      ws.onopen = () => {
-        console.log(`WebSocket connected to ${connectionName}`);
-        updateObsConnectionStatus(connectionName, 'Connecting');
-      };
-      
-      ws.onmessage = async (event) => {
+      if (isWindows()) {
+        // Use Tauri commands for Windows environment
+        log(`Using Tauri commands for ${connectionName}`);
         try {
-          const response = JSON.parse(event.data);
-          console.log(`OBS Response for ${connectionName}:`, response);
-          
-          if (response.op === 0) { // Hello message
-            // Handle authentication challenge
-            if (response.d.authentication && connection.password) {
-              const { challenge, salt } = response.d.authentication;
-              
-              try {
-                // Generate proper authentication response
-                const authResponse = await generateAuthResponse(connection.password, challenge, salt);
-                
-                const identifyRequest = {
-                  op: 1,
-                  d: {
-                    rpcVersion: 1,
-                    authentication: authResponse,
-                    eventSubscriptions: 0
-                  }
-                };
-                
-                console.log(`Sending authentication for ${connectionName}:`, identifyRequest);
-                ws.send(JSON.stringify(identifyRequest));
-              } catch (error) {
-                console.error(`Authentication failed for ${connectionName}:`, error);
-                // Try without authentication as fallback
-                console.log(`Trying without authentication for ${connectionName}...`);
-                const identifyRequest = {
-                  op: 1,
-                  d: {
-                    rpcVersion: 1,
-                    authentication: null,
-                    eventSubscriptions: 0
-                  }
-                };
-                ws.send(JSON.stringify(identifyRequest));
-              }
-            } else {
-              // No authentication required
-              const identifyRequest = {
-                op: 1,
-                d: {
-                  rpcVersion: 1,
-                  authentication: null,
-                  eventSubscriptions: 0
-                }
-              };
-              
-              console.log(`No authentication required for ${connectionName}`);
-              ws.send(JSON.stringify(identifyRequest));
-            }
-          } else if (response.op === 2) { // Identify response
-            updateObsConnectionStatus(connectionName, 'Authenticated');
-            console.log(`Successfully authenticated with ${connectionName}`);
-          } else if (response.op === 7) { // RequestResponse
-            console.log(`Request response from ${connectionName}:`, response);
-          }
+          await invokeTauri('obs_connect', { connectionName });
+          log(`Tauri connection successful for ${connectionName}`);
         } catch (error) {
-          console.error(`Failed to parse OBS response for ${connectionName}:`, error);
+          logError(`Tauri connection failed for ${connectionName}`, error);
+          updateObsConnectionStatus(connectionName, 'Error', `Tauri connection failed: ${error}`);
         }
-      };
-      
-      ws.onerror = (error) => {
-        console.error(`WebSocket error for ${connectionName}:`, error);
-        updateObsConnectionStatus(connectionName, 'Error', 'WebSocket connection failed');
-      };
-      
-      ws.onclose = () => {
-        console.log(`WebSocket closed for ${connectionName}`);
-        updateObsConnectionStatus(connectionName, 'Disconnected');
-      };
-      
-      // Store WebSocket reference for later disconnection
-      (window as any)[`obs_ws_${connectionName}`] = ws;
+      } else {
+        // Use direct WebSocket for web environment
+        log(`Using direct WebSocket for ${connectionName}`);
+        await connectWebSocketDirect(connectionName, connection);
+      }
 
     } catch (error) {
+      logError(`Connection failed for ${connectionName}`, error);
       updateObsConnectionStatus(
         connectionName, 
         'Error', 
@@ -192,21 +123,87 @@ const ObsWebSocketManager: React.FC = () => {
     }
   };
 
+  // Direct WebSocket connection for web environment
+  const connectWebSocketDirect = async (connectionName: string, connection: ObsConnection) => {
+    console.log(`Testing WebSocket connection to ${connection.host}:${connection.port}...`);
+    
+    // Create a simple WebSocket test
+    const wsUrl = `ws://${connection.host}:${connection.port}`;
+    const ws = new WebSocket(wsUrl);
+    
+    ws.onopen = () => {
+      console.log(`WebSocket connected to ${connectionName}`);
+      updateObsConnectionStatus(connectionName, 'Connected');
+    };
+    
+    ws.onerror = (error) => {
+      console.error(`WebSocket error for ${connectionName}:`, error);
+      updateObsConnectionStatus(connectionName, 'Error', 'WebSocket connection failed');
+    };
+    
+    ws.onclose = () => {
+      console.log(`WebSocket closed for ${connectionName}`);
+      updateObsConnectionStatus(connectionName, 'Disconnected');
+    };
+    
+    // Handle authentication based on protocol version
+    if (connection.protocol_version === 'v5') {
+      try {
+        await handleV5Authentication(ws, connection, connectionName);
+      } catch (error) {
+        console.error(`V5 authentication failed for ${connectionName}:`, error);
+        updateObsConnectionStatus(connectionName, 'Error', `Authentication failed: ${error}`);
+        ws.close();
+        return;
+      }
+    } else if (connection.protocol_version === 'v4') {
+      try {
+        await handleV4Authentication(ws, connection, connectionName);
+      } catch (error) {
+        console.error(`V4 authentication failed for ${connectionName}:`, error);
+        updateObsConnectionStatus(connectionName, 'Error', `Authentication failed: ${error}`);
+        ws.close();
+        return;
+      }
+    } else {
+      // Unknown protocol version
+      console.error(`Unknown protocol version for ${connectionName}: ${connection.protocol_version}`);
+      updateObsConnectionStatus(connectionName, 'Error', `Unknown protocol version: ${connection.protocol_version}`);
+      ws.close();
+      return;
+    }
+    
+    // Store WebSocket reference for later disconnection
+    (window as any)[`obs_ws_${connectionName}`] = ws;
+  };
+
   const disconnectFromObs = async (connectionName: string) => {
     try {
-      // Close WebSocket if it exists
-      const ws = (window as any)[`obs_ws_${connectionName}`];
-      if (ws) {
-        ws.close();
-        delete (window as any)[`obs_ws_${connectionName}`];
-      }
+      log(`Disconnecting from OBS: ${connectionName} (Environment: ${env.environment})`);
 
-      // Fallback for development
-      console.log('Tauri not available, WebSocket closed directly');
+      if (isWindows()) {
+        // Use Tauri commands for Windows environment
+        log(`Using Tauri disconnect for ${connectionName}`);
+        try {
+          await invokeTauri('obs_disconnect', { connectionName });
+          log(`Tauri disconnect successful for ${connectionName}`);
+        } catch (error) {
+          logError(`Tauri disconnect failed for ${connectionName}`, error);
+        }
+      } else {
+        // Use direct WebSocket disconnect for web environment
+        log(`Using direct WebSocket disconnect for ${connectionName}`);
+        const ws = (window as any)[`obs_ws_${connectionName}`];
+        if (ws) {
+          ws.close();
+          delete (window as any)[`obs_ws_${connectionName}`];
+          log(`WebSocket closed for ${connectionName}`);
+        }
+      }
 
       updateObsConnectionStatus(connectionName, 'Disconnected');
     } catch (error) {
-      console.error('Failed to disconnect:', error);
+      logError(`Disconnect failed for ${connectionName}`, error);
       updateObsConnectionStatus(connectionName, 'Error', 'Failed to disconnect');
     }
   };
@@ -233,11 +230,11 @@ const ObsWebSocketManager: React.FC = () => {
       const hashBase64 = btoa(binary);
       
       console.log('Auth debug:', {
-        challenge,
-        salt,
+        challenge: challenge.substring(0, 20) + '...',
+        salt: salt.substring(0, 20) + '...',
         password: password.substring(0, 3) + '***', // Don't log full password
-        combined: combined.substring(0, 20) + '...',
-        hashBase64
+        combinedLength: combined.length,
+        hashBase64: hashBase64.substring(0, 20) + '...'
       });
       
       return hashBase64;
@@ -247,59 +244,196 @@ const ObsWebSocketManager: React.FC = () => {
     }
   };
 
+  // Handle OBS WebSocket v5 authentication properly
+  const handleV5Authentication = async (ws: WebSocket, connection: ObsConnection, connectionName: string) => {
+    return new Promise<void>((resolve, reject) => {
+      const messageHandler = async (event: MessageEvent) => {
+        try {
+          const response = JSON.parse(event.data);
+          console.log(`OBS Response for ${connectionName}:`, response);
+          
+          if (response.op === 0) { // Hello message
+            // Handle authentication challenge
+            if (response.d.authentication && connection.password) {
+              const { challenge, salt } = response.d.authentication;
+              
+              try {
+                // Generate proper authentication response
+                const authResponse = await generateAuthResponse(connection.password, challenge, salt);
+                
+                const identifyRequest = {
+                  op: 1,
+                  d: {
+                    rpcVersion: 1,
+                    authentication: authResponse,
+                    eventSubscriptions: 0
+                  }
+                };
+                
+                console.log(`Sending authentication for ${connectionName}:`, identifyRequest);
+                ws.send(JSON.stringify(identifyRequest));
+              } catch (error) {
+                console.error(`Authentication failed for ${connectionName}:`, error);
+                reject(new Error(`Authentication failed: ${error}`));
+              }
+            } else {
+              // No authentication required
+              const identifyRequest = {
+                op: 1,
+                d: {
+                  rpcVersion: 1,
+                  authentication: null,
+                  eventSubscriptions: 0
+                }
+              };
+              
+              console.log(`No authentication required for ${connectionName}`);
+              ws.send(JSON.stringify(identifyRequest));
+            }
+          } else if (response.op === 2) { // Identified message
+            console.log(`Successfully authenticated with ${connectionName}`);
+            updateObsConnectionStatus(connectionName, 'Authenticated');
+            ws.removeEventListener('message', messageHandler);
+            resolve();
+          } else if (response.op === 7) { // RequestResponse
+            console.log(`Request response from ${connectionName}:`, response);
+          }
+        } catch (error) {
+          console.error(`Failed to parse OBS response for ${connectionName}:`, error);
+          reject(error);
+        }
+      };
+      
+      ws.addEventListener('message', messageHandler);
+      
+      // Set a timeout for authentication
+      setTimeout(() => {
+        ws.removeEventListener('message', messageHandler);
+        reject(new Error('Authentication timeout'));
+      }, 10000); // 10 second timeout
+    });
+  };
+
+  // Handle OBS WebSocket v4 authentication
+  const handleV4Authentication = async (ws: WebSocket, connection: ObsConnection, connectionName: string) => {
+    return new Promise<void>((resolve, reject) => {
+      const messageHandler = async (event: MessageEvent) => {
+        try {
+          const response = JSON.parse(event.data);
+          console.log(`OBS v4 Response for ${connectionName}:`, response);
+          
+          // V4 authentication is simpler - just check if we get a valid response
+          if (response['error'] || response['error-id']) {
+            console.error(`V4 authentication failed for ${connectionName}:`, response);
+            reject(new Error(`V4 authentication failed: ${response['error'] || response['error-id']}`));
+          } else {
+            console.log(`V4 authentication successful for ${connectionName}`);
+            updateObsConnectionStatus(connectionName, 'Authenticated');
+            ws.removeEventListener('message', messageHandler);
+            resolve();
+          }
+        } catch (error) {
+          console.error(`Failed to parse OBS v4 response for ${connectionName}:`, error);
+          reject(error);
+        }
+      };
+      
+      ws.addEventListener('message', messageHandler);
+      
+      // For v4, we can send a simple request to test authentication
+      if (connection.password) {
+        const authRequest = {
+          "request-type": "GetAuthRequired",
+          "message-id": `auth_${Date.now()}`
+        };
+        ws.send(JSON.stringify(authRequest));
+      } else {
+        // No password required, just resolve
+        updateObsConnectionStatus(connectionName, 'Authenticated');
+        ws.removeEventListener('message', messageHandler);
+        resolve();
+      }
+      
+      // Set a timeout for authentication
+      setTimeout(() => {
+        ws.removeEventListener('message', messageHandler);
+        reject(new Error('V4 authentication timeout'));
+      }, 10000); // 10 second timeout
+    });
+  };
+
   // Test OBS status polling
   const testObsStatus = async () => {
-    const { updateObsStatus } = useAppStore.getState();
+    log(`Testing OBS status (Environment: ${env.environment})`);
     
-    // Check if we have any connected OBS instances
-    const connectedConnections = obsConnections.filter(c => 
-      c.status === 'Connected' || c.status === 'Authenticated'
-    );
-    
-    if (connectedConnections.length === 0) {
-      console.log('No connected OBS instances to test status');
-      return;
-    }
-    
-    console.log(`Testing OBS status for ${connectedConnections.length} connections...`);
-    
-    // For each connected connection, try to get status
-    for (const connection of connectedConnections) {
-      const ws = (window as any)[`obs_ws_${connection.name}`];
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        try {
-          // Send GetRecordStatus request
-          const recordStatusRequest = {
-            op: 6,
-            d: {
-              requestType: "GetRecordStatus",
-              requestId: `record_${Date.now()}`
-            }
-          };
-          ws.send(JSON.stringify(recordStatusRequest));
-          
-          // Send GetStreamStatus request
-          const streamStatusRequest = {
-            op: 6,
-            d: {
-              requestType: "GetStreamStatus",
-              requestId: `stream_${Date.now()}`
-            }
-          };
-          ws.send(JSON.stringify(streamStatusRequest));
-          
-          // Send GetStats request for CPU usage
-          const statsRequest = {
-            op: 6,
-            d: {
-              requestType: "GetStats",
-              requestId: `stats_${Date.now()}`
-            }
-          };
-          ws.send(JSON.stringify(statsRequest));
-          
-        } catch (error) {
-          console.error(`Failed to send status requests to ${connection.name}:`, error);
+    if (isWindows()) {
+      // Use Tauri commands for Windows environment
+      log('Using Tauri commands for OBS status');
+      try {
+        const { updateObsStatus } = useAppStore.getState();
+        const status = await invokeTauri('obs_get_status');
+        if (status.success && status.data) {
+          updateObsStatus(status.data);
+          log('OBS status updated via Tauri');
+        }
+      } catch (error) {
+        logError('Tauri OBS status failed', error);
+      }
+    } else {
+      // Use direct WebSocket for web environment
+      log('Using direct WebSocket for OBS status');
+      const { updateObsStatus } = useAppStore.getState();
+      
+      // Check if we have any connected OBS instances
+      const connectedConnections = obsConnections.filter(c => 
+        c.status === 'Connected' || c.status === 'Authenticated'
+      );
+      
+      if (connectedConnections.length === 0) {
+        log('No connected OBS instances to test status');
+        return;
+      }
+      
+      log(`Testing OBS status for ${connectedConnections.length} connections...`);
+      
+      // For each connected connection, try to get status
+      for (const connection of connectedConnections) {
+        const ws = (window as any)[`obs_ws_${connection.name}`];
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          try {
+            // Send GetRecordStatus request
+            const recordStatusRequest = {
+              op: 6,
+              d: {
+                requestType: "GetRecordStatus",
+                requestId: `record_${Date.now()}`
+              }
+            };
+            ws.send(JSON.stringify(recordStatusRequest));
+            
+            // Send GetStreamStatus request
+            const streamStatusRequest = {
+              op: 6,
+              d: {
+                requestType: "GetStreamStatus",
+                requestId: `stream_${Date.now()}`
+              }
+            };
+            ws.send(JSON.stringify(streamStatusRequest));
+            
+            // Send GetStats request for CPU usage
+            const statsRequest = {
+              op: 6,
+              d: {
+                requestType: "GetStats",
+                requestId: `stats_${Date.now()}`
+              }
+            };
+            ws.send(JSON.stringify(statsRequest));
+            
+          } catch (error) {
+            logError(`Failed to send status requests to ${connection.name}`, error);
+          }
         }
       }
     }

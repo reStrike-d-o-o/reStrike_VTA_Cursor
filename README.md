@@ -79,6 +79,74 @@ reStrike_VTA/
 - **Dependencies:** Windows OBS Studio, mpv (Windows build)
 - **Linting:** ESLint (with TypeScript and React plugin)
 
+## 🌐 **Environment System**
+
+The project supports **dual environment operation** - **Web** and **Windows** modes with automatic detection and environment-specific features.
+
+### **Environment Detection**
+- **Automatic**: Detects Tauri availability and environment variables
+- **Manual Override**: Set `REACT_APP_ENVIRONMENT=web` or `REACT_APP_ENVIRONMENT=windows`
+- **Build Scripts**: Separate scripts for each environment
+
+### **Environment-Specific Features**
+
+#### **Windows Environment** 🪟
+- ✅ **Tauri Commands**: Native Windows API access
+- ✅ **Native File System**: Direct file system operations
+- ✅ **System Tray**: Windows system tray integration
+- ✅ **Auto Updates**: Automatic application updates
+- ✅ **OBS Integration**: Direct OBS WebSocket via Tauri
+- ✅ **Hardware Access**: Direct hardware control
+
+#### **Web Environment** 🌐
+- ✅ **Direct WebSocket**: Browser-based WebSocket connections
+- ✅ **HTTP API**: RESTful API communication
+- ✅ **Browser APIs**: File upload/download via browser
+- ✅ **Hot Reload**: Development hot reload support
+- ✅ **Cross-Platform**: Works on any platform with a browser
+
+### **Usage Examples**
+
+```bash
+# Start in web mode
+npm run start:web
+
+# Start in Windows mode  
+npm run start:windows
+
+# Build for web
+npm run build:web
+
+# Build for Windows
+npm run build:windows
+```
+
+### **Environment-Aware Components**
+
+```typescript
+import { useEnvironment, EnvironmentWrapper } from './hooks/useEnvironment';
+
+function MyComponent() {
+  const { environment, isWindows, isWeb } = useEnvironment();
+  
+  return (
+    <div>
+      <p>Environment: {environment}</p>
+      
+      <EnvironmentWrapper windowsOnly>
+        <p>Windows-only content</p>
+      </EnvironmentWrapper>
+      
+      <EnvironmentWrapper webOnly>
+        <p>Web-only content</p>
+      </EnvironmentWrapper>
+    </div>
+  );
+}
+```
+
+**📖 Full Documentation**: [Environment System Guide](./docs/development/environment-system.md)
+
 ## Quick Start
 1. **Clone the repository:**
    ```bash
