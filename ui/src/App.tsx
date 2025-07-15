@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, memo } from 'react';
 import { motion } from 'framer-motion';
 import { useAppStore } from './stores';
 import Overlay from './components/Overlay';
@@ -7,7 +7,34 @@ import VideoClips from './components/VideoClips';
 import Settings from './components/Settings';
 import SidebarTest from './components/SidebarTest';
 
-function App() {
+// Memoized navigation items for performance
+const navigationItems = [
+  { id: 'sidebar-test', label: 'Sidebar', icon: '📊' },
+  { id: 'overlay', label: 'Overlay', icon: '🎥' },
+  { id: 'clips', label: 'Video Clips', icon: '🎬' },
+  { id: 'obs-manager', label: 'OBS Manager', icon: '🎛️' },
+  { id: 'settings', label: 'Settings', icon: '⚙️' },
+];
+
+// Memoized render function for better performance
+const RenderCurrentView = memo(({ currentView }: { currentView: string }) => {
+  switch (currentView) {
+    case 'sidebar-test':
+      return <SidebarTest />;
+    case 'overlay':
+      return <Overlay />;
+    case 'clips':
+      return <VideoClips />;
+    case 'obs-manager':
+      return <ObsWebSocketManager />;
+    case 'settings':
+      return <Settings />;
+    default:
+      return <SidebarTest />;
+  }
+});
+
+const App = memo(() => {
   const { currentView, setCurrentView } = useAppStore();
 
   useEffect(() => {
@@ -25,31 +52,6 @@ function App() {
       console.error('❌ Failed to initialize Windows features:', error);
     }
   };
-
-  const renderCurrentView = () => {
-    switch (currentView) {
-      case 'sidebar-test':
-        return <SidebarTest />;
-      case 'overlay':
-        return <Overlay />;
-      case 'clips':
-        return <VideoClips />;
-      case 'obs-manager':
-        return <ObsWebSocketManager />;
-      case 'settings':
-        return <Settings />;
-      default:
-        return <SidebarTest />;
-    }
-  };
-
-  const navigationItems = [
-    { id: 'sidebar-test', label: 'Sidebar', icon: '📊' },
-    { id: 'overlay', label: 'Overlay', icon: '🎥' },
-    { id: 'clips', label: 'Video Clips', icon: '🎬' },
-    { id: 'obs-manager', label: 'OBS Manager', icon: '🎛️' },
-    { id: 'settings', label: 'Settings', icon: '⚙️' },
-  ];
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
@@ -93,11 +95,13 @@ function App() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
         >
-          {renderCurrentView()}
+          <RenderCurrentView currentView={currentView} />
         </motion.div>
       </main>
     </div>
   );
-}
+});
+
+App.displayName = 'App';
 
 export default App;
