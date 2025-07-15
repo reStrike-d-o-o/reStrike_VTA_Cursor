@@ -1,0 +1,1423 @@
+{
+  "summary": {
+    "total_countries": 231,
+    "countries_with_ioc": 231,
+    "successfully_downloaded": 210,
+    "failed_downloads": 21,
+    "missing_flag_urls": 0,
+    "countries_without_ioc": 0
+  },
+  "downloaded_flags": [
+    {
+      "country": "Afghanistan",
+      "ioc_code": "AFG",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Flag_of_the_Taliban.svg/40px-Flag_of_the_Taliban.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Albania",
+      "ioc_code": "ALB",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/Flag_of_Albania.svg/40px-Flag_of_Albania.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Algeria",
+      "ioc_code": "ALG",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/Flag_of_Algeria.svg/40px-Flag_of_Algeria.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Andorra",
+      "ioc_code": "AND",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Flag_of_Andorra.svg/40px-Flag_of_Andorra.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Angola",
+      "ioc_code": "ANG",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9d/Flag_of_Angola.svg/40px-Flag_of_Angola.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Antigua and Barbuda",
+      "ioc_code": "ANT",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/Flag_of_Antigua_and_Barbuda.svg/40px-Flag_of_Antigua_and_Barbuda.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Argentina",
+      "ioc_code": "ARG",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Flag_of_Argentina.svg/40px-Flag_of_Argentina.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Armenia",
+      "ioc_code": "ARM",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Flag_of_Armenia.svg/40px-Flag_of_Armenia.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Australia",
+      "ioc_code": "AUS",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/88/Flag_of_Australia_%28converted%29.svg/40px-Flag_of_Australia_%28converted%29.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Austria",
+      "ioc_code": "AUT",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/41/Flag_of_Austria.svg/40px-Flag_of_Austria.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Azerbaijan",
+      "ioc_code": "AZE",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Flag_of_Azerbaijan.svg/40px-Flag_of_Azerbaijan.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "bahamas",
+      "ioc_code": "BAH",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/Flag_of_the_Bahamas.svg/40px-Flag_of_the_Bahamas.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Bahrain",
+      "ioc_code": "BRN",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Flag_of_Bahrain.svg/40px-Flag_of_Bahrain.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Bangladesh",
+      "ioc_code": "BAN",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f9/Flag_of_Bangladesh.svg/40px-Flag_of_Bangladesh.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Barbados",
+      "ioc_code": "BAR",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ef/Flag_of_Barbados.svg/40px-Flag_of_Barbados.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Belarus",
+      "ioc_code": "BLR",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/85/Flag_of_Belarus.svg/40px-Flag_of_Belarus.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Belgium",
+      "ioc_code": "BEL",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/92/Flag_of_Belgium_%28civil%29.svg/40px-Flag_of_Belgium_%28civil%29.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Belize",
+      "ioc_code": "BIZ",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/Flag_of_Belize.svg/40px-Flag_of_Belize.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Benin",
+      "ioc_code": "BEN",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0a/Flag_of_Benin.svg/40px-Flag_of_Benin.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Bhutan",
+      "ioc_code": "BHU",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Flag_of_Bhutan.svg/40px-Flag_of_Bhutan.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Bolivia",
+      "ioc_code": "BOL",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/48/Flag_of_Bolivia.svg/40px-Flag_of_Bolivia.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Bosnia and Herzegovina",
+      "ioc_code": "BIH",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Flag_of_Bosnia_and_Herzegovina.svg/40px-Flag_of_Bosnia_and_Herzegovina.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Botswana",
+      "ioc_code": "BOT",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Flag_of_Botswana.svg/40px-Flag_of_Botswana.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Brazil",
+      "ioc_code": "BRA",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/en/thumb/0/05/Flag_of_Brazil.svg/40px-Flag_of_Brazil.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Brunei",
+      "ioc_code": "BRU",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Flag_of_Brunei.svg/40px-Flag_of_Brunei.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Bulgaria",
+      "ioc_code": "BUL",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Flag_of_Bulgaria.svg/40px-Flag_of_Bulgaria.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Burkina Faso",
+      "ioc_code": "BUR",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/Flag_of_Burkina_Faso.svg/40px-Flag_of_Burkina_Faso.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Burundi",
+      "ioc_code": "BDI",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/50/Flag_of_Burundi.svg/40px-Flag_of_Burundi.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Cambodia",
+      "ioc_code": "CAM",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/83/Flag_of_Cambodia.svg/40px-Flag_of_Cambodia.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Cameroon",
+      "ioc_code": "CMR",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/Flag_of_Cameroon.svg/40px-Flag_of_Cameroon.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Canada",
+      "ioc_code": "CAN",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d9/Flag_of_Canada_%28Pantone%29.svg/40px-Flag_of_Canada_%28Pantone%29.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "cabo verde",
+      "ioc_code": "CPV",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/38/Flag_of_Cape_Verde.svg/40px-Flag_of_Cape_Verde.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Central African Republic",
+      "ioc_code": "CAF",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Flag_of_the_Central_African_Republic.svg/40px-Flag_of_the_Central_African_Republic.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Chad",
+      "ioc_code": "CHA",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/Flag_of_Chad.svg/40px-Flag_of_Chad.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Chile",
+      "ioc_code": "CHI",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/78/Flag_of_Chile.svg/40px-Flag_of_Chile.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "China",
+      "ioc_code": "CHN",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Flag_of_the_People%27s_Republic_of_China.svg/40px-Flag_of_the_People%27s_Republic_of_China.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Colombia",
+      "ioc_code": "COL",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/21/Flag_of_Colombia.svg/40px-Flag_of_Colombia.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Comoros",
+      "ioc_code": "COM",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/94/Flag_of_the_Comoros.svg/40px-Flag_of_the_Comoros.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "congo, democratic republic of the",
+      "ioc_code": "COD",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Flag_of_the_Democratic_Republic_of_the_Congo.svg/20px-Flag_of_the_Democratic_Republic_of_the_Congo.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "congo, republic of the",
+      "ioc_code": "CGO",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/92/Flag_of_the_Republic_of_the_Congo.svg/40px-Flag_of_the_Republic_of_the_Congo.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Costa Rica",
+      "ioc_code": "CRC",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Flag_of_Costa_Rica.svg/40px-Flag_of_Costa_Rica.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Croatia",
+      "ioc_code": "CRO",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/Flag_of_Croatia.svg/40px-Flag_of_Croatia.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Cuba",
+      "ioc_code": "CUB",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bd/Flag_of_Cuba.svg/40px-Flag_of_Cuba.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Cyprus",
+      "ioc_code": "CYP",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Flag_of_Cyprus.svg/40px-Flag_of_Cyprus.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "czechia",
+      "ioc_code": "CZE",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/Flag_of_the_Czech_Republic.svg/40px-Flag_of_the_Czech_Republic.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Denmark",
+      "ioc_code": "DEN",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Flag_of_Denmark.svg/20px-Flag_of_Denmark.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Djibouti",
+      "ioc_code": "DJI",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/34/Flag_of_Djibouti.svg/40px-Flag_of_Djibouti.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Dominica",
+      "ioc_code": "DMA",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c4/Flag_of_Dominica.svg/40px-Flag_of_Dominica.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Dominican Republic",
+      "ioc_code": "DOM",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Flag_of_the_Dominican_Republic.svg/40px-Flag_of_the_Dominican_Republic.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Ecuador",
+      "ioc_code": "ECU",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e8/Flag_of_Ecuador.svg/40px-Flag_of_Ecuador.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Egypt",
+      "ioc_code": "EGY",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fe/Flag_of_Egypt.svg/40px-Flag_of_Egypt.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "El Salvador",
+      "ioc_code": "ESA",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/34/Flag_of_El_Salvador.svg/40px-Flag_of_El_Salvador.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Equatorial Guinea",
+      "ioc_code": "GEQ",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/Flag_of_Equatorial_Guinea.svg/40px-Flag_of_Equatorial_Guinea.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Eritrea",
+      "ioc_code": "ERI",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/29/Flag_of_Eritrea.svg/40px-Flag_of_Eritrea.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Estonia",
+      "ioc_code": "EST",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/Flag_of_Estonia.svg/40px-Flag_of_Estonia.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Eswatini",
+      "ioc_code": "SWZ",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fb/Flag_of_Eswatini.svg/40px-Flag_of_Eswatini.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Ethiopia",
+      "ioc_code": "ETH",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/Flag_of_Ethiopia.svg/40px-Flag_of_Ethiopia.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Fiji",
+      "ioc_code": "FIJ",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/ba/Flag_of_Fiji.svg/40px-Flag_of_Fiji.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Finland",
+      "ioc_code": "FIN",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/Flag_of_Finland.svg/40px-Flag_of_Finland.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "France",
+      "ioc_code": "FRA",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/en/thumb/c/c3/Flag_of_France.svg/40px-Flag_of_France.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Gabon",
+      "ioc_code": "GAB",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/04/Flag_of_Gabon.svg/20px-Flag_of_Gabon.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "gambia",
+      "ioc_code": "GAM",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/Flag_of_The_Gambia.svg/40px-Flag_of_The_Gambia.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Georgia",
+      "ioc_code": "GEO",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Flag_of_Georgia.svg/40px-Flag_of_Georgia.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Germany",
+      "ioc_code": "GER",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/en/thumb/b/ba/Flag_of_Germany.svg/40px-Flag_of_Germany.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Ghana",
+      "ioc_code": "GHA",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Flag_of_Ghana.svg/40px-Flag_of_Ghana.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Greece",
+      "ioc_code": "GRE",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Flag_of_Greece.svg/40px-Flag_of_Greece.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Grenada",
+      "ioc_code": "GRN",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/Flag_of_Grenada.svg/40px-Flag_of_Grenada.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Guatemala",
+      "ioc_code": "GUA",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/Flag_of_Guatemala.svg/40px-Flag_of_Guatemala.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Guinea",
+      "ioc_code": "GUI",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ed/Flag_of_Guinea.svg/40px-Flag_of_Guinea.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Guinea-Bissau",
+      "ioc_code": "GBS",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/Flag_of_Guinea-Bissau.svg/40px-Flag_of_Guinea-Bissau.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Guyana",
+      "ioc_code": "GUY",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/Flag_of_Guyana.svg/40px-Flag_of_Guyana.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Haiti",
+      "ioc_code": "HAI",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/56/Flag_of_Haiti.svg/40px-Flag_of_Haiti.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Honduras",
+      "ioc_code": "HON",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/85/Flag_of_Honduras_%282022-%29.svg/40px-Flag_of_Honduras_%282022-%29.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Hungary",
+      "ioc_code": "HUN",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Flag_of_Hungary.svg/40px-Flag_of_Hungary.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Iceland",
+      "ioc_code": "ISL",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/ce/Flag_of_Iceland.svg/40px-Flag_of_Iceland.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "India",
+      "ioc_code": "IND",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/en/thumb/4/41/Flag_of_India.svg/40px-Flag_of_India.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Indonesia",
+      "ioc_code": "INA",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Flag_of_Indonesia.svg/40px-Flag_of_Indonesia.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Iran",
+      "ioc_code": "IRI",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/Flag_of_Iran.svg/40px-Flag_of_Iran.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Iraq",
+      "ioc_code": "IRQ",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/Flag_of_Iraq.svg/40px-Flag_of_Iraq.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Ireland",
+      "ioc_code": "IRL",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/45/Flag_of_Ireland.svg/40px-Flag_of_Ireland.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Israel",
+      "ioc_code": "ISR",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Flag_of_Israel.svg/40px-Flag_of_Israel.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Italy",
+      "ioc_code": "ITA",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/en/thumb/0/03/Flag_of_Italy.svg/40px-Flag_of_Italy.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Ivory Coast",
+      "ioc_code": "CIV",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fe/Flag_of_C%C3%B4te_d%27Ivoire.svg/40px-Flag_of_C%C3%B4te_d%27Ivoire.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Jamaica",
+      "ioc_code": "JAM",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0a/Flag_of_Jamaica.svg/40px-Flag_of_Jamaica.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Japan",
+      "ioc_code": "JPN",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/en/thumb/9/9e/Flag_of_Japan.svg/40px-Flag_of_Japan.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Jordan",
+      "ioc_code": "JOR",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c0/Flag_of_Jordan.svg/40px-Flag_of_Jordan.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Kazakhstan",
+      "ioc_code": "KAZ",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/Flag_of_Kazakhstan.svg/40px-Flag_of_Kazakhstan.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Kenya",
+      "ioc_code": "KEN",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Flag_of_Kenya.svg/40px-Flag_of_Kenya.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Kiribati",
+      "ioc_code": "KIR",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/Flag_of_Kiribati.svg/40px-Flag_of_Kiribati.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Kuwait",
+      "ioc_code": "KUW",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/aa/Flag_of_Kuwait.svg/40px-Flag_of_Kuwait.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Kyrgyzstan",
+      "ioc_code": "KGZ",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c7/Flag_of_Kyrgyzstan.svg/40px-Flag_of_Kyrgyzstan.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Laos",
+      "ioc_code": "LAO",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/56/Flag_of_Laos.svg/40px-Flag_of_Laos.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Latvia",
+      "ioc_code": "LAT",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Flag_of_Latvia.svg/40px-Flag_of_Latvia.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Lebanon",
+      "ioc_code": "LBN",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/59/Flag_of_Lebanon.svg/40px-Flag_of_Lebanon.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Lesotho",
+      "ioc_code": "LES",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/Flag_of_Lesotho.svg/40px-Flag_of_Lesotho.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Liberia",
+      "ioc_code": "LBR",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/Flag_of_Liberia.svg/40px-Flag_of_Liberia.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Libya",
+      "ioc_code": "LBA",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Flag_of_Libya.svg/40px-Flag_of_Libya.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Liechtenstein",
+      "ioc_code": "LIE",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/Flag_of_Liechtenstein.svg/40px-Flag_of_Liechtenstein.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Lithuania",
+      "ioc_code": "LTU",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Flag_of_Lithuania.svg/40px-Flag_of_Lithuania.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Luxembourg",
+      "ioc_code": "LUX",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/da/Flag_of_Luxembourg.svg/40px-Flag_of_Luxembourg.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Madagascar",
+      "ioc_code": "MAD",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/Flag_of_Madagascar.svg/40px-Flag_of_Madagascar.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Malawi",
+      "ioc_code": "MAW",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/Flag_of_Malawi.svg/40px-Flag_of_Malawi.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Malaysia",
+      "ioc_code": "MAS",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/66/Flag_of_Malaysia.svg/40px-Flag_of_Malaysia.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Maldives",
+      "ioc_code": "MDV",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Flag_of_Maldives.svg/40px-Flag_of_Maldives.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Mali",
+      "ioc_code": "MLI",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/92/Flag_of_Mali.svg/40px-Flag_of_Mali.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Malta",
+      "ioc_code": "MLT",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/73/Flag_of_Malta.svg/40px-Flag_of_Malta.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Marshall Islands",
+      "ioc_code": "MHL",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/Flag_of_the_Marshall_Islands.svg/40px-Flag_of_the_Marshall_Islands.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Mauritania",
+      "ioc_code": "MTN",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/43/Flag_of_Mauritania.svg/40px-Flag_of_Mauritania.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Mauritius",
+      "ioc_code": "MRI",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/Flag_of_Mauritius.svg/40px-Flag_of_Mauritius.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Mexico",
+      "ioc_code": "MEX",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fc/Flag_of_Mexico.svg/40px-Flag_of_Mexico.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "micronesia",
+      "ioc_code": "FSM",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/Flag_of_the_Federated_States_of_Micronesia.svg/40px-Flag_of_the_Federated_States_of_Micronesia.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Moldova",
+      "ioc_code": "MDA",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/27/Flag_of_Moldova.svg/40px-Flag_of_Moldova.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Monaco",
+      "ioc_code": "MON",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/Flag_of_Monaco.svg/20px-Flag_of_Monaco.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Mongolia",
+      "ioc_code": "MGL",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/Flag_of_Mongolia.svg/40px-Flag_of_Mongolia.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Montenegro",
+      "ioc_code": "MNE",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/64/Flag_of_Montenegro.svg/40px-Flag_of_Montenegro.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Morocco",
+      "ioc_code": "MAR",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Flag_of_Morocco.svg/40px-Flag_of_Morocco.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Mozambique",
+      "ioc_code": "MOZ",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d0/Flag_of_Mozambique.svg/40px-Flag_of_Mozambique.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "myanmar",
+      "ioc_code": "MYA",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/Flag_of_Myanmar.svg/40px-Flag_of_Myanmar.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Namibia",
+      "ioc_code": "NAM",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/00/Flag_of_Namibia.svg/40px-Flag_of_Namibia.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Nauru",
+      "ioc_code": "NRU",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Flag_of_Nauru.svg/40px-Flag_of_Nauru.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Nepal",
+      "ioc_code": "NEP",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Flag_of_Nepal.svg/20px-Flag_of_Nepal.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Netherlands",
+      "ioc_code": "NED",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/20/Flag_of_the_Netherlands.svg/40px-Flag_of_the_Netherlands.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "New Zealand",
+      "ioc_code": "NZL",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Flag_of_New_Zealand.svg/40px-Flag_of_New_Zealand.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Nicaragua",
+      "ioc_code": "NCA",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Flag_of_Nicaragua.svg/40px-Flag_of_Nicaragua.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Niger",
+      "ioc_code": "NIG",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f4/Flag_of_Niger.svg/20px-Flag_of_Niger.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Nigeria",
+      "ioc_code": "NGR",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/79/Flag_of_Nigeria.svg/40px-Flag_of_Nigeria.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "North Korea",
+      "ioc_code": "PRK",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/51/Flag_of_North_Korea.svg/40px-Flag_of_North_Korea.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "north macedonia",
+      "ioc_code": "MKD",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/79/Flag_of_North_Macedonia.svg/40px-Flag_of_North_Macedonia.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Norway",
+      "ioc_code": "NOR",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d9/Flag_of_Norway.svg/40px-Flag_of_Norway.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Oman",
+      "ioc_code": "OMA",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Flag_of_Oman.svg/40px-Flag_of_Oman.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Pakistan",
+      "ioc_code": "PAK",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/32/Flag_of_Pakistan.svg/40px-Flag_of_Pakistan.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Palau",
+      "ioc_code": "PLW",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/48/Flag_of_Palau.svg/40px-Flag_of_Palau.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Palestine",
+      "ioc_code": "PLE",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/00/Flag_of_Palestine.svg/40px-Flag_of_Palestine.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Panama",
+      "ioc_code": "PAN",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Flag_of_Panama.svg/40px-Flag_of_Panama.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Papua New Guinea",
+      "ioc_code": "PNG",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/Flag_of_Papua_New_Guinea.svg/20px-Flag_of_Papua_New_Guinea.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Paraguay",
+      "ioc_code": "PAR",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/27/Flag_of_Paraguay.svg/40px-Flag_of_Paraguay.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Peru",
+      "ioc_code": "PER",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cf/Flag_of_Peru.svg/40px-Flag_of_Peru.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Philippines",
+      "ioc_code": "PHI",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/Flag_of_the_Philippines.svg/40px-Flag_of_the_Philippines.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Poland",
+      "ioc_code": "POL",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/en/thumb/1/12/Flag_of_Poland.svg/40px-Flag_of_Poland.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Portugal",
+      "ioc_code": "POR",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a8/Flag_of_Portugal_%28official%29.svg/40px-Flag_of_Portugal_%28official%29.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Qatar",
+      "ioc_code": "QAT",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/Flag_of_Qatar.svg/40px-Flag_of_Qatar.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Romania",
+      "ioc_code": "ROU",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/73/Flag_of_Romania.svg/40px-Flag_of_Romania.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Russia",
+      "ioc_code": "RUS",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/en/thumb/f/f3/Flag_of_Russia.svg/40px-Flag_of_Russia.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Rwanda",
+      "ioc_code": "RWA",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/17/Flag_of_Rwanda.svg/40px-Flag_of_Rwanda.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Saint Kitts and Nevis",
+      "ioc_code": "SKN",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fe/Flag_of_Saint_Kitts_and_Nevis.svg/40px-Flag_of_Saint_Kitts_and_Nevis.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Saint Lucia",
+      "ioc_code": "LCA",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Flag_of_Saint_Lucia.svg/40px-Flag_of_Saint_Lucia.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "saint vincent and the grenadines",
+      "ioc_code": "VIN",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/Flag_of_Saint_Vincent_and_the_Grenadines.svg/40px-Flag_of_Saint_Vincent_and_the_Grenadines.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Samoa",
+      "ioc_code": "SAM",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/Flag_of_Samoa.svg/40px-Flag_of_Samoa.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "San Marino",
+      "ioc_code": "SMR",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b1/Flag_of_San_Marino.svg/20px-Flag_of_San_Marino.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "sao tome and principe",
+      "ioc_code": "STP",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0a/Flag_of_S%C3%A3o_Tom%C3%A9_and_Pr%C3%ADncipe.svg/40px-Flag_of_S%C3%A3o_Tom%C3%A9_and_Pr%C3%ADncipe.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Saudi Arabia",
+      "ioc_code": "KSA",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/Flag_of_Saudi_Arabia.svg/40px-Flag_of_Saudi_Arabia.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Senegal",
+      "ioc_code": "SEN",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fd/Flag_of_Senegal.svg/40px-Flag_of_Senegal.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Serbia",
+      "ioc_code": "SRB",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/ff/Flag_of_Serbia.svg/40px-Flag_of_Serbia.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Seychelles",
+      "ioc_code": "SEY",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fc/Flag_of_Seychelles.svg/40px-Flag_of_Seychelles.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Sierra Leone",
+      "ioc_code": "SLE",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/17/Flag_of_Sierra_Leone.svg/40px-Flag_of_Sierra_Leone.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Singapore",
+      "ioc_code": "SGP",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/48/Flag_of_Singapore.svg/40px-Flag_of_Singapore.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Slovakia",
+      "ioc_code": "SVK",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e6/Flag_of_Slovakia.svg/40px-Flag_of_Slovakia.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Slovenia",
+      "ioc_code": "SLO",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f0/Flag_of_Slovenia.svg/40px-Flag_of_Slovenia.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Solomon Islands",
+      "ioc_code": "SOL",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/74/Flag_of_the_Solomon_Islands.svg/40px-Flag_of_the_Solomon_Islands.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Somalia",
+      "ioc_code": "SOM",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/Flag_of_Somalia.svg/40px-Flag_of_Somalia.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "South Africa",
+      "ioc_code": "RSA",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/af/Flag_of_South_Africa.svg/40px-Flag_of_South_Africa.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "South Korea",
+      "ioc_code": "KOR",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/Flag_of_South_Korea.svg/40px-Flag_of_South_Korea.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "South Sudan",
+      "ioc_code": "SSD",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Flag_of_South_Sudan.svg/40px-Flag_of_South_Sudan.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Spain",
+      "ioc_code": "ESP",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/en/thumb/9/9a/Flag_of_Spain.svg/40px-Flag_of_Spain.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Sri Lanka",
+      "ioc_code": "SRI",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Flag_of_Sri_Lanka.svg/40px-Flag_of_Sri_Lanka.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Sudan",
+      "ioc_code": "SUD",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/Flag_of_Sudan.svg/40px-Flag_of_Sudan.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Suriname",
+      "ioc_code": "SUR",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/60/Flag_of_Suriname.svg/40px-Flag_of_Suriname.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Sweden",
+      "ioc_code": "SWE",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/en/thumb/4/4c/Flag_of_Sweden.svg/40px-Flag_of_Sweden.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Switzerland",
+      "ioc_code": "SUI",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/08/Flag_of_Switzerland_%28Pantone%29.svg/20px-Flag_of_Switzerland_%28Pantone%29.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Syria",
+      "ioc_code": "SYR",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/54/Flag_of_Syria_%282025-%29.svg/40px-Flag_of_Syria_%282025-%29.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Tajikistan",
+      "ioc_code": "TJK",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d0/Flag_of_Tajikistan.svg/40px-Flag_of_Tajikistan.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Tanzania",
+      "ioc_code": "TAN",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/38/Flag_of_Tanzania.svg/40px-Flag_of_Tanzania.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Thailand",
+      "ioc_code": "THA",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Flag_of_Thailand.svg/40px-Flag_of_Thailand.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Timor-Leste",
+      "ioc_code": "TLS",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/Flag_of_East_Timor.svg/40px-Flag_of_East_Timor.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Togo",
+      "ioc_code": "TOG",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Flag_of_Togo_%283-2%29.svg/40px-Flag_of_Togo_%283-2%29.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Tonga",
+      "ioc_code": "TGA",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Flag_of_Tonga.svg/40px-Flag_of_Tonga.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Trinidad and Tobago",
+      "ioc_code": "TTO",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/64/Flag_of_Trinidad_and_Tobago.svg/40px-Flag_of_Trinidad_and_Tobago.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Tunisia",
+      "ioc_code": "TUN",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/ce/Flag_of_Tunisia.svg/40px-Flag_of_Tunisia.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Turkey",
+      "ioc_code": "TUR",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b4/Flag_of_Turkey.svg/40px-Flag_of_Turkey.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Turkmenistan",
+      "ioc_code": "TKM",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/Flag_of_Turkmenistan.svg/40px-Flag_of_Turkmenistan.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Tuvalu",
+      "ioc_code": "TUV",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/38/Flag_of_Tuvalu.svg/40px-Flag_of_Tuvalu.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Uganda",
+      "ioc_code": "UGA",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Flag_of_Uganda.svg/40px-Flag_of_Uganda.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Ukraine",
+      "ioc_code": "UKR",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Flag_of_Ukraine.svg/40px-Flag_of_Ukraine.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "United Arab Emirates",
+      "ioc_code": "UAE",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/Flag_of_the_United_Arab_Emirates.svg/40px-Flag_of_the_United_Arab_Emirates.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "United Kingdom",
+      "ioc_code": "GBR",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/en/thumb/a/ae/Flag_of_the_United_Kingdom.svg/40px-Flag_of_the_United_Kingdom.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "United States",
+      "ioc_code": "USA",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/en/thumb/a/a4/Flag_of_the_United_States.svg/40px-Flag_of_the_United_States.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Uruguay",
+      "ioc_code": "URU",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fe/Flag_of_Uruguay.svg/40px-Flag_of_Uruguay.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Uzbekistan",
+      "ioc_code": "UZB",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Flag_of_Uzbekistan.svg/40px-Flag_of_Uzbekistan.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Vanuatu",
+      "ioc_code": "VAN",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/Flag_of_Vanuatu.svg/40px-Flag_of_Vanuatu.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Vatican City",
+      "ioc_code": "VAT",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b3/Flag_of_Vatican_City_%282023%E2%80%93present%29.svg/20px-Flag_of_Vatican_City_%282023%E2%80%93present%29.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Venezuela",
+      "ioc_code": "VEN",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/06/Flag_of_Venezuela.svg/40px-Flag_of_Venezuela.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Vietnam",
+      "ioc_code": "VIE",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/21/Flag_of_Vietnam.svg/40px-Flag_of_Vietnam.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Yemen",
+      "ioc_code": "YEM",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/Flag_of_Yemen.svg/40px-Flag_of_Yemen.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Zambia",
+      "ioc_code": "ZAM",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/06/Flag_of_Zambia.svg/40px-Flag_of_Zambia.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "Zimbabwe",
+      "ioc_code": "ZIM",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6a/Flag_of_Zimbabwe.svg/40px-Flag_of_Zimbabwe.svg.png",
+      "type": "sovereign_state"
+    },
+    {
+      "country": "soviet union",
+      "ioc_code": "URS",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Flag_of_the_Soviet_Union.svg/40px-Flag_of_the_Soviet_Union.svg.png",
+      "type": "additional"
+    },
+    {
+      "country": "west germany",
+      "ioc_code": "FRG",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/ba/Flag_of_Germany.svg/40px-Flag_of_Germany.svg.png",
+      "type": "additional"
+    },
+    {
+      "country": "virgin islands",
+      "ioc_code": "ISV",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f8/Flag_of_the_United_States_Virgin_Islands.svg/40px-Flag_of_the_United_States_Virgin_Islands.svg.png",
+      "type": "additional"
+    },
+    {
+      "country": "british virgin islands",
+      "ioc_code": "IVB",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/42/Flag_of_the_British_Virgin_Islands.svg/40px-Flag_of_the_British_Virgin_Islands.svg.png",
+      "type": "additional"
+    },
+    {
+      "country": "cayman islands",
+      "ioc_code": "CAY",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Flag_of_the_Cayman_Islands.svg/40px-Flag_of_the_Cayman_Islands.svg.png",
+      "type": "additional"
+    },
+    {
+      "country": "bermuda",
+      "ioc_code": "BER",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Flag_of_Bermuda.svg/40px-Flag_of_Bermuda.svg.png",
+      "type": "additional"
+    },
+    {
+      "country": "puerto rico",
+      "ioc_code": "PUR",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/28/Flag_of_Puerto_Rico.svg/40px-Flag_of_Puerto_Rico.svg.png",
+      "type": "additional"
+    },
+    {
+      "country": "american samoa",
+      "ioc_code": "ASA",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Flag_of_American_Samoa.svg/40px-Flag_of_American_Samoa.svg.png",
+      "type": "additional"
+    },
+    {
+      "country": "cook islands",
+      "ioc_code": "COK",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Flag_of_the_Cook_Islands.svg/40px-Flag_of_the_Cook_Islands.svg.png",
+      "type": "additional"
+    },
+    {
+      "country": "french polynesia",
+      "ioc_code": "PYF",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/db/Flag_of_French_Polynesia.svg/40px-Flag_of_French_Polynesia.svg.png",
+      "type": "additional"
+    },
+    {
+      "country": "guam",
+      "ioc_code": "GUM",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/07/Flag_of_Guam.svg/40px-Flag_of_Guam.svg.png",
+      "type": "additional"
+    },
+    {
+      "country": "niue",
+      "ioc_code": "NIU",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/Flag_of_Niue.svg/40px-Flag_of_Niue.svg.png",
+      "type": "additional"
+    },
+    {
+      "country": "norfolk island",
+      "ioc_code": "NFK",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/48/Flag_of_Norfolk_Island.svg/40px-Flag_of_Norfolk_Island.svg.png",
+      "type": "additional"
+    },
+    {
+      "country": "northern mariana islands",
+      "ioc_code": "NMI",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Flag_of_the_Northern_Mariana_Islands.svg/40px-Flag_of_the_Northern_Mariana_Islands.svg.png",
+      "type": "additional"
+    },
+    {
+      "country": "tokelau",
+      "ioc_code": "TKL",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8e/Flag_of_Tokelau.svg/40px-Flag_of_Tokelau.svg.png",
+      "type": "additional"
+    }
+  ],
+  "failed_downloads": [
+    {
+      "country": "british west indies",
+      "ioc_code": "BWI",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Flag_of_the_West_Indies_Federation.svg/40px-Flag_of_the_West_Indies_Federation.svg.png",
+      "reason": "Download failed",
+      "type": "additional"
+    },
+    {
+      "country": "czechoslovakia",
+      "ioc_code": "TCH",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/Flag_of_Czechoslovakia.svg/40px-Flag_of_Czechoslovakia.svg.png",
+      "reason": "Download failed",
+      "type": "additional"
+    },
+    {
+      "country": "east germany",
+      "ioc_code": "GDR",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Flag_of_East_Germany.svg/40px-Flag_of_East_Germany.svg.png",
+      "reason": "Download failed",
+      "type": "additional"
+    },
+    {
+      "country": "unified team",
+      "ioc_code": "EUN",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Flag_of_the_Olympic_Movement.svg/40px-Flag_of_the_Olympic_Movement.svg.png",
+      "reason": "Download failed",
+      "type": "additional"
+    },
+    {
+      "country": "yugoslavia",
+      "ioc_code": "YUG",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/60/Flag_of_Yugoslavia_%281946-1992%29.svg/40px-Flag_of_Yugoslavia_%281946-1992%29.svg.png",
+      "reason": "Download failed",
+      "type": "additional"
+    },
+    {
+      "country": "netherlands antilles",
+      "ioc_code": "AHO",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/20/Flag_of_the_Netherlands_Antilles.svg/40px-Flag_of_the_Netherlands_Antilles.svg.png",
+      "reason": "Download failed",
+      "type": "additional"
+    },
+    {
+      "country": "serbia and montenegro",
+      "ioc_code": "SCG",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/00/Flag_of_Serbia_and_Montenegro.svg/40px-Flag_of_Serbia_and_Montenegro.svg.png",
+      "reason": "Download failed",
+      "type": "additional"
+    },
+    {
+      "country": "new caledonia",
+      "ioc_code": "NCL",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Flag_of_New_Caledonia.svg/40px-Flag_of_New_Caledonia.svg.png",
+      "reason": "Download failed",
+      "type": "additional"
+    },
+    {
+      "country": "wallis and futuna",
+      "ioc_code": "WLF",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/Flag_of_Wallis_and_Futuna.svg/40px-Flag_of_Wallis_and_Futuna.svg.png",
+      "reason": "Download failed",
+      "type": "additional"
+    },
+    {
+      "country": "independent olympic participants",
+      "ioc_code": "IOP",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Flag_of_the_Olympic_Movement.svg/40px-Flag_of_the_Olympic_Movement.svg.png",
+      "reason": "Download failed",
+      "type": "additional"
+    },
+    {
+      "country": "independent states team",
+      "ioc_code": "IST",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Flag_of_the_Olympic_Movement.svg/40px-Flag_of_the_Olympic_Movement.svg.png",
+      "reason": "Download failed",
+      "type": "additional"
+    },
+    {
+      "country": "mixed teams",
+      "ioc_code": "ZZX",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Flag_of_the_Olympic_Movement.svg/40px-Flag_of_the_Olympic_Movement.svg.png",
+      "reason": "Download failed",
+      "type": "additional"
+    },
+    {
+      "country": "olympic athletes from russia",
+      "ioc_code": "OAR",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Flag_of_the_Olympic_Movement.svg/40px-Flag_of_the_Olympic_Movement.svg.png",
+      "reason": "Download failed",
+      "type": "additional"
+    },
+    {
+      "country": "refugee olympic team",
+      "ioc_code": "ROT",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Flag_of_the_Olympic_Movement.svg/40px-Flag_of_the_Olympic_Movement.svg.png",
+      "reason": "Download failed",
+      "type": "additional"
+    },
+    {
+      "country": "russian olympic committee",
+      "ioc_code": "ROC",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Flag_of_the_Olympic_Movement.svg/40px-Flag_of_the_Olympic_Movement.svg.png",
+      "reason": "Download failed",
+      "type": "additional"
+    },
+    {
+      "country": "independent paralympic participants",
+      "ioc_code": "IPP",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Flag_of_the_Olympic_Movement.svg/40px-Flag_of_the_Olympic_Movement.svg.png",
+      "reason": "Download failed",
+      "type": "additional"
+    },
+    {
+      "country": "mixed paralympic team",
+      "ioc_code": "MPT",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Flag_of_the_Olympic_Movement.svg/40px-Flag_of_the_Olympic_Movement.svg.png",
+      "reason": "Download failed",
+      "type": "additional"
+    },
+    {
+      "country": "paralympic athletes from russia",
+      "ioc_code": "RPC",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Flag_of_the_Olympic_Movement.svg/40px-Flag_of_the_Olympic_Movement.svg.png",
+      "reason": "Download failed",
+      "type": "additional"
+    },
+    {
+      "country": "refugee paralympic team",
+      "ioc_code": "RPT",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Flag_of_the_Olympic_Movement.svg/40px-Flag_of_the_Olympic_Movement.svg.png",
+      "reason": "Download failed",
+      "type": "additional"
+    },
+    {
+      "country": "world games",
+      "ioc_code": "WGA",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Flag_of_the_Olympic_Movement.svg/40px-Flag_of_the_Olympic_Movement.svg.png",
+      "reason": "Download failed",
+      "type": "additional"
+    },
+    {
+      "country": "international world games association",
+      "ioc_code": "IWGA",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Flag_of_the_Olympic_Movement.svg/40px-Flag_of_the_Olympic_Movement.svg.png",
+      "reason": "Download failed",
+      "type": "additional"
+    }
+  ],
+  "missing_ioc_codes": [],
+  "countries_without_ioc": []
+}
