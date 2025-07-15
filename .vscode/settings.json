@@ -1,5 +1,68 @@
 {
-    "terminal.integrated.sendKeybindingsToShell": true,
-    "github.branchProtection": true,
-    "github.gitProtocol": "https"
+  // Rust Configuration
+  "rust-analyzer.checkOnSave.command": "clippy",
+  "rust-analyzer.cargo.buildScripts.enable": true,
+  "rust-analyzer.procMacro.enable": true,
+  "rust-analyzer.lens.enable": true,
+  "rust-analyzer.lens.implementations.enable": true,
+  "rust-analyzer.lens.references.adt.enable": true,
+  "rust-analyzer.lens.references.trait.enable": true,
+  "rust-analyzer.lens.references.enumVariant.enable": true,
+  "rust-analyzer.lens.references.method.enable": true,
+  
+  // TypeScript Configuration
+  "typescript.preferences.includePackageJsonAutoImports": "on",
+  "typescript.suggest.autoImports": true,
+  "typescript.updateImportsOnFileMove.enabled": "always",
+  
+  // React Configuration
+  "emmet.includeLanguages": {
+    "typescript": "html",
+    "typescriptreact": "html"
+  },
+  
+  // Tailwind CSS
+  "tailwindCSS.includeLanguages": {
+    "typescript": "html",
+    "typescriptreact": "html"
+  },
+  "tailwindCSS.experimental.classRegex": [
+    ["cva\\(([^)]*)\\)", "[\"'`]([^\"'`]*).*?[\"'`]"],
+    ["cx\\(([^)]*)\\)", "(?:'|\"|`)([^']*)(?:'|\"|`)"]
+  ],
+  
+  // Formatting
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "[rust]": {
+    "editor.defaultFormatter": "rust-lang.rust-analyzer"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  
+  // File Associations
+  "files.associations": {
+    "*.toml": "toml"
+  },
+  
+  // Search Configuration
+  "search.exclude": {
+    "**/target": true,
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/build": true
+  },
+  
+  // Terminal Configuration
+  "terminal.integrated.defaultProfile.windows": "PowerShell",
+  "terminal.integrated.profiles.windows": {
+    "PowerShell": {
+      "source": "PowerShell",
+      "args": ["-NoExit", "-Command", "cd '${workspaceFolder}'"]
+    }
+  }
 }
