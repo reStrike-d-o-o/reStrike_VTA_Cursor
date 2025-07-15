@@ -144,7 +144,7 @@ class ErrorBoundaryClass extends React.Component<
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    logger.error('Error caught by boundary:', error, errorInfo);
+    logger.error('Error caught by boundary:', { errorInfo, error: error.message }, error);
     this.props.onError?.(error, errorInfo);
   }
 
@@ -168,7 +168,7 @@ export const ErrorBoundary: React.FC<{
     <ErrorBoundaryClass
       fallback={fallback}
       onError={(error: Error, errorInfo: React.ErrorInfo) => {
-        logger.error(`Error in ${isWindows ? 'Windows' : 'Web'} environment:`, error, errorInfo);
+        logger.error(`Error in ${isWindows ? 'Windows' : 'Web'} environment:`, { errorInfo, error: error.message }, error);
         onError?.(error, errorInfo);
       }}
     >
