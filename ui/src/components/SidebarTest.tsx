@@ -70,7 +70,7 @@ const SidebarTest: React.FC = () => {
                 <span>Semi-final</span>
               </div>
             </div>
-            <div className="text-6xl font-bold text-white tracking-tight">1254</div>
+            <div className="text-6xl font-bold text-white tracking-tight -ml-[200px] flex items-center justify-center w-[200px]">1254</div>
           </div>
           <hr className="border-gray-700 my-6" />
           {/* Event Table */}
