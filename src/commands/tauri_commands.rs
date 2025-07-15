@@ -1,4 +1,4 @@
-use crate::plugins::plugin_obs::{ObsPlugin, ObsConnectionConfig, ObsWebSocketVersion};
+use crate::plugins::plugin_obs::{ObsPlugin, ObsConnectionConfig, ObsWebSocketVersion, ObsStatusInfo};
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc;
@@ -29,6 +29,14 @@ pub struct ConnectionStatus {
 pub struct ObsResponse {
     pub success: bool,
     pub data: Option<serde_json::Value>,
+    pub error: Option<String>,
+}
+
+// OBS Status Response for Status Bar
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ObsStatusResponse {
+    pub success: bool,
+    pub data: Option<ObsStatusInfo>,
     pub error: Option<String>,
 }
 
@@ -227,6 +235,70 @@ pub async fn add_obs_connection(
         Ok(_) => Ok(ObsResponse {
             success: true,
             data: None,
+            error: None,
+        }),
+        Err(e) => Ok(ObsResponse {
+            success: false,
+            data: None,
+            error: Some(e),
+        }),
+    }
+}
+
+// Get comprehensive OBS status for status bar
+pub async fn get_obs_status(plugin: &ObsPlugin) -> Result<ObsStatusResponse, String> {
+    match plugin.get_obs_status().await {
+        Ok(status_info) => Ok(ObsStatusResponse {
+            success: true,
+            data: Some(status_info),
+            error: None,
+        }),
+        Err(e) => Ok(ObsStatusResponse {
+            success: false,
+            data: None,
+            error: Some(e),
+        }),
+    }
+}
+
+// Get recording status from specific connection
+pub async fn get_obs_recording_status(plugin: &ObsPlugin, connection_name: &str) -> Result<ObsResponse, String> {
+    match plugin.get_recording_status(connection_name).await {
+        Ok(is_recording) => Ok(ObsResponse {
+            success: true,
+            data: Some(serde_json::json!({ "is_recording": is_recording })),
+            error: None,
+        }),
+        Err(e) => Ok(ObsResponse {
+            success: false,
+            data: None,
+            error: Some(e),
+        }),
+    }
+}
+
+// Get streaming status from specific connection
+pub async fn get_obs_streaming_status(plugin: &ObsPlugin, connection_name: &str) -> Result<ObsResponse, String> {
+    match plugin.get_streaming_status(connection_name).await {
+        Ok(is_streaming) => Ok(ObsResponse {
+            success: true,
+            data: Some(serde_json::json!({ "is_streaming": is_streaming })),
+            error: None,
+        }),
+        Err(e) => Ok(ObsResponse {
+            success: false,
+            data: None,
+            error: Some(e),
+        }),
+    }
+}
+
+// Get CPU usage from specific connection
+pub async fn get_obs_cpu_usage(plugin: &ObsPlugin, connection_name: &str) -> Result<ObsResponse, String> {
+    match plugin.get_obs_cpu_usage(connection_name).await {
+        Ok(cpu_usage) => Ok(ObsResponse {
+            success: true,
+            data: Some(serde_json::json!({ "cpu_usage": cpu_usage })),
             error: None,
         }),
         Err(e) => Ok(ObsResponse {

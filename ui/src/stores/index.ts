@@ -13,6 +13,14 @@ export interface ObsConnection {
   error?: string;
 }
 
+export interface ObsStatusInfo {
+  is_recording: boolean;
+  is_streaming: boolean;
+  cpu_usage: number;
+  recording_connection?: string;
+  streaming_connection?: string;
+}
+
 export interface OverlaySettings {
   opacity: number;
   position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'center';
@@ -34,6 +42,7 @@ export interface AppState {
   // OBS Connections
   obsConnections: ObsConnection[];
   activeObsConnection: string | null;
+  obsStatus: ObsStatusInfo | null;
   
   // Overlay Settings
   overlaySettings: OverlaySettings;
@@ -55,6 +64,7 @@ export interface AppActions {
   removeObsConnection: (name: string) => void;
   updateObsConnectionStatus: (name: string, status: ObsConnection['status'], error?: string) => void;
   setActiveObsConnection: (name: string | null) => void;
+  updateObsStatus: (status: ObsStatusInfo) => void;
   
   // Overlay Actions
   updateOverlaySettings: (settings: Partial<OverlaySettings>) => void;
@@ -79,6 +89,7 @@ export type AppStore = AppState & AppActions;
 const initialState: AppState = {
   obsConnections: [],
   activeObsConnection: null,
+  obsStatus: null,
   overlaySettings: {
     opacity: 0.9,
     position: 'bottom-right',
@@ -128,6 +139,10 @@ export const useAppStore = create<AppStore>()(
 
       setActiveObsConnection: (name) => {
         set({ activeObsConnection: name });
+      },
+
+      updateObsStatus: (status) => {
+        set({ obsStatus: status });
       },
 
       // Overlay Actions
