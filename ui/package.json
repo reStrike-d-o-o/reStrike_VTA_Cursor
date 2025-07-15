@@ -8,6 +8,7 @@
     "start:fast": "GENERATE_SOURCEMAP=false react-scripts start",
     "build": "react-scripts build",
     "build:fast": "GENERATE_SOURCEMAP=false react-scripts build",
+    "dev:fast": "react-scripts start",
     "test": "react-scripts test",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",

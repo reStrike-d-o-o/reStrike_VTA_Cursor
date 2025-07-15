@@ -12,15 +12,18 @@ name = "reStrike_VTA"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
-tauri-build = { version = "2.6.2", features = [] }
+tauri-build = "2.3.0"
 
 [dependencies]
-tauri = { version = "2.6.2", features = ["api-all"] }
+thiserror = "1.0"
+chrono = { version = "0.4", features = ["serde"] }
+tauri = { version = "2.3.0" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio = { version = "1.0", features = ["full"] }
 reqwest = { version = "0.11", features = ["json"] }
 uuid = { version = "1.0", features = ["v4"] }
+tokio-tungstenite = "0.21"
 
 [features]
 custom-protocol = ["tauri/custom-protocol"]
