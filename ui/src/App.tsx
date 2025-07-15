@@ -1,11 +1,14 @@
 import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from './stores';
+import { useEnvironment } from './hooks/useEnvironment';
+import { EnvironmentWrapper } from './components/EnvironmentWrapper';
 import Overlay from './components/Overlay';
 import ObsWebSocketManager from './components/ObsWebSocketManager';
 import VideoClips from './components/VideoClips';
 import Settings from './components/Settings';
 import SidebarTest from './components/SidebarTest';
+import EnvironmentTest from './components/EnvironmentTest';
 
 function App() {
   const {
@@ -21,6 +24,8 @@ function App() {
     currentClip,
     isPlaying,
   } = useAppStore();
+
+  const { environment, isWindows, isWeb, config } = useEnvironment();
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -66,6 +71,10 @@ function App() {
             e.preventDefault();
             setCurrentView('settings');
             break;
+          case '6':
+            e.preventDefault();
+            setCurrentView('environment-test');
+            break;
         }
       }
     };
@@ -88,6 +97,7 @@ function App() {
     { id: 'clips', label: 'Video Clips', icon: '📁', shortcut: 'Ctrl+3' },
     { id: 'obs-manager', label: 'OBS Manager', icon: '🎥', shortcut: 'Ctrl+4' },
     { id: 'settings', label: 'Settings', icon: '⚙️', shortcut: 'Ctrl+5' },
+    { id: 'environment-test', label: 'Environment Test', icon: '🌐', shortcut: 'Ctrl+6' },
   ] as const;
 
   const renderCurrentView = () => {
@@ -102,6 +112,8 @@ function App() {
         return <ObsWebSocketManager />;
       case 'settings':
         return <Settings />;
+      case 'environment-test':
+        return <EnvironmentTest />;
       default:
         return <SidebarTest />;
     }
@@ -156,7 +168,21 @@ function App() {
               <div className="text-2xl">🎯</div>
               <div>
                 <h1 className="text-xl font-bold">reStrike VTA Overlay - Hot Reload Test</h1>
-                <p className="text-sm text-gray-400">Overlay & Automation Toolkit</p>
+                <div className="flex items-center space-x-2">
+                  <p className="text-sm text-gray-400">Overlay & Automation Toolkit</p>
+                  <span className={`px-2 py-1 text-xs rounded-full font-medium ${
+                    isWindows 
+                      ? 'bg-blue-600 text-white' 
+                      : 'bg-green-600 text-white'
+                  }`}>
+                    {environment.toUpperCase()}
+                  </span>
+                  {isDevelopment && (
+                    <span className="px-2 py-1 text-xs rounded-full font-medium bg-yellow-600 text-black">
+                      DEV
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
 

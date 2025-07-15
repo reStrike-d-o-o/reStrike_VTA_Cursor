@@ -6,7 +6,11 @@
   "scripts": {
     "start": "CHOKIDAR_USEPOLLING=true FAST_REFRESH=true WATCHPACK_POLLING=true react-scripts start",
     "start:docker": "CHOKIDAR_USEPOLLING=true CHOKIDAR_INTERVAL=1000 FAST_REFRESH=true WATCHPACK_POLLING=true HOST=0.0.0.0 react-scripts start",
+    "start:web": "REACT_APP_ENVIRONMENT=web CHOKIDAR_USEPOLLING=true FAST_REFRESH=true WATCHPACK_POLLING=true react-scripts start",
+    "start:windows": "REACT_APP_ENVIRONMENT=windows react-scripts start",
     "build": "react-scripts build",
+    "build:web": "REACT_APP_ENVIRONMENT=web react-scripts build",
+    "build:windows": "REACT_APP_ENVIRONMENT=windows react-scripts build",
     "test": "react-scripts test",
     "lint": "eslint ."
   },
