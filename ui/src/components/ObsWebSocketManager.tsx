@@ -311,6 +311,13 @@ const ObsWebSocketManager: React.FC = () => {
         }
       } catch (error) {
         logError('Tauri OBS status failed', error);
+        // Set default status on error
+        const { updateObsStatus } = useAppStore.getState();
+        updateObsStatus({
+          is_recording: false,
+          is_streaming: false,
+          cpu_usage: 0,
+        });
       }
     } else {
       // Use direct WebSocket for web environment

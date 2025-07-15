@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useAppStore, ObsStatusInfo } from '../stores';
 import { FlagImage } from '../utils/flagUtils';
-import { isWindows, invokeTauri, logError } from '../config/environment';
+import { useEnvironment, useEnvironmentObs } from '../hooks/useEnvironment';
 
 // Event data structure
 interface EventData {
@@ -19,6 +19,9 @@ const SidebarTest: React.FC = () => {
     updateObsStatus, 
     obsConnections 
   } = useAppStore();
+  
+  const { isWindows } = useEnvironment();
+  const { obsOperation } = useEnvironmentObs();
   
   const [manualMode, setManualMode] = useState(false);
   const [activeFilters, setActiveFilters] = useState<{
@@ -51,10 +54,20 @@ const SidebarTest: React.FC = () => {
         }
 
         if (isWindows()) {
-          // Use Tauri commands for Windows environment
-          const status = await invokeTauri('obs_get_status');
-          if (status.success && status.data) {
-            updateObsStatus(status.data);
+          try {
+            // Use environment-aware OBS operations
+            const status = await obsOperation('get_status');
+            if (status.success && status.data) {
+              updateObsStatus(status.data);
+            }
+          } catch (obsError) {
+            // OBS operation failed, use default status
+            console.error('OBS status operation failed', obsError);
+            updateObsStatus({
+              is_recording: false,
+              is_streaming: false,
+              cpu_usage: 0,
+            });
           }
         } else {
           // For web environment, get status from active WebSocket connections
@@ -66,7 +79,13 @@ const SidebarTest: React.FC = () => {
           }
         }
       } catch (error) {
-        logError('OBS status polling failed', error);
+        console.error('OBS status polling failed', error);
+        // Set default status on error
+        updateObsStatus({
+          is_recording: false,
+          is_streaming: false,
+          cpu_usage: 0,
+        });
       }
     };
 
