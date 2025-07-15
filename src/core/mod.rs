@@ -1,8 +1,8 @@
 //! Core application functionality and initialization
 
 pub mod app;
-pub mod config;
-pub mod state;
+// pub mod config;
+// pub mod state;
 
 use crate::types::AppResult;
 
@@ -11,10 +11,10 @@ pub fn init() -> AppResult<()> {
     println!("🔧 Initializing core systems...");
     
     // Initialize configuration
-    config::init()?;
+    // config::init()?;
     
     // Initialize application state
-    state::init()?;
+    // state::init()?;
     
     println!("✅ Core systems initialized");
     Ok(())
