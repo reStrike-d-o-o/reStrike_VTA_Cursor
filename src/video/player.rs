@@ -1,1 +1,1 @@
-// player.rs - video playback engine 
+pub struct VideoPlayer; 
