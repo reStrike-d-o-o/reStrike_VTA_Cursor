@@ -311,3 +311,11 @@ The reStrike VTA project represents a **production-ready Windows desktop applica
 ✅ **Professional UI/UX**: Modern interface with sidebar and filtering ✅ **IMPLEMENTED**  
 
 **Status**: 99% Complete - Ready for feature development and production deployment with comprehensive flag support for international competitions. 
+
+## 🆕 UI Layout Update (2025-07)
+- AdvancedPanel now displays:
+  - MatchInfoSection at the top (athlete info, match details)
+  - EventTable in the middle (event rows, colored dots, scrollable)
+  - StatusBar at the bottom (OBS status, test controls)
+- Sidebar features (filters, replay, manual mode, etc.) are being migrated into the new layout.
+- See .cursor/rules/context.mdc for all architecture and UI conventions. 

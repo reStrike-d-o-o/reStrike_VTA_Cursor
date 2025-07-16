@@ -327,3 +327,11 @@ error: Some(e.to_string())
 
 **🔄 Last Updated**: Current session - Flag management system implementation complete
 **👤 Maintained by**: Development Team 
+
+## 🆕 UI Layout Update (2025-07)
+- AdvancedPanel now displays:
+  - MatchInfoSection (athlete info, match details)
+  - EventTable (event rows, colored dots, scrollable)
+  - StatusBar (OBS status, test controls)
+- Sidebar features (filters, replay, manual mode, etc.) are being migrated into the new layout.
+- See .cursor/rules/context.mdc for all architecture and UI conventions. 
