@@ -211,7 +211,7 @@ impl VideoPlayer {
                     error: error_msg.clone() 
                 });
 
-                Err(AppError::IoError(error_msg))
+                Err(AppError::ConfigError(error_msg))
             }
         }
     }
@@ -436,7 +436,7 @@ impl VideoUtils {
             .map_err(|e| AppError::IoError(format!("Failed to run mpv for info: {}", e)))?;
 
         if !output.status.success() {
-            return Err(AppError::IoError("mpv failed to get video info".to_string()));
+            return Err(AppError::ConfigError("mpv failed to get video info".to_string()));
         }
 
         // Parse the output (simplified - in reality you'd parse the actual mpv output)
@@ -470,7 +470,7 @@ impl VideoUtils {
         if output.status.success() {
             Ok(())
         } else {
-            Err(AppError::IoError("Failed to generate thumbnail".to_string()))
+            Err(AppError::ConfigError("Failed to generate thumbnail".to_string()))
         }
     }
 
@@ -508,7 +508,7 @@ pub fn playback_clip(clip_path: &str, clip_name: &str) -> AppResult<()> {
     
     // Validate the video file
     if !VideoUtils::validate_video_file(clip_path) {
-        return Err(AppError::IoError(format!("Invalid video file: {}", clip_path)));
+        return Err(AppError::ConfigError(format!("Invalid video file: {}", clip_path)));
     }
 
     // Create a basic video clip

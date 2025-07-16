@@ -188,7 +188,7 @@ impl UdpServer {
         // Try to bind the socket
         let socket = match UdpSocket::bind(&bind_addr) {
             Ok(socket) => {
-                socket.set_nonblocking(false).map_err(AppError::IoError)?;
+                socket.set_nonblocking(false).map_err(AppError::ConfigError)?;
                 socket
             }
             Err(e) => {
