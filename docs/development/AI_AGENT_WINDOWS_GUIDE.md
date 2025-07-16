@@ -1,5 +1,7 @@
 # AI Agent Windows Development Quick Reference
 
+> **Note:** All architecture, onboarding, and coding conventions are defined in .cursor/rules/context.mdc (single source of truth). Project is Windows-only; Docker/devcontainer is fully removed. All onboarding, build, and documentation reference Windows-native setup only.
+
 ## 🎯 **Quick Setup for AI Agents**
 
 This guide provides essential information for AI agents working on the reStrike VTA project in a Windows environment.

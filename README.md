@@ -351,3 +351,8 @@ MIT
 **📝 Last Updated**: January 27, 2025  
 **👤 Maintained by**: Development Team  
 **🔗 Project Board**: https://github.com/users/damjanZGB/projects/3
+
+## 📚 Project Context and Rules
+- All architecture, onboarding, and coding conventions are defined in .cursor/rules/context.mdc (single source of truth)
+- Project is Windows-only; Docker/devcontainer is fully removed
+- All onboarding, build, and documentation reference Windows-native setup only

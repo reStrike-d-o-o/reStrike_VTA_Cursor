@@ -1,7 +1,9 @@
 # Software Requirements Specification
 
+> **Note:** All architecture, onboarding, and coding conventions are defined in .cursor/rules/context.mdc (single source of truth). Project is Windows-only; Docker/devcontainer is fully removed. All onboarding, build, and documentation reference Windows-native setup only.
+
 ## Prerequisites
-- **Operating System:** Windows 10/11, Mac, Linux (Windows recommended for full feature support)
+- **Operating System:** Windows 10/11 (Windows recommended for full feature support)
 - **Node.js:** v24 or higher (latest LTS recommended)
 - **Rust:** Stable (install via [rustup.rs](https://rustup.rs/))
 - **Tauri CLI:** Install with `cargo install tauri-cli`

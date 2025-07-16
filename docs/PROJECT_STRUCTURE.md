@@ -1,8 +1,6 @@
 # Project Structure Guide
 
-## Overview
-
-This document defines the organized structure of the reStrike VTA project, ensuring maintainability, clarity, and proper separation of concerns.
+> **Note:** All architecture, onboarding, and coding conventions are defined in .cursor/rules/context.mdc (single source of truth). Project is Windows-only; Docker/devcontainer is fully removed. All onboarding, build, and documentation reference Windows-native setup only.
 
 ## Crate and Library Naming
 - The crate and library name is `re_strike_vta` (snake_case, as required by Rust best practices).

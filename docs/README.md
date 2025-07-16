@@ -1,5 +1,7 @@
 # reStrike VTA Documentation
 
+> **Note:** All architecture, onboarding, and coding conventions are defined in .cursor/rules/context.mdc (single source of truth). Project is Windows-only; Docker/devcontainer is fully removed. All onboarding, build, and documentation reference Windows-native setup only.
+
 Welcome to the reStrike VTA project documentation. This directory contains comprehensive documentation organized by category for easy navigation and maintenance.
 
 ## 🚀 **PROJECT STATUS: 99% COMPLETE - PRODUCTION READY**
