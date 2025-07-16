@@ -6,4 +6,4 @@ pub mod plugin_store;
 pub mod plugin_udp;
 
 // Re-export key OBS types for easier access
-pub use plugin_obs::{ObsPlugin, ObsConnectionConfig, ObsWebSocketVersion, ObsStatusInfo}; 
+pub use plugin_obs::{ObsPlugin, ObsConnectionConfig, ObsWebSocketVersion, ObsStatusInfo, ObsEvent}; 
