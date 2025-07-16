@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use super::super::types::{AppError, AppResult};
+use crate::types::{AppError, AppResult};
 
 // OBS WebSocket Protocol Versions
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
