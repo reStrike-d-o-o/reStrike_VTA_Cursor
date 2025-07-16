@@ -1,7 +1,6 @@
-use crate::plugins::plugin_obs::{ObsPlugin, ObsConnectionConfig, ObsWebSocketVersion, ObsStatusInfo};
+use crate::re_strike_vta::plugins::plugin_obs::{ObsPlugin, ObsConnectionConfig, ObsWebSocketVersion, ObsStatusInfo};
 use serde::{Deserialize, Serialize};
-use std::sync::{mpsc, Arc, Mutex};
-use tokio::sync::mpsc::UnboundedSender;
+use std::sync::{Arc, Mutex};
 
 // Global OBS plugin instance
 pub type ObsPluginState = Arc<Mutex<Option<ObsPlugin>>>;
@@ -41,7 +40,7 @@ pub struct ObsStatusResponse {
 
 // Initialize OBS plugin
 pub fn init_obs_plugin() -> ObsPluginState {
-    let (event_tx, _event_rx) = mpsc::unbounded_channel();
+    let (event_tx, _event_rx) = tokio::sync::mpsc::unbounded_channel();
     let plugin = ObsPlugin::new(event_tx);
     Arc::new(Mutex::new(Some(plugin)))
 }
