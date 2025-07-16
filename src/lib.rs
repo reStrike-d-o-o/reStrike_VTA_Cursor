@@ -11,6 +11,7 @@ pub mod pss;
 pub mod types;
 // pub mod utils;
 pub mod plugins;
+pub mod tauri_commands;
 
 // Re-export commonly used items
 pub use core::app::App;
