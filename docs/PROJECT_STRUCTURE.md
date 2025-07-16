@@ -4,6 +4,29 @@
 
 This document defines the organized structure of the reStrike VTA project, ensuring maintainability, clarity, and proper separation of concerns.
 
+## Crate and Library Naming
+- The crate and library name is `re_strike_vta` (snake_case, as required by Rust best practices).
+- Avoid output filename collisions by ensuring the lib and bin targets have unique names in Cargo.toml.
+
+## Plugin Module Integration
+- All plugin modules are declared only in `src/plugins/mod.rs`.
+- Plugins are re-exported via `pub mod plugins;` in `src/lib.rs`.
+- Do not declare `mod` or `pub mod` for plugins anywhere else.
+
+## Importing Types in Plugins
+- All plugin files must import types using:
+  ```rust
+  use crate::types::{AppError, AppResult};
+  ```
+- Do not use relative imports like `super::super::types`.
+
+## Avoiding Double Declarations
+- Ensure there are no duplicate or conflicting `mod` or `pub mod` statements for plugins or types.
+- Only `lib.rs` should declare `pub mod types;` and `pub mod plugins;`.
+
+## Output Filename Collisions
+- The library and binary targets must have unique names in Cargo.toml to avoid build errors.
+
 ## Directory Structure
 
 ```

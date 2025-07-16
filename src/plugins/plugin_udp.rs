@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use tokio::sync::mpsc;
 use serde::{Deserialize, Serialize};
-use crate::types::{AppError, AppResult};
+use re_strike_vta::types::{AppError, AppResult};
 
 // PSS Event Types based on protocol specification
 #[derive(Debug, Clone, Serialize, Deserialize)]
