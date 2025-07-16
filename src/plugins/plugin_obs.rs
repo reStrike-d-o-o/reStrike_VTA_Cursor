@@ -3,6 +3,7 @@ use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+use crate::types::{AppError, AppResult};
 
 // OBS WebSocket Protocol Versions
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -87,11 +88,11 @@ impl ObsPlugin {
     }
 
     // Add a new OBS connection
-    pub async fn add_connection(&self, config: ObsConnectionConfig) -> Result<(), String> {
+    pub async fn add_connection(&self, config: ObsConnectionConfig) -> AppResult<()> {
         let mut connections = self.connections.lock().unwrap();
         
         if connections.contains_key(&config.name) {
-            return Err(format!("Connection '{}' already exists", config.name));
+            return Err(AppError::ConfigError(format!("Connection '{}' already exists", config.name)));
         }
 
         let connection = ObsConnection {
@@ -113,12 +114,12 @@ impl ObsPlugin {
     }
 
     // Connect to OBS instance
-    pub async fn connect_obs(&self, connection_name: &str) -> Result<(), String> {
+    pub async fn connect_obs(&self, connection_name: &str) -> AppResult<()> {
         // Get connection config first
         let config = {
             let connections = self.connections.lock().unwrap();
             let connection = connections.get(connection_name)
-                .ok_or_else(|| format!("Connection '{}' not found", connection_name))?;
+                .ok_or_else(|| AppError::ConfigError(format!("Connection '{}' not found", connection_name)))?;
             connection.config.clone()
         };
 
@@ -146,7 +147,7 @@ impl ObsPlugin {
         // Connect to WebSocket
         let (ws_stream, _) = tokio_tungstenite::connect_async(&ws_url)
             .await
-            .map_err(|e| format!("Failed to connect to OBS: {}", e))?;
+            .map_err(|e| AppError::IoError(format!("Failed to connect to OBS: {}", e)))?;
 
         // Update connection
         let mut connections = self.connections.lock().unwrap();
@@ -168,7 +169,7 @@ impl ObsPlugin {
     }
 
     // Authenticate using OBS WebSocket v4 protocol
-    async fn authenticate_v4(&self, connection_name: &str) -> Result<(), String> {
+    async fn authenticate_v4(&self, connection_name: &str) -> AppResult<()> {
         let mut connections = self.connections.lock().unwrap();
         let connection = connections.get_mut(connection_name).unwrap();
         
@@ -198,7 +199,7 @@ impl ObsPlugin {
     }
 
     // Authenticate using OBS WebSocket v5 protocol
-    async fn authenticate_v5(&self, connection_name: &str) -> Result<(), String> {
+    async fn authenticate_v5(&self, connection_name: &str) -> AppResult<()> {
         let mut connections = self.connections.lock().unwrap();
         let connection = connections.get_mut(connection_name).unwrap();
         
@@ -230,13 +231,13 @@ impl ObsPlugin {
         connection_name: &str,
         request_type: &str,
         request_data: Option<serde_json::Value>,
-    ) -> Result<serde_json::Value, String> {
+    ) -> AppResult<serde_json::Value> {
         let mut connections = self.connections.lock().unwrap();
         let connection = connections.get_mut(connection_name)
-            .ok_or_else(|| format!("Connection '{}' not found", connection_name))?;
+            .ok_or_else(|| AppError::ConfigError(format!("Connection '{}' not found", connection_name)))?;
 
         if connection.status != ObsConnectionStatus::Authenticated {
-            return Err("OBS connection not authenticated".to_string());
+            return Err(AppError::ConfigError("OBS connection not authenticated".to_string()));
         }
 
         let request_id = self.generate_request_id(connection);
@@ -271,13 +272,13 @@ impl ObsPlugin {
 
         // Wait for response
         let response = response_rx.await
-            .map_err(|_| "Request timeout or connection lost".to_string())?;
+            .map_err(|_| AppError::IoError("Request timeout or connection lost".to_string()))?;
 
         Ok(response)
     }
 
     // Get current scene
-    pub async fn get_current_scene(&self, connection_name: &str) -> Result<String, String> {
+    pub async fn get_current_scene(&self, connection_name: &str) -> AppResult<String> {
         let request_type = match self.get_protocol_version(connection_name)? {
             ObsWebSocketVersion::V4 => "GetCurrentScene",
             ObsWebSocketVersion::V5 => "GetCurrentProgramScene",
@@ -289,20 +290,20 @@ impl ObsPlugin {
             ObsWebSocketVersion::V4 => {
                 response["scene-name"]
                     .as_str()
-                    .ok_or_else(|| "Invalid response format".to_string())
+                    .ok_or_else(|| AppError::ConfigError("Invalid response format".to_string()))
                     .map(|s| s.to_string())
             }
             ObsWebSocketVersion::V5 => {
                 response["sceneName"]
                     .as_str()
-                    .ok_or_else(|| "Invalid response format".to_string())
+                    .ok_or_else(|| AppError::ConfigError("Invalid response format".to_string()))
                     .map(|s| s.to_string())
             }
         }
     }
 
     // Set current scene
-    pub async fn set_current_scene(&self, connection_name: &str, scene_name: &str) -> Result<(), String> {
+    pub async fn set_current_scene(&self, connection_name: &str, scene_name: &str) -> AppResult<()> {
         let request_type = match self.get_protocol_version(connection_name)? {
             ObsWebSocketVersion::V4 => "SetCurrentScene",
             ObsWebSocketVersion::V5 => "SetCurrentProgramScene",
@@ -326,37 +327,37 @@ impl ObsPlugin {
     }
 
     // Start recording
-    pub async fn start_recording(&self, connection_name: &str) -> Result<(), String> {
+    pub async fn start_recording(&self, connection_name: &str) -> AppResult<()> {
         self.send_request(connection_name, "StartRecording", None).await?;
         Ok(())
     }
 
     // Stop recording
-    pub async fn stop_recording(&self, connection_name: &str) -> Result<(), String> {
+    pub async fn stop_recording(&self, connection_name: &str) -> AppResult<()> {
         self.send_request(connection_name, "StopRecording", None).await?;
         Ok(())
     }
 
     // Start replay buffer
-    pub async fn start_replay_buffer(&self, connection_name: &str) -> Result<(), String> {
+    pub async fn start_replay_buffer(&self, connection_name: &str) -> AppResult<()> {
         self.send_request(connection_name, "StartReplayBuffer", None).await?;
         Ok(())
     }
 
     // Stop replay buffer
-    pub async fn stop_replay_buffer(&self, connection_name: &str) -> Result<(), String> {
+    pub async fn stop_replay_buffer(&self, connection_name: &str) -> AppResult<()> {
         self.send_request(connection_name, "StopReplayBuffer", None).await?;
         Ok(())
     }
 
     // Save replay buffer
-    pub async fn save_replay_buffer(&self, connection_name: &str) -> Result<(), String> {
+    pub async fn save_replay_buffer(&self, connection_name: &str) -> AppResult<()> {
         self.send_request(connection_name, "SaveReplayBuffer", None).await?;
         Ok(())
     }
 
     // Get recording status
-    pub async fn get_recording_status(&self, connection_name: &str) -> Result<bool, String> {
+    pub async fn get_recording_status(&self, connection_name: &str) -> AppResult<bool> {
         let response = self.send_request(connection_name, "GetRecordingStatus", None).await?;
         
         match self.get_protocol_version(connection_name)? {
@@ -370,7 +371,7 @@ impl ObsPlugin {
     }
 
     // Get streaming status
-    pub async fn get_streaming_status(&self, connection_name: &str) -> Result<bool, String> {
+    pub async fn get_streaming_status(&self, connection_name: &str) -> AppResult<bool> {
         let response = self.send_request(connection_name, "GetStreamStatus", None).await?;
         
         match self.get_protocol_version(connection_name)? {
@@ -384,7 +385,7 @@ impl ObsPlugin {
     }
 
     // Get OBS CPU usage
-    pub async fn get_obs_cpu_usage(&self, connection_name: &str) -> Result<f64, String> {
+    pub async fn get_obs_cpu_usage(&self, connection_name: &str) -> AppResult<f64> {
         let response = self.send_request(connection_name, "GetStats", None).await?;
         
         match self.get_protocol_version(connection_name)? {
@@ -398,7 +399,7 @@ impl ObsPlugin {
     }
 
     // Get replay buffer status
-    pub async fn get_replay_buffer_status(&self, connection_name: &str) -> Result<bool, String> {
+    pub async fn get_replay_buffer_status(&self, connection_name: &str) -> AppResult<bool> {
         let response = self.send_request(connection_name, "GetReplayBufferStatus", None).await?;
         
         match self.get_protocol_version(connection_name)? {
@@ -412,13 +413,13 @@ impl ObsPlugin {
     }
 
     // Get all scenes
-    pub async fn get_scenes(&self, connection_name: &str) -> Result<Vec<String>, String> {
+    pub async fn get_scenes(&self, connection_name: &str) -> AppResult<Vec<String>> {
         let response = self.send_request(connection_name, "GetSceneList", None).await?;
         
         match self.get_protocol_version(connection_name)? {
             ObsWebSocketVersion::V4 => {
                 let scenes = response["scenes"].as_array()
-                    .ok_or_else(|| "Invalid response format".to_string())?;
+                    .ok_or_else(|| AppError::ConfigError("Invalid response format".to_string()))?;
                 
                 Ok(scenes.iter()
                     .filter_map(|scene| scene["scene-name"].as_str())
@@ -427,7 +428,7 @@ impl ObsPlugin {
             }
             ObsWebSocketVersion::V5 => {
                 let scenes = response["scenes"].as_array()
-                    .ok_or_else(|| "Invalid response format".to_string())?;
+                    .ok_or_else(|| AppError::ConfigError("Invalid response format".to_string()))?;
                 
                 Ok(scenes.iter()
                     .filter_map(|scene| scene["sceneName"].as_str())
@@ -443,10 +444,10 @@ impl ObsPlugin {
         Uuid::new_v4().to_string()
     }
 
-    fn get_protocol_version(&self, connection_name: &str) -> Result<ObsWebSocketVersion, String> {
+    fn get_protocol_version(&self, connection_name: &str) -> AppResult<ObsWebSocketVersion> {
         let connections = self.connections.lock().unwrap();
         let connection = connections.get(connection_name)
-            .ok_or_else(|| format!("Connection '{}' not found", connection_name))?;
+            .ok_or_else(|| AppError::ConfigError(format!("Connection '{}' not found", connection_name)))?;
         
         Ok(connection.config.protocol_version)
     }
@@ -464,13 +465,13 @@ impl ObsPlugin {
     }
 
     // Remove connection
-    pub fn remove_connection(&self, connection_name: &str) -> Result<(), String> {
+    pub fn remove_connection(&self, connection_name: &str) -> AppResult<()> {
         let mut connections = self.connections.lock().unwrap();
         
         if connections.remove(connection_name).is_some() {
             Ok(())
         } else {
-            Err(format!("Connection '{}' not found", connection_name))
+            Err(AppError::ConfigError(format!("Connection '{}' not found", connection_name)))
         }
     }
 
@@ -497,7 +498,7 @@ impl ObsPlugin {
     }
 
     // Get comprehensive OBS status for status bar
-    pub async fn get_obs_status(&self) -> Result<ObsStatusInfo, String> {
+    pub async fn get_obs_status(&self) -> AppResult<ObsStatusInfo> {
         let roles = self.get_connection_roles();
         
         let mut status = ObsStatusInfo {

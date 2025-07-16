@@ -1,9 +1,9 @@
-use std::collections::HashMap;
-use std::net::{UdpSocket, SocketAddr};
+use std::net::UdpSocket;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use tokio::sync::mpsc;
 use serde::{Deserialize, Serialize};
+use crate::types::{AppError, AppResult};
 
 // PSS Event Types based on protocol specification
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -176,7 +176,7 @@ impl UdpServer {
         }
     }
 
-    pub fn start(&self) -> Result<(), String> {
+    pub fn start(&self) -> AppResult<()> {
         let bind_addr = format!("{}:{}", self.config.bind_address, self.config.port);
         
         // Update status to starting
@@ -188,14 +188,14 @@ impl UdpServer {
         // Try to bind the socket
         let socket = match UdpSocket::bind(&bind_addr) {
             Ok(socket) => {
-                socket.set_nonblocking(false).map_err(|e| e.to_string())?;
+                socket.set_nonblocking(false).map_err(AppError::IoError)?;
                 socket
             }
             Err(e) => {
                 let error_msg = format!("Failed to bind UDP socket to {}: {}", bind_addr, e);
                 let mut status = self.status.lock().unwrap();
                 *status = UdpServerStatus::Error(error_msg.clone());
-                return Err(error_msg);
+                return Err(AppError::ConfigError(error_msg));
             }
         };
 
@@ -225,7 +225,7 @@ impl UdpServer {
         Ok(())
     }
 
-    pub fn stop(&self) -> Result<(), String> {
+    pub fn stop(&self) -> AppResult<()> {
         // Clear the socket (this will break the listening loop)
         {
             let mut socket_guard = self.socket.lock().unwrap();
@@ -343,11 +343,11 @@ impl UdpServer {
         println!("🎯 UDP PSS Server listening loop ended");
     }
 
-    fn parse_pss_message(message: &str) -> Result<PssEvent, String> {
+    fn parse_pss_message(message: &str) -> AppResult<PssEvent> {
         let parts: Vec<&str> = message.split(';').collect();
         
         if parts.is_empty() {
-            return Err("Empty message".to_string());
+            return Err(AppError::ConfigError("Empty message".to_string()));
         }
 
         match parts[0] {
@@ -355,19 +355,19 @@ impl UdpServer {
             "pt1" => {
                 if parts.len() >= 2 {
                     let point_type = parts[1].parse::<u8>()
-                        .map_err(|_| format!("Invalid point type: {}", parts[1]))?;
+                        .map_err(|_| AppError::ConfigError(format!("Invalid point type: {}", parts[1])))?;
                     Ok(PssEvent::Points { athlete: 1, point_type })
                 } else {
-                    Err("Missing point type for pt1".to_string())
+                    Err(AppError::ConfigError("Missing point type for pt1".to_string()))
                 }
             }
             "pt2" => {
                 if parts.len() >= 2 {
                     let point_type = parts[1].parse::<u8>()
-                        .map_err(|_| format!("Invalid point type: {}", parts[1]))?;
+                        .map_err(|_| AppError::ConfigError(format!("Invalid point type: {}", parts[1])))?;
                     Ok(PssEvent::Points { athlete: 2, point_type })
                 } else {
-                    Err("Missing point type for pt2".to_string())
+                    Err(AppError::ConfigError("Missing point type for pt2".to_string()))
                 }
             }
 
@@ -375,19 +375,19 @@ impl UdpServer {
             "hl1" => {
                 if parts.len() >= 2 {
                     let level = parts[1].parse::<u8>()
-                        .map_err(|_| format!("Invalid hit level: {}", parts[1]))?;
+                        .map_err(|_| AppError::ConfigError(format!("Invalid hit level: {}", parts[1])))?;
                     Ok(PssEvent::HitLevel { athlete: 1, level })
                 } else {
-                    Err("Missing hit level for hl1".to_string())
+                    Err(AppError::ConfigError("Missing hit level for hl1".to_string()))
                 }
             }
             "hl2" => {
                 if parts.len() >= 2 {
                     let level = parts[1].parse::<u8>()
-                        .map_err(|_| format!("Invalid hit level: {}", parts[1]))?;
+                        .map_err(|_| AppError::ConfigError(format!("Invalid hit level: {}", parts[1])))?;
                     Ok(PssEvent::HitLevel { athlete: 2, level })
                 } else {
-                    Err("Missing hit level for hl2".to_string())
+                    Err(AppError::ConfigError("Missing hit level for hl2".to_string()))
                 }
             }
 
@@ -397,13 +397,13 @@ impl UdpServer {
                 // Expected format: wg1;1;wg2;2;
                 if parts.len() >= 4 && parts[2] == "wg2" {
                     let athlete1_warnings = parts[1].parse::<u8>()
-                        .map_err(|_| format!("Invalid athlete1 warnings: {}", parts[1]))?;
+                        .map_err(|_| AppError::ConfigError(format!("Invalid athlete1 warnings: {}", parts[1])))?;
                     let athlete2_warnings = parts[3].parse::<u8>()
-                        .map_err(|_| format!("Invalid athlete2 warnings: {}", parts[3]))?;
+                        .map_err(|_| AppError::ConfigError(format!("Invalid athlete2 warnings: {}", parts[3])))?;
                     
                     Ok(PssEvent::Warnings { athlete1_warnings, athlete2_warnings })
                 } else {
-                    Err("Invalid warning format".to_string())
+                    Err(AppError::ConfigError("Invalid warning format".to_string()))
                 }
             }
 
@@ -413,7 +413,7 @@ impl UdpServer {
                     "ij0" => 0,
                     "ij1" => 1,
                     "ij2" => 2,
-                    _ => return Err("Invalid injury athlete".to_string()),
+                    _ => return Err(AppError::ConfigError("Invalid injury athlete".to_string())),
                 };
 
                 if parts.len() >= 2 {
@@ -426,7 +426,7 @@ impl UdpServer {
 
                     Ok(PssEvent::Injury { athlete, time, action })
                 } else {
-                    Err("Missing injury time".to_string())
+                    Err(AppError::ConfigError("Missing injury time".to_string()))
                 }
             }
 
@@ -436,7 +436,7 @@ impl UdpServer {
                     "ch0" => 0,
                     "ch1" => 1,
                     "ch2" => 2,
-                    _ => return Err("Invalid challenge source".to_string()),
+                    _ => return Err(AppError::ConfigError("Invalid challenge source".to_string())),
                 };
 
                 let (accepted, won, canceled) = match parts.len() {
@@ -472,7 +472,7 @@ impl UdpServer {
 
                     Ok(PssEvent::Break { time, action })
                 } else {
-                    Err("Missing break time".to_string())
+                    Err(AppError::ConfigError("Missing break time".to_string()))
                 }
             }
 
@@ -481,15 +481,15 @@ impl UdpServer {
                 // Expected format: wrd;rd1;0;rd2;0;rd3;0
                 if parts.len() >= 7 && parts[1] == "rd1" && parts[3] == "rd2" && parts[5] == "rd3" {
                     let round1_winner = parts[2].parse::<u8>()
-                        .map_err(|_| format!("Invalid round1 winner: {}", parts[2]))?;
+                        .map_err(|_| AppError::ConfigError(format!("Invalid round1 winner: {}", parts[2])))?;
                     let round2_winner = parts[4].parse::<u8>()
-                        .map_err(|_| format!("Invalid round2 winner: {}", parts[4]))?;
+                        .map_err(|_| AppError::ConfigError(format!("Invalid round2 winner: {}", parts[4])))?;
                     let round3_winner = parts[6].parse::<u8>()
-                        .map_err(|_| format!("Invalid round3 winner: {}", parts[6]))?;
+                        .map_err(|_| AppError::ConfigError(format!("Invalid round3 winner: {}", parts[6])))?;
 
                     Ok(PssEvent::WinnerRounds { round1_winner, round2_winner, round3_winner })
                 } else {
-                    Err("Invalid winner rounds format".to_string())
+                    Err(AppError::ConfigError("Invalid winner rounds format".to_string()))
                 }
             }
 
@@ -505,7 +505,7 @@ impl UdpServer {
 
                     Ok(PssEvent::Winner { name, classification })
                 } else {
-                    Err("Missing winner name".to_string())
+                    Err(AppError::ConfigError("Missing winner name".to_string()))
                 }
             }
 
@@ -522,7 +522,7 @@ impl UdpServer {
                         athlete2_country: parts[7].to_string(),
                     })
                 } else {
-                    Err("Invalid athletes format".to_string())
+                    Err(AppError::ConfigError("Invalid athletes format".to_string()))
                 }
             }
 
@@ -538,7 +538,7 @@ impl UdpServer {
 
                     Ok(PssEvent::Clock { time, action })
                 } else {
-                    Err("Missing clock time".to_string())
+                    Err(AppError::ConfigError("Missing clock time".to_string()))
                 }
             }
 
@@ -546,10 +546,10 @@ impl UdpServer {
             "rnd" => {
                 if parts.len() >= 2 {
                     let current_round = parts[1].parse::<u8>()
-                        .map_err(|_| format!("Invalid round: {}", parts[1]))?;
+                        .map_err(|_| AppError::ConfigError(format!("Invalid round: {}", parts[1])))?;
                     Ok(PssEvent::Round { current_round })
                 } else {
-                    Err("Missing round number".to_string())
+                    Err(AppError::ConfigError("Missing round number".to_string()))
                 }
             }
 
@@ -576,7 +576,7 @@ impl UdpServer {
 }
 
 // Public API for the plugin
-pub fn start_udp_server() -> Result<UdpServer, String> {
+pub fn start_udp_server() -> AppResult<UdpServer> {
     let config = UdpServerConfig::default();
     let (event_tx, mut event_rx) = mpsc::unbounded_channel();
     

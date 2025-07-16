@@ -4,6 +4,7 @@ use std::thread;
 use std::time::{Duration, SystemTime};
 use tokio::sync::mpsc;
 use serde::{Deserialize, Serialize};
+use crate::types::{AppError, AppResult};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VideoClip {
@@ -102,7 +103,7 @@ impl VideoPlayer {
         }
     }
 
-    pub fn play_clip(&self, clip: VideoClip) -> Result<(), String> {
+    pub fn play_clip(&self, clip: VideoClip) -> AppResult<()> {
         // Stop any currently playing clip
         self.stop()?;
 
@@ -210,12 +211,12 @@ impl VideoPlayer {
                     error: error_msg.clone() 
                 });
 
-                Err(error_msg)
+                Err(AppError::IoError(error_msg))
             }
         }
     }
 
-    pub fn stop(&self) -> Result<(), String> {
+    pub fn stop(&self) -> AppResult<()> {
         // Get and terminate the process
         {
             let mut process_guard = self.mpv_process.lock().unwrap();
@@ -256,7 +257,7 @@ impl VideoPlayer {
         Ok(())
     }
 
-    pub fn pause(&self) -> Result<(), String> {
+    pub fn pause(&self) -> AppResult<()> {
         // For now, we'll implement basic pause by stopping
         // In a full implementation, you'd send IPC commands to mpv
         let current_clip = self.get_current_clip();
@@ -275,7 +276,7 @@ impl VideoPlayer {
         Ok(())
     }
 
-    pub fn resume(&self) -> Result<(), String> {
+    pub fn resume(&self) -> AppResult<()> {
         let current_clip = self.get_current_clip();
         
         // Update status
@@ -292,7 +293,7 @@ impl VideoPlayer {
         Ok(())
     }
 
-    pub fn set_volume(&self, volume: f64) -> Result<(), String> {
+    pub fn set_volume(&self, volume: f64) -> AppResult<()> {
         let clamped_volume = volume.clamp(0.0, 1.0);
         
         // Update internal volume
@@ -308,7 +309,7 @@ impl VideoPlayer {
         Ok(())
     }
 
-    pub fn seek(&self, position: f64) -> Result<(), String> {
+    pub fn seek(&self, position: f64) -> AppResult<()> {
         // Update internal position
         {
             let mut pos = self.position.lock().unwrap();
@@ -326,7 +327,7 @@ impl VideoPlayer {
         Ok(())
     }
 
-    pub fn seek_relative(&self, delta: f64) -> Result<(), String> {
+    pub fn seek_relative(&self, delta: f64) -> AppResult<()> {
         let current_pos = {
             let pos = self.position.lock().unwrap();
             *pos
@@ -359,7 +360,7 @@ impl VideoPlayer {
         matches!(self.get_status(), PlaybackStatus::Playing)
     }
 
-    pub fn toggle_fullscreen(&self) -> Result<(), String> {
+    pub fn toggle_fullscreen(&self) -> AppResult<()> {
         // In a full implementation, you'd send IPC command to mpv
         // For now, just log the action
         println!("🖥️ Toggling fullscreen mode");
@@ -423,7 +424,7 @@ impl VideoPlayer {
 pub struct VideoUtils;
 
 impl VideoUtils {
-    pub fn get_video_info(path: &str) -> Result<VideoMetadata, String> {
+    pub fn get_video_info(path: &str) -> AppResult<VideoMetadata> {
         // Use mpv to get video information
         let output = Command::new("mpv")
             .arg("--no-config")
@@ -432,10 +433,10 @@ impl VideoUtils {
             .arg("--frames=0")
             .arg(path)
             .output()
-            .map_err(|e| format!("Failed to run mpv for info: {}", e))?;
+            .map_err(|e| AppError::IoError(format!("Failed to run mpv for info: {}", e)))?;
 
         if !output.status.success() {
-            return Err("mpv failed to get video info".to_string());
+            return Err(AppError::IoError("mpv failed to get video info".to_string()));
         }
 
         // Parse the output (simplified - in reality you'd parse the actual mpv output)
@@ -454,7 +455,7 @@ impl VideoUtils {
         })
     }
 
-    pub fn create_thumbnail(video_path: &str, output_path: &str, timestamp: f64) -> Result<(), String> {
+    pub fn create_thumbnail(video_path: &str, output_path: &str, timestamp: f64) -> AppResult<()> {
         let output = Command::new("mpv")
             .arg("--no-config")
             .arg("--no-terminal")
@@ -464,12 +465,12 @@ impl VideoUtils {
             .arg(format!("--o={}", output_path))
             .arg(video_path)
             .output()
-            .map_err(|e| format!("Failed to create thumbnail: {}", e))?;
+            .map_err(|e| AppError::IoError(format!("Failed to create thumbnail: {}", e)))?;
 
         if output.status.success() {
             Ok(())
         } else {
-            Err("Failed to generate thumbnail".to_string())
+            Err(AppError::IoError("Failed to generate thumbnail".to_string()))
         }
     }
 
@@ -502,12 +503,12 @@ pub fn create_video_player() -> (VideoPlayer, mpsc::UnboundedReceiver<PlaybackEv
     (player, event_rx)
 }
 
-pub fn playback_clip(clip_path: &str, clip_name: &str) -> Result<(), String> {
+pub fn playback_clip(clip_path: &str, clip_name: &str) -> AppResult<()> {
     println!("🎬 Starting playback of: {} ({})", clip_name, clip_path);
     
     // Validate the video file
     if !VideoUtils::validate_video_file(clip_path) {
-        return Err(format!("Invalid video file: {}", clip_path));
+        return Err(AppError::IoError(format!("Invalid video file: {}", clip_path)));
     }
 
     // Create a basic video clip
