@@ -3,7 +3,7 @@
 target = "x86_64-pc-windows-msvc"
 
 # Parallel compilation
-jobs = 0  # Use all available cores
+jobs = 4  # Use all available cores
 
 # Incremental compilation for faster rebuilds
 incremental = true
