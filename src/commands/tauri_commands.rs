@@ -1,7 +1,7 @@
 use crate::plugins::plugin_obs::{ObsPlugin, ObsConnectionConfig, ObsWebSocketVersion, ObsStatusInfo};
 use serde::{Deserialize, Serialize};
-use std::sync::{Arc, Mutex};
-use tokio::sync::mpsc;
+use std::sync::{mpsc, Arc, Mutex};
+use tokio::sync::mpsc::UnboundedSender;
 
 // Global OBS plugin instance
 pub type ObsPluginState = Arc<Mutex<Option<ObsPlugin>>>;
