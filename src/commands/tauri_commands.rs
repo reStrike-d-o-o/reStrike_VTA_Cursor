@@ -1,8 +1,7 @@
-use crate::plugins::{ObsPlugin, ObsConnectionConfig, ObsWebSocketVersion, ObsStatusInfo};
+use crate::plugins::plugin_obs::{ObsPlugin, ObsConnectionConfig, ObsWebSocketVersion, ObsStatusInfo};
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc;
-// use tauri::State; // Commented out since we removed tauri dependency
 
 // Global OBS plugin instance
 pub type ObsPluginState = Arc<Mutex<Option<ObsPlugin>>>;
