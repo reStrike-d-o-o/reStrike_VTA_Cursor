@@ -4,7 +4,7 @@ use std::thread;
 use std::time::{Duration, SystemTime};
 use tokio::sync::mpsc;
 use serde::{Deserialize, Serialize};
-use crate::types::{AppError, AppResult};
+use super::super::types::{AppError, AppResult};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VideoClip {
