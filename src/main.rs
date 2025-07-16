@@ -4,7 +4,7 @@ use std::thread;
 use tokio::sync::mpsc;
 
 // Use the library crate for all imports
-use re_strike_vta::plugins::plugin_obs::ObsPlugin;
+use re_strike_vta::plugins::{ObsPlugin, ObsEvent};
 use re_strike_vta::plugins::plugin_udp::{start_udp_server, PssEvent};
 use re_strike_vta::types::{AppError, AppResult};
 
@@ -158,40 +158,28 @@ async fn handle_pss_event(event: PssEvent) {
     }
 }
 
-async fn handle_obs_event(event: re_strike_vta::plugins::plugin_obs::ObsEvent) {
+async fn handle_obs_event(event: ObsEvent) {
     match event {
-        re_strike_vta::plugins::plugin_obs::ObsEvent::ConnectionStatusChanged {
-            connection_name,
-            status,
-        } => {
+        ObsEvent::ConnectionStatusChanged { connection_name, status } => {
             println!(
                 "🎥 OBS Connection '{}' status: {:?}",
                 connection_name, status
             );
         }
-
-        re_strike_vta::plugins::plugin_obs::ObsEvent::RecordingStateChanged {
-            connection_name,
-            is_recording,
-        } => {
+        ObsEvent::RecordingStateChanged { connection_name, is_recording } => {
             if is_recording {
                 println!("🔴 OBS '{}' started recording", connection_name);
             } else {
                 println!("⏹️ OBS '{}' stopped recording", connection_name);
             }
         }
-
-        re_strike_vta::plugins::plugin_obs::ObsEvent::ReplayBufferStateChanged {
-            connection_name,
-            is_active,
-        } => {
+        ObsEvent::ReplayBufferStateChanged { connection_name, is_active } => {
             if is_active {
                 println!("📹 OBS '{}' replay buffer activated", connection_name);
             } else {
                 println!("📹 OBS '{}' replay buffer deactivated", connection_name);
             }
         }
-
         _ => {
             println!("🎥 OBS Event: {:?}", event);
         }
