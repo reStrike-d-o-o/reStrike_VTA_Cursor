@@ -1,5 +1,7 @@
 # Documentation Maintenance Guide
 
+> **Note:** All architecture, onboarding, and coding conventions are defined in .cursor/rules/context.mdc (single source of truth). Project is Windows-only; Docker/devcontainer is fully removed. All onboarding, build, and documentation reference Windows-native setup only.
+
 ## 🎯 Purpose
 
 This guide explains how to effectively use and maintain the reStrike VTA documentation system for consistent project development and AI assistance.

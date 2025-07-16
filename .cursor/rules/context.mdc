@@ -1,5 +1,13 @@
 # reStrike VTA - Windows-Only Project Context Rules
 
+## Latest Development Status (2025-01-28):
+- ✅ Windows-only, production-ready, Rust+React (Tauri) application
+- ✅ Docker/devcontainer fully removed from all onboarding, docs, and scripts
+- ✅ Modular, plugin-based Rust backend (AppResult/AppError, crate naming, import style)
+- ✅ React 18 frontend with IOC flag system, advanced UI/UX
+- ✅ All onboarding, build, and documentation reference Windows-native setup only
+- ✅ This file is the single source of truth for all architecture, onboarding, and coding conventions. All documentation and onboarding must reference this file and be updated after any major change.
+
 ## 🖥️ Windows-Only Native Application
 - This project is a **native Windows desktop application** (no Docker/devcontainer).
 - All development, build, and deployment targets Windows 10/11 (x64).
