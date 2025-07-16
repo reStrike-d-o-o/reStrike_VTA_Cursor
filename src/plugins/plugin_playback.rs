@@ -433,7 +433,7 @@ impl VideoUtils {
             .arg("--frames=0")
             .arg(path)
             .output()
-            .map_err(|e| AppError::IoError(format!("Failed to run mpv for info: {}", e)))?;
+            .map_err(AppError::IoError)?;
 
         if !output.status.success() {
             return Err(AppError::ConfigError("mpv failed to get video info".to_string()));
@@ -465,7 +465,7 @@ impl VideoUtils {
             .arg(format!("--o={}", output_path))
             .arg(video_path)
             .output()
-            .map_err(|e| AppError::IoError(format!("Failed to create thumbnail: {}", e)))?;
+            .map_err(AppError::IoError)?;
 
         if output.status.success() {
             Ok(())
