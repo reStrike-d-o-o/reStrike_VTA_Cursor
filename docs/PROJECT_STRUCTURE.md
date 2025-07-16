@@ -240,15 +240,20 @@ const imageUrl = '/assets/images/logo.png';
 - **AppError::IoError** is only for actual `std::io::Error` values.
 - **Custom error messages** (including those created from strings or formatted text) must use **AppError::ConfigError** or another appropriate variant (e.g., `AppError::VideoError`, `AppError::ObsError`, etc.).
 - Never use `AppError::IoError` with a `String` or formatted message.
+- When returning errors to API responses or structs expecting Option<String>, always use e.to_string() to convert AppError to String.
+- When converting std::io::Error to AppError, use AppError::IoError(e).
+- When converting std::io::Error to AppError::ConfigError, use AppError::ConfigError(e.to_string()).
 
-**Example:**
+**Examples:**
 ```rust
-// Correct usage:
-Err(AppError::IoError(io_error_var))
-Err(AppError::ConfigError("Custom config error".to_string()))
+// Convert AppError to String for API response:
+error: Some(e.to_string())
 
-// Incorrect usage:
-Err(AppError::IoError("Some string".to_string())) // WRONG
+// Convert std::io::Error to AppError:
+.map_err(AppError::IoError)?
+
+// Convert std::io::Error to AppError::ConfigError:
+.map_err(|e| AppError::ConfigError(e.to_string()))?
 ```
 
 ## Maintenance Guidelines
