@@ -240,7 +240,7 @@ pub async fn add_obs_connection(
         Err(e) => Ok(ObsResponse {
             success: false,
             data: None,
-            error: Some(e),
+            error: Some(e.to_string()),
         }),
     }
 }
@@ -256,7 +256,7 @@ pub async fn get_obs_status(plugin: &ObsPlugin) -> Result<ObsStatusResponse, Str
         Err(e) => Ok(ObsStatusResponse {
             success: false,
             data: None,
-            error: Some(e),
+            error: Some(e.to_string()),
         }),
     }
 }
@@ -272,7 +272,7 @@ pub async fn get_obs_recording_status(plugin: &ObsPlugin, connection_name: &str)
         Err(e) => Ok(ObsResponse {
             success: false,
             data: None,
-            error: Some(e),
+            error: Some(e.to_string()),
         }),
     }
 }
@@ -288,7 +288,7 @@ pub async fn get_obs_streaming_status(plugin: &ObsPlugin, connection_name: &str)
         Err(e) => Ok(ObsResponse {
             success: false,
             data: None,
-            error: Some(e),
+            error: Some(e.to_string()),
         }),
     }
 }
@@ -304,7 +304,7 @@ pub async fn get_obs_cpu_usage(plugin: &ObsPlugin, connection_name: &str) -> Res
         Err(e) => Ok(ObsResponse {
             success: false,
             data: None,
-            error: Some(e),
+            error: Some(e.to_string()),
         }),
     }
 } 
