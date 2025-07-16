@@ -1,1 +1,1 @@
-// protocol.rs - PSS protocol parser 
+pub struct PssProtocol; 

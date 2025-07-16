@@ -1,1 +1,1 @@
-// manager.rs - OBS WebSocket connection management 
+pub struct ObsManager; 
