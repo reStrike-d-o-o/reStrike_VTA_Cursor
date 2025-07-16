@@ -1,163 +1,105 @@
-When opening a new chat, always include the previous chat history, README.md, the project root folder, and documentation in the context.
-alwaysApply: true
----
+# reStrike VTA - Windows-Only Project Context Rules
 
-When opening new chat always include in context old chat + readme.md + project root folder + documentation + PROJECT_CONTEXT.md
+## 🖥️ Windows-Only Native Application
+- This project is a **native Windows desktop application** (no Docker/devcontainer).
+- All development, build, and deployment targets Windows 10/11 (x64).
+- Production deployment is via Windows .exe and MSI installer (no containerization).
 
-Always include the latest DEV-CONTAINER-CHECKLIST.md and its automation steps in project onboarding, documentation, and when opening new chats or onboarding new contributors.
+## 📚 Required Documentation Context
+- **ALWAYS include:**
+  - `PROJECT_CONTEXT.md` (master project overview - CRITICAL)
+  - `README.md` (Windows installation, quick start)
+  - `.cursor/rules/context.mdc` (this file - context rules)
+  - `docs/README.md` (documentation navigation)
+  - All relevant `.md` files in `docs/`, especially:
+    - `FLAG_MANAGEMENT_SYSTEM.md`
+    - `development/AI_AGENT_WINDOWS_GUIDE.md`
+    - `project/FLAG_MANAGEMENT_MODULE_PLAN.md`
+    - `project/automation-quick-setup.md`
+    - `project/github-integration-guide.md`
+    - `project/github-integration-status.md`
+    - `project/project-management-summary.md`
+    - `requirements/software-requirements.md`
+    - `requirements/ui-design-document.md`
+    - `integration/obs-dual-protocol.md`
+    - `integration/obs-websocket-config.md`
+    - `development/checklists/DEV-CONTAINER-CHECKLIST-UPDATED.md` (for onboarding, but ignore Docker steps)
+  - Chat history from previous sessions
 
-**CRITICAL**: Always reference PROJECT_CONTEXT.md for complete project understanding - this is the master context document containing full project state, architecture, and development history.
+## 🏗️ Architecture & Conventions
+- **Backend:** Rust (Tauri plugin architecture, modular, plugin-based)
+  - All plugin/core methods use `AppResult<T>` and propagate errors as `AppError`.
+  - `AppError::IoError` is ONLY for `std::io::Error`.
+  - Custom error messages use `AppError::ConfigError` or other appropriate variant.
+  - **Import conventions:**
+    - Use `crate::...` for all library code (all files in `src/` except `main.rs`).
+    - Use `re_strike_vta::...` only in `main.rs` (binary entrypoint).
+  - **Crate name:** Must be snake_case in `Cargo.toml` (`re_strike_vta`).
+  - **Module structure:** All plugins in `src/plugins/`, imported via `plugins` module.
+- **Frontend:** React 18 + TypeScript + Tailwind CSS + Zustand + Framer Motion
+  - Modern, professional UI/UX with keyboard shortcuts, sidebar, overlays.
+  - IOC flag system: 253 PNG flags, emoji fallback, React integration (`flagUtils.tsx`).
+  - Environment-aware hooks for Windows/web switching.
 
-## 🧹 DEVELOPMENT ENVIRONMENT RULES
+## 🏁 Flag Management System
+- **Status:** COMPLETE (253 IOC flags, emoji fallback, React integration)
+- **Python script:** `scripts/media/download_official_ioc_flags.py` (downloads all flags from Wikipedia)
+- **React integration:** `ui/src/utils/flagUtils.tsx`, `FlagImage` component, automatic fallback
+- **Flag storage:** `ui/public/assets/flags/` (253 PNGs)
+- **Documentation:** `docs/FLAG_MANAGEMENT_SYSTEM.md`, `docs/requirements/FLAG_MANAGEMENT_MODULE.md`, `docs/project/FLAG_MANAGEMENT_MODULE_PLAN.md`
 
-### **🔄 Always Run Cleanup Before Starting Dev Server**
-**CRITICAL**: Before starting any development server (React, Tauri, or both), ALWAYS run the complete cleanup script first:
-```bash
-./scripts/development/cleanup-dev-environment.sh --cleanup
-```
+## 🎥 Video, OBS, and PSS Protocols
+- **Video:** mpv integration with hardware acceleration, advanced controls
+- **OBS:** Dual WebSocket protocol (v4/v5), connection management, scene/recording/streaming control
+- **PSS:** Real-time UDP protocol parsing, event types, competition data
 
-This ensures:
-- All previous processes are stopped
-- All ports are freed (3000, 1420, 6000, 4455, 8080)
-- All caches are cleared (npm, cargo, React)
-- Clean development environment for each session
+## 🛠️ Environment Setup & Port Cleanup
+- **ALWAYS run:** `./scripts/development/cleanup-dev-environment.sh --cleanup` before starting any dev server
+  - Frees all ports (3000, 1420, 6000, 4455, 8080)
+  - Stops previous processes, clears caches
+- **Critical tools:**
+  - Node.js 24+ (LTS)
+  - Rust (stable, MSVC toolchain)
+  - Tauri CLI (`cargo install tauri-cli`)
+  - Visual Studio Build Tools (for MSVC)
+  - PATH must include Rust, Node, Tauri
+- **Frontend dev:** Use `npm run start:tauri` for full app, or `cd ui && npm start` for React only
+- **Backend dev:** Use `cargo run` for Rust backend only
 
-**Never skip this step** - it prevents port conflicts and ensures consistent development environment.
+## 🧪 Testing & Production Deployment
+- **Testing priorities:**
+  - All React components (VideoClips, Settings, Overlay, ObsWebSocketManager, SidebarTest, etc.)
+  - All Rust plugins (plugin_udp.rs, plugin_obs.rs, plugin_playback.rs)
+  - Tauri command integration (frontend-backend communication)
+  - Real-world competition testing
+- **Production build:**
+  - Use `cargo tauri build` for Windows .exe
+  - MSI installer generation (see deployment docs)
 
-## 📋 DOCUMENTATION MAINTENANCE RULES
+## 🗂️ Project Management & Automation
+- **GitHub project board:** https://github.com/orgs/reStrike-d-o-o/projects/3
+- **PAT token:** Added to repo secrets for workflow automation
+- **Workflow automation:** Pending (see `docs/project/automation-quick-setup.md`)
+- **Issue templates, labels, and project board columns configured**
 
-### **🔄 Always Update When:**
-1. **Major Milestones Reached** - Update PROJECT_CONTEXT.md and .cursor/rules/context.mdc
-2. **Framework Updates** - Update documentation after dependency changes
-3. **Feature Completion** - Document new functionality and integration
-4. **Architecture Changes** - Update system overview and technical details
-5. **Bug Fixes** - Document resolution and prevention measures
+## 📋 Documentation & Onboarding
+- **PROJECT_CONTEXT.md** is the master context document (always include)
+- **README.md** and all docs/ .md files must be referenced for onboarding
+- **Onboarding:**
+  - Always include Windows setup, environment, and cleanup steps
+  - Ignore/remove Docker/devcontainer steps (not relevant)
+  - Reference all flag management, OBS, video, and protocol docs
 
-### **📚 Required Documentation Context**
-For new AI assistants working on this project, ALWAYS include:
-- `PROJECT_CONTEXT.md` (master overview - CRITICAL)
-- `README.md` (Windows installation and quick start)
-- `.cursor/rules/context.mdc` (this file - context rules)
-- `docs/README.md` (documentation navigation)
-- Chat history from previous sessions
+## ⚠️ Remove/Replace Docker/Devcontainer References
+- All Docker/devcontainer steps are obsolete for this project
+- All onboarding, context, and documentation must reference Windows-native setup and build only
 
-## 🚀 LATEST DEVELOPMENT STATUS
-
-### **✅ MAJOR COMPLETIONS (Current Session)**
-- **Complete Application Stack**: Frontend + Backend + Integration ✅ VERIFIED OPERATIONAL
-- **React Frontend**: Successfully running on port 3000 with all 5 components (1,691 lines total)
-- **Rust Backend**: All core plugins implemented and compiling successfully (1,663 lines total)
-- **Instant Video Replay**: Complete mpv integration with professional controls
-- **OBS WebSocket Dual Protocol**: Implemented both OBS WebSocket v4 and v5 protocols simultaneously
-- **PSS Protocol**: Complete real-time competition data parsing (640 lines)
-- **Modern UI**: Professional React interface with Tailwind CSS, Framer Motion, Zustand state management
-- **GitHub Integration**: Complete project management with 36 issues and PAT token added ✅
-- **Sidebar Component**: Professional event table with advanced filtering system ✅ NEW
-- **🏁 Flag Management System**: 253 IOC flags downloaded and integrated ✅ COMPLETED
-
-### **📊 Current Status: 99% Complete - Production Ready**
-- **Frontend**: ✅ COMPLETE - All React components operational and tested
-- **Backend**: ✅ COMPLETE - All core plugins functional with zero compilation errors
-- **Integration**: ✅ COMPLETE - Tauri Windows desktop app configured and operational
-- **Protocol**: ✅ COMPLETE - Full PSS protocol parsing with 640-line implementation
-- **Video**: ✅ COMPLETE - Advanced mpv integration with hardware acceleration
-- **OBS**: ✅ COMPLETE - Dual WebSocket protocol integration (v4/v5)
-- **UI/UX**: ✅ COMPLETE - Modern, responsive interface with keyboard shortcuts
-- **Sidebar System**: ✅ COMPLETE - Professional event table with filtering capabilities
-- **🏁 Flag System**: ✅ COMPLETE - 253 IOC flags with React integration
-- **Project Management**: ✅ COMPLETE - GitHub integration with 36 issues and PAT token added
-- **Automation**: ⚠️ PENDING - Workflow configuration required
-
-### **🎯 Immediate Next Steps (1% Remaining)**
-1. **Configure Workflows**: Set up project board automation
-2. **Complete Core Testing**: Verify all 1,663 backend + 1,691 frontend lines function correctly
-3. **Windows Executable**: Generate production .exe and MSI installer
-4. **Real-World Testing**: Test with actual competition equipment and referee workflows
-5. **Documentation Finalization**: User manual and deployment guide
-
-### **🗺️ Development Roadmap Established**
-- **Phase 1**: Workflow Configuration (immediate priority)
-- **Phase 2**: Core System Testing (1-2 weeks)
-- **Phase 3**: Windows Desktop Application (production ready)
-- **Future Enhancement**: 6 major feature areas with 50+ specific improvements planned
-
-**Project Direction: EXCEPTIONAL** - Production-ready application with comprehensive enhancement roadmap
-
-## 🧪 TESTING FRAMEWORK
-
-### **Immediate Testing Priorities**
-1. **Frontend Verification**: All 5 React components (VideoClips.tsx-315 lines, Settings.tsx-402 lines, Overlay.tsx-306 lines, etc.)
-2. **Backend Validation**: All 3 core plugins (plugin_udp.rs-640 lines, plugin_obs.rs-455 lines, plugin_playback.rs-568 lines)
-3. **Integration Testing**: Tauri commands and frontend-backend communication
-4. **User Interface**: Keyboard shortcuts, navigation, state management
-5. **Performance**: Memory usage, video playback, real-time data processing
-6. **🏁 Flag System**: IOC flag display and fallback functionality
-
-### **Production Deployment Checklist**
-- [ ] All React components tested and functional
-- [ ] All Rust plugins tested and operational
-- [ ] Windows .exe generation successful
-- [ ] MSI installer creation and testing
-- [ ] Competition environment testing
-- [ ] User acceptance testing with referees
-- [ ] 🏁 Flag system integration verified
-
-## 📈 ENHANCEMENT ROADMAP
-
-### **6 Major Enhancement Categories**
-1. **📹 Video System Enhancements** (20+ features)
-2. **🎥 OBS Studio Integration Enhancements** (18+ features)  
-3. **📡 PSS Protocol & Competition Integration** (18+ features)
-4. **🎨 User Interface & Experience** (18+ features)
-5. **🔧 System & Performance** (18+ features)
-6. **📱 Modern Platform Features** (12+ features)
-
-### **Development Timeline**
-- **Immediate (1-2 days)**: Workflow configuration and core testing
-- **Short Term (1-2 weeks)**: Video enhancements and UI polish
-- **Medium Term (3-6 weeks)**: Advanced features and enterprise capabilities
-- **Long Term (6+ weeks)**: Cloud platform and AI integration
-
-**Status**: Ready for immediate production testing with comprehensive enhancement plan established
-
-## 🔧 AUTOMATION CONFIGURATION
-
-### **✅ Completed Setup**
-1. **PAT Token**: ✅ Added to repository secrets for workflow automation
-   - Repository: reStrike-d-o-o/reStrike_VTA_Cursor
-   - Secret Name: `PAT_TOKEN`
-   - Value: GitHub Personal Access Token (configured)
-   - Permissions: `repo`, `workflow`, `write:packages`, `delete:packages`
-
-2. **Project Board**: ✅ Operational with 6 columns
-   - Owner: reStrike-d-o-o
-   - Board: reStrike VTA Development Board (ID: 3)
-   - Issues: All 36 issues added and categorized
-
-### **🔄 Pending Configuration**
-1. **Project Board Workflows**: Configure automation for status updates
-   - URL: https://github.com/orgs/reStrike-d-o-o/projects/3/workflows
-   - Enable: Issue status updates, project board synchronization, automatic labeling
-
-2. **Workflow Files**: Already created and ready for activation
-   - `.github/workflows/ci.yml` - Continuous integration
-   - `.github/workflows/issue-management.yml` - Issue automation
-   - `.github/workflows/project-board.yml` - Project board management
-   - `.github/workflows/new-project-automation.yml` - GitHub Projects v2 automation
-
-### **GitHub Integration Status**
-- **Repository Owner**: Updated to `reStrike-d-o-o` ✅
-- **Issues Created**: 36/36 ✅ (Issues #1-36)
-- **Project Board**: Operational with 6 columns ✅
-- **PAT Token**: Added to repository secrets ✅
-- **Automation Workflows**: Configuration pending ⚠️
-- **Issue Templates**: 5 templates configured ✅
-- **Label System**: 25+ labels for categorization ✅
-
----
-
-**📝 Note**: This project represents a fully functional, production-ready Windows desktop application for taekwondo competition management with instant video replay capabilities. The current implementation provides a solid foundation with clear enhancement pathways defined.
-
-**🔄 Last Updated**: Current session - Flag management system implementation complete
-**👤 Maintained by**: Development Team
-**✅ Status**: 99% Complete - Production Testing Phase
+## 📝 Summary
+- This is a **Windows-only, production-ready, Rust+React (Tauri) application** for taekwondo competition management
+- All context, onboarding, and documentation must reflect:
+  - Windows-native build and deployment
+  - Modern modular Rust backend (plugin-based, AppResult/AppError, crate naming, import style)
+  - React frontend with IOC flag system, advanced UI/UX
+  - Complete flag management, video, OBS, and PSS protocol integration
+  - GitHub project management, workflow automation, and documentation best practices
+- **Always update this file and PROJECT_CONTEXT.md after major milestones, framework updates, or architecture changes.**
