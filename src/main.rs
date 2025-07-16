@@ -3,9 +3,10 @@ use std::net::{TcpListener, TcpStream};
 use std::thread;
 use tokio::sync::mpsc;
 
-mod plugins;
-use plugins::plugin_obs::ObsPlugin;
-use plugins::plugin_udp::{start_udp_server, PssEvent};
+// Use the library crate for all imports
+use re_strike_vta::plugins::plugin_obs::ObsPlugin;
+use re_strike_vta::plugins::plugin_udp::{start_udp_server, PssEvent};
+use re_strike_vta::types::{AppError, AppResult};
 
 mod commands;
 
@@ -24,7 +25,7 @@ async fn main() {
 
             // Log server status
             match udp_server.get_status() {
-                plugins::plugin_udp::UdpServerStatus::Running => {
+                re_strike_vta::plugins::plugin_udp::UdpServerStatus::Running => {
                     println!("📊 UDP Server Status: Running");
                     let stats = udp_server.get_stats();
                     println!(
@@ -157,9 +158,9 @@ async fn handle_pss_event(event: PssEvent) {
     }
 }
 
-async fn handle_obs_event(event: plugins::plugin_obs::ObsEvent) {
+async fn handle_obs_event(event: re_strike_vta::plugins::plugin_obs::ObsEvent) {
     match event {
-        plugins::plugin_obs::ObsEvent::ConnectionStatusChanged {
+        re_strike_vta::plugins::plugin_obs::ObsEvent::ConnectionStatusChanged {
             connection_name,
             status,
         } => {
@@ -169,7 +170,7 @@ async fn handle_obs_event(event: plugins::plugin_obs::ObsEvent) {
             );
         }
 
-        plugins::plugin_obs::ObsEvent::RecordingStateChanged {
+        re_strike_vta::plugins::plugin_obs::ObsEvent::RecordingStateChanged {
             connection_name,
             is_recording,
         } => {
@@ -180,7 +181,7 @@ async fn handle_obs_event(event: plugins::plugin_obs::ObsEvent) {
             }
         }
 
-        plugins::plugin_obs::ObsEvent::ReplayBufferStateChanged {
+        re_strike_vta::plugins::plugin_obs::ObsEvent::ReplayBufferStateChanged {
             connection_name,
             is_active,
         } => {
