@@ -6,7 +6,64 @@
 - ✅ Modular, plugin-based Rust backend (AppResult/AppError, crate naming, import style)
 - ✅ React 18 frontend with IOC flag system, advanced UI/UX
 - ✅ All onboarding, build, and documentation reference Windows-native setup only
-- ✅ This file is the single source of truth for all architecture, onboarding, and coding conventions. All documentation and onboarding must reference this file and be updated after any major change.
+- ✅ Project structure, naming, and maintenance conventions are strictly enforced (see below)
+- ✅ Performance best practices for both frontend and backend are required
+
+---
+
+## 1. File/Directory Structure
+- All documentation is organized by category in `docs/` (api, development, project, requirements, integration, etc.)
+- All scripts are grouped by purpose in `scripts/` (development, obs, project, media, workflows)
+- Rust backend is modular: plugins in `src/plugins/`, commands in `src/commands/`, core logic in `src/core/`
+- React frontend is in `ui/` with assets, components, hooks, stores, utils, and config
+- Root directory contains only essential files (Cargo.toml, package.json, README.md, etc.)
+- All navigation indexes (docs/README.md, scripts/README.md) must be kept up to date
+
+## 2. Naming Conventions
+- **Documentation**: `kebab-case.md` (e.g., `container-restart.md`, `software-requirements.md`)
+- **Scripts**: `kebab-case.sh` or `kebab-case.py`, grouped in subdirectories by purpose
+- **Rust Source**: `snake_case.rs` for modules, `PascalCase` for types/structs/enums, `camelCase` for functions/variables
+- **React/TS**: `PascalCase.tsx` for components, `camelCase.ts` for utilities
+- **Configuration**: `kebab-case.json` or `kebab-case.toml`
+
+## 3. Maintenance Guidelines
+- All new files must follow category and naming conventions
+- When moving files, update all imports, documentation links, and configuration paths
+- Test all functionality after structural changes
+- Monthly structure reviews are required; remove obsolete files and consolidate similar ones
+- Keep navigation indexes and cross-references current
+- All documentation and onboarding must reference this file and be updated after any major change
+
+## 4. Performance Best Practices
+- **Frontend**:
+  - Disable source maps in development (`GENERATE_SOURCEMAP=false`)
+  - Use Fast Refresh and React.memo for components
+  - Disable StrictMode in development for faster renders
+  - Optimize imports and bundle size
+  - Use fast build/dev scripts (`npm run build:fast`, `npm run start:fast`)
+  - Clean caches regularly (`npm run clean:all`)
+  - Monitor bundle size (`npm run analyze`)
+- **Backend (Rust)**:
+  - Use optimized dev profile: `opt-level=1`, `codegen-units=256`, `incremental=true`, `lto=false`
+  - Enable incremental compilation and debug assertions
+  - Use `./scripts/development/fast-dev.sh` for fast dev cycles
+  - Clean build artifacts regularly (`cargo clean`)
+  - Monitor build times and optimize as needed
+- **General**:
+  - Always use fast scripts for development
+  - Clean caches and artifacts weekly or when performance degrades
+  - Review and optimize imports and dependencies regularly
+
+---
+
+## 5. Single Source of Truth
+- This file (`.cursor/rules/context.mdc`) is the **single source of truth** for all project architecture, onboarding, coding, structure, naming, maintenance, and performance conventions.
+- All onboarding, build, and documentation must reference this file and be updated after any major change.
+- All team members must follow these conventions when adding or modifying files.
+
+---
+
+_Last updated: 2025-01-28_
 
 ## 🖥️ Windows-Only Native Application
 - This project is a **native Windows desktop application** (no Docker/devcontainer).
@@ -68,46 +125,4 @@
 - **Critical tools:**
   - Node.js 24+ (LTS)
   - Rust (stable, MSVC toolchain)
-  - Tauri CLI (`cargo install tauri-cli`)
-  - Visual Studio Build Tools (for MSVC)
-  - PATH must include Rust, Node, Tauri
-- **Frontend dev:** Use `npm run start:tauri` for full app, or `cd ui && npm start` for React only
-- **Backend dev:** Use `cargo run` for Rust backend only
-
-## 🧪 Testing & Production Deployment
-- **Testing priorities:**
-  - All React components (VideoClips, Settings, Overlay, ObsWebSocketManager, SidebarTest, etc.)
-  - All Rust plugins (plugin_udp.rs, plugin_obs.rs, plugin_playback.rs)
-  - Tauri command integration (frontend-backend communication)
-  - Real-world competition testing
-- **Production build:**
-  - Use `cargo tauri build` for Windows .exe
-  - MSI installer generation (see deployment docs)
-
-## 🗂️ Project Management & Automation
-- **GitHub project board:** https://github.com/orgs/reStrike-d-o-o/projects/3
-- **PAT token:** Added to repo secrets for workflow automation
-- **Workflow automation:** Pending (see `docs/project/automation-quick-setup.md`)
-- **Issue templates, labels, and project board columns configured**
-
-## 📋 Documentation & Onboarding
-- **PROJECT_CONTEXT.md** is the master context document (always include)
-- **README.md** and all docs/ .md files must be referenced for onboarding
-- **Onboarding:**
-  - Always include Windows setup, environment, and cleanup steps
-  - Ignore/remove Docker/devcontainer steps (not relevant)
-  - Reference all flag management, OBS, video, and protocol docs
-
-## ⚠️ Remove/Replace Docker/Devcontainer References
-- All Docker/devcontainer steps are obsolete for this project
-- All onboarding, context, and documentation must reference Windows-native setup and build only
-
-## 📝 Summary
-- This is a **Windows-only, production-ready, Rust+React (Tauri) application** for taekwondo competition management
-- All context, onboarding, and documentation must reflect:
-  - Windows-native build and deployment
-  - Modern modular Rust backend (plugin-based, AppResult/AppError, crate naming, import style)
-  - React frontend with IOC flag system, advanced UI/UX
-  - Complete flag management, video, OBS, and PSS protocol integration
-  - GitHub project management, workflow automation, and documentation best practices
-- **Always update this file and PROJECT_CONTEXT.md after major milestones, framework updates, or architecture changes.**
+  - Tauri CLI (`
