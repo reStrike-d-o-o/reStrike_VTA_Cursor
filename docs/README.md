@@ -260,3 +260,20 @@ See [OBS Configuration](./integration/obs-websocket-config.md)
   - StatusBar (OBS status, test controls)
 - Sidebar features (filters, replay, manual mode, etc.) are being migrated into the new layout.
 - See .cursor/rules/context.mdc for all architecture and UI conventions. 
+
+## How to Give Better Prompts to the AI Assistant
+
+To help the AI assistant better understand your project and provide more accurate and helpful responses, follow these guidelines:
+
+1. **Be Specific**: Clearly describe what you want to achieve, referencing UI elements, files, or features by name.
+2. **Provide Context**: Mention any relevant background, requirements, or design goals. If the task relates to a previous change, reference it.
+3. **Attach Screenshots**: For UI/layout issues, attach screenshots and describe what should change.
+4. **Reference Files/Lines**: If possible, mention the file(s) and even line numbers involved.
+5. **Describe Expected Behavior**: Explain what the correct/desired outcome should look like or how it should function.
+6. **List Constraints**: Note any technical, design, or platform constraints (e.g., Windows-only, Tauri, Tailwind, etc.).
+7. **Iterate**: If the first result isn't perfect, provide feedback and clarify what needs to be improved.
+8. **Share Error Messages**: For bugs, include the full error message and what you were doing when it appeared.
+9. **Link to Requirements**: If there are requirement docs, PRDs, or specs, mention or attach them.
+10. **Summarize Recent Changes**: If the project has changed recently, summarize or point to the relevant updates.
+
+The more context and detail you provide, the better the assistant can help you! 
