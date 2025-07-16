@@ -356,3 +356,11 @@ MIT
 - All architecture, onboarding, and coding conventions are defined in .cursor/rules/context.mdc (single source of truth)
 - Project is Windows-only; Docker/devcontainer is fully removed
 - All onboarding, build, and documentation reference Windows-native setup only
+
+## 🆕 UI Layout Update (2025-07)
+- The new AdvancedPanel displays:
+  - MatchInfoSection at the top (athlete info, match details)
+  - EventTable in the middle (event rows, colored dots, scrollable)
+  - StatusBar at the bottom (OBS status, test controls)
+- Sidebar features (filters, replay, manual mode, etc.) are being migrated into the new layout.
+- See .cursor/rules/context.mdc for all architecture and UI conventions.

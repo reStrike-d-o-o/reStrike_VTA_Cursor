@@ -126,3 +126,11 @@ _Last updated: 2025-01-28_
   - Node.js 24+ (LTS)
   - Rust (stable, MSVC toolchain)
   - Tauri CLI (`
+
+## [2025-07] UI Layout Update
+- AdvancedPanel now displays:
+  - MatchInfoSection (athlete info, match details)
+  - EventTable (event rows, colored dots, scrollable)
+  - StatusBar (OBS status, test controls)
+- Sidebar features (filters, replay, manual mode, etc.) are being migrated into the new layout.
+- All .md documentation files must be updated after major UI changes.
