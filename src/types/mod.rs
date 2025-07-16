@@ -178,6 +178,12 @@ pub enum AppError {
     SerializationError(#[from] serde_json::Error),
 }
 
+impl From<Box<dyn std::error::Error>> for AppError {
+    fn from(err: Box<dyn std::error::Error>) -> Self {
+        AppError::ConfigError(err.to_string())
+    }
+}
+
 // ============================================================================
 // Result Types
 // ============================================================================
