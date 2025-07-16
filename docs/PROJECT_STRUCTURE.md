@@ -233,6 +233,24 @@ const flagUrl = '/assets/flags/USA.png';
 const imageUrl = '/assets/images/logo.png';
 ```
 
+## Error Handling Conventions
+
+- All plugin and core methods must use `AppResult<T>` (from `crate::types`).
+- Errors must be propagated as `AppError`.
+- **AppError::IoError** is only for actual `std::io::Error` values.
+- **Custom error messages** (including those created from strings or formatted text) must use **AppError::ConfigError** or another appropriate variant (e.g., `AppError::VideoError`, `AppError::ObsError`, etc.).
+- Never use `AppError::IoError` with a `String` or formatted message.
+
+**Example:**
+```rust
+// Correct usage:
+Err(AppError::IoError(io_error_var))
+Err(AppError::ConfigError("Custom config error".to_string()))
+
+// Incorrect usage:
+Err(AppError::IoError("Some string".to_string())) // WRONG
+```
+
 ## Maintenance Guidelines
 
 ### 1. **Adding New Files**

@@ -147,7 +147,7 @@ impl ObsPlugin {
         // Connect to WebSocket
         let (ws_stream, _) = tokio_tungstenite::connect_async(&ws_url)
             .await
-            .map_err(|e| AppError::IoError(format!("Failed to connect to OBS: {}", e)))?;
+            .map_err(|e| AppError::ConfigError(format!("Failed to connect to OBS: {}", e)))?;
 
         // Update connection
         let mut connections = self.connections.lock().unwrap();
@@ -272,7 +272,7 @@ impl ObsPlugin {
 
         // Wait for response
         let response = response_rx.await
-            .map_err(|_| AppError::IoError("Request timeout or connection lost".to_string()))?;
+            .map_err(|_| AppError::ConfigError("Request timeout or connection lost".to_string()))?;
 
         Ok(response)
     }
