@@ -249,14 +249,20 @@ const result = await obsCommands.connect('ws://localhost:4455');
 - **Custom error messages** (including those created from strings or formatted text) must use **AppError::ConfigError** or another appropriate variant (e.g., `AppError::VideoError`, `AppError::ObsError`, etc.).
 - Never use `AppError::IoError` with a `String` or formatted message.
 
-**Example:**
-```rust
-// Correct usage:
-Err(AppError::IoError(io_error_var))
-Err(AppError::ConfigError("Custom config error".to_string()))
+- When returning errors to API responses or structs expecting Option<String>, always use e.to_string() to convert AppError to String.
+- When converting std::io::Error to AppError, use AppError::IoError(e).
+- When converting std::io::Error to AppError::ConfigError, use AppError::ConfigError(e.to_string()).
 
-// Incorrect usage:
-Err(AppError::IoError("Some string".to_string())) // WRONG
+**Examples:**
+```rust
+// Convert AppError to String for API response:
+error: Some(e.to_string())
+
+// Convert std::io::Error to AppError:
+.map_err(AppError::IoError)?
+
+// Convert std::io::Error to AppError::ConfigError:
+.map_err(|e| AppError::ConfigError(e.to_string()))?
 ```
 
 ---
