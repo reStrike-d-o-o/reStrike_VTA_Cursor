@@ -1,5 +1,5 @@
 [package]
-name = "reStrike_VTA"
+name = "re_strike_vta"
 version = "0.1.0"
 description = "Windows desktop application for taekwondo referees using Tauri and React"
 authors = ["damjanZGB"]
