@@ -3,11 +3,11 @@
 
 // Core components
 export { default as App } from '../App';
-export { default as SidebarTest } from '../components/SidebarTest';
-export { default as Overlay } from '../components/Overlay';
-export { default as VideoClips } from '../components/VideoClips';
-export { default as ObsWebSocketManager } from '../components/ObsWebSocketManager';
-export { default as Settings } from '../components/Settings';
+export { default as SidebarTest } from '../organisms/SidebarTest';
+export { default as Overlay } from '../organisms/Overlay';
+export { default as VideoClips } from '../organisms/VideoClips';
+export { default as ObsWebSocketManager } from '../organisms/ObsWebSocketManager';
+export { default as Settings } from '../organisms/Settings';
 
 // Hooks
 export { useAppStore } from '../stores';

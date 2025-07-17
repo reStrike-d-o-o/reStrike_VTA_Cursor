@@ -33,6 +33,7 @@
 - Monthly structure reviews are required; remove obsolete files and consolidate similar ones
 - Keep navigation indexes and cross-references current
 - All documentation and onboarding must reference this file and be updated after any major change
+- **Preservation Before Deletion/Refactor**: Before deleting or refactoring any file, always copy the code to a backup file (e.g., .copy or .bak extension) to preserve the existing code, then proceed with deletion or refactor. This ensures no code is lost and allows for easy rollback if needed.
 
 ## 4. Performance Best Practices
 - **Frontend**:
