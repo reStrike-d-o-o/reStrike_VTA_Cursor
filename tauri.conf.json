@@ -1,0 +1,78 @@
+{
+  "$schema": "https://beta.tauri.app/schema.json",
+  "identifier": "com.restrike.vta",
+  "productName": "reStrike VTA",
+  "version": "0.1.0",
+  "build": {
+    "frontendDist": "ui/build",
+    "devUrl": "http://localhost:3000",
+    "beforeDevCommand": "cd ui && npm run start",
+    "beforeBuildCommand": "cd ui && npm run build"
+  },
+  "app": {
+    "windows": [
+      {
+        "fullscreen": false,
+        "resizable": true,
+        "title": "reStrike VTA",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 800,
+        "minHeight": 600,
+        "decorations": true,
+        "alwaysOnTop": false,
+        "center": true,
+        "visible": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all"
+  },
+  "plugins": {
+    "shell": {
+      "open": true,
+      "execute": true,
+      "sidecar": true,
+      "scope": [
+        {
+          "name": "mpv",
+          "cmd": "mpv",
+          "args": ["--start=10"]
+        }
+      ]
+    },
+    "fs": {
+      "readFile": true,
+      "writeFile": true,
+      "readDir": true,
+      "createDir": true,
+      "removeDir": true,
+      "removeFile": true,
+      "scope": ["$APPDATA/reStrikeVTA/**", "$APPDATA/reStrikeVTA/log/**"]
+    },
+    "path": {
+      "all": true
+    },
+    "dialog": {
+      "open": true,
+      "save": true
+    },
+    "http": {
+      "request": true,
+      "scope": ["https://**"]
+    },
+    "notification": {
+      "all": false
+    },
+    "globalShortcut": {
+      "register": true,
+      "unregister": true,
+      "unregisterAll": true
+    }
+  }
+} 

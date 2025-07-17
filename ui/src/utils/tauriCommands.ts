@@ -209,6 +209,40 @@ export const systemCommands = {
 };
 
 // ============================================================================
+// Diagnostics & Logs Manager Commands
+// ============================================================================
+
+export const diagLogsCommands = {
+  /**
+   * Enable or disable logging for a subsystem (pss, obs, udp)
+   */
+  async setLoggingEnabled(subsystem: string, enabled: boolean) {
+    return executeTauriCommand('set_logging_enabled', { subsystem, enabled });
+  },
+
+  /**
+   * List log files in the log/ directory, optionally filtered by subsystem
+   */
+  async listLogFiles(subsystem?: string) {
+    return executeTauriCommand('list_log_files', { subsystem });
+  },
+
+  /**
+   * Download a log file by filename
+   */
+  async downloadLogFile(filename: string) {
+    return executeTauriCommand('download_log_file', { filename });
+  },
+
+  /**
+   * Enable or disable live data streaming for a subsystem
+   */
+  async setLiveDataStreaming(subsystem: string, enabled: boolean) {
+    return executeTauriCommand('set_live_data_streaming', { subsystem, enabled });
+  },
+};
+
+// ============================================================================
 // Utility Functions
 // ============================================================================
 
@@ -224,16 +258,37 @@ export const isTauriAvailable = (): boolean => {
  */
 export const executeTauriCommand = async <T = any>(
   command: string,
-  args: any = {}
+  args: any = {},
+  timeout: number = 10000
 ): Promise<TauriCommandResponse<T>> => {
   try {
     if (!isTauriAvailable()) {
-      return { success: false, error: 'Tauri not available' };
+      return { success: false, error: 'Tauri not available - running in web mode' };
     }
 
-    const result = await window.__TAURI__!.invoke(command, args);
+    // Add timeout handling
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error(`Command ${command} timed out after ${timeout}ms`)), timeout);
+    });
+
+    const commandPromise = window.__TAURI__!.invoke(command, args);
+    const result = await Promise.race([commandPromise, timeoutPromise]);
+    
     return { success: true, data: result };
   } catch (error) {
-    return { success: false, error: String(error) };
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    
+    // Provide more specific error messages
+    if (errorMessage.includes('timeout')) {
+      return { success: false, error: `Command timed out: ${errorMessage}` };
+    }
+    if (errorMessage.includes('not found')) {
+      return { success: false, error: `Command not found: ${command}` };
+    }
+    if (errorMessage.includes('permission')) {
+      return { success: false, error: `Permission denied: ${errorMessage}` };
+    }
+    
+    return { success: false, error: `Command failed: ${errorMessage}` };
   }
 }; 

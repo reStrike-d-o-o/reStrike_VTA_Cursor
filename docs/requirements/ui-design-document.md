@@ -189,3 +189,11 @@ All status indicators and icons are now atomic. Accessibility linter issues have
 - LIVE DATA group will subscribe to live data streams from the backend, filtered by type.
 
 For now, the UI uses dummy data and stub handlers, ready for backend integration.
+
+### Backend Wiring (2024)
+- Tauri commands for:
+  - Logging toggles (enable/disable PSS, OBS, UDP logging)
+  - Log file listing (filtered by type)
+  - Log file download
+  - Live data streaming (UDP, OBS, PSS)
+- Progress tracked in the project todo list.

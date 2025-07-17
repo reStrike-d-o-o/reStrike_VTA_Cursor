@@ -113,5 +113,6 @@ The AdvancedPanel is now a drawer-based UI:
 - Right content area for selected drawer
 - Each drawer is a modular section for advanced features
 - Diagnostics & Logs Manager: Logging and Download Logs are side by side above Live Data, which is scrollable and auto-scrolls as data arrives. Download Logs uses a table for log files; double-clicking a row downloads the file. Dropdown filters the table.
+- Backend wiring for Diagnostics & Logs Manager is in progress: Tauri commands for logging toggles, log file listing, log file download, and live data streaming. See todo list for progress.
 
 See [FRONTEND_DEVELOPMENT_SUMMARY.md] and [ui-design-document.md] for implementation details.
