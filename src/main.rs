@@ -89,8 +89,6 @@ async fn main() {
             }
         }
     }
-    panic!("[DEBUG] Reached after OBS config block in main.rs");
-    // === End OBS connection loader ===
 
     // Start event processing tasks
     tokio::spawn(async move {

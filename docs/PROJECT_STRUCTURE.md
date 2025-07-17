@@ -356,3 +356,9 @@ error: Some(e.to_string())
 - Icon
 
 All status indicators and icons are now atomic. Accessibility linter issues have been addressed as of 2024. 
+
+## Backend: OBS WebSocket Event Handling
+
+- The OBS plugin emits all official OBS WebSocket v5 event types as `ObsEvent::Raw`.
+- Unknown or future event types are also handled generically, ensuring no event is lost or causes an error.
+- Detailed event handling can be added incrementally for any event type as needed. 

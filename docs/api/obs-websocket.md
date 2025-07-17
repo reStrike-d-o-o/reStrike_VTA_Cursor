@@ -5668,3 +5668,13 @@ Note: This request serves to provide feature parity with 4.x. It is very likely 
 | ?sourceUuid | String | UUID of the source to open a projector for | None | Unknown |
 | ?monitorIndex | Number | Monitor index, use `GetMonitorList` to obtain index | None | -1: Opens projector in windowed mode |
 | ?projectorGeometry | String | Size/Position data for a windowed projector, in Qt Base64 encoded format. Mutually exclusive with `monitorIndex` | None | N/A |
+
+# OBS WebSocket v5 Event Handling (Backend)
+
+- The backend now recognizes and emits **all official OBS WebSocket v5 event types** as `ObsEvent::Raw`.
+- Each event type is matched in the WebSocket receive loop; if not handled in detail, it is emitted as a `Raw` event with the event type and data.
+- Unknown or future event types are also handled generically as `ObsEvent::Raw`, ensuring forward compatibility and robust logging.
+- Detailed parsing and handling can be added incrementally for any event type as needed.
+- No event will cause an error or be dropped due to being unrecognized.
+
+See `src/plugins/plugin_obs.rs` for implementation details.

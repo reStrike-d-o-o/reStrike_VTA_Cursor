@@ -311,6 +311,14 @@ error: Some(e.to_string())
 
 ---
 
+## OBS WebSocket v5 Event Handling
+
+- All official OBS WebSocket v5 event types are recognized and emitted as `ObsEvent::Raw`.
+- Unknown or future event types are also handled generically, so the backend is robust to protocol changes.
+- Developers can add detailed parsing for any event type incrementally as needed.
+
+---
+
 **Status**: ✅ **Library Structure Complete**
 **Benefits**: Improved maintainability, testability, and development speed
 **Next Steps**: Continue development using this modular structure 
