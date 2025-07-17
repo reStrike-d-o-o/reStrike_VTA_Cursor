@@ -43,7 +43,7 @@
       "description": "OBS Studio WebSocket control",
       "status": "available",
       "forwarded": true,
-      "auto_start": false,
+      "auto_start": true,
       "protocols": ["v5"],
       "default_protocol": "v5"
     },
