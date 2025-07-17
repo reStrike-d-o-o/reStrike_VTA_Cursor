@@ -69,6 +69,8 @@ async fn main() {
             let protocol_version = re_strike_vta::plugins::ObsWebSocketVersion::V5;
             let enabled = conn.get("enabled").and_then(|v| v.as_bool()).unwrap_or(true);
 
+            log::info!("[MAIN] OBS config loaded: name='{}', host='{}', port={}, enabled={}", name, host, port, enabled);
+
             let obs_config = re_strike_vta::plugins::ObsConnectionConfig {
                 name: name.to_string(),
                 host: host.to_string(),
