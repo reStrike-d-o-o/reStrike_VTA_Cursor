@@ -362,3 +362,13 @@ All status indicators and icons are now atomic. Accessibility linter issues have
 - The OBS plugin emits all official OBS WebSocket v5 event types as `ObsEvent::Raw`.
 - Unknown or future event types are also handled generically, ensuring no event is lost or causes an error.
 - Detailed event handling can be added incrementally for any event type as needed. 
+
+## Backend: OBS WebSocket Runtime Management
+
+- Runtime addition and removal of OBS connections is supported via Tauri commands (`add_obs_connection`, `remove_obs_connection`).
+- The frontend can manage connections dynamically without backend restarts. 
+
+## Backend: Sending Commands to OBS
+
+- The backend supports sending commands to OBS via a Tauri command (`obs_send_request`).
+- The frontend can control any connected OBS instance by name and receive responses. 

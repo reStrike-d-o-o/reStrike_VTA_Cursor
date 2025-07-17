@@ -269,3 +269,13 @@ The application is now ready for testing and further development, providing a so
 - The backend emits all official OBS WebSocket v5 event types as `ObsEvent::Raw`.
 - Unknown or future event types are also handled generically, so the frontend can subscribe to and handle any event type.
 - Detailed frontend handling can be added incrementally for any event type as needed. 
+
+## OBS WebSocket Runtime Connection Management
+
+- The backend supports runtime add/remove of OBS connections via Tauri commands (`add_obs_connection`, `remove_obs_connection`).
+- The frontend can add or remove connections dynamically and receive events for each connection by name. 
+
+## OBS WebSocket Command Sending
+
+- The backend supports sending commands to OBS via a Tauri command (`obs_send_request`).
+- The frontend can control any connected OBS instance and receive responses for each command. 

@@ -178,9 +178,16 @@
   },
   "obs_connections": [
     {
-      "name": "Local OBS",
+      "name": "OBS REC",
       "host": "localhost",
       "port": 4455,
+      "password": "",
+      "enabled": true
+    },
+    {
+      "name": "OBS STR",
+      "host": "localhost",
+      "port": 4466,
       "password": "",
       "enabled": true
     }

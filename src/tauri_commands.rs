@@ -1,6 +1,8 @@
 use crate::plugins::{ObsPlugin, ObsConnectionConfig, ObsWebSocketVersion, ObsStatusInfo};
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
+use tauri::State;
+use crate::types::{AppError, AppResult};
 
 // Global OBS plugin instance
 pub type ObsPluginState = Arc<Mutex<Option<ObsPlugin>>>;
@@ -12,7 +14,6 @@ pub struct AddConnectionRequest {
     pub host: String,
     pub port: u16,
     pub password: Option<String>,
-    pub protocol_version: String,
     pub enabled: bool,
 }
 
@@ -207,38 +208,41 @@ pub fn register_obs_commands(app: &mut tauri::App) -> Result<(), Box<dyn std::er
 */
 
 // Direct API functions for use without Tauri
-pub async fn add_obs_connection(
-    plugin: &mut ObsPlugin,
-    request: AddConnectionRequest,
-) -> Result<ObsResponse, String> {
-    // Convert protocol version string to enum
-    let protocol_version = match request.protocol_version.as_str() {
-        "v5" => ObsWebSocketVersion::V5,
-        _ => ObsWebSocketVersion::V5,
-    };
+// Remove or comment out the old non-Tauri add_obs_connection function to avoid duplicate definition.
 
-    // Create connection config
+#[tauri::command]
+pub async fn add_obs_connection(
+    request: AddConnectionRequest,
+    plugin_state: State<'_, ObsPluginState>,
+) -> Result<String, String> {
     let config = ObsConnectionConfig {
         name: request.name,
         host: request.host,
         port: request.port,
         password: request.password,
-        protocol_version,
+        protocol_version: ObsWebSocketVersion::V5,
         enabled: request.enabled,
     };
+    let mut plugin = plugin_state.lock().unwrap();
+    if let Some(plugin) = plugin.as_mut() {
+        plugin.add_connection(config).await.map_err(|e| e.to_string())?;
+        Ok("Connection added".to_string())
+    } else {
+        Err("OBS plugin not initialized".to_string())
+    }
+}
 
-    // Add connection
-    match plugin.add_connection(config).await {
-        Ok(_) => Ok(ObsResponse {
-            success: true,
-            data: None,
-            error: None,
-        }),
-        Err(e) => Ok(ObsResponse {
-            success: false,
-            data: None,
-            error: Some(e.to_string()),
-        }),
+#[tauri::command]
+pub async fn remove_obs_connection(
+    connection_name: String,
+    plugin_state: State<'_, ObsPluginState>,
+) -> Result<String, String> {
+    let mut plugin = plugin_state.lock().unwrap();
+    if let Some(plugin) = plugin.as_mut() {
+        plugin.remove_connection(&connection_name).map_err(|e| e.to_string())?;
+        Ok("Connection removed".to_string())
+    } else {
+        Err("OBS plugin not initialized".to_string())
     }
 }
 
