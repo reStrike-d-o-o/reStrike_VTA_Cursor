@@ -440,7 +440,7 @@ impl VideoUtils {
         }
 
         // Parse the output (simplified - in reality you'd parse the actual mpv output)
-        let stdout = String::from_utf8_lossy(&output.stdout);
+        let _stdout = String::from_utf8_lossy(&output.stdout);
         
         // Default values (in a real implementation, parse from mpv output)
         Ok(VideoMetadata {

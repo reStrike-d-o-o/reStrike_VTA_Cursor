@@ -213,9 +213,8 @@ pub async fn add_obs_connection(
 ) -> Result<ObsResponse, String> {
     // Convert protocol version string to enum
     let protocol_version = match request.protocol_version.as_str() {
-        "v4" => ObsWebSocketVersion::V4,
         "v5" => ObsWebSocketVersion::V5,
-        _ => return Err("Invalid protocol version. Must be 'v4' or 'v5'".to_string()),
+        _ => ObsWebSocketVersion::V5,
     };
 
     // Create connection config

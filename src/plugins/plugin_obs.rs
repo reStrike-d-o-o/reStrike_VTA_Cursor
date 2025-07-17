@@ -4,11 +4,12 @@ use tokio::sync::mpsc;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use crate::types::{AppError, AppResult};
+use tokio_tungstenite::tungstenite::Message;
+use futures_util::StreamExt;
 
 // OBS WebSocket Protocol Versions
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ObsWebSocketVersion {
-    V4,
     V5,
 }
 
@@ -113,6 +114,112 @@ impl ObsPlugin {
         Ok(())
     }
 
+    fn take_pending_request_sender(
+        connections: &Arc<Mutex<HashMap<String, ObsConnection>>>,
+        connection_name: &str,
+        request_id: &str,
+    ) -> Option<tokio::sync::oneshot::Sender<serde_json::Value>> {
+        let mut conns = connections.lock().unwrap();
+        conns.get_mut(connection_name)
+            .and_then(|conn| conn.pending_requests.remove(request_id))
+    }
+
+    // After successful authentication, spawn the WebSocket receive loop
+    async fn spawn_ws_task(&self, connection_name: String) {
+        let connections = self.connections.clone();
+        let event_tx = self.event_tx.clone();
+        tokio::spawn(async move {
+            loop {
+                let ws_stream_opt = {
+                    let mut conns = connections.lock().unwrap();
+                    conns.get_mut(&connection_name)
+                        .and_then(|conn| conn.websocket.take())
+                };
+                if let Some(ws_stream) = ws_stream_opt {
+                    let (_ws_write, mut ws_read) = ws_stream.split();
+                    while let Some(msg_result) = ws_read.next().await {
+                        match msg_result {
+                            Ok(Message::Text(text)) => {
+                                if let Ok(json) = serde_json::from_str::<serde_json::Value>(&text) {
+                                    if let Some(request_id) = json.pointer("/d/requestId").and_then(|v| v.as_str()) {
+                                        let tx_opt = ObsPlugin::take_pending_request_sender(&connections, &connection_name, request_id);
+                                        if let Some(tx) = tx_opt {
+                                            let _ = tx.send(json["d"].clone());
+                                        }
+                                    } else if let Some(op) = json["op"].as_u64() {
+                                        if op == 5 {
+                                            // Full event parsing
+                                            let event_type = json.pointer("/d/eventType").and_then(|v| v.as_str()).unwrap_or("");
+                                            let event_data = &json["d"]["eventData"];
+                                            match event_type {
+                                                "CurrentProgramSceneChanged" => {
+                                                    if let Some(scene_name) = event_data["sceneName"].as_str() {
+                                                        let _ = event_tx.send(ObsEvent::SceneChanged {
+                                                            connection_name: connection_name.clone(),
+                                                            scene_name: scene_name.to_string(),
+                                                        });
+                                                    }
+                                                }
+                                                "RecordStateChanged" => {
+                                                    if let Some(is_recording) = event_data["outputActive"].as_bool() {
+                                                        let _ = event_tx.send(ObsEvent::RecordingStateChanged {
+                                                            connection_name: connection_name.clone(),
+                                                            is_recording,
+                                                        });
+                                                    }
+                                                }
+                                                "StreamStateChanged" => {
+                                                    if let Some(is_streaming) = event_data["outputActive"].as_bool() {
+                                                        let _ = event_tx.send(ObsEvent::StreamStateChanged {
+                                                            connection_name: connection_name.clone(),
+                                                            is_streaming,
+                                                        });
+                                                    }
+                                                }
+                                                "ReplayBufferStateChanged" => {
+                                                    if let Some(is_active) = event_data["outputActive"].as_bool() {
+                                                        let _ = event_tx.send(ObsEvent::ReplayBufferStateChanged {
+                                                            connection_name: connection_name.clone(),
+                                                            is_active,
+                                                        });
+                                                    }
+                                                }
+                                                // TODO: Add more event types as needed
+                                                other => {
+                                                    let _ = event_tx.send(ObsEvent::Error {
+                                                        connection_name: connection_name.clone(),
+                                                        error: format!("Unknown event type: {} (raw: {})", other, text),
+                                                    });
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            Ok(Message::Close(_)) => {
+                                let _ = event_tx.send(ObsEvent::ConnectionStatusChanged {
+                                    connection_name: connection_name.clone(),
+                                    status: ObsConnectionStatus::Disconnected,
+                                });
+                                break;
+                            }
+                            Err(e) => {
+                                let _ = event_tx.send(ObsEvent::Error {
+                                    connection_name: connection_name.clone(),
+                                    error: format!("WebSocket error: {}", e),
+                                });
+                                break;
+                            }
+                            _ => {}
+                        }
+                    }
+                } else {
+                    break;
+                }
+            }
+        });
+    }
+
     // Connect to OBS instance
     pub async fn connect_obs(&self, connection_name: &str) -> AppResult<()> {
         // Get connection config first
@@ -155,45 +262,11 @@ impl ObsPlugin {
         connection.websocket = Some(ws_stream);
         connection.status = ObsConnectionStatus::Connected;
 
-        // Handle protocol-specific authentication
-        match config.protocol_version {
-            ObsWebSocketVersion::V4 => {
-                self.authenticate_v4(connection_name).await?;
-            }
-            ObsWebSocketVersion::V5 => {
-                self.authenticate_v5(connection_name).await?;
-            }
-        }
+        // Authenticate (v5 only)
+        self.authenticate_v5(connection_name).await?;
 
-        Ok(())
-    }
-
-    // Authenticate using OBS WebSocket v4 protocol
-    async fn authenticate_v4(&self, connection_name: &str) -> AppResult<()> {
-        let mut connections = self.connections.lock().unwrap();
-        let connection = connections.get_mut(connection_name).unwrap();
-        
-        connection.status = ObsConnectionStatus::Authenticating;
-
-        // V4 authentication is simpler - just send password if required
-        if let Some(_password) = &connection.config.password {
-            let _auth_request = serde_json::json!({
-                "request-type": "GetAuthRequired",
-                "message-id": self.generate_request_id(connection)
-            });
-
-            // Send authentication request
-            // Implementation would send the request and handle response
-        }
-
-        connection.status = ObsConnectionStatus::Authenticated;
-        drop(connections);
-
-        // Send status change event
-        let _ = self.event_tx.send(ObsEvent::ConnectionStatusChanged {
-            connection_name: connection_name.to_string(),
-            status: ObsConnectionStatus::Authenticated,
-        });
+        // Spawn WebSocket receive loop
+        self.spawn_ws_task(connection_name.to_string()).await;
 
         Ok(())
     }
@@ -247,25 +320,14 @@ impl ObsPlugin {
         connection.pending_requests.insert(request_id.clone(), response_tx);
 
         // Create request based on protocol version
-        let request = match connection.config.protocol_version {
-            ObsWebSocketVersion::V4 => {
-                serde_json::json!({
-                    "request-type": request_type,
-                    "message-id": request_id,
-                    "request-data": request_data
-                })
+        let _request = serde_json::json!({
+            "op": 6, // Request opcode
+            "d": {
+                "requestType": request_type,
+                "requestId": request_id,
+                "requestData": request_data
             }
-            ObsWebSocketVersion::V5 => {
-                serde_json::json!({
-                    "op": 6, // Request opcode
-                    "d": {
-                        "requestType": request_type,
-                        "requestId": request_id,
-                        "requestData": request_data
-                    }
-                })
-            }
-        };
+        });
 
         // Send request via WebSocket
         // Implementation would send the request through the WebSocket connection
@@ -279,50 +341,21 @@ impl ObsPlugin {
 
     // Get current scene
     pub async fn get_current_scene(&self, connection_name: &str) -> AppResult<String> {
-        let request_type = match self.get_protocol_version(connection_name)? {
-            ObsWebSocketVersion::V4 => "GetCurrentScene",
-            ObsWebSocketVersion::V5 => "GetCurrentProgramScene",
-        };
-
-        let response = self.send_request(connection_name, request_type, None).await?;
+        let response = self.send_request(connection_name, "GetCurrentProgramScene", None).await?;
         
-        match self.get_protocol_version(connection_name)? {
-            ObsWebSocketVersion::V4 => {
-                response["scene-name"]
-                    .as_str()
-                    .ok_or_else(|| AppError::ConfigError("Invalid response format".to_string()))
-                    .map(|s| s.to_string())
-            }
-            ObsWebSocketVersion::V5 => {
-                response["sceneName"]
-                    .as_str()
-                    .ok_or_else(|| AppError::ConfigError("Invalid response format".to_string()))
-                    .map(|s| s.to_string())
-            }
-        }
+        Ok(response["sceneName"]
+            .as_str()
+            .ok_or_else(|| AppError::ConfigError("Invalid response format".to_string()))
+            .map(|s| s.to_string())?)
     }
 
     // Set current scene
     pub async fn set_current_scene(&self, connection_name: &str, scene_name: &str) -> AppResult<()> {
-        let request_type = match self.get_protocol_version(connection_name)? {
-            ObsWebSocketVersion::V4 => "SetCurrentScene",
-            ObsWebSocketVersion::V5 => "SetCurrentProgramScene",
-        };
+        let request_data = serde_json::json!({
+            "sceneName": scene_name
+        });
 
-        let request_data = match self.get_protocol_version(connection_name)? {
-            ObsWebSocketVersion::V4 => {
-                serde_json::json!({
-                    "scene-name": scene_name
-                })
-            }
-            ObsWebSocketVersion::V5 => {
-                serde_json::json!({
-                    "sceneName": scene_name
-                })
-            }
-        };
-
-        self.send_request(connection_name, request_type, Some(request_data)).await?;
+        self.send_request(connection_name, "SetCurrentProgramScene", Some(request_data)).await?;
         Ok(())
     }
 
@@ -360,82 +393,41 @@ impl ObsPlugin {
     pub async fn get_recording_status(&self, connection_name: &str) -> AppResult<bool> {
         let response = self.send_request(connection_name, "GetRecordingStatus", None).await?;
         
-        match self.get_protocol_version(connection_name)? {
-            ObsWebSocketVersion::V4 => {
-                Ok(response["is-recording"].as_bool().unwrap_or(false))
-            }
-            ObsWebSocketVersion::V5 => {
-                Ok(response["outputActive"].as_bool().unwrap_or(false))
-            }
-        }
+        Ok(response["outputActive"].as_bool().unwrap_or(false))
     }
 
     // Get streaming status
     pub async fn get_streaming_status(&self, connection_name: &str) -> AppResult<bool> {
         let response = self.send_request(connection_name, "GetStreamStatus", None).await?;
         
-        match self.get_protocol_version(connection_name)? {
-            ObsWebSocketVersion::V4 => {
-                Ok(response["streaming"].as_bool().unwrap_or(false))
-            }
-            ObsWebSocketVersion::V5 => {
-                Ok(response["outputActive"].as_bool().unwrap_or(false))
-            }
-        }
+        Ok(response["outputActive"].as_bool().unwrap_or(false))
     }
 
     // Get OBS CPU usage
     pub async fn get_obs_cpu_usage(&self, connection_name: &str) -> AppResult<f64> {
         let response = self.send_request(connection_name, "GetStats", None).await?;
         
-        match self.get_protocol_version(connection_name)? {
-            ObsWebSocketVersion::V4 => {
-                Ok(response["cpu-usage"].as_f64().unwrap_or(0.0))
-            }
-            ObsWebSocketVersion::V5 => {
-                Ok(response["cpuUsage"].as_f64().unwrap_or(0.0))
-            }
-        }
+        Ok(response["cpuUsage"].as_f64().unwrap_or(0.0))
     }
 
     // Get replay buffer status
     pub async fn get_replay_buffer_status(&self, connection_name: &str) -> AppResult<bool> {
         let response = self.send_request(connection_name, "GetReplayBufferStatus", None).await?;
         
-        match self.get_protocol_version(connection_name)? {
-            ObsWebSocketVersion::V4 => {
-                Ok(response["is-replay-buffer-active"].as_bool().unwrap_or(false))
-            }
-            ObsWebSocketVersion::V5 => {
-                Ok(response["outputActive"].as_bool().unwrap_or(false))
-            }
-        }
+        Ok(response["outputActive"].as_bool().unwrap_or(false))
     }
 
     // Get all scenes
     pub async fn get_scenes(&self, connection_name: &str) -> AppResult<Vec<String>> {
         let response = self.send_request(connection_name, "GetSceneList", None).await?;
         
-        match self.get_protocol_version(connection_name)? {
-            ObsWebSocketVersion::V4 => {
-                let scenes = response["scenes"].as_array()
-                    .ok_or_else(|| AppError::ConfigError("Invalid response format".to_string()))?;
-                
-                Ok(scenes.iter()
-                    .filter_map(|scene| scene["scene-name"].as_str())
-                    .map(|s| s.to_string())
-                    .collect())
-            }
-            ObsWebSocketVersion::V5 => {
-                let scenes = response["scenes"].as_array()
-                    .ok_or_else(|| AppError::ConfigError("Invalid response format".to_string()))?;
-                
-                Ok(scenes.iter()
-                    .filter_map(|scene| scene["sceneName"].as_str())
-                    .map(|s| s.to_string())
-                    .collect())
-            }
-        }
+        let scenes = response["scenes"].as_array()
+            .ok_or_else(|| AppError::ConfigError("Invalid response format".to_string()))?;
+        
+        Ok(scenes.iter()
+            .filter_map(|scene| scene["sceneName"].as_str())
+            .map(|s| s.to_string())
+            .collect())
     }
 
     // Helper methods
