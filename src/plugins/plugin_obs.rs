@@ -6,6 +6,7 @@ use uuid::Uuid;
 use crate::types::{AppError, AppResult};
 use tokio_tungstenite::tungstenite::Message;
 use futures_util::StreamExt;
+use futures_util::SinkExt;
 
 // OBS WebSocket Protocol Versions
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -49,6 +50,7 @@ pub struct ObsConnection {
 pub struct ObsPlugin {
     connections: Arc<Mutex<HashMap<String, ObsConnection>>>,
     event_tx: mpsc::UnboundedSender<ObsEvent>,
+    pub debug_ws_messages: Arc<Mutex<bool>>, // Add this line
 }
 
 // OBS Events
@@ -85,27 +87,27 @@ impl ObsPlugin {
         Self {
             connections: Arc::new(Mutex::new(HashMap::new())),
             event_tx,
+            debug_ws_messages: Arc::new(Mutex::new(false)), // Initialize to false
         }
     }
 
     // Add a new OBS connection
     pub async fn add_connection(&self, config: ObsConnectionConfig) -> AppResult<()> {
         log::info!("[PLUGIN_OBS] add_connection called for '{}', enabled={}", config.name, config.enabled);
-        let mut connections = self.connections.lock().unwrap();
-        
-        if connections.contains_key(&config.name) {
-            return Err(AppError::ConfigError(format!("Connection '{}' already exists", config.name)));
-        }
-
-        let connection = ObsConnection {
-            config: config.clone(),
-            status: ObsConnectionStatus::Disconnected,
-            websocket: None,
-            request_id_counter: 0,
-            pending_requests: HashMap::new(),
-        };
-
-        connections.insert(config.name.clone(), connection);
+        {
+            let mut connections = self.connections.lock().unwrap();
+            if connections.contains_key(&config.name) {
+                return Err(AppError::ConfigError(format!("Connection '{}' already exists", config.name)));
+            }
+            let connection = ObsConnection {
+                config: config.clone(),
+                status: ObsConnectionStatus::Disconnected,
+                websocket: None,
+                request_id_counter: 0,
+                pending_requests: HashMap::new(),
+            };
+            connections.insert(config.name.clone(), connection);
+        } // lock is dropped here
 
         // Start connection if enabled
         if config.enabled {
@@ -132,6 +134,7 @@ impl ObsPlugin {
     async fn spawn_ws_task(&self, connection_name: String) {
         let connections = self.connections.clone();
         let event_tx = self.event_tx.clone();
+        let debug_ws_messages = self.debug_ws_messages.clone(); // Clone the flag
         tokio::spawn(async move {
             loop {
                 let ws_stream_opt = {
@@ -142,6 +145,25 @@ impl ObsPlugin {
                 if let Some(ws_stream) = ws_stream_opt {
                     let (_ws_write, mut ws_read) = ws_stream.split();
                     while let Some(msg_result) = ws_read.next().await {
+                        // Log all incoming messages if debug_ws_messages is enabled
+                        if let Ok(flag) = debug_ws_messages.lock() {
+                            if *flag {
+                                match &msg_result {
+                                    Ok(tokio_tungstenite::tungstenite::Message::Text(text)) => {
+                                        println!("[WS-DEBUG][{}] Text: {}", connection_name, text);
+                                    },
+                                    Ok(tokio_tungstenite::tungstenite::Message::Binary(bin)) => {
+                                        println!("[WS-DEBUG][{}] Binary: {:02X?}", connection_name, bin);
+                                    },
+                                    Ok(other) => {
+                                        println!("[WS-DEBUG][{}] Other: {:?}", connection_name, other);
+                                    },
+                                    Err(e) => {
+                                        println!("[WS-DEBUG][{}] Error: {}", connection_name, e);
+                                    }
+                                }
+                            }
+                        }
                         match msg_result {
                             Ok(Message::Text(text)) => {
                                 if let Ok(json) = serde_json::from_str::<serde_json::Value>(&text) {
@@ -226,29 +248,53 @@ impl ObsPlugin {
 
     // Connect to OBS instance
     pub async fn connect_obs(&self, connection_name: &str) -> AppResult<()> {
+        println!("[DEBUG] Entered connect_obs for {}", connection_name);
         // Get connection config first
         let config = {
-            let connections = self.connections.lock().unwrap();
+            println!("[DEBUG] Attempting to lock connections for config");
+            let connections = self.connections.lock();
+            println!("[DEBUG] Got lock for config");
+            let connections = match connections {
+                Ok(c) => c,
+                Err(e) => {
+                    println!("[DEBUG] Failed to lock connections for config: {}", e);
+                    return Err(AppError::ConfigError(format!("Lock poisoned: {}", e)));
+                }
+            };
             let connection = connections.get(connection_name)
-                .ok_or_else(|| AppError::ConfigError(format!("Connection '{}' not found", connection_name)))?;
+                .ok_or_else(|| {
+                    println!("[DEBUG] Connection '{}' not found in config lookup", connection_name);
+                    AppError::ConfigError(format!("Connection '{}' not found", connection_name))
+                })?;
+            println!("[DEBUG] Got config for {}", connection_name);
             connection.config.clone()
         };
-
-        log::info!("[OBS] Attempting to connect: '{}' at {}:{}", connection_name, config.host, config.port);
+        println!("[DEBUG] Got config for {}", connection_name);
 
         // Update status to connecting
         {
-            let mut connections = self.connections.lock().unwrap();
+            println!("[DEBUG] Attempting to lock connections for status update");
+            let mut connections = self.connections.lock();
+            println!("[DEBUG] Got lock for status update");
+            let mut connections = match connections {
+                Ok(c) => c,
+                Err(e) => {
+                    println!("[DEBUG] Failed to lock connections for status update: {}", e);
+                    return Err(AppError::ConfigError(format!("Lock poisoned: {}", e)));
+                }
+            };
             if let Some(connection) = connections.get_mut(connection_name) {
                 connection.status = ObsConnectionStatus::Connecting;
             }
         }
+        println!("[DEBUG] Updated status to Connecting for {}", connection_name);
 
         // Send status change event
         let _ = self.event_tx.send(ObsEvent::ConnectionStatusChanged {
             connection_name: connection_name.to_string(),
             status: ObsConnectionStatus::Connecting,
         });
+        println!("[DEBUG] Sent status change event for {}", connection_name);
 
         // Build WebSocket URL
         let ws_url = format!(
@@ -256,62 +302,152 @@ impl ObsPlugin {
             config.host,
             config.port
         );
+        println!("[DEBUG] Built ws_url for {}: {}", connection_name, ws_url);
 
         // Connect to WebSocket
         let (ws_stream, _) = match tokio_tungstenite::connect_async(&ws_url).await {
             Ok(res) => {
+                println!("[DEBUG] Successfully connected to WebSocket for {}", connection_name);
                 log::info!("[OBS] Successfully connected to '{}' at {}:{}", connection_name, config.host, config.port);
                 res
             },
             Err(e) => {
+                println!("[DEBUG] Failed to connect to WebSocket for {}: {}", connection_name, e);
                 log::error!("[OBS] Failed to connect to '{}': {}", connection_name, e);
                 return Err(AppError::ConfigError(format!("Failed to connect to OBS: {}", e)));
             }
         };
+        println!("[DEBUG] Got ws_stream for {}", connection_name);
 
-        // Update connection
-        let mut connections = self.connections.lock().unwrap();
-        let connection = connections.get_mut(connection_name).unwrap();
-        connection.websocket = Some(ws_stream);
-        connection.status = ObsConnectionStatus::Connected;
+        // Authenticate (v5 only) and get the stream back
+        println!("[DEBUG] Calling authenticate_v5 for {}", connection_name);
+        let ws_stream = self.authenticate_v5(connection_name, ws_stream).await?;
+        println!("[DEBUG] authenticate_v5 returned for {}", connection_name);
 
-        // Authenticate (v5 only)
-        self.authenticate_v5(connection_name).await?;
+        // Put the stream back in the connection
+        {
+            let mut connections = self.connections.lock().unwrap();
+            let connection = connections.get_mut(connection_name).unwrap();
+            connection.websocket = Some(ws_stream);
+        }
 
         // Spawn WebSocket receive loop
+        println!("[DEBUG] Spawning ws_task for {}", connection_name);
         self.spawn_ws_task(connection_name.to_string()).await;
+        println!("[DEBUG] spawn_ws_task returned for {}", connection_name);
 
         Ok(())
     }
 
     // Authenticate using OBS WebSocket v5 protocol
-    async fn authenticate_v5(&self, connection_name: &str) -> AppResult<()> {
+    async fn authenticate_v5(&self, connection_name: &str, ws_stream: tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>) -> AppResult<tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>> {
+        use tokio_tungstenite::tungstenite::Message;
+        use sha2::{Digest, Sha256};
+        use base64::{engine::general_purpose, Engine as _};
+        use serde_json::json;
+
         log::info!("[OBS] Starting authentication for connection '{}'", connection_name);
-        let mut connections = self.connections.lock().unwrap();
-        let connection = connections.get_mut(connection_name).unwrap();
-        
-        connection.status = ObsConnectionStatus::Authenticating;
+        // Set status to Authenticating
+        {
+            let mut connections = self.connections.lock().unwrap();
+            let connection = connections.get_mut(connection_name).unwrap();
+            connection.status = ObsConnectionStatus::Authenticating;
+        }
 
-        // V5 uses a more complex authentication flow
+        let (mut ws_write, mut ws_read) = ws_stream.split();
+
         // 1. Wait for Hello message
-        // 2. Send Identify with authentication if required
-        // 3. Wait for Identified message
+        println!("[AUTH-DEBUG] Waiting for Hello message...");
+        let hello_msg = match ws_read.next().await {
+            Some(Ok(msg)) => msg,
+            Some(Err(e)) => return Err(AppError::ConfigError(format!("WebSocket error: {}", e))),
+            None => return Err(AppError::ConfigError("No Hello message from OBS".to_string())),
+        };
+        let hello_json: serde_json::Value = match &hello_msg {
+            Message::Text(text) => {
+                println!("[AUTH-DEBUG] Received Hello message: {}", text);
+                serde_json::from_str(text).map_err(|e| AppError::ConfigError(format!("Invalid Hello JSON: {}", e)))?
+            },
+            _ => return Err(AppError::ConfigError("Expected Hello text message".to_string())),
+        };
+        let op = hello_json["op"].as_u64().unwrap_or(0);
+        if op != 0 {
+            return Err(AppError::ConfigError("First message from OBS was not Hello (op 0)".to_string()));
+        }
+        let d = &hello_json["d"];
+        let rpc_version = d["rpcVersion"].as_u64().unwrap_or(0);
+        let authentication_required = d["authentication"].is_object();
 
-        // For now, we'll implement a basic version
-        // In a full implementation, you'd handle the full v5 authentication flow
+        // 2. Prepare Identify message
+        let mut identify = json!({
+            "op": 1,
+            "d": {
+                "rpcVersion": rpc_version
+            }
+        });
+        if authentication_required {
+            let auth = &d["authentication"];
+            let salt = auth["salt"].as_str().unwrap_or("");
+            let challenge = auth["challenge"].as_str().unwrap_or("");
+            // Get password from config
+            let password = {
+                let connections = self.connections.lock().unwrap();
+                let connection = connections.get(connection_name).unwrap();
+                connection.config.password.clone().unwrap_or_default()
+            };
+            // Compute secret = base64(sha256(password + salt))
+            let mut hasher = Sha256::new();
+            hasher.update(password.as_bytes());
+            hasher.update(salt.as_bytes());
+            let secret = general_purpose::STANDARD.encode(hasher.finalize());
+            // Compute auth = base64(sha256(secret + challenge))
+            let mut hasher2 = Sha256::new();
+            hasher2.update(secret.as_bytes());
+            hasher2.update(challenge.as_bytes());
+            let auth_str = general_purpose::STANDARD.encode(hasher2.finalize());
+            identify["d"]["authentication"] = serde_json::Value::String(auth_str);
+        }
 
-        connection.status = ObsConnectionStatus::Authenticated;
-        drop(connections);
+        let identify_str = serde_json::to_string(&identify).unwrap();
+        println!("[AUTH-DEBUG] Sending Identify message: {}", identify_str);
+        ws_write.send(Message::Text(identify_str)).await.map_err(|e| AppError::ConfigError(format!("Failed to send Identify: {}", e)))?;
 
+        // 4. Wait for Identified or error
+        loop {
+            let msg = match ws_read.next().await {
+                Some(Ok(msg)) => msg,
+                Some(Err(e)) => return Err(AppError::ConfigError(format!("WebSocket error: {}", e))),
+                None => return Err(AppError::ConfigError("No response after Identify".to_string())),
+            };
+            if let Message::Text(text) = &msg {
+                println!("[AUTH-DEBUG] Received message in handshake loop: {}", text);
+                let json: serde_json::Value = serde_json::from_str(text).map_err(|e| AppError::ConfigError(format!("Invalid JSON after Identify: {}", e)))?;
+                let op = json["op"].as_u64().unwrap_or(0);
+                if op == 2 {
+                    // Identified
+                    break;
+                } else if op == 8 {
+                    // Error
+                    let reason = json["d"]["reason"].as_str().unwrap_or("Unknown error");
+                    return Err(AppError::ConfigError(format!("OBS authentication failed: {}", reason)));
+                }
+            }
+        }
+        // 5. Reunite the stream and return it
+        let ws_stream = ws_write.reunite(ws_read).map_err(|_| AppError::ConfigError("Failed to reunite ws stream".to_string()))?;
+        // Set status to Authenticated
+        {
+            let mut connections = self.connections.lock().unwrap();
+            let connection = connections.get_mut(connection_name).unwrap();
+            connection.status = ObsConnectionStatus::Authenticated;
+        }
         log::info!("[OBS] Authentication successful for connection '{}'", connection_name);
-
         // Send status change event
         let _ = self.event_tx.send(ObsEvent::ConnectionStatusChanged {
             connection_name: connection_name.to_string(),
             status: ObsConnectionStatus::Authenticated,
         });
-
-        Ok(())
+        Ok(ws_stream)
     }
 
     // Send request to OBS (protocol-agnostic)

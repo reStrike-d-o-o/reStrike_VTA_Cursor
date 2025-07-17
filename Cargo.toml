@@ -26,6 +26,8 @@ tokio-tungstenite = "0.21"
 futures-util = "0.3.31"
 log = "0.4.27"
 fern = "0.7.1"
+sha2 = "0.10.9"
+base64 = "0.22.1"
 
 [features]
 custom-protocol = ["tauri/custom-protocol"]
