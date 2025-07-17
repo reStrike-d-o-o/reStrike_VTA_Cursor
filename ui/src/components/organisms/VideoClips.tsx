@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore, VideoClip } from '../../stores';
+import Button from '../atoms/Button';
+import Input from '../atoms/Input';
+import Label from '../atoms/Label';
+import { Icon } from '../atoms/Icon';
 
 const VideoClips: React.FC = () => {
   const { videoClips, currentClip, setCurrentClip, addVideoClip, removeVideoClip, setPlaying } = useAppStore();
@@ -74,12 +78,14 @@ const VideoClips: React.FC = () => {
     <div className="p-6 bg-gray-900 text-white rounded-lg">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold">Video Clips</h2>
-        <button
+        <Button
           onClick={() => setIsAddingClip(!isAddingClip)}
-          className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-colors"
+          variant="primary"
+          size="md"
+          className="px-4 py-2"
         >
           {isAddingClip ? 'Cancel' : '+ Add Clip'}
-        </button>
+        </Button>
       </div>
 
       {/* Add New Clip Form */}
@@ -92,66 +98,66 @@ const VideoClips: React.FC = () => {
         >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Clip Name *</label>
-                <input
+                <Label htmlFor="clipName">Clip Name *</Label>
+                <Input
                   type="text"
                   value={newClip.name}
                   onChange={(e) => setNewClip(prev => ({ ...prev, name: e.target.value }))}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500"
                   placeholder="e.g., Amazing Goal, Epic Save"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">File Path *</label>
-                <input
+                <Label htmlFor="filePath">File Path *</Label>
+                <Input
                   type="text"
                   value={newClip.path}
                   onChange={(e) => setNewClip(prev => ({ ...prev, path: e.target.value }))}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500"
                   placeholder="/path/to/video.mp4"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Duration (seconds)</label>
-                <input
+                <Label htmlFor="duration">Duration (seconds)</Label>
+                <Input
                   type="number"
                   value={newClip.duration}
                   onChange={(e) => setNewClip(prev => ({ ...prev, duration: parseInt(e.target.value) || 0 }))}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500"
                   placeholder="120"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Tags (comma-separated)</label>
-                <input
+                <Label htmlFor="tags">Tags (comma-separated)</Label>
+                <Input
                   type="text"
                   value={newClip.tags.join(', ')}
                   onChange={(e) => setNewClip(prev => ({ 
                     ...prev, 
                     tags: e.target.value.split(',').map(tag => tag.trim()).filter(tag => tag)
                   }))}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500"
                   placeholder="goal, save, highlight"
                 />
               </div>
             </div>
 
             <div className="mt-4 flex gap-2">
-              <button
+              <Button
                 onClick={handleAddClip}
-                className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg transition-colors"
+                variant="success"
+                size="md"
+                className="px-4 py-2"
               >
                 Add Clip
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={() => setIsAddingClip(false)}
-                className="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded-lg transition-colors"
+                variant="secondary"
+                size="md"
+                className="px-4 py-2"
               >
                 Cancel
-              </button>
+              </Button>
             </div>
           </motion.div>
         )}
@@ -159,18 +165,17 @@ const VideoClips: React.FC = () => {
       {/* Search and Filter */}
       <div className="mb-6 space-y-4">
         <div>
-          <input
+          <Input
             type="text"
             placeholder="Search clips..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-blue-500"
           />
         </div>
 
         {allTags.length > 0 && (
           <div>
-            <label className="block text-sm font-medium mb-2">Filter by Tags</label>
+            <Label htmlFor="filterTags">Filter by Tags</Label>
             <div className="flex flex-wrap gap-2">
               {allTags.map(tag => (
                 <button
@@ -203,12 +208,14 @@ const VideoClips: React.FC = () => {
               {videoClips.length === 0 ? 'No clips added yet' : 'No clips match your search'}
             </p>
             {videoClips.length === 0 && (
-              <button
+              <Button
                 onClick={() => setIsAddingClip(true)}
-                className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-colors"
+                variant="primary"
+                size="md"
+                className="px-4 py-2"
               >
                 Add Your First Clip
-              </button>
+              </Button>
             )}
           </div>
         ) : (
@@ -223,7 +230,7 @@ const VideoClips: React.FC = () => {
               onClick={() => handlePlayClip(clip)}
             >
               <div className="aspect-video bg-gray-700 rounded-lg mb-3 flex items-center justify-center">
-                <div className="text-4xl">🎥</div>
+                <Icon name="🎥" size="text-4xl" />
               </div>
 
               <div className="space-y-2">
@@ -252,26 +259,30 @@ const VideoClips: React.FC = () => {
                   </div>
 
                   <div className="flex space-x-2">
-                    <button
+                    <Button
                       onClick={(e) => {
                         e.stopPropagation();
                         handlePlayClip(clip);
                       }}
-                      className="bg-blue-600 hover:bg-blue-700 p-1 rounded transition-colors"
+                      variant="primary"
+                      size="sm"
+                      className="p-1"
                       title="Play"
                     >
-                      ▶️
-                    </button>
-                    <button
+                      <Icon name="▶️" />
+                    </Button>
+                    <Button
                       onClick={(e) => {
                         e.stopPropagation();
                         removeVideoClip(clip.id);
                       }}
-                      className="bg-red-600 hover:bg-red-700 p-1 rounded transition-colors"
+                      variant="danger"
+                      size="sm"
+                      className="p-1"
                       title="Delete"
                     >
-                      🗑️
-                    </button>
+                      <Icon name="🗑️" />
+                    </Button>
                   </div>
                 </div>
               </div>

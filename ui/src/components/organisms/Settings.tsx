@@ -1,6 +1,12 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAppStore } from '../../stores';
+import Button from '../atoms/Button';
+import Input from '../atoms/Input';
+import Checkbox from '../atoms/Checkbox';
+import Label from '../atoms/Label';
+import { StatusDot } from '../atoms/StatusDot';
+import { Icon } from '../atoms/Icon';
 
 const Settings: React.FC = () => {
   const {
@@ -39,41 +45,36 @@ const Settings: React.FC = () => {
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold">Settings</h2>
         <div className="flex space-x-2">
-          <button
+          <Button
             onClick={toggleOverlayVisibility}
-            className={`px-4 py-2 rounded-lg transition-colors ${
-              overlaySettings.visible
-                ? 'bg-green-600 hover:bg-green-700'
-                : 'bg-red-600 hover:bg-red-700'
-            }`}
+            variant={overlaySettings.visible ? 'success' : 'danger'}
+            size="sm"
           >
-            {overlaySettings.visible ? '👁️ Hide Overlay' : '👁️ Show Overlay'}
-          </button>
-          <button
+            <Icon name="👁️" /> {overlaySettings.visible ? 'Hide Overlay' : 'Show Overlay'}
+          </Button>
+          <Button
             onClick={handleResetSettings}
             disabled={isResetting}
-            className="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+            variant="secondary"
+            size="sm"
           >
             {isResetting ? '🔄 Resetting...' : '🔄 Reset to Defaults'}
-          </button>
+          </Button>
         </div>
       </div>
 
       {/* Tab Navigation */}
       <div className="flex space-x-1 mb-6 bg-gray-800 p-1 rounded-lg">
         {tabs.map((tab) => (
-          <button
+          <Button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-md transition-colors ${
-              activeTab === tab.id
-                ? 'bg-blue-600 text-white'
-                : 'text-gray-400 hover:text-white hover:bg-gray-700'
-            }`}
+            variant={activeTab === tab.id ? 'primary' : 'secondary'}
+            size="sm"
           >
-            <span>{tab.icon}</span>
+            <Icon name={tab.icon} />
             <span>{tab.label}</span>
-          </button>
+          </Button>
         ))}
       </div>
 
@@ -89,13 +90,15 @@ const Settings: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Position */}
               <div>
-                <label className="block text-sm font-medium mb-2">Overlay Position</label>
+                <Label htmlFor="overlay-position">Overlay Position</Label>
                 <select
+                  id="overlay-position"
                   value={overlaySettings.position}
                   onChange={(e) => updateOverlaySettings({ 
                     position: e.target.value as any 
                   })}
                   className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-blue-500"
+                  title="Select the position for the overlay"
                 >
                   <option value="top-left">Top Left</option>
                   <option value="top-right">Top Right</option>
@@ -107,13 +110,15 @@ const Settings: React.FC = () => {
 
               {/* Theme */}
               <div>
-                <label className="block text-sm font-medium mb-2">Theme</label>
+                <Label htmlFor="overlay-theme">Theme</Label>
                 <select
+                  id="overlay-theme"
                   value={overlaySettings.theme}
                   onChange={(e) => updateOverlaySettings({ 
                     theme: e.target.value as any 
                   })}
                   className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-blue-500"
+                  title="Select the theme for the overlay"
                 >
                   <option value="dark">Dark</option>
                   <option value="light">Light</option>
@@ -123,11 +128,12 @@ const Settings: React.FC = () => {
 
               {/* Opacity */}
               <div>
-                <label className="block text-sm font-medium mb-2">
+                <Label htmlFor="overlay-opacity">
                   Opacity: {Math.round(overlaySettings.opacity * 100)}%
-                </label>
+                </Label>
                 <input
                   type="range"
+                  id="overlay-opacity"
                   min="0.1"
                   max="1"
                   step="0.1"
@@ -136,16 +142,18 @@ const Settings: React.FC = () => {
                     opacity: parseFloat(e.target.value) 
                   })}
                   className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
+                  title="Adjust the opacity of the overlay"
                 />
               </div>
 
               {/* Scale */}
               <div>
-                <label className="block text-sm font-medium mb-2">
+                <Label htmlFor="overlay-scale">
                   Scale: {Math.round(overlaySettings.scale * 100)}%
-                </label>
+                </Label>
                 <input
                   type="range"
+                  id="overlay-scale"
                   min="0.5"
                   max="2"
                   step="0.1"
@@ -154,6 +162,7 @@ const Settings: React.FC = () => {
                     scale: parseFloat(e.target.value) 
                   })}
                   className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
+                  title="Adjust the scale of the overlay"
                 />
               </div>
             </div>
@@ -200,15 +209,7 @@ const Settings: React.FC = () => {
                         </div>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <span
-                          className={`w-3 h-3 rounded-full ${
-                            connection.status === 'Connected' || connection.status === 'Authenticated'
-                              ? 'bg-green-500'
-                              : connection.status === 'Error'
-                              ? 'bg-red-500'
-                              : 'bg-yellow-500'
-                          }`}
-                        ></span>
+                        <StatusDot color={connection.status === 'Connected' || connection.status === 'Authenticated' ? 'green' : connection.status === 'Error' ? 'red' : 'yellow'} />
                         <span className="text-sm">{connection.status}</span>
                       </div>
                     </div>
@@ -221,43 +222,40 @@ const Settings: React.FC = () => {
               <h3 className="text-lg font-semibold mb-3">OBS Integration Settings</h3>
               <div className="space-y-4">
                 <div>
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      defaultChecked
-                      className="mr-2"
+                  <Label htmlFor="obs-auto-connect">
+                    <Checkbox
+                      checked={true}
+                      onChange={() => {}}
                     />
                     <span>Auto-connect to OBS on startup</span>
-                  </label>
+                  </Label>
                 </div>
                 <div>
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      defaultChecked
-                      className="mr-2"
+                  <Label htmlFor="obs-show-status">
+                    <Checkbox
+                      checked={true}
+                      onChange={() => {}}
                     />
                     <span>Show OBS status in overlay</span>
-                  </label>
+                  </Label>
                 </div>
                 <div>
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      className="mr-2"
+                  <Label htmlFor="obs-auto-record">
+                    <Checkbox
+                      checked={false}
+                      onChange={() => {}}
                     />
                     <span>Auto-record when playing clips</span>
-                  </label>
+                  </Label>
                 </div>
                 <div>
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      defaultChecked
-                      className="mr-2"
+                  <Label htmlFor="obs-save-replay">
+                    <Checkbox
+                      checked={true}
+                      onChange={() => {}}
                     />
                     <span>Save replay buffer on clip creation</span>
-                  </label>
+                  </Label>
                 </div>
               </div>
             </div>
@@ -292,31 +290,30 @@ const Settings: React.FC = () => {
               <h3 className="text-lg font-semibold mb-3">Performance Settings</h3>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2">Video Quality</label>
-                  <select className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500">
+                  <Label htmlFor="advanced-video-quality">Video Quality</Label>
+                  <select id="advanced-video-quality" className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500" title="Select the video quality">
                     <option value="high">High Quality</option>
                     <option value="medium">Medium Quality</option>
                     <option value="low">Low Quality</option>
                   </select>
                 </div>
                 <div>
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      defaultChecked
-                      className="mr-2"
+                  <Label htmlFor="advanced-hardware-acceleration">
+                    <Checkbox
+                      checked={true}
+                      onChange={() => {}}
                     />
                     <span>Hardware acceleration</span>
-                  </label>
+                  </Label>
                 </div>
                 <div>
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      className="mr-2"
+                  <Label htmlFor="advanced-video-caching">
+                    <Checkbox
+                      checked={false}
+                      onChange={() => {}}
                     />
                     <span>Enable video caching</span>
-                  </label>
+                  </Label>
                 </div>
               </div>
             </div>
@@ -351,23 +348,25 @@ const Settings: React.FC = () => {
               <h3 className="text-lg font-semibold mb-3">Data Management</h3>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2">Clip Storage Location</label>
+                  <Label htmlFor="data-clip-location">Clip Storage Location</Label>
                   <input
                     type="text"
+                    id="data-clip-location"
                     defaultValue="/home/user/clips"
                     className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500"
+                    title="Enter the location where clips are stored"
                   />
                 </div>
                 <div className="flex space-x-2">
-                  <button className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-colors">
+                  <Button variant="primary" size="sm">
                     Export Settings
-                  </button>
-                  <button className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg transition-colors">
+                  </Button>
+                  <Button variant="success" size="sm">
                     Import Settings
-                  </button>
-                  <button className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg transition-colors">
+                  </Button>
+                  <Button variant="danger" size="sm">
                     Clear All Data
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>

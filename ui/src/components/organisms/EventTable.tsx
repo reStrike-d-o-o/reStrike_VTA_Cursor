@@ -1,4 +1,6 @@
 import React from 'react';
+import Button from '../atoms/Button';
+import { StatusDot } from '../atoms/StatusDot';
 
 const dummyEvents = [
   { round: 'R1', time: '02.00.343', event: 'Punch', color: 'red' },
@@ -24,12 +26,7 @@ const EventTable: React.FC = () => {
             <div className="col-span-2 text-gray-300">{event.round}</div>
             <div className="col-span-4 text-gray-300">{event.time}</div>
             <div className="col-span-6 flex items-center space-x-1">
-              <span className={`w-2 h-2 rounded-full ${
-                event.color === 'red' ? 'bg-red-500' :
-                event.color === 'blue' ? 'bg-blue-500' :
-                event.color === 'yellow' ? 'bg-yellow-500' :
-                'bg-green-500'
-              }`} />
+              <StatusDot color={event.color} />
               <span className="text-gray-300">{event.event}</span>
             </div>
           </div>
@@ -37,7 +34,7 @@ const EventTable: React.FC = () => {
       </div>
       {/* Go to Top Arrow */}
       <div className="absolute bottom-0 right-0">
-        <button className="text-gray-400 hover:text-white text-xs">↑</button>
+        <Button variant="secondary" size="sm">↑</Button>
       </div>
     </div>
   );
