@@ -44,7 +44,7 @@
       "status": "available",
       "forwarded": true,
       "auto_start": false,
-      "protocols": ["v4", "v5"],
+      "protocols": ["v5"],
       "default_protocol": "v5"
     },
     "dev_server": {
@@ -89,9 +89,9 @@
       "name": "OBS Studio",
       "status": "external",
       "websocket_plugin_required": true,
-      "supported_protocols": ["v4", "v5"],
+      "supported_protocols": ["v5"],
       "default_port": 4455,
-      "authentication": true
+      "authentication": false
     }
   },
   "processes": {

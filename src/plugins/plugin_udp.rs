@@ -287,7 +287,7 @@ impl UdpServer {
             };
 
             match recv_result {
-                Ok((size, addr)) => {
+                Ok((size, _addr)) => {
                     let data = String::from_utf8_lossy(&buffer[..size]);
                     let message = data.trim().to_string();
 
