@@ -279,3 +279,9 @@ The application is now ready for testing and further development, providing a so
 
 - The backend supports sending commands to OBS via a Tauri command (`obs_send_request`).
 - The frontend can control any connected OBS instance and receive responses for each command. 
+
+## AdvancedPanel Toggle Logic (2024-06)
+- Added Zustand state `isAdvancedPanelOpen` and actions (`openAdvancedPanel`, `closeAdvancedPanel`, `toggleAdvancedPanel`).
+- The Advanced button in the sidebar toggles the panel and reflects its state visually.
+- `AdvancedPanel` is conditionally rendered in `App.tsx` based on this state.
+- No regressions in sidebar or DockBar; fully atomic and accessible. 
