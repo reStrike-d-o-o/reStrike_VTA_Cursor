@@ -2,26 +2,28 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use re_strike_vta::core::app::App;
-use re_strike_vta::tauri_commands;
+use re_strike_vta::tauri_commands::{self, LoggingStateType};
 use re_strike_vta::types::AppResult;
 use std::sync::Arc;
 use tauri::Manager;
 
-fn main() -> AppResult<()> {
+#[tokio::main]
+async fn main() -> AppResult<()> {
     // Initialize logging
     env_logger::init();
     
     log::info!("Starting reStrike VTA Tauri Application");
     
     // Create the main application instance
-    let app = Arc::new(App::new()?);
+    let app = Arc::new(App::new().await?);
     
     // Start the application
-    app.start()?;
+    app.start().await?;
     
     // Create Tauri app builder
     tauri::Builder::default()
         .manage(app)
+        .manage(Arc::new(std::sync::Mutex::new(tauri_commands::LoggingState::default())))
         .invoke_handler(tauri::generate_handler![
             // Core commands
             tauri_commands::get_app_status,
