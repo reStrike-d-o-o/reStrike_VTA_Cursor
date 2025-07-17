@@ -80,6 +80,11 @@ pub enum ObsEvent {
         connection_name: String,
         error: String,
     },
+    Raw {
+        connection_name: String,
+        event_type: String,
+        data: serde_json::Value,
+    },
 }
 
 impl ObsPlugin {
@@ -210,11 +215,98 @@ impl ObsPlugin {
                                                         });
                                                     }
                                                 }
-                                                // TODO: Add more event types as needed
+                                                // === BEGIN: All official OBS v5 event types as stubs ===
+                                                "SceneTransitionStarted" => {
+                                                    let _ = event_tx.send(ObsEvent::Raw { connection_name: connection_name.clone(), event_type: event_type.to_string(), data: event_data.clone() });
+                                                }
+                                                "SceneTransitionEnded" => {
+                                                    let _ = event_tx.send(ObsEvent::Raw { connection_name: connection_name.clone(), event_type: event_type.to_string(), data: event_data.clone() });
+                                                }
+                                                "SceneTransitionVideoEnded" => {
+                                                    let _ = event_tx.send(ObsEvent::Raw { connection_name: connection_name.clone(), event_type: event_type.to_string(), data: event_data.clone() });
+                                                }
+                                                "InputCreated" => {
+                                                    let _ = event_tx.send(ObsEvent::Raw { connection_name: connection_name.clone(), event_type: event_type.to_string(), data: event_data.clone() });
+                                                }
+                                                "InputRemoved" => {
+                                                    let _ = event_tx.send(ObsEvent::Raw { connection_name: connection_name.clone(), event_type: event_type.to_string(), data: event_data.clone() });
+                                                }
+                                                "InputNameChanged" => {
+                                                    let _ = event_tx.send(ObsEvent::Raw { connection_name: connection_name.clone(), event_type: event_type.to_string(), data: event_data.clone() });
+                                                }
+                                                "InputActiveStateChanged" => {
+                                                    let _ = event_tx.send(ObsEvent::Raw { connection_name: connection_name.clone(), event_type: event_type.to_string(), data: event_data.clone() });
+                                                }
+                                                "InputShowStateChanged" => {
+                                                    let _ = event_tx.send(ObsEvent::Raw { connection_name: connection_name.clone(), event_type: event_type.to_string(), data: event_data.clone() });
+                                                }
+                                                "InputMuteStateChanged" => {
+                                                    let _ = event_tx.send(ObsEvent::Raw { connection_name: connection_name.clone(), event_type: event_type.to_string(), data: event_data.clone() });
+                                                }
+                                                "InputVolumeChanged" => {
+                                                    let _ = event_tx.send(ObsEvent::Raw { connection_name: connection_name.clone(), event_type: event_type.to_string(), data: event_data.clone() });
+                                                }
+                                                "InputAudioBalanceChanged" => {
+                                                    let _ = event_tx.send(ObsEvent::Raw { connection_name: connection_name.clone(), event_type: event_type.to_string(), data: event_data.clone() });
+                                                }
+                                                "InputAudioSyncOffsetChanged" => {
+                                                    let _ = event_tx.send(ObsEvent::Raw { connection_name: connection_name.clone(), event_type: event_type.to_string(), data: event_data.clone() });
+                                                }
+                                                "InputAudioTracksChanged" => {
+                                                    let _ = event_tx.send(ObsEvent::Raw { connection_name: connection_name.clone(), event_type: event_type.to_string(), data: event_data.clone() });
+                                                }
+                                                "InputAudioMonitorTypeChanged" => {
+                                                    let _ = event_tx.send(ObsEvent::Raw { connection_name: connection_name.clone(), event_type: event_type.to_string(), data: event_data.clone() });
+                                                }
+                                                "InputVolumeMeters" => {
+                                                    let _ = event_tx.send(ObsEvent::Raw { connection_name: connection_name.clone(), event_type: event_type.to_string(), data: event_data.clone() });
+                                                }
+                                                "InputActiveStateChanged" => {
+                                                    let _ = event_tx.send(ObsEvent::Raw { connection_name: connection_name.clone(), event_type: event_type.to_string(), data: event_data.clone() });
+                                                }
+                                                "InputShowStateChanged" => {
+                                                    let _ = event_tx.send(ObsEvent::Raw { connection_name: connection_name.clone(), event_type: event_type.to_string(), data: event_data.clone() });
+                                                }
+                                                "InputMuteStateChanged" => {
+                                                    let _ = event_tx.send(ObsEvent::Raw { connection_name: connection_name.clone(), event_type: event_type.to_string(), data: event_data.clone() });
+                                                }
+                                                "InputVolumeChanged" => {
+                                                    let _ = event_tx.send(ObsEvent::Raw { connection_name: connection_name.clone(), event_type: event_type.to_string(), data: event_data.clone() });
+                                                }
+                                                "InputAudioBalanceChanged" => {
+                                                    let _ = event_tx.send(ObsEvent::Raw { connection_name: connection_name.clone(), event_type: event_type.to_string(), data: event_data.clone() });
+                                                }
+                                                "InputAudioSyncOffsetChanged" => {
+                                                    let _ = event_tx.send(ObsEvent::Raw { connection_name: connection_name.clone(), event_type: event_type.to_string(), data: event_data.clone() });
+                                                }
+                                                "InputAudioTracksChanged" => {
+                                                    let _ = event_tx.send(ObsEvent::Raw { connection_name: connection_name.clone(), event_type: event_type.to_string(), data: event_data.clone() });
+                                                }
+                                                "InputAudioMonitorTypeChanged" => {
+                                                    let _ = event_tx.send(ObsEvent::Raw { connection_name: connection_name.clone(), event_type: event_type.to_string(), data: event_data.clone() });
+                                                }
+                                                "InputVolumeMeters" => {
+                                                    let _ = event_tx.send(ObsEvent::Raw { connection_name: connection_name.clone(), event_type: event_type.to_string(), data: event_data.clone() });
+                                                }
+                                                "MediaInputPlaybackStarted" => {
+                                                    let _ = event_tx.send(ObsEvent::Raw { connection_name: connection_name.clone(), event_type: event_type.to_string(), data: event_data.clone() });
+                                                }
+                                                "MediaInputPlaybackEnded" => {
+                                                    let _ = event_tx.send(ObsEvent::Raw { connection_name: connection_name.clone(), event_type: event_type.to_string(), data: event_data.clone() });
+                                                }
+                                                "MediaInputActionTriggered" => {
+                                                    let _ = event_tx.send(ObsEvent::Raw { connection_name: connection_name.clone(), event_type: event_type.to_string(), data: event_data.clone() });
+                                                }
+                                                "VendorEvent" => {
+                                                    let _ = event_tx.send(ObsEvent::Raw { connection_name: connection_name.clone(), event_type: event_type.to_string(), data: event_data.clone() });
+                                                }
+                                                // ... (add all other official event types as needed) ...
+                                                // === END: All official OBS v5 event types as stubs ===
                                                 other => {
-                                                    let _ = event_tx.send(ObsEvent::Error {
+                                                    let _ = event_tx.send(ObsEvent::Raw {
                                                         connection_name: connection_name.clone(),
-                                                        error: format!("Unknown event type: {} (raw: {})", other, text),
+                                                        event_type: event_type.to_string(),
+                                                        data: event_data.clone(),
                                                     });
                                                 }
                                             }

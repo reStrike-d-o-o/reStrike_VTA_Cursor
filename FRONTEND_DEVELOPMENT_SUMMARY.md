@@ -263,3 +263,9 @@ The application is now ready for testing and further development, providing a so
 - Badge/StatusDot atom: Extracted and all status indicators replaced.
 - Icon atom: Extracted and all emoji/icon usages replaced.
 - All accessibility linter issues (form/select labeling) fixed as of this update. 
+
+## OBS WebSocket v5 Event Handling (Backend)
+
+- The backend emits all official OBS WebSocket v5 event types as `ObsEvent::Raw`.
+- Unknown or future event types are also handled generically, so the frontend can subscribe to and handle any event type.
+- Detailed frontend handling can be added incrementally for any event type as needed. 
