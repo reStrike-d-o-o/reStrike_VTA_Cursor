@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { useAppStore } from '../stores';
+import { useAppStore } from '../../stores';
 
 const Settings: React.FC = () => {
   const {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { useAppStore } from '../stores';
+import { useAppStore } from '../../stores';
 
 interface ObsConnection {
   name: string;
@@ -254,12 +254,60 @@ const ObsWebSocketManager: React.FC = () => {
                   </div>
                 </div>
               </div>
+              
+              {connection.error && (
+                <div className="mt-3 p-3 bg-red-900 border border-red-700 rounded-lg">
+                  <p className="text-red-300 text-sm">{connection.error}</p>
+                </div>
+              )}
             </motion.div>
           ))}
+        </div>
+      </div>
+
+      {/* OBS Status Information */}
+      <div className="bg-gray-800 rounded-lg p-6">
+        <h3 className="text-lg font-semibold text-white mb-4">OBS Status</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-gray-700 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-gray-300">Recording</span>
+              <span className="w-3 h-3 bg-red-500 rounded-full"></span>
+            </div>
+            <p className="text-white font-medium mt-1">Not Recording</p>
+          </div>
+          
+          <div className="bg-gray-700 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-gray-300">Streaming</span>
+              <span className="w-3 h-3 bg-red-500 rounded-full"></span>
+            </div>
+            <p className="text-white font-medium mt-1">Not Streaming</p>
+          </div>
+          
+          <div className="bg-gray-700 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-gray-300">CPU Usage</span>
+              <span className="w-3 h-3 bg-green-500 rounded-full"></span>
+            </div>
+            <p className="text-white font-medium mt-1">0.0%</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Connection Instructions */}
+      <div className="bg-gray-800 rounded-lg p-6">
+        <h3 className="text-lg font-semibold text-white mb-4">Setup Instructions</h3>
+        <div className="space-y-3 text-gray-300">
+          <p>1. Open OBS Studio on your Windows machine</p>
+          <p>2. Go to Tools → WebSocket Server Settings</p>
+          <p>3. Enable WebSocket server on port 4455</p>
+          <p>4. <strong>Important:</strong> Disable authentication (no password)</p>
+          <p>5. Click "Connect" above to establish connection</p>
         </div>
       </div>
     </div>
   );
 };
 
-export default ObsWebSocketManager; 
+export default ObsWebSocketManager;
