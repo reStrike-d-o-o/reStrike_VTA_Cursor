@@ -7,11 +7,15 @@ use tokio::sync::mpsc;
 use re_strike_vta::plugins::{ObsPlugin, ObsEvent};
 use re_strike_vta::plugins::plugin_udp::{start_udp_server, PssEvent};
 use re_strike_vta::types::{AppError, AppResult};
+use chrono;
+use fern;
+use log;
 
 mod commands;
 
 #[tokio::main]
 async fn main() {
+    setup_logger().expect("Failed to initialize logger");
     println!("🎯 reStrike VTA - Starting Windows Desktop Application...");
 
     // Create event channel for PSS events
@@ -72,6 +76,24 @@ async fn main() {
             handle_tcp_client(stream);
         });
     }
+}
+
+fn setup_logger() -> Result<(), Box<dyn std::error::Error>> {
+    fern::Dispatch::new()
+        .format(|out, message, record| {
+            out.finish(format_args!(
+                "[{}][{}][{}] {}",
+                chrono::Local::now().format("%Y-%m-%d %H:%M:%S"),
+                record.target(),
+                record.level(),
+                message
+            ))
+        })
+        .level(log::LevelFilter::Info)
+        .chain(std::io::stdout())
+        .chain(fern::log_file("backend.log")?)
+        .apply()?;
+    Ok(())
 }
 
 async fn handle_pss_event(event: PssEvent) {
