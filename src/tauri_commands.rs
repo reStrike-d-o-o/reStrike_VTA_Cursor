@@ -39,6 +39,14 @@ pub struct ObsStatusResponse {
     pub error: Option<String>,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct LogFileInfo {
+    pub name: String,
+    pub size: u64,
+    pub modified: String, // ISO 8601
+    pub subsystem: String, // "pss", "obs", "udp", or "other"
+}
+
 // Initialize OBS plugin
 pub fn init_obs_plugin() -> ObsPluginState {
     let (event_tx, _event_rx) = tokio::sync::mpsc::unbounded_channel();
@@ -308,4 +316,72 @@ pub async fn get_obs_cpu_usage(plugin: &ObsPlugin, connection_name: &str) -> Res
             error: Some(e.to_string()),
         }),
     }
+}
+
+#[tauri::command]
+pub fn set_logging_enabled(subsystem: String, enabled: bool) -> Result<(), String> {
+    // TODO: Implement runtime logging toggle for each subsystem
+    // Example: update a global state or config, or enable/disable log output
+    println!("[TAURI] Set logging for {} to {}", subsystem, enabled);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn list_log_files(subsystem: Option<String>) -> Result<Vec<LogFileInfo>, String> {
+    use std::fs;
+    use std::path::Path;
+    use chrono::prelude::*;
+    let log_dir = Path::new("log");
+    let mut files = Vec::new();
+    if log_dir.exists() {
+        for entry in fs::read_dir(log_dir).map_err(|e| e.to_string())? {
+            let entry = entry.map_err(|e| e.to_string())?;
+            let path = entry.path();
+            if path.extension().map(|ext| ext == "txt").unwrap_or(false) {
+                let metadata = fs::metadata(&path).map_err(|e| e.to_string())?;
+                let modified = metadata.modified().ok()
+                    .and_then(|mtime| DateTime::<Local>::from(mtime).to_rfc3339().into())
+                    .unwrap_or_else(|| "".to_string());
+                let name = path.file_name().unwrap().to_string_lossy().to_string();
+                let size = metadata.len();
+                let subsystem_guess = if name.contains("pss") {
+                    "pss"
+                } else if name.contains("obs") {
+                    "obs"
+                } else if name.contains("udp") {
+                    "udp"
+                } else {
+                    "other"
+                };
+                if subsystem.as_ref().map(|s| s == subsystem_guess).unwrap_or(true) {
+                    files.push(LogFileInfo {
+                        name,
+                        size,
+                        modified,
+                        subsystem: subsystem_guess.to_string(),
+                    });
+                }
+            }
+        }
+    }
+    Ok(files)
+}
+
+#[tauri::command]
+pub fn download_log_file(filename: String) -> Result<Vec<u8>, String> {
+    use std::fs;
+    use std::path::Path;
+    let log_path = Path::new("log").join(&filename);
+    if !log_path.exists() {
+        return Err("File not found".to_string());
+    }
+    fs::read(log_path).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn set_live_data_streaming(subsystem: String, enabled: bool) -> Result<(), String> {
+    // TODO: Implement live data streaming toggle for each subsystem
+    // This should start/stop emitting events to the frontend
+    println!("[TAURI] Set live data streaming for {} to {}", subsystem, enabled);
+    Ok(())
 } 
