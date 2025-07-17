@@ -319,6 +319,20 @@ error: Some(e.to_string())
 
 ---
 
+## OBS WebSocket Runtime Connection Management
+
+- Tauri commands (`add_obs_connection`, `remove_obs_connection`) allow runtime management of OBS connections from the frontend.
+- Each connection is managed independently and can be added or removed without restarting the backend.
+
+---
+
+## OBS WebSocket Command Sending
+
+- The backend exposes a Tauri command (`obs_send_request`) to send any OBS WebSocket v5 request to any connection by name.
+- The frontend receives the response or error from OBS for each command.
+
+---
+
 **Status**: ✅ **Library Structure Complete**
 **Benefits**: Improved maintainability, testability, and development speed
 **Next Steps**: Continue development using this modular structure 

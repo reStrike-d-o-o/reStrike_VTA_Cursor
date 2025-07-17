@@ -5678,3 +5678,41 @@ Note: This request serves to provide feature parity with 4.x. It is very likely 
 - No event will cause an error or be dropped due to being unrecognized.
 
 See `src/plugins/plugin_obs.rs` for implementation details.
+
+## Runtime Add/Remove of OBS Connections
+
+- The backend supports runtime addition and removal of OBS connections via Tauri commands:
+  - `add_obs_connection` (adds a new connection at runtime)
+  - `remove_obs_connection` (removes an existing connection at runtime)
+- These commands can be invoked from the frontend to manage connections dynamically, without restarting the backend.
+- Example usage (TypeScript):
+  ```typescript
+  import { invoke } from '@tauri-apps/api/tauri';
+  // Add a connection
+  await invoke('add_obs_connection', { request: { name: 'Test OBS', host: 'localhost', port: 4456, password: '', enabled: true } });
+  // Remove a connection
+  await invoke('remove_obs_connection', { connectionName: 'Test OBS' });
+  ```
+- Each connection is managed independently and events include the `connection_name` field for distinction.
+
+## Sending Commands to OBS
+
+- The backend supports sending commands (requests) to OBS via the `obs_send_request` Tauri command.
+- Any OBS WebSocket v5 request (see protocol docs) can be sent to any connection by name.
+- Example usage (TypeScript):
+  ```typescript
+  import { invoke } from '@tauri-apps/api/tauri';
+  // Change scene
+  await invoke('obs_send_request', {
+    connectionName: 'Local OBS',
+    requestType: 'SetCurrentProgramScene',
+    requestData: { sceneName: 'Scene 2' }
+  });
+  // Start recording
+  await invoke('obs_send_request', {
+    connectionName: 'Local OBS',
+    requestType: 'StartRecording',
+    requestData: null
+  });
+  ```
+- The response will contain the result or error from OBS.
