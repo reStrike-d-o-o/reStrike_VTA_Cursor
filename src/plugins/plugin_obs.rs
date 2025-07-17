@@ -90,6 +90,7 @@ impl ObsPlugin {
 
     // Add a new OBS connection
     pub async fn add_connection(&self, config: ObsConnectionConfig) -> AppResult<()> {
+        log::info!("[PLUGIN_OBS] add_connection called for '{}', enabled={}", config.name, config.enabled);
         let mut connections = self.connections.lock().unwrap();
         
         if connections.contains_key(&config.name) {
@@ -108,7 +109,10 @@ impl ObsPlugin {
 
         // Start connection if enabled
         if config.enabled {
+            log::info!("[PLUGIN_OBS] '{}' is enabled, calling connect_obs...", config.name);
             self.connect_obs(&config.name).await?;
+        } else {
+            log::info!("[PLUGIN_OBS] '{}' is disabled, skipping connect_obs.", config.name);
         }
 
         Ok(())
