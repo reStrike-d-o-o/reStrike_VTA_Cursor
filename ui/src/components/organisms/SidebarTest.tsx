@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { useAppStore } from '../stores';
+import { useAppStore } from '../../stores';
 
 interface Event {
   id: string;
@@ -250,31 +250,17 @@ const SidebarTest: React.FC = () => {
                       <span className="text-white capitalize">{event.type}</span>
                     </span>
                   </td>
-                  <td className="py-3 px-4">
-                    <span className={`font-medium ${getPlayerColor(event.player)}`}>
-                      {event.player}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-white">
-                    {event.description}
-                  </td>
-                  <td className="py-3 px-4 text-gray-400">
-                    {event.value || '-'}
-                  </td>
+                  <td className={`py-3 px-4 ${getPlayerColor(event.player)}`}>{event.player}</td>
+                  <td className="py-3 px-4 text-gray-300">{event.description}</td>
+                  <td className="py-3 px-4 text-gray-300">{event.value}</td>
                 </motion.tr>
               ))}
             </tbody>
           </table>
         </div>
-        
-        {filteredEvents.length === 0 && (
-          <div className="text-center py-8 text-gray-400">
-            No events match the current filters
-          </div>
-        )}
       </div>
     </div>
   );
 };
 
-export default SidebarTest;
+export default SidebarTest; 

@@ -1,6 +1,6 @@
 import React from 'react';
-import SidebarSmall from '../SidebarSmall';
-import SidebarBig from '../SidebarBig';
+import SidebarSmall from '../organisms/SidebarSmall';
+import SidebarBig from '../organisms/SidebarBig';
 import StatusbarDock from './StatusbarDock';
 
 const DockBar: React.FC = () => {

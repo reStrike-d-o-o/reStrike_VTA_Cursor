@@ -2,12 +2,11 @@
 // Main export file for all frontend modules and utilities
 
 // Core components
-export { default as App } from '../App';
-export { default as SidebarTest } from '../organisms/SidebarTest';
-export { default as Overlay } from '../organisms/Overlay';
-export { default as VideoClips } from '../organisms/VideoClips';
-export { default as ObsWebSocketManager } from '../organisms/ObsWebSocketManager';
-export { default as Settings } from '../organisms/Settings';
+export { default as SidebarTest } from '../components/organisms/SidebarTest';
+export { default as Overlay } from '../components/organisms/Overlay';
+export { default as VideoClips } from '../components/organisms/VideoClips';
+export { default as ObsWebSocketManager } from '../components/organisms/ObsWebSocketManager';
+export { default as Settings } from '../components/organisms/Settings';
 
 // Hooks
 export { useAppStore } from '../stores';

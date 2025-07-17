@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAppStore, VideoClip } from '../stores';
+import { useAppStore, VideoClip } from '../../stores';
 
 const VideoClips: React.FC = () => {
   const { videoClips, currentClip, setCurrentClip, addVideoClip, removeVideoClip, setPlaying } = useAppStore();
