@@ -56,6 +56,8 @@ export interface AppState {
   currentView: 'sidebar-test' | 'overlay' | 'settings' | 'clips' | 'obs-manager';
   isLoading: boolean;
   error: string | null;
+  // Advanced Panel State
+  isAdvancedPanelOpen: boolean;
 }
 
 export interface AppActions {
@@ -81,6 +83,10 @@ export interface AppActions {
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   clearError: () => void;
+  // Advanced Panel Actions
+  openAdvancedPanel: () => void;
+  closeAdvancedPanel: () => void;
+  toggleAdvancedPanel: () => void;
 }
 
 export type AppStore = AppState & AppActions;
@@ -122,6 +128,7 @@ const initialState: AppState = {
   currentView: 'sidebar-test',
   isLoading: false,
   error: null,
+  isAdvancedPanelOpen: false,
 };
 
 // Create store
@@ -223,6 +230,11 @@ export const useAppStore = create<AppStore>()(
       clearError: () => {
         set({ error: null });
       },
+
+      // Advanced Panel Actions
+      openAdvancedPanel: () => set({ isAdvancedPanelOpen: true }),
+      closeAdvancedPanel: () => set({ isAdvancedPanelOpen: false }),
+      toggleAdvancedPanel: () => set((state) => ({ isAdvancedPanelOpen: !state.isAdvancedPanelOpen })),
     }),
     {
       name: 'restrike-vta-store',

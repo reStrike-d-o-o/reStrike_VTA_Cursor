@@ -3,9 +3,12 @@ import Button from '../atoms/Button';
 import ReplayButton from '../atoms/ReplayButton';
 import Input from '../atoms/Input';
 import Checkbox from '../atoms/Checkbox';
+import { useAppStore } from '../../stores';
 
 const SidebarSmall: React.FC = () => {
   const [manualMode, setManualMode] = useState(false);
+  const isAdvancedPanelOpen = useAppStore((state) => state.isAdvancedPanelOpen);
+  const toggleAdvancedPanel = useAppStore((state) => state.toggleAdvancedPanel);
 
   return (
     <div className="flex flex-col items-center justify-between py-8 px-4 w-[12.5rem] border-r border-gray-800">
@@ -26,9 +29,9 @@ const SidebarSmall: React.FC = () => {
         </div>
         {/* Advanced Button */}
         <Button
-          variant="secondary"
+          variant={isAdvancedPanelOpen ? 'primary' : 'secondary'}
           size="sm"
-          onClick={() => { /* TODO: Implement Advanced action */ }}
+          onClick={toggleAdvancedPanel}
         >
           Advanced
         </Button>
