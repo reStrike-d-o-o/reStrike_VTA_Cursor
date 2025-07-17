@@ -15,6 +15,12 @@ mod commands;
 
 #[tokio::main]
 async fn main() {
+    println!("[DEBUG] main() started");
+    // Try logging before logger setup
+    if let Err(e) = log::set_logger(&log::LOGGER) {
+        // ignore if already set
+    }
+    log::info!("[DEBUG] main() started");
     setup_logger().expect("Failed to initialize logger");
     println!("🎯 reStrike VTA - Starting Windows Desktop Application...");
 
@@ -87,6 +93,7 @@ async fn main() {
             }
         }
     }
+    panic!("[DEBUG] Reached after OBS config block in main.rs");
     // === End OBS connection loader ===
 
     // Start event processing tasks
