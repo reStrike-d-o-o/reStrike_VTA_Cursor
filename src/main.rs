@@ -54,6 +54,38 @@ async fn main() {
     let obs_plugin = ObsPlugin::new(obs_event_tx);
     println!("✅ OBS Plugin initialized");
 
+    // === Add this block to load and connect OBS connections ===
+    let config_path = "config/dev_resources.json";
+    let config_file = std::fs::read_to_string(config_path).expect("Failed to read OBS config file");
+    let config_json: serde_json::Value = serde_json::from_str(&config_file).expect("Invalid JSON in OBS config file");
+
+    if let Some(connections) = config_json.get("obs_connections").and_then(|v| v.as_array()) {
+        for conn in connections {
+            let name = conn.get("name").and_then(|v| v.as_str()).unwrap_or("OBS");
+            let host = conn.get("host").and_then(|v| v.as_str()).unwrap_or("localhost");
+            let port = conn.get("port").and_then(|v| v.as_u64()).unwrap_or(4455) as u16;
+            let password = conn.get("password").and_then(|v| v.as_str()).map(|s| s.to_string());
+            let protocol_version = re_strike_vta::plugins::ObsWebSocketVersion::V5;
+            let enabled = conn.get("enabled").and_then(|v| v.as_bool()).unwrap_or(true);
+
+            let obs_config = re_strike_vta::plugins::ObsConnectionConfig {
+                name: name.to_string(),
+                host: host.to_string(),
+                port,
+                password,
+                protocol_version,
+                enabled,
+            };
+
+            // Add and connect
+            match obs_plugin.add_connection(obs_config).await {
+                Ok(_) => log::info!("Added OBS connection: {}", name),
+                Err(e) => log::error!("Failed to add OBS connection {}: {}", name, e),
+            }
+        }
+    }
+    // === End OBS connection loader ===
+
     // Start event processing tasks
     tokio::spawn(async move {
         while let Some(event) = pss_event_rx.recv().await {
