@@ -52,6 +52,7 @@ async fn main() {
     println!("🎥 Initializing OBS WebSocket Plugin...");
     let (obs_event_tx, mut obs_event_rx) = mpsc::unbounded_channel();
     let obs_plugin = ObsPlugin::new(obs_event_tx);
+    // NOTE: obs_plugin is intended to live for the duration of the app. If you need to access it from other tasks, wrap it in Arc<ObsPlugin> and clone as needed.
     println!("✅ OBS Plugin initialized");
 
     // === Add this block to load and connect OBS connections ===

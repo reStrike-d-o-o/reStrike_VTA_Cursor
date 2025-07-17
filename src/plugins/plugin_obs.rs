@@ -230,6 +230,8 @@ impl ObsPlugin {
             connection.config.clone()
         };
 
+        log::info!("[OBS] Attempting to connect: '{}' at {}:{}", connection_name, config.host, config.port);
+
         // Update status to connecting
         {
             let mut connections = self.connections.lock().unwrap();
@@ -252,9 +254,16 @@ impl ObsPlugin {
         );
 
         // Connect to WebSocket
-        let (ws_stream, _) = tokio_tungstenite::connect_async(&ws_url)
-            .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to connect to OBS: {}", e)))?;
+        let (ws_stream, _) = match tokio_tungstenite::connect_async(&ws_url).await {
+            Ok(res) => {
+                log::info!("[OBS] Successfully connected to '{}' at {}:{}", connection_name, config.host, config.port);
+                res
+            },
+            Err(e) => {
+                log::error!("[OBS] Failed to connect to '{}': {}", connection_name, e);
+                return Err(AppError::ConfigError(format!("Failed to connect to OBS: {}", e)));
+            }
+        };
 
         // Update connection
         let mut connections = self.connections.lock().unwrap();
@@ -273,6 +282,7 @@ impl ObsPlugin {
 
     // Authenticate using OBS WebSocket v5 protocol
     async fn authenticate_v5(&self, connection_name: &str) -> AppResult<()> {
+        log::info!("[OBS] Starting authentication for connection '{}'", connection_name);
         let mut connections = self.connections.lock().unwrap();
         let connection = connections.get_mut(connection_name).unwrap();
         
@@ -288,6 +298,8 @@ impl ObsPlugin {
 
         connection.status = ObsConnectionStatus::Authenticated;
         drop(connections);
+
+        log::info!("[OBS] Authentication successful for connection '{}'", connection_name);
 
         // Send status change event
         let _ = self.event_tx.send(ObsEvent::ConnectionStatusChanged {
