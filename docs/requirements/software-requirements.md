@@ -112,3 +112,11 @@
 - **TypeScript/JSX errors:** Install `@types/react` and `@types/react-dom` as dev dependencies in `ui`.
 - **Directory confusion:** Always run commands from the correct project root (`reStrike_VTA_Cursor`).
 - **Windows is recommended** for OBS and mpv integration; some features may not work on Mac/Linux.
+
+## AdvancedPanel (Frontend)
+The AdvancedPanel is now a drawer-based UI:
+- Left sidebar with icons for: PSS, OBS, Video, AI Analyzer, Settings
+- Right content area for selected drawer
+- Each drawer is a modular section for advanced features
+
+See [FRONTEND_DEVELOPMENT_SUMMARY.md] and [ui-design-document.md] for details.

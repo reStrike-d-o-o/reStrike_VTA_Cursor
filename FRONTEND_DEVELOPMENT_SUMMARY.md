@@ -280,8 +280,15 @@ The application is now ready for testing and further development, providing a so
 - The backend supports sending commands to OBS via a Tauri command (`obs_send_request`).
 - The frontend can control any connected OBS instance and receive responses for each command. 
 
-## AdvancedPanel Toggle Logic (2024-06)
-- Added Zustand state `isAdvancedPanelOpen` and actions (`openAdvancedPanel`, `closeAdvancedPanel`, `toggleAdvancedPanel`).
-- The Advanced button in the sidebar toggles the panel and reflects its state visually.
-- `AdvancedPanel` is conditionally rendered in `App.tsx` based on this state.
-- No regressions in sidebar or DockBar; fully atomic and accessible. 
+## AdvancedPanel Drawer-Based UI (2024-06)
+The AdvancedPanel now uses a drawer-based UI:
+- **Left Sidebar:** Vertical icon list for drawers: PSS, OBS, Video, AI Analyzer, Settings
+- **Right Content Area:** Shows content for the selected drawer
+- **Drawers:**
+  - PSS: UDP server, PSS protocol, event DB
+  - OBS: Connection management, options
+  - Video: mpv integration
+  - AI Analyzer: Report creation, data analyzer
+  - Settings: All settings, including Diagnostics & Logs Manager
+
+This modular structure allows for easy expansion and clear separation of advanced features. 

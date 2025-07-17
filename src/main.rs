@@ -10,6 +10,7 @@ use re_strike_vta::types::{AppError, AppResult};
 use chrono;
 use fern;
 use log;
+use std::fs;
 
 mod commands;
 
@@ -115,6 +116,11 @@ async fn main() {
 }
 
 fn setup_logger() -> Result<(), Box<dyn std::error::Error>> {
+    // Ensure log directory exists
+    let log_dir = "log";
+    if !std::path::Path::new(log_dir).exists() {
+        fs::create_dir_all(log_dir)?;
+    }
     fern::Dispatch::new()
         .format(|out, message, record| {
             out.finish(format_args!(
@@ -127,7 +133,7 @@ fn setup_logger() -> Result<(), Box<dyn std::error::Error>> {
         })
         .level(log::LevelFilter::Info)
         .chain(std::io::stdout())
-        .chain(fern::log_file("backend.log")?)
+        .chain(fern::log_file("log/backend.log")?)
         .apply()?;
     Ok(())
 }

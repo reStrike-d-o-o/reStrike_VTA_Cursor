@@ -169,3 +169,23 @@ All status indicators and icons are now atomic. Accessibility linter issues have
 - All moves/refactors require copying the original file before deletion.
 - The workflow for atomic reorganization: audit, copy, move, update imports, test, delete originals.
 - See PROJECT_STRUCTURE.md and FRONTEND_DEVELOPMENT_SUMMARY.md for more.
+
+## Diagnostics & Logs Manager
+
+- Logging and Download Logs are displayed side by side (horizontal layout) above the Live Data section.
+- Download Logs uses a table for log files; double-clicking a row downloads the file. The dropdown filters the table.
+- All logs are now saved in a dedicated 'log' folder in the installation directory. The folder is created automatically if missing. Log file is 'log/backend.log'.
+- Live Data is below, with a scrollable, auto-scrolling rich text area for live stream data.
+- All sections follow atomic design and are ready for backend integration.
+
+**Atomic Structure:**
+- Atoms: Toggle, Dropdown, Button, ListItem, RichTextArea, Label, Icon.
+- Molecules: LogToggleGroup, LogDownloadList, LiveDataPanel.
+- Organism: DiagnosticsAndLogsManager (contains all three groups).
+
+**Backend Wiring Plan:**
+- Logging toggles will dispatch actions to enable/disable logging in the backend via Tauri commands.
+- Download group will fetch log file lists and download files from the backend.
+- LIVE DATA group will subscribe to live data streams from the backend, filtered by type.
+
+For now, the UI uses dummy data and stub handlers, ready for backend integration.

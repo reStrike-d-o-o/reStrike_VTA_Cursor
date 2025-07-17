@@ -12,15 +12,14 @@ const App: React.FC = () => {
       {/* Task Bar at the top */}
       <TaskBar />
       {/* Main content area: DockBar (left) + AdvancedPanel (right) */}
-      <div className="flex flex-1 h-full">
+      <div className="flex h-[40vh] min-h-0">
         {/* DockBar (left) */}
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full min-h-0">
           <DockBar />
         </div>
         {/* AdvancedPanel (right) */}
-        <div className="flex flex-col flex-1 h-full">
-          {isAdvancedPanelOpen && <AdvancedPanel />}
-          <StatusbarAdvanced />
+        <div className="flex flex-col flex-1 h-full min-h-0">
+          {isAdvancedPanelOpen && <AdvancedPanel className="flex-1 min-h-0" />}
         </div>
       </div>
     </div>

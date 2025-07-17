@@ -98,7 +98,8 @@ const Settings: React.FC = () => {
                     position: e.target.value as any 
                   })}
                   className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-blue-500"
-                  title="Select the position for the overlay"
+                  title="Settings option"
+                  aria-label="Settings option"
                 >
                   <option value="top-left">Top Left</option>
                   <option value="top-right">Top Right</option>
@@ -118,7 +119,8 @@ const Settings: React.FC = () => {
                     theme: e.target.value as any 
                   })}
                   className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-blue-500"
-                  title="Select the theme for the overlay"
+                  title="Settings option"
+                  aria-label="Settings option"
                 >
                   <option value="dark">Dark</option>
                   <option value="light">Light</option>
@@ -291,7 +293,7 @@ const Settings: React.FC = () => {
               <div className="space-y-4">
                 <div>
                   <Label htmlFor="advanced-video-quality">Video Quality</Label>
-                  <select id="advanced-video-quality" className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500" title="Select the video quality">
+                  <select id="advanced-video-quality" className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500" title="Settings option" aria-label="Settings option">
                     <option value="high">High Quality</option>
                     <option value="medium">Medium Quality</option>
                     <option value="low">Low Quality</option>

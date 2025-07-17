@@ -5,7 +5,7 @@ import EventTableSection from '../molecules/EventTableSection';
 
 const SidebarBig: React.FC = () => {
   return (
-    <div className="flex-1 h-full flex flex-col justify-between p-12 text-white">
+    <div className="flex-1 h-full min-h-0 flex flex-col justify-between p-12 text-white">
       <div>
         <PlayerInfoSection />
         <MatchDetailsSection />
