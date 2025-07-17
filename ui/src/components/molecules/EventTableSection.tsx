@@ -1,4 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
+import Button from '../atoms/Button';
+import { StatusDot } from '../atoms/StatusDot';
 
 const events = [
   { round: 'R1', time: '02.00.123', event: 'H', color: 'blue' },
@@ -84,12 +86,7 @@ const EventTableSection: React.FC = () => {
               <div className="col-span-2 text-gray-300 font-bold">{event.round}</div>
               <div className="col-span-6 text-gray-300">{event.time}</div>
               <div className="col-span-4 flex items-center space-x-2">
-                <span className={`w-3 h-3 rounded-full ${
-                  event.color === 'red' ? 'bg-red-500' :
-                  event.color === 'blue' ? 'bg-blue-500' :
-                  event.color === 'yellow' ? 'bg-yellow-400' :
-                  'bg-green-500'
-                }`}></span>
+                <StatusDot color={event.color} />
                 <span className="text-white">{event.event}</span>
               </div>
             </div>
@@ -100,33 +97,43 @@ const EventTableSection: React.FC = () => {
       <div className="flex flex-col items-end ml-8 h-full justify-end w-[8rem]">
         {/* Color buttons row with up arrow as first button */}
         <div className="flex flex-row mb-2 space-x-1">
-          <button
-            className="w-7 h-7 rounded-md bg-gray-700 border-2 border-gray-600 flex items-center justify-center text-white hover:bg-gray-600 transition-all"
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={handleScrollTopAndClear}
             title="Scroll to top and clear filters"
           >
             ↑
-          </button>
-          {colorOptions.map((opt, i) => (
+          </Button>
+          {colorOptions.map((opt) => (
             <button
               key={opt.color}
-              className={`w-7 h-7 rounded-md ${opt.class} border-2 ${colorFilter === opt.color ? 'border-white ring-2 ring-white' : 'border-gray-600'} transition-all`}
+              className={`
+                ${opt.class}
+                border-2
+                ${colorFilter === opt.color ? 'ring-2 ring-white border-white' : 'border-gray-600'}
+                w-7 h-7 flex items-center justify-center p-0 rounded-lg transition-colors
+              `}
               onClick={() => setColorFilter(colorFilter === opt.color ? null : opt.color)}
               title={opt.color.charAt(0).toUpperCase() + opt.color.slice(1)}
+              style={{ minWidth: '1.75rem', minHeight: '1.75rem' }}
+              type="button"
             />
           ))}
         </div>
         {/* Event type buttons stack */}
         <div className="flex flex-col space-y-2">
           {eventTypeOptions.map(type => (
-            <button
+            <Button
               key={type.value}
-              className={`w-[7.75rem] h-7 rounded-md bg-gray-800 border-2 ${eventTypeFilter === type.value ? 'border-white ring-2 ring-white' : 'border-gray-600'} text-white flex items-center justify-center transition-all`}
+              variant={eventTypeFilter === type.value ? 'primary' : 'secondary'}
+              size="sm"
               onClick={() => setEventTypeFilter(eventTypeFilter === type.value ? null : type.value)}
               title={type.label}
+              style={{ width: '7.75rem' }}
             >
               {type.label}
-            </button>
+            </Button>
           ))}
         </div>
       </div>

@@ -152,3 +152,20 @@
 - **Color-Blind Friendly Mode**
   - High-contrast toggle available in Settings
   - Flag fallbacks ensure visibility for all users
+
+### Atomic Atoms (2024)
+- Button
+- Input
+- Checkbox
+- Label
+- StatusDot (Badge)
+- Icon
+
+All status indicators and icons are now atomic. Accessibility linter issues have been addressed as of this update.
+
+## Atomic Component Structure & Workflow (2024)
+
+- All UI components are now organized by atomic design (atoms, molecules, organisms, layouts).
+- All moves/refactors require copying the original file before deletion.
+- The workflow for atomic reorganization: audit, copy, move, update imports, test, delete originals.
+- See PROJECT_STRUCTURE.md and FRONTEND_DEVELOPMENT_SUMMARY.md for more.

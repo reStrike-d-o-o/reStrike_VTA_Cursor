@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useAppStore } from '../../stores';
+import Button from '../atoms/Button';
+import { StatusDot } from '../atoms/StatusDot';
 
 interface ObsConnection {
   name: string;
@@ -179,12 +181,9 @@ const ObsWebSocketManager: React.FC = () => {
       <div className="bg-gray-800 rounded-lg p-6">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-lg font-semibold text-white">OBS Connections</h3>
-          <button
-            onClick={addConnection}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-          >
+          <Button onClick={addConnection} variant="primary" size="sm">
             Add Connection
-          </button>
+          </Button>
         </div>
 
         <div className="space-y-4">
@@ -197,7 +196,7 @@ const ObsWebSocketManager: React.FC = () => {
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
-                  <div className={`w-3 h-3 rounded-full ${getStatusColor(connection.status)}`} />
+                  <StatusDot color={getStatusColor(connection.status)} />
                   <div>
                     <h4 className="text-white font-medium">{connection.name}</h4>
                     <p className="text-gray-400 text-sm">
@@ -221,36 +220,24 @@ const ObsWebSocketManager: React.FC = () => {
                   
                   <div className="flex space-x-2">
                     {connection.status === 'disconnected' && (
-                      <button
-                        onClick={() => connectToObs(connection.name)}
-                        className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-sm rounded transition-colors"
-                      >
+                      <Button onClick={() => connectToObs(connection.name)} variant="success" size="sm">
                         Connect
-                      </button>
+                      </Button>
                     )}
                     
                     {connection.status === 'connected' && (
-                      <button
-                        onClick={() => disconnectFromObs(connection.name)}
-                        className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded transition-colors"
-                      >
+                      <Button onClick={() => disconnectFromObs(connection.name)} variant="danger" size="sm">
                         Disconnect
-                      </button>
+                      </Button>
                     )}
                     
-                    <button
-                      onClick={() => testObsStatus()}
-                      className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded transition-colors"
-                    >
+                    <Button onClick={() => testObsStatus()} variant="primary" size="sm">
                       Test
-                    </button>
+                    </Button>
                     
-                    <button
-                      onClick={() => removeConnection(connection.name)}
-                      className="px-3 py-1 bg-gray-600 hover:bg-gray-500 text-white text-sm rounded transition-colors"
-                    >
+                    <Button onClick={() => removeConnection(connection.name)} variant="secondary" size="sm">
                       Remove
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -272,7 +259,7 @@ const ObsWebSocketManager: React.FC = () => {
           <div className="bg-gray-700 rounded-lg p-4">
             <div className="flex items-center justify-between">
               <span className="text-gray-300">Recording</span>
-              <span className="w-3 h-3 bg-red-500 rounded-full"></span>
+              <StatusDot color="bg-red-500" />
             </div>
             <p className="text-white font-medium mt-1">Not Recording</p>
           </div>
@@ -280,7 +267,7 @@ const ObsWebSocketManager: React.FC = () => {
           <div className="bg-gray-700 rounded-lg p-4">
             <div className="flex items-center justify-between">
               <span className="text-gray-300">Streaming</span>
-              <span className="w-3 h-3 bg-red-500 rounded-full"></span>
+              <StatusDot color="bg-red-500" />
             </div>
             <p className="text-white font-medium mt-1">Not Streaming</p>
           </div>
@@ -288,7 +275,7 @@ const ObsWebSocketManager: React.FC = () => {
           <div className="bg-gray-700 rounded-lg p-4">
             <div className="flex items-center justify-between">
               <span className="text-gray-300">CPU Usage</span>
-              <span className="w-3 h-3 bg-green-500 rounded-full"></span>
+              <StatusDot color="bg-green-500" />
             </div>
             <p className="text-white font-medium mt-1">0.0%</p>
           </div>

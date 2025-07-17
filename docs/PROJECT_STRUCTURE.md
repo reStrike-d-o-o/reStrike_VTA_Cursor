@@ -335,3 +335,24 @@ error: Some(e.to_string())
   - StatusBar (OBS status, test controls)
 - Sidebar features (filters, replay, manual mode, etc.) are being migrated into the new layout.
 - See .cursor/rules/context.mdc for all architecture and UI conventions. 
+
+## Atomic Design Structure (2024)
+
+- All React components in `ui/src/components/` are now organized by atomic design:
+  - `atoms/`: smallest, reusable UI elements
+  - `molecules/`: groups of atoms forming more complex UI
+  - `organisms/`: complex, composite UI sections
+  - `layouts/`: structural layout components
+- All moves/refactors must copy the original file before deletion (see .cursor/rules/context.mdc).
+- Imports must always reference the correct atomic folder.
+- See FRONTEND_DEVELOPMENT_SUMMARY.md for migration details. 
+
+### Atoms
+- Button
+- Input
+- Checkbox
+- Label
+- StatusDot (Badge)
+- Icon
+
+All status indicators and icons are now atomic. Accessibility linter issues have been addressed as of 2024. 

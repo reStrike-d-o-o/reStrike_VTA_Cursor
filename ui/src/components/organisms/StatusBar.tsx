@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAppStore, ObsStatusInfo } from '../../stores';
+import Button from '../atoms/Button';
 
 const StatusBar: React.FC = () => {
   const { obsStatus, obsConnections, updateObsStatus } = useAppStore();
@@ -55,11 +56,11 @@ const StatusBar: React.FC = () => {
     <div className="space-y-2">
       {/* Test Controls (remove in production) */}
       <div className="flex flex-wrap gap-1 text-xs">
-        <button onClick={() => testObsStatus('idle')} className="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded">Idle</button>
-        <button onClick={() => testObsStatus('recording')} className="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded">REC</button>
-        <button onClick={() => testObsStatus('streaming')} className="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded">STR</button>
-        <button onClick={() => testObsStatus('both')} className="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded">Both</button>
-        <button onClick={() => testObsStatus('high-cpu')} className="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded">High CPU</button>
+        <Button onClick={() => testObsStatus('idle')} variant="ghost" size="sm" className="px-2 py-1">Idle</Button>
+        <Button onClick={() => testObsStatus('recording')} variant="ghost" size="sm" className="px-2 py-1">REC</Button>
+        <Button onClick={() => testObsStatus('streaming')} variant="ghost" size="sm" className="px-2 py-1">STR</Button>
+        <Button onClick={() => testObsStatus('both')} variant="ghost" size="sm" className="px-2 py-1">Both</Button>
+        <Button onClick={() => testObsStatus('high-cpu')} variant="ghost" size="sm" className="px-2 py-1">High CPU</Button>
       </div>
       {/* Status Bar */}
       <div className="flex items-center justify-between text-xs text-gray-400 border-t border-gray-700 pt-2">

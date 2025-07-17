@@ -151,6 +151,27 @@ export type AppView = ...;
 
 ---
 
+## Atomic Component Structure (2024)
+
+- Components are organized into `atoms/`, `molecules/`, `organisms/`, and `layouts/` folders under `ui/src/components/`.
+- All refactors must copy the original file before deletion.
+- Imports must use the atomic folder path.
+- See PROJECT_STRUCTURE.md and FRONTEND_DEVELOPMENT_SUMMARY.md for details.
+
+---
+
+## Atomic Atoms
+- Button
+- Input
+- Checkbox
+- Label
+- StatusDot (Badge)
+- Icon
+
+All status indicators and icons are now atomic. Accessibility linter issues have been addressed as of 2024.
+
+---
+
 ## 🔧 **Benefits of This Structure**
 
 ### **1. Maintainability**

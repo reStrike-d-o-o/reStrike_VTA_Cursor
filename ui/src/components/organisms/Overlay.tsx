@@ -1,6 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../../stores';
+import Button from '../atoms/Button';
+import Input from '../atoms/Input';
+import { StatusDot } from '../atoms/StatusDot';
+import { Icon } from '../atoms/Icon';
 
 const Overlay: React.FC = () => {
   const {
@@ -165,7 +169,7 @@ const Overlay: React.FC = () => {
                   <div className="space-y-4">
                     {/* Progress Bar */}
                     <div>
-                      <input
+                      <Input
                         type="range"
                         min="0"
                         max={duration || 0}
@@ -181,29 +185,32 @@ const Overlay: React.FC = () => {
 
                     {/* Control Buttons */}
                     <div className="flex justify-center space-x-4">
-                      <button
+                      <Button
                         onClick={() => setPlaying(!isPlaying)}
-                        className="bg-blue-600 hover:bg-blue-700 p-2 rounded-lg transition-colors"
+                        variant="primary"
+                        size="sm"
                       >
-                        {isPlaying ? '⏸️' : '▶️'}
-                      </button>
-                      <button
+                        <Icon name={isPlaying ? '⏸️' : '▶️'} />
+                      </Button>
+                      <Button
                         onClick={() => {
                           if (videoRef.current) {
                             videoRef.current.currentTime = 0;
                             setPlaying(false);
                           }
                         }}
-                        className="bg-gray-600 hover:bg-gray-700 p-2 rounded-lg transition-colors"
+                        variant="secondary"
+                        size="sm"
                       >
-                        ⏮️
-                      </button>
-                      <button
+                        <Icon name="⏮️" />
+                      </Button>
+                      <Button
                         onClick={toggleFullscreen}
-                        className="bg-gray-600 hover:bg-gray-700 p-2 rounded-lg transition-colors"
+                        variant="secondary"
+                        size="sm"
                       >
-                        {isFullscreen ? '⏹️' : '⛶'}
-                      </button>
+                        {isFullscreen ? <Icon name="⏹️" /> : <Icon name="⛶" />}
+                      </Button>
                     </div>
 
                     {/* Clip Info */}
@@ -225,14 +232,14 @@ const Overlay: React.FC = () => {
             <div className="flex items-center space-x-2">
               {/* OBS Status */}
               <div className="flex items-center space-x-1">
-                <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                <StatusDot color="bg-green-500" />
                 <span>OBS: {obsConnections.filter(c => c.status === 'Connected').length} connected</span>
               </div>
               
               {/* Video Status */}
               {currentClip && (
                 <div className="flex items-center space-x-1">
-                  <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                  <StatusDot color="bg-blue-500" />
                   <span>Video: {currentClip.name}</span>
                 </div>
               )}
@@ -257,24 +264,27 @@ const Overlay: React.FC = () => {
           exit={{ opacity: 0, y: 10 }}
           className="mt-2 flex justify-center space-x-2"
         >
-            <button
+            <Button
               onClick={() => useAppStore.getState().setCurrentView('clips')}
-              className="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm transition-colors"
+              variant="primary"
+              size="sm"
             >
-              📁 Clips
-            </button>
-            <button
+              <Icon name="��" />
+            </Button>
+            <Button
               onClick={() => useAppStore.getState().setCurrentView('obs-manager')}
-              className="bg-green-600 hover:bg-green-700 px-3 py-1 rounded text-sm transition-colors"
+              variant="success"
+              size="sm"
             >
-              🎥 OBS
-            </button>
-            <button
+              <Icon name="🎥" />
+            </Button>
+            <Button
               onClick={() => useAppStore.getState().setCurrentView('settings')}
-              className="bg-gray-600 hover:bg-gray-700 px-3 py-1 rounded text-sm transition-colors"
+              variant="secondary"
+              size="sm"
             >
-              ⚙️ Settings
-            </button>
+              <Icon name="⚙️" />
+            </Button>
           </motion.div>
         )}
 

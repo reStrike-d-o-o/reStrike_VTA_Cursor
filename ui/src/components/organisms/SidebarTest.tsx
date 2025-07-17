@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useAppStore } from '../../stores';
+import Button from '../atoms/Button';
+import Label from '../atoms/Label';
+import { StatusDot } from '../atoms/StatusDot';
+import { Icon } from '../atoms/Icon';
 
 interface Event {
   id: string;
@@ -155,13 +159,13 @@ const SidebarTest: React.FC = () => {
           {obsConnections.map((connection) => (
             <div key={connection.name} className="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
               <div className="flex items-center space-x-3">
-                <div className={`w-3 h-3 rounded-full ${
+                <StatusDot color={
                   connection.status === 'Connected' || connection.status === 'Authenticated'
                     ? 'bg-green-500'
                     : connection.status === 'Error'
                     ? 'bg-red-500'
                     : 'bg-yellow-500'
-                }`} />
+                } />
                 <span className="text-white font-medium">{connection.name}</span>
               </div>
               <span className="text-gray-400 text-sm">{connection.status}</span>
@@ -174,23 +178,25 @@ const SidebarTest: React.FC = () => {
       <div className="bg-gray-800 rounded-lg p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-white">Event Filters</h3>
-          <button
+          <Button
             onClick={clearFilters}
-            className="flex items-center space-x-2 px-3 py-1 bg-gray-600 hover:bg-gray-500 text-white text-sm rounded transition-colors"
+            variant="secondary"
+            size="sm"
           >
-            <span>↑</span>
-            <span>Clear Filters</span>
-          </button>
+            Clear Filters
+          </Button>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Player Filter */}
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Player</label>
+            <Label htmlFor="player-filter" className="block text-sm font-medium text-gray-300 mb-2">Player</Label>
             <select
+              id="player-filter"
               value={selectedPlayer}
               onChange={(e) => setSelectedPlayer(e.target.value as any)}
               className="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              title="Filter events by player (Red, Blue, Yellow, All)"
             >
               <option value="ALL">All Players</option>
               <option value="RED">Red Player</option>
@@ -201,11 +207,13 @@ const SidebarTest: React.FC = () => {
 
           {/* Type Filter */}
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Event Type</label>
+            <Label htmlFor="type-filter" className="block text-sm font-medium text-gray-300 mb-2">Event Type</Label>
             <select
+              id="type-filter"
               value={selectedType}
               onChange={(e) => setSelectedType(e.target.value as any)}
               className="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              title="Filter events by type (Point, Warning, Clock, Round, Score, Athlete, All)"
             >
               <option value="ALL">All Events</option>
               <option value="point">Points</option>
@@ -246,7 +254,7 @@ const SidebarTest: React.FC = () => {
                   </td>
                   <td className="py-3 px-4">
                     <span className="flex items-center space-x-2">
-                      <span>{getTypeIcon(event.type)}</span>
+                      <Icon name={getTypeIcon(event.type)} />
                       <span className="text-white capitalize">{event.type}</span>
                     </span>
                   </td>
