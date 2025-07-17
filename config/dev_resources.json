@@ -175,5 +175,14 @@
     "setup_obs": "scripts/obs/setup-obs-websocket.sh",
     "project_tracker": "scripts/project/project-tracker.py",
     "dev_wrapper": "scripts/development/dev.sh"
-  }
+  },
+  "obs_connections": [
+    {
+      "name": "Local OBS",
+      "host": "localhost",
+      "port": 4455,
+      "password": "",
+      "enabled": true
+    }
+  ]
 } 
