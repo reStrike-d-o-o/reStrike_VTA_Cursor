@@ -196,7 +196,8 @@ const SidebarTest: React.FC = () => {
               value={selectedPlayer}
               onChange={(e) => setSelectedPlayer(e.target.value as any)}
               className="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              title="Filter events by player (Red, Blue, Yellow, All)"
+              title="Sidebar option"
+              aria-label="Sidebar option"
             >
               <option value="ALL">All Players</option>
               <option value="RED">Red Player</option>
@@ -213,7 +214,8 @@ const SidebarTest: React.FC = () => {
               value={selectedType}
               onChange={(e) => setSelectedType(e.target.value as any)}
               className="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              title="Filter events by type (Point, Warning, Clock, Round, Score, Athlete, All)"
+              title="Sidebar option"
+              aria-label="Sidebar option"
             >
               <option value="ALL">All Events</option>
               <option value="point">Points</option>

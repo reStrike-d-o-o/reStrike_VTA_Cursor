@@ -57,8 +57,7 @@ A cross-platform Instant Video Replay Manager designed for taekwondo referees, e
   - Prevents unauthorized use and enables subscription enforcement.
 
 - **Logging System**
-  - Centralized logs for network, OBS, playback, and DB.
-  - Log rotation and path configuration via UI.
+  - All logs are now saved in a dedicated 'log' folder in the installation directory. The folder is created automatically if missing. Log file is 'log/backend.log'.
 
 ## 4. User Stories
 
@@ -107,3 +106,12 @@ A cross-platform Instant Video Replay Manager designed for taekwondo referees, e
 - **Touch Friendly**: Large UI elements for fast input.
 - **Animation**: Pulsating record button, smooth tab transitions.
 - **Hide-on-playback**: Main window hides when `mpv` launches.
+
+## AdvancedPanel (Frontend)
+The AdvancedPanel is now a drawer-based UI:
+- Left sidebar with icons for: PSS, OBS, Video, AI Analyzer, Settings
+- Right content area for selected drawer
+- Each drawer is a modular section for advanced features
+- Diagnostics & Logs Manager: Logging and Download Logs are side by side above Live Data, which is scrollable and auto-scrolls as data arrives. Download Logs uses a table for log files; double-clicking a row downloads the file. Dropdown filters the table.
+
+See [FRONTEND_DEVELOPMENT_SUMMARY.md] and [ui-design-document.md] for implementation details.

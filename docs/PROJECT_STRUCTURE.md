@@ -372,3 +372,4 @@ All status indicators and icons are now atomic. Accessibility linter issues have
 
 - The backend supports sending commands to OBS via a Tauri command (`obs_send_request`).
 - The frontend can control any connected OBS instance by name and receive responses. 
+- All logs are now saved in a dedicated 'log' folder in the installation directory. The folder is created automatically if missing. Log file is 'log/backend.log'. 
