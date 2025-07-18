@@ -10,18 +10,18 @@ reStrike VTA now supports both OBS WebSocket v4 and v5 protocols simultaneously,
 
 #### Core Components
 
-1. **`src/plugin_obs.rs`** - Main OBS WebSocket plugin
+1. **`src-tauri/src/plugins/plugin_obs.rs`** - Main OBS WebSocket plugin
    - `ObsPlugin` - Manages multiple OBS connections
    - `ObsConnectionConfig` - Configuration for each connection
    - `ObsWebSocketVersion` - Protocol version enum (V4/V5)
    - Protocol-agnostic API methods
 
-2. **`src/tauri_commands.rs`** - Tauri command handlers
+2. **`src-tauri/src/tauri_commands.rs`** - Tauri command handlers
    - Bridges frontend with backend OBS plugin
    - Handles all OBS operations (connect, disconnect, scene control, etc.)
    - Provides unified response format
 
-3. **`src/main.rs`** - Application entry point
+3. **`src-tauri/src/main.rs`** - Application entry point
    - Initializes OBS plugin
    - Registers Tauri commands
    - Manages plugin lifecycle

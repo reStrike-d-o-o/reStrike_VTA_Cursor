@@ -1,6 +1,7 @@
 // Environment detection hook for reStrike VTA
 
 import { useState, useEffect } from 'react';
+import { testTauriApi } from '../utils/tauriCommands';
 
 export interface EnvironmentInfo {
   environment: 'windows' | 'web';
@@ -21,14 +22,18 @@ export const useEnvironment = (): EnvironmentInfo => {
   });
 
   useEffect(() => {
-    const detectEnvironment = () => {
+    const detectEnvironment = async () => {
       // Check for Tauri availability
       const tauriAvailable = typeof window !== 'undefined' && !!window.__TAURI__;
       
+      // Test Tauri API if available
+      let tauriApiWorking = false;
+      if (tauriAvailable) {
+        tauriApiWorking = await testTauriApi();
+      }
+      
       // Check if we're in a Tauri context
-      const isTauriContext = tauriAvailable || 
-        (typeof window !== 'undefined' && window.location.protocol === 'tauri:') ||
-        (typeof window !== 'undefined' && window.location.hostname === 'localhost' && window.location.port === '3000');
+      const isTauriContext = tauriAvailable && tauriApiWorking;
       
       // For development mode, if we're on localhost:3000, assume we're in Tauri mode
       // This is because Tauri dev server runs React on localhost:3000
@@ -39,31 +44,28 @@ export const useEnvironment = (): EnvironmentInfo => {
       // Debug logging
       console.log('🔍 Environment Detection:', {
         tauriAvailable,
+        tauriApiWorking,
         isTauriContext,
-        windowLocation: typeof window !== 'undefined' ? window.location.href : 'undefined',
-        windowTauri: typeof window !== 'undefined' ? !!window.__TAURI__ : 'undefined',
-        environment,
         isWindows,
         isWeb,
-        isDevMode: typeof window !== 'undefined' && window.location.hostname === 'localhost' && window.location.port === '3000'
+        environment
       });
 
       setEnvironmentInfo({
         environment,
         isWindows,
         isWeb,
-        tauriAvailable: tauriAvailable, // Use actual Tauri availability, not context detection
+        tauriAvailable: tauriApiWorking,
       });
     };
 
     // Initial detection
     detectEnvironment();
 
-    // Re-detect multiple times to ensure Tauri is initialized
-    const intervals = [100, 500, 1000, 2000, 3000, 5000];
-    const timeouts = intervals.map(delay => setTimeout(detectEnvironment, delay));
+    // Set up interval for continuous detection (useful for development)
+    const interval = setInterval(detectEnvironment, 5000);
 
-    return () => timeouts.forEach(clearTimeout);
+    return () => clearInterval(interval);
   }, []);
 
   return environmentInfo;

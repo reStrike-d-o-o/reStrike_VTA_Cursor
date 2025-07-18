@@ -1,1 +1,0 @@
-// clips.rs - video clip management 

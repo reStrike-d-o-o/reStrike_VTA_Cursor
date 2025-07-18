@@ -5,8 +5,8 @@
 - Avoid output filename collisions by ensuring the lib and bin targets have unique names in Cargo.toml.
 
 ## Plugin Module Integration
-- All plugin modules are declared only in `src/plugins/mod.rs`.
-- Plugins are re-exported via `pub mod plugins;` in `src/lib.rs`.
+- All plugin modules are declared only in `src-tauri/src/plugins/mod.rs`.
+- Plugins are re-exported via `pub mod plugins;` in `src-tauri/src/lib.rs`.
 - Do not declare `mod` or `pub mod` for plugins anywhere else.
 
 ## Importing Types in Plugins
@@ -31,7 +31,7 @@ The reStrike VTA project has been reorganized into a modular library structure f
 
 ## 📁 **Backend (Rust) Library Structure**
 
-### **Core Library (`src/lib.rs`)**
+### **Core Library (`src-tauri/src/lib.rs`)**
 ```rust
 pub mod core;      // Core application functionality
 pub mod obs;       // OBS WebSocket integration
@@ -44,7 +44,7 @@ pub mod commands;  // Tauri command handlers
 
 ### **Module Breakdown**
 
-#### **1. Types (`src/types/mod.rs`)**
+#### **1. Types (`src-tauri/src/types/mod.rs`)**
 - **Purpose**: Centralized type definitions
 - **Contains**: All shared data structures, enums, and constants
 - **Benefits**: Single source of truth, easy refactoring
@@ -68,22 +68,22 @@ pub struct AppState { ... }
 pub enum AppView { ... }
 ```
 
-#### **2. Core (`src/core/`)**
+#### **2. Core (`src-tauri/src/core/`)**
 - **`app.rs`**: Main application class and lifecycle management
 - **`config.rs`**: Configuration management
 - **`state.rs`**: Application state management
 
-#### **3. OBS (`src/obs/`)**
+#### **3. OBS (`src-tauri/src/obs/`)**
 - **`manager.rs`**: OBS WebSocket connection management
 - **`protocol.rs`**: WebSocket protocol handling
 - **`commands.rs`**: OBS-specific commands
 
-#### **4. Video (`src/video/`)**
+#### **4. Video (`src-tauri/src/video/`)**
 - **`player.rs`**: Video playback engine
 - **`overlay.rs`**: Video overlay system
 - **`clips.rs`**: Video clip management
 
-#### **5. PSS (`src/pss/`)**
+#### **5. PSS (`src-tauri/src/pss/`)**
 - **`protocol.rs`**: PSS protocol parser
 - **`listener.rs`**: UDP listener
 - **`events.rs`**: Event processing

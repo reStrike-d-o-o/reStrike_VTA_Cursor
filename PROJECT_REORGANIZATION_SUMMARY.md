@@ -63,7 +63,7 @@ scripts/
 ```
 
 ### 3. **Source Code Organization**
-**Before**: All Rust files in flat `src/` directory
+**Before**: All Rust files in flat `src/` directory (moved to `src-tauri/src/`)
 **After**: Organized into logical modules:
 
 ```
@@ -94,7 +94,8 @@ reStrike_VTA/
 ├── 📁 docs/                 # Organized documentation
 ├── 📁 protocol/             # Protocol definitions
 ├── 📁 scripts/              # Organized scripts
-├── 📁 src/                  # Organized Rust backend
+├── 📁 src-tauri/            # Tauri v2 application (Rust backend)
+│   ├── 📁 src/              # Organized Rust backend
 ├── 📁 ui/                   # React frontend
 ├── 📁 target/               # Build artifacts (gitignored)
 ├── 📁 node_modules/         # Dependencies (gitignored)
@@ -118,8 +119,8 @@ Updated all script references in:
 - `README.md` - Updated documentation links
 
 ### 2. **Module Structure Updates**
-- Created `src/plugins/mod.rs` and `src/commands/mod.rs`
-- Updated `src/main.rs` to use new module structure
+- Created `src-tauri/src/plugins/mod.rs` and `src-tauri/src/commands/mod.rs`
+- Updated `src-tauri/src/main.rs` to use new module structure
 - Maintained all existing functionality
 
 ### 3. **Documentation Links**
