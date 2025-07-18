@@ -65,19 +65,11 @@ impl LogManager {
     }
     
     pub fn log(&self, subsystem: &str, level: &str, message: &str) -> io::Result<()> {
-        log::info!("🔧 LogManager.log called with subsystem: {}, level: {}, message: {}", subsystem, level, message);
-        
         // Check if logging is enabled for this subsystem
         let config = self.config.lock().unwrap();
-        log::info!("🔍 Checking if subsystem '{}' is enabled...", subsystem);
-        log::info!("🔍 Enabled subsystems: {:?}", config.enabled_subsystems);
-        
         if !config.enabled_subsystems.contains(&subsystem.to_string()) {
-            log::info!("❌ Subsystem '{}' is not enabled, skipping log", subsystem);
             return Ok(());
         }
-        
-        log::info!("✅ Subsystem '{}' is enabled, proceeding with logging", subsystem);
         
         let timestamp = Utc::now().format("%Y-%m-%d %H:%M:%S%.3f").to_string();
         let entry = LogEntry {
@@ -87,72 +79,36 @@ impl LogManager {
             message: message.to_string(),
         };
         
-        log::info!("📝 Created log entry, getting logger for subsystem: {}", subsystem);
-        
         // Get or create logger for this subsystem
         let mut loggers = self.loggers.lock().unwrap();
         let logger = loggers.entry(subsystem.to_string()).or_insert_with(|| {
-            log::info!("🆕 Creating new logger for subsystem: {}", subsystem);
             Logger::new(&config.log_dir, subsystem).unwrap_or_else(|e| {
-                log::error!("❌ Failed to create logger for subsystem {}: {}", subsystem, e);
+                log::error!("Failed to create logger for subsystem {}: {}", subsystem, e);
                 eprintln!("Failed to create logger for subsystem: {}", subsystem);
                 Logger::new("log", "fallback").unwrap()
             })
         });
         
-        log::info!("✅ Got logger, writing entry...");
-        
         // Write log entry
-        match logger.write_entry(&entry) {
-            Ok(_) => log::info!("✅ Successfully wrote log entry"),
-            Err(e) => {
-                log::error!("❌ Failed to write log entry: {}", e);
-                return Err(e);
-            }
-        }
-        
-        log::info!("🔍 Checking if rotation is needed...");
+        logger.write_entry(&entry)?;
         
         // Check if rotation is needed
-        match self.rotator.should_rotate(&logger.get_current_file_path()) {
-            Ok(true) => {
-                log::info!("🔄 Rotation needed, rotating log...");
-                if let Err(e) = self.rotate_log(subsystem) {
-                    log::error!("❌ Failed to rotate log: {}", e);
-                    return Err(e);
-                }
-                log::info!("✅ Log rotation completed");
-            }
-            Ok(false) => log::info!("✅ No rotation needed"),
-            Err(e) => {
-                log::error!("❌ Error checking rotation: {}", e);
-                return Err(e);
-            }
+        if let Ok(true) = self.rotator.should_rotate(&logger.get_current_file_path()) {
+            self.rotate_log(subsystem)?;
         }
         
-        log::info!("✅ LogManager.log completed successfully");
         Ok(())
     }
     
     pub fn set_subsystem_enabled(&self, subsystem: &str, enabled: bool) {
-        log::info!("🔧 set_subsystem_enabled called with subsystem: {}, enabled: {}", subsystem, enabled);
-        
         let mut config = self.config.lock().unwrap();
-        log::info!("🔍 Current enabled subsystems: {:?}", config.enabled_subsystems);
-        
         if enabled {
             if !config.enabled_subsystems.contains(&subsystem.to_string()) {
-                log::info!("➕ Adding subsystem '{}' to enabled list", subsystem);
                 config.enabled_subsystems.push(subsystem.to_string());
-            } else {
-                log::info!("ℹ️ Subsystem '{}' already enabled", subsystem);
             }
         } else {
-            log::info!("➖ Removing subsystem '{}' from enabled list", subsystem);
             config.enabled_subsystems.retain(|s| s != subsystem);
         }
-        
-        log::info!("✅ Updated enabled subsystems: {:?}", config.enabled_subsystems);
     }
     
     pub fn is_subsystem_enabled(&self, subsystem: &str) -> bool {

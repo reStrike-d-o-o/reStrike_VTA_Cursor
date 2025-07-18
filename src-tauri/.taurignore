@@ -1,0 +1,10 @@
+# Ignore log files to prevent rebuild loops
+log/
+*.log
+
+# Ignore target directory
+target/
+
+# Ignore any temporary files
+*.tmp
+*.temp 
