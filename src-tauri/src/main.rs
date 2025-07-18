@@ -39,6 +39,10 @@ async fn main() -> AppResult<()> {
             tauri_commands::obs_start_recording,
             tauri_commands::obs_stop_recording,
             tauri_commands::obs_command,
+            tauri_commands::obs_add_connection,
+            tauri_commands::obs_connect_to_connection,
+            tauri_commands::obs_get_connection_status,
+            tauri_commands::obs_get_connections,
             
             // Video commands - Fixed names
             tauri_commands::video_play,

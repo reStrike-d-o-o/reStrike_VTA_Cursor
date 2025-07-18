@@ -265,6 +265,51 @@ export const diagLogsCommands = {
   async downloadArchive(archiveName: string) {
     return executeTauriCommand('download_archive', { archiveName });
   },
+};
+
+// OBS WebSocket Commands
+export const obsCommands = {
+  /**
+   * Add a new OBS connection
+   */
+  async addConnection(params: {
+    name: string;
+    host: string;
+    port: number;
+    password?: string;
+    protocol_version: string;
+    enabled: boolean;
+  }) {
+    return executeTauriCommand('obs_add_connection', params);
+  },
+
+  /**
+   * Connect to a specific OBS connection
+   */
+  async connectToConnection(connectionName: string) {
+    return executeTauriCommand('obs_connect_to_connection', { connectionName });
+  },
+
+  /**
+   * Get status of a specific OBS connection
+   */
+  async getConnectionStatus(connectionName: string) {
+    return executeTauriCommand('obs_get_connection_status', { connectionName });
+  },
+
+  /**
+   * Get all OBS connections
+   */
+  async getConnections() {
+    return executeTauriCommand('obs_get_connections', {});
+  },
+
+  /**
+   * Disconnect from OBS
+   */
+  async disconnect(connectionName: string) {
+    return executeTauriCommand('obs_disconnect', { connectionName });
+  },
 
   /**
    * Enable or disable live data streaming for a subsystem

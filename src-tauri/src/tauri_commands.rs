@@ -77,6 +77,124 @@ pub async fn obs_connect(url: String, app: State<'_, Arc<App>>) -> Result<serde_
 }
 
 #[tauri::command]
+pub async fn obs_add_connection(
+    name: String,
+    host: String,
+    port: u16,
+    password: Option<String>,
+    protocol_version: String,
+    enabled: bool,
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, String> {
+    log::info!("OBS add connection called: {}@{}:{}", name, host, port);
+    
+    let version = match protocol_version.as_str() {
+        "v5" => crate::plugins::plugin_obs::ObsWebSocketVersion::V5,
+        _ => crate::plugins::plugin_obs::ObsWebSocketVersion::V5, // Default to v5
+    };
+    
+    let config = crate::plugins::plugin_obs::ObsConnectionConfig {
+        name,
+        host,
+        port,
+        password,
+        protocol_version: version,
+        enabled,
+    };
+    
+    match app.obs_plugin().add_connection(config).await {
+        Ok(_) => Ok(serde_json::json!({
+            "success": true,
+            "message": "OBS connection added successfully"
+        })),
+        Err(e) => Ok(serde_json::json!({
+            "success": false,
+            "error": e.to_string()
+        }))
+    }
+}
+
+#[tauri::command]
+pub async fn obs_connect_to_connection(
+    connection_name: String,
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, String> {
+    log::info!("OBS connect to connection called: {}", connection_name);
+    
+    match app.obs_plugin().connect_obs(&connection_name).await {
+        Ok(_) => Ok(serde_json::json!({
+            "success": true,
+            "message": format!("OBS connection '{}' initiated", connection_name)
+        })),
+        Err(e) => Ok(serde_json::json!({
+            "success": false,
+            "error": e.to_string()
+        }))
+    }
+}
+
+#[tauri::command]
+pub async fn obs_get_connection_status(
+    connection_name: String,
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, String> {
+    log::info!("OBS get connection status called: {}", connection_name);
+    
+    match app.obs_plugin().get_connection_status(&connection_name).await {
+        Some(status) => {
+            let status_str = match status {
+                crate::plugins::plugin_obs::ObsConnectionStatus::Disconnected => "Disconnected",
+                crate::plugins::plugin_obs::ObsConnectionStatus::Connecting => "Connecting",
+                crate::plugins::plugin_obs::ObsConnectionStatus::Connected => "Connected",
+                crate::plugins::plugin_obs::ObsConnectionStatus::Authenticating => "Authenticating",
+                crate::plugins::plugin_obs::ObsConnectionStatus::Authenticated => "Authenticated",
+                crate::plugins::plugin_obs::ObsConnectionStatus::Error => "Error",
+            };
+            
+            Ok(serde_json::json!({
+                "success": true,
+                "status": status_str
+            }))
+        },
+        None => Ok(serde_json::json!({
+            "success": false,
+            "error": "Connection not found"
+        }))
+    }
+}
+
+#[tauri::command]
+pub async fn obs_get_connections(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+    log::info!("OBS get connections called");
+    
+    let connections = app.obs_plugin().get_connection_names().await;
+    let mut connection_details = Vec::new();
+    
+    for name in connections {
+        if let Some(status) = app.obs_plugin().get_connection_status(&name).await {
+            let status_str = match status {
+                crate::plugins::plugin_obs::ObsConnectionStatus::Disconnected => "Disconnected",
+                crate::plugins::plugin_obs::ObsConnectionStatus::Connecting => "Connecting",
+                crate::plugins::plugin_obs::ObsConnectionStatus::Connected => "Connected",
+                crate::plugins::plugin_obs::ObsConnectionStatus::Authenticating => "Authenticating",
+                crate::plugins::plugin_obs::ObsConnectionStatus::Authenticated => "Authenticated",
+                crate::plugins::plugin_obs::ObsConnectionStatus::Error => "Error",
+            };
+            
+            connection_details.push(serde_json::json!({
+                "name": name,
+                "status": status_str
+            }));
+        }
+    }
+    
+    Ok(serde_json::json!({
+        "success": true,
+        "connections": connection_details
+    }))
+}
+
+#[tauri::command]
 pub async fn obs_disconnect(connection_name: String, app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
     log::info!("OBS disconnect called for connection: {}", connection_name);
     app.obs_plugin().remove_connection(&connection_name).await.map_err(|e| e.to_string())?;
