@@ -15,6 +15,18 @@ declare global {
   }
 }
 
+/**
+ * Check if Tauri is available (same logic as environment detection)
+ */
+const isTauriAvailable = (): boolean => {
+  const tauriAvailable = typeof window !== 'undefined' && !!window.__TAURI__;
+  const isTauriContext = tauriAvailable || 
+    (typeof window !== 'undefined' && window.location.protocol === 'tauri:') ||
+    (typeof window !== 'undefined' && window.location.hostname === 'localhost' && window.location.port === '3000');
+  
+  return isTauriContext;
+};
+
 const LiveDataPanel: React.FC = () => {
   const [enabled, setEnabled] = useState(true);
   const [selectedType, setSelectedType] = useState<LogType>('pss');
@@ -38,7 +50,7 @@ const LiveDataPanel: React.FC = () => {
 
     const setupStreaming = async () => {
       try {
-        if (window.__TAURI__ && window.__TAURI__.event) {
+        if (isTauriAvailable() && window.__TAURI__ && window.__TAURI__.event) {
           const result = await diagLogsCommands.setLiveDataStreaming(selectedType, enabled);
           if (!result.success) {
             setError(`Failed to ${enabled ? 'start' : 'stop'} streaming: ${result.error}`);
@@ -74,7 +86,7 @@ const LiveDataPanel: React.FC = () => {
           console.error('Error cleaning up listener:', err);
         }
       }
-      if (window.__TAURI__ && window.__TAURI__.event) {
+      if (isTauriAvailable() && window.__TAURI__ && window.__TAURI__.event) {
         diagLogsCommands.setLiveDataStreaming(selectedType, false).catch(err => {
           console.error('Error stopping streaming:', err);
         });

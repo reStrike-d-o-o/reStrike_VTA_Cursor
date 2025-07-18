@@ -6,7 +6,7 @@
   "build": {
     "frontendDist": "ui/build",
     "devUrl": "http://localhost:3000",
-    "beforeDevCommand": "cd ui && npm run start",
+    "beforeDevCommand": "cd ui && npm start",
     "beforeBuildCommand": "cd ui && npm run build"
   },
   "app": {
@@ -54,9 +54,6 @@
       "removeDir": true,
       "removeFile": true,
       "scope": ["$APPDATA/reStrikeVTA/**", "$APPDATA/reStrikeVTA/log/**"]
-    },
-    "path": {
-      "all": true
     },
     "dialog": {
       "open": true,

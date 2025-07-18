@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { useAppStore } from '../../stores';
 import Button from '../atoms/Button';
 import { StatusDot } from '../atoms/StatusDot';
 
@@ -12,41 +11,59 @@ interface ObsConnection {
   error?: string;
 }
 
+/**
+ * Check if Tauri is available (same logic as environment detection)
+ */
+const isTauriAvailable = (): boolean => {
+  const tauriAvailable = typeof window !== 'undefined' && !!window.__TAURI__;
+  const isTauriContext = tauriAvailable || 
+    (typeof window !== 'undefined' && window.location.protocol === 'tauri:') ||
+    (typeof window !== 'undefined' && window.location.hostname === 'localhost' && window.location.port === '3000');
+  
+  return isTauriContext;
+};
+
 const ObsWebSocketManager: React.FC = () => {
-  const { obsConnections } = useAppStore();
   const [connections, setConnections] = useState<ObsConnection[]>([
-    { name: 'OBS Studio', host: 'localhost', port: 4455, status: 'disconnected' }
+    {
+      name: 'OBS Studio 1',
+      host: 'localhost',
+      port: 4455,
+      status: 'disconnected'
+    }
   ]);
 
-  // Windows-specific initialization
+  // Initialize Windows-specific features
   useEffect(() => {
-    console.log('Initializing Windows-only OBS WebSocket Manager');
+    const initializeWindowsFeatures = async () => {
+      try {
+        // Initialize Tauri commands for OBS integration
+        if (isTauriAvailable()) {
+          console.log('✅ Tauri environment detected for OBS integration');
+          
+          // Initialize OBS status monitoring
+          // Initialize WebSocket connection management
+          // Initialize recording controls
+        }
+      } catch (error) {
+        console.error('❌ Failed to initialize Windows features:', error);
+      }
+    };
+
     initializeWindowsFeatures();
   }, []);
 
-  const initializeWindowsFeatures = async () => {
-    try {
-      // Initialize Tauri commands for OBS integration
-      if (window.__TAURI__) {
-        console.log('✅ Tauri environment detected for OBS integration');
-        
-        // Initialize OBS WebSocket connection
-        // Initialize video playback system
-        // Initialize PSS protocol listener
-      }
-    } catch (error) {
-      console.error('❌ Failed to initialize Windows features:', error);
-    }
-  };
-
   const connectToObs = async (connectionName: string) => {
     console.log(`Connecting to OBS: ${connectionName}`);
+    updateConnectionStatus(connectionName, 'connecting');
     
     try {
       // Use Tauri command for OBS connection
-      if (window.__TAURI__) {
+      if (isTauriAvailable() && window.__TAURI__) {
         const result = await window.__TAURI__.invoke('obs_connect', {
-          url: `ws://localhost:4455`
+          connectionName,
+          host: 'localhost',
+          port: 4455
         });
         
         if (result.success) {
@@ -71,7 +88,7 @@ const ObsWebSocketManager: React.FC = () => {
     
     try {
       // Use Tauri command for OBS disconnection
-      if (window.__TAURI__) {
+      if (isTauriAvailable() && window.__TAURI__) {
         const result = await window.__TAURI__.invoke('obs_disconnect', {
           connectionName
         });
@@ -97,7 +114,7 @@ const ObsWebSocketManager: React.FC = () => {
     
     try {
       // Use Tauri command for OBS status
-      if (window.__TAURI__) {
+      if (isTauriAvailable() && window.__TAURI__) {
         const result = await window.__TAURI__.invoke('obs_get_status');
         
         if (result.success) {
