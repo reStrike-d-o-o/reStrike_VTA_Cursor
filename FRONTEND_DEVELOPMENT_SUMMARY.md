@@ -1,294 +1,337 @@
 # Frontend Development Summary
 
-## 🎯 Overview
+## Current Status ✅
 
-Successfully implemented a comprehensive, modern frontend for the reStrike VTA project with full OBS WebSocket integration, video playback capabilities, and a professional overlay system.
+### Tauri v2 Integration Complete
+- **Native Windows Mode**: Successfully running as native Windows desktop application
+- **Environment Detection**: Automatic detection of Tauri API availability (`window.__TAURI__`)
+- **Command Integration**: Full Tauri command invocation working
+- **Hot Reload**: Development mode with live reload for both frontend and backend
+- **Build System**: Integrated with Tauri build process
 
-## ✅ What Was Accomplished
+### Atomic Design Implementation Complete
+- **Atoms**: All basic UI components extracted and implemented
+  - Button, Input, Checkbox, Label, StatusDot (Badge), Icon
+- **Molecules**: Composite components fully functional
+  - EventTableSection, LiveDataPanel, LogDownloadList, LogToggleGroup
+- **Organisms**: Complex UI sections implemented
+  - EventTable, MatchInfoSection, ObsWebSocketManager, PlayerInfoSection
+- **Layouts**: Page and section layouts complete
+  - DockBar, AdvancedPanel, StatusbarAdvanced, StatusbarDock
 
-### 1. **State Management with Zustand**
-- **Comprehensive Store**: Created a full-featured Zustand store with TypeScript types
-- **OBS Connections**: Manage multiple OBS WebSocket connections with status tracking
-- **Video Clips**: Complete video clip management with metadata and tags
-- **Overlay Settings**: Configurable overlay position, theme, opacity, and scale
-- **UI State**: Loading states, error handling, and view management
-
-### 2. **Modern Overlay Component**
-- **Video Playback**: Full HTML5 video player with controls
-- **Positioning**: 5 different overlay positions (top-left, top-right, bottom-left, bottom-right, center)
-- **Themes**: Dark, light, and transparent themes
-- **Controls**: Play/pause, seek, fullscreen, and reset functionality
-- **Responsive**: Scales and adapts to different screen sizes
-- **Animations**: Smooth framer-motion animations for all interactions
-
-### 3. **Video Clips Management**
-- **Clip Library**: Grid-based clip management with thumbnails
-- **Search & Filter**: Text search and tag-based filtering
-- **Metadata**: Duration, timestamps, and custom tags
-- **Statistics**: Total clips, duration, and usage statistics
-- **Quick Actions**: Play, delete, and manage clips
-
-### 4. **Enhanced OBS WebSocket Manager**
-- **Dual Protocol**: Support for both v4 and v5 OBS WebSocket protocols
-- **Connection Management**: Add, remove, and manage multiple OBS connections
-- **Real-time Status**: Live connection status with visual indicators
-- **Protocol Information**: Detailed information about v4 vs v5 differences
-- **Authentication**: Password and SHA256 challenge-response support
-
-### 5. **Comprehensive Settings**
-- **Tabbed Interface**: Overlay, OBS, and Advanced settings
-- **Live Preview**: Real-time preview of overlay changes
-- **Performance Settings**: Video quality and hardware acceleration options
-- **Keyboard Shortcuts**: Configurable shortcuts for all actions
-- **Data Management**: Import/export settings and data cleanup
-
-### 6. **Main Application**
-- **Navigation**: Clean header with navigation tabs
-- **Status Indicators**: Real-time OBS and video status
-- **Keyboard Shortcuts**: Global shortcuts for quick access
-- **Error Handling**: Toast notifications for errors
-- **Loading States**: Professional loading indicators
-- **Responsive Design**: Works on desktop and mobile
-
-## 🎨 UI/UX Features
-
-### Design System
-- **Dark Theme**: Professional dark theme with blue accents
-- **Consistent Spacing**: Tailwind CSS for consistent design
-- **Smooth Animations**: Framer-motion for all interactions
-- **Visual Feedback**: Hover states, loading indicators, and status colors
-- **Accessibility**: Proper contrast ratios and keyboard navigation
-
-### User Experience
-- **Intuitive Navigation**: Clear tab structure with icons and shortcuts
-- **Quick Actions**: One-click access to common functions
-- **Real-time Updates**: Live status indicators and progress
-- **Error Recovery**: Clear error messages with auto-dismiss
-- **Performance**: Optimized rendering and state updates
-
-## 🔧 Technical Implementation
-
-### Architecture
+### Component Architecture
 ```
-ui/src/
-├── stores/
-│   └── index.ts              # Zustand store with TypeScript types
-├── components/
-│   ├── App.tsx              # Main application with navigation
-│   ├── Overlay.tsx          # Video overlay component
-│   ├── VideoClips.tsx       # Clip management interface
-│   ├── ObsWebSocketManager.tsx # OBS connection manager
-│   └── Settings.tsx         # Settings and configuration
-└── index.tsx                # React entry point
+ui/src/components/
+├── atoms/                    # Basic UI components
+│   ├── Button.tsx           # Reusable button component
+│   ├── Input.tsx            # Form input component
+│   ├── Checkbox.tsx         # Checkbox component
+│   ├── Label.tsx            # Form label component
+│   ├── StatusDot.tsx        # Status indicator component
+│   └── Icon.tsx             # Icon component
+├── molecules/               # Composite components
+│   ├── EventTableSection.tsx # Event table section
+│   ├── LiveDataPanel.tsx    # Live data display
+│   ├── LogDownloadList.tsx  # Log download management
+│   └── LogToggleGroup.tsx   # Log toggle controls
+├── organisms/               # Complex UI sections
+│   ├── EventTable.tsx       # Main event table
+│   ├── MatchInfoSection.tsx # Match information display
+│   ├── ObsWebSocketManager.tsx # OBS connection management
+│   └── PlayerInfoSection.tsx # Player information display
+└── layouts/                 # Page and section layouts
+    ├── DockBar.tsx          # Main sidebar layout
+    ├── AdvancedPanel.tsx    # Advanced settings panel
+    ├── StatusbarAdvanced.tsx # Advanced status bar
+    └── StatusbarDock.tsx    # Status bar for dock
 ```
 
-### Key Technologies
-- **React 18**: Latest React with hooks and modern patterns
-- **TypeScript**: Full type safety throughout the application
-- **Zustand**: Lightweight state management
-- **Framer Motion**: Smooth animations and transitions
-- **Tailwind CSS**: Utility-first CSS framework
-- **HTML5 Video**: Native video playback capabilities
+## Environment Detection
 
-### State Management
+### Tauri API Detection
+The application automatically detects whether it's running in native Windows mode or web mode:
+
 ```typescript
-// Comprehensive store with all application state
-interface AppState {
-  obsConnections: ObsConnection[];
-  overlaySettings: OverlaySettings;
-  videoClips: VideoClip[];
-  currentClip: VideoClip | null;
-  isPlaying: boolean;
-  currentView: 'overlay' | 'settings' | 'clips' | 'obs-manager';
-  isLoading: boolean;
-  error: string | null;
+// ui/src/hooks/useEnvironment.ts
+export const useEnvironment = () => {
+  const [tauriAvailable, setTauriAvailable] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const checkTauriAvailability = async () => {
+      try {
+        // Check if Tauri API is available
+        if (typeof window !== 'undefined' && window.__TAURI__) {
+          // Test Tauri command invocation
+          await invoke('get_app_status');
+          setTauriAvailable(true);
+        } else {
+          setTauriAvailable(false);
+        }
+      } catch (error) {
+        console.warn('Tauri API not available:', error);
+        setTauriAvailable(false);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkTauriAvailability();
+  }, []);
+
+  return {
+    tauriAvailable,
+    isLoading,
+    isNative: tauriAvailable,
+    isWeb: !tauriAvailable && !isLoading
+  };
+};
+```
+
+### Environment Modes
+- **Native Mode**: Tauri API available, full desktop functionality
+- **Web Mode**: Running in browser, limited functionality for development/testing
+
+## Development Workflow
+
+### Starting Development
+```bash
+# From project root - starts both frontend and backend
+cd src-tauri
+cargo tauri dev
+```
+
+This command:
+1. Starts React development server (port 3000)
+2. Builds Rust backend
+3. Launches native Windows application
+4. Enables hot reload for both frontend and backend
+
+### Manual Development
+```bash
+# Terminal 1: Start React dev server
+cd ui
+npm run start:fast
+
+# Terminal 2: Start Tauri app
+cd src-tauri
+cargo tauri dev
+```
+
+### Build Commands
+```bash
+# Development build
+cd ui
+npm run build
+
+# Production build with Tauri
+cd src-tauri
+cargo tauri build
+```
+
+## Component System
+
+### Atoms (Basic Components)
+All atomic components are fully implemented with:
+- **TypeScript**: Full type safety
+- **Tailwind CSS**: Utility-first styling
+- **Accessibility**: ARIA labels and keyboard navigation
+- **Props Interface**: Flexible prop configurations
+- **Consistent API**: Standardized component interfaces
+
+#### Button Component
+```typescript
+interface ButtonProps {
+  variant?: 'primary' | 'secondary' | 'danger';
+  size?: 'sm' | 'md' | 'lg';
+  disabled?: boolean;
+  children: React.ReactNode;
+  onClick?: () => void;
 }
 ```
 
-## 🎮 User Interface Components
+#### StatusDot Component
+```typescript
+interface StatusDotProps {
+  status: 'online' | 'offline' | 'warning' | 'error';
+  size?: 'sm' | 'md' | 'lg';
+  label?: string;
+}
+```
 
-### 1. **Header Navigation**
-- Logo and application title
-- Tab navigation with keyboard shortcuts
-- Real-time status indicators
-- Overlay visibility toggle
+### Molecules (Composite Components)
+Molecules combine atoms to create functional UI sections:
 
-### 2. **Overlay Component**
-- Positionable video player
-- Theme customization
-- Fullscreen support
-- Progress controls
-- Status bar with OBS and video info
+#### EventTableSection
+- Combines EventTable organism with filtering controls
+- Handles event data display and interaction
+- Integrates with Tauri commands for data retrieval
 
-### 3. **Video Clips Manager**
-- Grid layout with clip thumbnails
-- Search and tag filtering
-- Add/edit/delete functionality
-- Statistics dashboard
-- Quick play actions
+#### LiveDataPanel
+- Real-time data display component
+- Integrates with OBS WebSocket for live data
+- Status indicators and connection management
 
-### 4. **OBS WebSocket Manager**
-- Connection configuration
-- Protocol version selection
-- Real-time status monitoring
-- Authentication setup
-- Protocol information display
+### Organisms (Complex Sections)
+Organisms represent major UI sections:
 
-### 5. **Settings Panel**
-- Tabbed interface for different settings
-- Live preview of changes
-- Performance configuration
-- Keyboard shortcuts
-- Data management tools
+#### DockBar
+- Main sidebar with player info and controls
+- Two-column layout: SidebarSmall and SidebarBig
+- Status indicators and navigation controls
 
-## ⌨️ Keyboard Shortcuts
+#### AdvancedPanel
+- Settings and configuration panel
+- Tabbed interface for different settings categories
+- Diagnostics and log management
 
-| Shortcut | Action |
-|----------|--------|
-| `Ctrl+Shift+O` | Toggle overlay visibility |
-| `Ctrl+1` | Switch to Overlay view |
-| `Ctrl+2` | Switch to Video Clips view |
-| `Ctrl+3` | Switch to OBS Manager view |
-| `Ctrl+4` | Switch to Settings view |
-| `Space` | Play/pause current video |
-| `F` | Toggle fullscreen |
-| `Left/Right Arrow` | Navigate between clips |
+### Layouts (Page Structure)
+Layouts define the overall page structure and organization.
 
-## 🚀 Performance Features
+## Tauri Integration
 
-### Optimizations
-- **Lazy Loading**: Components load only when needed
-- **Memoization**: React.memo for expensive components
-- **Efficient State**: Minimal re-renders with Zustand
-- **Smooth Animations**: Hardware-accelerated CSS transforms
-- **Responsive Images**: Optimized video thumbnails
+### Command Invocation
+```typescript
+// ui/src/utils/tauriCommands.ts
+import { invoke } from '@tauri-apps/api/core';
 
-### Monitoring
-- **Error Boundaries**: Graceful error handling
-- **Loading States**: User feedback during operations
-- **Status Indicators**: Real-time connection and playback status
-- **Performance Metrics**: Clip statistics and usage data
+export const tauriCommands = {
+  getAppStatus: () => invoke('get_app_status'),
+  obsGetStatus: () => invoke('obs_get_status'),
+  systemGetInfo: () => invoke('system_get_info'),
+  // ... other commands
+};
+```
 
-## 🔗 Integration Points
+### Environment Hooks
+```typescript
+// ui/src/hooks/useEnvironmentApi.ts
+export const useEnvironmentApi = () => {
+  const { tauriAvailable } = useEnvironment();
+  
+  const invokeCommand = useCallback(async (command: string, args?: any) => {
+    if (!tauriAvailable) {
+      throw new Error('Tauri API not available');
+    }
+    return await invoke(command, args);
+  }, [tauriAvailable]);
 
-### Backend Integration
-- **OBS WebSocket**: Full v4/v5 protocol support
-- **Video Playback**: HTML5 video with custom controls
-- **State Persistence**: Local storage for settings and clips
-- **Error Handling**: Comprehensive error management
+  return { invokeCommand, tauriAvailable };
+};
+```
 
-### External Services
-- **OBS Studio**: WebSocket connection management
-- **Video Files**: Local file system integration
-- **Settings**: Import/export functionality
-- **Data Management**: Backup and restore capabilities
+## Styling System
 
-## 📱 Responsive Design
+### Tailwind CSS Configuration
+```javascript
+// ui/tailwind.config.js
+module.exports = {
+  content: ['./src/**/*.{js,jsx,ts,tsx}'],
+  theme: {
+    extend: {
+      colors: {
+        // Custom color palette for sports broadcasting
+        primary: '#1e40af',
+        secondary: '#64748b',
+        accent: '#f59e0b',
+        // ... other custom colors
+      }
+    }
+  },
+  plugins: []
+};
+```
 
-### Breakpoints
-- **Mobile**: 320px - 768px
-- **Tablet**: 768px - 1024px
-- **Desktop**: 1024px+
+### Design System
+- **Color Palette**: Sports broadcasting themed colors
+- **Typography**: Consistent font hierarchy
+- **Spacing**: Standardized spacing scale
+- **Components**: Reusable component patterns
 
-### Adaptations
-- **Collapsible Navigation**: Icons only on small screens
-- **Grid Layouts**: Responsive grid systems
-- **Touch Controls**: Touch-friendly button sizes
-- **Viewport Scaling**: Proper scaling for different devices
+## State Management
 
-## 🎯 Next Steps
+### React Hooks
+- **useEnvironment**: Tauri API detection
+- **useEnvironmentApi**: Tauri command invocation
+- **useEnvironmentObs**: OBS WebSocket integration
 
-### Immediate Actions
-1. **Test OBS Integration**: Verify WebSocket connections work
-2. **Video Playback**: Test with actual video files
-3. **Performance Testing**: Load testing with many clips
-4. **User Testing**: Gather feedback on UI/UX
+### Component State
+- Local state management with useState
+- Context for shared state when needed
+- Props for component communication
 
-### Future Enhancements
-1. **Advanced Video Features**: Slow motion, frame-by-frame
-2. **Clip Templates**: Predefined clip configurations
-3. **Automation**: Auto-clip generation from OBS
-4. **Cloud Storage**: Remote clip storage and sharing
-5. **Multi-language**: Internationalization support
+## Performance Optimization
 
-## 📊 Success Metrics
+### Code Splitting
+- Lazy loading for large components
+- Dynamic imports for better performance
+- Bundle optimization
 
-### Development Metrics
-- **Lines of Code**: 1,481 lines added
-- **Components**: 5 new React components
-- **TypeScript**: 100% type coverage
-- **Dependencies**: All required packages installed
+### Rendering Optimization
+- React.memo for expensive components
+- useCallback and useMemo for performance
+- Efficient re-rendering strategies
 
-### User Experience Metrics
-- **Navigation**: Intuitive tab-based navigation
-- **Performance**: Smooth 60fps animations
-- **Accessibility**: Keyboard navigation support
-- **Responsiveness**: Works on all screen sizes
+## Testing Strategy
 
-## 🎉 Summary
+### Component Testing
+- Unit tests for atomic components
+- Integration tests for molecules and organisms
+- E2E tests for complete workflows
 
-The frontend development has successfully created a professional, feature-rich overlay and automation toolkit with:
+### Tauri Testing
+- Mock Tauri API for testing
+- Environment detection testing
+- Command invocation testing
 
-- ✅ **Modern UI/UX** with smooth animations and responsive design
-- ✅ **Comprehensive State Management** with Zustand and TypeScript
-- ✅ **Full OBS Integration** supporting both v4 and v5 protocols
-- ✅ **Video Playback System** with advanced controls and management
-- ✅ **Professional Settings** with live preview and customization
-- ✅ **Keyboard Shortcuts** for power users
-- ✅ **Error Handling** and loading states
-- ✅ **Performance Optimizations** for smooth operation
+## Accessibility
 
-The application is now ready for testing and further development, providing a solid foundation for the reStrike VTA project's overlay and automation capabilities.
+### ARIA Support
+- Proper ARIA labels and descriptions
+- Keyboard navigation support
+- Screen reader compatibility
 
----
+### Color Contrast
+- WCAG AA compliance
+- High contrast mode support
+- Color-blind friendly design
 
-**📝 Note**: This frontend implementation provides a complete, production-ready interface for the reStrike VTA project. All components are fully functional and ready for integration with the backend services.
+## Documentation
 
-**🔄 Last Updated**: $(date)
-**👤 Developed by**: AI Assistant
-**✅ Status**: Complete and Ready for Testing 
+### Component Documentation
+- Inline JSDoc comments
+- Props interface documentation
+- Usage examples
 
-## 2024-Atomic Component Reorganization
+### Architecture Documentation
+- Component hierarchy documentation
+- Design system guidelines
+- Development workflow documentation
 
-- All components in `ui/src/components/` were audited and categorized as atoms, molecules, organisms, or layouts.
-- Each component was copied to a `.copy.tsx` file before any move or deletion, per project rules.
-- Components were moved to their respective atomic folders: `atoms/`, `molecules/`, `organisms/`, `layouts/`.
-- All imports throughout the codebase were updated to reference the new locations.
-- All original root-level component files were deleted after verification.
-- The application was tested and confirmed working after the reorganization.
-- See also: updates in PROJECT_STRUCTURE.md, LIBRARY_STRUCTURE.md, and ui-design-document.md. 
+## Future Enhancements
 
-## Atomic Extraction Progress (2024)
-- Button, Input, Checkbox, Label atoms: Extracted and integrated.
-- Badge/StatusDot atom: Extracted and all status indicators replaced.
-- Icon atom: Extracted and all emoji/icon usages replaced.
-- All accessibility linter issues (form/select labeling) fixed as of this update. 
+### Planned Features
+1. **Advanced Filtering**: Enhanced event filtering capabilities
+2. **Real-time Updates**: WebSocket-based real-time data updates
+3. **Custom Themes**: User-configurable themes
+4. **Internationalization**: Multi-language support
 
-## OBS WebSocket v5 Event Handling (Backend)
+### Technical Improvements
+1. **Performance**: Further optimization for large datasets
+2. **Testing**: Comprehensive test coverage
+3. **Documentation**: Enhanced developer documentation
+4. **Accessibility**: Improved accessibility features
 
-- The backend emits all official OBS WebSocket v5 event types as `ObsEvent::Raw`.
-- Unknown or future event types are also handled generically, so the frontend can subscribe to and handle any event type.
-- Detailed frontend handling can be added incrementally for any event type as needed. 
+## Troubleshooting
 
-## OBS WebSocket Runtime Connection Management
+### Common Issues
+- **Tauri API Not Available**: Check environment detection
+- **Hot Reload Issues**: Verify development server setup
+- **Build Errors**: Clean and rebuild project
+- **Styling Issues**: Check Tailwind configuration
 
-- The backend supports runtime add/remove of OBS connections via Tauri commands (`add_obs_connection`, `remove_obs_connection`).
-- The frontend can add or remove connections dynamically and receive events for each connection by name. 
-
-## OBS WebSocket Command Sending
-
-- The backend supports sending commands to OBS via a Tauri command (`obs_send_request`).
-- The frontend can control any connected OBS instance and receive responses for each command. 
-
-## AdvancedPanel Drawer-Based UI (2024-06)
-The AdvancedPanel now uses a drawer-based UI:
-- **Left Sidebar:** Vertical icon list for drawers: PSS, OBS, Video, AI Analyzer, Settings
-- **Right Content Area:** Shows content for the selected drawer
-- **Drawers:**
-  - PSS: UDP server, PSS protocol, event DB
-  - OBS: Connection management, options
-  - Video: mpv integration
-  - AI Analyzer: Report creation, data analyzer
-  - Settings: All settings, including Diagnostics & Logs Manager
-
-This modular structure allows for easy expansion and clear separation of advanced features. 
+### Development Tips
+- Use React DevTools for debugging
+- Monitor Tauri console for backend issues
+- Check browser console for frontend errors
+- Verify environment detection in development 

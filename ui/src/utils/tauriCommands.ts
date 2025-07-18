@@ -267,9 +267,35 @@ export const testTauriApi = async (): Promise<boolean> => {
     }
 
     console.log('🔍 Testing Tauri API with get_app_status command...');
-    const result = await window.__TAURI__.invoke('get_app_status');
-    console.log('✅ Tauri API test successful:', result);
-    return true;
+    
+    // Try multiple commands to test Tauri API
+    try {
+      const result = await window.__TAURI__.invoke('get_app_status');
+      console.log('✅ get_app_status successful:', result);
+      return true;
+    } catch (error) {
+      console.log('⚠️ get_app_status failed, trying obs_get_status...');
+      
+      try {
+        const obsResult = await window.__TAURI__.invoke('obs_get_status');
+        console.log('✅ obs_get_status successful:', obsResult);
+        return true;
+      } catch (obsError) {
+        console.log('⚠️ obs_get_status failed, trying system_get_info...');
+        
+        try {
+          const sysResult = await window.__TAURI__.invoke('system_get_info');
+          console.log('✅ system_get_info successful:', sysResult);
+          return true;
+        } catch (sysError) {
+          console.log('❌ All Tauri API tests failed');
+          console.log('get_app_status error:', error);
+          console.log('obs_get_status error:', obsError);
+          console.log('system_get_info error:', sysError);
+          return false;
+        }
+      }
+    }
   } catch (error) {
     console.log('❌ Tauri API test failed:', error);
     return false;

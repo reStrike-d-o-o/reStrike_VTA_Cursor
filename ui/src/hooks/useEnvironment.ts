@@ -33,10 +33,9 @@ export const useEnvironment = (): EnvironmentInfo => {
       }
       
       // Check if we're in a Tauri context
-      const isTauriContext = tauriAvailable && tauriApiWorking;
-      
-      // For development mode, if we're on localhost:3000, assume we're in Tauri mode
-      // This is because Tauri dev server runs React on localhost:3000
+      // If window.__TAURI__ exists, we're likely in native mode
+      // The API test is just a verification, but the presence of __TAURI__ is the main indicator
+      const isTauriContext = tauriAvailable;
       const isWindows = isTauriContext;
       const isWeb = !isWindows;
       const environment = isWindows ? 'windows' : 'web';
@@ -55,7 +54,7 @@ export const useEnvironment = (): EnvironmentInfo => {
         environment,
         isWindows,
         isWeb,
-        tauriAvailable: tauriApiWorking,
+        tauriAvailable: tauriAvailable,
       });
     };
 

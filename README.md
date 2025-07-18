@@ -1,277 +1,252 @@
-# reStrike VTA - Taekwondo Video Replay Manager
+# reStrike VTA
 
-> **Windows-only native desktop application** for taekwondo referees using Tauri and React
+A Windows-only native desktop application for instant video replay and analysis in sports broadcasting. Built with Tauri v2 (Rust backend) and React (frontend).
 
-## 🎯 **Project Overview**
+## 🚀 Current Status
 
-reStrike VTA is a **native Windows desktop application** designed specifically for taekwondo referees and competition officials. It provides real-time video replay capabilities, OBS integration, and competition data management through a modern, professional interface.
+✅ **Native Windows Mode**: Successfully running as native Windows desktop application  
+✅ **Tauri v2 Integration**: Complete migration with all features working  
+✅ **Hot Reload**: Development mode with live reload for both frontend and backend  
+✅ **Environment Detection**: Automatic detection of Tauri API availability  
 
-### **Key Features**
-- 🎥 **Video Replay System** - Instant video replay with mpv integration
-- 📡 **OBS Integration** - Dual WebSocket protocol (v4/v5) support
-- 📊 **PSS Protocol** - Real-time UDP competition data parsing
-- 🏁 **Flag Management** - 253 IOC flags with React integration
-- 🖥️ **Native Windows UI** - Professional desktop interface
-- 🔄 **Live Data Streaming** - Real-time competition data
-- 📝 **Event Logging** - Comprehensive logging and diagnostics
+## 🏗️ Architecture
 
-## 🏗️ **Architecture**
+- **Backend**: Rust with Tauri v2 for native Windows integration
+- **Frontend**: React 18 with TypeScript and Tailwind CSS
+- **Design System**: Atomic design with reusable components
+- **State Management**: React hooks and context
+- **Build System**: Integrated Tauri build process
 
-### **Technology Stack**
-- **Frontend**: React 18 + TypeScript + Tailwind CSS + Framer Motion
-- **Backend**: Rust + Tauri framework
-- **Video**: mpv with hardware acceleration
-- **Real-time**: WebSocket (OBS), UDP (PSS)
-- **Flags**: 253 IOC flags with React integration
+## 📁 Project Structure
 
-### **Project Structure**
 ```
 reStrike_VTA_Cursor/
-├── 📁 src-tauri/              # Tauri v2 application (Rust backend)
-│   ├── 📁 src/                # Rust source code
-│   │   ├── 📁 plugins/        # Plugin modules (OBS, PSS, Video)
-│   │   ├── 📁 core/           # Core application logic
-│   │   ├── 📁 types/          # Type definitions
-│   │   └── 📁 utils/          # Utility functions
-│   ├── 📁 icons/              # Application icons
-│   ├── 📁 gen/                # Generated schemas
-│   ├── Cargo.toml             # Rust dependencies
-│   └── tauri.conf.json        # Tauri configuration
-├── 📁 ui/                     # React frontend
-│   ├── 📁 src/                # React source code
-│   │   ├── 📁 components/     # React components (atomic design)
-│   │   ├── 📁 hooks/          # React hooks
-│   │   ├── 📁 utils/          # Utility functions
-│   │   └── 📁 types/          # TypeScript types
-│   ├── 📁 public/             # Static assets
-│   │   └── 📁 assets/flags/   # 253 IOC flag images
-│   └── package.json           # Node.js dependencies
-├── 📁 docs/                   # Project documentation
-├── 📁 scripts/                # Build and utility scripts
-└── package.json               # Project-level scripts
+├── src-tauri/                    # Tauri v2 backend (Rust)
+│   ├── src/                      # Rust source code
+│   │   ├── main.rs              # Tauri app entry point
+│   │   ├── tauri_commands.rs    # Tauri command definitions
+│   │   ├── plugins/             # Plugin modules (obs, playback, store, udp)
+│   │   ├── obs/                 # OBS WebSocket integration
+│   │   ├── pss/                 # PSS protocol handling
+│   │   └── video/               # Video player integration
+│   ├── Cargo.toml               # Rust dependencies
+│   └── tauri.conf.json          # Tauri configuration
+├── ui/                          # React frontend
+│   ├── src/components/          # Atomic design components
+│   │   ├── atoms/               # Basic UI components
+│   │   ├── molecules/           # Composite components
+│   │   ├── organisms/           # Complex UI sections
+│   │   └── layouts/             # Page and section layouts
+│   ├── src/hooks/               # Custom React hooks
+│   ├── src/utils/               # Utility functions
+│   └── public/assets/flags/     # Country flag images
+├── docs/                        # Project documentation
+└── scripts/                     # Development scripts
 ```
 
-## 🚀 **Quick Start**
+## 🛠️ Development Setup
 
-### **Prerequisites**
-- **Windows 10/11** (x64)
-- **Node.js 24+** (LTS)
-- **Rust** (stable, MSVC toolchain)
-- **OBS Studio** (with WebSocket enabled, no auth)
-- **mpv player** (Windows build)
+### Prerequisites
 
-### **Installation**
+- **Windows 10/11**: Primary development platform
+- **Rust**: Latest stable version
+- **Node.js**: Version 18 or higher
+- **Git**: Version control
+
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd reStrike_VTA_Cursor
+   ```
+
+2. **Install frontend dependencies**
+   ```bash
+   cd ui
+   npm install
+   ```
+
+3. **Install Rust dependencies**
+   ```bash
+   cd ../src-tauri
+   cargo build
+   ```
+
+### Development Workflow
+
+#### Quick Start (Recommended)
 ```bash
-# Clone repository
-git clone https://github.com/reStrike-d-o-o/reStrike_VTA_Cursor.git
-cd reStrike_VTA_Cursor
-
-# Install dependencies
-npm install
-cd ui && npm install && cd ..
-
-# Start development
-npm start
+# From project root - starts both frontend and backend
+cd src-tauri
+cargo tauri dev
 ```
 
-### **Build Commands**
+This single command:
+1. Starts React development server (port 3000)
+2. Builds Rust backend
+3. Launches native Windows application
+4. Enables hot reload for both frontend and backend
+
+#### Manual Development
 ```bash
-# Development
-npm start                    # Start Tauri development server
-npm run dev                  # Alternative development command
-npm run dev:fast            # Fast development mode
+# Terminal 1: Start React dev server
+cd ui
+npm run start:fast
 
-# Production
-npm run build               # Build for Windows
-npm run build:fast          # Fast production build
-
-# Testing
-npm test                    # Frontend tests
-npm run test:backend        # Backend tests
-
-# Maintenance
-npm run clean               # Clean build artifacts
-npm run clean:all           # Deep clean
-npm run format              # Format code
-npm run lint                # Lint code
+# Terminal 2: Start Tauri app
+cd src-tauri
+cargo tauri dev
 ```
 
-## 🌐 **Environment System**
-
-The project supports **dual environment operation** - **Web** and **Windows** modes with automatic detection and environment-specific features.
-
-### **Environment Detection**
-- **Automatic**: Detects Tauri availability and environment variables
-- **Manual Override**: Set `REACT_APP_ENVIRONMENT=web` or `REACT_APP_ENVIRONMENT=windows`
-- **Build Scripts**: Separate scripts for each environment
-
-### **Environment-Specific Features**
-
-#### **Windows Environment** 🪟
-- ✅ **Tauri Commands**: Native Windows API access
-- ✅ **Native File System**: Direct file system operations
-- ✅ **System Tray**: Windows system tray integration
-- ✅ **Auto Updates**: Automatic application updates
-- ✅ **OBS Integration**: Direct OBS WebSocket via Tauri
-- ✅ **Hardware Access**: Direct hardware control
-
-#### **Web Environment** 🌐
-- ✅ **Direct WebSocket**: Browser-based WebSocket connections
-- ✅ **HTTP API**: RESTful API communication
-- ✅ **Browser APIs**: File upload/download via browser
-- ✅ **Hot Reload**: Development hot reload support
-- ✅ **Cross-Platform**: Works on any platform with a browser
-
-### **Usage Examples**
+### Build Commands
 
 ```bash
-# Start in web mode
-npm run start:web
+# Development build
+cd ui
+npm run build
 
-# Start in Windows mode  
-npm run start:windows
-
-# Build for web
-npm run build:web
-
-# Build for Windows
-npm run build:windows
+# Production build with Tauri
+cd src-tauri
+cargo tauri build
 ```
 
-### **Environment-Aware Components**
+## 🎯 Key Features
 
-```typescript
-import { useEnvironment, EnvironmentWrapper } from './hooks/useEnvironment';
+### Core Functionality
+- **Instant Video Replay**: Quick access to recent video clips
+- **Event Tracking**: Real-time event capture and analysis
+- **OBS Integration**: Seamless connection with OBS Studio
+- **Flag Management**: Country flag recognition and display
+- **Advanced Panel**: Comprehensive settings and diagnostics
 
-// Environment detection
-const { environment, isWindows, isWeb } = useEnvironment();
+### UI Components
+- **DockBar**: Main sidebar with player info and controls
+- **Event Table**: Real-time event display with filtering
+- **Advanced Panel**: Settings, diagnostics, and configuration
+- **Status Indicators**: Real-time system status display
 
-// Environment-aware API calls
-const { apiCall } = useEnvironmentApi();
-await apiCall('obs/status');
+### Technical Features
+- **Environment Detection**: Automatic Tauri vs Web mode detection
+- **Plugin Architecture**: Modular backend design
+- **Error Handling**: Comprehensive error management
+- **Hot Reload**: Development efficiency with live updates
+- **Type Safety**: Full TypeScript and Rust type safety
 
-// Conditional rendering
-<WindowsOnly><NativeFeature /></WindowsOnly>
-<WebOnly><WebFeature /></WebOnly>
+## 🔧 Configuration
+
+### Environment Detection
+The application automatically detects whether it's running in:
+- **Native Mode**: Tauri API available (`window.__TAURI__` exists)
+- **Web Mode**: Running in browser without Tauri
+
+### Tauri Configuration
+- **Global Tauri API**: Enabled for frontend access
+- **Development Server**: React dev server integration
+- **Build Configuration**: Optimized for Windows
+- **Security**: Proper allowlist configuration
+
+## 📚 Documentation
+
+### Key Documents
+- [Project Structure](PROJECT_STRUCTURE.md): Detailed project organization
+- [Project Context](PROJECT_CONTEXT.md): High-level project overview
+- [Frontend Development Summary](FRONTEND_DEVELOPMENT_SUMMARY.md): Frontend architecture details
+- [Project Reorganization Summary](PROJECT_REORGANIZATION_SUMMARY.md): Migration history
+
+### Development Guides
+- [Development Setup](docs/development/): Development environment setup
+- [API Documentation](docs/api/): API reference
+- [Integration Guides](docs/integration/): Integration documentation
+
+## 🚨 Troubleshooting
+
+### Common Issues
+
+#### Port Conflicts
+```bash
+# Clean up ports before starting
+./scripts/development/cleanup-dev-environment.sh --cleanup
 ```
 
-## 🏁 **Flag Management System**
+#### Build Errors
+```bash
+# Clean and rebuild
+cd src-tauri
+cargo clean
+cargo build
+```
 
-### **Status**: ✅ **COMPLETE**
-- **253 IOC Flags**: All official International Olympic Committee flags
-- **Emoji Fallback**: Automatic fallback for missing flags
-- **React Integration**: `ui/src/utils/flagUtils.tsx` updated with all 253 IOC codes
-- **Download Script**: Python-based Wikipedia scraper with BeautifulSoup
-- **Storage**: `ui/public/assets/flags/` with 253 PNG files
-- **Documentation**: Complete system documentation in `docs/FLAG_MANAGEMENT_SYSTEM.md`
+#### Tauri API Issues
+- Verify environment detection in browser console
+- Check that `window.__TAURI__` is available
+- Ensure Tauri commands are properly registered
 
-### **Technical Implementation:**
-- **Download Script**: Python-based Wikipedia scraper with BeautifulSoup
-- **Strategy**: Prioritized Current NOCs, then downloaded from other tables only if IOC code not already present
-- **Reports**: JSON and Markdown reports generated automatically
-- **React Integration**: `ui/src/utils/flagUtils.tsx` updated with all 253 IOC codes
-- **Fallbacks**: Emoji flags for all codes with automatic error handling
-- **Storage**: `ui/public/assets/flags/` with 253 PNG files
-- **Documentation**: Complete system documentation in `docs/FLAG_MANAGEMENT_SYSTEM.md`
+#### Hot Reload Issues
+- Verify React development server is running on port 3000
+- Check Tauri configuration for correct dev path
+- Restart both frontend and backend servers
 
-## 🎥 **Video, OBS, and PSS Protocols**
+### Development Tips
+- Use React DevTools for frontend debugging
+- Monitor Tauri console for backend issues
+- Check browser console for frontend errors
+- Verify environment detection in development
 
-### **Video System**
-- **mpv Integration**: Hardware acceleration, advanced controls
-- **Clip Management**: Extract and save video clips
-- **Overlay System**: Video overlay with competition data
+## 🎨 UI/UX Features
 
-### **OBS Integration**
-- **Dual Protocol**: WebSocket v4/v5 support
-- **Connection Management**: Multiple OBS connections
-- **Scene Control**: Scene switching and management
-- **Recording/Streaming**: Start/stop recording and streaming
+### Design System
+- **Atomic Design**: Organized component hierarchy
+- **Dark Theme**: Professional dark theme with blue accents
+- **Responsive Design**: Works on different screen sizes
+- **Accessibility**: WCAG AA compliance
 
-### **PSS Protocol**
-- **Real-time UDP**: Competition data parsing
-- **Event Types**: Match events, scoring, timing
-- **Live Streaming**: Real-time data to UI components
+### Component Architecture
+- **Atoms**: Basic UI components (Button, Input, Checkbox, etc.)
+- **Molecules**: Composite components (EventTable, LogToggleGroup, etc.)
+- **Organisms**: Complex UI sections (DockBar, AdvancedPanel, etc.)
+- **Layouts**: Page and section layouts
 
-## 🛠️ **Development**
+## 🔮 Future Enhancements
 
-### **Key Components**
-- **6 React Components**: SidebarTest, Overlay, VideoClips, ObsWebSocketManager, Settings, EnvironmentTest
-- **3 Rust Plugins**: plugin_udp.rs, plugin_obs.rs, plugin_playback.rs
-- **Environment System**: Dual environment (Web/Windows) with automatic detection
+### Immediate Priorities
+1. **OBS Integration**: Complete WebSocket protocol implementation
+2. **Event System**: Implement PSS protocol event handling
+3. **Video Player**: Integrate mpv video player
+4. **Flag Management**: Complete flag recognition system
 
-### **Critical Configuration**
-- **OBS WebSocket**: Authentication must be disabled, port 4455
-- **Port Configuration**: 3000 (React), 1420 (Tauri), 4455 (OBS), 6000 (UDP PSS)
-- **Environment Variables**: Set for Windows/web development
+### Future Features
+1. **AI Integration**: Automated event analysis
+2. **Advanced Analytics**: Statistical analysis and reporting
+3. **Multi-language Support**: Internationalization
+4. **Plugin System**: Extensible plugin architecture
 
-### **Development Workflow**
-1. **Start Development**: `npm start` (runs Tauri dev server)
-2. **Make Changes**: Edit React components in `ui/src/components/`
-3. **Test Changes**: Use environment-aware hooks and components
-4. **Build for Production**: `npm run build` (creates Windows executable)
+## 🤝 Contributing
 
-## 📚 **Documentation**
+### Development Guidelines
+- Follow atomic design principles
+- Maintain type safety with TypeScript
+- Use proper error handling
+- Write comprehensive documentation
 
-### **Key Documentation Files**
-- **PROJECT_CONTEXT.md**: Complete project overview and status
-- **README.md**: Quick start and basic information
-- **docs/development/environment-system.md**: Environment system details
-- **docs/FLAG_MANAGEMENT_SYSTEM.md**: Flag system documentation
-- **docs/LIBRARY_STRUCTURE.md**: Technical architecture details
+### Code Quality
+- Run linting and type checking
+- Follow project coding conventions
+- Test functionality thoroughly
+- Update documentation as needed
 
-### **External Resources**
-- **Tauri**: https://tauri.app/docs/
-- **React**: https://react.dev/
-- **Rust**: https://doc.rust-lang.org/
-- **TypeScript**: https://www.typescriptlang.org/docs/
+## 📄 License
 
-## ✅ **Verification Checklist**
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-### **Before Starting Development**
-- [ ] Windows 10/11 with latest updates
-- [ ] Node.js v24+ installed
-- [ ] Rust stable installed
-- [ ] Tauri CLI installed
-- [ ] OBS Studio installed with WebSocket enabled (no auth)
-- [ ] mpv player installed
-- [ ] Project cloned and dependencies installed
+## 🆘 Support
 
-### **Development Verification**
-- [ ] `npm start` launches successfully
-- [ ] All 6 React components render without errors
-- [ ] OBS WebSocket connection works
-- [ ] Video playback is functional
-- [ ] Flag system displays 253 IOC flags
-- [ ] Environment switching works correctly
-- [ ] All tests pass
-
-### **Production Verification**
-- [ ] `npm run build` completes successfully
-- [ ] `cargo tauri build` creates executable
-- [ ] Application runs on clean Windows system
-- [ ] All features work in production build
-
-## 🚨 **Critical Notes**
-
-### **Windows-Only Application**
-- This project is a **native Windows desktop application** (no Docker/devcontainer)
-- All development, build, and deployment targets Windows 10/11 (x64)
-- Production deployment is via Windows .exe and MSI installer (no containerization)
-
-### **Environment System Compliance**
-- All new components must use environment-aware hooks
-- Follow the dual environment system for all features
-- Test in both web and Windows environments
-- Use environment wrappers for conditional rendering
-
-### **Performance Best Practices**
-- Use fast scripts for development (`npm run dev:fast`)
-- Clean caches regularly (`npm run clean:all`)
-- Monitor bundle size and build times
-- Optimize imports and dependencies
+For support and questions:
+- Check the [documentation](docs/)
+- Review [troubleshooting guide](#troubleshooting)
+- Open an issue for bugs or feature requests
 
 ---
 
-**License**: MIT  
-**Author**: damjanZGB  
-**Repository**: https://github.com/reStrike-d-o-o/reStrike_VTA_Cursor
+**Last Updated**: December 2024  
+**Status**: ✅ Native Windows Mode - Ready for Development

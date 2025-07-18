@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tauri Functionality Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: #ffffff;
+        }
+        .test-section {
+            background-color: #2a2a2a;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border-left: 4px solid #007acc;
+        }
+        .success { border-left-color: #4caf50; }
+        .error { border-left-color: #f44336; }
+        .warning { border-left-color: #ff9800; }
+        button {
+            background-color: #007acc;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #005a9e;
+        }
+        pre {
+            background-color: #000;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Tauri Functionality Test</h1>
+    
+    <div class="test-section">
+        <h2>Environment Detection</h2>
+        <div id="environment-info">Loading...</div>
+    </div>
+
+    <div class="test-section">
+        <h2>Tauri API Tests</h2>
+        <button onclick="testTauriAvailability()">Test Tauri Availability</button>
+        <button onclick="testGetAppStatus()">Test get_app_status</button>
+        <button onclick="testObsCommands()">Test OBS Commands</button>
+        <button onclick="testSystemCommands()">Test System Commands</button>
+        <div id="test-results">Click a button to run tests...</div>
+    </div>
+
+    <div class="test-section">
+        <h2>Console Output</h2>
+        <pre id="console-output"></pre>
+    </div>
+
+    <script>
+        // Capture console output
+        const originalLog = console.log;
+        const originalError = console.error;
+        const consoleOutput = document.getElementById('console-output');
+        
+        function addToConsole(message, type = 'log') {
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#ff6b6b' : type === 'warn' ? '#ffd93d' : '#6bcf7f';
+            consoleOutput.innerHTML += `<span style="color: ${color}">[${timestamp}] ${message}</span>\n`;
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            addToConsole(args.join(' '), 'log');
+        };
+        
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            addToConsole(args.join(' '), 'error');
+        };
+
+        // Environment detection
+        function detectEnvironment() {
+            const envInfo = document.getElementById('environment-info');
+            const tauriAvailable = typeof window !== 'undefined' && !!window.__TAURI__;
+            
+            let html = `
+                <p><strong>Window exists:</strong> ${typeof window !== 'undefined' ? '✅ Yes' : '❌ No'}</p>
+                <p><strong>Tauri available:</strong> ${tauriAvailable ? '✅ Yes' : '❌ No'}</p>
+            `;
+            
+            if (tauriAvailable) {
+                html += `
+                    <p><strong>Tauri keys:</strong> ${Object.keys(window.__TAURI__).join(', ')}</p>
+                    <p><strong>Invoke method:</strong> ${typeof window.__TAURI__.invoke === 'function' ? '✅ Available' : '❌ Missing'}</p>
+                `;
+            }
+            
+            envInfo.innerHTML = html;
+            console.log('🔍 Environment detection completed');
+        }
+
+        // Test Tauri availability
+        async function testTauriAvailability() {
+            const results = document.getElementById('test-results');
+            results.innerHTML = '<p>Testing Tauri availability...</p>';
+            
+            try {
+                const available = typeof window !== 'undefined' && !!window.__TAURI__;
+                console.log('🔍 Tauri availability test:', { available });
+                
+                if (available) {
+                    results.innerHTML = '<p class="success">✅ Tauri is available!</p>';
+                } else {
+                    results.innerHTML = '<p class="error">❌ Tauri is not available - running in web mode</p>';
+                }
+            } catch (error) {
+                console.error('❌ Tauri availability test failed:', error);
+                results.innerHTML = `<p class="error">❌ Test failed: ${error.message}</p>`;
+            }
+        }
+
+        // Test get_app_status command
+        async function testGetAppStatus() {
+            const results = document.getElementById('test-results');
+            results.innerHTML = '<p>Testing get_app_status command...</p>';
+            
+            try {
+                if (!window.__TAURI__) {
+                    throw new Error('Tauri not available');
+                }
+                
+                console.log('🔍 Testing get_app_status...');
+                const result = await window.__TAURI__.invoke('get_app_status');
+                console.log('✅ get_app_status result:', result);
+                
+                results.innerHTML = `<p class="success">✅ get_app_status successful: ${result}</p>`;
+            } catch (error) {
+                console.error('❌ get_app_status test failed:', error);
+                results.innerHTML = `<p class="error">❌ Test failed: ${error.message}</p>`;
+            }
+        }
+
+        // Test OBS commands
+        async function testObsCommands() {
+            const results = document.getElementById('test-results');
+            results.innerHTML = '<p>Testing OBS commands...</p>';
+            
+            try {
+                if (!window.__TAURI__) {
+                    throw new Error('Tauri not available');
+                }
+                
+                console.log('🔍 Testing OBS commands...');
+                const status = await window.__TAURI__.invoke('obs_get_status');
+                console.log('✅ OBS status result:', status);
+                
+                results.innerHTML = `<p class="success">✅ OBS commands working: ${JSON.stringify(status)}</p>`;
+            } catch (error) {
+                console.error('❌ OBS commands test failed:', error);
+                results.innerHTML = `<p class="error">❌ Test failed: ${error.message}</p>`;
+            }
+        }
+
+        // Test system commands
+        async function testSystemCommands() {
+            const results = document.getElementById('test-results');
+            results.innerHTML = '<p>Testing system commands...</p>';
+            
+            try {
+                if (!window.__TAURI__) {
+                    throw new Error('Tauri not available');
+                }
+                
+                console.log('🔍 Testing system commands...');
+                const info = await window.__TAURI__.invoke('system_get_info');
+                console.log('✅ System info result:', info);
+                
+                results.innerHTML = `<p class="success">✅ System commands working: ${JSON.stringify(info)}</p>`;
+            } catch (error) {
+                console.error('❌ System commands test failed:', error);
+                results.innerHTML = `<p class="error">❌ Test failed: ${error.message}</p>`;
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Tauri functionality test page loaded');
+            detectEnvironment();
+            
+            // Auto-test after a short delay
+            setTimeout(() => {
+                console.log('🔍 Running automatic tests...');
+                testTauriAvailability();
+            }, 1000);
+        });
+    </script>
+</body>
+</html> 
