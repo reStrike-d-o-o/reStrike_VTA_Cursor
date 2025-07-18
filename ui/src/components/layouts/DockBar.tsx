@@ -5,7 +5,7 @@ import StatusbarDock from './StatusbarDock';
 
 const DockBar: React.FC = () => {
   return (
-    <div className="flex flex-col w-full h-full min-h-0 bg-[#181F26] shadow-lg">
+    <div className="flex flex-col w-full h-full min-h-0 bg-[#181F26] shadow-xl border-r border-gray-800">
       <div className="flex flex-row flex-1 min-h-0">
         <SidebarSmall />
         <SidebarBig />
