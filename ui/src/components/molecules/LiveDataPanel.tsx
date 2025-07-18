@@ -1,20 +1,21 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { listen } from '@tauri-apps/api/event';
-import { invoke as tauriInvoke } from '@tauri-apps/api/core';
 import { diagLogsCommands } from '../../utils/tauriCommands';
 import { useEnvironment } from '../../hooks/useEnvironment';
 
-// Use the proper Tauri v2 invoke function with fallback
+// Tauri v2 event listening
+const { listen } = window.__TAURI__?.event || {};
+
+// Use the proper Tauri v2 invoke function
 const invoke = async (command: string, args?: any) => {
   try {
-    // Try the proper Tauri v2 API first
-    return await tauriInvoke(command, args);
-  } catch (error) {
-    // If that fails, try the global window.__TAURI__.core.invoke
+    // Use the global window.__TAURI__.core.invoke for Tauri v2
     if (typeof window !== 'undefined' && window.__TAURI__ && window.__TAURI__.core) {
       return await window.__TAURI__.core.invoke(command, args);
     }
     throw new Error('Tauri v2 core module not available - ensure app is running in desktop mode');
+  } catch (error) {
+    console.error('Tauri invoke failed:', error);
+    throw error;
   }
 };
 
@@ -99,13 +100,17 @@ const LiveDataPanel: React.FC = () => {
           setLiveData('');
           
           // Use the proper Tauri v2 event listening API
-          const listener = await listen('live_data', (event: any) => {
-            if (event && event.payload && event.payload.subsystem === selectedType) {
-              setLiveData(prev => prev + (prev ? '\n' : '') + event.payload.data);
-            }
-          });
-          
-          unlisten = listener;
+          if (listen && typeof listen === 'function') {
+            const listener = await listen('live_data', (event: any) => {
+              if (event && event.payload && event.payload.subsystem === selectedType) {
+                setLiveData(prev => prev + (prev ? '\n' : '') + event.payload.data);
+              }
+            });
+            
+            unlisten = listener;
+          } else {
+            setError('Event listening not available - Tauri event API not found');
+          }
         } else {
           setError('Tauri not available - running in web mode');
         }
