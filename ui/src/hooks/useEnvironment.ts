@@ -1,20 +1,20 @@
 // Environment detection hook for reStrike VTA
 
 import { useState, useEffect } from 'react';
-// Tauri v2 API import
-import { invoke } from '@tauri-apps/api/core';
-
-// Fallback invoke function for compatibility
+// Tauri v2 invoke function that uses the core module
 const safeInvoke = async (command: string, args?: any) => {
   try {
-    // Try the proper Tauri v2 API first
-    return await invoke(command, args);
-  } catch (error) {
-    // If that fails, try the global window.__TAURI__.invoke
-    if (typeof window !== 'undefined' && window.__TAURI__ && window.__TAURI__.invoke) {
-      return await window.__TAURI__.invoke(command, args);
+    // Check if the global Tauri object is available
+    if (typeof window !== 'undefined' && window.__TAURI__ && window.__TAURI__.core) {
+      console.log('✅ Using Tauri v2 core module for command:', command);
+      // In Tauri v2, invoke is available through the core module
+      return await window.__TAURI__.core.invoke(command, args);
     }
-    throw new Error('Tauri invoke method not available - ensure app is running in desktop mode');
+    
+    throw new Error('Tauri v2 core module not available - ensure app is running in desktop mode');
+  } catch (error) {
+    console.error('Tauri invoke failed:', error);
+    throw error;
   }
 };
 

@@ -1,19 +1,21 @@
 // Tauri command utilities for reStrike VTA
 
-import { invoke } from '@tauri-apps/api/core';
 import { TauriCommandResponse, ObsConnection, VideoClip, PssEvent } from '../types';
 
-// Fallback invoke function for compatibility
+// Tauri v2 invoke function that uses the core module
 const safeInvoke = async (command: string, args?: any) => {
   try {
-    // Try the proper Tauri v2 API first
-    return await invoke(command, args);
-  } catch (error) {
-    // If that fails, try the global window.__TAURI__.invoke
-    if (typeof window !== 'undefined' && window.__TAURI__ && window.__TAURI__.invoke) {
-      return await window.__TAURI__.invoke(command, args);
+    // Check if the global Tauri object is available
+    if (typeof window !== 'undefined' && window.__TAURI__ && window.__TAURI__.core) {
+      console.log('✅ Using Tauri v2 core module for command:', command);
+      // In Tauri v2, invoke is available through the core module
+      return await window.__TAURI__.core.invoke(command, args);
     }
-    throw new Error('Tauri invoke method not available - ensure app is running in desktop mode');
+    
+    throw new Error('Tauri v2 core module not available - ensure app is running in desktop mode');
+  } catch (error) {
+    console.error('Tauri invoke failed:', error);
+    throw error;
   }
 };
 
@@ -265,13 +267,13 @@ export const isTauriAvailable = (): boolean => {
     return false;
   }
 
-  // Check if the invoke function is actually available
-  if (typeof window.__TAURI__.invoke !== 'function') {
-    console.log('🔍 isTauriAvailable: window.__TAURI__.invoke not available');
+  // Check if the core module and invoke function are actually available
+  if (!window.__TAURI__.core || typeof window.__TAURI__.core.invoke !== 'function') {
+    console.log('🔍 isTauriAvailable: window.__TAURI__.core.invoke not available');
     return false;
   }
 
-  console.log('🔍 isTauriAvailable: Tauri API appears to be available');
+  console.log('🔍 isTauriAvailable: Tauri v2 API appears to be available');
   return true;
 };
 
