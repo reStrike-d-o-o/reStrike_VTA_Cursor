@@ -7,7 +7,6 @@ import Checkbox from '../atoms/Checkbox';
 import Label from '../atoms/Label';
 import { StatusDot } from '../atoms/StatusDot';
 import { Icon } from '../atoms/Icon';
-import WebSocketManager from '../molecules/WebSocketManager';
 
 const Settings: React.FC = () => {
   const {
@@ -19,7 +18,7 @@ const Settings: React.FC = () => {
     clearError,
   } = useAppStore();
 
-  const [activeTab, setActiveTab] = useState<'overlay' | 'obs' | 'websocket' | 'advanced'>('overlay');
+  const [activeTab, setActiveTab] = useState<'overlay' | 'obs' | 'advanced'>('overlay');
   const [isResetting, setIsResetting] = useState(false);
 
   const handleResetSettings = () => {
@@ -38,7 +37,6 @@ const Settings: React.FC = () => {
   const tabs = [
     { id: 'overlay', label: 'Overlay Settings', icon: '🎨' },
     { id: 'obs', label: 'OBS Integration', icon: '🎥' },
-    { id: 'websocket', label: 'WebSocket', icon: '🔌' },
     { id: 'advanced', label: 'Advanced', icon: '⚙️' },
   ] as const;
 
@@ -239,9 +237,7 @@ const Settings: React.FC = () => {
           </div>
         )}
 
-        {activeTab === 'websocket' && (
-          <WebSocketManager />
-        )}
+
 
         {activeTab === 'advanced' && (
           <div className="space-y-6">
