@@ -60,11 +60,8 @@ const ObsWebSocketManager: React.FC = () => {
     try {
       // Use Tauri command for OBS connection
       if (isTauriAvailable() && window.__TAURI__) {
-        const result = await window.__TAURI__.invoke('obs_connect', {
-          connectionName,
-          host: 'localhost',
-          port: 4455
-        });
+        const url = `ws://localhost:4455`;
+        const result = await window.__TAURI__.invoke('obs_connect', { url });
         
         if (result.success) {
           console.log(`✅ Successfully connected to OBS: ${connectionName}`);

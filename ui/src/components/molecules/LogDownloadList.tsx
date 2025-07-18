@@ -36,7 +36,14 @@ const LogDownloadList: React.FC = () => {
       }
     } catch (err) {
       setLogs([]);
-      setError(`Error fetching logs: ${err}`);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      if (errorMessage.includes('timeout') || errorMessage.includes('timed out')) {
+        setError(`Command timed out. The backend may be busy or unresponsive. Please try again.`);
+      } else if (errorMessage.includes('Cannot read properties of undefined')) {
+        setError(`Tauri not available. Please ensure the app is running in desktop mode.`);
+      } else {
+        setError(`Error fetching logs: ${errorMessage}`);
+      }
     } finally {
       setLoading(false);
     }
@@ -61,10 +68,22 @@ const LogDownloadList: React.FC = () => {
         a.remove();
         window.URL.revokeObjectURL(url);
       } else {
-        alert(`Failed to download ${logName}: ${res.error || 'Unknown error'}`);
+        const errorMsg = res.error || 'Unknown error';
+        if (errorMsg.includes('timeout') || errorMsg.includes('timed out')) {
+          alert(`Download timed out for ${logName}. Please try again.`);
+        } else {
+          alert(`Failed to download ${logName}: ${errorMsg}`);
+        }
       }
     } catch (err) {
-      alert(`Error downloading ${logName}: ${err}`);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      if (errorMessage.includes('Cannot read properties of undefined')) {
+        alert(`Tauri not available. Cannot download ${logName} in web mode.`);
+      } else if (errorMessage.includes('timeout') || errorMessage.includes('timed out')) {
+        alert(`Download timed out for ${logName}. Please try again.`);
+      } else {
+        alert(`Error downloading ${logName}: ${errorMessage}`);
+      }
     } finally {
       setDownloading('');
     }

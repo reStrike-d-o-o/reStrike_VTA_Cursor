@@ -4,7 +4,7 @@ import LogToggleGroup from '../molecules/LogToggleGroup';
 import LogDownloadList from '../molecules/LogDownloadList';
 import LiveDataPanel from '../molecules/LiveDataPanel';
 
-type AdvancedPanelProps = React.HTMLAttributes<HTMLDivElement>;
+type AdvancedPanelProps = React.ComponentProps<'div'>;
 
 const DRAWERS = [
   {

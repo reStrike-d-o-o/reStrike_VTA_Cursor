@@ -244,15 +244,9 @@ export const diagLogsCommands = {
  * Check if Tauri is available
  */
 export const isTauriAvailable = (): boolean => {
-  // Check for Tauri availability
-  const tauriAvailable = typeof window !== 'undefined' && !!window.__TAURI__;
-  
-  // Check if we're in a Tauri context (including development mode)
-  const isTauriContext = tauriAvailable || 
-    (typeof window !== 'undefined' && window.location.protocol === 'tauri:') ||
-    (typeof window !== 'undefined' && window.location.hostname === 'localhost' && window.location.port === '3000');
-  
-  return isTauriContext;
+  // Only return true if window.__TAURI__ is actually available
+  // This is more strict than the environment detection hook
+  return typeof window !== 'undefined' && !!window.__TAURI__;
 };
 
 /**
@@ -268,12 +262,17 @@ export const executeTauriCommand = async <T = any>(
       return { success: false, error: 'Tauri not available - running in web mode' };
     }
 
+    // Double-check that __TAURI__ is available before invoking
+    if (!window.__TAURI__ || !window.__TAURI__.invoke) {
+      return { success: false, error: 'Tauri invoke method not available - ensure app is running in desktop mode' };
+    }
+
     // Add timeout handling
     const timeoutPromise = new Promise<never>((_, reject) => {
       setTimeout(() => reject(new Error(`Command ${command} timed out after ${timeout}ms`)), timeout);
     });
 
-    const commandPromise = window.__TAURI__!.invoke(command, args);
+    const commandPromise = window.__TAURI__.invoke(command, args);
     const result = await Promise.race([commandPromise, timeoutPromise]);
     
     return { success: true, data: result };
@@ -281,6 +280,9 @@ export const executeTauriCommand = async <T = any>(
     const errorMessage = error instanceof Error ? error.message : String(error);
     
     // Provide more specific error messages
+    if (errorMessage.includes('Cannot read properties of undefined')) {
+      return { success: false, error: 'Tauri not available - ensure app is running in desktop mode' };
+    }
     if (errorMessage.includes('timeout')) {
       return { success: false, error: `Command timed out: ${errorMessage}` };
     }

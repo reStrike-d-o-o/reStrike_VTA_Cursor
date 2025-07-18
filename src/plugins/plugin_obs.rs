@@ -261,33 +261,6 @@ impl ObsPlugin {
                                                 "InputVolumeMeters" => {
                                                     let _ = event_tx.send(ObsEvent::Raw { connection_name: connection_name.clone(), event_type: event_type.to_string(), data: event_data.clone() });
                                                 }
-                                                "InputActiveStateChanged" => {
-                                                    let _ = event_tx.send(ObsEvent::Raw { connection_name: connection_name.clone(), event_type: event_type.to_string(), data: event_data.clone() });
-                                                }
-                                                "InputShowStateChanged" => {
-                                                    let _ = event_tx.send(ObsEvent::Raw { connection_name: connection_name.clone(), event_type: event_type.to_string(), data: event_data.clone() });
-                                                }
-                                                "InputMuteStateChanged" => {
-                                                    let _ = event_tx.send(ObsEvent::Raw { connection_name: connection_name.clone(), event_type: event_type.to_string(), data: event_data.clone() });
-                                                }
-                                                "InputVolumeChanged" => {
-                                                    let _ = event_tx.send(ObsEvent::Raw { connection_name: connection_name.clone(), event_type: event_type.to_string(), data: event_data.clone() });
-                                                }
-                                                "InputAudioBalanceChanged" => {
-                                                    let _ = event_tx.send(ObsEvent::Raw { connection_name: connection_name.clone(), event_type: event_type.to_string(), data: event_data.clone() });
-                                                }
-                                                "InputAudioSyncOffsetChanged" => {
-                                                    let _ = event_tx.send(ObsEvent::Raw { connection_name: connection_name.clone(), event_type: event_type.to_string(), data: event_data.clone() });
-                                                }
-                                                "InputAudioTracksChanged" => {
-                                                    let _ = event_tx.send(ObsEvent::Raw { connection_name: connection_name.clone(), event_type: event_type.to_string(), data: event_data.clone() });
-                                                }
-                                                "InputAudioMonitorTypeChanged" => {
-                                                    let _ = event_tx.send(ObsEvent::Raw { connection_name: connection_name.clone(), event_type: event_type.to_string(), data: event_data.clone() });
-                                                }
-                                                "InputVolumeMeters" => {
-                                                    let _ = event_tx.send(ObsEvent::Raw { connection_name: connection_name.clone(), event_type: event_type.to_string(), data: event_data.clone() });
-                                                }
                                                 "MediaInputPlaybackStarted" => {
                                                     let _ = event_tx.send(ObsEvent::Raw { connection_name: connection_name.clone(), event_type: event_type.to_string(), data: event_data.clone() });
                                                 }
@@ -302,7 +275,7 @@ impl ObsPlugin {
                                                 }
                                                 // ... (add all other official event types as needed) ...
                                                 // === END: All official OBS v5 event types as stubs ===
-                                                other => {
+                                                _other => {
                                                     let _ = event_tx.send(ObsEvent::Raw {
                                                         connection_name: connection_name.clone(),
                                                         event_type: event_type.to_string(),
@@ -366,7 +339,7 @@ impl ObsPlugin {
         // Update status to connecting
         {
             println!("[DEBUG] Attempting to lock connections for status update");
-            let mut connections = self.connections.lock();
+            let connections = self.connections.lock();
             println!("[DEBUG] Got lock for status update");
             let mut connections = match connections {
                 Ok(c) => c,
