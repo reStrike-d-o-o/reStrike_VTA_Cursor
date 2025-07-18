@@ -88,7 +88,17 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
           <div className="bg-[#18232e] rounded p-6 text-gray-300">[PSS options, UDP server, protocol, event DB will be implemented here]</div>
         )}
         {drawer?.key === 'obs' && (
-          <div className="bg-[#18232e] rounded p-6 text-gray-300">[OBS connection management and options will be implemented here]</div>
+          <div className="bg-[#18232e] rounded p-6 text-gray-300">
+            <div className="text-center">
+              <h3 className="text-lg font-semibold mb-4">OBS Integration</h3>
+              <p className="text-gray-400 mb-4">
+                OBS connection management is now available in the Settings panel.
+              </p>
+              <p className="text-sm text-gray-500">
+                Use the Settings button in the sidebar to access WebSocket connection management.
+              </p>
+            </div>
+          </div>
         )}
         {drawer?.key === 'video' && (
           <div className="bg-[#182e1a] rounded p-6 text-gray-300">[mpv video integration and controls will be implemented here]</div>
