@@ -32,6 +32,8 @@ impl Logger {
     }
     
     pub fn write_entry(&mut self, entry: &LogEntry) -> io::Result<()> {
+        log::info!("🔧 Logger.write_entry called for subsystem: {}", self.subsystem);
+        
         if let Some(writer) = &mut self.current_file {
             let log_line = format!("[{}] [{}] [{}] {}\n", 
                 entry.timestamp, 
@@ -39,9 +41,30 @@ impl Logger {
                 entry.subsystem, 
                 entry.message
             );
-            writer.write_all(log_line.as_bytes())?;
-            writer.flush()?;
+            
+            log::info!("📝 Writing log line: {}", log_line.trim());
+            
+            match writer.write_all(log_line.as_bytes()) {
+                Ok(_) => log::info!("✅ Successfully wrote log line"),
+                Err(e) => {
+                    log::error!("❌ Failed to write log line: {}", e);
+                    return Err(e);
+                }
+            }
+            
+            match writer.flush() {
+                Ok(_) => log::info!("✅ Successfully flushed writer"),
+                Err(e) => {
+                    log::error!("❌ Failed to flush writer: {}", e);
+                    return Err(e);
+                }
+            }
+        } else {
+            log::error!("❌ No writer available for subsystem: {}", self.subsystem);
+            return Err(io::Error::new(io::ErrorKind::NotFound, "No writer available"));
         }
+        
+        log::info!("✅ Logger.write_entry completed successfully");
         Ok(())
     }
     

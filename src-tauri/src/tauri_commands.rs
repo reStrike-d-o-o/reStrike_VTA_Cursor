@@ -343,23 +343,31 @@ pub async fn set_logging_enabled(
     enabled: bool,
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, String> {
-    log::info!("Setting logging enabled for {}: {}", subsystem, enabled);
+    log::info!("🔧 set_logging_enabled called with subsystem: {}, enabled: {}", subsystem, enabled);
     
     // Prevent disabling the "app" subsystem as it's needed for system logging
     if subsystem == "app" && !enabled {
+        log::warn!("❌ Attempted to disable 'app' subsystem - blocked");
         return Ok(serde_json::json!({
             "success": false,
             "error": "Cannot disable 'app' subsystem logging as it's required for system operations"
         }));
     }
     
+    log::info!("✅ Safety check passed, updating log manager...");
+    
     // Update the log manager
     app.log_manager().set_subsystem_enabled(&subsystem, enabled);
+    log::info!("✅ Log manager updated successfully");
     
     // Log the change to the system log (app) instead of the subsystem log
-    if let Err(e) = app.log_manager().log("app", "INFO", &format!("Logging {} for subsystem: {}", if enabled { "enabled" } else { "disabled" }, subsystem)) {
-        log::error!("Failed to log logging state change: {}", e);
+    log::info!("📝 Attempting to log state change to app.log...");
+    match app.log_manager().log("app", "INFO", &format!("Logging {} for subsystem: {}", if enabled { "enabled" } else { "disabled" }, subsystem)) {
+        Ok(_) => log::info!("✅ Successfully logged state change to app.log"),
+        Err(e) => log::error!("❌ Failed to log logging state change: {}", e),
     }
+    
+    log::info!("✅ set_logging_enabled completed successfully");
     
     Ok(serde_json::json!({
         "success": true,
