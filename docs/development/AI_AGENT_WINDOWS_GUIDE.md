@@ -239,7 +239,7 @@ npm run start:tauri
 
 ### **2. Make Changes**
 - Edit React components in `ui/src/components/`
-- Edit Rust plugins in `src/plugins/`
+- Edit Rust plugins in `src-tauri/src/plugins/`
 - Use environment-aware hooks and components
 - Follow the dual environment system
 

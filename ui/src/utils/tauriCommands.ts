@@ -244,9 +244,36 @@ export const diagLogsCommands = {
  * Check if Tauri is available
  */
 export const isTauriAvailable = (): boolean => {
+  const available = typeof window !== 'undefined' && !!window.__TAURI__;
+  console.log('🔍 isTauriAvailable check:', {
+    windowExists: typeof window !== 'undefined',
+    tauriExists: !!window.__TAURI__,
+    tauriKeys: window.__TAURI__ ? Object.keys(window.__TAURI__) : 'undefined',
+    result: available
+  });
   // Only return true if window.__TAURI__ is actually available
   // This is more strict than the environment detection hook
-  return typeof window !== 'undefined' && !!window.__TAURI__;
+  return available;
+};
+
+/**
+ * Test Tauri API availability with a simple command
+ */
+export const testTauriApi = async (): Promise<boolean> => {
+  try {
+    if (!isTauriAvailable()) {
+      console.log('❌ Tauri not available for testing');
+      return false;
+    }
+
+    console.log('🔍 Testing Tauri API with get_app_status command...');
+    const result = await window.__TAURI__.invoke('get_app_status');
+    console.log('✅ Tauri API test successful:', result);
+    return true;
+  } catch (error) {
+    console.log('❌ Tauri API test failed:', error);
+    return false;
+  }
 };
 
 /**
