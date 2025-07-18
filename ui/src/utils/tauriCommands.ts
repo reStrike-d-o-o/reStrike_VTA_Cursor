@@ -246,6 +246,20 @@ export const diagLogsCommands = {
   },
 
   /**
+   * List archive files in the log/archives/ directory
+   */
+  async listArchives() {
+    return executeTauriCommand('list_archives');
+  },
+
+  /**
+   * Extract a specific archive file
+   */
+  async extractArchive(archiveName: string) {
+    return executeTauriCommand('extract_archive', { archiveName });
+  },
+
+  /**
    * Enable or disable live data streaming for a subsystem
    */
   async setLiveDataStreaming(subsystem: string, enabled: boolean) {
