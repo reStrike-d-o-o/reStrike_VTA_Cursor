@@ -7,7 +7,7 @@ export interface ObsConnection {
   host: string;
   port: number;
   password?: string;
-  protocol_version: 'v4' | 'v5';
+  protocol_version: 'v5';
   enabled: boolean;
   status: 'Disconnected' | 'Connecting' | 'Connected' | 'Authenticating' | 'Authenticated' | 'Error';
   error?: string;

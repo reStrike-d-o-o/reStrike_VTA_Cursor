@@ -132,7 +132,7 @@ const LiveDataPanel: React.FC = () => {
         }
       }
       if (tauriAvailable) {
-        diagLogsCommands.setLiveDataStreaming(selectedType, false).catch(err => {
+        diagLogsCommands.setLiveDataStreaming(selectedType, false).catch((err: any) => {
           console.error('Error stopping streaming:', err);
         });
       }

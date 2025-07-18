@@ -82,13 +82,13 @@ pub async fn obs_add_connection(
     host: String,
     port: u16,
     password: Option<String>,
-    protocol_version: String,
+    protocolVersion: String,
     enabled: bool,
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, String> {
     log::info!("OBS add connection called: {}@{}:{}", name, host, port);
     
-    let version = match protocol_version.as_str() {
+    let version = match protocolVersion.as_str() {
         "v5" => crate::plugins::plugin_obs::ObsWebSocketVersion::V5,
         _ => crate::plugins::plugin_obs::ObsWebSocketVersion::V5, // Default to v5
     };
@@ -103,10 +103,41 @@ pub async fn obs_add_connection(
     };
     
     match app.obs_plugin().add_connection(config).await {
-        Ok(_) => Ok(serde_json::json!({
-            "success": true,
-            "message": "OBS connection added successfully"
-        })),
+        Ok(_) => {
+            // Also save to configuration manager
+            let config_conn = crate::config::ObsConnectionConfig {
+                name: name.clone(),
+                host: host.clone(),
+                port,
+                password,
+                protocol_version: protocolVersion,
+                enabled,
+                timeout_seconds: 30,
+                auto_reconnect: true,
+                max_reconnect_attempts: 5,
+            };
+            
+            // Get current connections and add new one
+            match app.config_manager().get_obs_connections().await {
+                Ok(mut connections) => {
+                    // Remove existing connection with same name if it exists
+                    connections.retain(|c| c.name != config_conn.name);
+                    connections.push(config_conn);
+                    
+                    if let Err(e) = app.config_manager().update_obs_connections(connections).await {
+                        log::warn!("Failed to save connection to config: {}", e);
+                    }
+                }
+                Err(e) => {
+                    log::warn!("Failed to get current connections: {}", e);
+                }
+            }
+            
+            Ok(serde_json::json!({
+                "success": true,
+                "message": "OBS connection added successfully"
+            }))
+        }
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": e.to_string()
@@ -148,7 +179,7 @@ pub async fn obs_get_connection_status(
                 crate::plugins::plugin_obs::ObsConnectionStatus::Connected => "Connected",
                 crate::plugins::plugin_obs::ObsConnectionStatus::Authenticating => "Authenticating",
                 crate::plugins::plugin_obs::ObsConnectionStatus::Authenticated => "Authenticated",
-                crate::plugins::plugin_obs::ObsConnectionStatus::Error => "Error",
+                crate::plugins::plugin_obs::ObsConnectionStatus::Error(_) => "Error",
             };
             
             Ok(serde_json::json!({
@@ -167,31 +198,46 @@ pub async fn obs_get_connection_status(
 pub async fn obs_get_connections(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
     log::info!("OBS get connections called");
     
-    let connections = app.obs_plugin().get_connection_names().await;
-    let mut connection_details = Vec::new();
-    
-    for name in connections {
-        if let Some(status) = app.obs_plugin().get_connection_status(&name).await {
-            let status_str = match status {
-                crate::plugins::plugin_obs::ObsConnectionStatus::Disconnected => "Disconnected",
-                crate::plugins::plugin_obs::ObsConnectionStatus::Connecting => "Connecting",
-                crate::plugins::plugin_obs::ObsConnectionStatus::Connected => "Connected",
-                crate::plugins::plugin_obs::ObsConnectionStatus::Authenticating => "Authenticating",
-                crate::plugins::plugin_obs::ObsConnectionStatus::Authenticated => "Authenticated",
-                crate::plugins::plugin_obs::ObsConnectionStatus::Error => "Error",
-            };
+    match app.config_manager().get_obs_connections().await {
+        Ok(connections) => {
+            let mut connection_details = Vec::new();
             
-            connection_details.push(serde_json::json!({
-                "name": name,
-                "status": status_str
-            }));
+            for conn in connections {
+                // Get actual status from OBS plugin if available
+                let status_str = if let Some(status) = app.obs_plugin().get_connection_status(&conn.name).await {
+                    match status {
+                        crate::plugins::plugin_obs::ObsConnectionStatus::Disconnected => "Disconnected",
+                        crate::plugins::plugin_obs::ObsConnectionStatus::Connecting => "Connecting",
+                        crate::plugins::plugin_obs::ObsConnectionStatus::Connected => "Connected",
+                        crate::plugins::plugin_obs::ObsConnectionStatus::Authenticating => "Authenticating",
+                        crate::plugins::plugin_obs::ObsConnectionStatus::Authenticated => "Authenticated",
+                        crate::plugins::plugin_obs::ObsConnectionStatus::Error(_) => "Error",
+                    }
+                } else {
+                    "Disconnected"
+                };
+                
+                connection_details.push(serde_json::json!({
+                    "name": conn.name,
+                    "host": conn.host,
+                    "port": conn.port,
+                    "password": conn.password,
+                    "protocol_version": conn.protocol_version,
+                    "enabled": conn.enabled,
+                    "status": status_str
+                }));
+            }
+            
+            Ok(serde_json::json!({
+                "success": true,
+                "connections": connection_details
+            }))
         }
+        Err(e) => Ok(serde_json::json!({
+            "success": false,
+            "error": e.to_string()
+        }))
     }
-    
-    Ok(serde_json::json!({
-        "success": true,
-        "connections": connection_details
-    }))
 }
 
 #[tauri::command]
@@ -201,6 +247,33 @@ pub async fn obs_disconnect(connection_name: String, app: State<'_, Arc<App>>) -
     Ok(serde_json::json!({
         "success": true,
         "message": "OBS disconnection initiated"
+    }))
+}
+
+#[tauri::command]
+pub async fn obs_remove_connection(connection_name: String, app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+    log::info!("OBS remove connection called for connection: {}", connection_name);
+    
+    // Remove from OBS plugin
+    app.obs_plugin().remove_connection(&connection_name).await.map_err(|e| e.to_string())?;
+    
+    // Also remove from configuration manager
+    match app.config_manager().get_obs_connections().await {
+        Ok(mut connections) => {
+            connections.retain(|c| c.name != connection_name);
+            
+            if let Err(e) = app.config_manager().update_obs_connections(connections).await {
+                log::warn!("Failed to remove connection from config: {}", e);
+            }
+        }
+        Err(e) => {
+            log::warn!("Failed to get current connections: {}", e);
+        }
+    }
+    
+    Ok(serde_json::json!({
+        "success": true,
+        "message": "OBS connection removed"
     }))
 }
 
@@ -378,13 +451,76 @@ pub async fn get_license_status(_app: State<'_, Arc<App>>) -> Result<String, Str
 
 // Settings commands
 #[tauri::command]
-pub async fn get_settings(_app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
-    Ok(serde_json::json!({}))
+pub async fn get_settings(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+    log::info!("Getting application settings");
+    
+    match app.config_manager().get_config().await {
+        Ok(config) => {
+            let config_json = serde_json::to_value(config)
+                .map_err(|e| format!("Failed to serialize config: {}", e))?;
+            Ok(config_json)
+        }
+        Err(e) => Err(format!("Failed to get settings: {}", e))
+    }
 }
 
 #[tauri::command]
-pub async fn update_settings(_settings: serde_json::Value, _app: State<'_, Arc<App>>) -> Result<(), String> {
-    Ok(())
+pub async fn update_settings(settings: serde_json::Value, app: State<'_, Arc<App>>) -> Result<(), String> {
+    log::info!("Updating application settings");
+    
+    let config: crate::config::AppConfig = serde_json::from_value(settings)
+        .map_err(|e| format!("Failed to deserialize settings: {}", e))?;
+    
+    app.config_manager().update_config(config).await
+        .map_err(|e| format!("Failed to update settings: {}", e))
+}
+
+#[tauri::command]
+pub async fn get_config_stats(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+    log::info!("Getting configuration statistics");
+    
+    match app.config_manager().get_config_stats().await {
+        Ok(stats) => {
+            let stats_json = serde_json::to_value(stats)
+                .map_err(|e| format!("Failed to serialize stats: {}", e))?;
+            Ok(stats_json)
+        }
+        Err(e) => Err(format!("Failed to get config stats: {}", e))
+    }
+}
+
+#[tauri::command]
+pub async fn reset_settings(app: State<'_, Arc<App>>) -> Result<(), String> {
+    log::info!("Resetting settings to defaults");
+    
+    app.config_manager().reset_to_defaults().await
+        .map_err(|e| format!("Failed to reset settings: {}", e))
+}
+
+#[tauri::command]
+pub async fn export_settings(export_path: String, app: State<'_, Arc<App>>) -> Result<(), String> {
+    log::info!("Exporting settings to: {}", export_path);
+    
+    let path = std::path::Path::new(&export_path);
+    app.config_manager().export_config(path).await
+        .map_err(|e| format!("Failed to export settings: {}", e))
+}
+
+#[tauri::command]
+pub async fn import_settings(import_path: String, app: State<'_, Arc<App>>) -> Result<(), String> {
+    log::info!("Importing settings from: {}", import_path);
+    
+    let path = std::path::Path::new(&import_path);
+    app.config_manager().import_config(path).await
+        .map_err(|e| format!("Failed to import settings: {}", e))
+}
+
+#[tauri::command]
+pub async fn restore_settings_backup(app: State<'_, Arc<App>>) -> Result<(), String> {
+    log::info!("Restoring settings from backup");
+    
+    app.config_manager().restore_from_backup().await
+        .map_err(|e| format!("Failed to restore settings backup: {}", e))
 }
 
 // Flag commands

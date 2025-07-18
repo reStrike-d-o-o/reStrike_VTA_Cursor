@@ -35,6 +35,7 @@ async fn main() -> AppResult<()> {
             // OBS commands - Fixed names
             tauri_commands::obs_connect,
             tauri_commands::obs_disconnect,
+            tauri_commands::obs_remove_connection,
             tauri_commands::obs_get_status,
             tauri_commands::obs_start_recording,
             tauri_commands::obs_stop_recording,
@@ -72,6 +73,11 @@ async fn main() -> AppResult<()> {
             // Settings commands
             tauri_commands::get_settings,
             tauri_commands::update_settings,
+            tauri_commands::get_config_stats,
+            tauri_commands::reset_settings,
+            tauri_commands::export_settings,
+            tauri_commands::import_settings,
+            tauri_commands::restore_settings_backup,
             
             // Flag commands
             tauri_commands::get_flag_url,

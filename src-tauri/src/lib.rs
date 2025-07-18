@@ -4,6 +4,7 @@
 //! including OBS integration, video playback, and PSS protocol handling.
 
 pub mod commands;
+pub mod config;
 pub mod core;
 pub mod types;
 pub mod plugins;
