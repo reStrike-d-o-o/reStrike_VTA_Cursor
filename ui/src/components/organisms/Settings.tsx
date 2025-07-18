@@ -211,7 +211,7 @@ const Settings: React.FC = () => {
                         </div>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <StatusDot color={connection.status === 'Connected' || connection.status === 'Authenticated' ? 'green' : connection.status === 'Error' ? 'red' : 'yellow'} />
+                        <StatusDot color={connection.status === 'Connected' || connection.status === 'Authenticated' ? 'bg-green-500' : connection.status === 'Error' ? 'bg-red-500' : 'bg-yellow-500'} />
                         <span className="text-sm">{connection.status}</span>
                       </div>
                     </div>

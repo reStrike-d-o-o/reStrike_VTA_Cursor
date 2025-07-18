@@ -1,7 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { invoke as tauriInvoke } from '@tauri-apps/api/core';
 import Button from '../atoms/Button';
 import { StatusDot } from '../atoms/StatusDot';
+
+// Use the proper Tauri v2 invoke function with fallback
+const invoke = async (command: string, args?: any) => {
+  try {
+    // Try the proper Tauri v2 API first
+    return await tauriInvoke(command, args);
+  } catch (error) {
+    // If that fails, try the global window.__TAURI__.invoke
+    if (typeof window !== 'undefined' && window.__TAURI__ && window.__TAURI__.invoke) {
+      return await window.__TAURI__.invoke(command, args);
+    }
+    throw new Error('Tauri invoke method not available - ensure app is running in desktop mode');
+  }
+};
 
 interface ObsConnection {
   name: string;
@@ -59,16 +74,16 @@ const ObsWebSocketManager: React.FC = () => {
     
     try {
       // Use Tauri command for OBS connection
-      if (isTauriAvailable() && window.__TAURI__) {
+      if (isTauriAvailable()) {
         const url = `ws://localhost:4455`;
-        const result = await window.__TAURI__.invoke('obs_connect', { url });
+        const result = await invoke('obs_connect', { url });
         
-        if (result.success) {
+        if (result && typeof result === 'object' && 'success' in result && result.success) {
           console.log(`✅ Successfully connected to OBS: ${connectionName}`);
           updateConnectionStatus(connectionName, 'connected');
         } else {
-          console.error(`❌ Failed to connect to OBS: ${connectionName}`, result.error);
-          updateConnectionStatus(connectionName, 'error', result.error);
+          console.error(`❌ Failed to connect to OBS: ${connectionName}`, result);
+          updateConnectionStatus(connectionName, 'error', 'Connection failed');
         }
       } else {
         console.error('❌ Tauri not available for OBS connection');
@@ -85,16 +100,16 @@ const ObsWebSocketManager: React.FC = () => {
     
     try {
       // Use Tauri command for OBS disconnection
-      if (isTauriAvailable() && window.__TAURI__) {
-        const result = await window.__TAURI__.invoke('obs_disconnect', {
+      if (isTauriAvailable()) {
+        const result = await invoke('obs_disconnect', {
           connectionName
         });
         
-        if (result.success) {
+        if (result && typeof result === 'object' && 'success' in result && result.success) {
           console.log(`✅ Successfully disconnected from OBS: ${connectionName}`);
           updateConnectionStatus(connectionName, 'disconnected');
         } else {
-          console.error(`❌ Failed to disconnect from OBS: ${connectionName}`, result.error);
+          console.error(`❌ Failed to disconnect from OBS: ${connectionName}`, result);
         }
       } else {
         console.error('❌ Tauri not available for OBS disconnection');
@@ -111,14 +126,14 @@ const ObsWebSocketManager: React.FC = () => {
     
     try {
       // Use Tauri command for OBS status
-      if (isTauriAvailable() && window.__TAURI__) {
-        const result = await window.__TAURI__.invoke('obs_get_status');
+      if (isTauriAvailable()) {
+        const result = await invoke('obs_get_status');
         
-        if (result.success) {
-          console.log('✅ OBS status retrieved successfully', result.data);
-          return result.data;
+        if (result && typeof result === 'object' && 'success' in result && result.success) {
+          console.log('✅ OBS status retrieved successfully', result);
+          return result;
         } else {
-          console.error('❌ Failed to get OBS status', result.error);
+          console.error('❌ Failed to get OBS status', result);
           return null;
         }
       } else {
@@ -200,65 +215,80 @@ const ObsWebSocketManager: React.FC = () => {
           </Button>
         </div>
 
+        {/* Connection List */}
         <div className="space-y-4">
           {connections.map((connection) => (
             <motion.div
               key={connection.name}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-gray-700 rounded-lg p-4"
+              className="bg-gray-700 rounded-lg p-4 border border-gray-600"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
-                  <StatusDot color={getStatusColor(connection.status)} />
-                  <div>
-                    <h4 className="text-white font-medium">{connection.name}</h4>
-                    <p className="text-gray-400 text-sm">
-                      {connection.host}:{connection.port}
-                    </p>
+                  <div className="flex items-center space-x-2">
+                    <StatusDot color={
+                      connection.status === 'connected' ? 'bg-green-500' :
+                      connection.status === 'error' ? 'bg-red-500' :
+                      connection.status === 'connecting' ? 'bg-yellow-500' :
+                      'bg-gray-500'
+                    } />
+                    <span className="text-white font-medium">{connection.name}</span>
                   </div>
-                </div>
-                
-                <div className="flex items-center space-x-3">
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                    connection.status === 'connected' 
-                      ? 'bg-green-600 text-white'
-                      : connection.status === 'connecting'
-                      ? 'bg-yellow-600 text-white'
-                      : connection.status === 'error'
-                      ? 'bg-red-600 text-white'
-                      : 'bg-gray-600 text-gray-300'
+                  <span className="text-gray-400">
+                    {connection.host}:{connection.port}
+                  </span>
+                  <span className={`px-2 py-1 rounded text-xs font-medium ${
+                    connection.status === 'connected' ? 'bg-green-600 text-white' :
+                    connection.status === 'connecting' ? 'bg-yellow-600 text-white' :
+                    connection.status === 'error' ? 'bg-red-600 text-white' :
+                    'bg-gray-600 text-white'
                   }`}>
                     {getStatusText(connection.status)}
                   </span>
-                  
-                  <div className="flex space-x-2">
-                    {connection.status === 'disconnected' && (
-                      <Button onClick={() => connectToObs(connection.name)} variant="success" size="sm">
-                        Connect
-                      </Button>
-                    )}
-                    
-                    {connection.status === 'connected' && (
-                      <Button onClick={() => disconnectFromObs(connection.name)} variant="danger" size="sm">
-                        Disconnect
-                      </Button>
-                    )}
-                    
-                    <Button onClick={() => testObsStatus()} variant="primary" size="sm">
-                      Test
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  {connection.status === 'disconnected' && (
+                    <Button
+                      onClick={() => connectToObs(connection.name)}
+                      variant="primary"
+                      size="sm"
+                    >
+                      Connect
                     </Button>
-                    
-                    <Button onClick={() => removeConnection(connection.name)} variant="secondary" size="sm">
-                      Remove
+                  )}
+                  {connection.status === 'connected' && (
+                    <Button
+                      onClick={() => disconnectFromObs(connection.name)}
+                      variant="secondary"
+                      size="sm"
+                    >
+                      Disconnect
                     </Button>
-                  </div>
+                  )}
+                  {connection.status === 'connecting' && (
+                    <Button
+                      disabled
+                      variant="secondary"
+                      size="sm"
+                    >
+                      Connecting...
+                    </Button>
+                  )}
+                  <Button
+                    onClick={() => removeConnection(connection.name)}
+                    variant="danger"
+                    size="sm"
+                  >
+                    Remove
+                  </Button>
                 </div>
               </div>
               
               {connection.error && (
-                <div className="mt-3 p-3 bg-red-900 border border-red-700 rounded-lg">
-                  <p className="text-red-300 text-sm">{connection.error}</p>
+                <div className="mt-2 p-2 bg-red-900/20 border border-red-700 rounded text-red-400 text-sm">
+                  Error: {connection.error}
                 </div>
               )}
             </motion.div>
@@ -266,45 +296,31 @@ const ObsWebSocketManager: React.FC = () => {
         </div>
       </div>
 
-      {/* OBS Status Information */}
+      {/* Test Controls */}
       <div className="bg-gray-800 rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-white mb-4">OBS Status</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-gray-700 rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-gray-300">Recording</span>
-              <StatusDot color="bg-red-500" />
-            </div>
-            <p className="text-white font-medium mt-1">Not Recording</p>
-          </div>
-          
-          <div className="bg-gray-700 rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-gray-300">Streaming</span>
-              <StatusDot color="bg-red-500" />
-            </div>
-            <p className="text-white font-medium mt-1">Not Streaming</p>
-          </div>
-          
-          <div className="bg-gray-700 rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-gray-300">CPU Usage</span>
-              <StatusDot color="bg-green-500" />
-            </div>
-            <p className="text-white font-medium mt-1">0.0%</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Connection Instructions */}
-      <div className="bg-gray-800 rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-white mb-4">Setup Instructions</h3>
-        <div className="space-y-3 text-gray-300">
-          <p>1. Open OBS Studio on your Windows machine</p>
-          <p>2. Go to Tools → WebSocket Server Settings</p>
-          <p>3. Enable WebSocket server on port 4455</p>
-          <p>4. <strong>Important:</strong> Disable authentication (no password)</p>
-          <p>5. Click "Connect" above to establish connection</p>
+        <h3 className="text-lg font-semibold text-white mb-4">Test Controls</h3>
+        <div className="flex space-x-4">
+          <Button
+            onClick={testObsStatus}
+            variant="secondary"
+            size="sm"
+          >
+            Test OBS Status
+          </Button>
+          <Button
+            onClick={() => connections.forEach(conn => connectToObs(conn.name))}
+            variant="primary"
+            size="sm"
+          >
+            Connect All
+          </Button>
+          <Button
+            onClick={() => connections.forEach(conn => disconnectFromObs(conn.name))}
+            variant="secondary"
+            size="sm"
+          >
+            Disconnect All
+          </Button>
         </div>
       </div>
     </div>
