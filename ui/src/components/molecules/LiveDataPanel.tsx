@@ -10,11 +10,11 @@ const invoke = async (command: string, args?: any) => {
     // Try the proper Tauri v2 API first
     return await tauriInvoke(command, args);
   } catch (error) {
-    // If that fails, try the global window.__TAURI__.invoke
-    if (typeof window !== 'undefined' && window.__TAURI__ && window.__TAURI__.invoke) {
-      return await window.__TAURI__.invoke(command, args);
+    // If that fails, try the global window.__TAURI__.core.invoke
+    if (typeof window !== 'undefined' && window.__TAURI__ && window.__TAURI__.core) {
+      return await window.__TAURI__.core.invoke(command, args);
     }
-    throw new Error('Tauri invoke method not available - ensure app is running in desktop mode');
+    throw new Error('Tauri v2 core module not available - ensure app is running in desktop mode');
   }
 };
 
@@ -22,10 +22,10 @@ const invoke = async (command: string, args?: any) => {
 const testTauriApiDirectly = async () => {
   console.log('🔍 Testing Tauri API directly...');
   console.log('window.__TAURI__:', window.__TAURI__);
-  console.log('window.__TAURI__.invoke:', window.__TAURI__?.invoke);
+  console.log('window.__TAURI__.core:', window.__TAURI__?.core);
   
   try {
-    const result = await window.__TAURI__.invoke('get_app_status');
+    const result = await window.__TAURI__.core.invoke('get_app_status');
     console.log('✅ Direct invoke successful:', result);
     return true;
   } catch (error) {
