@@ -19,6 +19,7 @@ pub struct LogConfig {
     pub max_file_size: u64,      // 10MB in bytes
     pub retention_days: u32,     // 30 days
     pub log_dir: String,         // "log"
+    pub archive_dir: String,     // "log/archives"
     pub enabled_subsystems: Vec<String>,
 }
 
@@ -28,6 +29,7 @@ impl Default for LogConfig {
             max_file_size: 10 * 1024 * 1024, // 10MB
             retention_days: 30,
             log_dir: "log".to_string(),
+            archive_dir: "log/archives".to_string(),
             enabled_subsystems: vec!["app".to_string(), "pss".to_string(), "obs".to_string(), "udp".to_string()],
         }
     }
@@ -54,7 +56,7 @@ impl LogManager {
         fs::create_dir_all(&config.log_dir)?;
         
         let rotator = LogRotator::new(config.max_file_size);
-        let archiver = LogArchiver::new(config.retention_days);
+        let archiver = LogArchiver::new_with_archive_dir(config.retention_days, config.archive_dir.clone());
         
         Ok(Self {
             config: Arc::new(Mutex::new(config)),
@@ -186,6 +188,14 @@ impl LogManager {
     pub fn cleanup_old_logs(&self) -> io::Result<()> {
         let config = self.config.lock().unwrap();
         self.archiver.cleanup_old_logs(&config.log_dir)
+    }
+    
+    pub fn list_archives(&self) -> io::Result<Vec<String>> {
+        self.archiver.list_archives()
+    }
+    
+    pub fn extract_archive(&self, archive_name: &str) -> io::Result<()> {
+        self.archiver.extract_archive(archive_name)
     }
     
     pub fn get_config(&self) -> LogConfig {

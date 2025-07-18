@@ -400,6 +400,41 @@ pub async fn download_log_file(
 }
 
 #[tauri::command]
+pub async fn list_archives(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+    log::info!("Listing archives");
+    
+    match app.log_manager().list_archives() {
+        Ok(archives) => Ok(serde_json::json!({
+            "success": true,
+            "data": archives
+        })),
+        Err(e) => Ok(serde_json::json!({
+            "success": false,
+            "error": format!("Failed to list archives: {}", e)
+        }))
+    }
+}
+
+#[tauri::command]
+pub async fn extract_archive(
+    archive_name: String,
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, String> {
+    log::info!("Extracting archive: {}", archive_name);
+    
+    match app.log_manager().extract_archive(&archive_name) {
+        Ok(_) => Ok(serde_json::json!({
+            "success": true,
+            "message": format!("Archive {} extracted successfully", archive_name)
+        })),
+        Err(e) => Ok(serde_json::json!({
+            "success": false,
+            "error": format!("Failed to extract archive: {}", e)
+        }))
+    }
+}
+
+#[tauri::command]
 pub async fn set_live_data_streaming(
     subsystem: String,
     enabled: bool,

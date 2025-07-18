@@ -77,6 +77,8 @@ async fn main() -> AppResult<()> {
             tauri_commands::set_logging_enabled,
             tauri_commands::list_log_files,
             tauri_commands::download_log_file,
+            tauri_commands::list_archives,
+            tauri_commands::extract_archive,
             tauri_commands::set_live_data_streaming,
             
             // Legacy commands for backward compatibility
