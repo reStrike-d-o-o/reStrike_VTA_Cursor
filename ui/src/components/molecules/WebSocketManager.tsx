@@ -5,13 +5,14 @@ import Label from '../atoms/Label';
 import { StatusDot } from '../atoms/StatusDot';
 import { Icon } from '../atoms/Icon';
 import { useAppStore } from '../../stores';
+import { obsCommands } from '../../utils/tauriCommands';
 
 interface WebSocketConnection {
   name: string;
   host: string;
   port: number;
   password?: string;
-  protocol_version: 'v4' | 'v5';
+  protocol_version: 'v5';
   enabled: boolean;
   status: 'Disconnected' | 'Connecting' | 'Connected' | 'Authenticating' | 'Authenticated' | 'Error';
   error?: string;
@@ -27,7 +28,7 @@ const WebSocketManager: React.FC = () => {
     host: 'localhost',
     port: 4455,
     password: '',
-    protocol_version: 'v5' as 'v4' | 'v5',
+    protocol_version: 'v5' as 'v5',
     enabled: true,
   });
   const [error, setError] = useState<string | null>(null);
@@ -44,7 +45,25 @@ const WebSocketManager: React.FC = () => {
     setError(null);
   };
 
-  const handleAddConnection = () => {
+  // Load connections from backend on component mount
+  useEffect(() => {
+    loadConnections();
+  }, []);
+
+  const loadConnections = async () => {
+    try {
+      const result = await obsCommands.getConnections();
+      if (result.success) {
+        // Update store with connections from backend
+        // This will sync the frontend state with backend state
+        console.log('Loaded connections from backend:', result.connections);
+      }
+    } catch (error) {
+      console.error('Failed to load connections:', error);
+    }
+  };
+
+  const handleAddConnection = async () => {
     if (!formData.name.trim()) {
       setError('Connection name is required');
       return;
@@ -60,9 +79,26 @@ const WebSocketManager: React.FC = () => {
       return;
     }
 
-    addObsConnection(formData);
-    resetForm();
-    setIsAdding(false);
+    try {
+      const result = await obsCommands.addConnection({
+        name: formData.name,
+        host: formData.host,
+        port: formData.port,
+        password: formData.password || undefined,
+        protocol_version: formData.protocol_version,
+        enabled: formData.enabled,
+      });
+
+      if (result.success) {
+        addObsConnection(formData);
+        resetForm();
+        setIsAdding(false);
+      } else {
+        setError(result.error || 'Failed to add connection');
+      }
+    } catch (error) {
+      setError(`Failed to add connection: ${error}`);
+    }
   };
 
   const handleEditConnection = (connection: WebSocketConnection) => {
@@ -77,7 +113,7 @@ const WebSocketManager: React.FC = () => {
     });
   };
 
-  const handleUpdateConnection = () => {
+  const handleUpdateConnection = async () => {
     if (!editingConnection) return;
 
     if (!formData.name.trim()) {
@@ -95,12 +131,29 @@ const WebSocketManager: React.FC = () => {
       return;
     }
 
-    // Remove old connection and add updated one
-    removeObsConnection(editingConnection);
-    addObsConnection(formData);
-    
-    resetForm();
-    setEditingConnection(null);
+    try {
+      // Remove old connection and add updated one
+      removeObsConnection(editingConnection);
+      
+      const result = await obsCommands.addConnection({
+        name: formData.name,
+        host: formData.host,
+        port: formData.port,
+        password: formData.password || undefined,
+        protocol_version: formData.protocol_version,
+        enabled: formData.enabled,
+      });
+
+      if (result.success) {
+        addObsConnection(formData);
+        resetForm();
+        setEditingConnection(null);
+      } else {
+        setError(result.error || 'Failed to update connection');
+      }
+    } catch (error) {
+      setError(`Failed to update connection: ${error}`);
+    }
   };
 
   const handleDeleteConnection = (name: string) => {
@@ -109,26 +162,53 @@ const WebSocketManager: React.FC = () => {
     }
   };
 
-  const handleConnect = (connection: WebSocketConnection) => {
-    // Simulate connection process
+  const handleConnect = async (connection: WebSocketConnection) => {
     updateObsConnectionStatus(connection.name, 'Connecting');
     
-    setTimeout(() => {
-      // Simulate connection result (in real app, this would be actual WebSocket connection)
-      const success = Math.random() > 0.3; // 70% success rate for demo
-      if (success) {
+    try {
+      const result = await obsCommands.connectToConnection(connection.name);
+      
+      if (result.success) {
         updateObsConnectionStatus(connection.name, 'Connected');
         setActiveObsConnection(connection.name);
+        
+        // Poll for status updates
+        setTimeout(async () => {
+          try {
+            const statusResult = await obsCommands.getConnectionStatus(connection.name);
+            if (statusResult.success) {
+              const status = statusResult.status as WebSocketConnection['status'];
+              updateObsConnectionStatus(connection.name, status);
+              if (status === 'Authenticated') {
+                setActiveObsConnection(connection.name);
+              }
+            }
+          } catch (error) {
+            console.error('Failed to get connection status:', error);
+          }
+        }, 2000);
       } else {
-        updateObsConnectionStatus(connection.name, 'Error', 'Connection failed');
+        updateObsConnectionStatus(connection.name, 'Error', result.error || 'Connection failed');
       }
-    }, 1000);
+    } catch (error) {
+      updateObsConnectionStatus(connection.name, 'Error', `Connection failed: ${error}`);
+    }
   };
 
-  const handleDisconnect = (connection: WebSocketConnection) => {
-    updateObsConnectionStatus(connection.name, 'Disconnected');
-    if (activeObsConnection === connection.name) {
-      setActiveObsConnection(null);
+  const handleDisconnect = async (connection: WebSocketConnection) => {
+    try {
+      const result = await obsCommands.disconnect(connection.name);
+      
+      if (result.success) {
+        updateObsConnectionStatus(connection.name, 'Disconnected');
+        if (activeObsConnection === connection.name) {
+          setActiveObsConnection(null);
+        }
+      } else {
+        updateObsConnectionStatus(connection.name, 'Error', result.error || 'Disconnect failed');
+      }
+    } catch (error) {
+      updateObsConnectionStatus(connection.name, 'Error', `Disconnect failed: ${error}`);
     }
   };
 
@@ -231,11 +311,12 @@ const WebSocketManager: React.FC = () => {
               <select
                 id="connection-protocol"
                 value={formData.protocol_version}
-                onChange={(e) => setFormData({ ...formData, protocol_version: e.target.value as 'v4' | 'v5' })}
+                onChange={(e) => setFormData({ ...formData, protocol_version: e.target.value as 'v5' })}
                 className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500"
+                title="OBS WebSocket protocol version"
+                aria-label="OBS WebSocket protocol version"
               >
-                <option value="v5">OBS WebSocket v5 (Recommended)</option>
-                <option value="v4">OBS WebSocket v4 (Legacy)</option>
+                <option value="v5">OBS WebSocket v5</option>
               </select>
             </div>
 
@@ -360,23 +441,16 @@ const WebSocketManager: React.FC = () => {
       {/* Protocol Information */}
       <div className="p-4 bg-gray-800 rounded-lg">
         <h4 className="text-md font-medium mb-3">Protocol Information</h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+        <div className="text-sm">
           <div>
             <h5 className="font-medium text-blue-400 mb-2">OBS WebSocket v5</h5>
             <ul className="text-gray-300 space-y-1">
               <li>• Default port: 4455</li>
               <li>• SHA256 authentication</li>
-              <li>• Enhanced features</li>
+              <li>• Enhanced features and API</li>
               <li>• Better error handling</li>
-            </ul>
-          </div>
-          <div>
-            <h5 className="font-medium text-yellow-400 mb-2">OBS WebSocket v4</h5>
-            <ul className="text-gray-300 space-y-1">
-              <li>• Default port: 4444</li>
-              <li>• Password authentication</li>
-              <li>• Legacy support</li>
-              <li>• Basic functionality</li>
+              <li>• Modern WebSocket implementation</li>
+              <li>• Recommended for all new installations</li>
             </ul>
           </div>
         </div>
