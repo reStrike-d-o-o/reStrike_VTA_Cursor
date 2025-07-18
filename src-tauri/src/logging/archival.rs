@@ -1,16 +1,30 @@
 use std::fs;
-use std::io;
-use std::path::Path;
+use std::io::{self, Write};
+use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
+use std::collections::HashMap;
+use zip::{write::FileOptions, ZipWriter};
+use chrono::{DateTime, Utc};
 
 
 pub struct LogArchiver {
     retention_days: u32,
+    archive_dir: String,
 }
 
 impl LogArchiver {
     pub fn new(retention_days: u32) -> Self {
-        Self { retention_days }
+        Self { 
+            retention_days,
+            archive_dir: "log/archives".to_string(),
+        }
+    }
+    
+    pub fn new_with_archive_dir(retention_days: u32, archive_dir: String) -> Self {
+        Self { 
+            retention_days,
+            archive_dir,
+        }
     }
     
     pub fn cleanup_old_logs(&self, log_dir: &str) -> io::Result<()> {
