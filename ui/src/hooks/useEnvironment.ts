@@ -1,13 +1,14 @@
 // Environment detection hook for reStrike VTA
 
 import { useState, useEffect } from 'react';
-import { invoke as tauriInvoke } from '@tauri-apps/api/core';
+// Tauri v2 API import
+import { invoke } from '@tauri-apps/api/core';
 
-// Use the proper Tauri v2 invoke function with fallback
-const invoke = async (command: string, args?: any) => {
+// Fallback invoke function for compatibility
+const safeInvoke = async (command: string, args?: any) => {
   try {
     // Try the proper Tauri v2 API first
-    return await tauriInvoke(command, args);
+    return await invoke(command, args);
   } catch (error) {
     // If that fails, try the global window.__TAURI__.invoke
     if (typeof window !== 'undefined' && window.__TAURI__ && window.__TAURI__.invoke) {
@@ -29,19 +30,25 @@ export const useEnvironment = (): EnvironmentInfo => {
   const [tauriAvailable, setTauriAvailable] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
+    useEffect(() => {
     const checkTauriAvailability = async () => {
       try {
+        console.log('🔍 Checking Tauri availability...');
+        console.log('window.__TAURI__:', typeof window !== 'undefined' ? window.__TAURI__ : 'window not available');
+        
         // Check if Tauri API is available
         if (typeof window !== 'undefined' && window.__TAURI__) {
+          console.log('✅ Tauri global object found, testing command...');
           // Test Tauri command invocation using the proper Tauri v2 API
-          await invoke('get_app_status');
+          const result = await safeInvoke('get_app_status');
+          console.log('✅ Tauri command successful:', result);
           setTauriAvailable(true);
         } else {
+          console.log('❌ Tauri global object not found');
           setTauriAvailable(false);
         }
       } catch (error) {
-        console.warn('Tauri API not available:', error);
+        console.warn('❌ Tauri API not available:', error);
         setTauriAvailable(false);
       } finally {
         setIsLoading(false);
