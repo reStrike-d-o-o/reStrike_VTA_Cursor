@@ -1,6 +1,21 @@
 // Tauri command utilities for reStrike VTA
 
+import { invoke as tauriInvoke } from '@tauri-apps/api/core';
 import { TauriCommandResponse, ObsConnection, VideoClip, PssEvent } from '../types';
+
+// Use the proper Tauri v2 invoke function with fallback
+const invoke = async (command: string, args?: any) => {
+  try {
+    // Try the proper Tauri v2 API first
+    return await tauriInvoke(command, args);
+  } catch (error) {
+    // If that fails, try the global window.__TAURI__.invoke
+    if (typeof window !== 'undefined' && window.__TAURI__ && window.__TAURI__.invoke) {
+      return await window.__TAURI__.invoke(command, args);
+    }
+    throw new Error('Tauri invoke method not available - ensure app is running in desktop mode');
+  }
+};
 
 // ============================================================================
 // OBS WebSocket Commands
@@ -13,7 +28,7 @@ export const obsCommands = {
   async connect(url: string): Promise<TauriCommandResponse> {
     try {
       if (isTauriAvailable()) {
-        return await window.__TAURI__.invoke('obs_connect', { url });
+        return await invoke('obs_connect', { url });
       }
       return { success: false, error: 'Tauri not available' };
     } catch (error) {
@@ -27,7 +42,7 @@ export const obsCommands = {
   async disconnect(connectionName: string): Promise<TauriCommandResponse> {
     try {
       if (isTauriAvailable()) {
-        return await window.__TAURI__.invoke('obs_disconnect', { connectionName });
+        return await invoke('obs_disconnect', { connectionName });
       }
       return { success: false, error: 'Tauri not available' };
     } catch (error) {
@@ -41,7 +56,7 @@ export const obsCommands = {
   async getStatus(): Promise<TauriCommandResponse> {
     try {
       if (isTauriAvailable()) {
-        return await window.__TAURI__.invoke('obs_get_status');
+        return await invoke('obs_get_status');
       }
       return { success: false, error: 'Tauri not available' };
     } catch (error) {
@@ -55,7 +70,7 @@ export const obsCommands = {
   async startRecording(): Promise<TauriCommandResponse> {
     try {
       if (isTauriAvailable()) {
-        return await window.__TAURI__.invoke('obs_start_recording');
+        return await invoke('obs_start_recording');
       }
       return { success: false, error: 'Tauri not available' };
     } catch (error) {
@@ -69,7 +84,7 @@ export const obsCommands = {
   async stopRecording(): Promise<TauriCommandResponse> {
     try {
       if (isTauriAvailable()) {
-        return await window.__TAURI__.invoke('obs_stop_recording');
+        return await invoke('obs_stop_recording');
       }
       return { success: false, error: 'Tauri not available' };
     } catch (error) {
@@ -83,7 +98,7 @@ export const obsCommands = {
   async playClip(clipPath: string): Promise<TauriCommandResponse> {
     try {
       if (isTauriAvailable()) {
-        return await window.__TAURI__.invoke('video_play', { path: clipPath });
+        return await invoke('video_play', { path: clipPath });
       }
       return { success: false, error: 'Tauri not available' };
     } catch (error) {
@@ -97,7 +112,7 @@ export const obsCommands = {
   async stopPlayback(): Promise<TauriCommandResponse> {
     try {
       if (isTauriAvailable()) {
-        return await window.__TAURI__.invoke('video_stop');
+        return await invoke('video_stop');
       }
       return { success: false, error: 'Tauri not available' };
     } catch (error) {
@@ -111,7 +126,7 @@ export const obsCommands = {
   async getVideoInfo(path: string): Promise<TauriCommandResponse<VideoClip>> {
     try {
       if (isTauriAvailable()) {
-        return await window.__TAURI__.invoke('video_get_info', { path });
+        return await invoke('video_get_info', { path });
       }
       return { success: false, error: 'Tauri not available' };
     } catch (error) {
@@ -131,7 +146,7 @@ export const pssCommands = {
   async startListener(port: number): Promise<TauriCommandResponse> {
     try {
       if (isTauriAvailable()) {
-        return await window.__TAURI__.invoke('pss_start_listener', { port });
+        return await invoke('pss_start_listener', { port });
       }
       return { success: false, error: 'Tauri not available' };
     } catch (error) {
@@ -145,7 +160,7 @@ export const pssCommands = {
   async stopListener(): Promise<TauriCommandResponse> {
     try {
       if (isTauriAvailable()) {
-        return await window.__TAURI__.invoke('pss_stop_listener');
+        return await invoke('pss_stop_listener');
       }
       return { success: false, error: 'Tauri not available' };
     } catch (error) {
@@ -159,7 +174,7 @@ export const pssCommands = {
   async getEvents(): Promise<TauriCommandResponse<PssEvent[]>> {
     try {
       if (isTauriAvailable()) {
-        return await window.__TAURI__.invoke('pss_get_events');
+        return await invoke('pss_get_events');
       }
       return { success: false, error: 'Tauri not available' };
     } catch (error) {
@@ -179,7 +194,7 @@ export const systemCommands = {
   async getSystemInfo(): Promise<TauriCommandResponse> {
     try {
       if (isTauriAvailable()) {
-        return await window.__TAURI__.invoke('system_get_info');
+        return await invoke('system_get_info');
       }
       return { success: false, error: 'Tauri not available' };
     } catch (error) {
@@ -193,7 +208,7 @@ export const systemCommands = {
   async openFileDialog(): Promise<TauriCommandResponse<string[]>> {
     try {
       if (isTauriAvailable()) {
-        return await window.__TAURI__.invoke('system_open_file_dialog');
+        return await invoke('system_open_file_dialog');
       }
       return { success: false, error: 'Tauri not available' };
     } catch (error) {
@@ -244,16 +259,20 @@ export const diagLogsCommands = {
  * Check if Tauri is available
  */
 export const isTauriAvailable = (): boolean => {
-  const available = typeof window !== 'undefined' && !!window.__TAURI__;
-  console.log('🔍 isTauriAvailable check:', {
-    windowExists: typeof window !== 'undefined',
-    tauriExists: !!window.__TAURI__,
-    tauriKeys: window.__TAURI__ ? Object.keys(window.__TAURI__) : 'undefined',
-    result: available
-  });
-  // Only return true if window.__TAURI__ is actually available
-  // This is more strict than the environment detection hook
-  return available;
+  // Check if we're in a browser environment and Tauri is available
+  if (typeof window === 'undefined' || !window.__TAURI__) {
+    console.log('🔍 isTauriAvailable: window.__TAURI__ not available');
+    return false;
+  }
+
+  // Check if the invoke function is actually available
+  if (typeof window.__TAURI__.invoke !== 'function') {
+    console.log('🔍 isTauriAvailable: window.__TAURI__.invoke not available');
+    return false;
+  }
+
+  console.log('🔍 isTauriAvailable: Tauri API appears to be available');
+  return true;
 };
 
 /**
@@ -270,21 +289,21 @@ export const testTauriApi = async (): Promise<boolean> => {
     
     // Try multiple commands to test Tauri API
     try {
-      const result = await window.__TAURI__.invoke('get_app_status');
+      const result = await invoke('get_app_status');
       console.log('✅ get_app_status successful:', result);
       return true;
     } catch (error) {
       console.log('⚠️ get_app_status failed, trying obs_get_status...');
       
       try {
-        const obsResult = await window.__TAURI__.invoke('obs_get_status');
+        const obsResult = await invoke('obs_get_status');
         console.log('✅ obs_get_status successful:', obsResult);
         return true;
       } catch (obsError) {
         console.log('⚠️ obs_get_status failed, trying system_get_info...');
         
         try {
-          const sysResult = await window.__TAURI__.invoke('system_get_info');
+          const sysResult = await invoke('system_get_info');
           console.log('✅ system_get_info successful:', sysResult);
           return true;
         } catch (sysError) {
@@ -315,20 +334,17 @@ export const executeTauriCommand = async <T = any>(
       return { success: false, error: 'Tauri not available - running in web mode' };
     }
 
-    // Double-check that __TAURI__ is available before invoking
-    if (!window.__TAURI__ || !window.__TAURI__.invoke) {
-      return { success: false, error: 'Tauri invoke method not available - ensure app is running in desktop mode' };
-    }
-
-    // Add timeout handling
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error(`Command ${command} timed out after ${timeout}ms`)), timeout);
-    });
-
-    const commandPromise = window.__TAURI__.invoke(command, args);
-    const result = await Promise.race([commandPromise, timeoutPromise]);
+    // Use the proper Tauri v2 invoke function
+    const result = await invoke(command, args);
     
-    return { success: true, data: result };
+    // Check if the result is already in TauriCommandResponse format
+    if (result && typeof result === 'object' && 'success' in result) {
+      // Backend already returned TauriCommandResponse format
+      return result as TauriCommandResponse<T>;
+    } else {
+      // Backend returned raw data, wrap it
+      return { success: true, data: result as T };
+    }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     

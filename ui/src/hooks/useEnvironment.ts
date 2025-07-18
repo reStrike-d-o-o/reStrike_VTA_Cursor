@@ -1,71 +1,61 @@
 // Environment detection hook for reStrike VTA
 
 import { useState, useEffect } from 'react';
-import { testTauriApi } from '../utils/tauriCommands';
+import { invoke as tauriInvoke } from '@tauri-apps/api/core';
+
+// Use the proper Tauri v2 invoke function with fallback
+const invoke = async (command: string, args?: any) => {
+  try {
+    // Try the proper Tauri v2 API first
+    return await tauriInvoke(command, args);
+  } catch (error) {
+    // If that fails, try the global window.__TAURI__.invoke
+    if (typeof window !== 'undefined' && window.__TAURI__ && window.__TAURI__.invoke) {
+      return await window.__TAURI__.invoke(command, args);
+    }
+    throw new Error('Tauri invoke method not available - ensure app is running in desktop mode');
+  }
+};
 
 export interface EnvironmentInfo {
+  tauriAvailable: boolean;
+  isLoading: boolean;
   environment: 'windows' | 'web';
   isWindows: boolean;
   isWeb: boolean;
-  tauriAvailable: boolean;
 }
 
-/**
- * Hook for detecting the current environment
- */
 export const useEnvironment = (): EnvironmentInfo => {
-  const [environmentInfo, setEnvironmentInfo] = useState<EnvironmentInfo>({
-    environment: 'web',
-    isWindows: false,
-    isWeb: true,
-    tauriAvailable: false,
-  });
+  const [tauriAvailable, setTauriAvailable] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const detectEnvironment = async () => {
-      // Check for Tauri availability
-      const tauriAvailable = typeof window !== 'undefined' && !!window.__TAURI__;
-      
-      // Test Tauri API if available
-      let tauriApiWorking = false;
-      if (tauriAvailable) {
-        tauriApiWorking = await testTauriApi();
+    const checkTauriAvailability = async () => {
+      try {
+        // Check if Tauri API is available
+        if (typeof window !== 'undefined' && window.__TAURI__) {
+          // Test Tauri command invocation using the proper Tauri v2 API
+          await invoke('get_app_status');
+          setTauriAvailable(true);
+        } else {
+          setTauriAvailable(false);
+        }
+      } catch (error) {
+        console.warn('Tauri API not available:', error);
+        setTauriAvailable(false);
+      } finally {
+        setIsLoading(false);
       }
-      
-      // Check if we're in a Tauri context
-      // If window.__TAURI__ exists, we're likely in native mode
-      // The API test is just a verification, but the presence of __TAURI__ is the main indicator
-      const isTauriContext = tauriAvailable;
-      const isWindows = isTauriContext;
-      const isWeb = !isWindows;
-      const environment = isWindows ? 'windows' : 'web';
-
-      // Debug logging
-      console.log('🔍 Environment Detection:', {
-        tauriAvailable,
-        tauriApiWorking,
-        isTauriContext,
-        isWindows,
-        isWeb,
-        environment
-      });
-
-      setEnvironmentInfo({
-        environment,
-        isWindows,
-        isWeb,
-        tauriAvailable: tauriAvailable,
-      });
     };
 
-    // Initial detection
-    detectEnvironment();
-
-    // Set up interval for continuous detection (useful for development)
-    const interval = setInterval(detectEnvironment, 5000);
-
-    return () => clearInterval(interval);
+    checkTauriAvailability();
   }, []);
 
-  return environmentInfo;
+  return {
+    tauriAvailable,
+    isLoading,
+    environment: tauriAvailable ? 'windows' : 'web',
+    isWindows: tauriAvailable,
+    isWeb: !tauriAvailable && !isLoading
+  };
 }; 

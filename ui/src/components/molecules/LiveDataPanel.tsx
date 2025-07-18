@@ -1,6 +1,38 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { listen } from '@tauri-apps/api/event';
+import { invoke as tauriInvoke } from '@tauri-apps/api/core';
 import { diagLogsCommands } from '../../utils/tauriCommands';
 import { useEnvironment } from '../../hooks/useEnvironment';
+
+// Use the proper Tauri v2 invoke function with fallback
+const invoke = async (command: string, args?: any) => {
+  try {
+    // Try the proper Tauri v2 API first
+    return await tauriInvoke(command, args);
+  } catch (error) {
+    // If that fails, try the global window.__TAURI__.invoke
+    if (typeof window !== 'undefined' && window.__TAURI__ && window.__TAURI__.invoke) {
+      return await window.__TAURI__.invoke(command, args);
+    }
+    throw new Error('Tauri invoke method not available - ensure app is running in desktop mode');
+  }
+};
+
+// Debug function to test Tauri API directly
+const testTauriApiDirectly = async () => {
+  console.log('🔍 Testing Tauri API directly...');
+  console.log('window.__TAURI__:', window.__TAURI__);
+  console.log('window.__TAURI__.invoke:', window.__TAURI__?.invoke);
+  
+  try {
+    const result = await window.__TAURI__.invoke('get_app_status');
+    console.log('✅ Direct invoke successful:', result);
+    return true;
+  } catch (error) {
+    console.log('❌ Direct invoke failed:', error);
+    return false;
+  }
+};
 
 const logTypes = [
   { key: 'pss', label: 'PSS' },
@@ -9,12 +41,6 @@ const logTypes = [
 ];
 
 type LogType = 'pss' | 'obs' | 'udp';
-
-declare global {
-  interface Window {
-    __TAURI__?: any;
-  }
-}
 
 const LiveDataPanel: React.FC = () => {
   const { tauriAvailable, environment, isWindows, isWeb } = useEnvironment();
@@ -32,9 +58,13 @@ const LiveDataPanel: React.FC = () => {
     isWindows,
     isWeb,
     windowTauri: typeof window !== 'undefined' ? !!window.__TAURI__ : 'undefined',
-    windowTauriEvent: typeof window !== 'undefined' && window.__TAURI__ ? !!window.__TAURI__.event : 'undefined',
     windowLocation: typeof window !== 'undefined' ? window.location.href : 'undefined'
   });
+
+  // Test Tauri API on component mount
+  useEffect(() => {
+    testTauriApiDirectly();
+  }, []);
 
   // Scroll to bottom on new data
   useEffect(() => {
@@ -53,14 +83,13 @@ const LiveDataPanel: React.FC = () => {
     console.log('🔍 LiveDataPanel Environment Check:', {
       tauriAvailable,
       windowTauri: typeof window !== 'undefined' ? !!window.__TAURI__ : 'undefined',
-      windowTauriEvent: typeof window !== 'undefined' && window.__TAURI__ ? !!window.__TAURI__.event : 'undefined',
       selectedType,
       enabled
     });
 
     const setupStreaming = async () => {
       try {
-        if (tauriAvailable && window.__TAURI__ && window.__TAURI__.event) {
+        if (tauriAvailable) {
           const result = await diagLogsCommands.setLiveDataStreaming(selectedType, enabled);
           if (!result.success) {
             setError(`Failed to ${enabled ? 'start' : 'stop'} streaming: ${result.error}`);
@@ -69,7 +98,8 @@ const LiveDataPanel: React.FC = () => {
 
           setLiveData('');
           
-          const listener = await window.__TAURI__.event.listen('live_data', (event: any) => {
+          // Use the proper Tauri v2 event listening API
+          const listener = await listen('live_data', (event: any) => {
             if (event && event.payload && event.payload.subsystem === selectedType) {
               setLiveData(prev => prev + (prev ? '\n' : '') + event.payload.data);
             }
@@ -96,7 +126,7 @@ const LiveDataPanel: React.FC = () => {
           console.error('Error cleaning up listener:', err);
         }
       }
-      if (tauriAvailable && window.__TAURI__ && window.__TAURI__.event) {
+      if (tauriAvailable) {
         diagLogsCommands.setLiveDataStreaming(selectedType, false).catch(err => {
           console.error('Error stopping streaming:', err);
         });
