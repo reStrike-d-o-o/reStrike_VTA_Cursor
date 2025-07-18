@@ -345,11 +345,19 @@ pub async fn set_logging_enabled(
 ) -> Result<serde_json::Value, String> {
     log::info!("Setting logging enabled for {}: {}", subsystem, enabled);
     
+    // Prevent disabling the "app" subsystem as it's needed for system logging
+    if subsystem == "app" && !enabled {
+        return Ok(serde_json::json!({
+            "success": false,
+            "error": "Cannot disable 'app' subsystem logging as it's required for system operations"
+        }));
+    }
+    
     // Update the log manager
     app.log_manager().set_subsystem_enabled(&subsystem, enabled);
     
-    // Log the change
-    if let Err(e) = app.log_manager().log(&subsystem, "INFO", &format!("Logging {} for subsystem", if enabled { "enabled" } else { "disabled" })) {
+    // Log the change to the system log (app) instead of the subsystem log
+    if let Err(e) = app.log_manager().log("app", "INFO", &format!("Logging {} for subsystem: {}", if enabled { "enabled" } else { "disabled" }, subsystem)) {
         log::error!("Failed to log logging state change: {}", e);
     }
     
