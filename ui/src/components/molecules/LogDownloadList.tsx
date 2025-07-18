@@ -78,13 +78,25 @@ const LogDownloadList: React.FC = () => {
     setDownloading(logName);
     try {
       if (selectedType === 'arc') {
-        // For archives, extract them instead of downloading
-        const res = await diagLogsCommands.extractArchive(logName);
-        if (res.success) {
-          alert(`Archive ${logName} extracted successfully to log/archives/extracted/`);
+        // For archives, download the ZIP file
+        const res = await diagLogsCommands.downloadArchive(logName);
+        if (res.success && res.data) {
+          const blob = new Blob([new Uint8Array(res.data)], { type: 'application/zip' });
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = logName;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          window.URL.revokeObjectURL(url);
         } else {
           const errorMsg = res.error || 'Unknown error';
-          alert(`Failed to extract archive ${logName}: ${errorMsg}`);
+          if (errorMsg.includes('timeout') || errorMsg.includes('timed out')) {
+            alert(`Download timed out for ${logName}. Please try again.`);
+          } else {
+            alert(`Failed to download ${logName}: ${errorMsg}`);
+          }
         }
       } else {
         // For regular logs, download them
@@ -111,11 +123,11 @@ const LogDownloadList: React.FC = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
       if (errorMessage.includes('Cannot read properties of undefined')) {
-        alert(`Tauri not available. Cannot ${selectedType === 'arc' ? 'extract' : 'download'} ${logName} in web mode.`);
+        alert(`Tauri not available. Cannot download ${logName} in web mode.`);
       } else if (errorMessage.includes('timeout') || errorMessage.includes('timed out')) {
-        alert(`${selectedType === 'arc' ? 'Extraction' : 'Download'} timed out for ${logName}. Please try again.`);
+        alert(`Download timed out for ${logName}. Please try again.`);
       } else {
-        alert(`Error ${selectedType === 'arc' ? 'extracting' : 'downloading'} ${logName}: ${errorMessage}`);
+        alert(`Error downloading ${logName}: ${errorMessage}`);
       }
     } finally {
       setDownloading('');
@@ -154,7 +166,8 @@ const LogDownloadList: React.FC = () => {
               </button>
             </div>
           )}
-          <table className="min-w-full text-left text-sm text-gray-200 border border-gray-700 rounded">
+          <div className="max-h-64 overflow-y-auto border border-gray-700 rounded">
+            <table className="min-w-full text-left text-sm text-gray-200">
             <thead className="bg-[#101820]">
               <tr>
                 <th className="px-3 py-2 font-semibold">File Name</th>
@@ -172,14 +185,12 @@ const LogDownloadList: React.FC = () => {
                   key={log.name}
                   className="hover:bg-blue-900 cursor-pointer transition-colors"
                   onDoubleClick={() => handleDownload(log.name)}
-                  title={`Double-click to ${selectedType === 'arc' ? 'extract' : 'download'}`}
+                  title="Double-click to download"
                 >
                   <td className="px-3 py-2 whitespace-nowrap">
                     {log.name}
                     {downloading === log.name && (
-                      <span className="ml-2 text-blue-400 text-xs">
-                        {selectedType === 'arc' ? 'Extracting...' : 'Downloading...'}
-                      </span>
+                      <span className="ml-2 text-blue-400 text-xs">Downloading...</span>
                     )}
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap">
@@ -196,6 +207,7 @@ const LogDownloadList: React.FC = () => {
               )}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
     </div>

@@ -198,6 +198,10 @@ impl LogManager {
         self.archiver.extract_archive(archive_name)
     }
     
+    pub fn download_archive(&self, archive_name: &str) -> io::Result<Vec<u8>> {
+        self.archiver.download_archive(archive_name)
+    }
+    
     pub fn get_config(&self) -> LogConfig {
         let config = self.config.lock().unwrap();
         config.clone()

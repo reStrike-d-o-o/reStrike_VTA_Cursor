@@ -435,6 +435,19 @@ pub async fn extract_archive(
 }
 
 #[tauri::command]
+pub async fn download_archive(
+    archive_name: String,
+    app: State<'_, Arc<App>>,
+) -> Result<Vec<u8>, String> {
+    log::info!("Downloading archive: {}", archive_name);
+    
+    match app.log_manager().download_archive(&archive_name) {
+        Ok(contents) => Ok(contents),
+        Err(e) => Err(format!("Failed to read archive: {}", e))
+    }
+}
+
+#[tauri::command]
 pub async fn set_live_data_streaming(
     subsystem: String,
     enabled: bool,

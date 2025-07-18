@@ -260,6 +260,13 @@ export const diagLogsCommands = {
   },
 
   /**
+   * Download a specific archive file
+   */
+  async downloadArchive(archiveName: string) {
+    return executeTauriCommand('download_archive', { archiveName });
+  },
+
+  /**
    * Enable or disable live data streaming for a subsystem
    */
   async setLiveDataStreaming(subsystem: string, enabled: boolean) {

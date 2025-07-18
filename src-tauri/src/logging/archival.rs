@@ -211,4 +211,14 @@ impl LogArchiver {
         println!("Extracted archive {:?} to {:?}", archive_path, extract_dir);
         Ok(())
     }
+    
+    /// Download a specific archive (read file contents)
+    pub fn download_archive(&self, archive_name: &str) -> io::Result<Vec<u8>> {
+        let archive_path = Path::new(&self.archive_dir).join(archive_name);
+        if !archive_path.exists() {
+            return Err(io::Error::new(io::ErrorKind::NotFound, "Archive not found"));
+        }
+        
+        fs::read(&archive_path)
+    }
 } 
