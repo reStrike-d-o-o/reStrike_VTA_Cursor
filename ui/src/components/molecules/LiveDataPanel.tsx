@@ -126,32 +126,6 @@ const LiveDataPanel: React.FC = () => {
         <div className="text-yellow-400">isWindows: {isWindows ? 'true' : 'false'}</div>
         <div className="text-orange-400">isWeb: {isWeb ? 'true' : 'false'}</div>
         <div className="text-purple-400">window.__TAURI__: {typeof window !== 'undefined' && !!window.__TAURI__ ? 'true' : 'false'}</div>
-        <div className="text-pink-400">window.__TAURI__.invoke: {typeof window !== 'undefined' && window.__TAURI__ && !!window.__TAURI__.invoke ? 'true' : 'false'}</div>
-        <button 
-          onClick={() => {
-            console.log('🔍 Manual Tauri Test:', {
-              window: typeof window !== 'undefined',
-              tauri: typeof window !== 'undefined' ? !!window.__TAURI__ : false,
-              invoke: typeof window !== 'undefined' && window.__TAURI__ ? !!window.__TAURI__.invoke : false,
-              event: typeof window !== 'undefined' && window.__TAURI__ ? !!window.__TAURI__.event : false,
-              location: typeof window !== 'undefined' ? window.location.href : 'undefined'
-            });
-            if (typeof window !== 'undefined' && window.__TAURI__ && window.__TAURI__.invoke) {
-              window.__TAURI__.invoke('system_get_info').then((result: any) => {
-                console.log('✅ Tauri command test successful:', result);
-                alert('Tauri is working! Check console for details.');
-              }).catch((error: any) => {
-                console.error('❌ Tauri command test failed:', error);
-                alert('Tauri command failed! Check console for details.');
-              });
-            } else {
-              alert('Tauri not available! Check console for details.');
-            }
-          }}
-          className="mt-2 px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
-        >
-          Test Tauri
-        </button>
       </div>
       
       <div className="flex items-center gap-3 mb-3">

@@ -1,6 +1,6 @@
-use std::sync::{Arc, Mutex};
-use tauri::{command, State};
 use serde::{Deserialize, Serialize};
+use std::sync::{Arc, Mutex};
+use tauri::State;
 
 // Simple state for logging
 #[derive(Debug, Clone)]

@@ -1,8 +1,10 @@
 // Prevents additional console window on Windows in release
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use re_strike_vta::core::app::App;
 use re_strike_vta::tauri_commands;
-use tauri::App;
+use re_strike_vta::types::AppResult;
+use std::sync::Arc;
 
 #[tokio::main]
 async fn main() -> AppResult<()> {
@@ -85,6 +87,7 @@ async fn main() -> AppResult<()> {
             tauri_commands::stop_live_data,
         ])
         .setup(|_app| {
+            log::info!("Tauri application setup complete");
             Ok(())
         })
         .run(tauri::generate_context!())
