@@ -653,13 +653,7 @@ impl ObsPlugin {
         Uuid::new_v4().to_string()
     }
 
-    fn get_protocol_version(&self, connection_name: &str) -> AppResult<ObsWebSocketVersion> {
-        let connections = self.connections.lock().unwrap();
-        let connection = connections.get(connection_name)
-            .ok_or_else(|| AppError::ConfigError(format!("Connection '{}' not found", connection_name)))?;
-        
-        Ok(connection.config.protocol_version)
-    }
+
 
     // Get connection status
     pub fn get_connection_status(&self, connection_name: &str) -> Option<ObsConnectionStatus> {

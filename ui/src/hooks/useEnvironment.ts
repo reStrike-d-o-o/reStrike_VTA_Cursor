@@ -42,7 +42,6 @@ export const useEnvironment = (): EnvironmentInfo => {
         isTauriContext,
         windowLocation: typeof window !== 'undefined' ? window.location.href : 'undefined',
         windowTauri: typeof window !== 'undefined' ? !!window.__TAURI__ : 'undefined',
-        windowTauriInvoke: typeof window !== 'undefined' && window.__TAURI__ ? !!window.__TAURI__.invoke : 'undefined',
         environment,
         isWindows,
         isWeb,
@@ -61,8 +60,7 @@ export const useEnvironment = (): EnvironmentInfo => {
     detectEnvironment();
 
     // Re-detect multiple times to ensure Tauri is initialized
-    // More aggressive retry schedule for better detection
-    const intervals = [50, 100, 200, 500, 1000, 2000, 3000, 5000, 10000];
+    const intervals = [100, 500, 1000, 2000, 3000, 5000];
     const timeouts = intervals.map(delay => setTimeout(detectEnvironment, delay));
 
     return () => timeouts.forEach(clearTimeout);

@@ -5,8 +5,7 @@
   "version": "0.1.0",
   "build": {
     "frontendDist": "ui/build",
-    "devUrl": "http://localhost:3000",
-    "beforeDevCommand": "cd ui && npm start",
+    "beforeDevCommand": "",
     "beforeBuildCommand": "cd ui && npm run build"
   },
   "app": {
@@ -20,9 +19,10 @@
         "minWidth": 800,
         "minHeight": 600,
         "decorations": true,
-        "alwaysOnTop": false,
+        "alwaysOnTop": true,
         "center": true,
-        "visible": true
+        "visible": true,
+        "focus": true
       }
     ],
     "security": {
