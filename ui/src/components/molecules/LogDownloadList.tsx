@@ -5,9 +5,10 @@ const logTypes = [
   { key: 'pss', label: 'PSS' },
   { key: 'obs', label: 'OBS' },
   { key: 'udp', label: 'UDP' },
+  { key: 'arc', label: 'ARC' },
 ];
 
-type LogType = 'pss' | 'obs' | 'udp';
+type LogType = 'pss' | 'obs' | 'udp' | 'arc';
 
 type LogFileInfo = {
   name: string;
@@ -27,12 +28,32 @@ const LogDownloadList: React.FC = () => {
     setLoading(true);
     setError('');
     try {
-      const res = await diagLogsCommands.listLogFiles(selectedType);
-      if (res.success && Array.isArray(res.data)) {
-        setLogs(res.data);
+      let res;
+      if (selectedType === 'arc') {
+        // For archives, use the listArchives command
+        res = await diagLogsCommands.listArchives();
+        if (res.success && Array.isArray(res.data)) {
+          // Transform archive data to match LogFileInfo format
+          const archiveLogs = res.data.map((archiveName: string) => ({
+            name: archiveName,
+            size: 0, // Archive size not provided by backend yet
+            modified: '', // Archive date not provided by backend yet
+            subsystem: 'archive'
+          }));
+          setLogs(archiveLogs);
+        } else {
+          setLogs([]);
+          setError(res.error || 'Failed to fetch archive files');
+        }
       } else {
-        setLogs([]);
-        setError(res.error || 'Failed to fetch log files');
+        // For regular logs, use the listLogFiles command
+        res = await diagLogsCommands.listLogFiles(selectedType);
+        if (res.success && Array.isArray(res.data)) {
+          setLogs(res.data);
+        } else {
+          setLogs([]);
+          setError(res.error || 'Failed to fetch log files');
+        }
       }
     } catch (err) {
       setLogs([]);
@@ -42,7 +63,7 @@ const LogDownloadList: React.FC = () => {
       } else if (errorMessage.includes('Cannot read properties of undefined')) {
         setError(`Tauri not available. Please ensure the app is running in desktop mode.`);
       } else {
-        setError(`Error fetching logs: ${errorMessage}`);
+        setError(`Error fetching ${selectedType === 'arc' ? 'archives' : 'logs'}: ${errorMessage}`);
       }
     } finally {
       setLoading(false);
@@ -56,33 +77,45 @@ const LogDownloadList: React.FC = () => {
   const handleDownload = async (logName: string) => {
     setDownloading(logName);
     try {
-      const res = await diagLogsCommands.downloadLogFile(logName);
-      if (res.success && res.data) {
-        const blob = new Blob([new Uint8Array(res.data)], { type: 'text/plain' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = logName;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        window.URL.revokeObjectURL(url);
-      } else {
-        const errorMsg = res.error || 'Unknown error';
-        if (errorMsg.includes('timeout') || errorMsg.includes('timed out')) {
-          alert(`Download timed out for ${logName}. Please try again.`);
+      if (selectedType === 'arc') {
+        // For archives, extract them instead of downloading
+        const res = await diagLogsCommands.extractArchive(logName);
+        if (res.success) {
+          alert(`Archive ${logName} extracted successfully to log/archives/extracted/`);
         } else {
-          alert(`Failed to download ${logName}: ${errorMsg}`);
+          const errorMsg = res.error || 'Unknown error';
+          alert(`Failed to extract archive ${logName}: ${errorMsg}`);
+        }
+      } else {
+        // For regular logs, download them
+        const res = await diagLogsCommands.downloadLogFile(logName);
+        if (res.success && res.data) {
+          const blob = new Blob([new Uint8Array(res.data)], { type: 'text/plain' });
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = logName;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          window.URL.revokeObjectURL(url);
+        } else {
+          const errorMsg = res.error || 'Unknown error';
+          if (errorMsg.includes('timeout') || errorMsg.includes('timed out')) {
+            alert(`Download timed out for ${logName}. Please try again.`);
+          } else {
+            alert(`Failed to download ${logName}: ${errorMsg}`);
+          }
         }
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
       if (errorMessage.includes('Cannot read properties of undefined')) {
-        alert(`Tauri not available. Cannot download ${logName} in web mode.`);
+        alert(`Tauri not available. Cannot ${selectedType === 'arc' ? 'extract' : 'download'} ${logName} in web mode.`);
       } else if (errorMessage.includes('timeout') || errorMessage.includes('timed out')) {
-        alert(`Download timed out for ${logName}. Please try again.`);
+        alert(`${selectedType === 'arc' ? 'Extraction' : 'Download'} timed out for ${logName}. Please try again.`);
       } else {
-        alert(`Error downloading ${logName}: ${errorMessage}`);
+        alert(`Error ${selectedType === 'arc' ? 'extracting' : 'downloading'} ${logName}: ${errorMessage}`);
       }
     } finally {
       setDownloading('');
@@ -139,15 +172,19 @@ const LogDownloadList: React.FC = () => {
                   key={log.name}
                   className="hover:bg-blue-900 cursor-pointer transition-colors"
                   onDoubleClick={() => handleDownload(log.name)}
-                  title="Double-click to download"
+                  title={`Double-click to ${selectedType === 'arc' ? 'extract' : 'download'}`}
                 >
                   <td className="px-3 py-2 whitespace-nowrap">
                     {log.name}
                     {downloading === log.name && (
-                      <span className="ml-2 text-blue-400 text-xs">Downloading...</span>
+                      <span className="ml-2 text-blue-400 text-xs">
+                        {selectedType === 'arc' ? 'Extracting...' : 'Downloading...'}
+                      </span>
                     )}
                   </td>
-                  <td className="px-3 py-2 whitespace-nowrap">{(log.size / 1024).toFixed(1)} KB</td>
+                  <td className="px-3 py-2 whitespace-nowrap">
+                    {selectedType === 'arc' ? 'Archive' : `${(log.size / 1024).toFixed(1)} KB`}
+                  </td>
                   <td className="px-3 py-2 whitespace-nowrap">{log.modified ? new Date(log.modified).toLocaleString() : ''}</td>
                 </tr>
               )) : (
