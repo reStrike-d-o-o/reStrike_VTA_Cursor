@@ -6,7 +6,8 @@ dist/
 .env.*
 
 # Tauri
-src-tauri/
+src-tauri/target/
+src-tauri/Cargo.lock
 
 # Logs
 *.log
