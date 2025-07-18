@@ -28,7 +28,7 @@ impl Default for LogConfig {
             max_file_size: 10 * 1024 * 1024, // 10MB
             retention_days: 30,
             log_dir: "log".to_string(),
-            enabled_subsystems: vec!["pss".to_string(), "obs".to_string(), "udp".to_string()],
+            enabled_subsystems: vec!["app".to_string(), "pss".to_string(), "obs".to_string(), "udp".to_string()],
         }
     }
 }
