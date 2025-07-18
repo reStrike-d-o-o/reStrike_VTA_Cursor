@@ -3,6 +3,7 @@ import SettingsDrawerTabs from '../molecules/SettingsDrawerTabs';
 import LogToggleGroup from '../molecules/LogToggleGroup';
 import LogDownloadList from '../molecules/LogDownloadList';
 import LiveDataPanel from '../molecules/LiveDataPanel';
+import WebSocketManager from '../molecules/WebSocketManager';
 
 type AdvancedPanelProps = React.ComponentProps<'div'>;
 
@@ -61,6 +62,8 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
   const [activeDrawer, setActiveDrawer] = useState('pss');
   // Settings horizontal drawer state
   const [settingsTab, setSettingsTab] = useState('diagnostics');
+  // OBS horizontal drawer state
+  const [obsTab, setObsTab] = useState('websocket');
   const drawer = DRAWERS.find(d => d.key === activeDrawer);
 
   return (
@@ -88,17 +91,82 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
           <div className="bg-[#18232e] rounded p-6 text-gray-300">[PSS options, UDP server, protocol, event DB will be implemented here]</div>
         )}
         {drawer?.key === 'obs' && (
-          <div className="bg-[#18232e] rounded p-6 text-gray-300">
-            <div className="text-center">
-              <h3 className="text-lg font-semibold mb-4">OBS Integration</h3>
-              <p className="text-gray-400 mb-4">
-                OBS connection management is now available in the Settings panel.
-              </p>
-              <p className="text-sm text-gray-500">
-                Use the Settings button in the sidebar to access WebSocket connection management.
-              </p>
+          <>
+            {/* OBS Tab Navigation */}
+            <div className="flex space-x-1 mb-6 bg-gray-800 p-1 rounded-lg">
+              <button
+                onClick={() => setObsTab('websocket')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  obsTab === 'websocket' 
+                    ? 'bg-blue-600 text-white' 
+                    : 'text-gray-300 hover:bg-gray-700'
+                }`}
+              >
+                🔌 WebSocket
+              </button>
+              <button
+                onClick={() => setObsTab('integration')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  obsTab === 'integration' 
+                    ? 'bg-blue-600 text-white' 
+                    : 'text-gray-300 hover:bg-gray-700'
+                }`}
+              >
+                ⚙️ Integration
+              </button>
             </div>
-          </div>
+
+            {/* OBS Tab Content */}
+            {obsTab === 'websocket' && (
+              <WebSocketManager />
+            )}
+            
+            {obsTab === 'integration' && (
+              <div className="space-y-6">
+                <div className="p-4 bg-gray-800 rounded-lg">
+                  <h3 className="text-lg font-semibold mb-3">OBS Integration Settings</h3>
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="obs-auto-connect"
+                        defaultChecked={true}
+                        className="rounded border-gray-600 bg-gray-700 text-blue-500 focus:ring-blue-500"
+                      />
+                      <label htmlFor="obs-auto-connect" className="text-sm">Auto-connect to OBS on startup</label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="obs-show-status"
+                        defaultChecked={true}
+                        className="rounded border-gray-600 bg-gray-700 text-blue-500 focus:ring-blue-500"
+                      />
+                      <label htmlFor="obs-show-status" className="text-sm">Show OBS status in overlay</label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="obs-auto-record"
+                        defaultChecked={false}
+                        className="rounded border-gray-600 bg-gray-700 text-blue-500 focus:ring-blue-500"
+                      />
+                      <label htmlFor="obs-auto-record" className="text-sm">Auto-record when playing clips</label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="obs-save-replay"
+                        defaultChecked={true}
+                        className="rounded border-gray-600 bg-gray-700 text-blue-500 focus:ring-blue-500"
+                      />
+                      <label htmlFor="obs-save-replay" className="text-sm">Save replay buffer on clip creation</label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
         )}
         {drawer?.key === 'video' && (
           <div className="bg-[#182e1a] rounded p-6 text-gray-300">[mpv video integration and controls will be implemented here]</div>
