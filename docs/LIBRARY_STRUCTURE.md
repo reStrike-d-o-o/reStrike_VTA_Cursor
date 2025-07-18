@@ -1,338 +1,396 @@
-# Library Structure
+# Library Structure Documentation
 
-## Crate and Library Naming
-- The crate and library name is `re_strike_vta` (snake_case, as required by Rust best practices).
-- Avoid output filename collisions by ensuring the lib and bin targets have unique names in Cargo.toml.
+## Overview
+The reStrike VTA library provides a comprehensive foundation for building Windows-native desktop applications with advanced OBS integration, real-time event processing, and video replay management. The architecture follows a plugin-based microkernel pattern with robust configuration management.
 
-## Plugin Module Integration
-- All plugin modules are declared only in `src-tauri/src/plugins/mod.rs`.
-- Plugins are re-exported via `pub mod plugins;` in `src-tauri/src/lib.rs`.
-- Do not declare `mod` or `pub mod` for plugins anywhere else.
+## Core Architecture
 
-## Importing Types in Plugins
-- All plugin files must import types using:
-  ```rust
-  use crate::types::{AppError, AppResult};
-  ```
-- Do not use relative imports like `super::super::types`.
+### Plugin-Based Microkernel
+The application uses a microkernel architecture where core functionality is provided by independent plugins that communicate through well-defined interfaces.
 
-## Avoiding Double Declarations
-- Ensure there are no duplicate or conflicting `mod` or `pub mod` statements for plugins or types.
-- Only `lib.rs` should declare `pub mod types;` and `pub mod plugins;`.
-
-## Output Filename Collisions
-- The library and binary targets must have unique names in Cargo.toml to avoid build errors.
-
-## 🏗️ **Smart Library Organization**
-
-The reStrike VTA project has been reorganized into a modular library structure for better maintainability, testability, and development speed.
-
----
-
-## 📁 **Backend (Rust) Library Structure**
-
-### **Core Library (`src-tauri/src/lib.rs`)**
-```rust
-pub mod core;      // Core application functionality
-pub mod obs;       // OBS WebSocket integration
-pub mod video;     // Video playback system
-pub mod pss;       // PSS protocol handling
-pub mod utils;     // Utility functions
-pub mod types;     // Shared types and data structures
-pub mod commands;  // Tauri command handlers
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Tauri Application Layer                  │
+├─────────────────────────────────────────────────────────────┤
+│                    Core Application Layer                   │
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────┐ │
+│  │   Config    │ │   Logging   │ │    Types    │ │  Core   │ │
+│  │  Manager    │ │   Manager   │ │             │ │  App    │ │
+│  └─────────────┘ └─────────────┘ └─────────────┘ └─────────┘ │
+├─────────────────────────────────────────────────────────────┤
+│                    Plugin Layer                             │
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────┐ │
+│  │    OBS      │ │     UDP     │ │  Playback   │ │  Store  │ │
+│  │   Plugin    │ │   Plugin    │ │   Plugin    │ │ Plugin  │ │
+│  └─────────────┘ └─────────────┘ └─────────────┘ └─────────┘ │
+├─────────────────────────────────────────────────────────────┤
+│                    Infrastructure Layer                     │
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────┐ │
+│  │  WebSocket  │ │    SQLite   │ │   File I/O  │ │ Network │ │
+│  │             │ │             │ │             │ │         │ │
+│  └─────────────┘ └─────────────┘ └─────────────┘ └─────────┘ │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-### **Module Breakdown**
+## Module Structure
 
-#### **1. Types (`src-tauri/src/types/mod.rs`)**
-- **Purpose**: Centralized type definitions
-- **Contains**: All shared data structures, enums, and constants
-- **Benefits**: Single source of truth, easy refactoring
+### Core Modules (`src-tauri/src/core/`)
 
+#### Application Core (`core/app.rs`)
+- **Purpose**: Main application orchestration and lifecycle management
+- **Key Components**:
+  - `App`: Main application class
+  - `AppState`: Application state management
+  - Plugin coordination and event routing
+  - Configuration manager integration
+  - Logging system integration
+
+#### Configuration Management (`config/`)
+- **Purpose**: Comprehensive settings persistence and management
+- **Key Components**:
+  - `ConfigManager`: Configuration persistence and sync
+  - `AppConfig`: Complete configuration data structures
+  - Automatic backup and restore functionality
+  - Cross-session settings persistence
+
+**Configuration Segments**:
 ```rust
-// OBS Integration Types
-pub struct ObsConnection { ... }
-pub enum ObsProtocolVersion { V4, V5 }
-pub enum ObsConnectionStatus { ... }
-
-// Video System Types
-pub struct VideoClip { ... }
-pub struct OverlaySettings { ... }
-
-// PSS Protocol Types
-pub struct PssEvent { ... }
-pub enum PssEventType { ... }
-
-// Application State Types
-pub struct AppState { ... }
-pub enum AppView { ... }
+pub struct AppConfig {
+    pub app: AppSettings,           // Application metadata and core settings
+    pub obs: ObsSettings,           // OBS WebSocket connection settings
+    pub udp: UdpSettings,           // UDP/PSS protocol settings
+    pub logging: LoggingSettings,   // Logging and diagnostics settings
+    pub ui: UiSettings,             // UI and overlay settings
+    pub video: VideoSettings,       // Video playback settings
+    pub license: LicenseSettings,   // License and activation settings
+    pub flags: FlagSettings,        // Flag management settings
+    pub advanced: AdvancedSettings, // Advanced settings and features
+}
 ```
 
-#### **2. Core (`src-tauri/src/core/`)**
-- **`app.rs`**: Main application class and lifecycle management
-- **`config.rs`**: Configuration management
-- **`state.rs`**: Application state management
+### Plugin Modules (`src-tauri/src/plugins/`)
 
-#### **3. OBS (`src-tauri/src/obs/`)**
-- **`manager.rs`**: OBS WebSocket connection management
-- **`protocol.rs`**: WebSocket protocol handling
-- **`commands.rs`**: OBS-specific commands
+#### OBS Plugin (`plugin_obs.rs`)
+- **Purpose**: OBS Studio WebSocket integration
+- **Key Features**:
+  - Dual protocol support (v4/v5)
+  - Multiple connection management
+  - Real-time status monitoring
+  - Authentication handling
+  - Scene and recording control
 
-#### **4. Video (`src-tauri/src/video/`)**
-- **`player.rs`**: Video playback engine
-- **`overlay.rs`**: Video overlay system
-- **`clips.rs`**: Video clip management
+**Key Structures**:
+```rust
+pub struct ObsPlugin {
+    connections: Arc<Mutex<HashMap<String, ObsConnection>>>,
+    event_tx: mpsc::UnboundedSender<ObsEvent>,
+    debug_ws_messages: Arc<Mutex<bool>>,
+}
 
-#### **5. PSS (`src-tauri/src/pss/`)**
-- **`protocol.rs`**: PSS protocol parser
-- **`listener.rs`**: UDP listener
-- **`events.rs`**: Event processing
+pub struct ObsConnection {
+    pub config: ObsConnectionConfig,
+    pub status: ObsConnectionStatus,
+    pub websocket: Option<WebSocketStream>,
+    pub request_id_counter: u64,
+    pub pending_requests: HashMap<String, oneshot::Sender<Value>>,
+}
+```
 
----
+#### UDP Plugin (`plugin_udp.rs`)
+- **Purpose**: PSS protocol handling and event processing
+- **Key Features**:
+  - UDP listener management
+  - PSS protocol parsing
+  - Event filtering and processing
+  - Real-time data streaming
 
-## 📁 **Frontend (React) Library Structure**
+#### Playback Plugin (`plugin_playback.rs`)
+- **Purpose**: Video clip management and playback
+- **Key Features**:
+  - MPV integration
+  - Clip extraction and management
+  - Video metadata handling
+  - Playback controls
 
-### **Main Library (`ui/src/lib/index.ts`)**
+#### Store Plugin (`plugin_store.rs`)
+- **Purpose**: Event storage and database operations
+- **Key Features**:
+  - SQLite database management
+  - Event persistence
+  - Query and filtering
+  - Data export/import
+
+#### License Plugin (`plugin_license.rs`)
+- **Purpose**: License validation and management
+- **Key Features**:
+  - Hardware-locked activation
+  - Offline grace period
+  - Periodic validation
+  - License status tracking
+
+### Logging System (`src-tauri/src/logging/`)
+
+#### Log Manager (`logging/manager.rs`)
+- **Purpose**: Structured logging with file management
+- **Key Features**:
+  - Multi-subsystem logging
+  - File rotation and compression
+  - Log archiving
+  - Live data streaming
+  - Subsystem enable/disable
+
+**Key Structures**:
+```rust
+pub struct LogManager {
+    config: LogConfig,
+    log_dir: PathBuf,
+    subsystems: Arc<RwLock<HashMap<String, bool>>>,
+}
+
+pub struct LogConfig {
+    pub directory: String,
+    pub max_size_mb: u64,
+    pub max_files: usize,
+    pub retention_days: u64,
+    pub compression: bool,
+    pub archive_enabled: bool,
+}
+```
+
+### Type System (`src-tauri/src/types/`)
+
+#### Error Handling (`types/errors.rs`)
+- **Purpose**: Centralized error handling and propagation
+- **Key Features**:
+  - `AppError` enum for all application errors
+  - `AppResult<T>` type alias for consistent error handling
+  - Error conversion and propagation utilities
+
+**Error Types**:
+```rust
+pub enum AppError {
+    IoError(std::io::Error),
+    ConfigError(String),
+    ObsError(String),
+    UdpError(String),
+    PlaybackError(String),
+    StoreError(String),
+    LicenseError(String),
+    ValidationError(String),
+}
+```
+
+## Configuration System Architecture
+
+### Configuration Manager (`config/manager.rs`)
+The configuration manager provides comprehensive settings persistence with the following features:
+
+#### Core Functionality
+- **Persistence**: Automatic saving to JSON files
+- **Backup**: Automatic backup creation and restoration
+- **Thread Safety**: RwLock for concurrent access
+- **Validation**: Configuration validation and error handling
+- **Statistics**: Configuration health monitoring
+
+#### Key Methods
+```rust
+impl ConfigManager {
+    pub async fn get_config(&self) -> AppConfig
+    pub async fn update_config(&self, new_config: AppConfig) -> AppResult<()>
+    pub async fn update_section<F, T>(&self, section_updater: F) -> AppResult<()>
+    pub async fn reset_to_defaults(&self) -> AppResult<()>
+    pub async fn export_config(&self, export_path: &Path) -> AppResult<()>
+    pub async fn import_config(&self, import_path: &Path) -> AppResult<()>
+    pub async fn restore_from_backup(&self) -> AppResult<()>
+    pub async fn get_config_stats(&self) -> AppResult<ConfigStats>
+}
+```
+
+### Configuration Segments
+
+#### App Settings
+```rust
+pub struct AppSettings {
+    pub version: String,
+    pub last_save: String,
+    pub startup: StartupSettings,
+    pub performance: PerformanceSettings,
+}
+```
+
+#### OBS Settings
+```rust
+pub struct ObsSettings {
+    pub connections: Vec<ObsConnectionConfig>,
+    pub defaults: ObsDefaultSettings,
+    pub behavior: ObsBehaviorSettings,
+}
+```
+
+#### Logging Settings
+```rust
+pub struct LoggingSettings {
+    pub global: GlobalLoggingSettings,
+    pub subsystems: HashMap<String, SubsystemLoggingSettings>,
+    pub files: LogFileSettings,
+    pub live_data: LiveDataSettings,
+}
+```
+
+## Tauri Integration
+
+### Command Layer (`tauri_commands.rs`)
+The Tauri command layer provides the bridge between the frontend and backend:
+
+#### OBS Commands
+- `obs_add_connection`: Add new OBS connection
+- `obs_remove_connection`: Remove OBS connection
+- `obs_get_connections`: Get all OBS connections
+- `obs_connect_to_connection`: Connect to specific OBS instance
+- `obs_get_connection_status`: Get connection status
+- `obs_get_status`: Get comprehensive OBS status
+
+#### Configuration Commands
+- `get_settings`: Get all application settings
+- `update_settings`: Update application settings
+- `get_config_stats`: Get configuration statistics
+- `reset_settings`: Reset to defaults
+- `export_settings`: Export configuration
+- `import_settings`: Import configuration
+- `restore_settings_backup`: Restore from backup
+
+#### Logging Commands
+- `set_logging_enabled`: Enable/disable subsystem logging
+- `list_log_files`: List available log files
+- `download_log_file`: Download specific log file
+- `list_archives`: List log archives
+- `extract_archive`: Extract log archive
+- `download_archive`: Download log archive
+
+## Frontend Integration
+
+### State Management (`ui/src/stores/`)
+The frontend uses Zustand for state management with the following stores:
+
+#### App Store
 ```typescript
-// Core components
-export { default as App } from '../App';
-export { default as SidebarTest } from '../components/SidebarTest';
-export { default as Overlay } from '../components/Overlay';
-// ... other components
-
-// Hooks
-export { useAppStore } from '../stores';
-export { useEnvironment } from '../hooks/useEnvironment';
-
-// Utilities
-export * from '../utils/flagUtils';
-export * from '../utils/tauriCommands';
-export * from '../utils/videoUtils';
-
-// Types
-export * from '../types';
+export interface AppState {
+  obsConnections: ObsConnection[];
+  activeObsConnection: string | null;
+  obsStatus: ObsStatusInfo | null;
+  overlaySettings: OverlaySettings;
+  videoClips: VideoClip[];
+  currentClip: VideoClip | null;
+  isPlaying: boolean;
+  currentView: AppView;
+  isLoading: boolean;
+  error: string | null;
+  isAdvancedPanelOpen: boolean;
+}
 ```
 
-### **Module Breakdown**
+### Tauri Commands (`ui/src/utils/tauriCommands.ts`)
+Frontend wrappers for Tauri commands:
 
-#### **1. Types (`ui/src/types/index.ts`)**
-- **Purpose**: Centralized TypeScript type definitions
-- **Contains**: All interfaces, types, and constants
-- **Benefits**: Type safety, IntelliSense, easy refactoring
-
+#### OBS Commands
 ```typescript
-// OBS Integration Types
-export interface ObsConnection { ... }
-export type ObsConnectionStatus = ...;
-
-// Video System Types
-export interface VideoClip { ... }
-export interface OverlaySettings { ... }
-
-// PSS Protocol Types
-export interface PssEvent { ... }
-export type PssEventType = ...;
-
-// Application State Types
-export interface AppState { ... }
-export type AppView = ...;
+export const obsCommands = {
+  async addConnection(config: ObsConnectionConfig): Promise<TauriResult>
+  async removeConnection(connectionName: string): Promise<TauriResult>
+  async getConnections(): Promise<TauriResult>
+  async connectToConnection(connectionName: string): Promise<TauriResult>
+  async getConnectionStatus(connectionName: string): Promise<TauriResult>
+  async disconnect(connectionName: string): Promise<TauriResult>
+}
 ```
 
-#### **2. Utilities (`ui/src/utils/`)**
-- **`tauriCommands.ts`**: All Tauri command interactions
-- **`flagUtils.tsx`**: Flag management utilities
-- **`videoUtils.ts`**: Video-related utilities
-- **`obsUtils.ts`**: OBS-related utilities
-
-#### **3. Hooks (`ui/src/hooks/`)**
-- **`useEnvironment.ts`**: Environment detection
-- **`useEnvironmentApi.ts`**: Environment-aware API calls
-- **`useEnvironmentObs.ts`**: Environment-aware OBS calls
-
----
-
-## Atomic Component Structure (2024)
-
-- Components are organized into `atoms/`, `molecules/`, `organisms/`, and `layouts/` folders under `ui/src/components/`.
-- All refactors must copy the original file before deletion.
-- Imports must use the atomic folder path.
-- See PROJECT_STRUCTURE.md and FRONTEND_DEVELOPMENT_SUMMARY.md for details.
-
----
-
-## Atomic Atoms
-- Button
-- Input
-- Checkbox
-- Label
-- StatusDot (Badge)
-- Icon
-
-All status indicators and icons are now atomic. Accessibility linter issues have been addressed as of 2024.
-
----
-
-## 🔧 **Benefits of This Structure**
-
-### **1. Maintainability**
-- ✅ **Single Responsibility**: Each module has one clear purpose
-- ✅ **Easy Navigation**: Clear file structure and naming
-- ✅ **Reduced Coupling**: Modules are independent and testable
-
-### **2. Testability**
-- ✅ **Unit Testing**: Each module can be tested independently
-- ✅ **Mocking**: Easy to mock dependencies
-- ✅ **Integration Testing**: Clear boundaries for integration tests
-
-### **3. Development Speed**
-- ✅ **Hot Reload**: Smaller modules reload faster
-- ✅ **Parallel Development**: Multiple developers can work on different modules
-- ✅ **Code Reuse**: Utilities can be shared across components
-
-### **4. Performance**
-- ✅ **Tree Shaking**: Unused code can be eliminated
-- ✅ **Lazy Loading**: Modules can be loaded on demand
-- ✅ **Caching**: Smaller modules cache better
-
----
-
-## 📋 **Usage Examples**
-
-### **Backend Usage**
-```rust
-use reStrike_VTA::{
-    App, ObsManager, VideoPlayer, PssProtocol,
-    types::{ObsConnection, VideoClip, PssEvent}
-};
-
-// Create application
-let app = App::new().await?;
-
-// Use specific modules
-let obs_manager = app.obs_manager();
-let video_player = app.video_player();
-let pss_protocol = app.pss_protocol();
-```
-
-### **Frontend Usage**
+#### Configuration Commands
 ```typescript
-import { 
-    App, 
-    useAppStore, 
-    obsCommands, 
-    videoCommands,
-    type ObsConnection,
-    type VideoClip 
-} from './lib';
-
-// Use components
-<App />
-
-// Use hooks
-const { obsConnections } = useAppStore();
-
-// Use utilities
-const result = await obsCommands.connect('ws://localhost:4455');
+export const configCommands = {
+  async getSettings(): Promise<TauriResult>
+  async updateSettings(settings: any): Promise<TauriResult>
+  async getConfigStats(): Promise<TauriResult>
+  async resetSettings(): Promise<TauriResult>
+  async exportSettings(exportPath: string): Promise<TauriResult>
+  async importSettings(importPath: string): Promise<TauriResult>
+  async restoreSettingsBackup(): Promise<TauriResult>
+}
 ```
 
----
+## Error Handling Strategy
 
-## 🚀 **Development Workflow**
+### Backend Error Handling
+1. **AppError Enum**: Centralized error types
+2. **AppResult<T>**: Consistent error propagation
+3. **Error Conversion**: Proper error type conversion
+4. **Logging**: Comprehensive error logging
 
-### **1. Adding New Features**
-1. **Define types** in `types/mod.rs` or `types/index.ts`
-2. **Create module** in appropriate directory
-3. **Export** from main library file
-4. **Update documentation**
+### Frontend Error Handling
+1. **TauriResult**: Standardized result format
+2. **Error Boundaries**: React error boundaries
+3. **User Feedback**: User-friendly error messages
+4. **Retry Logic**: Automatic retry for transient errors
 
-### **2. Refactoring**
-1. **Move functions** to appropriate utility files
-2. **Update imports** across the project
-3. **Run tests** to ensure nothing breaks
-4. **Update documentation**
+## Performance Considerations
 
-### **3. Testing**
-1. **Unit tests** for each module
-2. **Integration tests** for module interactions
-3. **End-to-end tests** for complete workflows
+### Backend Performance
+- **Async Operations**: All I/O operations are async
+- **Thread Safety**: RwLock for concurrent access
+- **Memory Management**: Efficient memory usage
+- **Resource Cleanup**: Proper resource disposal
 
----
+### Frontend Performance
+- **React Optimization**: React.memo and useMemo
+- **Bundle Optimization**: Tree shaking and code splitting
+- **State Management**: Efficient Zustand usage
+- **Component Design**: Atomic design for reusability
 
-## 📊 **File Size Comparison**
+## Security Considerations
 
-| Structure | Before | After | Improvement |
-|-----------|--------|-------|-------------|
-| **Main Files** | 3 large files | 15+ small files | Better organization |
-| **Average File Size** | ~500 lines | ~100 lines | Easier to maintain |
-| **Compilation Time** | ~45s | ~25s | 44% faster |
-| **Hot Reload Time** | ~8s | ~3s | 62% faster |
+### Configuration Security
+- **Password Handling**: Secure password storage
+- **File Permissions**: Proper file permissions
+- **Backup Security**: Secure backup storage
+- **Validation**: Input validation and sanitization
 
----
+### Network Security
+- **WebSocket Security**: Secure WebSocket connections
+- **Authentication**: Proper authentication handling
+- **Data Validation**: Network data validation
+- **Error Handling**: Secure error handling
 
-## 🎯 **Best Practices**
+## Testing Strategy
 
-### **1. Module Design**
-- Keep modules focused and single-purpose
-- Use clear, descriptive names
-- Export only what's needed publicly
+### Backend Testing
+- **Unit Tests**: Individual component testing
+- **Integration Tests**: Plugin interaction testing
+- **Configuration Tests**: Configuration system testing
+- **Error Tests**: Error handling testing
 
-### **2. Type Management**
-- Define types close to where they're used
-- Use shared types for cross-module communication
-- Keep types simple and focused
+### Frontend Testing
+- **Component Tests**: React component testing
+- **Integration Tests**: Tauri command testing
+- **E2E Tests**: End-to-end workflow testing
+- **Performance Tests**: Performance benchmarking
 
-### **3. Utility Functions**
-- Group related functions in utility files
-- Make functions pure and testable
-- Provide clear documentation
+## Maintenance and Updates
 
-### **4. Error Handling**
-- All plugin and core methods must use `AppResult<T>` (from `crate::types`).
-- Errors must be propagated as `AppError`.
-- **AppError::IoError** is only for actual `std::io::Error` values.
-- **Custom error messages** (including those created from strings or formatted text) must use **AppError::ConfigError** or another appropriate variant (e.g., `AppError::VideoError`, `AppError::ObsError`, etc.).
-- Never use `AppError::IoError` with a `String` or formatted message.
+### Configuration Migration
+- **Version Management**: Configuration version tracking
+- **Migration Scripts**: Automatic migration scripts
+- **Backward Compatibility**: Backward compatibility support
+- **Validation**: Configuration validation
 
-- When returning errors to API responses or structs expecting Option<String>, always use e.to_string() to convert AppError to String.
-- When converting std::io::Error to AppError, use AppError::IoError(e).
-- When converting std::io::Error to AppError::ConfigError, use AppError::ConfigError(e.to_string()).
-
-**Examples:**
-```rust
-// Convert AppError to String for API response:
-error: Some(e.to_string())
-
-// Convert std::io::Error to AppError:
-.map_err(AppError::IoError)?
-
-// Convert std::io::Error to AppError::ConfigError:
-.map_err(|e| AppError::ConfigError(e.to_string()))?
-```
+### Plugin Updates
+- **Plugin Lifecycle**: Plugin initialization and cleanup
+- **Event System**: Plugin event communication
+- **Error Handling**: Plugin error isolation
+- **Performance Monitoring**: Plugin performance tracking
 
 ---
 
-## OBS WebSocket v5 Event Handling
-
-- All official OBS WebSocket v5 event types are recognized and emitted as `ObsEvent::Raw`.
-- Unknown or future event types are also handled generically, so the backend is robust to protocol changes.
-- Developers can add detailed parsing for any event type incrementally as needed.
-
----
-
-## OBS WebSocket Runtime Connection Management
-
-- Tauri commands (`add_obs_connection`, `remove_obs_connection`) allow runtime management of OBS connections from the frontend.
-- Each connection is managed independently and can be added or removed without restarting the backend.
-
----
-
-## OBS WebSocket Command Sending
-
-- The backend exposes a Tauri command (`obs_send_request`) to send any OBS WebSocket v5 request to any connection by name.
-- The frontend receives the response or error from OBS for each command.
-
----
-
-**Status**: ✅ **Library Structure Complete**
-**Benefits**: Improved maintainability, testability, and development speed
-**Next Steps**: Continue development using this modular structure 
+*Last updated: 2025-01-28*
+*Configuration system: Complete*
+*OBS WebSocket management: Complete*
+*Error handling: Comprehensive*
+*Performance optimization: Implemented* 

@@ -447,7 +447,9 @@ impl ObsPlugin {
             let password = {
                 let connections = self.connections.lock().await;
                 let connection = connections.get(connection_name).unwrap();
-                connection.config.password.clone().unwrap_or_default()
+                let password = connection.config.password.clone().unwrap_or_default();
+                println!("[AUTH-DEBUG] Using password: '{}' (length: {})", if password.is_empty() { "<empty>" } else { "***" }, password.len());
+                password
             };
             // Compute secret = base64(sha256(password + salt))
             let mut hasher = Sha256::new();
@@ -467,24 +469,45 @@ impl ObsPlugin {
         ws_write.send(Message::Text(identify_str)).await.map_err(|e| AppError::ConfigError(format!("Failed to send Identify: {}", e)))?;
 
         // 4. Wait for Identified or error
+        let mut timeout_counter = 0;
+        const MAX_TIMEOUT: u32 = 30; // 30 attempts with 100ms each = 3 seconds
+        
         loop {
-            let msg = match ws_read.next().await {
-                Some(Ok(msg)) => msg,
-                Some(Err(e)) => return Err(AppError::ConfigError(format!("WebSocket error: {}", e))),
-                None => return Err(AppError::ConfigError("No response after Identify".to_string())),
+            timeout_counter += 1;
+            if timeout_counter > MAX_TIMEOUT {
+                return Err(AppError::ConfigError("Authentication timeout - no response from OBS after 3 seconds".to_string()));
+            }
+            
+            let msg = match tokio::time::timeout(std::time::Duration::from_millis(100), ws_read.next()).await {
+                Ok(Some(Ok(msg))) => msg,
+                Ok(Some(Err(e))) => return Err(AppError::ConfigError(format!("WebSocket error: {}", e))),
+                Ok(None) => return Err(AppError::ConfigError("No response after Identify".to_string())),
+                Err(_) => {
+                    println!("[AUTH-DEBUG] Timeout waiting for response, attempt {}/{}", timeout_counter, MAX_TIMEOUT);
+                    continue;
+                }
             };
+            
             if let Message::Text(text) = &msg {
                 println!("[AUTH-DEBUG] Received message in handshake loop: {}", text);
                 let json: serde_json::Value = serde_json::from_str(text).map_err(|e| AppError::ConfigError(format!("Invalid JSON after Identify: {}", e)))?;
                 let op = json["op"].as_u64().unwrap_or(0);
+                println!("[AUTH-DEBUG] Message opcode: {}", op);
+                
                 if op == 2 {
                     // Identified
+                    println!("[AUTH-DEBUG] Authentication successful - received Identified message");
                     break;
                 } else if op == 8 {
                     // Error
                     let reason = json["d"]["reason"].as_str().unwrap_or("Unknown error");
+                    println!("[AUTH-DEBUG] Authentication failed - received error: {}", reason);
                     return Err(AppError::ConfigError(format!("OBS authentication failed: {}", reason)));
+                } else {
+                    println!("[AUTH-DEBUG] Unexpected opcode: {}, continuing to wait...", op);
                 }
+            } else {
+                println!("[AUTH-DEBUG] Received non-text message: {:?}", msg);
             }
         }
         // 5. Reunite the stream and return it

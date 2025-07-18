@@ -1,375 +1,369 @@
-# Project Structure Guide
+# Project Structure Documentation
 
-> **Note:** All architecture, onboarding, and coding conventions are defined in .cursor/rules/context.mdc (single source of truth). Project is Windows-only; Docker/devcontainer is fully removed. All onboarding, build, and documentation reference Windows-native setup only.
+## Overview
+reStrike VTA is a Windows-native desktop application built with Tauri v2, featuring a Rust backend and React frontend. The application provides comprehensive OBS integration, video replay management, and real-time event processing for taekwondo competitions.
 
-## Crate and Library Naming
-- The crate and library name is `re_strike_vta` (snake_case, as required by Rust best practices).
-- Avoid output filename collisions by ensuring the lib and bin targets have unique names in Cargo.toml.
+## Technology Stack
 
-## Plugin Module Integration
-- All plugin modules are declared only in `src/plugins/mod.rs`.
-- Plugins are re-exported via `pub mod plugins;` in `src/lib.rs`.
-- Do not declare `mod` or `pub mod` for plugins anywhere else.
+### Backend (Rust + Tauri v2)
+- **Framework**: Tauri v2 for native Windows integration
+- **Language**: Rust with async/await support
+- **Architecture**: Plugin-based microkernel architecture
+- **Database**: SQLite for event storage and configuration
+- **WebSocket**: tokio-tungstenite for OBS integration
+- **Logging**: Structured logging with file rotation
 
-## Importing Types in Plugins
-- All plugin files must import types using:
-  ```rust
-  use crate::types::{AppError, AppResult};
-  ```
-- Do not use relative imports like `super::super::types`.
-
-## Avoiding Double Declarations
-- Ensure there are no duplicate or conflicting `mod` or `pub mod` statements for plugins or types.
-- Only `lib.rs` should declare `pub mod types;` and `pub mod plugins;`.
-
-## Output Filename Collisions
-- The library and binary targets must have unique names in Cargo.toml to avoid build errors.
+### Frontend (React + TypeScript)
+- **Framework**: React 18 with TypeScript
+- **Styling**: Tailwind CSS with atomic design
+- **State Management**: Zustand for global state
+- **Build System**: Vite with Tauri integration
+- **Components**: Atomic design pattern (atoms, molecules, organisms, layouts)
 
 ## Directory Structure
 
 ```
-reStrike_VTA/
-├── 📁 .devcontainer/           # Development container configuration
-│   ├── devcontainer.json      # Container settings
-│   ├── Dockerfile             # Container image definition
-│   └── README-devcontainer.md # Container usage guide
-│
-├── 📁 .github/                 # GitHub configuration
-│   ├── ISSUE_TEMPLATE/        # Issue templates
-│   │   ├── bug_report.md      # Bug report template
-│   │   └── feature_request.md # Feature request & project tracker
-│   ├── workflows/             # CI/CD workflows
-│   │   └── ci.yml            # Continuous integration
-│   └── dependabot.yml        # Dependency updates
-│
-├── 📁 .vscode/                 # VS Code configuration
-│   ├── launch.json           # Debug configurations
-│   ├── settings.json         # Editor settings
-│   └── tasks.json            # Build tasks
-│
-├── 📁 config/                  # Configuration files
-│   └── dev_resources.json    # Development environment config
-│
-├── 📁 docs/                    # Documentation
-│   ├── 📁 api/                # API documentation
-│   │   ├── obs-websocket.md  # OBS WebSocket API reference
-│   │   └── udp-protocol.md   # UDP protocol specification
-│   │
-│   ├── 📁 development/        # Development guides
+reStrike_VTA_Cursor/
+├── src-tauri/                    # Tauri v2 backend (Rust)
+│   ├── src/
+│   │   ├── main.rs              # Tauri app entry point
+│   │   ├── lib.rs               # Library exports and initialization
+│   │   ├── tauri_commands.rs    # Tauri command definitions
+│   │   ├── core/                # Core application logic
+│   │   │   ├── app.rs           # Main application class
+│   │   │   └── mod.rs           # Core module exports
+│   │   ├── config/              # Configuration management system
+│   │   │   ├── mod.rs           # Configuration module exports
+│   │   │   ├── types.rs         # Configuration data structures
+│   │   │   └── manager.rs       # Configuration manager implementation
+│   │   ├── plugins/             # Plugin modules
+│   │   │   ├── mod.rs           # Plugin module exports
+│   │   │   ├── plugin_obs.rs    # OBS WebSocket integration
+│   │   │   ├── plugin_playback.rs # Video playback management
+│   │   │   ├── plugin_udp.rs    # UDP/PSS protocol handling
+│   │   │   ├── plugin_store.rs  # Event storage and database
+│   │   │   └── plugin_license.rs # License management
+│   │   ├── logging/             # Logging system
+│   │   │   ├── mod.rs           # Logging module exports
+│   │   │   └── manager.rs       # Log manager implementation
+│   │   ├── types/               # Shared types and error handling
+│   │   │   ├── mod.rs           # Types module exports
+│   │   │   └── errors.rs        # Error types and handling
+│   │   └── commands/            # Legacy command handlers
+│   ├── Cargo.toml               # Rust dependencies
+│   └── tauri.conf.json          # Tauri configuration
+├── ui/                          # React frontend
+│   ├── src/
+│   │   ├── components/          # Atomic design components
+│   │   │   ├── atoms/           # Basic UI components
+│   │   │   │   ├── Button.tsx   # Reusable button component
+│   │   │   │   ├── Input.tsx    # Form input component
+│   │   │   │   ├── Checkbox.tsx # Checkbox component
+│   │   │   │   ├── Label.tsx    # Form label component
+│   │   │   │   ├── StatusDot.tsx # Status indicator component
+│   │   │   │   ├── Icon.tsx     # Icon component
+│   │   │   │   └── README.md    # Atoms documentation
+│   │   │   ├── molecules/       # Composite components
+│   │   │   │   ├── EventTableSection.tsx # Event table section
+│   │   │   │   ├── LiveDataPanel.tsx    # Live data display
+│   │   │   │   ├── LogDownloadList.tsx  # Log download management
+│   │   │   │   ├── LogToggleGroup.tsx   # Log toggle controls
+│   │   │   │   └── WebSocketManager.tsx # OBS connection management
+│   │   │   ├── organisms/       # Complex UI sections
+│   │   │   │   ├── EventTable.tsx       # Main event table
+│   │   │   │   ├── MatchInfoSection.tsx # Match information display
+│   │   │   │   ├── ObsWebSocketManager.tsx # OBS connection management
+│   │   │   │   ├── PlayerInfoSection.tsx # Player information display
+│   │   │   │   ├── Settings.tsx         # Settings panel
+│   │   │   │   ├── SidebarBig.tsx       # Main sidebar
+│   │   │   │   ├── SidebarSmall.tsx     # Compact sidebar
+│   │   │   │   ├── StatusBar.tsx        # Status bar
+│   │   │   │   └── VideoClips.tsx       # Video clip management
+│   │   │   └── layouts/         # Page and section layouts
+│   │   │       ├── AdvancedPanel.tsx    # Advanced settings panel
+│   │   │       ├── DockBar.tsx          # Main sidebar layout
+│   │   │       ├── StatusbarAdvanced.tsx # Advanced status bar
+│   │   │       ├── StatusbarDock.tsx    # Status bar for dock
+│   │   │       └── TaskBar.tsx          # Task bar layout
+│   │   ├── hooks/               # Custom React hooks
+│   │   │   ├── useEnvironment.ts # Environment detection
+│   │   │   ├── useEnvironmentApi.ts # API environment hooks
+│   │   │   └── useEnvironmentObs.ts # OBS environment hooks
+│   │   ├── stores/              # State management
+│   │   │   └── index.ts         # Zustand store definitions
+│   │   ├── utils/               # Utility functions
+│   │   │   ├── flagUtils.tsx    # Flag management utilities
+│   │   │   ├── obsUtils.ts      # OBS integration utilities
+│   │   │   ├── tauriCommands.ts # Tauri command wrappers
+│   │   │   └── videoUtils.ts    # Video processing utilities
+│   │   ├── types/               # TypeScript type definitions
+│   │   │   ├── index.ts         # Main type definitions
+│   │   │   └── tauri.d.ts       # Tauri-specific types
+│   │   ├── config/              # Environment configuration
+│   │   │   └── environments/    # Environment-specific configs
+│   │   │       ├── web.ts       # Web environment config
+│   │   │       └── windows.ts   # Windows environment config
+│   │   ├── lib/                 # Library exports
+│   │   │   └── index.ts         # Main library exports
+│   │   ├── App.tsx              # Main application component
+│   │   ├── index.tsx            # Application entry point
+│   │   └── index.css            # Global styles
+│   ├── public/                  # Static assets
+│   │   ├── assets/
+│   │   │   └── flags/           # IOC flag images (253 PNGs)
+│   │   └── index.html           # HTML template
+│   ├── package.json             # Frontend dependencies
+│   ├── tailwind.config.js       # Tailwind CSS configuration
+│   ├── tsconfig.json            # TypeScript configuration
+│   └── vite.config.ts           # Vite build configuration
+├── docs/                        # Project documentation
+│   ├── api/                     # API documentation
+│   │   └── obs-websocket.md     # OBS WebSocket API docs
+│   ├── development/             # Development guides
+│   │   ├── AI_AGENT_WINDOWS_GUIDE.md # AI agent development guide
+│   │   ├── checklists/          # Development checklists
 │   │   ├── container-restart.md # Container restart guide
-│   │   ├── development-management.md # Dev environment management
-│   │   ├── framework-updates.md # Framework update procedures
-│   │   └── port-forwarding.md # Port configuration guide
-│   │
-│   ├── 📁 project/            # Project management
-│   │   ├── project-tracker-guide.md # Project tracking system
-│   │   ├── project-management-summary.md # Management overview
-│   │   └── tracker-quick-reference.md # Quick reference guide
-│   │
-│   ├── 📁 requirements/       # Requirements and specifications
-│   │   ├── instant-video-replay-prd.md # Product requirements
-│   │   ├── software-requirements.md # Technical requirements
-│   │   ├── ui-design-document.md # UI/UX specifications
-│   │   └── FLAG_MANAGEMENT_MODULE.md # Flag management specifications
-│   │
-│   ├── 📁 integration/        # Integration guides
-│   │   ├── obs-dual-protocol.md # OBS WebSocket implementation
-│   │   └── obs-websocket-config.md # OBS configuration guide
-│   │
-│   ├── FLAG_MANAGEMENT_SYSTEM.md # Complete flag management documentation
-│   ├── PROJECT_STRUCTURE.md   # This file
-│   └── README.md              # Main documentation index
-│
-├── 📁 protocol/                # Protocol definitions
-│   └── pss_schema.txt        # PSS protocol schema
-│
-├── 📁 scripts/                 # Automation scripts
-│   ├── 📁 development/        # Development scripts
+│   │   ├── development-management.md # Development management
+│   │   ├── documentation-maintenance-guide.md # Doc maintenance
+│   │   ├── flag-images-guide.md # Flag image management
+│   │   ├── framework-update-summary.md # Framework updates
+│   │   ├── framework-updates.md # Framework update details
+│   │   ├── port-forwarding.md   # Port forwarding guide
+│   │   ├── sidebar-filter-implementation.md # Sidebar filters
+│   │   └── WINDOWS_VSCODE_SETUP_GUIDE.md # VS Code setup
+│   ├── integration/             # Integration guides
+│   │   ├── obs-dual-protocol.md # OBS dual protocol support
+│   │   └── obs-websocket-config.md # OBS WebSocket configuration
+│   ├── project/                 # Project management
+│   │   ├── automation-quick-setup.md # Automation setup
+│   │   ├── FLAG_MANAGEMENT_MODULE_PLAN.md # Flag management plan
+│   │   ├── FLAG_MANAGEMENT_SPECIFICATION.md # Flag management spec
+│   │   ├── github-automation-setup.md # GitHub automation
+│   │   ├── github-board-setup-instructions.md # GitHub board setup
+│   │   ├── github-integration-guide.md # GitHub integration
+│   │   ├── github-integration-status.md # GitHub integration status
+│   │   ├── project-management-summary.md # Project management
+│   │   └── tracker-quick-reference.md # Tracker reference
+│   ├── requirements/            # Requirements documentation
+│   │   ├── FLAG_MANAGEMENT_MODULE.md # Flag management requirements
+│   │   ├── instant-video-replay-prd.md # Video replay PRD
+│   │   ├── software-requirements.md # Software requirements
+│   │   └── ui-design-document.md # UI design document
+│   ├── testing/                 # Testing documentation
+│   │   └── core-testing-report.md # Core testing report
+│   ├── README.md                # Documentation navigation
+│   ├── PROJECT_CONTEXT.md       # Project context and overview
+│   ├── PROJECT_STRUCTURE.md     # This file
+│   ├── LIBRARY_STRUCTURE.md     # Library architecture
+│   ├── FRONTEND_DEVELOPMENT_SUMMARY.md # Frontend development summary
+│   ├── FLAG_MANAGEMENT_SYSTEM.md # Flag management system
+│   ├── PERFORMANCE_OPTIMIZATION.md # Performance optimization
+│   └── DOCKER_HOT_RELOAD_SETUP.md # Docker hot reload setup
+├── scripts/                     # Development and utility scripts
+│   ├── development/             # Development scripts
 │   │   ├── cleanup-dev-environment.sh # Environment cleanup
-│   │   ├── dev.sh             # Main development wrapper
-│   │   ├── install-mpv-latest.sh # mpv installation
-│   │   ├── manage-dev-resources.py # Resource management
+│   │   ├── dev.sh               # Development server
+│   │   ├── fast-dev.sh          # Fast development server
+│   │   ├── install-mpv-latest.sh # MPV installation
+│   │   ├── manage-dev-resources.py # Dev resource management
 │   │   ├── update-frameworks.sh # Framework updates
-│   │   └── verify-ports.sh    # Port verification
-│   │
-│   ├── 📁 obs/                # OBS integration scripts
+│   │   ├── verify-ports.sh      # Port verification
+│   │   └── windows-fast-setup.ps1 # Windows fast setup
+│   ├── github/                  # GitHub automation scripts
+│   │   ├── create-issues.py     # Issue creation
+│   │   ├── README.md            # GitHub scripts README
+│   │   └── setup-project-board.py # Project board setup
+│   ├── media/                   # Media processing scripts
+│   │   ├── download_official_ioc_flags.py # IOC flag download
+│   │   ├── download-flags.py    # Flag download utility
+│   │   ├── enhanced-flag-recognition.py # Enhanced flag recognition
+│   │   ├── flag-recognition.py  # Flag recognition
+│   │   ├── generate-clip.sh     # Clip generation
+│   │   ├── ioc_flag_database.json # IOC flag database
+│   │   ├── ioc-flag-database.py # IOC flag database script
+│   │   ├── simple-enhanced-recognition.py # Simple recognition
+│   │   └── various HTML samples # Flag recognition samples
+│   ├── obs/                     # OBS integration scripts
 │   │   └── setup-obs-websocket.sh # OBS WebSocket setup
-│   │
-│   ├── 📁 project/            # Project management scripts
-│   │   └── project-tracker.py # GitHub issue management
-│   │
-│   ├── 📁 media/              # Media processing scripts
-│   │   ├── generate-clip.sh   # Video clip generation
-│   │   └── download_ioc_flags.py # IOC flag download script
-│   │
-│   └── 📁 workflows/          # CI/CD workflows
-│       └── ci.yml            # Continuous integration
-│
-├── 📁 src/                     # Rust backend source code
-│   ├── 📁 plugins/            # Plugin modules
-│   │   ├── license.rs         # License management
-│   │   ├── obs.rs             # OBS WebSocket integration
-│   │   ├── playback.rs        # Video playback
-│   │   ├── store.rs           # Data storage
-│   │   └── udp.rs             # UDP protocol handling
-│   │
-│   ├── 📁 commands/           # Tauri command handlers
-│   │   └── tauri-commands.rs  # Frontend-backend bridge
-│   │
-│   └── main.rs                # Application entry point
-│
-├── 📁 ui/                      # React frontend
-│   ├── 📁 public/             # Static assets
-│   │   ├── index.html         # HTML template
-│   │   └── 📁 assets/         # Static assets
-│   │       └── 📁 flags/      # IOC flag images (253 flags)
-│   │           ├── {IOC}.png  # Individual flag files
-│   │           └── README.md  # Flag management documentation
-│   │
-│   ├── 📁 src/                # React source code
-│   │   ├── 📁 components/     # React components
-│   │   │   ├── ObsWebSocketManager.tsx # OBS connection manager
-│   │   │   ├── Overlay.tsx    # Main overlay component
-│   │   │   └── SidebarTest.tsx # Event table and filtering
-│   │   │
-│   │   ├── 📁 stores/         # State management
-│   │   │   └── index.ts       # Zustand stores
-│   │   │
-│   │   ├── 📁 utils/          # Utility functions
-│   │   │   └── flagUtils.tsx  # Flag management utilities
-│   │   │
-│   │   ├── App.tsx            # Main application component
-│   │   └── index.tsx          # React entry point
-│   │
-│   ├── package.json           # Frontend dependencies
-│   ├── tsconfig.json          # TypeScript configuration
-│   └── eslint.config.js       # ESLint configuration
-│
-├── 📁 target/                  # Rust build artifacts (gitignored)
-├── 📁 node_modules/            # Node.js dependencies (gitignored)
-├── 📁 src-tauri/              # Tauri configuration (gitignored)
-│
-├── .cursor/                    # Cursor IDE configuration
-├── .gitignore                  # Git ignore rules
-├── Cargo.lock                  # Rust dependency lock
-├── Cargo.toml                  # Rust project configuration
-├── LICENSE                     # Project license
-├── package-lock.json           # Node.js dependency lock
-├── package.json                # Root project configuration
-├── PROJECT_CONTEXT.md          # Project context and status
-└── README.md                   # Project overview
+│   ├── project/                 # Project management scripts
+│   │   ├── project-tracker.py   # Project tracking
+│   │   └── update-issues-after-checkpoint.sh # Issue updates
+│   ├── workflows/               # CI/CD workflows
+│   │   └── ci.yml               # Continuous integration
+│   └── README.md                # Scripts documentation
+├── config/                      # Configuration files
+│   ├── dev_resources.json       # Development resources config
+│   ├── app_config.json          # Main application configuration
+│   └── app_config.backup.json   # Configuration backup
+├── protocol/                    # Protocol definitions
+│   └── pss_schema.txt           # PSS protocol schema
+├── log/                         # Application logs
+├── .cursor/                     # Cursor IDE configuration
+│   └── rules/                   # Cursor rules
+│       └── context.mdc          # Project context and conventions
+├── Cargo.toml                   # Root Rust configuration
+├── package.json                 # Root package configuration
+├── README.md                    # Main project README
+├── LICENSE                      # Project license
+└── reStrike_VTA_Cursor.code-workspace # VS Code workspace
+
 ```
 
-## Organization Principles
+## Key Architectural Components
 
-### 1. **Separation of Concerns**
-- **Backend**: Rust code in `src/`
-- **Frontend**: React code in `ui/`
-- **Documentation**: Organized by category in `docs/`
-- **Scripts**: Categorized by purpose in `scripts/`
-- **Assets**: Static files in `ui/public/assets/`
+### Configuration Management System
+- **Location**: `src-tauri/src/config/`
+- **Purpose**: Comprehensive settings persistence across app sessions
+- **Features**:
+  - Automatic backup and restore
+  - Cross-session persistence
+  - Import/export functionality
+  - Configuration statistics
+  - Thread-safe operations
 
-### 2. **Logical Grouping**
-- **Development**: Container, VS Code, scripts
-- **Documentation**: API, guides, requirements, integration
-- **Source Code**: Backend plugins, frontend components
-- **Configuration**: Environment and project settings
-- **Media Assets**: Flags, images, and static content
+### Plugin Architecture
+- **Location**: `src-tauri/src/plugins/`
+- **Purpose**: Modular functionality with clear separation of concerns
+- **Plugins**:
+  - **OBS Plugin**: WebSocket integration for OBS Studio
+  - **UDP Plugin**: PSS protocol handling and event processing
+  - **Playback Plugin**: Video clip management and playback
+  - **Store Plugin**: Event storage and database operations
+  - **License Plugin**: License validation and management
 
-### 3. **Scalability**
-- **Modular Structure**: Easy to add new components
-- **Clear Hierarchy**: Intuitive navigation
-- **Consistent Naming**: Predictable file locations
+### Atomic Design System
+- **Location**: `ui/src/components/`
+- **Purpose**: Scalable and maintainable UI component architecture
+- **Levels**:
+  - **Atoms**: Basic UI components (Button, Input, etc.)
+  - **Molecules**: Composite components (EventTableSection, etc.)
+  - **Organisms**: Complex UI sections (EventTable, Settings, etc.)
+  - **Layouts**: Page and section layouts (DockBar, AdvancedPanel, etc.)
 
-### 4. **Maintainability**
-- **Single Responsibility**: Each directory has a clear purpose
-- **Easy Navigation**: Developers can quickly find files
-- **Reduced Clutter**: No files scattered in root directory
+### State Management
+- **Frontend**: Zustand for global state management
+- **Backend**: tokio broadcast channels for inter-plugin communication
+- **Configuration**: Persistent configuration with automatic sync
 
-## File Naming Conventions
+## Development Workflow
 
-### Documentation
-- **Guides**: `kebab-case.md` (e.g., `container-restart.md`)
-- **References**: `kebab-case.md` (e.g., `obs-websocket.md`)
-- **Specifications**: `kebab-case.md` (e.g., `software-requirements.md`)
-
-### Scripts
-- **Development**: `kebab-case.sh` or `kebab-case.py`
-- **Categories**: Grouped in subdirectories
-- **Descriptive Names**: Clear purpose indication
-
-### Source Code
-- **Rust**: `snake_case.rs`
-- **TypeScript/React**: `PascalCase.tsx` for components, `camelCase.ts` for utilities
-- **Configuration**: `kebab-case.json` or `kebab-case.toml`
-
-### Assets
-- **Flags**: `{IOC}.png` (3-letter IOC country codes)
-- **Images**: `kebab-case.png` or `kebab-case.jpg`
-- **Documents**: `kebab-case.md` or `kebab-case.pdf`
-
-## Import/Reference Paths
-
-### Frontend Imports
-```typescript
-// Components
-import ObsWebSocketManager from './components/ObsWebSocketManager';
-
-// Stores
-import { useAppStore } from './stores/index';
-
-// Utilities
-import { getFlagUrl } from './utils/flagUtils';
-
-// Types
-import { ObsConnectionConfig } from './types/obs';
+### Starting Development
+```bash
+# From project root - starts both frontend and backend
+cd src-tauri
+cargo tauri dev
 ```
 
-### Backend Imports
-```rust
-// Plugins
-mod plugins;
-use plugins::obs::ObsPlugin;
-use plugins::udp::UdpServer;
+### Manual Development
+```bash
+# Terminal 1: Start React dev server
+cd ui
+npm run start:fast
 
-// Commands
-mod commands;
-use commands::tauri_commands::*;
+# Terminal 2: Start Tauri app
+cd src-tauri
+cargo tauri dev
 ```
 
-### Documentation References
-```markdown
-<!-- Cross-references -->
-See [Container Restart Guide](../development/container-restart.md)
-See [OBS Configuration](../integration/obs-websocket-config.md)
-See [Flag Management System](../FLAG_MANAGEMENT_SYSTEM.md)
+### Build Commands
+```bash
+# Development build
+cd ui
+npm run build
+
+# Production build with Tauri
+cd src-tauri
+cargo tauri build
 ```
 
-### Asset References
-```typescript
-// Flag images
-const flagUrl = '/assets/flags/USA.png';
+## Configuration System
 
-// Static assets
-const imageUrl = '/assets/images/logo.png';
-```
+### Configuration Segments
+1. **App Settings**: Version, startup behavior, performance
+2. **OBS Settings**: Connections, defaults, behavior
+3. **UDP Settings**: Listener config, PSS protocol, events
+4. **Logging Settings**: Global, subsystems, files, live data
+5. **UI Settings**: Overlay, theme, layout, animations
+6. **Video Settings**: Player, replay, clips
+7. **License Settings**: Keys, validation, expiration
+8. **Flag Settings**: Storage, recognition, display
+9. **Advanced Settings**: Development, network, security, experimental
 
-## Error Handling Conventions
+### Configuration Features
+- **Auto-save**: Settings automatically saved to `config/app_config.json`
+- **Backup system**: Automatic backup to `config/app_config.backup.json`
+- **Cross-session**: All settings persist between app restarts
+- **Sync**: Frontend and backend stay synchronized
+- **Statistics**: File sizes, connection counts, last save time
+- **Import/Export**: Full config backup and restore
+- **Backup/Restore**: Automatic backup with manual restore
 
-- All plugin and core methods must use `AppResult<T>` (from `crate::types`).
-- Errors must be propagated as `AppError`.
-- **AppError::IoError** is only for actual `std::io::Error` values.
-- **Custom error messages** (including those created from strings or formatted text) must use **AppError::ConfigError** or another appropriate variant (e.g., `AppError::VideoError`, `AppError::ObsError`, etc.).
-- Never use `AppError::IoError` with a `String` or formatted message.
-- When returning errors to API responses or structs expecting Option<String>, always use e.to_string() to convert AppError to String.
-- When converting std::io::Error to AppError, use AppError::IoError(e).
-- When converting std::io::Error to AppError::ConfigError, use AppError::ConfigError(e.to_string()).
+## Environment Detection
 
-**Examples:**
-```rust
-// Convert AppError to String for API response:
-error: Some(e.to_string())
+The application automatically detects whether it's running in native Windows mode or web mode:
 
-// Convert std::io::Error to AppError:
-.map_err(AppError::IoError)?
+- **Native Mode**: Tauri API available, full desktop functionality
+- **Web Mode**: Running in browser, limited functionality for development/testing
 
-// Convert std::io::Error to AppError::ConfigError:
-.map_err(|e| AppError::ConfigError(e.to_string()))?
-```
+## Performance Optimizations
 
-## Maintenance Guidelines
+### Frontend
+- Disable source maps in development
+- Use Fast Refresh and React.memo
+- Disable StrictMode in development
+- Optimize imports and bundle size
+- Use fast build/dev scripts
 
-### 1. **Adding New Files**
-- Place in appropriate category directory
-- Follow naming conventions
-- Update this document if adding new categories
+### Backend (Rust)
+- Use optimized dev profile
+- Enable incremental compilation
+- Use fast dev scripts
+- Clean build artifacts regularly
 
-### 2. **Moving Files**
-- Update all import/reference paths
-- Update documentation links
-- Update configuration files
-- Test all functionality
+## Testing and Quality Assurance
 
-### 3. **Regular Reviews**
-- Monthly structure review
-- Remove obsolete files
-- Consolidate similar files
-- Update documentation
+### Testing Strategy
+- Unit tests for Rust backend components
+- Integration tests for plugin interactions
+- Frontend component testing
+- End-to-end testing for critical workflows
 
-### 4. **Automation**
-- Use scripts for common operations
-- Automated path updates where possible
-- CI/CD integration for structure validation
+### Code Quality
+- Rust clippy for code quality
+- TypeScript strict mode
+- ESLint for JavaScript/TypeScript
+- Prettier for code formatting
 
-## Benefits of This Structure
+## Deployment
 
-### For Developers
-- **Quick Navigation**: Find files easily
-- **Clear Purpose**: Understand file roles
-- **Consistent Patterns**: Predictable organization
-- **Reduced Confusion**: No scattered files
+### Windows Distribution
+- Native Windows .exe installer
+- MSI package for enterprise deployment
+- Portable executable option
+- Auto-update system
 
-### For Project Management
-- **Easy Onboarding**: New developers understand structure
-- **Clear Documentation**: Organized by purpose
-- **Maintainable**: Easy to update and extend
-- **Scalable**: Grows with project needs
+### Development Distribution
+- Development builds with hot reload
+- Debug builds with full logging
+- Release builds optimized for performance
 
-### For Maintenance
-- **Logical Grouping**: Related files together
-- **Clear Dependencies**: Easy to trace relationships
-- **Consistent Updates**: Predictable change locations
-- **Reduced Errors**: Less chance of broken references
+## Maintenance and Updates
+
+### Regular Maintenance
+- Monthly structure reviews
+- Dependency updates
+- Performance monitoring
+- Security updates
+
+### Documentation Updates
+- Keep navigation indexes current
+- Update after major changes
+- Maintain single source of truth
+- Regular documentation reviews
 
 ---
 
-**📝 Note**: This structure should be maintained and updated as the project evolves. All team members should follow these guidelines when adding or modifying files.
-
-**🔄 Last Updated**: Current session - Flag management system implementation complete
-**👤 Maintained by**: Development Team 
-
-## 🆕 UI Layout Update (2025-07)
-- AdvancedPanel now displays:
-  - MatchInfoSection (athlete info, match details)
-  - EventTable (event rows, colored dots, scrollable)
-  - StatusBar (OBS status, test controls)
-- Sidebar features (filters, replay, manual mode, etc.) are being migrated into the new layout.
-- See .cursor/rules/context.mdc for all architecture and UI conventions. 
-
-## Atomic Design Structure (2024)
-
-- All React components in `ui/src/components/` are now organized by atomic design:
-  - `atoms/`: smallest, reusable UI elements
-  - `molecules/`: groups of atoms forming more complex UI
-  - `organisms/`: complex, composite UI sections
-  - `layouts/`: structural layout components
-- All moves/refactors must copy the original file before deletion (see .cursor/rules/context.mdc).
-- Imports must always reference the correct atomic folder.
-- See FRONTEND_DEVELOPMENT_SUMMARY.md for migration details. 
-
-### Atoms
-- Button
-- Input
-- Checkbox
-- Label
-- StatusDot (Badge)
-- Icon
-
-All status indicators and icons are now atomic. Accessibility linter issues have been addressed as of 2024. 
-
-## Backend: OBS WebSocket Event Handling
-
-- The OBS plugin emits all official OBS WebSocket v5 event types as `ObsEvent::Raw`.
-- Unknown or future event types are also handled generically, ensuring no event is lost or causes an error.
-- Detailed event handling can be added incrementally for any event type as needed. 
-
-## Backend: OBS WebSocket Runtime Management
-
-- Runtime addition and removal of OBS connections is supported via Tauri commands (`add_obs_connection`, `remove_obs_connection`).
-- The frontend can manage connections dynamically without backend restarts. 
-
-## Backend: Sending Commands to OBS
-
-- The backend supports sending commands to OBS via a Tauri command (`obs_send_request`).
-- The frontend can control any connected OBS instance by name and receive responses. 
-- All logs are now saved in a dedicated 'log' folder in the installation directory. The folder is created automatically if missing. Log file is 'log/backend.log'. 
+*Last updated: 2025-01-28*
+*Configuration system implementation: Complete*
+*OBS WebSocket management: Complete*
+*Atomic design system: Complete* 

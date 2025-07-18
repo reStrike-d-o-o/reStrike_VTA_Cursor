@@ -3,12 +3,15 @@
 use crate::types::{AppResult, AppState, AppView};
 use crate::plugins::{ObsPlugin, PlaybackPlugin, UdpPlugin, StorePlugin, LicensePlugin};
 use crate::logging::LogManager;
+use crate::config::ConfigManager;
 use std::sync::Arc;
+use std::path::PathBuf;
 use tokio::sync::RwLock;
 
 /// Main application class that orchestrates all systems
 pub struct App {
     state: Arc<RwLock<AppState>>,
+    config_manager: ConfigManager,
     obs_plugin: ObsPlugin,
     playback_plugin: PlaybackPlugin,
     udp_plugin: UdpPlugin,
@@ -23,6 +26,11 @@ impl App {
         println!("🚀 Creating new application instance...");
         
         let state = Arc::new(RwLock::new(AppState::default()));
+        
+        // Initialize configuration manager
+        let config_dir = PathBuf::from("config");
+        let config_manager = ConfigManager::new(&config_dir)
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to initialize config manager: {}", e)))?;
         
         // Create event channels for plugins
         let (obs_event_tx, _obs_event_rx) = tokio::sync::mpsc::unbounded_channel();
@@ -43,6 +51,7 @@ impl App {
         
         Ok(Self {
             state,
+            config_manager,
             obs_plugin,
             playback_plugin,
             udp_plugin,
@@ -126,6 +135,11 @@ impl App {
     /// Get log manager reference
     pub fn log_manager(&self) -> &LogManager {
         &self.log_manager
+    }
+    
+    /// Get configuration manager reference
+    pub fn config_manager(&self) -> &ConfigManager {
+        &self.config_manager
     }
 }
 

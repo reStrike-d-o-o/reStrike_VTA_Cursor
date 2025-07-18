@@ -38,19 +38,7 @@ export const obsCommands = {
     }
   },
 
-  /**
-   * Disconnect from OBS WebSocket
-   */
-  async disconnect(connectionName: string): Promise<TauriCommandResponse> {
-    try {
-      if (isTauriAvailable()) {
-        return await safeInvoke('obs_disconnect', { connectionName });
-      }
-      return { success: false, error: 'Tauri not available' };
-    } catch (error) {
-      return { success: false, error: String(error) };
-    }
-  },
+
 
   /**
    * Get OBS connection status
@@ -134,6 +122,116 @@ export const obsCommands = {
     } catch (error) {
       return { success: false, error: String(error) };
     }
+  },
+
+  /**
+   * Add a new OBS connection
+   */
+  async addConnection(params: {
+    name: string;
+    host: string;
+    port: number;
+    password?: string;
+    protocol_version: string;
+    enabled: boolean;
+  }) {
+    // Convert snake_case to camelCase for Tauri parameter naming
+    const tauriParams = {
+      name: params.name,
+      host: params.host,
+      port: params.port,
+      password: params.password,
+      protocolVersion: params.protocol_version, // Convert to camelCase
+      enabled: params.enabled,
+    };
+    return executeTauriCommand('obs_add_connection', tauriParams);
+  },
+
+  /**
+   * Connect to a specific OBS connection
+   */
+  async connectToConnection(connectionName: string) {
+    return executeTauriCommand('obs_connect_to_connection', { connectionName });
+  },
+
+  /**
+   * Get status of a specific OBS connection
+   */
+  async getConnectionStatus(connectionName: string) {
+    return executeTauriCommand('obs_get_connection_status', { connectionName });
+  },
+
+  /**
+   * Get all OBS connections
+   */
+  async getConnections() {
+    return executeTauriCommand('obs_get_connections', {});
+  },
+
+  /**
+   * Disconnect from OBS
+   */
+  async disconnect(connectionName: string) {
+    return executeTauriCommand('obs_disconnect', { connectionName });
+  },
+
+  /**
+   * Remove OBS connection configuration
+   */
+  async removeConnection(connectionName: string) {
+    return executeTauriCommand('obs_remove_connection', { connectionName });
+  },
+};
+
+// Configuration management commands
+export const configCommands = {
+  /**
+   * Get all application settings
+   */
+  async getSettings() {
+    return executeTauriCommand('get_settings', {});
+  },
+
+  /**
+   * Update application settings
+   */
+  async updateSettings(settings: any) {
+    return executeTauriCommand('update_settings', { settings });
+  },
+
+  /**
+   * Get configuration statistics
+   */
+  async getConfigStats() {
+    return executeTauriCommand('get_config_stats', {});
+  },
+
+  /**
+   * Reset settings to defaults
+   */
+  async resetSettings() {
+    return executeTauriCommand('reset_settings', {});
+  },
+
+  /**
+   * Export settings to file
+   */
+  async exportSettings(exportPath: string) {
+    return executeTauriCommand('export_settings', { exportPath });
+  },
+
+  /**
+   * Import settings from file
+   */
+  async importSettings(importPath: string) {
+    return executeTauriCommand('import_settings', { importPath });
+  },
+
+  /**
+   * Restore settings from backup
+   */
+  async restoreSettingsBackup() {
+    return executeTauriCommand('restore_settings_backup', {});
   },
 };
 
@@ -264,51 +362,6 @@ export const diagLogsCommands = {
    */
   async downloadArchive(archiveName: string) {
     return executeTauriCommand('download_archive', { archiveName });
-  },
-};
-
-// OBS WebSocket Commands
-export const obsCommands = {
-  /**
-   * Add a new OBS connection
-   */
-  async addConnection(params: {
-    name: string;
-    host: string;
-    port: number;
-    password?: string;
-    protocol_version: string;
-    enabled: boolean;
-  }) {
-    return executeTauriCommand('obs_add_connection', params);
-  },
-
-  /**
-   * Connect to a specific OBS connection
-   */
-  async connectToConnection(connectionName: string) {
-    return executeTauriCommand('obs_connect_to_connection', { connectionName });
-  },
-
-  /**
-   * Get status of a specific OBS connection
-   */
-  async getConnectionStatus(connectionName: string) {
-    return executeTauriCommand('obs_get_connection_status', { connectionName });
-  },
-
-  /**
-   * Get all OBS connections
-   */
-  async getConnections() {
-    return executeTauriCommand('obs_get_connections', {});
-  },
-
-  /**
-   * Disconnect from OBS
-   */
-  async disconnect(connectionName: string) {
-    return executeTauriCommand('obs_disconnect', { connectionName });
   },
 
   /**

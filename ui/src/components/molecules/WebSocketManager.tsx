@@ -4,19 +4,8 @@ import Input from '../atoms/Input';
 import Label from '../atoms/Label';
 import { StatusDot } from '../atoms/StatusDot';
 import { Icon } from '../atoms/Icon';
-import { useAppStore } from '../../stores';
-import { obsCommands } from '../../utils/tauriCommands';
-
-interface WebSocketConnection {
-  name: string;
-  host: string;
-  port: number;
-  password?: string;
-  protocol_version: 'v5';
-  enabled: boolean;
-  status: 'Disconnected' | 'Connecting' | 'Connected' | 'Authenticating' | 'Authenticated' | 'Error';
-  error?: string;
-}
+import { useAppStore, ObsConnection } from '../../stores';
+import { obsCommands, configCommands } from '../../utils/tauriCommands';
 
 const WebSocketManager: React.FC = () => {
   const { obsConnections, addObsConnection, removeObsConnection, updateObsConnectionStatus, setActiveObsConnection, activeObsConnection } = useAppStore();
@@ -52,11 +41,68 @@ const WebSocketManager: React.FC = () => {
 
   const loadConnections = async () => {
     try {
-      const result = await obsCommands.getConnections();
-      if (result.success) {
-        // Update store with connections from backend
-        // This will sync the frontend state with backend state
-        console.log('Loaded connections from backend:', result.connections);
+      // First try to get connections from configuration system
+      const configResult = await configCommands.getSettings();
+      if (configResult.success && configResult.data?.obs?.connections) {
+        const configConnections = configResult.data.obs.connections.map((conn: any) => ({
+          name: conn.name,
+          host: conn.host,
+          port: conn.port,
+          password: conn.password,
+          protocol_version: conn.protocol_version,
+          enabled: conn.enabled,
+          status: 'Disconnected' as const, // Will be updated by status check
+          error: undefined,
+        }));
+        
+        // Update frontend store with configuration connections
+        obsConnections.forEach(conn => removeObsConnection(conn.name));
+        configConnections.forEach(conn => addObsConnection(conn));
+        
+        // Also ensure connections are in the OBS plugin
+        const obsResult = await obsCommands.getConnections();
+        if (obsResult.success && obsResult.data) {
+          const obsConnections = obsResult.data.map((conn: any) => conn.name);
+          
+          // Add any missing connections to OBS plugin
+          for (const conn of configConnections) {
+            if (!obsConnections.includes(conn.name)) {
+              await obsCommands.addConnection({
+                name: conn.name,
+                host: conn.host,
+                port: conn.port,
+                password: conn.password,
+                protocol_version: conn.protocol_version,
+                enabled: conn.enabled,
+              });
+            }
+          }
+        }
+      } else {
+        // Fallback to direct OBS plugin query
+        const result = await obsCommands.getConnections();
+        if (result.success && result.data) {
+          // Update store with connections from backend
+          console.log('Loaded connections from backend:', result.data);
+        } else {
+          // If no connections in backend, sync frontend connections to backend
+          console.log('No connections in backend, syncing frontend connections...');
+          for (const connection of obsConnections) {
+            try {
+              await obsCommands.addConnection({
+                name: connection.name,
+                host: connection.host,
+                port: connection.port,
+                password: connection.password || undefined,
+                protocol_version: connection.protocol_version,
+                enabled: connection.enabled,
+              });
+              console.log(`Synced connection ${connection.name} to backend`);
+            } catch (error) {
+              console.error(`Failed to sync connection ${connection.name}:`, error);
+            }
+          }
+        }
       }
     } catch (error) {
       console.error('Failed to load connections:', error);
@@ -101,7 +147,7 @@ const WebSocketManager: React.FC = () => {
     }
   };
 
-  const handleEditConnection = (connection: WebSocketConnection) => {
+  const handleEditConnection = (connection: ObsConnection) => {
     setEditingConnection(connection.name);
     setFormData({
       name: connection.name,
@@ -132,20 +178,44 @@ const WebSocketManager: React.FC = () => {
     }
 
     try {
-      // Remove old connection and add updated one
-      removeObsConnection(editingConnection);
-      
+      // Ensure password is preserved - if formData.password is empty but we're editing,
+      // try to get the password from the original connection
+      let finalPassword = formData.password;
+      if (!finalPassword && editingConnection) {
+        const originalConnection = obsConnections.find(c => c.name === editingConnection);
+        if (originalConnection && originalConnection.password) {
+          finalPassword = originalConnection.password;
+        }
+      }
+
+      // First, remove the old connection from backend
+      try {
+        await obsCommands.removeConnection(editingConnection);
+      } catch (error) {
+        // Ignore errors if connection wasn't found
+        console.log('Remove connection error (expected if not found):', error);
+      }
+
+      // Add the updated connection to backend
       const result = await obsCommands.addConnection({
         name: formData.name,
         host: formData.host,
         port: formData.port,
-        password: formData.password || undefined,
+        password: finalPassword || undefined,
         protocol_version: formData.protocol_version,
         enabled: formData.enabled,
       });
 
       if (result.success) {
-        addObsConnection(formData);
+        // Remove old connection from frontend store
+        removeObsConnection(editingConnection);
+        
+        // Add updated connection to frontend store
+        addObsConnection({
+          ...formData,
+          password: finalPassword,
+        });
+        
         resetForm();
         setEditingConnection(null);
       } else {
@@ -162,7 +232,7 @@ const WebSocketManager: React.FC = () => {
     }
   };
 
-  const handleConnect = async (connection: WebSocketConnection) => {
+  const handleConnect = async (connection: ObsConnection) => {
     updateObsConnectionStatus(connection.name, 'Connecting');
     
     try {
@@ -176,8 +246,8 @@ const WebSocketManager: React.FC = () => {
         setTimeout(async () => {
           try {
             const statusResult = await obsCommands.getConnectionStatus(connection.name);
-            if (statusResult.success) {
-              const status = statusResult.status as WebSocketConnection['status'];
+            if (statusResult.success && statusResult.data) {
+              const status = statusResult.data.status as ObsConnection['status'];
               updateObsConnectionStatus(connection.name, status);
               if (status === 'Authenticated') {
                 setActiveObsConnection(connection.name);
@@ -195,7 +265,7 @@ const WebSocketManager: React.FC = () => {
     }
   };
 
-  const handleDisconnect = async (connection: WebSocketConnection) => {
+  const handleDisconnect = async (connection: ObsConnection) => {
     try {
       const result = await obsCommands.disconnect(connection.name);
       
@@ -212,7 +282,7 @@ const WebSocketManager: React.FC = () => {
     }
   };
 
-  const getStatusColor = (status: WebSocketConnection['status']) => {
+  const getStatusColor = (status: ObsConnection['status']) => {
     switch (status) {
       case 'Connected':
       case 'Authenticated':
@@ -302,7 +372,9 @@ const WebSocketManager: React.FC = () => {
                 type="password"
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                placeholder="Leave empty if no password"
+                placeholder={editingConnection && obsConnections.find(c => c.name === editingConnection)?.password 
+                  ? "Password is set (click to change)" 
+                  : "Leave empty if no password"}
               />
             </div>
 
