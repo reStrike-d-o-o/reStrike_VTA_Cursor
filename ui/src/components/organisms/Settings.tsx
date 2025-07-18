@@ -7,6 +7,7 @@ import Checkbox from '../atoms/Checkbox';
 import Label from '../atoms/Label';
 import { StatusDot } from '../atoms/StatusDot';
 import { Icon } from '../atoms/Icon';
+import WebSocketManager from '../molecules/WebSocketManager';
 
 const Settings: React.FC = () => {
   const {
@@ -18,7 +19,7 @@ const Settings: React.FC = () => {
     clearError,
   } = useAppStore();
 
-  const [activeTab, setActiveTab] = useState<'overlay' | 'obs' | 'advanced'>('overlay');
+  const [activeTab, setActiveTab] = useState<'overlay' | 'obs' | 'websocket' | 'advanced'>('overlay');
   const [isResetting, setIsResetting] = useState(false);
 
   const handleResetSettings = () => {
@@ -37,6 +38,7 @@ const Settings: React.FC = () => {
   const tabs = [
     { id: 'overlay', label: 'Overlay Settings', icon: '🎨' },
     { id: 'obs', label: 'OBS Integration', icon: '🎥' },
+    { id: 'websocket', label: 'WebSocket', icon: '🔌' },
     { id: 'advanced', label: 'Advanced', icon: '⚙️' },
   ] as const;
 
@@ -194,33 +196,6 @@ const Settings: React.FC = () => {
         {activeTab === 'obs' && (
           <div className="space-y-6">
             <div className="p-4 bg-gray-800 rounded-lg">
-              <h3 className="text-lg font-semibold mb-3">OBS Connection Status</h3>
-              <div className="space-y-2">
-                {obsConnections.length === 0 ? (
-                  <p className="text-gray-400">No OBS connections configured</p>
-                ) : (
-                  obsConnections.map((connection) => (
-                    <div
-                      key={connection.name}
-                      className="flex items-center justify-between p-3 bg-gray-700 rounded-lg"
-                    >
-                      <div>
-                        <div className="font-medium">{connection.name}</div>
-                        <div className="text-sm text-gray-400">
-                          {connection.host}:{connection.port} ({connection.protocol_version})
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <StatusDot color={connection.status === 'Connected' || connection.status === 'Authenticated' ? 'bg-green-500' : connection.status === 'Error' ? 'bg-red-500' : 'bg-yellow-500'} />
-                        <span className="text-sm">{connection.status}</span>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-
-            <div className="p-4 bg-gray-800 rounded-lg">
               <h3 className="text-lg font-semibold mb-3">OBS Integration Settings</h3>
               <div className="space-y-4">
                 <div>
@@ -261,29 +236,11 @@ const Settings: React.FC = () => {
                 </div>
               </div>
             </div>
-
-            <div className="p-4 bg-gray-800 rounded-lg">
-              <h3 className="text-lg font-semibold mb-3">Protocol Information</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                <div>
-                  <h4 className="font-medium text-blue-400 mb-2">OBS WebSocket v5</h4>
-                  <ul className="text-gray-300 space-y-1">
-                    <li>• Default port: 4455</li>
-                    <li>• SHA256 authentication</li>
-                    <li>• Enhanced features</li>
-                  </ul>
-                </div>
-                <div>
-                  <h4 className="font-medium text-yellow-400 mb-2">OBS WebSocket v4</h4>
-                  <ul className="text-gray-300 space-y-1">
-                    <li>• Default port: 4444</li>
-                    <li>• Password authentication</li>
-                    <li>• Legacy support</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
           </div>
+        )}
+
+        {activeTab === 'websocket' && (
+          <WebSocketManager />
         )}
 
         {activeTab === 'advanced' && (
