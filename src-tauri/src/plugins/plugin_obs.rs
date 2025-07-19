@@ -7,6 +7,7 @@ use crate::types::{AppError, AppResult};
 use tokio_tungstenite::tungstenite::Message;
 use futures_util::StreamExt;
 use futures_util::SinkExt;
+use crate::logging::LogManager;
 
 /// Initialize the OBS plugin
 pub fn init() -> Result<(), Box<dyn std::error::Error>> {
@@ -69,6 +70,7 @@ pub struct ObsPlugin {
     pub debug_ws_messages: Arc<Mutex<bool>>,
     pub show_full_events: Arc<Mutex<bool>>, // Toggle for showing all OBS events vs only recording/streaming
     recent_events: Arc<Mutex<Vec<RecentEvent>>>, // Recent events for frontend polling
+    log_manager: Arc<Mutex<LogManager>>,
 }
 
 impl Clone for ObsPlugin {
@@ -79,6 +81,7 @@ impl Clone for ObsPlugin {
             debug_ws_messages: self.debug_ws_messages.clone(),
             show_full_events: self.show_full_events.clone(),
             recent_events: self.recent_events.clone(),
+            log_manager: self.log_manager.clone(),
         }
     }
 }
@@ -118,13 +121,22 @@ pub enum ObsEvent {
 }
 
 impl ObsPlugin {
-    pub fn new(event_tx: mpsc::UnboundedSender<ObsEvent>) -> Self {
+    pub fn new(event_tx: mpsc::UnboundedSender<ObsEvent>, log_manager: Arc<Mutex<LogManager>>) -> Self {
         Self {
             connections: Arc::new(Mutex::new(HashMap::new())),
             event_tx,
             debug_ws_messages: Arc::new(Mutex::new(true)), // Initialize to true for debugging
             show_full_events: Arc::new(Mutex::new(false)), // Initialize to false - only show recording/streaming by default
             recent_events: Arc::new(Mutex::new(Vec::new())),
+            log_manager,
+        }
+    }
+
+    // Helper method to log messages using the custom LogManager
+    async fn log_to_file(&self, level: &str, message: &str) {
+        let log_manager = self.log_manager.lock().await;
+        if let Err(e) = log_manager.log("obs", level, message) {
+            eprintln!("Failed to log to obs.log: {}", e);
         }
     }
 
@@ -220,23 +232,23 @@ impl ObsPlugin {
                         if *flag {
                             match &msg_result {
                                 Ok(tokio_tungstenite::tungstenite::Message::Text(text)) => {
-                                    println!("[WS-DEBUG][{}] Text: {}", connection_name, text);
+                                    plugin.log_to_file("DEBUG", &format!("[WS-DEBUG][{}] Text: {}", connection_name, text)).await;
                                 },
                                 Ok(tokio_tungstenite::tungstenite::Message::Binary(bin)) => {
-                                    println!("[WS-DEBUG][{}] Binary: {:02X?}", connection_name, bin);
+                                    plugin.log_to_file("DEBUG", &format!("[WS-DEBUG][{}] Binary: {:02X?}", connection_name, bin)).await;
                                 },
                                 Ok(other) => {
-                                    println!("[WS-DEBUG][{}] Other: {:?}", connection_name, other);
+                                    plugin.log_to_file("DEBUG", &format!("[WS-DEBUG][{}] Other: {:?}", connection_name, other)).await;
                                 },
                                 Err(e) => {
-                                    println!("[WS-DEBUG][{}] Error: {}", connection_name, e);
+                                    plugin.log_to_file("ERROR", &format!("[WS-DEBUG][{}] Error: {}", connection_name, e)).await;
                                 }
                             }
                         }
                         match msg_result {
                             Ok(Message::Text(text)) => {
                                 // Always log incoming messages for debugging
-                                println!("[OBS-RESPONSE][{}] Received: {}", connection_name, text);
+                                plugin.log_to_file("INFO", &format!("[OBS-RESPONSE][{}] Received: {}", connection_name, text)).await;
                                 
                                 if let Ok(json) = serde_json::from_str::<serde_json::Value>(&text) {
                                     // Handle request responses (opcode 7)
@@ -244,12 +256,12 @@ impl ObsPlugin {
                                         if op == 7 {
                                             // Request response
                                             if let Some(request_id) = json.pointer("/d/requestId").and_then(|v| v.as_str()) {
-                                                println!("[OBS-RESPONSE][{}] Request response for ID: {}", connection_name, request_id);
+                                                plugin.log_to_file("INFO", &format!("[OBS-RESPONSE][{}] Request response for ID: {}", connection_name, request_id)).await;
                                                 let tx_opt = ObsPlugin::take_pending_request_sender(&connections, &connection_name, request_id).await;
                                                 if let Some(tx) = tx_opt {
                                                     let _ = tx.send(json["d"].clone());
                                                 } else {
-                                                    println!("[OBS-RESPONSE][{}] No pending request found for ID: {}", connection_name, request_id);
+                                                    plugin.log_to_file("WARN", &format!("[OBS-RESPONSE][{}] No pending request found for ID: {}", connection_name, request_id)).await;
                                                 }
                                             }
                                         } else if op == 5 {
@@ -264,30 +276,30 @@ impl ObsPlugin {
                                                 event_type == "StreamStateChanged" ||
                                                 event_type == "ReplayBufferStateChanged";
                                             
-                                                                                            if should_show_event {
-                                                    println!("[OBS-EVENT][{}] Event: {} - Data: {}", connection_name, event_type, serde_json::to_string(event_data).unwrap_or_default());
+                                            if should_show_event {
+                                                plugin.log_to_file("INFO", &format!("[OBS-EVENT][{}] Event: {} - Data: {}", connection_name, event_type, serde_json::to_string(event_data).unwrap_or_default())).await;
+                                                
+                                                // Emit event to frontend if full events are enabled
+                                                if *show_full {
+                                                    let _ = event_tx.send(ObsEvent::Raw {
+                                                        connection_name: connection_name.clone(),
+                                                        event_type: event_type.to_string(),
+                                                        data: event_data.clone(),
+                                                    });
                                                     
-                                                    // Emit event to frontend if full events are enabled
-                                                    if *show_full {
-                                                        let _ = event_tx.send(ObsEvent::Raw {
-                                                            connection_name: connection_name.clone(),
-                                                            event_type: event_type.to_string(),
-                                                            data: event_data.clone(),
-                                                        });
-                                                        
-                                                        // Store event for frontend polling
-                                                        let plugin_clone = plugin.clone();
-                                                        let conn_name = connection_name.clone();
-                                                        let event_type_clone = event_type.to_string();
-                                                        let event_data_clone = event_data.clone();
-                                                        tokio::spawn(async move {
-                                                            plugin_clone.store_recent_event(conn_name, event_type_clone, event_data_clone).await;
-                                                        });
-                                                        
-                                                        // Also log the event for frontend polling
-                                                        log::info!("[OBS-FRONTEND-EVENT] {}: {}", event_type, serde_json::to_string(&event_data).unwrap_or_default());
-                                                    }
+                                                    // Store event for frontend polling
+                                                    let plugin_clone = plugin.clone();
+                                                    let conn_name = connection_name.clone();
+                                                    let event_type_clone = event_type.to_string();
+                                                    let event_data_clone = event_data.clone();
+                                                    tokio::spawn(async move {
+                                                        plugin_clone.store_recent_event(conn_name, event_type_clone, event_data_clone).await;
+                                                    });
+                                                    
+                                                    // Also log the event for frontend polling
+                                                    plugin.log_to_file("INFO", &format!("[OBS-FRONTEND-EVENT] {}: {}", event_type, serde_json::to_string(&event_data).unwrap_or_default())).await;
                                                 }
+                                            }
                                             match event_type {
                                                 "CurrentProgramSceneChanged" => {
                                                     if let Some(scene_name) = event_data["sceneName"].as_str() {
@@ -299,7 +311,7 @@ impl ObsPlugin {
                                                 }
                                                 "RecordStateChanged" => {
                                                     if let Some(is_recording) = event_data["outputActive"].as_bool() {
-                                                        println!("[OBS-RECORD][{}] Recording: {}", connection_name, is_recording);
+                                                        plugin.log_to_file("INFO", &format!("[OBS-RECORD][{}] Recording: {}", connection_name, is_recording)).await;
                                                         
                                                         // Send event to frontend
                                                         let _ = event_tx.send(ObsEvent::RecordingStateChanged {
@@ -317,14 +329,14 @@ impl ObsPlugin {
                                                                     obj.insert("recording".to_string(), serde_json::Value::Bool(is_recording));
                                                                 }
                                                                 conn.heartbeat_data = Some(heartbeat_data);
-                                                                println!("[OBS-RECORD][{}] Updated heartbeat data with recording state", connection_name);
+                                                                plugin.log_to_file("INFO", &format!("[OBS-RECORD][{}] Updated heartbeat data with recording state", connection_name)).await;
                                                             }
                                                         }
                                                     }
                                                 }
                                                 "StreamStateChanged" => {
                                                     if let Some(is_streaming) = event_data["outputActive"].as_bool() {
-                                                        println!("[OBS-STREAM][{}] Streaming: {}", connection_name, is_streaming);
+                                                        plugin.log_to_file("INFO", &format!("[OBS-STREAM][{}] Streaming: {}", connection_name, is_streaming)).await;
                                                         
                                                         // Send event to frontend
                                                         let _ = event_tx.send(ObsEvent::StreamStateChanged {
@@ -342,7 +354,7 @@ impl ObsPlugin {
                                                                     obj.insert("streaming".to_string(), serde_json::Value::Bool(is_streaming));
                                                                 }
                                                                 conn.heartbeat_data = Some(heartbeat_data);
-                                                                println!("[OBS-STREAM][{}] Updated heartbeat data with streaming state", connection_name);
+                                                                plugin.log_to_file("INFO", &format!("[OBS-STREAM][{}] Updated heartbeat data with streaming state", connection_name)).await;
                                                             }
                                                         }
                                                     }
@@ -357,19 +369,19 @@ impl ObsPlugin {
                                                 }
                                                 "StudioModeStateChanged" => {
                                                     if let Some(enabled) = event_data["studioModeEnabled"].as_bool() {
-                                                        println!("[OBS-EVENT][{}] Studio mode changed: {}", connection_name, enabled);
+                                                        plugin.log_to_file("INFO", &format!("[OBS-EVENT][{}] Studio mode changed: {}", connection_name, enabled)).await;
                                                     }
                                                 }
                                                 "Heartbeat" => {
                                                     // OBS sends heartbeat messages with status info
                                                     if let Some(recording) = event_data["recording"].as_bool() {
-                                                        println!("[OBS-HEARTBEAT][{}] Recording: {}", connection_name, recording);
+                                                        plugin.log_to_file("INFO", &format!("[OBS-HEARTBEAT][{}] Recording: {}", connection_name, recording)).await;
                                                     }
                                                     if let Some(streaming) = event_data["streaming"].as_bool() {
-                                                        println!("[OBS-HEARTBEAT][{}] Streaming: {}", connection_name, streaming);
+                                                        plugin.log_to_file("INFO", &format!("[OBS-HEARTBEAT][{}] Streaming: {}", connection_name, streaming)).await;
                                                     }
                                                     if let Some(cpu_usage) = event_data["cpuUsage"].as_f64() {
-                                                        println!("[OBS-HEARTBEAT][{}] CPU Usage: {}%", connection_name, cpu_usage);
+                                                        plugin.log_to_file("INFO", &format!("[OBS-HEARTBEAT][{}] CPU Usage: {}%", connection_name, cpu_usage)).await;
                                                     }
                                                     
                                                     // Store heartbeat data in connection
@@ -377,7 +389,7 @@ impl ObsPlugin {
                                                         let mut conns = connections.lock().await;
                                                         if let Some(conn) = conns.get_mut(&connection_name) {
                                                             conn.heartbeat_data = Some(event_data.clone());
-                                                            println!("[OBS-HEARTBEAT][{}] Stored heartbeat data", connection_name);
+                                                            plugin.log_to_file("INFO", &format!("[OBS-HEARTBEAT][{}] Stored heartbeat data", connection_name)).await;
                                                         }
                                                     }
                                                 }
@@ -480,37 +492,37 @@ impl ObsPlugin {
 
     // Connect to OBS instance
     pub async fn connect_obs(&self, connection_name: &str) -> AppResult<()> {
-        println!("[DEBUG] Entered connect_obs for {}", connection_name);
+        log::info!("[DEBUG] Entered connect_obs for {}", connection_name);
         // Get connection config first
         let config = {
-            println!("[DEBUG] Attempting to lock connections for config");
+            log::info!("[DEBUG] Attempting to lock connections for config");
             let connections = self.connections.lock().await;
             let connection = connections.get(connection_name)
                 .ok_or_else(|| {
-                    println!("[DEBUG] Connection '{}' not found in config lookup", connection_name);
+                    log::warn!("[DEBUG] Connection '{}' not found in config lookup", connection_name);
                     AppError::ConfigError(format!("Connection '{}' not found", connection_name))
                 })?;
-            println!("[DEBUG] Got config for {}", connection_name);
+            log::info!("[DEBUG] Got config for {}", connection_name);
             connection.config.clone()
         };
-        println!("[DEBUG] Got config for {}", connection_name);
+        log::info!("[DEBUG] Got config for {}", connection_name);
 
         // Update status to connecting
         {
-            println!("[DEBUG] Attempting to lock connections for status update");
+            log::info!("[DEBUG] Attempting to lock connections for status update");
             let mut connections = self.connections.lock().await;
             if let Some(connection) = connections.get_mut(connection_name) {
                 connection.status = ObsConnectionStatus::Connecting;
             }
         }
-        println!("[DEBUG] Updated status to Connecting for {}", connection_name);
+        log::info!("[DEBUG] Updated status to Connecting for {}", connection_name);
 
         // Send status change event
         let _ = self.event_tx.send(ObsEvent::ConnectionStatusChanged {
             connection_name: connection_name.to_string(),
             status: ObsConnectionStatus::Connecting,
         });
-        println!("[DEBUG] Sent status change event for {}", connection_name);
+        log::info!("[DEBUG] Sent status change event for {}", connection_name);
 
         // Build WebSocket URL
         let ws_url = format!(
@@ -518,27 +530,27 @@ impl ObsPlugin {
             config.host,
             config.port
         );
-        println!("[DEBUG] Built ws_url for {}: {}", connection_name, ws_url);
+        log::info!("[DEBUG] Built ws_url for {}: {}", connection_name, ws_url);
 
         // Connect to WebSocket
         let (ws_stream, _) = match tokio_tungstenite::connect_async(&ws_url).await {
             Ok(res) => {
-                println!("[DEBUG] Successfully connected to WebSocket for {}", connection_name);
+                log::info!("[DEBUG] Successfully connected to WebSocket for {}", connection_name);
                 log::info!("[OBS] Successfully connected to '{}' at {}:{}", connection_name, config.host, config.port);
                 res
             },
             Err(e) => {
-                println!("[DEBUG] Failed to connect to WebSocket for {}: {}", connection_name, e);
+                log::error!("[DEBUG] Failed to connect to WebSocket for {}: {}", connection_name, e);
                 log::error!("[OBS] Failed to connect to '{}': {}", connection_name, e);
                 return Err(AppError::ConfigError(format!("Failed to connect to OBS: {}", e)));
             }
         };
-        println!("[DEBUG] Got ws_stream for {}", connection_name);
+        log::info!("[DEBUG] Got ws_stream for {}", connection_name);
 
         // Authenticate (v5 only) and get the stream back
-        println!("[DEBUG] Calling authenticate_v5 for {}", connection_name);
+        log::info!("[DEBUG] Calling authenticate_v5 for {}", connection_name);
         let ws_stream = self.authenticate_v5(connection_name, ws_stream).await?;
-        println!("[DEBUG] authenticate_v5 returned for {}", connection_name);
+        log::info!("[DEBUG] authenticate_v5 returned for {}", connection_name);
 
         // Put the stream back in the connection
         {
@@ -548,9 +560,9 @@ impl ObsPlugin {
         }
 
         // Spawn WebSocket receive loop
-        println!("[DEBUG] Spawning ws_task for {}", connection_name);
+        log::info!("[DEBUG] Spawning ws_task for {}", connection_name);
         self.spawn_ws_task(connection_name.to_string()).await;
-        println!("[DEBUG] spawn_ws_task returned for {}", connection_name);
+        log::info!("[DEBUG] spawn_ws_task returned for {}", connection_name);
 
         // Note: Heartbeat request removed temporarily to fix connection loop
         // TODO: Implement proper heartbeat request after fixing WebSocket sharing
@@ -562,14 +574,14 @@ impl ObsPlugin {
                 connection.status = ObsConnectionStatus::Connected;
             }
         }
-        println!("[DEBUG] Updated status to Connected for {}", connection_name);
+        log::info!("[DEBUG] Updated status to Connected for {}", connection_name);
 
         // Send status change event
         let _ = self.event_tx.send(ObsEvent::ConnectionStatusChanged {
             connection_name: connection_name.to_string(),
             status: ObsConnectionStatus::Connected,
         });
-        println!("[DEBUG] Sent Connected status change event for {}", connection_name);
+        log::info!("[DEBUG] Sent Connected status change event for {}", connection_name);
 
         // Enable heartbeat and request initial statuses
         let connection_name_clone = connection_name.to_string();
@@ -618,7 +630,7 @@ impl ObsPlugin {
         let (mut ws_write, mut ws_read) = ws_stream.split();
 
         // 1. Wait for Hello message
-        println!("[AUTH-DEBUG] Waiting for Hello message...");
+        log::info!("[AUTH-DEBUG] Waiting for Hello message...");
         let hello_msg = match ws_read.next().await {
             Some(Ok(msg)) => msg,
             Some(Err(e)) => return Err(AppError::ConfigError(format!("WebSocket error: {}", e))),
@@ -626,7 +638,7 @@ impl ObsPlugin {
         };
         let hello_json: serde_json::Value = match &hello_msg {
             Message::Text(text) => {
-                println!("[AUTH-DEBUG] Received Hello message: {}", text);
+                log::info!("[AUTH-DEBUG] Received Hello message: {}", text);
                 serde_json::from_str(text).map_err(|e| AppError::ConfigError(format!("Invalid Hello JSON: {}", e)))?
             },
             _ => return Err(AppError::ConfigError("Expected Hello text message".to_string())),
@@ -655,7 +667,7 @@ impl ObsPlugin {
                 let connections = self.connections.lock().await;
                 let connection = connections.get(connection_name).unwrap();
                 let password = connection.config.password.clone().unwrap_or_default();
-                println!("[AUTH-DEBUG] Using password: '{}' (length: {})", if password.is_empty() { "<empty>" } else { "***" }, password.len());
+                log::info!("[AUTH-DEBUG] Using password: '{}' (length: {})", if password.is_empty() { "<empty>" } else { "***" }, password.len());
                 password
             };
             // Compute secret = base64(sha256(password + salt))
@@ -672,7 +684,7 @@ impl ObsPlugin {
         }
 
         let identify_str = serde_json::to_string(&identify).unwrap();
-        println!("[AUTH-DEBUG] Sending Identify message: {}", identify_str);
+        log::info!("[AUTH-DEBUG] Sending Identify message: {}", identify_str);
         ws_write.send(Message::Text(identify_str)).await.map_err(|e| AppError::ConfigError(format!("Failed to send Identify: {}", e)))?;
 
         // 4. Wait for Identified or error
@@ -690,31 +702,31 @@ impl ObsPlugin {
                 Ok(Some(Err(e))) => return Err(AppError::ConfigError(format!("WebSocket error: {}", e))),
                 Ok(None) => return Err(AppError::ConfigError("No response after Identify".to_string())),
                 Err(_) => {
-                    println!("[AUTH-DEBUG] Timeout waiting for response, attempt {}/{}", timeout_counter, MAX_TIMEOUT);
+                    log::info!("[AUTH-DEBUG] Timeout waiting for response, attempt {}/{}", timeout_counter, MAX_TIMEOUT);
                     continue;
                 }
             };
             
             if let Message::Text(text) = &msg {
-                println!("[AUTH-DEBUG] Received message in handshake loop: {}", text);
+                log::info!("[AUTH-DEBUG] Received message in handshake loop: {}", text);
                 let json: serde_json::Value = serde_json::from_str(text).map_err(|e| AppError::ConfigError(format!("Invalid JSON after Identify: {}", e)))?;
                 let op = json["op"].as_u64().unwrap_or(0);
-                println!("[AUTH-DEBUG] Message opcode: {}", op);
+                log::info!("[AUTH-DEBUG] Message opcode: {}", op);
                 
                 if op == 2 {
                     // Identified
-                    println!("[AUTH-DEBUG] Authentication successful - received Identified message");
+                    log::info!("[AUTH-DEBUG] Authentication successful - received Identified message");
                     break;
                 } else if op == 8 {
                     // Error
                     let reason = json["d"]["reason"].as_str().unwrap_or("Unknown error");
-                    println!("[AUTH-DEBUG] Authentication failed - received error: {}", reason);
+                    log::info!("[AUTH-DEBUG] Authentication failed - received error: {}", reason);
                     return Err(AppError::ConfigError(format!("OBS authentication failed: {}", reason)));
                 } else {
-                    println!("[AUTH-DEBUG] Unexpected opcode: {}, continuing to wait...", op);
+                    log::info!("[AUTH-DEBUG] Unexpected opcode: {}, continuing to wait...", op);
                 }
             } else {
-                println!("[AUTH-DEBUG] Received non-text message: {:?}", msg);
+                log::info!("[AUTH-DEBUG] Received non-text message: {:?}", msg);
             }
         }
         // 5. Reunite the stream and return it
@@ -1348,6 +1360,6 @@ pub struct ObsStatusInfo {
 
 // Legacy function for backward compatibility
 pub fn connect_obs() {
-    println!("OBS WebSocket plugin initialized with dual-protocol support");
-    println!("Use ObsPlugin::new() to create a plugin instance");
+    log::info!("OBS WebSocket plugin initialized with dual-protocol support");
+    log::info!("Use ObsPlugin::new() to create a plugin instance");
 }

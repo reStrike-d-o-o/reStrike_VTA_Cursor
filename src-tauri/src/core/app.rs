@@ -6,7 +6,7 @@ use crate::logging::LogManager;
 use crate::config::ConfigManager;
 use std::sync::Arc;
 use std::path::PathBuf;
-use tokio::sync::RwLock;
+use tokio::sync::{RwLock, Mutex};
 
 /// Main application class that orchestrates all systems
 pub struct App {
@@ -18,7 +18,7 @@ pub struct App {
     store_plugin: StorePlugin,
     license_plugin: LicensePlugin,
     cpu_monitor_plugin: CpuMonitorPlugin,
-    log_manager: Arc<LogManager>,
+    log_manager: Arc<Mutex<LogManager>>,
 }
 
 impl App {
@@ -44,11 +44,11 @@ impl App {
         // Use a directory outside the project to prevent Tauri file watching from triggering rebuilds
         log_config.log_dir = "logs".to_string();
         log_config.archive_dir = "logs/archives".to_string();
-        let log_manager = Arc::new(LogManager::new(log_config)
-            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to initialize logging: {}", e)))?);
+        let log_manager = Arc::new(Mutex::new(LogManager::new(log_config)
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to initialize logging: {}", e)))?));
         
         // Initialize plugins
-        let obs_plugin = ObsPlugin::new(obs_event_tx);
+        let obs_plugin = ObsPlugin::new(obs_event_tx, log_manager.clone());
         log::info!("✅ OBS plugin initialized");
         
         let playback_plugin = PlaybackPlugin::new(crate::plugins::plugin_playback::PlaybackConfig::default(), playback_event_tx);
@@ -162,7 +162,7 @@ impl App {
     }
     
     /// Get log manager reference
-    pub fn log_manager(&self) -> &LogManager {
+    pub fn log_manager(&self) -> &Arc<Mutex<LogManager>> {
         &self.log_manager
     }
     
