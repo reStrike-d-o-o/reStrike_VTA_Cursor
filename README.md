@@ -1,252 +1,198 @@
-# reStrike VTA
+# reStrike VTA - Taekwondo Competition Management System
 
-A Windows-only native desktop application for instant video replay and analysis in sports broadcasting. Built with Tauri v2 (Rust backend) and React (frontend).
+## 🏆 Overview
 
-## 🚀 Current Status
+reStrike VTA is a Windows-native desktop application designed for taekwondo competition management, featuring advanced OBS Studio integration, real-time event processing, and comprehensive video replay capabilities. Built with Tauri v2, React, and Rust, the application provides a robust platform for tournament organizers and referees.
 
-✅ **Native Windows Mode**: Successfully running as native Windows desktop application  
-✅ **Tauri v2 Integration**: Complete migration with all features working  
-✅ **Hot Reload**: Development mode with live reload for both frontend and backend  
-✅ **Environment Detection**: Automatic detection of Tauri API availability  
+## 🚀 Current Status (2025-01-28)
 
-## 🏗️ Architecture
+### ✅ Complete Systems
+- **Tauri v2 Integration**: Native Windows desktop application
+- **Configuration Management**: Comprehensive settings persistence system
+- **OBS WebSocket Integration**: Full OBS Studio v5 protocol support with connection management
+- **Atomic Design System**: Complete frontend component architecture
+- **Plugin Architecture**: Modular backend with clear separation of concerns
+- **WebSocket Manager**: Full CRUD operations with status monitoring
+- **Settings Persistence**: All app settings survive restarts
+- **Backup System**: Automatic configuration backup and restore
 
-- **Backend**: Rust with Tauri v2 for native Windows integration
-- **Frontend**: React 18 with TypeScript and Tailwind CSS
-- **Design System**: Atomic design with reusable components
-- **State Management**: React hooks and context
-- **Build System**: Integrated Tauri build process
+### 🔧 Recent Major Updates
+- **OBS Connection Management**: WebSocket connections with configuration integration
+- **Protocol Version Simplification**: Removed v4 support, streamlined to v5 only
+- **Disconnect Functionality**: Proper WebSocket disconnection without losing configuration
+- **Settings Separation**: Clear separation between save settings and connect actions
+- **TypeScript Error Fixes**: Resolved all parameter and type issues
+- **Documentation Consolidation**: Comprehensive documentation system
 
-## 📁 Project Structure
+## 🛠️ Technology Stack
 
-```
-reStrike_VTA_Cursor/
-├── src-tauri/                    # Tauri v2 backend (Rust)
-│   ├── src/                      # Rust source code
-│   │   ├── main.rs              # Tauri app entry point
-│   │   ├── tauri_commands.rs    # Tauri command definitions
-│   │   ├── plugins/             # Plugin modules (obs, playback, store, udp)
-│   │   ├── obs/                 # OBS WebSocket integration
-│   │   ├── pss/                 # PSS protocol handling
-│   │   └── video/               # Video player integration
-│   ├── Cargo.toml               # Rust dependencies
-│   └── tauri.conf.json          # Tauri configuration
-├── ui/                          # React frontend
-│   ├── src/components/          # Atomic design components
-│   │   ├── atoms/               # Basic UI components
-│   │   ├── molecules/           # Composite components
-│   │   ├── organisms/           # Complex UI sections
-│   │   └── layouts/             # Page and section layouts
-│   ├── src/hooks/               # Custom React hooks
-│   ├── src/utils/               # Utility functions
-│   └── public/assets/flags/     # Country flag images
-├── docs/                        # Project documentation
-└── scripts/                     # Development scripts
-```
+### Backend (Rust + Tauri v2)
+- **Framework**: Tauri v2 for native Windows integration
+- **Language**: Rust with async/await support
+- **Architecture**: Plugin-based microkernel architecture
+- **WebSocket**: tokio-tungstenite for OBS integration (v5 protocol only)
+- **Configuration**: JSON-based settings with automatic persistence
+- **Logging**: Structured logging with file rotation
 
-## 🛠️ Development Setup
+### Frontend (React + TypeScript)
+- **Framework**: React 18 with TypeScript
+- **Styling**: Tailwind CSS with atomic design
+- **State Management**: Zustand for global state
+- **Build System**: Vite with Tauri integration
+- **Components**: Atomic design pattern (atoms, molecules, organisms, layouts)
+
+## 🎯 Key Features
+
+### Configuration Management System
+- **Persistent Settings**: All settings survive app restarts
+- **OBS Connections**: WebSocket connections with password preservation
+- **Cross-Session Sync**: Frontend and backend stay synchronized
+- **Backup/Restore**: Automatic backup with manual restore
+- **Import/Export**: Full configuration backup and restore
+- **Statistics**: Configuration health monitoring
+
+### OBS Integration (v5 Protocol Only)
+- **WebSocket v5**: Full OBS WebSocket v5 protocol support
+- **Multiple Connections**: Support for multiple OBS instances
+- **Real-time Status**: Live connection status monitoring
+- **Authentication**: Secure password handling and preservation
+- **Connection Management**: Add, edit, delete, connect, disconnect
+- **Settings Persistence**: Connections persist across sessions
+- **Disconnect Functionality**: Proper disconnection without losing configuration
+
+### Event Processing
+- **UDP Listener**: PSS protocol event collection
+- **Real-time Processing**: Live event processing and filtering
+- **Event Storage**: SQLite-based event persistence
+- **Data Export**: Event data export capabilities
+- **Live Streaming**: Real-time data streaming
+
+### Video Management
+- **Clip Extraction**: Automatic clip extraction from OBS
+- **MPV Integration**: High-performance video playback
+- **Clip Organization**: Automatic clip organization
+- **Metadata Management**: Video metadata handling
+- **Replay Buffer**: OBS replay buffer integration
+
+### Logging and Diagnostics
+- **Multi-subsystem Logging**: Comprehensive logging system
+- **File Rotation**: Automatic log file rotation
+- **Archive Management**: Log archiving and compression
+- **Live Data Streaming**: Real-time log streaming
+- **Diagnostic Tools**: Built-in diagnostic utilities
+
+## 🚀 Quick Start
 
 ### Prerequisites
+- **Operating System**: Windows 10/11
+- **Node.js**: v24 or higher
+- **Rust**: Stable toolchain
+- **Tauri CLI**: Latest version
+- **OBS Studio**: v28+ with WebSocket v5 plugin
 
-- **Windows 10/11**: Primary development platform
-- **Rust**: Latest stable version
-- **Node.js**: Version 18 or higher
-- **Git**: Version control
-
-### Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd reStrike_VTA_Cursor
-   ```
-
-2. **Install frontend dependencies**
-   ```bash
-   cd ui
-   npm install
-   ```
-
-3. **Install Rust dependencies**
-   ```bash
-   cd ../src-tauri
-   cargo build
-   ```
-
-### Development Workflow
-
-#### Quick Start (Recommended)
+### Development Setup
 ```bash
-# From project root - starts both frontend and backend
-cd src-tauri
-cargo tauri dev
-```
+# Clone repository
+git clone <repository-url>
+cd reStrike_VTA_Cursor
 
-This single command:
-1. Starts React development server (port 3000)
-2. Builds Rust backend
-3. Launches native Windows application
-4. Enables hot reload for both frontend and backend
+# Install dependencies
+npm install
+cd ui && npm install
 
-#### Manual Development
-```bash
-# Terminal 1: Start React dev server
-cd ui
-npm run start:fast
-
-# Terminal 2: Start Tauri app
+# Start development
 cd src-tauri
 cargo tauri dev
 ```
 
 ### Build Commands
-
 ```bash
 # Development build
-cd ui
-npm run build
+cd ui && npm run build
 
-# Production build with Tauri
-cd src-tauri
-cargo tauri build
+# Production build
+cd src-tauri && cargo tauri build
 ```
-
-## 🎯 Key Features
-
-### Core Functionality
-- **Instant Video Replay**: Quick access to recent video clips
-- **Event Tracking**: Real-time event capture and analysis
-- **OBS Integration**: Seamless connection with OBS Studio
-- **Flag Management**: Country flag recognition and display
-- **Advanced Panel**: Comprehensive settings and diagnostics
-
-### UI Components
-- **DockBar**: Main sidebar with player info and controls
-- **Event Table**: Real-time event display with filtering
-- **Advanced Panel**: Settings, diagnostics, and configuration
-- **Status Indicators**: Real-time system status display
-
-### Technical Features
-- **Environment Detection**: Automatic Tauri vs Web mode detection
-- **Plugin Architecture**: Modular backend design
-- **Error Handling**: Comprehensive error management
-- **Hot Reload**: Development efficiency with live updates
-- **Type Safety**: Full TypeScript and Rust type safety
-
-## 🔧 Configuration
-
-### Environment Detection
-The application automatically detects whether it's running in:
-- **Native Mode**: Tauri API available (`window.__TAURI__` exists)
-- **Web Mode**: Running in browser without Tauri
-
-### Tauri Configuration
-- **Global Tauri API**: Enabled for frontend access
-- **Development Server**: React dev server integration
-- **Build Configuration**: Optimized for Windows
-- **Security**: Proper allowlist configuration
 
 ## 📚 Documentation
 
-### Key Documents
-- [Project Structure](PROJECT_STRUCTURE.md): Detailed project organization
-- [Project Context](PROJECT_CONTEXT.md): High-level project overview
-- [Frontend Development Summary](FRONTEND_DEVELOPMENT_SUMMARY.md): Frontend architecture details
-- [Project Reorganization Summary](PROJECT_REORGANIZATION_SUMMARY.md): Migration history
+### Core Documentation
+- **[Architecture Guide](docs/ARCHITECTURE.md)**: Detailed system architecture and design patterns
+- **[Development Guide](docs/DEVELOPMENT.md)**: Development setup, coding standards, and workflows
+- **[OBS Integration Guide](docs/OBS_INTEGRATION.md)**: OBS WebSocket integration and connection management
+- **[Project Context](docs/PROJECT_CONTEXT.md)**: Comprehensive project overview and technical details
 
-### Development Guides
-- [Development Setup](docs/development/): Development environment setup
-- [API Documentation](docs/api/): API reference
-- [Integration Guides](docs/integration/): Integration documentation
+### Feature Documentation
+- **[Flag Management System](docs/FLAG_MANAGEMENT_SYSTEM.md)**: IOC flag system and management
 
-## 🚨 Troubleshooting
+## 🔧 Configuration System
 
-### Common Issues
+### Configuration Segments
+The application manages settings across multiple segments:
 
-#### Port Conflicts
-```bash
-# Clean up ports before starting
-./scripts/development/cleanup-dev-environment.sh --cleanup
-```
+1. **App Settings**: Version, startup behavior, performance
+2. **OBS Settings**: Connections, defaults, behavior, reconnection settings
+3. **UDP Settings**: Listener config, PSS protocol, events
+4. **Logging Settings**: Global, subsystems, files, live data
+5. **UI Settings**: Overlay, theme, layout, animations
+6. **Video Settings**: Player, replay, clips
+7. **License Settings**: Keys, validation, expiration
+8. **Flag Settings**: Storage, recognition, display
+9. **Advanced Settings**: Development, network, security, experimental
 
-#### Build Errors
-```bash
-# Clean and rebuild
-cd src-tauri
-cargo clean
-cargo build
-```
+### Configuration Features
+- **Auto-save**: Settings automatically saved to `config/app_config.json`
+- **Backup system**: Automatic backup to `config/app_config.backup.json`
+- **Cross-session**: All settings persist between app restarts
+- **Sync**: Frontend and backend stay synchronized
+- **Statistics**: File sizes, connection counts, last save time
+- **Import/Export**: Full config backup and restore
+- **Backup/Restore**: Automatic backup with manual restore
 
-#### Tauri API Issues
-- Verify environment detection in browser console
-- Check that `window.__TAURI__` is available
-- Ensure Tauri commands are properly registered
+## 🎥 OBS Integration
 
-#### Hot Reload Issues
-- Verify React development server is running on port 3000
-- Check Tauri configuration for correct dev path
-- Restart both frontend and backend servers
+### WebSocket Management
+- **Connection Management**: Add, edit, delete OBS connections
+- **Status Monitoring**: Real-time connection status updates
+- **Authentication**: Secure password handling and preservation
+- **Protocol Support**: OBS WebSocket v5 protocol only (v4 removed)
+- **Configuration Integration**: Connections persist across sessions
+- **Disconnect Functionality**: Proper disconnection without losing configuration
 
-### Development Tips
-- Use React DevTools for frontend debugging
-- Monitor Tauri console for backend issues
-- Check browser console for frontend errors
-- Verify environment detection in development
+### OBS Commands
+- **Scene Management**: Get/set current scene
+- **Recording Control**: Start/stop recording
+- **Streaming Control**: Start/stop streaming
+- **Replay Buffer**: Start/stop/save replay buffer
+- **Status Monitoring**: Real-time status updates
 
-## 🎨 UI/UX Features
+## 📝 Recent Changes
 
-### Design System
-- **Atomic Design**: Organized component hierarchy
-- **Dark Theme**: Professional dark theme with blue accents
-- **Responsive Design**: Works on different screen sizes
-- **Accessibility**: WCAG AA compliance
+### 2025-01-28: OBS Connection Management Improvements
+- **Protocol Simplification**: Removed OBS WebSocket v4 support, streamlined to v5 only
+- **Parameter Fixes**: Resolved TypeScript parameter mismatches between frontend and backend
+- **Disconnect Functionality**: Added proper WebSocket disconnection that preserves configuration
+- **Settings Separation**: Clear separation between "Save Connection Settings" and "Connect" actions
+- **Type Safety**: Fixed all TypeScript compilation errors
+- **Documentation**: Consolidated and updated all documentation
 
-### Component Architecture
-- **Atoms**: Basic UI components (Button, Input, Checkbox, etc.)
-- **Molecules**: Composite components (EventTable, LogToggleGroup, etc.)
-- **Organisms**: Complex UI sections (DockBar, AdvancedPanel, etc.)
-- **Layouts**: Page and section layouts
-
-## 🔮 Future Enhancements
-
-### Immediate Priorities
-1. **OBS Integration**: Complete WebSocket protocol implementation
-2. **Event System**: Implement PSS protocol event handling
-3. **Video Player**: Integrate mpv video player
-4. **Flag Management**: Complete flag recognition system
-
-### Future Features
-1. **AI Integration**: Automated event analysis
-2. **Advanced Analytics**: Statistical analysis and reporting
-3. **Multi-language Support**: Internationalization
-4. **Plugin System**: Extensible plugin architecture
+### Key Technical Improvements
+- **Backend**: Added `disconnect_obs()` method for proper WebSocket disconnection
+- **Frontend**: Updated WebSocketManager with proper button labels and functionality
+- **Configuration**: Enhanced settings persistence and synchronization
+- **Error Handling**: Improved error messages and user feedback
 
 ## 🤝 Contributing
 
-### Development Guidelines
-- Follow atomic design principles
-- Maintain type safety with TypeScript
-- Use proper error handling
-- Write comprehensive documentation
-
-### Code Quality
-- Run linting and type checking
-- Follow project coding conventions
-- Test functionality thoroughly
-- Update documentation as needed
+Please read the [Development Guide](docs/DEVELOPMENT.md) for coding standards and contribution guidelines.
 
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🆘 Support
-
-For support and questions:
-- Check the [documentation](docs/)
-- Review [troubleshooting guide](#troubleshooting)
-- Open an issue for bugs or feature requests
-
 ---
 
-**Last Updated**: December 2024  
-**Status**: ✅ Native Windows Mode - Ready for Development
+**Last Updated**: 2025-01-28  
+**Version**: 0.1.0  
+**Status**: Active Development  
+**OBS Protocol**: WebSocket v5 only

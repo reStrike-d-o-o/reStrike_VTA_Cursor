@@ -8,16 +8,17 @@ reStrike VTA is a Windows-native desktop application designed for taekwondo comp
 ### Core Systems Complete
 - **Tauri v2 Integration**: Native Windows desktop application
 - **Configuration Management**: Comprehensive settings persistence system
-- **OBS WebSocket Integration**: Full OBS Studio v5 protocol support
+- **OBS WebSocket Integration**: Full OBS Studio v5 protocol support with connection management
 - **Atomic Design System**: Complete frontend component architecture
 - **Plugin Architecture**: Modular backend with clear separation of concerns
 
 ### Recent Major Updates (2025-01-28)
-- **Configuration System**: Complete settings persistence across sessions
-- **OBS Connection Management**: WebSocket connections with configuration integration
-- **WebSocket Manager**: Full CRUD operations with status monitoring
-- **Settings Persistence**: All app settings survive restarts
-- **Backup System**: Automatic configuration backup and restore
+- **OBS Connection Management**: Complete WebSocket connection management system
+- **Protocol Simplification**: Removed OBS WebSocket v4 support, streamlined to v5 only
+- **Disconnect Functionality**: Proper WebSocket disconnection that preserves configuration
+- **Settings Separation**: Clear separation between "Save Connection Settings" and "Connect" actions
+- **TypeScript Error Fixes**: Resolved all parameter and type issues
+- **Documentation Consolidation**: Comprehensive documentation system
 
 ## Technology Stack
 
@@ -26,7 +27,7 @@ reStrike VTA is a Windows-native desktop application designed for taekwondo comp
 - **Language**: Rust with async/await support
 - **Architecture**: Plugin-based microkernel architecture
 - **Database**: SQLite for event storage and configuration
-- **WebSocket**: tokio-tungstenite for OBS integration
+- **WebSocket**: tokio-tungstenite for OBS integration (v5 protocol only)
 - **Logging**: Structured logging with file rotation
 
 ### Frontend (React + TypeScript)
@@ -46,13 +47,14 @@ reStrike VTA is a Windows-native desktop application designed for taekwondo comp
 - **Import/Export**: Full configuration backup and restore
 - **Statistics**: Configuration health monitoring
 
-### OBS Integration
+### OBS Integration (v5 Protocol Only)
 - **WebSocket v5**: Full OBS WebSocket v5 protocol support
 - **Multiple Connections**: Support for multiple OBS instances
 - **Real-time Status**: Live connection status monitoring
-- **Authentication**: Secure password handling
-- **Scene Control**: Scene switching and management
-- **Recording Control**: Start/stop recording functionality
+- **Authentication**: Secure password handling and preservation
+- **Connection Management**: Add, edit, delete, connect, disconnect
+- **Settings Persistence**: Connections persist across sessions
+- **Disconnect Functionality**: Proper disconnection without losing configuration
 
 ### Event Processing
 - **UDP Listener**: PSS protocol event collection
@@ -99,7 +101,7 @@ The application uses a microkernel architecture where core functionality is prov
 │                    Infrastructure Layer                     │
 │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────┐ │
 │  │  WebSocket  │ │    SQLite   │ │   File I/O  │ │ Network │ │
-│  │             │ │             │ │             │ │         │ │
+│  │   (v5)      │ │             │ │             │ │         │ │
 │  └─────────────┘ └─────────────┘ └─────────────┘ └─────────┘ │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -167,7 +169,7 @@ cd src-tauri && cargo tauri build
 The application manages settings across multiple segments:
 
 1. **App Settings**: Version, startup behavior, performance
-2. **OBS Settings**: Connections, defaults, behavior
+2. **OBS Settings**: Connections, defaults, behavior, reconnection settings
 3. **UDP Settings**: Listener config, PSS protocol, events
 4. **Logging Settings**: Global, subsystems, files, live data
 5. **UI Settings**: Overlay, theme, layout, animations
@@ -193,182 +195,73 @@ The application provides comprehensive OBS WebSocket management:
 - **Connection Management**: Add, edit, delete OBS connections
 - **Status Monitoring**: Real-time connection status updates
 - **Authentication**: Secure password handling and preservation
-- **Protocol Support**: OBS WebSocket v5 protocol
+- **Protocol Support**: OBS WebSocket v5 protocol only (v4 removed)
 - **Configuration Integration**: Connections persist across sessions
+- **Disconnect Functionality**: Proper disconnection without losing configuration
 
 ### OBS Commands
 - **Scene Management**: Get/set current scene
 - **Recording Control**: Start/stop recording
+- **Streaming Control**: Start/stop streaming
 - **Replay Buffer**: Start/stop/save replay buffer
-- **Status Monitoring**: Real-time OBS status
-- **Connection Management**: Multiple connection support
+- **Status Monitoring**: Real-time status updates
 
-## Event Processing
+### Connection Workflow
+1. **Save Connection Settings**: Configure connection without connecting
+2. **Connect**: Establish WebSocket connection to OBS
+3. **Monitor Status**: Real-time connection status monitoring
+4. **Disconnect**: Close connection while preserving configuration
+5. **Reconnect**: Reconnect using saved configuration
 
-### PSS Protocol
-- **UDP Listener**: Configurable UDP listener
-- **Protocol Parsing**: PSS protocol schema parsing
-- **Event Filtering**: Configurable event filtering
-- **Real-time Processing**: Live event processing
-- **Data Storage**: SQLite-based event storage
+## Recent Technical Improvements
 
-### Event Management
-- **Event Storage**: Persistent event storage
-- **Event Filtering**: Advanced filtering capabilities
-- **Data Export**: Event data export
-- **Live Streaming**: Real-time event streaming
-- **Statistics**: Event statistics and analytics
+### 2025-01-28: OBS Connection Management
+- **Protocol Simplification**: Removed OBS WebSocket v4 support, streamlined to v5 only
+- **Parameter Fixes**: Resolved TypeScript parameter mismatches between frontend and backend
+- **Disconnect Functionality**: Added proper WebSocket disconnection that preserves configuration
+- **Settings Separation**: Clear separation between "Save Connection Settings" and "Connect" actions
+- **Type Safety**: Fixed all TypeScript compilation errors
+- **Documentation**: Consolidated and updated all documentation
 
-## Video Management
+### Key Technical Changes
+- **Backend**: Added `disconnect_obs()` method for proper WebSocket disconnection
+- **Frontend**: Updated WebSocketManager with proper button labels and functionality
+- **Configuration**: Enhanced settings persistence and synchronization
+- **Error Handling**: Improved error messages and user feedback
+- **Type Safety**: Resolved all TypeScript and Rust compilation issues
 
-### Clip Management
-- **Automatic Extraction**: Automatic clip extraction from OBS
-- **Metadata Handling**: Video metadata management
-- **Organization**: Automatic clip organization
-- **Playback**: High-performance video playback
-- **Storage**: Efficient clip storage management
+## Documentation Structure
 
-### MPV Integration
-- **High Performance**: Hardware-accelerated playback
-- **Format Support**: Wide format support
-- **Custom Controls**: Custom playback controls
-- **Integration**: Seamless OBS integration
-- **Optimization**: Performance optimization
+### Core Documentation
+- **[README.md](README.md)**: Main project overview and quick start
+- **[ARCHITECTURE.md](ARCHITECTURE.md)**: Detailed system architecture and design patterns
+- **[DEVELOPMENT.md](DEVELOPMENT.md)**: Development setup, coding standards, and workflows
+- **[OBS_INTEGRATION.md](OBS_INTEGRATION.md)**: OBS WebSocket integration and connection management
 
-## Logging and Diagnostics
-
-### Logging System
-- **Multi-subsystem**: Comprehensive logging across all subsystems
-- **File Rotation**: Automatic log file rotation
-- **Compression**: Log compression for storage efficiency
-- **Archiving**: Automatic log archiving
-- **Live Streaming**: Real-time log streaming
-
-### Diagnostic Tools
-- **Health Monitoring**: System health monitoring
-- **Performance Metrics**: Performance tracking
-- **Error Tracking**: Comprehensive error tracking
-- **Debug Tools**: Built-in debugging utilities
-- **Reporting**: Diagnostic reporting
-
-## Frontend Architecture
-
-### Atomic Design System
-The frontend follows atomic design principles:
-
-- **Atoms**: Basic UI components (Button, Input, etc.)
-- **Molecules**: Composite components (EventTableSection, etc.)
-- **Organisms**: Complex UI sections (EventTable, Settings, etc.)
-- **Layouts**: Page and section layouts (DockBar, AdvancedPanel, etc.)
-
-### State Management
-- **Zustand**: Lightweight state management
-- **TypeScript**: Full type safety
-- **Reactive Updates**: Reactive state updates
-- **Persistence**: State persistence where needed
-- **Performance**: Optimized state management
-
-## Performance Considerations
-
-### Backend Performance
-- **Async Operations**: All I/O operations are async
-- **Thread Safety**: RwLock for concurrent access
-- **Memory Management**: Efficient memory usage
-- **Resource Cleanup**: Proper resource disposal
-- **Optimization**: Performance optimization throughout
-
-### Frontend Performance
-- **React Optimization**: React.memo and useMemo
-- **Bundle Optimization**: Tree shaking and code splitting
-- **State Management**: Efficient Zustand usage
-- **Component Design**: Atomic design for reusability
-- **Caching**: Strategic caching implementation
-
-## Security Considerations
-
-### Configuration Security
-- **Password Handling**: Secure password storage
-- **File Permissions**: Proper file permissions
-- **Backup Security**: Secure backup storage
-- **Validation**: Input validation and sanitization
-- **Encryption**: Sensitive data encryption
-
-### Network Security
-- **WebSocket Security**: Secure WebSocket connections
-- **Authentication**: Proper authentication handling
-- **Data Validation**: Network data validation
-- **Error Handling**: Secure error handling
-- **Protocol Security**: Protocol-level security
-
-## Testing Strategy
-
-### Backend Testing
-- **Unit Tests**: Individual component testing
-- **Integration Tests**: Plugin interaction testing
-- **Configuration Tests**: Configuration system testing
-- **Error Tests**: Error handling testing
-- **Performance Tests**: Performance benchmarking
-
-### Frontend Testing
-- **Component Tests**: React component testing
-- **Integration Tests**: Tauri command testing
-- **E2E Tests**: End-to-end workflow testing
-- **Performance Tests**: Performance benchmarking
-- **Accessibility Tests**: Accessibility compliance testing
-
-## Deployment
-
-### Windows Distribution
-- **Native Windows .exe**: Standalone executable
-- **MSI Package**: Enterprise deployment package
-- **Portable Executable**: Portable application option
-- **Auto-update System**: Automatic update mechanism
-- **Installation**: User-friendly installation process
-
-### Development Distribution
-- **Development Builds**: Development builds with hot reload
-- **Debug Builds**: Debug builds with full logging
-- **Release Builds**: Optimized release builds
-- **Testing Builds**: Testing-specific builds
-- **CI/CD Integration**: Continuous integration and deployment
-
-## Maintenance and Updates
-
-### Regular Maintenance
-- **Monthly Reviews**: Monthly structure and performance reviews
-- **Dependency Updates**: Regular dependency updates
-- **Performance Monitoring**: Continuous performance monitoring
-- **Security Updates**: Regular security updates
-- **Documentation Updates**: Regular documentation maintenance
-
-### Configuration Migration
-- **Version Management**: Configuration version tracking
-- **Migration Scripts**: Automatic migration scripts
-- **Backward Compatibility**: Backward compatibility support
-- **Validation**: Configuration validation
-- **Rollback**: Configuration rollback capabilities
+### Legacy Documentation
+- **FRONTEND_DEVELOPMENT_SUMMARY.md**: Frontend development details
+- **LIBRARY_STRUCTURE.md**: Backend library structure
+- **PROJECT_STRUCTURE.md**: Project file organization
+- **FLAG_MANAGEMENT_SYSTEM.md**: Flag management system details
 
 ## Future Roadmap
 
 ### Planned Features
-- **Real-time Collaboration**: Multi-user collaboration features
-- **Advanced Analytics**: Advanced event analytics
-- **Cloud Integration**: Cloud-based data synchronization
-- **Mobile Support**: Mobile application support
-- **API Integration**: Third-party API integrations
+- **Multiple OBS Instances**: Support for multiple OBS instances on different machines
+- **Advanced Authentication**: Support for additional authentication methods
+- **Custom Commands**: Support for custom OBS WebSocket commands
+- **Event Filtering**: Advanced event filtering and processing
+- **Performance Analytics**: Detailed performance analytics and reporting
 
-### Performance Improvements
-- **Advanced Caching**: Advanced caching strategies
-- **Optimization**: Further performance optimization
-- **Scalability**: Improved scalability features
-- **Memory Management**: Advanced memory management
-- **Resource Optimization**: Resource usage optimization
+### Integration Opportunities
+- **Streaming Platforms**: Integration with streaming platforms
+- **Video Processing**: Advanced video processing capabilities
+- **Automation**: Automated scene switching and recording
+- **Analytics**: Competition analytics and reporting
 
 ---
 
-*Last updated: 2025-01-28*
-*Configuration system: Complete*
-*OBS WebSocket management: Complete*
-*Atomic design system: Complete*
-*Performance optimization: Implemented*
-*Documentation: Comprehensive* 
+**Last Updated**: 2025-01-28  
+**Version**: 0.1.0  
+**Status**: Active Development  
+**OBS Protocol**: WebSocket v5 only 
