@@ -1,238 +1,205 @@
 # Project Structure Documentation
 
-## Overview (Updated: 2025-01-28)
+## Overview
 
-The reStrike VTA project is a Windows-native desktop application built with Rust (Tauri) backend and React/TypeScript frontend. The project follows a modular, plugin-based architecture with comprehensive logging and monitoring capabilities.
+This document outlines the structure and organization of the reStrike VTA project, a Windows-native Tauri application with React frontend and Rust backend.
 
-## 🏗️ **Architecture Overview**
+## Project Architecture
 
-### **Backend (Rust/Tauri)**
-- **Plugin System**: Modular architecture with specialized plugins for different subsystems
-- **Logging System**: Custom LogManager with subsystem-based logging (app, pss, obs, udp)
-- **State Management**: Thread-safe shared state with Arc and Mutex
-- **Error Handling**: AppResult<T> pattern with proper error propagation
+### Frontend (React/TypeScript)
+- **Location**: `ui/` directory
+- **Framework**: React 18 with TypeScript
+- **Styling**: Tailwind CSS
+- **State Management**: Zustand
+- **Build Tool**: Vite (via React Scripts)
 
-### **Frontend (React/TypeScript)**
-- **Atomic Design**: Component hierarchy from atoms to organisms
-- **State Management**: Zustand for global state, React hooks for local state
-- **Real-time Updates**: WebSocket events and polling for live data
-- **UI/UX**: Professional dark theme with Tailwind CSS
+### Backend (Rust/Tauri)
+- **Location**: `src-tauri/` directory
+- **Framework**: Tauri v2
+- **Language**: Rust
+- **Architecture**: Plugin-based modular system
 
-## 📁 **Directory Structure**
+## Directory Structure
 
 ```
 reStrike_VTA_Cursor/
-├── src-tauri/                    # Rust backend (Tauri)
-│   ├── src/
-│   │   ├── plugins/              # Plugin modules
-│   │   │   ├── plugin_obs.rs     # OBS WebSocket integration
-│   │   │   ├── plugin_cpu_monitor.rs  # CPU monitoring
-│   │   │   ├── plugin_udp.rs     # UDP server
-│   │   │   ├── plugin_playback.rs # Video playback
-│   │   │   ├── plugin_store.rs   # Data storage
-│   │   │   └── plugin_license.rs # License management
-│   │   ├── logging/              # Custom logging system
-│   │   │   ├── mod.rs           # LogManager implementation
-│   │   │   ├── logger.rs        # Logger components
-│   │   │   ├── rotation.rs      # Log rotation
-│   │   │   └── archival.rs      # Log archival
-│   │   ├── core/                # Core application logic
-│   │   │   ├── app.rs           # Main application class
-│   │   │   ├── config.rs        # Configuration management
-│   │   │   └── state.rs         # Application state
-│   │   ├── commands/            # Tauri command handlers
-│   │   ├── config/              # Configuration management
-│   │   ├── types/               # Shared type definitions
-│   │   ├── utils/               # Utility functions
-│   │   └── main.rs              # Application entry point
-│   ├── logs/                    # Log files directory
-│   │   ├── app.log              # Application logs
-│   │   ├── obs.log              # OBS WebSocket events
-│   │   ├── pss.log              # PSS protocol events
-│   │   ├── udp.log              # UDP server events
-│   │   └── archives/            # Archived log files
-│   └── config/                  # Configuration files
 ├── ui/                          # React frontend
 │   ├── src/
-│   │   ├── components/          # React components (Atomic Design)
-│   │   │   ├── atoms/           # Basic UI components
-│   │   │   ├── molecules/       # Component combinations
-│   │   │   ├── organisms/       # Complex UI sections
-│   │   │   └── layouts/         # Page-level layouts
+│   │   ├── components/          # React components (atomic design)
+│   │   │   ├── atoms/           # Basic UI elements
+│   │   │   ├── molecules/       # Compound components
+│   │   │   ├── organisms/       # Complex components
+│   │   │   └── layouts/         # Layout components
+│   │   ├── stores/              # Zustand state management
 │   │   ├── hooks/               # Custom React hooks
-│   │   ├── stores/              # Zustand state stores
 │   │   ├── utils/               # Utility functions
-│   │   ├── types/               # TypeScript type definitions
-│   │   └── config/              # Frontend configuration
+│   │   └── types/               # TypeScript type definitions
 │   └── public/                  # Static assets
-│       └── assets/
-│           └── flags/           # IOC flag images (253 PNGs)
-├── docs/                        # Project documentation
-├── scripts/                     # Development and utility scripts
-└── config/                      # Global configuration
+├── src-tauri/                   # Rust backend
+│   ├── src/
+│   │   ├── plugins/             # Plugin modules
+│   │   ├── core/                # Core application logic
+│   │   ├── commands/            # Tauri commands
+│   │   └── logging/             # Logging system
+│   ├── gen/schemas/             # Generated schemas
+│   └── config/                  # Configuration files
+├── docs/                        # Documentation
+├── scripts/                     # Development scripts
+└── config/                      # Project configuration
 ```
 
-## 🔌 **Plugin System**
+## Component Architecture
 
-### **OBS Plugin** (`plugin_obs.rs`)
-- **Purpose**: OBS Studio WebSocket integration
-- **Features**: 
-  - Real-time WebSocket communication
-  - Scene management and recording control
-  - Event logging to `obs.log` file
-  - Connection status monitoring
-- **Integration**: Custom LogManager for event logging
-- **Status**: ✅ **COMPLETE** - Fully integrated with logging system
+### Atomic Design System
+- **Atoms**: Basic building blocks (Button, Input, Icon, StatusDot)
+- **Molecules**: Simple combinations (EventTableSection, LiveDataPanel)
+- **Organisms**: Complex components (EventTable, ObsWebSocketManager)
+- **Layouts**: Page-level components (DockBar, AdvancedPanel)
 
-### **CPU Monitor Plugin** (`plugin_cpu_monitor.rs`)
-- **Purpose**: System and process CPU monitoring
-- **Features**:
-  - Windows `wmic` command integration
-  - Real-time process monitoring
-  - System CPU usage tracking
-  - Background task management
-- **Status**: ✅ **COMPLETE** - Awaiting `wmic` installation for testing
-
-### **UDP Plugin** (`plugin_udp.rs`)
-- **Purpose**: UDP server for PSS protocol
-- **Features**:
-  - Real-time UDP packet processing
-  - PSS protocol parsing
-  - Event streaming to frontend
-- **Status**: ✅ **COMPLETE**
-
-### **Playback Plugin** (`plugin_playback.rs`)
-- **Purpose**: Video playback and clip management
-- **Features**:
-  - MPV integration
-  - Video clip extraction
-  - Hardware acceleration
-- **Status**: ✅ **COMPLETE**
-
-### **Store Plugin** (`plugin_store.rs`)
-- **Purpose**: Data persistence and storage
-- **Features**:
-  - Event storage
-  - Configuration persistence
-  - Data export/import
-- **Status**: ✅ **COMPLETE**
-
-### **License Plugin** (`plugin_license.rs`)
-- **Purpose**: License management and validation
-- **Features**:
-  - License key validation
-  - Feature access control
-  - License status monitoring
-- **Status**: ✅ **COMPLETE**
-
-## 📝 **Logging System**
-
-### **Custom LogManager**
-- **Architecture**: Subsystem-based logging with file rotation
-- **Subsystems**: app, pss, obs, udp
-- **Features**:
-  - Automatic log file creation
-  - Log rotation based on file size
-  - Log archival with retention policies
-  - Thread-safe concurrent access
-- **Integration**: All plugins use LogManager for structured logging
-
-### **Log Files**
-- **app.log**: Application-level events and errors
-- **obs.log**: OBS WebSocket events and responses
-- **pss.log**: PSS protocol events and data
-- **udp.log**: UDP server events and packet processing
-
-### **Log Management**
-- **Rotation**: Automatic rotation at 10MB file size
-- **Archival**: Compressed archives with 30-day retention
-- **Access**: Tauri commands for log file management
-- **Real-time**: Live log monitoring capabilities
-
-## 🎨 **Frontend Architecture**
-
-### **Atomic Design System**
-- **Atoms**: Basic UI components (Button, Input, Icon, etc.)
-- **Molecules**: Simple component combinations
-- **Organisms**: Complex UI sections
-- **Layouts**: Page-level structure components
-
-### **Component Hierarchy**
+### Component Hierarchy
 ```
 App.tsx
-├── DockBar (Sidebar)
-│   ├── SidebarSmall (Controls)
-│   └── SidebarBig (Info + Events)
-└── AdvancedPanel (Main Content)
-    ├── MatchInfoSection (Athlete/Match Details)
-    ├── EventTable (Event Rows)
-    ├── LiveDataPanel (Real-time Data)
-    ├── CpuMonitoringSection (CPU Metrics)
-    └── StatusBar (System Status)
+├── DockBar.tsx
+│   ├── SidebarSmall.tsx
+│   └── SidebarBig.tsx
+└── AdvancedPanel.tsx
+    ├── ObsWebSocketManager.tsx
+    ├── LiveDataPanel.tsx
+    └── CpuMonitoringSection.tsx
 ```
 
-### **State Management**
-- **Zustand**: Global state management
-- **React Hooks**: Component-level state
-- **Tauri Commands**: Backend communication
-- **Real-time Updates**: WebSocket events and polling
+## Development Guidelines
 
-## 🔧 **Development Workflow**
+### 🚨 **Critical UI Development Rules**
 
-### **Backend Development**
-- **Build**: `cargo build` in `src-tauri/`
-- **Run**: `cargo tauri dev` for development
-- **Testing**: Unit tests with `cargo test`
-- **Logging**: Structured logging with custom LogManager
+#### **UI Work Boundaries**
+- **ONLY modify**: React components and UI styling
+- **NEVER touch**: Backend code, Tauri configuration, or permissions
+- **Focus on**: Visual appearance, layout, and user experience
+- **Preserve**: All existing functionality exactly as is
 
-### **Frontend Development**
-- **Development**: `npm start` in `ui/`
-- **Build**: `npm run build` for production
-- **Testing**: Jest and React Testing Library
-- **Linting**: ESLint with TypeScript rules
+#### **Safe to Modify**
+- `ui/src/components/` - All React components
+- `ui/src/App.tsx` - Main application layout
+- `ui/src/stores/` - UI state management
+- Tailwind CSS classes and styling
+- Component props and UI logic
 
-### **Integration**
-- **Tauri Commands**: Type-safe backend-frontend communication
-- **WebSocket Events**: Real-time data streaming
-- **File System**: Log file access and management
-- **System Integration**: OBS, CPU monitoring, UDP/PSS
+#### **Never Touch During UI Work**
+- `src-tauri/` - Any Rust code or backend files
+- `capabilities.json` - Tauri permissions
+- `tauri.conf.json` - Tauri configuration
+- Event listeners and API calls
+- Backend plugins and commands
 
-## 📊 **Current Status**
+### Backend Architecture
 
-### **✅ Completed Features**
-- **OBS Integration**: Complete WebSocket integration with event logging
-- **CPU Monitoring**: Real-time system and process monitoring
-- **Logging System**: Comprehensive subsystem-based logging
-- **Frontend UI**: Atomic design system with real-time updates
-- **Plugin Architecture**: Modular, extensible plugin system
+#### Plugin System
+- **plugin_obs.rs**: OBS WebSocket integration
+- **plugin_cpu_monitor.rs**: System monitoring
+- **plugin_store.rs**: Data persistence
+- **plugin_udp.rs**: UDP protocol handling
 
-### **🚧 In Progress**
-- **WMIC Installation**: Awaiting `wmic` command installation for CPU monitoring
-- **Performance Optimization**: Ongoing optimization of real-time updates
-- **Error Handling**: Enhanced error boundaries and user feedback
+#### Core Modules
+- **app.rs**: Application initialization and state
+- **config.rs**: Configuration management
+- **logging/**: Custom logging system with archival
 
-### **📋 Next Steps**
-1. **Complete CPU Monitoring**: Install `wmic` and test real process data
-2. **Performance Testing**: Optimize data flow and UI updates
-3. **Error Handling**: Implement comprehensive error handling
-4. **Documentation**: Update all documentation with latest changes
+#### Tauri Integration
+- **commands/**: Tauri command definitions
+- **tauri_commands.rs**: Frontend-backend communication
+- **gen/schemas/**: Generated API schemas
 
-## 🔍 **Troubleshooting**
+## State Management
 
-### **Common Issues**
-- **Build Errors**: Check TypeScript types and Rust compilation
-- **Runtime Errors**: Verify Tauri command availability
-- **Logging Issues**: Check file permissions and LogManager initialization
-- **Performance Issues**: Monitor bundle size and component re-renders
+### Frontend State (Zustand)
+```typescript
+// Main application state
+interface AppState {
+  isAdvancedPanelOpen: boolean;
+  obsConnections: ObsConnection[];
+  currentView: string;
+  // ... other UI state
+}
+```
 
-### **Development Tips**
-- **Hot Reload**: Use `npm start` for frontend development
-- **Logging**: Check `src-tauri/logs/` for detailed backend logs
-- **Type Safety**: Leverage TypeScript for catching errors early
-- **Plugin Development**: Follow the established plugin pattern
+### Backend State (Rust)
+```rust
+// Application state with Arc<Mutex<>>
+pub struct App {
+    log_manager: Arc<Mutex<LogManager>>,
+    obs_plugin: Arc<Mutex<ObsPlugin>>,
+    // ... other state
+}
+```
+
+## Development Workflow
+
+### Frontend Development
+1. **Start dev server**: `cd ui && npm start`
+2. **Make UI changes**: Only React components and styling
+3. **Test functionality**: Ensure existing features work
+4. **No backend changes**: Never modify Rust code during UI work
+
+### Backend Development
+1. **Start Tauri**: `cargo tauri dev`
+2. **Modify Rust code**: Only when working on backend features
+3. **Test integration**: Verify frontend-backend communication
+4. **Update permissions**: Only when adding new Tauri capabilities
+
+### UI Design Work
+1. **Identify scope**: Only visual/styling changes
+2. **Modify UI files**: React components and Tailwind CSS
+3. **Preserve functionality**: All backend features must work
+4. **Test appearance**: Verify visual changes work correctly
+
+## Configuration Files
+
+### Frontend Configuration
+- `ui/package.json`: Dependencies and scripts
+- `ui/tailwind.config.js`: Tailwind CSS configuration
+- `ui/tsconfig.json`: TypeScript configuration
+
+### Backend Configuration
+- `src-tauri/Cargo.toml`: Rust dependencies
+- `src-tauri/tauri.conf.json`: Tauri application configuration
+- `src-tauri/gen/schemas/capabilities.json`: Tauri permissions
+
+## Documentation Structure
+
+### Core Documentation
+- `CONTINUATION_PROMPT.md`: Current project status and next steps
+- `FRONTEND_DEVELOPMENT_SUMMARY.md`: Frontend development details
+- `PROJECT_STRUCTURE.md`: This file - project organization
+- `LIBRARY_STRUCTURE.md`: Backend library structure
+
+### Feature Documentation
+- `docs/FLAG_MANAGEMENT_SYSTEM.md`: IOC flag system
+- `docs/OBS_INTEGRATION.md`: OBS WebSocket integration
+- `docs/requirements/`: Software requirements and specifications
+
+## Best Practices
+
+### Code Organization
+- **Separation of concerns**: UI logic separate from business logic
+- **Atomic design**: Consistent component hierarchy
+- **Type safety**: TypeScript for frontend, Rust for backend
+- **Error handling**: Proper error boundaries and fallbacks
+
+### Development Process
+- **UI work isolation**: Never touch backend during UI development
+- **Feature branches**: Separate UI and backend development
+- **Testing**: Verify functionality after any changes
+- **Documentation**: Update docs when adding new features
+
+### Performance Considerations
+- **Lazy loading**: Load components on demand
+- **State optimization**: Minimize unnecessary re-renders
+- **Bundle size**: Keep frontend bundle optimized
+- **Memory usage**: Efficient backend resource management
 
 ---
 
 **Last Updated**: 2025-01-28  
-**Status**: OBS logging integration complete, CPU monitoring awaiting `wmic` installation  
-**Next Action**: Install `wmic` and test real process data display 
+**Status**: Project structure documented with clear development guidelines  
+**Focus**: Maintain separation between UI and backend development 

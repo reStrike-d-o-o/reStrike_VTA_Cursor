@@ -225,9 +225,24 @@ COMPUTERNAME,process.exe,1234,1048576,2.5
 3. **Build Issues**: Check TypeScript types and Rust compilation
 4. **Hot Reload**: Use `npm start` in ui/ directory for frontend development
 
+### 🚨 **Important Lessons Learned**
+
+#### **UI Design Work Guidelines**
+- **ONLY modify UI styling files**: `App.tsx`, `AdvancedPanel.tsx`, and related UI components
+- **NEVER touch backend code**: Tauri permissions, event handling, or Rust code during UI work
+- **Focus on visual changes only**: Transparency, colors, layout, styling
+- **Preserve working functionality**: All backend features must remain untouched
+- **Test UI changes in isolation**: Ensure visual changes don't break existing functionality
+
+#### **Code Modification Boundaries**
+- **UI Layer**: React components, styling, layout, visual appearance
+- **Off Limits**: Tauri configuration, permissions, event handling, backend plugins
+- **Safe to Modify**: Tailwind classes, CSS, component structure, visual properties
+- **Never Touch**: `capabilities.json`, `tauri.conf.json`, Rust code, event listeners
+
 ---
 
 **Last Updated**: 2025-01-28  
-**Status**: Documentation consolidated, OBS logging complete, CPU monitoring awaiting `wmic` installation  
+**Status**: Application reverted to working state, ready for UI design work tomorrow  
 **Environment**: Windows-native development setup  
-**Next Action**: Install `wmic` and test real process data display 
+**Next Action**: UI design changes (transparency, color scheme) - UI files only 
