@@ -1,78 +1,254 @@
-# Library Structure
+# Library Structure Documentation
 
 ## Overview
-This document describes the technical architecture and library structure of the reStrike VTA project, a Windows-only native desktop application built with Tauri v2 (Rust backend) and React (frontend).
 
-## Current Status ✅
+This document describes the Rust backend library structure for reStrike VTA, including the plugin system, core modules, and data flow patterns.
 
-### Tauri v2 Migration Complete
-- **Native Windows Mode**: Successfully running as native Windows desktop application
-- **Project Structure**: Reorganized to follow Tauri v2 conventions with `src-tauri/` directory
-- **Environment Detection**: Automatic detection of Tauri API availability
-- **Hot Reload**: Development mode with live reload for both frontend and backend
-- **Build System**: Integrated build process working correctly
+## Library Architecture
 
-## Backend Architecture (Rust/Tauri)
-
-### Project Structure
 ```
-src-tauri/
-├── src/
-│   ├── main.rs                 # Tauri app entry point
-│   ├── lib.rs                  # Library exports and module declarations
-│   ├── tauri_commands.rs       # Tauri command definitions
-│   ├── core/                   # Core application logic
-│   │   ├── mod.rs             # Core module exports
-│   │   ├── app.rs             # Application state management
-│   │   ├── config.rs          # Configuration management
-│   │   └── state.rs           # Global state management
-│   ├── plugins/               # Plugin modules
-│   │   ├── mod.rs             # Plugin module exports
-│   │   ├── plugin_obs.rs      # OBS WebSocket integration
-│   │   ├── plugin_playback.rs # Video playback management
-│   │   ├── plugin_store.rs    # Data storage and persistence
-│   │   └── plugin_udp.rs      # UDP protocol handling
-│   ├── obs/                   # OBS WebSocket integration
-│   │   ├── mod.rs             # OBS module exports
-│   │   ├── manager.rs         # OBS connection management
-│   │   ├── protocol.rs        # WebSocket protocol implementation
-│   │   └── commands.rs        # OBS command definitions
-│   ├── pss/                   # PSS protocol handling
-│   │   ├── mod.rs             # PSS module exports
-│   │   ├── listener.rs        # UDP listener implementation
-│   │   ├── protocol.rs        # PSS protocol parsing
-│   │   └── events.rs          # Event type definitions
-│   ├── video/                 # Video player integration
-│   │   ├── mod.rs             # Video module exports
-│   │   ├── player.rs          # Video player management
-│   │   ├── clips.rs           # Video clip management
-│   │   └── overlay.rs         # Video overlay system
-│   ├── types/                 # Type definitions
-│   │   └── mod.rs             # Type exports
-│   ├── utils/                 # Utility functions
-│   │   └── logger.rs          # Logging utilities
-│   └── commands/              # Command implementations
-│       └── mod.rs             # Command module exports
-├── Cargo.toml                 # Rust dependencies and configuration
-├── tauri.conf.json            # Tauri application configuration
-├── build.rs                   # Build script
-├── icons/                     # Application icons
-└── gen/                       # Generated files
+src-tauri/src/
+├── lib.rs                    # Library entry point and exports
+├── main.rs                   # Application entry point
+├── tauri_commands.rs         # Tauri command definitions
+├── core/                     # Core application logic
+│   ├── app.rs               # Application state and lifecycle
+│   ├── config.rs            # Configuration management
+│   ├── state.rs             # Global state management
+│   └── mod.rs
+├── plugins/                  # Plugin system
+│   ├── mod.rs               # Plugin registry and management
+│   ├── plugin_obs.rs        # OBS WebSocket integration
+│   ├── plugin_playback.rs   # Video playback management
+│   ├── plugin_store.rs      # Data persistence
+│   ├── plugin_udp.rs        # UDP communication
+│   ├── plugin_cpu_monitor.rs # NEW: CPU monitoring system
+│   └── plugin_license.rs    # License management
+├── obs/                      # OBS integration modules
+├── pss/                      # PSS protocol handling
+├── video/                    # Video processing
+├── config/                   # Configuration management
+├── logging/                  # Logging system
+├── types/                    # Shared type definitions
+├── utils/                    # Utility functions
+└── commands/                 # Command implementations
 ```
 
-### Core Modules
+## Plugin System
 
-#### Main Application (`main.rs`)
+### Plugin Architecture
+
+The plugin system provides a modular approach to different functionalities:
+
 ```rust
-use tauri::Manager;
-use re_strike_vta_app::tauri_commands;
+// src-tauri/src/plugins/mod.rs
+pub mod plugin_obs;
+pub mod plugin_playback;
+pub mod plugin_store;
+pub mod plugin_udp;
+pub mod plugin_cpu_monitor; // NEW
+pub mod plugin_license;
 
+// Plugin trait for common interface
+pub trait Plugin {
+    fn name(&self) -> &str;
+    fn init(&self) -> AppResult<()>;
+    fn shutdown(&self) -> AppResult<()>;
+}
+```
+
+### CPU Monitoring Plugin (NEW - 2025-01-28)
+
+#### **File**: `src-tauri/src/plugins/plugin_cpu_monitor.rs`
+
+**Purpose**: Real-time CPU and memory monitoring for system processes
+
+**Key Features**:
+- System CPU usage tracking
+- Individual process monitoring
+- Memory usage tracking
+- Background monitoring with configurable intervals
+- Process filtering (>0.1% CPU or >10MB memory)
+
+**Data Structures**:
+```rust
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CpuProcessData {
+    pub process_name: String,
+    pub cpu_percent: f64,
+    pub memory_mb: f64,
+    pub last_update: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SystemCpuData {
+    pub total_cpu_percent: f64,
+    pub cores: Vec<f64>,
+    pub last_update: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Clone)]
+pub struct CpuMonitorConfig {
+    pub enabled: bool,
+    pub update_interval_seconds: u64,
+    pub monitored_processes: Vec<String>,
+    pub include_system_cpu: bool,
+}
+```
+
+**Core Implementation**:
+```rust
+pub struct CpuMonitorPlugin {
+    config: Arc<Mutex<CpuMonitorConfig>>,
+    process_data: Arc<Mutex<HashMap<String, CpuProcessData>>>,
+    system_data: Arc<Mutex<Option<SystemCpuData>>>,
+    monitoring_active: Arc<Mutex<bool>>,
+}
+```
+
+**Key Methods**:
+- `update_all_processes()` - Collects process data using `wmic` commands
+- `update_system_cpu()` - Updates system CPU information
+- `get_process_cpu_data()` - Returns current process data
+- `get_system_cpu_data()` - Returns system CPU data
+- `start_monitoring()` - Starts background monitoring task
+- `stop_monitoring()` - Stops monitoring
+
+**Status**: ✅ Implemented, awaiting `wmic` installation for testing
+
+### OBS Plugin
+
+#### **File**: `src-tauri/src/plugins/plugin_obs.rs`
+
+**Purpose**: OBS Studio WebSocket integration
+
+**Key Features**:
+- WebSocket connection management
+- Scene switching and control
+- Source management
+- Connection status monitoring
+
+### Playback Plugin
+
+#### **File**: `src-tauri/src/plugins/plugin_playback.rs`
+
+**Purpose**: Video playback and replay management
+
+**Key Features**:
+- Video player control
+- Clip management
+- Replay functionality
+- Video file handling
+
+### Store Plugin
+
+#### **File**: `src-tauri/src/plugins/plugin_store.rs`
+
+**Purpose**: Data persistence and storage
+
+**Key Features**:
+- SQLite database management
+- Configuration storage
+- Event logging
+- Data archival
+
+### UDP Plugin
+
+#### **File**: `src-tauri/src/plugins/plugin_udp.rs`
+
+**Purpose**: UDP communication for real-time data
+
+**Key Features**:
+- Network communication
+- Data streaming
+- Protocol handling
+
+## Core Modules
+
+### Application Core
+
+#### **File**: `src-tauri/src/core/app.rs`
+
+**Purpose**: Application state and lifecycle management
+
+**Key Features**:
+- Plugin initialization and management
+- Global state coordination
+- Application lifecycle events
+- Error handling
+
+```rust
+pub struct App {
+    pub cpu_monitor_plugin: CpuMonitorPlugin,
+    pub obs_plugin: ObsPlugin,
+    pub playback_plugin: PlaybackPlugin,
+    pub store_plugin: StorePlugin,
+    pub udp_plugin: UdpPlugin,
+    // ... other plugins
+}
+```
+
+### Configuration Management
+
+#### **File**: `src-tauri/src/config/manager.rs`
+
+**Purpose**: Configuration loading and management
+
+**Key Features**:
+- JSON configuration files
+- Environment-specific settings
+- Runtime configuration updates
+- Validation and error handling
+
+### Logging System
+
+#### **File**: `src-tauri/src/logging/logger.rs`
+
+**Purpose**: Structured logging and archival
+
+**Key Features**:
+- Multiple log levels (debug, info, warn, error)
+- Log rotation and archival
+- File and console output
+- Performance monitoring
+
+## Tauri Commands
+
+### Command Definitions
+
+#### **File**: `src-tauri/src/tauri_commands.rs`
+
+**Purpose**: Tauri command definitions for frontend-backend communication
+
+**CPU Monitoring Commands** (NEW):
+```rust
+#[tauri::command]
+pub async fn cpu_get_process_data(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+    let process_data = app.cpu_monitor_plugin().get_process_cpu_data().await;
+    Ok(serde_json::json!({
+        "success": true,
+        "processes": process_data
+    }))
+}
+
+#[tauri::command]
+pub async fn cpu_get_system_data(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+    let system_data = app.cpu_monitor_plugin().get_system_cpu_data().await;
+    Ok(serde_json::json!({
+        "success": true,
+        "system": system_data
+    }))
+}
+```
+
+**Command Registration**:
+```rust
+// src-tauri/src/main.rs
 fn main() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
-            tauri_commands::get_app_status,
-            tauri_commands::obs_get_status,
-            tauri_commands::system_get_info,
+            cpu_get_process_data,
+            cpu_get_system_data,
             // ... other commands
         ])
         .run(tauri::generate_context!())
@@ -80,421 +256,194 @@ fn main() {
 }
 ```
 
-#### Tauri Commands (`tauri_commands.rs`)
+## Error Handling
+
+### Error Types
+
+#### **File**: `src-tauri/src/types/mod.rs`
+
+**Purpose**: Shared error types and result handling
+
 ```rust
-use crate::types::AppResult;
-
-#[tauri::command]
-pub async fn get_app_status() -> AppResult<String> {
-    Ok("Application is running".to_string())
-}
-
-#[tauri::command]
-pub async fn obs_get_status() -> AppResult<String> {
-    // OBS status implementation
-    Ok("OBS status".to_string())
-}
-
-#[tauri::command]
-pub async fn system_get_info() -> AppResult<SystemInfo> {
-    // System information implementation
-    Ok(SystemInfo::default())
-}
-```
-
-#### Plugin System (`plugins/mod.rs`)
-```rust
-pub mod plugin_obs;
-pub mod plugin_playback;
-pub mod plugin_store;
-pub mod plugin_udp;
-
-pub use plugin_obs::*;
-pub use plugin_playback::*;
-pub use plugin_store::*;
-pub use plugin_udp::*;
-```
-
-### Error Handling
-
-#### AppResult Type
-```rust
-// types/mod.rs
-pub type AppResult<T> = Result<T, AppError>;
-
 #[derive(Debug, thiserror::Error)]
 pub enum AppError {
-    #[error("IO error: {0}")]
-    IoError(#[from] std::io::Error),
-    
     #[error("Configuration error: {0}")]
     ConfigError(String),
-    
-    #[error("OBS error: {0}")]
-    ObsError(String),
-    
-    #[error("Video error: {0}")]
-    VideoError(String),
-    
-    #[error("PSS error: {0}")]
-    PssError(String),
-}
-```
-
-#### Error Conversion Guidelines
-- Use `AppError::IoError(e)` when converting `std::io::Error` to `AppError`
-- Use `AppError::ConfigError(e.to_string())` when converting `std::io::Error` to `AppError::ConfigError`
-- Use `e.to_string()` when returning errors to API responses expecting `Option<String>`
-
-## Frontend Architecture (React/TypeScript)
-
-### Project Structure
-```
-ui/
-├── src/
-│   ├── components/            # Atomic design components
-│   │   ├── atoms/            # Basic UI components
-│   │   │   ├── Button.tsx    # Reusable button component
-│   │   │   ├── Input.tsx     # Form input component
-│   │   │   ├── Checkbox.tsx  # Checkbox component
-│   │   │   ├── Label.tsx     # Form label component
-│   │   │   ├── StatusDot.tsx # Status indicator component
-│   │   │   └── Icon.tsx      # Icon component
-│   │   ├── molecules/        # Composite components
-│   │   │   ├── EventTableSection.tsx # Event table section
-│   │   │   ├── LiveDataPanel.tsx    # Live data display
-│   │   │   ├── LogDownloadList.tsx  # Log download management
-│   │   │   └── LogToggleGroup.tsx   # Log toggle controls
-│   │   ├── organisms/        # Complex UI sections
-│   │   │   ├── EventTable.tsx       # Main event table
-│   │   │   ├── MatchInfoSection.tsx # Match information display
-│   │   │   ├── ObsWebSocketManager.tsx # OBS connection management
-│   │   │   └── PlayerInfoSection.tsx # Player information display
-│   │   └── layouts/          # Page and section layouts
-│   │       ├── DockBar.tsx          # Main sidebar layout
-│   │       ├── AdvancedPanel.tsx    # Advanced settings panel
-│   │       ├── StatusbarAdvanced.tsx # Advanced status bar
-│   │       └── StatusbarDock.tsx    # Status bar for dock
-│   ├── hooks/                # Custom React hooks
-│   │   ├── useEnvironment.ts # Environment detection
-│   │   ├── useEnvironmentApi.ts # Tauri API integration
-│   │   └── useEnvironmentObs.ts # OBS WebSocket integration
-│   ├── utils/                # Utility functions
-│   │   ├── tauriCommands.ts  # Tauri command wrappers
-│   │   ├── flagUtils.tsx     # Flag management utilities
-│   │   ├── obsUtils.ts       # OBS utility functions
-│   │   └── videoUtils.ts     # Video utility functions
-│   ├── types/                # TypeScript type definitions
-│   │   ├── index.ts          # Type exports
-│   │   └── tauri.d.ts        # Tauri type definitions
-│   ├── config/               # Environment configuration
-│   │   └── environments/     # Environment-specific configs
-│   │       ├── web.ts        # Web environment config
-│   │       └── windows.ts    # Windows environment config
-│   ├── stores/               # State management
-│   │   └── index.ts          # Store exports
-│   ├── lib/                  # Library utilities
-│   │   └── index.ts          # Library exports
-│   ├── App.tsx               # Main application component
-│   ├── index.tsx             # React entry point
-│   └── index.css             # Global styles
-├── public/                   # Static assets
-│   ├── assets/
-│   │   └── flags/            # Country flag images
-│   └── index.html            # HTML template
-├── package.json              # Frontend dependencies
-├── tailwind.config.js        # Tailwind CSS configuration
-├── tsconfig.json             # TypeScript configuration
-└── eslint.config.js          # ESLint configuration
-```
-
-### Component Architecture
-
-#### Atomic Design Implementation
-The frontend follows atomic design principles with clear separation of concerns:
-
-**Atoms** (Basic Components)
-```typescript
-// ui/src/components/atoms/Button.tsx
-interface ButtonProps {
-  variant?: 'primary' | 'secondary' | 'danger';
-  size?: 'sm' | 'md' | 'lg';
-  disabled?: boolean;
-  children: React.ReactNode;
-  onClick?: () => void;
+    #[error("IO error: {0}")]
+    IoError(#[from] std::io::Error),
+    #[error("Serialization error: {0}")]
+    SerializationError(#[from] serde_json::Error),
+    // ... other error types
 }
 
-export const Button: React.FC<ButtonProps> = ({ 
-  variant = 'primary', 
-  size = 'md', 
-  disabled = false, 
-  children, 
-  onClick 
-}) => {
-  // Component implementation
-};
+pub type AppResult<T> = Result<T, AppError>;
 ```
 
-**Molecules** (Composite Components)
-```typescript
-// ui/src/components/molecules/EventTableSection.tsx
-export const EventTableSection: React.FC = () => {
-  // Combines EventTable organism with filtering controls
-  // Handles event data display and interaction
-  // Integrates with Tauri commands for data retrieval
-};
+**Error Handling Patterns**:
+- Use `AppResult<T>` for all plugin and core methods
+- Convert `std::io::Error` to `AppError::IoError(e)`
+- Use `AppError::ConfigError(e.to_string())` for custom error messages
+- Never use `AppError::IoError` with String or formatted messages
+
+## Data Flow Patterns
+
+### CPU Monitoring Flow (NEW)
+
+```
+1. Background Task (plugin_cpu_monitor.rs)
+   ↓ update_all_processes()
+2. WMIC Command Execution
+   ↓ wmic process get name,processid,workingsetsize,percentprocessortime /format:csv
+3. Data Parsing and Filtering
+   ↓ Process CSV output, filter significant processes
+4. State Update
+   ↓ Update process_data HashMap
+5. Frontend Request (tauri_commands.rs)
+   ↓ cpu_get_process_data command
+6. JSON Serialization
+   ↓ Convert to serde_json::Value
+7. Frontend Display (CpuMonitoringSection.tsx)
+   ↓ React component rendering
 ```
 
-**Organisms** (Complex Sections)
-```typescript
-// ui/src/components/organisms/DockBar.tsx
-export const DockBar: React.FC = () => {
-  // Main sidebar with player info and controls
-  // Two-column layout: SidebarSmall and SidebarBig
-  // Status indicators and navigation controls
-};
+### General Data Flow
+
+```
+Frontend Request → Tauri Command → Plugin Method → System Call → Data Processing → Response
 ```
 
-**Layouts** (Page Structure)
-```typescript
-// ui/src/components/layouts/AdvancedPanel.tsx
-export const AdvancedPanel: React.FC = () => {
-  // Settings and configuration panel
-  // Tabbed interface for different settings categories
-  // Diagnostics and log management
-};
+## Type System
+
+### Shared Types
+
+#### **File**: `src-tauri/src/types/mod.rs`
+
+**Purpose**: Common type definitions used across modules
+
+```rust
+// CPU monitoring types
+pub type ProcessData = HashMap<String, CpuProcessData>;
+pub type SystemData = Option<SystemCpuData>;
+
+// Plugin types
+pub type PluginResult<T> = Result<T, Box<dyn std::error::Error>>;
+
+// Configuration types
+pub type ConfigValue = serde_json::Value;
 ```
 
-### Environment Detection
+## Utility Functions
 
-#### Environment Hook
-```typescript
-// ui/src/hooks/useEnvironment.ts
-export const useEnvironment = () => {
-  const [tauriAvailable, setTauriAvailable] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+### Common Utilities
 
-  useEffect(() => {
-    const checkTauriAvailability = async () => {
-      try {
-        if (typeof window !== 'undefined' && window.__TAURI__) {
-          await invoke('get_app_status');
-          setTauriAvailable(true);
-        } else {
-          setTauriAvailable(false);
-        }
-      } catch (error) {
-        console.warn('Tauri API not available:', error);
-        setTauriAvailable(false);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+#### **File**: `src-tauri/src/utils/logger.rs`
 
-    checkTauriAvailability();
-  }, []);
+**Purpose**: Logging utilities and helpers
 
-  return {
-    tauriAvailable,
-    isLoading,
-    isNative: tauriAvailable,
-    isWeb: !tauriAvailable && !isLoading
-  };
-};
-```
+```rust
+pub fn setup_logging() -> Result<(), Box<dyn std::error::Error>> {
+    // Logging setup implementation
+}
 
-#### Tauri API Integration
-```typescript
-// ui/src/hooks/useEnvironmentApi.ts
-export const useEnvironmentApi = () => {
-  const { tauriAvailable } = useEnvironment();
-  
-  const invokeCommand = useCallback(async (command: string, args?: any) => {
-    if (!tauriAvailable) {
-      throw new Error('Tauri API not available');
-    }
-    return await invoke(command, args);
-  }, [tauriAvailable]);
-
-  return { invokeCommand, tauriAvailable };
-};
-```
-
-### State Management
-
-#### React Hooks
-- **useEnvironment**: Tauri API detection
-- **useEnvironmentApi**: Tauri command invocation
-- **useEnvironmentObs**: OBS WebSocket integration
-
-#### Component State
-- Local state management with useState
-- Context for shared state when needed
-- Props for component communication
-
-## Development Workflow
-
-### Starting Development
-```bash
-# From project root - starts both frontend and backend
-cd src-tauri
-cargo tauri dev
-```
-
-This single command:
-1. Starts React development server (port 3000)
-2. Builds Rust backend
-3. Launches native Windows application
-4. Enables hot reload for both frontend and backend
-
-### Alternative Manual Start
-```bash
-# Terminal 1: Start React dev server
-cd ui
-npm run start:fast
-
-# Terminal 2: Start Tauri app
-cd src-tauri
-cargo tauri dev
-```
-
-### Build Commands
-```bash
-# Development build
-cd ui
-npm run build
-
-# Production build with Tauri
-cd src-tauri
-cargo tauri build
-```
-
-## Configuration
-
-### Tauri Configuration
-```json
-// src-tauri/tauri.conf.json
-{
-  "build": {
-    "beforeDevCommand": "cd ui && npm run start:fast",
-    "beforeBuildCommand": "cd ui && npm run build",
-    "devPath": "http://localhost:3000",
-    "distDir": "../ui/dist"
-  },
-  "app": {
-    "withGlobalTauri": true
-  }
+pub fn log_error(context: &str, error: &dyn std::error::Error) {
+    log::error!("[{}] Error: {}", context, error);
 }
 ```
-
-### Rust Dependencies
-```toml
-// src-tauri/Cargo.toml
-[package]
-name = "re-strike-vta-app"
-version = "2.0.0"
-
-[dependencies]
-tauri = { version = "2.0.0", features = ["shell-open"] }
-serde = { version = "1.0", features = ["derive"] }
-tokio = { version = "1.0", features = ["full"] }
-
-[[bin]]
-name = "re-strike-vta-app"
-path = "src/main.rs"
-```
-
-### Frontend Configuration
-```javascript
-// ui/tailwind.config.js
-module.exports = {
-  content: ['./src/**/*.{js,jsx,ts,tsx}'],
-  theme: {
-    extend: {
-      colors: {
-        primary: '#1e40af',
-        secondary: '#64748b',
-        accent: '#f59e0b',
-      }
-    }
-  },
-  plugins: []
-};
-```
-
-## Key Features
-
-### Core Functionality
-- **Instant Video Replay**: Quick access to recent video clips
-- **Event Tracking**: Real-time event capture and analysis
-- **OBS Integration**: Seamless connection with OBS Studio
-- **Flag Management**: Country flag recognition and display
-- **Advanced Panel**: Comprehensive settings and diagnostics
-
-### Technical Features
-- **Environment Detection**: Automatic Tauri vs Web mode detection
-- **Plugin Architecture**: Modular backend design
-- **Error Handling**: Comprehensive error management
-- **Hot Reload**: Development efficiency with live updates
-- **Type Safety**: Full TypeScript and Rust type safety
-
-## Performance Optimization
-
-### Backend Optimization
-- **Async/Await**: Non-blocking I/O operations
-- **Memory Management**: Efficient memory usage with Rust
-- **Error Handling**: Comprehensive error management
-- **Plugin System**: Modular architecture for scalability
-
-### Frontend Optimization
-- **Code Splitting**: Lazy loading for large components
-- **Memoization**: React.memo for expensive components
-- **Bundle Optimization**: Efficient bundling and tree shaking
-- **Performance Monitoring**: Real-time performance metrics
 
 ## Testing Strategy
 
-### Backend Testing
-- **Unit Tests**: Individual function testing
-- **Integration Tests**: Module interaction testing
-- **Error Testing**: Comprehensive error scenario testing
-- **Performance Testing**: Load and stress testing
+### Unit Testing
 
-### Frontend Testing
-- **Component Testing**: Individual component testing
-- **Integration Testing**: Component interaction testing
-- **E2E Testing**: Complete workflow testing
-- **Accessibility Testing**: WCAG compliance testing
+```rust
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-## Documentation
+    #[test]
+    fn test_cpu_monitor_plugin_creation() {
+        let config = CpuMonitorConfig::default();
+        let plugin = CpuMonitorPlugin::new(config);
+        assert_eq!(plugin.name(), "cpu_monitor");
+    }
 
-### Key Documents
-- `PROJECT_STRUCTURE.md`: Detailed project organization
-- `PROJECT_CONTEXT.md`: High-level project overview
-- `FRONTEND_DEVELOPMENT_SUMMARY.md`: Frontend architecture details
-- `PROJECT_REORGANIZATION_SUMMARY.md`: Migration history
+    #[tokio::test]
+    async fn test_process_data_collection() {
+        // Test process data collection
+    }
+}
+```
 
-### Development Guides
-- `docs/development/`: Development setup and guidelines
-- `docs/api/`: API documentation
-- `docs/integration/`: Integration guides
+### Integration Testing
 
-## Future Enhancements
+```rust
+#[cfg(test)]
+mod integration_tests {
+    use super::*;
 
-### Immediate Priorities
-1. **OBS Integration**: Complete WebSocket protocol implementation
-2. **Event System**: Implement PSS protocol event handling
-3. **Video Player**: Integrate mpv video player
-4. **Flag Management**: Complete flag recognition system
+    #[tokio::test]
+    async fn test_cpu_monitoring_workflow() {
+        // Test complete CPU monitoring workflow
+    }
+}
+```
 
-### Technical Improvements
-1. **Performance**: Further optimization for large datasets
-2. **Testing**: Comprehensive test coverage
-3. **Documentation**: Enhanced developer documentation
-4. **Accessibility**: Improved accessibility features
+## Performance Considerations
+
+### Memory Management
+
+- Use `Arc<Mutex<T>>` for shared state across async tasks
+- Implement proper cleanup in plugin shutdown methods
+- Monitor memory usage in CPU monitoring plugin
+
+### Async Operations
+
+- Use `tokio` for async runtime
+- Implement proper error handling in async functions
+- Use background tasks for continuous monitoring
+
+### Error Handling
+
+- Implement comprehensive error handling
+- Use structured logging for debugging
+- Provide meaningful error messages to frontend
+
+## Security Considerations
+
+### Input Validation
+
+- Validate all input data from frontend
+- Sanitize process names and data
+- Implement proper error handling without information disclosure
+
+### System Access
+
+- Limit system access to necessary operations
+- Implement proper permissions for `wmic` commands
+- Handle command execution failures gracefully
+
+## Current Status (2025-01-28)
+
+### ✅ **Completed**
+- Plugin system architecture
+- CPU monitoring plugin implementation
+- Tauri command integration
+- Error handling patterns
+- Logging system
+- Configuration management
+
+### 🚧 **In Progress**
+- CPU monitoring testing with `wmic`
+- Performance optimization
+- Error handling improvements
+
+### 📋 **Planned**
+- Enhanced error handling
+- Performance monitoring
+- Additional plugin features
+- Comprehensive testing
 
 ---
 
-**Last Updated**: December 2024  
-**Status**: ✅ Native Windows Mode - Ready for Development  
-**Next Phase**: Feature Development and Enhancement 
+**Last Updated**: 2025-01-28
+**Version**: 0.1.0
+**Status**: CPU monitoring implementation complete, awaiting testing 
