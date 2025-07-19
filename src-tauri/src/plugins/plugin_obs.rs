@@ -803,6 +803,84 @@ impl ObsPlugin {
 
         Ok(status)
     }
+
+    // Emit OBS event to frontend via Tauri
+    pub async fn emit_event_to_frontend(&self, event: ObsEvent) {
+        // Convert ObsEvent to JSON
+        let event_json = match event {
+            ObsEvent::ConnectionStatusChanged { connection_name, status } => {
+                serde_json::json!({
+                    "eventType": "ConnectionStatusChanged",
+                    "connection_name": connection_name,
+                    "status": match status {
+                        ObsConnectionStatus::Disconnected => "Disconnected",
+                        ObsConnectionStatus::Connecting => "Connecting",
+                        ObsConnectionStatus::Connected => "Connected",
+                        ObsConnectionStatus::Authenticating => "Authenticating",
+                        ObsConnectionStatus::Authenticated => "Authenticated",
+                        ObsConnectionStatus::Error(e) => "Error",
+                    },
+                    "timestamp": chrono::Utc::now().to_rfc3339()
+                })
+            },
+            ObsEvent::SceneChanged { connection_name, scene_name } => {
+                serde_json::json!({
+                    "eventType": "SceneChanged",
+                    "connection_name": connection_name,
+                    "scene_name": scene_name,
+                    "timestamp": chrono::Utc::now().to_rfc3339()
+                })
+            },
+            ObsEvent::RecordingStateChanged { connection_name, is_recording } => {
+                serde_json::json!({
+                    "eventType": "RecordingStateChanged",
+                    "connection_name": connection_name,
+                    "is_recording": is_recording,
+                    "timestamp": chrono::Utc::now().to_rfc3339()
+                })
+            },
+            ObsEvent::StreamStateChanged { connection_name, is_streaming } => {
+                serde_json::json!({
+                    "eventType": "StreamStateChanged",
+                    "connection_name": connection_name,
+                    "is_streaming": is_streaming,
+                    "timestamp": chrono::Utc::now().to_rfc3339()
+                })
+            },
+            ObsEvent::ReplayBufferStateChanged { connection_name, is_active } => {
+                serde_json::json!({
+                    "eventType": "ReplayBufferStateChanged",
+                    "connection_name": connection_name,
+                    "is_active": is_active,
+                    "timestamp": chrono::Utc::now().to_rfc3339()
+                })
+            },
+            ObsEvent::Error { connection_name, error } => {
+                serde_json::json!({
+                    "eventType": "Error",
+                    "connection_name": connection_name,
+                    "error": error,
+                    "timestamp": chrono::Utc::now().to_rfc3339()
+                })
+            },
+            ObsEvent::Raw { connection_name, event_type, data } => {
+                serde_json::json!({
+                    "eventType": "Raw",
+                    "connection_name": connection_name,
+                    "obs_event_type": event_type,
+                    "data": data,
+                    "timestamp": chrono::Utc::now().to_rfc3339()
+                })
+            },
+        };
+
+        // For now, we'll log the event. In a full implementation, we'd emit it via Tauri
+        log::info!("[PLUGIN_OBS] Event to frontend: {}", serde_json::to_string(&event_json).unwrap_or_default());
+        
+        // TODO: Emit via Tauri event system
+        // This would require access to the Tauri app handle, which is complex from within the plugin
+        // For now, we'll use the existing event_tx channel and handle it in the main app
+    }
 }
 
 // OBS Status Information for Status Bar

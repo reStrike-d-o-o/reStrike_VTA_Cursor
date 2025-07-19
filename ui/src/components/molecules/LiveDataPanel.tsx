@@ -1,9 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { diagLogsCommands, configCommands } from '../../utils/tauriCommands';
 import { useEnvironment } from '../../hooks/useEnvironment';
-
-// Tauri v2 event listening
-const { listen } = window.__TAURI__?.event || {};
+import { useLiveDataStore, LiveDataType } from '../../stores/liveDataStore';
+import { listen } from '@tauri-apps/api/event';
 
 // Use the proper Tauri v2 invoke function
 const invoke = async (command: string, args?: any) => {
@@ -41,15 +40,24 @@ const logTypes = [
   { key: 'udp', label: 'UDP' },
 ];
 
-type LogType = 'pss' | 'obs' | 'udp';
-
 const LiveDataPanel: React.FC = () => {
   const { tauriAvailable, environment, isWindows, isWeb } = useEnvironment();
-  const [enabled, setEnabled] = useState(true);
-  const [selectedType, setSelectedType] = useState<LogType>('pss');
-  const [liveData, setLiveData] = useState<string>('');
-  const [error, setError] = useState<string>('');
-  const [connecting, setConnecting] = useState(false);
+  const {
+    enabled,
+    selectedType,
+    data,
+    loading,
+    error,
+    connecting,
+    setEnabled,
+    setSelectedType,
+    addData,
+    clearData,
+    setLoading,
+    setError,
+    clearError,
+    setConnecting,
+  } = useLiveDataStore();
   const [isLoadingSettings, setIsLoadingSettings] = useState(true);
   const liveDataRef = useRef<HTMLDivElement>(null);
 
@@ -118,7 +126,7 @@ const LiveDataPanel: React.FC = () => {
     if (liveDataRef.current) {
       liveDataRef.current.scrollTop = liveDataRef.current.scrollHeight;
     }
-  }, [liveData]);
+  }, [data]);
 
   // Handle streaming toggle and type change
   useEffect(() => {
@@ -143,19 +151,27 @@ const LiveDataPanel: React.FC = () => {
             return;
           }
 
-          setLiveData('');
+          clearData();
           
           // Use the proper Tauri v2 event listening API
-          if (listen && typeof listen === 'function') {
+          try {
+            console.log('Attempting to listen for live_data events...');
             const listener = await listen('live_data', (event: any) => {
+              console.log('Live data event received:', event);
               if (event && event.payload && event.payload.subsystem === selectedType) {
-                setLiveData(prev => prev + (prev ? '\n' : '') + event.payload.data);
+                addData({
+                  subsystem: selectedType,
+                  data: event.payload.data,
+                  type: 'info'
+                });
               }
             });
             
+            console.log('Event listener registered successfully');
             unlisten = listener;
-          } else {
-            setError('Event listening not available - Tauri event API not found');
+          } catch (listenError) {
+            console.error('Event listening error:', listenError);
+            setError(`Event listening failed: ${listenError}`);
           }
         } else {
           setError('Tauri not available - running in web mode');
@@ -186,14 +202,14 @@ const LiveDataPanel: React.FC = () => {
   }, [enabled, selectedType, tauriAvailable]);
 
   const handleToggle = async () => {
-    setError('');
+    clearError();
     const newEnabled = !enabled;
     setEnabled(newEnabled);
     await saveLiveDataSettings(newEnabled);
   };
 
-  const handleTypeChange = (newType: LogType) => {
-    setError('');
+  const handleTypeChange = (newType: LiveDataType) => {
+    clearError();
     setSelectedType(newType);
   };
 
@@ -210,15 +226,7 @@ const LiveDataPanel: React.FC = () => {
     <div className="bg-[#181F26] rounded-lg p-4 border border-gray-700 shadow">
       <h3 className="text-lg font-semibold mb-2 text-blue-300">LIVE DATA</h3>
       
-      {/* Environment Status Debug */}
-      <div className="mb-3 p-2 bg-gray-800 rounded text-xs">
-        <div className="text-gray-300">Environment Debug:</div>
-        <div className="text-green-400">tauriAvailable: {tauriAvailable ? 'true' : 'false'}</div>
-        <div className="text-blue-400">environment: {environment}</div>
-        <div className="text-yellow-400">isWindows: {isWindows ? 'true' : 'false'}</div>
-        <div className="text-orange-400">isWeb: {isWeb ? 'true' : 'false'}</div>
-        <div className="text-purple-400">window.__TAURI__: {typeof window !== 'undefined' && !!window.__TAURI__ ? 'true' : 'false'}</div>
-      </div>
+
       
       <div className="flex items-center gap-3 mb-3">
         <label className="flex items-center gap-2 cursor-pointer">
@@ -238,7 +246,7 @@ const LiveDataPanel: React.FC = () => {
         <select
           className="bg-[#101820] border border-gray-700 rounded px-2 py-1 text-gray-100"
           value={selectedType}
-          onChange={e => handleTypeChange(e.target.value as LogType)}
+          onChange={e => handleTypeChange(e.target.value as LiveDataType)}
           aria-labelledby="live-type-label"
           title="Select live data type"
           aria-label="Select live data type"
@@ -259,7 +267,13 @@ const LiveDataPanel: React.FC = () => {
         className="bg-[#101820] border border-gray-700 rounded p-3 h-48 overflow-y-auto font-mono text-sm text-gray-300"
         style={{ whiteSpace: 'pre-wrap' }}
       >
-        {liveData || 'No live data available. Enable streaming to see data.'}
+        {data.length === 0 ? 'No live data available. Enable streaming to see data.' : 
+          data.map((entry, index) => (
+            <div key={index} className="mb-1">
+              <span className="text-gray-500">[{entry.timestamp}]</span> {entry.data}
+            </div>
+          ))
+        }
       </div>
     </div>
   );

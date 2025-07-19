@@ -238,3 +238,7 @@ export const useAppStore = create<AppStore>()(
     }
   )
 );
+
+// Export new stores
+export { useObsStore } from './obsStore';
+export { useLiveDataStore } from './liveDataStore';
