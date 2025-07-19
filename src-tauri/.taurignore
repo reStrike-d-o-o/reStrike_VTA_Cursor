@@ -7,4 +7,24 @@ config/
 !tsconfig.json
 !tailwind.config.js
 !postcss.config.js
-!eslint.config.js 
+!eslint.config.js
+
+# Ignore log files to prevent rebuild loops when logging changes
+log/
+**/log/**
+logs/
+**/logs/**
+*.log
+*.log.*
+
+# Ignore temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# Ignore build artifacts
+target/
+dist/
+build/
+node_modules/ 

@@ -16,7 +16,7 @@ impl LogArchiver {
     pub fn new(retention_days: u32) -> Self {
         Self { 
             retention_days,
-            archive_dir: "log/archives".to_string(),
+            archive_dir: "logs/archives".to_string(),
         }
     }
     
