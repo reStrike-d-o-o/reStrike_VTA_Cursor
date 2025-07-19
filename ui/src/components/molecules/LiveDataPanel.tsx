@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { diagLogsCommands } from '../../utils/tauriCommands';
+import { diagLogsCommands, configCommands } from '../../utils/tauriCommands';
 import { useEnvironment } from '../../hooks/useEnvironment';
 
 // Tauri v2 event listening
@@ -50,7 +50,53 @@ const LiveDataPanel: React.FC = () => {
   const [liveData, setLiveData] = useState<string>('');
   const [error, setError] = useState<string>('');
   const [connecting, setConnecting] = useState(false);
+  const [isLoadingSettings, setIsLoadingSettings] = useState(true);
   const liveDataRef = useRef<HTMLDivElement>(null);
+
+  // Load live data settings from configuration
+  const loadLiveDataSettings = async () => {
+    try {
+      setIsLoadingSettings(true);
+      const result = await configCommands.getSettings();
+      if (result.success && result.data?.logging?.live_data) {
+        const liveDataSettings = result.data.logging.live_data;
+        setEnabled(liveDataSettings.enabled ?? true);
+        // Note: selectedType is not stored in config, so we keep the default
+      }
+    } catch (error) {
+      console.error('Failed to load live data settings:', error);
+    } finally {
+      setIsLoadingSettings(false);
+    }
+  };
+
+  // Save live data settings to configuration
+  const saveLiveDataSettings = async (newEnabled: boolean) => {
+    try {
+      const result = await configCommands.getSettings();
+      if (result.success) {
+        const updatedSettings = {
+          ...result.data,
+          logging: {
+            ...result.data.logging,
+            live_data: {
+              ...result.data.logging.live_data,
+              enabled: newEnabled,
+            },
+          },
+        };
+        await configCommands.updateSettings(updatedSettings);
+        console.log('Live data settings saved successfully');
+      }
+    } catch (error) {
+      console.error('Failed to save live data settings:', error);
+    }
+  };
+
+  // Load settings on component mount
+  useEffect(() => {
+    loadLiveDataSettings();
+  }, []);
 
   // Debug logging on every render
   console.log('🔍 LiveDataPanel Render:', {
@@ -141,13 +187,24 @@ const LiveDataPanel: React.FC = () => {
 
   const handleToggle = async () => {
     setError('');
-    setEnabled(prev => !prev);
+    const newEnabled = !enabled;
+    setEnabled(newEnabled);
+    await saveLiveDataSettings(newEnabled);
   };
 
   const handleTypeChange = (newType: LogType) => {
     setError('');
     setSelectedType(newType);
   };
+
+  if (isLoadingSettings) {
+    return (
+      <div className="bg-[#181F26] rounded-lg p-4 border border-gray-700 shadow">
+        <h3 className="text-lg font-semibold mb-2 text-blue-300">LIVE DATA</h3>
+        <div className="text-sm text-gray-400">Loading settings...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-[#181F26] rounded-lg p-4 border border-gray-700 shadow">
@@ -199,19 +256,10 @@ const LiveDataPanel: React.FC = () => {
       )}
       <div
         ref={liveDataRef}
-        className="bg-[#101820] rounded p-3 min-h-[100px] max-h-48 overflow-y-auto text-sm text-green-200 font-mono whitespace-pre-line border border-gray-800"
+        className="bg-[#101820] border border-gray-700 rounded p-3 h-48 overflow-y-auto font-mono text-sm text-gray-300"
+        style={{ whiteSpace: 'pre-wrap' }}
       >
-        {enabled ? (
-          connecting ? (
-            <span className="text-blue-400">Connecting to live data stream...</span>
-          ) : liveData ? (
-            liveData
-          ) : (
-            <span className="text-gray-500">Waiting for live data...</span>
-          )
-        ) : (
-          <span className="text-gray-500">Live data is disabled.</span>
-        )}
+        {liveData || 'No live data available. Enable streaming to see data.'}
       </div>
     </div>
   );

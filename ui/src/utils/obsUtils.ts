@@ -1,31 +1,23 @@
 // OBS utility functions for reStrike VTA
 
-import { ObsConnection, ObsConnectionStatus, ObsStatusInfo } from '../types';
+import { ObsConnection, ObsStatusInfo } from '../types';
 
 /**
  * Create a default OBS connection
  */
-export const createDefaultObsConnection = (
-  name: string,
-  host: string = 'localhost',
-  port: number = 4455,
-  password?: string
-): ObsConnection => {
-  return {
-    name,
-    host,
-    port,
-    password,
-    protocol_version: 'v5',
-    enabled: true,
-    status: 'Disconnected',
-  };
-};
+export const createDefaultConnection = (): ObsConnection => ({
+  name: '',
+  host: 'localhost',
+  port: 4455,
+  password: '',
+  enabled: true,
+  status: 'Disconnected',
+});
 
 /**
  * Get status color for OBS connection
  */
-export const getObsStatusColor = (status: ObsConnectionStatus): string => {
+export const getObsStatusColor = (status: string): string => {
   switch (status) {
     case 'Connected':
     case 'Authenticated':
@@ -43,7 +35,7 @@ export const getObsStatusColor = (status: ObsConnectionStatus): string => {
 /**
  * Get status text for OBS connection
  */
-export const getObsStatusText = (status: ObsConnectionStatus): string => {
+export const getObsStatusText = (status: string): string => {
   switch (status) {
     case 'Connected':
       return 'Connected';
@@ -63,15 +55,15 @@ export const getObsStatusText = (status: ObsConnectionStatus): string => {
 /**
  * Check if OBS connection is active
  */
-export const isObsConnectionActive = (status: ObsConnectionStatus): boolean => {
+export const isObsConnectionActive = (status: string): boolean => {
   return status === 'Connected' || status === 'Authenticated';
 };
 
 /**
  * Get OBS WebSocket URL
  */
-export const getObsWebSocketUrl = (connection: ObsConnection): string => {
-  const protocol = connection.protocol_version === 'v5' ? 'ws' : 'ws';
+export const getWebSocketUrl = (connection: ObsConnection): string => {
+  const protocol = 'ws'; // Always ws for v5
   return `${protocol}://${connection.host}:${connection.port}`;
 };
 

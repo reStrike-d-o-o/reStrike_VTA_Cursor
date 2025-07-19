@@ -1,0 +1,223 @@
+{
+  "app": {
+    "version": "0.1.0",
+    "last_save": "2025-07-19T00:09:32.837683100+00:00",
+    "startup": {
+      "auto_start_udp": false,
+      "auto_connect_obs": false,
+      "show_advanced_panel": false,
+      "minimize_to_tray": false,
+      "check_updates": true
+    },
+    "performance": {
+      "hardware_acceleration": true,
+      "max_memory_mb": 1024,
+      "background_processing": true,
+      "log_rotation_size_mb": 100
+    }
+  },
+  "obs": {
+    "connections": [
+      {
+        "name": "OBS_REC",
+        "host": "localhost",
+        "port": 4455,
+        "password": "cekPIbj@245",
+        "protocol_version": "v5",
+        "enabled": true,
+        "timeout_seconds": 30,
+        "auto_reconnect": true,
+        "max_reconnect_attempts": 5
+      },
+      {
+        "name": "OBS_STR",
+        "host": "localhost",
+        "port": 4466,
+        "password": "cekPIbj@245",
+        "protocol_version": "v5",
+        "enabled": true,
+        "timeout_seconds": 30,
+        "auto_reconnect": true,
+        "max_reconnect_attempts": 5
+      }
+    ],
+    "defaults": {
+      "default_host": "localhost",
+      "default_port": 4455,
+      "default_protocol": "v5",
+      "default_timeout": 30
+    },
+    "behavior": {
+      "auto_reconnect": true,
+      "reconnect_delay": 5,
+      "max_attempts": 5,
+      "status_monitoring": true,
+      "status_interval": 10
+    },
+    "integration": {
+      "auto_connect_on_startup": false,
+      "show_status_in_overlay": false,
+      "auto_record_on_clip_play": false,
+      "save_replay_buffer_on_clip_creation": false
+    }
+  },
+  "udp": {
+    "listener": {
+      "port": 6000,
+      "bind_address": "0.0.0.0",
+      "enabled": false,
+      "buffer_size": 8192,
+      "timeout_seconds": 30
+    },
+    "pss": {
+      "schema_file": "protocol/pss_schema.txt",
+      "enabled": true,
+      "strict_mode": false,
+      "unknown_fields": "warn"
+    },
+    "events": {
+      "store_events": true,
+      "max_events": 10000,
+      "cleanup_interval_hours": 24,
+      "enable_filtering": false,
+      "default_filters": []
+    }
+  },
+  "logging": {
+    "global": {
+      "level": "info",
+      "console_enabled": true,
+      "file_enabled": true,
+      "include_timestamp": true,
+      "include_subsystem": true
+    },
+    "subsystems": {},
+    "files": {
+      "directory": "log",
+      "max_size_mb": 100,
+      "max_files": 10,
+      "retention_days": 30,
+      "compression": true,
+      "archive_enabled": true
+    },
+    "live_data": {
+      "enabled": false,
+      "interval_seconds": 5,
+      "max_data_points": 1000,
+      "real_time": false
+    }
+  },
+  "ui": {
+    "overlay": {
+      "visible": true,
+      "opacity": 0.9,
+      "position": "bottom-right",
+      "scale": 1.0,
+      "theme": "dark",
+      "always_on_top": true,
+      "click_through": false
+    },
+    "theme": {
+      "current": "dark",
+      "auto_theme": false,
+      "custom_colors": {},
+      "high_contrast": false
+    },
+    "layout": {
+      "sidebar_position": "left",
+      "sidebar_width": 300,
+      "status_bar_visible": true,
+      "task_bar_visible": true,
+      "window_size": {
+        "width": 1200,
+        "height": 800
+      },
+      "window_position": {
+        "x": 100,
+        "y": 100
+      }
+    },
+    "animations": {
+      "enabled": true,
+      "duration_ms": 300,
+      "easing": "ease-in-out",
+      "reduce_motion": false
+    }
+  },
+  "video": {
+    "player": {
+      "default_player": "mpv",
+      "player_path": null,
+      "player_args": [],
+      "auto_hide_ui": true,
+      "fullscreen": false
+    },
+    "replay": {
+      "default_duration": 30,
+      "buffer_size_mb": 500,
+      "auto_save": false,
+      "quality": "medium"
+    },
+    "clips": {
+      "storage_directory": "clips",
+      "max_size_mb": 1000,
+      "retention_days": 90,
+      "auto_organize": true,
+      "naming_format": "{date}_{time}_{event}"
+    }
+  },
+  "license": {
+    "license_key": null,
+    "status": "trial",
+    "expiration_date": null,
+    "auto_renewal": false,
+    "offline_grace_days": 7,
+    "last_validation": null
+  },
+  "flags": {
+    "storage": {
+      "directory": "ui/public/assets/flags",
+      "auto_download": false,
+      "update_interval_days": 30,
+      "max_size_kb": 100
+    },
+    "recognition": {
+      "auto_recognition": false,
+      "confidence_threshold": 0.8,
+      "database_path": "scripts/media/flag_database.json",
+      "machine_learning": false
+    },
+    "display": {
+      "size": 32,
+      "quality": "medium",
+      "show_names": true,
+      "animation": false
+    }
+  },
+  "advanced": {
+    "development": {
+      "debug_mode": false,
+      "verbose_logging": false,
+      "hot_reload": false,
+      "dev_server_port": 3000
+    },
+    "network": {
+      "proxy": null,
+      "connection_timeout": 30,
+      "retry_attempts": 3,
+      "enable_ipv6": false
+    },
+    "security": {
+      "ssl_verification": true,
+      "allow_insecure": false,
+      "certificate_validation": true,
+      "security_level": "medium"
+    },
+    "experimental": {
+      "enabled": false,
+      "enabled_features": [],
+      "beta_updates": false,
+      "telemetry": false
+    }
+  }
+}

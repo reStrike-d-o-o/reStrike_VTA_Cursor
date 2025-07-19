@@ -1,10 +1,10 @@
-# Ignore log files to prevent rebuild loops
-log/
-*.log
-
-# Ignore target directory
-target/
-
-# Ignore any temporary files
-*.tmp
-*.temp 
+# Ignore configuration files to prevent rebuild loops
+config/
+**/config/**
+*.json
+!package.json
+!package-lock.json
+!tsconfig.json
+!tailwind.config.js
+!postcss.config.js
+!eslint.config.js 

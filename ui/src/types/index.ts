@@ -9,19 +9,10 @@ export interface ObsConnection {
   host: string;
   port: number;
   password?: string;
-  protocol_version: 'v4' | 'v5';
   enabled: boolean;
-  status: ObsConnectionStatus;
+  status: 'Disconnected' | 'Connecting' | 'Connected' | 'Authenticating' | 'Authenticated' | 'Error';
   error?: string;
 }
-
-export type ObsConnectionStatus = 
-  | 'Disconnected' 
-  | 'Connecting' 
-  | 'Connected' 
-  | 'Authenticating' 
-  | 'Authenticated' 
-  | 'Error';
 
 export interface ObsStatusInfo {
   is_recording: boolean;

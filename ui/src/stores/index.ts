@@ -7,7 +7,6 @@ export interface ObsConnection {
   host: string;
   port: number;
   password?: string;
-  protocol_version: 'v5';
   enabled: boolean;
   status: 'Disconnected' | 'Connecting' | 'Connected' | 'Authenticating' | 'Authenticated' | 'Error';
   error?: string;
@@ -99,7 +98,6 @@ const initialState: AppState = {
       host: 'localhost',
       port: 4455,
       password: 'cekPIbj@245',
-      protocol_version: 'v5',
       enabled: true,
       status: 'Disconnected',
     },
@@ -108,7 +106,6 @@ const initialState: AppState = {
       host: 'localhost',
       port: 4466,
       password: 'cekPIbj@245',
-      protocol_version: 'v5',
       enabled: true,
       status: 'Disconnected',
     },
