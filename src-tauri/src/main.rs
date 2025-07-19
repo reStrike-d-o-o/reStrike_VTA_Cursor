@@ -121,6 +121,12 @@ async fn main() -> AppResult<()> {
             tauri_commands::obs_get_full_events_setting,
             tauri_commands::obs_emit_event_to_frontend,
             tauri_commands::obs_get_recent_events,
+            
+            // CPU Monitoring commands
+            tauri_commands::cpu_get_process_data,
+            tauri_commands::cpu_get_system_data,
+            tauri_commands::cpu_get_obs_usage,
+            tauri_commands::cpu_update_config,
         ])
         .setup(|_app| {
             log::info!("Tauri application setup complete");

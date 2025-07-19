@@ -7,9 +7,6 @@ use crate::types::{AppError, AppResult};
 use tokio_tungstenite::tungstenite::Message;
 use futures_util::StreamExt;
 use futures_util::SinkExt;
-use std::process::Command;
-use std::time::{Duration, Instant};
-use std::collections::HashMap as StdHashMap;
 
 /// Initialize the OBS plugin
 pub fn init() -> Result<(), Box<dyn std::error::Error>> {
@@ -56,12 +53,13 @@ pub struct ObsConnection {
     pub heartbeat_data: Option<serde_json::Value>,
 }
 
-// CPU monitoring data
+// Recent events buffer for frontend polling
 #[derive(Debug, Clone)]
-struct CpuUsageData {
-    process_name: String,
-    cpu_percent: f64,
-    last_update: Instant,
+pub struct RecentEvent {
+    pub connection_name: String,
+    pub event_type: String,
+    pub data: serde_json::Value,
+    pub timestamp: chrono::DateTime<chrono::Utc>,
 }
 
 // OBS Plugin Manager
@@ -70,7 +68,7 @@ pub struct ObsPlugin {
     event_tx: mpsc::UnboundedSender<ObsEvent>,
     pub debug_ws_messages: Arc<Mutex<bool>>,
     pub show_full_events: Arc<Mutex<bool>>, // Toggle for showing all OBS events vs only recording/streaming
-    cpu_monitoring: Arc<Mutex<StdHashMap<String, CpuUsageData>>>, // Process name -> CPU data
+    recent_events: Arc<Mutex<Vec<RecentEvent>>>, // Recent events for frontend polling
 }
 
 impl Clone for ObsPlugin {
@@ -80,7 +78,7 @@ impl Clone for ObsPlugin {
             event_tx: self.event_tx.clone(),
             debug_ws_messages: self.debug_ws_messages.clone(),
             show_full_events: self.show_full_events.clone(),
-            cpu_monitoring: self.cpu_monitoring.clone(),
+            recent_events: self.recent_events.clone(),
         }
     }
 }
@@ -121,18 +119,13 @@ pub enum ObsEvent {
 
 impl ObsPlugin {
     pub fn new(event_tx: mpsc::UnboundedSender<ObsEvent>) -> Self {
-        let plugin = Self {
+        Self {
             connections: Arc::new(Mutex::new(HashMap::new())),
             event_tx,
             debug_ws_messages: Arc::new(Mutex::new(true)), // Initialize to true for debugging
             show_full_events: Arc::new(Mutex::new(false)), // Initialize to false - only show recording/streaming by default
-            cpu_monitoring: Arc::new(Mutex::new(StdHashMap::new())),
-        };
-        
-        // Start CPU monitoring task
-        plugin.start_cpu_monitoring();
-        
-        plugin
+            recent_events: Arc::new(Mutex::new(Vec::new())),
+        }
     }
 
     // Add a new OBS connection
@@ -208,6 +201,7 @@ impl ObsPlugin {
         let event_tx = self.event_tx.clone();
         let debug_ws_messages = self.debug_ws_messages.clone(); // Clone the flag
         let show_full_events = self.show_full_events.clone(); // Clone the full events flag
+        let plugin = self.clone(); // Clone the entire plugin for event storage
         
         tokio::spawn(async move {
             loop {
@@ -270,21 +264,30 @@ impl ObsPlugin {
                                                 event_type == "StreamStateChanged" ||
                                                 event_type == "ReplayBufferStateChanged";
                                             
-                                            if should_show_event {
-                                                println!("[OBS-EVENT][{}] Event: {} - Data: {}", connection_name, event_type, serde_json::to_string(event_data).unwrap_or_default());
-                                                
-                                                // Emit event to frontend if full events are enabled
-                                                if *show_full {
-                                                    let _ = event_tx.send(ObsEvent::Raw {
-                                                        connection_name: connection_name.clone(),
-                                                        event_type: event_type.to_string(),
-                                                        data: event_data.clone(),
-                                                    });
+                                                                                            if should_show_event {
+                                                    println!("[OBS-EVENT][{}] Event: {} - Data: {}", connection_name, event_type, serde_json::to_string(event_data).unwrap_or_default());
                                                     
-                                                    // Also log the event for frontend polling
-                                                    log::info!("[OBS-FRONTEND-EVENT] {}: {}", event_type, serde_json::to_string(&event_data).unwrap_or_default());
+                                                    // Emit event to frontend if full events are enabled
+                                                    if *show_full {
+                                                        let _ = event_tx.send(ObsEvent::Raw {
+                                                            connection_name: connection_name.clone(),
+                                                            event_type: event_type.to_string(),
+                                                            data: event_data.clone(),
+                                                        });
+                                                        
+                                                        // Store event for frontend polling
+                                                        let plugin_clone = plugin.clone();
+                                                        let conn_name = connection_name.clone();
+                                                        let event_type_clone = event_type.to_string();
+                                                        let event_data_clone = event_data.clone();
+                                                        tokio::spawn(async move {
+                                                            plugin_clone.store_recent_event(conn_name, event_type_clone, event_data_clone).await;
+                                                        });
+                                                        
+                                                        // Also log the event for frontend polling
+                                                        log::info!("[OBS-FRONTEND-EVENT] {}: {}", event_type, serde_json::to_string(&event_data).unwrap_or_default());
+                                                    }
                                                 }
-                                            }
                                             match event_type {
                                                 "CurrentProgramSceneChanged" => {
                                                     if let Some(scene_name) = event_data["sceneName"].as_str() {
@@ -1081,128 +1084,28 @@ impl ObsPlugin {
         *show_full
     }
 
-    // Start CPU monitoring background task
-    fn start_cpu_monitoring(&self) {
-        let cpu_monitoring = self.cpu_monitoring.clone();
+    // Store recent event for frontend polling
+    async fn store_recent_event(&self, connection_name: String, event_type: String, data: serde_json::Value) {
+        let mut events = self.recent_events.lock().await;
         
-        tokio::spawn(async move {
-            loop {
-                // Update CPU usage every 2 seconds
-                tokio::time::sleep(Duration::from_secs(2)).await;
-                
-                if let Err(e) = Self::update_cpu_usage(&cpu_monitoring).await {
-                    log::warn!("[PLUGIN_OBS] CPU monitoring error: {}", e);
-                }
-            }
+        // Add new event
+        events.push(RecentEvent {
+            connection_name,
+            event_type,
+            data,
+            timestamp: chrono::Utc::now(),
         });
+        
+        // Keep only last 100 events
+        if events.len() > 100 {
+            events.remove(0);
+        }
     }
 
-    // Update CPU usage for OBS processes
-    async fn update_cpu_usage(cpu_monitoring: &Arc<Mutex<StdHashMap<String, CpuUsageData>>>) -> AppResult<()> {
-        #[cfg(target_os = "windows")]
-        {
-            // Windows: Use wmic to get process CPU usage
-            let output = Command::new("wmic")
-                .args(&["cpu", "get", "loadpercentage", "/value"])
-                .output()
-                .map_err(|e| AppError::ConfigError(format!("Failed to get system CPU: {}", e)))?;
-            
-            let system_cpu = String::from_utf8_lossy(&output.stdout);
-            let system_cpu_percent: f64 = system_cpu
-                .lines()
-                .find(|line| line.starts_with("LoadPercentage="))
-                .and_then(|line| line.split('=').nth(1))
-                .and_then(|s| s.parse().ok())
-                .unwrap_or(0.0);
-
-            // Get OBS Studio process CPU usage
-            let obs_output = Command::new("wmic")
-                .args(&["process", "where", "name='obs64.exe'", "get", "processid,workingsetsize", "/format:csv"])
-                .output()
-                .map_err(|e| AppError::ConfigError(format!("Failed to get OBS process info: {}", e)))?;
-            
-            let obs_info = String::from_utf8_lossy(&obs_output.stdout);
-            let lines: Vec<&str> = obs_info.lines().collect();
-            
-            if lines.len() > 1 {
-                // Parse CSV format: Node,ProcessId,WorkingSetSize
-                let parts: Vec<&str> = lines[1].split(',').collect();
-                if parts.len() >= 3 {
-                    if let Ok(pid) = parts[1].trim().parse::<u32>() {
-                        // Get CPU usage for specific process
-                        let cpu_output = Command::new("wmic")
-                            .args(&["process", "where", &format!("processid={}", pid), "get", "percentprocessortime", "/value"])
-                            .output()
-                            .map_err(|e| AppError::ConfigError(format!("Failed to get OBS CPU: {}", e)))?;
-                        
-                        let cpu_info = String::from_utf8_lossy(&cpu_output.stdout);
-                        let cpu_percent: f64 = cpu_info
-                            .lines()
-                            .find(|line| line.starts_with("PercentProcessorTime="))
-                            .and_then(|line| line.split('=').nth(1))
-                            .and_then(|s| s.parse().ok())
-                            .unwrap_or(0.0);
-
-                        let mut monitoring = cpu_monitoring.lock().await;
-                        monitoring.insert("obs64.exe".to_string(), CpuUsageData {
-                            process_name: "obs64.exe".to_string(),
-                            cpu_percent,
-                            last_update: Instant::now(),
-                        });
-                        
-                        log::debug!("[PLUGIN_OBS] OBS CPU: {:.1}%, System CPU: {:.1}%", cpu_percent, system_cpu_percent);
-                    }
-                }
-            }
-        }
-
-        #[cfg(not(target_os = "windows"))]
-        {
-            // Linux/macOS: Use ps command
-            let output = Command::new("ps")
-                .args(&["-eo", "comm,%cpu"])
-                .output()
-                .map_err(|e| AppError::ConfigError(format!("Failed to get process CPU: {}", e)))?;
-            
-            let ps_output = String::from_utf8_lossy(&output.stdout);
-            
-            for line in ps_output.lines() {
-                if line.contains("obs") || line.contains("obs-studio") {
-                    let parts: Vec<&str> = line.split_whitespace().collect();
-                    if parts.len() >= 2 {
-                        if let Ok(cpu_percent) = parts[1].parse::<f64>() {
-                            let process_name = parts[0].to_string();
-                            let mut monitoring = cpu_monitoring.lock().await;
-                            monitoring.insert(process_name.clone(), CpuUsageData {
-                                process_name,
-                                cpu_percent,
-                                last_update: Instant::now(),
-                            });
-                        }
-                    }
-                }
-            }
-        }
-
-        Ok(())
-    }
-
-    // Get current CPU usage for OBS processes
-    pub async fn get_obs_cpu_usage_real(&self) -> f64 {
-        let monitoring = self.cpu_monitoring.lock().await;
-        
-        // Get the highest CPU usage among OBS processes
-        let mut max_cpu: f64 = 0.0;
-        for (process_name, data) in monitoring.iter() {
-            if process_name.contains("obs") || process_name.contains("obs64.exe") {
-                // Check if data is recent (within last 5 seconds)
-                if data.last_update.elapsed() < Duration::from_secs(5) {
-                    max_cpu = max_cpu.max(data.cpu_percent);
-                }
-            }
-        }
-        
-        max_cpu
+    // Get recent events for frontend polling
+    pub async fn get_recent_events(&self) -> Vec<RecentEvent> {
+        let events = self.recent_events.lock().await;
+        events.clone()
     }
 
     // Get comprehensive OBS status for status bar
@@ -1259,10 +1162,9 @@ impl ObsPlugin {
                     status.cpu_usage = cpu_usage;
                     log::info!("[PLUGIN_OBS] Heartbeat CPU usage for '{}': {}", connection_name, cpu_usage);
                 } else {
-                    // Use real CPU monitoring instead of OBS requests
-                    let real_cpu_usage = self.get_obs_cpu_usage_real().await;
-                    status.cpu_usage = real_cpu_usage;
-                    log::info!("[PLUGIN_OBS] Real CPU usage for '{}': {}", connection_name, real_cpu_usage);
+                    // CPU monitoring moved to separate Diagnostics module
+                    status.cpu_usage = 0.0; // Will be handled by CPU monitoring module
+                    log::info!("[PLUGIN_OBS] CPU monitoring moved to Diagnostics module for '{}'", connection_name);
                 }
                 
                 // Set connection names based on role
@@ -1319,9 +1221,8 @@ impl ObsPlugin {
                                 status.streaming_connection = Some(format!("{} (Connected)", connection_name));
                             }
                         }
-                        // Use real CPU monitoring
-                        let real_cpu_usage = self.get_obs_cpu_usage_real().await;
-                        status.cpu_usage = real_cpu_usage;
+                        // CPU monitoring moved to separate Diagnostics module
+                        status.cpu_usage = 0.0; // Will be handled by CPU monitoring module
                     }
                     "OBS_REC" => {
                         if let Ok(is_recording) = self.get_recording_status(&connection_name).await {
@@ -1332,9 +1233,8 @@ impl ObsPlugin {
                                 status.recording_connection = Some(format!("{} (Connected)", connection_name));
                             }
                         }
-                        // Use real CPU monitoring
-                        let real_cpu_usage = self.get_obs_cpu_usage_real().await;
-                        status.cpu_usage = real_cpu_usage;
+                        // CPU monitoring moved to separate Diagnostics module
+                        status.cpu_usage = 0.0; // Will be handled by CPU monitoring module
                     }
                     "OBS_STR" => {
                         if let Ok(is_streaming) = self.get_streaming_status(&connection_name).await {

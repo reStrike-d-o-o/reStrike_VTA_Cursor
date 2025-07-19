@@ -958,11 +958,69 @@ pub async fn obs_emit_event_to_frontend(event_data: serde_json::Value, window: t
 }
 
 #[tauri::command]
-pub async fn obs_get_recent_events() -> Result<serde_json::Value, String> {
-    // For now, return empty events since we're using polling approach
-    // In a full implementation, this would read from a recent events buffer
+pub async fn obs_get_recent_events(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+    let events = app.obs_plugin().get_recent_events().await;
+    
+    // Convert RecentEvent structs to JSON
+    let event_json: Vec<serde_json::Value> = events.into_iter().map(|event| {
+        serde_json::json!({
+            "connection_name": event.connection_name,
+            "event_type": event.event_type,
+            "data": event.data,
+            "timestamp": event.timestamp.to_rfc3339()
+        })
+    }).collect();
+    
     Ok(serde_json::json!({
         "success": true,
-        "events": []
+        "events": event_json
     }))
+}
+
+// CPU Monitoring Commands
+#[tauri::command]
+pub async fn cpu_get_process_data(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+    log::info!("[CPU_CMD] Getting process data...");
+    
+    let process_data = app.cpu_monitor_plugin().get_process_cpu_data().await;
+    log::info!("[CPU_CMD] Process data count: {}", process_data.len());
+    
+    Ok(serde_json::json!({
+        "success": true,
+        "processes": process_data
+    }))
+}
+
+#[tauri::command]
+pub async fn cpu_get_system_data(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+    log::info!("[CPU_CMD] Getting system data...");
+    
+    let system_data = app.cpu_monitor_plugin().get_system_cpu_data().await;
+    log::info!("[CPU_CMD] System data available: {}", system_data.is_some());
+    
+    Ok(serde_json::json!({
+        "success": true,
+        "system": system_data
+    }))
+}
+
+#[tauri::command]
+pub async fn cpu_get_obs_usage(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+    let obs_cpu = app.cpu_monitor_plugin().get_obs_cpu_usage().await;
+    
+    Ok(serde_json::json!({
+        "success": true,
+        "obs_cpu_percent": obs_cpu
+    }))
+}
+
+#[tauri::command]
+pub async fn cpu_update_config(app: State<'_, Arc<App>>, config: crate::plugins::CpuMonitorConfig) -> Result<serde_json::Value, String> {
+    match app.cpu_monitor_plugin().update_config(config).await {
+        Ok(_) => Ok(serde_json::json!({
+            "success": true,
+            "message": "CPU monitoring configuration updated"
+        })),
+        Err(e) => Err(format!("Failed to update CPU monitoring config: {}", e))
+    }
 } 

@@ -4,6 +4,7 @@ import LogToggleGroup from '../molecules/LogToggleGroup';
 import LogDownloadList from '../molecules/LogDownloadList';
 import LiveDataPanel from '../molecules/LiveDataPanel';
 import WebSocketManager from '../molecules/WebSocketManager';
+import { CpuMonitoringSection } from '../molecules/CpuMonitoringSection';
 import { configCommands } from '../../utils/tauriCommands';
 
 type AdvancedPanelProps = React.ComponentProps<'div'>;
@@ -277,7 +278,10 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
                     <LogDownloadList />
                   </div>
                 </div>
-                <LiveDataPanel />
+                <div className="space-y-6">
+                  <LiveDataPanel />
+                  <CpuMonitoringSection />
+                </div>
               </div>
             )}
             {/* Future settings tabs can be added here */}
