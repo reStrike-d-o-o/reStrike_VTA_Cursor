@@ -125,7 +125,7 @@ cat .cursor/rules/context.mdc | grep -A 5 "Immediate Next Steps"
 
 ## Recently Resolved Issues ✅
 - **Tailwind CSS PostCSS Error**: Fixed by using v3.4.17 and correct config
-- **Container Port Conflicts**: Resolved with comprehensive port configuration  
+- **Port Conflicts**: Resolved with comprehensive port configuration  
 - **Video Playback Performance**: Optimized with Windows-specific mpv build
 ```
 

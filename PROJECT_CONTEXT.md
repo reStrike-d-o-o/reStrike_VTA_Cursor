@@ -205,6 +205,6 @@ The application automatically detects its running environment:
 
 ### Development Environment
 - **Windows 10/11**: Primary development platform
-- **Docker**: Optional containerized development
+- **Windows Native**: Direct Windows development environment
 - **VS Code**: Recommended IDE with extensions
 - **Git**: Version control and collaboration 

@@ -27,15 +27,8 @@ check_versions() {
 update_nodejs() {
     echo -e "${BLUE}🔄 Updating Node.js...${NC}"
     
-    # Check if we're in a dev container
-    if [ -f /.dockerenv ]; then
-        echo -e "${YELLOW}⚠️  Running in dev container. Node.js will be updated when container is rebuilt.${NC}"
-        echo "To update Node.js, rebuild the dev container:"
-        echo "  VS Code Command Palette → 'Dev Containers: Rebuild and Reopen in Container'"
-    else
-        echo -e "${YELLOW}⚠️  Manual Node.js update required.${NC}"
-        echo "Please install Node.js v24+ from https://nodejs.org/"
-    fi
+    echo -e "${YELLOW}⚠️  Manual Node.js update required.${NC}"
+    echo "Please install Node.js v24+ from https://nodejs.org/"
     echo ""
 }
 
@@ -115,15 +108,12 @@ rebuild_instructions() {
     echo ""
     echo "To apply all framework updates:"
     echo ""
-    echo "1. ${GREEN}Rebuild Dev Container:${NC}"
-    echo "   VS Code Command Palette → 'Dev Containers: Rebuild and Reopen in Container'"
-    echo ""
-    echo "2. ${GREEN}Or manually update:${NC}"
+    echo "1. ${GREEN}Manual Update:${NC}"
     echo "   - Install Node.js v24+ from https://nodejs.org/"
     echo "   - Install latest mpv from https://mpv.io/installation/"
     echo "   - Run: npm install && cd ui && npm install"
     echo ""
-    echo "3. ${GREEN}Verify updates:${NC}"
+    echo "2. ${GREEN}Verify updates:${NC}"
     echo "   - node --version (should show v24+)"
     echo "   - mpv --version (should show latest version)"
     echo "   - npm outdated (should show minimal outdated packages)"
@@ -144,6 +134,6 @@ rebuild_instructions
 echo -e "${GREEN}✅ Framework update script completed!${NC}"
 echo ""
 echo "Next steps:"
-echo "1. Rebuild your dev container to get Node.js v24"
+echo "1. Install Node.js v24+ manually if needed"
 echo "2. Test that everything still works after the updates"
 echo "3. Run 'npm audit' to check for security issues" 

@@ -172,7 +172,7 @@ class DevResourcesManager:
         print(f"Rust: {env['rust_version']}")
         print(f"Cargo: {env['cargo_version']}")
         print(f"mpv: {env['mpv_version']}")
-        print(f"Container: {env['container_type']}")
+        print(f"Environment: {env['container_type']}")
         print(f"OS: {env['os']}")
         print()
         

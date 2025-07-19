@@ -186,7 +186,7 @@ App.tsx
 - **Logging**: Structured logging with custom LogManager
 
 ### **Frontend Development**
-- **Development**: `npm run start:docker` in `ui/`
+- **Development**: `npm start` in `ui/`
 - **Build**: `npm run build` for production
 - **Testing**: Jest and React Testing Library
 - **Linting**: ESLint with TypeScript rules
@@ -226,7 +226,7 @@ App.tsx
 - **Performance Issues**: Monitor bundle size and component re-renders
 
 ### **Development Tips**
-- **Hot Reload**: Use `npm run start:docker` for frontend development
+- **Hot Reload**: Use `npm start` for frontend development
 - **Logging**: Check `src-tauri/logs/` for detailed backend logs
 - **Type Safety**: Leverage TypeScript for catching errors early
 - **Plugin Development**: Follow the established plugin pattern
