@@ -694,7 +694,7 @@ pub async fn download_archive(
 pub async fn set_live_data_streaming(
     subsystem: String,
     enabled: bool,
-    app: State<'_, Arc<App>>,
+    _app: State<'_, Arc<App>>,
     window: tauri::Window,
 ) -> Result<serde_json::Value, String> {
     log::info!("Setting live data streaming for {}: {}", subsystem, enabled);
@@ -980,10 +980,38 @@ pub async fn obs_get_recent_events(app: State<'_, Arc<App>>) -> Result<serde_jso
 // CPU Monitoring Commands
 #[tauri::command]
 pub async fn cpu_get_process_data(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
-    log::info!("[CPU_CMD] Getting process data...");
+    // println!("🚨 [CPU_CMD] ===== CPU GET PROCESS DATA CALLED =====");
+    log::info!("[CPU_CMD] ===== CPU GET PROCESS DATA CALLED =====");
+    
+    // println!("🚨 [CPU_CMD] Triggering immediate data collection...");
+    log::info!("[CPU_CMD] Triggering immediate data collection...");
+    
+    match app.cpu_monitor_plugin().update_cpu_data().await {
+        Ok(_) => {
+            // println!("🚨 [CPU_CMD] Data collection successful");
+            log::info!("[CPU_CMD] Data collection successful");
+        },
+        Err(e) => {
+            // println!("🚨 [CPU_CMD] Failed to update CPU data: {}", e);
+            log::error!("[CPU_CMD] Failed to update CPU data: {}", e);
+        },
+    }
     
     let process_data = app.cpu_monitor_plugin().get_process_cpu_data().await;
+    
+    // println!("🚨 [CPU_CMD] Process data count: {}", process_data.len());
     log::info!("[CPU_CMD] Process data count: {}", process_data.len());
+    
+    // Log first few processes for debugging
+    for (i, process) in process_data.iter().take(3).enumerate() {
+        // println!("🚨 [CPU_CMD] Process {}: {} - CPU: {:.1}%, Memory: {:.1}MB", 
+        //     i, process.process_name, process.cpu_percent, process.memory_mb);
+        log::debug!("[CPU_CMD] Process {}: {} - CPU: {:.1}%, Memory: {:.1}MB", 
+            i, process.process_name, process.cpu_percent, process.memory_mb);
+    }
+    
+    // println!("🚨 [CPU_CMD] Returning result with {} processes", process_data.len());
+    log::info!("[CPU_CMD] Returning result with {} processes", process_data.len());
     
     Ok(serde_json::json!({
         "success": true,
@@ -993,15 +1021,35 @@ pub async fn cpu_get_process_data(app: State<'_, Arc<App>>) -> Result<serde_json
 
 #[tauri::command]
 pub async fn cpu_get_system_data(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
-    log::info!("[CPU_CMD] Getting system data...");
+    // println!("🚨 [CPU_CMD] ===== CPU GET SYSTEM DATA CALLED =====");
+    log::info!("[CPU_CMD] ===== CPU GET SYSTEM DATA CALLED =====");
+    
+    // Trigger immediate data collection
+    // println!("🚨 [CPU_CMD] Triggering immediate data collection...");
+    log::info!("[CPU_CMD] Triggering immediate data collection...");
+    match app.cpu_monitor_plugin().update_cpu_data().await {
+        Ok(_) => {
+            // println!("🚨 [CPU_CMD] Data collection successful");
+            log::info!("[CPU_CMD] Data collection successful");
+        },
+        Err(e) => {
+            // println!("🚨 [CPU_CMD] Failed to update CPU data: {}", e);
+            log::error!("[CPU_CMD] Failed to update CPU data: {}", e);
+        },
+    }
     
     let system_data = app.cpu_monitor_plugin().get_system_cpu_data().await;
+    // println!("🚨 [CPU_CMD] System data available: {}", system_data.is_some());
     log::info!("[CPU_CMD] System data available: {}", system_data.is_some());
     
-    Ok(serde_json::json!({
+    let result = serde_json::json!({
         "success": true,
         "system": system_data
-    }))
+    });
+    
+    // println!("🚨 [CPU_CMD] Returning system data");
+    log::info!("[CPU_CMD] Returning system data");
+    Ok(result)
 }
 
 #[tauri::command]
@@ -1022,5 +1070,104 @@ pub async fn cpu_update_config(app: State<'_, Arc<App>>, config: crate::plugins:
             "message": "CPU monitoring configuration updated"
         })),
         Err(e) => Err(format!("Failed to update CPU monitoring config: {}", e))
+    }
+} 
+
+// Test command to verify CPU monitor plugin works
+#[tauri::command]
+pub async fn cpu_test_plugin(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+    // println!("🚨 [CPU_TEST] ===== CPU TEST PLUGIN CALLED =====");
+    log::info!("[CPU_TEST] ===== CPU TEST PLUGIN CALLED =====");
+    
+    // println!("🚨 [CPU_TEST] CPU monitor plugin accessed successfully");
+    log::info!("[CPU_TEST] CPU monitor plugin accessed successfully");
+    
+    // Trigger immediate data collection
+    // println!("🚨 [CPU_TEST] Triggering immediate data collection...");
+    log::info!("[CPU_TEST] Triggering immediate data collection...");
+    match app.cpu_monitor_plugin().update_cpu_data().await {
+        Ok(_) => {
+            // println!("🚨 [CPU_TEST] Data collection successful");
+            log::info!("[CPU_TEST] Data collection successful");
+        },
+        Err(e) => {
+            // println!("🚨 [CPU_TEST] Data collection failed: {}", e);
+            log::error!("[CPU_TEST] Data collection failed: {}", e);
+        },
+    }
+    
+    let process_data = app.cpu_monitor_plugin().get_process_cpu_data().await;
+    // println!("🚨 [CPU_TEST] Process data count: {}", process_data.len());
+    log::info!("[CPU_TEST] Process data count: {}", process_data.len());
+    
+    let system_data = app.cpu_monitor_plugin().get_system_cpu_data().await;
+    // println!("🚨 [CPU_TEST] System data available: {}", system_data.is_some());
+    log::info!("[CPU_TEST] System data available: {}", system_data.is_some());
+    
+    // Log first few processes for debugging
+    for (i, process) in process_data.iter().take(3).enumerate() {
+        // println!("🚨 [CPU_TEST] Process {}: {} - CPU: {:.1}%, Memory: {:.1}MB", 
+        //     i, process.process_name, process.cpu_percent, process.memory_mb);
+        log::debug!("[CPU_TEST] Process {}: {} - CPU: {:.1}%, Memory: {:.1}MB", 
+            i, process.process_name, process.cpu_percent, process.memory_mb);
+    }
+    
+    let result = serde_json::json!({
+        "success": true,
+        "process_count": process_data.len(),
+        "system_available": system_data.is_some(),
+        "test_completed": true
+    });
+    
+    // println!("🚨 [CPU_TEST] Test completed successfully");
+    log::info!("[CPU_TEST] Test completed successfully");
+    Ok(result)
+} 
+
+#[tauri::command]
+pub async fn cpu_enable_monitoring(app: State<'_, Arc<App>>) -> Result<(), String> {
+    log::info!("[CPU_CMD] ===== ENABLE CPU MONITORING CALLED =====");
+    
+    match app.cpu_monitor_plugin().enable_monitoring().await {
+        Ok(_) => {
+            log::info!("[CPU_CMD] CPU monitoring enabled successfully");
+            Ok(())
+        },
+        Err(e) => {
+            log::error!("[CPU_CMD] Failed to enable CPU monitoring: {}", e);
+            Err(e.to_string())
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn cpu_disable_monitoring(app: State<'_, Arc<App>>) -> Result<(), String> {
+    log::info!("[CPU_CMD] ===== DISABLE CPU MONITORING CALLED =====");
+    
+    match app.cpu_monitor_plugin().disable_monitoring().await {
+        Ok(_) => {
+            log::info!("[CPU_CMD] CPU monitoring disabled successfully");
+            Ok(())
+        },
+        Err(e) => {
+            log::error!("[CPU_CMD] Failed to disable CPU monitoring: {}", e);
+            Err(e.to_string())
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn cpu_get_monitoring_status(app: State<'_, Arc<App>>) -> Result<bool, String> {
+    log::info!("[CPU_CMD] ===== GET CPU MONITORING STATUS CALLED =====");
+    
+    match app.cpu_monitor_plugin().is_monitoring_enabled().await {
+        Ok(enabled) => {
+            log::info!("[CPU_CMD] CPU monitoring status: {}", enabled);
+            Ok(enabled)
+        },
+        Err(e) => {
+            log::error!("[CPU_CMD] Failed to get CPU monitoring status: {}", e);
+            Err(e.to_string())
+        }
     }
 } 

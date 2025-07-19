@@ -1271,7 +1271,7 @@ impl ObsPlugin {
                         ObsConnectionStatus::Connected => "Connected",
                         ObsConnectionStatus::Authenticating => "Authenticating",
                         ObsConnectionStatus::Authenticated => "Authenticated",
-                        ObsConnectionStatus::Error(e) => "Error",
+                        ObsConnectionStatus::Error(_e) => "Error",
                     },
                     "timestamp": chrono::Utc::now().to_rfc3339()
                 })

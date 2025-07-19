@@ -94,11 +94,11 @@ const ObsWebSocketManager: React.FC = () => {
           console.error('Failed to load OBS connections:', error);
           // Set default connection on error
           setConnections([{
-            name: 'OBS Studio 1',
-            host: 'localhost',
-            port: 4455,
+      name: 'OBS Studio 1',
+      host: 'localhost',
+      port: 4455,
             enabled: true,
-            status: 'disconnected'
+      status: 'disconnected'
           }]);
         } finally {
           setLoading(false);
@@ -155,7 +155,7 @@ const ObsWebSocketManager: React.FC = () => {
       if (!document.hidden) {
         console.log('Component became visible, refreshing connections...');
         refreshConnections();
-      }
+        }
     };
 
     const handleFocus = () => {
@@ -414,9 +414,9 @@ const ObsWebSocketManager: React.FC = () => {
             >
               Force Refresh
             </Button>
-            <Button onClick={addConnection} variant="primary" size="sm">
-              Add Connection
-            </Button>
+          <Button onClick={addConnection} variant="primary" size="sm">
+            Add Connection
+          </Button>
           </div>
         </div>
 
@@ -428,80 +428,80 @@ const ObsWebSocketManager: React.FC = () => {
             <p className="text-gray-400">No OBS connections found. Add one to get started!</p>
           ) : (
             connections.map((connection) => (
-              <motion.div
-                key={connection.name}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-gray-700 rounded-lg p-4 border border-gray-600"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <div className="flex items-center space-x-2">
-                      <StatusDot color={
-                        connection.status === 'connected' ? 'bg-green-500' :
-                        connection.status === 'error' ? 'bg-red-500' :
-                        connection.status === 'connecting' ? 'bg-yellow-500' :
-                        'bg-gray-500'
-                      } />
-                      <span className="text-white font-medium">{connection.name}</span>
-                    </div>
-                    <span className="text-gray-400">
-                      {connection.host}:{connection.port}
-                    </span>
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${
-                      connection.status === 'connected' ? 'bg-green-600 text-white' :
-                      connection.status === 'connecting' ? 'bg-yellow-600 text-white' :
-                      connection.status === 'error' ? 'bg-red-600 text-white' :
-                      'bg-gray-600 text-white'
-                    }`}>
-                      {getStatusText(connection.status)}
-                    </span>
-                  </div>
-                  
+            <motion.div
+              key={connection.name}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-gray-700 rounded-lg p-4 border border-gray-600"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
                   <div className="flex items-center space-x-2">
-                    {connection.status === 'disconnected' && (
-                      <Button
-                        onClick={() => connectToObs(connection.name)}
-                        variant="primary"
-                        size="sm"
-                      >
-                        Connect
-                      </Button>
-                    )}
-                    {connection.status === 'connected' && (
-                      <Button
-                        onClick={() => disconnectFromObs(connection.name)}
-                        variant="secondary"
-                        size="sm"
-                      >
-                        Disconnect
-                      </Button>
-                    )}
-                    {connection.status === 'connecting' && (
-                      <Button
-                        disabled
-                        variant="secondary"
-                        size="sm"
-                      >
-                        Connecting...
-                      </Button>
-                    )}
-                    <Button
-                      onClick={() => removeConnection(connection.name)}
-                      variant="danger"
-                      size="sm"
-                    >
-                      Remove
-                    </Button>
+                    <StatusDot color={
+                      connection.status === 'connected' ? 'bg-green-500' :
+                      connection.status === 'error' ? 'bg-red-500' :
+                      connection.status === 'connecting' ? 'bg-yellow-500' :
+                      'bg-gray-500'
+                    } />
+                    <span className="text-white font-medium">{connection.name}</span>
                   </div>
+                  <span className="text-gray-400">
+                    {connection.host}:{connection.port}
+                  </span>
+                  <span className={`px-2 py-1 rounded text-xs font-medium ${
+                    connection.status === 'connected' ? 'bg-green-600 text-white' :
+                    connection.status === 'connecting' ? 'bg-yellow-600 text-white' :
+                    connection.status === 'error' ? 'bg-red-600 text-white' :
+                    'bg-gray-600 text-white'
+                  }`}>
+                    {getStatusText(connection.status)}
+                  </span>
                 </div>
                 
-                {connection.error && (
-                  <div className="mt-2 p-2 bg-red-900/20 border border-red-700 rounded text-red-400 text-sm">
-                    Error: {connection.error}
-                  </div>
-                )}
-              </motion.div>
+                <div className="flex items-center space-x-2">
+                  {connection.status === 'disconnected' && (
+                    <Button
+                      onClick={() => connectToObs(connection.name)}
+                      variant="primary"
+                      size="sm"
+                    >
+                      Connect
+                    </Button>
+                  )}
+                  {connection.status === 'connected' && (
+                    <Button
+                      onClick={() => disconnectFromObs(connection.name)}
+                      variant="secondary"
+                      size="sm"
+                    >
+                      Disconnect
+                    </Button>
+                  )}
+                  {connection.status === 'connecting' && (
+                    <Button
+                      disabled
+                      variant="secondary"
+                      size="sm"
+                    >
+                      Connecting...
+                    </Button>
+                  )}
+                  <Button
+                    onClick={() => removeConnection(connection.name)}
+                    variant="danger"
+                    size="sm"
+                  >
+                    Remove
+                  </Button>
+                </div>
+              </div>
+              
+              {connection.error && (
+                <div className="mt-2 p-2 bg-red-900/20 border border-red-700 rounded text-red-400 text-sm">
+                  Error: {connection.error}
+                </div>
+              )}
+            </motion.div>
             ))
           )}
         </div>

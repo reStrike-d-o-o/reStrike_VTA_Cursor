@@ -24,7 +24,7 @@ pub struct App {
 impl App {
     /// Create a new application instance
     pub async fn new() -> AppResult<Self> {
-        println!("🚀 Creating new application instance...");
+        log::info!("🚀 Creating new application instance...");
         
         let state = Arc::new(RwLock::new(AppState::default()));
         
@@ -32,6 +32,7 @@ impl App {
         let config_dir = PathBuf::from("config");
         let config_manager = ConfigManager::new(&config_dir)
             .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to initialize config manager: {}", e)))?;
+        log::info!("✅ Configuration manager initialized");
         
         // Create event channels for plugins
         let (obs_event_tx, _obs_event_rx) = tokio::sync::mpsc::unbounded_channel();
@@ -48,16 +49,27 @@ impl App {
         
         // Initialize plugins
         let obs_plugin = ObsPlugin::new(obs_event_tx);
+        log::info!("✅ OBS plugin initialized");
+        
         let playback_plugin = PlaybackPlugin::new(crate::plugins::plugin_playback::PlaybackConfig::default(), playback_event_tx);
+        log::info!("✅ Playback plugin initialized");
+        
         let udp_plugin = UdpPlugin::new(crate::plugins::plugin_udp::UdpServerConfig::default(), udp_event_tx);
+        log::info!("✅ UDP plugin initialized");
+        
         let store_plugin = StorePlugin::new();
+        log::info!("✅ Store plugin initialized");
+        
         let license_plugin = LicensePlugin::new();
+        log::info!("✅ License plugin initialized");
+        
         let cpu_monitor_plugin = CpuMonitorPlugin::new(crate::plugins::CpuMonitorConfig::default());
+        log::info!("✅ CPU monitor plugin initialized");
         
         // Load OBS connections from config manager
         let config_connections = config_manager.get_obs_connections().await;
         if let Err(e) = obs_plugin.load_connections_from_config(config_connections).await {
-            println!("⚠️ Warning: Failed to load OBS connections from config: {}", e);
+            log::warn!("⚠️ Warning: Failed to load OBS connections from config: {}", e);
         }
         
         Ok(Self {
