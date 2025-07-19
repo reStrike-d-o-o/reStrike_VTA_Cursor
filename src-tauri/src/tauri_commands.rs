@@ -82,16 +82,18 @@ pub async fn obs_add_connection(
     host: String,
     port: u16,
     password: Option<String>,
-    protocolVersion: String,
     enabled: bool,
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, String> {
     log::info!("OBS add connection called: {}@{}:{}", name, host, port);
     
-    let version = match protocolVersion.as_str() {
-        "v5" => crate::plugins::plugin_obs::ObsWebSocketVersion::V5,
-        _ => crate::plugins::plugin_obs::ObsWebSocketVersion::V5, // Default to v5
-    };
+    // Always use v5 protocol
+    let version = crate::plugins::plugin_obs::ObsWebSocketVersion::V5;
+    
+    // Clone values before moving them
+    let name_clone = name.clone();
+    let host_clone = host.clone();
+    let password_clone = password.clone();
     
     let config = crate::plugins::plugin_obs::ObsConnectionConfig {
         name,
@@ -106,11 +108,11 @@ pub async fn obs_add_connection(
         Ok(_) => {
             // Also save to configuration manager
             let config_conn = crate::config::ObsConnectionConfig {
-                name: name.clone(),
-                host: host.clone(),
+                name: name_clone,
+                host: host_clone,
                 port,
-                password,
-                protocol_version: protocolVersion,
+                password: password_clone,
+                protocol_version: "v5".to_string(), // Always v5
                 enabled,
                 timeout_seconds: 30,
                 auto_reconnect: true,
@@ -118,19 +120,13 @@ pub async fn obs_add_connection(
             };
             
             // Get current connections and add new one
-            match app.config_manager().get_obs_connections().await {
-                Ok(mut connections) => {
-                    // Remove existing connection with same name if it exists
-                    connections.retain(|c| c.name != config_conn.name);
-                    connections.push(config_conn);
-                    
-                    if let Err(e) = app.config_manager().update_obs_connections(connections).await {
-                        log::warn!("Failed to save connection to config: {}", e);
-                    }
-                }
-                Err(e) => {
-                    log::warn!("Failed to get current connections: {}", e);
-                }
+            let mut connections = app.config_manager().get_obs_connections().await;
+            // Remove existing connection with same name if it exists
+            connections.retain(|c| c.name != config_conn.name);
+            connections.push(config_conn);
+            
+            if let Err(e) = app.config_manager().update_obs_connections(connections).await {
+                log::warn!("Failed to save connection to config: {}", e);
             }
             
             Ok(serde_json::json!({
@@ -198,46 +194,39 @@ pub async fn obs_get_connection_status(
 pub async fn obs_get_connections(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
     log::info!("OBS get connections called");
     
-    match app.config_manager().get_obs_connections().await {
-        Ok(connections) => {
-            let mut connection_details = Vec::new();
-            
-            for conn in connections {
-                // Get actual status from OBS plugin if available
-                let status_str = if let Some(status) = app.obs_plugin().get_connection_status(&conn.name).await {
-                    match status {
-                        crate::plugins::plugin_obs::ObsConnectionStatus::Disconnected => "Disconnected",
-                        crate::plugins::plugin_obs::ObsConnectionStatus::Connecting => "Connecting",
-                        crate::plugins::plugin_obs::ObsConnectionStatus::Connected => "Connected",
-                        crate::plugins::plugin_obs::ObsConnectionStatus::Authenticating => "Authenticating",
-                        crate::plugins::plugin_obs::ObsConnectionStatus::Authenticated => "Authenticated",
-                        crate::plugins::plugin_obs::ObsConnectionStatus::Error(_) => "Error",
-                    }
-                } else {
-                    "Disconnected"
-                };
-                
-                connection_details.push(serde_json::json!({
-                    "name": conn.name,
-                    "host": conn.host,
-                    "port": conn.port,
-                    "password": conn.password,
-                    "protocol_version": conn.protocol_version,
-                    "enabled": conn.enabled,
-                    "status": status_str
-                }));
+    let connections = app.config_manager().get_obs_connections().await;
+    let mut connection_details = Vec::new();
+    
+    for conn in connections {
+        // Get actual status from OBS plugin if available
+        let status_str = if let Some(status) = app.obs_plugin().get_connection_status(&conn.name).await {
+            match status {
+                crate::plugins::plugin_obs::ObsConnectionStatus::Disconnected => "Disconnected",
+                crate::plugins::plugin_obs::ObsConnectionStatus::Connecting => "Connecting",
+                crate::plugins::plugin_obs::ObsConnectionStatus::Connected => "Connected",
+                crate::plugins::plugin_obs::ObsConnectionStatus::Authenticating => "Authenticating",
+                crate::plugins::plugin_obs::ObsConnectionStatus::Authenticated => "Authenticated",
+                crate::plugins::plugin_obs::ObsConnectionStatus::Error(_) => "Error",
             }
-            
-            Ok(serde_json::json!({
-                "success": true,
-                "connections": connection_details
-            }))
-        }
-        Err(e) => Ok(serde_json::json!({
-            "success": false,
-            "error": e.to_string()
-        }))
+        } else {
+            "Disconnected"
+        };
+        
+        connection_details.push(serde_json::json!({
+            "name": conn.name,
+            "host": conn.host,
+            "port": conn.port,
+            "password": conn.password,
+            "protocol_version": conn.protocol_version,
+            "enabled": conn.enabled,
+            "status": status_str
+        }));
     }
+    
+    Ok(serde_json::json!({
+        "success": true,
+        "connections": connection_details
+    }))
 }
 
 #[tauri::command]
@@ -258,17 +247,11 @@ pub async fn obs_remove_connection(connection_name: String, app: State<'_, Arc<A
     app.obs_plugin().remove_connection(&connection_name).await.map_err(|e| e.to_string())?;
     
     // Also remove from configuration manager
-    match app.config_manager().get_obs_connections().await {
-        Ok(mut connections) => {
-            connections.retain(|c| c.name != connection_name);
-            
-            if let Err(e) = app.config_manager().update_obs_connections(connections).await {
-                log::warn!("Failed to remove connection from config: {}", e);
-            }
-        }
-        Err(e) => {
-            log::warn!("Failed to get current connections: {}", e);
-        }
+    let mut connections = app.config_manager().get_obs_connections().await;
+    connections.retain(|c| c.name != connection_name);
+    
+    if let Err(e) = app.config_manager().update_obs_connections(connections).await {
+        log::warn!("Failed to remove connection from config: {}", e);
     }
     
     Ok(serde_json::json!({
@@ -454,14 +437,10 @@ pub async fn get_license_status(_app: State<'_, Arc<App>>) -> Result<String, Str
 pub async fn get_settings(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
     log::info!("Getting application settings");
     
-    match app.config_manager().get_config().await {
-        Ok(config) => {
-            let config_json = serde_json::to_value(config)
-                .map_err(|e| format!("Failed to serialize config: {}", e))?;
-            Ok(config_json)
-        }
-        Err(e) => Err(format!("Failed to get settings: {}", e))
-    }
+    let config = app.config_manager().get_config().await;
+    let config_json = serde_json::to_value(config)
+        .map_err(|e| format!("Failed to serialize config: {}", e))?;
+    Ok(config_json)
 }
 
 #[tauri::command]

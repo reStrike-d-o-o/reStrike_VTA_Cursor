@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Label from '../atoms/Label';
 import Checkbox from '../atoms/Checkbox';
-import { diagLogsCommands } from '../../utils/tauriCommands';
+import { diagLogsCommands, configCommands } from '../../utils/tauriCommands';
 
 type LogType = 'pss' | 'obs' | 'udp';
 
@@ -15,6 +15,57 @@ const LogToggleGroup: React.FC = () => {
   const [logging, setLogging] = useState<Record<LogType, boolean>>({ pss: true, obs: false, udp: true });
   const [loading, setLoading] = useState<Record<LogType, boolean>>({ pss: false, obs: false, udp: false });
   const [errors, setErrors] = useState<Record<LogType, string>>({ pss: '', obs: '', udp: '' });
+  const [isLoadingSettings, setIsLoadingSettings] = useState(true);
+
+  // Load logging settings from configuration
+  const loadLoggingSettings = async () => {
+    try {
+      setIsLoadingSettings(true);
+      const result = await configCommands.getSettings();
+      if (result.success && result.data?.logging?.subsystems) {
+        const subsystems = result.data.logging.subsystems;
+        setLogging({
+          pss: subsystems.pss?.enabled ?? true,
+          obs: subsystems.obs?.enabled ?? false,
+          udp: subsystems.udp?.enabled ?? true,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to load logging settings:', error);
+    } finally {
+      setIsLoadingSettings(false);
+    }
+  };
+
+  // Save logging settings to configuration
+  const saveLoggingSettings = async (newSettings: Record<LogType, boolean>) => {
+    try {
+      const result = await configCommands.getSettings();
+      if (result.success) {
+        const updatedSettings = {
+          ...result.data,
+          logging: {
+            ...result.data.logging,
+            subsystems: {
+              ...result.data.logging.subsystems,
+              pss: { name: 'pss', level: 'info', enabled: newSettings.pss, custom_file: null },
+              obs: { name: 'obs', level: 'info', enabled: newSettings.obs, custom_file: null },
+              udp: { name: 'udp', level: 'info', enabled: newSettings.udp, custom_file: null },
+            },
+          },
+        };
+        await configCommands.updateSettings(updatedSettings);
+        console.log('Logging settings saved successfully');
+      }
+    } catch (error) {
+      console.error('Failed to save logging settings:', error);
+    }
+  };
+
+  // Load settings on component mount
+  useEffect(() => {
+    loadLoggingSettings();
+  }, []);
 
   const handleToggle = async (key: LogType) => {
     const newValue = !logging[key];
@@ -23,12 +74,18 @@ const LogToggleGroup: React.FC = () => {
     setLogging(prev => ({ ...prev, [key]: newValue })); // Optimistic update
     
     try {
+      // Update backend logging state
       const result = await diagLogsCommands.setLoggingEnabled(key, newValue);
       if (!result.success) {
         // Revert on error
         setLogging(prev => ({ ...prev, [key]: !newValue }));
         setErrors(prev => ({ ...prev, [key]: result.error || 'Failed to update logging' }));
+        return;
       }
+
+      // Save to configuration system
+      const newSettings = { ...logging, [key]: newValue };
+      await saveLoggingSettings(newSettings);
     } catch (error) {
       // Revert on exception
       setLogging(prev => ({ ...prev, [key]: !newValue }));
@@ -37,6 +94,15 @@ const LogToggleGroup: React.FC = () => {
       setLoading(prev => ({ ...prev, [key]: false }));
     }
   };
+
+  if (isLoadingSettings) {
+    return (
+      <div className="bg-[#181F26] rounded-lg p-4 mb-6 border border-gray-700 shadow">
+        <h3 className="text-lg font-semibold mb-2 text-blue-300">Logging</h3>
+        <div className="text-sm text-gray-400">Loading settings...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-[#181F26] rounded-lg p-4 mb-6 border border-gray-700 shadow">

@@ -7,20 +7,37 @@ import { Icon } from '../atoms/Icon';
 import { useAppStore, ObsConnection } from '../../stores';
 import { obsCommands, configCommands } from '../../utils/tauriCommands';
 
+// Reconnection settings interface
+interface ReconnectionSettings {
+  autoReconnect: boolean;
+  reconnectDelay: number;
+  maxAttempts: number;
+  statusMonitoring: boolean;
+  statusInterval: number;
+}
+
 const WebSocketManager: React.FC = () => {
   const { obsConnections, addObsConnection, removeObsConnection, updateObsConnectionStatus, setActiveObsConnection, activeObsConnection } = useAppStore();
   
   const [isAdding, setIsAdding] = useState(false);
   const [editingConnection, setEditingConnection] = useState<string | null>(null);
+  const [showReconnectionSettings, setShowReconnectionSettings] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     host: 'localhost',
     port: 4455,
     password: '',
-    protocol_version: 'v5' as 'v5',
     enabled: true,
   });
+  const [reconnectionSettings, setReconnectionSettings] = useState<ReconnectionSettings>({
+    autoReconnect: true,
+    reconnectDelay: 5,
+    maxAttempts: 5,
+    statusMonitoring: true,
+    statusInterval: 30,
+  });
   const [error, setError] = useState<string | null>(null);
+  const [isLoadingSettings, setIsLoadingSettings] = useState(false);
 
   const resetForm = () => {
     setFormData({
@@ -28,7 +45,6 @@ const WebSocketManager: React.FC = () => {
       host: 'localhost',
       port: 4455,
       password: '',
-      protocol_version: 'v5',
       enabled: true,
     });
     setError(null);
@@ -37,7 +53,62 @@ const WebSocketManager: React.FC = () => {
   // Load connections from backend on component mount
   useEffect(() => {
     loadConnections();
+    loadReconnectionSettings();
   }, []);
+
+  // Load reconnection settings from configuration
+  const loadReconnectionSettings = async () => {
+    try {
+      setIsLoadingSettings(true);
+      const result = await configCommands.getSettings();
+      if (result.success && result.data?.obs?.behavior) {
+        const behavior = result.data.obs.behavior;
+        setReconnectionSettings({
+          autoReconnect: behavior.auto_reconnect ?? true,
+          reconnectDelay: behavior.reconnect_delay ?? 5,
+          maxAttempts: behavior.max_attempts ?? 5,
+          statusMonitoring: behavior.status_monitoring ?? true,
+          statusInterval: behavior.status_interval ?? 30,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to load reconnection settings:', error);
+    } finally {
+      setIsLoadingSettings(false);
+    }
+  };
+
+  // Save reconnection settings to configuration
+  const saveReconnectionSettings = async () => {
+    try {
+      setIsLoadingSettings(true);
+      const result = await configCommands.getSettings();
+      if (result.success && result.data) {
+        const updatedSettings = {
+          ...result.data,
+          obs: {
+            ...result.data.obs,
+            behavior: {
+              ...result.data.obs.behavior,
+              auto_reconnect: reconnectionSettings.autoReconnect,
+              reconnect_delay: reconnectionSettings.reconnectDelay,
+              max_attempts: reconnectionSettings.maxAttempts,
+              status_monitoring: reconnectionSettings.statusMonitoring,
+              status_interval: reconnectionSettings.statusInterval,
+            },
+          },
+        };
+        
+        await configCommands.updateSettings(updatedSettings);
+        console.log('Reconnection settings saved successfully');
+      }
+    } catch (error) {
+      console.error('Failed to save reconnection settings:', error);
+      setError(`Failed to save reconnection settings: ${error}`);
+    } finally {
+      setIsLoadingSettings(false);
+    }
+  };
 
   const loadConnections = async () => {
     try {
@@ -49,7 +120,6 @@ const WebSocketManager: React.FC = () => {
           host: conn.host,
           port: conn.port,
           password: conn.password,
-          protocol_version: conn.protocol_version,
           enabled: conn.enabled,
           status: 'Disconnected' as const, // Will be updated by status check
           error: undefined,
@@ -57,25 +127,22 @@ const WebSocketManager: React.FC = () => {
         
         // Update frontend store with configuration connections
         obsConnections.forEach(conn => removeObsConnection(conn.name));
-        configConnections.forEach(conn => addObsConnection(conn));
+        configConnections.forEach((conn: ObsConnection) => addObsConnection(conn));
         
-        // Also ensure connections are in the OBS plugin
-        const obsResult = await obsCommands.getConnections();
-        if (obsResult.success && obsResult.data) {
-          const obsConnections = obsResult.data.map((conn: any) => conn.name);
-          
-          // Add any missing connections to OBS plugin
-          for (const conn of configConnections) {
-            if (!obsConnections.includes(conn.name)) {
-              await obsCommands.addConnection({
-                name: conn.name,
-                host: conn.host,
-                port: conn.port,
-                password: conn.password,
-                protocol_version: conn.protocol_version,
-                enabled: conn.enabled,
-              });
-            }
+        // Ensure all config connections are registered with the OBS plugin
+        console.log('Syncing config connections to OBS plugin...');
+        for (const conn of configConnections) {
+          try {
+            await obsCommands.addConnection({
+              name: conn.name,
+              host: conn.host,
+              port: conn.port,
+              password: conn.password,
+              enabled: conn.enabled,
+            });
+            console.log(`Synced connection ${conn.name} to OBS plugin`);
+          } catch (error) {
+            console.log(`Connection ${conn.name} already exists in OBS plugin (expected)`);
           }
         }
       } else {
@@ -84,24 +151,23 @@ const WebSocketManager: React.FC = () => {
         if (result.success && result.data) {
           // Update store with connections from backend
           console.log('Loaded connections from backend:', result.data);
+          const backendConnections = result.data.map((conn: any) => ({
+            name: conn.name,
+            host: conn.host,
+            port: conn.port,
+            password: conn.password,
+            enabled: conn.enabled,
+            status: conn.status || 'Disconnected',
+            error: undefined,
+          }));
+          
+          // Update frontend store
+          obsConnections.forEach(conn => removeObsConnection(conn.name));
+          backendConnections.forEach((conn: ObsConnection) => addObsConnection(conn));
         } else {
-          // If no connections in backend, sync frontend connections to backend
-          console.log('No connections in backend, syncing frontend connections...');
-          for (const connection of obsConnections) {
-            try {
-              await obsCommands.addConnection({
-                name: connection.name,
-                host: connection.host,
-                port: connection.port,
-                password: connection.password || undefined,
-                protocol_version: connection.protocol_version,
-                enabled: connection.enabled,
-              });
-              console.log(`Synced connection ${connection.name} to backend`);
-            } catch (error) {
-              console.error(`Failed to sync connection ${connection.name}:`, error);
-            }
-          }
+          // If no connections anywhere, initialize with empty state
+          console.log('No connections found, initializing empty state');
+          obsConnections.forEach(conn => removeObsConnection(conn.name));
         }
       }
     } catch (error) {
@@ -131,7 +197,6 @@ const WebSocketManager: React.FC = () => {
         host: formData.host,
         port: formData.port,
         password: formData.password || undefined,
-        protocol_version: formData.protocol_version,
         enabled: formData.enabled,
       });
 
@@ -154,7 +219,6 @@ const WebSocketManager: React.FC = () => {
       host: connection.host,
       port: connection.port,
       password: connection.password || '',
-      protocol_version: connection.protocol_version,
       enabled: connection.enabled,
     });
   };
@@ -202,7 +266,6 @@ const WebSocketManager: React.FC = () => {
         host: formData.host,
         port: formData.port,
         password: finalPassword || undefined,
-        protocol_version: formData.protocol_version,
         enabled: formData.enabled,
       });
 
@@ -378,20 +441,6 @@ const WebSocketManager: React.FC = () => {
               />
             </div>
 
-            <div>
-              <Label htmlFor="connection-protocol">Protocol Version</Label>
-              <select
-                id="connection-protocol"
-                value={formData.protocol_version}
-                onChange={(e) => setFormData({ ...formData, protocol_version: e.target.value as 'v5' })}
-                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500"
-                title="OBS WebSocket protocol version"
-                aria-label="OBS WebSocket protocol version"
-              >
-                <option value="v5">OBS WebSocket v5</option>
-              </select>
-            </div>
-
             <div className="flex items-center">
               <label className="flex items-center space-x-2">
                 <input
@@ -454,7 +503,7 @@ const WebSocketManager: React.FC = () => {
                   </div>
                   
                   <div className="text-sm text-gray-400 space-y-1">
-                    <div>{connection.host}:{connection.port} ({connection.protocol_version})</div>
+                    <div>{connection.host}:{connection.port} (v5)</div>
                     {connection.password && <div>Password: {'•'.repeat(8)}</div>}
                     {connection.error && (
                       <div className="text-red-400">Error: {connection.error}</div>
@@ -507,6 +556,134 @@ const WebSocketManager: React.FC = () => {
               </div>
             </div>
           ))
+        )}
+      </div>
+
+      {/* Reconnection Settings */}
+      <div className="p-4 bg-gray-800 rounded-lg border border-gray-700">
+        <div className="flex items-center justify-between mb-3">
+          <h4 className="text-md font-medium">Global Reconnection Settings</h4>
+          <Button
+            onClick={() => setShowReconnectionSettings(!showReconnectionSettings)}
+            variant="secondary"
+            size="sm"
+          >
+            <Icon name={showReconnectionSettings ? "🔽" : "🔼"} />
+            {showReconnectionSettings ? 'Hide' : 'Show'} Settings
+          </Button>
+        </div>
+        
+        {showReconnectionSettings && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="auto-reconnect"
+                  checked={reconnectionSettings.autoReconnect}
+                  onChange={(e) => setReconnectionSettings({
+                    ...reconnectionSettings,
+                    autoReconnect: e.target.checked
+                  })}
+                  className="rounded border-gray-600 bg-gray-700 text-blue-500 focus:ring-blue-500"
+                  title="Enable automatic reconnection when connection is lost"
+                  aria-label="Auto-reconnect on connection loss"
+                />
+                <Label htmlFor="auto-reconnect">Auto-reconnect on connection loss</Label>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="status-monitoring"
+                  checked={reconnectionSettings.statusMonitoring}
+                  onChange={(e) => setReconnectionSettings({
+                    ...reconnectionSettings,
+                    statusMonitoring: e.target.checked
+                  })}
+                  className="rounded border-gray-600 bg-gray-700 text-blue-500 focus:ring-blue-500"
+                  title="Enable continuous monitoring of connection status"
+                  aria-label="Enable connection status monitoring"
+                />
+                <Label htmlFor="status-monitoring">Enable connection status monitoring</Label>
+              </div>
+              
+              <div>
+                <Label htmlFor="reconnect-delay">Reconnection Delay (seconds)</Label>
+                <Input
+                  id="reconnect-delay"
+                  type="number"
+                  value={reconnectionSettings.reconnectDelay}
+                  onChange={(e) => setReconnectionSettings({
+                    ...reconnectionSettings,
+                    reconnectDelay: parseInt(e.target.value) || 5
+                  })}
+                  min="1"
+                  max="60"
+                  placeholder="5"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="max-attempts">Maximum Reconnection Attempts</Label>
+                <Input
+                  id="max-attempts"
+                  type="number"
+                  value={reconnectionSettings.maxAttempts}
+                  onChange={(e) => setReconnectionSettings({
+                    ...reconnectionSettings,
+                    maxAttempts: parseInt(e.target.value) || 5
+                  })}
+                  min="1"
+                  max="20"
+                  placeholder="5"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="status-interval">Status Check Interval (seconds)</Label>
+                <Input
+                  id="status-interval"
+                  type="number"
+                  value={reconnectionSettings.statusInterval}
+                  onChange={(e) => setReconnectionSettings({
+                    ...reconnectionSettings,
+                    statusInterval: parseInt(e.target.value) || 30
+                  })}
+                  min="5"
+                  max="300"
+                  placeholder="30"
+                />
+              </div>
+            </div>
+            
+            <div className="flex space-x-2">
+              <Button
+                onClick={saveReconnectionSettings}
+                variant="primary"
+                size="sm"
+                disabled={isLoadingSettings}
+              >
+                <Icon name="💾" />
+                Save Reconnection Settings
+              </Button>
+              <Button
+                onClick={loadReconnectionSettings}
+                variant="secondary"
+                size="sm"
+                disabled={isLoadingSettings}
+              >
+                <Icon name="🔄" />
+                Reload Settings
+              </Button>
+            </div>
+            
+            {error && (
+              <div className="p-2 bg-red-900/20 border border-red-700 rounded text-red-400 text-sm">
+                {error}
+              </div>
+            )}
+          </div>
         )}
       </div>
 

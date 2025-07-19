@@ -132,16 +132,13 @@ export const obsCommands = {
     host: string;
     port: number;
     password?: string;
-    protocol_version: string;
     enabled: boolean;
   }) {
-    // Convert snake_case to camelCase for Tauri parameter naming
     const tauriParams = {
       name: params.name,
       host: params.host,
       port: params.port,
       password: params.password,
-      protocolVersion: params.protocol_version, // Convert to camelCase
       enabled: params.enabled,
     };
     return executeTauriCommand('obs_add_connection', tauriParams);

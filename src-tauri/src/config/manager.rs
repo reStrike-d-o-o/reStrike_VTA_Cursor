@@ -101,7 +101,7 @@ impl ConfigManager {
     }
     
     /// Update OBS connections
-    pub async fn update_obs_connections(&self, connections: Vec<crate::config::ObsConnectionConfig>) -> AppResult<()> {
+    pub async fn update_obs_connections(&self, _connections: Vec<crate::config::ObsConnectionConfig>) -> AppResult<()> {
         self.update_section(|config| &mut config.obs.connections).await?;
         Ok(())
     }
@@ -112,7 +112,7 @@ impl ConfigManager {
     }
     
     /// Update UDP settings
-    pub async fn update_udp_settings(&self, udp_settings: crate::config::UdpSettings) -> AppResult<()> {
+    pub async fn update_udp_settings(&self, _udp_settings: crate::config::UdpSettings) -> AppResult<()> {
         self.update_section(|config| &mut config.udp).await?;
         Ok(())
     }
@@ -123,7 +123,7 @@ impl ConfigManager {
     }
     
     /// Update logging settings
-    pub async fn update_logging_settings(&self, logging_settings: crate::config::LoggingSettings) -> AppResult<()> {
+    pub async fn update_logging_settings(&self, _logging_settings: crate::config::LoggingSettings) -> AppResult<()> {
         self.update_section(|config| &mut config.logging).await?;
         Ok(())
     }
@@ -134,7 +134,7 @@ impl ConfigManager {
     }
     
     /// Update UI settings
-    pub async fn update_ui_settings(&self, ui_settings: crate::config::UiSettings) -> AppResult<()> {
+    pub async fn update_ui_settings(&self, _ui_settings: crate::config::UiSettings) -> AppResult<()> {
         self.update_section(|config| &mut config.ui).await?;
         Ok(())
     }
@@ -145,7 +145,7 @@ impl ConfigManager {
     }
     
     /// Update video settings
-    pub async fn update_video_settings(&self, video_settings: crate::config::VideoSettings) -> AppResult<()> {
+    pub async fn update_video_settings(&self, _video_settings: crate::config::VideoSettings) -> AppResult<()> {
         self.update_section(|config| &mut config.video).await?;
         Ok(())
     }
@@ -156,7 +156,7 @@ impl ConfigManager {
     }
     
     /// Update license settings
-    pub async fn update_license_settings(&self, license_settings: crate::config::LicenseSettings) -> AppResult<()> {
+    pub async fn update_license_settings(&self, _license_settings: crate::config::LicenseSettings) -> AppResult<()> {
         self.update_section(|config| &mut config.license).await?;
         Ok(())
     }
@@ -167,7 +167,7 @@ impl ConfigManager {
     }
     
     /// Update flag settings
-    pub async fn update_flag_settings(&self, flag_settings: crate::config::FlagSettings) -> AppResult<()> {
+    pub async fn update_flag_settings(&self, _flag_settings: crate::config::FlagSettings) -> AppResult<()> {
         self.update_section(|config| &mut config.flags).await?;
         Ok(())
     }
@@ -178,7 +178,7 @@ impl ConfigManager {
     }
     
     /// Update advanced settings
-    pub async fn update_advanced_settings(&self, advanced_settings: crate::config::AdvancedSettings) -> AppResult<()> {
+    pub async fn update_advanced_settings(&self, _advanced_settings: crate::config::AdvancedSettings) -> AppResult<()> {
         self.update_section(|config| &mut config.advanced).await?;
         Ok(())
     }
