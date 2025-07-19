@@ -224,8 +224,6 @@ const WebSocketManager: React.FC = () => {
   };
 
   const handleUpdateConnection = async () => {
-    if (!editingConnection) return;
-
     if (!formData.name.trim()) {
       setError('Connection name is required');
       return;
@@ -241,6 +239,12 @@ const WebSocketManager: React.FC = () => {
       return;
     }
 
+    // Ensure editingConnection is not null
+    if (!editingConnection) {
+      setError('No connection being edited');
+      return;
+    }
+
     try {
       // Ensure password is preserved - if formData.password is empty but we're editing,
       // try to get the password from the original connection
@@ -252,6 +256,7 @@ const WebSocketManager: React.FC = () => {
         }
       }
 
+      // Only update the configuration, don't connect
       // First, remove the old connection from backend
       try {
         await obsCommands.removeConnection(editingConnection);
@@ -260,7 +265,7 @@ const WebSocketManager: React.FC = () => {
         console.log('Remove connection error (expected if not found):', error);
       }
 
-      // Add the updated connection to backend
+      // Add the updated connection to backend (this only saves settings, doesn't connect)
       const result = await obsCommands.addConnection({
         name: formData.name,
         host: formData.host,
@@ -273,7 +278,7 @@ const WebSocketManager: React.FC = () => {
         // Remove old connection from frontend store
         removeObsConnection(editingConnection);
         
-        // Add updated connection to frontend store
+        // Add updated connection to frontend store (status will be set to Disconnected by default)
         addObsConnection({
           ...formData,
           password: finalPassword,
@@ -282,10 +287,10 @@ const WebSocketManager: React.FC = () => {
         resetForm();
         setEditingConnection(null);
       } else {
-        setError(result.error || 'Failed to update connection');
+        setError(result.error || 'Failed to save connection settings');
       }
     } catch (error) {
-      setError(`Failed to update connection: ${error}`);
+      setError(`Failed to save connection settings: ${error}`);
     }
   };
 
@@ -460,7 +465,7 @@ const WebSocketManager: React.FC = () => {
               variant="primary"
               size="sm"
             >
-              {editingConnection ? 'Update' : 'Add'} Connection
+              {editingConnection ? 'Save Connection Settings' : 'Add'} Connection
             </Button>
             <Button
               onClick={() => {
