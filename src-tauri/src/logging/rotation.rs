@@ -6,6 +6,14 @@ pub struct LogRotator {
     max_file_size: u64,
 }
 
+impl Clone for LogRotator {
+    fn clone(&self) -> Self {
+        Self {
+            max_file_size: self.max_file_size,
+        }
+    }
+}
+
 impl LogRotator {
     pub fn new(max_file_size: u64) -> Self {
         Self { max_file_size }

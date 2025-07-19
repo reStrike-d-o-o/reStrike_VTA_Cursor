@@ -580,35 +580,6 @@ pub async fn system_open_file_dialog(_app: State<'_, Arc<App>>) -> Result<Vec<St
 }
 
 // Diagnostics & Logs commands
-#[tauri::command]
-pub async fn set_logging_enabled(
-    subsystem: String,
-    enabled: bool,
-    app: State<'_, Arc<App>>,
-) -> Result<serde_json::Value, String> {
-    log::info!("set_logging_enabled: {} -> {}", subsystem, enabled);
-    
-    // Prevent disabling the "app" subsystem as it's needed for system logging
-    if subsystem == "app" && !enabled {
-        return Ok(serde_json::json!({
-            "success": false,
-            "error": "Cannot disable 'app' subsystem logging as it's required for system operations"
-        }));
-    }
-    
-    // Update the log manager
-    app.log_manager().set_subsystem_enabled(&subsystem, enabled);
-    
-    // Log the change to the system log (app) instead of the subsystem log
-    if let Err(e) = app.log_manager().log("app", "INFO", &format!("Logging {} for subsystem: {}", if enabled { "enabled" } else { "disabled" }, subsystem)) {
-        log::error!("Failed to log logging state change: {}", e);
-    }
-    
-    Ok(serde_json::json!({
-        "success": true,
-        "message": format!("Logging {} for {}", if enabled { "enabled" } else { "disabled" }, subsystem)
-    }))
-}
 
 #[tauri::command]
 pub async fn list_log_files(
@@ -694,7 +665,7 @@ pub async fn download_archive(
 pub async fn set_live_data_streaming(
     subsystem: String,
     enabled: bool,
-    _app: State<'_, Arc<App>>,
+    app: State<'_, Arc<App>>,
     window: tauri::Window,
 ) -> Result<serde_json::Value, String> {
     log::info!("Setting live data streaming for {}: {}", subsystem, enabled);
@@ -720,6 +691,7 @@ pub async fn set_live_data_streaming(
             // Start monitoring OBS events and forward them to frontend
             let app_handle_clone = app_handle.clone();
             let subsystem_clone = subsystem.clone();
+            let log_manager = app.log_manager().clone();
             
             // Spawn a background task to monitor OBS events
             tokio::spawn(async move {
@@ -728,9 +700,16 @@ pub async fn set_live_data_streaming(
                     // In a real implementation, this would listen to actual OBS WebSocket events
                     tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
                     
+                    let event_data = format!("[{}] OBS Event: Scene changed to 'Main Scene'", chrono::Utc::now().format("%H:%M:%S"));
+                    
+                    // Log to OBS subsystem file
+                    if let Err(e) = log_manager.log(&subsystem_clone, "INFO", &event_data) {
+                        log::error!("Failed to log OBS event: {}", e);
+                    }
+                    
                     if let Err(e) = app_handle_clone.emit("live_data", serde_json::json!({
                         "subsystem": subsystem_clone,
-                        "data": format!("[{}] OBS Event: Scene changed to 'Main Scene'", chrono::Utc::now().format("%H:%M:%S")),
+                        "data": event_data,
                         "timestamp": chrono::Utc::now().to_rfc3339()
                     })) {
                         log::error!("Failed to emit OBS live data event: {}", e);
@@ -744,14 +723,22 @@ pub async fn set_live_data_streaming(
         if subsystem == "pss" {
             let app_handle_clone = app_handle.clone();
             let subsystem_clone = subsystem.clone();
+            let log_manager = app.log_manager().clone();
             
             tokio::spawn(async move {
                 loop {
                     tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
                     
+                    let event_data = format!("[{}] PSS Event: Match data received", chrono::Utc::now().format("%H:%M:%S"));
+                    
+                    // Log to PSS subsystem file
+                    if let Err(e) = log_manager.log(&subsystem_clone, "INFO", &event_data) {
+                        log::error!("Failed to log PSS event: {}", e);
+                    }
+                    
                     if let Err(e) = app_handle_clone.emit("live_data", serde_json::json!({
                         "subsystem": subsystem_clone,
-                        "data": format!("[{}] PSS Event: Match data received", chrono::Utc::now().format("%H:%M:%S")),
+                        "data": event_data,
                         "timestamp": chrono::Utc::now().to_rfc3339()
                     })) {
                         log::error!("Failed to emit PSS live data event: {}", e);
@@ -765,14 +752,22 @@ pub async fn set_live_data_streaming(
         if subsystem == "udp" {
             let app_handle_clone = app_handle.clone();
             let subsystem_clone = subsystem.clone();
+            let log_manager = app.log_manager().clone();
             
             tokio::spawn(async move {
                 loop {
                     tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
                     
+                    let event_data = format!("[{}] UDP Event: Datagram received", chrono::Utc::now().format("%H:%M:%S"));
+                    
+                    // Log to UDP subsystem file
+                    if let Err(e) = log_manager.log(&subsystem_clone, "INFO", &event_data) {
+                        log::error!("Failed to log UDP event: {}", e);
+                    }
+                    
                     if let Err(e) = app_handle_clone.emit("live_data", serde_json::json!({
                         "subsystem": subsystem_clone,
-                        "data": format!("[{}] UDP Event: Datagram received", chrono::Utc::now().format("%H:%M:%S")),
+                        "data": event_data,
                         "timestamp": chrono::Utc::now().to_rfc3339()
                     })) {
                         log::error!("Failed to emit UDP live data event: {}", e);
@@ -802,24 +797,6 @@ pub async fn set_live_data_streaming(
 }
 
 // Legacy commands for backward compatibility
-#[tauri::command]
-pub async fn enable_logging(
-    subsystem: String,
-    app: State<'_, Arc<App>>,
-) -> Result<(), String> {
-    set_logging_enabled(subsystem, true, app).await?;
-    Ok(())
-}
-
-#[tauri::command]
-pub async fn disable_logging(
-    subsystem: String,
-    app: State<'_, Arc<App>>,
-) -> Result<(), String> {
-    set_logging_enabled(subsystem, false, app).await?;
-    Ok(())
-}
-
 #[tauri::command]
 pub async fn start_live_data(subsystem: String, app: State<'_, Arc<App>>, window: tauri::Window) -> Result<(), String> {
     set_live_data_streaming(subsystem, true, app, window).await?;

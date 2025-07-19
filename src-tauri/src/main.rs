@@ -102,7 +102,6 @@ async fn main() -> AppResult<()> {
             tauri_commands::download_flags,
             
             // Diagnostics & Logs commands - Fixed names
-            tauri_commands::set_logging_enabled,
             tauri_commands::list_log_files,
             tauri_commands::download_log_file,
             tauri_commands::list_archives,
@@ -111,8 +110,6 @@ async fn main() -> AppResult<()> {
             tauri_commands::set_live_data_streaming,
             
             // Legacy commands for backward compatibility
-            tauri_commands::enable_logging,
-            tauri_commands::disable_logging,
             tauri_commands::start_live_data,
             tauri_commands::stop_live_data,
             tauri_commands::get_live_data,

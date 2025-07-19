@@ -50,6 +50,17 @@ pub struct LogManager {
     archiver: LogArchiver,
 }
 
+impl Clone for LogManager {
+    fn clone(&self) -> Self {
+        Self {
+            config: self.config.clone(),
+            loggers: self.loggers.clone(),
+            rotator: self.rotator.clone(),
+            archiver: self.archiver.clone(),
+        }
+    }
+}
+
 impl LogManager {
     pub fn new(config: LogConfig) -> io::Result<Self> {
         // Create log directory if it doesn't exist
@@ -58,20 +69,36 @@ impl LogManager {
         let rotator = LogRotator::new(config.max_file_size);
         let archiver = LogArchiver::new_with_archive_dir(config.retention_days, config.archive_dir.clone());
         
-        Ok(Self {
+        let manager = Self {
             config: Arc::new(Mutex::new(config)),
             loggers: Arc::new(Mutex::new(std::collections::HashMap::new())),
             rotator,
             archiver,
-        })
+        };
+        
+        // Initialize all subsystem loggers immediately
+        manager.initialize_all_subsystems()?;
+        
+        Ok(manager)
+    }
+    
+    fn initialize_all_subsystems(&self) -> io::Result<()> {
+        let config = self.config.lock().unwrap();
+        let subsystems = config.enabled_subsystems.clone();
+        drop(config);
+        
+        for subsystem in subsystems {
+            if let Err(e) = self.log(&subsystem, "INFO", &format!("{} subsystem logging initialized - ready to receive data", subsystem)) {
+                log::error!("Failed to initialize {} subsystem logging: {}", subsystem, e);
+            }
+        }
+        
+        Ok(())
     }
     
     pub fn log(&self, subsystem: &str, level: &str, message: &str) -> io::Result<()> {
-        // Check if logging is enabled for this subsystem
+        // All subsystems are always enabled, no need to check
         let config = self.config.lock().unwrap();
-        if !config.enabled_subsystems.contains(&subsystem.to_string()) {
-            return Ok(());
-        }
         
         let timestamp = Utc::now().format("%Y-%m-%d %H:%M:%S%.3f").to_string();
         let entry = LogEntry {
@@ -102,21 +129,7 @@ impl LogManager {
         Ok(())
     }
     
-    pub fn set_subsystem_enabled(&self, subsystem: &str, enabled: bool) {
-        let mut config = self.config.lock().unwrap();
-        if enabled {
-            if !config.enabled_subsystems.contains(&subsystem.to_string()) {
-                config.enabled_subsystems.push(subsystem.to_string());
-            }
-        } else {
-            config.enabled_subsystems.retain(|s| s != subsystem);
-        }
-    }
-    
-    pub fn is_subsystem_enabled(&self, subsystem: &str) -> bool {
-        let config = self.config.lock().unwrap();
-        config.enabled_subsystems.contains(&subsystem.to_string())
-    }
+    // Removed set_subsystem_enabled and is_subsystem_enabled methods since all subsystems are always enabled
     
     pub fn list_log_files(&self, subsystem: Option<&str>) -> io::Result<Vec<LogFileInfo>> {
         let config = self.config.lock().unwrap();
