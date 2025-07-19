@@ -120,13 +120,8 @@ impl ObsPlugin {
             connections.insert(config.name.clone(), connection);
         } // lock is dropped here
 
-        // Start connection if enabled
-        if config.enabled {
-            log::info!("[PLUGIN_OBS] '{}' is enabled, calling connect_obs...", config.name);
-            self.connect_obs(&config.name).await?;
-        } else {
-            log::info!("[PLUGIN_OBS] '{}' is disabled, skipping connect_obs.", config.name);
-        }
+        // Don't automatically connect - let user explicitly connect when ready
+        log::info!("[PLUGIN_OBS] '{}' configuration saved. Use connect_obs() to establish connection.", config.name);
 
         Ok(())
     }
@@ -677,6 +672,40 @@ impl ObsPlugin {
     pub async fn get_connection_names(&self) -> Vec<String> {
         let connections = self.connections.lock().await;
         connections.keys().cloned().collect()
+    }
+
+    // Disconnect OBS connection (close WebSocket but keep configuration)
+    pub async fn disconnect_obs(&self, connection_name: &str) -> AppResult<()> {
+        log::info!("[PLUGIN_OBS] disconnect_obs called for '{}'", connection_name);
+        
+        let mut connections = self.connections.lock().await;
+        
+        if let Some(connection) = connections.get_mut(connection_name) {
+            // Close the WebSocket connection if it exists
+            if let Some(ws_stream) = connection.websocket.take() {
+                let (mut ws_write, _) = ws_stream.split();
+                if let Err(e) = ws_write.close().await {
+                    log::warn!("[PLUGIN_OBS] Error closing WebSocket for '{}': {}", connection_name, e);
+                }
+            }
+            
+            // Update status to Disconnected
+            connection.status = ObsConnectionStatus::Disconnected;
+            
+            // Clear pending requests
+            connection.pending_requests.clear();
+            
+            // Send status change event
+            let _ = self.event_tx.send(ObsEvent::ConnectionStatusChanged {
+                connection_name: connection_name.to_string(),
+                status: ObsConnectionStatus::Disconnected,
+            });
+            
+            log::info!("[PLUGIN_OBS] Successfully disconnected '{}'", connection_name);
+            Ok(())
+        } else {
+            Err(AppError::ConfigError(format!("Connection '{}' not found", connection_name)))
+        }
     }
 
     // Remove connection

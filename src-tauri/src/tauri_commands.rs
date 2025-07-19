@@ -232,7 +232,7 @@ pub async fn obs_get_connections(app: State<'_, Arc<App>>) -> Result<serde_json:
 #[tauri::command]
 pub async fn obs_disconnect(connection_name: String, app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
     log::info!("OBS disconnect called for connection: {}", connection_name);
-    app.obs_plugin().remove_connection(&connection_name).await.map_err(|e| e.to_string())?;
+    app.obs_plugin().disconnect_obs(&connection_name).await.map_err(|e| e.to_string())?;
     Ok(serde_json::json!({
         "success": true,
         "message": "OBS disconnection initiated"
