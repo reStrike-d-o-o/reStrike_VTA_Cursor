@@ -93,9 +93,26 @@ const LogToggleGroup: React.FC = () => {
     []
   );
 
-  // Load settings on component mount
+  // Load settings on component mount and when component becomes visible
   useEffect(() => {
     loadLoggingSettings();
+  }, []);
+
+  // Add a focus listener to reload settings when the component becomes visible
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        loadLoggingSettings();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', loadLoggingSettings);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', loadLoggingSettings);
+    };
   }, []);
 
   const handleToggle = async (key: LogType, forceValue?: boolean) => {

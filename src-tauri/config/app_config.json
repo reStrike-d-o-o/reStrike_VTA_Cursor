@@ -1,7 +1,7 @@
 {
   "app": {
     "version": "0.1.0",
-    "last_save": "2025-07-19T10:00:51.593062100+00:00",
+    "last_save": "2025-07-19T11:01:27.115770100+00:00",
     "startup": {
       "auto_start_udp": false,
       "auto_connect_obs": false,
@@ -92,14 +92,14 @@
       "include_subsystem": true
     },
     "subsystems": {
-      "obs": {
-        "name": "obs",
+      "udp": {
+        "name": "udp",
         "level": "info",
         "enabled": false,
         "custom_file": null
       },
-      "udp": {
-        "name": "udp",
+      "obs": {
+        "name": "obs",
         "level": "info",
         "enabled": false,
         "custom_file": null
