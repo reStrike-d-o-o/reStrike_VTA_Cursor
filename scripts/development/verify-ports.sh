@@ -69,28 +69,10 @@ check_port 8080 "Development Server"
 echo ""
 echo "🔧 Additional Checks:"
 
-# Check if we're in a dev container
-if [ -f /.dockerenv ]; then
-    echo -e "${GREEN}✅ Running in a container environment${NC}"
-else
-    echo -e "${YELLOW}⚠️  Not running in a container (may affect port forwarding)${NC}"
-fi
-
 # Check network interfaces
 echo ""
 echo "🌍 Network Interfaces:"
-ip addr show | grep -E "inet.*scope global" | awk '{print "  " $2}'
-
-# Check if ports are forwarded in dev container
-if [ -f /.devcontainer/devcontainer.json ]; then
-    echo ""
-    echo "📦 Dev Container Configuration:"
-    if grep -q "forwardPorts" /.devcontainer/devcontainer.json; then
-        echo -e "${GREEN}✅ Port forwarding configured in dev container${NC}"
-    else
-        echo -e "${RED}❌ Port forwarding not configured in dev container${NC}"
-    fi
-fi
+ip addr show | grep -E "inet.*scope global" | awk '{print "  " $2}' 2>/dev/null || echo "Network interface check not available"
 
 echo ""
 echo "📝 Summary:"

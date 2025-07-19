@@ -79,7 +79,7 @@ This command will:
 cd ui
 
 # Start development server only
-npm run start:docker
+npm start
 
 # Build for production
 npm run build

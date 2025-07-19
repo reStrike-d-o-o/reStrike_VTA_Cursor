@@ -123,7 +123,7 @@ PSS/UDP Events → Rust Plugin → Tauri Commands → React UI
 ### 🚀 **Development Workflow**
 
 #### **Build System**
-- **Development**: `npm run start:docker` for hot reload
+- **Development**: `npm start` for hot reload
 - **Production**: `npm run build` for optimized builds
 - **Testing**: Jest and React Testing Library setup
 - **Linting**: ESLint with TypeScript rules
@@ -163,7 +163,7 @@ PSS/UDP Events → Rust Plugin → Tauri Commands → React UI
 - **Styling Issues**: Check Tailwind class conflicts
 
 #### **Development Tips**
-- **Hot Reload**: Use `npm run start:docker` for best development experience
+- **Hot Reload**: Use `npm start` for best development experience
 - **Type Safety**: Leverage TypeScript for catching errors early
 - **Component Testing**: Test components in isolation
 - **State Management**: Keep state as local as possible

@@ -100,7 +100,7 @@ cd reStrike_VTA_Cursor
 npm install
 cd ui && npm install
 
-# Start development
+# Start development (Windows-native)
 cd src-tauri
 cargo tauri dev
 ```
@@ -112,6 +112,9 @@ cd ui && npm run build
 
 # Production build
 cd src-tauri && cargo tauri build
+
+# Frontend development server
+cd ui && npm start
 ```
 
 ## 📚 Documentation
