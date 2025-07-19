@@ -259,11 +259,11 @@ const WebSocketManager: React.FC = () => {
       // Only update the configuration, don't connect
       // First, remove the old connection from backend
       if (editingConnection) {
-        try {
-          await obsCommands.removeConnection(editingConnection);
-        } catch (error) {
-          // Ignore errors if connection wasn't found
-          console.log('Remove connection error (expected if not found):', error);
+      try {
+        await obsCommands.removeConnection(editingConnection);
+      } catch (error) {
+        // Ignore errors if connection wasn't found
+        console.log('Remove connection error (expected if not found):', error);
         }
       }
 
@@ -279,7 +279,7 @@ const WebSocketManager: React.FC = () => {
       if (result.success) {
         // Remove old connection from frontend store
         if (editingConnection) {
-          removeObsConnection(editingConnection);
+        removeObsConnection(editingConnection);
         }
         
         // Add updated connection to frontend store (status will be set to Disconnected by default)
@@ -415,7 +415,7 @@ const WebSocketManager: React.FC = () => {
         }
       } catch (error) {
         console.error(`Health check failed for ${connectionName}:`, error);
-      }
+    }
     }, 30000); // Check every 30 seconds
     
     return () => clearInterval(interval);

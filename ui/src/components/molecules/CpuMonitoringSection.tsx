@@ -3,14 +3,17 @@ import Button from '../atoms/Button';
 import StatusDot from '../atoms/StatusDot';
 import { Icon } from '../atoms/Icon';
 
-// Use the proper Tauri v2 invoke function
-const invoke = async (command: string, args?: any) => {
+// Use the same safeInvoke function as the environment hook
+const safeInvoke = async (command: string, args?: any) => {
   try {
-    // Use the global window.__TAURI__.core.invoke for Tauri v2
-    if (window.__TAURI__?.core?.invoke) {
+    // Check if the global Tauri object is available
+    if (typeof window !== 'undefined' && window.__TAURI__ && window.__TAURI__.core) {
+      console.log('✅ Using Tauri v2 core module for command:', command);
+      // In Tauri v2, invoke is available through the core module
       return await window.__TAURI__.core.invoke(command, args);
     }
-    throw new Error('Tauri not available');
+    
+    throw new Error('Tauri v2 core module not available - ensure app is running in desktop mode');
   } catch (error) {
     console.error('Tauri invoke failed:', error);
     throw error;
@@ -37,50 +40,109 @@ interface CpuMonitoringSectionProps {
 export const CpuMonitoringSection: React.FC<CpuMonitoringSectionProps> = ({ className = '' }) => {
   const [processData, setProcessData] = useState<CpuProcessData[]>([]);
   const [systemData, setSystemData] = useState<SystemCpuData | null>(null);
-  const [isMonitoring, setIsMonitoring] = useState<boolean>(true);
+  const [isMonitoring, setIsMonitoring] = useState<boolean>(false); // Start disabled
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+
+  // Check monitoring status on mount
+  useEffect(() => {
+    const checkMonitoringStatus = async () => {
+      try {
+        const status = await safeInvoke('cpu_get_monitoring_status');
+        console.log('🔍 [CPU_MONITOR] Initial monitoring status:', status);
+        setIsMonitoring(status);
+      } catch (error) {
+        console.error('❌ [CPU_MONITOR] Failed to get monitoring status:', error);
+        setIsMonitoring(false);
+      }
+    };
+    
+    checkMonitoringStatus();
+  }, []);
 
   // Fetch CPU data
   const fetchCpuData = async () => {
     try {
+      console.log('🔍 [CPU_MONITOR] Starting CPU data fetch...');
+      
       // Get process data
-      const processResult = await invoke('cpu_get_process_data');
-      console.log('Process result:', processResult);
+      console.log('🔍 [CPU_MONITOR] Calling cpu_get_process_data...');
+      const processResult = await safeInvoke('cpu_get_process_data');
+      console.log('✅ [CPU_MONITOR] Process result:', processResult);
       if (processResult && typeof processResult === 'object' && 'success' in processResult && processResult.success) {
         if ('processes' in processResult && Array.isArray(processResult.processes)) {
+          console.log('✅ [CPU_MONITOR] Setting process data:', processResult.processes.length, 'processes');
           setProcessData(processResult.processes as CpuProcessData[]);
+        } else {
+          console.warn('⚠️ [CPU_MONITOR] Process data not in expected format:', processResult);
         }
+      } else {
+        console.warn('⚠️ [CPU_MONITOR] Process result not successful:', processResult);
       }
 
       // Get system data
-      const systemResult = await invoke('cpu_get_system_data');
-      console.log('System result:', systemResult);
+      console.log('🔍 [CPU_MONITOR] Calling cpu_get_system_data...');
+      const systemResult = await safeInvoke('cpu_get_system_data');
+      console.log('✅ [CPU_MONITOR] System result:', systemResult);
       if (systemResult && typeof systemResult === 'object' && 'success' in systemResult && systemResult.success) {
         if ('system' in systemResult && systemResult.system) {
+          console.log('✅ [CPU_MONITOR] Setting system data:', systemResult.system);
           setSystemData(systemResult.system as SystemCpuData);
+        } else {
+          console.warn('⚠️ [CPU_MONITOR] System data not in expected format:', systemResult);
         }
+      } else {
+        console.warn('⚠️ [CPU_MONITOR] System result not successful:', systemResult);
       }
 
       setLastUpdate(new Date());
     } catch (error) {
-      console.error('Failed to fetch CPU data:', error);
+      console.error('❌ [CPU_MONITOR] Failed to fetch CPU data:', error);
     }
   };
 
   // Toggle monitoring
   const toggleMonitoring = async () => {
-    setIsMonitoring(!isMonitoring);
-    // TODO: Implement config update to enable/disable monitoring
+    try {
+      if (isMonitoring) {
+        // Disable monitoring
+        await safeInvoke('cpu_disable_monitoring');
+        console.log('✅ [CPU_MONITOR] Monitoring disabled');
+        setIsMonitoring(false);
+        // Clear frontend data when stopping
+        setProcessData([]);
+        setSystemData(null);
+        setLastUpdate(new Date());
+      } else {
+        // Enable monitoring
+        await safeInvoke('cpu_enable_monitoring');
+        console.log('✅ [CPU_MONITOR] Monitoring enabled');
+        setIsMonitoring(true);
+      }
+    } catch (error) {
+      console.error('❌ [CPU_MONITOR] Failed to toggle monitoring:', error);
+    }
   };
 
-  // Update data every 2 seconds when monitoring is active
+  // Update data every 1 second when monitoring is active (matching backend interval)
   useEffect(() => {
-    if (!isMonitoring) return;
+    console.log('🔍 [CPU_MONITOR] useEffect triggered, isMonitoring:', isMonitoring);
+    
+    if (!isMonitoring) {
+      console.log('🔍 [CPU_MONITOR] Monitoring disabled, skipping...');
+      return;
+    }
 
+    // Use different intervals for development vs production
+    const updateInterval = process.env.NODE_ENV === 'production' ? 2000 : 1000; // 2s prod, 1s dev
+    
+    console.log(`🔍 [CPU_MONITOR] Starting monitoring with ${updateInterval}-ms interval...`);
     fetchCpuData(); // Initial fetch
-    const interval = setInterval(fetchCpuData, 2000);
+    const interval = setInterval(fetchCpuData, updateInterval);
 
-    return () => clearInterval(interval);
+    return () => {
+      console.log('🔍 [CPU_MONITOR] Cleaning up interval...');
+      clearInterval(interval);
+    };
   }, [isMonitoring]);
 
   // Get CPU usage color based on percentage
@@ -211,7 +273,7 @@ export const CpuMonitoringSection: React.FC<CpuMonitoringSectionProps> = ({ clas
       <div className="mt-4 pt-3 border-t border-gray-600">
         <div className="flex items-center justify-between text-xs text-gray-400">
           <span>CPU monitoring powered by system commands (wmic/ps)</span>
-          <span>Update interval: 2 seconds</span>
+          <span>Update interval: {process.env.NODE_ENV === 'production' ? '2 seconds' : '1 second'}</span>
         </div>
       </div>
     </div>

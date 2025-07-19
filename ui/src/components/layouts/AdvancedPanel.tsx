@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import SettingsDrawerTabs from '../molecules/SettingsDrawerTabs';
-import LogToggleGroup from '../molecules/LogToggleGroup';
 import LogDownloadList from '../molecules/LogDownloadList';
 import LiveDataPanel from '../molecules/LiveDataPanel';
 import WebSocketManager from '../molecules/WebSocketManager';
@@ -271,15 +270,12 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
             {settingsTab === 'diagnostics' && (
               <div className="flex flex-col gap-6">
                 <div className="flex flex-row gap-6">
-                  <div className="flex-1 min-w-[220px]">
-                    <LogToggleGroup />
-                  </div>
                   <div className="flex-[2] min-w-[320px]">
                     <LogDownloadList />
                   </div>
                 </div>
                 <div className="space-y-6">
-                  <LiveDataPanel />
+                <LiveDataPanel />
                   <CpuMonitoringSection />
                 </div>
               </div>
