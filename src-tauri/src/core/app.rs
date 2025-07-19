@@ -52,6 +52,12 @@ impl App {
         let store_plugin = StorePlugin::new();
         let license_plugin = LicensePlugin::new();
         
+        // Load OBS connections from config manager
+        let config_connections = config_manager.get_obs_connections().await;
+        if let Err(e) = obs_plugin.load_connections_from_config(config_connections).await {
+            println!("⚠️ Warning: Failed to load OBS connections from config: {}", e);
+        }
+        
         Ok(Self {
             state,
             config_manager,

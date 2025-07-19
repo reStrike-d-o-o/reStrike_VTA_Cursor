@@ -7,6 +7,9 @@ use crate::types::{AppError, AppResult};
 use tokio_tungstenite::tungstenite::Message;
 use futures_util::StreamExt;
 use futures_util::SinkExt;
+use std::process::Command;
+use std::time::{Duration, Instant};
+use std::collections::HashMap as StdHashMap;
 
 /// Initialize the OBS plugin
 pub fn init() -> Result<(), Box<dyn std::error::Error>> {
@@ -50,13 +53,36 @@ pub struct ObsConnection {
     pub websocket: Option<tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>>,
     pub request_id_counter: u64,
     pub pending_requests: HashMap<String, tokio::sync::oneshot::Sender<serde_json::Value>>,
+    pub heartbeat_data: Option<serde_json::Value>,
+}
+
+// CPU monitoring data
+#[derive(Debug, Clone)]
+struct CpuUsageData {
+    process_name: String,
+    cpu_percent: f64,
+    last_update: Instant,
 }
 
 // OBS Plugin Manager
 pub struct ObsPlugin {
     connections: Arc<Mutex<HashMap<String, ObsConnection>>>,
     event_tx: mpsc::UnboundedSender<ObsEvent>,
-    pub debug_ws_messages: Arc<Mutex<bool>>, // Add this line
+    pub debug_ws_messages: Arc<Mutex<bool>>,
+    pub show_full_events: Arc<Mutex<bool>>, // Toggle for showing all OBS events vs only recording/streaming
+    cpu_monitoring: Arc<Mutex<StdHashMap<String, CpuUsageData>>>, // Process name -> CPU data
+}
+
+impl Clone for ObsPlugin {
+    fn clone(&self) -> Self {
+        Self {
+            connections: self.connections.clone(),
+            event_tx: self.event_tx.clone(),
+            debug_ws_messages: self.debug_ws_messages.clone(),
+            show_full_events: self.show_full_events.clone(),
+            cpu_monitoring: self.cpu_monitoring.clone(),
+        }
+    }
 }
 
 // OBS Events
@@ -95,11 +121,18 @@ pub enum ObsEvent {
 
 impl ObsPlugin {
     pub fn new(event_tx: mpsc::UnboundedSender<ObsEvent>) -> Self {
-        Self {
+        let plugin = Self {
             connections: Arc::new(Mutex::new(HashMap::new())),
             event_tx,
-            debug_ws_messages: Arc::new(Mutex::new(false)), // Initialize to false
-        }
+            debug_ws_messages: Arc::new(Mutex::new(true)), // Initialize to true for debugging
+            show_full_events: Arc::new(Mutex::new(false)), // Initialize to false - only show recording/streaming by default
+            cpu_monitoring: Arc::new(Mutex::new(StdHashMap::new())),
+        };
+        
+        // Start CPU monitoring task
+        plugin.start_cpu_monitoring();
+        
+        plugin
     }
 
     // Add a new OBS connection
@@ -116,6 +149,7 @@ impl ObsPlugin {
                 websocket: None,
                 request_id_counter: 0,
                 pending_requests: HashMap::new(),
+                heartbeat_data: None,
             };
             connections.insert(config.name.clone(), connection);
         } // lock is dropped here
@@ -123,6 +157,38 @@ impl ObsPlugin {
         // Don't automatically connect - let user explicitly connect when ready
         log::info!("[PLUGIN_OBS] '{}' configuration saved. Use connect_obs() to establish connection.", config.name);
 
+        Ok(())
+    }
+
+    // Load connections from config manager
+    pub async fn load_connections_from_config(&self, config_connections: Vec<crate::config::ObsConnectionConfig>) -> AppResult<()> {
+        log::info!("[PLUGIN_OBS] Loading {} connections from config", config_connections.len());
+        
+        for config_conn in config_connections {
+            // Clone all fields before moving config_conn
+            let connection_name = config_conn.name.clone();
+            let connection_host = config_conn.host.clone();
+            let connection_port = config_conn.port;
+            let connection_password = config_conn.password.clone();
+            let connection_enabled = config_conn.enabled;
+            
+            // Convert config::ObsConnectionConfig to plugin::ObsConnectionConfig
+            let plugin_config = ObsConnectionConfig {
+                name: connection_name.clone(),
+                host: connection_host,
+                port: connection_port,
+                password: connection_password,
+                protocol_version: ObsWebSocketVersion::V5, // Always v5
+                enabled: connection_enabled,
+            };
+            
+            // Add to plugin's internal connections
+            if let Err(e) = self.add_connection(plugin_config).await {
+                log::warn!("[PLUGIN_OBS] Failed to load connection '{}': {}", connection_name, e);
+            }
+        }
+        
+        log::info!("[PLUGIN_OBS] Finished loading connections from config");
         Ok(())
     }
 
@@ -141,6 +207,8 @@ impl ObsPlugin {
         let connections = self.connections.clone();
         let event_tx = self.event_tx.clone();
         let debug_ws_messages = self.debug_ws_messages.clone(); // Clone the flag
+        let show_full_events = self.show_full_events.clone(); // Clone the full events flag
+        
         tokio::spawn(async move {
             loop {
                 let ws_stream_opt = {
@@ -149,7 +217,9 @@ impl ObsPlugin {
                         .and_then(|conn| conn.websocket.take())
                 };
                 if let Some(ws_stream) = ws_stream_opt {
-                    let (_ws_write, mut ws_read) = ws_stream.split();
+                    let (_, mut ws_read) = ws_stream.split();
+                    
+                    // Handle incoming messages
                     while let Some(msg_result) = ws_read.next().await {
                         // Log all incoming messages if debug_ws_messages is enabled
                         let flag = debug_ws_messages.lock().await;
@@ -171,17 +241,50 @@ impl ObsPlugin {
                         }
                         match msg_result {
                             Ok(Message::Text(text)) => {
+                                // Always log incoming messages for debugging
+                                println!("[OBS-RESPONSE][{}] Received: {}", connection_name, text);
+                                
                                 if let Ok(json) = serde_json::from_str::<serde_json::Value>(&text) {
-                                    if let Some(request_id) = json.pointer("/d/requestId").and_then(|v| v.as_str()) {
-                                        let tx_opt = ObsPlugin::take_pending_request_sender(&connections, &connection_name, request_id).await;
-                                        if let Some(tx) = tx_opt {
-                                            let _ = tx.send(json["d"].clone());
-                                        }
-                                    } else if let Some(op) = json["op"].as_u64() {
-                                        if op == 5 {
-                                            // Full event parsing
+                                    // Handle request responses (opcode 7)
+                                    if let Some(op) = json["op"].as_u64() {
+                                        if op == 7 {
+                                            // Request response
+                                            if let Some(request_id) = json.pointer("/d/requestId").and_then(|v| v.as_str()) {
+                                                println!("[OBS-RESPONSE][{}] Request response for ID: {}", connection_name, request_id);
+                                                let tx_opt = ObsPlugin::take_pending_request_sender(&connections, &connection_name, request_id).await;
+                                                if let Some(tx) = tx_opt {
+                                                    let _ = tx.send(json["d"].clone());
+                                                } else {
+                                                    println!("[OBS-RESPONSE][{}] No pending request found for ID: {}", connection_name, request_id);
+                                                }
+                                            }
+                                        } else if op == 5 {
+                                            // Event messages
                                             let event_type = json.pointer("/d/eventType").and_then(|v| v.as_str()).unwrap_or("");
                                             let event_data = &json["d"]["eventData"];
+                                            
+                                            // Check if we should show all events or only recording/streaming
+                                            let show_full = show_full_events.lock().await;
+                                            let should_show_event = *show_full || 
+                                                event_type == "RecordStateChanged" || 
+                                                event_type == "StreamStateChanged" ||
+                                                event_type == "ReplayBufferStateChanged";
+                                            
+                                            if should_show_event {
+                                                println!("[OBS-EVENT][{}] Event: {} - Data: {}", connection_name, event_type, serde_json::to_string(event_data).unwrap_or_default());
+                                                
+                                                // Emit event to frontend if full events are enabled
+                                                if *show_full {
+                                                    let _ = event_tx.send(ObsEvent::Raw {
+                                                        connection_name: connection_name.clone(),
+                                                        event_type: event_type.to_string(),
+                                                        data: event_data.clone(),
+                                                    });
+                                                    
+                                                    // Also log the event for frontend polling
+                                                    log::info!("[OBS-FRONTEND-EVENT] {}: {}", event_type, serde_json::to_string(&event_data).unwrap_or_default());
+                                                }
+                                            }
                                             match event_type {
                                                 "CurrentProgramSceneChanged" => {
                                                     if let Some(scene_name) = event_data["sceneName"].as_str() {
@@ -193,18 +296,52 @@ impl ObsPlugin {
                                                 }
                                                 "RecordStateChanged" => {
                                                     if let Some(is_recording) = event_data["outputActive"].as_bool() {
+                                                        println!("[OBS-RECORD][{}] Recording: {}", connection_name, is_recording);
+                                                        
+                                                        // Send event to frontend
                                                         let _ = event_tx.send(ObsEvent::RecordingStateChanged {
                                                             connection_name: connection_name.clone(),
                                                             is_recording,
                                                         });
+                                                        
+                                                        // Store recording state in connection
+                                                        {
+                                                            let mut conns = connections.lock().await;
+                                                            if let Some(conn) = conns.get_mut(&connection_name) {
+                                                                // Create or update heartbeat data with recording state
+                                                                let mut heartbeat_data = conn.heartbeat_data.clone().unwrap_or_else(|| serde_json::json!({}));
+                                                                if let Some(obj) = heartbeat_data.as_object_mut() {
+                                                                    obj.insert("recording".to_string(), serde_json::Value::Bool(is_recording));
+                                                                }
+                                                                conn.heartbeat_data = Some(heartbeat_data);
+                                                                println!("[OBS-RECORD][{}] Updated heartbeat data with recording state", connection_name);
+                                                            }
+                                                        }
                                                     }
                                                 }
                                                 "StreamStateChanged" => {
                                                     if let Some(is_streaming) = event_data["outputActive"].as_bool() {
+                                                        println!("[OBS-STREAM][{}] Streaming: {}", connection_name, is_streaming);
+                                                        
+                                                        // Send event to frontend
                                                         let _ = event_tx.send(ObsEvent::StreamStateChanged {
                                                             connection_name: connection_name.clone(),
                                                             is_streaming,
                                                         });
+                                                        
+                                                        // Store streaming state in connection
+                                                        {
+                                                            let mut conns = connections.lock().await;
+                                                            if let Some(conn) = conns.get_mut(&connection_name) {
+                                                                // Create or update heartbeat data with streaming state
+                                                                let mut heartbeat_data = conn.heartbeat_data.clone().unwrap_or_else(|| serde_json::json!({}));
+                                                                if let Some(obj) = heartbeat_data.as_object_mut() {
+                                                                    obj.insert("streaming".to_string(), serde_json::Value::Bool(is_streaming));
+                                                                }
+                                                                conn.heartbeat_data = Some(heartbeat_data);
+                                                                println!("[OBS-STREAM][{}] Updated heartbeat data with streaming state", connection_name);
+                                                            }
+                                                        }
                                                     }
                                                 }
                                                 "ReplayBufferStateChanged" => {
@@ -215,6 +352,33 @@ impl ObsPlugin {
                                                         });
                                                     }
                                                 }
+                                                "StudioModeStateChanged" => {
+                                                    if let Some(enabled) = event_data["studioModeEnabled"].as_bool() {
+                                                        println!("[OBS-EVENT][{}] Studio mode changed: {}", connection_name, enabled);
+                                                    }
+                                                }
+                                                "Heartbeat" => {
+                                                    // OBS sends heartbeat messages with status info
+                                                    if let Some(recording) = event_data["recording"].as_bool() {
+                                                        println!("[OBS-HEARTBEAT][{}] Recording: {}", connection_name, recording);
+                                                    }
+                                                    if let Some(streaming) = event_data["streaming"].as_bool() {
+                                                        println!("[OBS-HEARTBEAT][{}] Streaming: {}", connection_name, streaming);
+                                                    }
+                                                    if let Some(cpu_usage) = event_data["cpuUsage"].as_f64() {
+                                                        println!("[OBS-HEARTBEAT][{}] CPU Usage: {}%", connection_name, cpu_usage);
+                                                    }
+                                                    
+                                                    // Store heartbeat data in connection
+                                                    {
+                                                        let mut conns = connections.lock().await;
+                                                        if let Some(conn) = conns.get_mut(&connection_name) {
+                                                            conn.heartbeat_data = Some(event_data.clone());
+                                                            println!("[OBS-HEARTBEAT][{}] Stored heartbeat data", connection_name);
+                                                        }
+                                                    }
+                                                }
+
                                                 // === BEGIN: All official OBS v5 event types as stubs ===
                                                 "SceneTransitionStarted" => {
                                                     let _ = event_tx.send(ObsEvent::Raw { connection_name: connection_name.clone(), event_type: event_type.to_string(), data: event_data.clone() });
@@ -385,6 +549,51 @@ impl ObsPlugin {
         self.spawn_ws_task(connection_name.to_string()).await;
         println!("[DEBUG] spawn_ws_task returned for {}", connection_name);
 
+        // Note: Heartbeat request removed temporarily to fix connection loop
+        // TODO: Implement proper heartbeat request after fixing WebSocket sharing
+
+        // Update status to Connected and send event
+        {
+            let mut connections = self.connections.lock().await;
+            if let Some(connection) = connections.get_mut(connection_name) {
+                connection.status = ObsConnectionStatus::Connected;
+            }
+        }
+        println!("[DEBUG] Updated status to Connected for {}", connection_name);
+
+        // Send status change event
+        let _ = self.event_tx.send(ObsEvent::ConnectionStatusChanged {
+            connection_name: connection_name.to_string(),
+            status: ObsConnectionStatus::Connected,
+        });
+        println!("[DEBUG] Sent Connected status change event for {}", connection_name);
+
+        // Enable heartbeat and request initial statuses
+        let connection_name_clone = connection_name.to_string();
+        let plugin_clone = self.clone();
+        tokio::spawn(async move {
+            // Wait a bit for the connection to stabilize
+            tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+            
+            // Enable heartbeat
+            if let Err(e) = plugin_clone.request_heartbeat(&connection_name_clone).await {
+                log::warn!("[PLUGIN_OBS] Failed to enable heartbeat for '{}': {}", connection_name_clone, e);
+            }
+            
+            // Request initial statuses
+            if let Err(e) = plugin_clone.request_stream_status(&connection_name_clone).await {
+                log::warn!("[PLUGIN_OBS] Failed to request stream status for '{}': {}", connection_name_clone, e);
+            }
+            
+            if let Err(e) = plugin_clone.request_record_status(&connection_name_clone).await {
+                log::warn!("[PLUGIN_OBS] Failed to request record status for '{}': {}", connection_name_clone, e);
+            }
+            
+            if let Err(e) = plugin_clone.request_replay_buffer_status(&connection_name_clone).await {
+                log::warn!("[PLUGIN_OBS] Failed to request replay buffer status for '{}': {}", connection_name_clone, e);
+            }
+        });
+
         Ok(())
     }
 
@@ -529,11 +738,14 @@ impl ObsPlugin {
         request_type: &str,
         request_data: Option<serde_json::Value>,
     ) -> AppResult<serde_json::Value> {
+        log::info!("[PLUGIN_OBS] send_request called for '{}' with type '{}'", connection_name, request_type);
+        
         let mut connections = self.connections.lock().await;
         let connection = connections.get_mut(connection_name)
             .ok_or_else(|| AppError::ConfigError(format!("Connection '{}' not found", connection_name)))?;
 
         if connection.status != ObsConnectionStatus::Authenticated {
+            log::warn!("[PLUGIN_OBS] Connection '{}' not authenticated, status: {:?}", connection_name, connection.status);
             return Err(AppError::ConfigError("OBS connection not authenticated".to_string()));
         }
 
@@ -544,7 +756,7 @@ impl ObsPlugin {
         connection.pending_requests.insert(request_id.clone(), response_tx);
 
         // Create request based on protocol version
-        let _request = serde_json::json!({
+        let request = serde_json::json!({
             "op": 6, // Request opcode
             "d": {
                 "requestType": request_type,
@@ -553,13 +765,39 @@ impl ObsPlugin {
             }
         });
 
-        // Send request via WebSocket
-        // Implementation would send the request through the WebSocket connection
+        log::info!("[PLUGIN_OBS] Sending request to '{}': {}", connection_name, serde_json::to_string(&request).unwrap_or_default());
 
-        // Wait for response
-        let response = response_rx.await
-            .map_err(|_| AppError::ConfigError("Request timeout or connection lost".to_string()))?;
+        // Create a new WebSocket connection for this request
+        let config = &connection.config;
+        let ws_url = format!("ws://{}:{}/", config.host, config.port);
+        
+        let (ws_stream, _) = tokio_tungstenite::connect_async(&ws_url).await
+            .map_err(|e| AppError::ConfigError(format!("Failed to connect to OBS: {}", e)))?;
+        
+        // Authenticate the new connection
+        let ws_stream = self.authenticate_v5(connection_name, ws_stream).await?;
+        let (mut ws_write, _) = ws_stream.split();
+        
+        // Send the request
+        let request_text = serde_json::to_string(&request)
+            .map_err(|e| AppError::ConfigError(format!("Failed to serialize request: {}", e)))?;
+        
+        if let Err(e) = ws_write.send(Message::Text(request_text)).await {
+            log::error!("[PLUGIN_OBS] Failed to send request to '{}': {}", connection_name, e);
+            return Err(AppError::ConfigError(format!("WebSocket send error: {}", e)));
+        }
+        
+        log::info!("[PLUGIN_OBS] Request sent successfully to '{}'", connection_name);
 
+        // Wait for response with timeout
+        let response = tokio::time::timeout(
+            tokio::time::Duration::from_secs(5),
+            response_rx
+        ).await
+        .map_err(|_| AppError::ConfigError("Request timeout".to_string()))?
+        .map_err(|_| AppError::ConfigError("Request timeout or connection lost".to_string()))?;
+
+        log::info!("[PLUGIN_OBS] Received response from '{}': {}", connection_name, serde_json::to_string(&response).unwrap_or_default());
         Ok(response)
     }
 
@@ -741,9 +979,246 @@ impl ObsPlugin {
         }
     }
 
+    // Get latest events for debugging
+    pub async fn get_latest_events(&self, connection_name: &str) -> AppResult<serde_json::Value> {
+        let connections = self.connections.lock().await;
+        if let Some(conn) = connections.get(connection_name) {
+            Ok(serde_json::json!({
+                "connection_name": connection_name,
+                "status": format!("{:?}", conn.status),
+                "heartbeat_data": conn.heartbeat_data,
+                "has_websocket": conn.websocket.is_some(),
+                "pending_requests": conn.pending_requests.len()
+            }))
+        } else {
+            Err(AppError::ConfigError(format!("Connection '{}' not found", connection_name)))
+        }
+    }
+
+    // Request heartbeat messages from OBS
+    async fn request_heartbeat(&self, connection_name: &str) -> AppResult<()> {
+        log::info!("[PLUGIN_OBS] Requesting heartbeat for '{}'", connection_name);
+        
+        // Request heartbeat messages with specific event types
+        let _heartbeat_request = serde_json::json!({
+            "requestType": "SetHeartbeat",
+            "requestData": {
+                "enable": true
+            }
+        });
+        
+        // Send the heartbeat request
+        match self.send_request(connection_name, "SetHeartbeat", Some(serde_json::json!({ "enable": true }))).await {
+            Ok(_) => {
+                log::info!("[PLUGIN_OBS] Successfully enabled heartbeat for '{}'", connection_name);
+                Ok(())
+            }
+            Err(e) => {
+                log::warn!("[PLUGIN_OBS] Failed to enable heartbeat for '{}': {}", connection_name, e);
+                Err(e)
+            }
+        }
+    }
+
+    // Request stream status from OBS
+    async fn request_stream_status(&self, connection_name: &str) -> AppResult<()> {
+        log::info!("[PLUGIN_OBS] Requesting stream status for connection: {}", connection_name);
+        
+        match self.send_request(connection_name, "GetStreamStatus", None).await {
+            Ok(_) => {
+                log::info!("[PLUGIN_OBS] Successfully requested stream status for '{}'", connection_name);
+                Ok(())
+            }
+            Err(e) => {
+                log::warn!("[PLUGIN_OBS] Failed to request stream status for '{}': {}", connection_name, e);
+                Err(e)
+            }
+        }
+    }
+
+    // Request record status from OBS
+    async fn request_record_status(&self, connection_name: &str) -> AppResult<()> {
+        log::info!("[PLUGIN_OBS] Requesting record status for connection: {}", connection_name);
+        
+        match self.send_request(connection_name, "GetRecordStatus", None).await {
+            Ok(_) => {
+                log::info!("[PLUGIN_OBS] Successfully requested record status for '{}'", connection_name);
+                Ok(())
+            }
+            Err(e) => {
+                log::warn!("[PLUGIN_OBS] Failed to request record status for '{}': {}", connection_name, e);
+                Err(e)
+            }
+        }
+    }
+
+    // Request replay buffer status from OBS
+    async fn request_replay_buffer_status(&self, connection_name: &str) -> AppResult<()> {
+        log::info!("[PLUGIN_OBS] Requesting replay buffer status for connection: {}", connection_name);
+        
+        match self.send_request(connection_name, "GetReplayBufferStatus", None).await {
+            Ok(_) => {
+                log::info!("[PLUGIN_OBS] Successfully requested replay buffer status for '{}'", connection_name);
+                Ok(())
+            }
+            Err(e) => {
+                log::warn!("[PLUGIN_OBS] Failed to request replay buffer status for '{}': {}", connection_name, e);
+                Err(e)
+            }
+        }
+    }
+
+    // Toggle full OBS events display
+    pub async fn toggle_full_events(&self, enabled: bool) {
+        let mut show_full = self.show_full_events.lock().await;
+        *show_full = enabled;
+        log::info!("[PLUGIN_OBS] Full OBS events display: {}", if enabled { "enabled" } else { "disabled" });
+    }
+
+    // Get current full events setting
+    pub async fn get_full_events_setting(&self) -> bool {
+        let show_full = self.show_full_events.lock().await;
+        *show_full
+    }
+
+    // Start CPU monitoring background task
+    fn start_cpu_monitoring(&self) {
+        let cpu_monitoring = self.cpu_monitoring.clone();
+        
+        tokio::spawn(async move {
+            loop {
+                // Update CPU usage every 2 seconds
+                tokio::time::sleep(Duration::from_secs(2)).await;
+                
+                if let Err(e) = Self::update_cpu_usage(&cpu_monitoring).await {
+                    log::warn!("[PLUGIN_OBS] CPU monitoring error: {}", e);
+                }
+            }
+        });
+    }
+
+    // Update CPU usage for OBS processes
+    async fn update_cpu_usage(cpu_monitoring: &Arc<Mutex<StdHashMap<String, CpuUsageData>>>) -> AppResult<()> {
+        #[cfg(target_os = "windows")]
+        {
+            // Windows: Use wmic to get process CPU usage
+            let output = Command::new("wmic")
+                .args(&["cpu", "get", "loadpercentage", "/value"])
+                .output()
+                .map_err(|e| AppError::ConfigError(format!("Failed to get system CPU: {}", e)))?;
+            
+            let system_cpu = String::from_utf8_lossy(&output.stdout);
+            let system_cpu_percent: f64 = system_cpu
+                .lines()
+                .find(|line| line.starts_with("LoadPercentage="))
+                .and_then(|line| line.split('=').nth(1))
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(0.0);
+
+            // Get OBS Studio process CPU usage
+            let obs_output = Command::new("wmic")
+                .args(&["process", "where", "name='obs64.exe'", "get", "processid,workingsetsize", "/format:csv"])
+                .output()
+                .map_err(|e| AppError::ConfigError(format!("Failed to get OBS process info: {}", e)))?;
+            
+            let obs_info = String::from_utf8_lossy(&obs_output.stdout);
+            let lines: Vec<&str> = obs_info.lines().collect();
+            
+            if lines.len() > 1 {
+                // Parse CSV format: Node,ProcessId,WorkingSetSize
+                let parts: Vec<&str> = lines[1].split(',').collect();
+                if parts.len() >= 3 {
+                    if let Ok(pid) = parts[1].trim().parse::<u32>() {
+                        // Get CPU usage for specific process
+                        let cpu_output = Command::new("wmic")
+                            .args(&["process", "where", &format!("processid={}", pid), "get", "percentprocessortime", "/value"])
+                            .output()
+                            .map_err(|e| AppError::ConfigError(format!("Failed to get OBS CPU: {}", e)))?;
+                        
+                        let cpu_info = String::from_utf8_lossy(&cpu_output.stdout);
+                        let cpu_percent: f64 = cpu_info
+                            .lines()
+                            .find(|line| line.starts_with("PercentProcessorTime="))
+                            .and_then(|line| line.split('=').nth(1))
+                            .and_then(|s| s.parse().ok())
+                            .unwrap_or(0.0);
+
+                        let mut monitoring = cpu_monitoring.lock().await;
+                        monitoring.insert("obs64.exe".to_string(), CpuUsageData {
+                            process_name: "obs64.exe".to_string(),
+                            cpu_percent,
+                            last_update: Instant::now(),
+                        });
+                        
+                        log::debug!("[PLUGIN_OBS] OBS CPU: {:.1}%, System CPU: {:.1}%", cpu_percent, system_cpu_percent);
+                    }
+                }
+            }
+        }
+
+        #[cfg(not(target_os = "windows"))]
+        {
+            // Linux/macOS: Use ps command
+            let output = Command::new("ps")
+                .args(&["-eo", "comm,%cpu"])
+                .output()
+                .map_err(|e| AppError::ConfigError(format!("Failed to get process CPU: {}", e)))?;
+            
+            let ps_output = String::from_utf8_lossy(&output.stdout);
+            
+            for line in ps_output.lines() {
+                if line.contains("obs") || line.contains("obs-studio") {
+                    let parts: Vec<&str> = line.split_whitespace().collect();
+                    if parts.len() >= 2 {
+                        if let Ok(cpu_percent) = parts[1].parse::<f64>() {
+                            let process_name = parts[0].to_string();
+                            let mut monitoring = cpu_monitoring.lock().await;
+                            monitoring.insert(process_name.clone(), CpuUsageData {
+                                process_name,
+                                cpu_percent,
+                                last_update: Instant::now(),
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    // Get current CPU usage for OBS processes
+    pub async fn get_obs_cpu_usage_real(&self) -> f64 {
+        let monitoring = self.cpu_monitoring.lock().await;
+        
+        // Get the highest CPU usage among OBS processes
+        let mut max_cpu: f64 = 0.0;
+        for (process_name, data) in monitoring.iter() {
+            if process_name.contains("obs") || process_name.contains("obs64.exe") {
+                // Check if data is recent (within last 5 seconds)
+                if data.last_update.elapsed() < Duration::from_secs(5) {
+                    max_cpu = max_cpu.max(data.cpu_percent);
+                }
+            }
+        }
+        
+        max_cpu
+    }
+
     // Get comprehensive OBS status for status bar
     pub async fn get_obs_status(&self) -> AppResult<ObsStatusInfo> {
+        log::info!("[PLUGIN_OBS] get_obs_status called");
         let roles = self.get_connection_roles().await;
+        log::info!("[PLUGIN_OBS] Found {} connection roles: {:?}", roles.len(), roles);
+        
+        // Debug: Show all connections and their heartbeat data
+        {
+            let connections = self.connections.lock().await;
+            for (name, conn) in connections.iter() {
+                log::info!("[PLUGIN_OBS] Connection '{}': status={:?}, heartbeat_data={:?}", 
+                    name, conn.status, conn.heartbeat_data);
+            }
+        }
         
         let mut status = ObsStatusInfo {
             is_recording: false,
@@ -754,53 +1229,131 @@ impl ObsPlugin {
         };
 
         for (connection_name, role) in roles {
-            match role.as_str() {
-                "OBS_SINGLE" => {
-                    // Single connection handles both recording and streaming
-                    if let Ok(is_recording) = self.get_recording_status(&connection_name).await {
-                        status.is_recording = is_recording;
-                        if is_recording {
+            log::info!("[PLUGIN_OBS] Processing connection '{}' with role '{}'", connection_name, role);
+            
+            // Check if this connection is actually connected
+            let connection_status = self.get_connection_status(&connection_name).await;
+            let is_connected = matches!(connection_status, Some(ObsConnectionStatus::Connected));
+            log::info!("[PLUGIN_OBS] Connection '{}' status: {:?}, is_connected: {}", connection_name, connection_status, is_connected);
+            
+            // Get heartbeat data if available
+            let heartbeat_data = {
+                let connections = self.connections.lock().await;
+                connections.get(&connection_name)
+                    .and_then(|conn| conn.heartbeat_data.clone())
+            };
+            
+            if let Some(heartbeat) = heartbeat_data {
+                log::info!("[PLUGIN_OBS] Using heartbeat data for '{}': {:?}", connection_name, heartbeat);
+                
+                // Extract data from heartbeat
+                if let Some(recording) = heartbeat["recording"].as_bool() {
+                    status.is_recording = recording;
+                    log::info!("[PLUGIN_OBS] Heartbeat recording status for '{}': {}", connection_name, recording);
+                }
+                if let Some(streaming) = heartbeat["streaming"].as_bool() {
+                    status.is_streaming = streaming;
+                    log::info!("[PLUGIN_OBS] Heartbeat streaming status for '{}': {}", connection_name, streaming);
+                }
+                if let Some(cpu_usage) = heartbeat["cpuUsage"].as_f64() {
+                    status.cpu_usage = cpu_usage;
+                    log::info!("[PLUGIN_OBS] Heartbeat CPU usage for '{}': {}", connection_name, cpu_usage);
+                } else {
+                    // Use real CPU monitoring instead of OBS requests
+                    let real_cpu_usage = self.get_obs_cpu_usage_real().await;
+                    status.cpu_usage = real_cpu_usage;
+                    log::info!("[PLUGIN_OBS] Real CPU usage for '{}': {}", connection_name, real_cpu_usage);
+                }
+                
+                // Set connection names based on role
+                match role.as_str() {
+                    "OBS_SINGLE" => {
+                        if status.is_recording {
                             status.recording_connection = Some(connection_name.clone());
+                        } else if is_connected {
+                            status.recording_connection = Some(format!("{} (Connected)", connection_name));
                         }
-                    }
-                    
-                    if let Ok(is_streaming) = self.get_streaming_status(&connection_name).await {
-                        status.is_streaming = is_streaming;
-                        if is_streaming {
+                        if status.is_streaming {
                             status.streaming_connection = Some(connection_name.clone());
+                        } else if is_connected {
+                            status.streaming_connection = Some(format!("{} (Connected)", connection_name));
                         }
                     }
-                    
-                    if let Ok(cpu_usage) = self.get_obs_cpu_usage(&connection_name).await {
-                        status.cpu_usage = cpu_usage;
-                    }
-                }
-                "OBS_REC" => {
-                    // Recording connection
-                    if let Ok(is_recording) = self.get_recording_status(&connection_name).await {
-                        status.is_recording = is_recording;
-                        if is_recording {
+                    "OBS_REC" => {
+                        if status.is_recording {
                             status.recording_connection = Some(connection_name.clone());
+                        } else if is_connected {
+                            status.recording_connection = Some(format!("{} (Connected)", connection_name));
                         }
                     }
-                    
-                    if let Ok(cpu_usage) = self.get_obs_cpu_usage(&connection_name).await {
-                        status.cpu_usage = cpu_usage;
-                    }
-                }
-                "OBS_STR" => {
-                    // Streaming connection
-                    if let Ok(is_streaming) = self.get_streaming_status(&connection_name).await {
-                        status.is_streaming = is_streaming;
-                        if is_streaming {
+                    "OBS_STR" => {
+                        if status.is_streaming {
                             status.streaming_connection = Some(connection_name.clone());
+                        } else if is_connected {
+                            status.streaming_connection = Some(format!("{} (Connected)", connection_name));
                         }
                     }
+                    _ => {
+                        log::warn!("[PLUGIN_OBS] Unknown role '{}' for connection '{}'", role, connection_name);
+                    }
                 }
-                _ => {}
+            } else {
+                log::info!("[PLUGIN_OBS] No heartbeat data available for '{}', using fallback requests", connection_name);
+                
+                // Fallback to individual requests if no heartbeat data
+                match role.as_str() {
+                    "OBS_SINGLE" => {
+                        if let Ok(is_recording) = self.get_recording_status(&connection_name).await {
+                            status.is_recording = is_recording;
+                            if is_recording {
+                                status.recording_connection = Some(connection_name.clone());
+                            } else if is_connected {
+                                status.recording_connection = Some(format!("{} (Connected)", connection_name));
+                            }
+                        }
+                        if let Ok(is_streaming) = self.get_streaming_status(&connection_name).await {
+                            status.is_streaming = is_streaming;
+                            if is_streaming {
+                                status.streaming_connection = Some(connection_name.clone());
+                            } else if is_connected {
+                                status.streaming_connection = Some(format!("{} (Connected)", connection_name));
+                            }
+                        }
+                        // Use real CPU monitoring
+                        let real_cpu_usage = self.get_obs_cpu_usage_real().await;
+                        status.cpu_usage = real_cpu_usage;
+                    }
+                    "OBS_REC" => {
+                        if let Ok(is_recording) = self.get_recording_status(&connection_name).await {
+                            status.is_recording = is_recording;
+                            if is_recording {
+                                status.recording_connection = Some(connection_name.clone());
+                            } else if is_connected {
+                                status.recording_connection = Some(format!("{} (Connected)", connection_name));
+                            }
+                        }
+                        // Use real CPU monitoring
+                        let real_cpu_usage = self.get_obs_cpu_usage_real().await;
+                        status.cpu_usage = real_cpu_usage;
+                    }
+                    "OBS_STR" => {
+                        if let Ok(is_streaming) = self.get_streaming_status(&connection_name).await {
+                            status.is_streaming = is_streaming;
+                            if is_streaming {
+                                status.streaming_connection = Some(connection_name.clone());
+                            } else if is_connected {
+                                status.streaming_connection = Some(format!("{} (Connected)", connection_name));
+                            }
+                        }
+                    }
+                    _ => {
+                        log::warn!("[PLUGIN_OBS] Unknown role '{}' for connection '{}'", role, connection_name);
+                    }
+                }
             }
         }
 
+        log::info!("[PLUGIN_OBS] Final status: {:?}", status);
         Ok(status)
     }
 

@@ -1,7 +1,7 @@
 {
   "app": {
     "version": "0.1.0",
-    "last_save": "2025-07-19T11:01:27.115770100+00:00",
+    "last_save": "2025-07-19T14:29:41.256932+00:00",
     "startup": {
       "auto_start_udp": false,
       "auto_connect_obs": false,
@@ -56,7 +56,7 @@
     },
     "integration": {
       "auto_connect_on_startup": false,
-      "show_status_in_overlay": false,
+      "show_status_in_overlay": true,
       "auto_record_on_clip_play": false,
       "save_replay_buffer_on_clip_creation": false
     }
@@ -92,16 +92,16 @@
       "include_subsystem": true
     },
     "subsystems": {
-      "udp": {
-        "name": "udp",
-        "level": "info",
-        "enabled": false,
-        "custom_file": null
-      },
       "obs": {
         "name": "obs",
         "level": "info",
-        "enabled": false,
+        "enabled": true,
+        "custom_file": null
+      },
+      "udp": {
+        "name": "udp",
+        "level": "info",
+        "enabled": true,
         "custom_file": null
       },
       "pss": {

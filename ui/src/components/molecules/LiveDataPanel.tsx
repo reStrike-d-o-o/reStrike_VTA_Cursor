@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { diagLogsCommands, configCommands } from '../../utils/tauriCommands';
 import { useEnvironment } from '../../hooks/useEnvironment';
 import { useLiveDataStore, LiveDataType } from '../../stores/liveDataStore';
-import { listen } from '@tauri-apps/api/event';
 
 // Use the proper Tauri v2 invoke function
 const invoke = async (command: string, args?: any) => {
@@ -18,21 +17,7 @@ const invoke = async (command: string, args?: any) => {
   }
 };
 
-// Debug function to test Tauri API directly
-const testTauriApiDirectly = async () => {
-  console.log('🔍 Testing Tauri API directly...');
-  console.log('window.__TAURI__:', window.__TAURI__);
-  console.log('window.__TAURI__.core:', window.__TAURI__?.core);
-  
-  try {
-    const result = await window.__TAURI__.core.invoke('get_app_status');
-    console.log('✅ Direct invoke successful:', result);
-    return true;
-  } catch (error) {
-    console.log('❌ Direct invoke failed:', error);
-    return false;
-  }
-};
+
 
 const logTypes = [
   { key: 'pss', label: 'PSS' },
@@ -58,8 +43,10 @@ const LiveDataPanel: React.FC = () => {
     clearError,
     setConnecting,
   } = useLiveDataStore();
+  const [showFullEvents, setShowFullEvents] = useState(false);
   const [isLoadingSettings, setIsLoadingSettings] = useState(true);
   const liveDataRef = useRef<HTMLDivElement>(null);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Load live data settings from configuration
   const loadLiveDataSettings = async () => {
@@ -106,19 +93,88 @@ const LiveDataPanel: React.FC = () => {
     loadLiveDataSettings();
   }, []);
 
-  // Debug logging on every render
-  console.log('🔍 LiveDataPanel Render:', {
-    tauriAvailable,
-    environment,
-    isWindows,
-    isWeb,
-    windowTauri: typeof window !== 'undefined' ? !!window.__TAURI__ : 'undefined',
-    windowLocation: typeof window !== 'undefined' ? window.location.href : 'undefined'
-  });
-
-  // Test Tauri API on component mount
+  // Load full events setting on mount
   useEffect(() => {
-    testTauriApiDirectly();
+    const loadFullEventsSetting = async () => {
+      try {
+        const result = await invoke('obs_get_full_events_setting');
+        if (result && result.success) {
+          setShowFullEvents(result.enabled);
+        }
+      } catch (error) {
+        console.error('Failed to load full events setting:', error);
+      }
+    };
+    loadFullEventsSetting();
+  }, []);
+
+  // Poll for OBS events when full events are enabled
+  useEffect(() => {
+    if (!tauriAvailable || selectedType !== 'obs' || !showFullEvents) return;
+
+    // Set up polling for OBS events every 3 seconds when full events are enabled
+    const eventPollingInterval = setInterval(async () => {
+      try {
+        const result = await invoke('obs_get_recent_events');
+        if (result && result.success && result.events && result.events.length > 0) {
+          result.events.forEach((event: any) => {
+            const formattedEvent = `[OBS-EVENT][${event.connection_name}] ${event.event_type}: ${JSON.stringify(event.data)}`;
+            addData({
+              subsystem: 'obs',
+              data: formattedEvent,
+              type: 'info'
+            });
+          });
+        }
+      } catch (error) {
+        console.error('❌ Failed to fetch OBS events:', error);
+      }
+    }, 3000);
+
+    return () => {
+      clearInterval(eventPollingInterval);
+    };
+  }, [tauriAvailable, selectedType, showFullEvents, addData]);
+
+  // Handle full events toggle
+  const handleFullEventsToggle = async () => {
+    try {
+      const newValue = !showFullEvents;
+      const result = await invoke('obs_toggle_full_events', { enabled: newValue });
+      if (result && result.success) {
+        setShowFullEvents(newValue);
+        console.log('Full events toggle:', result.message);
+      }
+    } catch (error) {
+      console.error('Failed to toggle full events:', error);
+    }
+  };
+
+  // Debug logging on mount only
+  useEffect(() => {
+    console.log('🔍 LiveDataPanel Mount:', {
+      tauriAvailable,
+      environment,
+      isWindows,
+      isWeb,
+      windowTauri: typeof window !== 'undefined' ? !!window.__TAURI__ : 'undefined',
+      windowLocation: typeof window !== 'undefined' ? window.location.href : 'undefined'
+    });
+  }, []);
+
+  // Test Tauri API on component mount (only once)
+  useEffect(() => {
+    // Only test once on mount, not on every render
+    const testOnce = async () => {
+      console.log('🔍 Testing Tauri API on mount...');
+      try {
+        const result = await window.__TAURI__.core.invoke('get_app_status');
+        console.log('✅ Tauri API test successful:', result);
+      } catch (error) {
+        console.log('❌ Tauri API test failed:', error);
+      }
+    };
+    testOnce();
   }, []);
 
   // Scroll to bottom on new data
@@ -128,9 +184,56 @@ const LiveDataPanel: React.FC = () => {
     }
   }, [data]);
 
+  // Polling function to fetch live data - only for OBS status updates
+  const fetchLiveData = async () => {
+    try {
+      if (selectedType === 'obs') {
+        console.log('🔄 Fetching OBS status data');
+        const result = await invoke('get_live_data', { subsystem: selectedType });
+        console.log('📊 OBS status result:', result);
+        
+        if (result && result.success && result.data) {
+          // Only add data if there are actual changes (recording/streaming state)
+          const formattedData = formatLiveData(result.data);
+          
+          // Check if this is different from the last status
+          const lastEntry = data[data.length - 1];
+          if (!lastEntry || lastEntry.data !== formattedData) {
+            console.log('📝 New OBS status:', formattedData);
+            addData({
+              subsystem: selectedType,
+              data: formattedData,
+              type: 'info'
+            });
+          }
+        }
+      }
+      // For other subsystems, don't poll - only show real events
+    } catch (error) {
+      console.error('❌ Failed to fetch live data:', error);
+      setError(`Failed to fetch live data: ${error}`);
+    }
+  };
+
+  // Format live data for display
+  const formatLiveData = (data: any): string => {
+    switch (data.subsystem) {
+      case 'obs':
+        return `OBS Status: Recording=${data.is_recording ? 'ON' : 'OFF'}, Streaming=${data.is_streaming ? 'ON' : 'OFF'}, CPU=${data.cpu_usage.toFixed(1)}%, Recording Conn=${data.recording_connection || 'None'}, Streaming Conn=${data.streaming_connection || 'None'}`;
+      
+      case 'pss':
+        return `PSS Stats: Packets=${data.packets_received}, Parsed=${data.packets_parsed}, Errors=${data.parse_errors}, Clients=${data.connected_clients}, Last Packet=${data.last_packet_time ? new Date(data.last_packet_time * 1000).toLocaleTimeString() : 'Never'}`;
+      
+      case 'udp':
+        return `UDP Status: ${data.status}, Running=${data.is_running ? 'Yes' : 'No'}`;
+      
+      default:
+        return JSON.stringify(data, null, 2);
+    }
+  };
+
   // Handle streaming toggle and type change
   useEffect(() => {
-    let unlisten: (() => void) | undefined;
     setError('');
     setConnecting(true);
 
@@ -144,41 +247,43 @@ const LiveDataPanel: React.FC = () => {
 
     const setupStreaming = async () => {
       try {
+        console.log('🔧 Setting up streaming for:', selectedType, 'enabled:', enabled);
+        
         if (tauriAvailable) {
-          const result = await diagLogsCommands.setLiveDataStreaming(selectedType, enabled);
-          if (!result.success) {
-            setError(`Failed to ${enabled ? 'start' : 'stop'} streaming: ${result.error}`);
-            return;
-          }
-
+          // Skip the setLiveDataStreaming command for now and go straight to polling
+          // This command might not be necessary for our polling approach
+          console.log('📡 Skipping setLiveDataStreaming command, going straight to polling');
+          
           clearData();
           
-          // Use the proper Tauri v2 event listening API
-          try {
-            console.log('Attempting to listen for live_data events...');
-            const listener = await listen('live_data', (event: any) => {
-              console.log('Live data event received:', event);
-              if (event && event.payload && event.payload.subsystem === selectedType) {
-                addData({
-                  subsystem: selectedType,
-                  data: event.payload.data,
-                  type: 'info'
-                });
-              }
-            });
+          if (enabled && selectedType === 'obs') {
+            // Start polling for OBS status every 5 seconds (less frequent)
+            console.log('🔄 Starting OBS status polling...');
+            pollingIntervalRef.current = setInterval(fetchLiveData, 5000);
             
-            console.log('Event listener registered successfully');
-            unlisten = listener;
-          } catch (listenError) {
-            console.error('Event listening error:', listenError);
-            setError(`Event listening failed: ${listenError}`);
+            // Fetch initial data immediately
+            console.log('🚀 Fetching initial OBS data...');
+            await fetchLiveData();
+            console.log('✅ Initial OBS data fetch completed');
+          } else if (enabled) {
+            // For non-OBS subsystems, don't poll - only show real events
+            console.log('📡 No polling for non-OBS subsystem:', selectedType);
+          } else {
+            // Stop polling
+            console.log('⏹️ Stopping polling...');
+            if (pollingIntervalRef.current) {
+              clearInterval(pollingIntervalRef.current);
+              pollingIntervalRef.current = null;
+            }
           }
         } else {
           setError('Tauri not available - running in web mode');
         }
       } catch (err) {
+        console.error('❌ Streaming setup error:', err);
         setError(`Streaming error: ${err}`);
       } finally {
+        console.log('🏁 Setting connecting to false');
         setConnecting(false);
       }
     };
@@ -186,13 +291,12 @@ const LiveDataPanel: React.FC = () => {
     setupStreaming();
 
     return () => {
-      if (unlisten) {
-        try {
-          unlisten();
-        } catch (err) {
-          console.error('Error cleaning up listener:', err);
-        }
+      // Cleanup polling interval
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
       }
+      
       if (tauriAvailable) {
         diagLogsCommands.setLiveDataStreaming(selectedType, false).catch((err: any) => {
           console.error('Error stopping streaming:', err);
@@ -256,6 +360,18 @@ const LiveDataPanel: React.FC = () => {
             <option key={type.key} value={type.key}>{type.label}</option>
           ))}
         </select>
+        {selectedType === 'obs' && (
+          <label className="flex items-center gap-2 cursor-pointer ml-4">
+            <input 
+              type="checkbox" 
+              checked={showFullEvents} 
+              onChange={handleFullEventsToggle} 
+              className="accent-green-500"
+              disabled={connecting}
+            />
+            <span className="text-gray-200 font-medium text-sm">Full Events</span>
+          </label>
+        )}
       </div>
       {error && (
         <div className="mb-3 p-2 bg-red-900/20 border border-red-700 rounded text-red-400 text-sm">
