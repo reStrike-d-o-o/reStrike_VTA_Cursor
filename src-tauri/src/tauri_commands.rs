@@ -588,7 +588,8 @@ pub async fn list_log_files(
 ) -> Result<serde_json::Value, String> {
     log::info!("Listing log files for subsystem: {:?}", subsystem);
     
-    match app.log_manager().list_log_files(subsystem.as_deref()) {
+    let log_manager = app.log_manager().lock().await;
+    match log_manager.list_log_files(subsystem.as_deref()) {
         Ok(files) => Ok(serde_json::json!({
             "success": true,
             "data": files
@@ -607,7 +608,8 @@ pub async fn download_log_file(
 ) -> Result<Vec<u8>, String> {
     log::info!("Downloading log file: {}", filename);
     
-    match app.log_manager().read_log_file(&filename) {
+    let log_manager = app.log_manager().lock().await;
+    match log_manager.read_log_file(&filename) {
         Ok(contents) => Ok(contents),
         Err(e) => Err(format!("Failed to read log file: {}", e))
     }
@@ -617,7 +619,8 @@ pub async fn download_log_file(
 pub async fn list_archives(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
     log::info!("Listing archives");
     
-    match app.log_manager().list_archives() {
+    let log_manager = app.log_manager().lock().await;
+    match log_manager.list_archives() {
         Ok(archives) => Ok(serde_json::json!({
             "success": true,
             "data": archives
@@ -636,7 +639,8 @@ pub async fn extract_archive(
 ) -> Result<serde_json::Value, String> {
     log::info!("Extracting archive: {}", archive_name);
     
-    match app.log_manager().extract_archive(&archive_name) {
+    let log_manager = app.log_manager().lock().await;
+    match log_manager.extract_archive(&archive_name) {
         Ok(_) => Ok(serde_json::json!({
             "success": true,
             "message": format!("Archive {} extracted successfully", archive_name)
@@ -655,7 +659,8 @@ pub async fn download_archive(
 ) -> Result<Vec<u8>, String> {
     log::info!("Downloading archive: {}", archive_name);
     
-    match app.log_manager().download_archive(&archive_name) {
+    let log_manager = app.log_manager().lock().await;
+    match log_manager.download_archive(&archive_name) {
         Ok(contents) => Ok(contents),
         Err(e) => Err(format!("Failed to read archive: {}", e))
     }
@@ -703,8 +708,11 @@ pub async fn set_live_data_streaming(
                     let event_data = format!("[{}] OBS Event: Scene changed to 'Main Scene'", chrono::Utc::now().format("%H:%M:%S"));
                     
                     // Log to OBS subsystem file
-                    if let Err(e) = log_manager.log(&subsystem_clone, "INFO", &event_data) {
-                        log::error!("Failed to log OBS event: {}", e);
+                    {
+                        let log_manager_guard = log_manager.lock().await;
+                        if let Err(e) = log_manager_guard.log(&subsystem_clone, "INFO", &event_data) {
+                            log::error!("Failed to log OBS event: {}", e);
+                        }
                     }
                     
                     if let Err(e) = app_handle_clone.emit("live_data", serde_json::json!({
@@ -732,8 +740,11 @@ pub async fn set_live_data_streaming(
                     let event_data = format!("[{}] PSS Event: Match data received", chrono::Utc::now().format("%H:%M:%S"));
                     
                     // Log to PSS subsystem file
-                    if let Err(e) = log_manager.log(&subsystem_clone, "INFO", &event_data) {
-                        log::error!("Failed to log PSS event: {}", e);
+                    {
+                        let log_manager_guard = log_manager.lock().await;
+                        if let Err(e) = log_manager_guard.log(&subsystem_clone, "INFO", &event_data) {
+                            log::error!("Failed to log PSS event: {}", e);
+                        }
                     }
                     
                     if let Err(e) = app_handle_clone.emit("live_data", serde_json::json!({
@@ -761,8 +772,11 @@ pub async fn set_live_data_streaming(
                     let event_data = format!("[{}] UDP Event: Datagram received", chrono::Utc::now().format("%H:%M:%S"));
                     
                     // Log to UDP subsystem file
-                    if let Err(e) = log_manager.log(&subsystem_clone, "INFO", &event_data) {
-                        log::error!("Failed to log UDP event: {}", e);
+                    {
+                        let log_manager_guard = log_manager.lock().await;
+                        if let Err(e) = log_manager_guard.log(&subsystem_clone, "INFO", &event_data) {
+                            log::error!("Failed to log UDP event: {}", e);
+                        }
                     }
                     
                     if let Err(e) = app_handle_clone.emit("live_data", serde_json::json!({
