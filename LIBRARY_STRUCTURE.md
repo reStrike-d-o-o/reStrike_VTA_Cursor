@@ -369,7 +369,7 @@ mod tests {
     #[tokio::test]
     async fn test_process_data_collection() {
         // Test process data collection
-    }
+  }
 }
 ```
 

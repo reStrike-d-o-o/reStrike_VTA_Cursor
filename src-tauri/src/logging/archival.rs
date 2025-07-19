@@ -12,6 +12,15 @@ pub struct LogArchiver {
     archive_dir: String,
 }
 
+impl Clone for LogArchiver {
+    fn clone(&self) -> Self {
+        Self {
+            retention_days: self.retention_days,
+            archive_dir: self.archive_dir.clone(),
+        }
+    }
+}
+
 impl LogArchiver {
     pub fn new(retention_days: u32) -> Self {
         Self { 

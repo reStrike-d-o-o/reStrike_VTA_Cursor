@@ -320,13 +320,6 @@ export const systemCommands = {
 
 export const diagLogsCommands = {
   /**
-   * Enable or disable logging for a subsystem (pss, obs, udp)
-   */
-  async setLoggingEnabled(subsystem: string, enabled: boolean) {
-    return executeTauriCommand('set_logging_enabled', { subsystem, enabled });
-  },
-
-  /**
    * List log files in the log/ directory, optionally filtered by subsystem
    */
   async listLogFiles(subsystem?: string) {
