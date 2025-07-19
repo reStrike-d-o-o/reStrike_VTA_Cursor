@@ -1,449 +1,319 @@
 # Library Structure Documentation
 
-## Overview
+## Overview (Updated: 2025-01-28)
 
-This document describes the Rust backend library structure for reStrike VTA, including the plugin system, core modules, and data flow patterns.
+The reStrike VTA backend library provides a comprehensive Rust-based architecture for Windows desktop application development. The library features a modular plugin system, custom logging infrastructure, and robust error handling patterns.
 
-## Library Architecture
+## 🏗️ **Core Architecture**
 
-```
-src-tauri/src/
-├── lib.rs                    # Library entry point and exports
-├── main.rs                   # Application entry point
-├── tauri_commands.rs         # Tauri command definitions
-├── core/                     # Core application logic
-│   ├── app.rs               # Application state and lifecycle
-│   ├── config.rs            # Configuration management
-│   ├── state.rs             # Global state management
-│   └── mod.rs
-├── plugins/                  # Plugin system
-│   ├── mod.rs               # Plugin registry and management
-│   ├── plugin_obs.rs        # OBS WebSocket integration
-│   ├── plugin_playback.rs   # Video playback management
-│   ├── plugin_store.rs      # Data persistence
-│   ├── plugin_udp.rs        # UDP communication
-│   ├── plugin_cpu_monitor.rs # NEW: CPU monitoring system
-│   └── plugin_license.rs    # License management
-├── obs/                      # OBS integration modules
-├── pss/                      # PSS protocol handling
-├── video/                    # Video processing
-├── config/                   # Configuration management
-├── logging/                  # Logging system
-├── types/                    # Shared type definitions
-├── utils/                    # Utility functions
-└── commands/                 # Command implementations
-```
-
-## Plugin System
-
-### Plugin Architecture
-
-The plugin system provides a modular approach to different functionalities:
-
+### **Application Structure**
 ```rust
-// src-tauri/src/plugins/mod.rs
-pub mod plugin_obs;
-pub mod plugin_playback;
-pub mod plugin_store;
-pub mod plugin_udp;
-pub mod plugin_cpu_monitor; // NEW
-pub mod plugin_license;
+// Main application entry point
+src-tauri/src/main.rs
+├── Application initialization
+├── Tauri command registration
+├── Plugin system startup
+└── Logging system initialization
 
-// Plugin trait for common interface
-pub trait Plugin {
-    fn name(&self) -> &str;
-    fn init(&self) -> AppResult<()>;
-    fn shutdown(&self) -> AppResult<()>;
+// Core application logic
+src-tauri/src/core/
+├── app.rs           // Main application class
+├── config.rs        // Configuration management
+└── state.rs         // Application state management
+```
+
+### **Plugin System**
+```rust
+// Plugin modules
+src-tauri/src/plugins/
+├── mod.rs              // Plugin module exports
+├── plugin_obs.rs       // OBS WebSocket integration
+├── plugin_cpu_monitor.rs // CPU monitoring system
+├── plugin_udp.rs       // UDP server implementation
+├── plugin_playback.rs  // Video playback management
+├── plugin_store.rs     // Data storage and persistence
+└── plugin_license.rs   // License management
+```
+
+## 🔌 **Plugin Implementations**
+
+### **OBS Plugin** (`plugin_obs.rs`)
+```rust
+pub struct ObsPlugin {
+    connections: Arc<Mutex<HashMap<String, ObsConnection>>>,
+    event_tx: mpsc::UnboundedSender<ObsEvent>,
+    debug_ws_messages: Arc<Mutex<bool>>,
+    show_full_events: Arc<Mutex<bool>>,
+    recent_events: Arc<Mutex<Vec<RecentEvent>>>,
+    log_manager: Arc<Mutex<LogManager>>,  // Custom logging integration
+}
+
+impl ObsPlugin {
+    // Custom logging method
+    async fn log_to_file(&self, level: &str, message: &str) {
+        let log_manager = self.log_manager.lock().await;
+        if let Err(e) = log_manager.log("obs", level, message) {
+            eprintln!("Failed to log to obs.log: {}", e);
+        }
+    }
 }
 ```
 
-### CPU Monitoring Plugin (NEW - 2025-01-28)
+**Features**:
+- ✅ **Real-time WebSocket communication** with OBS Studio
+- ✅ **Custom LogManager integration** for event logging
+- ✅ **Scene management** and recording control
+- ✅ **Event streaming** to frontend
+- ✅ **Connection status monitoring**
 
-#### **File**: `src-tauri/src/plugins/plugin_cpu_monitor.rs`
-
-**Purpose**: Real-time CPU and memory monitoring for system processes
-
-**Key Features**:
-- System CPU usage tracking
-- Individual process monitoring
-- Memory usage tracking
-- Background monitoring with configurable intervals
-- Process filtering (>0.1% CPU or >10MB memory)
-
-**Data Structures**:
+### **CPU Monitor Plugin** (`plugin_cpu_monitor.rs`)
 ```rust
-#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CpuMonitorPlugin {
+    config: CpuMonitorConfig,
+    process_data: Arc<Mutex<Vec<CpuProcessData>>>,
+    system_data: Arc<Mutex<SystemCpuData>>,
+    is_monitoring: Arc<AtomicBool>,
+}
+
 pub struct CpuProcessData {
     pub process_name: String,
     pub cpu_percent: f64,
     pub memory_mb: f64,
     pub last_update: chrono::DateTime<chrono::Utc>,
 }
+```
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SystemCpuData {
-    pub total_cpu_percent: f64,
-    pub cores: Vec<f64>,
-    pub last_update: chrono::DateTime<chrono::Utc>,
-}
+**Features**:
+- ✅ **Windows `wmic` command integration**
+- ✅ **Real-time process monitoring**
+- ✅ **System CPU usage tracking**
+- ✅ **Background task management**
+- ⏳ **Awaiting `wmic` installation for testing**
 
-#[derive(Debug, Clone)]
-pub struct CpuMonitorConfig {
-    pub enabled: bool,
-    pub update_interval_seconds: u64,
-    pub monitored_processes: Vec<String>,
-    pub include_system_cpu: bool,
+### **UDP Plugin** (`plugin_udp.rs`)
+```rust
+pub struct UdpPlugin {
+    config: UdpServerConfig,
+    server: Option<UdpServer>,
+    stats: Arc<Mutex<UdpStats>>,
 }
 ```
 
-**Core Implementation**:
+**Features**:
+- ✅ **UDP server implementation**
+- ✅ **PSS protocol parsing**
+- ✅ **Real-time packet processing**
+- ✅ **Statistics tracking**
+
+## 📝 **Logging System**
+
+### **Custom LogManager** (`logging/mod.rs`)
 ```rust
-pub struct CpuMonitorPlugin {
-    config: Arc<Mutex<CpuMonitorConfig>>,
-    process_data: Arc<Mutex<HashMap<String, CpuProcessData>>>,
-    system_data: Arc<Mutex<Option<SystemCpuData>>>,
-    monitoring_active: Arc<Mutex<bool>>,
+pub struct LogManager {
+    config: Arc<Mutex<LogConfig>>,
+    loggers: Arc<Mutex<HashMap<String, Logger>>>,
+    rotator: LogRotator,
+    archiver: LogArchiver,
+}
+
+impl LogManager {
+    pub fn log(&self, subsystem: &str, level: &str, message: &str) -> io::Result<()> {
+        // All subsystems are always enabled
+        let timestamp = Utc::now().format("%Y-%m-%d %H:%M:%S%.3f").to_string();
+        let entry = LogEntry {
+            timestamp,
+            level: level.to_string(),
+            subsystem: subsystem.to_string(),
+            message: message.to_string(),
+        };
+        
+        // Write to subsystem-specific log file
+        let mut loggers = self.loggers.lock().unwrap();
+        let logger = loggers.entry(subsystem.to_string()).or_insert_with(|| {
+            Logger::new(&config.log_dir, subsystem).unwrap_or_else(|e| {
+                log::error!("Failed to create logger for subsystem {}: {}", subsystem, e);
+                Logger::new("log", "fallback").unwrap()
+            })
+        });
+        
+        logger.write_entry(&entry)?;
+        Ok(())
+    }
 }
 ```
 
-**Key Methods**:
-- `update_all_processes()` - Collects process data using `wmic` commands
-- `update_system_cpu()` - Updates system CPU information
-- `get_process_cpu_data()` - Returns current process data
-- `get_system_cpu_data()` - Returns system CPU data
-- `start_monitoring()` - Starts background monitoring task
-- `stop_monitoring()` - Stops monitoring
+### **Logging Components**
+- **Logger** (`logging/logger.rs`): Individual subsystem loggers
+- **Rotation** (`logging/rotation.rs`): Log file rotation logic
+- **Archival** (`logging/archival.rs`): Log compression and archival
 
-**Status**: ✅ Implemented, awaiting `wmic` installation for testing
-
-### OBS Plugin
-
-#### **File**: `src-tauri/src/plugins/plugin_obs.rs`
-
-**Purpose**: OBS Studio WebSocket integration
-
-**Key Features**:
-- WebSocket connection management
-- Scene switching and control
-- Source management
-- Connection status monitoring
-
-### Playback Plugin
-
-#### **File**: `src-tauri/src/plugins/plugin_playback.rs`
-
-**Purpose**: Video playback and replay management
-
-**Key Features**:
-- Video player control
-- Clip management
-- Replay functionality
-- Video file handling
-
-### Store Plugin
-
-#### **File**: `src-tauri/src/plugins/plugin_store.rs`
-
-**Purpose**: Data persistence and storage
-
-**Key Features**:
-- SQLite database management
-- Configuration storage
-- Event logging
-- Data archival
-
-### UDP Plugin
-
-#### **File**: `src-tauri/src/plugins/plugin_udp.rs`
-
-**Purpose**: UDP communication for real-time data
-
-**Key Features**:
-- Network communication
-- Data streaming
-- Protocol handling
-
-## Core Modules
-
-### Application Core
-
-#### **File**: `src-tauri/src/core/app.rs`
-
-**Purpose**: Application state and lifecycle management
-
-**Key Features**:
-- Plugin initialization and management
-- Global state coordination
-- Application lifecycle events
-- Error handling
-
-```rust
-pub struct App {
-    pub cpu_monitor_plugin: CpuMonitorPlugin,
-    pub obs_plugin: ObsPlugin,
-    pub playback_plugin: PlaybackPlugin,
-    pub store_plugin: StorePlugin,
-    pub udp_plugin: UdpPlugin,
-    // ... other plugins
-}
+### **Log Files Structure**
+```
+src-tauri/logs/
+├── app.log              # Application-level events
+├── obs.log              # OBS WebSocket events (REAL-TIME)
+├── pss.log              # PSS protocol events
+├── udp.log              # UDP server events
+└── archives/            # Compressed log archives
+    ├── obs_20250128_archive.zip
+    ├── pss_20250128_archive.zip
+    └── udp_20250128_archive.zip
 ```
 
-### Configuration Management
+## 🔧 **Error Handling Patterns**
 
-#### **File**: `src-tauri/src/config/manager.rs`
-
-**Purpose**: Configuration loading and management
-
-**Key Features**:
-- JSON configuration files
-- Environment-specific settings
-- Runtime configuration updates
-- Validation and error handling
-
-### Logging System
-
-#### **File**: `src-tauri/src/logging/logger.rs`
-
-**Purpose**: Structured logging and archival
-
-**Key Features**:
-- Multiple log levels (debug, info, warn, error)
-- Log rotation and archival
-- File and console output
-- Performance monitoring
-
-## Tauri Commands
-
-### Command Definitions
-
-#### **File**: `src-tauri/src/tauri_commands.rs`
-
-**Purpose**: Tauri command definitions for frontend-backend communication
-
-**CPU Monitoring Commands** (NEW):
+### **AppResult<T> Pattern**
 ```rust
-#[tauri::command]
-pub async fn cpu_get_process_data(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
-    let process_data = app.cpu_monitor_plugin().get_process_cpu_data().await;
-    Ok(serde_json::json!({
-        "success": true,
-        "processes": process_data
-    }))
-}
-
-#[tauri::command]
-pub async fn cpu_get_system_data(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
-    let system_data = app.cpu_monitor_plugin().get_system_cpu_data().await;
-    Ok(serde_json::json!({
-        "success": true,
-        "system": system_data
-    }))
-}
-```
-
-**Command Registration**:
-```rust
-// src-tauri/src/main.rs
-fn main() {
-    tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![
-            cpu_get_process_data,
-            cpu_get_system_data,
-            // ... other commands
-        ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
-}
-```
-
-## Error Handling
-
-### Error Types
-
-#### **File**: `src-tauri/src/types/mod.rs`
-
-**Purpose**: Shared error types and result handling
-
-```rust
-#[derive(Debug, thiserror::Error)]
-pub enum AppError {
-    #[error("Configuration error: {0}")]
-    ConfigError(String),
-    #[error("IO error: {0}")]
-    IoError(#[from] std::io::Error),
-    #[error("Serialization error: {0}")]
-    SerializationError(#[from] serde_json::Error),
-    // ... other error types
-}
-
 pub type AppResult<T> = Result<T, AppError>;
-```
 
-**Error Handling Patterns**:
-- Use `AppResult<T>` for all plugin and core methods
-- Convert `std::io::Error` to `AppError::IoError(e)`
-- Use `AppError::ConfigError(e.to_string())` for custom error messages
-- Never use `AppError::IoError` with String or formatted messages
-
-## Data Flow Patterns
-
-### CPU Monitoring Flow (NEW)
-
-```
-1. Background Task (plugin_cpu_monitor.rs)
-   ↓ update_all_processes()
-2. WMIC Command Execution
-   ↓ wmic process get name,processid,workingsetsize,percentprocessortime /format:csv
-3. Data Parsing and Filtering
-   ↓ Process CSV output, filter significant processes
-4. State Update
-   ↓ Update process_data HashMap
-5. Frontend Request (tauri_commands.rs)
-   ↓ cpu_get_process_data command
-6. JSON Serialization
-   ↓ Convert to serde_json::Value
-7. Frontend Display (CpuMonitoringSection.tsx)
-   ↓ React component rendering
-```
-
-### General Data Flow
-
-```
-Frontend Request → Tauri Command → Plugin Method → System Call → Data Processing → Response
-```
-
-## Type System
-
-### Shared Types
-
-#### **File**: `src-tauri/src/types/mod.rs`
-
-**Purpose**: Common type definitions used across modules
-
-```rust
-// CPU monitoring types
-pub type ProcessData = HashMap<String, CpuProcessData>;
-pub type SystemData = Option<SystemCpuData>;
-
-// Plugin types
-pub type PluginResult<T> = Result<T, Box<dyn std::error::Error>>;
-
-// Configuration types
-pub type ConfigValue = serde_json::Value;
-```
-
-## Utility Functions
-
-### Common Utilities
-
-#### **File**: `src-tauri/src/utils/logger.rs`
-
-**Purpose**: Logging utilities and helpers
-
-```rust
-pub fn setup_logging() -> Result<(), Box<dyn std::error::Error>> {
-    // Logging setup implementation
-}
-
-pub fn log_error(context: &str, error: &dyn std::error::Error) {
-    log::error!("[{}] Error: {}", context, error);
+pub enum AppError {
+    IoError(std::io::Error),
+    ConfigError(String),
+    PluginError(String),
+    NetworkError(String),
+    ValidationError(String),
 }
 ```
 
-## Testing Strategy
-
-### Unit Testing
-
+### **Error Conversion Patterns**
 ```rust
-#[cfg(test)]
-mod tests {
-    use super::*;
+// Converting std::io::Error to AppError
+.map_err(|e| AppError::IoError(e))
 
-    #[test]
-    fn test_cpu_monitor_plugin_creation() {
-        let config = CpuMonitorConfig::default();
-        let plugin = CpuMonitorPlugin::new(config);
-        assert_eq!(plugin.name(), "cpu_monitor");
-    }
+// Converting to AppError::ConfigError for custom messages
+.map_err(|e| AppError::ConfigError(e.to_string()))
 
-    #[tokio::test]
-    async fn test_process_data_collection() {
-        // Test process data collection
-  }
+// Using AppResult<T> for all plugin methods
+pub async fn connect_obs(&self, connection_name: &str) -> AppResult<()> {
+    // Implementation with proper error handling
 }
 ```
 
-### Integration Testing
+## 📡 **Tauri Commands**
 
+### **Command Structure**
 ```rust
-#[cfg(test)]
-mod integration_tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn test_cpu_monitoring_workflow() {
-        // Test complete CPU monitoring workflow
+#[tauri::command]
+pub async fn list_log_files(
+    subsystem: Option<String>,
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, String> {
+    let log_manager = app.log_manager().lock().await;
+    match log_manager.list_log_files(subsystem.as_deref()) {
+        Ok(files) => Ok(serde_json::json!({
+            "success": true,
+            "data": files
+        })),
+        Err(e) => Ok(serde_json::json!({
+            "success": false,
+            "error": format!("Failed to list log files: {}", e)
+        }))
     }
 }
 ```
 
-## Performance Considerations
+### **Command Categories**
+- **Logging Commands**: Log file management and archival
+- **OBS Commands**: WebSocket connection and control
+- **CPU Commands**: System and process monitoring
+- **UDP Commands**: Server management and statistics
+- **System Commands**: General system information
 
-### Memory Management
+## 🔄 **Data Flow Patterns**
 
-- Use `Arc<Mutex<T>>` for shared state across async tasks
-- Implement proper cleanup in plugin shutdown methods
-- Monitor memory usage in CPU monitoring plugin
+### **OBS Event Flow**
+```
+OBS Studio → WebSocket → ObsPlugin → LogManager → obs.log
+                ↓
+            Frontend UI ← Tauri Commands ← Event Channel
+```
 
-### Async Operations
+### **CPU Monitoring Flow**
+```
+Windows System → wmic Commands → CpuMonitorPlugin → Tauri Commands → Frontend UI
+```
 
-- Use `tokio` for async runtime
-- Implement proper error handling in async functions
-- Use background tasks for continuous monitoring
+### **Logging Flow**
+```
+Any Plugin → LogManager → Subsystem Logger → Log File → Rotation/Archival
+```
 
-### Error Handling
+## 🛠️ **Development Patterns**
 
-- Implement comprehensive error handling
-- Use structured logging for debugging
-- Provide meaningful error messages to frontend
+### **Plugin Development Pattern**
+```rust
+// 1. Define plugin struct with necessary fields
+pub struct MyPlugin {
+    config: MyConfig,
+    state: Arc<Mutex<MyState>>,
+    log_manager: Arc<Mutex<LogManager>>,  // For logging
+}
 
-## Security Considerations
+// 2. Implement constructor
+impl MyPlugin {
+    pub fn new(config: MyConfig, log_manager: Arc<Mutex<LogManager>>) -> Self {
+        // Initialize plugin
+    }
+}
 
-### Input Validation
+// 3. Implement methods with AppResult<T>
+impl MyPlugin {
+    pub async fn do_something(&self) -> AppResult<()> {
+        // Use custom logging
+        let log_manager = self.log_manager.lock().await;
+        log_manager.log("my_plugin", "INFO", "Doing something")?;
+        
+        // Implementation
+        Ok(())
+    }
+}
+```
 
-- Validate all input data from frontend
-- Sanitize process names and data
-- Implement proper error handling without information disclosure
+### **Async Mutex Pattern**
+```rust
+// Proper async mutex handling
+let log_manager = self.log_manager.lock().await;
+if let Err(e) = log_manager.log("subsystem", "level", "message") {
+    eprintln!("Logging error: {}", e);
+}
+```
 
-### System Access
+## 📊 **Current Status**
 
-- Limit system access to necessary operations
-- Implement proper permissions for `wmic` commands
-- Handle command execution failures gracefully
+### **✅ Completed Features**
+- **OBS Integration**: Complete WebSocket integration with custom logging
+- **CPU Monitoring**: Real-time system monitoring implementation
+- **Logging System**: Comprehensive subsystem-based logging
+- **Plugin Architecture**: Modular, extensible plugin system
+- **Error Handling**: Robust AppResult<T> pattern implementation
 
-## Current Status (2025-01-28)
+### **🚧 In Progress**
+- **WMIC Integration**: Awaiting `wmic` command installation
+- **Performance Optimization**: Ongoing optimization efforts
+- **Error Handling Enhancement**: Improved error boundaries
 
-### ✅ **Completed**
-- Plugin system architecture
-- CPU monitoring plugin implementation
-- Tauri command integration
-- Error handling patterns
-- Logging system
-- Configuration management
+### **📋 Next Steps**
+1. **Complete CPU Monitoring**: Install `wmic` and test real data
+2. **Performance Testing**: Optimize data flow and memory usage
+3. **Documentation**: Update all documentation with latest patterns
+4. **Testing**: Comprehensive unit and integration testing
 
-### 🚧 **In Progress**
-- CPU monitoring testing with `wmic`
-- Performance optimization
-- Error handling improvements
+## 🔍 **Troubleshooting**
 
-### 📋 **Planned**
-- Enhanced error handling
-- Performance monitoring
-- Additional plugin features
-- Comprehensive testing
+### **Common Issues**
+- **Compilation Errors**: Check type mismatches and imports
+- **Runtime Errors**: Verify Tauri command registration
+- **Logging Issues**: Check file permissions and LogManager initialization
+- **Performance Issues**: Monitor memory usage and async patterns
+
+### **Development Tips**
+- **Use AppResult<T>**: Always use AppResult<T> for plugin methods
+- **Proper Logging**: Use custom LogManager for structured logging
+- **Async Patterns**: Use proper async mutex handling
+- **Error Handling**: Convert errors appropriately (IoError vs ConfigError)
 
 ---
 
-**Last Updated**: 2025-01-28
-**Version**: 0.1.0
-**Status**: CPU monitoring implementation complete, awaiting testing 
+**Last Updated**: 2025-01-28  
+**Status**: OBS logging integration complete, CPU monitoring awaiting `wmic` installation  
+**Next Action**: Install `wmic` and test real process data display 
