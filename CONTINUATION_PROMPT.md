@@ -1,219 +1,165 @@
-# reStrike VTA - Continuation Prompt
+# Continuation Prompt - reStrike VTA Project
 
-## 🎯 Project Context
+## Current Status (Updated: 2025-01-28)
 
-You are working on **reStrike VTA**, a Windows-native taekwondo competition management application built with Tauri v2, React, and Rust. The application features OBS Studio integration, real-time event processing, and video replay capabilities.
+### ✅ **Recently Completed**
 
-## ✅ Current Status (2025-01-28)
+#### **CPU Monitoring System Implementation**
+- **Backend Plugin**: `src-tauri/src/plugins/plugin_cpu_monitor.rs` - Complete implementation using Windows `wmic` commands
+- **Frontend Component**: `ui/src/components/molecules/CpuMonitoringSection.tsx` - Real-time CPU monitoring display
+- **Tauri Commands**: `cpu_get_process_data` and `cpu_get_system_data` - Backend-frontend communication
+- **UI Integration**: CPU monitoring section positioned underneath Live Data section as requested
+- **Data Flow**: Background monitoring → Rust plugin → Tauri commands → React frontend → UI display
 
-### Recently Completed Features
-- **OBS WebSocket v5 Integration**: Full protocol support with connection management
-- **Protocol Simplification**: Removed OBS WebSocket v4 support, streamlined to v5 only
-- **Disconnect Functionality**: Proper WebSocket disconnection that preserves configuration
-- **Settings Separation**: Clear separation between "Save Connection Settings" and "Connect" actions
-- **TypeScript Error Fixes**: Resolved all parameter and type issues
-- **Documentation Consolidation**: Comprehensive documentation system created
+#### **Technical Implementation Details**
+- **Process Monitoring**: Uses `wmic process get name,processid,workingsetsize,percentprocessortime /format:csv`
+- **Data Structures**: `CpuProcessData` and `SystemCpuData` with proper serialization
+- **Filtering**: Only shows processes with >0.1% CPU or >10MB memory
+- **Real-time Updates**: Background task runs every 2 seconds
+- **Error Handling**: Comprehensive error handling with logging
 
-### Key Technical Improvements Made Today
-1. **Backend Changes**:
-   - Added `disconnect_obs()` method in `src-tauri/src/plugins/plugin_obs.rs`
-   - Updated `obs_disconnect` command in `src-tauri/src/tauri_commands.rs`
-   - Removed `protocolVersion` parameter from all OBS commands
-   - Enhanced error handling and logging
+### 🚧 **Current Issue**
 
-2. **Frontend Changes**:
-   - Updated `WebSocketManager.tsx` with proper button labels and functionality
-   - Fixed TypeScript errors related to nullable `editingConnection`
-   - Removed `status` property from `addObsConnection` calls
-   - Added null checks for better type safety
-   - Renamed "Update Connection" to "Save Connection Settings"
+#### **WMIC Command Availability**
+- **Problem**: `wmic` command is not available in the current Windows PowerShell environment
+- **Impact**: CPU monitoring shows empty process data
+- **User Action**: User will install `wmic` to enable real process monitoring
+- **Status**: Implementation complete, awaiting `wmic` installation for testing
 
-3. **Documentation Updates**:
-   - Created consolidated documentation structure
-   - Removed redundant documentation files
-   - Updated all technical references to reflect current implementation
+### 📋 **Next Steps After WMIC Installation**
 
-## 🏗️ Architecture Overview
+1. **Test Real Process Data**
+   - Verify `wmic` commands work in the environment
+   - Confirm process data collection and display
+   - Test system CPU monitoring functionality
 
-### Technology Stack
-- **Backend**: Rust + Tauri v2 with plugin-based microkernel architecture
-- **Frontend**: React 18 + TypeScript + Tailwind CSS with atomic design
-- **OBS Integration**: WebSocket v5 protocol only (v4 removed)
-- **Configuration**: JSON-based settings with automatic persistence
-- **State Management**: Zustand for frontend, plugin-based for backend
+2. **Optimize CPU Percentage Calculations**
+   - Review current CPU percentage conversion logic
+   - Implement more accurate CPU usage calculations
+   - Add proper time-based CPU usage tracking
 
-### Key Files and Structure
-```
-src-tauri/
-├── src/
-│   ├── plugins/
-│   │   └── plugin_obs.rs          # OBS WebSocket integration
-│   ├── tauri_commands.rs          # Tauri command definitions
-│   └── config/                    # Configuration management
-ui/
-├── src/
-│   ├── components/
-│   │   ├── atoms/                 # Basic components
-│   │   ├── molecules/             # Composite components
-│   │   │   └── WebSocketManager.tsx # OBS connection management
-│   │   └── organisms/             # Complex components
-│   ├── stores/                    # Zustand state management
-│   └── utils/
-│       └── tauriCommands.ts       # Tauri command wrappers
-docs/
-├── README.md                      # Main project overview
-├── ARCHITECTURE.md                # System architecture
-├── DEVELOPMENT.md                 # Development guide
-├── OBS_INTEGRATION.md             # OBS integration details
-└── PROJECT_CONTEXT.md             # Project context and status
-```
+3. **Enhance Error Handling**
+   - Add fallback mechanisms if `wmic` fails
+   - Implement graceful degradation for missing commands
+   - Add user-friendly error messages
 
-## 🔧 OBS Integration Status
+4. **Performance Optimization**
+   - Optimize background monitoring frequency
+   - Implement process data caching
+   - Reduce memory usage for large process lists
 
-### Current Implementation
-- **WebSocket v5 Protocol**: Only v5 supported (v4 removed)
-- **Connection Management**: Full CRUD operations with status monitoring
-- **Authentication**: SHA256 authentication with password preservation
-- **Disconnect Functionality**: Proper disconnection without losing configuration
-- **Settings Persistence**: All connections persist across sessions
+5. **UI Enhancements**
+   - Add process sorting options (CPU, Memory, Name)
+   - Implement process search/filtering
+   - Add process details on hover/click
+   - Improve visual indicators for high CPU usage
 
-### Key Methods
+### 🏗️ **Architecture Context**
+
+#### **Backend (Rust/Tauri)**
+- **Plugin System**: Modular architecture with `plugin_cpu_monitor.rs`
+- **Data Flow**: Background task → Process collection → State update → Tauri command → Frontend
+- **Error Handling**: `AppResult<T>` pattern with proper error propagation
+- **Logging**: Structured logging with debug information for troubleshooting
+
+#### **Frontend (React/TypeScript)**
+- **Component**: `CpuMonitoringSection.tsx` in molecules layer
+- **State Management**: React hooks with real-time updates
+- **UI Design**: Atomic design with Tailwind CSS styling
+- **Integration**: Positioned in `AdvancedPanel.tsx` underneath Live Data section
+
+#### **Data Structures**
 ```rust
-// Backend methods in plugin_obs.rs
-pub async fn add_connection(&self, config: ObsConnection) -> AppResult<()>
-pub async fn connect_obs(&self, connection_name: &str) -> AppResult<()>
-pub async fn disconnect_obs(&self, connection_name: &str) -> AppResult<()>
-pub async fn remove_connection(&self, connection_name: &str) -> AppResult<()>
-```
+// Backend
+pub struct CpuProcessData {
+    pub process_name: String,
+    pub cpu_percent: f64,
+    pub memory_mb: f64,
+    pub last_update: chrono::DateTime<chrono::Utc>,
+}
 
-### Frontend Integration
-```typescript
-// Frontend methods in tauriCommands.ts
-export const obsCommands = {
-  addConnection: (connection: ObsConnection) => invoke('obs_add_connection', { connection }),
-  connect: (name: string) => invoke('obs_connect', { name }),
-  disconnect: (name: string) => invoke('obs_disconnect', { name }),
-  removeConnection: (name: string) => invoke('obs_remove_connection', { name }),
+pub struct SystemCpuData {
+    pub total_cpu_percent: f64,
+    pub cores: Vec<f64>,
+    pub last_update: chrono::DateTime<chrono::Utc>,
 }
 ```
 
-## 🚨 Current Issues to Address
+### 🔧 **Technical Notes**
 
-### TypeScript Error (Needs Fix)
-There's still a TypeScript error in `WebSocketManager.tsx` line 256:
-```typescript
-// ERROR: Argument of type 'string | null' is not assignable to parameter of type 'string'
-await obsCommands.removeConnection(editingConnection);
-```
-
-**Fix needed**: Add null check before calling `removeConnection`:
-```typescript
-if (editingConnection) {
-  await obsCommands.removeConnection(editingConnection);
-}
-```
-
-## 📋 Next Steps and Priorities
-
-### Immediate Tasks
-1. **Fix TypeScript Error**: Add null check for `editingConnection` in WebSocketManager
-2. **Test Disconnect Functionality**: Verify disconnect button works correctly
-3. **Test Connection Workflow**: Verify save settings → connect → disconnect flow
-
-### Future Enhancements
-1. **Multiple OBS Instances**: Support for multiple OBS connections
-2. **Advanced Authentication**: Additional authentication methods
-3. **Event Filtering**: Advanced event processing and filtering
-4. **Performance Optimization**: Connection pooling and caching
-5. **Error Recovery**: Enhanced error handling and recovery
-
-## 🔍 Development Environment
-
-### Current Setup
-- **OS**: Windows 10/11
-- **Node.js**: v24+
-- **Rust**: Stable toolchain
-- **Tauri CLI**: Latest version
-- **OBS Studio**: v28+ with WebSocket v5 plugin
-
-### Development Commands
+#### **WMIC Command Details**
 ```bash
-# Start development
-cargo tauri dev
+# Command used for process monitoring
+wmic process get name,processid,workingsetsize,percentprocessortime /format:csv
 
-# Frontend only
-cd ui && npm run start:docker
-
-# Build
-cargo tauri build
+# Expected output format
+Node,Name,ProcessId,WorkingSetSize,PercentProcessorTime
+COMPUTERNAME,process.exe,1234,1048576,2.5
 ```
 
-## 📚 Documentation Status
+#### **Error Handling Patterns**
+- Use `AppResult<T>` for all plugin methods
+- Convert `std::io::Error` to `AppError::IoError(e)`
+- Use `AppError::ConfigError(e.to_string())` for custom messages
+- Log errors with context for debugging
 
-### Consolidated Documentation
-- **README.md**: Main project overview and quick start
-- **docs/ARCHITECTURE.md**: System architecture and design patterns
-- **docs/DEVELOPMENT.md**: Development setup and coding standards
-- **docs/OBS_INTEGRATION.md**: OBS WebSocket integration details
-- **docs/PROJECT_CONTEXT.md**: Project context and technical details
+#### **Frontend Integration**
+- Tauri commands return JSON with `success` flag
+- Frontend handles wrapped responses and null checks
+- Real-time updates via `useEffect` with interval
+- Color-coded status indicators based on CPU usage
 
-### Removed Files
-- `FRONTEND_DEVELOPMENT_SUMMARY.md` (merged)
-- `LIBRARY_STRUCTURE.md` (merged)
-- `PROJECT_STRUCTURE.md` (merged)
-- `DOCKER_HOT_RELOAD_SETUP.md` (no longer relevant)
+### 📚 **Updated Documentation**
 
-## 🎯 Key Success Criteria
+#### **Key Files Updated**
+- `FRONTEND_DEVELOPMENT_SUMMARY.md` - CPU monitoring implementation details
+- `PROJECT_STRUCTURE.md` - Plugin system and architecture overview
+- `LIBRARY_STRUCTURE.md` - Backend library structure and data flow
+- `CONTINUATION_PROMPT.md` - This file with current status
 
-### OBS Integration
-- ✅ WebSocket v5 protocol support
-- ✅ Connection management (add, edit, delete, connect, disconnect)
-- ✅ Settings persistence across sessions
-- ✅ Real-time status monitoring
-- ✅ Proper disconnect functionality
-- ✅ Type safety and error handling
+#### **Documentation Status**
+- ✅ All major documentation files updated
+- ✅ CPU monitoring implementation documented
+- ✅ Architecture and data flow patterns documented
+- ✅ Error handling and best practices documented
 
-### User Experience
-- ✅ Clear separation between save settings and connect actions
-- ✅ Intuitive button labels ("Save Connection Settings" vs "Connect")
-- ✅ Proper error messages and user feedback
-- ✅ Configuration backup and restore
+### 🎯 **Success Criteria**
 
-### Technical Quality
-- ✅ No TypeScript compilation errors
-- ✅ Proper null safety and type checking
-- ✅ Comprehensive error handling
-- ✅ Clean code architecture
-- ✅ Complete documentation
+#### **After WMIC Installation**
+1. **Real Process Data**: CPU monitoring shows actual system processes
+2. **Accurate Metrics**: CPU and memory usage match Task Manager
+3. **Real-time Updates**: Data updates every 2 seconds
+4. **Error Resilience**: Graceful handling of command failures
+5. **Performance**: Smooth UI updates without lag
 
-## 🔄 Recent Session Summary
+#### **Long-term Goals**
+1. **Comprehensive Monitoring**: System and process-level metrics
+2. **User Experience**: Intuitive and informative display
+3. **Integration**: Seamless integration with other system features
+4. **Extensibility**: Easy to add new monitoring capabilities
 
-### What Was Accomplished
-1. **Fixed OBS Connection Issues**: Resolved protocol version and parameter mismatches
-2. **Implemented Disconnect Functionality**: Added proper WebSocket disconnection
-3. **Improved Type Safety**: Fixed TypeScript errors and null safety issues
-4. **Enhanced User Experience**: Clear button labels and workflow separation
-5. **Consolidated Documentation**: Created comprehensive documentation system
+### 🔍 **Troubleshooting Guide**
 
-### Technical Decisions Made
-- **Protocol Simplification**: Removed OBS WebSocket v4 support for simplicity
-- **Settings Separation**: Clear distinction between configuration and connection actions
-- **Error Handling**: Comprehensive error handling with user-friendly messages
-- **Documentation Structure**: Consolidated into logical, maintainable structure
+#### **If Process Data is Empty**
+1. Verify `wmic` command availability: `wmic process get name /format:csv`
+2. Check command permissions and execution environment
+3. Review backend logs for command execution errors
+4. Test with alternative PowerShell commands if needed
 
-## 🚀 Ready to Continue
+#### **If CPU Percentages Seem Incorrect**
+1. Review CPU percentage calculation logic
+2. Check for proper time-based measurements
+3. Verify data parsing from CSV output
+4. Compare with Task Manager values
 
-The project is in excellent shape with:
-- ✅ All major OBS integration features working
-- ✅ Clean, maintainable codebase
-- ✅ Comprehensive documentation
-- ✅ Type-safe implementation
-- ✅ Proper error handling
-
-**Next session can focus on**: Testing the current implementation, adding new features, or addressing any remaining issues.
+#### **If UI Updates are Slow**
+1. Check background task frequency
+2. Review process filtering criteria
+3. Optimize data serialization
+4. Monitor memory usage
 
 ---
 
-**Last Updated**: 2025-01-28  
-**Session Status**: Complete  
-**Ready for Continuation**: ✅ 
+**Last Updated**: 2025-01-28
+**Status**: CPU monitoring implementation complete, awaiting `wmic` installation for testing
+**Next Action**: Install `wmic` and test real process data display 
