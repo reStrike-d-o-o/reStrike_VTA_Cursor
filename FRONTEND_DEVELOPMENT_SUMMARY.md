@@ -2,174 +2,165 @@
 
 ## Current Status (Updated: 2025-01-28)
 
-### ✅ **Recently Completed**
+### ✅ **Completed Features**
 
-#### **OBS Logging System Integration - COMPLETE**
-- **Backend Integration**: Complete integration of OBS plugin with custom LogManager
-- **Real-time Event Logging**: OBS WebSocket events now properly written to `obs.log` file
-- **Event Types Captured**: Scene transitions, recording state changes, media events, vendor events
-- **Technical Implementation**: Custom LogManager integration with async mutex handling
-- **Type Safety**: All compilation errors resolved with proper Arc<Mutex<LogManager>> wrapping
+#### **Atomic Design System - COMPLETE**
+- **Atoms**: Button, Input, Checkbox, Label, StatusDot (Badge), Icon
+- **Molecules**: EventTableSection, LiveDataPanel, CpuMonitoringSection, LogDownloadList
+- **Organisms**: EventTable, MatchInfoSection, ObsWebSocketManager, SidebarSmall, SidebarBig
+- **Layouts**: DockBar, AdvancedPanel, StatusbarAdvanced
+- **Integration**: All components use atomic design principles with consistent styling
 
-#### **CPU Monitoring System Implementation**
-- **Backend Plugin**: Complete CPU monitoring implementation using Windows `wmic` commands
-- **Frontend Component**: Real-time CPU monitoring display with process and system data
-- **UI Integration**: CPU monitoring section positioned underneath Live Data section
-- **Data Flow**: Background monitoring → Rust plugin → Tauri commands → React frontend → UI display
+#### **UI Layout System - COMPLETE**
+- **DockBar**: Two-column layout with SidebarSmall (left) and SidebarBig (right)
+- **Advanced Panel**: Horizontal layout with sidebar and main content area
+- **Responsive Design**: Proper flex layouts with correct dimensions
+- **Color Scheme**: Semi-transparent dark backgrounds with proper contrast
 
-#### **React Frontend Atomic Design System**
-- **Atoms**: Button, Input, Checkbox, Label, StatusDot (Badge), Icon - All extracted and integrated
-- **Molecules**: EventTableSection, LiveDataPanel, LogDownloadList, CpuMonitoringSection
-- **Organisms**: EventTable, MatchInfoSection, ObsWebSocketManager, AdvancedPanel
-- **Layouts**: DockBar, StatusbarAdvanced, AdvancedPanel
-- **Accessibility**: All linter issues resolved, proper form/select labeling implemented
+#### **Component Integration - COMPLETE**
+- **Event Table**: Working event filtering and display
+- **CPU Monitoring**: Real-time system monitoring display
+- **OBS Integration**: WebSocket manager with connection status
+- **Live Data**: Real-time data display panels
 
-### 🏗️ **Architecture Overview**
+### 🚨 **Important Development Guidelines**
 
-#### **Component Hierarchy**
+#### **UI Design Work Boundaries**
+- **ONLY modify UI files**: `App.tsx`, `AdvancedPanel.tsx`, UI components
+- **NEVER touch backend**: Tauri permissions, event handling, Rust code
+- **Focus on visual changes**: Transparency, colors, layout, styling only
+- **Preserve functionality**: All backend features must remain untouched
+
+#### **Safe to Modify**
+- Tailwind CSS classes and styling
+- Component layout and structure
+- Visual properties and appearance
+- UI state management (Zustand stores)
+- React component logic (UI only)
+
+#### **Never Touch During UI Work**
+- `src-tauri/` directory (any Rust code)
+- `capabilities.json` or `tauri.conf.json`
+- Event listeners and Tauri permissions
+- Backend plugins and commands
+- Any non-UI related functionality
+
+### 🎨 **UI Design Patterns**
+
+#### **Color Scheme**
+```css
+/* Main backgrounds */
+bg-gray-900          /* Main app background */
+bg-black/60          /* DockBar background */
+bg-gray-800/80       /* Advanced panel background */
+bg-gray-700/90       /* Sidebar background */
+
+/* Borders and accents */
+border-white/20      /* Subtle white borders */
+border-gray-600      /* Dark borders */
 ```
-App.tsx
-├── DockBar (Sidebar)
-│   ├── SidebarSmall (Controls)
-│   └── SidebarBig (Info + Events)
-└── AdvancedPanel (Main Content)
-    ├── MatchInfoSection (Athlete/Match Details)
-    ├── EventTable (Event Rows)
-    ├── LiveDataPanel (Real-time Data)
-    ├── CpuMonitoringSection (CPU Metrics)
-    └── StatusBar (System Status)
+
+#### **Layout Structure**
+```tsx
+// Main app layout
+<div className="h-screen flex flex-col bg-gray-900">
+  <div className="flex flex-1 min-h-0">
+    <div className="w-[600px] flex-shrink-0"> {/* DockBar */}
+    <div className="flex-1 min-h-0"> {/* Advanced Panel */}
+  </div>
+</div>
+
+// Advanced panel layout
+<div className="flex flex-row h-full bg-gray-800/80">
+  <div className="w-64 bg-gray-700/90"> {/* Sidebar */}
+  <div className="flex-1 bg-gray-800/60"> {/* Main content */}
+</div>
 ```
 
-#### **State Management**
-- **Zustand Stores**: Centralized state management
-- **Tauri Commands**: Backend-frontend communication
-- **Real-time Updates**: WebSocket events and polling
-- **Environment Awareness**: Windows/web switching
+#### **Component Styling**
+- **Consistent spacing**: `space-y-4`, `space-x-4`, `p-4`, `m-2`
+- **Proper contrast**: Dark backgrounds with light text
+- **Semi-transparency**: Use opacity classes for depth
+- **Responsive design**: Flex layouts with proper constraints
 
-#### **Data Flow Patterns**
-```
-OBS WebSocket → Rust Plugin → LogManager → obs.log
-CPU Monitoring → Rust Plugin → Tauri Commands → React UI
-PSS/UDP Events → Rust Plugin → Tauri Commands → React UI
-```
+### 📋 **UI Development Checklist**
 
-### 🎨 **UI/UX Design System**
+#### **Before Making Changes**
+- [ ] Identify which UI files need modification
+- [ ] Ensure changes are purely visual/styling related
+- [ ] Verify no backend code will be touched
+- [ ] Test current functionality works
 
-#### **Atomic Design Implementation**
-- **Atoms**: Reusable UI primitives (Button, Input, Icon, etc.)
-- **Molecules**: Simple component combinations
-- **Organisms**: Complex UI sections
-- **Layouts**: Page-level structure components
+#### **During Development**
+- [ ] Only modify React components and styling
+- [ ] Use Tailwind CSS for all styling changes
+- [ ] Maintain atomic design principles
+- [ ] Keep component structure clean
 
-#### **Visual Design**
-- **Color Scheme**: Professional dark theme with accent colors
-- **Typography**: Clean, readable font hierarchy
-- **Spacing**: Consistent padding and margins
-- **Icons**: IOC flag system with emoji fallbacks
-
-#### **Responsive Design**
-- **Desktop-First**: Optimized for Windows desktop application
-- **Flexible Layouts**: Adaptive sidebar and main content areas
-- **Touch-Friendly**: Appropriate sizing for touch interactions
+#### **After Changes**
+- [ ] Test UI appearance and layout
+- [ ] Verify all existing functionality still works
+- [ ] Check for any console errors
+- [ ] Ensure responsive design still works
 
 ### 🔧 **Technical Implementation**
 
-#### **Frontend Stack**
-- **React 18**: Latest React with hooks and concurrent features
-- **TypeScript**: Full type safety and IntelliSense
-- **Tailwind CSS**: Utility-first styling approach
-- **Framer Motion**: Smooth animations and transitions
-- **Zustand**: Lightweight state management
+#### **State Management**
+```tsx
+// Zustand store for UI state
+const { isAdvancedPanelOpen } = useAppStore();
 
-#### **Backend Integration**
-- **Tauri Commands**: Type-safe backend communication
-- **WebSocket Events**: Real-time data streaming
-- **File System Access**: Log file management and downloads
-- **System Integration**: OBS, CPU monitoring, UDP/PSS protocols
+// Component state for UI interactions
+const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
+const [eventTypeFilter, setEventTypeFilter] = useState<string | null>(null);
+```
 
-#### **Performance Optimizations**
-- **Code Splitting**: Lazy loading of components
-- **Memoization**: React.memo for expensive components
-- **Bundle Optimization**: Tree shaking and dead code elimination
-- **Fast Refresh**: Hot module replacement for development
+#### **Component Structure**
+```tsx
+// Atomic design hierarchy
+Atoms: Button, Input, StatusDot, Icon
+Molecules: EventTableSection, LiveDataPanel
+Organisms: EventTable, ObsWebSocketManager
+Layouts: DockBar, AdvancedPanel
+```
 
-### 📊 **Current Features**
+#### **Styling Approach**
+- **Tailwind CSS**: Utility-first styling
+- **Consistent spacing**: Standardized padding and margins
+- **Color system**: Dark theme with proper contrast
+- **Responsive design**: Mobile-first approach
 
-#### **OBS Integration**
-- **WebSocket Connection**: Real-time OBS Studio communication
-- **Scene Management**: Scene switching and status monitoring
-- **Recording Control**: Start/stop recording functionality
-- **Event Logging**: Comprehensive event logging to `obs.log`
-- **Status Display**: Real-time connection and recording status
+### 🎯 **Success Criteria**
 
-#### **CPU Monitoring**
-- **Process Monitoring**: Real-time process CPU and memory usage
-- **System Metrics**: Overall system CPU utilization
-- **Data Filtering**: Show only relevant processes (>0.1% CPU or >10MB memory)
-- **Visual Indicators**: Color-coded status based on usage levels
+#### **UI Design Goals**
+1. **Visual Consistency**: All components follow atomic design
+2. **Proper Layout**: DockBar and Advanced Panel display correctly
+3. **Color Scheme**: Dark theme with good contrast and readability
+4. **Responsive Design**: Works on different screen sizes
+5. **User Experience**: Intuitive and professional appearance
 
-#### **Event Management**
-- **Event Table**: Scrollable list of system events
-- **Event Filtering**: Filter by subsystem and event type
-- **Event Details**: Expandable event information
-- **Real-time Updates**: Live event streaming
+#### **Development Goals**
+1. **Code Quality**: Clean, maintainable React components
+2. **Performance**: Efficient rendering and updates
+3. **Accessibility**: Proper ARIA labels and keyboard navigation
+4. **Maintainability**: Easy to modify and extend
 
-#### **Log Management**
-- **Log Files**: View and download subsystem log files
-- **Log Archives**: Archive management and extraction
-- **Live Logging**: Real-time log monitoring
-- **Subsystem Logging**: Separate logs for OBS, PSS, UDP, and app
+### 🚨 **Critical Reminders**
 
-### 🚀 **Development Workflow**
+#### **UI Work Only**
+- **Focus**: Visual appearance, layout, styling
+- **Scope**: React components and Tailwind CSS
+- **Goal**: Improve user interface and experience
+- **Constraint**: Never break existing functionality
 
-#### **Build System**
-- **Development**: `npm start` for hot reload
-- **Production**: `npm run build` for optimized builds
-- **Testing**: Jest and React Testing Library setup
-- **Linting**: ESLint with TypeScript rules
-
-#### **Code Quality**
-- **TypeScript**: Strict type checking enabled
-- **ESLint**: Code quality and consistency rules
-- **Prettier**: Automatic code formatting
-- **Git Hooks**: Pre-commit linting and formatting
-
-#### **Development Tools**
-- **React DevTools**: Component inspection and debugging
-- **Redux DevTools**: State management debugging
-- **Network Tab**: API call monitoring
-- **Performance Profiling**: React Profiler integration
-
-### 📋 **Next Steps**
-
-#### **Immediate Priorities**
-1. **WMIC Installation**: Complete CPU monitoring with real process data
-2. **Performance Testing**: Optimize real-time updates and data flow
-3. **Error Handling**: Enhance error boundaries and user feedback
-4. **Accessibility**: Complete WCAG compliance audit
-
-#### **Future Enhancements**
-1. **Advanced Filtering**: Enhanced event and process filtering
-2. **Customization**: User-configurable UI layouts and themes
-3. **Analytics**: Usage analytics and performance metrics
-4. **Offline Support**: Offline mode with data caching
-
-### 🔍 **Troubleshooting**
-
-#### **Common Issues**
-- **Build Errors**: Check TypeScript types and import paths
-- **Runtime Errors**: Verify Tauri command availability
-- **Performance Issues**: Monitor bundle size and component re-renders
-- **Styling Issues**: Check Tailwind class conflicts
-
-#### **Development Tips**
-- **Hot Reload**: Use `npm start` for best development experience
-- **Type Safety**: Leverage TypeScript for catching errors early
-- **Component Testing**: Test components in isolation
-- **State Management**: Keep state as local as possible
+#### **Backend Protection**
+- **Never modify**: Tauri configuration or permissions
+- **Never touch**: Rust code or backend plugins
+- **Never change**: Event handling or API calls
+- **Preserve**: All working functionality exactly as is
 
 ---
 
 **Last Updated**: 2025-01-28  
-**Status**: OBS logging integration complete, CPU monitoring awaiting `wmic` installation  
-**Next Action**: Install `wmic` and test real process data display 
+**Status**: Ready for UI design work with clear boundaries  
+**Focus**: Visual improvements only, no backend modifications 
