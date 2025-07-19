@@ -153,13 +153,13 @@ const LiveDataPanel: React.FC = () => {
   // Debug logging on mount only
   useEffect(() => {
     console.log('🔍 LiveDataPanel Mount:', {
-      tauriAvailable,
-      environment,
-      isWindows,
-      isWeb,
-      windowTauri: typeof window !== 'undefined' ? !!window.__TAURI__ : 'undefined',
-      windowLocation: typeof window !== 'undefined' ? window.location.href : 'undefined'
-    });
+    tauriAvailable,
+    environment,
+    isWindows,
+    isWeb,
+    windowTauri: typeof window !== 'undefined' ? !!window.__TAURI__ : 'undefined',
+    windowLocation: typeof window !== 'undefined' ? window.location.href : 'undefined'
+  });
   }, []);
 
   // Test Tauri API on component mount (only once)

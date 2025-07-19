@@ -1,7 +1,7 @@
 //! Main application class and lifecycle management
 
 use crate::types::{AppResult, AppState, AppView};
-use crate::plugins::{ObsPlugin, PlaybackPlugin, UdpPlugin, StorePlugin, LicensePlugin};
+use crate::plugins::{ObsPlugin, PlaybackPlugin, UdpPlugin, StorePlugin, LicensePlugin, CpuMonitorPlugin};
 use crate::logging::LogManager;
 use crate::config::ConfigManager;
 use std::sync::Arc;
@@ -17,6 +17,7 @@ pub struct App {
     udp_plugin: UdpPlugin,
     store_plugin: StorePlugin,
     license_plugin: LicensePlugin,
+    cpu_monitor_plugin: CpuMonitorPlugin,
     log_manager: Arc<LogManager>,
 }
 
@@ -51,6 +52,7 @@ impl App {
         let udp_plugin = UdpPlugin::new(crate::plugins::plugin_udp::UdpServerConfig::default(), udp_event_tx);
         let store_plugin = StorePlugin::new();
         let license_plugin = LicensePlugin::new();
+        let cpu_monitor_plugin = CpuMonitorPlugin::new(crate::plugins::CpuMonitorConfig::default());
         
         // Load OBS connections from config manager
         let config_connections = config_manager.get_obs_connections().await;
@@ -66,6 +68,7 @@ impl App {
             udp_plugin,
             store_plugin,
             license_plugin,
+            cpu_monitor_plugin,
             log_manager,
         })
     }
@@ -139,6 +142,11 @@ impl App {
     /// Get license plugin reference
     pub fn license_plugin(&self) -> &LicensePlugin {
         &self.license_plugin
+    }
+    
+    /// Get CPU monitor plugin reference
+    pub fn cpu_monitor_plugin(&self) -> &CpuMonitorPlugin {
+        &self.cpu_monitor_plugin
     }
     
     /// Get log manager reference
