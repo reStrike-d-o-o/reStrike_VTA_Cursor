@@ -37,8 +37,11 @@ impl App {
         let (playback_event_tx, _playback_event_rx) = tokio::sync::mpsc::unbounded_channel();
         let (udp_event_tx, _udp_event_rx) = tokio::sync::mpsc::unbounded_channel();
         
-        // Initialize logging manager
-        let log_config = crate::logging::LogConfig::default();
+        // Initialize logging manager with external log directory to prevent rebuild loops
+        let mut log_config = crate::logging::LogConfig::default();
+        // Use a directory outside the project to prevent Tauri file watching from triggering rebuilds
+        log_config.log_dir = "logs".to_string();
+        log_config.archive_dir = "logs/archives".to_string();
         let log_manager = Arc::new(LogManager::new(log_config)
             .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to initialize logging: {}", e)))?);
         
