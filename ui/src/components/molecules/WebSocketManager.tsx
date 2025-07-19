@@ -258,11 +258,13 @@ const WebSocketManager: React.FC = () => {
 
       // Only update the configuration, don't connect
       // First, remove the old connection from backend
-      try {
-        await obsCommands.removeConnection(editingConnection);
-      } catch (error) {
-        // Ignore errors if connection wasn't found
-        console.log('Remove connection error (expected if not found):', error);
+      if (editingConnection) {
+        try {
+          await obsCommands.removeConnection(editingConnection);
+        } catch (error) {
+          // Ignore errors if connection wasn't found
+          console.log('Remove connection error (expected if not found):', error);
+        }
       }
 
       // Add the updated connection to backend (this only saves settings, doesn't connect)
@@ -276,7 +278,9 @@ const WebSocketManager: React.FC = () => {
 
       if (result.success) {
         // Remove old connection from frontend store
-        removeObsConnection(editingConnection);
+        if (editingConnection) {
+          removeObsConnection(editingConnection);
+        }
         
         // Add updated connection to frontend store (status will be set to Disconnected by default)
         addObsConnection({
@@ -310,6 +314,9 @@ const WebSocketManager: React.FC = () => {
         updateObsConnectionStatus(connection.name, 'Connected');
         setActiveObsConnection(connection.name);
         
+        // Start health monitoring for this connection
+        const stopHealthMonitoring = startHealthMonitoring(connection.name);
+        
         // Poll for status updates
         setTimeout(async () => {
           try {
@@ -319,17 +326,41 @@ const WebSocketManager: React.FC = () => {
               updateObsConnectionStatus(connection.name, status);
               if (status === 'Authenticated') {
                 setActiveObsConnection(connection.name);
+                console.log(`Connection ${connection.name} authenticated successfully`);
               }
             }
           } catch (error) {
-            console.error('Failed to get connection status:', error);
+            console.error(`Failed to get connection status for ${connection.name}:`, error);
           }
         }, 2000);
       } else {
-        updateObsConnectionStatus(connection.name, 'Error', result.error || 'Connection failed');
+        // Enhanced error handling with more detailed messages
+        const errorMessage = result.error || 'Unknown connection error';
+        updateObsConnectionStatus(connection.name, 'Error', errorMessage);
+        console.error(`Connection failed for ${connection.name}:`, errorMessage);
+        
+        // Log additional context for debugging
+        console.log(`Connection attempt details:`, {
+          name: connection.name,
+          host: connection.host,
+          port: connection.port,
+          enabled: connection.enabled,
+          timestamp: new Date().toISOString()
+        });
       }
     } catch (error) {
-      updateObsConnectionStatus(connection.name, 'Error', `Connection failed: ${error}`);
+      // Enhanced error handling for unexpected errors
+      const errorMessage = `Connection failed: ${error}`;
+      updateObsConnectionStatus(connection.name, 'Error', errorMessage);
+      console.error(`Unexpected error for ${connection.name}:`, error);
+      
+      // Log additional context for debugging
+      console.log(`Unexpected error details:`, {
+        name: connection.name,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        timestamp: new Date().toISOString()
+      });
     }
   };
 
@@ -342,12 +373,52 @@ const WebSocketManager: React.FC = () => {
         if (activeObsConnection === connection.name) {
           setActiveObsConnection(null);
         }
+        console.log(`Successfully disconnected from ${connection.name}`);
       } else {
-        updateObsConnectionStatus(connection.name, 'Error', result.error || 'Disconnect failed');
+        // Enhanced error handling for disconnect failures
+        const errorMessage = result.error || 'Unknown disconnect error';
+        updateObsConnectionStatus(connection.name, 'Error', errorMessage);
+        console.error(`Disconnect failed for ${connection.name}:`, errorMessage);
+        
+        // Log additional context for debugging
+        console.log(`Disconnect attempt details:`, {
+          name: connection.name,
+          wasActive: activeObsConnection === connection.name,
+          timestamp: new Date().toISOString()
+        });
       }
     } catch (error) {
-      updateObsConnectionStatus(connection.name, 'Error', `Disconnect failed: ${error}`);
+      // Enhanced error handling for unexpected disconnect errors
+      const errorMessage = `Disconnect failed: ${error}`;
+      updateObsConnectionStatus(connection.name, 'Error', errorMessage);
+      console.error(`Unexpected disconnect error for ${connection.name}:`, error);
+      
+      // Log additional context for debugging
+      console.log(`Unexpected disconnect error details:`, {
+        name: connection.name,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        wasActive: activeObsConnection === connection.name,
+        timestamp: new Date().toISOString()
+      });
     }
+  };
+
+  // Connection health monitoring
+  const startHealthMonitoring = (connectionName: string) => {
+    const interval = setInterval(async () => {
+      try {
+        const status = await obsCommands.getConnectionStatus(connectionName);
+        if (status.success && status.data?.status === 'Error') {
+          console.warn(`Connection ${connectionName} health check failed`);
+          // Could trigger reconnection logic here in the future
+        }
+      } catch (error) {
+        console.error(`Health check failed for ${connectionName}:`, error);
+      }
+    }, 30000); // Check every 30 seconds
+    
+    return () => clearInterval(interval);
   };
 
   const getStatusColor = (status: ObsConnection['status']) => {

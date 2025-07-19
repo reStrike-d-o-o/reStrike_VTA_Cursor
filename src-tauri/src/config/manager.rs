@@ -47,20 +47,59 @@ impl ConfigManager {
         Ok(config)
     }
     
-    /// Save configuration to file
+    /// Save configuration to file with retry logic and atomic write
     async fn save_config(&self, config: &AppConfig) -> AppResult<()> {
+        const MAX_RETRIES: u32 = 3;
+        let mut retry_count = 0;
+        
+        while retry_count < MAX_RETRIES {
+            match self.try_save_config(config).await {
+                Ok(()) => return Ok(()),
+                Err(e) => {
+                    retry_count += 1;
+                    if retry_count >= MAX_RETRIES {
+                        return Err(e);
+                    }
+                    // Wait before retrying (exponential backoff)
+                    let delay = std::time::Duration::from_millis(100 * 2_u64.pow(retry_count - 1));
+                    tokio::time::sleep(delay).await;
+                }
+            }
+        }
+        
+        Err(crate::types::AppError::ConfigError("Failed to save config after maximum retries".to_string()))
+    }
+    
+    /// Try to save configuration to file with atomic write
+    async fn try_save_config(&self, config: &AppConfig) -> AppResult<()> {
         // Create backup of current config if it exists
         if self.config_path.exists() {
-            fs::copy(&self.config_path, &self.backup_path)?;
+            fs::copy(&self.config_path, &self.backup_path)
+                .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to create backup: {}", e)))?;
         }
         
         // Update last save timestamp
         let mut config_to_save = config.clone();
         config_to_save.app.last_save = Utc::now().to_rfc3339();
         
-        // Serialize and save configuration
-        let content = serde_json::to_string_pretty(&config_to_save)?;
-        fs::write(&self.config_path, content)?;
+        // Serialize configuration
+        let content = serde_json::to_string_pretty(&config_to_save)
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to serialize config: {}", e)))?;
+        
+        // Atomic write using temporary file
+        let temp_path = self.config_path.with_extension("tmp");
+        
+        // Write to temporary file first
+        fs::write(&temp_path, content)
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to write temp file: {}", e)))?;
+        
+        // Atomic rename (this is atomic on most filesystems)
+        fs::rename(&temp_path, &self.config_path)
+            .map_err(|e| {
+                // Clean up temp file if rename fails
+                let _ = fs::remove_file(&temp_path);
+                crate::types::AppError::ConfigError(format!("Failed to rename temp file: {}", e))
+            })?;
         
         Ok(())
     }

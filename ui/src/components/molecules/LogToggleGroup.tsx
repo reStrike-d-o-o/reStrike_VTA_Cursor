@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Label from '../atoms/Label';
 import Checkbox from '../atoms/Checkbox';
 import { diagLogsCommands, configCommands } from '../../utils/tauriCommands';
@@ -16,6 +16,7 @@ const LogToggleGroup: React.FC = () => {
   const [loading, setLoading] = useState<Record<LogType, boolean>>({ pss: false, obs: false, udp: false });
   const [errors, setErrors] = useState<Record<LogType, string>>({ pss: '', obs: '', udp: '' });
   const [isLoadingSettings, setIsLoadingSettings] = useState(true);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   // Load logging settings from configuration
   const loadLoggingSettings = async () => {
@@ -32,13 +33,17 @@ const LogToggleGroup: React.FC = () => {
       }
     } catch (error) {
       console.error('Failed to load logging settings:', error);
+      // Set default values if loading fails
+      setLogging({ pss: true, obs: false, udp: true });
     } finally {
       setIsLoadingSettings(false);
     }
   };
 
-  // Save logging settings to configuration
-  const saveLoggingSettings = async (newSettings: Record<LogType, boolean>) => {
+  // Save logging settings to configuration with retry logic
+  const saveLoggingSettings = async (newSettings: Record<LogType, boolean>, retryCount = 0): Promise<boolean> => {
+    const maxRetries = 3;
+    
     try {
       const result = await configCommands.getSettings();
       if (result.success) {
@@ -54,45 +59,99 @@ const LogToggleGroup: React.FC = () => {
             },
           },
         };
+        
         await configCommands.updateSettings(updatedSettings);
         console.log('Logging settings saved successfully');
+        return true;
+      } else {
+        throw new Error(result.error || 'Failed to get settings');
       }
     } catch (error) {
-      console.error('Failed to save logging settings:', error);
+      console.error(`Failed to save logging settings (attempt ${retryCount + 1}):`, error);
+      
+      if (retryCount < maxRetries) {
+        // Wait before retrying (exponential backoff)
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
+        return saveLoggingSettings(newSettings, retryCount + 1);
+      }
+      
+      return false;
     }
   };
+
+  // Debounced update function to prevent rapid changes
+  const debouncedUpdate = useCallback(
+    (() => {
+      let timeoutId: NodeJS.Timeout;
+      return (key: LogType, newValue: boolean) => {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => {
+          handleToggle(key, newValue);
+        }, 300); // 300ms debounce
+      };
+    })(),
+    []
+  );
 
   // Load settings on component mount
   useEffect(() => {
     loadLoggingSettings();
   }, []);
 
-  const handleToggle = async (key: LogType) => {
-    const newValue = !logging[key];
+  const handleToggle = async (key: LogType, forceValue?: boolean) => {
+    // Prevent multiple simultaneous updates
+    if (isUpdating || loading[key]) {
+      console.log(`Update already in progress for ${key}, skipping`);
+      return;
+    }
+
+    const newValue = forceValue !== undefined ? forceValue : !logging[key];
+    
+    // Optimistic update
     setLoading(prev => ({ ...prev, [key]: true }));
     setErrors(prev => ({ ...prev, [key]: '' }));
-    setLogging(prev => ({ ...prev, [key]: newValue })); // Optimistic update
+    setLogging(prev => ({ ...prev, [key]: newValue }));
+    setIsUpdating(true);
     
     try {
-      // Update backend logging state
+      // First, update backend logging state
+      console.log(`Updating backend logging for ${key} to ${newValue}`);
       const result = await diagLogsCommands.setLoggingEnabled(key, newValue);
+      
       if (!result.success) {
         // Revert on error
+        console.error(`Backend logging update failed for ${key}:`, result.error);
         setLogging(prev => ({ ...prev, [key]: !newValue }));
         setErrors(prev => ({ ...prev, [key]: result.error || 'Failed to update logging' }));
         return;
       }
 
-      // Save to configuration system
+      // Then, save to configuration system
+      console.log(`Saving configuration for ${key}`);
       const newSettings = { ...logging, [key]: newValue };
-      await saveLoggingSettings(newSettings);
+      const configSaved = await saveLoggingSettings(newSettings);
+      
+      if (!configSaved) {
+        console.error(`Configuration save failed for ${key}`);
+        setErrors(prev => ({ ...prev, [key]: 'Failed to save configuration' }));
+        // Don't revert the backend change since it succeeded
+      } else {
+        console.log(`Successfully updated logging for ${key}`);
+      }
     } catch (error) {
+      console.error(`Unexpected error updating logging for ${key}:`, error);
       // Revert on exception
       setLogging(prev => ({ ...prev, [key]: !newValue }));
       setErrors(prev => ({ ...prev, [key]: `Error: ${error}` }));
     } finally {
       setLoading(prev => ({ ...prev, [key]: false }));
+      setIsUpdating(false);
     }
+  };
+
+  const handleToggleClick = (key: LogType) => {
+    // Use debounced update to prevent rapid changes
+    debouncedUpdate(key, !logging[key]);
   };
 
   if (isLoadingSettings) {
@@ -113,12 +172,15 @@ const LogToggleGroup: React.FC = () => {
             <label className="flex items-center gap-3 cursor-pointer">
               <Checkbox 
                 checked={logging[type.key]} 
-                onChange={() => handleToggle(type.key)}
-                disabled={loading[type.key]}
+                onChange={() => handleToggleClick(type.key)}
+                disabled={loading[type.key] || isUpdating}
               />
               <span className="text-gray-200 font-medium">{type.label}</span>
               {loading[type.key] && (
                 <span className="text-blue-400 text-sm">Updating...</span>
+              )}
+              {isUpdating && !loading[type.key] && (
+                <span className="text-yellow-400 text-sm">Processing...</span>
               )}
             </label>
             {errors[type.key] && (
@@ -127,6 +189,11 @@ const LogToggleGroup: React.FC = () => {
           </div>
         ))}
       </div>
+      {isUpdating && (
+        <div className="mt-3 text-xs text-gray-400">
+          Please wait while settings are being updated...
+        </div>
+      )}
     </div>
   );
 };
