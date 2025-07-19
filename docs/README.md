@@ -1,279 +1,225 @@
-# reStrike VTA Documentation
+# reStrike VTA - Taekwondo Competition Management System
 
-> **Note:** All architecture, onboarding, and coding conventions are defined in .cursor/rules/context.mdc (single source of truth). Project is Windows-only; Docker/devcontainer is fully removed. All onboarding, build, and documentation reference Windows-native setup only.
+## 🏆 Overview
 
-Welcome to the reStrike VTA project documentation. This directory contains comprehensive documentation organized by category for easy navigation and maintenance.
+reStrike VTA is a Windows-native desktop application designed for taekwondo competition management, featuring advanced OBS Studio integration, real-time event processing, and comprehensive video replay capabilities. Built with Tauri v2, React, and Rust, the application provides a robust platform for tournament organizers and referees.
 
-## 🚀 **PROJECT STATUS: 99% COMPLETE - PRODUCTION READY**
+## 🚀 Current Status (2025-01-28)
 
-### **✅ Current Achievements**
-- **Complete Application Stack**: Frontend (1,691 lines) + Backend (1,663 lines) operational
-- **React Frontend**: Successfully running on port 3000 with all 5 components
-- **Rust Backend**: All core plugins implemented with zero compilation errors
-- **Instant Video Replay**: Complete mpv integration with professional controls
-- **OBS Integration**: Dual WebSocket protocol support (v4/v5)
-- **Modern UI**: Professional interface with keyboard shortcuts and animations
-- **Sidebar System**: Professional event table with advanced filtering ✅ **NEW**
-- **Flag Management System**: Complete IOC flag recognition and management ✅ **NEW**
+### ✅ Complete Systems
+- **Tauri v2 Integration**: Native Windows desktop application
+- **Configuration Management**: Comprehensive settings persistence system
+- **OBS WebSocket Integration**: Full OBS Studio v5 protocol support with connection management
+- **Atomic Design System**: Complete frontend component architecture
+- **Plugin Architecture**: Modular backend with clear separation of concerns
+- **WebSocket Manager**: Full CRUD operations with status monitoring
+- **Settings Persistence**: All app settings survive restarts
+- **Backup System**: Automatic configuration backup and restore
 
-### **🎯 Immediate Next Steps**
-1. **Core System Testing** - Verify all implemented features
-2. **Windows Build** - Generate production .exe and MSI installer  
-3. **Real-World Testing** - Test with competition equipment
-4. **Documentation Finalization** - User manual and deployment guide
+### 🔧 Recent Major Updates
+- **OBS Connection Management**: WebSocket connections with configuration integration
+- **Protocol Version Simplification**: Removed v4 support, streamlined to v5 only
+- **Disconnect Functionality**: Proper WebSocket disconnection without losing configuration
+- **Settings Separation**: Clear separation between save settings and connect actions
+- **TypeScript Error Fixes**: Resolved all parameter and type issues
 
----
+## 🛠️ Technology Stack
 
-## 📚 Documentation Categories
+### Backend (Rust + Tauri v2)
+- **Framework**: Tauri v2 for native Windows integration
+- **Language**: Rust with async/await support
+- **Architecture**: Plugin-based microkernel architecture
+- **WebSocket**: tokio-tungstenite for OBS integration
+- **Configuration**: JSON-based settings with automatic persistence
+- **Logging**: Structured logging with file rotation
 
-### ✅ **GitHub Integration Complete!**
-**📊 Status**: 18/18 issues created successfully | [View Issues](https://github.com/damjanZGB/reStrike_VTA_Cursor/issues) | [Project Board](https://github.com/users/damjanZGB/projects/3)  
-**📋 Setup Guides**: [Integration Status](./project/github-integration-status.md) | [Automation Setup](./project/github-automation-setup.md)
+### Frontend (React + TypeScript)
+- **Framework**: React 18 with TypeScript
+- **Styling**: Tailwind CSS with atomic design
+- **State Management**: Zustand for global state
+- **Build System**: Vite with Tauri integration
+- **Components**: Atomic design pattern (atoms, molecules, organisms, layouts)
 
-### 🚀 [Development](./development/)
-Development guides, checklists, and environment management documentation.
+## 🎯 Key Features
 
-- **[Documentation Maintenance Guide](./development/documentation-maintenance-guide.md)** - **CRITICAL**: How to use and maintain the documentation system
-- **[Container Restart Guide](./development/container-restart.md)** - How to restart the dev container for framework updates
-- **[Development Management](./development/development-management.md)** - Tools and scripts for managing the development environment
-- **[Framework Updates](./development/framework-updates.md)** - Procedures for updating Node.js, mpv, and other frameworks
-- **[Port Forwarding](./development/port-forwarding.md)** - Port configuration and management
-- **[Framework Update Summary](./development/framework-update-summary.md)** - Summary of recent framework updates
-- **[Sidebar Filter Implementation](./development/sidebar-filter-implementation.md)** - **NEW**: Complete documentation of sidebar filter system
-- **[Checklists](./development/checklists/)** - Development verification checklists
+### Configuration Management System
+- **Persistent Settings**: All settings survive app restarts
+- **OBS Connections**: WebSocket connections with password preservation
+- **Cross-Session Sync**: Frontend and backend stay synchronized
+- **Backup/Restore**: Automatic backup with manual restore
+- **Import/Export**: Full configuration backup and restore
+- **Statistics**: Configuration health monitoring
 
-### 📋 [Project Management](./project/)
-Project tracking, management, and coordination documentation.
+### OBS Integration
+- **WebSocket v5**: Full OBS WebSocket v5 protocol support
+- **Multiple Connections**: Support for multiple OBS instances
+- **Real-time Status**: Live connection status monitoring
+- **Authentication**: Secure password handling
+- **Connection Management**: Add, edit, delete, connect, disconnect
+- **Settings Persistence**: Connections persist across sessions
 
-- **[GitHub Integration Status](./project/github-integration-status.md)** - **COMPLETE**: Status of GitHub project board integration (18 issues created)
-- **[GitHub Automation Setup](./project/github-automation-setup.md)** - **NEW**: Step-by-step automation configuration guide
-- **[Project Tracker Guide](./project/project-tracker-guide.md)** - Comprehensive guide to using the project tracker
-- **[Project Management Summary](./project/project-management-summary.md)** - Overview of the project management system
-- **[Tracker Quick Reference](./project/tracker-quick-reference.md)** - Quick reference for common tracker commands
+### Event Processing
+- **UDP Listener**: PSS protocol event collection
+- **Real-time Processing**: Live event processing and filtering
+- **Event Storage**: SQLite-based event persistence
+- **Data Export**: Event data export capabilities
+- **Live Streaming**: Real-time data streaming
 
-### 📖 [Requirements](./requirements/)
-Product requirements, specifications, and design documents.
+### Video Management
+- **Clip Extraction**: Automatic clip extraction from OBS
+- **MPV Integration**: High-performance video playback
+- **Clip Organization**: Automatic clip organization
+- **Metadata Management**: Video metadata handling
+- **Replay Buffer**: OBS replay buffer integration
 
-- **[Instant Video Replay PRD](./requirements/instant-video-replay-prd.md)** - Product Requirements Document
-- **[Software Requirements](./requirements/software-requirements.md)** - Technical requirements specification
-- **[UI Design Document](./requirements/ui-design-document.md)** - User interface design specifications
+### Logging and Diagnostics
+- **Multi-subsystem Logging**: Comprehensive logging system
+- **File Rotation**: Automatic log file rotation
+- **Archive Management**: Log archiving and compression
+- **Live Data Streaming**: Real-time log streaming
+- **Diagnostic Tools**: Built-in diagnostic utilities
 
-### 🔌 [Integration](./integration/)
-Integration guides for external systems and APIs.
+## 🏗️ Architecture
 
-- **[OBS Dual Protocol](./integration/obs-dual-protocol.md)** - OBS WebSocket v4 and v5 implementation guide
-- **[OBS WebSocket Config](./integration/obs-websocket-config.md)** - OBS WebSocket configuration guide
-
-### 🔧 [API Documentation](./api/)
-API references and protocol specifications.
-
-- **[OBS WebSocket API](./api/obs-websocket.md)** - Complete OBS WebSocket protocol reference
-- **[UDP Protocol](./api/udp-protocol.md)** - UDP protocol specification (coming soon)
-
-### 🏗️ [Project Structure](./PROJECT_STRUCTURE.md)
-Comprehensive guide to the project's organized file structure and organization principles.
-
-### 🏁 [Flag Management System](./FLAG_MANAGEMENT_SYSTEM.md) ✅ **NEW**
-Complete documentation of the IOC flag recognition and management system.
-
----
-
-## 🧪 **TESTING & DEVELOPMENT ROADMAP**
-
-### **Phase 1: Core System Testing** 🚀 **IMMEDIATE PRIORITY**
-
-#### **Frontend Testing Checklist**
-- [ ] **VideoClips.tsx** (315 lines) - Clip management functionality
-- [ ] **Settings.tsx** (402 lines) - Configuration interface
-- [ ] **Overlay.tsx** (306 lines) - Video overlay system
-- [ ] **ObsWebSocketManager.tsx** - OBS connection management
-- [ ] **App.tsx** (268 lines) - Main application navigation
-- [ ] **SidebarTest.tsx** (250+ lines) - **NEW**: Event table and filtering system
-- [ ] **Flag Management** - **NEW**: IOC flag recognition and display system
-- [ ] **Keyboard Shortcuts** - All Ctrl+1-5, Space, F11 combinations
-- [ ] **State Management** - Zustand store operations
-- [ ] **Error Handling** - Toast notifications and error recovery
-
-#### **Backend Testing Checklist**
-- [ ] **plugin_udp.rs** (640 lines) - PSS protocol message parsing
-- [ ] **plugin_obs.rs** (455 lines) - OBS WebSocket v4/v5 connections
-- [ ] **plugin_playback.rs** (568 lines) - mpv video integration
-- [ ] **Tauri Commands** - Frontend-backend communication
-- [ ] **Event System** - Real-time event processing
-- [ ] **Error Handling** - Rust error propagation to frontend
-
-#### **Integration Testing**
-- [ ] **Frontend ↔ Backend** - Tauri command execution
-- [ ] **Video Playback Chain** - React → Tauri → mpv integration
-- [ ] **OBS Connection** - React interface → Rust plugin → OBS Studio
-- [ ] **Real-Time Data** - PSS protocol → Rust parser → React display
-- [ ] **Sidebar Integration** - **NEW**: Event filtering with real-time data
-- [ ] **Flag System Integration** - **NEW**: Flag display and management
-
-### **Phase 2: Windows Desktop Application** 🏆 **PRODUCTION READY**
-
-#### **Build & Deployment**
-- [ ] **Windows .exe Generation** - Production executable creation
-- [ ] **MSI Installer** - Professional installer package
-- [ ] **Dependency Bundling** - All required libraries included
-- [ ] **Installation Testing** - Clean Windows system testing
-- [ ] **Performance Validation** - Memory and CPU usage optimization
-
-#### **Real-World Testing**
-- [ ] **Competition Environment** - Test with actual equipment
-- [ ] **Referee Workflows** - User acceptance testing
-- [ ] **Extended Operation** - 8+ hour competition testing
-- [ ] **Multi-Camera Setup** - Multiple input source testing
-- [ ] **Network Conditions** - Various network environment testing
-
----
-
-## 🎯 **FUTURE ENHANCEMENT ROADMAP**
-
-### **6 Major Enhancement Categories (100+ Features Planned)**
-
-#### **📹 Video System Enhancements** (20+ features)
-- Slow motion controls, frame-by-frame navigation
-- Multiple angle support, video effects
-- Auto-thumbnails, metadata extraction
-- Multi-format support, live streaming integration
-
-#### **🎥 OBS Studio Integration Enhancements** (18+ features)  
-- Scene templates, source management
-- Advanced recording controls, multi-platform streaming
-- Professional broadcasting graphics
-- Social media integration
-
-#### **📡 PSS Protocol & Competition Integration** (18+ features)
-- Enhanced protocol support, custom events
-- Competition management integration
-- Real-time analytics dashboard
-- Tournament bracket integration
-
-#### **🎨 User Interface & Experience** (18+ features)
-- Custom themes, layout customization
-- Mobile companion app, touch interface
-- Multi-language support, accessibility features
-- Advanced navigation and search
-
-#### **🔧 System & Performance** (18+ features)
-- Profile management, hardware acceleration
-- Enterprise features, API endpoints
-- User authentication, audit logging
-- Plugin system, automation scripts
-
-#### **📱 Modern Platform Features** (12+ features)
-- Cloud integration, remote access
-- AI highlight detection, smart clip creation
-- Machine learning analytics
-- Automated tagging and quality assessment
-
----
+### Plugin-Based Microkernel
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Tauri Application Layer                  │
+├─────────────────────────────────────────────────────────────┤
+│                    Core Application Layer                   │
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────┐ │
+│  │   Config    │ │   Logging   │ │    Types    │ │  Core   │ │
+│  │  Manager    │ │   Manager   │ │             │ │  App    │ │
+│  └─────────────┘ └─────────────┘ └─────────────┘ └─────────┘ │
+├─────────────────────────────────────────────────────────────┤
+│                    Plugin Layer                             │
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────┐ │
+│  │    OBS      │ │     UDP     │ │  Playback   │ │  Store  │ │
+│  │   Plugin    │ │   Plugin    │ │   Plugin    │ │ Plugin  │ │
+│  └─────────────┘ └─────────────┘ └─────────────┘ └─────────┘ │
+├─────────────────────────────────────────────────────────────┤
+│                    Infrastructure Layer                     │
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────┐ │
+│  │  WebSocket  │ │    SQLite   │ │   File I/O  │ │ Network │ │
+│  │             │ │             │ │             │ │         │ │
+│  └─────────────┘ └─────────────┘ └─────────────┘ └─────────┘ │
+└─────────────────────────────────────────────────────────────┘
+```
 
 ## 🚀 Quick Start
 
-### For New Developers
-1. Start with **[Project Structure](./PROJECT_STRUCTURE.md)** to understand the codebase organization
-2. Review **[Development Management](./development/development-management.md)** for environment setup
-3. Check **[Development Checklists](./development/checklists/)** for verification steps
+### Prerequisites
+- **Operating System**: Windows 10/11
+- **Node.js**: v24 or higher
+- **Rust**: Stable toolchain
+- **Tauri CLI**: Latest version
+- **OBS Studio**: v28+ with WebSocket v5 plugin
 
-### For Project Management
-1. Read **[Project Tracker Guide](./project/project-tracker-guide.md)** for issue management
-2. Use **[Tracker Quick Reference](./project/tracker-quick-reference.md)** for common commands
-3. Review **[Project Management Summary](./project/project-management-summary.md)** for system overview
+### Development Setup
+```bash
+# Clone repository
+git clone <repository-url>
+cd reStrike_VTA_Cursor
 
-### For Integration Work
-1. Start with **[OBS Dual Protocol](./integration/obs-dual-protocol.md)** for OBS integration
-2. Reference **[OBS WebSocket API](./api/obs-websocket.md)** for protocol details
-3. Follow **[OBS WebSocket Config](./integration/obs-websocket-config.md)** for setup
+# Install dependencies
+npm install
+cd ui && npm install
 
-### For Testing & Deployment
-1. Follow **Phase 1: Core System Testing** checklist above
-2. Proceed to **Phase 2: Windows Desktop Application** deployment
-3. Reference **Future Enhancement Roadmap** for continued development
-
-### For UI/UX Development
-1. Review **[Sidebar Filter Implementation](./development/sidebar-filter-implementation.md)** for filter system details
-2. Check **[UI Design Document](./requirements/ui-design-document.md)** for design specifications
-3. Reference **[Project Structure](./PROJECT_STRUCTURE.md)** for component organization
-
-### For Flag Management
-1. Review **[Flag Management System](./FLAG_MANAGEMENT_SYSTEM.md)** for complete system documentation
-2. Check **[Flag Management Module](./requirements/FLAG_MANAGEMENT_MODULE.md)** for technical specifications
-3. Reference **[Project Structure](./PROJECT_STRUCTURE.md)** for file organization
-
----
-
-## 📝 Documentation Standards
-
-### File Naming
-- **Guides**: `kebab-case.md` (e.g., `container-restart.md`)
-- **References**: `kebab-case.md` (e.g., `obs-websocket.md`)
-- **Specifications**: `kebab-case.md` (e.g., `software-requirements.md`)
-
-### Cross-References
-Use relative paths for cross-references:
-```markdown
-See [Container Restart Guide](./development/container-restart.md)
-See [OBS Configuration](./integration/obs-websocket-config.md)
+# Start development
+cd src-tauri
+cargo tauri dev
 ```
 
-### Maintenance
-- Update this index when adding new documentation
-- Keep cross-references current when moving files
-- Review and update monthly
+### Build Commands
+```bash
+# Development build
+cd ui && npm run build
+
+# Production build
+cd src-tauri && cargo tauri build
+```
+
+## 📚 Documentation
+
+### Core Documentation
+- **[Architecture Guide](ARCHITECTURE.md)**: Detailed system architecture and design patterns
+- **[Development Guide](DEVELOPMENT.md)**: Development setup, coding standards, and workflows
+- **[API Reference](API.md)**: Backend APIs, Tauri commands, and frontend interfaces
+- **[Configuration Guide](CONFIGURATION.md)**: Settings management and configuration system
+
+### Feature Documentation
+- **[OBS Integration](OBS_INTEGRATION.md)**: OBS WebSocket integration and connection management
+- **[Event Processing](EVENT_PROCESSING.md)**: PSS protocol and event handling
+- **[Video Management](VIDEO_MANAGEMENT.md)**: Video playback and clip management
+- **[Logging System](LOGGING.md)**: Logging, diagnostics, and monitoring
+
+## 🔧 Configuration System
+
+### Configuration Segments
+The application manages settings across multiple segments:
+
+1. **App Settings**: Version, startup behavior, performance
+2. **OBS Settings**: Connections, defaults, behavior, reconnection settings
+3. **UDP Settings**: Listener config, PSS protocol, events
+4. **Logging Settings**: Global, subsystems, files, live data
+5. **UI Settings**: Overlay, theme, layout, animations
+6. **Video Settings**: Player, replay, clips
+7. **License Settings**: Keys, validation, expiration
+8. **Flag Settings**: Storage, recognition, display
+9. **Advanced Settings**: Development, network, security, experimental
+
+### Configuration Features
+- **Auto-save**: Settings automatically saved to `config/app_config.json`
+- **Backup system**: Automatic backup to `config/app_config.backup.json`
+- **Cross-session**: All settings persist between app restarts
+- **Sync**: Frontend and backend stay synchronized
+- **Statistics**: File sizes, connection counts, last save time
+- **Import/Export**: Full config backup and restore
+- **Backup/Restore**: Automatic backup with manual restore
+
+## 🎥 OBS Integration
+
+### WebSocket Management
+- **Connection Management**: Add, edit, delete OBS connections
+- **Status Monitoring**: Real-time connection status updates
+- **Authentication**: Secure password handling and preservation
+- **Protocol Support**: OBS WebSocket v5 protocol only
+- **Configuration Integration**: Connections persist across sessions
+- **Disconnect Functionality**: Proper disconnection without losing configuration
+
+### OBS Commands
+- **Scene Management**: Get/set current scene
+- **Recording Control**: Start/stop recording
+- **Streaming Control**: Start/stop streaming
+- **Replay Buffer**: Start/stop/save replay buffer
+- **Status Monitoring**: Real-time status updates
+
+## 📝 Recent Changes
+
+### 2025-01-28: OBS Connection Management Improvements
+- **Protocol Simplification**: Removed OBS WebSocket v4 support, streamlined to v5 only
+- **Parameter Fixes**: Resolved TypeScript parameter mismatches between frontend and backend
+- **Disconnect Functionality**: Added proper WebSocket disconnection that preserves configuration
+- **Settings Separation**: Clear separation between "Save Connection Settings" and "Connect" actions
+- **Type Safety**: Fixed all TypeScript compilation errors
+- **Documentation**: Consolidated and updated all documentation
+
+### Key Technical Improvements
+- **Backend**: Added `disconnect_obs()` method for proper WebSocket disconnection
+- **Frontend**: Updated WebSocketManager with proper button labels and functionality
+- **Configuration**: Enhanced settings persistence and synchronization
+- **Error Handling**: Improved error messages and user feedback
+
+## 🤝 Contributing
+
+Please read the [Development Guide](DEVELOPMENT.md) for coding standards and contribution guidelines.
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](../LICENSE) file for details.
 
 ---
 
-## 🔄 Recent Updates
-
-- **2025-01-27**: **MAJOR MILESTONE** - Flag management system implementation complete (253 IOC flags)
-- **2025-01-27**: **MAJOR MILESTONE** - Sidebar filter system implementation complete
-- **2025-01-27**: **MAJOR MILESTONE** - Complete application stack verified operational (99% complete)
-- **2025-01-27**: Added comprehensive Testing & Development Roadmap (100+ features planned)
-- **2025-01-27**: Established 6 major enhancement categories with detailed feature lists
-- **2025-01-27**: Updated project status to Production Ready with immediate testing priorities
-
----
-
-## 📞 Getting Help
-
-- **Documentation Issues**: Create an issue with the `documentation` label
-- **Missing Information**: Check if it's covered in the requirements or integration guides
-- **Structure Questions**: Refer to the [Project Structure Guide](./PROJECT_STRUCTURE.md)
-- **Testing Questions**: Follow the Testing & Development Roadmap above
-- **UI/UX Questions**: Check the [Sidebar Filter Implementation](./development/sidebar-filter-implementation.md) guide
-- **Flag Management**: Check the [Flag Management System](./FLAG_MANAGEMENT_SYSTEM.md) guide
-
----
-
-**📝 Note**: This documentation reflects a production-ready Windows desktop application with comprehensive enhancement planning. The reStrike VTA project is ready for immediate production testing and deployment.
-
-**🔄 Last Updated**: Current session - Flag management system implementation complete
-**👤 Maintained by**: Development Team 
-**✅ Status**: 99% Complete - Production Testing Phase 
-
-## 🆕 UI Layout Update (2025-07)
-- AdvancedPanel now displays:
-  - MatchInfoSection (athlete info, match details)
-  - EventTable (event rows, colored dots, scrollable)
-  - StatusBar (OBS status, test controls)
-- Sidebar features (filters, replay, manual mode, etc.) are being migrated into the new layout.
-- See .cursor/rules/context.mdc for all architecture and UI conventions. 
-
-## How to Give Better Prompts to the AI Assistant
-
-To help the AI assistant better understand your project and provide more accurate and helpful responses, follow these guidelines:
-
-1. **Be Specific**: Clearly describe what you want to achieve, referencing UI elements, files, or features by name.
-2. **Provide Context**: Mention any relevant background, requirements, or design goals. If the task relates to a previous change, reference it.
-3. **Attach Screenshots**: For UI/layout issues, attach screenshots and describe what should change.
-4. **Reference Files/Lines**: If possible, mention the file(s) and even line numbers involved.
-5. **Describe Expected Behavior**: Explain what the correct/desired outcome should look like or how it should function.
-6. **List Constraints**: Note any technical, design, or platform constraints (e.g., Windows-only, Tauri, Tailwind, etc.).
-7. **Iterate**: If the first result isn't perfect, provide feedback and clarify what needs to be improved.
-8. **Share Error Messages**: For bugs, include the full error message and what you were doing when it appeared.
-9. **Link to Requirements**: If there are requirement docs, PRDs, or specs, mention or attach them.
-10. **Summarize Recent Changes**: If the project has changed recently, summarize or point to the relevant updates.
-
-The more context and detail you provide, the better the assistant can help you! 
+**Last Updated**: 2025-01-28  
+**Version**: 0.1.0  
+**Status**: Active Development 
