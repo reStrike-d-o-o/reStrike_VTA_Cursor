@@ -115,6 +115,12 @@ async fn main() -> AppResult<()> {
             tauri_commands::disable_logging,
             tauri_commands::start_live_data,
             tauri_commands::stop_live_data,
+            tauri_commands::get_live_data,
+            tauri_commands::obs_get_debug_info,
+            tauri_commands::obs_toggle_full_events,
+            tauri_commands::obs_get_full_events_setting,
+            tauri_commands::obs_emit_event_to_frontend,
+            tauri_commands::obs_get_recent_events,
         ])
         .setup(|_app| {
             log::info!("Tauri application setup complete");

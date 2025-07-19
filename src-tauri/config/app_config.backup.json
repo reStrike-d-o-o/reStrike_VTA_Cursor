@@ -1,7 +1,7 @@
 {
   "app": {
     "version": "0.1.0",
-    "last_save": "2025-07-19T11:01:26.433733300+00:00",
+    "last_save": "2025-07-19T14:19:35.839351900+00:00",
     "startup": {
       "auto_start_udp": false,
       "auto_connect_obs": false,
@@ -92,8 +92,8 @@
       "include_subsystem": true
     },
     "subsystems": {
-      "pss": {
-        "name": "pss",
+      "udp": {
+        "name": "udp",
         "level": "info",
         "enabled": true,
         "custom_file": null
@@ -101,13 +101,13 @@
       "obs": {
         "name": "obs",
         "level": "info",
-        "enabled": false,
+        "enabled": true,
         "custom_file": null
       },
-      "udp": {
-        "name": "udp",
+      "pss": {
+        "name": "pss",
         "level": "info",
-        "enabled": false,
+        "enabled": true,
         "custom_file": null
       }
     },
@@ -120,7 +120,7 @@
       "archive_enabled": true
     },
     "live_data": {
-      "enabled": false,
+      "enabled": true,
       "interval_seconds": 5,
       "max_data_points": 1000,
       "real_time": false

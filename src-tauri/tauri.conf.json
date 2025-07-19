@@ -32,13 +32,6 @@
       "csp": null
     }
   },
-  "allowlist": {
-    "event": {
-      "all": true,
-      "listen": ["live_data", "obs_event"],
-      "emit": ["live_data", "obs_event"]
-    }
-  },
   "bundle": {
     "active": true,
     "targets": "all",

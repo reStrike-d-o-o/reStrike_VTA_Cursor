@@ -830,4 +830,139 @@ pub async fn start_live_data(subsystem: String, app: State<'_, Arc<App>>, window
 pub async fn stop_live_data(subsystem: String, app: State<'_, Arc<App>>, window: tauri::Window) -> Result<(), String> {
     set_live_data_streaming(subsystem, false, app, window).await?;
     Ok(())
+}
+
+#[tauri::command]
+pub async fn get_live_data(subsystem: String, app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+    log::info!("Getting live data for subsystem: {}", subsystem);
+    
+    match subsystem.as_str() {
+        "obs" => {
+            // Get OBS live data
+            let obs_status = app.obs_plugin().get_obs_status().await;
+            match obs_status {
+                Ok(status) => {
+                    Ok(serde_json::json!({
+                        "success": true,
+                        "data": {
+                            "subsystem": "obs",
+                            "timestamp": chrono::Utc::now().to_rfc3339(),
+                            "is_recording": status.is_recording,
+                            "is_streaming": status.is_streaming,
+                            "cpu_usage": status.cpu_usage,
+                            "recording_connection": status.recording_connection,
+                            "streaming_connection": status.streaming_connection
+                        }
+                    }))
+                }
+                Err(e) => {
+                    Ok(serde_json::json!({
+                        "success": false,
+                        "error": e.to_string()
+                    }))
+                }
+            }
+        }
+        "pss" => {
+            // Get PSS live data from UDP plugin (PSS events come through UDP)
+            let udp_stats = app.udp_plugin().get_stats();
+            Ok(serde_json::json!({
+                "success": true,
+                "data": {
+                    "subsystem": "pss",
+                    "timestamp": chrono::Utc::now().to_rfc3339(),
+                    "packets_received": udp_stats.packets_received,
+                    "packets_parsed": udp_stats.packets_parsed,
+                    "parse_errors": udp_stats.parse_errors,
+                    "connected_clients": udp_stats.connected_clients,
+                    "last_packet_time": udp_stats.last_packet_time.map(|t| t.duration_since(std::time::UNIX_EPOCH).unwrap().as_secs())
+                }
+            }))
+        }
+        "udp" => {
+            // Get UDP live data
+            let udp_status = app.udp_plugin().get_status();
+            Ok(serde_json::json!({
+                "success": true,
+                "data": {
+                    "subsystem": "udp",
+                    "timestamp": chrono::Utc::now().to_rfc3339(),
+                    "status": format!("{:?}", udp_status),
+                    "is_running": matches!(udp_status, crate::plugins::plugin_udp::UdpServerStatus::Running)
+                }
+            }))
+        }
+        _ => {
+            Ok(serde_json::json!({
+                "success": false,
+                "error": format!("Unknown subsystem: {}", subsystem)
+            }))
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn obs_get_debug_info(connection_name: String, app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+    log::info!("Getting OBS debug info for connection: {}", connection_name);
+    
+    match app.obs_plugin().get_latest_events(&connection_name).await {
+        Ok(debug_info) => Ok(serde_json::json!({
+            "success": true,
+            "data": debug_info
+        })),
+        Err(e) => Ok(serde_json::json!({
+            "success": false,
+            "error": e.to_string()
+        }))
+    }
+}
+
+#[tauri::command]
+pub async fn obs_toggle_full_events(enabled: bool, app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+    log::info!("Toggling OBS full events display: {}", enabled);
+    
+    app.obs_plugin().toggle_full_events(enabled).await;
+    
+    Ok(serde_json::json!({
+        "success": true,
+        "message": format!("Full OBS events display {}", if enabled { "enabled" } else { "disabled" })
+    }))
+}
+
+#[tauri::command]
+pub async fn obs_get_full_events_setting(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+    log::info!("Getting OBS full events setting");
+    
+    let enabled = app.obs_plugin().get_full_events_setting().await;
+    
+    Ok(serde_json::json!({
+        "success": true,
+        "enabled": enabled
+    }))
+}
+
+#[tauri::command]
+pub async fn obs_emit_event_to_frontend(event_data: serde_json::Value, window: tauri::Window) -> Result<serde_json::Value, String> {
+    log::info!("Emitting OBS event to frontend: {:?}", event_data);
+    
+    match window.emit("obs_event", event_data) {
+        Ok(_) => Ok(serde_json::json!({
+            "success": true,
+            "message": "Event emitted successfully"
+        })),
+        Err(e) => Ok(serde_json::json!({
+            "success": false,
+            "error": e.to_string()
+        }))
+    }
+}
+
+#[tauri::command]
+pub async fn obs_get_recent_events() -> Result<serde_json::Value, String> {
+    // For now, return empty events since we're using polling approach
+    // In a full implementation, this would read from a recent events buffer
+    Ok(serde_json::json!({
+        "success": true,
+        "events": []
+    }))
 } 
