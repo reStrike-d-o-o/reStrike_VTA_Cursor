@@ -64,32 +64,32 @@ const EventTableSection: React.FC = () => {
   });
 
   return (
-    <div className="flex flex-col space-y-4 h-full overflow-hidden">
+    <div className="flex flex-col space-y-4 h-full overflow-hidden pt-4 pl-4">
       {/* Section Title */}
       <div className="flex-shrink-0 text-lg font-semibold text-gray-200">Event Table</div>
       
       {/* Event Table and Filter Stack Container */}
-      <div className="flex flex-row items-start space-x-2 flex-1 min-h-0 overflow-hidden">
+      <div className="flex flex-row items-start flex-1 min-h-0 overflow-hidden">
         {/* Event Table (left) */}
-        <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
+        <div className="flex-1 min-w-0 flex flex-col overflow-hidden mr-4">
           {/* Table Header */}
-          <div className="flex-shrink-0 grid grid-cols-12 gap-2 text-xs text-gray-400 mb-3 border-b border-gray-600 pb-2">
+          <div className="flex-shrink-0 grid grid-cols-12 gap-6 text-xs text-gray-400 mb-3 border-b border-gray-600 pb-2 items-center mt-2">
             <div className="col-span-2 font-semibold pl-5">RND</div>
-            <div className="col-span-4 font-semibold pl-8">TIME</div>
-            <div className="col-span-6 font-semibold pl-5 pr-3 flex items-center space-x-2">
+            <div className="col-span-3 font-semibold pl-10">TIME</div>
+            <div className="col-span-7 font-semibold pl-5 pr-12 flex items-center space-x-1">
               <span>EVENT</span>
               {colorOptions.map((opt) => (
                 <button
                   key={opt.color}
                   className={`
-                    ${colorFilter === opt.color ? 'ring-2 ring-white' : ''}
-                    transition-all duration-200 cursor-pointer p-0.5
+                    ${colorFilter === opt.color ? 'ring-2 ring-white rounded-full' : 'rounded-full'}
+                    transition-all duration-200 cursor-pointer p-0.5 w-5 h-5 flex items-center justify-center
                   `}
                   onClick={() => setColorFilter(colorFilter === opt.color ? null : opt.color)}
                   title={opt.color.charAt(0).toUpperCase() + opt.color.slice(1)}
                   type="button"
                 >
-                  <StatusDot color={opt.class} size="w-4 h-4" />
+                  <StatusDot color={opt.class} size="w-3 h-3" />
                 </button>
               ))}
             </div>
@@ -99,14 +99,14 @@ const EventTableSection: React.FC = () => {
             {filteredEvents.map((event, idx) => (
               <div
                 key={idx}
-                className={`grid grid-cols-12 gap-2 text-sm cursor-pointer transition-colors duration-150 rounded px-3 py-2 ${
+                className={`grid grid-cols-12 gap-6 text-sm cursor-pointer transition-colors duration-150 rounded px-3 py-2 ${
                   selectedIdx === idx ? 'bg-blue-900/60 border border-blue-400' : 'hover:bg-gray-700/50'
                 }`}
                 onClick={() => setSelectedIdx(idx)}
               >
                 <div className="col-span-2 text-gray-300 font-bold">{event.round}</div>
                 <div className="col-span-4 text-gray-300">{event.time}</div>
-                <div className="col-span-6 flex items-center space-x-2">
+                <div className="col-span-6 flex items-center space-x-2 pl-5">
                   <StatusDot color={`bg-${event.color}-500`} size="w-4 h-4" />
                   <span className="text-white font-medium">{event.event}</span>
                 </div>
@@ -116,14 +116,14 @@ const EventTableSection: React.FC = () => {
         </div>
         
         {/* Filter Stack (right) */}
-        <div className="flex flex-col items-end space-y-3 w-24 flex-shrink-0">
+        <div className="flex flex-col items-start space-y-3 w-16 flex-shrink-0">
           {/* Clear Filter Button (Up Arrow) */}
           <Button
             variant="secondary"
             size="sm"
             onClick={handleScrollTopAndClear}
             title="Scroll to top and clear filters"
-            className="w-10 h-10 p-0 flex items-center justify-center text-lg"
+            className="w-8 h-8 p-0 flex items-center justify-center text-base"
           >
             ↑
           </Button>
@@ -139,7 +139,7 @@ const EventTableSection: React.FC = () => {
                 size="sm"
                 onClick={() => setEventTypeFilter(eventTypeFilter === type.value ? null : type.value)}
                 title={type.label}
-                className="w-10 h-10 p-0 text-sm font-bold"
+                className="w-8 h-8 p-0 text-xs font-bold"
               >
                 {type.label.charAt(0)}
               </Button>
