@@ -95,7 +95,7 @@ const EventTableSection: React.FC = () => {
             </div>
           </div>
           {/* Event Rows */}
-          <div ref={tableRef} className="flex-1 space-y-1 overflow-y-auto bg-[#1a2a3a] rounded-md p-3 min-h-0">
+          <div ref={tableRef} className="h-64 space-y-1 overflow-y-auto bg-[#1a2a3a] rounded-md p-3">
             {filteredEvents.map((event, idx) => (
               <div
                 key={idx}
@@ -116,22 +116,20 @@ const EventTableSection: React.FC = () => {
         </div>
         
         {/* Filter Stack (right) */}
-        <div className="flex flex-col items-start space-y-3 w-16 flex-shrink-0">
-          {/* Clear Filter Button (Up Arrow) */}
+        <div className="relative w-16 flex-shrink-0 h-64">
+          {/* Clear Filter Button (Up Arrow) - positioned at top */}
           <Button
             variant="secondary"
             size="sm"
             onClick={handleScrollTopAndClear}
             title="Scroll to top and clear filters"
-            className="w-8 h-8 p-0 flex items-center justify-center text-base"
+            className="absolute top-0 w-8 h-8 p-0 flex items-center justify-center text-base"
           >
             ↑
           </Button>
           
-
-          
-          {/* Event Type Filter Buttons */}
-          <div className="flex flex-col space-y-2">
+          {/* Event Type Filter Buttons - positioned to align with table bottom */}
+          <div className="absolute bottom-0 flex flex-col space-y-2" style={{ transform: 'translateY(50px)' }}>
             {eventTypeOptions.map(type => (
               <Button
                 key={type.value}
