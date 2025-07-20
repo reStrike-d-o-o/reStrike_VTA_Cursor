@@ -4,6 +4,7 @@ import Input from '../atoms/Input';
 import Label from '../atoms/Label';
 import { StatusDot } from '../atoms/StatusDot';
 import { Icon } from '../atoms/Icon';
+import Toggle from '../atoms/Toggle';
 import { useAppStore, ObsConnection } from '../../stores';
 import { obsCommands, configCommands } from '../../utils/tauriCommands';
 
@@ -451,7 +452,9 @@ const WebSocketManager: React.FC = () => {
           size="sm"
           disabled={isAdding || editingConnection !== null}
         >
-          <Icon name="➕" />
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="mr-2">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
           Add Connection
         </Button>
       </div>
@@ -518,15 +521,12 @@ const WebSocketManager: React.FC = () => {
             </div>
 
             <div className="flex items-center">
-              <label className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  checked={formData.enabled}
-                  onChange={(e) => setFormData({ ...formData, enabled: e.target.checked })}
-                  className="rounded border-gray-600 bg-gray-700 text-blue-500 focus:ring-blue-500"
-                />
-                <span className="text-sm">Enabled</span>
-              </label>
+              <Toggle
+                checked={formData.enabled}
+                onChange={(e) => setFormData({ ...formData, enabled: e.target.checked })}
+                label="Enabled"
+                labelPosition="right"
+              />
             </div>
           </div>
 
@@ -594,7 +594,9 @@ const WebSocketManager: React.FC = () => {
                       variant="danger"
                       size="sm"
                     >
-                      <Icon name="🔌" />
+                      <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="mr-2">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0" />
+                      </svg>
                       Disconnect
                     </Button>
                   ) : (
@@ -604,7 +606,9 @@ const WebSocketManager: React.FC = () => {
                       size="sm"
                       disabled={!connection.enabled || connection.status === 'Connecting'}
                     >
-                      <Icon name="🔗" />
+                      <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="mr-2">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                      </svg>
                       Connect
                     </Button>
                   )}
@@ -615,7 +619,9 @@ const WebSocketManager: React.FC = () => {
                     size="sm"
                     disabled={editingConnection !== null}
                   >
-                    <Icon name="✏️" />
+                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="mr-2">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
                     Edit
                   </Button>
                   
@@ -625,7 +631,9 @@ const WebSocketManager: React.FC = () => {
                     size="sm"
                     disabled={editingConnection !== null}
                   >
-                    <Icon name="🗑️" />
+                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="mr-2">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
                     Delete
                   </Button>
                 </div>
@@ -644,7 +652,9 @@ const WebSocketManager: React.FC = () => {
             variant="secondary"
             size="sm"
           >
-            <Icon name={showReconnectionSettings ? "🔽" : "🔼"} />
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="mr-2">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={showReconnectionSettings ? "M5 15l7-7 7 7" : "M19 9l-7 7-7-7"} />
+            </svg>
             {showReconnectionSettings ? 'Hide' : 'Show'} Settings
           </Button>
         </div>
@@ -653,35 +663,33 @@ const WebSocketManager: React.FC = () => {
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
+                <Toggle
                   id="auto-reconnect"
                   checked={reconnectionSettings.autoReconnect}
                   onChange={(e) => setReconnectionSettings({
                     ...reconnectionSettings,
                     autoReconnect: e.target.checked
                   })}
-                  className="rounded border-gray-600 bg-gray-700 text-blue-500 focus:ring-blue-500"
+                  label="Auto-reconnect on connection loss"
+                  labelPosition="right"
                   title="Enable automatic reconnection when connection is lost"
                   aria-label="Auto-reconnect on connection loss"
                 />
-                <Label htmlFor="auto-reconnect">Auto-reconnect on connection loss</Label>
               </div>
               
               <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
+                <Toggle
                   id="status-monitoring"
                   checked={reconnectionSettings.statusMonitoring}
                   onChange={(e) => setReconnectionSettings({
                     ...reconnectionSettings,
                     statusMonitoring: e.target.checked
                   })}
-                  className="rounded border-gray-600 bg-gray-700 text-blue-500 focus:ring-blue-500"
+                  label="Enable connection status monitoring"
+                  labelPosition="right"
                   title="Enable continuous monitoring of connection status"
                   aria-label="Enable connection status monitoring"
                 />
-                <Label htmlFor="status-monitoring">Enable connection status monitoring</Label>
               </div>
               
               <div>
@@ -740,7 +748,9 @@ const WebSocketManager: React.FC = () => {
                 size="sm"
                 disabled={isLoadingSettings}
               >
-                <Icon name="💾" />
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="mr-2">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                </svg>
                 Save Reconnection Settings
               </Button>
               <Button
@@ -749,7 +759,9 @@ const WebSocketManager: React.FC = () => {
                 size="sm"
                 disabled={isLoadingSettings}
               >
-                <Icon name="🔄" />
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="mr-2">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
                 Reload Settings
               </Button>
             </div>

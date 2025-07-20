@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { diagLogsCommands, configCommands } from '../../utils/tauriCommands';
 import { useEnvironment } from '../../hooks/useEnvironment';
 import { useLiveDataStore, LiveDataType } from '../../stores/liveDataStore';
+import Toggle from '../atoms/Toggle';
 
 // Use the proper Tauri v2 invoke function
 const invoke = async (command: string, args?: any) => {
@@ -333,19 +334,16 @@ const LiveDataPanel: React.FC = () => {
 
       
       <div className="flex items-center gap-3 mb-3">
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input 
-            type="checkbox" 
-            checked={enabled} 
-            onChange={handleToggle} 
-            className="accent-blue-500"
-            disabled={connecting}
-          />
-          <span className="text-gray-200 font-medium">Enable</span>
-          {connecting && (
-            <span className="text-blue-400 text-sm">Connecting...</span>
-          )}
-        </label>
+        <Toggle
+          checked={enabled} 
+          onChange={handleToggle} 
+          label="Enable"
+          labelPosition="right"
+          disabled={connecting}
+        />
+        {connecting && (
+          <span className="text-blue-400 text-sm">Connecting...</span>
+        )}
         <span className="text-gray-200 font-medium" id="live-type-label">Type:</span>
         <select
           className="bg-[#101820] border border-gray-700 rounded px-2 py-1 text-gray-100"
@@ -361,16 +359,14 @@ const LiveDataPanel: React.FC = () => {
           ))}
         </select>
         {selectedType === 'obs' && (
-          <label className="flex items-center gap-2 cursor-pointer ml-4">
-            <input 
-              type="checkbox" 
-              checked={showFullEvents} 
-              onChange={handleFullEventsToggle} 
-              className="accent-green-500"
-              disabled={connecting}
-            />
-            <span className="text-gray-200 font-medium text-sm">Full Events</span>
-          </label>
+          <Toggle
+            checked={showFullEvents} 
+            onChange={handleFullEventsToggle} 
+            label="Full Events"
+            labelPosition="right"
+            disabled={connecting}
+            className="ml-4"
+          />
         )}
       </div>
       {error && (

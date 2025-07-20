@@ -57,6 +57,7 @@ export interface AppState {
   error: string | null;
   // Advanced Panel State
   isAdvancedPanelOpen: boolean;
+  activeDrawer: string;
 }
 
 export interface AppActions {
@@ -86,6 +87,7 @@ export interface AppActions {
   openAdvancedPanel: () => void;
   closeAdvancedPanel: () => void;
   toggleAdvancedPanel: () => void;
+  setActiveDrawer: (drawer: string) => void;
 }
 
 export type AppStore = AppState & AppActions;
@@ -126,6 +128,7 @@ const initialState: AppState = {
   isLoading: false,
   error: null,
   isAdvancedPanelOpen: false,
+  activeDrawer: 'pss',
 };
 
 // Create store
@@ -232,6 +235,7 @@ export const useAppStore = create<AppStore>()(
       openAdvancedPanel: () => set({ isAdvancedPanelOpen: true }),
       closeAdvancedPanel: () => set({ isAdvancedPanelOpen: false }),
       toggleAdvancedPanel: () => set((state) => ({ isAdvancedPanelOpen: !state.isAdvancedPanelOpen })),
+      setActiveDrawer: (drawer) => set({ activeDrawer: drawer }),
     }),
     {
       name: 'restrike-vta-store',
