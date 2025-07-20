@@ -1,205 +1,430 @@
-# Project Structure Documentation
+# Project Structure
 
-## Overview
+## Overview (Updated: 2025-01-28)
 
-This document outlines the structure and organization of the reStrike VTA project, a Windows-native Tauri application with React frontend and Rust backend.
+This document provides a comprehensive overview of the reStrike VTA project structure, including the Tauri v2 backend, React frontend, and development infrastructure.
 
-## Project Architecture
+## Current Status ✅
 
-### Frontend (React/TypeScript)
-- **Location**: `ui/` directory
-- **Framework**: React 18 with TypeScript
-- **Styling**: Tailwind CSS
-- **State Management**: Zustand
-- **Build Tool**: Vite (via React Scripts)
+### **Project Organization - COMPLETE**
+- **Tauri v2 Migration**: Successfully migrated to Tauri v2 architecture
+- **Atomic Design**: Complete frontend component hierarchy
+- **Plugin Architecture**: Modular backend with clear separation
+- **Tab System**: Reusable tab components with flat styling
+- **Flag Management**: Complete flag management system with 253+ IOC flags
 
-### Backend (Rust/Tauri)
-- **Location**: `src-tauri/` directory
-- **Framework**: Tauri v2
-- **Language**: Rust
-- **Architecture**: Plugin-based modular system
+### **Recent Major Updates (2025-01-28)**
+- **Tab System Infrastructure**: Reusable Tab and TabGroup components
+- **OBS Drawer Organization**: WebSocket and Integration tabs
+- **PSS Drawer Organization**: UDP Server & Protocol and Flag Management tabs
+- **Flag Management System**: Complete implementation with upload, search, and mapping
+- **PSS Code Mapping**: Simplified system where PSS codes = IOC codes
+- **Documentation Consolidation**: Streamlined and updated documentation
 
 ## Directory Structure
 
 ```
 reStrike_VTA_Cursor/
-├── ui/                          # React frontend
-│   ├── src/
-│   │   ├── components/          # React components (atomic design)
-│   │   │   ├── atoms/           # Basic UI elements
-│   │   │   ├── molecules/       # Compound components
-│   │   │   ├── organisms/       # Complex components
-│   │   │   └── layouts/         # Layout components
-│   │   ├── stores/              # Zustand state management
-│   │   ├── hooks/               # Custom React hooks
-│   │   ├── utils/               # Utility functions
-│   │   └── types/               # TypeScript type definitions
-│   └── public/                  # Static assets
-├── src-tauri/                   # Rust backend
-│   ├── src/
+├── src-tauri/                    # Tauri v2 backend (Rust)
+│   ├── src/                      # Rust source code
+│   │   ├── main.rs              # Tauri app entry point
+│   │   ├── lib.rs               # Library exports and plugin registration
+│   │   ├── tauri_commands.rs    # Tauri command definitions
+│   │   ├── core/                # Core application functionality
+│   │   │   ├── app.rs           # Application state and lifecycle
+│   │   │   ├── config.rs        # Configuration management
+│   │   │   └── state.rs         # Global state management
+│   │   ├── config/              # Configuration system
+│   │   │   ├── manager.rs       # Configuration manager
+│   │   │   ├── types.rs         # Configuration types
+│   │   │   └── mod.rs           # Configuration module
+│   │   ├── logging/             # Logging system
+│   │   │   ├── logger.rs        # Logging implementation
+│   │   │   ├── rotation.rs      # Log rotation
+│   │   │   ├── archival.rs      # Log archival
+│   │   │   └── mod.rs           # Logging module
 │   │   ├── plugins/             # Plugin modules
-│   │   ├── core/                # Core application logic
-│   │   ├── commands/            # Tauri commands
-│   │   └── logging/             # Logging system
-│   ├── gen/schemas/             # Generated schemas
-│   └── config/                  # Configuration files
-├── docs/                        # Documentation
+│   │   │   ├── mod.rs           # Plugin module registration
+│   │   │   ├── plugin_obs.rs    # OBS WebSocket integration
+│   │   │   ├── plugin_udp.rs    # UDP protocol handling
+│   │   │   ├── plugin_pss.rs    # PSS protocol implementation
+│   │   │   ├── plugin_playback.rs # Video playback management
+│   │   │   ├── plugin_store.rs  # Data storage and persistence
+│   │   │   ├── plugin_cpu_monitor.rs # System monitoring
+│   │   │   └── plugin_license.rs # License management
+│   │   ├── obs/                 # OBS WebSocket integration
+│   │   │   ├── manager.rs       # OBS connection manager
+│   │   │   ├── protocol.rs      # WebSocket protocol handling
+│   │   │   └── commands.rs      # OBS command definitions
+│   │   ├── pss/                 # PSS protocol implementation
+│   │   │   ├── listener.rs      # UDP listener
+│   │   │   ├── protocol.rs      # PSS protocol parsing
+│   │   │   └── events.rs        # Event handling
+│   │   ├── video/               # Video management
+│   │   │   ├── player.rs        # Video player integration
+│   │   │   ├── clips.rs         # Clip management
+│   │   │   └── overlay.rs       # Video overlay system
+│   │   ├── types/               # Shared types
+│   │   │   └── mod.rs           # Type definitions
+│   │   └── utils/               # Utility functions
+│   │       └── logger.rs        # Logging utilities
+│   ├── Cargo.toml               # Rust dependencies
+│   ├── tauri.conf.json          # Tauri configuration
+│   ├── capabilities.json        # Tauri capabilities
+│   ├── build.rs                 # Build script
+│   ├── config/                  # Application configuration
+│   │   ├── app_config.json      # Main configuration file
+│   │   └── app_config.backup.json # Configuration backup
+│   ├── logs/                    # Log files and archives
+│   │   ├── app.log              # Application logs
+│   │   ├── obs.log              # OBS WebSocket logs
+│   │   ├── pss.log              # PSS protocol logs
+│   │   ├── udp.log              # UDP server logs
+│   │   └── archives/            # Compressed log archives
+│   └── icons/                   # Application icons
+│       └── icon.ico             # Windows icon
+├── ui/                          # React frontend
+│   ├── src/                     # React source code
+│   │   ├── App.tsx              # Main application component
+│   │   ├── index.tsx            # React entry point
+│   │   ├── index.css            # Global styles
+│   │   ├── components/          # Atomic design components
+│   │   │   ├── atoms/           # Basic UI elements
+│   │   │   │   ├── Button.tsx   # Button component
+│   │   │   │   ├── Input.tsx    # Input component
+│   │   │   │   ├── Checkbox.tsx # Checkbox component
+│   │   │   │   ├── Label.tsx    # Label component
+│   │   │   │   ├── StatusDot.tsx # Status indicator
+│   │   │   │   ├── Icon.tsx     # Icon component
+│   │   │   │   ├── Tab.tsx      # Tab component
+│   │   │   │   └── TabGroup.tsx # Tab group component
+│   │   │   ├── molecules/       # Compound components
+│   │   │   │   ├── EventTableSection.tsx # Event table section
+│   │   │   │   ├── LiveDataPanel.tsx # Live data display
+│   │   │   │   ├── CpuMonitoringSection.tsx # CPU monitoring
+│   │   │   │   ├── LogDownloadList.tsx # Log download interface
+│   │   │   │   ├── FlagManagementPanel.tsx # Flag management interface
+│   │   │   │   ├── PssDrawer.tsx # PSS drawer with tabs
+│   │   │   │   └── ObsDrawer.tsx # OBS drawer with tabs
+│   │   │   ├── organisms/       # Complex components
+│   │   │   │   ├── EventTable.tsx # Event table organism
+│   │   │   │   ├── MatchInfoSection.tsx # Match information
+│   │   │   │   ├── ObsWebSocketManager.tsx # OBS manager
+│   │   │   │   ├── SidebarSmall.tsx # Small sidebar
+│   │   │   │   └── SidebarBig.tsx # Large sidebar
+│   │   │   └── layouts/         # Layout components
+│   │   │       ├── DockBar.tsx  # Main sidebar layout
+│   │   │       ├── AdvancedPanel.tsx # Advanced panel layout
+│   │   │       └── StatusbarAdvanced.tsx # Status bar layout
+│   │   ├── hooks/               # Custom React hooks
+│   │   │   ├── useEnvironment.ts # Environment detection
+│   │   │   ├── useEnvironmentApi.ts # API environment
+│   │   │   └── useEnvironmentObs.ts # OBS environment
+│   │   ├── stores/              # State management
+│   │   │   ├── index.ts         # Store exports
+│   │   │   ├── liveDataStore.ts # Live data state
+│   │   │   └── obsStore.ts      # OBS state management
+│   │   ├── types/               # TypeScript types
+│   │   │   ├── index.ts         # Type exports
+│   │   │   └── tauri.d.ts       # Tauri type definitions
+│   │   ├── utils/               # Utility functions
+│   │   │   ├── flagUtils.tsx    # Flag utility functions
+│   │   │   ├── obsUtils.ts      # OBS utility functions
+│   │   │   ├── tauriCommands.ts # Tauri command utilities
+│   │   │   ├── videoUtils.ts    # Video utility functions
+│   │   │   └── countryCodeMapping.ts # PSS to IOC mapping
+│   │   ├── config/              # Frontend configuration
+│   │   │   └── environments/    # Environment configurations
+│   │   │       ├── web.ts       # Web environment
+│   │   │       └── windows.ts   # Windows environment
+│   │   └── lib/                 # Library utilities
+│   │       └── index.ts         # Library exports
+│   ├── public/                  # Static assets
+│   │   ├── index.html           # HTML template
+│   │   └── assets/              # Static assets
+│   │       ├── flags/           # 253+ IOC country flag images
+│   │       │   ├── AFG.png      # Afghanistan flag
+│   │       │   ├── AUS.png      # Australia flag
+│   │       │   ├── USA.png      # United States flag
+│   │       │   └── ...          # 250+ more flag images
+│   │       └── img/             # Other images
+│   │           └── logo.png     # Application logo
+│   ├── package.json             # Node.js dependencies
+│   ├── package-lock.json        # Dependency lock file
+│   ├── tsconfig.json            # TypeScript configuration
+│   ├── tailwind.config.js       # Tailwind CSS configuration
+│   ├── postcss.config.js        # PostCSS configuration
+│   └── eslint.config.js         # ESLint configuration
+├── docs/                        # Project documentation
+│   ├── README.md                # Documentation overview
+│   ├── ARCHITECTURE.md          # System architecture
+│   ├── DEVELOPMENT.md           # Development guidelines
+│   ├── OBS_INTEGRATION.md       # OBS integration guide
+│   ├── FLAG_MANAGEMENT_SYSTEM.md # Flag management system
+│   ├── api/                     # API documentation
+│   │   └── obs-websocket.md     # OBS WebSocket API
+│   ├── development/             # Development guides
+│   │   ├── AI_AGENT_WINDOWS_GUIDE.md # AI agent guide
+│   │   ├── WINDOWS_VSCODE_SETUP_GUIDE.md # VS Code setup
+│   │   ├── development-management.md # Development management
+│   │   ├── documentation-maintenance-guide.md # Documentation guide
+│   │   ├── flag-images-guide.md # Flag images guide
+│   │   ├── sidebar-filter-implementation.md # Sidebar implementation
+│   │   └── checklists/          # Development checklists
+│   ├── integration/             # Integration guides
+│   │   ├── obs-dual-protocol.md # OBS protocol guide
+│   │   └── obs-websocket-config.md # OBS WebSocket config
+│   ├── project/                 # Project management
+│   │   ├── project-management-summary.md # Project management
+│   │   ├── github-integration-status.md # GitHub integration
+│   │   ├── github-integration-guide.md # GitHub guide
+│   │   ├── github-automation-setup.md # GitHub automation
+│   │   ├── github-board-setup-instructions.md # GitHub board setup
+│   │   ├── automation-quick-setup.md # Automation setup
+│   │   ├── FLAG_MANAGEMENT_SPECIFICATION.md # Flag management spec
+│   │   └── FLAG_MANAGEMENT_MODULE_PLAN.md # Flag management plan
+│   ├── requirements/            # Requirements documentation
+│   │   ├── instant-video-replay-prd.md # Video replay PRD
+│   │   ├── ui-design-document.md # UI design document
+│   │   ├── software-requirements.md # Software requirements
+│   │   └── FLAG_MANAGEMENT_MODULE.md # Flag management module
+│   └── testing/                 # Testing documentation
 ├── scripts/                     # Development scripts
-└── config/                      # Project configuration
+│   ├── README.md                # Scripts overview
+│   ├── development/             # Development scripts
+│   │   ├── cleanup-dev-environment.sh # Environment cleanup
+│   │   ├── dev.sh               # Development server
+│   │   ├── fast-dev.sh          # Fast development server
+│   │   ├── install-mpv-latest.sh # MPV installation
+│   │   ├── manage-dev-resources.py # Resource management
+│   │   ├── update-frameworks.sh # Framework updates
+│   │   ├── verify-ports.sh      # Port verification
+│   │   └── windows-fast-setup.ps1 # Windows setup
+│   ├── github/                  # GitHub automation
+│   │   ├── README.md            # GitHub scripts overview
+│   │   ├── create-issues.py     # Issue creation
+│   │   └── setup-project-board.py # Project board setup
+│   ├── media/                   # Media processing scripts
+│   │   ├── download_official_ioc_flags.py # IOC flag download
+│   │   ├── download-flags.py    # Flag download
+│   │   ├── enhanced-flag-recognition.py # Flag recognition
+│   │   ├── flag-recognition.py  # Flag recognition
+│   │   ├── generate-clip.sh     # Clip generation
+│   │   ├── ioc_flag_database.json # IOC flag database
+│   │   ├── ioc-flag-database.py # Flag database script
+│   │   ├── europe_html_sample.html # Sample HTML
+│   │   ├── north_america_html_sample.html # Sample HTML
+│   │   ├── sovereign_states_html.html # Sample HTML
+│   │   └── simple-enhanced-recognition.py # Enhanced recognition
+│   ├── obs/                     # OBS integration scripts
+│   │   └── setup-obs-websocket.sh # OBS WebSocket setup
+│   ├── project/                 # Project management scripts
+│   │   ├── project-tracker.py   # Project tracking
+│   │   └── update-issues-after-checkpoint.sh # Issue updates
+│   └── workflows/               # CI/CD workflows
+│       └── ci.yml               # Continuous integration
+├── protocol/                    # Protocol definitions
+│   ├── pss_schema.txt           # PSS protocol schema
+│   └── pss_v2.3.json            # PSS protocol v2.3 specification
+├── config/                      # Global configuration
+│   └── dev_resources.json       # Development resources
+├── log/                         # Global logs
+├── target/                      # Build artifacts
+├── PROJECT_CONTEXT.md           # Project context and overview
+├── PROJECT_STRUCTURE.md         # This file
+├── FRONTEND_DEVELOPMENT_SUMMARY.md # Frontend development summary
+├── LIBRARY_STRUCTURE.md         # Backend library structure
+├── ui-design-document.md        # UI design specifications
+├── package.json                 # Root package.json
+├── package-lock.json            # Root package lock
+├── LICENSE                      # Project license
+└── README.md                    # Project README
 ```
 
 ## Component Architecture
 
-### Atomic Design System
-- **Atoms**: Basic building blocks (Button, Input, Icon, StatusDot)
-- **Molecules**: Simple combinations (EventTableSection, LiveDataPanel)
-- **Organisms**: Complex components (EventTable, ObsWebSocketManager)
-- **Layouts**: Page-level components (DockBar, AdvancedPanel)
+### **Frontend Components (Atomic Design)**
 
-### Component Hierarchy
-```
-App.tsx
-├── DockBar.tsx
-│   ├── SidebarSmall.tsx
-│   └── SidebarBig.tsx
-└── AdvancedPanel.tsx
-    ├── ObsWebSocketManager.tsx
-    ├── LiveDataPanel.tsx
-    └── CpuMonitoringSection.tsx
-```
+#### **Atoms (Basic UI Elements)**
+- **Button**: Primary, secondary, and icon buttons with consistent styling
+- **Input**: Text inputs with validation and error states
+- **Checkbox**: Boolean selection with proper accessibility
+- **Label**: Form labels and text display components
+- **StatusDot**: Status indicators with color-coded states
+- **Icon**: SVG icon system with consistent sizing
+- **Tab**: Individual tab component with flat styling
+- **TabGroup**: Tab container component with consistent design
 
-## Development Guidelines
+#### **Molecules (Compound Components)**
+- **EventTableSection**: Event table with filtering and display
+- **LiveDataPanel**: Real-time data display panels
+- **CpuMonitoringSection**: System monitoring interface
+- **LogDownloadList**: Log file download and management
+- **FlagManagementPanel**: Complete flag management interface
+- **PssDrawer**: PSS drawer with UDP Server & Protocol and Flag Management tabs
+- **ObsDrawer**: OBS drawer with WebSocket and Integration tabs
 
-### 🚨 **Critical UI Development Rules**
+#### **Organisms (Complex Components)**
+- **EventTable**: Complex event table with real-time updates
+- **MatchInfoSection**: Match information display with flag integration
+- **ObsWebSocketManager**: OBS connection management interface
+- **SidebarSmall**: Small sidebar with controls and status
+- **SidebarBig**: Large sidebar with player info and match details
 
-#### **UI Work Boundaries**
-- **ONLY modify**: React components and UI styling
-- **NEVER touch**: Backend code, Tauri configuration, or permissions
-- **Focus on**: Visual appearance, layout, and user experience
-- **Preserve**: All existing functionality exactly as is
+#### **Layouts (Page and Section Layouts)**
+- **DockBar**: Main sidebar layout with two-column design
+- **AdvancedPanel**: Advanced panel layout with sidebar and main content
+- **StatusbarAdvanced**: Status bar layout with real-time indicators
 
-#### **Safe to Modify**
-- `ui/src/components/` - All React components
-- `ui/src/App.tsx` - Main application layout
-- `ui/src/stores/` - UI state management
-- Tailwind CSS classes and styling
-- Component props and UI logic
+### **Backend Architecture (Plugin System)**
 
-#### **Never Touch During UI Work**
-- `src-tauri/` - Any Rust code or backend files
-- `capabilities.json` - Tauri permissions
-- `tauri.conf.json` - Tauri configuration
-- Event listeners and API calls
-- Backend plugins and commands
+#### **Core Application Layer**
+- **App**: Main application state and lifecycle management
+- **Config**: Configuration management and persistence
+- **State**: Global state management across plugins
 
-### Backend Architecture
+#### **Plugin Modules**
+- **OBS Plugin**: WebSocket integration with OBS Studio
+- **UDP Plugin**: UDP protocol handling for PSS events
+- **PSS Plugin**: PSS protocol v2.3 implementation
+- **Playback Plugin**: Video playback and clip management
+- **Store Plugin**: Data persistence and storage
+- **CPU Monitor Plugin**: System resource monitoring
+- **License Plugin**: License management and validation
 
-#### Plugin System
-- **plugin_obs.rs**: OBS WebSocket integration
-- **plugin_cpu_monitor.rs**: System monitoring
-- **plugin_store.rs**: Data persistence
-- **plugin_udp.rs**: UDP protocol handling
-
-#### Core Modules
-- **app.rs**: Application initialization and state
-- **config.rs**: Configuration management
-- **logging/**: Custom logging system with archival
-
-#### Tauri Integration
-- **commands/**: Tauri command definitions
-- **tauri_commands.rs**: Frontend-backend communication
-- **gen/schemas/**: Generated API schemas
-
-## State Management
-
-### Frontend State (Zustand)
-```typescript
-// Main application state
-interface AppState {
-  isAdvancedPanelOpen: boolean;
-  obsConnections: ObsConnection[];
-  currentView: string;
-  // ... other UI state
-}
-```
-
-### Backend State (Rust)
-```rust
-// Application state with Arc<Mutex<>>
-pub struct App {
-    log_manager: Arc<Mutex<LogManager>>,
-    obs_plugin: Arc<Mutex<ObsPlugin>>,
-    // ... other state
-}
-```
+#### **Protocol Implementations**
+- **OBS Manager**: WebSocket connection management
+- **PSS Listener**: UDP listener for PSS protocol
+- **Video Player**: MPV-based video player integration
 
 ## Development Workflow
 
-### Frontend Development
-1. **Start dev server**: `cd ui && npm start`
-2. **Make UI changes**: Only React components and styling
-3. **Test functionality**: Ensure existing features work
-4. **No backend changes**: Never modify Rust code during UI work
+### **Starting Development**
+```bash
+# From project root
+cd src-tauri
+cargo tauri dev
+```
 
-### Backend Development
-1. **Start Tauri**: `cargo tauri dev`
-2. **Modify Rust code**: Only when working on backend features
-3. **Test integration**: Verify frontend-backend communication
-4. **Update permissions**: Only when adding new Tauri capabilities
+This single command:
+1. Starts the React development server (port 3000)
+2. Builds the Rust backend
+3. Launches the native Windows application
+4. Enables hot reload for both frontend and backend
 
-### UI Design Work
-1. **Identify scope**: Only visual/styling changes
-2. **Modify UI files**: React components and Tailwind CSS
-3. **Preserve functionality**: All backend features must work
-4. **Test appearance**: Verify visual changes work correctly
+### **Alternative Manual Start**
+```bash
+# Terminal 1: Start React dev server
+cd ui
+npm run start:fast
 
-## Configuration Files
+# Terminal 2: Start Tauri app
+cd src-tauri
+cargo tauri dev
+```
 
-### Frontend Configuration
-- `ui/package.json`: Dependencies and scripts
-- `ui/tailwind.config.js`: Tailwind CSS configuration
-- `ui/tsconfig.json`: TypeScript configuration
+### **Build for Production**
+```bash
+cd src-tauri
+cargo tauri build
+```
 
-### Backend Configuration
-- `src-tauri/Cargo.toml`: Rust dependencies
-- `src-tauri/tauri.conf.json`: Tauri application configuration
-- `src-tauri/gen/schemas/capabilities.json`: Tauri permissions
+## Key Features
 
-## Documentation Structure
+### **Core Functionality**
+- **Instant Video Replay**: Quick access to recent video clips
+- **Event Tracking**: Real-time event capture and analysis
+- **OBS Integration**: Seamless connection with OBS Studio
+- **Flag Management**: Country flag recognition and display with 253+ IOC flags
+- **Advanced Panel**: Comprehensive settings and diagnostics with tabbed interface
 
-### Core Documentation
-- `CONTINUATION_PROMPT.md`: Current project status and next steps
-- `FRONTEND_DEVELOPMENT_SUMMARY.md`: Frontend development details
-- `PROJECT_STRUCTURE.md`: This file - project organization
-- `LIBRARY_STRUCTURE.md`: Backend library structure
+### **UI Components**
+- **DockBar**: Main sidebar with player info and controls
+- **Event Table**: Real-time event display with filtering
+- **Advanced Panel**: Settings, diagnostics, and configuration with organized tabs
+- **Status Indicators**: Real-time system status display
+- **Tab System**: Reusable tab components with flat styling
+- **Flag Management Panel**: Complete flag management interface
 
-### Feature Documentation
-- `docs/FLAG_MANAGEMENT_SYSTEM.md`: IOC flag system
-- `docs/OBS_INTEGRATION.md`: OBS WebSocket integration
-- `docs/requirements/`: Software requirements and specifications
+### **Technical Features**
+- **Environment Detection**: Automatic Tauri vs Web mode detection
+- **Plugin Architecture**: Modular backend design
+- **Error Handling**: Comprehensive error management
+- **Hot Reload**: Development efficiency with live updates
+- **Type Safety**: Full TypeScript and Rust type safety
+- **Flag System**: IOC flag integration with PSS code mapping
 
-## Best Practices
+## Configuration Management
 
-### Code Organization
-- **Separation of concerns**: UI logic separate from business logic
-- **Atomic design**: Consistent component hierarchy
-- **Type safety**: TypeScript for frontend, Rust for backend
-- **Error handling**: Proper error boundaries and fallbacks
+### **Tauri Configuration**
+- **Global Tauri API**: Enabled for frontend access
+- **Development Server**: React dev server integration
+- **Build Configuration**: Optimized for Windows
+- **Security**: Proper allowlist configuration
 
-### Development Process
-- **UI work isolation**: Never touch backend during UI development
-- **Feature branches**: Separate UI and backend development
-- **Testing**: Verify functionality after any changes
-- **Documentation**: Update docs when adding new features
+### **Frontend Configuration**
+- **Environment Detection**: Smart Tauri API detection
+- **Development Scripts**: Optimized for Windows development
+- **Build Process**: Integrated with Tauri build system
 
-### Performance Considerations
-- **Lazy loading**: Load components on demand
-- **State optimization**: Minimize unnecessary re-renders
-- **Bundle size**: Keep frontend bundle optimized
-- **Memory usage**: Efficient backend resource management
+## Development Guidelines
+
+### **Code Quality**
+- **Type Safety**: Full TypeScript and Rust type safety
+- **Error Handling**: Comprehensive error management
+- **Documentation**: Inline documentation and external docs
+- **Testing**: Unit and integration testing
+
+### **Architecture Principles**
+- **Modularity**: Plugin-based backend architecture
+- **Atomic Design**: Organized frontend component hierarchy
+- **Separation of Concerns**: Clear frontend/backend separation
+- **Performance**: Optimized for real-time operations
+
+## Documentation
+
+### **Key Documents**
+- `PROJECT_CONTEXT.md`: Project context and overview
+- `FRONTEND_DEVELOPMENT_SUMMARY.md`: Frontend architecture details
+- `LIBRARY_STRUCTURE.md`: Backend architecture and plugin system
+- `ui-design-document.md`: UI design specifications
+- `docs/`: Comprehensive project documentation
+
+### **Development Guides**
+- `docs/development/`: Development setup and guidelines
+- `docs/api/`: API documentation
+- `docs/integration/`: Integration guides
+
+## Next Steps
+
+### **Immediate Priorities**
+1. **OBS Integration**: Complete WebSocket protocol implementation
+2. **Event System**: Implement PSS protocol event handling
+3. **Video Player**: Integrate mpv video player
+4. **Flag Management**: Complete flag recognition system ✅
+
+### **Future Enhancements**
+1. **AI Integration**: Automated event analysis
+2. **Advanced Analytics**: Statistical analysis and reporting
+3. **Multi-language Support**: Internationalization
+4. **Plugin System**: Extensible plugin architecture
+
+## Troubleshooting
+
+### **Common Issues**
+- **Port Conflicts**: Use cleanup scripts to free ports
+- **Build Errors**: Clean build artifacts and rebuild
+- **Tauri API Issues**: Verify environment detection
+- **Hot Reload**: Ensure proper development server setup
+
+### **Development Environment**
+- **Windows 10/11**: Primary development platform
+- **Windows Native**: Direct Windows development environment
+- **VS Code**: Recommended IDE with extensions
+- **Git**: Version control and collaboration
 
 ---
 
 **Last Updated**: 2025-01-28  
-**Status**: Project structure documented with clear development guidelines  
-**Focus**: Maintain separation between UI and backend development 
+**Status**: Complete project structure with comprehensive documentation  
+**Focus**: Maintainable, scalable architecture with clear organization 

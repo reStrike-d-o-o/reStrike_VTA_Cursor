@@ -3,7 +3,7 @@
 ## Overview
 reStrike VTA is a Windows-only native desktop application designed for instant video replay and analysis in sports broadcasting. Built with Tauri v2 (Rust backend) and React (frontend), the application provides real-time event tracking, OBS Studio integration, and advanced video playback capabilities.
 
-## Current Status ✅
+## Current Status ✅ (Updated: 2025-01-28)
 
 ### Tauri v2 Migration Complete
 - **Native Windows Mode**: Successfully running as native Windows desktop application
@@ -12,12 +12,14 @@ reStrike VTA is a Windows-only native desktop application designed for instant v
 - **Hot Reload**: Development mode with live reload for both frontend and backend
 - **Command System**: Complete Tauri command registration and invocation working
 
-### Frontend Architecture
+### Frontend Architecture - COMPLETE
 - **Atomic Design**: Fully implemented component hierarchy (atoms, molecules, organisms, layouts)
 - **TypeScript**: Complete type safety and IntelliSense support
 - **Tailwind CSS**: Utility-first styling with custom design system
 - **Responsive Design**: Adaptive layouts for different screen sizes
 - **Environment Detection**: Smart detection of Tauri vs Web mode
+- **Tab System**: Reusable Tab and TabGroup components with flat styling
+- **Flag Management**: Complete flag management system with 253+ IOC flags
 
 ### Backend Architecture
 - **Plugin System**: Modular architecture with separate plugins for different features
@@ -25,6 +27,15 @@ reStrike VTA is a Windows-only native desktop application designed for instant v
 - **PSS Protocol**: UDP-based event handling system
 - **Video Integration**: mpv-based video player support
 - **Error Handling**: Comprehensive error handling with AppResult<T> and AppError types
+
+### Recent Major Updates (2025-01-28)
+- **Tab System Infrastructure**: Reusable Tab and TabGroup components with flat styling
+- **OBS Drawer Organization**: WebSocket and Integration tabs with consistent design
+- **PSS Drawer Organization**: UDP Server & Protocol and Flag Management tabs
+- **Complete Flag Management**: Full implementation with upload, search, and mapping features
+- **PSS Code Mapping**: Simplified system where PSS codes = IOC codes
+- **Flag Integration**: All systems using flags from `ui/public/assets/flags/`
+- **User Experience**: Clear, intuitive interface for flag management
 
 ## Technical Stack
 
@@ -34,6 +45,7 @@ reStrike VTA is a Windows-only native desktop application designed for instant v
 - **Tailwind CSS**: Utility-first CSS framework
 - **Tauri API**: Native desktop integration
 - **Atomic Design**: Organized component architecture
+- **Zustand**: State management for UI components
 
 ### Backend
 - **Rust**: Systems programming language for performance and safety
@@ -80,14 +92,16 @@ cargo tauri build
 - **Instant Video Replay**: Quick access to recent video clips
 - **Event Tracking**: Real-time event capture and analysis
 - **OBS Integration**: Seamless connection with OBS Studio
-- **Flag Management**: Country flag recognition and display
-- **Advanced Panel**: Comprehensive settings and diagnostics
+- **Flag Management**: Country flag recognition and display with 253+ IOC flags
+- **Advanced Panel**: Comprehensive settings and diagnostics with tabbed interface
 
 ### UI Components
 - **DockBar**: Main sidebar with player info and controls
 - **Event Table**: Real-time event display with filtering
-- **Advanced Panel**: Settings, diagnostics, and configuration
+- **Advanced Panel**: Settings, diagnostics, and configuration with organized tabs
 - **Status Indicators**: Real-time system status display
+- **Tab System**: Reusable tab components with flat styling
+- **Flag Management Panel**: Complete flag management interface
 
 ### Technical Features
 - **Environment Detection**: Automatic Tauri vs Web mode detection
@@ -95,6 +109,7 @@ cargo tauri build
 - **Error Handling**: Comprehensive error management
 - **Hot Reload**: Development efficiency with live updates
 - **Type Safety**: Full TypeScript and Rust type safety
+- **Flag System**: IOC flag integration with PSS code mapping
 
 ## Project Organization
 
@@ -113,18 +128,22 @@ reStrike_VTA_Cursor/
 │   └── tauri.conf.json          # Tauri configuration
 ├── ui/                          # React frontend
 │   ├── src/components/          # Atomic design components
+│   │   ├── atoms/               # Basic UI elements (Button, Input, etc.)
+│   │   ├── molecules/           # Compound components
+│   │   ├── organisms/           # Complex components
+│   │   └── layouts/             # Layout components
 │   ├── src/hooks/               # Custom React hooks
 │   ├── src/utils/               # Utility functions
-│   └── public/assets/flags/     # Country flag images
+│   └── public/assets/flags/     # 253+ IOC country flag images
 ├── docs/                        # Project documentation
 └── scripts/                     # Development scripts
 ```
 
 ### Component Architecture
-- **Atoms**: Basic UI components (Button, Input, Checkbox, etc.)
+- **Atoms**: Basic UI components (Button, Input, Checkbox, Icon, StatusDot, etc.)
 - **Molecules**: Composite components (EventTable, LogToggleGroup, etc.)
 - **Organisms**: Complex UI sections (DockBar, AdvancedPanel, etc.)
-- **Layouts**: Page and section layouts
+- **Layouts**: Page and section layouts with tabbed interfaces
 
 ## Environment Detection
 
@@ -173,7 +192,8 @@ The application automatically detects its running environment:
 ### Key Documents
 - `PROJECT_STRUCTURE.md`: Detailed project organization
 - `FRONTEND_DEVELOPMENT_SUMMARY.md`: Frontend architecture details
-- `PROJECT_REORGANIZATION_SUMMARY.md`: Migration history
+- `LIBRARY_STRUCTURE.md`: Backend architecture and plugin system
+- `ui-design-document.md`: UI design specifications
 - `docs/`: Comprehensive project documentation
 
 ### Development Guides
@@ -187,7 +207,7 @@ The application automatically detects its running environment:
 1. **OBS Integration**: Complete WebSocket protocol implementation
 2. **Event System**: Implement PSS protocol event handling
 3. **Video Player**: Integrate mpv video player
-4. **Flag Management**: Complete flag recognition system
+4. **Flag Management**: Complete flag recognition system ✅
 
 ### Future Enhancements
 1. **AI Integration**: Automated event analysis

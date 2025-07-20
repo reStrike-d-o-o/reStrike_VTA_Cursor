@@ -8,6 +8,9 @@
 - ✅ All onboarding, build, and documentation reference Windows-native setup only
 - ✅ Project structure, naming, and maintenance conventions are strictly enforced (see below)
 - ✅ Performance best practices for both frontend and backend are required
+- ✅ **Tab System Infrastructure**: Reusable Tab and TabGroup components with flat styling
+- ✅ **Flag Management System**: Complete implementation with 253+ IOC flags and PSS code mapping
+- ✅ **Documentation Consolidation**: Streamlined and updated documentation structure
 
 ---
 
@@ -18,6 +21,8 @@
 - React frontend is in `ui/` with assets, components, hooks, stores, utils, and config
 - Root directory contains only essential files (Cargo.toml, package.json, README.md, etc.)
 - All navigation indexes (docs/README.md, scripts/README.md) must be kept up to date
+- **Flag assets**: 253+ IOC flags stored in `ui/public/assets/flags/`
+- **Tab components**: Reusable Tab and TabGroup in `ui/src/components/atoms/`
 
 ## 2. Naming Conventions
 - **Documentation**: `kebab-case.md` (e.g., `container-restart.md`, `software-requirements.md`)
@@ -34,6 +39,7 @@
 - Keep navigation indexes and cross-references current
 - All documentation and onboarding must reference this file and be updated after any major change
 - **Preservation Before Deletion/Refactor**: Before deleting or refactoring any file, always copy the code to a backup file (e.g., .copy or .bak extension) to preserve the existing code, then proceed with deletion or refactor. This ensures no code is lost and allows for easy rollback if needed.
+- **Documentation Consolidation**: Regularly consolidate duplicate documentation and remove obsolete files
 
 ## 4. Performance Best Practices
 - **Frontend**:
@@ -74,6 +80,9 @@ _Last updated: 2025-01-28_
 ## 📚 Required Documentation Context
 - **ALWAYS include:**
   - `PROJECT_CONTEXT.md` (master project overview - CRITICAL)
+  - `PROJECT_STRUCTURE.md` (detailed project organization)
+  - `FRONTEND_DEVELOPMENT_SUMMARY.md` (frontend architecture details)
+  - `LIBRARY_STRUCTURE.md` (backend architecture and plugin system)
   - `README.md` (Windows installation, quick start)
   - `.cursor/rules/context.mdc` (this file - context rules)
   - `docs/README.md` (documentation navigation)
@@ -98,40 +107,62 @@ _Last updated: 2025-01-28_
   - `AppError::IoError` is ONLY for `std::io::Error`.
   - Custom error messages use `AppError::ConfigError` or other appropriate variant.
   - **Import conventions:**
-    - Use `crate::...` for all library code (all files in `src/` except `main.rs`).
-    - Use `re_strike_vta::...` only in `main.rs` (binary entrypoint).
-  - **Crate name:** Must be snake_case in `Cargo.toml` (`re_strike_vta`).
-  - **Module structure:** All plugins in `src/plugins/`, imported via `plugins` module.
-- **Frontend:** React 18 + TypeScript + Tailwind CSS + Zustand + Framer Motion
-  - Modern, professional UI/UX with keyboard shortcuts, sidebar, overlays.
-  - IOC flag system: 253 PNG flags, emoji fallback, React integration (`flagUtils.tsx`).
-  - Environment-aware hooks for Windows/web switching.
+    - Use `plugins::plugin_obs` NOT `obs` (after reorganization)
+    - All plugins are under `src/plugins/` module
+    - Core modules: `core::`, `config::`, `logging::`, `types::`
+  - **Error handling:**
+    - When returning errors to API responses expecting `Option<String>`, use `e.to_string()`
+    - When converting `std::io::Error` to `AppError`, use `AppError::IoError(e)`
+    - When converting `std::io::Error` to `AppError::ConfigError`, use `AppError::ConfigError(e.to_string())`
 
-## 🏁 Flag Management System
-- **Status:** COMPLETE (253 IOC flags, emoji fallback, React integration)
-- **Python script:** `scripts/media/download_official_ioc_flags.py` (downloads all flags from Wikipedia)
-- **React integration:** `ui/src/utils/flagUtils.tsx`, `FlagImage` component, automatic fallback
-- **Flag storage:** `ui/public/assets/flags/` (253 PNGs)
-- **Documentation:** `docs/FLAG_MANAGEMENT_SYSTEM.md`, `docs/requirements/FLAG_MANAGEMENT_MODULE.md`, `docs/project/FLAG_MANAGEMENT_MODULE_PLAN.md`
+- **Frontend:** React 18 + TypeScript + Tailwind CSS
+  - **Atomic Design System**: Complete component hierarchy (atoms, molecules, organisms, layouts)
+  - **Tab System**: Reusable Tab and TabGroup components with flat styling
+  - **Flag Management**: Complete system with 253+ IOC flags and PSS code mapping
+  - **State Management**: Zustand for global state management
+  - **Environment Detection**: Smart Tauri vs Web mode detection
+  - **Component Structure**:
+    - Atoms: Button, Input, Checkbox, Label, StatusDot, Icon, Tab, TabGroup
+    - Molecules: EventTableSection, LiveDataPanel, CpuMonitoringSection, FlagManagementPanel
+    - Organisms: EventTable, MatchInfoSection, ObsWebSocketManager, SidebarSmall, SidebarBig
+    - Layouts: DockBar, AdvancedPanel, StatusbarAdvanced
 
-## 🎥 Video, OBS, and PSS Protocols
-- **Video:** mpv integration with hardware acceleration, advanced controls
-- **OBS:** Dual WebSocket protocol (v4/v5), connection management, scene/recording/streaming control
-- **PSS:** Real-time UDP protocol parsing, event types, competition data
+## 🎨 UI Development Guidelines
+- **UI Work Boundaries**: ONLY modify UI files (React components, styling)
+- **Never Touch**: Backend code, Tauri configuration, or permissions during UI work
+- **Safe to Modify**: `ui/src/components/`, `ui/src/App.tsx`, `ui/src/stores/`, Tailwind CSS
+- **Tab System**: Use reusable Tab and TabGroup components with flat styling
+- **Flag Integration**: All systems use flags from `ui/public/assets/flags/`
+- **PSS Code Mapping**: Simplified system where PSS codes = IOC codes
 
-## 🛠️ Environment Setup & Port Cleanup
-- **ALWAYS run:** `./scripts/development/cleanup-dev-environment.sh --cleanup` before starting any dev server
-  - Frees all ports (3000, 1420, 6000, 4455, 8080)
-  - Stops previous processes, clears caches
-- **Critical tools:**
-  - Node.js 24+ (LTS)
-  - Rust (stable, MSVC toolchain)
-  - Tauri CLI (`
+## 🚀 Recent Major Updates (2025-01-28)
+- **Tab System Infrastructure**: Reusable Tab and TabGroup components with flat styling
+- **OBS Drawer Organization**: WebSocket and Integration tabs with consistent design
+- **PSS Drawer Organization**: UDP Server & Protocol and Flag Management tabs
+- **Complete Flag Management**: Full implementation with upload, search, and mapping features
+- **PSS Code Mapping**: Simplified mapping where PSS codes = IOC codes
+- **Flag Integration**: All systems using flags from `ui/public/assets/flags/`
+- **User Experience**: Clear, intuitive interface for flag management
+- **Documentation Consolidation**: Streamlined and updated documentation structure
 
-## [2025-07] UI Layout Update
-- AdvancedPanel now displays:
-  - MatchInfoSection (athlete info, match details)
-  - EventTable (event rows, colored dots, scrollable)
-  - StatusBar (OBS status, test controls)
-- Sidebar features (filters, replay, manual mode, etc.) are being migrated into the new layout.
-- All .md documentation files must be updated after major UI changes.
+## 🔧 Development Workflow
+- **Starting Development**: `cd src-tauri && cargo tauri dev`
+- **Alternative Manual Start**: 
+  - Terminal 1: `cd ui && npm run start:fast`
+  - Terminal 2: `cd src-tauri && cargo tauri dev`
+- **Build for Production**: `cd src-tauri && cargo tauri build`
+- **Cleanup**: Use `./scripts/development/cleanup-dev-environment.sh --cleanup`
+
+## 📋 Key Features
+- **Instant Video Replay**: Quick access to recent video clips
+- **Event Tracking**: Real-time event capture and analysis
+- **OBS Integration**: Seamless connection with OBS Studio
+- **Flag Management**: Country flag recognition and display with 253+ IOC flags
+- **Advanced Panel**: Comprehensive settings and diagnostics with tabbed interface
+- **Tab System**: Reusable tab components with flat styling
+- **PSS Protocol**: UDP-based event handling with country code mapping
+
+## 🎯 Next Steps
+- **Immediate Priorities**: OBS Integration, Event System, Video Player
+- **Future Enhancements**: AI Integration, Advanced Analytics, Multi-language Support
+- **Documentation**: Keep all documentation updated and consolidated
