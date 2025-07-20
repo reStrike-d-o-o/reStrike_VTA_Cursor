@@ -5,6 +5,7 @@ pub mod plugin_playback;
 pub mod plugin_store;
 pub mod plugin_udp;
 pub mod plugin_cpu_monitor;
+pub mod plugin_protocol_manager;
 
 // Re-export key plugin types for easier access
 pub use plugin_obs::{ObsPlugin, ObsConnectionConfig, ObsWebSocketVersion, ObsStatusInfo, ObsEvent};
@@ -13,9 +14,10 @@ pub use plugin_udp::UdpPlugin;
 pub use plugin_store::StorePlugin;
 pub use plugin_license::LicensePlugin;
 pub use plugin_cpu_monitor::{CpuMonitorPlugin, CpuMonitorConfig, CpuProcessData, SystemCpuData};
+pub use plugin_protocol_manager::{ProtocolManager, ProtocolFile, ProtocolVersion, StreamDefinition};
 
 /// Initialize all plugins
-pub fn init() -> Result<(), Box<dyn std::error::Error>> {
+pub async fn init() -> Result<(), Box<dyn std::error::Error>> {
     println!("🔧 Initializing plugins...");
     
     // Initialize each plugin
@@ -25,6 +27,7 @@ pub fn init() -> Result<(), Box<dyn std::error::Error>> {
     plugin_store::init()?;
     plugin_license::init()?;
     plugin_cpu_monitor::init()?;
+    plugin_protocol_manager::init()?;
     
     println!("✅ All plugins initialized successfully");
     Ok(())

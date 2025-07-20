@@ -153,6 +153,30 @@ pub struct UdpSettings {
     pub events: EventSettings,
 }
 
+/// Network interface configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NetworkInterfaceSettings {
+    /// Auto-detect network interface
+    pub auto_detect: bool,
+    /// Preferred interface type ("ethernet", "wifi", "any")
+    pub preferred_type: String,
+    /// Fallback to localhost if no suitable interface found
+    pub fallback_to_localhost: bool,
+    /// Manually selected interface name (if auto_detect is false)
+    pub selected_interface: Option<String>,
+}
+
+impl Default for NetworkInterfaceSettings {
+    fn default() -> Self {
+        Self {
+            auto_detect: true,
+            preferred_type: "ethernet".to_string(),
+            fallback_to_localhost: true,
+            selected_interface: None,
+        }
+    }
+}
+
 /// UDP listener configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UdpListenerSettings {
@@ -166,6 +190,9 @@ pub struct UdpListenerSettings {
     pub buffer_size: usize,
     /// Timeout (seconds)
     pub timeout_seconds: u64,
+    /// Network interface configuration
+    #[serde(default)]
+    pub network_interface: NetworkInterfaceSettings,
 }
 
 /// PSS protocol settings
@@ -179,6 +206,89 @@ pub struct PssSettings {
     pub strict_mode: bool,
     /// Unknown field handling
     pub unknown_fields: String, // "ignore", "warn", "error"
+    /// Protocol version management
+    #[serde(default)]
+    pub protocol_versions: ProtocolVersionSettings,
+    /// Protocol file storage
+    #[serde(default)]
+    pub storage: ProtocolStorageSettings,
+}
+
+/// Protocol version management settings
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProtocolVersionSettings {
+    /// Currently active protocol version
+    pub active_version: String,
+    /// Available protocol versions
+    pub available_versions: Vec<ProtocolVersion>,
+    /// Auto-update protocol versions
+    pub auto_update: bool,
+    /// Version validation on load
+    pub validate_on_load: bool,
+}
+
+impl Default for ProtocolVersionSettings {
+    fn default() -> Self {
+        Self {
+            active_version: "2.3".to_string(),
+            available_versions: Vec::new(),
+            auto_update: false,
+            validate_on_load: true,
+        }
+    }
+}
+
+/// Individual protocol version information
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProtocolVersion {
+    /// Version identifier (e.g., "2.3", "2.4")
+    pub version: String,
+    /// Protocol file name
+    pub filename: String,
+    /// Full path to protocol file
+    pub file_path: String,
+    /// Protocol description
+    pub description: String,
+    /// Creation date
+    pub created_date: String,
+    /// Last modified date
+    pub last_modified: String,
+    /// Whether this version is active
+    pub is_active: bool,
+    /// Protocol file size in bytes
+    pub file_size: u64,
+    /// Protocol file checksum for validation
+    pub checksum: Option<String>,
+}
+
+/// Protocol file storage settings
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProtocolStorageSettings {
+    /// Protocol files storage directory
+    pub storage_directory: String,
+    /// Maximum number of protocol versions to keep
+    pub max_versions: usize,
+    /// Auto-backup protocol files
+    pub auto_backup: bool,
+    /// Backup directory
+    pub backup_directory: String,
+    /// Enable protocol file compression
+    pub compression: bool,
+    /// Protocol file retention days
+    pub retention_days: u64,
+}
+
+impl Default for ProtocolStorageSettings {
+    fn default() -> Self {
+        Self {
+            storage_directory: "protocol".to_string(),
+            max_versions: 10,
+            auto_backup: true,
+            backup_directory: "protocol/backups".to_string(),
+            compression: false,
+            retention_days: 30,
+        }
+    }
 }
 
 /// Event processing settings
@@ -621,18 +731,56 @@ impl Default for AppConfig {
                 },
             },
             udp: UdpSettings {
-                listener: UdpListenerSettings {
-                    port: 6000,
-                    bind_address: "0.0.0.0".to_string(),
-                    enabled: false,
-                    buffer_size: 8192,
-                    timeout_seconds: 30,
-                },
+                        listener: UdpListenerSettings {
+            port: 8888,
+            bind_address: "127.0.0.1".to_string(),
+            enabled: false,
+            buffer_size: 8192,
+            timeout_seconds: 30,
+            network_interface: NetworkInterfaceSettings::default(),
+        },
                 pss: PssSettings {
-                    schema_file: "protocol/pss_schema.txt".to_string(),
+                    schema_file: "protocol/pss_v2.3.txt".to_string(),
                     enabled: true,
                     strict_mode: false,
                     unknown_fields: "warn".to_string(),
+                    protocol_versions: ProtocolVersionSettings {
+                        active_version: "2.3".to_string(),
+                        available_versions: vec![
+                            ProtocolVersion {
+                                version: "2.3".to_string(),
+                                filename: "pss_v2.3.json".to_string(),
+                                file_path: "protocol/pss_v2.3.json".to_string(),
+                                description: "Version 2.3 of the PSS protocol".to_string(),
+                                created_date: chrono::Utc::now().to_rfc3339(),
+                                last_modified: chrono::Utc::now().to_rfc3339(),
+                                is_active: true,
+                                file_size: 12345,
+                                checksum: Some("abc123".to_string()),
+                            },
+                            ProtocolVersion {
+                                version: "2.4".to_string(),
+                                filename: "pss_v2.4.json".to_string(),
+                                file_path: "protocol/pss_v2.4.json".to_string(),
+                                description: "Version 2.4 of the PSS protocol".to_string(),
+                                created_date: chrono::Utc::now().to_rfc3339(),
+                                last_modified: chrono::Utc::now().to_rfc3339(),
+                                is_active: false,
+                                file_size: 12346,
+                                checksum: Some("def456".to_string()),
+                            },
+                        ],
+                        auto_update: true,
+                        validate_on_load: true,
+                    },
+                    storage: ProtocolStorageSettings {
+                        storage_directory: "protocol_files".to_string(),
+                        max_versions: 5,
+                        auto_backup: true,
+                        backup_directory: "protocol_backups".to_string(),
+                        compression: true,
+                        retention_days: 30,
+                    },
                 },
                 events: EventSettings {
                     store_events: true,

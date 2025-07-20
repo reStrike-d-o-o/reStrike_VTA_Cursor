@@ -1,7 +1,7 @@
 //! Main application class and lifecycle management
 
 use crate::types::{AppResult, AppState, AppView};
-use crate::plugins::{ObsPlugin, PlaybackPlugin, UdpPlugin, StorePlugin, LicensePlugin, CpuMonitorPlugin};
+use crate::plugins::{ObsPlugin, PlaybackPlugin, UdpPlugin, StorePlugin, LicensePlugin, CpuMonitorPlugin, ProtocolManager};
 use crate::logging::LogManager;
 use crate::config::ConfigManager;
 use std::sync::Arc;
@@ -18,6 +18,7 @@ pub struct App {
     store_plugin: StorePlugin,
     license_plugin: LicensePlugin,
     cpu_monitor_plugin: CpuMonitorPlugin,
+    protocol_manager: ProtocolManager,
     log_manager: Arc<Mutex<LogManager>>,
 }
 
@@ -37,7 +38,7 @@ impl App {
         // Create event channels for plugins
         let (obs_event_tx, _obs_event_rx) = tokio::sync::mpsc::unbounded_channel();
         let (playback_event_tx, _playback_event_rx) = tokio::sync::mpsc::unbounded_channel();
-        let (udp_event_tx, _udp_event_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (udp_event_tx, udp_event_rx) = tokio::sync::mpsc::unbounded_channel();
         
         // Initialize logging manager with external log directory to prevent rebuild loops
         let mut log_config = crate::logging::LogConfig::default();
@@ -54,9 +55,6 @@ impl App {
         let playback_plugin = PlaybackPlugin::new(crate::plugins::plugin_playback::PlaybackConfig::default(), playback_event_tx);
         log::info!("✅ Playback plugin initialized");
         
-        let udp_plugin = UdpPlugin::new(crate::plugins::plugin_udp::UdpServerConfig::default(), udp_event_tx);
-        log::info!("✅ UDP plugin initialized");
-        
         let store_plugin = StorePlugin::new();
         log::info!("✅ Store plugin initialized");
         
@@ -65,6 +63,22 @@ impl App {
         
         let cpu_monitor_plugin = CpuMonitorPlugin::new(crate::plugins::CpuMonitorConfig::default());
         log::info!("✅ CPU monitor plugin initialized");
+        
+        let protocol_manager = ProtocolManager::new()?;
+        if let Err(e) = protocol_manager.init().await {
+            log::warn!("⚠️ Warning: Failed to initialize protocol manager: {}", e);
+        }
+        log::info!("✅ Protocol manager plugin initialized");
+        
+        let protocol_manager_arc = Arc::new(protocol_manager.clone());
+        let udp_plugin = UdpPlugin::new(crate::plugins::plugin_udp::UdpServerConfig::default(), udp_event_tx, protocol_manager_arc);
+        log::info!("✅ UDP plugin initialized");
+        
+        // Start UDP event handler
+        let log_manager_clone = log_manager.clone();
+        tokio::spawn(async move {
+            Self::handle_udp_events(udp_event_rx, log_manager_clone).await;
+        });
         
         // Load OBS connections from config manager
         let config_connections = config_manager.get_obs_connections().await;
@@ -81,6 +95,7 @@ impl App {
             store_plugin,
             license_plugin,
             cpu_monitor_plugin,
+            protocol_manager,
             log_manager,
         })
     }
@@ -101,8 +116,16 @@ impl App {
     pub async fn start(&self) -> AppResult<()> {
         println!("▶️ Starting application...");
         
-        // Start all subsystems
-        // Note: Plugins are started on-demand when needed
+        // Check if UDP should auto-start
+        let config = self.config_manager.get_config().await;
+        if config.app.startup.auto_start_udp {
+            println!("🎯 Auto-starting UDP server...");
+            if let Err(e) = self.udp_plugin().start(&config).await {
+                println!("⚠️ Failed to auto-start UDP server: {}", e);
+            } else {
+                println!("✅ UDP server auto-started successfully");
+            }
+        }
         
         println!("✅ Application started successfully");
         Ok(())
@@ -161,6 +184,11 @@ impl App {
         &self.cpu_monitor_plugin
     }
     
+    /// Get protocol manager plugin reference
+    pub fn protocol_manager(&self) -> &ProtocolManager {
+        &self.protocol_manager
+    }
+    
     /// Get log manager reference
     pub fn log_manager(&self) -> &Arc<Mutex<LogManager>> {
         &self.log_manager
@@ -169,6 +197,46 @@ impl App {
     /// Get configuration manager reference
     pub fn config_manager(&self) -> &ConfigManager {
         &self.config_manager
+    }
+    
+    /// Handle UDP events
+    async fn handle_udp_events(
+        mut event_rx: tokio::sync::mpsc::UnboundedReceiver<crate::plugins::plugin_udp::PssEvent>,
+        log_manager: Arc<Mutex<LogManager>>,
+    ) {
+        log::info!("🎯 UDP event handler started");
+        
+        while let Some(event) = event_rx.recv().await {
+            // Log the event
+            let event_str = format!("{:?}", event);
+            if let Err(e) = log_manager.lock().await.log("pss", "INFO", &event_str) {
+                log::error!("Failed to log UDP event: {}", e);
+            }
+            
+            // Process different event types
+            match event {
+                crate::plugins::plugin_udp::PssEvent::Points { athlete, point_type } => {
+                    log::info!("🎯 Points event: Athlete {} scored {} points", athlete, point_type);
+                }
+                crate::plugins::plugin_udp::PssEvent::HitLevel { athlete, level } => {
+                    log::info!("🎯 Hit level event: Athlete {} hit level {}", athlete, level);
+                }
+                crate::plugins::plugin_udp::PssEvent::Warnings { athlete1_warnings, athlete2_warnings } => {
+                    log::info!("🎯 Warnings event: Athlete1={}, Athlete2={}", athlete1_warnings, athlete2_warnings);
+                }
+                crate::plugins::plugin_udp::PssEvent::Clock { time, action } => {
+                    log::info!("🎯 Clock event: {} {:?}", time, action);
+                }
+                crate::plugins::plugin_udp::PssEvent::Raw(message) => {
+                    log::debug!("🎯 Raw UDP message: {}", message);
+                }
+                _ => {
+                    log::debug!("🎯 UDP event: {:?}", event);
+                }
+            }
+        }
+        
+        log::info!("🎯 UDP event handler stopped");
     }
 }
 

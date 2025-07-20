@@ -31,7 +31,8 @@ pub async fn shutdown_app(app: State<'_, Arc<App>>) -> Result<(), String> {
 #[tauri::command]
 pub async fn start_udp_server(app: State<'_, Arc<App>>) -> Result<(), String> {
     log::info!("Starting UDP server");
-    app.udp_plugin().start().map_err(|e| e.to_string())?;
+    let config = app.config_manager().get_config().await;
+    app.udp_plugin().start(&config).await.map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -527,7 +528,8 @@ pub async fn download_flags(_app: State<'_, Arc<App>>) -> Result<(), String> {
 #[tauri::command]
 pub async fn pss_start_listener(port: u16, app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
     log::info!("PSS start listener called on port: {}", port);
-    match app.udp_plugin().start() {
+            let config = app.config_manager().get_config().await;
+        match app.udp_plugin().start(&config).await {
         Ok(_) => Ok(serde_json::json!({
             "success": true,
             "message": "PSS listener started"
@@ -555,10 +557,64 @@ pub async fn pss_stop_listener(app: State<'_, Arc<App>>) -> Result<serde_json::V
 }
 
 #[tauri::command]
-pub async fn pss_get_events(_app: State<'_, Arc<App>>) -> Result<Vec<serde_json::Value>, String> {
+pub async fn pss_get_events(app: State<'_, Arc<App>>) -> Result<Vec<serde_json::Value>, String> {
     log::info!("PSS get events called");
-    // TODO: Implement actual PSS events retrieval from UDP plugin
-    Ok(vec![])
+    
+    let events = app.udp_plugin().get_recent_events();
+    
+    // Convert PssEvent enum to JSON
+    let event_json: Vec<serde_json::Value> = events.into_iter().map(|event| {
+        match event {
+            crate::plugins::plugin_udp::PssEvent::Points { athlete, point_type } => {
+                serde_json::json!({
+                    "type": "points",
+                    "athlete": athlete,
+                    "point_type": point_type,
+                    "description": format!("Athlete {} scored {} points", athlete, point_type)
+                })
+            }
+            crate::plugins::plugin_udp::PssEvent::HitLevel { athlete, level } => {
+                serde_json::json!({
+                    "type": "hit_level",
+                    "athlete": athlete,
+                    "level": level,
+                    "description": format!("Athlete {} hit level {}", athlete, level)
+                })
+            }
+            crate::plugins::plugin_udp::PssEvent::Warnings { athlete1_warnings, athlete2_warnings } => {
+                serde_json::json!({
+                    "type": "warnings",
+                    "athlete1_warnings": athlete1_warnings,
+                    "athlete2_warnings": athlete2_warnings,
+                    "description": format!("Warnings - Athlete1: {}, Athlete2: {}", athlete1_warnings, athlete2_warnings)
+                })
+            }
+            crate::plugins::plugin_udp::PssEvent::Clock { time, action } => {
+                serde_json::json!({
+                    "type": "clock",
+                    "time": time,
+                    "action": action,
+                    "description": format!("Clock: {} {:?}", time, action.unwrap_or_default())
+                })
+            }
+            crate::plugins::plugin_udp::PssEvent::Raw(message) => {
+                serde_json::json!({
+                    "type": "raw",
+                    "message": message,
+                    "description": format!("Raw message: {}", message)
+                })
+            }
+            _ => {
+                serde_json::json!({
+                    "type": "other",
+                    "event": format!("{:?}", event),
+                    "description": format!("Event: {:?}", event)
+                })
+            }
+        }
+    }).collect();
+    
+    Ok(event_json)
 }
 
 // System commands
@@ -1160,5 +1216,198 @@ pub async fn cpu_get_monitoring_status(app: State<'_, Arc<App>>) -> Result<bool,
             log::error!("[CPU_CMD] Failed to get CPU monitoring status: {}", e);
             Err(e.to_string())
         }
+    }
+}
+
+// Protocol Management Commands
+#[tauri::command]
+pub async fn protocol_get_versions(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+    let log_manager = app.log_manager().lock().await;
+    if let Err(e) = log_manager.log("pss", "INFO", "Getting protocol versions") {
+        log::error!("Failed to log protocol get versions: {}", e);
+    }
+    
+    let versions = app.protocol_manager().get_versions().await.map_err(|e| e.to_string())?;
+    let current_protocol = app.protocol_manager().get_current_protocol().await.map_err(|e| e.to_string())?;
+    
+    Ok(serde_json::json!({
+        "success": true,
+        "versions": versions,
+        "current_protocol": current_protocol
+    }))
+}
+
+#[tauri::command]
+pub async fn protocol_set_active_version(
+    version: String,
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, String> {
+    let log_manager = app.log_manager().lock().await;
+    if let Err(e) = log_manager.log("pss", "INFO", &format!("Setting active protocol version: {}", version)) {
+        log::error!("Failed to log protocol set active version: {}", e);
+    }
+    
+    match app.protocol_manager().set_active_version(&version).await {
+        Ok(_) => Ok(serde_json::json!({
+            "success": true,
+            "message": format!("Protocol version '{}' activated", version)
+        })),
+        Err(e) => Ok(serde_json::json!({
+            "success": false,
+            "error": e.to_string()
+        }))
+    }
+}
+
+#[tauri::command]
+pub async fn protocol_upload_file(
+    file_content: Vec<u8>,
+    filename: String,
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, String> {
+    let log_manager = app.log_manager().lock().await;
+    if let Err(e) = log_manager.log("pss", "INFO", &format!("Uploading protocol file: {}", filename)) {
+        log::error!("Failed to log protocol upload: {}", e);
+    }
+    
+    match app.protocol_manager().upload_protocol_file(file_content, &filename).await {
+        Ok(protocol_version) => Ok(serde_json::json!({
+            "success": true,
+            "message": format!("Protocol file '{}' uploaded successfully", filename),
+            "protocol_version": protocol_version
+        })),
+        Err(e) => Ok(serde_json::json!({
+            "success": false,
+            "error": e.to_string()
+        }))
+    }
+}
+
+#[tauri::command]
+pub async fn protocol_delete_version(
+    version: String,
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, String> {
+    let log_manager = app.log_manager().lock().await;
+    if let Err(e) = log_manager.log("pss", "INFO", &format!("Deleting protocol version: {}", version)) {
+        log::error!("Failed to log protocol delete: {}", e);
+    }
+    
+    match app.protocol_manager().delete_version(&version).await {
+        Ok(_) => Ok(serde_json::json!({
+            "success": true,
+            "message": format!("Protocol version '{}' deleted", version)
+        })),
+        Err(e) => Ok(serde_json::json!({
+            "success": false,
+            "error": e.to_string()
+        }))
+    }
+}
+
+#[tauri::command]
+pub async fn protocol_export_file(
+    version: String,
+    app: State<'_, Arc<App>>,
+) -> Result<Vec<u8>, String> {
+    let log_manager = app.log_manager().lock().await;
+    if let Err(e) = log_manager.log("pss", "INFO", &format!("Exporting protocol file: {}", version)) {
+        log::error!("Failed to log protocol export: {}", e);
+    }
+    
+    app.protocol_manager().export_protocol_file(&version).await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn protocol_get_current(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+    let log_manager = app.log_manager().lock().await;
+    if let Err(e) = log_manager.log("pss", "INFO", "Getting current protocol") {
+        log::error!("Failed to log protocol get current: {}", e);
+    }
+    
+    match app.protocol_manager().get_current_protocol().await {
+        Ok(Some(protocol)) => Ok(serde_json::json!({
+            "success": true,
+            "protocol": protocol
+        })),
+        Ok(None) => Ok(serde_json::json!({
+            "success": false,
+            "error": "No protocol currently loaded"
+        })),
+        Err(e) => Ok(serde_json::json!({
+            "success": false,
+            "error": e.to_string()
+        }))
+    }
+} 
+
+/// Get available network interfaces
+#[tauri::command]
+pub async fn get_network_interfaces() -> Result<serde_json::Value, String> {
+    match crate::utils::NetworkDetector::get_interfaces() {
+        Ok(interfaces) => {
+            let interface_data: Vec<serde_json::Value> = interfaces
+                .into_iter()
+                .map(|iface| {
+                    serde_json::json!({
+                        "name": iface.name,
+                        "type": match iface.interface_type {
+                            crate::utils::InterfaceType::Ethernet => "ethernet",
+                            crate::utils::InterfaceType::WiFi => "wifi",
+                            crate::utils::InterfaceType::Loopback => "loopback",
+                            crate::utils::InterfaceType::Unknown => "unknown",
+                        },
+                        "ip_addresses": iface.ip_addresses.iter().map(|ip| ip.to_string()).collect::<Vec<_>>(),
+                        "is_up": iface.is_up,
+                        "is_loopback": iface.is_loopback,
+                    })
+                })
+                .collect();
+            
+            Ok(serde_json::json!({
+                "success": true,
+                "interfaces": interface_data
+            }))
+        }
+        Err(e) => Ok(serde_json::json!({
+            "success": false,
+            "error": e.to_string()
+        }))
+    }
+}
+
+/// Get the best network interface based on current configuration
+#[tauri::command]
+pub async fn get_best_network_interface(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+    let config = app.config_manager().get_config().await;
+    let network_settings = &config.udp.listener.network_interface;
+    
+    match crate::utils::NetworkDetector::get_best_interface(network_settings) {
+        Ok(Some(interface)) => {
+            Ok(serde_json::json!({
+                "success": true,
+                "interface": {
+                    "name": interface.name,
+                    "type": match interface.interface_type {
+                        crate::utils::InterfaceType::Ethernet => "ethernet",
+                        crate::utils::InterfaceType::WiFi => "wifi",
+                        crate::utils::InterfaceType::Loopback => "loopback",
+                        crate::utils::InterfaceType::Unknown => "unknown",
+                    },
+                    "ip_addresses": interface.ip_addresses.iter().map(|ip| ip.to_string()).collect::<Vec<_>>(),
+                    "is_up": interface.is_up,
+                    "is_loopback": interface.is_loopback,
+                }
+            }))
+        }
+        Ok(None) => Ok(serde_json::json!({
+            "success": false,
+            "error": "No suitable network interface found"
+        })),
+        Err(e) => Ok(serde_json::json!({
+            "success": false,
+            "error": e.to_string()
+        }))
     }
 } 

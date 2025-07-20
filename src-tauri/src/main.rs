@@ -19,6 +19,12 @@ async fn main() -> AppResult<()> {
     // Initialize the application
     app.init().await?;
     
+    // Initialize plugins
+    re_strike_vta::plugins::init().await?;
+    
+    // Start the application (this will auto-start UDP if configured)
+    app.start().await?;
+    
     // Start OBS event listener to forward events to frontend
     let app_clone = app.clone();
     tokio::spawn(async move {
@@ -46,6 +52,8 @@ async fn main() -> AppResult<()> {
             
             // UDP commands
             tauri_commands::start_udp_server,
+        tauri_commands::get_network_interfaces,
+        tauri_commands::get_best_network_interface,
             tauri_commands::stop_udp_server,
             tauri_commands::get_udp_status,
             
@@ -128,6 +136,14 @@ async fn main() -> AppResult<()> {
             tauri_commands::cpu_enable_monitoring,
             tauri_commands::cpu_disable_monitoring,
             tauri_commands::cpu_get_monitoring_status,
+            
+            // Protocol Management commands
+            tauri_commands::protocol_get_versions,
+            tauri_commands::protocol_set_active_version,
+            tauri_commands::protocol_upload_file,
+            tauri_commands::protocol_delete_version,
+            tauri_commands::protocol_export_file,
+            tauri_commands::protocol_get_current,
         ])
         .setup(|_app| {
             log::info!("Tauri application setup complete");

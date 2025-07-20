@@ -137,6 +137,34 @@ const LiveDataPanel: React.FC = () => {
     };
   }, [tauriAvailable, selectedType, showFullEvents, addData]);
 
+  // Poll for UDP/PSS events when UDP is selected
+  useEffect(() => {
+    if (!tauriAvailable || selectedType !== 'udp' || !enabled) return;
+
+    // Set up polling for UDP events every 2 seconds
+    const udpEventPollingInterval = setInterval(async () => {
+      try {
+        const result = await invoke('pss_get_events');
+        if (result && Array.isArray(result) && result.length > 0) {
+          result.forEach((event: any) => {
+            const formattedEvent = `[UDP-EVENT] ${event.description}`;
+            addData({
+              subsystem: 'udp',
+              data: formattedEvent,
+              type: 'info'
+            });
+          });
+        }
+      } catch (error) {
+        console.error('❌ Failed to fetch UDP events:', error);
+      }
+    }, 2000);
+
+    return () => {
+      clearInterval(udpEventPollingInterval);
+    };
+  }, [tauriAvailable, selectedType, enabled, addData]);
+
   // Handle full events toggle
   const handleFullEventsToggle = async () => {
     try {
@@ -185,22 +213,22 @@ const LiveDataPanel: React.FC = () => {
     }
   }, [data]);
 
-  // Polling function to fetch live data - only for OBS status updates
+  // Polling function to fetch live data - for OBS and UDP status updates
   const fetchLiveData = async () => {
     try {
-      if (selectedType === 'obs') {
-        console.log('🔄 Fetching OBS status data');
+      if (selectedType === 'obs' || selectedType === 'udp' || selectedType === 'pss') {
+        console.log(`🔄 Fetching ${selectedType.toUpperCase()} status data`);
         const result = await invoke('get_live_data', { subsystem: selectedType });
-        console.log('📊 OBS status result:', result);
+        console.log(`📊 ${selectedType.toUpperCase()} status result:`, result);
         
         if (result && result.success && result.data) {
-          // Only add data if there are actual changes (recording/streaming state)
+          // Only add data if there are actual changes
           const formattedData = formatLiveData(result.data);
           
           // Check if this is different from the last status
           const lastEntry = data[data.length - 1];
           if (!lastEntry || lastEntry.data !== formattedData) {
-            console.log('📝 New OBS status:', formattedData);
+            console.log(`📝 New ${selectedType.toUpperCase()} status:`, formattedData);
             addData({
               subsystem: selectedType,
               data: formattedData,
@@ -257,18 +285,18 @@ const LiveDataPanel: React.FC = () => {
           
           clearData();
           
-          if (enabled && selectedType === 'obs') {
-            // Start polling for OBS status every 5 seconds (less frequent)
-            console.log('🔄 Starting OBS status polling...');
+          if (enabled && (selectedType === 'obs' || selectedType === 'udp' || selectedType === 'pss')) {
+            // Start polling for status every 5 seconds (less frequent)
+            console.log(`🔄 Starting ${selectedType.toUpperCase()} status polling...`);
             pollingIntervalRef.current = setInterval(fetchLiveData, 5000);
             
             // Fetch initial data immediately
-            console.log('🚀 Fetching initial OBS data...');
+            console.log(`🚀 Fetching initial ${selectedType.toUpperCase()} data...`);
             await fetchLiveData();
-            console.log('✅ Initial OBS data fetch completed');
+            console.log(`✅ Initial ${selectedType.toUpperCase()} data fetch completed`);
           } else if (enabled) {
-            // For non-OBS subsystems, don't poll - only show real events
-            console.log('📡 No polling for non-OBS subsystem:', selectedType);
+            // For other subsystems, don't poll - only show real events
+            console.log('📡 No polling for subsystem:', selectedType);
           } else {
             // Stop polling
             console.log('⏹️ Stopping polling...');

@@ -10,6 +10,7 @@ pub mod types;
 pub mod plugins;
 pub mod tauri_commands;
 pub mod logging;
+pub mod utils;
 
 // Re-export commonly used items
 pub use core::app::App;
@@ -30,7 +31,6 @@ pub fn init() -> Result<(), Box<dyn std::error::Error>> {
 
     // Initialize core systems
     core::init()?;
-    plugins::init()?;
 
     println!("✅ {} library initialized successfully", APP_NAME);
     Ok(())
