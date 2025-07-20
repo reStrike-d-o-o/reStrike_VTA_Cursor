@@ -86,6 +86,61 @@ export type PssEventType =
 export type PssPlayer = 'RED' | 'BLUE' | 'YELLOW' | 'NONE';
 
 // ============================================================================
+// PSS Match Data Types
+// ============================================================================
+
+export interface PssAthleteInfo {
+  short: string;
+  long: string;
+  country: string;
+  iocCode: string;
+}
+
+export interface PssMatchConfig {
+  number: number;
+  category: string;
+  weight: string;
+  division: string;
+  totalRounds: number;
+  roundDuration: number;
+  countdownType: string;
+  format: number;
+}
+
+export interface PssScores {
+  athlete1_r1: number;
+  athlete2_r1: number;
+  athlete1_r2: number;
+  athlete2_r2: number;
+  athlete1_r3: number;
+  athlete2_r3: number;
+}
+
+export interface PssCurrentScores {
+  athlete1_score: number;
+  athlete2_score: number;
+}
+
+export interface PssWinnerRounds {
+  round1_winner: number; // 0=none, 1=athlete1, 2=athlete2
+  round2_winner: number;
+  round3_winner: number;
+}
+
+export interface PssMatchData {
+  athletes?: {
+    athlete1: PssAthleteInfo;
+    athlete2: PssAthleteInfo;
+  };
+  matchConfig?: PssMatchConfig;
+  scores?: PssScores;
+  currentScores?: PssCurrentScores;
+  winnerRounds?: PssWinnerRounds;
+  isLoaded: boolean;
+  lastUpdated: string;
+}
+
+// ============================================================================
 // Application State Types
 // ============================================================================
 

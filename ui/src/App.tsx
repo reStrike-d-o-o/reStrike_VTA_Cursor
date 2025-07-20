@@ -3,10 +3,14 @@ import DockBar from './components/layouts/DockBar';
 import AdvancedPanel from './components/layouts/AdvancedPanel';
 import { useAppStore } from './stores';
 import { useEnvironment } from './hooks/useEnvironment';
+import { usePssEvents } from './hooks/usePssEvents';
 
 const App: React.FC = () => {
   const isAdvancedPanelOpen = useAppStore((state) => state.isAdvancedPanelOpen);
   const { tauriAvailable, environment, isLoading } = useEnvironment();
+  
+  // Initialize PSS event listener
+  const { isLoaded: pssDataLoaded, startPolling, stopPolling } = usePssEvents();
   
   // Debug environment detection
   React.useEffect(() => {
