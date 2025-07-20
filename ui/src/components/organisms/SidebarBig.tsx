@@ -5,11 +5,11 @@ import EventTableSection from '../molecules/EventTableSection';
 
 const SidebarBig: React.FC = () => {
   return (
-    <div className="flex-1 h-full min-h-0 flex flex-col p-6 text-white overflow-hidden">
+    <div className="flex-1 h-full min-h-0 flex flex-col p-0 text-white overflow-hidden">
       {/* Main content card with enhanced styling */}
-      <div className="flex-1 flex flex-col bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg shadow-xl border border-gray-600/30 p-6 space-y-6 overflow-hidden">
+      <div className="flex-1 flex flex-col bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg shadow-xl border border-gray-600/30 p-1 space-y-1 overflow-hidden">
         {/* Player Info and Match Details */}
-        <div className="flex-shrink-0 space-y-4">
+        <div className="flex-shrink-0 space-y-2">
           <PlayerInfoSection />
           <MatchDetailsSection />
         </div>

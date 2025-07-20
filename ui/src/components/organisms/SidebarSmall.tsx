@@ -11,9 +11,9 @@ const SidebarSmall: React.FC = () => {
   const toggleAdvancedPanel = useAppStore((state) => state.toggleAdvancedPanel);
 
   return (
-    <div className="flex flex-col items-center justify-between py-6 px-4 w-40 flex-shrink-0 border-r border-gray-600/30 h-full min-h-0 bg-gradient-to-b from-gray-800/80 to-gray-900/90 backdrop-blur-sm">
+    <div className="flex flex-col items-center justify-between py-2 px-4 w-40 flex-shrink-0 border-r border-gray-600/30 h-full min-h-0 bg-gradient-to-b from-gray-800/80 to-gray-900/90 backdrop-blur-sm">
       {/* Top section with controls */}
-      <div className="flex flex-col items-center space-y-4">
+      <div className="flex flex-col items-center space-y-2">
         {/* Replay Button */}
         <div className="flex flex-col items-center space-y-2">
           <div className="relative group">

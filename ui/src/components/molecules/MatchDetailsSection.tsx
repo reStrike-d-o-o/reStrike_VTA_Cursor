@@ -1,7 +1,7 @@
 import React from 'react';
 
 const MatchDetailsSection: React.FC = () => (
-  <div className="mb-2 w-full">
+  <div className="mb-2 w-full pl-4 pr-4">
     <div className="text-sm text-gray-400">M-75kg</div>
     <div className="text-sm text-gray-400">Semi-final</div>
     <div className="text-right">
