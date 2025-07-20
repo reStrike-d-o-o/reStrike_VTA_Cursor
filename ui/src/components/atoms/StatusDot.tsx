@@ -17,7 +17,7 @@ export const StatusDot: React.FC<StatusDotProps> = ({
   ariaLabel,
 }) => (
   <span
-    className={`inline-block rounded-full ${size} ${color} shadow-lg transition-all duration-300 ${className}`}
+    className={`inline-block rounded-full ${size} ${color} shadow-lg transition-all duration-300 flex-shrink-0 ${className}`}
     aria-label={ariaLabel}
   />
 );

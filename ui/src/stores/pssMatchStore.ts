@@ -20,6 +20,7 @@ interface PssMatchStore {
   getMatchNumber: () => number | undefined;
   getMatchCategory: () => string | undefined;
   getMatchWeight: () => string | undefined;
+  getMatchDivision: () => string | undefined;
   getTotalScore: () => { athlete1: number; athlete2: number } | undefined;
 }
 
@@ -116,6 +117,10 @@ export const usePssMatchStore = create<PssMatchStore>((set, get) => ({
   
   getMatchWeight: () => {
     return get().matchData.matchConfig?.weight;
+  },
+  
+  getMatchDivision: () => {
+    return get().matchData.matchConfig?.division;
   },
   
   getTotalScore: () => {

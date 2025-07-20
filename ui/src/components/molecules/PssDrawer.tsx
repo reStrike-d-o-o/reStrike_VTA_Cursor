@@ -6,6 +6,9 @@ import Checkbox from '../atoms/Checkbox';
 import Label from '../atoms/Label';
 import StatusDot from '../atoms/StatusDot';
 import Icon from '../atoms/Icon';
+import TabGroup from '../molecules/TabGroup';
+import TabIcons from '../atoms/TabIcons';
+import FlagManagementPanel from './FlagManagementPanel';
 import { invoke as tauriInvoke } from '@tauri-apps/api/core';
 
 // Use the proper Tauri v2 invoke function with fallback
@@ -68,6 +71,9 @@ interface PssDrawerProps {
 }
 
 const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
+  // Tab state
+  const [activeTab, setActiveTab] = useState('udp');
+  
   const [protocolVersions, setProtocolVersions] = useState<ProtocolVersion[]>([]);
   const [currentProtocol, setCurrentProtocol] = useState<ProtocolFile | null>(null);
   const [activeVersion, setActiveVersion] = useState<string>('');
@@ -403,8 +409,9 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
     }
   };
 
-  return (
-    <div className={`space-y-6 ${className}`}>
+  // UDP Server & Protocol Content
+  const UdpServerContent = () => (
+    <div className="space-y-6">
       {/* Error and Success Messages */}
       {error && (
         <div className="p-4 bg-red-900/20 border border-red-600/30 rounded-lg text-red-300">
@@ -759,6 +766,34 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
           </div>
         </div>
       </div>
+    </div>
+  );
+
+  // Flag Management Content
+  const FlagManagementContent = () => (
+    <FlagManagementPanel />
+  );
+
+  return (
+    <div className={className}>
+      <TabGroup
+        tabs={[
+          {
+            id: 'udp',
+            label: 'UDP Server & Protocol',
+            icon: TabIcons.udp,
+            content: <UdpServerContent />
+          },
+          {
+            id: 'flags',
+            label: 'Flag Management',
+            icon: TabIcons.flags,
+            content: <FlagManagementContent />
+          }
+        ]}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+      />
     </div>
   );
 };
