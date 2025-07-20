@@ -73,10 +73,10 @@ const EventTableSection: React.FC = () => {
         {/* Event Table (left) */}
         <div className="flex-1 min-w-0 flex flex-col overflow-hidden mr-3">
           {/* Table Header */}
-          <div className="flex-shrink-0 grid grid-cols-12 gap-6 text-xs text-gray-400 mb-3 border-b border-gray-600 pb-2 items-center mt-2">
-            <div className="col-span-2 font-semibold pl-5">RND</div>
-            <div className="col-span-3 font-semibold pl-10">TIME</div>
-            <div className="col-span-7 font-semibold pl-5 pr-12 flex items-center space-x-1">
+          <div className="flex-shrink-0 grid grid-cols-12 gap-2 text-xs text-gray-400 mb-3 border-b border-gray-600 pb-2 items-center mt-2">
+            <div className="col-span-2 font-semibold pl-4">RND</div>
+            <div className="col-span-3 font-semibold pl-6">TIME</div>
+            <div className="col-span-7 font-semibold pl-6 pr-2 flex items-center space-x-1">
               <span>EVENT</span>
               {colorOptions.map((opt) => (
                 <button
@@ -99,14 +99,14 @@ const EventTableSection: React.FC = () => {
             {filteredEvents.map((event, idx) => (
               <div
                 key={idx}
-                className={`grid grid-cols-12 gap-6 text-sm cursor-pointer transition-colors duration-150 rounded px-3 py-2 ${
+                className={`grid grid-cols-12 gap-3 text-sm cursor-pointer transition-colors duration-150 rounded px-2 py-2 ${
                   selectedIdx === idx ? 'bg-blue-900/60 border border-blue-400' : 'hover:bg-gray-700/50'
                 }`}
                 onClick={() => setSelectedIdx(idx)}
               >
                 <div className="col-span-2 text-gray-300 font-bold">{event.round}</div>
-                <div className="col-span-4 text-gray-300">{event.time}</div>
-                <div className="col-span-6 flex items-center space-x-2 pl-5">
+                <div className="col-span-5 text-gray-300">{event.time}</div>
+                <div className="col-span-5 flex items-center space-x-2 pl-8">
                   <StatusDot color={`bg-${event.color}-500`} size="w-4 h-4" />
                   <span className="text-white font-medium">{event.event}</span>
                 </div>

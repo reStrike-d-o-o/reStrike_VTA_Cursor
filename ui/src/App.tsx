@@ -25,7 +25,7 @@ const App: React.FC = () => {
       {/* Main content area: DockBar (left) + AdvancedPanel (right) */}
       <div className="flex flex-1 min-h-0 relative z-10">
         {/* DockBar (left) - fixed width, full height with enhanced styling */}
-        <div className="w-[450px] flex-shrink-0 relative z-20">
+        <div className="w-[400px] flex-shrink-0 relative z-20">
           <div className="absolute inset-0 bg-gradient-to-r from-gray-900/95 to-gray-800/90 backdrop-blur-sm border-r border-gray-700/50 shadow-2xl"></div>
           <div className="relative z-10 h-full">
             <DockBar />
