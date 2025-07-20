@@ -147,7 +147,7 @@ const LiveDataPanel: React.FC = () => {
         const result = await invoke('pss_get_events');
         if (result && Array.isArray(result) && result.length > 0) {
           result.forEach((event: any) => {
-            const formattedEvent = `[UDP-EVENT] ${event.description}`;
+            const formattedEvent = `${event.description}`;
             addData({
               subsystem: 'udp',
               data: formattedEvent,
@@ -181,35 +181,32 @@ const LiveDataPanel: React.FC = () => {
 
   // Debug logging on mount only
   useEffect(() => {
-    console.log('🔍 LiveDataPanel Mount:', {
-    tauriAvailable,
-    environment,
-    isWindows,
-    isWeb,
-    windowTauri: typeof window !== 'undefined' ? !!window.__TAURI__ : 'undefined',
-    windowLocation: typeof window !== 'undefined' ? window.location.href : 'undefined'
-  });
+    // Component mounted
   }, []);
 
   // Test Tauri API on component mount (only once)
   useEffect(() => {
     // Only test once on mount, not on every render
     const testOnce = async () => {
-      console.log('🔍 Testing Tauri API on mount...');
       try {
-        const result = await window.__TAURI__.core.invoke('get_app_status');
-        console.log('✅ Tauri API test successful:', result);
+        await window.__TAURI__.core.invoke('get_app_status');
       } catch (error) {
-        console.log('❌ Tauri API test failed:', error);
+        // Tauri API test failed, but we can continue
       }
     };
     testOnce();
   }, []);
 
-  // Scroll to bottom on new data
+  // Auto-scroll to top only if user is already at the top
   useEffect(() => {
     if (liveDataRef.current) {
-      liveDataRef.current.scrollTop = liveDataRef.current.scrollHeight;
+      const element = liveDataRef.current;
+      const isAtTop = element.scrollTop === 0;
+      
+      // Only auto-scroll if user is already at the top
+      if (isAtTop) {
+        element.scrollTop = 0;
+      }
     }
   }, [data]);
 
@@ -217,9 +214,7 @@ const LiveDataPanel: React.FC = () => {
   const fetchLiveData = async () => {
     try {
       if (selectedType === 'obs' || selectedType === 'udp' || selectedType === 'pss') {
-        console.log(`🔄 Fetching ${selectedType.toUpperCase()} status data`);
         const result = await invoke('get_live_data', { subsystem: selectedType });
-        console.log(`📊 ${selectedType.toUpperCase()} status result:`, result);
         
         if (result && result.success && result.data) {
           // Only add data if there are actual changes
@@ -228,7 +223,6 @@ const LiveDataPanel: React.FC = () => {
           // Check if this is different from the last status
           const lastEntry = data[data.length - 1];
           if (!lastEntry || lastEntry.data !== formattedData) {
-            console.log(`📝 New ${selectedType.toUpperCase()} status:`, formattedData);
             addData({
               subsystem: selectedType,
               data: formattedData,
@@ -239,7 +233,7 @@ const LiveDataPanel: React.FC = () => {
       }
       // For other subsystems, don't poll - only show real events
     } catch (error) {
-      console.error('❌ Failed to fetch live data:', error);
+      console.error('Failed to fetch live data:', error);
       setError(`Failed to fetch live data: ${error}`);
     }
   };
@@ -254,7 +248,7 @@ const LiveDataPanel: React.FC = () => {
         return `PSS Stats: Packets=${data.packets_received}, Parsed=${data.packets_parsed}, Errors=${data.parse_errors}, Clients=${data.connected_clients}, Last Packet=${data.last_packet_time ? new Date(data.last_packet_time * 1000).toLocaleTimeString() : 'Never'}`;
       
       case 'udp':
-        return `UDP Status: ${data.status}, Running=${data.is_running ? 'Yes' : 'No'}`;
+        return `📡 UDP Server: ${data.status} | 🏃 Running: ${data.is_running ? 'Yes' : 'No'} | 📦 Packets: ${data.packets_received} | ✅ Parsed: ${data.packets_parsed} | ❌ Errors: ${data.parse_errors} | 👥 Clients: ${data.connected_clients} | 📊 Bytes: ${data.total_bytes_received} | ⏱️ Uptime: ${data.uptime}`;
       
       default:
         return JSON.stringify(data, null, 2);
@@ -276,30 +270,22 @@ const LiveDataPanel: React.FC = () => {
 
     const setupStreaming = async () => {
       try {
-        console.log('🔧 Setting up streaming for:', selectedType, 'enabled:', enabled);
-        
         if (tauriAvailable) {
           // Skip the setLiveDataStreaming command for now and go straight to polling
           // This command might not be necessary for our polling approach
-          console.log('📡 Skipping setLiveDataStreaming command, going straight to polling');
           
           clearData();
           
           if (enabled && (selectedType === 'obs' || selectedType === 'udp' || selectedType === 'pss')) {
             // Start polling for status every 5 seconds (less frequent)
-            console.log(`🔄 Starting ${selectedType.toUpperCase()} status polling...`);
             pollingIntervalRef.current = setInterval(fetchLiveData, 5000);
             
             // Fetch initial data immediately
-            console.log(`🚀 Fetching initial ${selectedType.toUpperCase()} data...`);
             await fetchLiveData();
-            console.log(`✅ Initial ${selectedType.toUpperCase()} data fetch completed`);
           } else if (enabled) {
             // For other subsystems, don't poll - only show real events
-            console.log('📡 No polling for subsystem:', selectedType);
           } else {
             // Stop polling
-            console.log('⏹️ Stopping polling...');
             if (pollingIntervalRef.current) {
               clearInterval(pollingIntervalRef.current);
               pollingIntervalRef.current = null;
@@ -309,10 +295,9 @@ const LiveDataPanel: React.FC = () => {
           setError('Tauri not available - running in web mode');
         }
       } catch (err) {
-        console.error('❌ Streaming setup error:', err);
+        console.error('Streaming setup error:', err);
         setError(`Streaming error: ${err}`);
       } finally {
-        console.log('🏁 Setting connecting to false');
         setConnecting(false);
       }
     };
@@ -344,6 +329,12 @@ const LiveDataPanel: React.FC = () => {
   const handleTypeChange = (newType: LiveDataType) => {
     clearError();
     setSelectedType(newType);
+  };
+
+  const scrollToTop = () => {
+    if (liveDataRef.current) {
+      liveDataRef.current.scrollTop = 0;
+    }
   };
 
   if (isLoadingSettings) {
@@ -402,18 +393,29 @@ const LiveDataPanel: React.FC = () => {
           {error}
         </div>
       )}
-      <div
-        ref={liveDataRef}
-        className="bg-[#101820] border border-gray-700 rounded p-3 h-48 overflow-y-auto font-mono text-sm text-gray-300"
-        style={{ whiteSpace: 'pre-wrap' }}
-      >
-        {data.length === 0 ? 'No live data available. Enable streaming to see data.' : 
-          data.map((entry, index) => (
-            <div key={index} className="mb-1">
-              <span className="text-gray-500">[{entry.timestamp}]</span> {entry.data}
-            </div>
-          ))
-        }
+      <div className="relative">
+        <div
+          ref={liveDataRef}
+          className="bg-black border border-gray-700 rounded p-3 h-48 overflow-y-auto font-mono text-sm text-green-400"
+          style={{ whiteSpace: 'pre-wrap' }}
+        >
+          {data.length === 0 ? 'No live data available. Enable streaming to see data.' : 
+            data.slice().reverse().map((entry, index) => (
+              <div key={index} className="mb-1">
+                <span className="text-green-600">[{entry.timestamp}]</span> {entry.data}
+              </div>
+            ))
+          }
+        </div>
+        {data.length > 0 && (
+          <button
+            onClick={scrollToTop}
+            className="absolute top-2 right-2 bg-gray-800 hover:bg-gray-700 text-green-400 text-xs px-2 py-1 rounded border border-gray-600 transition-colors"
+            title="Scroll to top"
+          >
+            ↑ Top
+          </button>
+        )}
       </div>
     </div>
   );

@@ -7,7 +7,6 @@ const safeInvoke = async (command: string, args?: any) => {
   try {
     // Check if the global Tauri object is available
     if (typeof window !== 'undefined' && window.__TAURI__ && window.__TAURI__.core) {
-      console.log('✅ Using Tauri v2 core module for command:', command);
       // In Tauri v2, invoke is available through the core module
       return await window.__TAURI__.core.invoke(command, args);
     }
@@ -372,17 +371,14 @@ export const diagLogsCommands = {
 export const isTauriAvailable = (): boolean => {
   // Check if we're in a browser environment and Tauri is available
   if (typeof window === 'undefined' || !window.__TAURI__) {
-    console.log('🔍 isTauriAvailable: window.__TAURI__ not available');
     return false;
   }
 
   // Check if the core module and invoke function are actually available
   if (!window.__TAURI__.core || typeof window.__TAURI__.core.invoke !== 'function') {
-    console.log('🔍 isTauriAvailable: window.__TAURI__.core.invoke not available');
     return false;
   }
 
-  console.log('🔍 isTauriAvailable: Tauri v2 API appears to be available');
   return true;
 };
 
@@ -392,42 +388,27 @@ export const isTauriAvailable = (): boolean => {
 export const testTauriApi = async (): Promise<boolean> => {
   try {
     if (!isTauriAvailable()) {
-      console.log('❌ Tauri not available for testing');
       return false;
     }
-
-    console.log('🔍 Testing Tauri API with get_app_status command...');
     
     // Try multiple commands to test Tauri API
     try {
       const result = await safeInvoke('get_app_status');
-      console.log('✅ get_app_status successful:', result);
       return true;
     } catch (error) {
-      console.log('⚠️ get_app_status failed, trying obs_get_status...');
-      
       try {
         const obsResult = await safeInvoke('obs_get_status');
-        console.log('✅ obs_get_status successful:', obsResult);
         return true;
       } catch (obsError) {
-        console.log('⚠️ obs_get_status failed, trying system_get_info...');
-        
         try {
           const sysResult = await safeInvoke('system_get_info');
-          console.log('✅ system_get_info successful:', sysResult);
           return true;
         } catch (sysError) {
-          console.log('❌ All Tauri API tests failed');
-          console.log('get_app_status error:', error);
-          console.log('obs_get_status error:', obsError);
-          console.log('system_get_info error:', sysError);
           return false;
         }
       }
     }
   } catch (error) {
-    console.log('❌ Tauri API test failed:', error);
     return false;
   }
 };
