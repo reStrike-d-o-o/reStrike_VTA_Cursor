@@ -77,6 +77,23 @@ const DockBar: React.FC = () => {
             </div>
           </div>
           
+          {/* Copyright Section with Logo */}
+          <div className="flex-shrink-0 flex flex-col items-start justify-center py-3 px-4 border-t border-gray-600/30 bg-gray-800/20 backdrop-blur-sm">
+            <div className="text-xs text-gray-400 mb-2">All rights reserved ®:</div>
+            <div className="relative z-10" style={{ minHeight: '32px', minWidth: '32px' }}>
+              <img 
+                src="/assets/img/logo.png" 
+                alt="reStrike Logo" 
+                className="h-16 w-auto object-contain"
+                onError={(e) => {
+                  console.log('Logo failed to load:', e);
+                  e.currentTarget.style.display = 'none';
+                }}
+                onLoad={() => console.log('Logo loaded successfully')}
+              />
+            </div>
+          </div>
+          
           {/* Status bar with enhanced styling */}
           <div className="flex-shrink-0 border-t border-gray-600/30 bg-gray-800/50 backdrop-blur-sm">
             <StatusbarDock />
