@@ -3,7 +3,7 @@ import { StatusDot } from '../atoms/StatusDot';
 
 const StatusbarDock: React.FC = () => {
   return (
-    <div className="w-full h-[4.5rem] bg-gradient-to-r from-gray-800/80 to-gray-900/90 backdrop-blur-sm flex items-center justify-start text-xs text-gray-300 px-8 border-t border-gray-600/30">
+    <div className="w-full h-[4.5rem] bg-gradient-to-r from-gray-800/80 to-gray-900/90 backdrop-blur-sm flex items-center justify-center text-xs text-gray-300 px-8 border-t border-gray-600/30">
       <div className="flex items-center space-x-8">
         {/* REC Status */}
         <div className="flex items-center space-x-2 px-3 py-2 bg-red-500/10 rounded-lg border border-red-500/20 backdrop-blur-sm">

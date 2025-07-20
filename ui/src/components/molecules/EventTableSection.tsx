@@ -64,14 +64,14 @@ const EventTableSection: React.FC = () => {
   });
 
   return (
-    <div className="flex flex-col space-y-4 h-full overflow-hidden pt-4 pl-4">
+    <div className="flex flex-col space-y-4 overflow-hidden pt-4 px-4">
       {/* Section Title */}
       <div className="flex-shrink-0 text-lg font-semibold text-gray-200">Event Table</div>
       
       {/* Event Table and Filter Stack Container */}
-      <div className="flex flex-row items-start flex-1 min-h-0 overflow-hidden">
+      <div className="flex flex-row items-start flex-1 min-h-0 overflow-hidden px-2">
         {/* Event Table (left) */}
-        <div className="flex-1 min-w-0 flex flex-col overflow-hidden mr-4">
+        <div className="flex-1 min-w-0 flex flex-col overflow-hidden mr-3">
           {/* Table Header */}
           <div className="flex-shrink-0 grid grid-cols-12 gap-6 text-xs text-gray-400 mb-3 border-b border-gray-600 pb-2 items-center mt-2">
             <div className="col-span-2 font-semibold pl-5">RND</div>
