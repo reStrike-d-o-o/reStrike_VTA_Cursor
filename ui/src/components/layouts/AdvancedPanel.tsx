@@ -6,6 +6,8 @@ import WebSocketManager from '../molecules/WebSocketManager';
 import { CpuMonitoringSection } from '../molecules/CpuMonitoringSection';
 import PssDrawer from '../molecules/PssDrawer';
 import Toggle from '../atoms/Toggle';
+import TabGroup from '../molecules/TabGroup';
+import TabIcons from '../atoms/TabIcons';
 import { useAppStore } from '../../stores';
 import { configCommands } from '../../utils/tauriCommands';
 
@@ -186,99 +188,64 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
           <PssDrawer />
         )}
         {drawer?.key === 'obs' && (
-          <>
-            {/* OBS Tab Navigation */}
-            <div className="flex space-x-1 mb-6 bg-gradient-to-r from-gray-800/80 to-gray-700/80 backdrop-blur-sm p-1 rounded-lg border border-gray-600/30 shadow-md">
-              <button
-                onClick={() => setObsTab('websocket')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all duration-300 relative group ${
-                  obsTab === 'websocket' 
-                    ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/25' 
-                    : 'text-gray-300 hover:bg-gray-700/80 hover:text-blue-300 hover:shadow-md'
-                }`}
-              >
-                <div className={`absolute inset-0 rounded-md transition-all duration-300 ${
-                  obsTab === 'websocket' 
-                    ? 'bg-blue-500/20 blur-sm' 
-                    : 'bg-transparent group-hover:bg-blue-500/10 blur-sm'
-                }`}></div>
-                <span className="relative z-10 flex items-center space-x-2">
-                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0" />
-                  </svg>
-                  <span>WebSocket</span>
-                </span>
-              </button>
-              <button
-                onClick={() => setObsTab('integration')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all duration-300 relative group ${
-                  obsTab === 'integration' 
-                    ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/25' 
-                    : 'text-gray-300 hover:bg-gray-700/80 hover:text-blue-300 hover:shadow-md'
-                }`}
-              >
-                <div className={`absolute inset-0 rounded-md transition-all duration-300 ${
-                  obsTab === 'integration' 
-                    ? 'bg-blue-500/20 blur-sm' 
-                    : 'bg-transparent group-hover:bg-blue-500/10 blur-sm'
-                }`}></div>
-                <span className="relative z-10 flex items-center space-x-2">
-                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2"/>
-                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06-.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.09A1.65 1.65 0 0 0 9 3.09V3a2 2 0 1 1 4 0v.09c0 .66.39 1.26 1 1.51h.09a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.09c.66 0 1.26.39 1.51 1H21a2 2 0 1 1 0 4h-.09c-.66 0-1.26.39-1.51 1z" stroke="currentColor" strokeWidth="2"/>
-                  </svg>
-                  <span>Integration</span>
-                </span>
-              </button>
-            </div>
-
-            {/* OBS Tab Content */}
-            {obsTab === 'websocket' && (
-              <WebSocketManager />
-            )}
-            
-            {obsTab === 'integration' && (
-              <div className="space-y-6">
-                <div className="p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
-                  <h3 className="text-lg font-semibold mb-4 text-gray-100">OBS Integration Settings</h3>
-                  {isLoadingSettings ? (
-                    <div className="text-sm text-gray-400">Loading settings...</div>
-                  ) : (
-                    <div className="space-y-4">
-                      <Toggle
-                        id="obs-auto-connect"
-                        checked={obsIntegrationSettings.autoConnectOnStartup}
-                        onChange={(e) => handleObsSettingChange('autoConnectOnStartup', e.target.checked)}
-                        label="Auto-connect to OBS on startup"
-                        labelPosition="right"
-                      />
-                      <Toggle
-                        id="obs-show-status"
-                        checked={obsIntegrationSettings.showStatusInOverlay}
-                        onChange={(e) => handleObsSettingChange('showStatusInOverlay', e.target.checked)}
-                        label="Show OBS status in overlay"
-                        labelPosition="right"
-                      />
-                      <Toggle
-                        id="obs-auto-record"
-                        checked={obsIntegrationSettings.autoRecordOnClipPlay}
-                        onChange={(e) => handleObsSettingChange('autoRecordOnClipPlay', e.target.checked)}
-                        label="Auto-record when playing clips"
-                        labelPosition="right"
-                      />
-                      <Toggle
-                        id="obs-save-replay"
-                        checked={obsIntegrationSettings.saveReplayBufferOnClipCreation}
-                        onChange={(e) => handleObsSettingChange('saveReplayBufferOnClipCreation', e.target.checked)}
-                        label="Save replay buffer on clip creation"
-                        labelPosition="right"
-                      />
+          <TabGroup
+            tabs={[
+              {
+                id: 'websocket',
+                label: 'WebSocket',
+                icon: TabIcons.websocket,
+                content: <WebSocketManager />
+              },
+              {
+                id: 'integration',
+                label: 'Integration',
+                icon: TabIcons.integration,
+                content: (
+                  <div className="space-y-6">
+                    <div className="p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
+                      <h3 className="text-lg font-semibold mb-4 text-gray-100">OBS Integration Settings</h3>
+                      {isLoadingSettings ? (
+                        <div className="text-sm text-gray-400">Loading settings...</div>
+                      ) : (
+                        <div className="space-y-4">
+                          <Toggle
+                            id="obs-auto-connect"
+                            checked={obsIntegrationSettings.autoConnectOnStartup}
+                            onChange={(e) => handleObsSettingChange('autoConnectOnStartup', e.target.checked)}
+                            label="Auto-connect to OBS on startup"
+                            labelPosition="right"
+                          />
+                          <Toggle
+                            id="obs-show-status"
+                            checked={obsIntegrationSettings.showStatusInOverlay}
+                            onChange={(e) => handleObsSettingChange('showStatusInOverlay', e.target.checked)}
+                            label="Show OBS status in overlay"
+                            labelPosition="right"
+                          />
+                          <Toggle
+                            id="obs-auto-record"
+                            checked={obsIntegrationSettings.autoRecordOnClipPlay}
+                            onChange={(e) => handleObsSettingChange('autoRecordOnClipPlay', e.target.checked)}
+                            label="Auto-record when playing clips"
+                            labelPosition="right"
+                          />
+                          <Toggle
+                            id="obs-save-replay"
+                            checked={obsIntegrationSettings.saveReplayBufferOnClipCreation}
+                            onChange={(e) => handleObsSettingChange('saveReplayBufferOnClipCreation', e.target.checked)}
+                            label="Save replay buffer on clip creation"
+                            labelPosition="right"
+                          />
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </>
+                  </div>
+                )
+              }
+            ]}
+            activeTab={obsTab}
+            onTabChange={setObsTab}
+          />
         )}
         {drawer?.key === 'video' && (
           <div className="bg-gradient-to-br from-green-900/20 to-green-800/30 backdrop-blur-sm rounded-lg p-6 text-gray-200 border border-green-600/30 shadow-lg">[mpv video integration and controls will be implemented here]</div>

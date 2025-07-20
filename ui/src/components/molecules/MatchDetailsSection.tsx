@@ -8,6 +8,14 @@ const fallbackPlayers = [
   { ioc: 'JPN', name: 'Kei Tanaka', color: 'blue' },
 ];
 
+// Fallback match details
+const fallbackMatchDetails = {
+  weight: 'M-75kg',
+  category: 'Round of 16',
+  division: 'Senior',
+  number: '1254'
+};
+
 // Function to shorten player names if they're too long
 const shortenPlayerName = (fullName: string): string => {
   const nameParts = fullName.split(' ');
@@ -30,6 +38,7 @@ const MatchDetailsSection: React.FC = () => {
   const matchNumber = usePssMatchStore((state) => state.getMatchNumber());
   const matchCategory = usePssMatchStore((state) => state.getMatchCategory());
   const matchWeight = usePssMatchStore((state) => state.getMatchWeight());
+  const matchDivision = usePssMatchStore((state) => state.getMatchDivision());
   const isLoaded = usePssMatchStore((state) => state.matchData.isLoaded);
 
   // Use PSS data if available, otherwise fallback to dummy data
@@ -67,22 +76,17 @@ const MatchDetailsSection: React.FC = () => {
       
       {/* Match Details */}
       <div className="flex items-center space-x-2 text-sm text-gray-400">
-        <span>{matchWeight || 'M-75kg'}</span>
+        <span>{matchWeight || fallbackMatchDetails.weight}</span>
         <span>|</span>
-        <span>{matchCategory || 'Semi-final'}</span>
+        <span>{matchCategory || fallbackMatchDetails.category}</span>
+        <span>|</span>
+        <span>{matchDivision || fallbackMatchDetails.division}</span>
       </div>
       
       {/* Match Number */}
       <div className="text-center">
-        <span className="text-3xl font-bold text-red-500">#{matchNumber || '1254'}</span>
+        <span className="text-3xl font-bold text-red-500">#{matchNumber || fallbackMatchDetails.number}</span>
       </div>
-      
-      {/* Loading indicator (optional) */}
-      {isLoaded && (
-        <div className="text-xs text-green-400">
-          ✓ PSS Data Loaded
-        </div>
-      )}
     </div>
   );
 };
