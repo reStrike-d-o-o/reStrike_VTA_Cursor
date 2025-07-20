@@ -176,6 +176,10 @@ pub struct UdpStats {
     pub parse_errors: u64,
     pub last_packet_time: Option<std::time::SystemTime>,
     pub connected_clients: usize,
+    pub active_connections: std::collections::HashMap<std::net::SocketAddr, std::time::SystemTime>,
+    pub server_start_time: Option<std::time::SystemTime>,
+    pub total_bytes_received: u64,
+    pub average_packet_size: f64,
 }
 
 impl UdpServer {
@@ -218,7 +222,7 @@ impl UdpServer {
         // Try to bind the socket
         let socket = match UdpSocket::bind(&bind_addr) {
             Ok(socket) => {
-                socket.set_nonblocking(false).map_err(|e| AppError::ConfigError(e.to_string()))?;
+                socket.set_nonblocking(true).map_err(|e| AppError::ConfigError(e.to_string()))?;
                 socket
             }
             Err(e) => {
@@ -235,10 +239,16 @@ impl UdpServer {
             *socket_guard = Some(socket);
         }
 
-        // Update status to running
+        // Update status to running and set start time
         {
             let mut status = self.status.lock().unwrap();
             *status = UdpServerStatus::Running;
+        }
+        
+        // Set server start time
+        {
+            let mut stats = self.stats.lock().unwrap();
+            stats.server_start_time = Some(std::time::SystemTime::now());
         }
 
         // Start the listening thread
@@ -325,10 +335,11 @@ impl UdpServer {
                 break;
             }
 
-            // Receive data (we need to access socket directly)
+            // Receive data with timeout (non-blocking socket)
             let recv_result = {
                 let socket_guard = socket.lock().unwrap();
                 if let Some(ref s) = *socket_guard {
+                    // Use a short timeout to make the loop responsive to stop requests
                     s.recv_from(&mut buffer)
                 } else {
                     break;
@@ -336,7 +347,7 @@ impl UdpServer {
             };
 
             match recv_result {
-                Ok((size, _addr)) => {
+                Ok((size, addr)) => {
                     let data = String::from_utf8_lossy(&buffer[..size]);
                     let message = data.trim().to_string();
 
@@ -345,6 +356,19 @@ impl UdpServer {
                         let mut stats_guard = stats.lock().unwrap();
                         stats_guard.packets_received += 1;
                         stats_guard.last_packet_time = Some(std::time::SystemTime::now());
+                        stats_guard.total_bytes_received += size as u64;
+                        stats_guard.average_packet_size = stats_guard.total_bytes_received as f64 / stats_guard.packets_received as f64;
+                        
+                        // Track active connections
+                        stats_guard.active_connections.insert(addr, std::time::SystemTime::now());
+                        
+                        // Clean up old connections (older than 30 seconds)
+                        let now = std::time::SystemTime::now();
+                        stats_guard.active_connections.retain(|_, last_seen| {
+                            now.duration_since(*last_seen).unwrap_or_default().as_secs() < 30
+                        });
+                        
+                        stats_guard.connected_clients = stats_guard.active_connections.len();
                     }
 
                     // Parse and send the event
@@ -415,6 +439,9 @@ impl UdpServer {
                     }
                 }
             }
+            
+            // Small sleep to make the loop responsive to stop requests
+            std::thread::sleep(std::time::Duration::from_millis(10));
         }
 
         println!("🎯 UDP PSS Server listening loop ended");

@@ -106,6 +106,15 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
     loadUdpSettings();
   }, []);
 
+  // Periodically refresh UDP status to keep UI in sync
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadUdpStatus();
+    }, 2000); // Refresh every 2 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
   const loadProtocolVersions = async () => {
     try {
       setIsLoading(true);
@@ -137,7 +146,13 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
   const loadUdpStatus = async () => {
     try {
       const status = await invoke('get_udp_status');
-      setUdpStatus(status as string);
+      const statusStr = status as string;
+      
+      setUdpStatus(statusStr);
+      
+      // Sync the toggle state with actual server status
+      const isRunning = statusStr.includes("Running");
+      setUdpEnabled(isRunning);
     } catch (err) {
       console.error('Error loading UDP status:', err);
     }
@@ -365,7 +380,6 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
         await invoke('stop_udp_server');
       }
       
-      setUdpEnabled(enabled);
       await loadUdpStatus();
     } catch (err) {
       console.error('Error toggling UDP server:', err);

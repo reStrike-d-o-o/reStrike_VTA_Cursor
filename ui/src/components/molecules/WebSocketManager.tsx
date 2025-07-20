@@ -57,6 +57,15 @@ const WebSocketManager: React.FC = () => {
     loadReconnectionSettings();
   }, []);
 
+  // Periodically refresh connection statuses to keep UI in sync
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refreshConnectionStatuses();
+    }, 3000); // Refresh every 3 seconds
+
+    return () => clearInterval(interval);
+  }, [obsConnections]);
+
   // Load reconnection settings from configuration
   const loadReconnectionSettings = async () => {
     try {
@@ -131,7 +140,6 @@ const WebSocketManager: React.FC = () => {
         configConnections.forEach((conn: ObsConnection) => addObsConnection(conn));
         
         // Ensure all config connections are registered with the OBS plugin
-        console.log('Syncing config connections to OBS plugin...');
         for (const conn of configConnections) {
           try {
             await obsCommands.addConnection({
@@ -141,9 +149,8 @@ const WebSocketManager: React.FC = () => {
               password: conn.password,
               enabled: conn.enabled,
             });
-            console.log(`Synced connection ${conn.name} to OBS plugin`);
           } catch (error) {
-            console.log(`Connection ${conn.name} already exists in OBS plugin (expected)`);
+            // Connection already exists, which is expected
           }
         }
       } else {
@@ -151,7 +158,6 @@ const WebSocketManager: React.FC = () => {
         const result = await obsCommands.getConnections();
         if (result.success && result.data) {
           // Update store with connections from backend
-          console.log('Loaded connections from backend:', result.data);
           const backendConnections = result.data.map((conn: any) => ({
             name: conn.name,
             host: conn.host,
@@ -167,12 +173,36 @@ const WebSocketManager: React.FC = () => {
           backendConnections.forEach((conn: ObsConnection) => addObsConnection(conn));
         } else {
           // If no connections anywhere, initialize with empty state
-          console.log('No connections found, initializing empty state');
           obsConnections.forEach(conn => removeObsConnection(conn.name));
         }
       }
     } catch (error) {
       console.error('Failed to load connections:', error);
+    }
+  };
+
+  const refreshConnectionStatuses = async () => {
+    try {
+      // Get current status for each connection
+      for (const connection of obsConnections) {
+        try {
+          const result = await obsCommands.getConnectionStatus(connection.name);
+          if (result.success) {
+            // The backend returns { success: true, status: "Connected" }
+            const status = (result as any).status || 'Disconnected';
+            const error = (result as any).error;
+            
+            // Only update if status has changed
+            if (connection.status !== status || connection.error !== error) {
+              updateObsConnectionStatus(connection.name, status, error);
+            }
+          }
+        } catch (error) {
+          console.error(`Failed to get status for connection ${connection.name}:`, error);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to refresh connection statuses:', error);
     }
   };
 

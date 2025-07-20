@@ -207,31 +207,63 @@ impl App {
         log::info!("🎯 UDP event handler started");
         
         while let Some(event) = event_rx.recv().await {
-            // Log the event
-            let event_str = format!("{:?}", event);
-            if let Err(e) = log_manager.lock().await.log("pss", "INFO", &event_str) {
-                log::error!("Failed to log UDP event: {}", e);
-            }
-            
             // Process different event types
             match event {
-                crate::plugins::plugin_udp::PssEvent::Points { athlete, point_type } => {
-                    log::info!("🎯 Points event: Athlete {} scored {} points", athlete, point_type);
-                }
-                crate::plugins::plugin_udp::PssEvent::HitLevel { athlete, level } => {
-                    log::info!("🎯 Hit level event: Athlete {} hit level {}", athlete, level);
-                }
-                crate::plugins::plugin_udp::PssEvent::Warnings { athlete1_warnings, athlete2_warnings } => {
-                    log::info!("🎯 Warnings event: Athlete1={}, Athlete2={}", athlete1_warnings, athlete2_warnings);
-                }
-                crate::plugins::plugin_udp::PssEvent::Clock { time, action } => {
-                    log::info!("🎯 Clock event: {} {:?}", time, action);
-                }
                 crate::plugins::plugin_udp::PssEvent::Raw(message) => {
-                    log::debug!("🎯 Raw UDP message: {}", message);
+                    // Log raw messages to PSS subsystem (they are PSS protocol messages)
+                    let event_str = format!("📡 Raw PSS message: {}", message);
+                    if let Err(e) = log_manager.lock().await.log("pss", "INFO", &event_str) {
+                        log::error!("Failed to log PSS raw message: {}", e);
+                    }
+                    log::debug!("🎯 Raw PSS message: {}", message);
                 }
                 _ => {
-                    log::debug!("🎯 UDP event: {:?}", event);
+                    // Log parsed events to UDP subsystem (they are UDP server events)
+                    let event_str = match event {
+                        crate::plugins::plugin_udp::PssEvent::Points { athlete, point_type } => {
+                            format!("🥊 UDP-EVENT: Athlete {} scored {} points", athlete, point_type)
+                        }
+                        crate::plugins::plugin_udp::PssEvent::HitLevel { athlete, level } => {
+                            format!("💥 UDP-EVENT: Athlete {} hit level {}", athlete, level)
+                        }
+                        crate::plugins::plugin_udp::PssEvent::Warnings { athlete1_warnings, athlete2_warnings } => {
+                            format!("⚠️ UDP-EVENT: Warnings - Athlete1: {}, Athlete2: {}", athlete1_warnings, athlete2_warnings)
+                        }
+                        crate::plugins::plugin_udp::PssEvent::Clock { time, action } => {
+                            format!("⏰ UDP-EVENT: Clock {} {:?}", time, action.unwrap_or_default())
+                        }
+                        crate::plugins::plugin_udp::PssEvent::Break { time, action } => {
+                            format!("⏸️ UDP-EVENT: Break {} {:?}", time, action.unwrap_or_default())
+                        }
+                        crate::plugins::plugin_udp::PssEvent::WinnerRounds { round1_winner, round2_winner, round3_winner } => {
+                            format!("🏆 UDP-EVENT: WinnerRounds - R1:{}, R2:{}, R3:{}", round1_winner, round2_winner, round3_winner)
+                        }
+                        crate::plugins::plugin_udp::PssEvent::Scores { athlete1_r1, athlete2_r1, athlete1_r2, athlete2_r2, athlete1_r3, athlete2_r3 } => {
+                            format!("📊 UDP-EVENT: Scores - A1(R1:{},R2:{},R3:{}), A2(R1:{},R2:{},R3:{})", 
+                                athlete1_r1, athlete1_r2, athlete1_r3, athlete2_r1, athlete2_r2, athlete2_r3)
+                        }
+                        crate::plugins::plugin_udp::PssEvent::CurrentScores { athlete1_score, athlete2_score } => {
+                            format!("🎯 UDP-EVENT: Current Scores - A1:{}, A2:{}", athlete1_score, athlete2_score)
+                        }
+                        crate::plugins::plugin_udp::PssEvent::Round { current_round } => {
+                            format!("🔄 UDP-EVENT: Round {}", current_round)
+                        }
+                        crate::plugins::plugin_udp::PssEvent::FightLoaded => {
+                            "🎬 UDP-EVENT: Fight Loaded".to_string()
+                        }
+                        crate::plugins::plugin_udp::PssEvent::FightReady => {
+                            "✅ UDP-EVENT: Fight Ready".to_string()
+                        }
+                        _ => {
+                            format!("📋 UDP-EVENT: {:?}", event)
+                        }
+                    };
+                    
+                    if let Err(e) = log_manager.lock().await.log("udp", "INFO", &event_str) {
+                        log::error!("Failed to log UDP event: {}", e);
+                    }
+                    
+                    log::info!("🎯 UDP event: {}", event_str);
                 }
             }
         }

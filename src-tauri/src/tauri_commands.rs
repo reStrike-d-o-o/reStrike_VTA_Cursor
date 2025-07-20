@@ -47,7 +47,13 @@ pub async fn stop_udp_server(app: State<'_, Arc<App>>) -> Result<(), String> {
 pub async fn get_udp_status(app: State<'_, Arc<App>>) -> Result<String, String> {
     log::info!("Getting UDP status");
     let status = app.udp_plugin().get_status();
-    Ok(format!("{:?}", status))
+    let status_str = match status {
+        crate::plugins::plugin_udp::UdpServerStatus::Stopped => "Stopped",
+        crate::plugins::plugin_udp::UdpServerStatus::Starting => "Starting",
+        crate::plugins::plugin_udp::UdpServerStatus::Running => "Running",
+        crate::plugins::plugin_udp::UdpServerStatus::Error(e) => return Err(e),
+    };
+    Ok(status_str.to_string())
 }
 
 // OBS commands - Fixed names to match frontend expectations
@@ -929,13 +935,34 @@ pub async fn get_live_data(subsystem: String, app: State<'_, Arc<App>>) -> Resul
         "udp" => {
             // Get UDP live data
             let udp_status = app.udp_plugin().get_status();
+            let udp_stats = app.udp_plugin().get_stats();
+            
+            // Calculate uptime
+            let uptime = if let Some(start_time) = udp_stats.server_start_time {
+                if let Ok(duration) = std::time::SystemTime::now().duration_since(start_time) {
+                    format!("{}s", duration.as_secs())
+                } else {
+                    "Unknown".to_string()
+                }
+            } else {
+                "Not started".to_string()
+            };
+            
             Ok(serde_json::json!({
                 "success": true,
                 "data": {
                     "subsystem": "udp",
                     "timestamp": chrono::Utc::now().to_rfc3339(),
                     "status": format!("{:?}", udp_status),
-                    "is_running": matches!(udp_status, crate::plugins::plugin_udp::UdpServerStatus::Running)
+                    "is_running": matches!(udp_status, crate::plugins::plugin_udp::UdpServerStatus::Running),
+                    "packets_received": udp_stats.packets_received,
+                    "packets_parsed": udp_stats.packets_parsed,
+                    "parse_errors": udp_stats.parse_errors,
+                    "connected_clients": udp_stats.connected_clients,
+                    "total_bytes_received": udp_stats.total_bytes_received,
+                    "average_packet_size": (udp_stats.average_packet_size * 100.0).round() / 100.0,
+                    "uptime": uptime,
+                    "last_packet_time": udp_stats.last_packet_time.map(|t| t.duration_since(std::time::UNIX_EPOCH).unwrap().as_secs())
                 }
             }))
         }
