@@ -203,7 +203,10 @@ const VideoClips: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredClips.length === 0 ? (
           <div className="col-span-full text-center py-12">
-            <div className="text-6xl mb-4">🎬</div>
+            <svg width="64" height="64" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="mx-auto mb-4 text-gray-400">
+              <rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" strokeWidth="2"/>
+              <polygon points="10,9 16,12 10,15" fill="currentColor"/>
+            </svg>
             <p className="text-gray-400 mb-2">
               {videoClips.length === 0 ? 'No clips added yet' : 'No clips match your search'}
             </p>
@@ -230,7 +233,10 @@ const VideoClips: React.FC = () => {
               onClick={() => handlePlayClip(clip)}
             >
               <div className="aspect-video bg-gray-700 rounded-lg mb-3 flex items-center justify-center">
-                <Icon name="🎥" size="text-4xl" />
+                <svg width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="text-gray-400">
+                  <rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" strokeWidth="2"/>
+                  <polygon points="10,9 16,12 10,15" fill="currentColor"/>
+                </svg>
               </div>
 
               <div className="space-y-2">
@@ -269,7 +275,9 @@ const VideoClips: React.FC = () => {
                       className="p-1"
                       title="Play"
                     >
-                      <Icon name="▶️" />
+                      <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <polygon points="5,3 19,12 5,21" fill="currentColor"/>
+                      </svg>
                     </Button>
                     <Button
                       onClick={(e) => {
@@ -281,7 +289,9 @@ const VideoClips: React.FC = () => {
                       className="p-1"
                       title="Delete"
                     >
-                      <Icon name="🗑️" />
+                      <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
                     </Button>
                   </div>
                 </div>

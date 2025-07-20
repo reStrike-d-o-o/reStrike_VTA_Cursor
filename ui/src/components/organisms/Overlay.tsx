@@ -151,7 +151,10 @@ const Overlay: React.FC = () => {
           ) : (
             <div className="w-96 h-64 bg-gray-800 rounded-t-lg flex items-center justify-center">
               <div className="text-center">
-                <div className="text-4xl mb-2">🎬</div>
+                <svg width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="mx-auto mb-2 text-gray-400">
+                  <rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" strokeWidth="2"/>
+                  <polygon points="10,9 16,12 10,15" fill="currentColor"/>
+                </svg>
                 <p className="text-gray-400">No video selected</p>
               </div>
             </div>
@@ -190,7 +193,16 @@ const Overlay: React.FC = () => {
                         variant="primary"
                         size="sm"
                       >
-                        <Icon name={isPlaying ? '⏸️' : '▶️'} />
+                        {isPlaying ? (
+                          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <rect x="6" y="4" width="4" height="16" rx="1" stroke="currentColor" strokeWidth="2"/>
+                            <rect x="14" y="4" width="4" height="16" rx="1" stroke="currentColor" strokeWidth="2"/>
+                          </svg>
+                        ) : (
+                          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <polygon points="5,3 19,12 5,21" fill="currentColor"/>
+                          </svg>
+                        )}
                       </Button>
                       <Button
                         onClick={() => {
@@ -202,14 +214,25 @@ const Overlay: React.FC = () => {
                         variant="secondary"
                         size="sm"
                       >
-                        <Icon name="⏮️" />
+                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <polygon points="19,20 9,12 19,4" fill="currentColor"/>
+                          <line x1="5" y1="19" x2="5" y2="5" stroke="currentColor" strokeWidth="2"/>
+                        </svg>
                       </Button>
                       <Button
                         onClick={toggleFullscreen}
                         variant="secondary"
                         size="sm"
                       >
-                        {isFullscreen ? <Icon name="⏹️" /> : <Icon name="⛶" />}
+                        {isFullscreen ? (
+                          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        ) : (
+                          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                          </svg>
+                        )}
                       </Button>
                     </div>
 
@@ -247,10 +270,12 @@ const Overlay: React.FC = () => {
 
             {/* Playback Status */}
             {isPlaying && (
-              <div className="flex items-center space-x-1">
-                <span className="animate-pulse">▶️</span>
-                <span>Playing</span>
-              </div>
+                          <div className="flex items-center space-x-1">
+              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="animate-pulse">
+                <polygon points="5,3 19,12 5,21" fill="currentColor"/>
+              </svg>
+              <span>Playing</span>
+            </div>
             )}
           </div>
         </div>
@@ -269,21 +294,30 @@ const Overlay: React.FC = () => {
               variant="primary"
               size="sm"
             >
-              <Icon name="��" />
+              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
             </Button>
             <Button
               onClick={() => useAppStore.getState().setCurrentView('obs-manager')}
               variant="success"
               size="sm"
             >
-              <Icon name="🎥" />
+              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <rect x="3" y="7" width="15" height="10" rx="2" stroke="currentColor" strokeWidth="2"/>
+                <rect x="16" y="10" width="5" height="4" rx="1" stroke="currentColor" strokeWidth="2"/>
+                <circle cx="10.5" cy="12" r="2.5" stroke="currentColor" strokeWidth="2"/>
+              </svg>
             </Button>
             <Button
               onClick={() => useAppStore.getState().setCurrentView('settings')}
               variant="secondary"
               size="sm"
             >
-              <Icon name="⚙️" />
+              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06-.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.09A1.65 1.65 0 0 0 9 3.09V3a2 2 0 1 1 4 0v.09c0 .66.39 1.26 1 1.51h.09a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.09c.66 0 1.26.39 1.51 1H21a2 2 0 1 1 0 4h-.09c-.66 0-1.26.39-1.51 1z" stroke="currentColor" strokeWidth="2"/>
+              </svg>
             </Button>
           </motion.div>
         )}

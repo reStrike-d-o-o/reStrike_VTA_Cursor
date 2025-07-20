@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { useAppStore } from '../../stores';
 import Button from '../atoms/Button';
 import Input from '../atoms/Input';
-import Checkbox from '../atoms/Checkbox';
+import Toggle from '../atoms/Toggle';
 import Label from '../atoms/Label';
 import { StatusDot } from '../atoms/StatusDot';
 import { Icon } from '../atoms/Icon';
@@ -35,9 +35,9 @@ const Settings: React.FC = () => {
   };
 
   const tabs = [
-    { id: 'overlay', label: 'Overlay Settings', icon: '🎨' },
-    { id: 'obs', label: 'OBS Integration', icon: '🎥' },
-    { id: 'advanced', label: 'Advanced', icon: '⚙️' },
+    { id: 'overlay', label: 'Overlay Settings', icon: 'overlay' },
+    { id: 'obs', label: 'OBS Integration', icon: 'obs' },
+    { id: 'advanced', label: 'Advanced', icon: 'settings' },
   ] as const;
 
   return (
@@ -50,7 +50,11 @@ const Settings: React.FC = () => {
             variant={overlaySettings.visible ? 'success' : 'danger'}
             size="sm"
           >
-            <Icon name="👁️" /> {overlaySettings.visible ? 'Hide Overlay' : 'Show Overlay'}
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+            {overlaySettings.visible ? 'Hide Overlay' : 'Show Overlay'}
           </Button>
           <Button
             onClick={handleResetSettings}
@@ -58,7 +62,16 @@ const Settings: React.FC = () => {
             variant="secondary"
             size="sm"
           >
-            {isResetting ? '🔄 Resetting...' : '🔄 Reset to Defaults'}
+            {isResetting ? (
+              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="animate-spin">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            ) : (
+              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            )}
+            {isResetting ? 'Resetting...' : 'Reset to Defaults'}
           </Button>
         </div>
       </div>
@@ -72,7 +85,24 @@ const Settings: React.FC = () => {
             variant={activeTab === tab.id ? 'primary' : 'secondary'}
             size="sm"
           >
-            <Icon name={tab.icon} />
+            {tab.icon === 'overlay' && (
+              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM21 5a2 2 0 00-2-2h-4a2 2 0 00-2 2v12a4 4 0 004 4h4a2 2 0 002-2V5z" />
+              </svg>
+            )}
+            {tab.icon === 'obs' && (
+              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <rect x="3" y="7" width="15" height="10" rx="2" stroke="currentColor" strokeWidth="2"/>
+                <rect x="16" y="10" width="5" height="4" rx="1" stroke="currentColor" strokeWidth="2"/>
+                <circle cx="10.5" cy="12" r="2.5" stroke="currentColor" strokeWidth="2"/>
+              </svg>
+            )}
+            {tab.icon === 'settings' && (
+              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06-.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.09A1.65 1.65 0 0 0 9 3.09V3a2 2 0 1 1 4 0v.09c0 .66.39 1.26 1 1.51h.09a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.09c.66 0 1.26.39 1.51 1H21a2 2 0 1 1 0 4h-.09c-.66 0-1.26.39-1.51 1z" stroke="currentColor" strokeWidth="2"/>
+              </svg>
+            )}
             <span>{tab.label}</span>
           </Button>
         ))}
@@ -181,9 +211,9 @@ const Settings: React.FC = () => {
                   }}
                 >
                   <div className="p-2 text-xs">
-                    <div>🎬 Video Player</div>
-                    <div>📊 Status Bar</div>
-                    <div>🎮 Controls</div>
+                    <div>Video Player</div>
+                    <div>Status Bar</div>
+                    <div>Controls</div>
                   </div>
                 </div>
               </div>
@@ -196,42 +226,34 @@ const Settings: React.FC = () => {
             <div className="p-4 bg-gray-800 rounded-lg">
               <h3 className="text-lg font-semibold mb-3">OBS Integration Settings</h3>
               <div className="space-y-4">
-                <div>
-                  <Label htmlFor="obs-auto-connect">
-                    <Checkbox
-                      checked={true}
-                      onChange={() => {}}
-                    />
-                    <span>Auto-connect to OBS on startup</span>
-                  </Label>
-                </div>
-                <div>
-                  <Label htmlFor="obs-show-status">
-                    <Checkbox
-                      checked={true}
-                      onChange={() => {}}
-                    />
-                    <span>Show OBS status in overlay</span>
-                  </Label>
-                </div>
-                <div>
-                  <Label htmlFor="obs-auto-record">
-                    <Checkbox
-                      checked={false}
-                      onChange={() => {}}
-                    />
-                    <span>Auto-record when playing clips</span>
-                  </Label>
-                </div>
-                <div>
-                  <Label htmlFor="obs-save-replay">
-                    <Checkbox
-                      checked={true}
-                      onChange={() => {}}
-                    />
-                    <span>Save replay buffer on clip creation</span>
-                  </Label>
-                </div>
+                <Toggle
+                  id="obs-auto-connect"
+                  checked={true}
+                  onChange={() => {}}
+                  label="Auto-connect to OBS on startup"
+                  labelPosition="right"
+                />
+                <Toggle
+                  id="obs-show-status"
+                  checked={true}
+                  onChange={() => {}}
+                  label="Show OBS status in overlay"
+                  labelPosition="right"
+                />
+                <Toggle
+                  id="obs-auto-record"
+                  checked={false}
+                  onChange={() => {}}
+                  label="Auto-record when playing clips"
+                  labelPosition="right"
+                />
+                <Toggle
+                  id="obs-save-replay"
+                  checked={true}
+                  onChange={() => {}}
+                  label="Save replay buffer on clip creation"
+                  labelPosition="right"
+                />
               </div>
             </div>
           </div>
@@ -252,24 +274,20 @@ const Settings: React.FC = () => {
                     <option value="low">Low Quality</option>
                   </select>
                 </div>
-                <div>
-                  <Label htmlFor="advanced-hardware-acceleration">
-                    <Checkbox
-                      checked={true}
-                      onChange={() => {}}
-                    />
-                    <span>Hardware acceleration</span>
-                  </Label>
-                </div>
-                <div>
-                  <Label htmlFor="advanced-video-caching">
-                    <Checkbox
-                      checked={false}
-                      onChange={() => {}}
-                    />
-                    <span>Enable video caching</span>
-                  </Label>
-                </div>
+                <Toggle
+                  id="advanced-hardware-acceleration"
+                  checked={true}
+                  onChange={() => {}}
+                  label="Hardware acceleration"
+                  labelPosition="right"
+                />
+                <Toggle
+                  id="advanced-video-caching"
+                  checked={false}
+                  onChange={() => {}}
+                  label="Enable video caching"
+                  labelPosition="right"
+                />
               </div>
             </div>
 
