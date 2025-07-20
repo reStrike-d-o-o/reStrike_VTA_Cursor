@@ -116,7 +116,7 @@ const EventTableSection: React.FC = () => {
         </div>
         
         {/* Filter Stack (right) */}
-        <div className="relative w-16 flex-shrink-0 h-64">
+        <div className="relative w-16 flex-shrink-0 h-64 pt-2">
           {/* Clear Filter Button (Up Arrow) - positioned at top */}
           <Button
             variant="secondary"
