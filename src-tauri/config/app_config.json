@@ -1,7 +1,7 @@
 {
   "app": {
     "version": "0.1.0",
-    "last_save": "2025-07-20T11:35:12.141308100+00:00",
+    "last_save": "2025-07-20T19:12:47.962622500+00:00",
     "startup": {
       "auto_start_udp": false,
       "auto_connect_obs": false,
@@ -63,17 +63,37 @@
   },
   "udp": {
     "listener": {
-      "port": 6000,
-      "bind_address": "0.0.0.0",
-      "enabled": false,
+      "port": 8888,
+      "bind_address": "127.0.0.1",
+      "enabled": true,
       "buffer_size": 8192,
-      "timeout_seconds": 30
+      "timeout_seconds": 30,
+      "network_interface": {
+        "auto_detect": true,
+        "preferred_type": "wifi",
+        "fallback_to_localhost": true,
+        "selected_interface": null
+      }
     },
     "pss": {
-      "schema_file": "protocol/pss_schema.txt",
+      "schema_file": "protocol/pss_v2.3.txt",
       "enabled": true,
       "strict_mode": false,
-      "unknown_fields": "warn"
+      "unknown_fields": "warn",
+      "protocol_versions": {
+        "active_version": "2.3",
+        "available_versions": [],
+        "auto_update": false,
+        "validate_on_load": true
+      },
+      "storage": {
+        "storage_directory": "protocol",
+        "max_versions": 10,
+        "auto_backup": true,
+        "backup_directory": "protocol/backups",
+        "compression": false,
+        "retention_days": 30
+      }
     },
     "events": {
       "store_events": true,
@@ -92,16 +112,16 @@
       "include_subsystem": true
     },
     "subsystems": {
-      "obs": {
-        "name": "obs",
-        "level": "info",
-        "enabled": false,
-        "custom_file": null
-      },
       "pss": {
         "name": "pss",
         "level": "info",
         "enabled": true,
+        "custom_file": null
+      },
+      "obs": {
+        "name": "obs",
+        "level": "info",
+        "enabled": false,
         "custom_file": null
       },
       "udp": {
@@ -120,7 +140,7 @@
       "archive_enabled": true
     },
     "live_data": {
-      "enabled": false,
+      "enabled": true,
       "interval_seconds": 5,
       "max_data_points": 1000,
       "real_time": false

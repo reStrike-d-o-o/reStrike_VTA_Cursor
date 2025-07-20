@@ -4,6 +4,7 @@ import LogDownloadList from '../molecules/LogDownloadList';
 import LiveDataPanel from '../molecules/LiveDataPanel';
 import WebSocketManager from '../molecules/WebSocketManager';
 import { CpuMonitoringSection } from '../molecules/CpuMonitoringSection';
+import PssDrawer from '../molecules/PssDrawer';
 import Toggle from '../atoms/Toggle';
 import { useAppStore } from '../../stores';
 import { configCommands } from '../../utils/tauriCommands';
@@ -182,7 +183,7 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
       <main className="flex-1 flex flex-col p-8 overflow-y-auto min-h-0 bg-gradient-to-br from-gray-800/60 to-gray-900/80 backdrop-blur-sm overflow-hidden">
         {/* Placeholder for each drawer's content */}
         {drawer?.key === 'pss' && (
-          <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg p-6 text-gray-200 border border-gray-600/30 shadow-lg">[PSS options, UDP server, protocol, event DB will be implemented here]</div>
+          <PssDrawer />
         )}
         {drawer?.key === 'obs' && (
           <>

@@ -1,9 +1,11 @@
 use std::net::UdpSocket;
 use std::sync::{Arc, Mutex};
 use std::thread;
+use std::collections::VecDeque;
 use tokio::sync::mpsc;
 use serde::{Deserialize, Serialize};
 use crate::types::{AppError, AppResult};
+use crate::plugins::ProtocolManager;
 
 /// Initialize the UDP plugin
 pub fn init() -> Result<(), Box<dyn std::error::Error>> {
@@ -141,8 +143,8 @@ pub struct UdpServerConfig {
 impl Default for UdpServerConfig {
     fn default() -> Self {
         Self {
-            port: 6000,
-            bind_address: "0.0.0.0".to_string(),
+            port: 8888,
+            bind_address: "127.0.0.1".to_string(),
             enabled: true,
             auto_start: true,
         }
@@ -163,6 +165,8 @@ pub struct UdpServer {
     event_tx: mpsc::UnboundedSender<PssEvent>,
     socket: Arc<Mutex<Option<UdpSocket>>>,
     stats: Arc<Mutex<UdpStats>>,
+    protocol_manager: Arc<ProtocolManager>,
+    recent_events: Arc<Mutex<VecDeque<PssEvent>>>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -175,18 +179,35 @@ pub struct UdpStats {
 }
 
 impl UdpServer {
-    pub fn new(config: UdpServerConfig, event_tx: mpsc::UnboundedSender<PssEvent>) -> Self {
+    pub fn new(config: UdpServerConfig, event_tx: mpsc::UnboundedSender<PssEvent>, protocol_manager: Arc<ProtocolManager>) -> Self {
         Self {
             config,
             status: Arc::new(Mutex::new(UdpServerStatus::Stopped)),
             event_tx,
             socket: Arc::new(Mutex::new(None)),
             stats: Arc::new(Mutex::new(UdpStats::default())),
+            protocol_manager,
+            recent_events: Arc::new(Mutex::new(VecDeque::new())),
         }
     }
 
-    pub fn start(&self) -> AppResult<()> {
-        let bind_addr = format!("{}:{}", self.config.bind_address, self.config.port);
+    pub async fn start(&self, config: &crate::config::types::AppConfig) -> AppResult<()> {
+        let network_settings = &config.udp.listener.network_interface;
+        
+        // Determine the best IP address to bind to
+        let bind_ip = if network_settings.auto_detect {
+            match crate::utils::NetworkDetector::get_best_ip_address(network_settings) {
+                Ok(ip) => ip.to_string(),
+                Err(e) => {
+                    println!("⚠️ Failed to auto-detect network interface: {}", e);
+                    self.config.bind_address.clone()
+                }
+            }
+        } else {
+            self.config.bind_address.clone()
+        };
+        
+        let bind_addr = format!("{}:{}", bind_ip, self.config.port);
         
         // Update status to starting
         {
@@ -225,9 +246,11 @@ impl UdpServer {
         let event_tx = self.event_tx.clone();
         let status_clone = self.status.clone();
         let stats_clone = self.stats.clone();
+        let protocol_manager = self.protocol_manager.clone();
+        let recent_events_clone = self.recent_events.clone();
 
         thread::spawn(move || {
-            Self::listen_loop(socket_clone, event_tx, status_clone, stats_clone);
+            Self::listen_loop(socket_clone, event_tx, status_clone, stats_clone, protocol_manager, recent_events_clone);
         });
 
         println!("🎯 UDP PSS Server started on {}", bind_addr);
@@ -261,11 +284,28 @@ impl UdpServer {
         stats.clone()
     }
 
+    pub fn get_recent_events(&self) -> Vec<PssEvent> {
+        let events = self.recent_events.lock().unwrap();
+        events.iter().cloned().collect()
+    }
+
+    pub fn add_event(&self, event: PssEvent) {
+        let mut events = self.recent_events.lock().unwrap();
+        events.push_back(event);
+        
+        // Keep only the last 100 events
+        if events.len() > 100 {
+            events.pop_front();
+        }
+    }
+
     fn listen_loop(
         socket: Arc<Mutex<Option<UdpSocket>>>,
         event_tx: mpsc::UnboundedSender<PssEvent>,
         status: Arc<Mutex<UdpServerStatus>>,
         stats: Arc<Mutex<UdpStats>>,
+        protocol_manager: Arc<ProtocolManager>,
+        recent_events: Arc<Mutex<VecDeque<PssEvent>>>,
     ) {
         let mut buffer = [0; 1024];
 
@@ -308,7 +348,7 @@ impl UdpServer {
                     }
 
                     // Parse and send the event
-                    match Self::parse_pss_message(&message) {
+                    match Self::parse_pss_message(&message, &protocol_manager) {
                         Ok(event) => {
                             // Update parse stats
                             {
@@ -316,10 +356,22 @@ impl UdpServer {
                                 stats_guard.packets_parsed += 1;
                             }
 
-                            // Send event
+                            // Add event to recent events storage
+                            {
+                                let mut events_guard = recent_events.lock().unwrap();
+                                events_guard.push_back(event.clone());
+                                
+                                // Keep only the last 100 events
+                                if events_guard.len() > 100 {
+                                    events_guard.pop_front();
+                                }
+                            }
+
+                            // Send event (ignore errors if no receiver)
                             if let Err(_) = event_tx.send(event) {
+                                // Don't break the loop, just log the warning
                                 println!("⚠️ Failed to send PSS event - receiver may have been dropped");
-                                break;
+                                // Continue listening for more packets
                             }
                         }
                         Err(e) => {
@@ -331,8 +383,24 @@ impl UdpServer {
                             
                             println!("⚠️ Failed to parse PSS message '{}': {}", message, e);
                             
-                            // Send raw message as fallback
-                            let _ = event_tx.send(PssEvent::Raw(message));
+                            // Create raw event and add to storage
+                            let raw_event = PssEvent::Raw(message.clone());
+                            
+                            // Add raw event to recent events storage
+                            {
+                                let mut events_guard = recent_events.lock().unwrap();
+                                events_guard.push_back(raw_event.clone());
+                                
+                                // Keep only the last 100 events
+                                if events_guard.len() > 100 {
+                                    events_guard.pop_front();
+                                }
+                            }
+                            
+                            // Send raw message as fallback (ignore errors if no receiver)
+                            if let Err(_) = event_tx.send(raw_event) {
+                                // Don't break the loop, just continue
+                            }
                         }
                     }
                 }
@@ -352,11 +420,34 @@ impl UdpServer {
         println!("🎯 UDP PSS Server listening loop ended");
     }
 
-    fn parse_pss_message(message: &str) -> AppResult<PssEvent> {
+    fn parse_pss_message(message: &str, protocol_manager: &ProtocolManager) -> AppResult<PssEvent> {
         let parts: Vec<&str> = message.split(';').collect();
         
         if parts.is_empty() {
             return Err(AppError::ConfigError("Empty message".to_string()));
+        }
+
+        // Get protocol parsing rules from the protocol manager
+        let protocol_rules = match tokio::runtime::Handle::try_current() {
+            Ok(handle) => {
+                // We're in an async context, use block_in_place
+                handle.block_on(async {
+                    protocol_manager.get_parsing_rules().await
+                })
+            }
+            Err(_) => {
+                // We're not in an async context, create a new runtime
+                let rt = tokio::runtime::Runtime::new().unwrap();
+                rt.block_on(async {
+                    protocol_manager.get_parsing_rules().await
+                })
+            }
+        }.unwrap_or_default();
+
+        // TODO: Use protocol_rules for validation and enhanced parsing
+        // For now, we'll use the existing parsing logic but log protocol usage
+        if !protocol_rules.is_empty() {
+            log::debug!("Using protocol rules for parsing: {:?}", protocol_rules);
         }
 
         match parts[0] {
@@ -584,35 +675,21 @@ impl UdpServer {
     }
 }
 
-// Public API for the plugin
-pub fn start_udp_server() -> AppResult<UdpServer> {
-    let config = UdpServerConfig::default();
-    let (event_tx, mut event_rx) = mpsc::unbounded_channel();
-    
-    let server = UdpServer::new(config, event_tx);
-    
-    // Start the server
-    server.start()?;
-    
-    // Start event processing in a separate task
-    tokio::spawn(async move {
-        while let Some(event) = event_rx.recv().await {
-            println!("🎯 PSS Event: {:?}", event);
-            // Here you can process events, store them, trigger actions, etc.
-            // For example, save to database, trigger OBS recordings, etc.
-        }
-    });
-    
-    Ok(server)
-}
+
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    // Mock protocol manager for testing
+    fn create_mock_protocol_manager() -> ProtocolManager {
+        ProtocolManager::new().unwrap()
+    }
+
     #[test]
     fn test_parse_points() {
-        let event = UdpServer::parse_pss_message("pt1;3;").unwrap();
+        let protocol_manager = create_mock_protocol_manager();
+        let event = UdpServer::parse_pss_message("pt1;3;", &protocol_manager).unwrap();
         match event {
             PssEvent::Points { athlete, point_type } => {
                 assert_eq!(athlete, 1);
@@ -624,7 +701,8 @@ mod tests {
 
     #[test]
     fn test_parse_warnings() {
-        let event = UdpServer::parse_pss_message("wg1;1;wg2;2;").unwrap();
+        let protocol_manager = create_mock_protocol_manager();
+        let event = UdpServer::parse_pss_message("wg1;1;wg2;2;", &protocol_manager).unwrap();
         match event {
             PssEvent::Warnings { athlete1_warnings, athlete2_warnings } => {
                 assert_eq!(athlete1_warnings, 1);
@@ -636,7 +714,8 @@ mod tests {
 
     #[test]
     fn test_parse_clock() {
-        let event = UdpServer::parse_pss_message("clk;1:23;start;").unwrap();
+        let protocol_manager = create_mock_protocol_manager();
+        let event = UdpServer::parse_pss_message("clk;1:23;start;", &protocol_manager).unwrap();
         match event {
             PssEvent::Clock { time, action } => {
                 assert_eq!(time, "1:23");

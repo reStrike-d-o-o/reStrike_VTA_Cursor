@@ -1,0 +1,420 @@
+# WT_UDP Protocol Specification
+# Version: 2.3
+# Year: 2024
+# Description: UDP protocol for WT competition data collection and control system.
+# Confidential – Do not distribute outside authorized parties.
+
+---
+
+# POINTS
+# Stream broadcasted when points are added.
+
+MAIN_STREAMS:
+  pt1;  Main stream for athlete 1
+  pt2;  Main stream for athlete 2
+
+REQUIRED_ARGUMENTS:
+  1;  Punch point
+  2;  Body point
+  3;  Head point
+  4;  Technical body point
+  5;  Technical head point
+
+EXAMPLES:
+  pt1;1;
+  pt1;2;
+  pt1;3;
+  pt2;1;
+  pt2;2;
+  pt2;3;
+
+---
+
+# HITLEVEL
+# Stream broadcasted when hit happens.
+
+MAIN_STREAMS:
+  hl1;  Main stream for athlete 1
+  hl2;  Main stream for athlete 2
+
+REQUIRED_ARGUMENTS:
+  50;  Hit Level value (from 1 to 100)
+
+EXAMPLES:
+  hl1;50;
+  hl1;1;
+  hl1;100;
+  hl2;50;
+  hl2;1;
+  hl2;100;
+
+---
+
+# WARNINGS / GAM-JEOM
+# Stream broadcasted when warnings / gam-jeom changes.
+
+MAIN_STREAMS:
+  wg1;  (athlete 1)
+  wg2;  (delimiter for athlete 2)
+
+REQUIRED_ARGUMENTS:
+  1;  warning / gam-jeom of athlete 1
+  2;  warning / gam-jeom of athlete 2
+
+EXAMPLES:
+  wg1;1;wg2;2;
+  wg1;4;wg2;3;
+
+---
+
+# INJURY
+# Stream broadcasted when injury time is running.
+
+MAIN_STREAMS:
+  ij1;  Main stream for athlete 1
+  ij2;  Main stream for athlete 2
+  ij0;  Main stream for unidentified athlete
+
+REQUIRED_ARGUMENTS:
+  1:23;  Clock of the injury time
+
+OPTIONAL_ARGUMENTS:
+  show;   When showing the injury time
+  hide;   When hiding the injury time
+  reset;  When resetting the injury time
+
+EXAMPLES:
+  ij1;1:23;show;
+  ij1;1:22;
+  ij1;1:21;hide;
+  ij2;0:45;show;
+  ij2;0:44;
+  ij2;0:44;hide;
+  ij0;1:42;
+
+---
+
+# CHALLENGS IVR
+# Stream broadcasted when challenge / IVR is requested or updated.
+
+MAIN_STREAMS:
+  ch0;  Main stream for Referee
+  ch1;  Main stream for athlete 1
+  ch2;  Main stream for athlete 2
+
+REQUIRED_ARGUMENTS:
+  1;  Boolean if challenge is accepted or denied. -1 for canceled challenge
+
+OPTIONAL_ARGUMENTS:
+  1;  Boolean if the accepted challenge is won or lost
+
+EXAMPLES:
+  ch0;
+  ch0;0;
+  ch0;1;
+  ch0;1;0;
+  ch0;1;1;
+  ch1;
+  ch1;0;
+  ch1;1;
+  ch1;1;0;
+  ch1;1;1;
+  ch2;
+  ch2;0;
+  ch2;1;
+  ch2;1;0;
+  ch2;1;1;
+  ch0;-1;
+  ch1;-1;
+  ch2;-1;
+
+---
+
+# BREAK
+# Stream broadcasted during the breaking time (inter-periods).
+
+MAIN_STREAMS:
+  brk;
+
+REQUIRED_ARGUMENTS:
+  59;  Scoreboard break {ss}
+  stop;  Scoreboard break {m:ss}
+  0:59;  Operator action: correcting the clock
+
+EXAMPLES:
+  brk;0:59;
+  brk;58;
+  brk;0:00;stopEnd;
+  brk;0;stopEnd;
+
+---
+
+# WINNER ROUNDS
+# Stream broadcasted when a period ends.
+# All 3 periods are always sent and ID is '0' if not played yet.
+
+MAIN_STREAMS:
+  wrd;
+
+REQUIRED_ARGUMENTS:
+  rd1;  1st round
+  1;    Athlete number winning 1st period (0 if none)
+  rd2;  2nd round
+  2;    Athlete number winning 2nd period (0 if none)
+  rd3;  3rd round
+  0;    Athlete number winning 3rd period (0 if none)
+
+EXAMPLES:
+  wrd;rd1;0;rd2;0;rd3;0
+  wrd;rd1;2;rd2;1;rd3;0
+
+---
+
+# WINNER (Clock hide and winner show)
+# Stream broadcasted when winner is selected and can be updated when classification points are selected.
+
+MAIN_STREAMS:
+  wmh;
+
+REQUIRED_ARGUMENTS:
+  Nicolas DESMOND;  Winner name (TV long name)
+  2-1 PTF;          Classification points
+
+EXAMPLES:
+  wmh;Nicolas DESMOND
+  wmh;Nicolas DESMOND;2-0 PTF;
+
+---
+
+# ATHLETES
+# Stream broadcasted when athletes information is loaded.
+
+MAIN_STREAMS:
+  at1;
+
+REQUIRED_ARGUMENTS:
+  N. DESMOND;  Athlete 1 short name
+  Nicolas DESMOND;  Athlete 1 long name
+  MRN;  Athlete 1 country code
+  at2;  Delimiter for athlete 2
+  M. THIBAULT;  Athlete 2 short name
+  Marcel THIBAULT;  Athlete 2 long name
+  SUI;  Athlete 2 country code
+
+EXAMPLES:
+  at1;N. DESMOND;Nicolas DESMOND;MRN;at2;M. THIBAULT;Marcel THIBAULT;SUI;
+
+---
+
+# MATCH CONFIGURATION
+# Stream broadcasted when match configuration is loaded.
+
+MAIN_STREAMS:
+  mch;
+
+REQUIRED_ARGUMENTS:
+  101;  Match number
+  Round of 16;  Match category
+  M- 80 kg;  Weight class
+  1;  Number of rounds
+  #0000ff;  Background color 1
+  #FFFFFF;  Foreground color 1
+  #ff0000;  Background color 2
+  #FFFFFF;  Foreground color 2
+  a14ddd5c;  Match ID
+  Senior;  Division
+  3;  Total rounds
+  120;  Round duration (seconds)
+  cntDown;  Countdown type
+  18;  Count up value
+  1;  Format
+
+EXAMPLES:
+  mch;101;Round of 16;M- 80 kg;1;#0000ff;#FFFFFF;#ff0000;#FFFFFF;a14ddd5c;Senior;3;120;cntDown;18;1;
+
+---
+
+# SCORES
+# Stream broadcasted when scores are updated.
+
+MAIN_STREAMS:
+  s11;  Athlete 1 Round 1 Score
+  s21;  Athlete 2 Round 1 Score
+  s12;  Athlete 1 Round 2 Score
+  s22;  Athlete 2 Round 2 Score
+  s13;  Athlete 1 Round 3 Score
+  s23;  Athlete 2 Round 3 Score
+
+REQUIRED_ARGUMENTS:
+  0;  Score value
+
+EXAMPLES:
+  s11;0;
+  s21;0;
+  s12;0;
+  s22;0;
+  s13;0;
+  s23;0;
+
+---
+
+# CURRENT SCORES
+# Stream broadcasted when current scores are updated.
+
+MAIN_STREAMS:
+  sc1;  Athlete 1 Current Score
+  sc2;  Athlete 2 Current Score
+
+REQUIRED_ARGUMENTS:
+  0;  Current score value
+
+EXAMPLES:
+  sc1;0;
+  sc2;0;
+
+---
+
+# ATHLETE VIDEO TIME
+# Stream broadcasted when athlete video time is updated.
+
+MAIN_STREAMS:
+  avt;
+
+REQUIRED_ARGUMENTS:
+  0;  Video time value
+
+EXAMPLES:
+  avt;0;
+
+---
+
+# CLOCK
+# Stream broadcasted when clock time is updated.
+
+MAIN_STREAMS:
+  clk;
+
+REQUIRED_ARGUMENTS:
+  2:00;  Clock time in format m:ss
+
+OPTIONAL_ARGUMENTS:
+  start;  Start the clock
+  stop;  Stop the clock
+
+EXAMPLES:
+  clk;2:00;
+  clk;2:00;start;
+  clk;1:59;
+
+---
+
+# ROUND
+# Stream broadcasted when round changes.
+
+MAIN_STREAMS:
+  rnd;
+
+REQUIRED_ARGUMENTS:
+  1;  Current round number
+
+EXAMPLES:
+  rnd;1;
+  rnd;2;
+  rnd;3;
+
+---
+
+# FIGHT READY
+# Stream broadcasted when fight is ready.
+
+MAIN_STREAMS:
+  rdy;
+
+REQUIRED_ARGUMENTS:
+  FightReady;  Fight ready status
+
+EXAMPLES:
+  rdy;FightReady;
+
+---
+
+# FIGHT LOADED
+# Stream broadcasted when fight is loaded.
+
+MAIN_STREAMS:
+  pre;
+
+REQUIRED_ARGUMENTS:
+  FightLoaded;  Fight loaded status
+
+EXAMPLES:
+  pre;FightLoaded;
+
+---
+
+# WINNER
+# Stream broadcasted when winner is determined.
+
+MAIN_STREAMS:
+  win;
+
+REQUIRED_ARGUMENTS:
+  BLUE;  Winner (BLUE/RED)
+
+EXAMPLES:
+  win;BLUE;
+  win;RED;
+
+---
+
+# EXAMPLE MATCH FLOW
+# This section demonstrates a typical UDP packet sequence from match start to finish.
+
+STEP 1: START CONNECTION
+  Udp Port 6000 connected;
+
+STEP 2: LOAD THE MATCH
+  pre;FightLoaded;
+  at1;N. DESMOND;Nicolas DESMOND;MRN;at2;M. THIBAULT;Marcel THIBAULT;SUI;
+  mch;101;Round of 16;M- 80 kg;1;#0000ff;#FFFFFF;#ff0000;#FFFFFF;a14ddd5c;Senior;3;120;cntDown;18;1;
+  wg1;0;wg2;0;
+  wrd;rd1;0;rd2;0;rd3;0;
+  s11;0;s21;0;s12;0;s22;0;s13;0;s23;0;
+  sc1;0;sc2;0;
+  avt;0;
+  clk;2:00;
+  rnd;1;
+  rdy;FightReady;
+
+STEP 3: START THE MATCH
+  rnd;1;
+  clk;2:00;start;
+  clk;1:59;
+  clk;1:58;
+  ...
+  clk;1:50;stop;   # TIME OUT
+
+STEP 4: MATCH CONTINUE
+  clk;1:50;start;
+  clk;1:49;
+  clk;1:48;
+  ...
+
+STEP 5: HEAD KICK (Blue)
+  pt1;3;
+  s11;3;s21;0;s12;0;s22;0;s13;0;s23;0;
+  sc1;3;sc2;0;
+
+STEP 6: HEAD KICK (Red)
+  pt2;3;
+  s11;3;s21;3;s12;0;s22;0;s13;0;s23;0;
+  sc1;3;sc2;3;
+
+...
+
+STEP N: WINNER
+  win;BLUE;
+  wmh;N. DESMOND;2-1 PTF;
+
+STEP N+1: STOP CONNECTION
+  Udp Port 6000 disconnected; 
