@@ -4,6 +4,7 @@ import { invoke as tauriInvoke } from '@tauri-apps/api/core';
 import Button from '../atoms/Button';
 import { StatusDot } from '../atoms/StatusDot';
 import { useObsStore, ObsConnection } from '../../stores/obsStore';
+import { obsCommands } from '../../utils/tauriCommands';
 
 // Use the proper Tauri v2 invoke function with fallback
 const invoke = async (command: string, args?: any) => {
@@ -44,6 +45,7 @@ const ObsWebSocketManager: React.FC = () => {
     addEvent,
     updateConnectionStatus,
     getConnectionCount,
+    updateObsStatus,
   } = useObsStore();
 
   // Load existing connections from backend on component mount
@@ -113,6 +115,24 @@ const ObsWebSocketManager: React.FC = () => {
 
     return () => {
       clearInterval(refreshInterval);
+    };
+  }, []);
+
+  // Setup OBS status listener (push-based)
+  useEffect(() => {
+    if (!isTauriAvailable()) return;
+
+    // Start backend listener once
+    obsCommands.setupStatusListener().catch((e) => console.error('obs status listener setup failed', e));
+
+    const unlistenPromise = window.__TAURI__.event.listen('obs_status', (event: any) => {
+      if (event && event.payload) {
+        updateObsStatus(event.payload);
+      }
+    });
+
+    return () => {
+      unlistenPromise.then((unsub: () => void) => unsub()).catch(() => {});
     };
   }, []);
 
