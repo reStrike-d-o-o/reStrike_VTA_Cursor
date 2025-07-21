@@ -48,6 +48,7 @@ const LiveDataPanel: React.FC = () => {
   const [isLoadingSettings, setIsLoadingSettings] = useState(true);
   const liveDataRef = useRef<HTMLDivElement>(null);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [autoScroll, setAutoScroll] = useState(true);
 
   // Load live data settings from configuration
   const loadLiveDataSettings = async () => {
@@ -175,18 +176,12 @@ const LiveDataPanel: React.FC = () => {
     testOnce();
   }, []);
 
-  // Auto-scroll to top only if user is already at the top
+  // Auto-scroll to bottom when new data arrives if autoScroll is true
   useEffect(() => {
-    if (liveDataRef.current) {
-      const element = liveDataRef.current;
-      const isAtTop = element.scrollTop === 0;
-      
-      // Only auto-scroll if user is already at the top
-      if (isAtTop) {
-        element.scrollTop = 0;
-      }
+    if (autoScroll && liveDataRef.current) {
+      liveDataRef.current.scrollTop = liveDataRef.current.scrollHeight;
     }
-  }, [data]);
+  }, [data, autoScroll]);
 
   // Polling function to fetch live data - for OBS and UDP status updates
   const fetchLiveData = async () => {
@@ -315,6 +310,13 @@ const LiveDataPanel: React.FC = () => {
     }
   };
 
+  const scrollToBottom = () => {
+    if (liveDataRef.current) {
+      liveDataRef.current.scrollTop = liveDataRef.current.scrollHeight;
+      setAutoScroll(true);
+    }
+  };
+
   if (isLoadingSettings) {
     return (
       <div className="bg-[#181F26] rounded-lg p-4 border border-gray-700 shadow">
@@ -376,9 +378,15 @@ const LiveDataPanel: React.FC = () => {
           ref={liveDataRef}
           className="bg-black border border-gray-700 rounded p-3 h-48 overflow-y-auto font-mono text-sm text-green-400"
           style={{ whiteSpace: 'pre-wrap' }}
+          onScroll={() => {
+            if (!liveDataRef.current) return;
+            const el = liveDataRef.current;
+            const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 5;
+            setAutoScroll(atBottom);
+          }}
         >
           {data.length === 0 ? 'No live data available. Enable streaming to see data.' : 
-            data.slice().reverse().map((entry, index) => (
+            data.map((entry, index) => (
               <div key={index} className="mb-1">
                 <span className="text-green-600">[{entry.timestamp}]</span> {entry.data}
               </div>
@@ -386,13 +394,22 @@ const LiveDataPanel: React.FC = () => {
           }
         </div>
         {data.length > 0 && (
-          <button
-            onClick={scrollToTop}
-            className="absolute top-2 right-2 bg-gray-800 hover:bg-gray-700 text-green-400 text-xs px-2 py-1 rounded border border-gray-600 transition-colors"
-            title="Scroll to top"
-          >
-            ↑ Top
-          </button>
+          <div className="absolute top-2 right-2 flex gap-1">
+            <button
+              onClick={scrollToTop}
+              className="bg-gray-800 hover:bg-gray-700 text-green-400 text-xs px-2 py-1 rounded border border-gray-600 transition-colors"
+              title="Scroll to top"
+            >
+              ↑ Top
+            </button>
+            <button
+              onClick={scrollToBottom}
+              className="bg-gray-800 hover:bg-gray-700 text-green-400 text-xs px-2 py-1 rounded border border-gray-600 transition-colors"
+              title="Scroll to bottom"
+            >
+              ↓ End
+            </button>
+          </div>
         )}
       </div>
     </div>
