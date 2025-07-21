@@ -139,30 +139,8 @@ const LiveDataPanel: React.FC = () => {
 
   // Poll for UDP/PSS events when UDP is selected
   useEffect(() => {
-    if (!tauriAvailable || selectedType !== 'udp' || !enabled) return;
-
-    // Set up polling for UDP events every 2 seconds
-    const udpEventPollingInterval = setInterval(async () => {
-      try {
-        const result = await invoke('pss_get_events');
-        if (result && Array.isArray(result) && result.length > 0) {
-          result.forEach((event: any) => {
-            const formattedEvent = `${event.description}`;
-            addData({
-              subsystem: 'udp',
-              data: formattedEvent,
-              type: 'info'
-            });
-          });
-        }
-      } catch (error) {
-        console.error('❌ Failed to fetch UDP events:', error);
-      }
-    }, 2000);
-
-    return () => {
-      clearInterval(udpEventPollingInterval);
-    };
+    // Disabled polling for PSS/UDP events – we now rely on push events via Tauri
+    return () => {};
   }, [tauriAvailable, selectedType, enabled, addData]);
 
   // Handle full events toggle

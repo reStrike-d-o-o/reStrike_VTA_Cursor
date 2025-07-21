@@ -81,6 +81,9 @@ async fn main() -> AppResult<()> {
             tauri_commands::pss_start_listener,
             tauri_commands::pss_stop_listener,
             tauri_commands::pss_get_events,
+            tauri_commands::pss_emit_event,
+            tauri_commands::pss_emit_pending_events,
+            tauri_commands::pss_setup_event_listener,
             
             // System commands
             tauri_commands::system_get_info,
