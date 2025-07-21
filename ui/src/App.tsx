@@ -9,8 +9,8 @@ const App: React.FC = () => {
   const isAdvancedPanelOpen = useAppStore((state) => state.isAdvancedPanelOpen);
   const { tauriAvailable, environment, isLoading } = useEnvironment();
   
-  // Initialize PSS event listener
-  const { isLoaded: pssDataLoaded, startPolling, stopPolling } = usePssEvents();
+  // Initialize PSS event listener for real-time events
+  const { setupEventListener, fetchPendingEvents } = usePssEvents();
   
   // Debug environment detection
   React.useEffect(() => {
@@ -20,6 +20,17 @@ const App: React.FC = () => {
     console.log('  - Is Loading:', isLoading);
     console.log('  - Window Tauri:', typeof window !== 'undefined' ? window.__TAURI__ : 'N/A');
   }, [tauriAvailable, environment, isLoading]);
+
+  // Set up PSS event listener when Tauri is available
+  React.useEffect(() => {
+    if (tauriAvailable && !isLoading) {
+      console.log('🚀 Setting up PSS event system...');
+      setupEventListener();
+      
+      // Fetch any pending events that might have been missed
+      fetchPendingEvents();
+    }
+  }, [tauriAvailable, isLoading, setupEventListener, fetchPendingEvents]);
   
   return (
     <div className="h-screen flex flex-col bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white overflow-hidden">

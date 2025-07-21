@@ -603,6 +603,87 @@ pub async fn pss_get_events(app: State<'_, Arc<App>>) -> Result<Vec<serde_json::
                     "description": format!("Clock: {} {:?}", time, action.unwrap_or_default())
                 })
             }
+            crate::plugins::plugin_udp::PssEvent::Round { current_round } => {
+                serde_json::json!({
+                    "type": "round",
+                    "current_round": current_round,
+                    "description": format!("Round {}", current_round)
+                })
+            }
+            crate::plugins::plugin_udp::PssEvent::WinnerRounds { round1_winner, round2_winner, round3_winner } => {
+                serde_json::json!({
+                    "type": "winner_rounds",
+                    "round1_winner": round1_winner,
+                    "round2_winner": round2_winner,
+                    "round3_winner": round3_winner,
+                    "description": format!("Winner Rounds - R1: {}, R2: {}, R3: {}", round1_winner, round2_winner, round3_winner)
+                })
+            }
+            crate::plugins::plugin_udp::PssEvent::Scores { athlete1_r1, athlete2_r1, athlete1_r2, athlete2_r2, athlete1_r3, athlete2_r3 } => {
+                serde_json::json!({
+                    "type": "scores",
+                    "athlete1_r1": athlete1_r1,
+                    "athlete2_r1": athlete2_r1,
+                    "athlete1_r2": athlete1_r2,
+                    "athlete2_r2": athlete2_r2,
+                    "athlete1_r3": athlete1_r3,
+                    "athlete2_r3": athlete2_r3,
+                    "description": format!("Scores - A1: R1={}, R2={}, R3={} | A2: R1={}, R2={}, R3={}", 
+                        athlete1_r1, athlete1_r2, athlete1_r3, athlete2_r1, athlete2_r2, athlete2_r3)
+                })
+            }
+            crate::plugins::plugin_udp::PssEvent::CurrentScores { athlete1_score, athlete2_score } => {
+                serde_json::json!({
+                    "type": "current_scores",
+                    "athlete1_score": athlete1_score,
+                    "athlete2_score": athlete2_score,
+                    "description": format!("Current Scores - A1: {}, A2: {}", athlete1_score, athlete2_score)
+                })
+            }
+            crate::plugins::plugin_udp::PssEvent::Athletes { athlete1_short, athlete1_long, athlete1_country, athlete2_short, athlete2_long, athlete2_country } => {
+                serde_json::json!({
+                    "type": "athletes",
+                    "athlete1_short": athlete1_short,
+                    "athlete1_long": athlete1_long,
+                    "athlete1_country": athlete1_country,
+                    "athlete2_short": athlete2_short,
+                    "athlete2_long": athlete2_long,
+                    "athlete2_country": athlete2_country,
+                    "description": format!("Athletes - {} ({}) vs {} ({})", athlete1_short, athlete1_country, athlete2_short, athlete2_country)
+                })
+            }
+            crate::plugins::plugin_udp::PssEvent::MatchConfig { number, category, weight, rounds, colors, match_id, division, total_rounds, round_duration, countdown_type, count_up, format } => {
+                serde_json::json!({
+                    "type": "match_config",
+                    "number": number,
+                    "category": category,
+                    "weight": weight,
+                    "rounds": rounds,
+                    "colors": colors,
+                    "match_id": match_id,
+                    "division": division,
+                    "total_rounds": total_rounds,
+                    "round_duration": round_duration,
+                    "countdown_type": countdown_type,
+                    "count_up": count_up,
+                    "format": format,
+                    "description": format!("Match Config - #{} {} {} ({})", number, category, weight, division)
+                })
+            }
+            crate::plugins::plugin_udp::PssEvent::FightLoaded => {
+                serde_json::json!({
+                    "type": "fight_loaded",
+                    "event": "FightLoaded",
+                    "description": "Fight Loaded"
+                })
+            }
+            crate::plugins::plugin_udp::PssEvent::FightReady => {
+                serde_json::json!({
+                    "type": "fight_ready",
+                    "event": "FightReady",
+                    "description": "Fight Ready"
+                })
+            }
             crate::plugins::plugin_udp::PssEvent::Raw(message) => {
                 serde_json::json!({
                     "type": "raw",
@@ -1437,4 +1518,190 @@ pub async fn get_best_network_interface(app: State<'_, Arc<App>>) -> Result<serd
             "error": e.to_string()
         }))
     }
+} 
+
+// PSS Event Emission Command
+#[tauri::command]
+pub async fn pss_emit_event(event_data: serde_json::Value, window: tauri::Window) -> Result<(), String> {
+    log::info!("Emitting PSS event to frontend: {:?}", event_data);
+    if let Err(e) = window.emit("pss_event", event_data) {
+        log::error!("Failed to emit PSS event: {}", e);
+        return Err(e.to_string());
+    }
+    Ok(())
+}
+
+// Get and emit PSS events to frontend
+#[tauri::command]
+pub async fn pss_emit_pending_events(window: tauri::Window, app: State<'_, Arc<App>>) -> Result<(), String> {
+    log::info!("Getting and emitting pending PSS events");
+    
+    // Get events from the UDP plugin
+    let events = app.udp_plugin().get_recent_events();
+    
+    // Convert and emit each event
+    for event in events {
+        let event_json = match event {
+            crate::plugins::plugin_udp::PssEvent::Points { athlete, point_type } => {
+                serde_json::json!({
+                    "type": "points",
+                    "athlete": athlete,
+                    "point_type": point_type,
+                    "description": format!("Athlete {} scored {} points", athlete, point_type)
+                })
+            }
+            crate::plugins::plugin_udp::PssEvent::HitLevel { athlete, level } => {
+                serde_json::json!({
+                    "type": "hit_level",
+                    "athlete": athlete,
+                    "level": level,
+                    "description": format!("Athlete {} hit level {}", athlete, level)
+                })
+            }
+            crate::plugins::plugin_udp::PssEvent::Warnings { athlete1_warnings, athlete2_warnings } => {
+                serde_json::json!({
+                    "type": "warnings",
+                    "athlete1_warnings": athlete1_warnings,
+                    "athlete2_warnings": athlete2_warnings,
+                    "description": format!("Warnings - Athlete1: {}, Athlete2: {}", athlete1_warnings, athlete2_warnings)
+                })
+            }
+            crate::plugins::plugin_udp::PssEvent::Clock { time, action } => {
+                serde_json::json!({
+                    "type": "clock",
+                    "time": time,
+                    "action": action,
+                    "description": format!("Clock: {} {:?}", time, action.unwrap_or_default())
+                })
+            }
+            crate::plugins::plugin_udp::PssEvent::Round { current_round } => {
+                serde_json::json!({
+                    "type": "round",
+                    "current_round": current_round,
+                    "description": format!("Round {}", current_round)
+                })
+            }
+            crate::plugins::plugin_udp::PssEvent::WinnerRounds { round1_winner, round2_winner, round3_winner } => {
+                serde_json::json!({
+                    "type": "winner_rounds",
+                    "round1_winner": round1_winner,
+                    "round2_winner": round2_winner,
+                    "round3_winner": round3_winner,
+                    "description": format!("Winner Rounds - R1: {}, R2: {}, R3: {}", round1_winner, round2_winner, round3_winner)
+                })
+            }
+            crate::plugins::plugin_udp::PssEvent::Scores { athlete1_r1, athlete2_r1, athlete1_r2, athlete2_r2, athlete1_r3, athlete2_r3 } => {
+                serde_json::json!({
+                    "type": "scores",
+                    "athlete1_r1": athlete1_r1,
+                    "athlete2_r1": athlete2_r1,
+                    "athlete1_r2": athlete1_r2,
+                    "athlete2_r2": athlete2_r2,
+                    "athlete1_r3": athlete1_r3,
+                    "athlete2_r3": athlete2_r3,
+                    "description": format!("Scores - A1: R1={}, R2={}, R3={} | A2: R1={}, R2={}, R3={}", 
+                        athlete1_r1, athlete1_r2, athlete1_r3, athlete2_r1, athlete2_r2, athlete2_r3)
+                })
+            }
+            crate::plugins::plugin_udp::PssEvent::CurrentScores { athlete1_score, athlete2_score } => {
+                serde_json::json!({
+                    "type": "current_scores",
+                    "athlete1_score": athlete1_score,
+                    "athlete2_score": athlete2_score,
+                    "description": format!("Current Scores - A1: {}, A2: {}", athlete1_score, athlete2_score)
+                })
+            }
+            crate::plugins::plugin_udp::PssEvent::Athletes { athlete1_short, athlete1_long, athlete1_country, athlete2_short, athlete2_long, athlete2_country } => {
+                serde_json::json!({
+                    "type": "athletes",
+                    "athlete1_short": athlete1_short,
+                    "athlete1_long": athlete1_long,
+                    "athlete1_country": athlete1_country,
+                    "athlete2_short": athlete2_short,
+                    "athlete2_long": athlete2_long,
+                    "athlete2_country": athlete2_country,
+                    "description": format!("Athletes - {} ({}) vs {} ({})", athlete1_short, athlete1_country, athlete2_short, athlete2_country)
+                })
+            }
+            crate::plugins::plugin_udp::PssEvent::MatchConfig { number, category, weight, rounds, colors, match_id, division, total_rounds, round_duration, countdown_type, count_up, format } => {
+                serde_json::json!({
+                    "type": "match_config",
+                    "number": number,
+                    "category": category,
+                    "weight": weight,
+                    "rounds": rounds,
+                    "colors": colors,
+                    "match_id": match_id,
+                    "division": division,
+                    "total_rounds": total_rounds,
+                    "round_duration": round_duration,
+                    "countdown_type": countdown_type,
+                    "count_up": count_up,
+                    "format": format,
+                    "description": format!("Match Config - #{} {} {} ({})", number, category, weight, division)
+                })
+            }
+            crate::plugins::plugin_udp::PssEvent::FightLoaded => {
+                serde_json::json!({
+                    "type": "fight_loaded",
+                    "event": "FightLoaded",
+                    "description": "Fight Loaded"
+                })
+            }
+            crate::plugins::plugin_udp::PssEvent::FightReady => {
+                serde_json::json!({
+                    "type": "fight_ready",
+                    "event": "FightReady",
+                    "description": "Fight Ready"
+                })
+            }
+            crate::plugins::plugin_udp::PssEvent::Raw(message) => {
+                serde_json::json!({
+                    "type": "raw",
+                    "message": message,
+                    "description": format!("Raw message: {}", message)
+                })
+            }
+            _ => {
+                serde_json::json!({
+                    "type": "other",
+                    "event": format!("{:?}", event),
+                    "description": format!("Event: {:?}", event)
+                })
+            }
+        };
+        
+        log::info!("Emitting PSS event to frontend: {:?}", event_json);
+        if let Err(e) = window.emit("pss_event", event_json) {
+            log::error!("Failed to emit PSS event: {}", e);
+            return Err(e.to_string());
+        }
+    }
+    
+    Ok(())
+} 
+
+// Set up PSS event listener that emits events to frontend
+#[tauri::command]
+pub async fn pss_setup_event_listener(window: tauri::Window) -> Result<(), String> {
+    log::info!("Setting up PSS event listener for frontend");
+    
+    // Get a receiver for PSS events
+    if let Some(mut receiver) = crate::core::app::App::subscribe_to_pss_events() {
+        // Spawn a task to listen for events and emit them to the frontend
+        tokio::spawn(async move {
+            while let Ok(event_data) = receiver.recv().await {
+                log::info!("📡 Emitting PSS event to frontend: {:?}", event_data);
+                if let Err(e) = window.emit("pss_event", event_data) {
+                    log::error!("Failed to emit PSS event to frontend: {}", e);
+                }
+            }
+        });
+        log::info!("✅ PSS event listener setup complete");
+    } else {
+        log::warn!("⚠️ PSS event broadcaster not initialized");
+        return Err("PSS event broadcaster not initialized".to_string());
+    }
+    
+    Ok(())
 } 

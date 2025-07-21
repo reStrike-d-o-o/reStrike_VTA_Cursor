@@ -40,6 +40,29 @@ export const handlePssEvent = (event: any) => {
       } else if (event.event === 'FightReady') {
         handleFightReadyEvent(event, store);
       }
+
+      // Parse raw match config (mch;) lines to update match config
+      if (event.type === 'raw' && typeof event.message === 'string' && event.message.startsWith('mch;')) {
+        try {
+          const parts = event.message.split(';');
+          /* Expected format:
+             mch;matchNumber;category;weight;???;bgColor1;fontColor1;bgColor2;fontColor2;null;division;totalRounds;roundDuration;countdownType;format;???;
+           */
+          const matchConfig: PssMatchConfig = {
+            number: parseInt(parts[1]) || 0,
+            category: parts[2] || '',
+            weight: parts[3]?.replace(/\s+/g, '') || '', // trim spaces like "M -68kg" -> "M-68kg"
+            division: parts[10] || '',
+            totalRounds: parseInt(parts[11]) || 3,
+            roundDuration: parseInt(parts[12]) || 120,
+            countdownType: parts[13] || '',
+            format: parseInt(parts[14]) || 1,
+          };
+          store.updateMatchConfig(matchConfig);
+        } catch (rawErr) {
+          console.error('Error parsing raw mch line:', rawErr);
+        }
+      }
       break;
   }
 };

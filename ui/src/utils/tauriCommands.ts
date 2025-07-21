@@ -265,12 +265,58 @@ export const pssCommands = {
   },
 
   /**
-   * Get PSS events
+   * Get PSS events from the backend
    */
   async getEvents(): Promise<TauriCommandResponse<PssEvent[]>> {
     try {
       if (isTauriAvailable()) {
-        return await safeInvoke('pss_get_events');
+        const result = await safeInvoke('pss_get_events');
+        return {
+          success: true,
+          data: result || [],
+        };
+      }
+      return { success: false, error: 'Tauri not available', data: [] };
+    } catch (error) {
+      return { success: false, error: String(error), data: [] };
+    }
+  },
+
+  /**
+   * Emit a PSS event to the frontend
+   */
+  async emitEvent(eventData: any): Promise<TauriCommandResponse> {
+    try {
+      if (isTauriAvailable()) {
+        return await safeInvoke('pss_emit_event', { eventData });
+      }
+      return { success: false, error: 'Tauri not available' };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  },
+
+  /**
+   * Emit pending PSS events to the frontend
+   */
+  async emitPendingEvents(): Promise<TauriCommandResponse> {
+    try {
+      if (isTauriAvailable()) {
+        return await safeInvoke('pss_emit_pending_events');
+      }
+      return { success: false, error: 'Tauri not available' };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  },
+
+  /**
+   * Set up PSS event listener for real-time events
+   */
+  async setupEventListener(): Promise<TauriCommandResponse> {
+    try {
+      if (isTauriAvailable()) {
+        return await safeInvoke('pss_setup_event_listener');
       }
       return { success: false, error: 'Tauri not available' };
     } catch (error) {

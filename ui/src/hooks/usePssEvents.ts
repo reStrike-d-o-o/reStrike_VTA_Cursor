@@ -1,96 +1,143 @@
 import { useEffect, useRef } from 'react';
+import { usePssMatchStore } from '../stores/pssMatchStore';
+import { handlePssEvent } from '../utils/pssEventHandler';
 import { pssCommands } from '../utils/tauriCommands';
-import { handlePssEvent, processPssEvents } from '../utils/pssEventHandler';
-import { usePssMatchStore } from '../stores';
 
-/**
- * Hook to listen for PSS events and update the match store
- * Automatically fetches and processes PSS events from the backend
- * Only starts polling when a match is loaded (FightLoaded/FightReady events)
- */
-export const usePssEvents = () => {
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const resetMatchData = usePssMatchStore((state) => state.resetMatchData);
-  const isLoaded = usePssMatchStore((state) => state.matchData.isLoaded);
-
-  // Function to fetch and process PSS events
-  const fetchAndProcessEvents = async () => {
-    try {
-      const result = await pssCommands.getEvents();
-      if (result.success && result.data && Array.isArray(result.data)) {
-        // Process all events
-        processPssEvents(result.data);
-      }
-    } catch (error) {
-      console.error('Error fetching PSS events:', error);
+// Tauri v2 invoke function
+const invoke = async (command: string, args?: any) => {
+  try {
+    if (typeof window !== 'undefined' && window.__TAURI__ && window.__TAURI__.core) {
+      return await window.__TAURI__.core.invoke(command, args);
     }
-  };
-
-  // Set up event listener
-  useEffect(() => {
-    // Initial fetch to check for existing match data
-    fetchAndProcessEvents();
-
-    // Only start polling if a match is already loaded
-    if (isLoaded) {
-      intervalRef.current = setInterval(fetchAndProcessEvents, 2000);
-    }
-
-    // Cleanup on unmount
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    };
-  }, [isLoaded]);
-
-  // Reset match data when component unmounts or when explicitly called
-  useEffect(() => {
-    return () => {
-      resetMatchData();
-    };
-  }, [resetMatchData]);
-
-  // Function to start polling (called when match is loaded)
-  const startPolling = () => {
-    if (!intervalRef.current) {
-      intervalRef.current = setInterval(fetchAndProcessEvents, 2000);
-    }
-  };
-
-  // Function to stop polling
-  const stopPolling = () => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-  };
-
-  return {
-    isLoaded,
-    fetchAndProcessEvents,
-    resetMatchData,
-    startPolling,
-    stopPolling,
-  };
+    throw new Error('Tauri v2 core module not available');
+  } catch (error) {
+    console.error('Tauri invoke failed:', error);
+    throw error;
+  }
 };
 
-/**
- * Hook to manually trigger PSS event processing
- * Useful for testing or manual updates
- */
-export const usePssEventProcessor = () => {
-  const processEvent = (event: any) => {
-    handlePssEvent(event);
+export interface PssEvent {
+  type: string;
+  description: string;
+  [key: string]: any;
+}
+
+export const usePssEvents = () => {
+  const {
+    setMatchLoaded,
+    updateAthletes,
+    updateMatchConfig,
+    updateScores,
+    updateCurrentScores,
+    updateWinnerRounds,
+    resetMatchData,
+  } = usePssMatchStore();
+
+  const listenerRef = useRef<any>(null);
+  const isListeningRef = useRef(false);
+
+  // Set up real-time PSS event listener using Tauri v2 (OBS pattern)
+  const setupEventListener = async () => {
+    if (isListeningRef.current) {
+      console.log('🔄 PSS event listener already active');
+      return;
+    }
+
+    try {
+      console.log('🎯 Setting up PSS event listener (OBS pattern)...');
+
+      // Ensure backend starts pushing events
+      await invoke('pss_setup_event_listener');
+
+      // Subscribe to events WITHOUT awaiting the promise (OBS pattern)
+      const promise = window.__TAURI__?.event.listen('pss_event', (event: any) => {
+        console.log('📡 Received PSS event:', event.payload);
+        handlePssEvent(event.payload);
+      });
+
+      if (promise) {
+        listenerRef.current = promise; // store promise for cleanup
+        isListeningRef.current = true;
+        console.log('✅ PSS event listener registration promise stored');
+      } else {
+        throw new Error('Tauri event API not available');
+      }
+    } catch (error) {
+      console.error('❌ Failed to setup PSS event listener:', error);
+    }
   };
 
-  const processEvents = (events: any[]) => {
-    processPssEvents(events);
+  // Clean up event listener
+  const cleanupEventListener = () => {
+    if (listenerRef.current) {
+      listenerRef.current.then((unlisten: () => void) => {
+        try {
+          unlisten();
+          console.log('🧹 PSS event listener cleaned up');
+        } catch (error) {
+          console.error('❌ Error cleaning up PSS event listener:', error);
+        }
+      });
+      listenerRef.current = null;
+      isListeningRef.current = false;
+    }
   };
+
+  // Fetch any pending events (fallback for missed events)
+  const fetchPendingEvents = async () => {
+    try {
+      console.log('📥 Fetching pending PSS events...');
+      const result = await pssCommands.getEvents();
+      console.log('📦 Received pending events result:', result);
+      
+      if (result.success && result.data && Array.isArray(result.data)) {
+        result.data.forEach((event: PssEvent) => {
+          console.log('🔄 Processing pending event:', event);
+          handlePssEvent(event);
+        });
+      } else {
+        console.log('📭 No pending events found');
+      }
+    } catch (error) {
+      console.error('❌ Error fetching pending events:', error);
+    }
+  };
+
+  // Manual event emission (for testing)
+  const emitTestEvent = async (eventData: any) => {
+    try {
+      await pssCommands.emitEvent(eventData);
+      console.log('📤 Test event emitted:', eventData);
+    } catch (error) {
+      console.error('❌ Error emitting test event:', error);
+    }
+  };
+
+  // Emit pending events to frontend
+  const emitPendingEvents = async () => {
+    try {
+      await pssCommands.emitPendingEvents();
+      console.log('📤 Pending events emitted to frontend');
+    } catch (error) {
+      console.error('❌ Error emitting pending events:', error);
+    }
+  };
+
+  useEffect(() => {
+    // Set up event listener when component mounts
+    setupEventListener();
+
+    // Clean up when component unmounts
+    return () => {
+      cleanupEventListener();
+    };
+  }, []);
 
   return {
-    processEvent,
-    processEvents,
+    setupEventListener,
+    cleanupEventListener,
+    fetchPendingEvents,
+    emitTestEvent,
+    emitPendingEvents,
   };
 }; 
