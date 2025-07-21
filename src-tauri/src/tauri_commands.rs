@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use tauri::{State, Manager, Emitter};
+use tauri::{State, Emitter};
 use crate::core::app::App;
 
 
@@ -817,9 +817,9 @@ pub async fn set_live_data_streaming(
     window: tauri::Window,
 ) -> Result<serde_json::Value, String> {
     log::info!("Setting live data streaming for {}: {}", subsystem, enabled);
-    
-    // Get the app handle for emitting events
-    let app_handle = window.app_handle();
+
+    // Clone window once for emitting events (available throughout function)
+    let app_handle = window.clone();
     
     if enabled {
         log::info!("Live data streaming enabled for subsystem: {}", subsystem);
@@ -902,37 +902,7 @@ pub async fn set_live_data_streaming(
             });
         }
         
-        // For UDP subsystem, we can start monitoring UDP events
-        if subsystem == "udp" {
-            let app_handle_clone = app_handle.clone();
-            let subsystem_clone = subsystem.clone();
-            let log_manager = app.log_manager().clone();
-            
-            tokio::spawn(async move {
-                loop {
-                    tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
-                    
-                    let event_data = format!("[{}] UDP Event: Datagram received", chrono::Utc::now().format("%H:%M:%S"));
-                    
-                    // Log to UDP subsystem file
-                    {
-                        let log_manager_guard = log_manager.lock().await;
-                        if let Err(e) = log_manager_guard.log(&subsystem_clone, "INFO", &event_data) {
-                            log::error!("Failed to log UDP event: {}", e);
-                        }
-                    }
-                    
-                    if let Err(e) = app_handle_clone.emit("live_data", serde_json::json!({
-                        "subsystem": subsystem_clone,
-                        "data": event_data,
-                        "timestamp": chrono::Utc::now().to_rfc3339()
-                    })) {
-                        log::error!("Failed to emit UDP live data event: {}", e);
-                        break;
-                    }
-                }
-            });
-        }
+        // For UDP subsystem we rely on real-time push from core::App handle_udp_events; no simulated loop here.
         
     } else {
         log::info!("Live data streaming disabled for subsystem: {}", subsystem);
@@ -1703,5 +1673,75 @@ pub async fn pss_setup_event_listener(window: tauri::Window) -> Result<(), Strin
         return Err("PSS event broadcaster not initialized".to_string());
     }
     
+    Ok(())
+} 
+
+#[tauri::command]
+pub async fn obs_setup_status_listener(window: tauri::Window, app: State<'_, Arc<App>>) -> Result<(), String> {
+    log::info!("Setting up OBS status listener for frontend");
+
+    let window_clone = window.clone();
+    let app_arc = app.inner().clone();
+    // Spawn background task (using cloned Arc<App>)
+    tokio::spawn(async move {
+        let mut last_payload = serde_json::Value::Null;
+        loop {
+            // Fetch current status
+            let status_result = app_arc.obs_plugin().get_obs_status().await;
+            if let Ok(status) = status_result {
+                let payload = serde_json::json!({
+                    "is_recording": status.is_recording,
+                    "is_streaming": status.is_streaming,
+                    "cpu_usage": status.cpu_usage,
+                    "recording_connection": status.recording_connection,
+                    "streaming_connection": status.streaming_connection,
+                });
+                // Emit only if changed
+                if payload != last_payload {
+                    if let Err(e) = window_clone.emit("obs_status", payload.clone()) {
+                        log::error!("Failed to emit obs_status: {}", e);
+                    }
+                    last_payload = payload;
+                }
+            } else if let Err(e) = status_result {
+                log::error!("OBS status fetch error: {}", e);
+            }
+            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+        }
+    });
+
+    Ok(())
+} 
+
+#[tauri::command]
+pub async fn cpu_setup_stats_listener(window: tauri::Window, app: State<'_, Arc<App>>) -> Result<(), String> {
+    log::info!("Setting up CPU stats listener for frontend");
+
+    let window_clone = window.clone();
+    let cpu_plugin = app.inner().cpu_monitor_plugin().clone();
+
+    tokio::spawn(async move {
+        let mut last_payload = serde_json::Value::Null;
+        loop {
+            let processes = cpu_plugin.get_process_cpu_data().await;
+            let system = cpu_plugin.get_system_cpu_data().await;
+
+            // Build JSON payload
+            let payload = serde_json::json!({
+                "processes": processes,
+                "system": system,
+            });
+
+            if payload != last_payload {
+                if let Err(e) = window_clone.emit("cpu_stats", payload.clone()) {
+                    log::error!("Failed to emit cpu_stats: {}", e);
+                }
+                last_payload = payload;
+            }
+
+            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+        }
+    });
+
     Ok(())
 } 

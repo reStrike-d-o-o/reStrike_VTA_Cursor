@@ -83,7 +83,8 @@ export const useLiveDataStore = create<LiveDataStore>()(
         };
         
         set((state) => ({
-          data: [...state.data, newEntry].slice(-state.maxEntries),
+          // Prepend new entries so newest appears first in UI
+          data: [newEntry, ...state.data].slice(0, state.maxEntries),
         }));
       },
 

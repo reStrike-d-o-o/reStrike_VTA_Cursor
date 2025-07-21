@@ -364,12 +364,19 @@ impl App {
             // Process different event types for logging
             match event {
                 crate::plugins::plugin_udp::PssEvent::Raw(message) => {
-                    // Log raw messages to PSS subsystem (they are PSS protocol messages)
-                    let event_str = format!("📡 Raw PSS message: {}", message);
-                    if let Err(e) = log_manager.lock().await.log("pss", "INFO", &event_str) {
+                    // Log raw UDP datagram content to both subsystems
+                    let raw_str = message.clone();
+                    // Store full datagram in udp log for easier debugging
+                    if let Err(e) = log_manager.lock().await.log("udp", "INFO", &raw_str) {
+                        log::error!("Failed to log raw UDP message: {}", e);
+                    }
+
+                    // Also keep the previously‐existing PSS raw log for protocol analysis
+                    let pss_str = format!("📡 Raw PSS message: {}", message);
+                    if let Err(e) = log_manager.lock().await.log("pss", "INFO", &pss_str) {
                         log::error!("Failed to log PSS raw message: {}", e);
                     }
-                    log::debug!("🎯 Raw PSS message: {}", message);
+                    log::debug!("🎯 Raw UDP datagram: {}", message);
                 }
                 _ => {
                     // Log parsed events to UDP subsystem (they are UDP server events)
@@ -415,6 +422,12 @@ impl App {
                     
                     if let Err(e) = log_manager.lock().await.log("udp", "INFO", &event_str) {
                         log::error!("Failed to log UDP event: {}", e);
+                    }
+
+                    // Also log parsed representation to PSS subsystem for easier protocol debugging
+                    let pss_event_str = format!("PSS Event: {}", event_str);
+                    if let Err(e) = log_manager.lock().await.log("pss", "INFO", &pss_event_str) {
+                        log::error!("Failed to log PSS parsed event: {}", e);
                     }
                     
                     log::info!("🎯 UDP event: {}", event_str);

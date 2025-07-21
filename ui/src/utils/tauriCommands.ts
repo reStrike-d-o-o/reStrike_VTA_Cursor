@@ -177,6 +177,13 @@ export const obsCommands = {
   async removeConnection(connectionName: string) {
     return executeTauriCommand('obs_remove_connection', { connectionName });
   },
+
+  /**
+   * Setup OBS status listener
+   */
+  async setupStatusListener(): Promise<TauriCommandResponse> {
+    return executeTauriCommand('obs_setup_status_listener');
+  },
 };
 
 // Configuration management commands
@@ -322,6 +329,16 @@ export const pssCommands = {
     } catch (error) {
       return { success: false, error: String(error) };
     }
+  },
+};
+
+// ============================================================================
+// CPU Monitor Commands
+// ============================================================================
+
+export const cpuCommands = {
+  async setupStatsListener(): Promise<TauriCommandResponse> {
+    return executeTauriCommand('cpu_setup_stats_listener');
   },
 };
 

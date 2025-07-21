@@ -3,6 +3,7 @@ import { diagLogsCommands, configCommands } from '../../utils/tauriCommands';
 import { useEnvironment } from '../../hooks/useEnvironment';
 import { useLiveDataStore, LiveDataType } from '../../stores/liveDataStore';
 import Toggle from '../atoms/Toggle';
+import { useLiveDataEvents } from '../../hooks/useLiveDataEvents';
 
 // Use the proper Tauri v2 invoke function
 const invoke = async (command: string, args?: any) => {
@@ -47,8 +48,9 @@ const LiveDataPanel: React.FC = () => {
   const [showFullEvents, setShowFullEvents] = useState(false);
   const [isLoadingSettings, setIsLoadingSettings] = useState(true);
   const liveDataRef = useRef<HTMLDivElement>(null);
+  // Polling removed – backend now pushes events via Tauri
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const [autoScroll, setAutoScroll] = useState(true);
+  const [autoScroll, setAutoScroll] = useState(false);
 
   // Load live data settings from configuration
   const loadLiveDataSettings = async () => {
@@ -183,33 +185,7 @@ const LiveDataPanel: React.FC = () => {
     }
   }, [data, autoScroll]);
 
-  // Polling function to fetch live data - for OBS and UDP status updates
-  const fetchLiveData = async () => {
-    try {
-      if (selectedType === 'obs' || selectedType === 'udp' || selectedType === 'pss') {
-        const result = await invoke('get_live_data', { subsystem: selectedType });
-        
-        if (result && result.success && result.data) {
-          // Only add data if there are actual changes
-          const formattedData = formatLiveData(result.data);
-          
-          // Check if this is different from the last status
-          const lastEntry = data[data.length - 1];
-          if (!lastEntry || lastEntry.data !== formattedData) {
-            addData({
-              subsystem: selectedType,
-              data: formattedData,
-              type: 'info'
-            });
-          }
-        }
-      }
-      // For other subsystems, don't poll - only show real events
-    } catch (error) {
-      console.error('Failed to fetch live data:', error);
-      setError(`Failed to fetch live data: ${error}`);
-    }
-  };
+  // Polling removed – no longer required
 
   // Format live data for display
   const formatLiveData = (data: any): string => {
@@ -244,25 +220,11 @@ const LiveDataPanel: React.FC = () => {
     const setupStreaming = async () => {
       try {
         if (tauriAvailable) {
-          // Skip the setLiveDataStreaming command for now and go straight to polling
-          // This command might not be necessary for our polling approach
-          
-          clearData();
-          
-          if (enabled && (selectedType === 'obs' || selectedType === 'udp' || selectedType === 'pss')) {
-            // Start polling for status every 5 seconds (less frequent)
-            pollingIntervalRef.current = setInterval(fetchLiveData, 5000);
-            
-            // Fetch initial data immediately
-            await fetchLiveData();
-          } else if (enabled) {
-            // For other subsystems, don't poll - only show real events
-          } else {
-            // Stop polling
-            if (pollingIntervalRef.current) {
-              clearInterval(pollingIntervalRef.current);
-              pollingIntervalRef.current = null;
-            }
+          // Tell backend to start / stop streaming for selected subsystem
+          try {
+            await diagLogsCommands.setLiveDataStreaming(selectedType, enabled);
+          } catch (err) {
+            console.error('setLiveDataStreaming error:', err);
           }
         } else {
           setError('Tauri not available - running in web mode');
@@ -278,19 +240,15 @@ const LiveDataPanel: React.FC = () => {
     setupStreaming();
 
     return () => {
-      // Cleanup polling interval
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-        pollingIntervalRef.current = null;
-      }
-      
+      // Ensure backend stops pushing events when component unmounts
       if (tauriAvailable) {
-        diagLogsCommands.setLiveDataStreaming(selectedType, false).catch((err: any) => {
-          console.error('Error stopping streaming:', err);
-        });
+        diagLogsCommands.setLiveDataStreaming(selectedType, false).catch(() => {});
       }
     };
   }, [enabled, selectedType, tauriAvailable]);
+
+  // Subscribe to pushed live_data events (filtered by current type)
+  useLiveDataEvents(enabled, selectedType);
 
   const handleToggle = async () => {
     clearError();
@@ -301,6 +259,7 @@ const LiveDataPanel: React.FC = () => {
 
   const handleTypeChange = (newType: LiveDataType) => {
     clearError();
+    clearData(); // wipe previous log when type changes
     setSelectedType(newType);
   };
 
@@ -385,12 +344,16 @@ const LiveDataPanel: React.FC = () => {
             setAutoScroll(atBottom);
           }}
         >
-          {data.length === 0 ? 'No live data available. Enable streaming to see data.' : 
-            data.map((entry, index) => (
-              <div key={index} className="mb-1">
-                <span className="text-green-600">[{entry.timestamp}]</span> {entry.data}
-              </div>
-            ))
+          {data.filter(e => e.subsystem === selectedType).length === 0 ? 'No live data available. Enable streaming to see data.' : 
+            data.filter(e => e.subsystem === selectedType).map((entry, index) => {
+              const color = entry.type === 'error' ? 'text-red-400' : entry.type === 'warning' ? 'text-yellow-300' : entry.type === 'debug' ? 'text-blue-300' : 'text-green-400';
+              const emoji = entry.type === 'error' ? '❌' : entry.type === 'warning' ? '⚠️' : entry.type === 'debug' ? '🐞' : '📡';
+              return (
+                <div key={index} className={`mb-1 ${color}`}>
+                  <span className="text-green-600">[{entry.timestamp}]</span> {emoji} {entry.data}
+                </div>
+              );
+            })
           }
         </div>
         {data.length > 0 && (

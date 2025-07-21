@@ -70,6 +70,8 @@ async fn main() -> AppResult<()> {
             tauri_commands::obs_get_connection_status,
             tauri_commands::obs_get_connections,
             tauri_commands::obs_emit_event,
+            tauri_commands::obs_setup_status_listener,
+            tauri_commands::cpu_setup_stats_listener,
             
             // Video commands - Fixed names
             tauri_commands::video_play,
