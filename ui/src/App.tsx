@@ -21,14 +21,16 @@ const App: React.FC = () => {
     console.log('  - Window Tauri:', typeof window !== 'undefined' ? window.__TAURI__ : 'N/A');
   }, [tauriAvailable, environment, isLoading]);
 
-  // Set up PSS event listener when Tauri is available
+  // Set up PSS event listener when Tauri is available (run once)
+  const hasInitRef = React.useRef(false);
   React.useEffect(() => {
+    if (hasInitRef.current) return;
+
     if (tauriAvailable && !isLoading) {
       console.log('🚀 Setting up PSS event system...');
       setupEventListener();
-      
-      // Fetch any pending events that might have been missed
       fetchPendingEvents();
+      hasInitRef.current = true;
     }
   }, [tauriAvailable, isLoading, setupEventListener, fetchPendingEvents]);
   

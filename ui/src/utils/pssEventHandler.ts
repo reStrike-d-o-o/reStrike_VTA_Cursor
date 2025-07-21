@@ -186,13 +186,17 @@ const handleFightLoadedEvent = (event: any, store: any) => {
   }
 };
 
+// Internal state to avoid duplicate logs
+let lastFightReadyEmitted = false;
+
 /**
  * Handle FightReady event from PSS
  * Indicates match is ready to start
  */
 const handleFightReadyEvent = (event: any, store: any) => {
   try {
-    // Could add additional logic here if needed
+    if (lastFightReadyEmitted) return;
+    lastFightReadyEmitted = true;
     console.log('Fight is ready to start');
   } catch (error) {
     console.error('Error handling fight ready event:', error);
