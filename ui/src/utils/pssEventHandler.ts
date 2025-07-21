@@ -197,7 +197,6 @@ const handleFightReadyEvent = (event: any, store: any) => {
   try {
     if (lastFightReadyEmitted) return;
     lastFightReadyEmitted = true;
-    console.log('Fight is ready to start');
   } catch (error) {
     console.error('Error handling fight ready event:', error);
   }

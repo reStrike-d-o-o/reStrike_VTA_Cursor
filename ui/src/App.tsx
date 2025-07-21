@@ -14,11 +14,11 @@ const App: React.FC = () => {
   
   // Debug environment detection
   React.useEffect(() => {
-    console.log('🌍 App Environment Detection:');
-    console.log('  - Tauri Available:', tauriAvailable);
-    console.log('  - Environment:', environment);
-    console.log('  - Is Loading:', isLoading);
-    console.log('  - Window Tauri:', typeof window !== 'undefined' ? window.__TAURI__ : 'N/A');
+    // console.log('🌍 App Environment Detection:');
+    // console.log('  - Tauri Available:', tauriAvailable);
+    // console.log('  - Environment:', environment);
+    // console.log('  - Is Loading:', isLoading);
+    // console.log('  - Window Tauri:', typeof window !== 'undefined' ? window.__TAURI__ : 'N/A');
   }, [tauriAvailable, environment, isLoading]);
 
   // Set up PSS event listener when Tauri is available (run once)
@@ -27,7 +27,7 @@ const App: React.FC = () => {
     if (hasInitRef.current) return;
 
     if (tauriAvailable && !isLoading) {
-      console.log('🚀 Setting up PSS event system...');
+      // console.log('🚀 Setting up PSS event system...');
       setupEventListener();
       fetchPendingEvents();
       hasInitRef.current = true;

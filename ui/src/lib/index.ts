@@ -29,16 +29,21 @@ export const APP_VERSION = '0.1.0';
 export const IS_WINDOWS = typeof window !== 'undefined' && window.__TAURI__;
 
 // Application initialization
-export const initializeApp = async () => {
-  console.log(`🚀 Initializing ${APP_NAME} v${APP_VERSION}`);
-  
-  if (IS_WINDOWS) {
-    console.log('✅ Windows environment detected');
-    // Initialize Windows-specific features
-  } else {
-    console.log('🌐 Web environment detected');
-    // Initialize web-specific features
+export const initializeApp = async (): Promise<void> => {
+  try {
+    // console.log(`🚀 Initializing ${APP_NAME} v${APP_VERSION}`);
+    
+    if (IS_WINDOWS) {
+      // console.log('✅ Windows environment detected');
+      // Windows-specific initialization
+    } else {
+      // console.log('🌐 Web environment detected');
+      // Web-specific initialization
+    }
+    
+    // console.log(`✅ ${APP_NAME} initialized successfully`);
+  } catch (error) {
+    console.error('Failed to initialize app:', error);
+    throw error;
   }
-  
-  console.log(`✅ ${APP_NAME} initialized successfully`);
 }; 

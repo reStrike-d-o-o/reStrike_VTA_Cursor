@@ -5,6 +5,7 @@ import Button from '../atoms/Button';
 import Label from '../atoms/Label';
 import { StatusDot } from '../atoms/StatusDot';
 import { Icon } from '../atoms/Icon';
+import { useEnvironment } from '../../hooks/useEnvironment';
 
 interface Event {
   id: string;
@@ -16,6 +17,8 @@ interface Event {
 }
 
 const SidebarTest: React.FC = () => {
+  const { tauriAvailable, environment } = useEnvironment();
+  const [isVisible, setIsVisible] = useState(false);
   const { obsConnections } = useAppStore();
   const [events, setEvents] = useState<Event[]>([]);
   const [filteredEvents, setFilteredEvents] = useState<Event[]>([]);
@@ -24,15 +27,21 @@ const SidebarTest: React.FC = () => {
 
   // Windows-specific initialization
   useEffect(() => {
-    console.log('Initializing Windows-only sidebar component');
-    initializeWindowsFeatures();
-  }, []);
+    // console.log('Initializing Windows-only sidebar component');
+    
+    if (tauriAvailable && environment === 'windows') {
+      // console.log('✅ Tauri environment detected for sidebar');
+      setIsVisible(true);
+    } else {
+      setIsVisible(false);
+    }
+  }, [tauriAvailable, environment]);
 
   const initializeWindowsFeatures = async () => {
     try {
       // Initialize Tauri commands for real-time data
       if (window.__TAURI__) {
-        console.log('✅ Tauri environment detected for sidebar');
+        // console.log('✅ Tauri environment detected for sidebar');
         
         // Initialize PSS protocol listener
         // Initialize real-time event processing

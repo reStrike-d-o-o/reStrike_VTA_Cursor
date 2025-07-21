@@ -83,13 +83,15 @@ const DockBar: React.FC = () => {
             <div className="relative z-10" style={{ minHeight: '32px', minWidth: '32px' }}>
               <img 
                 src="/assets/img/logo.png" 
-                alt="reStrike Logo" 
-                className="h-16 w-auto object-contain"
+                alt="reStrike VTA Logo" 
+                className="h-8 w-auto object-contain"
                 onError={(e) => {
-                  console.log('Logo failed to load:', e);
+                  // console.log('Logo failed to load:', e);
                   e.currentTarget.style.display = 'none';
                 }}
-                onLoad={() => console.log('Logo loaded successfully')}
+                onLoad={() => {
+                  // console.log('Logo loaded successfully');
+                }}
               />
             </div>
           </div>

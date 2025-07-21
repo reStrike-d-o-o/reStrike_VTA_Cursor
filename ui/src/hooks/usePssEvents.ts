@@ -39,28 +39,15 @@ export const usePssEvents = () => {
   // Set up real-time PSS event listener using Tauri v2 (OBS pattern)
   const setupEventListener = async () => {
     if (isListeningRef.current) {
-      console.log('🔄 PSS event listener already active');
       return;
     }
 
     try {
-      console.log('🎯 Setting up PSS event listener (OBS pattern)...');
-
-      // Ensure backend starts pushing events
-      await invoke('pss_setup_event_listener');
-
-      // Subscribe to events WITHOUT awaiting the promise (OBS pattern)
-      const promise = window.__TAURI__?.event.listen('pss_event', (event: any) => {
-        console.log('📡 Received PSS event:', event.payload);
-        handlePssEvent(event.payload);
-      });
-
-      if (promise) {
-        listenerRef.current = promise; // store promise for cleanup
+      const unlisten = await invoke('pss_setup_event_listener');
+      
+      if (unlisten) {
+        listenerRef.current = unlisten;
         isListeningRef.current = true;
-        console.log('✅ PSS event listener registration promise stored');
-      } else {
-        throw new Error('Tauri event API not available');
       }
     } catch (error) {
       console.error('❌ Failed to setup PSS event listener:', error);
@@ -73,7 +60,6 @@ export const usePssEvents = () => {
       listenerRef.current.then((unlisten: () => void) => {
         try {
           unlisten();
-          console.log('🧹 PSS event listener cleaned up');
         } catch (error) {
           console.error('❌ Error cleaning up PSS event listener:', error);
         }
@@ -86,17 +72,13 @@ export const usePssEvents = () => {
   // Fetch any pending events (fallback for missed events)
   const fetchPendingEvents = async () => {
     try {
-      console.log('📥 Fetching pending PSS events...');
       const result = await pssCommands.getEvents();
-      console.log('📦 Received pending events result:', result);
       
       if (result.success && result.data && Array.isArray(result.data)) {
         result.data.forEach((event: PssEvent) => {
-          console.log('🔄 Processing pending event:', event);
           handlePssEvent(event);
         });
       } else {
-        console.log('📭 No pending events found');
       }
     } catch (error) {
       console.error('❌ Error fetching pending events:', error);
@@ -107,7 +89,6 @@ export const usePssEvents = () => {
   const emitTestEvent = async (eventData: any) => {
     try {
       await pssCommands.emitEvent(eventData);
-      console.log('📤 Test event emitted:', eventData);
     } catch (error) {
       console.error('❌ Error emitting test event:', error);
     }
@@ -117,7 +98,6 @@ export const usePssEvents = () => {
   const emitPendingEvents = async () => {
     try {
       await pssCommands.emitPendingEvents();
-      console.log('📤 Pending events emitted to frontend');
     } catch (error) {
       console.error('❌ Error emitting pending events:', error);
     }
