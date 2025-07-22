@@ -1826,23 +1826,3 @@ pub async fn get_screen_size() -> Result<serde_json::Value, String> {
         "height": 1080
     }))
 } 
-
-/// Debug command to show raw ipconfig output
-#[tauri::command]
-pub async fn debug_ipconfig_output() -> Result<serde_json::Value, String> {
-    use std::process::Command;
-    
-    match Command::new("ipconfig").arg("/all").output() {
-        Ok(output) => {
-            let output_str = String::from_utf8_lossy(&output.stdout);
-            Ok(serde_json::json!({
-                "success": true,
-                "output": output_str.to_string()
-            }))
-        }
-        Err(e) => Ok(serde_json::json!({
-            "success": false,
-            "error": e.to_string()
-        }))
-    }
-} 
