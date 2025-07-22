@@ -4,6 +4,7 @@ import AdvancedPanel from './components/layouts/AdvancedPanel';
 import { useAppStore } from './stores';
 import { useEnvironment } from './hooks/useEnvironment';
 import { usePssEvents } from './hooks/usePssEvents';
+import { invoke } from '@tauri-apps/api/core';
 
 const App: React.FC = () => {
   const isAdvancedPanelOpen = useAppStore((state) => state.isAdvancedPanelOpen);
@@ -23,10 +24,15 @@ const App: React.FC = () => {
     // console.log('  - Window Tauri:', typeof window !== 'undefined' ? window.__TAURI__ : 'N/A');
   }, [tauriAvailable, environment, isLoading]);
 
-  // Load window settings on startup
+  // Load window settings and set startup position
   React.useEffect(() => {
     if (tauriAvailable && !isLoading) {
       loadWindowSettings();
+      
+      // Set window to startup position (x=1, y=1)
+      invoke('set_window_startup_position').catch((error) => {
+        console.error('Failed to set window startup position:', error);
+      });
     }
   }, [tauriAvailable, isLoading, loadWindowSettings]);
 

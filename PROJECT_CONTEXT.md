@@ -5,7 +5,9 @@ reStrike VTA is a Windows-only native desktop application designed for instant v
 
 ## Current Status (Updated: 2025-01-28)
 
-### ✅ **Recently Completed - Real-Time Event System & UI Enhancements**
+### ✅ **Recently Completed - Window Management & Network Interface System**
+- **Window Positioning**: Fixed app startup position to screen coordinates x=1, y=1
+- **Network Interface Detection**: Complete UDP/PSS network interface system with ⭐ Recommended status
 - **Real-Time PSS Events**: Implemented push-based event system using Tauri v2 event listeners
 - **Window Management**: Dynamic window sizing with compact (350x1080) and fullscreen modes
 - **Authentication System**: Password-protected Advanced mode ("reStrike") and Manual mode ("el Manuel")
@@ -37,6 +39,8 @@ The project is now in excellent shape with:
 - Comprehensive documentation
 - Stable build pipeline
 - Complete core infrastructure with advanced UI features
+- **Window positioning system** with consistent startup behavior
+- **Network interface detection** with optimal interface selection
 
 **Ready to proceed with next feature development or enhancement phase.**
 
@@ -69,7 +73,7 @@ cargo tauri dev
 This single command:
 1. Starts the React development server (port 3000)
 2. Builds the Rust backend
-3. Launches the native Windows application
+3. Launches the native Windows application at position x=1, y=1
 4. Enables hot reload for both frontend and backend
 
 ### Alternative Manual Start
@@ -97,7 +101,7 @@ cargo tauri build
 - **OBS Integration**: Seamless connection with OBS Studio and status monitoring
 - **Flag Management**: Country flag recognition and display with 253+ IOC flags
 - **Advanced Panel**: Comprehensive settings and diagnostics with tabbed interface
-- **Window Management**: Dynamic window sizing with authentication protection
+- **Window Management**: Dynamic window sizing with authentication protection and consistent positioning
 
 ### UI Components
 - **DockBar**: Main sidebar with player info, controls, and authentication
@@ -116,7 +120,8 @@ cargo tauri build
 - **Type Safety**: Full TypeScript and Rust type safety
 - **Flag System**: IOC flag integration with PSS code mapping
 - **Real-Time Events**: Push-based event system using Tauri v2
-- **Window Management**: Dynamic sizing with authentication
+- **Window Management**: Dynamic sizing with authentication and consistent positioning
+- **Network Interface Detection**: Optimal interface selection with ⭐ Recommended status
 
 ## Project Organization
 
@@ -135,7 +140,7 @@ reStrike_VTA_Cursor/
 │   └── tauri.conf.json          # Tauri configuration
 ├── ui/                          # React frontend
 │   ├── src/components/          # Atomic design components
-│   │   ├── atoms/               # Basic UI elements (Button, Input, etc.)
+│   │   ├── atoms/               # Basic UI elements (Button, Input, Checkbox, etc.)
 │   │   ├── molecules/           # Compound components
 │   │   ├── organisms/           # Complex components
 │   │   └── layouts/             # Layout components
@@ -218,6 +223,8 @@ The application automatically detects its running environment:
 2. **Event System**: Implement PSS protocol event handling ✅
 3. **Video Player**: Integrate mpv video player
 4. **Flag Management**: Complete flag recognition system ✅
+5. **Window Management**: Consistent positioning and sizing ✅
+6. **Network Interface**: Optimal interface detection ✅
 
 ### Future Enhancements
 1. **AI Integration**: Automated event analysis

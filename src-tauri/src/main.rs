@@ -154,6 +154,8 @@ async fn main() -> AppResult<()> {
             tauri_commands::set_window_fullscreen,
             tauri_commands::set_window_compact,
             tauri_commands::set_window_custom_size,
+            tauri_commands::set_window_position,
+            tauri_commands::set_window_startup_position,
             tauri_commands::save_window_settings,
             tauri_commands::load_window_settings,
             tauri_commands::get_screen_size,
