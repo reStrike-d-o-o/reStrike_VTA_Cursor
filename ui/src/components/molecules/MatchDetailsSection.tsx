@@ -41,6 +41,19 @@ const MatchDetailsSection: React.FC = () => {
   const matchDivision = usePssMatchStore((state) => state.getMatchDivision());
   const isLoaded = usePssMatchStore((state) => state.matchData.isLoaded);
 
+  // Debug logging
+  React.useEffect(() => {
+    console.log('🎯 MatchDetailsSection updated:', {
+      athlete1,
+      athlete2,
+      matchNumber,
+      matchCategory,
+      matchWeight,
+      matchDivision,
+      isLoaded
+    });
+  }, [athlete1, athlete2, matchNumber, matchCategory, matchWeight, matchDivision, isLoaded]);
+
   // Use PSS data if available, otherwise fallback to dummy data
   const player1 = athlete1 ? {
     ioc: athlete1.iocCode,

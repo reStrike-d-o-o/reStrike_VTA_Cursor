@@ -3,19 +3,6 @@ import { usePssMatchStore } from '../stores/pssMatchStore';
 import { handlePssEvent } from '../utils/pssEventHandler';
 import { pssCommands } from '../utils/tauriCommands';
 
-// Tauri v2 invoke function
-const invoke = async (command: string, args?: any) => {
-  try {
-    if (typeof window !== 'undefined' && window.__TAURI__ && window.__TAURI__.core) {
-      return await window.__TAURI__.core.invoke(command, args);
-    }
-    throw new Error('Tauri v2 core module not available');
-  } catch (error) {
-    console.error('Tauri invoke failed:', error);
-    throw error;
-  }
-};
-
 export interface PssEvent {
   type: string;
   description: string;
@@ -36,18 +23,26 @@ export const usePssEvents = () => {
   const listenerRef = useRef<any>(null);
   const isListeningRef = useRef(false);
 
-  // Set up real-time PSS event listener using Tauri v2 (OBS pattern)
+  // Set up real-time PSS event listener using Tauri v2
   const setupEventListener = async () => {
     if (isListeningRef.current) {
       return;
     }
 
     try {
-      const unlisten = await invoke('pss_setup_event_listener');
+      // Set up the event listener on the backend
+      await pssCommands.setupEventListener();
       
-      if (unlisten) {
+      // Listen for PSS events from the backend
+      if (typeof window !== 'undefined' && window.__TAURI__ && window.__TAURI__.event) {
+        const unlisten = await window.__TAURI__.event.listen('pss_event', (event: any) => {
+          console.log('📡 Received PSS event:', event.payload);
+          handlePssEvent(event.payload);
+        });
+        
         listenerRef.current = unlisten;
         isListeningRef.current = true;
+        console.log('✅ PSS event listener setup complete');
       }
     } catch (error) {
       console.error('❌ Failed to setup PSS event listener:', error);
@@ -57,15 +52,14 @@ export const usePssEvents = () => {
   // Clean up event listener
   const cleanupEventListener = () => {
     if (listenerRef.current) {
-      listenerRef.current.then((unlisten: () => void) => {
-        try {
-          unlisten();
-        } catch (error) {
-          console.error('❌ Error cleaning up PSS event listener:', error);
-        }
-      });
-      listenerRef.current = null;
-      isListeningRef.current = false;
+      try {
+        listenerRef.current();
+        listenerRef.current = null;
+        isListeningRef.current = false;
+        console.log('🧹 PSS event listener cleaned up');
+      } catch (error) {
+        console.error('❌ Error cleaning up PSS event listener:', error);
+      }
     }
   };
 
@@ -75,10 +69,10 @@ export const usePssEvents = () => {
       const result = await pssCommands.getEvents();
       
       if (result.success && result.data && Array.isArray(result.data)) {
+        console.log('📋 Fetching pending events:', result.data.length);
         result.data.forEach((event: PssEvent) => {
           handlePssEvent(event);
         });
-      } else {
       }
     } catch (error) {
       console.error('❌ Error fetching pending events:', error);
