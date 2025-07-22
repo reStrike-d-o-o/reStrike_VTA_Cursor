@@ -6,6 +6,21 @@ This document describes the backend architecture and plugin system of reStrike V
 
 ## Current Status ✅
 
+### **Real-Time Event System - COMPLETE**
+- **Push-Based Events**: Implemented `window.emit` for real-time event streaming to frontend
+- **PSS Event Listener**: `pss_setup_event_listener` command for real-time PSS event handling
+- **OBS Status Listener**: `obs_setup_status_listener` for real-time OBS status updates
+- **CPU Stats Listener**: `cpu_setup_stats_listener` for real-time system monitoring
+- **Live Data Streaming**: Real-time log streaming with subsystem filtering
+- **Event Emission**: Proper event emission using Tauri v2 event system
+
+### **Window Management System - COMPLETE**
+- **Dynamic Window Sizing**: `set_window_fullscreen`, `set_window_compact`, `set_window_custom_size`
+- **Window Persistence**: `save_window_settings`, `load_window_settings` for cross-session persistence
+- **Screen Size Detection**: `get_screen_size` for adaptive window sizing
+- **Compact Mode**: Default 350x1080 dimensions with resizable option
+- **Fullscreen Mode**: Custom dimensions with Advanced panel integration
+
 ### **Plugin Architecture - COMPLETE**
 - **Modular Design**: All functionality organized into plugins
 - **Clear Separation**: Each plugin handles specific domain
@@ -21,6 +36,8 @@ This document describes the backend architecture and plugin system of reStrike V
 - **Production Ready**: Backend ready for production deployment
 
 ### **Recent Major Updates (2025-01-28)**
+- **Real-Time Events**: Implemented push-based event system using Tauri v2
+- **Window Management**: Complete window sizing and persistence system
 - **Code Cleanup**: Removed unused imports and optimized build process
 - **Build Optimization**: Achieved clean compilation for backend
 - **Tab System Integration**: Frontend tab system working with backend plugins
@@ -36,7 +53,7 @@ This document describes the backend architecture and plugin system of reStrike V
 src-tauri/src/
 ├── main.rs                 # Tauri app entry point
 ├── lib.rs                  # Library exports and plugin registration
-├── tauri_commands.rs       # Tauri command definitions
+├── tauri_commands.rs       # Tauri command definitions (1815 lines)
 ├── core/                   # Core application functionality
 │   ├── app.rs             # Application state and lifecycle
 │   ├── config.rs          # Configuration management
@@ -86,6 +103,108 @@ src-tauri/src/
     └── overlay.rs         # Video overlay system
 ```
 
+## Tauri Commands (1815 lines)
+
+### **Core App Commands**
+- `get_app_status`: Get application status
+- `shutdown_app`: Graceful application shutdown
+
+### **UDP Commands**
+- `start_udp_server`: Start UDP server for PSS events
+- `stop_udp_server`: Stop UDP server
+- `get_udp_status`: Get UDP server status
+
+### **OBS Commands**
+- `obs_connect`: Connect to OBS WebSocket
+- `obs_add_connection`: Add OBS connection configuration
+- `obs_connect_to_connection`: Connect to specific OBS instance
+- `obs_get_connection_status`: Get connection status
+- `obs_get_connections`: List all OBS connections
+- `obs_disconnect`: Disconnect from OBS
+- `obs_remove_connection`: Remove OBS connection
+- `obs_get_status`: Get OBS recording/streaming status
+- `obs_start_recording`: Start OBS recording
+- `obs_stop_recording`: Stop OBS recording
+- `obs_setup_status_listener`: Set up real-time OBS status monitoring
+
+### **PSS Commands**
+- `pss_start_listener`: Start PSS UDP listener
+- `pss_stop_listener`: Stop PSS listener
+- `pss_get_events`: Get PSS events
+- `pss_emit_event`: Emit PSS event to frontend
+- `pss_emit_pending_events`: Emit pending events
+- `pss_setup_event_listener`: Set up real-time PSS event listener
+
+### **Window Management Commands**
+- `set_window_fullscreen`: Set window to fullscreen mode
+- `set_window_compact`: Set window to compact mode (350x1080)
+- `set_window_custom_size`: Set custom window dimensions
+- `save_window_settings`: Save window settings to persistent storage
+- `load_window_settings`: Load window settings from storage
+- `get_screen_size`: Get screen dimensions
+
+### **System Commands**
+- `system_get_info`: Get system information
+- `system_open_file_dialog`: Open file dialog
+- `get_network_interfaces`: List network interfaces
+- `get_best_network_interface`: Get optimal network interface
+
+### **Logging Commands**
+- `list_log_files`: List available log files
+- `download_log_file`: Download specific log file
+- `list_archives`: List log archives
+- `extract_archive`: Extract log archive
+- `download_archive`: Download log archive
+
+### **Live Data Commands**
+- `set_live_data_streaming`: Enable/disable live data streaming
+- `start_live_data`: Start live data for subsystem
+- `stop_live_data`: Stop live data for subsystem
+- `get_live_data`: Get live data for subsystem
+
+### **CPU Monitoring Commands**
+- `cpu_get_process_data`: Get process CPU usage
+- `cpu_get_system_data`: Get system CPU usage
+- `cpu_get_obs_usage`: Get OBS CPU usage
+- `cpu_update_config`: Update CPU monitoring configuration
+- `cpu_test_plugin`: Test CPU monitoring plugin
+- `cpu_enable_monitoring`: Enable CPU monitoring
+- `cpu_disable_monitoring`: Disable CPU monitoring
+- `cpu_get_monitoring_status`: Get monitoring status
+- `cpu_setup_stats_listener`: Set up real-time CPU stats
+
+### **Protocol Commands**
+- `protocol_get_versions`: Get available protocol versions
+- `protocol_set_active_version`: Set active protocol version
+- `protocol_upload_file`: Upload protocol file
+- `protocol_delete_version`: Delete protocol version
+- `protocol_export_file`: Export protocol file
+- `protocol_get_current`: Get current protocol
+
+### **Configuration Commands**
+- `get_settings`: Get application settings
+- `update_settings`: Update application settings
+- `get_config_stats`: Get configuration statistics
+- `reset_settings`: Reset to default settings
+- `export_settings`: Export settings to file
+- `import_settings`: Import settings from file
+- `restore_settings_backup`: Restore from backup
+
+### **Video Commands**
+- `video_play`: Play video file
+- `video_stop`: Stop video playback
+- `video_get_info`: Get video information
+- `extract_clip`: Extract video clip
+
+### **License Commands**
+- `activate_license`: Activate license key
+- `validate_license`: Validate license
+- `get_license_status`: Get license status
+
+### **Flag Commands**
+- `get_flag_url`: Get flag URL for IOC code
+- `download_flags`: Download flag images
+
 ## Plugin Details
 
 ### **OBS Plugin (`plugin_obs.rs`)**
@@ -97,6 +216,7 @@ src-tauri/src/
   - Real-time status monitoring
   - Secure password handling
   - Multiple OBS instance support
+  - Real-time status listener for frontend updates
 - **Error Handling**: AppResult<T> with AppError variants
 - **Configuration**: Persistent connection settings
 
@@ -107,6 +227,7 @@ src-tauri/src/
   - Real-time event processing
   - Event filtering and validation
   - Connection status monitoring
+  - Live data streaming to frontend
 - **Integration**: Works with PSS plugin for event handling
 
 ### **PSS Plugin (`plugin_pss.rs`)**
@@ -115,8 +236,9 @@ src-tauri/src/
   - PSS protocol parsing and validation
   - Event type detection and categorization
   - Country code mapping (PSS to IOC codes)
-  - Real-time event streaming
+  - Real-time event streaming to frontend
   - Event storage and retrieval
+  - Event listener setup for real-time updates
 - **Flag Integration**: Uses IOC flag codes for country identification
 
 ### **Playback Plugin (`plugin_playback.rs`)**
@@ -145,6 +267,7 @@ src-tauri/src/
   - System performance metrics
   - Real-time status reporting
   - Resource alerting
+  - Real-time stats listener for frontend
 
 ### **License Plugin (`plugin_license.rs`)**
 - **Purpose**: License management and validation
@@ -193,6 +316,7 @@ pub struct AppConfig {
     pub pss_settings: PssSettings,
     pub playback_settings: PlaybackSettings,
     pub logging_settings: LoggingSettings,
+    pub window_settings: WindowSettings,
 }
 ```
 
@@ -209,7 +333,7 @@ pub struct AppConfig {
 - **Multi-subsystem Logging**: Separate loggers for each plugin
 - **File Rotation**: Automatic log file rotation
 - **Archive Management**: Log archiving and compression
-- **Live Data Streaming**: Real-time log streaming
+- **Live Data Streaming**: Real-time log streaming to frontend
 - **Diagnostic Tools**: Built-in diagnostic utilities
 
 ### **Log Levels**
@@ -242,6 +366,7 @@ pub async fn get_obs_connections() -> AppResult<Vec<ObsConnection>> {
 - **Flag Management**: IOC flag integration with PSS codes
 - **Advanced Panel**: System diagnostics and configuration
 - **Status Indicators**: Real-time system status
+- **Window Management**: Dynamic window sizing and persistence
 
 ## Development Guidelines
 
@@ -323,5 +448,5 @@ pub async fn get_obs_connections() -> AppResult<Vec<ObsConnection>> {
 ---
 
 **Last Updated**: 2025-01-28  
-**Status**: Complete plugin architecture with comprehensive error handling  
-**Focus**: Maintainable, scalable backend architecture 
+**Status**: Complete plugin architecture with real-time event system and window management  
+**Focus**: Maintainable, scalable backend architecture with comprehensive Tauri integration 
