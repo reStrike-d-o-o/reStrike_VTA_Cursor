@@ -8,16 +8,31 @@ pub struct NetworkInterface {
     pub name: String,
     pub interface_type: InterfaceType,
     pub ip_addresses: Vec<IpAddr>,
+    pub subnet_masks: Vec<String>,
+    pub default_gateway: Option<String>,
+    pub dns_suffix: Option<String>,
+    pub media_state: MediaState,
     pub is_up: bool,
     pub is_loopback: bool,
+    pub description: Option<String>,
 }
 
 /// Network interface types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Copy)]
 pub enum InterfaceType {
     Ethernet,
     WiFi,
     Loopback,
+    Bluetooth,
+    Virtual,
+    Unknown,
+}
+
+/// Media state of network interface
+#[derive(Debug, Clone, PartialEq, Copy)]
+pub enum MediaState {
+    Connected,
+    Disconnected,
     Unknown,
 }
 
@@ -27,7 +42,19 @@ impl From<&str> for InterfaceType {
             "ethernet" | "eth" | "lan" => InterfaceType::Ethernet,
             "wifi" | "wireless" | "wlan" => InterfaceType::WiFi,
             "loopback" | "lo" => InterfaceType::Loopback,
+            "bluetooth" | "bt" => InterfaceType::Bluetooth,
+            "virtual" | "vpn" | "tunnel" => InterfaceType::Virtual,
             _ => InterfaceType::Unknown,
+        }
+    }
+}
+
+impl From<&str> for MediaState {
+    fn from(s: &str) -> Self {
+        match s.to_lowercase().as_str() {
+            "media disconnected" => MediaState::Disconnected,
+            "connected" | "up" => MediaState::Connected,
+            _ => MediaState::Unknown,
         }
     }
 }
@@ -67,7 +94,7 @@ impl NetworkDetector {
         let mut candidates = Vec::new();
         
         for interface in interfaces {
-            if !interface.is_up || interface.is_loopback {
+            if !interface.is_up || interface.is_loopback || interface.media_state == MediaState::Disconnected {
                 continue;
             }
             
@@ -138,21 +165,28 @@ impl NetworkDetector {
         
         let mut interfaces = Vec::new();
         
-        // Use ipconfig to get network interface information
+        // Use ipconfig /all to get detailed network interface information
         let output = Command::new("ipconfig")
+            .arg("/all")
             .output()
             .map_err(|e| crate::types::AppError::IoError(e))?;
         
         let output_str = String::from_utf8_lossy(&output.stdout);
+        log::debug!("🔍 Raw ipconfig /all output:\n{}", output_str);
         let lines: Vec<&str> = output_str.lines().collect();
         
-        let mut current_interface = None;
+        let mut current_interface: Option<NetworkInterface> = None;
         
         for line in lines {
             let line = line.trim();
             
-            // Interface name
-            if line.ends_with(':') && !line.contains("IPv4") && !line.contains("IPv6") {
+            // Interface name (ends with colon and contains adapter name)
+            if line.ends_with(':') && !line.contains("IPv4") && !line.contains("IPv6") && !line.contains("Subnet Mask") && !line.contains("Default Gateway") && !line.contains("DNS Suffix") {
+                // Save previous interface if it exists
+                if let Some(interface) = current_interface.take() {
+                    interfaces.push(interface);
+                }
+                
                 let name = line.trim_end_matches(':').to_string();
                 let interface_type = Self::detect_interface_type(&name);
                 
@@ -160,27 +194,129 @@ impl NetworkDetector {
                     name,
                     interface_type,
                     ip_addresses: Vec::new(),
-                    is_up: true, // Assume up if we can see it
+                    subnet_masks: Vec::new(),
+                    default_gateway: None,
+                    dns_suffix: None,
+                    media_state: MediaState::Unknown, // Initialize to Unknown, will be set later
+                    is_up: false, // Initialize to false, will be set later
                     is_loopback: false,
+                    description: None,
                 });
             }
-            // IPv4 address
+            // IPv4 address - enhanced parsing for different formats
             else if line.contains("IPv4") && line.contains(":") {
+                log::debug!("🔍 Found IPv4 line: '{}'", line);
                 if let Some(interface) = &mut current_interface {
-                    if let Some(ip_str) = line.split(':').nth(1) {
-                        let ip_str = ip_str.trim();
-                        if let Ok(ip) = ip_str.parse::<IpAddr>() {
-                            interface.ip_addresses.push(ip);
-                            interface.is_loopback = ip.is_loopback();
+                    log::debug!("🔍 Processing IPv4 for interface: {}", interface.name);
+                    
+                    // Try different parsing approaches
+                    let ip_str = if let Some(ip_part) = line.split(':').nth(1) {
+                        ip_part.trim()
+                    } else {
+                        log::debug!("🔍 No content after colon in IPv4 line: '{}'", line);
+                        continue;
+                    };
+                    
+                    log::debug!("🔍 Extracted IP string: '{}'", ip_str);
+                    
+                    // Handle cases where there might be additional text after the IP (like "(Preferred)")
+                    let clean_ip = ip_str.split_whitespace().next().unwrap_or(ip_str);
+                    // Remove any parentheses and their contents
+                    let clean_ip = clean_ip.split('(').next().unwrap_or(clean_ip).trim();
+                    log::debug!("🔍 Clean IP string: '{}'", clean_ip);
+                    
+                    if let Ok(ip) = clean_ip.parse::<IpAddr>() {
+                        log::debug!("🔍 Successfully parsed IP: {} for interface {}", ip, interface.name);
+                        interface.ip_addresses.push(ip);
+                        interface.is_loopback = ip.is_loopback();
+                        // If we have an IP address, this interface is definitely connected
+                        // (unless it's a loopback address)
+                        if !ip.is_loopback() {
+                            log::debug!("Interface {} has IP address {}, marking as connected", interface.name, ip);
+                            interface.media_state = MediaState::Connected;
+                            interface.is_up = true;
+                        }
+                    } else {
+                        log::debug!("🔍 Failed to parse IP: '{}' for interface {}", clean_ip, interface.name);
+                        
+                        // Try alternative parsing for different formats
+                        if clean_ip.contains('.') {
+                            let parts: Vec<&str> = clean_ip.split('.').collect();
+                            if parts.len() == 4 {
+                                log::debug!("🔍 Trying alternative parsing for: {}", clean_ip);
+                                // Try to construct IP manually
+                                if let (Ok(a), Ok(b), Ok(c), Ok(d)) = (
+                                    parts[0].parse::<u8>(),
+                                    parts[1].parse::<u8>(),
+                                    parts[2].parse::<u8>(),
+                                    parts[3].parse::<u8>()
+                                ) {
+                                    let ip = IpAddr::V4(Ipv4Addr::new(a, b, c, d));
+                                    log::debug!("🔍 Alternative parsing successful: {} for interface {}", ip, interface.name);
+                                    interface.ip_addresses.push(ip);
+                                    interface.is_loopback = ip.is_loopback();
+                                    if !ip.is_loopback() {
+                                        interface.media_state = MediaState::Connected;
+                                        interface.is_up = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    log::debug!("🔍 No current interface for IPv4 line: '{}'", line);
+                }
+            }
+            // Subnet Mask
+            else if line.contains("Subnet Mask") && line.contains(":") {
+                if let Some(interface) = &mut current_interface {
+                    if let Some(mask_str) = line.split(':').nth(1) {
+                        let mask_str = mask_str.trim();
+                        interface.subnet_masks.push(mask_str.to_string());
+                    }
+                }
+            }
+            // Default Gateway
+            else if line.contains("Default Gateway") && line.contains(":") {
+                if let Some(interface) = &mut current_interface {
+                    if let Some(gateway_str) = line.split(':').nth(1) {
+                        let gateway_str = gateway_str.trim();
+                        if !gateway_str.is_empty() {
+                            interface.default_gateway = Some(gateway_str.to_string());
                         }
                     }
                 }
             }
-            // Empty line or section end
-            else if line.is_empty() {
-                if let Some(interface) = current_interface.take() {
-                    if !interface.ip_addresses.is_empty() {
-                        interfaces.push(interface);
+            // DNS Suffix
+            else if line.contains("DNS Suffix") && line.contains(":") {
+                if let Some(interface) = &mut current_interface {
+                    if let Some(dns_str) = line.split(':').nth(1) {
+                        let dns_str = dns_str.trim();
+                        if !dns_str.is_empty() && dns_str != "." {
+                            interface.dns_suffix = Some(dns_str.to_string());
+                        }
+                    }
+                }
+            }
+            // Media State
+            else if line.contains("Media State") && line.contains(":") {
+                if let Some(interface) = &mut current_interface {
+                    if let Some(state_str) = line.split(':').nth(1) {
+                        let state_str = state_str.trim();
+                        log::debug!("Found Media State for {}: '{}'", interface.name, state_str);
+                        interface.media_state = Self::detect_media_state(state_str);
+                        interface.is_up = interface.media_state == MediaState::Connected;
+                    }
+                }
+            }
+            // Description
+            else if line.contains("Description") && line.contains(":") {
+                if let Some(interface) = &mut current_interface {
+                    if let Some(desc_str) = line.split(':').nth(1) {
+                        let desc_str = desc_str.trim();
+                        if !desc_str.is_empty() {
+                            interface.description = Some(desc_str.to_string());
+                        }
                     }
                 }
             }
@@ -188,8 +324,27 @@ impl NetworkDetector {
         
         // Add the last interface if it exists
         if let Some(interface) = current_interface {
-            if !interface.ip_addresses.is_empty() {
-                interfaces.push(interface);
+            interfaces.push(interface);
+        }
+        
+        // Final pass: ensure interfaces with IP addresses are marked as connected
+        for interface in &mut interfaces {
+            if !interface.ip_addresses.is_empty() && !interface.ip_addresses.iter().any(|ip| ip.is_loopback()) {
+                log::debug!("Final check: Interface {} has {} IP addresses, ensuring connected state", 
+                           interface.name, interface.ip_addresses.len());
+                log::debug!("  - Previous media_state: {:?}", interface.media_state);
+                log::debug!("  - Previous is_up: {}", interface.is_up);
+                interface.media_state = MediaState::Connected;
+                interface.is_up = true;
+                log::debug!("  - New media_state: {:?}", interface.media_state);
+                log::debug!("  - New is_up: {}", interface.is_up);
+            }
+            // Fallback: if interface has a gateway but no IP addresses, mark as connected
+            else if interface.default_gateway.is_some() && interface.ip_addresses.is_empty() {
+                log::debug!("Fallback check: Interface {} has gateway {} but no IP addresses, marking as connected", 
+                           interface.name, interface.default_gateway.as_ref().unwrap());
+                interface.media_state = MediaState::Connected;
+                interface.is_up = true;
             }
         }
         
@@ -211,7 +366,7 @@ impl NetworkDetector {
         let output_str = String::from_utf8_lossy(&output.stdout);
         let lines: Vec<&str> = output_str.lines().collect();
         
-        let mut current_interface = None;
+        let mut current_interface: Option<NetworkInterface> = None;
         
         for line in lines {
             let line = line.trim();
@@ -225,8 +380,13 @@ impl NetworkDetector {
                     name,
                     interface_type,
                     ip_addresses: Vec::new(),
-                    is_up: true,
+                    subnet_masks: Vec::new(),
+                    default_gateway: None,
+                    dns_suffix: None,
+                    media_state: MediaState::Unknown,
+                    is_up: false,
                     is_loopback: false,
+                    description: None,
                 });
             }
             // IP address line
@@ -245,9 +405,7 @@ impl NetworkDetector {
         
         // Add the last interface if it exists
         if let Some(interface) = current_interface {
-            if !interface.ip_addresses.is_empty() {
-                interfaces.push(interface);
-            }
+            interfaces.push(interface);
         }
         
         Ok(interfaces)
@@ -263,8 +421,25 @@ impl NetworkDetector {
             InterfaceType::WiFi
         } else if name_lower.contains("loopback") || name_lower == "lo" {
             InterfaceType::Loopback
+        } else if name_lower.contains("bluetooth") || name_lower.contains("bt") {
+            InterfaceType::Bluetooth
+        } else if name_lower.contains("virtual") || name_lower.contains("vpn") || name_lower.contains("tunnel") {
+            InterfaceType::Virtual
         } else {
             InterfaceType::Unknown
+        }
+    }
+    
+    /// Detect media state from interface information
+    fn detect_media_state(name: &str) -> MediaState {
+        let name_lower = name.to_lowercase();
+        
+        if name_lower.contains("media disconnected") {
+            MediaState::Disconnected
+        } else if name_lower.contains("connected") || name_lower.contains("up") {
+            MediaState::Connected
+        } else {
+            MediaState::Unknown
         }
     }
 }
@@ -278,7 +453,17 @@ mod tests {
         assert_eq!(InterfaceType::from("ethernet"), InterfaceType::Ethernet);
         assert_eq!(InterfaceType::from("wifi"), InterfaceType::WiFi);
         assert_eq!(InterfaceType::from("loopback"), InterfaceType::Loopback);
+        assert_eq!(InterfaceType::from("bluetooth"), InterfaceType::Bluetooth);
+        assert_eq!(InterfaceType::from("virtual"), InterfaceType::Virtual);
         assert_eq!(InterfaceType::from("unknown"), InterfaceType::Unknown);
+    }
+    
+    #[test]
+    fn test_media_state_detection() {
+        assert_eq!(MediaState::from("media disconnected"), MediaState::Disconnected);
+        assert_eq!(MediaState::from("connected"), MediaState::Connected);
+        assert_eq!(MediaState::from("up"), MediaState::Connected);
+        assert_eq!(MediaState::from("unknown"), MediaState::Unknown);
     }
     
     #[test]

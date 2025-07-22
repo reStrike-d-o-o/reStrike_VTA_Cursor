@@ -1434,11 +1434,22 @@ pub async fn get_network_interfaces() -> Result<serde_json::Value, String> {
                             crate::utils::InterfaceType::Ethernet => "ethernet",
                             crate::utils::InterfaceType::WiFi => "wifi",
                             crate::utils::InterfaceType::Loopback => "loopback",
+                            crate::utils::InterfaceType::Bluetooth => "bluetooth",
+                            crate::utils::InterfaceType::Virtual => "virtual",
                             crate::utils::InterfaceType::Unknown => "unknown",
                         },
                         "ip_addresses": iface.ip_addresses.iter().map(|ip| ip.to_string()).collect::<Vec<_>>(),
+                        "subnet_masks": iface.subnet_masks,
+                        "default_gateway": iface.default_gateway,
+                        "dns_suffix": iface.dns_suffix,
+                        "media_state": match iface.media_state {
+                            crate::utils::MediaState::Connected => "connected",
+                            crate::utils::MediaState::Disconnected => "disconnected",
+                            crate::utils::MediaState::Unknown => "unknown",
+                        },
                         "is_up": iface.is_up,
                         "is_loopback": iface.is_loopback,
+                        "description": iface.description,
                     })
                 })
                 .collect();
@@ -1471,6 +1482,8 @@ pub async fn get_best_network_interface(app: State<'_, Arc<App>>) -> Result<serd
                         crate::utils::InterfaceType::Ethernet => "ethernet",
                         crate::utils::InterfaceType::WiFi => "wifi",
                         crate::utils::InterfaceType::Loopback => "loopback",
+                        crate::utils::InterfaceType::Bluetooth => "bluetooth",
+                        crate::utils::InterfaceType::Virtual => "virtual",
                         crate::utils::InterfaceType::Unknown => "unknown",
                     },
                     "ip_addresses": interface.ip_addresses.iter().map(|ip| ip.to_string()).collect::<Vec<_>>(),
@@ -1812,4 +1825,24 @@ pub async fn get_screen_size() -> Result<serde_json::Value, String> {
         "width": 1920,
         "height": 1080
     }))
+} 
+
+/// Debug command to show raw ipconfig output
+#[tauri::command]
+pub async fn debug_ipconfig_output() -> Result<serde_json::Value, String> {
+    use std::process::Command;
+    
+    match Command::new("ipconfig").arg("/all").output() {
+        Ok(output) => {
+            let output_str = String::from_utf8_lossy(&output.stdout);
+            Ok(serde_json::json!({
+                "success": true,
+                "output": output_str.to_string()
+            }))
+        }
+        Err(e) => Ok(serde_json::json!({
+            "success": false,
+            "error": e.to_string()
+        }))
+    }
 } 

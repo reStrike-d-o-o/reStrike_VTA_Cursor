@@ -48,10 +48,15 @@ interface ProtocolFile {
 
 interface NetworkInterface {
   name: string;
-  type: 'ethernet' | 'wifi' | 'loopback' | 'unknown';
+  type: 'ethernet' | 'wifi' | 'loopback' | 'bluetooth' | 'virtual' | 'unknown';
   ip_addresses: string[];
+  subnet_masks: string[];
+  default_gateway?: string;
+  dns_suffix?: string;
+  media_state: 'connected' | 'disconnected' | 'unknown';
   is_up: boolean;
   is_loopback: boolean;
+  description?: string;
 }
 
 interface UdpSettings {
@@ -121,6 +126,14 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
     return () => clearInterval(interval);
   }, []);
 
+  // Reload network interfaces when auto-detect changes
+  useEffect(() => {
+    if (!udpSettings.network_interface.auto_detect) {
+      console.log('🔍 Auto-detect disabled, reloading network interfaces...');
+      loadNetworkInterfaces();
+    }
+  }, [udpSettings.network_interface.auto_detect]);
+
   const loadProtocolVersions = async () => {
     try {
       setIsLoading(true);
@@ -166,15 +179,37 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
 
   const loadNetworkInterfaces = async () => {
     try {
+      console.log('🔍 Loading network interfaces...');
       const result = await invoke('get_network_interfaces');
+      console.log('🔍 Raw network interfaces result:', result);
+      
       if (result && typeof result === 'object' && 'success' in result) {
         const data = result as any;
+        console.log('🔍 Parsed data:', data);
+        
         if (data.success) {
+          console.log('🔍 Network interfaces array:', data.interfaces);
+          
+          // Log each interface details
+          data.interfaces.forEach((iface: any, index: number) => {
+            console.log(`🔍 Interface ${index}:`, {
+              name: iface.name,
+              type: iface.type,
+              media_state: iface.media_state,
+              is_up: iface.is_up,
+              ip_addresses: iface.ip_addresses,
+              default_gateway: iface.default_gateway,
+              has_gateway: !!iface.default_gateway
+            });
+          });
+          
           setNetworkInterfaces(data.interfaces || []);
+        } else {
+          console.error('🔍 Failed to load network interfaces:', data.error);
         }
       }
     } catch (err) {
-      console.error('Failed to load network interfaces:', err);
+      console.error('🔍 Failed to load network interfaces:', err);
     }
   };
 
@@ -548,7 +583,30 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
 
                 {!udpSettings.network_interface.auto_detect && (
                   <div>
-                    <Label htmlFor="selected-interface" className="text-xs text-gray-400">Select Interface</Label>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="selected-interface" className="text-xs text-gray-400">Select Interface</Label>
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={loadNetworkInterfaces}
+                          className="text-xs text-blue-400 hover:text-blue-300 underline"
+                        >
+                          Refresh
+                        </button>
+                        <button
+                          onClick={async () => {
+                            try {
+                              const result = await invoke('debug_ipconfig_output');
+                              console.log('🔍 Debug ipconfig output:', result);
+                            } catch (err) {
+                              console.error('Failed to get debug output:', err);
+                            }
+                          }}
+                          className="text-xs text-green-400 hover:text-green-300 underline"
+                        >
+                          Debug
+                        </button>
+                      </div>
+                    </div>
                     <select
                       id="selected-interface"
                       value={udpSettings.network_interface.selected_interface || ''}
@@ -563,11 +621,19 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
                       aria-label="Select network interface"
                     >
                       <option value="">Select an interface...</option>
-                      {networkInterfaces.map((iface) => (
-                        <option key={iface.name} value={iface.name}>
-                          {iface.name} ({iface.type}) - {iface.ip_addresses.join(', ')}
-                        </option>
-                      ))}
+                      {networkInterfaces.map((iface) => {
+                        console.log(`🔍 Rendering dropdown option for ${iface.name}:`, {
+                          media_state: iface.media_state,
+                          is_up: iface.is_up,
+                          ip_addresses: iface.ip_addresses,
+                          default_gateway: iface.default_gateway
+                        });
+                        return (
+                          <option key={iface.name} value={iface.name}>
+                            {iface.name} ({iface.type}) - {iface.media_state === 'connected' ? 'Connected' : 'Disconnected'} - {iface.ip_addresses.join(', ')}
+                          </option>
+                        );
+                      })}
                     </select>
                   </div>
                 )}
@@ -608,11 +674,43 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
                       <span className="font-medium text-gray-200 truncate">
                         {iface.name}
                       </span>
-                      <StatusDot color={iface.is_up ? 'green' : 'red'} />
+                      <StatusDot color={iface.media_state === 'connected' ? 'green' : 'red'} />
                     </div>
-                    <div className="text-gray-400">
-                      <div>Type: {iface.type}</div>
-                      <div className="truncate">IPs: {iface.ip_addresses.join(', ')}</div>
+                    <div className="text-gray-400 space-y-1">
+                      <div className="flex items-center space-x-2">
+                        <span className="capitalize">{iface.type}</span>
+                        {iface.media_state === 'disconnected' && (
+                          <span className="text-red-400 text-xs">(Disconnected)</span>
+                        )}
+                      </div>
+                      {iface.description && (
+                        <div className="text-xs text-gray-500 truncate">
+                          {iface.description}
+                        </div>
+                      )}
+                      {iface.ip_addresses.length > 0 && (
+                        <div>
+                          <div className="font-medium text-gray-300">IP Addresses:</div>
+                          {iface.ip_addresses.map((ip, index) => (
+                            <div key={index} className="ml-2 text-xs">
+                              {ip}
+                              {iface.subnet_masks[index] && (
+                                <span className="text-gray-500 ml-1">/ {iface.subnet_masks[index]}</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {iface.default_gateway && (
+                        <div className="text-xs">
+                          <span className="text-gray-500">Gateway:</span> {iface.default_gateway}
+                        </div>
+                      )}
+                      {iface.dns_suffix && (
+                        <div className="text-xs">
+                          <span className="text-gray-500">DNS:</span> {iface.dns_suffix}
+                        </div>
+                      )}
                       {bestInterface?.name === iface.name && (
                         <div className="text-green-400 font-medium mt-1">
                           ⭐ Recommended
