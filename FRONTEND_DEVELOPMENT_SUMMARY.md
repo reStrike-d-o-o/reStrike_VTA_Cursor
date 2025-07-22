@@ -4,6 +4,34 @@
 
 ### ✅ **Completed Features**
 
+#### **Real-Time Event System - COMPLETE**
+- **Push-Based PSS Events**: Implemented `window.__TAURI__.event.listen` for real-time PSS event handling
+- **Live Data Streaming**: Real-time log streaming with auto-scroll controls and "End" button
+- **OBS Status Monitoring**: Real-time OBS connection status and recording/streaming state
+- **CPU Monitoring**: Real-time system resource monitoring with push-based updates
+- **Event Table Integration**: Real-time event display with proper filtering and centering
+
+#### **Window Management System - COMPLETE**
+- **Dynamic Window Sizing**: Compact mode (350x1080) and fullscreen mode with custom dimensions
+- **Advanced Mode Toggle**: Fullscreen + show Advanced panel when enabled, compact + hide when disabled
+- **Manual Mode Toggle**: Separate dialog with "el Manuel" code validation
+- **Window Persistence**: Settings saved and loaded across sessions
+- **Resize Protection**: Manual window resizing disabled, only Advanced button controls
+
+#### **Authentication System - COMPLETE**
+- **Password Dialog**: Modal popup for Advanced mode with "reStrike" password validation
+- **Manual Mode Dialog**: Separate dialog asking for "el Manuel" with exact text match
+- **Error Handling**: Clear error messages for wrong passwords/codes with cancel option
+- **State Management**: Authentication state managed in Zustand store
+- **Security**: Proper authentication flow with session management
+
+#### **UI Layout Improvements - COMPLETE**
+- **Event Table Centering**: Entire Event Table section centered with equal left/right spacing
+- **Title Positioning**: Precise positioning of RND, TIME, and EVENT titles in header row
+- **DockBar Layout**: Two-column layout with SidebarSmall (left) and SidebarBig (right)
+- **Advanced Panel**: Horizontal layout with sidebar and main content area
+- **Responsive Design**: Proper flex layouts with correct dimensions
+
 #### **Code Cleanup & Build Optimization - COMPLETE**
 - **Rust Backend**: Removed unused `Manager` import from `tauri_commands.rs`
 - **React Frontend**: Commented out development console.logs across all components
@@ -13,16 +41,10 @@
 
 #### **Atomic Design System - COMPLETE**
 - **Atoms**: Button, Input, Checkbox, Label, StatusDot (Badge), Icon, Tab, TabGroup
-- **Molecules**: EventTableSection, LiveDataPanel, CpuMonitoringSection, LogDownloadList, FlagManagementPanel
+- **Molecules**: EventTableSection, LiveDataPanel, CpuMonitoringSection, LogDownloadList, FlagManagementPanel, PasswordDialog, ManualModeDialog
 - **Organisms**: EventTable, MatchInfoSection, ObsWebSocketManager, SidebarSmall, SidebarBig
 - **Layouts**: DockBar, AdvancedPanel, StatusbarAdvanced
 - **Integration**: All components use atomic design principles with consistent styling
-
-#### **UI Layout System - COMPLETE**
-- **DockBar**: Two-column layout with SidebarSmall (left) and SidebarBig (right)
-- **Advanced Panel**: Horizontal layout with sidebar and main content area
-- **Responsive Design**: Proper flex layouts with correct dimensions
-- **Color Scheme**: Semi-transparent dark backgrounds with proper contrast
 
 #### **Tab System Infrastructure - COMPLETE**
 - **Reusable Components**: Tab and TabGroup components with flat styling
@@ -40,10 +62,10 @@
 - **User Experience**: Clear, intuitive interface for flag management
 
 #### **Component Integration - COMPLETE**
-- **Event Table**: Working event filtering and display
+- **Event Table**: Working event filtering and display with real-time updates
 - **CPU Monitoring**: Real-time system monitoring display
-- **OBS Integration**: WebSocket manager with connection status
-- **Live Data**: Real-time data display panels
+- **OBS Integration**: WebSocket manager with connection status and real-time updates
+- **Live Data**: Real-time data display panels with streaming controls
 - **Flag Integration**: All systems using the same flag assets and mapping
 
 ### 🚨 **Important Development Guidelines**
@@ -88,7 +110,7 @@ border-gray-600      /* Dark borders */
 // Main app layout
 <div className="h-screen flex flex-col bg-gray-900">
   <div className="flex flex-1 min-h-0">
-    <div className="w-[600px] flex-shrink-0"> {/* DockBar */}
+    <div className="w-[350px] flex-shrink-0"> {/* DockBar */}
     <div className="flex-1 min-h-0"> {/* Advanced Panel */}
   </div>
 </div>
@@ -134,6 +156,57 @@ border-gray-600      /* Dark borders */
 
 ### 🔧 **Component Architecture**
 
+#### **Real-Time Event System**
+```tsx
+// PSS Event Hook
+export const usePssEvents = () => {
+  const setupEventListener = async () => {
+    await pssCommands.setupEventListener();
+    const unlisten = await window.__TAURI__.event.listen('pss_event', (event: any) => {
+      handlePssEvent(event.payload);
+    });
+  };
+};
+
+// Live Data Hook
+export const useLiveDataEvents = (enabled: boolean, selectedType: LiveDataType) => {
+  const listenerRef = useRef<Promise<() => void> | null>(null);
+  // Real-time log streaming implementation
+};
+```
+
+#### **Window Management**
+```tsx
+// Window Commands
+const windowCommands = {
+  setFullscreen: () => invoke('set_window_fullscreen'),
+  setCompact: (width?: number, height?: number) => invoke('set_window_compact', { width, height }),
+  setCustomSize: (width: number, height: number) => invoke('set_window_custom_size', { width, height }),
+  saveWindowSettings: (settings: any) => invoke('save_window_settings', { settings }),
+  loadWindowSettings: () => invoke('load_window_settings'),
+};
+```
+
+#### **Authentication System**
+```tsx
+// Password Dialog
+interface PasswordDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onAuthenticate: (password: string) => boolean;
+  title?: string;
+  message?: string;
+}
+
+// Manual Mode Dialog
+interface ManualModeDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onToggle: (code: string) => boolean;
+  isEnabled: boolean;
+}
+```
+
 #### **Tab System**
 ```tsx
 // Tab component structure
@@ -176,6 +249,34 @@ interface TabGroupProps {
 
 ### 🎯 **Recent Achievements**
 
+#### **Real-Time Event System Implementation**
+- ✅ Implemented push-based PSS event handling using Tauri v2
+- ✅ Created real-time live data streaming with auto-scroll controls
+- ✅ Added OBS status monitoring with real-time updates
+- ✅ Integrated CPU monitoring with push-based stats
+- ✅ Eliminated polling in favor of event-driven architecture
+
+#### **Window Management System**
+- ✅ Dynamic window sizing with compact (350x1080) and fullscreen modes
+- ✅ Advanced mode toggle with authentication protection
+- ✅ Manual mode toggle with "el Manuel" code validation
+- ✅ Window settings persistence across sessions
+- ✅ Disabled manual window resizing for controlled experience
+
+#### **Authentication System**
+- ✅ Password-protected Advanced mode with "reStrike" validation
+- ✅ Manual mode dialog with "el Manuel" code requirement
+- ✅ Proper error handling and user feedback
+- ✅ Session management and state persistence
+- ✅ Clean, accessible dialog interfaces
+
+#### **UI Layout Improvements**
+- ✅ Centered Event Table with precise title positioning
+- ✅ Improved DockBar layout with proper spacing
+- ✅ Enhanced Advanced Panel with tabbed interface
+- ✅ Responsive design with proper flex layouts
+- ✅ Consistent styling across all components
+
 #### **Tab System Implementation**
 - ✅ Created reusable Tab and TabGroup components
 - ✅ Implemented flat styling matching existing UI
@@ -201,20 +302,26 @@ interface TabGroupProps {
 ### 🚀 **Next Steps**
 
 #### **Immediate Priorities**
-- [ ] Test tab system in production environment
-- [ ] Verify flag management functionality
-- [ ] Ensure all UI components work together
-- [ ] Document any remaining UI patterns
+- [ ] Test real-time event system in production environment
+- [ ] Verify window management functionality across different screen sizes
+- [ ] Ensure authentication system works properly
+- [ ] Test all UI components work together seamlessly
 
 #### **Future Enhancements**
 - [ ] Additional tab content for other drawers
 - [ ] Enhanced flag management features
 - [ ] Improved accessibility features
 - [ ] Advanced UI animations
+- [ ] Additional authentication methods
 
 ### 📚 **Documentation**
 
 #### **Key Files**
+- `ui/src/hooks/usePssEvents.ts`: Real-time PSS event handling
+- `ui/src/hooks/useLiveDataEvents.ts`: Live data streaming
+- `ui/src/components/molecules/PasswordDialog.tsx`: Authentication dialog
+- `ui/src/components/molecules/ManualModeDialog.tsx`: Manual mode dialog
+- `ui/src/utils/tauriCommands.ts`: Window management commands
 - `ui/src/components/atoms/Tab.tsx`: Tab component implementation
 - `ui/src/components/atoms/TabGroup.tsx`: TabGroup component implementation
 - `ui/src/components/molecules/FlagManagementPanel.tsx`: Flag management interface
@@ -226,4 +333,5 @@ interface TabGroupProps {
 - Consistent styling with Tailwind CSS
 - Reusable component architecture
 - Proper TypeScript typing
-- Accessibility considerations 
+- Accessibility considerations
+- Real-time event-driven architecture 

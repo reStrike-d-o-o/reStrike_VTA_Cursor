@@ -6,12 +6,33 @@ This document provides a comprehensive overview of the reStrike VTA project stru
 
 ## Current Status ✅
 
+### **Real-Time Event System - COMPLETE**
+- **Push-Based PSS Events**: Implemented `window.__TAURI__.event.listen` for real-time PSS event handling
+- **Live Data Streaming**: Real-time log streaming with auto-scroll controls and "End" button
+- **OBS Status Monitoring**: Real-time OBS connection status and recording/streaming state
+- **CPU Monitoring**: Real-time system resource monitoring with push-based updates
+- **Event Table Integration**: Real-time event display with proper filtering and centering
+
+### **Window Management System - COMPLETE**
+- **Dynamic Window Sizing**: Compact mode (350x1080) and fullscreen mode with custom dimensions
+- **Advanced Mode Toggle**: Fullscreen + show Advanced panel when enabled, compact + hide when disabled
+- **Manual Mode Toggle**: Separate dialog with "el Manuel" code validation
+- **Window Persistence**: Settings saved and loaded across sessions
+- **Resize Protection**: Manual window resizing disabled, only Advanced button controls
+
+### **Authentication System - COMPLETE**
+- **Password Dialog**: Modal popup for Advanced mode with "reStrike" password validation
+- **Manual Mode Dialog**: Separate dialog asking for "el Manuel" with exact text match
+- **Error Handling**: Clear error messages for wrong passwords/codes with cancel option
+- **State Management**: Authentication state managed in Zustand store
+- **Security**: Proper authentication flow with session management
+
 ### **Project Organization - COMPLETE**
-- **Tauri v2 Migration**: Successfully migrated to Tauri v2 architecture
-- **Atomic Design**: Complete frontend component hierarchy
-- **Plugin Architecture**: Modular backend with clear separation
-- **Tab System**: Reusable tab components with flat styling
-- **Flag Management**: Complete flag management system with 253+ IOC flags
+- **Tauri v2 Migration**: Successfully migrated to Tauri v2 architecture with proper capabilities
+- **Atomic Design**: Complete frontend component hierarchy with reusable components
+- **Plugin Architecture**: Modular backend with clear separation and comprehensive error handling
+- **Tab System**: Reusable tab components with flat styling and consistent design
+- **Flag Management**: Complete flag management system with 253+ IOC flags and PSS mapping
 
 ### **Code Quality & Build Optimization - COMPLETE**
 - **Rust Backend**: Clean compilation with no warnings or unused imports
@@ -21,6 +42,10 @@ This document provides a comprehensive overview of the reStrike VTA project stru
 - **Build Pipeline**: Both frontend and backend compile cleanly
 
 ### **Recent Major Updates (2025-01-28)**
+- **Real-Time Events**: Implemented push-based event system using Tauri v2
+- **Window Management**: Complete window sizing and persistence system
+- **Authentication**: Password-protected Advanced mode and Manual mode dialogs
+- **UI Improvements**: Centered Event Table with precise title positioning
 - **Code Cleanup**: Removed unused imports and development console.logs
 - **Build Optimization**: Achieved spotless builds for both frontend and backend
 - **Tab System Infrastructure**: Reusable Tab and TabGroup components
@@ -38,7 +63,7 @@ reStrike_VTA_Cursor/
 │   ├── src/                      # Rust source code
 │   │   ├── main.rs              # Tauri app entry point
 │   │   ├── lib.rs               # Library exports and plugin registration
-│   │   ├── tauri_commands.rs    # Tauri command definitions
+│   │   ├── tauri_commands.rs    # Tauri command definitions (1815 lines)
 │   │   ├── core/                # Core application functionality
 │   │   │   ├── app.rs           # Application state and lifecycle
 │   │   │   ├── config.rs        # Configuration management
@@ -113,6 +138,8 @@ reStrike_VTA_Cursor/
 │   │   │   │   ├── CpuMonitoringSection.tsx # CPU monitoring
 │   │   │   │   ├── LogDownloadList.tsx # Log download interface
 │   │   │   │   ├── FlagManagementPanel.tsx # Flag management interface
+│   │   │   │   ├── PasswordDialog.tsx # Authentication dialog
+│   │   │   │   ├── ManualModeDialog.tsx # Manual mode dialog
 │   │   │   │   ├── PssDrawer.tsx # PSS drawer with tabs
 │   │   │   │   └── ObsDrawer.tsx # OBS drawer with tabs
 │   │   │   ├── organisms/       # Complex components
@@ -128,11 +155,14 @@ reStrike_VTA_Cursor/
 │   │   ├── hooks/               # Custom React hooks
 │   │   │   ├── useEnvironment.ts # Environment detection
 │   │   │   ├── useEnvironmentApi.ts # API environment
-│   │   │   └── useEnvironmentObs.ts # OBS environment
+│   │   │   ├── useEnvironmentObs.ts # OBS environment
+│   │   │   ├── usePssEvents.ts  # Real-time PSS event handling
+│   │   │   └── useLiveDataEvents.ts # Live data streaming
 │   │   ├── stores/              # State management
 │   │   │   ├── index.ts         # Store exports
 │   │   │   ├── liveDataStore.ts # Live data state
-│   │   │   └── obsStore.ts      # OBS state management
+│   │   │   ├── obsStore.ts      # OBS state management
+│   │   │   └── pssMatchStore.ts # PSS match state
 │   │   ├── types/               # TypeScript types
 │   │   │   ├── index.ts         # Type exports
 │   │   │   └── tauri.d.ts       # Tauri type definitions
@@ -141,6 +171,7 @@ reStrike_VTA_Cursor/
 │   │   │   ├── obsUtils.ts      # OBS utility functions
 │   │   │   ├── tauriCommands.ts # Tauri command utilities
 │   │   │   ├── videoUtils.ts    # Video utility functions
+│   │   │   ├── pssEventHandler.ts # PSS event handling
 │   │   │   └── countryCodeMapping.ts # PSS to IOC mapping
 │   │   ├── config/              # Frontend configuration
 │   │   │   └── environments/    # Environment configurations
@@ -266,10 +297,12 @@ reStrike_VTA_Cursor/
 
 #### **Molecules (Compound Components)**
 - **EventTableSection**: Event table with filtering and display
-- **LiveDataPanel**: Real-time data display panels
+- **LiveDataPanel**: Real-time data display panels with streaming controls
 - **CpuMonitoringSection**: System monitoring interface
 - **LogDownloadList**: Log file download and management
 - **FlagManagementPanel**: Complete flag management interface
+- **PasswordDialog**: Authentication dialog for Advanced mode
+- **ManualModeDialog**: Manual mode dialog with code validation
 - **PssDrawer**: PSS drawer with UDP Server & Protocol and Flag Management tabs
 - **ObsDrawer**: OBS drawer with WebSocket and Integration tabs
 
@@ -342,18 +375,20 @@ cargo tauri build
 
 ### **Core Functionality**
 - **Instant Video Replay**: Quick access to recent video clips
-- **Event Tracking**: Real-time event capture and analysis
-- **OBS Integration**: Seamless connection with OBS Studio
+- **Real-Time Event Tracking**: Push-based PSS event capture and analysis
+- **OBS Integration**: Seamless connection with OBS Studio and status monitoring
 - **Flag Management**: Country flag recognition and display with 253+ IOC flags
 - **Advanced Panel**: Comprehensive settings and diagnostics with tabbed interface
+- **Window Management**: Dynamic window sizing with authentication protection
 
 ### **UI Components**
-- **DockBar**: Main sidebar with player info and controls
-- **Event Table**: Real-time event display with filtering
+- **DockBar**: Main sidebar with player info, controls, and authentication
+- **Event Table**: Real-time event display with filtering and centered layout
 - **Advanced Panel**: Settings, diagnostics, and configuration with organized tabs
 - **Status Indicators**: Real-time system status display
 - **Tab System**: Reusable tab components with flat styling
 - **Flag Management Panel**: Complete flag management interface
+- **Authentication Dialogs**: Password and manual mode protection
 
 ### **Technical Features**
 - **Environment Detection**: Automatic Tauri vs Web mode detection
@@ -362,6 +397,8 @@ cargo tauri build
 - **Hot Reload**: Development efficiency with live updates
 - **Type Safety**: Full TypeScript and Rust type safety
 - **Flag System**: IOC flag integration with PSS code mapping
+- **Real-Time Events**: Push-based event system using Tauri v2
+- **Window Management**: Dynamic sizing with authentication
 
 ## Configuration Management
 
@@ -369,12 +406,14 @@ cargo tauri build
 - **Global Tauri API**: Enabled for frontend access
 - **Development Server**: React dev server integration
 - **Build Configuration**: Optimized for Windows
-- **Security**: Proper allowlist configuration
+- **Security**: Proper allowlist configuration with capabilities
+- **Event System**: Real-time event listening and emission
 
 ### **Frontend Configuration**
 - **Environment Detection**: Smart Tauri API detection
 - **Development Scripts**: Optimized for Windows development
 - **Build Process**: Integrated with Tauri build system
+- **State Management**: Zustand stores for UI state
 
 ## Development Guidelines
 
@@ -389,6 +428,7 @@ cargo tauri build
 - **Atomic Design**: Organized frontend component hierarchy
 - **Separation of Concerns**: Clear frontend/backend separation
 - **Performance**: Optimized for real-time operations
+- **Real-Time Events**: Push-based event system
 
 ## Documentation
 
@@ -407,8 +447,8 @@ cargo tauri build
 ## Next Steps
 
 ### **Immediate Priorities**
-1. **OBS Integration**: Complete WebSocket protocol implementation
-2. **Event System**: Implement PSS protocol event handling
+1. **OBS Integration**: Complete WebSocket protocol implementation ✅
+2. **Event System**: Implement PSS protocol event handling ✅
 3. **Video Player**: Integrate mpv video player
 4. **Flag Management**: Complete flag recognition system ✅
 
@@ -425,6 +465,7 @@ cargo tauri build
 - **Build Errors**: Clean build artifacts and rebuild
 - **Tauri API Issues**: Verify environment detection
 - **Hot Reload**: Ensure proper development server setup
+- **Event System**: Check Tauri capabilities configuration
 
 ### **Development Environment**
 - **Windows 10/11**: Primary development platform
@@ -435,5 +476,5 @@ cargo tauri build
 ---
 
 **Last Updated**: 2025-01-28  
-**Status**: Complete project structure with comprehensive documentation  
-**Focus**: Maintainable, scalable architecture with clear organization 
+**Status**: Complete project structure with real-time event system and comprehensive UI features  
+**Focus**: Maintainable, scalable architecture with clear organization and real-time capabilities 
