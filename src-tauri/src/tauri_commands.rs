@@ -1745,3 +1745,71 @@ pub async fn cpu_setup_stats_listener(window: tauri::Window, app: State<'_, Arc<
 
     Ok(())
 } 
+
+// Window Management Commands
+#[tauri::command]
+pub async fn set_window_fullscreen(window: tauri::Window) -> Result<(), String> {
+    log::info!("Setting window to fullscreen");
+    window.set_fullscreen(true).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn set_window_compact(width: Option<f64>, height: Option<f64>, window: tauri::Window) -> Result<(), String> {
+    let default_width = 350.0;
+    let default_height = 1080.0;
+    
+    log::info!("Setting window to compact mode: {}x{}", width.unwrap_or(default_width), height.unwrap_or(default_height));
+    window.set_fullscreen(false).map_err(|e| e.to_string())?;
+    window.set_size(tauri::Size::Logical(tauri::LogicalSize::new(
+        width.unwrap_or(default_width), 
+        height.unwrap_or(default_height)
+    ))).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn set_window_custom_size(width: f64, height: f64, window: tauri::Window) -> Result<(), String> {
+    log::info!("Setting window to custom size: {}x{}", width, height);
+    window.set_fullscreen(false).map_err(|e| e.to_string())?;
+    window.set_size(tauri::Size::Logical(tauri::LogicalSize::new(width, height)))
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn save_window_settings(settings: serde_json::Value, _app: State<'_, Arc<App>>) -> Result<(), String> {
+    log::info!("Saving window settings: {:?}", settings);
+    
+    // For now, just log the settings - we'll implement proper persistence later
+    log::info!("Window settings would be saved: {:?}", settings);
+    
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn load_window_settings(_app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+    log::info!("Loading window settings");
+    
+    // Return default settings for now
+    let window_settings = serde_json::json!({
+        "compactWidth": 350,
+        "compactHeight": 1080,
+        "fullscreenWidth": 1920,
+        "fullscreenHeight": 1080,
+    });
+    
+    Ok(window_settings)
+}
+
+#[tauri::command]
+pub async fn get_screen_size() -> Result<serde_json::Value, String> {
+    log::info!("Getting screen size");
+    
+    // This would need to be implemented with proper screen detection
+    // For now, return a default size
+    Ok(serde_json::json!({
+        "width": 1920,
+        "height": 1080
+    }))
+} 

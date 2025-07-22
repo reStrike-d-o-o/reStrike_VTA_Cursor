@@ -58,6 +58,18 @@ export interface AppState {
   // Advanced Panel State
   isAdvancedPanelOpen: boolean;
   activeDrawer: string;
+  
+  // Advanced Mode Authentication
+  isAdvancedModeAuthenticated: boolean;
+  isManualModeEnabled: boolean;
+  
+  // Window Settings
+  windowSettings: {
+    compactWidth: number;
+    compactHeight: number;
+    fullscreenWidth: number;
+    fullscreenHeight: number;
+  };
 }
 
 export interface AppActions {
@@ -88,6 +100,17 @@ export interface AppActions {
   closeAdvancedPanel: () => void;
   toggleAdvancedPanel: () => void;
   setActiveDrawer: (drawer: string) => void;
+  
+  // Advanced Mode Authentication Actions
+  authenticateAdvancedMode: (password: string) => boolean;
+  deauthenticateAdvancedMode: () => void;
+  toggleManualMode: (code: string) => boolean;
+  
+  // Window Settings Actions
+  updateWindowSettings: (settings: Partial<AppState['windowSettings']>) => void;
+  resetWindowSettings: () => void;
+  loadWindowSettings: () => Promise<void>;
+  saveWindowSettings: () => Promise<void>;
 }
 
 export type AppStore = AppState & AppActions;
@@ -129,6 +152,14 @@ const initialState: AppState = {
   error: null,
   isAdvancedPanelOpen: false,
   activeDrawer: 'pss',
+  isAdvancedModeAuthenticated: false,
+  isManualModeEnabled: false,
+  windowSettings: {
+    compactWidth: 350,
+    compactHeight: 1080,
+    fullscreenWidth: 1920,
+    fullscreenHeight: 1080,
+  },
 };
 
 // Create store
@@ -236,6 +267,65 @@ export const useAppStore = create<AppStore>()(
       closeAdvancedPanel: () => set({ isAdvancedPanelOpen: false }),
       toggleAdvancedPanel: () => set((state) => ({ isAdvancedPanelOpen: !state.isAdvancedPanelOpen })),
       setActiveDrawer: (drawer) => set({ activeDrawer: drawer }),
+      
+      // Advanced Mode Authentication Actions
+      authenticateAdvancedMode: (password) => {
+        const isValid = password === 'reStrike';
+        if (isValid) {
+          set({ isAdvancedModeAuthenticated: true });
+        }
+        return isValid;
+      },
+      
+      deauthenticateAdvancedMode: () => {
+        set({ 
+          isAdvancedModeAuthenticated: false,
+          isAdvancedPanelOpen: false 
+        });
+      },
+      
+      toggleManualMode: (code) => {
+        const isValid = code === 'el Manuel';
+        if (isValid) {
+          set((state) => ({ 
+            isManualModeEnabled: !state.isManualModeEnabled 
+          }));
+        }
+        return isValid;
+      },
+
+      // Window Settings Actions
+      updateWindowSettings: (settings) => {
+        set((state) => ({
+          windowSettings: { ...state.windowSettings, ...settings },
+        }));
+      },
+
+      resetWindowSettings: () => {
+        set({ windowSettings: initialState.windowSettings });
+      },
+
+      loadWindowSettings: async () => {
+        try {
+          const { windowCommands } = await import('../utils/tauriCommands');
+          const result = await windowCommands.loadWindowSettings();
+          if (result.success && result.data) {
+            set({ windowSettings: result.data });
+          }
+        } catch (error) {
+          console.error('Failed to load window settings:', error);
+        }
+      },
+
+      saveWindowSettings: async () => {
+        try {
+          const { windowCommands } = await import('../utils/tauriCommands');
+          const state = get();
+          await windowCommands.saveWindowSettings(state.windowSettings);
+        } catch (error) {
+          console.error('Failed to save window settings:', error);
+        }
+      },
     }),
     {
       name: 'restrike-vta-store',

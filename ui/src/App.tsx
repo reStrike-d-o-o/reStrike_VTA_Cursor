@@ -7,6 +7,8 @@ import { usePssEvents } from './hooks/usePssEvents';
 
 const App: React.FC = () => {
   const isAdvancedPanelOpen = useAppStore((state) => state.isAdvancedPanelOpen);
+  const windowSettings = useAppStore((state) => state.windowSettings);
+  const loadWindowSettings = useAppStore((state) => state.loadWindowSettings);
   const { tauriAvailable, environment, isLoading } = useEnvironment();
   
   // Initialize PSS event listener for real-time events
@@ -20,6 +22,13 @@ const App: React.FC = () => {
     // console.log('  - Is Loading:', isLoading);
     // console.log('  - Window Tauri:', typeof window !== 'undefined' ? window.__TAURI__ : 'N/A');
   }, [tauriAvailable, environment, isLoading]);
+
+  // Load window settings on startup
+  React.useEffect(() => {
+    if (tauriAvailable && !isLoading) {
+      loadWindowSettings();
+    }
+  }, [tauriAvailable, isLoading, loadWindowSettings]);
 
   // Set up PSS event listener when Tauri is available (run once)
   const hasInitRef = React.useRef(false);
@@ -41,8 +50,11 @@ const App: React.FC = () => {
       
       {/* Main content area: DockBar (left) + AdvancedPanel (right) */}
       <div className="flex flex-1 min-h-0 relative z-10">
-        {/* DockBar (left) - fixed width, full height with enhanced styling */}
-        <div className="w-[400px] flex-shrink-0 relative z-20">
+        {/* DockBar (left) - dynamic width from settings, full height with enhanced styling */}
+        <div 
+          className="flex-shrink-0 relative z-20"
+          style={{ width: `${windowSettings.compactWidth}px` }}
+        >
           <div className="absolute inset-0 bg-gradient-to-r from-gray-900/95 to-gray-800/90 backdrop-blur-sm border-r border-gray-700/50 shadow-2xl"></div>
           <div className="relative z-10 h-full">
             <DockBar />
