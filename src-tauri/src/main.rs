@@ -149,6 +149,14 @@ async fn main() -> AppResult<()> {
             tauri_commands::protocol_delete_version,
             tauri_commands::protocol_export_file,
             tauri_commands::protocol_get_current,
+            
+            // Window Management commands
+            tauri_commands::set_window_fullscreen,
+            tauri_commands::set_window_compact,
+            tauri_commands::set_window_custom_size,
+            tauri_commands::save_window_settings,
+            tauri_commands::load_window_settings,
+            tauri_commands::get_screen_size,
         ])
         .setup(|_app| {
             log::info!("Tauri application setup complete");

@@ -5,6 +5,7 @@ import LiveDataPanel from '../molecules/LiveDataPanel';
 import WebSocketManager from '../molecules/WebSocketManager';
 import { CpuMonitoringSection } from '../molecules/CpuMonitoringSection';
 import PssDrawer from '../molecules/PssDrawer';
+import AppSettingsSection from '../molecules/AppSettingsSection';
 import Toggle from '../atoms/Toggle';
 import TabGroup from '../molecules/TabGroup';
 import TabIcons from '../atoms/TabIcons';
@@ -267,6 +268,11 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
                 <LiveDataPanel />
                   <CpuMonitoringSection />
                 </div>
+              </div>
+            )}
+            {settingsTab === 'app-settings' && (
+              <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg p-6 border border-gray-600/30 shadow-lg">
+                <AppSettingsSection />
               </div>
             )}
             {/* Future settings tabs can be added here */}

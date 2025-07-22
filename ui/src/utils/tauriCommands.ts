@@ -425,6 +425,98 @@ export const diagLogsCommands = {
 };
 
 // ============================================================================
+// Window Management Commands
+// ============================================================================
+
+export const windowCommands = {
+  /**
+   * Set window to fullscreen mode
+   */
+  async setFullscreen(): Promise<TauriCommandResponse> {
+    try {
+      if (isTauriAvailable()) {
+        return await safeInvoke('set_window_fullscreen');
+      }
+      return { success: false, error: 'Tauri not available' };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  },
+
+  /**
+   * Set window to compact mode (custom dimensions)
+   */
+  async setCompact(width?: number, height?: number): Promise<TauriCommandResponse> {
+    try {
+      if (isTauriAvailable()) {
+        return await safeInvoke('set_window_compact', { width, height });
+      }
+      return { success: false, error: 'Tauri not available' };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  },
+
+  /**
+   * Set window to custom size
+   */
+  async setCustomSize(width: number, height: number): Promise<TauriCommandResponse> {
+    try {
+      if (isTauriAvailable()) {
+        return await safeInvoke('set_window_custom_size', { width, height });
+      }
+      return { success: false, error: 'Tauri not available' };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  },
+
+  /**
+   * Get screen size information
+   */
+  async getScreenSize(): Promise<TauriCommandResponse<{ width: number; height: number }>> {
+    try {
+      if (isTauriAvailable()) {
+        const result = await safeInvoke('get_screen_size');
+        return { success: true, data: result };
+      }
+      return { success: false, error: 'Tauri not available' };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  },
+
+  /**
+   * Save window settings
+   */
+  async saveWindowSettings(settings: any): Promise<TauriCommandResponse> {
+    try {
+      if (isTauriAvailable()) {
+        return await safeInvoke('save_window_settings', { settings });
+      }
+      return { success: false, error: 'Tauri not available' };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  },
+
+  /**
+   * Load window settings
+   */
+  async loadWindowSettings(): Promise<TauriCommandResponse<any>> {
+    try {
+      if (isTauriAvailable()) {
+        const result = await safeInvoke('load_window_settings');
+        return { success: true, data: result };
+      }
+      return { success: false, error: 'Tauri not available' };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  },
+};
+
+// ============================================================================
 // Utility Functions
 // ============================================================================
 
