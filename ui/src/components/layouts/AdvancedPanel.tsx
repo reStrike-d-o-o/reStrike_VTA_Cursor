@@ -6,6 +6,7 @@ import WebSocketManager from '../molecules/WebSocketManager';
 import { CpuMonitoringSection } from '../molecules/CpuMonitoringSection';
 import PssDrawer from '../molecules/PssDrawer';
 import AppSettingsSection from '../molecules/AppSettingsSection';
+import DatabaseManagementPanel from '../molecules/DatabaseManagementPanel';
 import Toggle from '../atoms/Toggle';
 import TabGroup from '../molecules/TabGroup';
 import TabIcons from '../atoms/TabIcons';
@@ -273,6 +274,11 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
             {settingsTab === 'app-settings' && (
               <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg p-6 border border-gray-600/30 shadow-lg">
                 <AppSettingsSection />
+              </div>
+            )}
+            {settingsTab === 'database' && (
+              <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg p-6 border border-gray-600/30 shadow-lg">
+                <DatabaseManagementPanel />
               </div>
             )}
             {/* Future settings tabs can be added here */}
