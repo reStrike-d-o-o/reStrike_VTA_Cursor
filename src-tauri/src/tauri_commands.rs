@@ -1468,11 +1468,9 @@ pub async fn get_network_interfaces() -> Result<serde_json::Value, String> {
 
 /// Get the best network interface based on current configuration
 #[tauri::command]
-pub async fn get_best_network_interface(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
-    let config = app.config_manager().get_config().await;
-    let network_settings = &config.udp.listener.network_interface;
-    
-    match crate::utils::NetworkDetector::get_best_interface(network_settings) {
+pub async fn get_best_network_interface() -> Result<serde_json::Value, String> {
+    let settings = crate::config::NetworkInterfaceSettings::default();
+    match crate::utils::NetworkDetector::get_best_interface(&settings) {
         Ok(Some(interface)) => {
             Ok(serde_json::json!({
                 "success": true,
@@ -1487,8 +1485,17 @@ pub async fn get_best_network_interface(app: State<'_, Arc<App>>) -> Result<serd
                         crate::utils::InterfaceType::Unknown => "unknown",
                     },
                     "ip_addresses": interface.ip_addresses.iter().map(|ip| ip.to_string()).collect::<Vec<_>>(),
+                    "subnet_masks": interface.subnet_masks,
+                    "default_gateway": interface.default_gateway,
+                    "dns_suffix": interface.dns_suffix,
+                    "media_state": match interface.media_state {
+                        crate::utils::MediaState::Connected => "connected",
+                        crate::utils::MediaState::Disconnected => "disconnected",
+                        crate::utils::MediaState::Unknown => "unknown",
+                    },
                     "is_up": interface.is_up,
                     "is_loopback": interface.is_loopback,
+                    "description": interface.description,
                 }
             }))
         }
