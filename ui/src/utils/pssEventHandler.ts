@@ -10,6 +10,8 @@ import { getBestFlagCode } from './countryCodeMapping';
 export const handlePssEvent = (event: any) => {
   const store = usePssMatchStore.getState();
   
+  console.log('🎯 Processing PSS event:', event);
+  
   // Handle different event types based on the event structure
   switch (event.type) {
     case 'athletes':
@@ -39,6 +41,8 @@ export const handlePssEvent = (event: any) => {
         handleFightLoadedEvent(event, store);
       } else if (event.event === 'FightReady') {
         handleFightReadyEvent(event, store);
+      } else if (event.event === 'Athletes') {
+        handleAthletesEvent(event, store);
       }
 
       // Parse raw match config (mch;) lines to update match config
@@ -59,6 +63,7 @@ export const handlePssEvent = (event: any) => {
             format: parseInt(parts[14]) || 1,
           };
           store.updateMatchConfig(matchConfig);
+          console.log('✅ Updated match config:', matchConfig);
         } catch (rawErr) {
           console.error('Error parsing raw mch line:', rawErr);
         }

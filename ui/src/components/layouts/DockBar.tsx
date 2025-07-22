@@ -73,7 +73,7 @@ const DockBar: React.FC = () => {
         <div className="flex flex-row flex-1 min-h-0 overflow-hidden">
           <div className="flex-1 h-full min-h-0 flex flex-col p-0 text-white overflow-hidden">
             {/* Main content card with enhanced styling */}
-            <div className="flex-1 flex flex-col bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm shadow-xl border border-gray-600/30 p-1 space-y-1 overflow-hidden">
+            <div className="flex-1 flex flex-col bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm shadow-xl border border-gray-600/30 p-2 space-y-1 overflow-hidden">
               {/* Match Info Section */}
               <div className="flex-shrink-0">
                 <MatchDetailsSection />

@@ -817,7 +817,7 @@ pub async fn set_live_data_streaming(
     window: tauri::Window,
 ) -> Result<serde_json::Value, String> {
     log::info!("Setting live data streaming for {}: {}", subsystem, enabled);
-
+    
     // Clone window once for emitting events (available throughout function)
     let app_handle = window.clone();
     
