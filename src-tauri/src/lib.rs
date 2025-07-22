@@ -1,11 +1,12 @@
 //! reStrike VTA - Windows Desktop Application Library
 //!
 //! This library provides the core functionality for the taekwondo referee application
-//! including OBS integration, video playback, and PSS protocol handling.
+//! including OBS integration, video playback, PSS protocol handling, and database management.
 
 pub mod commands;
 pub mod config;
 pub mod core;
+pub mod database;
 pub mod types;
 pub mod plugins;
 pub mod tauri_commands;
