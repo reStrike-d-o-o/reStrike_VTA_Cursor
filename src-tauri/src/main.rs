@@ -149,7 +149,6 @@ async fn main() -> AppResult<()> {
             tauri_commands::protocol_delete_version,
             tauri_commands::protocol_export_file,
             tauri_commands::protocol_get_current,
-            tauri_commands::debug_ipconfig_output,
             
             // Window Management commands
             tauri_commands::set_window_fullscreen,
