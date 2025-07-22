@@ -1798,6 +1798,30 @@ pub async fn set_window_custom_size(width: f64, height: f64, window: tauri::Wind
 }
 
 #[tauri::command]
+pub async fn set_window_position(x: f64, y: f64, window: tauri::Window) -> Result<(), String> {
+    log::info!("Setting window position: x={}, y={}", x, y);
+    window.set_position(tauri::Position::Logical(tauri::LogicalPosition::new(x, y)))
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn set_window_startup_position(window: tauri::Window) -> Result<(), String> {
+    log::info!("Setting window to startup position: x=1, y=1");
+    
+    // Set window to compact mode (350x1080)
+    window.set_fullscreen(false).map_err(|e| e.to_string())?;
+    window.set_size(tauri::Size::Logical(tauri::LogicalSize::new(350.0, 1080.0)))
+        .map_err(|e| e.to_string())?;
+    
+    // Set position to x=1, y=1
+    window.set_position(tauri::Position::Logical(tauri::LogicalPosition::new(1.0, 1.0)))
+        .map_err(|e| e.to_string())?;
+    
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn save_window_settings(settings: serde_json::Value, _app: State<'_, Arc<App>>) -> Result<(), String> {
     log::info!("Saving window settings: {:?}", settings);
     

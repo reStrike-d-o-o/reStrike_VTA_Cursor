@@ -6,6 +6,13 @@ This document provides a comprehensive overview of the reStrike VTA project stru
 
 ## Current Status ✅
 
+### **Window Management & Network Interface System - COMPLETE**
+- **Window Positioning**: Fixed app startup position to screen coordinates x=1, y=1
+- **Network Interface Detection**: Complete UDP/PSS network interface system with ⭐ Recommended status
+- **Window Management Commands**: `set_window_position`, `set_window_startup_position` for consistent positioning
+- **Network Interface Commands**: `get_best_network_interface` with optimal interface selection
+- **Startup Behavior**: Consistent window positioning and sizing on every app launch
+
 ### **Real-Time Event System - COMPLETE**
 - **Push-Based PSS Events**: Implemented `window.__TAURI__.event.listen` for real-time PSS event handling
 - **Live Data Streaming**: Real-time log streaming with auto-scroll controls and "End" button
@@ -19,6 +26,7 @@ This document provides a comprehensive overview of the reStrike VTA project stru
 - **Manual Mode Toggle**: Separate dialog with "el Manuel" code validation
 - **Window Persistence**: Settings saved and loaded across sessions
 - **Resize Protection**: Manual window resizing disabled, only Advanced button controls
+- **Startup Positioning**: Consistent x=1, y=1 positioning on every app launch
 
 ### **Authentication System - COMPLETE**
 - **Password Dialog**: Modal popup for Advanced mode with "reStrike" password validation
@@ -42,8 +50,10 @@ This document provides a comprehensive overview of the reStrike VTA project stru
 - **Build Pipeline**: Both frontend and backend compile cleanly
 
 ### **Recent Major Updates (2025-01-28)**
+- **Window Positioning**: Fixed app startup position to x=1, y=1 with consistent behavior
+- **Network Interface Detection**: Complete UDP/PSS network interface system with optimal selection
 - **Real-Time Events**: Implemented push-based event system using Tauri v2
-- **Window Management**: Complete window sizing and persistence system
+- **Window Management**: Complete window sizing and persistence system with positioning
 - **Authentication**: Password-protected Advanced mode and Manual mode dialogs
 - **UI Improvements**: Centered Event Table with precise title positioning
 - **Code Cleanup**: Removed unused imports and development console.logs
@@ -63,7 +73,7 @@ reStrike_VTA_Cursor/
 │   ├── src/                      # Rust source code
 │   │   ├── main.rs              # Tauri app entry point
 │   │   ├── lib.rs               # Library exports and plugin registration
-│   │   ├── tauri_commands.rs    # Tauri command definitions (1815 lines)
+│   │   ├── tauri_commands.rs    # Tauri command definitions (1835 lines)
 │   │   ├── core/                # Core application functionality
 │   │   │   ├── app.rs           # Application state and lifecycle
 │   │   │   ├── config.rs        # Configuration management
@@ -101,7 +111,8 @@ reStrike_VTA_Cursor/
 │   │   ├── types/               # Shared types
 │   │   │   └── mod.rs           # Type definitions
 │   │   └── utils/               # Utility functions
-│   │       └── logger.rs        # Logging utilities
+│   │       ├── logger.rs        # Logging utilities
+│   │       └── network.rs       # Network interface detection
 │   ├── Cargo.toml               # Rust dependencies
 │   ├── tauri.conf.json          # Tauri configuration
 │   ├── capabilities.json        # Tauri capabilities
@@ -351,7 +362,7 @@ cargo tauri dev
 This single command:
 1. Starts the React development server (port 3000)
 2. Builds the Rust backend
-3. Launches the native Windows application
+3. Launches the native Windows application at position x=1, y=1
 4. Enables hot reload for both frontend and backend
 
 ### **Alternative Manual Start**
@@ -379,7 +390,7 @@ cargo tauri build
 - **OBS Integration**: Seamless connection with OBS Studio and status monitoring
 - **Flag Management**: Country flag recognition and display with 253+ IOC flags
 - **Advanced Panel**: Comprehensive settings and diagnostics with tabbed interface
-- **Window Management**: Dynamic window sizing with authentication protection
+- **Window Management**: Dynamic window sizing with authentication protection and consistent positioning
 
 ### **UI Components**
 - **DockBar**: Main sidebar with player info, controls, and authentication
@@ -398,7 +409,8 @@ cargo tauri build
 - **Type Safety**: Full TypeScript and Rust type safety
 - **Flag System**: IOC flag integration with PSS code mapping
 - **Real-Time Events**: Push-based event system using Tauri v2
-- **Window Management**: Dynamic sizing with authentication
+- **Window Management**: Dynamic sizing with authentication and consistent positioning
+- **Network Interface Detection**: Optimal interface selection with ⭐ Recommended status
 
 ## Configuration Management
 
@@ -451,6 +463,8 @@ cargo tauri build
 2. **Event System**: Implement PSS protocol event handling ✅
 3. **Video Player**: Integrate mpv video player
 4. **Flag Management**: Complete flag recognition system ✅
+5. **Window Management**: Consistent positioning and sizing ✅
+6. **Network Interface**: Optimal interface detection ✅
 
 ### **Future Enhancements**
 1. **AI Integration**: Automated event analysis
@@ -476,5 +490,5 @@ cargo tauri build
 ---
 
 **Last Updated**: 2025-01-28  
-**Status**: Complete project structure with real-time event system and comprehensive UI features  
+**Status**: Complete project structure with real-time event system, window management, and network interface detection  
 **Focus**: Maintainable, scalable architecture with clear organization and real-time capabilities 

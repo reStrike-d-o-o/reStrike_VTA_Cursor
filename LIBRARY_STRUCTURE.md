@@ -6,6 +6,13 @@ This document describes the backend architecture and plugin system of reStrike V
 
 ## Current Status ✅
 
+### **Window Management & Network Interface System - COMPLETE**
+- **Window Positioning**: Fixed app startup position to screen coordinates x=1, y=1
+- **Network Interface Detection**: Complete UDP/PSS network interface system with ⭐ Recommended status
+- **Window Management Commands**: `set_window_position`, `set_window_startup_position` for consistent positioning
+- **Network Interface Commands**: `get_best_network_interface` with optimal interface selection
+- **Startup Behavior**: Consistent window positioning and sizing on every app launch
+
 ### **Real-Time Event System - COMPLETE**
 - **Push-Based Events**: Implemented `window.emit` for real-time event streaming to frontend
 - **PSS Event Listener**: `pss_setup_event_listener` command for real-time PSS event handling
@@ -16,6 +23,7 @@ This document describes the backend architecture and plugin system of reStrike V
 
 ### **Window Management System - COMPLETE**
 - **Dynamic Window Sizing**: `set_window_fullscreen`, `set_window_compact`, `set_window_custom_size`
+- **Window Positioning**: `set_window_position`, `set_window_startup_position` for consistent positioning
 - **Window Persistence**: `save_window_settings`, `load_window_settings` for cross-session persistence
 - **Screen Size Detection**: `get_screen_size` for adaptive window sizing
 - **Compact Mode**: Default 350x1080 dimensions with resizable option
@@ -36,8 +44,10 @@ This document describes the backend architecture and plugin system of reStrike V
 - **Production Ready**: Backend ready for production deployment
 
 ### **Recent Major Updates (2025-01-28)**
+- **Window Positioning**: Fixed app startup position to x=1, y=1 with consistent behavior
+- **Network Interface Detection**: Complete UDP/PSS network interface system with optimal selection
 - **Real-Time Events**: Implemented push-based event system using Tauri v2
-- **Window Management**: Complete window sizing and persistence system
+- **Window Management**: Complete window sizing and persistence system with positioning
 - **Code Cleanup**: Removed unused imports and optimized build process
 - **Build Optimization**: Achieved clean compilation for backend
 - **Tab System Integration**: Frontend tab system working with backend plugins
@@ -53,7 +63,7 @@ This document describes the backend architecture and plugin system of reStrike V
 src-tauri/src/
 ├── main.rs                 # Tauri app entry point
 ├── lib.rs                  # Library exports and plugin registration
-├── tauri_commands.rs       # Tauri command definitions (1815 lines)
+├── tauri_commands.rs       # Tauri command definitions (1835 lines)
 ├── core/                   # Core application functionality
 │   ├── app.rs             # Application state and lifecycle
 │   ├── config.rs          # Configuration management
@@ -70,7 +80,8 @@ src-tauri/src/
 ├── types/                  # Shared types
 │   └── mod.rs             # Type definitions
 └── utils/                  # Utility functions
-    └── logger.rs          # Logging utilities
+    ├── logger.rs          # Logging utilities
+    └── network.rs         # Network interface detection
 ```
 
 ### **Plugin System**
@@ -103,7 +114,7 @@ src-tauri/src/
     └── overlay.rs         # Video overlay system
 ```
 
-## Tauri Commands (1815 lines)
+## Tauri Commands (1835 lines)
 
 ### **Core App Commands**
 - `get_app_status`: Get application status
@@ -139,6 +150,8 @@ src-tauri/src/
 - `set_window_fullscreen`: Set window to fullscreen mode
 - `set_window_compact`: Set window to compact mode (350x1080)
 - `set_window_custom_size`: Set custom window dimensions
+- `set_window_position`: Set window position to specific coordinates
+- `set_window_startup_position`: Set window to startup position (x=1, y=1) with compact size
 - `save_window_settings`: Save window settings to persistent storage
 - `load_window_settings`: Load window settings from storage
 - `get_screen_size`: Get screen dimensions
@@ -146,8 +159,8 @@ src-tauri/src/
 ### **System Commands**
 - `system_get_info`: Get system information
 - `system_open_file_dialog`: Open file dialog
-- `get_network_interfaces`: List network interfaces
-- `get_best_network_interface`: Get optimal network interface
+- `get_network_interfaces`: List network interfaces with detailed information
+- `get_best_network_interface`: Get optimal network interface with ⭐ Recommended status
 
 ### **Logging Commands**
 - `list_log_files`: List available log files
@@ -366,7 +379,7 @@ pub async fn get_obs_connections() -> AppResult<Vec<ObsConnection>> {
 - **Flag Management**: IOC flag integration with PSS codes
 - **Advanced Panel**: System diagnostics and configuration
 - **Status Indicators**: Real-time system status
-- **Window Management**: Dynamic window sizing and persistence
+- **Window Management**: Dynamic window sizing and persistence with positioning
 
 ## Development Guidelines
 
@@ -448,5 +461,5 @@ pub async fn get_obs_connections() -> AppResult<Vec<ObsConnection>> {
 ---
 
 **Last Updated**: 2025-01-28  
-**Status**: Complete plugin architecture with real-time event system and window management  
+**Status**: Complete plugin architecture with real-time event system, window management, and network interface detection  
 **Focus**: Maintainable, scalable backend architecture with comprehensive Tauri integration 
