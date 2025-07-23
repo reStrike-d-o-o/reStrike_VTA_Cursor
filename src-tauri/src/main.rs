@@ -109,6 +109,7 @@ async fn main() -> AppResult<()> {
             tauri_commands::export_settings,
             tauri_commands::import_settings,
             tauri_commands::restore_settings_backup,
+            tauri_commands::restore_backup_with_dialog,
             
             // Flag commands
             tauri_commands::get_flag_url,
@@ -159,6 +160,19 @@ async fn main() -> AppResult<()> {
             tauri_commands::save_window_settings,
             tauri_commands::load_window_settings,
             tauri_commands::get_screen_size,
+            
+            // Database commands
+            tauri_commands::initialize_ui_settings_database,
+            tauri_commands::db_initialize_ui_settings,
+            tauri_commands::db_get_ui_setting,
+            tauri_commands::db_set_ui_setting,
+            tauri_commands::db_get_all_ui_settings,
+            tauri_commands::db_get_database_info,
+            tauri_commands::migrate_json_to_database,
+            tauri_commands::create_json_backup,
+            tauri_commands::restore_from_json_backup,
+            tauri_commands::get_migration_status,
+            tauri_commands::enable_database_mode,
         ])
         .setup(|_app| {
             log::info!("Tauri application setup complete");

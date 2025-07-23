@@ -1,6 +1,7 @@
 use rusqlite::Connection;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::Arc;
+use tokio::sync::Mutex;
 use std::fs;
 use std::time::{SystemTime, UNIX_EPOCH};
 use crate::database::{DatabaseError, DatabaseResult, DATABASE_FILE};
@@ -103,23 +104,21 @@ impl DatabaseConnection {
     }
     
     /// Get a reference to the underlying connection
-    pub fn get_connection(&self) -> DatabaseResult<MutexGuard<Connection>> {
-        self.connection.lock()
-            .map_err(|e| DatabaseError::Connection(format!("Failed to acquire database lock: {}", e)))
+    pub async fn get_connection(&self) -> DatabaseResult<tokio::sync::MutexGuard<'_, Connection>> {
+        Ok(self.connection.lock().await)
     }
     
     /// Get a mutable reference to the underlying connection
-    pub fn get_connection_mut(&self) -> DatabaseResult<MutexGuard<Connection>> {
-        self.connection.lock()
-            .map_err(|e| DatabaseError::Connection(format!("Failed to acquire database lock: {}", e)))
+    pub async fn get_connection_mut(&self) -> DatabaseResult<tokio::sync::MutexGuard<'_, Connection>> {
+        Ok(self.connection.lock().await)
     }
     
     /// Execute a transaction with automatic rollback on error
-    pub fn transaction<F, T>(&self, f: F) -> DatabaseResult<T>
+    pub async fn transaction<F, T>(&self, f: F) -> DatabaseResult<T>
     where
         F: FnOnce(&rusqlite::Transaction) -> DatabaseResult<T>,
     {
-        let mut conn = self.get_connection()?;
+        let mut conn = self.get_connection().await?;
         let transaction = conn.transaction()
             .map_err(|e| DatabaseError::Transaction(format!("Failed to start transaction: {}", e)))?;
         
@@ -140,11 +139,11 @@ impl DatabaseConnection {
     }
     
     /// Execute a read-only transaction
-    pub fn read_transaction<F, T>(&self, f: F) -> DatabaseResult<T>
+    pub async fn read_transaction<F, T>(&self, f: F) -> DatabaseResult<T>
     where
         F: FnOnce(&rusqlite::Transaction) -> DatabaseResult<T>,
     {
-        let mut conn = self.get_connection()?;
+        let mut conn = self.get_connection().await?;
         let transaction = conn.transaction()
             .map_err(|e| DatabaseError::Transaction(format!("Failed to start read transaction: {}", e)))?;
         
@@ -157,14 +156,14 @@ impl DatabaseConnection {
     }
     
     /// Execute a transaction with retry logic for busy database
-    pub fn transaction_with_retry<F, T>(&self, mut f: F, max_retries: u32) -> DatabaseResult<T>
+    pub async fn transaction_with_retry<F, T>(&self, mut f: F, max_retries: u32) -> DatabaseResult<T>
     where
         F: FnMut(&rusqlite::Transaction) -> DatabaseResult<T>,
     {
         let mut last_error = None;
         
         for attempt in 0..max_retries {
-            match self.transaction(&mut f) {
+            match self.transaction(&mut f).await {
                 Ok(result) => return Ok(result),
                 Err(e) => {
                     let error_msg = e.to_string();
@@ -172,7 +171,7 @@ impl DatabaseConnection {
                     if attempt < max_retries - 1 {
                         // Exponential backoff: wait 2^attempt * 100ms
                         let delay = std::time::Duration::from_millis(100 * (1 << attempt));
-                        std::thread::sleep(delay);
+                        tokio::time::sleep(delay).await;
                         log::warn!("Transaction attempt {} failed, retrying in {:?}: {}", attempt + 1, delay, error_msg);
                     }
                 }
@@ -183,7 +182,7 @@ impl DatabaseConnection {
     }
     
     /// Restore database from backup
-    pub fn restore_from_backup(&self, backup_path: &PathBuf) -> DatabaseResult<()> {
+    pub async fn restore_from_backup(&self, backup_path: &PathBuf) -> DatabaseResult<()> {
         // Verify backup file exists and is accessible
         if !backup_path.exists() {
             return Err(DatabaseError::Connection(format!("Backup file does not exist: {:?}", backup_path)));
@@ -204,7 +203,7 @@ impl DatabaseConnection {
         let current_backup = self.create_backup(Some("pre_restore"))?;
         
         // Close current connection to allow file replacement
-        drop(self.get_connection()?);
+        drop(self.get_connection().await?);
         
         // Replace current database with backup
         let db_path = Self::get_database_path()?;
@@ -218,8 +217,8 @@ impl DatabaseConnection {
     }
     
     /// Check if the database is accessible
-    pub fn is_accessible(&self) -> bool {
-        self.get_connection().is_ok()
+    pub async fn is_accessible(&self) -> bool {
+        self.get_connection().await.is_ok()
     }
     
     /// Get database file size
@@ -231,16 +230,16 @@ impl DatabaseConnection {
     }
     
     /// Get the current database encoding
-    pub fn get_encoding(&self) -> DatabaseResult<String> {
-        let conn = self.get_connection()?;
+    pub async fn get_encoding(&self) -> DatabaseResult<String> {
+        let conn = self.get_connection().await?;
         let encoding: String = conn.query_row("PRAGMA encoding", [], |row| row.get(0))
             .map_err(|e| DatabaseError::Connection(format!("Failed to get database encoding: {}", e)))?;
         Ok(encoding)
     }
     
     /// Get database integrity status
-    pub fn check_integrity(&self) -> DatabaseResult<bool> {
-        let conn = self.get_connection()?;
+    pub async fn check_integrity(&self) -> DatabaseResult<bool> {
+        let conn = self.get_connection().await?;
         let result: String = conn.query_row("PRAGMA integrity_check", [], |row| row.get(0))
             .map_err(|e| DatabaseError::Connection(format!("Failed to check integrity: {}", e)))?;
         
@@ -331,8 +330,8 @@ impl DatabaseConnection {
     }
     
     /// Get database statistics
-    pub fn get_statistics(&self) -> DatabaseResult<DatabaseStatistics> {
-        let conn = self.get_connection()?;
+    pub async fn get_statistics(&self) -> DatabaseResult<DatabaseStatistics> {
+        let conn = self.get_connection().await?;
         
         let page_count: i64 = conn.query_row("PRAGMA page_count", [], |row| row.get(0))
             .map_err(|e| DatabaseError::Connection(format!("Failed to get page count: {}", e)))?;
@@ -356,7 +355,7 @@ impl DatabaseConnection {
             journal_mode,
             synchronous,
             file_size: self.get_file_size()?,
-            integrity_ok: self.check_integrity()?,
+            integrity_ok: self.check_integrity().await?,
         })
     }
 }

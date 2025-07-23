@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use tauri::{State, Emitter};
+use tauri::{State, Emitter, Manager};
 use crate::core::app::App;
 
 
@@ -716,10 +716,65 @@ pub async fn system_get_info(_app: State<'_, Arc<App>>) -> Result<serde_json::Va
 }
 
 #[tauri::command]
-pub async fn system_open_file_dialog(_app: State<'_, Arc<App>>) -> Result<Vec<String>, String> {
+pub async fn system_open_file_dialog(window: tauri::Window) -> Result<Vec<String>, String> {
     log::info!("System open file dialog called");
-    // TODO: Implement file dialog using Tauri's dialog plugin
-    Ok(vec![])
+    
+    // Use Tauri v2 dialog plugin through the window
+    match window.dialog().file()
+        .add_filter("JSON Files", &["json"])
+        .add_filter("All Files", &["*"])
+        .set_title("Select Backup File")
+        .pick_file() {
+        Some(path) => {
+            log::info!("File selected: {:?}", path);
+            Ok(vec![path.to_string_lossy().to_string()])
+        },
+        None => {
+            log::info!("No file selected");
+            Ok(vec![])
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn restore_backup_with_dialog(window: tauri::Window, app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+    log::info!("Restore backup with dialog called");
+    
+    // Open file dialog to select backup file
+    let selected_files = system_open_file_dialog(window).await?;
+    
+    if selected_files.is_empty() {
+        return Ok(serde_json::json!({
+            "success": false,
+            "error": "No file selected"
+        }));
+    }
+    
+    let backup_path = &selected_files[0];
+    log::info!("Selected backup file: {}", backup_path);
+    
+    // Convert String to Path for import_config
+    let path = std::path::Path::new(backup_path);
+    
+    // Check if file exists
+    if !path.exists() {
+        return Ok(serde_json::json!({
+            "success": false,
+            "error": format!("Backup file not found: {}", backup_path)
+        }));
+    }
+    
+    // Restore from the selected backup file
+    match app.config_manager().import_config(path).await {
+        Ok(_) => Ok(serde_json::json!({
+            "success": true,
+            "message": format!("Successfully restored from backup: {}", backup_path)
+        })),
+        Err(e) => Ok(serde_json::json!({
+            "success": false,
+            "error": format!("Failed to restore from backup: {}", e)
+        }))
+    }
 }
 
 // Diagnostics & Logs commands
@@ -1880,7 +1935,7 @@ pub async fn initialize_ui_settings_database() -> Result<serde_json::Value, Stri
 pub async fn db_initialize_ui_settings(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
     log::info!("Initializing UI settings in database");
     
-    match app.database_plugin().initialize_ui_settings() {
+    match app.database_plugin().initialize_ui_settings().await {
         Ok(_) => Ok(serde_json::json!({
             "success": true,
             "message": "UI settings initialized in database successfully"
@@ -1896,7 +1951,7 @@ pub async fn db_initialize_ui_settings(app: State<'_, Arc<App>>) -> Result<serde
 pub async fn db_get_ui_setting(key: String, app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
     log::info!("Getting UI setting: {}", key);
     
-    match app.database_plugin().get_ui_setting(&key) {
+    match app.database_plugin().get_ui_setting(&key).await {
         Ok(value) => Ok(serde_json::json!({
             "success": true,
             "key": key,
@@ -1919,7 +1974,7 @@ pub async fn db_set_ui_setting(
 ) -> Result<serde_json::Value, String> {
     log::info!("Setting UI setting: {} = {}", key, value);
     
-    match app.database_plugin().set_ui_setting(&key, &value, &changed_by, change_reason.as_deref()) {
+    match app.database_plugin().set_ui_setting(&key, &value, &changed_by, change_reason.as_deref()).await {
         Ok(_) => Ok(serde_json::json!({
             "success": true,
             "message": format!("UI setting '{}' set successfully", key)
@@ -1935,7 +1990,7 @@ pub async fn db_set_ui_setting(
 pub async fn db_get_all_ui_settings(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
     log::info!("Getting all UI settings");
     
-    match app.database_plugin().get_all_ui_settings() {
+    match app.database_plugin().get_all_ui_settings().await {
         Ok(settings) => {
             let settings_map: std::collections::HashMap<String, String> = settings.into_iter().collect();
             Ok(serde_json::json!({
@@ -1954,7 +2009,7 @@ pub async fn db_get_all_ui_settings(app: State<'_, Arc<App>>) -> Result<serde_js
 pub async fn db_get_database_info(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
     log::info!("Getting database information");
     
-    let is_accessible = app.database_plugin().is_accessible();
+    let is_accessible = app.database_plugin().is_accessible().await;
     let file_size = app.database_plugin().get_file_size();
     
     let file_size_value = match file_size {
@@ -1967,4 +2022,103 @@ pub async fn db_get_database_info(app: State<'_, Arc<App>>) -> Result<serde_json
         "is_accessible": is_accessible,
         "file_size": file_size_value
     }))
-} 
+}
+
+// Database Migration Commands
+#[tauri::command]
+pub async fn migrate_json_to_database(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+    log::info!("Starting JSON to database migration");
+    
+    match app.database_plugin().migrate_json_to_database().await {
+        Ok(result) => Ok(serde_json::json!({
+            "success": true,
+            "result": {
+                "total_settings": result.total_settings,
+                "migrated_settings": result.migrated_settings,
+                "failed_settings": result.failed_settings,
+                "success_rate": result.success_rate(),
+                "errors": result.errors
+            }
+        })),
+        Err(e) => Ok(serde_json::json!({
+            "success": false,
+            "error": e.to_string()
+        }))
+    }
+}
+
+#[tauri::command]
+pub async fn create_json_backup(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+    log::info!("Creating JSON settings backup");
+    
+    match app.database_plugin().create_json_backup().await {
+        Ok(backup_path) => Ok(serde_json::json!({
+            "success": true,
+            "backup_path": backup_path
+        })),
+        Err(e) => Ok(serde_json::json!({
+            "success": false,
+            "error": e.to_string()
+        }))
+    }
+}
+
+#[tauri::command]
+pub async fn restore_from_json_backup(
+    app: State<'_, Arc<App>>,
+    backup_path: String
+) -> Result<serde_json::Value, String> {
+    log::info!("Restoring from JSON backup: {}", backup_path);
+    
+    match app.database_plugin().restore_from_json_backup(&backup_path).await {
+        Ok(_) => Ok(serde_json::json!({
+            "success": true,
+            "message": "Settings restored successfully"
+        })),
+        Err(e) => Ok(serde_json::json!({
+            "success": false,
+            "error": e.to_string()
+        }))
+    }
+}
+
+#[tauri::command]
+pub async fn get_migration_status(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+    log::info!("Getting migration status");
+    
+    match app.database_plugin().get_migration_status().await {
+        Ok(status) => Ok(serde_json::json!({
+            "success": true,
+            "status": {
+                "database_enabled": status.database_enabled,
+                "json_fallback_enabled": status.json_fallback_enabled,
+                "migration_completed": status.migration_completed,
+                "last_migration": status.last_migration,
+                "settings_count": status.settings_count
+            }
+        })),
+        Err(e) => Ok(serde_json::json!({
+            "success": false,
+            "error": e.to_string()
+        }))
+    }
+}
+
+#[tauri::command]
+pub async fn enable_database_mode(
+    app: State<'_, Arc<App>>,
+    enabled: bool
+) -> Result<serde_json::Value, String> {
+    log::info!("Setting database mode to: {}", enabled);
+    
+    match app.database_plugin().set_database_mode(enabled).await {
+        Ok(_) => Ok(serde_json::json!({
+            "success": true,
+            "message": format!("Database mode {}", if enabled { "enabled" } else { "disabled" })
+        })),
+        Err(e) => Ok(serde_json::json!({
+            "success": false,
+            "error": e.to_string()
+        }))
+    }
+}

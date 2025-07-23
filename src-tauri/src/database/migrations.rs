@@ -318,10 +318,10 @@ impl MigrationManager {
         }
         
         if current_version > target_version {
-            return Err(DatabaseError::SchemaVersion {
-                expected: target_version,
-                actual: current_version,
-            });
+            return Err(DatabaseError::SchemaVersion(format!(
+                "Schema version mismatch: expected {}, actual {}",
+                target_version, current_version
+            )));
         }
         
         log::info!("Migrating database from version {} to {}", current_version, target_version);
