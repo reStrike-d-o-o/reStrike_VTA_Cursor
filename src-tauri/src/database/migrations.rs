@@ -2,7 +2,7 @@ use rusqlite::{Connection, Result as SqliteResult};
 use crate::database::{DatabaseError, DatabaseResult, CURRENT_SCHEMA_VERSION, SchemaVersion};
 
 /// Migration trait for database schema updates
-pub trait Migration {
+pub trait Migration: Send + Sync {
     fn version(&self) -> u32;
     fn description(&self) -> &str;
     fn up(&self, conn: &Connection) -> SqliteResult<()>;

@@ -7,23 +7,18 @@
 //! - Flag management data
 //! - User preferences and session data
 
-pub mod error;
 pub mod connection;
-pub mod models;
 pub mod migrations;
+pub mod models;
 pub mod operations;
+pub mod error;
+pub mod settings_manager;
 
+pub use connection::DatabaseConnection;
 pub use error::DatabaseError;
-pub use connection::{DatabaseConnection, DatabaseStatistics};
-pub use models::{
-    PssEvent, ObsConnection, AppConfig, FlagMapping, SchemaVersion,
-    SettingsCategory, SettingsKey, SettingsValue, SettingsHistory,
-};
-pub use operations::{
-    PssEventOperations, ObsConnectionOperations, AppConfigOperations, FlagMappingOperations,
-    SettingsOperations, SettingsStatistics, DatabaseMaintenanceOperations,
-    PssEventStatistics, DatabaseIntegrityReport, DatabaseSizeInfo, DatabasePerformanceStats,
-};
+pub use models::*;
+pub use operations::*;
+pub use settings_manager::SettingsManager;
 
 /// Database result type
 pub type DatabaseResult<T> = Result<T, DatabaseError>;
