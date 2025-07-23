@@ -542,12 +542,15 @@ const WebSocketManager: React.FC = () => {
               <Input
                 id="connection-password"
                 type="password"
+                autoComplete="new-password"
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 placeholder={editingConnection && obsConnections.find(c => c.name === editingConnection)?.password 
                   ? "Password is set (click to change)" 
                   : "Leave empty if no password"}
               />
+              {/* Hidden username field for accessibility */}
+              <input type="text" autoComplete="username" style={{ display: 'none' }} />
             </div>
 
             <div className="flex items-center">

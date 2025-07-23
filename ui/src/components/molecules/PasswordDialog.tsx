@@ -48,9 +48,13 @@ const PasswordDialog: React.FC<PasswordDialogProps> = ({
         <p className="text-gray-300 mb-4">{message}</p>
         
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Hidden username field for accessibility */}
+          <input type="text" autoComplete="username" style={{ display: 'none' }} />
+          
           <div>
             <Input
               type="password"
+              autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter password"

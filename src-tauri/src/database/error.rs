@@ -1,15 +1,14 @@
 use thiserror::Error;
 
-/// Database-specific error types
 #[derive(Error, Debug)]
 pub enum DatabaseError {
     #[error("SQLite error: {0}")]
     Sqlite(#[from] rusqlite::Error),
     
     #[error("Serialization error: {0}")]
-    Serialization(#[from] serde_json::Error),
+    Serialization(String),
     
-    #[error("Database connection failed: {0}")]
+    #[error("Connection error: {0}")]
     Connection(String),
     
     #[error("Migration error: {0}")]
@@ -18,11 +17,11 @@ pub enum DatabaseError {
     #[error("Schema version mismatch: expected {expected}, got {actual}")]
     SchemaVersion { expected: u32, actual: u32 },
     
-    #[error("Table not found: {table}")]
-    TableNotFound { table: String },
+    #[error("Table not found: {table_name}")]
+    TableNotFound { table_name: String },
     
-    #[error("Column not found: {column} in table {table}")]
-    ColumnNotFound { table: String, column: String },
+    #[error("Column not found: {column_name} in table {table_name}")]
+    ColumnNotFound { column_name: String, table_name: String },
     
     #[error("Constraint violation: {message}")]
     ConstraintViolation { message: String },
@@ -30,15 +29,14 @@ pub enum DatabaseError {
     #[error("Transaction error: {0}")]
     Transaction(String),
     
-    #[error("Database initialization failed: {0}")]
+    #[error("Initialization error: {0}")]
     Initialization(String),
     
     #[error("Invalid data: {0}")]
     InvalidData(String),
+    
+    #[error("Not found: {0}")]
+    NotFound(String),
 }
 
-impl From<DatabaseError> for crate::types::AppError {
-    fn from(err: DatabaseError) -> Self {
-        crate::types::AppError::ConfigError(err.to_string())
-    }
-} 
+ 

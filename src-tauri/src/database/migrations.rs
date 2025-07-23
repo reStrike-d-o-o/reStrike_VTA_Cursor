@@ -139,6 +139,136 @@ impl Migration for Migration1 {
     }
 }
 
+/// Migration 2: Normalized settings schema
+pub struct Migration2;
+
+impl Migration for Migration2 {
+    fn version(&self) -> u32 {
+        2
+    }
+    
+    fn description(&self) -> &str {
+        "Normalized settings schema with categories, keys, values, and history"
+    }
+    
+    fn up(&self, conn: &Connection) -> SqliteResult<()> {
+        // Create settings_categories table
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS settings_categories (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL UNIQUE,
+                description TEXT,
+                display_order INTEGER DEFAULT 0,
+                created_at TEXT NOT NULL
+            )",
+            [],
+        )?;
+        
+        // Create settings_keys table
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS settings_keys (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                category_id INTEGER NOT NULL,
+                key_name TEXT NOT NULL UNIQUE,
+                display_name TEXT NOT NULL,
+                description TEXT,
+                data_type TEXT NOT NULL,
+                default_value TEXT,
+                validation_rules TEXT,
+                is_required BOOLEAN DEFAULT 0,
+                is_sensitive BOOLEAN DEFAULT 0,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (category_id) REFERENCES settings_categories(id)
+            )",
+            [],
+        )?;
+        
+        // Create settings_values table
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS settings_values (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                key_id INTEGER NOT NULL,
+                value TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY (key_id) REFERENCES settings_keys(id)
+            )",
+            [],
+        )?;
+        
+        // Create settings_history table
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS settings_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                key_id INTEGER NOT NULL,
+                old_value TEXT,
+                new_value TEXT,
+                changed_by TEXT NOT NULL,
+                change_reason TEXT,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (key_id) REFERENCES settings_keys(id)
+            )",
+            [],
+        )?;
+        
+        // Create indices for performance
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_settings_keys_category ON settings_keys(category_id)",
+            [],
+        )?;
+        
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_settings_keys_name ON settings_keys(key_name)",
+            [],
+        )?;
+        
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_settings_values_key ON settings_values(key_id)",
+            [],
+        )?;
+        
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_settings_history_key ON settings_history(key_id)",
+            [],
+        )?;
+        
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_settings_history_created ON settings_history(created_at)",
+            [],
+        )?;
+        
+        // Insert default categories
+        let default_categories = vec![
+            ("app", "Application Core Settings", 1),
+            ("obs", "OBS WebSocket Settings", 2),
+            ("udp", "UDP/PSS Protocol Settings", 3),
+            ("logging", "Logging and Diagnostics", 4),
+            ("ui", "User Interface Settings", 5),
+            ("video", "Video Playback Settings", 6),
+            ("license", "License and Activation", 7),
+            ("flags", "Flag Management Settings", 8),
+            ("advanced", "Advanced Features", 9),
+        ];
+        
+        for (name, description, order) in default_categories {
+            conn.execute(
+                "INSERT OR IGNORE INTO settings_categories (name, description, display_order, created_at) VALUES (?, ?, ?, ?)",
+                [name, description, &order.to_string(), &chrono::Utc::now().to_rfc3339()],
+            )?;
+        }
+        
+        Ok(())
+    }
+    
+    fn down(&self, conn: &Connection) -> SqliteResult<()> {
+        conn.execute("DROP TABLE IF EXISTS settings_history", [])?;
+        conn.execute("DROP TABLE IF EXISTS settings_values", [])?;
+        conn.execute("DROP TABLE IF EXISTS settings_keys", [])?;
+        conn.execute("DROP TABLE IF EXISTS settings_categories", [])?;
+        Ok(())
+    }
+}
+
 /// Migration manager for handling database schema updates
 pub struct MigrationManager {
     migrations: Vec<Box<dyn Migration>>,
@@ -149,6 +279,7 @@ impl MigrationManager {
     pub fn new() -> Self {
         let mut migrations: Vec<Box<dyn Migration>> = Vec::new();
         migrations.push(Box::new(Migration1));
+        migrations.push(Box::new(Migration2));
         
         Self { migrations }
     }
