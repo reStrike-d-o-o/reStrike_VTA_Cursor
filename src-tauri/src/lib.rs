@@ -12,6 +12,7 @@ pub mod plugins;
 pub mod tauri_commands;
 pub mod logging;
 pub mod utils;
+pub mod ui_settings;
 
 // Re-export commonly used items
 pub use core::app::App;

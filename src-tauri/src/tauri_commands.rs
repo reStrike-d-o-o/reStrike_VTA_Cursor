@@ -1856,4 +1856,115 @@ pub async fn get_screen_size() -> Result<serde_json::Value, String> {
         "width": 1920,
         "height": 1080
     }))
+}
+
+// UI Settings Migration Commands
+#[tauri::command]
+pub async fn initialize_ui_settings_database() -> Result<serde_json::Value, String> {
+    log::info!("Initializing UI settings database");
+    
+    match crate::ui_settings::UiSettingsManager::initialize() {
+        Ok(_) => Ok(serde_json::json!({
+            "success": true,
+            "message": "UI settings database initialized successfully"
+        })),
+        Err(e) => Ok(serde_json::json!({
+            "success": false,
+            "error": e
+        }))
+    }
+}
+
+// Database Plugin Commands
+#[tauri::command]
+pub async fn db_initialize_ui_settings(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+    log::info!("Initializing UI settings in database");
+    
+    match app.database_plugin().initialize_ui_settings() {
+        Ok(_) => Ok(serde_json::json!({
+            "success": true,
+            "message": "UI settings initialized in database successfully"
+        })),
+        Err(e) => Ok(serde_json::json!({
+            "success": false,
+            "error": e.to_string()
+        }))
+    }
+}
+
+#[tauri::command]
+pub async fn db_get_ui_setting(key: String, app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+    log::info!("Getting UI setting: {}", key);
+    
+    match app.database_plugin().get_ui_setting(&key) {
+        Ok(value) => Ok(serde_json::json!({
+            "success": true,
+            "key": key,
+            "value": value
+        })),
+        Err(e) => Ok(serde_json::json!({
+            "success": false,
+            "error": e.to_string()
+        }))
+    }
+}
+
+#[tauri::command]
+pub async fn db_set_ui_setting(
+    key: String, 
+    value: String, 
+    changed_by: String, 
+    change_reason: Option<String>, 
+    app: State<'_, Arc<App>>
+) -> Result<serde_json::Value, String> {
+    log::info!("Setting UI setting: {} = {}", key, value);
+    
+    match app.database_plugin().set_ui_setting(&key, &value, &changed_by, change_reason.as_deref()) {
+        Ok(_) => Ok(serde_json::json!({
+            "success": true,
+            "message": format!("UI setting '{}' set successfully", key)
+        })),
+        Err(e) => Ok(serde_json::json!({
+            "success": false,
+            "error": e.to_string()
+        }))
+    }
+}
+
+#[tauri::command]
+pub async fn db_get_all_ui_settings(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+    log::info!("Getting all UI settings");
+    
+    match app.database_plugin().get_all_ui_settings() {
+        Ok(settings) => {
+            let settings_map: std::collections::HashMap<String, String> = settings.into_iter().collect();
+            Ok(serde_json::json!({
+                "success": true,
+                "settings": settings_map
+            }))
+        },
+        Err(e) => Ok(serde_json::json!({
+            "success": false,
+            "error": e.to_string()
+        }))
+    }
+}
+
+#[tauri::command]
+pub async fn db_get_database_info(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+    log::info!("Getting database information");
+    
+    let is_accessible = app.database_plugin().is_accessible();
+    let file_size = app.database_plugin().get_file_size();
+    
+    let file_size_value = match file_size {
+        Ok(size) => serde_json::Value::Number(serde_json::Number::from(size)),
+        Err(_) => serde_json::Value::Null,
+    };
+    
+    Ok(serde_json::json!({
+        "success": true,
+        "is_accessible": is_accessible,
+        "file_size": file_size_value
+    }))
 } 

@@ -1,7 +1,7 @@
 //! Main application class and lifecycle management
 
 use crate::types::{AppResult, AppState, AppView};
-use crate::plugins::{ObsPlugin, PlaybackPlugin, UdpPlugin, StorePlugin, LicensePlugin, CpuMonitorPlugin, ProtocolManager};
+use crate::plugins::{ObsPlugin, PlaybackPlugin, UdpPlugin, StorePlugin, LicensePlugin, CpuMonitorPlugin, ProtocolManager, DatabasePlugin};
 use crate::logging::LogManager;
 use crate::config::ConfigManager;
 use std::sync::Arc;
@@ -22,6 +22,7 @@ pub struct App {
     license_plugin: LicensePlugin,
     cpu_monitor_plugin: CpuMonitorPlugin,
     protocol_manager: ProtocolManager,
+    database_plugin: DatabasePlugin,
     log_manager: Arc<Mutex<LogManager>>,
 }
 
@@ -80,6 +81,11 @@ impl App {
         let udp_plugin = UdpPlugin::new(crate::plugins::plugin_udp::UdpServerConfig::default(), udp_event_tx, protocol_manager_arc);
         log::info!("✅ UDP plugin initialized");
         
+        // Initialize database plugin
+        let database_plugin = DatabasePlugin::new()
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to initialize database plugin: {}", e)))?;
+        log::info!("✅ Database plugin initialized");
+        
         // Start UDP event handler
         let log_manager_clone = log_manager.clone();
         tokio::spawn(async move {
@@ -102,6 +108,7 @@ impl App {
             license_plugin,
             cpu_monitor_plugin,
             protocol_manager,
+            database_plugin,
             log_manager,
         })
     }
@@ -190,9 +197,14 @@ impl App {
         &self.cpu_monitor_plugin
     }
     
-    /// Get protocol manager plugin reference
+    /// Get protocol manager reference
     pub fn protocol_manager(&self) -> &ProtocolManager {
         &self.protocol_manager
+    }
+    
+    /// Get database plugin reference
+    pub fn database_plugin(&self) -> &DatabasePlugin {
+        &self.database_plugin
     }
     
     /// Get log manager reference
