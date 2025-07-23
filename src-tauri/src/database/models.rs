@@ -238,3 +238,190 @@ impl SchemaVersion {
         })
     }
 } 
+
+/// Settings category model
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SettingsCategory {
+    pub id: Option<i64>,
+    pub name: String,
+    pub description: Option<String>,
+    pub display_order: i32,
+    pub created_at: DateTime<Utc>,
+}
+
+impl SettingsCategory {
+    /// Create a new settings category
+    pub fn new(name: String, description: Option<String>, display_order: i32) -> Self {
+        Self {
+            id: None,
+            name,
+            description,
+            display_order,
+            created_at: Utc::now(),
+        }
+    }
+    
+    /// Create from database row
+    pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
+        Ok(Self {
+            id: row.get("id")?,
+            name: row.get("name")?,
+            description: row.get("description")?,
+            display_order: row.get("display_order")?,
+            created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
+                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "created_at".to_string(), rusqlite::types::Type::Text))?
+                .with_timezone(&Utc),
+        })
+    }
+}
+
+/// Settings key model
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SettingsKey {
+    pub id: Option<i64>,
+    pub category_id: i64,
+    pub key_name: String,
+    pub display_name: String,
+    pub description: Option<String>,
+    pub data_type: String, // 'string', 'integer', 'boolean', 'float', 'json'
+    pub default_value: Option<String>,
+    pub validation_rules: Option<String>, // JSON validation rules
+    pub is_required: bool,
+    pub is_sensitive: bool,
+    pub created_at: DateTime<Utc>,
+}
+
+impl SettingsKey {
+    /// Create a new settings key
+    pub fn new(
+        category_id: i64,
+        key_name: String,
+        display_name: String,
+        description: Option<String>,
+        data_type: String,
+        default_value: Option<String>,
+        validation_rules: Option<String>,
+        is_required: bool,
+        is_sensitive: bool,
+    ) -> Self {
+        Self {
+            id: None,
+            category_id,
+            key_name,
+            display_name,
+            description,
+            data_type,
+            default_value,
+            validation_rules,
+            is_required,
+            is_sensitive,
+            created_at: Utc::now(),
+        }
+    }
+    
+    /// Create from database row
+    pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
+        Ok(Self {
+            id: row.get("id")?,
+            category_id: row.get("category_id")?,
+            key_name: row.get("key_name")?,
+            display_name: row.get("display_name")?,
+            description: row.get("description")?,
+            data_type: row.get("data_type")?,
+            default_value: row.get("default_value")?,
+            validation_rules: row.get("validation_rules")?,
+            is_required: row.get("is_required")?,
+            is_sensitive: row.get("is_sensitive")?,
+            created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
+                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "created_at".to_string(), rusqlite::types::Type::Text))?
+                .with_timezone(&Utc),
+        })
+    }
+}
+
+/// Settings value model
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SettingsValue {
+    pub id: Option<i64>,
+    pub key_id: i64,
+    pub value: String,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+impl SettingsValue {
+    /// Create a new settings value
+    pub fn new(key_id: i64, value: String) -> Self {
+        let now = Utc::now();
+        Self {
+            id: None,
+            key_id,
+            value,
+            created_at: now,
+            updated_at: now,
+        }
+    }
+    
+    /// Create from database row
+    pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
+        Ok(Self {
+            id: row.get("id")?,
+            key_id: row.get("key_id")?,
+            value: row.get("value")?,
+            created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
+                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "created_at".to_string(), rusqlite::types::Type::Text))?
+                .with_timezone(&Utc),
+            updated_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("updated_at")?)
+                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "updated_at".to_string(), rusqlite::types::Type::Text))?
+                .with_timezone(&Utc),
+        })
+    }
+}
+
+/// Settings history model for audit trail
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SettingsHistory {
+    pub id: Option<i64>,
+    pub key_id: i64,
+    pub old_value: Option<String>,
+    pub new_value: Option<String>,
+    pub changed_by: String, // 'user', 'system', 'migration'
+    pub change_reason: Option<String>,
+    pub created_at: DateTime<Utc>,
+}
+
+impl SettingsHistory {
+    /// Create a new settings history entry
+    pub fn new(
+        key_id: i64,
+        old_value: Option<String>,
+        new_value: Option<String>,
+        changed_by: String,
+        change_reason: Option<String>,
+    ) -> Self {
+        Self {
+            id: None,
+            key_id,
+            old_value,
+            new_value,
+            changed_by,
+            change_reason,
+            created_at: Utc::now(),
+        }
+    }
+    
+    /// Create from database row
+    pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
+        Ok(Self {
+            id: row.get("id")?,
+            key_id: row.get("key_id")?,
+            old_value: row.get("old_value")?,
+            new_value: row.get("new_value")?,
+            changed_by: row.get("changed_by")?,
+            change_reason: row.get("change_reason")?,
+            created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
+                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "created_at".to_string(), rusqlite::types::Type::Text))?
+                .with_timezone(&Utc),
+        })
+    }
+} 
