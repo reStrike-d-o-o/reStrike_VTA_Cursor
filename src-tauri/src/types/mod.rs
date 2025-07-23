@@ -184,6 +184,12 @@ impl From<Box<dyn std::error::Error>> for AppError {
     }
 }
 
+impl From<crate::database::DatabaseError> for AppError {
+    fn from(error: crate::database::DatabaseError) -> Self {
+        AppError::ConfigError(format!("Database error: {}", error))
+    }
+}
+
 // ============================================================================
 // Result Types
 // ============================================================================

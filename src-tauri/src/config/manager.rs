@@ -8,6 +8,7 @@ use tokio::sync::RwLock;
 use chrono::Utc;
 
 /// Configuration manager for handling application settings
+#[derive(Clone)]
 pub struct ConfigManager {
     /// Current configuration
     config: Arc<RwLock<AppConfig>>,
