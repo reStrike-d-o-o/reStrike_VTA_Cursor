@@ -1,5 +1,5 @@
 // Plugin modules
-pub mod plugin_database;
+// pub mod plugin_database;  // Temporarily disabled for Phase 2
 pub mod plugin_license;
 pub mod plugin_obs;
 pub mod plugin_playback;
@@ -9,7 +9,7 @@ pub mod plugin_cpu_monitor;
 pub mod plugin_protocol_manager;
 
 // Re-export key plugin types for easier access
-pub use plugin_database::{DatabasePlugin, DatabaseStatistics};
+// pub use plugin_database::{DatabasePlugin, DatabaseStatistics};  // Temporarily disabled
 pub use plugin_obs::{ObsPlugin, ObsConnectionConfig, ObsWebSocketVersion, ObsStatusInfo, ObsEvent};
 pub use plugin_playback::PlaybackPlugin;
 pub use plugin_udp::UdpPlugin;
@@ -23,7 +23,7 @@ pub async fn init() -> Result<(), Box<dyn std::error::Error>> {
     println!("🔧 Initializing plugins...");
     
     // Initialize each plugin
-    plugin_database::init()?;
+    // plugin_database::init()?;  // Temporarily disabled
     plugin_obs::init()?;
     plugin_playback::init()?;
     plugin_udp::init()?;
