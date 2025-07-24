@@ -2043,22 +2043,43 @@ pub async fn restore_from_json_backup(
 pub async fn get_migration_status(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
     log::info!("Getting migration status");
     
-    match app.database_plugin().get_migration_status().await {
-        Ok(status) => Ok(serde_json::json!({
-            "success": true,
-            "status": {
-                "database_enabled": status.database_enabled,
-                "json_fallback_enabled": status.json_fallback_enabled,
-                "migration_completed": status.migration_completed,
-                "last_migration": status.last_migration,
-                "settings_count": status.settings_count
-            }
-        })),
-        Err(e) => Ok(serde_json::json!({
+    // Get database status
+    let db_status = match app.database_plugin().get_migration_status().await {
+        Ok(status) => status,
+        Err(e) => return Ok(serde_json::json!({
             "success": false,
             "error": e.to_string()
         }))
-    }
+    };
+    
+    // Check for backup files
+    let backup_dir = "backups";
+    let backup_files_exist = std::fs::read_dir(backup_dir)
+        .map(|entries| entries.filter_map(|entry| entry.ok()).count() > 0)
+        .unwrap_or(false);
+    
+    // Get actual database settings count
+    let db_settings_count = match app.database_plugin().get_all_ui_settings().await {
+        Ok(settings) => settings.len(),
+        Err(_) => 0
+    };
+    
+    // Get JSON settings count - simplified for now
+    let json_settings_count = 0;
+    
+    Ok(serde_json::json!({
+        "success": true,
+        "status": {
+            "database_enabled": db_status.database_enabled,
+            "json_fallback_enabled": db_status.json_fallback_enabled,
+            "migration_completed": db_status.migration_completed,
+            "last_migration": db_status.last_migration,
+            "settings_count": db_settings_count,
+            "backup_created": backup_files_exist,
+            "json_settings_count": json_settings_count,
+            "database_settings_count": db_settings_count
+        }
+    }))
 }
 
 #[tauri::command]
@@ -2078,6 +2099,174 @@ pub async fn enable_database_mode(
             "error": e.to_string()
         }))
     }
+}
+
+#[tauri::command]
+pub async fn get_database_preview(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+    log::info!("Getting database preview");
+    
+    // Get all UI settings from database
+    let db_settings = match app.database_plugin().get_all_ui_settings().await {
+        Ok(settings) => settings,
+        Err(e) => return Ok(serde_json::json!({
+            "success": false,
+            "error": format!("Failed to get database settings: {}", e)
+        }))
+    };
+    
+    // Get JSON settings for comparison - simplified for now
+    let json_settings: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+    
+    // Convert settings to preview format
+    let db_preview: Vec<serde_json::Value> = db_settings.iter().map(|(key, value)| {
+        serde_json::json!({
+            "key": key,
+            "value": value,
+            "source": "database"
+        })
+    }).collect();
+    
+    let json_preview: Vec<serde_json::Value> = json_settings.iter().map(|(key, value)| {
+        serde_json::json!({
+            "key": key,
+            "value": value,
+            "source": "json"
+        })
+    }).collect();
+    
+    Ok(serde_json::json!({
+        "success": true,
+        "database_settings": db_preview,
+        "json_settings": json_preview,
+        "database_count": db_settings.len(),
+        "json_count": json_settings.len()
+    }))
+}
+
+#[tauri::command]
+pub async fn get_database_tables(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+    log::info!("Getting database tables");
+    
+    let conn = match app.database_plugin().get_connection().await {
+        Ok(conn) => conn,
+        Err(e) => return Ok(serde_json::json!({
+            "success": false,
+            "error": format!("Failed to get database connection: {}", e)
+        }))
+    };
+    
+    // Query to get all table names
+    let tables: Vec<String> = match conn.prepare(
+        "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
+    ) {
+        Ok(mut stmt) => {
+            let mut table_names = Vec::new();
+            let rows = stmt.query_map([], |row| {
+                Ok(row.get::<_, String>(0)?)
+            }).map_err(|e| format!("Failed to query tables: {}", e))?;
+            
+            for row in rows {
+                let table_name = row.map_err(|e| format!("Failed to get table name: {}", e))?;
+                table_names.push(table_name);
+            }
+            table_names
+        },
+        Err(e) => return Ok(serde_json::json!({
+            "success": false,
+            "error": format!("Failed to prepare table query: {}", e)
+        }))
+    };
+    
+    Ok(serde_json::json!({
+        "success": true,
+        "tables": tables
+    }))
+}
+
+#[tauri::command]
+pub async fn get_table_data(
+    app: State<'_, Arc<App>>,
+    table_name: String
+) -> Result<serde_json::Value, String> {
+    log::info!("Getting data for table: {}", table_name);
+    
+    let conn = match app.database_plugin().get_connection().await {
+        Ok(conn) => conn,
+        Err(e) => return Ok(serde_json::json!({
+            "success": false,
+            "error": format!("Failed to get database connection: {}", e)
+        }))
+    };
+    
+    // First, get the table schema to understand the columns
+    let schema_query = format!("PRAGMA table_info({})", table_name);
+    let columns: Vec<serde_json::Value> = match conn.prepare(&schema_query) {
+        Ok(mut stmt) => {
+            let mut column_info = Vec::new();
+            let rows = stmt.query_map([], |row| {
+                Ok(serde_json::json!({
+                    "name": row.get::<_, String>(1)?,
+                    "type": row.get::<_, String>(2)?,
+                    "not_null": row.get::<_, i32>(3)? == 1,
+                    "primary_key": row.get::<_, i32>(5)? == 1
+                }))
+            }).map_err(|e| format!("Failed to query schema: {}", e))?;
+            
+            for row in rows {
+                let column = row.map_err(|e| format!("Failed to get column info: {}", e))?;
+                column_info.push(column);
+            }
+            column_info
+        },
+        Err(e) => return Ok(serde_json::json!({
+            "success": false,
+            "error": format!("Failed to prepare schema query: {}", e)
+        }))
+    };
+    
+    // Get the data from the table (limit to 100 rows for performance)
+    let data_query = format!("SELECT * FROM {} LIMIT 100", table_name);
+    let rows: Vec<serde_json::Value> = match conn.prepare(&data_query) {
+        Ok(mut stmt) => {
+            let mut table_data = Vec::new();
+            let rows = stmt.query_map([], |row| {
+                let mut row_data = serde_json::Map::new();
+                for (i, column) in columns.iter().enumerate() {
+                    let column_name = column["name"].as_str().unwrap_or("unknown");
+                    let value = match row.get::<_, rusqlite::types::Value>(i) {
+                        Ok(val) => match val {
+                            rusqlite::types::Value::Null => serde_json::Value::Null,
+                            rusqlite::types::Value::Integer(i) => serde_json::Value::Number(serde_json::Number::from(i)),
+                            rusqlite::types::Value::Real(f) => serde_json::Value::Number(serde_json::Number::from_f64(f).unwrap_or(serde_json::Number::from(0))),
+                            rusqlite::types::Value::Text(s) => serde_json::Value::String(s),
+                            rusqlite::types::Value::Blob(b) => serde_json::Value::String(format!("[BLOB: {} bytes]", b.len())),
+                        },
+                        Err(_) => serde_json::Value::Null,
+                    };
+                    row_data.insert(column_name.to_string(), value);
+                }
+                Ok(serde_json::Value::Object(row_data))
+            }).map_err(|e| format!("Failed to query table data: {}", e))?;
+            
+            for row in rows {
+                let row_data = row.map_err(|e| format!("Failed to get row data: {}", e))?;
+                table_data.push(row_data);
+            }
+            table_data
+        },
+        Err(e) => return Ok(serde_json::json!({
+            "success": false,
+            "error": format!("Failed to prepare data query: {}", e)
+        }))
+    };
+    
+    Ok(serde_json::json!({
+        "success": true,
+        "table_name": table_name,
+        "columns": columns,
+        "rows": rows,
+        "row_count": rows.len()
+    }))
 }
 
 // Google Drive commands
@@ -2146,4 +2335,123 @@ pub struct BackupFileInfo {
     pub path: String,
     pub size: u64,
     pub modified: String,
+}
+
+#[tauri::command]
+pub async fn drive_list_files() -> Result<serde_json::Value, String> {
+    log::info!("Listing Google Drive files");
+    
+    match crate::plugins::drive_plugin().list_files().await {
+        Ok(files) => Ok(serde_json::json!({
+            "success": true,
+            "files": files
+        })),
+        Err(e) => Ok(serde_json::json!({
+            "success": false,
+            "error": e.to_string()
+        }))
+    }
+}
+
+#[tauri::command]
+pub async fn drive_upload_backup_archive() -> Result<serde_json::Value, String> {
+    log::info!("Uploading backup archive to Google Drive");
+    
+    // Get list of backup files
+    let backup_files: Vec<String> = match list_backup_files().await {
+        Ok(files) => files.into_iter().map(|f| f.path).collect(),
+        Err(e) => return Ok(serde_json::json!({
+            "success": false,
+            "error": format!("Failed to list backup files: {}", e)
+        }))
+    };
+    
+    if backup_files.is_empty() {
+        return Ok(serde_json::json!({
+            "success": false,
+            "error": "No backup files found to upload"
+        }));
+    }
+    
+    // Use the new upload_backup_archive method
+    match crate::plugins::drive_plugin().upload_backup_archive().await {
+        Ok(message) => Ok(serde_json::json!({
+            "success": true,
+            "message": message
+        })),
+        Err(e) => Ok(serde_json::json!({
+            "success": false,
+            "error": format!("Failed to upload archive: {}", e)
+        }))
+    }
+}
+
+#[tauri::command]
+pub async fn drive_download_backup_archive(file_id: String) -> Result<serde_json::Value, String> {
+    log::info!("Downloading backup archive from Google Drive: {}", file_id);
+    
+    // Use the new download_backup_archive method
+    match crate::plugins::drive_plugin().download_backup_archive(&file_id).await {
+        Ok(message) => Ok(serde_json::json!({
+            "success": true,
+            "message": message
+        })),
+        Err(e) => Ok(serde_json::json!({
+            "success": false,
+            "error": format!("Failed to download archive: {}", e)
+        }))
+    }
+}
+
+#[tauri::command]
+pub async fn drive_delete_backup_archive(file_id: String) -> Result<serde_json::Value, String> {
+    log::info!("Deleting backup archive from Google Drive: {}", file_id);
+    
+    match crate::plugins::drive_plugin().delete_backup_archive(&file_id).await {
+        Ok(_) => Ok(serde_json::json!({
+            "success": true,
+            "message": "Backup archive deleted successfully"
+        })),
+        Err(e) => Ok(serde_json::json!({
+            "success": false,
+            "error": format!("Failed to delete archive: {}", e)
+        }))
+    }
+}
+
+#[tauri::command]
+pub async fn drive_get_connection_status() -> Result<serde_json::Value, String> {
+    log::info!("Checking Google Drive connection status");
+    
+    // Try to list files to test connection
+    match crate::plugins::drive_plugin().list_files().await {
+        Ok(files) => Ok(serde_json::json!({
+            "success": true,
+            "connected": true,
+            "file_count": files.len(),
+            "message": "Connected to Google Drive"
+        })),
+        Err(e) => Ok(serde_json::json!({
+            "success": false,
+            "connected": false,
+            "error": e.to_string(),
+            "message": "Not connected to Google Drive"
+        }))
+    }
+}
+
+#[tauri::command]
+pub async fn drive_restore_from_archive(file_id: String) -> Result<serde_json::Value, String> {
+    log::info!("Restoring from Google Drive archive: {}", file_id);
+    
+    match crate::plugins::drive_plugin().restore_from_archive(&file_id).await {
+        Ok(message) => Ok(serde_json::json!({
+            "success": true,
+            "message": message
+        })),
+        Err(e) => Ok(serde_json::json!({
+            "success": false,
+            "error": e.to_string()
+        }))
+    }
 }

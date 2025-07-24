@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { useDatabaseSettings } from '../../hooks/useDatabaseSettings';
 import Button from '../atoms/Button';
-import ConnectDriveButton from '../atoms/ConnectDriveButton';
-import Icon from '../atoms/Icon';
 
 export const DatabaseManagementPanel: React.FC = () => {
   const {
@@ -62,7 +60,6 @@ export const DatabaseManagementPanel: React.FC = () => {
           <h2 className="text-xl font-semibold text-white">Database Management</h2>
           <p className="text-sm text-gray-400">Manage application settings and database</p>
         </div>
-        <ConnectDriveButton />
       </div>
 
       {/* Error Display */}
@@ -100,7 +97,6 @@ export const DatabaseManagementPanel: React.FC = () => {
             onClick={handleRefreshDatabaseInfo}
             disabled={loading}
           >
-            <Icon name="refresh" className="w-4 h-4 mr-2" />
             Refresh
           </Button>
         </div>
@@ -166,6 +162,8 @@ export const DatabaseManagementPanel: React.FC = () => {
           </div>
         </div>
       </div>
+
+
     </div>
   );
 }; 

@@ -139,6 +139,12 @@ impl DatabasePlugin {
         let provider = self.hybrid_provider.lock().await;
         provider.set_setting(key, value).await
     }
+
+    /// Get database connection for direct access
+    pub async fn get_connection(&self) -> AppResult<tokio::sync::MutexGuard<'_, rusqlite::Connection>> {
+        self.connection.get_connection().await
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))
+    }
 }
 
 /// Migration status information

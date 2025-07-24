@@ -4,7 +4,8 @@
   "description": "Allow event listen/emit for main window",
   "windows": ["main"],
   "permissions": [
-    "core:event:default"
+    "core:event:default",
+    "shell:allow-open"
   ],
   "remote": {
     "urls": ["http://localhost:3000"]
