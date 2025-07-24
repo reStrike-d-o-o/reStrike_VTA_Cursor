@@ -60,19 +60,11 @@ impl DrivePlugin {
     }
 
     pub async fn auth_url(&self) -> AppResult<(String, String)> {
-        let mut client_guard = self.client.lock().await;
+        let client_guard = self.client.lock().await;
         
         // Try to get existing client or create new one
         if client_guard.is_none() {
-            let (client_id, client_secret) = Self::load_credentials()?;
-            let new_client = BasicClient::new(
-                ClientId::new(client_id),
-                Some(ClientSecret::new(client_secret)),
-                AuthUrl::new("https://accounts.google.com/o/oauth2/v2/auth".into()).unwrap(),
-                Some(TokenUrl::new("https://oauth2.googleapis.com/token".into()).unwrap()),
-            )
-            .set_redirect_uri(RedirectUrl::new(REDIRECT_URI.into()).unwrap());
-            *client_guard = Some(new_client);
+            self.initialize_client().await?;
         }
         
         let client = client_guard.as_ref().unwrap();
@@ -83,6 +75,20 @@ impl DrivePlugin {
             ))
             .url();
         Ok((url.to_string(), csrf.secret().to_string()))
+    }
+
+    async fn initialize_client(&self) -> AppResult<()> {
+        let mut client_guard = self.client.lock().await;
+        let (client_id, client_secret) = Self::load_credentials()?;
+        let new_client = BasicClient::new(
+            ClientId::new(client_id),
+            Some(ClientSecret::new(client_secret)),
+            AuthUrl::new("https://accounts.google.com/o/oauth2/v2/auth".into()).unwrap(),
+            Some(TokenUrl::new("https://oauth2.googleapis.com/token".into()).unwrap()),
+        )
+        .set_redirect_uri(RedirectUrl::new(REDIRECT_URI.into()).unwrap());
+        *client_guard = Some(new_client);
+        Ok(())
     }
 
     pub async fn exchange_code(&self, code: String) -> AppResult<()> {
@@ -238,6 +244,23 @@ impl DrivePlugin {
         
         Ok(())
     }
+
+    pub async fn is_connected(&self) -> AppResult<bool> {
+        // Ensure client is initialized first
+        let client_guard = self.client.lock().await;
+        if client_guard.is_none() {
+            drop(client_guard);
+            if let Err(_) = self.initialize_client().await {
+                return Ok(false);
+            }
+        }
+        
+        // Try to get an access token - if successful, we're connected
+        match self.get_access_token().await {
+            Ok(_) => Ok(true),
+            Err(_) => Ok(false),
+        }
+    }
     
     async fn create_backup_archive(&self, source_dir: &std::path::Path, archive_path: &std::path::Path) -> AppResult<()> {
         let file = std::fs::File::create(archive_path)
@@ -376,18 +399,62 @@ impl DrivePlugin {
             return Ok(token.clone());
         }
 
+        // Ensure client is initialized first
+        let client_guard = self.client.lock().await;
+        if client_guard.is_none() {
+            drop(client_guard);
+            self.initialize_client().await?;
+        }
+
         // Try to load stored token
         if let Ok(stored_token) = Self::load_tokens() {
-            if stored_token.expires_at > std::time::SystemTime::now()
+            let current_time = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap()
-                .as_secs() {
+                .as_secs();
+            
+            if stored_token.expires_at > current_time {
                 *token_guard = Some(stored_token.access_token.clone());
                 return Ok(stored_token.access_token);
+            } else {
+                // Token expired, try to refresh it
+                log::info!("Access token expired, attempting to refresh...");
+                if let Ok(new_token) = self.refresh_access_token(&stored_token.refresh_token).await {
+                    *token_guard = Some(new_token.clone());
+                    return Ok(new_token);
+                }
             }
         }
 
         Err(AppError::ConfigError("No valid access token available".to_string()))
+    }
+
+    async fn refresh_access_token(&self, refresh_token: &str) -> AppResult<String> {
+        let client_guard = self.client.lock().await;
+        let client = client_guard.as_ref().ok_or_else(|| {
+            AppError::ConfigError("Client not initialized".to_string())
+        })?;
+
+        let token_res = client
+            .exchange_refresh_token(&oauth2::RefreshToken::new(refresh_token.to_string()))
+            .request_async(async_http_client)
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to refresh token: {}", e)))?;
+
+        let access_token = token_res.access_token().secret().to_string();
+        let refresh_token = token_res.refresh_token()
+            .map(|rt| rt.secret().to_string())
+            .unwrap_or_else(|| refresh_token.to_string());
+        
+        let expires_at = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs() + token_res.expires_in().unwrap().as_secs();
+
+        // Store the new tokens
+        self.store_tokens(&refresh_token, &access_token, expires_at)?;
+        
+        Ok(access_token)
     }
 
     fn store_tokens(&self, refresh_token: &str, access_token: &str, expires_at: u64) -> AppResult<()> {
