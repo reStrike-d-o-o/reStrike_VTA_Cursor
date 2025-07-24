@@ -143,15 +143,34 @@ const DatabaseMigrationPanel: React.FC = () => {
     setIsRestoring(true);
     
     try {
-      const result = await restoreBackupWithDialog();
-      if (result.success) {
-        console.log('Backup restored successfully:', result.message);
-        await loadMigrationStatus();
-      } else {
-        console.error('Restore failed:', result.error);
+      // Use Tauri dialog API to open file dialog
+      const { open } = await import('@tauri-apps/plugin-dialog');
+      const selected = await open({
+        multiple: false,
+        filters: [{
+          name: 'JSON Files',
+          extensions: ['json']
+        }],
+        title: 'Select Backup File'
+      });
+
+      if (selected && typeof selected === 'string') {
+        const response = await window.__TAURI__.core.invoke('restore_from_json_backup', {
+          backupPath: selected
+        });
+        
+        if (response.success) {
+          console.log('Backup restored successfully:', response.message);
+          await loadMigrationStatus();
+          alert('Backup restored successfully!');
+        } else {
+          console.error('Restore failed:', response.error);
+          alert('Failed to restore backup: ' + response.error);
+        }
       }
     } catch (error) {
       console.error('Restore error:', error);
+      alert('Failed to restore backup: ' + error);
     } finally {
       setIsRestoring(false);
     }
@@ -193,10 +212,10 @@ const DatabaseMigrationPanel: React.FC = () => {
     <button
       key={tab}
       onClick={() => setActiveTab(tab)}
-      className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+      className={`flex items-center px-4 py-2 text-sm font-medium focus:outline-none transition-colors border-b-2 ${
         activeTab === tab
-          ? 'bg-blue-600 text-white shadow-lg'
-          : 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white'
+          ? 'border-blue-500 text-blue-200 bg-[#181F26]'
+          : 'border-transparent text-gray-400 hover:text-blue-300'
       }`}
     >
       {label}

@@ -18,7 +18,7 @@ const Settings: React.FC = () => {
     clearError,
   } = useAppStore();
 
-  const [activeTab, setActiveTab] = useState<'overlay' | 'obs' | 'advanced'>('overlay');
+  const [activeTab, setActiveTab] = useState<'overlay' | 'performance' | 'data'>('overlay');
   const [isResetting, setIsResetting] = useState(false);
 
   const handleResetSettings = () => {
@@ -36,8 +36,8 @@ const Settings: React.FC = () => {
 
   const tabs = [
     { id: 'overlay', label: 'Overlay Settings', icon: 'overlay' },
-    { id: 'obs', label: 'OBS Integration', icon: 'obs' },
-    { id: 'advanced', label: 'Advanced', icon: 'settings' },
+    { id: 'performance', label: 'Performance', icon: 'performance' },
+    { id: 'data', label: 'Data Management', icon: 'data' },
   ] as const;
 
   return (
@@ -90,17 +90,14 @@ const Settings: React.FC = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM21 5a2 2 0 00-2-2h-4a2 2 0 00-2 2v12a4 4 0 004 4h4a2 2 0 002-2V5z" />
               </svg>
             )}
-            {tab.icon === 'obs' && (
+            {tab.icon === 'performance' && (
               <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <rect x="3" y="7" width="15" height="10" rx="2" stroke="currentColor" strokeWidth="2"/>
-                <rect x="16" y="10" width="5" height="4" rx="1" stroke="currentColor" strokeWidth="2"/>
-                <circle cx="10.5" cy="12" r="2.5" stroke="currentColor" strokeWidth="2"/>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
             )}
-            {tab.icon === 'settings' && (
+            {tab.icon === 'data' && (
               <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2"/>
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06-.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.09A1.65 1.65 0 0 0 9 3.09V3a2 2 0 1 1 4 0v.09c0 .66.39 1.26 1 1.51h.09a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.09c.66 0 1.26.39 1.51 1H21a2 2 0 1 1 0 4h-.09c-.66 0-1.26.39-1.51 1z" stroke="currentColor" strokeWidth="2"/>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
               </svg>
             )}
             <span>{tab.label}</span>
@@ -221,47 +218,7 @@ const Settings: React.FC = () => {
           </div>
         )}
 
-        {activeTab === 'obs' && (
-          <div className="space-y-6">
-            <div className="p-4 bg-gray-800 rounded-lg">
-              <h3 className="text-lg font-semibold mb-3">OBS Integration Settings</h3>
-              <div className="space-y-4">
-                <Toggle
-                  id="obs-auto-connect"
-                  checked={true}
-                  onChange={() => {}}
-                  label="Auto-connect to OBS on startup"
-                  labelPosition="right"
-                />
-                <Toggle
-                  id="obs-show-status"
-                  checked={true}
-                  onChange={() => {}}
-                  label="Show OBS status in overlay"
-                  labelPosition="right"
-                />
-                <Toggle
-                  id="obs-auto-record"
-                  checked={false}
-                  onChange={() => {}}
-                  label="Auto-record when playing clips"
-                  labelPosition="right"
-                />
-                <Toggle
-                  id="obs-save-replay"
-                  checked={true}
-                  onChange={() => {}}
-                  label="Save replay buffer on clip creation"
-                  labelPosition="right"
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-
-
-        {activeTab === 'advanced' && (
+        {activeTab === 'performance' && (
           <div className="space-y-6">
             <div className="p-4 bg-gray-800 rounded-lg">
               <h3 className="text-lg font-semibold mb-3">Performance Settings</h3>
@@ -316,7 +273,11 @@ const Settings: React.FC = () => {
                 </div>
               </div>
             </div>
+          </div>
+        )}
 
+        {activeTab === 'data' && (
+          <div className="space-y-6">
             <div className="p-4 bg-gray-800 rounded-lg">
               <h3 className="text-lg font-semibold mb-3">Data Management</h3>
               <div className="space-y-4">

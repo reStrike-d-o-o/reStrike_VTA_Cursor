@@ -5,6 +5,7 @@ import Input from '../atoms/Input';
 import Label from '../atoms/Label';
 import StatusDot from '../atoms/StatusDot';
 import Toggle from '../atoms/Toggle';
+import ConnectDriveButton from '../atoms/ConnectDriveButton';
 
 export const DatabaseManagementPanel: React.FC = () => {
   const {
@@ -59,7 +60,10 @@ export const DatabaseManagementPanel: React.FC = () => {
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-white">Database Management</h2>
+        <div className="flex items-center space-x-3">
+          <h2 className="text-xl font-semibold text-white">Database Management</h2>
+          <ConnectDriveButton />
+        </div>
         <div className="flex items-center space-x-2">
           <StatusDot 
             color={initialized ? 'bg-green-400' : 'bg-red-400'} 

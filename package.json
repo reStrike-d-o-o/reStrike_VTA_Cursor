@@ -21,6 +21,7 @@
   "author": "damjanZGB",
   "license": "MIT",
   "dependencies": {
+    "@tauri-apps/plugin-dialog": "^2.3.1",
     "obs-websocket-js": "^5.0.3"
   },
   "devDependencies": {

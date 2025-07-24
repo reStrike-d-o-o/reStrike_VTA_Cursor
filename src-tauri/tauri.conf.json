@@ -62,7 +62,8 @@
     },
     "dialog": {
       "open": true,
-      "save": true
+      "save": true,
+      "message": true
     },
     "http": {
       "request": true,

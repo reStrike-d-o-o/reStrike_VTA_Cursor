@@ -173,6 +173,11 @@ async fn main() -> AppResult<()> {
             tauri_commands::restore_from_json_backup,
             tauri_commands::get_migration_status,
             tauri_commands::enable_database_mode,
+            
+            // Google Drive commands
+            tauri_commands::drive_request_auth_url,
+            tauri_commands::drive_complete_auth,
+            tauri_commands::drive_save_credentials,
         ])
         .setup(|_app| {
             log::info!("Tauri application setup complete");
