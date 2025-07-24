@@ -2220,8 +2220,8 @@ pub async fn get_table_data(
         }))
     };
     
-    // Get the data from the table (limit to 100 rows for performance)
-    let data_query = format!("SELECT * FROM {} LIMIT 100", table_name);
+    // Get the data from the table (no limit to show all rows)
+    let data_query = format!("SELECT * FROM {}", table_name);
     let rows: Vec<serde_json::Value> = match conn.prepare(&data_query) {
         Ok(mut stmt) => {
             let mut table_data = Vec::new();
@@ -2464,6 +2464,56 @@ pub async fn drive_restore_from_archive(file_id: String) -> Result<serde_json::V
         Ok(message) => Ok(serde_json::json!({
             "success": true,
             "message": message
+        })),
+        Err(e) => Ok(serde_json::json!({
+            "success": false,
+            "error": e.to_string()
+        }))
+    }
+}
+
+#[tauri::command]
+pub async fn drive_test_connection() -> Result<serde_json::Value, String> {
+    log::info!("Testing Google Drive connection");
+    
+    // First check if connected
+    match crate::plugins::drive_plugin().is_connected().await {
+        Ok(connected) => {
+            if !connected {
+                return Ok(serde_json::json!({
+                    "success": false,
+                    "error": "Not connected to Google Drive"
+                }));
+            }
+        }
+        Err(e) => return Ok(serde_json::json!({
+            "success": false,
+            "error": format!("Connection check failed: {}", e)
+        }))
+    }
+    
+    // Try to list all files to test API access
+    match crate::plugins::drive_plugin().list_all_files().await {
+        Ok(files) => Ok(serde_json::json!({
+            "success": true,
+            "message": format!("Connected successfully. Found {} files in Drive.", files.len()),
+            "file_count": files.len()
+        })),
+        Err(e) => Ok(serde_json::json!({
+            "success": false,
+            "error": format!("API access failed: {}", e)
+        }))
+    }
+}
+
+#[tauri::command]
+pub async fn drive_list_all_files() -> Result<serde_json::Value, String> {
+    log::info!("Listing all Google Drive files");
+    
+    match crate::plugins::drive_plugin().list_all_files().await {
+        Ok(files) => Ok(serde_json::json!({
+            "success": true,
+            "files": files
         })),
         Err(e) => Ok(serde_json::json!({
             "success": false,
