@@ -290,19 +290,32 @@ impl DrivePlugin {
     }
 
     pub async fn is_connected(&self) -> AppResult<bool> {
+        log::info!("is_connected: Starting connection check");
+        
         // Ensure client is initialized first
-        let client_guard = self.client.lock().await;
-        if client_guard.is_none() {
-            drop(client_guard);
-            if let Err(_) = self.initialize_client().await {
-                return Ok(false);
+        {
+            let client_guard = self.client.lock().await;
+            if client_guard.is_none() {
+                drop(client_guard);
+                log::info!("is_connected: Client not initialized, attempting to initialize");
+                if let Err(e) = self.initialize_client().await {
+                    log::warn!("is_connected: Failed to initialize client: {:?}", e);
+                    return Ok(false);
+                }
             }
         }
         
+        log::info!("is_connected: About to call get_access_token");
         // Try to get an access token - if successful, we're connected
         match self.get_access_token().await {
-            Ok(_) => Ok(true),
-            Err(_) => Ok(false),
+            Ok(_) => {
+                log::info!("is_connected: Successfully got access token, returning true");
+                Ok(true)
+            },
+            Err(e) => {
+                log::warn!("is_connected: Failed to get access token: {:?}", e);
+                Ok(false)
+            },
         }
     }
     
@@ -467,17 +480,21 @@ impl DrivePlugin {
     }
 
     async fn get_access_token(&self) -> AppResult<String> {
-        let mut token_guard = self.access_token.lock().await;
-        
-        if let Some(token) = token_guard.as_ref() {
-            return Ok(token.clone());
+        // First check if we already have a token
+        {
+            let token_guard = self.access_token.lock().await;
+            if let Some(token) = token_guard.as_ref() {
+                return Ok(token.clone());
+            }
         }
 
-        // Ensure client is initialized first
-        let client_guard = self.client.lock().await;
-        if client_guard.is_none() {
-            drop(client_guard);
-            self.initialize_client().await?;
+        // Ensure client is initialized first (without holding token lock)
+        {
+            let client_guard = self.client.lock().await;
+            if client_guard.is_none() {
+                drop(client_guard);
+                self.initialize_client().await?;
+            }
         }
 
         // Try to load stored token
@@ -488,13 +505,21 @@ impl DrivePlugin {
                 .as_secs();
             
             if stored_token.expires_at > current_time {
-                *token_guard = Some(stored_token.access_token.clone());
+                // Store the token and return it
+                {
+                    let mut token_guard = self.access_token.lock().await;
+                    *token_guard = Some(stored_token.access_token.clone());
+                }
                 return Ok(stored_token.access_token);
             } else {
                 // Token expired, try to refresh it
                 log::info!("Access token expired, attempting to refresh...");
                 if let Ok(new_token) = self.refresh_access_token(&stored_token.refresh_token).await {
-                    *token_guard = Some(new_token.clone());
+                    // Store the new token and return it
+                    {
+                        let mut token_guard = self.access_token.lock().await;
+                        *token_guard = Some(new_token.clone());
+                    }
                     return Ok(new_token);
                 }
             }
