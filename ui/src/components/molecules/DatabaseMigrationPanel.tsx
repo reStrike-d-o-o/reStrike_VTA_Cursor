@@ -437,13 +437,13 @@ const DatabaseMigrationPanel: React.FC = () => {
                 <h4 className="text-sm font-semibold text-blue-300">
                   Table: {tableData.table_name} ({tableData.row_count} rows)
                 </h4>
-                {tableData.row_count > 6 && (
+                {tableData.row_count > 0 && (
                   <p className="text-xs text-gray-400 mt-1">
-                    Showing first 6 rows of {tableData.row_count} total rows
+                    Showing all {tableData.row_count} rows
                   </p>
                 )}
               </div>
-              <div className="max-h-48 overflow-auto">
+              <div className="max-h-96 overflow-auto">
                 {tableData.rows && tableData.rows.length > 0 ? (
                   <div className="overflow-x-auto max-w-full">
                     <table className="min-w-full text-left text-sm text-gray-200 table-fixed">
@@ -464,7 +464,7 @@ const DatabaseMigrationPanel: React.FC = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {tableData.rows.slice(0, 6).map((row, rowIndex) => (
+                        {tableData.rows.map((row, rowIndex) => (
                           <tr key={rowIndex} className="hover:bg-blue-900 transition-colors border-b border-gray-700">
                             {tableData.columns.map((column, colIndex) => (
                               <td key={colIndex} className="px-3 py-2 border-r border-gray-600 whitespace-nowrap w-32">

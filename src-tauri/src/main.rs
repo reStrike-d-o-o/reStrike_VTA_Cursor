@@ -184,6 +184,8 @@ async fn main() -> AppResult<()> {
             tauri_commands::drive_complete_auth,
             tauri_commands::drive_save_credentials,
             tauri_commands::drive_list_files,
+            tauri_commands::drive_list_all_files,
+            tauri_commands::drive_test_connection,
             tauri_commands::drive_upload_backup_archive,
             tauri_commands::drive_download_backup_archive,
             tauri_commands::drive_restore_from_archive,

@@ -27,7 +27,7 @@ export const GoogleDriveManager: React.FC = () => {
   });
   const [selectedFile, setSelectedFile] = useState<string>('');
   const [operationStatus, setOperationStatus] = useState<{
-    type: 'upload' | 'download' | 'restore' | null;
+    type: 'upload' | 'download' | 'restore' | 'test' | 'list_all' | null;
     loading: boolean;
     message: string;
     error?: string;
@@ -41,6 +41,79 @@ export const GoogleDriveManager: React.FC = () => {
   useEffect(() => {
     checkConnectionStatus();
   }, []);
+
+  const testConnection = async () => {
+    setOperationStatus({
+      type: 'test',
+      loading: true,
+      message: 'Testing Google Drive connection...',
+    });
+
+    try {
+      const result = await invoke<{ success: boolean; message?: string; error?: string; file_count?: number }>('drive_test_connection');
+      
+      if (result.success) {
+        setOperationStatus({
+          type: 'test',
+          loading: false,
+          message: result.message || 'Connection test successful!',
+        });
+      } else {
+        console.error('Connection test failed:', result.error);
+        setOperationStatus({
+          type: 'test',
+          loading: false,
+          message: 'Connection test failed',
+          error: result.error || 'Unknown error occurred during connection test',
+        });
+      }
+    } catch (error) {
+      console.error('Error testing connection:', error);
+      setOperationStatus({
+        type: 'test',
+        loading: false,
+        message: 'Connection test failed',
+        error: error instanceof Error ? error.message : 'Unknown error occurred during connection test',
+      });
+    }
+  };
+
+  const listAllFiles = async () => {
+    setOperationStatus({
+      type: 'list_all',
+      loading: true,
+      message: 'Listing all Google Drive files...',
+    });
+
+    try {
+      const result = await invoke<{ success: boolean; files?: DriveFile[]; error?: string }>('drive_list_all_files');
+      
+      if (result.success && result.files) {
+        setOperationStatus({
+          type: 'list_all',
+          loading: false,
+          message: `Found ${result.files.length} files in Google Drive`,
+        });
+        console.log('All Google Drive files:', result.files);
+      } else {
+        console.error('Failed to list all files:', result.error);
+        setOperationStatus({
+          type: 'list_all',
+          loading: false,
+          message: 'Failed to list all files',
+          error: result.error || 'Unknown error occurred while listing all files',
+        });
+      }
+    } catch (error) {
+      console.error('Error listing all files:', error);
+      setOperationStatus({
+        type: 'list_all',
+        loading: false,
+        message: 'Failed to list all files',
+        error: error instanceof Error ? error.message : 'Unknown error occurred while listing all files',
+      });
+    }
+  };
 
   const checkConnectionStatus = async () => {
     try {
@@ -56,7 +129,7 @@ export const GoogleDriveManager: React.FC = () => {
   };
 
   const listFiles = async () => {
-    setDriveStatus(prev => ({ ...prev, loading: true }));
+    setDriveStatus(prev => ({ ...prev, loading: true, error: undefined }));
     try {
       const result = await invoke<{ success: boolean; files?: DriveFile[]; error?: string }>('drive_list_files');
       
@@ -76,10 +149,11 @@ export const GoogleDriveManager: React.FC = () => {
         }));
       }
     } catch (error) {
+      console.error('Error listing files:', error);
       setDriveStatus(prev => ({
         ...prev,
         loading: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error.message : 'Unknown error occurred while listing files',
       }));
     }
   };
@@ -102,19 +176,21 @@ export const GoogleDriveManager: React.FC = () => {
         });
         await listFiles(); // Refresh file list
       } else {
+        console.error('Upload failed:', result.error);
         setOperationStatus({
           type: 'upload',
           loading: false,
           message: 'Upload failed',
-          error: result.error || 'Unknown error',
+          error: result.error || 'Unknown error occurred during upload',
         });
       }
     } catch (error) {
+      console.error('Error uploading backup:', error);
       setOperationStatus({
         type: 'upload',
         loading: false,
         message: 'Upload failed',
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error.message : 'Unknown error occurred during upload',
       });
     }
   };
@@ -267,6 +343,35 @@ export const GoogleDriveManager: React.FC = () => {
           )}
         </div>
         {operationStatus.type === 'upload' && operationStatus.error && (
+          <p className="text-sm text-red-400 mt-2">{operationStatus.error}</p>
+        )}
+      </div>
+
+      {/* Debug Section */}
+      <div className="p-4 bg-[#1a1a1a] rounded-lg border border-gray-700">
+        <h4 className="text-md font-semibold text-white mb-3">Debug & Testing</h4>
+        <div className="flex items-center space-x-3">
+          <Button
+            onClick={testConnection}
+            disabled={!driveStatus.connected || operationStatus.loading}
+            className="px-4 py-2 bg-green-600 hover:bg-green-700"
+          >
+            {operationStatus.type === 'test' && operationStatus.loading ? 'Testing...' : 'Test Connection'}
+          </Button>
+          <Button
+            onClick={listAllFiles}
+            disabled={!driveStatus.connected || operationStatus.loading}
+            className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700"
+          >
+            {operationStatus.type === 'list_all' && operationStatus.loading ? 'Listing...' : 'List All Files'}
+          </Button>
+        </div>
+        {(operationStatus.type === 'test' || operationStatus.type === 'list_all') && (
+          <span className="text-sm text-gray-400 mt-2 block">
+            {operationStatus.message}
+          </span>
+        )}
+        {(operationStatus.type === 'test' || operationStatus.type === 'list_all') && operationStatus.error && (
           <p className="text-sm text-red-400 mt-2">{operationStatus.error}</p>
         )}
       </div>

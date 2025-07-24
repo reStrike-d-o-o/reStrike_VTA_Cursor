@@ -71,7 +71,7 @@ impl DrivePlugin {
         let (url, csrf) = client
             .authorize_url(CsrfToken::new_random)
             .add_scope(Scope::new(
-                "https://www.googleapis.com/auth/drive.file".into(),
+                "https://www.googleapis.com/auth/drive".into(),
             ))
             .url();
         Ok((url.to_string(), csrf.secret().to_string()))
@@ -149,6 +149,34 @@ impl DrivePlugin {
         Ok(())
     }
 
+    pub async fn list_all_files(&self) -> AppResult<Vec<GoogleDriveFile>> {
+        let token = self.get_access_token().await?;
+        
+        let response = self.http_client
+            .get(&format!("{}/files", GOOGLE_DRIVE_API_BASE))
+            .header("Authorization", format!("Bearer {}", token))
+            .query(&[
+                ("fields", "files(id,name,mimeType,size,createdTime,modifiedTime)"),
+                ("orderBy", "modifiedTime desc"),
+                ("pageSize", "10"),
+            ])
+            .send()
+            .await
+            .map_err(|e| AppError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+            log::error!("Google Drive API error (list_all_files): {} - {}", status, error_text);
+            return Err(AppError::NetworkError(format!("API error: {} - {}", status, error_text)));
+        }
+
+        let file_list: GoogleDriveFileList = response.json().await
+            .map_err(|e| AppError::NetworkError(e.to_string()))?;
+
+        Ok(file_list.files)
+    }
+
     pub async fn list_files(&self) -> AppResult<Vec<GoogleDriveFile>> {
         let token = self.get_access_token().await?;
         
@@ -165,7 +193,10 @@ impl DrivePlugin {
             .map_err(|e| AppError::NetworkError(e.to_string()))?;
 
         if !response.status().is_success() {
-            return Err(AppError::NetworkError(format!("API error: {}", response.status())));
+            let status = response.status();
+            let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+            log::error!("Google Drive API error: {} - {}", status, error_text);
+            return Err(AppError::NetworkError(format!("API error: {} - {}", status, error_text)));
         }
 
         let file_list: GoogleDriveFileList = response.json().await
@@ -181,18 +212,31 @@ impl DrivePlugin {
     pub async fn upload_backup_archive(&self) -> AppResult<String> {
         // Create backup archive
         let backup_dir = std::env::current_dir()?.join("backups");
+        
+        // Ensure backup directory exists
+        if !backup_dir.exists() {
+            std::fs::create_dir_all(&backup_dir)
+                .map_err(|e| AppError::IoError(e))?;
+        }
+        
         let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
-        let archive_name = format!("reStrike_backup_{}.zip", timestamp);
+        let archive_name = format!("reStrikeVTA_backup_{}.zip", timestamp);
         let archive_path = backup_dir.join(&archive_name);
+        
+        log::info!("Creating backup archive: {}", archive_path.display());
         
         // Create zip archive from backups directory
         self.create_backup_archive(&backup_dir, &archive_path).await?;
+        
+        log::info!("Backup archive created, uploading to Google Drive...");
         
         // Upload to Google Drive
         let _file_id = self.upload_file(&archive_path, &archive_name).await?;
         
         // Clean up local archive
-        let _ = std::fs::remove_file(&archive_path);
+        if let Err(e) = std::fs::remove_file(&archive_path) {
+            log::warn!("Failed to clean up local archive: {}", e);
+        }
         
         Ok(format!("Backup archive '{}' uploaded successfully", archive_name))
     }
@@ -263,6 +307,13 @@ impl DrivePlugin {
     }
     
     async fn create_backup_archive(&self, source_dir: &std::path::Path, archive_path: &std::path::Path) -> AppResult<()> {
+        log::info!("Creating backup archive from: {}", source_dir.display());
+        
+        // Ensure source directory exists
+        if !source_dir.exists() {
+            return Err(AppError::ConfigError(format!("Source directory does not exist: {}", source_dir.display())));
+        }
+        
         let file = std::fs::File::create(archive_path)
             .map_err(|e| AppError::IoError(e))?;
         
@@ -271,27 +322,37 @@ impl DrivePlugin {
             .compression_method(zip::CompressionMethod::Deflated)
             .unix_permissions(0o755);
         
+        let mut file_count = 0;
         for entry in std::fs::read_dir(source_dir)
             .map_err(|e| AppError::IoError(e))? {
             let entry = entry.map_err(|e| AppError::IoError(e))?;
             let path = entry.path();
+            
+            // Skip the archive file itself if it exists
+            if path == archive_path {
+                continue;
+            }
+            
             let name = path.strip_prefix(source_dir)
                 .map_err(|e| AppError::ConfigError(e.to_string()))?
                 .to_string_lossy();
             
             if path.is_file() {
+                log::debug!("Adding file to archive: {}", name);
                 zip.start_file(name, options)
                     .map_err(|e| AppError::ConfigError(e.to_string()))?;
                 let mut f = std::fs::File::open(path)
                     .map_err(|e| AppError::IoError(e))?;
                 std::io::copy(&mut f, &mut zip)
                     .map_err(|e| AppError::IoError(e))?;
+                file_count += 1;
             }
         }
         
         zip.finish()
             .map_err(|e| AppError::ConfigError(e.to_string()))?;
         
+        log::info!("Backup archive created with {} files", file_count);
         Ok(())
     }
     
@@ -330,6 +391,13 @@ impl DrivePlugin {
     async fn upload_file(&self, file_path: &std::path::Path, file_name: &str) -> AppResult<String> {
         let token = self.get_access_token().await?;
         
+        // Check if file exists
+        if !file_path.exists() {
+            return Err(AppError::ConfigError(format!("File does not exist: {}", file_path.display())));
+        }
+        
+        log::info!("Uploading file: {} ({} bytes)", file_name, file_path.metadata().map(|m| m.len()).unwrap_or(0));
+        
         // Read file content
         let file_content = std::fs::read(file_path)
             .map_err(|e| AppError::IoError(e))?;
@@ -350,18 +418,24 @@ impl DrivePlugin {
             .map_err(|e| AppError::NetworkError(e.to_string()))?;
         
         if !response.status().is_success() {
+            let status = response.status();
+            let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+            log::error!("Google Drive upload error: {} - {}", status, error_text);
             return Err(AppError::NetworkError(format!(
-                "Failed to upload file: {}",
-                response.status()
+                "Failed to upload file: {} - {}",
+                status, error_text
             )));
         }
         
         let file_data: serde_json::Value = response.json().await
             .map_err(|e| AppError::NetworkError(e.to_string()))?;
         
-        file_data["id"].as_str()
+        let file_id = file_data["id"].as_str()
             .map(|s| s.to_string())
-            .ok_or_else(|| AppError::ConfigError("No file ID in response".to_string()))
+            .ok_or_else(|| AppError::ConfigError("No file ID in response".to_string()))?;
+        
+        log::info!("File uploaded successfully with ID: {}", file_id);
+        Ok(file_id)
     }
     
     async fn download_file(&self, file_id: &str) -> AppResult<std::path::PathBuf> {
