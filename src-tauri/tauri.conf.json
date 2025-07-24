@@ -60,11 +60,7 @@
       "removeFile": true,
       "scope": ["$APPDATA/reStrikeVTA/**", "$APPDATA/reStrikeVTA/log/**"]
     },
-    "dialog": {
-      "open": true,
-      "save": true,
-      "message": true
-    },
+    "dialog": {},
     "http": {
       "request": true,
       "scope": ["https://**"]

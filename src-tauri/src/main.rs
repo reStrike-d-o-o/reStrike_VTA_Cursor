@@ -44,6 +44,7 @@ async fn main() -> AppResult<()> {
     
     // Create Tauri app builder
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .manage(app)
         .invoke_handler(tauri::generate_handler![
             // Core commands

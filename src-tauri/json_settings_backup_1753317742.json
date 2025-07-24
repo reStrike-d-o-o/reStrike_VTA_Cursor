@@ -1,0 +1,16 @@
+{
+  "ui.overlay.opacity": "0.9",
+  "logging.files.max_files": "10",
+  "ui.layout.sidebar_width": "300",
+  "udp.listener.enabled": "true",
+  "logging.global.level": "info",
+  "ui.overlay.position": "bottom-right",
+  "flags.storage.auto_download": "false",
+  "logging.files.max_size_mb": "100",
+  "ui.layout.sidebar_position": "left",
+  "ui.overlay.visible": "true",
+  "udp.listener.port": "8888",
+  "flags.storage.directory": "ui/public/assets/flags",
+  "ui.overlay.scale": "1",
+  "ui.theme.current": "dark"
+}
