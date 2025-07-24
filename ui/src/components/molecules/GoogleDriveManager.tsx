@@ -43,6 +43,7 @@ export const GoogleDriveManager: React.FC = () => {
   }, []);
 
   const testConnection = async () => {
+    console.log('🔍 Test Connection button clicked');
     setOperationStatus({
       type: 'test',
       loading: true,
@@ -50,6 +51,7 @@ export const GoogleDriveManager: React.FC = () => {
     });
 
     try {
+      console.log('🔍 Calling drive_test_connection...');
       const result = await invoke<{ success: boolean; message?: string; error?: string; file_count?: number }>('drive_test_connection');
       
       if (result.success) {
@@ -79,6 +81,7 @@ export const GoogleDriveManager: React.FC = () => {
   };
 
   const listAllFiles = async () => {
+    console.log('🔍 List All Files button clicked');
     setOperationStatus({
       type: 'list_all',
       loading: true,
@@ -86,6 +89,7 @@ export const GoogleDriveManager: React.FC = () => {
     });
 
     try {
+      console.log('🔍 Calling drive_list_all_files...');
       const result = await invoke<{ success: boolean; files?: DriveFile[]; error?: string }>('drive_list_all_files');
       
       if (result.success && result.files) {
@@ -116,21 +120,33 @@ export const GoogleDriveManager: React.FC = () => {
   };
 
   const checkConnectionStatus = async () => {
+    console.log('🔍 Checking connection status...');
     try {
-      const result = await invoke<{ connected: boolean }>('drive_get_connection_status');
-      setDriveStatus(prev => ({ ...prev, connected: result.connected }));
+      console.log('🔍 Calling drive_get_connection_status...');
+      const result = await invoke<{ success: boolean; connected: boolean; message?: string; error?: string }>('drive_get_connection_status');
+      console.log('🔍 Connection status result:', result);
       
-      if (result.connected) {
-        await listFiles();
+      if (result.success) {
+        setDriveStatus(prev => ({ ...prev, connected: result.connected }));
+        
+        if (result.connected) {
+          await listFiles();
+        }
+      } else {
+        console.error('Connection status check failed:', result.error);
+        setDriveStatus(prev => ({ ...prev, connected: false, error: result.error }));
       }
     } catch (error) {
       console.error('Failed to check connection status:', error);
+      setDriveStatus(prev => ({ ...prev, connected: false, error: error instanceof Error ? error.message : 'Unknown error' }));
     }
   };
 
   const listFiles = async () => {
+    console.log('🔍 Refresh button clicked');
     setDriveStatus(prev => ({ ...prev, loading: true, error: undefined }));
     try {
+      console.log('🔍 Calling drive_list_files...');
       const result = await invoke<{ success: boolean; files?: DriveFile[]; error?: string }>('drive_list_files');
       
       if (result.success && result.files) {
@@ -159,6 +175,7 @@ export const GoogleDriveManager: React.FC = () => {
   };
 
   const uploadBackupArchive = async () => {
+    console.log('🔍 Create & Upload Archive button clicked');
     setOperationStatus({
       type: 'upload',
       loading: true,
@@ -166,6 +183,7 @@ export const GoogleDriveManager: React.FC = () => {
     });
 
     try {
+      console.log('🔍 Calling drive_upload_backup_archive...');
       const result = await invoke<{ success: boolean; message?: string; error?: string }>('drive_upload_backup_archive');
       
       if (result.success) {

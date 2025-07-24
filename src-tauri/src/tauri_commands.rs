@@ -2419,6 +2419,7 @@ pub async fn drive_delete_backup_archive(file_id: String) -> Result<serde_json::
 pub async fn drive_get_connection_status() -> Result<serde_json::Value, String> {
     log::info!("Checking Google Drive connection status");
     
+    log::info!("About to call drive_plugin().is_connected()");
     // Use the new is_connected method for better reliability
     match crate::plugins::drive_plugin().is_connected().await {
         Ok(connected) => {
