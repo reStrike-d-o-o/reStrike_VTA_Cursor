@@ -716,53 +716,15 @@ pub async fn system_get_info(_app: State<'_, Arc<App>>) -> Result<serde_json::Va
 }
 
 #[tauri::command]
-pub async fn system_open_file_dialog(_app: State<'_, Arc<App>>) -> Result<Vec<String>, String> {
-    log::info!("System open file dialog called");
-    
-    // For Tauri v2, we need to use the dialog plugin
-    // The dialog plugin is configured in tauri.conf.json with "open": true
-    // We'll use a simple approach that works for now
-    let default_backup = "config/app_config.backup.json";
-    
-    // Check if the default backup exists
-    if std::path::Path::new(default_backup).exists() {
-        log::info!("Using default backup file: {}", default_backup);
-        Ok(vec![default_backup.to_string()])
-    } else {
-        log::info!("No default backup found, returning empty selection");
-        Ok(vec![])
-    }
+pub async fn system_open_file_dialog() -> Result<String, String> {
+    // Placeholder for native file dialog - not implemented
+    Err("File dialog not available".to_string())
 }
 
 #[tauri::command]
-pub async fn restore_backup_with_dialog(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
-    log::info!("Restore backup with dialog called");
-    
-    // For Tauri v2, we need to implement the native file dialog
-    // Since the dialog plugin is configured, we can use it
-    // For now, let's use a simple approach that works
-    let backup_path = "config/app_config.backup.json";
-    
-    // Check if the backup file exists
-    let path = std::path::Path::new(backup_path);
-    if !path.exists() {
-        return Ok(serde_json::json!({
-            "success": false,
-            "error": "No backup file found. Please ensure app_config.backup.json exists in the config directory."
-        }));
-    }
-    
-    // Restore from the backup file
-    match app.config_manager().import_config(path).await {
-        Ok(_) => Ok(serde_json::json!({
-            "success": true,
-            "message": format!("Successfully restored from backup: {}", backup_path)
-        })),
-        Err(e) => Ok(serde_json::json!({
-            "success": false,
-            "error": format!("Failed to restore from backup: {}", e)
-        }))
-    }
+pub async fn restore_backup_with_dialog() -> Result<serde_json::Value, String> {
+    // Placeholder for dialog-based restore - not implemented
+    Ok(serde_json::json!({ "success": false, "error": "File dialog not available" }))
 }
 
 // Diagnostics & Logs commands
@@ -1999,16 +1961,23 @@ pub async fn db_get_database_info(app: State<'_, Arc<App>>) -> Result<serde_json
     
     let is_accessible = app.database_plugin().is_accessible().await;
     let file_size = app.database_plugin().get_file_size();
+    let settings_count = app.database_plugin().get_all_ui_settings().await.map(|s| s.len()).unwrap_or(0);
     
     let file_size_value = match file_size {
         Ok(size) => serde_json::Value::Number(serde_json::Number::from(size)),
         Err(_) => serde_json::Value::Null,
     };
     
+    let status = if is_accessible { "Active" } else { "Inactive" };
+    let last_modified = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string();
+    
     Ok(serde_json::json!({
         "success": true,
-        "is_accessible": is_accessible,
-        "file_size": file_size_value
+        "database_size": file_size_value,
+        "settings_count": settings_count,
+        "last_modified": last_modified,
+        "status": status,
+        "is_accessible": is_accessible
     }))
 }
 
@@ -2135,4 +2104,46 @@ pub async fn drive_save_credentials(id: String, secret: String) -> Result<(), St
         .save_credentials(id, secret)
         .await
         .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn list_backup_files() -> Result<Vec<BackupFileInfo>, String> {
+    // Use the backups directory in src-tauri/backups
+    let backup_dir = "backups";
+    
+    let mut backup_files = Vec::new();
+    
+    if let Ok(entries) = std::fs::read_dir(&backup_dir) {
+        for entry in entries {
+            if let Ok(entry) = entry {
+                let path = entry.path();
+                if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("json") {
+                    if let Ok(metadata) = entry.metadata() {
+                        if let Ok(modified) = metadata.modified() {
+                            let modified_time: chrono::DateTime<chrono::Local> = chrono::DateTime::from(modified);
+                            backup_files.push(BackupFileInfo {
+                                name: path.file_name().unwrap().to_string_lossy().to_string(),
+                                path: path.to_string_lossy().to_string(),
+                                size: metadata.len(),
+                                modified: modified_time.format("%Y-%m-%d %H:%M:%S").to_string(),
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // Sort by modification time (newest first)
+    backup_files.sort_by(|a, b| b.modified.cmp(&a.modified));
+    
+    Ok(backup_files)
+}
+
+#[derive(serde::Serialize)]
+pub struct BackupFileInfo {
+    pub name: String,
+    pub path: String,
+    pub size: u64,
+    pub modified: String,
 }

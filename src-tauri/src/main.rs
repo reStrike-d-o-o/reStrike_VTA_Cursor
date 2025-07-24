@@ -44,10 +44,9 @@ async fn main() -> AppResult<()> {
     
     // Create Tauri app builder
     tauri::Builder::default()
-        .plugin(tauri_plugin_dialog::init())
         .manage(app)
         .invoke_handler(tauri::generate_handler![
-            // Core commands
+            // Core app commands
             tauri_commands::get_app_status,
             tauri_commands::shutdown_app,
             
@@ -90,7 +89,8 @@ async fn main() -> AppResult<()> {
             
             // System commands
             tauri_commands::system_get_info,
-            tauri_commands::system_open_file_dialog,
+            tauri_commands::get_network_interfaces,
+            tauri_commands::get_best_network_interface,
             
             // Store commands
             tauri_commands::save_event,
@@ -110,7 +110,6 @@ async fn main() -> AppResult<()> {
             tauri_commands::export_settings,
             tauri_commands::import_settings,
             tauri_commands::restore_settings_backup,
-            tauri_commands::restore_backup_with_dialog,
             
             // Flag commands
             tauri_commands::get_flag_url,
@@ -174,6 +173,7 @@ async fn main() -> AppResult<()> {
             tauri_commands::restore_from_json_backup,
             tauri_commands::get_migration_status,
             tauri_commands::enable_database_mode,
+            tauri_commands::list_backup_files,
             
             // Google Drive commands
             tauri_commands::drive_request_auth_url,
