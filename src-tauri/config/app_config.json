@@ -1,7 +1,7 @@
 {
   "app": {
     "version": "0.1.0",
-    "last_save": "2025-07-23T22:34:15.575323900+00:00",
+    "last_save": "2025-07-24T00:30:41.739220700+00:00",
     "startup": {
       "auto_start_udp": false,
       "auto_connect_obs": false,
@@ -140,7 +140,7 @@
       "archive_enabled": true
     },
     "live_data": {
-      "enabled": true,
+      "enabled": false,
       "interval_seconds": 5,
       "max_data_points": 1000,
       "real_time": false

@@ -5,6 +5,7 @@ import Input from '../atoms/Input';
 import Label from '../atoms/Label';
 import StatusDot from '../atoms/StatusDot';
 import Icon from '../atoms/Icon';
+import ConnectDriveButton from '../atoms/ConnectDriveButton';
 
 export const DatabaseSettingsPanel: React.FC = () => {
   const {
@@ -53,6 +54,7 @@ export const DatabaseSettingsPanel: React.FC = () => {
         <div className="flex items-center space-x-3">
           <Icon name="database" className="w-6 h-6 text-blue-400" />
           <h2 className="text-xl font-semibold text-white">Database Settings</h2>
+          <ConnectDriveButton />
         </div>
         <div className="flex items-center space-x-2">
           <StatusDot 

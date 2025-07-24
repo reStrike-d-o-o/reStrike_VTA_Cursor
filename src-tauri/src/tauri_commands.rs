@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use tauri::{State, Emitter, Manager};
+use tauri::{State, Emitter};
 use crate::core::app::App;
 
 
@@ -2109,4 +2109,30 @@ pub async fn enable_database_mode(
             "error": e.to_string()
         }))
     }
+}
+
+// Google Drive commands
+#[tauri::command]
+pub async fn drive_request_auth_url() -> Result<String, String> {
+    let (url, _csrf_token) = crate::plugins::drive_plugin()
+        .auth_url()
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(url)
+}
+
+#[tauri::command]
+pub async fn drive_complete_auth(code: String) -> Result<(), String> {
+    crate::plugins::drive_plugin()
+        .exchange_code(code)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn drive_save_credentials(id: String, secret: String) -> Result<(), String> {
+    crate::plugins::drive_plugin()
+        .save_credentials(id, secret)
+        .await
+        .map_err(|e| e.to_string())
 }

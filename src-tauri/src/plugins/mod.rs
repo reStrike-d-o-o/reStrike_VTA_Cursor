@@ -1,5 +1,6 @@
 // Plugin modules
 pub mod plugin_database;  // Re-enabled for Phase 2
+pub mod plugin_drive;     // Google Drive integration
 pub mod plugin_license;
 pub mod plugin_obs;
 pub mod plugin_playback;
@@ -10,6 +11,7 @@ pub mod plugin_protocol_manager;
 
 // Re-export key plugin types for easier access
 pub use plugin_database::{DatabasePlugin, DatabaseStatistics};  // Re-enabled for Phase 2
+pub use plugin_drive::drive_plugin;  // Google Drive integration
 pub use plugin_obs::{ObsPlugin, ObsConnectionConfig, ObsWebSocketVersion, ObsStatusInfo, ObsEvent};
 pub use plugin_playback::PlaybackPlugin;
 pub use plugin_udp::UdpPlugin;
