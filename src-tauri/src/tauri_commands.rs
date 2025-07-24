@@ -2351,34 +2351,65 @@ pub async fn drive_list_files() -> Result<serde_json::Value, String> {
 
 #[tauri::command]
 pub async fn drive_upload_backup_archive() -> Result<serde_json::Value, String> {
+    log::info!("=== DRIVE_UPLOAD_BACKUP_ARCHIVE COMMAND START ===");
     log::info!("Uploading backup archive to Google Drive");
     
     // Get list of backup files
+    log::info!("Getting list of backup files...");
     let backup_files: Vec<String> = match list_backup_files().await {
-        Ok(files) => files.into_iter().map(|f| f.path).collect(),
-        Err(e) => return Ok(serde_json::json!({
-            "success": false,
-            "error": format!("Failed to list backup files: {}", e)
-        }))
+        Ok(files) => {
+            log::info!("Found {} backup files", files.len());
+            files.into_iter().map(|f| f.path).collect()
+        },
+        Err(e) => {
+            log::error!("Failed to list backup files: {}", e);
+            return Ok(serde_json::json!({
+                "success": false,
+                "error": format!("Failed to list backup files: {}", e)
+            }))
+        }
     };
     
     if backup_files.is_empty() {
+        log::warn!("No backup files found to upload");
         return Ok(serde_json::json!({
             "success": false,
             "error": "No backup files found to upload"
         }));
     }
     
+    log::info!("Calling drive_plugin().upload_backup_archive()...");
     // Use the new upload_backup_archive method
     match crate::plugins::drive_plugin().upload_backup_archive().await {
-        Ok(message) => Ok(serde_json::json!({
-            "success": true,
-            "message": message
-        })),
-        Err(e) => Ok(serde_json::json!({
-            "success": false,
-            "error": format!("Failed to upload archive: {}", e)
-        }))
+        Ok(message) => {
+            log::info!("=== DRIVE_UPLOAD_BACKUP_ARCHIVE COMMAND SUCCESS ===");
+            log::info!("Upload successful: {}", message);
+            Ok(serde_json::json!({
+                "success": true,
+                "message": message
+            }))
+        },
+        Err(e) => {
+            log::error!("=== DRIVE_UPLOAD_BACKUP_ARCHIVE COMMAND ERROR ===");
+            log::error!("Failed to upload archive: {}", e);
+            
+            // Log detailed error to file
+            let error_log = format!(
+                "[{}] Tauri Command Upload Error:\nError: {}\nBackup Files Count: {}\n",
+                chrono::Utc::now().format("%Y-%m-%d %H:%M:%S"),
+                e,
+                backup_files.len()
+            );
+            
+            if let Err(write_err) = std::fs::write("app.log", error_log) {
+                log::error!("Failed to write error log: {}", write_err);
+            }
+            
+            Ok(serde_json::json!({
+                "success": false,
+                "error": format!("Failed to upload archive: {}", e)
+            }))
+        }
     }
 }
 
