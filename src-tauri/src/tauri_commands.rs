@@ -2419,19 +2419,39 @@ pub async fn drive_delete_backup_archive(file_id: String) -> Result<serde_json::
 pub async fn drive_get_connection_status() -> Result<serde_json::Value, String> {
     log::info!("Checking Google Drive connection status");
     
-    // Try to list files to test connection
-    match crate::plugins::drive_plugin().list_files().await {
-        Ok(files) => Ok(serde_json::json!({
-            "success": true,
-            "connected": true,
-            "file_count": files.len(),
-            "message": "Connected to Google Drive"
-        })),
+    // Use the new is_connected method for better reliability
+    match crate::plugins::drive_plugin().is_connected().await {
+        Ok(connected) => {
+            if connected {
+                // If connected, try to get file count for additional info
+                match crate::plugins::drive_plugin().list_files().await {
+                    Ok(files) => Ok(serde_json::json!({
+                        "success": true,
+                        "connected": true,
+                        "file_count": files.len(),
+                        "message": "Connected to Google Drive"
+                    })),
+                    Err(e) => Ok(serde_json::json!({
+                        "success": true,
+                        "connected": true,
+                        "file_count": 0,
+                        "message": "Connected to Google Drive (file listing failed)",
+                        "warning": e.to_string()
+                    }))
+                }
+            } else {
+                Ok(serde_json::json!({
+                    "success": false,
+                    "connected": false,
+                    "message": "Not connected to Google Drive"
+                }))
+            }
+        },
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "connected": false,
             "error": e.to_string(),
-            "message": "Not connected to Google Drive"
+            "message": "Failed to check connection status"
         }))
     }
 }
