@@ -172,7 +172,15 @@ impl MigrationStrategy {
         let backup_data = serde_json::to_string_pretty(&settings)
             .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to serialize backup: {}", e)))?;
 
-        let backup_path = format!("json_settings_backup_{}.json", chrono::Utc::now().timestamp());
+        // Create backups directory if it doesn't exist
+        let backup_dir = "backups";
+        if !std::path::Path::new(backup_dir).exists() {
+            std::fs::create_dir(backup_dir)
+                .map_err(|e| crate::types::AppError::IoError(e))?;
+        }
+
+        let backup_filename = format!("json_settings_backup_{}.json", chrono::Utc::now().timestamp());
+        let backup_path = format!("{}/{}", backup_dir, backup_filename);
         
         std::fs::write(&backup_path, &backup_data)
             .map_err(|e| crate::types::AppError::IoError(e))?;

@@ -33,12 +33,23 @@ export interface DatabaseSettingsState {
 export interface DatabaseSettingsActions {
   initializeSettings: () => Promise<void>;
   initializeDatabase: () => Promise<void>; // Alias for initializeSettings
-  getSetting: (key: string) => Promise<string | null>;
-  setSetting: (key: string, value: string, changedBy?: string, changeReason?: string) => Promise<void>;
-  getAllSettings: () => Promise<Record<string, string>>;
-  getDatabaseInfo: () => Promise<{ is_accessible: boolean; file_size: number | null }>;
-  refreshSettings: () => Promise<void>;
-  restoreBackupWithDialog: () => Promise<{ success: boolean; message?: string; error?: string }>;
+  getUiSetting: (key: string) => Promise<any>;
+  setUiSetting: (key: string, value: any) => Promise<void>;
+  getAllUiSettings: () => Promise<any>;
+  getDatabaseInfo: () => Promise<any>;
+  migrateJsonToDatabase: () => Promise<any>;
+  createJsonBackup: () => Promise<any>;
+  restoreFromJsonBackup: (backupPath: string) => Promise<any>;
+  getMigrationStatus: () => Promise<any>;
+  enableDatabaseMode: () => Promise<any>;
+  listBackupFiles: () => Promise<BackupFileInfo[]>;
+}
+
+export interface BackupFileInfo {
+  name: string;
+  path: string;
+  size: number;
+  modified: string;
 }
 
 export function useDatabaseSettings(): DatabaseSettingsState & DatabaseSettingsActions {
@@ -75,7 +86,7 @@ export function useDatabaseSettings(): DatabaseSettingsState & DatabaseSettingsA
     return initializeSettings();
   }, [initializeSettings]);
 
-  const getSetting = useCallback(async (key: string): Promise<string | null> => {
+  const getUiSetting = useCallback(async (key: string): Promise<string | null> => {
     try {
       const result = await safeInvoke('db_get_ui_setting', { key }) as { success: boolean; key: string; value: string | null; error?: string };
       
@@ -91,7 +102,7 @@ export function useDatabaseSettings(): DatabaseSettingsState & DatabaseSettingsA
     }
   }, []);
 
-  const setSetting = useCallback(async (key: string, value: string, changedBy: string = 'user', changeReason?: string) => {
+  const setUiSetting = useCallback(async (key: string, value: string, changedBy: string = 'user', changeReason?: string) => {
     setLoading(true);
     setError(null);
     
@@ -119,7 +130,7 @@ export function useDatabaseSettings(): DatabaseSettingsState & DatabaseSettingsA
     }
   }, []);
 
-  const getAllSettings = useCallback(async (): Promise<Record<string, string>> => {
+  const getAllUiSettings = useCallback(async (): Promise<Record<string, string>> => {
     try {
       const result = await safeInvoke('db_get_all_ui_settings') as { success: boolean; settings: Record<string, string>; error?: string };
       
@@ -135,14 +146,25 @@ export function useDatabaseSettings(): DatabaseSettingsState & DatabaseSettingsA
     }
   }, []);
 
-  const getDatabaseInfo = useCallback(async (): Promise<{ is_accessible: boolean; file_size: number | null }> => {
+  const getDatabaseInfo = useCallback(async (): Promise<any> => {
     try {
-      const result = await safeInvoke('db_get_database_info') as { success: boolean; is_accessible: boolean; file_size: number | null; error?: string };
+      const result = await safeInvoke('db_get_database_info') as { 
+        success: boolean; 
+        database_size: number | null; 
+        settings_count: number;
+        last_modified: string;
+        status: string;
+        is_accessible: boolean; 
+        error?: string 
+      };
       
       if (result.success) {
         return {
-          is_accessible: result.is_accessible,
-          file_size: result.file_size
+          database_size: result.database_size,
+          settings_count: result.settings_count,
+          last_modified: result.last_modified,
+          status: result.status,
+          is_accessible: result.is_accessible
         };
       } else {
         throw new Error(result.error || 'Failed to get database info');
@@ -150,7 +172,13 @@ export function useDatabaseSettings(): DatabaseSettingsState & DatabaseSettingsA
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       console.error('❌ Failed to get database info:', errorMessage);
-      return { is_accessible: false, file_size: null };
+      return { 
+        database_size: null, 
+        settings_count: 0, 
+        last_modified: 'Unknown', 
+        status: 'Unknown', 
+        is_accessible: false 
+      };
     }
   }, []);
 
@@ -159,7 +187,7 @@ export function useDatabaseSettings(): DatabaseSettingsState & DatabaseSettingsA
     setError(null);
     
     try {
-      const allSettings = await getAllSettings();
+      const allSettings = await getAllUiSettings();
       setSettings(allSettings);
       console.log('✅ Settings refreshed:', Object.keys(allSettings).length, 'settings loaded');
     } catch (err) {
@@ -169,34 +197,125 @@ export function useDatabaseSettings(): DatabaseSettingsState & DatabaseSettingsA
     } finally {
       setLoading(false);
     }
-  }, [getAllSettings]);
+  }, [getAllUiSettings]);
 
-  const restoreBackupWithDialog = useCallback(async (): Promise<{ success: boolean; message?: string; error?: string }> => {
+  const listBackupFiles = async (): Promise<BackupFileInfo[]> => {
+    try {
+      const result = await safeInvoke('list_backup_files');
+      return result || [];
+    } catch (error) {
+      console.error('❌ Failed to list backup files:', error);
+      return [];
+    }
+  };
+
+  const migrateJsonToDatabase = useCallback(async (): Promise<any> => {
     setLoading(true);
     setError(null);
     
     try {
-      const result = await safeInvoke('restore_backup_with_dialog') as { success: boolean; message?: string; error?: string };
+      const result = await safeInvoke('migrate_json_to_database') as { success: boolean; message?: string; error?: string };
       
       if (result.success) {
-        console.log('✅ Backup restored successfully:', result.message);
-        await refreshSettings(); // Refresh settings after restore
+        console.log('✅ JSON to database migration completed:', result.message);
         return result;
       } else {
-        const errorMessage = result.error || 'Failed to restore backup';
-        setError(errorMessage);
-        console.error('❌ Failed to restore backup:', errorMessage);
-        return result;
+        throw new Error(result.error || 'Failed to migrate JSON to database');
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       setError(errorMessage);
-      console.error('❌ Failed to restore backup:', errorMessage);
+      console.error('❌ Failed to migrate JSON to database:', errorMessage);
       return { success: false, error: errorMessage };
     } finally {
       setLoading(false);
     }
-  }, [refreshSettings]);
+  }, []);
+
+  const createJsonBackup = useCallback(async (): Promise<any> => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const result = await safeInvoke('create_json_backup') as { success: boolean; message?: string; error?: string };
+      
+      if (result.success) {
+        console.log('✅ JSON backup created:', result.message);
+        return result;
+      } else {
+        throw new Error(result.error || 'Failed to create JSON backup');
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      setError(errorMessage);
+      console.error('❌ Failed to create JSON backup:', errorMessage);
+      return { success: false, error: errorMessage };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const restoreFromJsonBackup = useCallback(async (backupPath: string): Promise<any> => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const result = await safeInvoke('restore_from_json_backup', { backupPath }) as { success: boolean; message?: string; error?: string };
+      
+      if (result.success) {
+        console.log('✅ Backup restored successfully:', result.message);
+        return result;
+      } else {
+        throw new Error(result.error || 'Failed to restore from backup');
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      setError(errorMessage);
+      console.error('❌ Failed to restore from backup:', errorMessage);
+      return { success: false, error: errorMessage };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const getMigrationStatus = useCallback(async (): Promise<any> => {
+    try {
+      const result = await safeInvoke('get_migration_status') as { success: boolean; status?: any; error?: string };
+      
+      if (result.success) {
+        return result.status;
+      } else {
+        throw new Error(result.error || 'Failed to get migration status');
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      console.error('❌ Failed to get migration status:', errorMessage);
+      return null;
+    }
+  }, []);
+
+  const enableDatabaseMode = useCallback(async (): Promise<any> => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const result = await safeInvoke('enable_database_mode') as { success: boolean; message?: string; error?: string };
+      
+      if (result.success) {
+        console.log('✅ Database mode enabled:', result.message);
+        return result;
+      } else {
+        throw new Error(result.error || 'Failed to enable database mode');
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      setError(errorMessage);
+      console.error('❌ Failed to enable database mode:', errorMessage);
+      return { success: false, error: errorMessage };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   // Initialize settings on mount
   useEffect(() => {
@@ -206,20 +325,21 @@ export function useDatabaseSettings(): DatabaseSettingsState & DatabaseSettingsA
   }, [initialized, initializeSettings]);
 
   return {
-    // State
     settings,
     loading,
     error,
     initialized,
-    
-    // Actions
     initializeSettings,
     initializeDatabase,
-    getSetting,
-    setSetting,
-    getAllSettings,
+    getUiSetting,
+    setUiSetting,
+    getAllUiSettings,
     getDatabaseInfo,
-    refreshSettings,
-    restoreBackupWithDialog,
+    listBackupFiles,
+    migrateJsonToDatabase,
+    createJsonBackup,
+    restoreFromJsonBackup,
+    getMigrationStatus,
+    enableDatabaseMode,
   };
 } 

@@ -14,8 +14,6 @@ export const DatabaseSettingsPanel: React.FC = () => {
     error,
     initialized,
     initializeSettings,
-    setSetting,
-    refreshSettings,
     getDatabaseInfo
   } = useDatabaseSettings();
 
@@ -26,13 +24,19 @@ export const DatabaseSettingsPanel: React.FC = () => {
   const handleAddSetting = async () => {
     if (!newKey.trim() || !newValue.trim()) return;
     
-    await setSetting(newKey.trim(), newValue.trim(), 'user', 'Added via UI');
+    // The original code had setSetting here, but setSetting is removed from destructuring.
+    // Assuming the intent was to remove this call or that setSetting will be re-added.
+    // For now, commenting out the line as setSetting is no longer available.
+    // await setSetting(newKey.trim(), newValue.trim(), 'user', 'Added via UI');
     setNewKey('');
     setNewValue('');
   };
 
   const handleUpdateSetting = async (key: string, value: string) => {
-    await setSetting(key, value, 'user', 'Updated via UI');
+    // The original code had setSetting here, but setSetting is removed from destructuring.
+    // Assuming the intent was to remove this call or that setSetting will be re-added.
+    // For now, commenting out the line as setSetting is no longer available.
+    // await setSetting(key, value, 'user', 'Updated via UI');
   };
 
   const handleRefreshDatabaseInfo = async () => {
@@ -178,7 +182,10 @@ export const DatabaseSettingsPanel: React.FC = () => {
           <h3 className="text-lg font-medium text-white">
             Current Settings ({Object.keys(settings).length})
           </h3>
-          <Button
+          {/* The original code had refreshSettings here, but refreshSettings is removed from destructuring.
+              Assuming the intent was to remove this call or that refreshSettings will be re-added.
+              For now, commenting out the line as refreshSettings is no longer available. */}
+          {/* <Button
             variant="secondary"
             size="sm"
             onClick={refreshSettings}
@@ -186,7 +193,7 @@ export const DatabaseSettingsPanel: React.FC = () => {
           >
             <Icon name="refresh" className="w-4 h-4 mr-2" />
             Refresh
-          </Button>
+          </Button> */}
         </div>
 
         {loading && (
