@@ -7,6 +7,7 @@ import { CpuMonitoringSection } from '../molecules/CpuMonitoringSection';
 import PssDrawer from '../molecules/PssDrawer';
 import AppSettingsSection from '../molecules/AppSettingsSection';
 import { DatabaseManagementPanel } from '../molecules/DatabaseManagementPanel';
+import { GoogleDriveBackupRestore } from '../molecules/GoogleDriveBackupRestore';
 import DatabaseMigrationPanel from '../molecules/DatabaseMigrationPanel';
 import FlagManagementPanel from '../molecules/FlagManagementPanel';
 import ObsWebSocketManager from '../organisms/ObsWebSocketManager';
@@ -282,6 +283,7 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
             {settingsTab === 'database' && (
               <div className="space-y-6">
                 <DatabaseManagementPanel />
+                <GoogleDriveBackupRestore />
                 <DatabaseMigrationPanel />
               </div>
             )}

@@ -43,15 +43,13 @@
       "open": true,
       "execute": true,
       "sidecar": true,
-      "scope": [
-        {
-          "name": "mpv",
-          "cmd": "mpv",
-          "args": ["--start=10"]
-        }
-      ],
       "scope": {
         "allow": [
+          {
+            "name": "mpv",
+            "cmd": "mpv",
+            "args": ["--start=10"]
+          },
           {
             "name": "open",
             "cmd": "open",

@@ -11,6 +11,13 @@ interface MigrationStatus {
   database_settings_count: number;
 }
 
+interface TableData {
+  table_name: string;
+  columns: Array<{ name: string; type: string; not_null: boolean; primary_key: boolean }>;
+  rows: Array<Record<string, any>>;
+  row_count: number;
+}
+
 interface BackupFileInfo {
   name: string;
   path: string;
@@ -25,21 +32,38 @@ const DatabaseMigrationPanel: React.FC = () => {
     enableDatabaseMode,
     listBackupFiles,
     restoreFromJsonBackup,
-    getMigrationStatus
+    getMigrationStatus,
+    getDatabaseTables,
+    getTableData
   } = useDatabaseSettings();
 
   const [backupFiles, setBackupFiles] = useState<BackupFileInfo[]>([]);
   const [selectedBackup, setSelectedBackup] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'backup' | 'migration' | 'status'>('backup');
+  const [activeTab, setActiveTab] = useState<'backup' | 'migration' | 'status' | 'preview'>('backup');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [migrationStatus, setMigrationStatus] = useState<MigrationStatus | null>(null);
+  const [databaseTables, setDatabaseTables] = useState<string[]>([]);
+  const [selectedTable, setSelectedTable] = useState<string>('');
+  const [tableData, setTableData] = useState<TableData | null>(null);
 
   useEffect(() => {
     loadBackupFiles();
     loadMigrationStatus();
   }, []);
+
+  useEffect(() => {
+    if (activeTab === 'preview') {
+      loadDatabaseTables();
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (selectedTable && activeTab === 'preview') {
+      loadTableData(selectedTable);
+    }
+  }, [selectedTable, activeTab]);
 
   const loadBackupFiles = async () => {
     const files = await listBackupFiles();
@@ -52,6 +76,31 @@ const DatabaseMigrationPanel: React.FC = () => {
       setMigrationStatus(status);
     } catch (error) {
       console.error('❌ Failed to load migration status:', error);
+    }
+  };
+
+  const loadDatabaseTables = async () => {
+    try {
+      const result = await getDatabaseTables();
+      if (result && result.tables) {
+        setDatabaseTables(result.tables);
+        if (result.tables.length > 0 && !selectedTable) {
+          setSelectedTable(result.tables[0]);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Failed to load database tables:', error);
+    }
+  };
+
+  const loadTableData = async (tableName: string) => {
+    try {
+      const result = await getTableData(tableName);
+      if (result && result.success) {
+        setTableData(result);
+      }
+    } catch (error) {
+      console.error('❌ Failed to load table data:', error);
     }
   };
 
@@ -92,33 +141,47 @@ const DatabaseMigrationPanel: React.FC = () => {
       <div className="flex border-b border-gray-200">
         <button
           onClick={() => setActiveTab('backup')}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
             activeTab === 'backup'
               ? 'border-blue-500 text-blue-600'
               : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
           }`}
         >
+          <span>💾</span>
           Backup & Restore
         </button>
         <button
           onClick={() => setActiveTab('migration')}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
             activeTab === 'migration'
               ? 'border-blue-500 text-blue-600'
               : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
           }`}
         >
+          <span>🔄</span>
           Migration
         </button>
         <button
           onClick={() => setActiveTab('status')}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
             activeTab === 'status'
               ? 'border-blue-500 text-blue-600'
               : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
           }`}
         >
+          <span>📊</span>
           Status
+        </button>
+        <button
+          onClick={() => setActiveTab('preview')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+            activeTab === 'preview'
+              ? 'border-blue-500 text-blue-600'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+          }`}
+        >
+          <span>👁️</span>
+          Preview
         </button>
       </div>
 
@@ -333,6 +396,101 @@ const DatabaseMigrationPanel: React.FC = () => {
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {/* Preview Tab */}
+      {activeTab === 'preview' && (
+        <div className="bg-[#181F26] rounded-lg p-4 mb-6 border border-gray-700 shadow">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold text-blue-300">Database Tables Preview</h3>
+            <div className="flex gap-4 text-sm text-gray-400">
+              <span>Tables: {databaseTables.length}</span>
+              {tableData && <span>Rows: {tableData.row_count}</span>}
+            </div>
+          </div>
+
+          {/* Table Selector */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Select Table to Preview:
+            </label>
+            <select
+              value={selectedTable}
+              onChange={(e) => setSelectedTable(e.target.value)}
+              className="w-full px-3 py-2 bg-[#101820] border border-gray-600 rounded text-gray-200 focus:outline-none focus:border-blue-500"
+              aria-label="Select database table to preview"
+            >
+              <option value="">Select a table...</option>
+              {databaseTables.map((table) => (
+                <option key={table} value={table}>
+                  {table}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Table Data Display */}
+          {tableData && (
+            <div className="border border-gray-700 rounded">
+              <div className="bg-[#101820] px-3 py-2 border-b border-gray-700">
+                <h4 className="text-sm font-semibold text-blue-300">
+                  Table: {tableData.table_name} ({tableData.row_count} rows)
+                </h4>
+                {tableData.row_count > 6 && (
+                  <p className="text-xs text-gray-400 mt-1">
+                    Showing first 6 rows of {tableData.row_count} total rows
+                  </p>
+                )}
+              </div>
+              <div className="max-h-48 overflow-auto">
+                {tableData.rows && tableData.rows.length > 0 ? (
+                  <div className="overflow-x-auto max-w-full">
+                    <table className="min-w-full text-left text-sm text-gray-200 table-fixed">
+                      <thead className="bg-[#0A0F14] sticky top-0">
+                        <tr>
+                          {tableData.columns.map((column, index) => (
+                            <th key={index} className="px-3 py-2 font-semibold border-r border-gray-600 whitespace-nowrap w-32">
+                              <div className="flex flex-col">
+                                <span className="truncate">{column.name}</span>
+                                <span className="text-xs text-gray-400 font-normal truncate">
+                                  {column.type}
+                                  {column.primary_key && ' (PK)'}
+                                  {column.not_null && ' (NOT NULL)'}
+                                </span>
+                              </div>
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {tableData.rows.slice(0, 6).map((row, rowIndex) => (
+                          <tr key={rowIndex} className="hover:bg-blue-900 transition-colors border-b border-gray-700">
+                            {tableData.columns.map((column, colIndex) => (
+                              <td key={colIndex} className="px-3 py-2 border-r border-gray-600 whitespace-nowrap w-32">
+                                <div className="max-w-28 truncate" title={String(row[column.name] || '')}>
+                                  {row[column.name] !== null && row[column.name] !== undefined 
+                                    ? String(row[column.name])
+                                    : <span className="text-gray-500 italic">null</span>
+                                  }
+                                </div>
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="p-4 text-center text-gray-400 text-sm">
+                    No data found in table
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Settings Preview (Legacy) - REMOVED due to query issues */}
         </div>
       )}
 

@@ -43,6 +43,9 @@ export interface DatabaseSettingsActions {
   getMigrationStatus: () => Promise<any>;
   enableDatabaseMode: () => Promise<any>;
   listBackupFiles: () => Promise<BackupFileInfo[]>;
+  getDatabasePreview: () => Promise<any>;
+  getDatabaseTables: () => Promise<any>;
+  getTableData: (tableName: string) => Promise<any>;
 }
 
 export interface BackupFileInfo {
@@ -317,6 +320,54 @@ export function useDatabaseSettings(): DatabaseSettingsState & DatabaseSettingsA
     }
   }, []);
 
+  const getDatabasePreview = useCallback(async (): Promise<any> => {
+    try {
+      const result = await safeInvoke('get_database_preview') as { success: boolean; database_settings?: any[]; json_settings?: any[]; database_count?: number; json_count?: number; error?: string };
+      
+      if (result.success) {
+        return result;
+      } else {
+        throw new Error(result.error || 'Failed to get database preview');
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      console.error('❌ Failed to get database preview:', errorMessage);
+      return null;
+    }
+  }, []);
+
+  const getDatabaseTables = useCallback(async (): Promise<any> => {
+    try {
+      const result = await safeInvoke('get_database_tables') as { success: boolean; tables?: string[]; error?: string };
+      
+      if (result.success) {
+        return result;
+      } else {
+        throw new Error(result.error || 'Failed to get database tables');
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      console.error('❌ Failed to get database tables:', errorMessage);
+      return null;
+    }
+  }, []);
+
+  const getTableData = useCallback(async (tableName: string): Promise<any> => {
+    try {
+      const result = await safeInvoke('get_table_data', { tableName }) as { success: boolean; table_name?: string; columns?: any[]; rows?: any[]; row_count?: number; error?: string };
+      
+      if (result.success) {
+        return result;
+      } else {
+        throw new Error(result.error || 'Failed to get table data');
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      console.error('❌ Failed to get table data:', errorMessage);
+      return null;
+    }
+  }, []);
+
   // Initialize settings on mount
   useEffect(() => {
     if (!initialized) {
@@ -341,5 +392,8 @@ export function useDatabaseSettings(): DatabaseSettingsState & DatabaseSettingsA
     restoreFromJsonBackup,
     getMigrationStatus,
     enableDatabaseMode,
+    getDatabasePreview,
+    getDatabaseTables,
+    getTableData,
   };
 } 

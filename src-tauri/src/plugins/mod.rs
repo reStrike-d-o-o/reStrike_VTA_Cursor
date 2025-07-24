@@ -26,6 +26,7 @@ pub async fn init() -> Result<(), Box<dyn std::error::Error>> {
     
     // Initialize each plugin
     plugin_database::init()?;
+    plugin_drive::init()?;  // Google Drive integration
     plugin_obs::init()?;
     plugin_playback::init()?;
     plugin_udp::init()?;
