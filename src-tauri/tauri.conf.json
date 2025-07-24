@@ -40,23 +40,7 @@
   },
   "plugins": {
     "shell": {
-      "open": true,
-      "execute": true,
-      "sidecar": true,
-      "scope": {
-        "allow": [
-          {
-            "name": "mpv",
-            "cmd": "mpv",
-            "args": ["--start=10"]
-          },
-          {
-            "name": "open",
-            "cmd": "open",
-            "args": ["https://accounts.google.com/o/oauth2/auth"]
-          }
-        ]
-      }
+      "open": true
     },
     "fs": {
       "readFile": true,

@@ -29,11 +29,21 @@ impl DatabasePlugin {
         let migration_strategy = MigrationStrategy::new(config_manager.clone());
         let hybrid_provider = Arc::new(Mutex::new(HybridSettingsProvider::new(config_manager.clone())));
 
-        Ok(Self {
+        let plugin = Self {
             connection,
             migration_strategy,
             hybrid_provider,
-        })
+        };
+
+        // Run database migrations automatically in a separate task
+        let connection_clone = plugin.connection.clone();
+        tokio::spawn(async move {
+            if let Err(e) = Self::run_migrations_internal(connection_clone).await {
+                log::error!("Failed to run database migrations: {}", e);
+            }
+        });
+
+        Ok(plugin)
     }
 
     /// Initialize UI settings in database
@@ -144,6 +154,27 @@ impl DatabasePlugin {
     pub async fn get_connection(&self) -> AppResult<tokio::sync::MutexGuard<'_, rusqlite::Connection>> {
         self.connection.get_connection().await
             .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))
+    }
+
+    /// Run database migrations
+    pub async fn run_migrations(&self) -> AppResult<()> {
+        Self::run_migrations_internal(self.connection.clone()).await
+    }
+
+    /// Internal method to run database migrations
+    async fn run_migrations_internal(connection: Arc<DatabaseConnection>) -> AppResult<()> {
+        let mut conn = connection.get_connection().await
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
+        
+        // Import the migration manager
+        use crate::database::migrations::MigrationManager;
+        
+        let migration_manager = MigrationManager::new();
+        migration_manager.migrate(&mut *conn)
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to run database migrations: {}", e)))?;
+        
+        log::info!("Database migrations completed successfully");
+        Ok(())
     }
 }
 
