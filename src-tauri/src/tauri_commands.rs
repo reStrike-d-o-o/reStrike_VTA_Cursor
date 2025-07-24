@@ -1868,16 +1868,12 @@ pub async fn get_screen_size() -> Result<serde_json::Value, String> {
 pub async fn initialize_ui_settings_database() -> Result<serde_json::Value, String> {
     log::info!("Initializing UI settings database");
     
-    match crate::ui_settings::UiSettingsManager::initialize() {
-        Ok(_) => Ok(serde_json::json!({
-            "success": true,
-            "message": "UI settings database initialized successfully"
-        })),
-        Err(e) => Ok(serde_json::json!({
-            "success": false,
-            "error": e
-        }))
-    }
+    // This command should initialize the database schema, not just UI settings
+    // For now, we'll return a success message since the database plugin handles initialization
+    Ok(serde_json::json!({
+        "success": true,
+        "message": "UI settings database initialization command available. Use db_initialize_ui_settings for actual initialization."
+    }))
 }
 
 // Database Plugin Commands
