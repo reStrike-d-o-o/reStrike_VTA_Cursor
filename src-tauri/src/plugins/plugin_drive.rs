@@ -210,13 +210,20 @@ impl DrivePlugin {
 
 
     pub async fn upload_backup_archive(&self) -> AppResult<String> {
+        log::info!("=== UPLOAD_BACKUP_ARCHIVE START ===");
+        
         // Create backup archive
         let backup_dir = std::env::current_dir()?.join("backups");
+        log::info!("Backup directory: {}", backup_dir.display());
         
         // Ensure backup directory exists
         if !backup_dir.exists() {
+            log::info!("Creating backup directory...");
             std::fs::create_dir_all(&backup_dir)
-                .map_err(|e| AppError::IoError(e))?;
+                .map_err(|e| {
+                    log::error!("Failed to create backup directory: {}", e);
+                    AppError::IoError(e)
+                })?;
         }
         
         let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
@@ -226,18 +233,47 @@ impl DrivePlugin {
         log::info!("Creating backup archive: {}", archive_path.display());
         
         // Create zip archive from backups directory
+        log::info!("Calling create_backup_archive...");
         self.create_backup_archive(&backup_dir, &archive_path).await?;
+        log::info!("Backup archive created successfully");
         
         log::info!("Backup archive created, uploading to Google Drive...");
         
         // Upload to Google Drive
-        let _file_id = self.upload_file(&archive_path, &archive_name).await?;
+        log::info!("Calling upload_file...");
+        let _file_id = match self.upload_file(&archive_path, &archive_name).await {
+            Ok(file_id) => {
+                log::info!("Upload completed successfully");
+                file_id
+            },
+            Err(e) => {
+                // Log detailed error to file
+                let error_log = format!(
+                    "[{}] Backup Upload Error:\nError: {}\nArchive Path: {}\nArchive Name: {}\nArchive Size: {} bytes\n",
+                    chrono::Utc::now().format("%Y-%m-%d %H:%M:%S"),
+                    e,
+                    archive_path.display(),
+                    archive_name,
+                    archive_path.metadata().map(|m| m.len()).unwrap_or(0)
+                );
+                
+                if let Err(write_err) = std::fs::write("app.log", error_log) {
+                    log::error!("Failed to write error log: {}", write_err);
+                }
+                
+                return Err(e);
+            }
+        };
         
         // Clean up local archive
+        log::info!("Cleaning up local archive...");
         if let Err(e) = std::fs::remove_file(&archive_path) {
             log::warn!("Failed to clean up local archive: {}", e);
+        } else {
+            log::info!("Local archive cleaned up successfully");
         }
         
+        log::info!("=== UPLOAD_BACKUP_ARCHIVE SUCCESS ===");
         Ok(format!("Backup archive '{}' uploaded successfully", archive_name))
     }
     
@@ -402,51 +438,115 @@ impl DrivePlugin {
     }
     
     async fn upload_file(&self, file_path: &std::path::Path, file_name: &str) -> AppResult<String> {
+        log::info!("=== UPLOAD_FILE START ===");
+        log::info!("File path: {}", file_path.display());
+        log::info!("File name: {}", file_name);
+        
         let token = self.get_access_token().await?;
+        log::info!("Got access token successfully");
         
         // Check if file exists
         if !file_path.exists() {
+            log::error!("File does not exist: {}", file_path.display());
             return Err(AppError::ConfigError(format!("File does not exist: {}", file_path.display())));
         }
         
         log::info!("Uploading file: {} ({} bytes)", file_name, file_path.metadata().map(|m| m.len()).unwrap_or(0));
         
         // Read file content
+        log::info!("Reading file content...");
         let file_content = std::fs::read(file_path)
-            .map_err(|e| AppError::IoError(e))?;
+            .map_err(|e| {
+                log::error!("Failed to read file: {}", e);
+                AppError::IoError(e)
+            })?;
+        let file_size = file_content.len();
+        log::info!("File content read successfully, size: {} bytes", file_size);
         
-        // Create multipart form data
-        let form = reqwest::multipart::Form::new()
-            .text("name", file_name.to_string())
-            .part("file", reqwest::multipart::Part::bytes(file_content)
-                .file_name(file_name.to_string()));
+        // Create the metadata JSON
+        let metadata = serde_json::json!({
+            "name": file_name,
+            "mimeType": "application/zip"
+        });
+        log::info!("Created metadata: {}", metadata);
         
+        // Use multipart upload as per Google Drive API v3 documentation
         let url = format!("{}/files?uploadType=multipart", GOOGLE_DRIVE_API_BASE);
+        log::info!("Upload URL: {}", url);
+        
+        // Create multipart form with metadata and file content
+        log::info!("Creating multipart form...");
+        let form = reqwest::multipart::Form::new()
+            .part("metadata", reqwest::multipart::Part::text(metadata.to_string())
+                .mime_str("application/json")
+                .map_err(|e| {
+                    log::error!("Failed to set MIME type for metadata: {}", e);
+                    AppError::ConfigError(e.to_string())
+                })?)
+            .part("file", reqwest::multipart::Part::bytes(file_content)
+                .mime_str("application/zip")
+                .map_err(|e| {
+                    log::error!("Failed to set MIME type for file: {}", e);
+                    AppError::ConfigError(e.to_string())
+                })?);
+        
+        log::info!("Sending multipart request to Google Drive...");
         let response = self.http_client
             .post(&url)
             .header("Authorization", format!("Bearer {}", token))
             .multipart(form)
             .send()
             .await
-            .map_err(|e| AppError::NetworkError(e.to_string()))?;
+            .map_err(|e| {
+                log::error!("Network error during upload: {}", e);
+                AppError::NetworkError(e.to_string())
+            })?;
+        
+        log::info!("Received response from Google Drive, status: {}", response.status());
         
         if !response.status().is_success() {
             let status = response.status();
             let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
             log::error!("Google Drive upload error: {} - {}", status, error_text);
+            
+            // Log detailed error to file
+            let error_log = format!(
+                "[{}] Google Drive Upload Error:\nStatus: {}\nError: {}\nFile: {}\nFile Size: {} bytes\nURL: {}\n",
+                chrono::Utc::now().format("%Y-%m-%d %H:%M:%S"),
+                status,
+                error_text,
+                file_path.display(),
+                file_size,
+                url
+            );
+            
+            if let Err(e) = std::fs::write("app.log", error_log) {
+                log::error!("Failed to write error log: {}", e);
+            }
+            
             return Err(AppError::NetworkError(format!(
                 "Failed to upload file: {} - {}",
                 status, error_text
             )));
         }
         
+        log::info!("Parsing response JSON...");
         let file_data: serde_json::Value = response.json().await
-            .map_err(|e| AppError::NetworkError(e.to_string()))?;
+            .map_err(|e| {
+                log::error!("Failed to parse response JSON: {}", e);
+                AppError::NetworkError(e.to_string())
+            })?;
+        
+        log::info!("Response JSON: {}", file_data);
         
         let file_id = file_data["id"].as_str()
             .map(|s| s.to_string())
-            .ok_or_else(|| AppError::ConfigError("No file ID in response".to_string()))?;
+            .ok_or_else(|| {
+                log::error!("No file ID in response");
+                AppError::ConfigError("No file ID in response".to_string())
+            })?;
         
+        log::info!("=== UPLOAD_FILE SUCCESS ===");
         log::info!("File uploaded successfully with ID: {}", file_id);
         Ok(file_id)
     }
