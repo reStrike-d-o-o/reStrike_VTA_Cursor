@@ -4,7 +4,7 @@
 
 reStrike VTA is a Windows-native desktop application designed for taekwondo competition management, featuring advanced OBS Studio integration, real-time event processing, and comprehensive video replay capabilities. Built with Tauri v2, React, and Rust, the application provides a robust platform for tournament organizers and referees.
 
-## 🚀 Current Status (2025-01-28)
+## 🚀 Current Status (2025-01-29)
 
 ### ✅ Complete Systems
 - **Tauri v2 Integration**: Native Windows desktop application
@@ -15,14 +15,18 @@ reStrike VTA is a Windows-native desktop application designed for taekwondo comp
 - **WebSocket Manager**: Full CRUD operations with status monitoring
 - **Settings Persistence**: All app settings survive restarts
 - **Backup System**: Automatic configuration backup and restore
+- **Flag Management Database**: Complete database-backed flag management with 253+ IOC flags
+- **Real-time Events**: Push-based event system for live updates
+- **Window Management**: Dynamic sizing and positioning with persistence
 
-### 🔧 Recent Major Updates
-- **OBS Connection Management**: WebSocket connections with configuration integration
-- **Protocol Version Simplification**: Removed v4 support, streamlined to v5 only
-- **Disconnect Functionality**: Proper WebSocket disconnection without losing configuration
-- **Settings Separation**: Clear separation between save settings and connect actions
-- **TypeScript Error Fixes**: Resolved all parameter and type issues
-- **Documentation Consolidation**: Comprehensive documentation system
+### 🔧 Recent Major Updates (2025-01-29)
+- **Flag Management Database Migration**: Successfully migrated from file-based to database-backed system
+- **Database Schema Version 3**: Added comprehensive flag management tables with 253+ IOC entries
+- **PSS Code Synchronization**: Fixed real-time PSS code updates when selecting different flags
+- **Google Drive Integration Fix**: Resolved multipart request formatting and Rust ownership issues
+- **Frontend Database Integration**: React UI with database toggle and live flag management
+- **Tauri API Update**: Updated frontend to use `window.__TAURI__.core.invoke` for Tauri v2
+- **Documentation Consolidation**: Updated and consolidated all documentation with recent changes
 
 ## 🛠️ Technology Stack
 

@@ -1,6 +1,6 @@
 # Frontend Development Summary
 
-## Current Status (Updated: 2025-01-28)
+## Current Status (Updated: 2025-01-29)
 
 ### ✅ **Completed Features**
 
@@ -48,6 +48,16 @@
 
 #### **Tab System Infrastructure - COMPLETE**
 - **Reusable Components**: Tab and TabGroup components with flat styling
+
+#### **Flag Management Database Integration - NEW (2025-01-29)**
+- **Database Toggle**: Switch between file-based and database-backed flag loading
+- **Real-time Statistics**: Live display of flag mappings count and flag statistics
+- **PSS Code Synchronization**: Fixed PSS code input field to update when selecting different flags
+- **Database Operations**: Scan and populate flags, clear flags database, get flag data
+- **UI State Management**: Proper state management for database vs file-based modes
+- **Tauri API Update**: Updated to use `window.__TAURI__.core.invoke` for Tauri v2 compatibility
+- **Error Handling**: Comprehensive error handling for database operations
+- **Flag Management Panel**: Enhanced with database settings, statistics, and controls
 - **Consistent Design**: Matches Diagnostics & Logs manager styling
 - **OBS Drawer**: WebSocket and Integration tabs
 - **PSS Drawer**: UDP Server & Protocol and Flag Management tabs
