@@ -2,11 +2,19 @@
 
 ## Overview
 
-The Flag Management System provides comprehensive IOC (International Olympic Committee) flag support for the reStrike VTA application. The system includes 253 flags covering current NOCs, historic NOCs, and special Olympic/Paralympic codes.
+The Flag Management System provides comprehensive IOC (International Olympic Committee) flag support for the reStrike VTA application. The system has been completely migrated from file-based to database-backed storage, with 253 flags covering current NOCs, historic NOCs, and special Olympic/Paralympic codes.
 
-## 🏁 **System Status: COMPLETED**
+## 🏁 **System Status: DATABASE MIGRATION COMPLETED (2025-01-29)**
 
-### ✅ **Achievements**
+### ✅ **Recent Achievements**
+- **Database Migration**: Successfully migrated to database-backed flag management system
+- **Migration 3 Implementation**: Comprehensive database schema with 4 new tables
+- **253 IOC Entries**: Automatically populated into `flag_mappings` table
+- **Frontend Integration**: Complete React UI integration with database toggle
+- **File System Scanning**: Flag file scanning and database population
+- **Real-time Updates**: PSS code synchronization and live flag management
+
+### ✅ **Legacy Achievements**
 - **253 Flags Downloaded**: Complete IOC flag collection
 - **100% Success Rate**: No failed downloads
 - **Comprehensive Coverage**: All IOC codes from Wikipedia tables
@@ -40,7 +48,27 @@ The Flag Management System provides comprehensive IOC (International Olympic Com
 
 ## 🛠 **Technical Implementation**
 
-### **Core Components**
+### **Database Schema (Migration 3)**
+
+#### **1. Flag Tables**
+- **`flags`**: Flag file metadata (id, filename, file_size, upload_date, recognition_status, etc.)
+- **`flag_mappings`**: IOC to PSS code mappings (253+ entries populated automatically)
+- **`recognition_history`**: Historical flag recognition data
+- **`settings`**: Flag management system settings
+
+#### **2. Tauri Commands**
+- **`get_flag_mappings_data`**: Retrieve flag mapping statistics
+- **`scan_and_populate_flags`**: Scan filesystem and populate flags table
+- **`get_flags_data`**: Retrieve flag metadata from database
+- **`clear_flags_table`**: Clear flags table for re-scanning
+
+#### **3. Frontend Integration**
+- **Database Toggle**: Switch between file-based and database-backed flag loading
+- **Real-time Statistics**: Live display of flag counts and recognition status
+- **PSS Code Synchronization**: Proper update of PSS codes when selecting flags
+- **File Management**: Scan, populate, and clear flag database operations
+
+### **Legacy Components**
 
 #### **1. Download Script**
 - **File**: `scripts/media/download_official_ioc_flags.py`

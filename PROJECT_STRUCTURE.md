@@ -40,7 +40,14 @@ This document provides a comprehensive overview of the reStrike VTA project stru
 - **Atomic Design**: Complete frontend component hierarchy with reusable components
 - **Plugin Architecture**: Modular backend with clear separation and comprehensive error handling
 - **Tab System**: Reusable tab components with flat styling and consistent design
-- **Flag Management**: Complete flag management system with 253+ IOC flags and PSS mapping
+- **Flag Management**: Complete database-backed flag management system with 253+ IOC flags and PSS mapping
+
+### **Database Migration System - COMPLETE**
+- **Migration 3**: Comprehensive flag management migration with database schema
+- **Flag Tables**: `flags`, `flag_mappings`, `recognition_history`, and `settings` tables
+- **IOC Data Population**: 253+ IOC flag entries automatically populated into `flag_mappings`
+- **File System Integration**: Flag scanning and population from existing flag files
+- **Database Commands**: Complete CRUD operations for flag management
 
 ### **Code Quality & Build Optimization - COMPLETE**
 - **Rust Backend**: Clean compilation with no warnings or unused imports
@@ -49,21 +56,16 @@ This document provides a comprehensive overview of the reStrike VTA project stru
 - **Import Optimization**: All unused imports removed from both frontend and backend
 - **Build Pipeline**: Both frontend and backend compile cleanly
 
-### **Recent Major Updates (2025-01-28)**
-- **Window Positioning**: Fixed app startup position to x=1, y=1 with consistent behavior
-- **Network Interface Detection**: Complete UDP/PSS network interface system with optimal selection
-- **Real-Time Events**: Implemented push-based event system using Tauri v2
-- **Window Management**: Complete window sizing and persistence system with positioning
-- **Authentication**: Password-protected Advanced mode and Manual mode dialogs
-- **UI Improvements**: Centered Event Table with precise title positioning
-- **Code Cleanup**: Removed unused imports and development console.logs
-- **Build Optimization**: Achieved spotless builds for both frontend and backend
-- **Tab System Infrastructure**: Reusable Tab and TabGroup components
-- **OBS Drawer Organization**: WebSocket and Integration tabs
-- **PSS Drawer Organization**: UDP Server & Protocol and Flag Management tabs
-- **Flag Management System**: Complete implementation with upload, search, and mapping
-- **PSS Code Mapping**: Simplified system where PSS codes = IOC codes
-- **Documentation Consolidation**: Streamlined and updated documentation
+### **Recent Major Updates (2025-01-29)**
+- **Flag Management Database Migration**: Successfully migrated flag management to database-backed system
+- **Database Schema Version 3**: Added comprehensive flag management tables (`flags`, `flag_mappings`, `recognition_history`, `settings`)
+- **IOC Data Population**: Automatically populated 253+ IOC flag entries into database
+- **Flag Management Commands**: Implemented `get_flag_mappings_data`, `scan_and_populate_flags`, `get_flags_data`, `clear_flags_table`
+- **Frontend Database Integration**: Updated React UI with database toggle and real-time flag management
+- **PSS Code Synchronization**: Fixed PSS code input field to update properly when selecting different flags
+- **File System Scanning**: Added flag file scanning and database population from existing assets
+- **Google Drive Upload Fix**: Resolved multipart request formatting and Rust borrow errors
+- **Tauri API Update**: Updated frontend to use `window.__TAURI__.core.invoke` for Tauri v2 compatibility
 
 ## Directory Structure
 

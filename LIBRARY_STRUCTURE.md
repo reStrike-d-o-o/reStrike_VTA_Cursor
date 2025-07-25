@@ -43,11 +43,27 @@ This document describes the backend architecture and plugin system of reStrike V
 - **Build Pipeline**: Clean cargo check and build process
 - **Production Ready**: Backend ready for production deployment
 
-### **Recent Major Updates (2025-01-28)**
-- **Window Positioning**: Fixed app startup position to x=1, y=1 with consistent behavior
-- **Network Interface Detection**: Complete UDP/PSS network interface system with optimal selection
-- **Real-Time Events**: Implemented push-based event system using Tauri v2
-- **Window Management**: Complete window sizing and persistence system with positioning
+### **Database Migration System - COMPLETE**
+- **Migration Framework**: Structured migration system with version tracking
+- **Migration 3 (Flag Management)**: Comprehensive flag management database schema
+- **Flag Tables**: `flags` (file metadata), `flag_mappings` (IOC mappings), `recognition_history`, `settings`
+- **IOC Data Population**: Automated population of 253+ IOC flag entries
+- **Schema Versioning**: Current schema version 3 with proper migration chain
+- **Database Commands**: Complete CRUD operations for flag management
+
+### **Flag Management Commands - NEW**
+- **`get_flag_mappings_data`**: Retrieve flag mapping statistics and data
+- **`scan_and_populate_flags`**: Scan filesystem and populate flags table
+- **`get_flags_data`**: Retrieve flag file metadata from database
+- **`clear_flags_table`**: Clear flags table for re-scanning
+- **Database Integration**: Seamless integration with existing database system
+
+### **Recent Major Updates (2025-01-29)**
+- **Flag Management Database Migration**: Complete migration from file-based to database-backed system
+- **Database Schema Enhancement**: Added comprehensive flag management tables with Migration 3
+- **Command Layer Expansion**: New flag management commands for frontend integration
+- **Google Drive Integration Fix**: Resolved multipart request formatting and Rust ownership issues
+- **Error Handling Improvements**: Enhanced error propagation for flag management operations
 - **Code Cleanup**: Removed unused imports and optimized build process
 - **Build Optimization**: Achieved clean compilation for backend
 - **Tab System Integration**: Frontend tab system working with backend plugins
