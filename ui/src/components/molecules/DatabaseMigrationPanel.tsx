@@ -176,21 +176,28 @@ const DatabaseMigrationPanel: React.FC = () => {
 
       {/* Migration Tab */}
       {activeTab === 'migration' && (
-        <div className="bg-[#181F26] rounded-lg p-4 mb-6 border border-gray-700 shadow">
+        <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg p-4 border border-gray-600/30 shadow-lg">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold text-blue-300">Database Migration</h3>
+            <h3 className="text-lg font-semibold text-blue-300">Migration Status</h3>
+            <Button
+              onClick={loadMigrationStatus}
+              variant="secondary"
+              size="sm"
+            >
+              Refresh
+            </Button>
           </div>
 
           <div className="space-y-4">
             <div className="flex items-center justify-between p-3 bg-[#101820] rounded border border-gray-700">
               <div>
                 <span className="text-gray-300 font-medium">Database Enabled</span>
-                <p className="text-sm text-gray-400">Status of database functionality</p>
+                <p className="text-sm text-gray-400">Current database mode status</p>
               </div>
               <div className={`px-3 py-1 rounded-full text-sm font-medium ${
                 migrationStatus?.database_enabled 
                   ? 'bg-green-900 text-green-300' 
-                  : 'bg-red-900 text-red-300'
+                  : 'bg-yellow-900 text-yellow-300'
               }`}>
                 {migrationStatus?.database_enabled ? 'Enabled' : 'Disabled'}
               </div>
@@ -240,7 +247,7 @@ const DatabaseMigrationPanel: React.FC = () => {
 
       {/* Status Tab */}
       {activeTab === 'status' && (
-        <div className="bg-[#181F26] rounded-lg p-4 mb-6 border border-gray-700 shadow">
+        <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg p-4 border border-gray-600/30 shadow-lg">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold text-blue-300">Database Status</h3>
             <Button
@@ -278,7 +285,7 @@ const DatabaseMigrationPanel: React.FC = () => {
 
       {/* Preview Tab */}
       {activeTab === 'preview' && (
-        <div className="bg-[#181F26] rounded-lg p-4 mb-6 border border-gray-700 shadow">
+        <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg p-4 border border-gray-600/30 shadow-lg">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold text-blue-300">Data Preview</h3>
             <div className="flex gap-2">
@@ -303,39 +310,43 @@ const DatabaseMigrationPanel: React.FC = () => {
                 <p className="text-sm text-gray-400">Rows: {tableData.row_count}</p>
               </div>
 
-              <div className="max-h-64 overflow-y-auto border border-gray-700 rounded">
-                <table className="min-w-full text-left text-sm text-gray-200">
-                  <thead className="bg-[#101820] sticky top-0 z-10">
-                    <tr>
-                      {(tableData.columns || []).map(column => (
-                        <th key={column.name} className="px-3 py-2 font-semibold max-w-xs truncate">
-                          {column.name}
-                          {column.primary_key && <span className="text-blue-400 ml-1">🔑</span>}
-                          {column.not_null && <span className="text-red-400 ml-1">*</span>}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(tableData.rows || []).map((row, index) => (
-                      <tr key={index} className="hover:bg-blue-900 transition-colors">
-                        {(tableData.columns || []).map(column => (
-                          <td key={column.name} className="px-3 py-2 whitespace-nowrap max-w-xs truncate">
-                            {row[column.name] !== null && row[column.name] !== undefined 
-                              ? String(row[column.name]) 
-                              : <span className="text-gray-500">null</span>
-                            }
-                          </td>
+              <div className="w-full">
+                <div className="w-full overflow-x-auto">
+                  <div className="max-h-64 overflow-y-auto border border-gray-700 rounded">
+                    <table className="min-w-full text-left text-sm text-gray-200">
+                      <thead className="bg-[#101820] sticky top-0 z-10">
+                        <tr>
+                          {(tableData.columns || []).map(column => (
+                            <th key={column.name} className="px-3 py-2 font-semibold whitespace-nowrap">
+                              {column.name}
+                              {column.primary_key && <span className="text-blue-400 ml-1">🔑</span>}
+                              {column.not_null && <span className="text-red-400 ml-1">*</span>}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(tableData.rows || []).map((row, index) => (
+                          <tr key={index} className="hover:bg-blue-900 transition-colors">
+                            {(tableData.columns || []).map(column => (
+                              <td key={column.name} className="px-3 py-2 whitespace-nowrap">
+                                {row[column.name] !== null && row[column.name] !== undefined 
+                                  ? String(row[column.name]) 
+                                  : <span className="text-gray-500">null</span>
+                                }
+                              </td>
+                            ))}
+                          </tr>
                         ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {tableData.rows && tableData.rows.length > 0 && (
-                  <p className="text-xs text-gray-400 mt-2 px-3">
-                    Showing all {tableData.rows.length} rows
-                  </p>
-                )}
+                      </tbody>
+                    </table>
+                    {tableData.rows && tableData.rows.length > 0 && (
+                      <p className="text-xs text-gray-400 mt-2 px-3">
+                        Showing all {tableData.rows.length} rows
+                      </p>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           )}

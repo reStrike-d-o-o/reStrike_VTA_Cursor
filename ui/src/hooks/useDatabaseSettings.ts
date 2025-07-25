@@ -153,7 +153,9 @@ export function useDatabaseSettings(): DatabaseSettingsState & DatabaseSettingsA
     try {
       const result = await safeInvoke('db_get_database_info') as { 
         success: boolean; 
-        database_size: number | null; 
+        path: string;
+        size: number | null; 
+        tables: number;
         settings_count: number;
         last_modified: string;
         status: string;
@@ -163,7 +165,9 @@ export function useDatabaseSettings(): DatabaseSettingsState & DatabaseSettingsA
       
       if (result.success) {
         return {
-          database_size: result.database_size,
+          path: result.path,
+          size: result.size,
+          tables: result.tables,
           settings_count: result.settings_count,
           last_modified: result.last_modified,
           status: result.status,
@@ -176,7 +180,9 @@ export function useDatabaseSettings(): DatabaseSettingsState & DatabaseSettingsA
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       console.error('❌ Failed to get database info:', errorMessage);
       return { 
-        database_size: null, 
+        path: 'Unknown',
+        size: null, 
+        tables: 0,
         settings_count: 0, 
         last_modified: 'Unknown', 
         status: 'Unknown', 

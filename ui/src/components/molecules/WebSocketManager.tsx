@@ -491,7 +491,7 @@ const WebSocketManager: React.FC = () => {
 
       {/* Add/Edit Form */}
       {(isAdding || editingConnection) && (
-        <div className="p-4 bg-gray-800 rounded-lg border border-gray-700">
+        <div className="p-4 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
           <h4 className="text-md font-medium mb-3">
             {editingConnection ? 'Edit Connection' : 'Add New Connection'}
           </h4>
@@ -550,7 +550,13 @@ const WebSocketManager: React.FC = () => {
                   : "Leave empty if no password"}
               />
               {/* Hidden username field for accessibility */}
-              <input type="text" autoComplete="username" style={{ display: 'none' }} />
+              <input 
+                type="text" 
+                autoComplete="username" 
+                style={{ display: 'none' }} 
+                aria-hidden="true"
+                tabIndex={-1}
+              />
             </div>
 
             <div className="flex items-center">
@@ -589,16 +595,16 @@ const WebSocketManager: React.FC = () => {
       {/* Connections List */}
       <div className="space-y-2">
         {obsConnections.length === 0 ? (
-          <div className="p-4 bg-gray-800 rounded-lg text-center text-gray-400">
+          <div className="p-4 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg text-center text-gray-400 border border-gray-600/30">
             No WebSocket connections configured
           </div>
         ) : (
           obsConnections.map((connection) => (
             <div
               key={connection.name}
-              className={`p-4 bg-gray-800 rounded-lg border ${
-                activeObsConnection === connection.name ? 'border-blue-500' : 'border-gray-700'
-              }`}
+              className={`p-4 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border ${
+                activeObsConnection === connection.name ? 'border-blue-500 bg-blue-900/20' : 'border-gray-600/30 hover:border-gray-500'
+              } cursor-pointer transition-colors`}
             >
               <div className="flex items-center justify-between">
                 <div className="flex-1">
@@ -677,7 +683,7 @@ const WebSocketManager: React.FC = () => {
       </div>
 
       {/* Reconnection Settings */}
-      <div className="p-4 bg-gray-800 rounded-lg border border-gray-700">
+      <div className="p-4 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
         <div className="flex items-center justify-between mb-3">
           <h4 className="text-md font-medium">Global Reconnection Settings</h4>
           <Button
@@ -809,7 +815,7 @@ const WebSocketManager: React.FC = () => {
       </div>
 
       {/* Protocol Information */}
-      <div className="p-4 bg-gray-800 rounded-lg">
+      <div className="p-4 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
         <h4 className="text-md font-medium mb-3">Protocol Information</h4>
         <div className="text-sm">
           <div>

@@ -41,7 +41,7 @@ const ManualModeDialog: React.FC<ManualModeDialogProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 w-96 max-w-[90vw] shadow-2xl">
+      <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm border border-gray-600/30 rounded-lg p-6 w-96 max-w-[90vw] shadow-2xl">
         <h2 className="text-xl font-semibold text-white mb-2">
           Manual Mode {isEnabled ? 'Disable' : 'Enable'}
         </h2>
