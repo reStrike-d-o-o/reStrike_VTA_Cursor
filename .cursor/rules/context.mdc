@@ -142,6 +142,14 @@ _Last updated: 2025-01-28_
 - **Container Structure**: Use `max-h-64 overflow-y-auto border border-gray-700 rounded` for scrollable table containers
 - **Row Hover**: Use `hover:bg-blue-900 transition-colors` for table row hover effects
 
+### **Unified Theme System**
+- **Modern Gradient Style**: Use `bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg` for all panels and containers
+- **Legacy Style (Deprecated)**: `bg-gray-800 rounded-lg` should be replaced with the modern gradient style
+- **Consistent Borders**: Use `border-gray-600/30` for all borders with the modern gradient style
+- **Text Colors**: Use `text-blue-300` for headings, `text-gray-300` for labels, `text-gray-400` for secondary text
+- **Status Indicators**: Use `bg-green-900 text-green-300` for success, `bg-yellow-900 text-yellow-300` for warnings, `bg-red-900 text-red-300` for errors
+- **Interactive Elements**: Use `bg-gray-700/30 rounded border border-gray-600/20` for interactive containers within panels
+
 ## 🚀 Recent Major Updates (2025-01-28)
 - **Tab System Infrastructure**: Reusable Tab and TabGroup components with flat styling
 - **OBS Drawer Organization**: WebSocket and Integration tabs with consistent design

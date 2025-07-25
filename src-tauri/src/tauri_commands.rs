@@ -1959,6 +1959,7 @@ pub async fn db_get_database_info(app: State<'_, Arc<App>>) -> Result<serde_json
     
     let is_accessible = app.database_plugin().is_accessible().await;
     let file_size = app.database_plugin().get_file_size();
+    let database_path = app.database_plugin().get_database_path();
     let settings_count = app.database_plugin().get_all_ui_settings().await.map(|s| s.len()).unwrap_or(0);
     
     let file_size_value = match file_size {
@@ -1966,12 +1967,41 @@ pub async fn db_get_database_info(app: State<'_, Arc<App>>) -> Result<serde_json
         Err(_) => serde_json::Value::Null,
     };
     
+    let path_value = match database_path {
+        Ok(path) => serde_json::Value::String(path),
+        Err(_) => serde_json::Value::String("Unknown".to_string()),
+    };
+    
+    // Get tables count
+    let tables_count = match app.database_plugin().get_connection().await {
+        Ok(conn) => {
+            match conn.prepare("SELECT name FROM sqlite_master WHERE type='table'") {
+                Ok(mut stmt) => {
+                    match stmt.query_map([], |row| row.get::<_, String>(0)) {
+                        Ok(rows) => {
+                            let tables: Result<Vec<String>, _> = rows.collect();
+                            match tables {
+                                Ok(tables) => tables.len(),
+                                Err(_) => 0
+                            }
+                        },
+                        Err(_) => 0
+                    }
+                },
+                Err(_) => 0
+            }
+        },
+        Err(_) => 0
+    };
+    
     let status = if is_accessible { "Active" } else { "Inactive" };
     let last_modified = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string();
     
     Ok(serde_json::json!({
         "success": true,
-        "database_size": file_size_value,
+        "path": path_value,
+        "size": file_size_value,
+        "tables": tables_count,
         "settings_count": settings_count,
         "last_modified": last_modified,
         "status": status,

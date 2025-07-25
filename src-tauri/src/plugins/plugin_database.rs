@@ -93,6 +93,13 @@ impl DatabasePlugin {
             .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database file size: {}", e)))
     }
 
+    /// Get database file path
+    pub fn get_database_path(&self) -> AppResult<String> {
+        crate::database::connection::DatabaseConnection::get_database_path()
+            .map(|path| path.to_string_lossy().to_string())
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database path: {}", e)))
+    }
+
     /// Migrate JSON settings to database
     pub async fn migrate_json_to_database(&self) -> AppResult<MigrationResult> {
         let mut conn = self.connection.get_connection().await

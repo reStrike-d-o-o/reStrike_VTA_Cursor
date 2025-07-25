@@ -44,6 +44,18 @@ export const DatabaseSettingsPanel: React.FC = () => {
     setDatabaseInfo(info);
   };
 
+  const handleToggleDatabaseMode = async () => {
+    // Toggle database mode between enabled and disabled
+    const newValue = settings?.database_enabled === 'true' ? 'false' : 'true';
+    await handleUpdateSetting('database_enabled', newValue);
+  };
+
+  const handleRefreshSettings = async () => {
+    // This would typically reload settings from the database
+    // For now, we'll just log that it was called
+    console.log('Refreshing settings...');
+  };
+
   const formatFileSize = (bytes: number | null): string => {
     if (bytes === null) return 'Unknown';
     if (bytes < 1024) return `${bytes} B`;
@@ -52,7 +64,7 @@ export const DatabaseSettingsPanel: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 p-6 bg-gray-900 rounded-lg">
+    <div className="space-y-6 p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
@@ -70,43 +82,79 @@ export const DatabaseSettingsPanel: React.FC = () => {
         </div>
       </div>
 
-      {/* Database Info */}
-      <div className="bg-gray-800 rounded-lg p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-lg font-medium text-white">Database Information</h3>
+      {/* Database Status */}
+      <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg p-4 border border-gray-600/30 shadow-lg">
+        <h3 className="text-lg font-semibold text-blue-300 mb-3">Database Status</h3>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-gray-300">Database Mode:</span>
+            <span className={`px-2 py-1 rounded text-sm font-medium ${
+              settings?.database_enabled === 'true' 
+                ? 'bg-green-900 text-green-300' 
+                : 'bg-yellow-900 text-yellow-300'
+            }`}>
+              {settings?.database_enabled === 'true' ? 'Enabled' : 'Disabled'}
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-gray-300">Migration Status:</span>
+            <span className={`px-2 py-1 rounded text-sm font-medium ${
+              settings?.migration_completed === 'true' 
+                ? 'bg-green-900 text-green-300' 
+                : 'bg-yellow-900 text-yellow-300'
+            }`}>
+              {settings?.migration_completed === 'true' ? 'Completed' : 'Pending'}
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-gray-300">Backup Status:</span>
+            <span className={`px-2 py-1 rounded text-sm font-medium ${
+              settings?.backup_created === 'true' 
+                ? 'bg-green-900 text-green-300' 
+                : 'bg-yellow-900 text-yellow-300'
+            }`}>
+              {settings?.backup_created === 'true' ? 'Created' : 'Not Created'}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Settings Counts */}
+      <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg p-4 border border-gray-600/30 shadow-lg">
+        <h3 className="text-lg font-semibold text-blue-300 mb-3">Settings Counts</h3>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="text-center p-3 bg-gray-700/30 rounded border border-gray-600/20">
+            <div className="text-2xl font-bold text-blue-400">{settings?.json_settings_count || 0}</div>
+            <div className="text-sm text-gray-400">JSON Settings</div>
+          </div>
+          <div className="text-center p-3 bg-gray-700/30 rounded border border-gray-600/20">
+            <div className="text-2xl font-bold text-green-400">{settings?.database_settings_count || 0}</div>
+            <div className="text-sm text-gray-400">Database Settings</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg p-4 border border-gray-600/30 shadow-lg">
+        <h3 className="text-lg font-semibold text-blue-300 mb-3">Database Actions</h3>
+        <div className="space-y-3">
           <Button
-            variant="secondary"
-            size="sm"
-            onClick={handleRefreshDatabaseInfo}
+            onClick={handleToggleDatabaseMode}
             disabled={loading}
+            variant="primary"
+            className="w-full"
           >
-            <Icon name="refresh" className="w-4 h-4 mr-2" />
-            Refresh
+            {loading ? 'Updating...' : `Toggle Database Mode (Currently: ${settings?.database_enabled === 'true' ? 'Enabled' : 'Disabled'})`}
+          </Button>
+          <Button
+            onClick={handleRefreshSettings}
+            disabled={loading}
+            variant="secondary"
+            className="w-full"
+          >
+            Refresh Settings
           </Button>
         </div>
-        
-        {databaseInfo && (
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <span className="text-gray-400">Status:</span>
-              <div className="flex items-center mt-1">
-                <StatusDot 
-                  color={databaseInfo.is_accessible ? 'bg-green-400' : 'bg-red-400'} 
-                  size="w-2 h-2" 
-                />
-                <span className="ml-2 text-white">
-                  {databaseInfo.is_accessible ? 'Accessible' : 'Not Accessible'}
-                </span>
-              </div>
-            </div>
-            <div>
-              <span className="text-gray-400">File Size:</span>
-              <div className="text-white mt-1">
-                {formatFileSize(databaseInfo.file_size)}
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Error Display */}
@@ -140,8 +188,8 @@ export const DatabaseSettingsPanel: React.FC = () => {
       )}
 
       {/* Add New Setting */}
-      <div className="bg-gray-800 rounded-lg p-4">
-        <h3 className="text-lg font-medium text-white mb-4">Add New Setting</h3>
+      <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg p-4 border border-gray-600/30 shadow-lg">
+        <h3 className="text-lg font-medium text-blue-300 mb-4">Add New Setting</h3>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <Label htmlFor="new-key">Setting Key</Label>
@@ -150,7 +198,7 @@ export const DatabaseSettingsPanel: React.FC = () => {
               value={newKey}
               onChange={(e) => setNewKey(e.target.value)}
               placeholder="e.g., window.position.x"
-              disabled={loading}
+              className="w-full"
             />
           </div>
           <div>
@@ -159,20 +207,21 @@ export const DatabaseSettingsPanel: React.FC = () => {
               id="new-value"
               value={newValue}
               onChange={(e) => setNewValue(e.target.value)}
-              placeholder="e.g., 150"
-              disabled={loading}
+              placeholder="e.g., 100"
+              className="w-full"
             />
           </div>
         </div>
-        <Button
-          variant="primary"
-          onClick={handleAddSetting}
-          disabled={loading || !newKey.trim() || !newValue.trim()}
-          className="mt-4"
-        >
-          <Icon name="plus" className="w-4 h-4 mr-2" />
-          Add Setting
-        </Button>
+        <div className="mt-4">
+          <Button
+            onClick={handleAddSetting}
+            disabled={!newKey.trim() || !newValue.trim() || loading}
+            variant="primary"
+            size="sm"
+          >
+            Add Setting
+          </Button>
+        </div>
       </div>
 
       {/* Settings List */}

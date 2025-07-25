@@ -278,7 +278,7 @@ const LiveDataPanel: React.FC = () => {
 
   if (isLoadingSettings) {
     return (
-      <div className="bg-[#181F26] rounded-lg p-4 border border-gray-700 shadow">
+      <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg p-4 border border-gray-600/30 shadow-lg">
         <h3 className="text-lg font-semibold mb-2 text-blue-300">LIVE DATA</h3>
         <div className="text-sm text-gray-400">Loading settings...</div>
       </div>
@@ -286,7 +286,7 @@ const LiveDataPanel: React.FC = () => {
   }
 
   return (
-    <div className="bg-[#181F26] rounded-lg p-4 border border-gray-700 shadow">
+    <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg p-4 border border-gray-600/30 shadow-lg">
       <h3 className="text-lg font-semibold mb-2 text-blue-300">LIVE DATA</h3>
       
 
@@ -360,17 +360,17 @@ const LiveDataPanel: React.FC = () => {
           <div className="absolute top-2 right-2 flex gap-1">
             <button
               onClick={scrollToTop}
-              className="bg-gray-800 hover:bg-gray-700 text-green-400 text-xs px-2 py-1 rounded border border-gray-600 transition-colors"
+              className="bg-[#101820] hover:bg-gray-700 text-green-400 text-xs px-2 py-1 rounded border border-gray-600 transition-colors"
               title="Scroll to top"
             >
               ↑ Top
             </button>
             <button
               onClick={scrollToBottom}
-              className="bg-gray-800 hover:bg-gray-700 text-green-400 text-xs px-2 py-1 rounded border border-gray-600 transition-colors"
+              className="bg-[#101820] hover:bg-gray-700 text-green-400 text-xs px-2 py-1 rounded border border-gray-600 transition-colors"
               title="Scroll to bottom"
             >
-              ↓ End
+              ↓ Bottom
             </button>
           </div>
         )}
