@@ -32,9 +32,12 @@ struct StoredToken {
 pub struct GoogleDriveFile {
     id: String,
     name: String,
-    mime_type: String,
+    #[serde(rename = "mimeType")]
+    mime_type: Option<String>,
     size: Option<String>,
+    #[serde(rename = "createdTime")]
     created_time: String,
+    #[serde(rename = "modifiedTime")]
     modified_time: String,
 }
 
@@ -56,6 +59,40 @@ impl DrivePlugin {
             client: Arc::new(Mutex::new(None)),
             http_client: Client::new(),
             access_token: Arc::new(Mutex::new(None)),
+        }
+    }
+
+    // Helper function for comprehensive error logging
+    fn log_error_to_file(&self, context: &str, error: &str, details: Option<&str>) {
+        let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
+        let mut log_entry = format!("[{}] Google Drive Error - {}: {}\n", timestamp, context, error);
+        
+        if let Some(detail_info) = details {
+            log_entry.push_str(&format!("Details: {}\n", detail_info));
+        }
+        
+        log_entry.push_str("---\n");
+        
+        // Log to console as well
+        log::error!("{}: {}", context, error);
+        if let Some(detail_info) = details {
+            log::error!("Details: {}", detail_info);
+        }
+        
+        // Write to main app log file
+        let log_file_path = std::env::current_dir()
+            .unwrap_or_else(|_| std::path::PathBuf::from("."))
+            .join("app_errors.log");
+        
+        if let Err(write_err) = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&log_file_path)
+            .and_then(|mut file| {
+                use std::io::Write;
+                file.write_all(log_entry.as_bytes())
+            }) {
+            log::error!("Failed to write to error log file {}: {}", log_file_path.display(), write_err);
         }
     }
 
@@ -167,12 +204,19 @@ impl DrivePlugin {
         if !response.status().is_success() {
             let status = response.status();
             let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
-            log::error!("Google Drive API error (list_all_files): {} - {}", status, error_text);
+            self.log_error_to_file("list_all_files", &format!("API error: {} - {}", status, error_text), Some(&error_text));
             return Err(AppError::NetworkError(format!("API error: {} - {}", status, error_text)));
         }
 
         let file_list: GoogleDriveFileList = response.json().await
-            .map_err(|e| AppError::NetworkError(e.to_string()))?;
+            .map_err(|e| {
+                self.log_error_to_file(
+                    "list_all_files", 
+                    &format!("Failed to parse response JSON: {}", e), 
+                    Some("This might be due to unexpected field names from Google Drive API")
+                );
+                AppError::NetworkError(e.to_string())
+            })?;
 
         Ok(file_list.files)
     }
@@ -195,12 +239,19 @@ impl DrivePlugin {
         if !response.status().is_success() {
             let status = response.status();
             let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
-            log::error!("Google Drive API error: {} - {}", status, error_text);
+            self.log_error_to_file("list_files", &format!("API error: {} - {}", status, error_text), Some(&error_text));
             return Err(AppError::NetworkError(format!("API error: {} - {}", status, error_text)));
         }
 
         let file_list: GoogleDriveFileList = response.json().await
-            .map_err(|e| AppError::NetworkError(e.to_string()))?;
+            .map_err(|e| {
+                self.log_error_to_file(
+                    "list_files", 
+                    &format!("Failed to parse response JSON: {}", e), 
+                    Some("This might be due to unexpected field names from Google Drive API")
+                );
+                AppError::NetworkError(e.to_string())
+            })?;
 
         Ok(file_list.files)
     }
@@ -221,7 +272,11 @@ impl DrivePlugin {
             log::info!("Creating backup directory...");
             std::fs::create_dir_all(&backup_dir)
                 .map_err(|e| {
-                    log::error!("Failed to create backup directory: {}", e);
+                    self.log_error_to_file(
+                        "upload_backup_archive", 
+                        &format!("Failed to create backup directory: {}", e), 
+                        Some(&format!("Directory: {}", backup_dir.display()))
+                    );
                     AppError::IoError(e)
                 })?;
         }
@@ -247,19 +302,19 @@ impl DrivePlugin {
                 file_id
             },
             Err(e) => {
-                // Log detailed error to file
-                let error_log = format!(
-                    "[{}] Backup Upload Error:\nError: {}\nArchive Path: {}\nArchive Name: {}\nArchive Size: {} bytes\n",
-                    chrono::Utc::now().format("%Y-%m-%d %H:%M:%S"),
-                    e,
+                // Use comprehensive error logging
+                let details = format!(
+                    "Archive Path: {}\nArchive Name: {}\nArchive Size: {} bytes",
                     archive_path.display(),
                     archive_name,
                     archive_path.metadata().map(|m| m.len()).unwrap_or(0)
                 );
                 
-                if let Err(write_err) = std::fs::write("app.log", error_log) {
-                    log::error!("Failed to write error log: {}", write_err);
-                }
+                self.log_error_to_file(
+                    "upload_backup_archive", 
+                    &format!("Backup upload failed: {}", e), 
+                    Some(&details)
+                );
                 
                 return Err(e);
             }
@@ -447,15 +502,21 @@ impl DrivePlugin {
         
         // Check if file exists
         if !file_path.exists() {
-            log::error!("File does not exist: {}", file_path.display());
-            return Err(AppError::ConfigError(format!("File does not exist: {}", file_path.display())));
+            let error_msg = format!("File does not exist: {}", file_path.display());
+            self.log_error_to_file("upload_file", &error_msg, None);
+            return Err(AppError::ConfigError(error_msg));
         }
         
         // Read file content
         log::info!("Reading file content...");
         let file_content = std::fs::read(file_path)
             .map_err(|e| {
-                log::error!("Failed to read file: {}", e);
+                let error_msg = format!("Failed to read file: {}", e);
+                self.log_error_to_file(
+                    "upload_file", 
+                    &error_msg, 
+                    Some(&format!("File path: {}", file_path.display()))
+                );
                 AppError::IoError(e)
             })?;
         let file_size = file_content.len();
@@ -483,14 +544,23 @@ impl DrivePlugin {
             .send()
             .await
             .map_err(|e| {
-                log::error!("Failed to initiate resumable upload: {}", e);
+                let error_msg = format!("Failed to initiate resumable upload: {}", e);
+                self.log_error_to_file(
+                    "upload_file", 
+                    &error_msg, 
+                    Some(&format!("File: {}, Size: {} bytes", file_name, file_size))
+                );
                 AppError::NetworkError(e.to_string())
             })?;
         
         if !initiate_response.status().is_success() {
             let status = initiate_response.status();
             let error_text = initiate_response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
-            log::error!("Failed to initiate resumable upload: {} - {}", status, error_text);
+            let details = format!(
+                "File: {}\nSize: {} bytes\nStatus: {}\nResponse: {}",
+                file_name, file_size, status, error_text
+            );
+            self.log_error_to_file("upload_file", &format!("Failed to initiate resumable upload: {} - {}", status, error_text), Some(&details));
             return Err(AppError::NetworkError(format!(
                 "Failed to initiate upload: {} - {}",
                 status, error_text
@@ -503,7 +573,7 @@ impl DrivePlugin {
             .get("Location")
             .and_then(|v| v.to_str().ok())
             .ok_or_else(|| {
-                log::error!("No Location header in resumable upload response");
+                self.log_error_to_file("upload_file", "No Location header in resumable upload response", Some(&format!("File: {}", file_name)));
                 AppError::ConfigError("No Location header in resumable upload response".to_string())
             })?;
         
@@ -519,7 +589,12 @@ impl DrivePlugin {
             .send()
             .await
             .map_err(|e| {
-                log::error!("Failed to upload file content: {}", e);
+                let error_msg = format!("Failed to upload file content: {}", e);
+                self.log_error_to_file(
+                    "upload_file", 
+                    &error_msg, 
+                    Some(&format!("File: {}, Session URI: {}", file_name, session_uri))
+                );
                 AppError::NetworkError(e.to_string())
             })?;
         
@@ -528,7 +603,11 @@ impl DrivePlugin {
         if !upload_response.status().is_success() {
             let status = upload_response.status();
             let error_text = upload_response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
-            log::error!("Failed to upload file content: {} - {}", status, error_text);
+            let details = format!(
+                "File: {}\nSize: {} bytes\nSession URI: {}\nStatus: {}\nResponse: {}",
+                file_name, file_size, session_uri, status, error_text
+            );
+            self.log_error_to_file("upload_file", &format!("Failed to upload file content: {} - {}", status, error_text), Some(&details));
             return Err(AppError::NetworkError(format!(
                 "Failed to upload file: {} - {}",
                 status, error_text
@@ -539,7 +618,8 @@ impl DrivePlugin {
         log::info!("Parsing upload response...");
         let file_data: serde_json::Value = upload_response.json().await
             .map_err(|e| {
-                log::error!("Failed to parse upload response: {}", e);
+                let error_msg = format!("Failed to parse upload response: {}", e);
+                self.log_error_to_file("upload_file", &error_msg, Some(&format!("File: {}", file_name)));
                 AppError::NetworkError(e.to_string())
             })?;
         
@@ -548,7 +628,7 @@ impl DrivePlugin {
         let file_id = file_data["id"].as_str()
             .map(|s| s.to_string())
             .ok_or_else(|| {
-                log::error!("No file ID in upload response");
+                self.log_error_to_file("upload_file", "No file ID in upload response", Some(&format!("File: {}, Response: {}", file_name, file_data)));
                 AppError::ConfigError("No file ID in upload response".to_string())
             })?;
         
