@@ -12,7 +12,7 @@ pub mod archival;
 
 use logger::Logger;
 use rotation::LogRotator;
-use archival::LogArchiver;
+use archival::{LogArchiver, AutoArchiveConfig, ArchiveInfo};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LogConfig {
@@ -218,6 +218,113 @@ impl LogManager {
     pub fn get_config(&self) -> LogConfig {
         let config = self.config.lock().unwrap();
         config.clone()
+    }
+    
+    /// Create a complete archive of all current logs
+    pub fn create_complete_archive(&self) -> io::Result<ArchiveInfo> {
+        let config = self.config.lock().unwrap();
+        let log_dir = config.log_dir.clone();
+        drop(config);
+        
+        let archive_path = self.archiver.create_complete_log_archive(&log_dir)?;
+        
+        // Get archive info
+        let archive_name = archive_path.file_name()
+            .and_then(|n| n.to_str())
+            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Invalid archive filename"))?;
+        
+        self.archiver.get_archive_info(archive_name)
+    }
+    
+    /// Create archive and upload to Google Drive
+    pub async fn create_and_upload_archive(&self) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+        // Create the archive
+        let archive_info = self.create_complete_archive()
+            .map_err(|e| format!("Failed to create archive: {}", e))?;
+        
+        log::info!("Created archive: {} ({} bytes)", archive_info.name, archive_info.size);
+        
+        // Upload to Google Drive
+        let drive_plugin = crate::plugins::plugin_drive::drive_plugin();
+        let file_id = drive_plugin.upload_file_streaming(&archive_info.file_path, &archive_info.name)
+            .await
+            .map_err(|e| format!("Failed to upload to Google Drive: {}", e))?;
+        
+        log::info!("Successfully uploaded archive {} to Google Drive with ID: {}", archive_info.name, file_id);
+        
+        Ok(format!("Archive '{}' uploaded successfully to Google Drive", archive_info.name))
+    }
+    
+    /// Create archive, upload to Google Drive, and delete local file
+    pub async fn create_upload_and_cleanup_archive(&self) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+        // Create the archive
+        let archive_info = self.create_complete_archive()
+            .map_err(|e| format!("Failed to create archive: {}", e))?;
+        
+        log::info!("Created archive: {} ({} bytes)", archive_info.name, archive_info.size);
+        
+        // Upload to Google Drive
+        let drive_plugin = crate::plugins::plugin_drive::drive_plugin();
+        let file_id = drive_plugin.upload_file_streaming(&archive_info.file_path, &archive_info.name)
+            .await
+            .map_err(|e| format!("Failed to upload to Google Drive: {}", e))?;
+        
+        log::info!("Successfully uploaded archive {} to Google Drive with ID: {}", archive_info.name, file_id);
+        
+        // Delete local archive file after successful upload
+        if let Err(e) = self.archiver.delete_archive(&archive_info.name) {
+            log::warn!("Failed to delete local archive after upload: {}", e);
+            return Ok(format!("Archive '{}' uploaded successfully to Google Drive but local cleanup failed", archive_info.name));
+        }
+        
+        log::info!("Deleted local archive after successful upload: {}", archive_info.name);
+        
+        Ok(format!("Archive '{}' uploaded to Google Drive and cleaned up locally", archive_info.name))
+    }
+    
+    /// Check if auto-archiving should be performed
+    pub fn should_auto_archive(&self, config: &AutoArchiveConfig) -> bool {
+        self.archiver.should_auto_archive(config)
+    }
+    
+    /// Get next scheduled archive time
+    pub fn get_next_archive_time(&self, config: &AutoArchiveConfig) -> Option<String> {
+        self.archiver.get_next_archive_time(config)
+    }
+    
+    /// Perform auto-archive based on configuration
+    pub async fn perform_auto_archive(&self, config: &mut AutoArchiveConfig) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+        if !config.enabled || !self.should_auto_archive(config) {
+            return Ok("Auto-archive not needed at this time".to_string());
+        }
+        
+        let result = if config.upload_to_drive {
+            if config.delete_after_upload {
+                self.create_upload_and_cleanup_archive().await?
+            } else {
+                self.create_and_upload_archive().await?
+            }
+        } else {
+            let archive_info = self.create_complete_archive()
+                .map_err(|e| format!("Failed to create archive: {}", e))?;
+            format!("Archive '{}' created successfully", archive_info.name)
+        };
+        
+        // Update last archive time
+        config.last_archive_time = Some(chrono::Utc::now().to_rfc3339());
+        
+        log::info!("Auto-archive completed: {}", result);
+        Ok(result)
+    }
+    
+    /// Get archive information
+    pub fn get_archive_info(&self, archive_name: &str) -> io::Result<ArchiveInfo> {
+        self.archiver.get_archive_info(archive_name)
+    }
+    
+    /// Delete an archive
+    pub fn delete_archive(&self, archive_name: &str) -> io::Result<()> {
+        self.archiver.delete_archive(archive_name)
     }
 }
 

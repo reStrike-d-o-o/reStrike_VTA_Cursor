@@ -124,6 +124,16 @@ async fn main() -> AppResult<()> {
             tauri_commands::download_archive,
             tauri_commands::set_live_data_streaming,
             
+            // New Log Archive & Google Drive commands
+            tauri_commands::create_complete_log_archive,
+            tauri_commands::create_and_upload_log_archive,
+            tauri_commands::create_upload_and_cleanup_log_archive,
+            tauri_commands::get_auto_archive_config,
+            tauri_commands::set_auto_archive_config,
+            tauri_commands::check_auto_archive_status,
+            tauri_commands::perform_auto_archive,
+            tauri_commands::delete_log_archive,
+            
             // Legacy commands for backward compatibility
             tauri_commands::start_live_data,
             tauri_commands::stop_live_data,

@@ -422,6 +422,84 @@ export const diagLogsCommands = {
   async setLiveDataStreaming(subsystem: string, enabled: boolean) {
     return executeTauriCommand('set_live_data_streaming', { subsystem, enabled });
   },
+
+  // ========================================================================
+  // New Log Archive & Google Drive Commands
+  // ========================================================================
+
+  /**
+   * Create a complete archive of all current logs
+   */
+  async createCompleteLogArchive() {
+    return executeTauriCommand('create_complete_log_archive');
+  },
+
+  /**
+   * Create archive and upload to Google Drive
+   */
+  async createAndUploadLogArchive() {
+    return executeTauriCommand('create_and_upload_log_archive');
+  },
+
+  /**
+   * Create archive, upload to Google Drive, and delete local file
+   */
+  async createUploadAndCleanupLogArchive() {
+    return executeTauriCommand('create_upload_and_cleanup_log_archive');
+  },
+
+  /**
+   * Get auto-archive configuration
+   */
+  async getAutoArchiveConfig() {
+    return executeTauriCommand('get_auto_archive_config');
+  },
+
+  /**
+   * Set auto-archive configuration
+   */
+  async setAutoArchiveConfig(config: {
+    enabled: boolean;
+    schedule: 'Weekly' | 'Monthly' | 'Quarterly' | 'Biannual' | 'Annual';
+    upload_to_drive: boolean;
+    delete_after_upload: boolean;
+    last_archive_time?: string;
+  }) {
+    return executeTauriCommand('set_auto_archive_config', { config });
+  },
+
+  /**
+   * Check auto-archive status
+   */
+  async checkAutoArchiveStatus(config: {
+    enabled: boolean;
+    schedule: 'Weekly' | 'Monthly' | 'Quarterly' | 'Biannual' | 'Annual';
+    upload_to_drive: boolean;
+    delete_after_upload: boolean;
+    last_archive_time?: string;
+  }) {
+    return executeTauriCommand('check_auto_archive_status', { config });
+  },
+
+  /**
+   * Perform auto-archive operation
+   */
+  async performAutoArchive(config: {
+    enabled: boolean;
+    schedule: 'Weekly' | 'Monthly' | 'Quarterly' | 'Biannual' | 'Annual';
+    upload_to_drive: boolean;
+    delete_after_upload: boolean;
+    last_archive_time?: string;
+  }) {
+    return executeTauriCommand('perform_auto_archive', { config });
+  },
+
+  /**
+   * Delete a specific log archive
+   */
+  async deleteLogArchive(archiveName: string) {
+    return executeTauriCommand('delete_log_archive', { archiveName });
+  },
 };
 
 // ============================================================================
