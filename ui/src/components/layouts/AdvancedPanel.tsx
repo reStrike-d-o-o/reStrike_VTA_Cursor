@@ -287,8 +287,12 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
             {settingsTab === 'database' && (
               <div className="space-y-6">
                 <DatabaseManagementPanel />
-                <GoogleDriveBackupRestore />
                 <DatabaseMigrationPanel />
+              </div>
+            )}
+            {settingsTab === 'backup-restore' && (
+              <div className="space-y-6">
+                <GoogleDriveBackupRestore />
               </div>
             )}
             {settingsTab === 'flag-management' && (

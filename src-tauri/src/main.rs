@@ -200,6 +200,7 @@ async fn main() -> AppResult<()> {
             tauri_commands::migrate_json_to_database,
             tauri_commands::create_json_backup,
             tauri_commands::restore_from_json_backup,
+            tauri_commands::restore_from_backup,
             tauri_commands::get_migration_status,
             tauri_commands::enable_database_mode,
             tauri_commands::list_backup_files,
