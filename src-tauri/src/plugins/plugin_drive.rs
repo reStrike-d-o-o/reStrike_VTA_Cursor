@@ -451,8 +451,6 @@ impl DrivePlugin {
             return Err(AppError::ConfigError(format!("File does not exist: {}", file_path.display())));
         }
         
-        log::info!("Uploading file: {} ({} bytes)", file_name, file_path.metadata().map(|m| m.len()).unwrap_or(0));
-        
         // Read file content
         log::info!("Reading file content...");
         let file_content = std::fs::read(file_path)
@@ -463,87 +461,95 @@ impl DrivePlugin {
         let file_size = file_content.len();
         log::info!("File content read successfully, size: {} bytes", file_size);
         
-        // Create the metadata JSON
+        // Use resumable upload (recommended for files)
+        log::info!("Starting resumable upload session...");
+        
+        // Step 1: Initiate resumable upload session
         let metadata = serde_json::json!({
             "name": file_name,
             "mimeType": "application/zip"
         });
-        log::info!("Created metadata: {}", metadata);
         
-        // Use multipart upload as per Google Drive API v3 documentation
-        let url = format!("{}/files?uploadType=multipart", GOOGLE_DRIVE_API_BASE);
-        log::info!("Upload URL: {}", url);
+        let initiate_url = format!("{}/files?uploadType=resumable", GOOGLE_DRIVE_API_BASE);
+        log::info!("Initiate URL: {}", initiate_url);
         
-        // Create multipart form with metadata and file content
-        log::info!("Creating multipart form...");
-        let form = reqwest::multipart::Form::new()
-            .part("metadata", reqwest::multipart::Part::text(metadata.to_string())
-                .mime_str("application/json")
-                .map_err(|e| {
-                    log::error!("Failed to set MIME type for metadata: {}", e);
-                    AppError::ConfigError(e.to_string())
-                })?)
-            .part("file", reqwest::multipart::Part::bytes(file_content)
-                .mime_str("application/zip")
-                .map_err(|e| {
-                    log::error!("Failed to set MIME type for file: {}", e);
-                    AppError::ConfigError(e.to_string())
-                })?);
-        
-        log::info!("Sending multipart request to Google Drive...");
-        let response = self.http_client
-            .post(&url)
+        let initiate_response = self.http_client
+            .post(&initiate_url)
             .header("Authorization", format!("Bearer {}", token))
-            .multipart(form)
+            .header("Content-Type", "application/json; charset=UTF-8")
+            .header("X-Upload-Content-Type", "application/zip")
+            .header("X-Upload-Content-Length", file_size.to_string())
+            .json(&metadata)
             .send()
             .await
             .map_err(|e| {
-                log::error!("Network error during upload: {}", e);
+                log::error!("Failed to initiate resumable upload: {}", e);
                 AppError::NetworkError(e.to_string())
             })?;
         
-        log::info!("Received response from Google Drive, status: {}", response.status());
+        if !initiate_response.status().is_success() {
+            let status = initiate_response.status();
+            let error_text = initiate_response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+            log::error!("Failed to initiate resumable upload: {} - {}", status, error_text);
+            return Err(AppError::NetworkError(format!(
+                "Failed to initiate upload: {} - {}",
+                status, error_text
+            )));
+        }
         
-        if !response.status().is_success() {
-            let status = response.status();
-            let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
-            log::error!("Google Drive upload error: {} - {}", status, error_text);
-            
-            // Log detailed error to file
-            let error_log = format!(
-                "[{}] Google Drive Upload Error:\nStatus: {}\nError: {}\nFile: {}\nFile Size: {} bytes\nURL: {}\n",
-                chrono::Utc::now().format("%Y-%m-%d %H:%M:%S"),
-                status,
-                error_text,
-                file_path.display(),
-                file_size,
-                url
-            );
-            
-            if let Err(e) = std::fs::write("app.log", error_log) {
-                log::error!("Failed to write error log: {}", e);
-            }
-            
+        // Get the resumable session URI
+        let session_uri = initiate_response
+            .headers()
+            .get("Location")
+            .and_then(|v| v.to_str().ok())
+            .ok_or_else(|| {
+                log::error!("No Location header in resumable upload response");
+                AppError::ConfigError("No Location header in resumable upload response".to_string())
+            })?;
+        
+        log::info!("Got resumable session URI: {}", session_uri);
+        
+        // Step 2: Upload the file content
+        log::info!("Uploading file content to session URI...");
+        let upload_response = self.http_client
+            .put(session_uri)
+            .header("Content-Type", "application/zip")
+            .header("Content-Length", file_size.to_string())
+            .body(file_content)
+            .send()
+            .await
+            .map_err(|e| {
+                log::error!("Failed to upload file content: {}", e);
+                AppError::NetworkError(e.to_string())
+            })?;
+        
+        log::info!("Upload response status: {}", upload_response.status());
+        
+        if !upload_response.status().is_success() {
+            let status = upload_response.status();
+            let error_text = upload_response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+            log::error!("Failed to upload file content: {} - {}", status, error_text);
             return Err(AppError::NetworkError(format!(
                 "Failed to upload file: {} - {}",
                 status, error_text
             )));
         }
         
-        log::info!("Parsing response JSON...");
-        let file_data: serde_json::Value = response.json().await
+        // Parse response to get file ID
+        log::info!("Parsing upload response...");
+        let file_data: serde_json::Value = upload_response.json().await
             .map_err(|e| {
-                log::error!("Failed to parse response JSON: {}", e);
+                log::error!("Failed to parse upload response: {}", e);
                 AppError::NetworkError(e.to_string())
             })?;
         
-        log::info!("Response JSON: {}", file_data);
+        log::info!("Upload response JSON: {}", file_data);
         
         let file_id = file_data["id"].as_str()
             .map(|s| s.to_string())
             .ok_or_else(|| {
-                log::error!("No file ID in response");
-                AppError::ConfigError("No file ID in response".to_string())
+                log::error!("No file ID in upload response");
+                AppError::ConfigError("No file ID in upload response".to_string())
             })?;
         
         log::info!("=== UPLOAD_FILE SUCCESS ===");
