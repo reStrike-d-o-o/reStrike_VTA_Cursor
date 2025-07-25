@@ -11,6 +11,20 @@ interface FlagInfo {
   flagPath: string;
   hasCustomMapping: boolean;
   pssCode?: string;
+  // Database fields
+  id?: number;
+  filename?: string;
+  recognition_status?: string;
+  recognition_confidence?: number;
+  upload_date?: string;
+  file_size?: number;
+}
+
+interface FlagStatistics {
+  total: number;
+  recognized: number;
+  pending: number;
+  failed: number;
 }
 
 interface FlagManagementPanelProps {
@@ -26,11 +40,15 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
+  const [statistics, setStatistics] = useState<FlagStatistics>({ total: 0, recognized: 0, pending: 0, failed: 0 });
+  const [useDatabase, setUseDatabase] = useState(true);
+  const [flagMappingsCount, setFlagMappingsCount] = useState(0);
 
   // Load flags on component mount
   useEffect(() => {
     loadFlags();
-  }, []);
+    loadFlagMappings();
+  }, [useDatabase]);
 
   // Filter flags based on search term
   useEffect(() => {
@@ -46,26 +64,134 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
     }
   }, [searchTerm, flags]);
 
+  const loadFlagMappings = async () => {
+    if (!useDatabase || !window.__TAURI__) return;
+
+    try {
+      const result = await window.__TAURI__.invoke('get_flag_mappings_data');
+      if (result.success) {
+        setFlagMappingsCount(result.count || 0);
+      }
+    } catch (error) {
+      console.error('Failed to load flag mappings:', error);
+    }
+  };
+
   const loadFlags = async () => {
     setIsLoading(true);
+    setError('');
+    
     try {
+      if (useDatabase && window.__TAURI__) {
+        // Load flags from database
+        const result = await window.__TAURI__.invoke('get_flags_data');
+        
+        if (result.success) {
+          // Convert database flags to FlagInfo format
+          const dbFlags: FlagInfo[] = result.flags.map((flag: any) => ({
+            iocCode: flag.ioc_code || flag.filename?.replace('.png', '') || '',
+            countryName: flag.country_name || '',
+            flagPath: `/assets/flags/${flag.filename}`,
+            hasCustomMapping: !!flag.ioc_code,
+            pssCode: flag.ioc_code,
+            id: flag.id,
+            filename: flag.filename,
+            recognition_status: flag.recognition_status,
+            recognition_confidence: flag.recognition_confidence,
+            upload_date: flag.upload_date,
+            file_size: flag.file_size
+          }));
+          
+          setFlags(dbFlags);
+          setFilteredFlags(dbFlags);
+          setStatistics(result.statistics || { total: 0, recognized: 0, pending: 0, failed: 0 });
+        } else {
+          throw new Error(result.error || 'Failed to load flags from database');
+        }
+      } else {
         // Load flags from the available assets in /assets/flags/
-  // This creates a comprehensive list based on the flagUtils configuration
-  const flagList: FlagInfo[] = Object.keys(FLAG_CONFIGS).map(iocCode => {
-    const config = FLAG_CONFIGS[iocCode];
-    return {
-      iocCode,
-      countryName: config.altText.replace(' Flag', ''),
-      flagPath: `/assets/flags/${iocCode}.png`,
-      hasCustomMapping: true, // All flags have PSS mapping (same as IOC code)
-      pssCode: iocCode // PSS code is the same as IOC code
-    };
-  });
+        // This creates a comprehensive list based on the flagUtils configuration
+        const flagList: FlagInfo[] = Object.keys(FLAG_CONFIGS).map(iocCode => {
+          const config = FLAG_CONFIGS[iocCode];
+          return {
+            iocCode,
+            countryName: config.altText.replace(' Flag', ''),
+            flagPath: `/assets/flags/${iocCode}.png`,
+            hasCustomMapping: true, // All flags have PSS mapping (same as IOC code)
+            pssCode: iocCode // PSS code is the same as IOC code
+          };
+        });
 
-  setFlags(flagList);
-  setFilteredFlags(flagList);
+        setFlags(flagList);
+        setFilteredFlags(flagList);
+        setStatistics({ total: flagList.length, recognized: flagList.length, pending: 0, failed: 0 });
+      }
     } catch (error) {
-      setError('Failed to load flags');
+      setError(`Failed to load flags: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setStatistics({ total: 0, recognized: 0, pending: 0, failed: 0 });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const scanAndPopulateFlags = async () => {
+    if (!window.__TAURI__) {
+      setError('Database functionality not available in this environment');
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const result = await window.__TAURI__.invoke('scan_and_populate_flags');
+      
+      if (result.success) {
+        setSuccess(`Successfully scanned and populated flags! Processed: ${result.processed_count}, Skipped: ${result.skipped_count}`);
+        
+        if (result.errors && result.errors.length > 0) {
+          setError(`Some errors occurred: ${result.errors.join(', ')}`);
+        }
+        
+        // Reload flags after scanning
+        await loadFlags();
+      } else {
+        setError(result.error || 'Failed to scan and populate flags');
+      }
+    } catch (error) {
+      setError(`Failed to scan flags: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const clearFlagsDatabase = async () => {
+    if (!window.__TAURI__) {
+      setError('Database functionality not available in this environment');
+      return;
+    }
+
+    if (!window.confirm('Are you sure you want to clear all flags from the database? This action cannot be undone.')) {
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const result = await window.__TAURI__.invoke('clear_flags_table');
+      
+      if (result.success) {
+        setSuccess(`Successfully cleared flags database! Deleted: ${result.deleted_count} entries`);
+        
+        // Reload flags after clearing
+        await loadFlags();
+      } else {
+        setError(result.error || 'Failed to clear flags database');
+      }
+    } catch (error) {
+      setError(`Failed to clear flags: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsLoading(false);
     }
@@ -145,6 +271,31 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
           {success}
         </div>
       )}
+
+      {/* Database Settings */}
+      <div className="p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
+        <h3 className="text-lg font-semibold mb-4 text-gray-100">Database Settings</h3>
+        <div className="space-y-4">
+          <div className="flex items-center space-x-3">
+            <input
+              type="checkbox"
+              id="use-database"
+              checked={useDatabase}
+              onChange={(e) => setUseDatabase(e.target.checked)}
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              aria-label="Use Database for Flags"
+              title="Toggle database mode for flag management"
+            />
+            <Label htmlFor="use-database" className="text-xs text-gray-400">
+              Use Database for Flags
+            </Label>
+          </div>
+          <p className="text-xs text-gray-400">
+            Check this box to load flags from the database instead of the local assets.
+            This is useful for managing flags that have been uploaded or scanned.
+          </p>
+        </div>
+      </div>
 
       {/* Flag Upload Section */}
       <div className="p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
@@ -267,14 +418,14 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
         <div className="p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
           <h3 className="text-lg font-semibold mb-4 text-gray-100">Flag Details</h3>
           <div className="space-y-4">
-                         <div className="flex items-center space-x-4">
-               <img
-                 src={getFlagUrl(selectedFlag.iocCode)}
-                 alt={`${selectedFlag.countryName} flag`}
-                 className="w-16 h-12 object-cover rounded border border-gray-600"
-                 onError={(e) => handleFlagError(e, selectedFlag.iocCode)}
-               />
-               <span className="text-3xl">{getFlagConfig(selectedFlag.iocCode).fallbackEmoji}</span>
+            <div className="flex items-center space-x-4">
+              <img
+                src={getFlagUrl(selectedFlag.iocCode)}
+                alt={`${selectedFlag.countryName} flag`}
+                className="w-16 h-12 object-cover rounded border border-gray-600"
+                onError={(e) => handleFlagError(e, selectedFlag.iocCode)}
+              />
+              <span className="text-3xl">{getFlagConfig(selectedFlag.iocCode).fallbackEmoji}</span>
               <div>
                 <div className="text-lg font-medium text-gray-200">
                   {selectedFlag.countryName}
@@ -282,8 +433,64 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
                 <div className="text-sm text-gray-400">
                   IOC Code: {selectedFlag.iocCode}
                 </div>
+                {selectedFlag.filename && (
+                  <div className="text-xs text-gray-500">
+                    File: {selectedFlag.filename}
+                  </div>
+                )}
               </div>
             </div>
+
+            {/* Database Information */}
+            {useDatabase && selectedFlag.id && (
+              <div className="border-t border-gray-600/30 pt-4">
+                <h4 className="text-sm font-medium text-gray-300 mb-3">Database Information</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-xs text-gray-400">ID:</span>
+                      <span className="text-xs text-gray-300">{selectedFlag.id}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-xs text-gray-400">Status:</span>
+                      <span className={`text-xs px-2 py-1 rounded ${
+                        selectedFlag.recognition_status === 'recognized' 
+                          ? 'bg-green-900/30 text-green-300 border border-green-600/30'
+                          : selectedFlag.recognition_status === 'pending'
+                          ? 'bg-yellow-900/30 text-yellow-300 border border-yellow-600/30'
+                          : 'bg-red-900/30 text-red-300 border border-red-600/30'
+                      }`}>
+                        {selectedFlag.recognition_status || 'unknown'}
+                      </span>
+                    </div>
+                    {selectedFlag.recognition_confidence && (
+                      <div className="flex justify-between">
+                        <span className="text-xs text-gray-400">Confidence:</span>
+                        <span className="text-xs text-gray-300">{(selectedFlag.recognition_confidence * 100).toFixed(1)}%</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    {selectedFlag.upload_date && (
+                      <div className="flex justify-between">
+                        <span className="text-xs text-gray-400">Uploaded:</span>
+                        <span className="text-xs text-gray-300">
+                          {new Date(selectedFlag.upload_date).toLocaleDateString()}
+                        </span>
+                      </div>
+                    )}
+                    {selectedFlag.file_size && (
+                      <div className="flex justify-between">
+                        <span className="text-xs text-gray-400">Size:</span>
+                        <span className="text-xs text-gray-300">
+                          {(selectedFlag.file_size / 1024).toFixed(1)} KB
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* PSS Code Mapping */}
             <div className="border-t border-gray-600/30 pt-4">
@@ -336,6 +543,37 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
           </div>
         </div>
       )}
+
+      {/* Database Statistics */}
+      <div className="p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
+        <h3 className="text-lg font-semibold mb-4 text-gray-100">Database Statistics</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="p-4 rounded-lg bg-gray-700/30 border border-gray-600/30">
+            <p className="text-sm font-medium text-gray-300">Total Flags</p>
+            <p className="text-2xl font-bold text-blue-400">{statistics.total}</p>
+          </div>
+          <div className="p-4 rounded-lg bg-gray-700/30 border border-gray-600/30">
+            <p className="text-sm font-medium text-gray-300">Recognized</p>
+            <p className="text-2xl font-bold text-green-400">{statistics.recognized}</p>
+          </div>
+          <div className="p-4 rounded-lg bg-gray-700/30 border border-gray-600/30">
+            <p className="text-sm font-medium text-gray-300">Pending</p>
+            <p className="text-2xl font-bold text-yellow-400">{statistics.pending}</p>
+          </div>
+          <div className="p-4 rounded-lg bg-gray-700/30 border border-gray-600/30">
+            <p className="text-sm font-medium text-gray-300">Failed</p>
+            <p className="text-2xl font-bold text-red-400">{statistics.failed}</p>
+          </div>
+        </div>
+        <div className="mt-6 flex space-x-2">
+          <Button size="sm" variant="primary" onClick={scanAndPopulateFlags} disabled={isLoading}>
+            Scan and Populate Flags
+          </Button>
+          <Button size="sm" variant="danger" onClick={clearFlagsDatabase} disabled={isLoading}>
+            Clear Flags Database
+          </Button>
+        </div>
+      </div>
     </div>
   );
 };
