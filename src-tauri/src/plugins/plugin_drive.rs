@@ -299,58 +299,127 @@ impl DrivePlugin {
     }
 
     pub async fn upload_backup_archive(&self) -> AppResult<String> {
-        log::info!("=== UPLOAD_BACKUP_ARCHIVE START ===");
+        // Log error to file immediately
+        let log_error_to_file = |error_msg: &str| {
+            let error_log = format!(
+                "[{}] DrivePlugin Upload Error:\nError: {}\nMethod: upload_backup_archive\n",
+                chrono::Utc::now().format("%Y-%m-%d %H:%M:%S"),
+                error_msg
+            );
+            if let Err(write_err) = std::fs::write("logs/app.log", error_log) {
+                log::error!("Failed to write error log: {}", write_err);
+            }
+        };
         
-        // Create backup archive
-        let backup_dir = std::env::current_dir()?.join("backups");
+        // Step 1: Get current directory and create backup directory outside project
+        log::info!("Step 1: Getting current directory and setting up backup directory...");
+        let current_dir = match std::env::current_dir() {
+            Ok(dir) => dir,
+            Err(e) => {
+                let error_msg = format!("Failed to get current directory: {}", e);
+                log::error!("{}", error_msg);
+                log_error_to_file(&error_msg);
+                return Err(AppError::IoError(e));
+            }
+        };
+        
+        // Step 2: Create backup directory path OUTSIDE the project directory
+        log::info!("Step 2: Creating backup directory path outside project...");
+        let backup_dir = match dirs::data_dir() {
+            Some(data_dir) => data_dir.join("reStrikeVTA").join("backups"),
+            None => {
+                // Fallback to current directory if data_dir is not available
+                let error_msg = "Failed to get app data directory, using current directory";
+                log::warn!("{}", error_msg);
+                current_dir.join("backups")
+            }
+        };
         log::info!("Backup directory: {}", backup_dir.display());
         
-        // Ensure backup directory exists
+        // Step 3: Ensure backup directory exists
+        log::info!("Step 3: Ensuring backup directory exists...");
         if !backup_dir.exists() {
             log::info!("Creating backup directory...");
-            std::fs::create_dir_all(&backup_dir)
-                .map_err(|e| {
+            match std::fs::create_dir_all(&backup_dir) {
+                Ok(_) => log::info!("Backup directory created successfully"),
+                Err(e) => {
+                    let error_msg = format!("Failed to create backup directory: {}", e);
+                    log::error!("{}", error_msg);
+                    log_error_to_file(&error_msg);
                     self.log_error_comprehensively(
                         "upload_backup_archive", 
-                        &format!("Failed to create backup directory: {}", e), 
+                        &error_msg, 
                         Some(&format!("Directory: {}", backup_dir.display()))
                     );
-                    AppError::IoError(e)
-                })?;
+                    return Err(AppError::IoError(e));
+                }
+            }
         }
         
+        // Step 4: Create archive name and path
+        log::info!("Step 4: Creating archive name and path...");
         let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
         let archive_name = format!("reStrikeVTA_backup_{}.zip", timestamp);
         let archive_path = backup_dir.join(&archive_name);
+        log::info!("Archive name: {}", archive_name);
+        log::info!("Archive path: {}", archive_path.display());
         
-        log::info!("Creating backup archive: {}", archive_path.display());
+        // Step 5: Create zip archive
+        log::info!("Step 5: Creating zip archive...");
+        match self.create_backup_archive(&current_dir, &archive_path).await {
+            Ok(_) => log::info!("Backup archive created successfully"),
+            Err(e) => {
+                let error_msg = format!("Failed to create backup archive: {}", e);
+                log::error!("{}", error_msg);
+                log_error_to_file(&error_msg);
+                return Err(e);
+            }
+        }
         
-        // Create zip archive from backups directory
-        log::info!("Calling create_backup_archive...");
-        self.create_backup_archive(&backup_dir, &archive_path).await?;
-        log::info!("Backup archive created successfully");
+        // Step 6: Verify archive was created
+        log::info!("Step 6: Verifying archive was created...");
+        if !archive_path.exists() {
+            let error_msg = format!("Archive file was not created: {}", archive_path.display());
+            log::error!("{}", error_msg);
+            log_error_to_file(&error_msg);
+            return Err(AppError::ConfigError(error_msg));
+        }
         
-        log::info!("Backup archive created, uploading to Google Drive...");
+        // Get archive size
+        let archive_size = match archive_path.metadata() {
+            Ok(metadata) => metadata.len(),
+            Err(e) => {
+                let error_msg = format!("Failed to get archive metadata: {}", e);
+                log::error!("{}", error_msg);
+                log_error_to_file(&error_msg);
+                return Err(AppError::IoError(e));
+            }
+        };
+        log::info!("Archive size: {} bytes", archive_size);
         
-        // Upload to Google Drive using streaming approach
-        log::info!("Calling upload_file_streaming...");
+        // Step 7: Upload to Google Drive
+        log::info!("Step 7: Uploading to Google Drive...");
         let _file_id = match self.upload_file_streaming(&archive_path, &archive_name).await {
             Ok(file_id) => {
-                log::info!("Upload completed successfully");
+                log::info!("Upload completed successfully, file ID: {}", file_id);
                 file_id
             },
             Err(e) => {
+                let error_msg = format!("Backup upload failed: {}", e);
+                log::error!("{}", error_msg);
+                log_error_to_file(&error_msg);
+                
                 // Use comprehensive error logging
                 let details = format!(
                     "Archive Path: {}\nArchive Name: {}\nArchive Size: {} bytes",
                     archive_path.display(),
                     archive_name,
-                    archive_path.metadata().map(|m| m.len()).unwrap_or(0)
+                    archive_size
                 );
                 
                 self.log_error_comprehensively(
                     "upload_backup_archive", 
-                    &format!("Backup upload failed: {}", e), 
+                    &error_msg, 
                     Some(&details)
                 );
                 
@@ -358,24 +427,31 @@ impl DrivePlugin {
             }
         };
         
-        // Clean up local archive
-        log::info!("Cleaning up local archive...");
-        if let Err(e) = std::fs::remove_file(&archive_path) {
-            log::warn!("Failed to clean up local archive: {}", e);
-        } else {
-            log::info!("Local archive cleaned up successfully");
+        // Step 8: Clean up local archive file
+        log::info!("Step 8: Cleaning up local archive file...");
+        match std::fs::remove_file(&archive_path) {
+            Ok(_) => log::info!("Local archive file cleaned up successfully"),
+            Err(e) => {
+                let error_msg = format!("Failed to clean up local archive file: {}", e);
+                log::warn!("{}", error_msg);
+                log_error_to_file(&error_msg);
+                // Don't fail the operation if cleanup fails
+            }
         }
         
-        log::info!("=== UPLOAD_BACKUP_ARCHIVE SUCCESS ===");
-        Ok(format!("Backup archive '{}' uploaded successfully", archive_name))
+        log::info!("=== UPLOAD_BACKUP_ARCHIVE COMPLETED SUCCESSFULLY ===");
+        Ok(format!("Backup archive uploaded successfully: {}", archive_name))
     }
     
     pub async fn download_backup_archive(&self, file_id: &str) -> AppResult<String> {
         // Download file from Google Drive
         let download_path = self.download_file(file_id).await?;
         
-        // Extract archive to backups directory
-        let backup_dir = std::env::current_dir()?.join("backups");
+        // Extract archive to backups directory outside project
+        let backup_dir = match dirs::data_dir() {
+            Some(data_dir) => data_dir.join("reStrikeVTA").join("backups"),
+            None => std::env::current_dir()?.join("backups"),
+        };
         self.extract_backup_archive(&download_path, &backup_dir).await?;
         
         // Clean up downloaded archive
@@ -387,7 +463,10 @@ impl DrivePlugin {
     pub async fn restore_from_archive(&self, file_id: &str) -> AppResult<String> {
         // Download and extract archive
         let download_path = self.download_file(file_id).await?;
-        let backup_dir = std::env::current_dir()?.join("backups");
+        let backup_dir = match dirs::data_dir() {
+            Some(data_dir) => data_dir.join("reStrikeVTA").join("backups"),
+            None => std::env::current_dir()?.join("backups"),
+        };
         self.extract_backup_archive(&download_path, &backup_dir).await?;
         
         // Clean up downloaded archive
@@ -450,51 +529,160 @@ impl DrivePlugin {
     }
     
     async fn create_backup_archive(&self, source_dir: &std::path::Path, archive_path: &std::path::Path) -> AppResult<()> {
+        log::info!("=== CREATE_BACKUP_ARCHIVE START ===");
         log::info!("Creating backup archive from: {}", source_dir.display());
+        log::info!("Archive path: {}", archive_path.display());
         
-        // Ensure source directory exists
+        // Log error to file immediately
+        let log_error_to_file = |error_msg: &str| {
+            let error_log = format!(
+                "[{}] DrivePlugin Create Archive Error:\nError: {}\nMethod: create_backup_archive\nSource: {}\nTarget: {}\n",
+                chrono::Utc::now().format("%Y-%m-%d %H:%M:%S"),
+                error_msg,
+                source_dir.display(),
+                archive_path.display()
+            );
+            if let Err(write_err) = std::fs::write("logs/app.log", error_log) {
+                log::error!("Failed to write error log: {}", write_err);
+            }
+        };
+        
+        // Step 1: Ensure source directory exists
+        log::info!("Step 1: Checking source directory exists...");
         if !source_dir.exists() {
-            return Err(AppError::ConfigError(format!("Source directory does not exist: {}", source_dir.display())));
+            let error_msg = format!("Source directory does not exist: {}", source_dir.display());
+            log::error!("{}", error_msg);
+            log_error_to_file(&error_msg);
+            return Err(AppError::ConfigError(error_msg));
         }
+        log::info!("Source directory exists: {}", source_dir.display());
         
-        let file = std::fs::File::create(archive_path)
-            .map_err(|e| AppError::IoError(e))?;
+        // Step 2: Create the archive file
+        log::info!("Step 2: Creating archive file...");
+        let file = match std::fs::File::create(archive_path) {
+            Ok(file) => {
+                log::info!("Archive file created successfully");
+                file
+            },
+            Err(e) => {
+                let error_msg = format!("Failed to create archive file: {}", e);
+                log::error!("{}", error_msg);
+                log_error_to_file(&error_msg);
+                return Err(AppError::IoError(e));
+            }
+        };
         
+        // Step 3: Create zip writer
+        log::info!("Step 3: Creating zip writer...");
         let mut zip = zip::ZipWriter::new(file);
         let options = FileOptions::default()
             .compression_method(zip::CompressionMethod::Deflated)
             .unix_permissions(0o755);
+        log::info!("Zip writer created with compression options");
         
+        // Step 4: Read source directory
+        log::info!("Step 4: Reading source directory...");
+        let entries = match std::fs::read_dir(source_dir) {
+            Ok(entries) => {
+                log::info!("Source directory read successfully");
+                entries
+            },
+            Err(e) => {
+                let error_msg = format!("Failed to read source directory: {}", e);
+                log::error!("{}", error_msg);
+                log_error_to_file(&error_msg);
+                return Err(AppError::IoError(e));
+            }
+        };
+        
+        // Step 5: Process each entry
+        log::info!("Step 5: Processing directory entries...");
         let mut file_count = 0;
-        for entry in std::fs::read_dir(source_dir)
-            .map_err(|e| AppError::IoError(e))? {
-            let entry = entry.map_err(|e| AppError::IoError(e))?;
+        for entry_result in entries {
+            let entry = match entry_result {
+                Ok(entry) => entry,
+                Err(e) => {
+                    let error_msg = format!("Failed to read directory entry: {}", e);
+                    log::error!("{}", error_msg);
+                    log_error_to_file(&error_msg);
+                    return Err(AppError::IoError(e));
+                }
+            };
+            
             let path = entry.path();
+            log::debug!("Processing entry: {}", path.display());
             
             // Skip the archive file itself if it exists
             if path == archive_path {
+                log::debug!("Skipping archive file itself");
                 continue;
             }
             
-            let name = path.strip_prefix(source_dir)
-                .map_err(|e| AppError::ConfigError(e.to_string()))?
-                .to_string_lossy();
+            // Get relative name
+            let name = match path.strip_prefix(source_dir) {
+                Ok(relative_path) => relative_path.to_string_lossy(),
+                Err(e) => {
+                    let error_msg = format!("Failed to get relative path: {}", e);
+                    log::error!("{}", error_msg);
+                    log_error_to_file(&error_msg);
+                    return Err(AppError::ConfigError(e.to_string()));
+                }
+            };
             
             if path.is_file() {
                 log::debug!("Adding file to archive: {}", name);
-                zip.start_file(name, options)
-                    .map_err(|e| AppError::ConfigError(e.to_string()))?;
-                let mut f = std::fs::File::open(path)
-                    .map_err(|e| AppError::IoError(e))?;
-                std::io::copy(&mut f, &mut zip)
-                    .map_err(|e| AppError::IoError(e))?;
-                file_count += 1;
+                
+                // Start file in zip
+                match zip.start_file(name.clone(), options) {
+                    Ok(_) => log::debug!("Started file in zip: {}", name),
+                    Err(e) => {
+                        let error_msg = format!("Failed to start file in zip '{}': {}", name, e);
+                        log::error!("{}", error_msg);
+                        log_error_to_file(&error_msg);
+                        return Err(AppError::ConfigError(e.to_string()));
+                    }
+                }
+                
+                // Open source file
+                let mut f = match std::fs::File::open(&path) {
+                    Ok(file) => file,
+                    Err(e) => {
+                        let error_msg = format!("Failed to open source file '{}': {}", path.display(), e);
+                        log::error!("{}", error_msg);
+                        log_error_to_file(&error_msg);
+                        return Err(AppError::IoError(e));
+                    }
+                };
+                
+                // Copy file content to zip
+                match std::io::copy(&mut f, &mut zip) {
+                    Ok(bytes_copied) => {
+                        log::debug!("Copied {} bytes from file: {}", bytes_copied, name);
+                        file_count += 1;
+                    },
+                    Err(e) => {
+                        let error_msg = format!("Failed to copy file '{}' to zip: {}", name, e);
+                        log::error!("{}", error_msg);
+                        log_error_to_file(&error_msg);
+                        return Err(AppError::IoError(e));
+                    }
+                }
             }
         }
         
-        zip.finish()
-            .map_err(|e| AppError::ConfigError(e.to_string()))?;
+        // Step 6: Finish zip file
+        log::info!("Step 6: Finishing zip file...");
+        match zip.finish() {
+            Ok(_) => log::info!("Zip file finished successfully"),
+            Err(e) => {
+                let error_msg = format!("Failed to finish zip file: {}", e);
+                log::error!("{}", error_msg);
+                log_error_to_file(&error_msg);
+                return Err(AppError::ConfigError(e.to_string()));
+            }
+        }
         
+        log::info!("=== CREATE_BACKUP_ARCHIVE SUCCESS ===");
         log::info!("Backup archive created with {} files", file_count);
         Ok(())
     }
@@ -537,23 +725,60 @@ impl DrivePlugin {
         log::info!("File path: {}", file_path.display());
         log::info!("File name: {}", file_name);
         
-        let token = self.get_access_token().await?;
-        log::info!("Got access token successfully (length: {})", token.len());
+        // Log error to file immediately
+        let log_error_to_file = |error_msg: &str| {
+            let error_log = format!(
+                "[{}] DrivePlugin Upload Streaming Error:\nError: {}\nMethod: upload_file_streaming\nFile: {}\nPath: {}\n",
+                chrono::Utc::now().format("%Y-%m-%d %H:%M:%S"),
+                error_msg,
+                file_name,
+                file_path.display()
+            );
+            if let Err(write_err) = std::fs::write("logs/app.log", error_log) {
+                log::error!("Failed to write error log: {}", write_err);
+            }
+        };
         
-        // Verify file exists and get size
+        // Step 1: Get access token
+        log::info!("Step 1: Getting access token...");
+        let token = match self.get_access_token().await {
+            Ok(token) => {
+                log::info!("Got access token successfully (length: {})", token.len());
+                token
+            },
+            Err(e) => {
+                let error_msg = format!("Failed to get access token: {}", e);
+                log::error!("{}", error_msg);
+                log_error_to_file(&error_msg);
+                return Err(e);
+            }
+        };
+        
+        // Step 2: Verify file exists and get size
+        log::info!("Step 2: Verifying file exists and getting size...");
         if !file_path.exists() {
             let error_msg = format!("File does not exist: {}", file_path.display());
+            log::error!("{}", error_msg);
+            log_error_to_file(&error_msg);
             self.log_error_comprehensively("upload_file_streaming", &error_msg, None);
             return Err(AppError::ConfigError(error_msg));
         }
+        log::info!("File exists: {}", file_path.display());
         
-        let file_size = std::fs::metadata(file_path)
-            .map_err(|e| {
+        let file_size = match std::fs::metadata(file_path) {
+            Ok(metadata) => {
+                let size = metadata.len();
+                log::info!("File size: {} bytes ({:.2} MB)", size, size as f64 / (1024.0 * 1024.0));
+                size
+            },
+            Err(e) => {
                 let error_msg = format!("Failed to get file metadata: {}", e);
+                log::error!("{}", error_msg);
+                log_error_to_file(&error_msg);
                 self.log_error_comprehensively("upload_file_streaming", &error_msg, Some(&format!("File: {}", file_path.display())));
-                AppError::IoError(e)
-            })?
-            .len();
+                return Err(AppError::IoError(e));
+            }
+        };
         
         log::info!("File size: {} bytes ({:.2} MB)", file_size, file_size as f64 / (1024.0 * 1024.0));
         
@@ -584,12 +809,21 @@ impl DrivePlugin {
         log::info!("  X-Upload-Content-Type: application/zip");
         log::info!("  X-Upload-Content-Length: {}", file_size);
         
-        let initiate_response = request_builder.send().await
-            .map_err(|e| {
+        // Step 3: Send initiation request
+        log::info!("Step 3: Sending resumable upload initiation request...");
+        let initiate_response = match request_builder.send().await {
+            Ok(response) => {
+                log::info!("Initiation request sent successfully");
+                response
+            },
+            Err(e) => {
                 let error_msg = format!("Failed to send resumable upload initiation request: {}", e);
+                log::error!("{}", error_msg);
+                log_error_to_file(&error_msg);
                 self.log_error_comprehensively("upload_file_streaming", &error_msg, Some(&format!("URL: {}, File: {}, Size: {} bytes", initiate_url, file_name, file_size)));
-                AppError::NetworkError(e.to_string())
-            })?;
+                return Err(AppError::NetworkError(e.to_string()));
+            }
+        };
         
         let status = initiate_response.status();
         log::info!("Initiation response status: {}", status);
@@ -600,10 +834,25 @@ impl DrivePlugin {
             log::info!("  {}: {:?}", name, value);
         }
         
+        // Step 4: Check response status
+        log::info!("Step 4: Checking response status...");
         if !status.is_success() {
-            let error_text = initiate_response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+            let error_text = match initiate_response.text().await {
+                Ok(text) => text,
+                Err(e) => {
+                    let error_msg = format!("Failed to read error response text: {}", e);
+                    log::error!("{}", error_msg);
+                    log_error_to_file(&error_msg);
+                    format!("Unknown error (failed to read response: {})", e)
+                }
+            };
+            
+            let error_msg = format!("Failed to initiate resumable upload: {} - {}", status, error_text);
+            log::error!("{}", error_msg);
+            log_error_to_file(&error_msg);
+            
             let details = format!("File: {}\nSize: {} bytes\nStatus: {}\nURL: {}\nResponse: {}", file_name, file_size, status, initiate_url, error_text);
-            self.log_error_comprehensively("upload_file_streaming", &format!("Failed to initiate resumable upload: {} - {}", status, error_text), Some(&details));
+            self.log_error_comprehensively("upload_file_streaming", &error_msg, Some(&details));
             
             // Specific handling for common errors
             match status.as_u16() {
@@ -613,19 +862,29 @@ impl DrivePlugin {
                 _ => return Err(AppError::NetworkError(format!("Failed to initiate upload: {} - {}", status, error_text))),
             }
         }
+        log::info!("Initiation response status is successful: {}", status);
         
-        // Extract Location header with comprehensive checking
-        let session_uri = initiate_response
+        // Step 5: Extract Location header
+        log::info!("Step 5: Extracting Location header...");
+        let session_uri = match initiate_response
             .headers()
             .get("location")
             .or_else(|| initiate_response.headers().get("Location"))
-            .and_then(|v| v.to_str().ok())
-            .ok_or_else(|| {
+            .and_then(|v| v.to_str().ok()) {
+            Some(uri) => {
+                log::info!("Location header found: {}", uri);
+                uri
+            },
+            None => {
                 // Get all headers for debugging
                 let all_headers: Vec<String> = initiate_response.headers()
                     .iter()
                     .map(|(name, value)| format!("{}: {:?}", name, value))
                     .collect();
+                
+                let error_msg = "CRITICAL: No Location header in resumable upload response";
+                log::error!("{}", error_msg);
+                log_error_to_file(error_msg);
                 
                 let debug_info = format!(
                     "Status: {}\nAll headers: [\n  {}\n]\nFile: {}\nSize: {} bytes", 
@@ -637,12 +896,13 @@ impl DrivePlugin {
                 
                 self.log_error_comprehensively(
                     "upload_file_streaming", 
-                    "CRITICAL: No Location header in resumable upload response", 
+                    error_msg, 
                     Some(&debug_info)
                 );
                 
-                AppError::ConfigError("No Location header in resumable upload response - this indicates a server-side issue or API change".to_string())
-            })?;
+                return Err(AppError::ConfigError("No Location header in resumable upload response - this indicates a server-side issue or API change".to_string()));
+            }
+        };
         
         log::info!("✅ Got resumable session URI: {}", session_uri);
         log::info!("Session URI length: {} characters", session_uri.len());
@@ -657,13 +917,21 @@ impl DrivePlugin {
         // STEP 2: Upload file data to session URI using proper chunking
         log::info!("Starting chunked upload to session URI...");
         
-        // Open file for reading with error handling
-        let mut file = std::fs::File::open(file_path)
-            .map_err(|e| {
+        // Step 6: Open file for reading
+        log::info!("Step 6: Opening file for reading...");
+        let mut file = match std::fs::File::open(file_path) {
+            Ok(file) => {
+                log::info!("File opened successfully for reading");
+                file
+            },
+            Err(e) => {
                 let error_msg = format!("Failed to open file for reading: {}", e);
+                log::error!("{}", error_msg);
+                log_error_to_file(&error_msg);
                 self.log_error_comprehensively("upload_file_streaming", &error_msg, Some(&format!("File: {}", file_path.display())));
-                AppError::IoError(e)
-            })?;
+                return Err(AppError::IoError(e));
+            }
+        };
         
         // Use optimal chunk size (multiple of 256KB, but larger for better performance)
         const CHUNK_SIZE: usize = 8 * 1024 * 1024; // 8MB chunks for better performance
@@ -677,12 +945,19 @@ impl DrivePlugin {
             let mut chunk = vec![0u8; CHUNK_SIZE];
             let bytes_read = {
                 use std::io::Read;
-                file.read(&mut chunk)
-                    .map_err(|e| {
+                match file.read(&mut chunk) {
+                    Ok(bytes) => {
+                        log::debug!("Read {} bytes from file chunk {}", bytes, chunk_count + 1);
+                        bytes
+                    },
+                    Err(e) => {
                         let error_msg = format!("Failed to read file chunk {}: {}", chunk_count + 1, e);
+                        log::error!("{}", error_msg);
+                        log_error_to_file(&error_msg);
                         self.log_error_comprehensively("upload_file_streaming", &error_msg, Some(&format!("File: {}, Uploaded: {} bytes", file_name, uploaded)));
-                        AppError::IoError(e)
-                    })?
+                        return Err(AppError::IoError(e));
+                    }
+                }
             };
             
             if bytes_read == 0 {

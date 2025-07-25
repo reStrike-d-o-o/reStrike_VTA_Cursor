@@ -2049,9 +2049,12 @@ pub async fn get_migration_status(app: State<'_, Arc<App>>) -> Result<serde_json
         }))
     };
     
-    // Check for backup files
-    let backup_dir = "backups";
-    let backup_files_exist = std::fs::read_dir(backup_dir)
+    // Check for backup files in external directory
+    let backup_dir = match dirs::data_dir() {
+        Some(data_dir) => data_dir.join("reStrikeVTA").join("backups"),
+        None => std::path::PathBuf::from("backups"),
+    };
+    let backup_files_exist = std::fs::read_dir(&backup_dir)
         .map(|entries| entries.filter_map(|entry| entry.ok()).count() > 0)
         .unwrap_or(false);
     
@@ -2294,8 +2297,11 @@ pub async fn drive_save_credentials(id: String, secret: String) -> Result<(), St
 
 #[tauri::command]
 pub async fn list_backup_files() -> Result<Vec<BackupFileInfo>, String> {
-    // Use the backups directory in src-tauri/backups
-    let backup_dir = "backups";
+    // Use the backups directory outside the project
+    let backup_dir = match dirs::data_dir() {
+        Some(data_dir) => data_dir.join("reStrikeVTA").join("backups"),
+        None => std::path::PathBuf::from("backups"),
+    };
     
     let mut backup_files = Vec::new();
     
@@ -2355,18 +2361,32 @@ pub async fn drive_upload_backup_archive() -> Result<serde_json::Value, String> 
     log::info!("=== DRIVE_UPLOAD_BACKUP_ARCHIVE COMMAND START ===");
     log::info!("Uploading backup archive to Google Drive");
     
-    // Get list of backup files
-    log::info!("Getting list of backup files...");
+    // Log error to file immediately
+    let log_error_to_file = |error_msg: &str| {
+        let error_log = format!(
+            "[{}] Tauri Command Upload Error:\nError: {}\nCommand: drive_upload_backup_archive\n",
+            chrono::Utc::now().format("%Y-%m-%d %H:%M:%S"),
+            error_msg
+        );
+        if let Err(write_err) = std::fs::write("logs/app.log", error_log) {
+            log::error!("Failed to write error log: {}", write_err);
+        }
+    };
+    
+    // Step 1: Get list of backup files
+    log::info!("Step 1: Getting list of backup files...");
     let backup_files: Vec<String> = match list_backup_files().await {
         Ok(files) => {
             log::info!("Found {} backup files", files.len());
             files.into_iter().map(|f| f.path).collect()
         },
         Err(e) => {
-            log::error!("Failed to list backup files: {}", e);
+            let error_msg = format!("Failed to list backup files: {}", e);
+            log::error!("{}", error_msg);
+            log_error_to_file(&error_msg);
             return Ok(serde_json::json!({
                 "success": false,
-                "error": format!("Failed to list backup files: {}", e)
+                "error": error_msg
             }))
         }
     };
@@ -2379,8 +2399,8 @@ pub async fn drive_upload_backup_archive() -> Result<serde_json::Value, String> 
         }));
     }
     
-    log::info!("Calling drive_plugin().upload_backup_archive()...");
-    // Use the new upload_backup_archive method
+    // Step 2: Call drive plugin upload method
+    log::info!("Step 2: Calling drive_plugin().upload_backup_archive()...");
     match crate::plugins::drive_plugin().upload_backup_archive().await {
         Ok(message) => {
             log::info!("=== DRIVE_UPLOAD_BACKUP_ARCHIVE COMMAND SUCCESS ===");
@@ -2391,24 +2411,14 @@ pub async fn drive_upload_backup_archive() -> Result<serde_json::Value, String> 
             }))
         },
         Err(e) => {
+            let error_msg = format!("Failed to upload archive: {}", e);
             log::error!("=== DRIVE_UPLOAD_BACKUP_ARCHIVE COMMAND ERROR ===");
-            log::error!("Failed to upload archive: {}", e);
-            
-            // Log detailed error to file
-            let error_log = format!(
-                "[{}] Tauri Command Upload Error:\nError: {}\nBackup Files Count: {}\n",
-                chrono::Utc::now().format("%Y-%m-%d %H:%M:%S"),
-                e,
-                backup_files.len()
-            );
-            
-            if let Err(write_err) = std::fs::write("app.log", error_log) {
-                log::error!("Failed to write error log: {}", write_err);
-            }
+            log::error!("{}", error_msg);
+            log_error_to_file(&error_msg);
             
             Ok(serde_json::json!({
                 "success": false,
-                "error": format!("Failed to upload archive: {}", e)
+                "error": error_msg
             }))
         }
     }
@@ -2904,18 +2914,44 @@ pub async fn create_complete_log_archive(
 pub async fn create_and_upload_log_archive(
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, String> {
+    log::info!("=== CREATE_AND_UPLOAD_LOG_ARCHIVE COMMAND START ===");
+    
+    // Add comprehensive error logging to app.log
+    let log_error_to_file = |error_msg: &str| {
+        let error_log = format!(
+            "[{}] LogArchiveManager Upload Error:\nError: {}\nCommand: create_and_upload_log_archive\n",
+            chrono::Utc::now().format("%Y-%m-%d %H:%M:%S"),
+            error_msg
+        );
+        
+        if let Err(write_err) = std::fs::write("logs/app.log", error_log) {
+            log::error!("Failed to write error log: {}", write_err);
+        }
+    };
+    
     log::info!("Creating and uploading log archive to Google Drive");
     
     let log_manager = app.log_manager().lock().await;
     match log_manager.create_and_upload_archive().await {
-        Ok(message) => Ok(serde_json::json!({
-            "success": true,
-            "message": message
-        })),
-        Err(e) => Ok(serde_json::json!({
-            "success": false,
-            "error": format!("Failed to create and upload archive: {}", e)
-        }))
+        Ok(message) => {
+            log::info!("=== CREATE_AND_UPLOAD_LOG_ARCHIVE COMMAND SUCCESS ===");
+            log::info!("Upload successful: {}", message);
+            Ok(serde_json::json!({
+                "success": true,
+                "message": message
+            }))
+        },
+        Err(e) => {
+            let error_msg = format!("Failed to create and upload archive: {}", e);
+            log::error!("=== CREATE_AND_UPLOAD_LOG_ARCHIVE COMMAND ERROR ===");
+            log::error!("{}", error_msg);
+            log_error_to_file(&error_msg);
+            
+            Ok(serde_json::json!({
+                "success": false,
+                "error": error_msg
+            }))
+        }
     }
 }
 
@@ -2923,18 +2959,44 @@ pub async fn create_and_upload_log_archive(
 pub async fn create_upload_and_cleanup_log_archive(
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, String> {
+    log::info!("=== CREATE_UPLOAD_AND_CLEANUP_LOG_ARCHIVE COMMAND START ===");
+    
+    // Add comprehensive error logging to app.log
+    let log_error_to_file = |error_msg: &str| {
+        let error_log = format!(
+            "[{}] LogArchiveManager Upload Error:\nError: {}\nCommand: create_upload_and_cleanup_log_archive\n",
+            chrono::Utc::now().format("%Y-%m-%d %H:%M:%S"),
+            error_msg
+        );
+        
+        if let Err(write_err) = std::fs::write("logs/app.log", error_log) {
+            log::error!("Failed to write error log: {}", write_err);
+        }
+    };
+    
     log::info!("Creating, uploading, and cleaning up log archive");
     
     let log_manager = app.log_manager().lock().await;
     match log_manager.create_upload_and_cleanup_archive().await {
-        Ok(message) => Ok(serde_json::json!({
-            "success": true,
-            "message": message
-        })),
-        Err(e) => Ok(serde_json::json!({
-            "success": false,
-            "error": format!("Failed to create, upload and cleanup archive: {}", e)
-        }))
+        Ok(message) => {
+            log::info!("=== CREATE_UPLOAD_AND_CLEANUP_LOG_ARCHIVE COMMAND SUCCESS ===");
+            log::info!("Upload and cleanup successful: {}", message);
+            Ok(serde_json::json!({
+                "success": true,
+                "message": message
+            }))
+        },
+        Err(e) => {
+            let error_msg = format!("Failed to create, upload and cleanup archive: {}", e);
+            log::error!("=== CREATE_UPLOAD_AND_CLEANUP_LOG_ARCHIVE COMMAND ERROR ===");
+            log::error!("{}", error_msg);
+            log_error_to_file(&error_msg);
+            
+            Ok(serde_json::json!({
+                "success": false,
+                "error": error_msg
+            }))
+        }
     }
 }
 

@@ -8,6 +8,24 @@ use std::sync::Arc;
 
 #[tokio::main]
 async fn main() -> AppResult<()> {
+    // Set up global panic hook to log all panics to app.log
+    std::panic::set_hook(Box::new(|panic_info| {
+        let panic_msg = format!(
+            "[{}] PANIC: {:?}\nBacktrace: {:?}\n",
+            chrono::Utc::now().format("%Y-%m-%d %H:%M:%S"),
+            panic_info,
+            std::backtrace::Backtrace::capture()
+        );
+        
+        // Log to app.log
+        if let Err(write_err) = std::fs::write("logs/app.log", &panic_msg) {
+            eprintln!("Failed to write panic log: {}", write_err);
+        }
+        
+        // Also log to stderr
+        eprintln!("{}", panic_msg);
+    }));
+
     // Initialize logging
     env_logger::init();
     
