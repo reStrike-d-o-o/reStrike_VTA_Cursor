@@ -178,6 +178,12 @@ async fn main() -> AppResult<()> {
             tauri_commands::get_database_preview,
             tauri_commands::get_database_tables,
             tauri_commands::get_table_data,
+            tauri_commands::get_flag_mappings_data,
+            
+            // Flag management commands
+            tauri_commands::scan_and_populate_flags,
+            tauri_commands::get_flags_data,
+            tauri_commands::clear_flags_table,
             
             // Google Drive commands
             tauri_commands::drive_request_auth_url,
