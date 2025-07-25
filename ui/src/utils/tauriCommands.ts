@@ -664,7 +664,7 @@ export const executeTauriCommand = async <T = any>(
     
     // Check if the result is already in TauriCommandResponse format
     if (result && typeof result === 'object' && 'success' in result) {
-      // Backend already returned TauriCommandResponse format
+      // Backend already returned TauriCommandResponse format - preserve all properties
       return result as TauriCommandResponse<T>;
     } else {
       // Backend returned raw data, wrap it
