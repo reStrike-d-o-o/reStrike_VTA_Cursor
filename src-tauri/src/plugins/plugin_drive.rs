@@ -8,6 +8,7 @@ use std::{fs, path::PathBuf, sync::Arc, time::Duration};
 use tokio::sync::Mutex;
 use reqwest::Client;
 use zip::{ZipArchive, write::FileOptions};
+use dirs;
 
 use crate::types::{AppError, AppResult};
 

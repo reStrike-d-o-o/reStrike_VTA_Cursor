@@ -3,6 +3,7 @@ use std::sync::Arc;
 use tauri::{State, Emitter};
 use crate::core::app::App;
 use crate::logging::archival::{AutoArchiveConfig, ArchiveSchedule};
+use dirs;
 
 
 
@@ -2037,6 +2038,25 @@ pub async fn restore_from_json_backup(
 }
 
 #[tauri::command]
+pub async fn restore_from_backup(
+    app: State<'_, Arc<App>>,
+    backup_path: String
+) -> Result<serde_json::Value, String> {
+    log::info!("Restoring from backup: {}", backup_path);
+    
+    match app.database_plugin().restore_from_json_backup(&backup_path).await {
+        Ok(_) => Ok(serde_json::json!({
+            "success": true,
+            "message": "Backup restored successfully"
+        })),
+        Err(e) => Ok(serde_json::json!({
+            "success": false,
+            "error": e.to_string()
+        }))
+    }
+}
+
+#[tauri::command]
 pub async fn get_migration_status(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
     log::info!("Getting migration status");
     
@@ -2303,13 +2323,16 @@ pub async fn list_backup_files() -> Result<Vec<BackupFileInfo>, String> {
         None => std::path::PathBuf::from("backups"),
     };
     
+    log::info!("=== LIST_BACKUP_FILES START ===");
+    log::info!("Looking for backup files in: {}", backup_dir.display());
+    
     let mut backup_files = Vec::new();
     
     if let Ok(entries) = std::fs::read_dir(&backup_dir) {
         for entry in entries {
             if let Ok(entry) = entry {
                 let path = entry.path();
-                if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("json") {
+                if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("zip") {
                     if let Ok(metadata) = entry.metadata() {
                         if let Ok(modified) = metadata.modified() {
                             let modified_time: chrono::DateTime<chrono::Local> = chrono::DateTime::from(modified);
@@ -2359,7 +2382,7 @@ pub async fn drive_list_files() -> Result<serde_json::Value, String> {
 #[tauri::command]
 pub async fn drive_upload_backup_archive() -> Result<serde_json::Value, String> {
     log::info!("=== DRIVE_UPLOAD_BACKUP_ARCHIVE COMMAND START ===");
-    log::info!("Uploading backup archive to Google Drive");
+    log::info!("Creating and uploading backup archive to Google Drive");
     
     // Log error to file immediately
     let log_error_to_file = |error_msg: &str| {
@@ -2373,34 +2396,8 @@ pub async fn drive_upload_backup_archive() -> Result<serde_json::Value, String> 
         }
     };
     
-    // Step 1: Get list of backup files
-    log::info!("Step 1: Getting list of backup files...");
-    let backup_files: Vec<String> = match list_backup_files().await {
-        Ok(files) => {
-            log::info!("Found {} backup files", files.len());
-            files.into_iter().map(|f| f.path).collect()
-        },
-        Err(e) => {
-            let error_msg = format!("Failed to list backup files: {}", e);
-            log::error!("{}", error_msg);
-            log_error_to_file(&error_msg);
-            return Ok(serde_json::json!({
-                "success": false,
-                "error": error_msg
-            }))
-        }
-    };
-    
-    if backup_files.is_empty() {
-        log::warn!("No backup files found to upload");
-        return Ok(serde_json::json!({
-            "success": false,
-            "error": "No backup files found to upload"
-        }));
-    }
-    
-    // Step 2: Call drive plugin upload method
-    log::info!("Step 2: Calling drive_plugin().upload_backup_archive()...");
+    // Step 1: Call drive plugin upload method (which creates and uploads the archive)
+    log::info!("Step 1: Calling drive_plugin().upload_backup_archive()...");
     match crate::plugins::drive_plugin().upload_backup_archive().await {
         Ok(message) => {
             log::info!("=== DRIVE_UPLOAD_BACKUP_ARCHIVE COMMAND SUCCESS ===");
