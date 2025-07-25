@@ -43,6 +43,7 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
   const [statistics, setStatistics] = useState<FlagStatistics>({ total: 0, recognized: 0, pending: 0, failed: 0 });
   const [useDatabase, setUseDatabase] = useState(true);
   const [flagMappingsCount, setFlagMappingsCount] = useState(0);
+  const [pssCodeInput, setPssCodeInput] = useState('');
 
   // Load flags on component mount
   useEffect(() => {
@@ -64,11 +65,18 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
     }
   }, [searchTerm, flags]);
 
+  // Update PSS code input when selected flag changes
+  useEffect(() => {
+    if (selectedFlag) {
+      setPssCodeInput(selectedFlag.pssCode || '');
+    }
+  }, [selectedFlag]);
+
   const loadFlagMappings = async () => {
     if (!useDatabase || !window.__TAURI__) return;
 
     try {
-      const result = await window.__TAURI__.invoke('get_flag_mappings_data');
+      const result = await window.__TAURI__.core.invoke('get_flag_mappings_data');
       if (result.success) {
         setFlagMappingsCount(result.count || 0);
       }
@@ -84,7 +92,7 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
     try {
       if (useDatabase && window.__TAURI__) {
         // Load flags from database
-        const result = await window.__TAURI__.invoke('get_flags_data');
+        const result = await window.__TAURI__.core.invoke('get_flags_data');
         
         if (result.success) {
           // Convert database flags to FlagInfo format
@@ -145,7 +153,7 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
     setSuccess('');
 
     try {
-      const result = await window.__TAURI__.invoke('scan_and_populate_flags');
+      const result = await window.__TAURI__.core.invoke('scan_and_populate_flags');
       
       if (result.success) {
         setSuccess(`Successfully scanned and populated flags! Processed: ${result.processed_count}, Skipped: ${result.skipped_count}`);
@@ -180,7 +188,7 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
     setError('');
 
     try {
-      const result = await window.__TAURI__.invoke('clear_flags_table');
+      const result = await window.__TAURI__.core.invoke('clear_flags_table');
       
       if (result.success) {
         setSuccess(`Successfully cleared flags database! Deleted: ${result.deleted_count} entries`);
@@ -510,7 +518,8 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
                     type="text"
                     placeholder="New PSS code..."
                     className="flex-1"
-                    defaultValue={selectedFlag.pssCode}
+                    value={pssCodeInput}
+                    onChange={(e) => setPssCodeInput(e.target.value)}
                     onKeyPress={(e) => {
                       if (e.key === 'Enter') {
                         const target = e.target as HTMLInputElement;
