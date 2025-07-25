@@ -135,6 +135,13 @@ _Last updated: 2025-01-28_
 - **Flag Integration**: All systems use flags from `ui/public/assets/flags/`
 - **PSS Code Mapping**: Simplified system where PSS codes = IOC codes
 
+### **Table Design Rules**
+- **Sticky Headers**: All scrollable tables (with `max-h-*` and `overflow-y-auto`) MUST have sticky headers
+- **Header Classes**: Use `sticky top-0 z-10` on `<thead>` elements for fixed headers when scrolling
+- **Consistent Styling**: All tables use `bg-[#101820]` for header background and `text-gray-200` for text
+- **Container Structure**: Use `max-h-64 overflow-y-auto border border-gray-700 rounded` for scrollable table containers
+- **Row Hover**: Use `hover:bg-blue-900 transition-colors` for table row hover effects
+
 ## 🚀 Recent Major Updates (2025-01-28)
 - **Tab System Infrastructure**: Reusable Tab and TabGroup components with flat styling
 - **OBS Drawer Organization**: WebSocket and Integration tabs with consistent design

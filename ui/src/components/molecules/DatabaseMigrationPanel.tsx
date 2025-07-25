@@ -303,41 +303,39 @@ const DatabaseMigrationPanel: React.FC = () => {
                 <p className="text-sm text-gray-400">Rows: {tableData.row_count}</p>
               </div>
 
-              <div className="w-full flex justify-center">
-                <div className="overflow-x-auto max-w-screen-lg w-full">
-                  <table className="min-w-full text-left text-sm text-gray-200">
-                    <thead className="bg-[#101820]">
-                      <tr>
+              <div className="max-h-64 overflow-y-auto border border-gray-700 rounded">
+                <table className="min-w-full text-left text-sm text-gray-200">
+                  <thead className="bg-[#101820] sticky top-0 z-10">
+                    <tr>
+                      {(tableData.columns || []).map(column => (
+                        <th key={column.name} className="px-3 py-2 font-semibold max-w-xs truncate">
+                          {column.name}
+                          {column.primary_key && <span className="text-blue-400 ml-1">🔑</span>}
+                          {column.not_null && <span className="text-red-400 ml-1">*</span>}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(tableData.rows || []).map((row, index) => (
+                      <tr key={index} className="hover:bg-blue-900 transition-colors">
                         {(tableData.columns || []).map(column => (
-                          <th key={column.name} className="px-3 py-2 font-semibold max-w-xs truncate">
-                            {column.name}
-                            {column.primary_key && <span className="text-blue-400 ml-1">🔑</span>}
-                            {column.not_null && <span className="text-red-400 ml-1">*</span>}
-                          </th>
+                          <td key={column.name} className="px-3 py-2 whitespace-nowrap max-w-xs truncate">
+                            {row[column.name] !== null && row[column.name] !== undefined 
+                              ? String(row[column.name]) 
+                              : <span className="text-gray-500">null</span>
+                            }
+                          </td>
                         ))}
                       </tr>
-                    </thead>
-                    <tbody>
-                      {(tableData.rows || []).slice(0, 10).map((row, index) => (
-                        <tr key={index} className="hover:bg-blue-900 transition-colors">
-                          {(tableData.columns || []).map(column => (
-                            <td key={column.name} className="px-3 py-2 whitespace-nowrap max-w-xs truncate">
-                              {row[column.name] !== null && row[column.name] !== undefined 
-                                ? String(row[column.name]) 
-                                : <span className="text-gray-500">null</span>
-                              }
-                            </td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  {tableData.rows && tableData.rows.length > 10 && (
-                    <p className="text-xs text-gray-400 mt-2">
-                      Showing first 10 rows of {tableData.rows.length} total rows
-                    </p>
-                  )}
-                </div>
+                    ))}
+                  </tbody>
+                </table>
+                {tableData.rows && tableData.rows.length > 0 && (
+                  <p className="text-xs text-gray-400 mt-2 px-3">
+                    Showing all {tableData.rows.length} rows
+                  </p>
+                )}
               </div>
             </div>
           )}
