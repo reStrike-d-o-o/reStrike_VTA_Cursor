@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import SettingsDrawerTabs from '../molecules/SettingsDrawerTabs';
 import LogDownloadList from '../molecules/LogDownloadList';
+import LogArchiveManager from '../molecules/LogArchiveManager';
 import LiveDataPanel from '../molecules/LiveDataPanel';
 import WebSocketManager from '../molecules/WebSocketManager';
 import { CpuMonitoringSection } from '../molecules/CpuMonitoringSection';
@@ -267,6 +268,9 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
                 <div className="flex flex-row gap-6">
                   <div className="flex-[2] min-w-[320px]">
                     <LogDownloadList />
+                  </div>
+                  <div className="flex-[2] min-w-[320px]">
+                    <LogArchiveManager />
                   </div>
                 </div>
                 <div className="space-y-6">

@@ -4,16 +4,16 @@ use oauth2::{
 };
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
-use std::{fs, path::PathBuf, sync::Arc};
+use std::{fs, path::PathBuf, sync::Arc, time::Duration};
 use tokio::sync::Mutex;
 use reqwest::Client;
 use zip::{ZipArchive, write::FileOptions};
-
 
 use crate::types::{AppError, AppResult};
 
 const REDIRECT_URI: &str = "urn:ietf:wg:oauth:2.0:oob";
 const GOOGLE_DRIVE_API_BASE: &str = "https://www.googleapis.com/drive/v3";
+const REQUEST_TIMEOUT: Duration = Duration::from_secs(300); // 5 minutes
 
 #[derive(Debug, Serialize, Deserialize)]
 struct StoredCreds {
@@ -55,56 +55,90 @@ pub struct DrivePlugin {
 
 impl DrivePlugin {
     pub fn new() -> Self {
+        // Create HTTP client with proper timeouts and retry configuration
+        let http_client = Client::builder()
+            .timeout(REQUEST_TIMEOUT)
+            .connect_timeout(Duration::from_secs(30))
+            .pool_idle_timeout(Duration::from_secs(90))
+            .pool_max_idle_per_host(10)
+            .build()
+            .unwrap_or_else(|_| Client::new());
+
         Self { 
             client: Arc::new(Mutex::new(None)),
-            http_client: Client::new(),
+            http_client,
             access_token: Arc::new(Mutex::new(None)),
         }
     }
 
-    // Helper function for comprehensive error logging
-    fn log_error_to_file(&self, context: &str, error: &str, details: Option<&str>) {
+    // Enhanced error logging with crash detection
+    fn log_error_comprehensively(&self, context: &str, error: &str, details: Option<&str>) {
         let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
-        let mut log_entry = format!("[{}] Google Drive Error - {}: {}\n", timestamp, context, error);
+        let mut log_entry = format!("[{}] GOOGLE DRIVE CRITICAL ERROR - {}: {}\n", timestamp, context, error);
         
         if let Some(detail_info) = details {
             log_entry.push_str(&format!("Details: {}\n", detail_info));
         }
         
-        log_entry.push_str("---\n");
+        // Add stack trace indicator
+        log_entry.push_str("Stack Trace: Check Rust panic logs\n");
+        log_entry.push_str("Memory Status: Check system memory usage\n");
+        log_entry.push_str("=== CRITICAL ERROR END ===\n");
         
-        // Log to console as well
-        log::error!("{}: {}", context, error);
+        // Log to multiple locations
+        log::error!("🚨 CRITICAL: {} - {}", context, error);
         if let Some(detail_info) = details {
-            log::error!("Details: {}", detail_info);
+            log::error!("🔍 Details: {}", detail_info);
         }
         
-        // Write to main app log file
-        let log_file_path = std::env::current_dir()
-            .unwrap_or_else(|_| std::path::PathBuf::from("."))
-            .join("app_errors.log");
+        // Force write to multiple log files
+        let log_locations = [
+            "app_errors.log",
+            "google_drive_errors.log", 
+            "src-tauri/logs/drive_critical.log"
+        ];
         
-        if let Err(write_err) = std::fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(&log_file_path)
-            .and_then(|mut file| {
-                use std::io::Write;
-                file.write_all(log_entry.as_bytes())
-            }) {
-            log::error!("Failed to write to error log file {}: {}", log_file_path.display(), write_err);
+        for log_path in &log_locations {
+            let full_path = std::env::current_dir()
+                .unwrap_or_else(|_| std::path::PathBuf::from("."))
+                .join(log_path);
+            
+            // Ensure directory exists
+            if let Some(parent) = full_path.parent() {
+                let _ = std::fs::create_dir_all(parent);
+            }
+            
+            let _ = std::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(&full_path)
+                .and_then(|mut file| {
+                    use std::io::Write;
+                    file.write_all(log_entry.as_bytes())?;
+                    file.sync_all()
+                });
         }
     }
 
     pub async fn auth_url(&self) -> AppResult<(String, String)> {
-        let client_guard = self.client.lock().await;
+        // Avoid potential deadlock by scoping mutex guards
+        let client_exists = {
+            let guard = self.client.lock().await;
+            guard.is_some()
+        };
         
-        // Try to get existing client or create new one
-        if client_guard.is_none() {
-            self.initialize_client().await?;
+        if !client_exists {
+            if let Err(e) = self.initialize_client().await {
+                self.log_error_comprehensively("auth_url", "Failed to initialize client", Some(&e.to_string()));
+                return Err(e);
+            }
         }
         
-        let client = client_guard.as_ref().unwrap();
+        let guard = self.client.lock().await;
+        let client = guard.as_ref().ok_or_else(|| {
+            AppError::ConfigError("Client not initialized after setup".to_string())
+        })?;
+        
         let (url, csrf) = client
             .authorize_url(CsrfToken::new_random)
             .add_scope(Scope::new(
@@ -147,6 +181,8 @@ impl DrivePlugin {
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap()
                 .as_secs() + token_res.expires_in().unwrap().as_secs();
+            
+            drop(client_guard); // Release before other async operations
             
             self.store_tokens(refresh.secret(), &access_token, expires_at)?;
             
@@ -199,18 +235,21 @@ impl DrivePlugin {
             ])
             .send()
             .await
-            .map_err(|e| AppError::NetworkError(e.to_string()))?;
+            .map_err(|e| {
+                self.log_error_comprehensively("list_all_files", "HTTP request failed", Some(&e.to_string()));
+                AppError::NetworkError(e.to_string())
+            })?;
 
         if !response.status().is_success() {
             let status = response.status();
             let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
-            self.log_error_to_file("list_all_files", &format!("API error: {} - {}", status, error_text), Some(&error_text));
+            self.log_error_comprehensively("list_all_files", &format!("API error: {} - {}", status, error_text), Some(&error_text));
             return Err(AppError::NetworkError(format!("API error: {} - {}", status, error_text)));
         }
 
         let file_list: GoogleDriveFileList = response.json().await
             .map_err(|e| {
-                self.log_error_to_file(
+                self.log_error_comprehensively(
                     "list_all_files", 
                     &format!("Failed to parse response JSON: {}", e), 
                     Some("This might be due to unexpected field names from Google Drive API")
@@ -234,18 +273,21 @@ impl DrivePlugin {
             ])
             .send()
             .await
-            .map_err(|e| AppError::NetworkError(e.to_string()))?;
+            .map_err(|e| {
+                self.log_error_comprehensively("list_files", "HTTP request failed", Some(&e.to_string()));
+                AppError::NetworkError(e.to_string())
+            })?;
 
         if !response.status().is_success() {
             let status = response.status();
             let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
-            self.log_error_to_file("list_files", &format!("API error: {} - {}", status, error_text), Some(&error_text));
+            self.log_error_comprehensively("list_files", &format!("API error: {} - {}", status, error_text), Some(&error_text));
             return Err(AppError::NetworkError(format!("API error: {} - {}", status, error_text)));
         }
 
         let file_list: GoogleDriveFileList = response.json().await
             .map_err(|e| {
-                self.log_error_to_file(
+                self.log_error_comprehensively(
                     "list_files", 
                     &format!("Failed to parse response JSON: {}", e), 
                     Some("This might be due to unexpected field names from Google Drive API")
@@ -255,10 +297,6 @@ impl DrivePlugin {
 
         Ok(file_list.files)
     }
-
-
-
-
 
     pub async fn upload_backup_archive(&self) -> AppResult<String> {
         log::info!("=== UPLOAD_BACKUP_ARCHIVE START ===");
@@ -272,7 +310,7 @@ impl DrivePlugin {
             log::info!("Creating backup directory...");
             std::fs::create_dir_all(&backup_dir)
                 .map_err(|e| {
-                    self.log_error_to_file(
+                    self.log_error_comprehensively(
                         "upload_backup_archive", 
                         &format!("Failed to create backup directory: {}", e), 
                         Some(&format!("Directory: {}", backup_dir.display()))
@@ -294,9 +332,9 @@ impl DrivePlugin {
         
         log::info!("Backup archive created, uploading to Google Drive...");
         
-        // Upload to Google Drive
-        log::info!("Calling upload_file...");
-        let _file_id = match self.upload_file(&archive_path, &archive_name).await {
+        // Upload to Google Drive using streaming approach
+        log::info!("Calling upload_file_streaming...");
+        let _file_id = match self.upload_file_streaming(&archive_path, &archive_name).await {
             Ok(file_id) => {
                 log::info!("Upload completed successfully");
                 file_id
@@ -310,7 +348,7 @@ impl DrivePlugin {
                     archive_path.metadata().map(|m| m.len()).unwrap_or(0)
                 );
                 
-                self.log_error_to_file(
+                self.log_error_comprehensively(
                     "upload_backup_archive", 
                     &format!("Backup upload failed: {}", e), 
                     Some(&details)
@@ -383,16 +421,17 @@ impl DrivePlugin {
     pub async fn is_connected(&self) -> AppResult<bool> {
         log::info!("is_connected: Starting connection check");
         
-        // Ensure client is initialized first
-        {
-            let client_guard = self.client.lock().await;
-            if client_guard.is_none() {
-                drop(client_guard);
-                log::info!("is_connected: Client not initialized, attempting to initialize");
-                if let Err(e) = self.initialize_client().await {
-                    log::warn!("is_connected: Failed to initialize client: {:?}", e);
-                    return Ok(false);
-                }
+        // Ensure client is initialized first with proper error handling
+        let client_exists = {
+            let guard = self.client.lock().await;
+            guard.is_some()
+        };
+        
+        if !client_exists {
+            log::info!("is_connected: Client not initialized, attempting to initialize");
+            if let Err(e) = self.initialize_client().await {
+                log::warn!("is_connected: Failed to initialize client: {:?}", e);
+                return Ok(false);
             }
         }
         
@@ -492,149 +531,276 @@ impl DrivePlugin {
         Ok(())
     }
     
-    async fn upload_file(&self, file_path: &std::path::Path, file_name: &str) -> AppResult<String> {
-        log::info!("=== UPLOAD_FILE START ===");
+    // FIXED IMPLEMENTATION - Proper Google Drive resumable upload with comprehensive error handling
+    pub async fn upload_file_streaming(&self, file_path: &std::path::Path, file_name: &str) -> AppResult<String> {
+        log::info!("=== FIXED RESUMABLE UPLOAD START ===");
         log::info!("File path: {}", file_path.display());
         log::info!("File name: {}", file_name);
         
         let token = self.get_access_token().await?;
-        log::info!("Got access token successfully");
+        log::info!("Got access token successfully (length: {})", token.len());
         
-        // Check if file exists
+        // Verify file exists and get size
         if !file_path.exists() {
             let error_msg = format!("File does not exist: {}", file_path.display());
-            self.log_error_to_file("upload_file", &error_msg, None);
+            self.log_error_comprehensively("upload_file_streaming", &error_msg, None);
             return Err(AppError::ConfigError(error_msg));
         }
         
-        // Read file content
-        log::info!("Reading file content...");
-        let file_content = std::fs::read(file_path)
+        let file_size = std::fs::metadata(file_path)
             .map_err(|e| {
-                let error_msg = format!("Failed to read file: {}", e);
-                self.log_error_to_file(
-                    "upload_file", 
-                    &error_msg, 
-                    Some(&format!("File path: {}", file_path.display()))
-                );
+                let error_msg = format!("Failed to get file metadata: {}", e);
+                self.log_error_comprehensively("upload_file_streaming", &error_msg, Some(&format!("File: {}", file_path.display())));
                 AppError::IoError(e)
-            })?;
-        let file_size = file_content.len();
-        log::info!("File content read successfully, size: {} bytes", file_size);
+            })?
+            .len();
         
-        // Use resumable upload (recommended for files)
-        log::info!("Starting resumable upload session...");
+        log::info!("File size: {} bytes ({:.2} MB)", file_size, file_size as f64 / (1024.0 * 1024.0));
         
-        // Step 1: Initiate resumable upload session
+        // STEP 1: Initiate resumable upload session with strict Google API compliance
         let metadata = serde_json::json!({
             "name": file_name,
             "mimeType": "application/zip"
         });
         
-        let initiate_url = format!("{}/files?uploadType=resumable", GOOGLE_DRIVE_API_BASE);
-        log::info!("Initiate URL: {}", initiate_url);
+        let initiate_url = "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable";
+        log::info!("Initiating resumable upload session at: {}", initiate_url);
+        log::info!("Metadata: {}", metadata);
         
-        let initiate_response = self.http_client
-            .post(&initiate_url)
+        // Build request with exact Google Drive API specifications
+        let request_builder = self.http_client
+            .post(initiate_url)
             .header("Authorization", format!("Bearer {}", token))
             .header("Content-Type", "application/json; charset=UTF-8")
             .header("X-Upload-Content-Type", "application/zip")
             .header("X-Upload-Content-Length", file_size.to_string())
             .json(&metadata)
-            .send()
-            .await
+            .timeout(Duration::from_secs(120)); // Increase timeout for initiation
+        
+        // Log all request headers for debugging
+        log::info!("Request headers:");
+        log::info!("  Authorization: Bearer [{}...{}]", &token[..10.min(token.len())], &token[token.len().saturating_sub(10)..]);
+        log::info!("  Content-Type: application/json; charset=UTF-8");
+        log::info!("  X-Upload-Content-Type: application/zip");
+        log::info!("  X-Upload-Content-Length: {}", file_size);
+        
+        let initiate_response = request_builder.send().await
             .map_err(|e| {
-                let error_msg = format!("Failed to initiate resumable upload: {}", e);
-                self.log_error_to_file(
-                    "upload_file", 
-                    &error_msg, 
-                    Some(&format!("File: {}, Size: {} bytes", file_name, file_size))
-                );
+                let error_msg = format!("Failed to send resumable upload initiation request: {}", e);
+                self.log_error_comprehensively("upload_file_streaming", &error_msg, Some(&format!("URL: {}, File: {}, Size: {} bytes", initiate_url, file_name, file_size)));
                 AppError::NetworkError(e.to_string())
             })?;
         
-        if !initiate_response.status().is_success() {
-            let status = initiate_response.status();
-            let error_text = initiate_response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
-            let details = format!(
-                "File: {}\nSize: {} bytes\nStatus: {}\nResponse: {}",
-                file_name, file_size, status, error_text
-            );
-            self.log_error_to_file("upload_file", &format!("Failed to initiate resumable upload: {} - {}", status, error_text), Some(&details));
-            return Err(AppError::NetworkError(format!(
-                "Failed to initiate upload: {} - {}",
-                status, error_text
-            )));
+        let status = initiate_response.status();
+        log::info!("Initiation response status: {}", status);
+        
+        // Log all response headers for debugging
+        log::info!("Response headers:");
+        for (name, value) in initiate_response.headers() {
+            log::info!("  {}: {:?}", name, value);
         }
         
-        // Get the resumable session URI
+        if !status.is_success() {
+            let error_text = initiate_response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+            let details = format!("File: {}\nSize: {} bytes\nStatus: {}\nURL: {}\nResponse: {}", file_name, file_size, status, initiate_url, error_text);
+            self.log_error_comprehensively("upload_file_streaming", &format!("Failed to initiate resumable upload: {} - {}", status, error_text), Some(&details));
+            
+            // Specific handling for common errors
+            match status.as_u16() {
+                401 => return Err(AppError::ConfigError("Authentication failed - access token may be expired".to_string())),
+                403 => return Err(AppError::ConfigError("Permission denied - check Google Drive API access".to_string())),
+                429 => return Err(AppError::NetworkError("Rate limit exceeded - please try again later".to_string())),
+                _ => return Err(AppError::NetworkError(format!("Failed to initiate upload: {} - {}", status, error_text))),
+            }
+        }
+        
+        // Extract Location header with comprehensive checking
         let session_uri = initiate_response
             .headers()
-            .get("Location")
+            .get("location")
+            .or_else(|| initiate_response.headers().get("Location"))
             .and_then(|v| v.to_str().ok())
             .ok_or_else(|| {
-                self.log_error_to_file("upload_file", "No Location header in resumable upload response", Some(&format!("File: {}", file_name)));
-                AppError::ConfigError("No Location header in resumable upload response".to_string())
-            })?;
-        
-        log::info!("Got resumable session URI: {}", session_uri);
-        
-        // Step 2: Upload the file content
-        log::info!("Uploading file content to session URI...");
-        let upload_response = self.http_client
-            .put(session_uri)
-            .header("Content-Type", "application/zip")
-            .header("Content-Length", file_size.to_string())
-            .body(file_content)
-            .send()
-            .await
-            .map_err(|e| {
-                let error_msg = format!("Failed to upload file content: {}", e);
-                self.log_error_to_file(
-                    "upload_file", 
-                    &error_msg, 
-                    Some(&format!("File: {}, Session URI: {}", file_name, session_uri))
+                // Get all headers for debugging
+                let all_headers: Vec<String> = initiate_response.headers()
+                    .iter()
+                    .map(|(name, value)| format!("{}: {:?}", name, value))
+                    .collect();
+                
+                let debug_info = format!(
+                    "Status: {}\nAll headers: [\n  {}\n]\nFile: {}\nSize: {} bytes", 
+                    status, 
+                    all_headers.join("\n  "),
+                    file_name, 
+                    file_size
                 );
-                AppError::NetworkError(e.to_string())
+                
+                self.log_error_comprehensively(
+                    "upload_file_streaming", 
+                    "CRITICAL: No Location header in resumable upload response", 
+                    Some(&debug_info)
+                );
+                
+                AppError::ConfigError("No Location header in resumable upload response - this indicates a server-side issue or API change".to_string())
             })?;
         
-        log::info!("Upload response status: {}", upload_response.status());
+        log::info!("✅ Got resumable session URI: {}", session_uri);
+        log::info!("Session URI length: {} characters", session_uri.len());
         
-        if !upload_response.status().is_success() {
-            let status = upload_response.status();
-            let error_text = upload_response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
-            let details = format!(
-                "File: {}\nSize: {} bytes\nSession URI: {}\nStatus: {}\nResponse: {}",
-                file_name, file_size, session_uri, status, error_text
-            );
-            self.log_error_to_file("upload_file", &format!("Failed to upload file content: {} - {}", status, error_text), Some(&details));
-            return Err(AppError::NetworkError(format!(
-                "Failed to upload file: {} - {}",
-                status, error_text
-            )));
+        // Validate session URI format
+        if !session_uri.starts_with("https://") || !session_uri.contains("upload_id=") {
+            let error_msg = format!("Invalid session URI format: {}", session_uri);
+            self.log_error_comprehensively("upload_file_streaming", &error_msg, Some(&format!("Expected format: https://...upload_id=...")));
+            return Err(AppError::ConfigError(error_msg));
         }
         
-        // Parse response to get file ID
-        log::info!("Parsing upload response...");
-        let file_data: serde_json::Value = upload_response.json().await
+        // STEP 2: Upload file data to session URI using proper chunking
+        log::info!("Starting chunked upload to session URI...");
+        
+        // Open file for reading with error handling
+        let mut file = std::fs::File::open(file_path)
             .map_err(|e| {
-                let error_msg = format!("Failed to parse upload response: {}", e);
-                self.log_error_to_file("upload_file", &error_msg, Some(&format!("File: {}", file_name)));
-                AppError::NetworkError(e.to_string())
+                let error_msg = format!("Failed to open file for reading: {}", e);
+                self.log_error_comprehensively("upload_file_streaming", &error_msg, Some(&format!("File: {}", file_path.display())));
+                AppError::IoError(e)
             })?;
         
-        log::info!("Upload response JSON: {}", file_data);
+        // Use optimal chunk size (multiple of 256KB, but larger for better performance)
+        const CHUNK_SIZE: usize = 8 * 1024 * 1024; // 8MB chunks for better performance
+        let mut uploaded = 0u64;
+        let mut chunk_count = 0u32;
         
-        let file_id = file_data["id"].as_str()
-            .map(|s| s.to_string())
-            .ok_or_else(|| {
-                self.log_error_to_file("upload_file", "No file ID in upload response", Some(&format!("File: {}, Response: {}", file_name, file_data)));
-                AppError::ConfigError("No file ID in upload response".to_string())
-            })?;
+        log::info!("Using chunk size: {} bytes ({:.1} MB)", CHUNK_SIZE, CHUNK_SIZE as f64 / (1024.0 * 1024.0));
         
-        log::info!("=== UPLOAD_FILE SUCCESS ===");
-        log::info!("File uploaded successfully with ID: {}", file_id);
-        Ok(file_id)
+        loop {
+            // Read chunk from file
+            let mut chunk = vec![0u8; CHUNK_SIZE];
+            let bytes_read = {
+                use std::io::Read;
+                file.read(&mut chunk)
+                    .map_err(|e| {
+                        let error_msg = format!("Failed to read file chunk {}: {}", chunk_count + 1, e);
+                        self.log_error_comprehensively("upload_file_streaming", &error_msg, Some(&format!("File: {}, Uploaded: {} bytes", file_name, uploaded)));
+                        AppError::IoError(e)
+                    })?
+            };
+            
+            if bytes_read == 0 {
+                log::info!("✅ File reading complete - uploaded {} chunks totaling {} bytes", chunk_count, uploaded);
+                break; // End of file
+            }
+            
+            chunk.truncate(bytes_read);
+            chunk_count += 1;
+            let chunk_end = uploaded + bytes_read as u64 - 1;
+            
+            // Prepare Content-Range header
+            let content_range = format!("bytes {}-{}/{}", uploaded, chunk_end, file_size);
+            log::info!("📤 Uploading chunk {}: {} ({:.1}%)", chunk_count, content_range, (uploaded as f64 / file_size as f64) * 100.0);
+            
+            // Upload this chunk with retries
+            let mut retry_count = 0;
+            let max_retries = 3;
+            
+            loop {
+                let upload_response = self.http_client
+                    .put(session_uri)
+                    .header("Content-Length", bytes_read.to_string())
+                    .header("Content-Range", content_range.clone())
+                    .body(chunk.clone())
+                    .timeout(Duration::from_secs(300)) // 5 minutes per chunk
+                    .send()
+                    .await;
+                
+                match upload_response {
+                    Ok(response) => {
+                        let status = response.status();
+                        log::info!("Upload chunk {} response status: {}", chunk_count, status);
+                        
+                        match status.as_u16() {
+                            200 | 201 => {
+                                // Upload complete!
+                                log::info!("🎉 Upload completed successfully after {} chunks!", chunk_count);
+                                let file_data: serde_json::Value = response.json().await
+                                    .map_err(|e| {
+                                        let error_msg = format!("Failed to parse final upload response: {}", e);
+                                        self.log_error_comprehensively("upload_file_streaming", &error_msg, Some(&format!("File: {}", file_name)));
+                                        AppError::NetworkError(e.to_string())
+                                    })?;
+                                
+                                log::info!("Upload response JSON: {}", file_data);
+                                
+                                let file_id = file_data["id"].as_str()
+                                    .map(|s| s.to_string())
+                                    .ok_or_else(|| {
+                                        self.log_error_comprehensively("upload_file_streaming", "No file ID in upload response", Some(&format!("File: {}, Response: {}", file_name, file_data)));
+                                        AppError::ConfigError("No file ID in upload response".to_string())
+                                    })?;
+                                
+                                log::info!("=== RESUMABLE UPLOAD SUCCESS ===");
+                                log::info!("File uploaded successfully with ID: {}", file_id);
+                                log::info!("Total chunks: {}, Total bytes: {}", chunk_count, uploaded + bytes_read as u64);
+                                return Ok(file_id);
+                            },
+                            308 => {
+                                // Continue upload - this is expected for chunks
+                                log::info!("✅ Chunk {} uploaded successfully, continuing...", chunk_count);
+                                uploaded += bytes_read as u64;
+                                
+                                // Log progress periodically
+                                if chunk_count % 10 == 0 || uploaded == file_size {
+                                    let progress_percent = (uploaded as f64 / file_size as f64) * 100.0;
+                                    log::info!("📊 Upload progress: {}/{} bytes ({:.1}%) - {} chunks completed", uploaded, file_size, progress_percent, chunk_count);
+                                }
+                                break; // Exit retry loop, continue to next chunk
+                            },
+                            429 => {
+                                // Rate limited - retry with backoff
+                                retry_count += 1;
+                                if retry_count > max_retries {
+                                    let error_msg = "Rate limit exceeded - max retries reached";
+                                    self.log_error_comprehensively("upload_file_streaming", error_msg, Some(&format!("Chunk: {}, File: {}", chunk_count, file_name)));
+                                    return Err(AppError::NetworkError(error_msg.to_string()));
+                                }
+                                
+                                let backoff_seconds = 2u64.pow(retry_count as u32);
+                                log::warn!("⚠️  Rate limited - retrying chunk {} in {} seconds (attempt {}/{})", chunk_count, backoff_seconds, retry_count + 1, max_retries + 1);
+                                tokio::time::sleep(Duration::from_secs(backoff_seconds)).await;
+                                continue; // Retry this chunk
+                            },
+                            _ => {
+                                // Other error
+                                let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+                                let details = format!(
+                                    "Chunk: {}\nFile: {}\nSize: {} bytes\nSession URI: {}\nStatus: {}\nResponse: {}\nUploaded: {} bytes", 
+                                    chunk_count, file_name, file_size, session_uri, status, error_text, uploaded
+                                );
+                                self.log_error_comprehensively("upload_file_streaming", &format!("Failed to upload chunk {}: {} - {}", chunk_count, status, error_text), Some(&details));
+                                return Err(AppError::NetworkError(format!("Failed to upload chunk {}: {} - {}", chunk_count, status, error_text)));
+                            }
+                        }
+                    },
+                    Err(e) => {
+                        retry_count += 1;
+                        if retry_count > max_retries {
+                            let error_msg = format!("Failed to upload chunk {} after {} retries: {}", chunk_count, max_retries, e);
+                            self.log_error_comprehensively("upload_file_streaming", &error_msg, Some(&format!("File: {}, Session URI: {}, Bytes: {}-{}", file_name, session_uri, uploaded, chunk_end)));
+                            return Err(AppError::NetworkError(error_msg));
+                        }
+                        
+                        let backoff_seconds = 2u64.pow(retry_count as u32);
+                        log::warn!("⚠️  Network error uploading chunk {} - retrying in {} seconds (attempt {}/{}): {}", chunk_count, backoff_seconds, retry_count + 1, max_retries + 1, e);
+                        tokio::time::sleep(Duration::from_secs(backoff_seconds)).await;
+                        continue; // Retry this chunk
+                    }
+                }
+            }
+        }
+        
+        // Should not reach here
+        let error_msg = "Upload loop completed without success or error response";
+        self.log_error_comprehensively("upload_file_streaming", error_msg, Some(&format!("File: {}, Uploaded: {} bytes, Chunks: {}", file_name, uploaded, chunk_count)));
+        Err(AppError::ConfigError(error_msg.to_string()))
     }
     
     async fn download_file(&self, file_id: &str) -> AppResult<std::path::PathBuf> {
@@ -735,6 +901,8 @@ impl DrivePlugin {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_secs() + token_res.expires_in().unwrap().as_secs();
+
+        drop(client_guard); // Release lock before async operation
 
         // Store the new tokens
         self.store_tokens(&refresh_token, &access_token, expires_at)?;

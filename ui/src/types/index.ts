@@ -185,6 +185,8 @@ export interface TauriCommandResponse<T = any> {
   success: boolean;
   data?: T;
   error?: string;
+  message?: string;
+  updated_config?: any;
 }
 
 // ============================================================================
