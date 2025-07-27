@@ -1,7 +1,7 @@
 //! Main application class and lifecycle management
 
 use crate::types::{AppResult, AppState, AppView};
-use crate::plugins::{ObsPlugin, PlaybackPlugin, UdpPlugin, StorePlugin, LicensePlugin, CpuMonitorPlugin, ProtocolManager, DatabasePlugin, WebSocketPlugin};
+use crate::plugins::{ObsPlugin, PlaybackPlugin, UdpPlugin, StorePlugin, LicensePlugin, CpuMonitorPlugin, ProtocolManager, DatabasePlugin, WebSocketPlugin, FileServerPlugin};
 use crate::logging::LogManager;
 use crate::config::ConfigManager;
 use std::sync::Arc;
@@ -24,6 +24,7 @@ pub struct App {
     protocol_manager: ProtocolManager,
     database_plugin: DatabasePlugin,
     websocket_plugin: Arc<Mutex<WebSocketPlugin>>,
+    file_server_plugin: Arc<Mutex<FileServerPlugin>>,
     log_manager: Arc<Mutex<LogManager>>,
 }
 
@@ -91,6 +92,10 @@ impl App {
         let websocket_plugin = Arc::new(Mutex::new(WebSocketPlugin::new(3001))); // Port 3001 for WebSocket server
         log::info!("✅ WebSocket plugin initialized");
         
+        // Initialize File Server plugin for HTML overlays
+        let file_server_plugin = Arc::new(Mutex::new(FileServerPlugin::new(3002))); // Port 3002 for file server
+        log::info!("✅ File server plugin initialized");
+        
         // Start UDP event handler
         let log_manager_clone = log_manager.clone();
         tokio::spawn(async move {
@@ -115,6 +120,7 @@ impl App {
             protocol_manager,
             database_plugin,
             websocket_plugin,
+            file_server_plugin,
             log_manager,
         })
     }
@@ -142,6 +148,15 @@ impl App {
             println!("⚠️ Failed to start WebSocket server: {}", e);
         } else {
             println!("✅ WebSocket server started successfully");
+        }
+        
+        // Start File server for HTML overlays
+        println!("📁 Starting file server for HTML overlays...");
+        let mut file_server_plugin = self.file_server_plugin().lock().await;
+        if let Err(e) = file_server_plugin.start().await {
+            println!("⚠️ Failed to start file server: {}", e);
+        } else {
+            println!("✅ File server started successfully");
         }
         
         // Check if UDP should auto-start
@@ -225,6 +240,11 @@ impl App {
     /// Get WebSocket plugin reference
     pub fn websocket_plugin(&self) -> &Arc<Mutex<WebSocketPlugin>> {
         &self.websocket_plugin
+    }
+    
+    /// Get File Server plugin reference
+    pub fn file_server_plugin(&self) -> &Arc<Mutex<FileServerPlugin>> {
+        &self.file_server_plugin
     }
     
     /// Get log manager reference

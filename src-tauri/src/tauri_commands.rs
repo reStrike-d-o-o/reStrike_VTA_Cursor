@@ -3159,3 +3159,14 @@ pub async fn websocket_broadcast_pss_event(
         }))
     }
 }
+
+// File Server commands for HTML overlays
+#[tauri::command]
+pub async fn file_server_get_status(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+    log::info!("Getting file server status");
+    
+    let file_server_plugin = app.file_server_plugin().lock().await;
+    let status = file_server_plugin.get_status().await;
+    
+    Ok(status)
+}

@@ -210,6 +210,17 @@
        50% { opacity: 0.5; }
      }
      
+     @keyframes typewriterCursor {
+       0%, 50% { opacity: 1; }
+       51%, 100% { opacity: 0; }
+     }
+     
+     @keyframes typewriterGlow {
+       0% { filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.8)); }
+       50% { filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.9)); }
+       100% { filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.8)); }
+     }
+     
      .header-section {
        animation: fadeIn 0.8s ease-out;
      }
@@ -228,6 +239,14 @@
      
      .timer-warning {
        animation: timerBlink 1s infinite;
+     }
+     
+     .typewriter-active {
+       animation: typewriterGlow 0.8s ease-in-out;
+     }
+     
+     .typewriter-cursor {
+       animation: typewriterCursor 1s infinite;
      }
      
      /* Player name truncation rules */

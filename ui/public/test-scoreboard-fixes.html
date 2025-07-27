@@ -54,6 +54,7 @@
         <button onclick="testRoundEvent()">Test Round</button>
         <button onclick="testWinnerRoundsEvent()">Test Winner Rounds</button>
         <button onclick="testRawEvents()">Test Raw Events</button>
+        <button onclick="testTypewriterEffect()">Test Typewriter Effect</button>
     </div>
     
     <div class="test-section">
@@ -249,6 +250,73 @@
                     }
                 }, index * 1000);
             });
+        }
+
+        function testTypewriterEffect() {
+            // Send a fight loaded event to trigger typewriter effect
+            const fightLoadedEvent = {
+                type: 'fight_loaded',
+                description: 'Fight Loaded',
+                event: 'FightLoaded'
+            };
+            
+            // Also send some sample data to populate the scoreboard
+            const athletesEvent = {
+                type: 'athletes',
+                athlete1_long: 'PARK TAEJOON',
+                athlete1_country: 'KOR',
+                athlete1_iocCode: 'KOR',
+                athlete2_long: 'GASHIM MAGOMEDOV',
+                athlete2_country: 'RUS',
+                athlete2_iocCode: 'RUS'
+            };
+            
+            const matchConfigEvent = {
+                type: 'raw',
+                message: 'mch;9999;GOLD MEDAL CONTEST;W-67kg;0;#0000ff;#FFFFFF;#ff0000;#FFFFFF;null;Under 21;3;120;cntDown;18;5;'
+            };
+            
+            // Send events in sequence
+            setTimeout(() => {
+                if (window.testWebSocket && window.testWebSocket.readyState === WebSocket.OPEN) {
+                    window.testWebSocket.send(JSON.stringify({
+                        type: 'pss_event',
+                        data: fightLoadedEvent
+                    }));
+                    logResult('Sent fight loaded event via WebSocket', 'success');
+                } else {
+                    window.dispatchEvent(new CustomEvent('pss-event', { detail: fightLoadedEvent }));
+                    logResult('Sent fight loaded event via localStorage', 'info');
+                }
+            }, 0);
+            
+            setTimeout(() => {
+                if (window.testWebSocket && window.testWebSocket.readyState === WebSocket.OPEN) {
+                    window.testWebSocket.send(JSON.stringify({
+                        type: 'pss_event',
+                        data: athletesEvent
+                    }));
+                    logResult('Sent athletes event via WebSocket', 'success');
+                } else {
+                    window.dispatchEvent(new CustomEvent('pss-event', { detail: athletesEvent }));
+                    logResult('Sent athletes event via localStorage', 'info');
+                }
+            }, 1000);
+            
+            setTimeout(() => {
+                if (window.testWebSocket && window.testWebSocket.readyState === WebSocket.OPEN) {
+                    window.testWebSocket.send(JSON.stringify({
+                        type: 'pss_event',
+                        data: matchConfigEvent
+                    }));
+                    logResult('Sent match config event via WebSocket', 'success');
+                } else {
+                    window.dispatchEvent(new CustomEvent('pss-event', { detail: matchConfigEvent }));
+                    logResult('Sent match config event via localStorage', 'info');
+                }
+            }, 2000);
+            
+            logResult('Typewriter effect test sequence started', 'info');
         }
 
         function openScoreboardOverlay() {

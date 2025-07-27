@@ -3,12 +3,103 @@
  * Dynamic update functions for taekwondo competition overlays
  */
 
+// Typewriter Effect Utility Class
+class TypewriterEffect {
+  constructor(element, options = {}) {
+    this.element = element;
+    this.options = {
+      speed: options.speed || 50, // milliseconds per character
+      delay: options.delay || 0, // delay before starting
+      cursor: options.cursor || false, // show cursor during typing
+      cursorChar: options.cursorChar || '|',
+      onComplete: options.onComplete || null,
+      ...options
+    };
+    this.isTyping = false;
+    this.originalText = '';
+  }
+
+  async typeText(text) {
+    if (this.isTyping) {
+      // If already typing, stop and start new text
+      this.stop();
+    }
+
+    this.isTyping = true;
+    this.originalText = text;
+    
+    // Add typewriter-active class for glow effect
+    this.element.classList.add('typewriter-active');
+    
+    // Clear the element
+    this.element.textContent = '';
+    
+    // Add cursor if enabled
+    if (this.options.cursor) {
+      this.element.textContent = this.options.cursorChar;
+      this.element.classList.add('typewriter-cursor');
+    }
+
+    // Wait for delay
+    if (this.options.delay > 0) {
+      await this.sleep(this.options.delay);
+    }
+
+    // Type each character
+    for (let i = 0; i < text.length; i++) {
+      if (!this.isTyping) break; // Stop if interrupted
+      
+      // Remove cursor, add character, then add cursor back
+      if (this.options.cursor) {
+        this.element.textContent = text.substring(0, i + 1) + this.options.cursorChar;
+      } else {
+        this.element.textContent = text.substring(0, i + 1);
+      }
+      
+      await this.sleep(this.options.speed);
+    }
+
+    // Remove cursor when done
+    if (this.options.cursor) {
+      this.element.textContent = text;
+      this.element.classList.remove('typewriter-cursor');
+    }
+
+    this.isTyping = false;
+    
+    // Remove typewriter-active class after a short delay
+    setTimeout(() => {
+      this.element.classList.remove('typewriter-active');
+    }, 500);
+    
+    // Call completion callback
+    if (this.options.onComplete) {
+      this.options.onComplete();
+    }
+  }
+
+  stop() {
+    this.isTyping = false;
+    // Restore original text if interrupted
+    if (this.originalText) {
+      this.element.textContent = this.originalText;
+    }
+    // Clean up CSS classes
+    this.element.classList.remove('typewriter-active', 'typewriter-cursor');
+  }
+
+  sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+}
+
 // Scoreboard Overlay Management Class
 class ScoreboardOverlay {
   constructor(svgElement) {
     this.svg = svgElement;
     this.currentTheme = 'default';
     this.transparency = 1.0;
+    this.typewriterInstances = new Map(); // Store typewriter instances
     this.initialize();
   }
 
@@ -20,14 +111,31 @@ class ScoreboardOverlay {
     this.applyTheme(this.currentTheme);
   }
 
-  // Update player names
+  // Get or create typewriter instance for an element
+  getTypewriter(elementId, options = {}) {
+    if (!this.typewriterInstances.has(elementId)) {
+      const element = this.svg.getElementById(elementId);
+      if (element) {
+        const typewriter = new TypewriterEffect(element, options);
+        this.typewriterInstances.set(elementId, typewriter);
+      }
+    }
+    return this.typewriterInstances.get(elementId);
+  }
+
+  // Update player names with typewriter effect
   updatePlayerName(player, name) {
     // Map player colors to SVG element IDs
     const elementId = player === 'blue' ? 'player1Name' : 'player2Name';
-    const nameElement = this.svg.getElementById(elementId);
-    if (nameElement) {
-      nameElement.textContent = name;
-      console.log(`✅ Updated ${player} player name: ${name}`);
+    const typewriter = this.getTypewriter(elementId, {
+      speed: 30, // Faster for names
+      cursor: true,
+      cursorChar: '|'
+    });
+    
+    if (typewriter) {
+      typewriter.typeText(name);
+      console.log(`✅ Updated ${player} player name with typewriter effect: ${name}`);
     } else {
       console.warn(`⚠️ Could not find ${elementId} element`);
     }
@@ -127,23 +235,33 @@ class ScoreboardOverlay {
     }
   }
 
-  // Update match category
+  // Update match category with typewriter effect
   updateMatchCategory(category) {
-    const categoryElement = this.svg.getElementById('matchCategory');
-    if (categoryElement) {
-      categoryElement.textContent = category;
-      console.log(`✅ Updated match category: ${category}`);
+    const typewriter = this.getTypewriter('matchCategory', {
+      speed: 40,
+      cursor: true,
+      cursorChar: '|'
+    });
+    
+    if (typewriter) {
+      typewriter.typeText(category);
+      console.log(`✅ Updated match category with typewriter effect: ${category}`);
     } else {
       console.warn(`⚠️ Could not find matchCategory element`);
     }
   }
 
-  // Update match type (weight class)
+  // Update match type (weight class) with typewriter effect
   updateMatchType(type) {
-    const typeElement = this.svg.getElementById('matchNumber');
-    if (typeElement) {
-      typeElement.textContent = type;
-      console.log(`✅ Updated match number: ${type}`);
+    const typewriter = this.getTypewriter('matchNumber', {
+      speed: 35,
+      cursor: true,
+      cursorChar: '|'
+    });
+    
+    if (typewriter) {
+      typewriter.typeText(type);
+      console.log(`✅ Updated match number with typewriter effect: ${type}`);
     } else {
       console.warn(`⚠️ Could not find matchNumber element`);
     }
@@ -230,6 +348,13 @@ class ScoreboardOverlay {
     if (section) {
       section.classList.remove(animationClass);
     }
+  }
+
+  // Stop all typewriter effects
+  stopAllTypewriters() {
+    this.typewriterInstances.forEach(typewriter => {
+      typewriter.stop();
+    });
   }
 }
 

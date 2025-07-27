@@ -323,6 +323,59 @@
         function handleFightLoadedEvent(event) {
             console.log('🥊 Fight loaded event:', event);
             updateConnectionStatus(true);
+            
+            // Trigger typewriter effect for new match
+            triggerTypewriterEffect();
+        }
+        
+        // Trigger typewriter effect for new match data
+        function triggerTypewriterEffect() {
+            console.log('🎬 Triggering typewriter effect for new match...');
+            
+            // Add a small delay to ensure all data is loaded
+            setTimeout(() => {
+                // Get current text content and retrigger typewriter effect
+                const player1Name = scoreboardInstance.svg.getElementById('player1Name');
+                const player2Name = scoreboardInstance.svg.getElementById('player2Name');
+                const matchCategory = scoreboardInstance.svg.getElementById('matchCategory');
+                const matchNumber = scoreboardInstance.svg.getElementById('matchNumber');
+                
+                if (player1Name && player1Name.textContent.trim()) {
+                    const typewriter = scoreboardInstance.getTypewriter('player1Name', {
+                        speed: 30,
+                        cursor: true,
+                        cursorChar: '|'
+                    });
+                    typewriter.typeText(player1Name.textContent);
+                }
+                
+                if (player2Name && player2Name.textContent.trim()) {
+                    const typewriter = scoreboardInstance.getTypewriter('player2Name', {
+                        speed: 30,
+                        cursor: true,
+                        cursorChar: '|'
+                    });
+                    typewriter.typeText(player2Name.textContent);
+                }
+                
+                if (matchCategory && matchCategory.textContent.trim()) {
+                    const typewriter = scoreboardInstance.getTypewriter('matchCategory', {
+                        speed: 40,
+                        cursor: true,
+                        cursorChar: '|'
+                    });
+                    typewriter.typeText(matchCategory.textContent);
+                }
+                
+                if (matchNumber && matchNumber.textContent.trim()) {
+                    const typewriter = scoreboardInstance.getTypewriter('matchNumber', {
+                        speed: 35,
+                        cursor: true,
+                        cursorChar: '|'
+                    });
+                    typewriter.typeText(matchNumber.textContent);
+                }
+            }, 500);
         }
         
         // Handle warnings event
