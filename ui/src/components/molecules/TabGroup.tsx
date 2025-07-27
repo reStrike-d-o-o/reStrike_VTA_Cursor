@@ -29,7 +29,7 @@ export const TabGroup: React.FC<TabGroupProps> = ({
   return (
     <div className={`${className}`}>
       {/* Tab Navigation */}
-      <div className="flex border-b border-gray-800 mb-6">
+      <div className="flex border-b border-gray-800 mb-6 overflow-x-auto min-w-full">
         {tabs.map((tab) => (
           <Tab
             key={tab.id}
@@ -38,6 +38,7 @@ export const TabGroup: React.FC<TabGroupProps> = ({
             icon={tab.icon}
             isActive={activeTab === tab.id}
             onClick={() => onTabChange(tab.id)}
+            className="flex-shrink-0 min-w-0"
           />
         ))}
       </div>

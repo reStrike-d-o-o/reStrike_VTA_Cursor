@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1920" height="1080" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Gradients -->
+    <linearGradient id="tealGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#1B9DA3;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1B9DA3;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Enhanced glass effect gradient -->
+    <linearGradient id="glassGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:rgba(255,255,255,0.8);stop-opacity:1" />
+      <stop offset="25%" style="stop-color:rgba(255,255,255,0.4);stop-opacity:1" />
+      <stop offset="50%" style="stop-color:rgba(255,255,255,0.1);stop-opacity:1" />
+      <stop offset="75%" style="stop-color:rgba(255,255,255,0.3);stop-opacity:1" />
+      <stop offset="100%" style="stop-color:rgba(255,255,255,0.6);stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Glass highlight gradient for glossy effect -->
+    <linearGradient id="glassHighlight" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:rgba(255,255,255,0.9);stop-opacity:1" />
+      <stop offset="30%" style="stop-color:rgba(255,255,255,0.6);stop-opacity:1" />
+      <stop offset="70%" style="stop-color:rgba(255,255,255,0.2);stop-opacity:1" />
+      <stop offset="100%" style="stop-color:rgba(255,255,255,0.1);stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Enhanced 3D drop shadow filter -->
+    <filter id="dropShadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="4" dy="6" stdDeviation="8" flood-color="#000000" flood-opacity="0.4"/>
+      <feDropShadow dx="2" dy="3" stdDeviation="4" flood-color="#000000" flood-opacity="0.3"/>
+    </filter>
+    
+    <!-- Enhanced glass blur filter -->
+    <filter id="glassBlur" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="1"/>
+      <feColorMatrix type="matrix" values="1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 0.3 0"/>
+    </filter>
+    
+    <!-- Glass reflection filter -->
+    <filter id="glassReflection" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="0.5"/>
+      <feColorMatrix type="matrix" values="1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 0.4 0"/>
+    </filter>
+    
+    <!-- 3D emboss filter -->
+    <filter id="emboss3D" x="-20%" y="-20%" width="140%" height="140%">
+      <feConvolveMatrix order="3" kernelMatrix="0 -1 0 -1 5 -1 0 -1 0"/>
+      <feDropShadow dx="1" dy="1" stdDeviation="1" flood-color="#ffffff" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+  
+  <!-- Background overlay for better readability -->
+  <rect width="1920" height="1080" fill="rgba(0,0,0,0.3)" opacity="0"/>
+  
+  <!-- Main Previous Results Container -->
+  <g transform="translate(100, 200)">
+    
+    <!-- Header Section -->
+    <g id="headerSection" transform="translate(0, 0)">
+      <polygon points="0,0 1720,0 1720,80 0,80" fill="url(#tealGradient)" filter="url(#dropShadow)"/>
+      <polygon points="0,0 1720,0 1720,80 0,80" fill="url(#glassGradient)" opacity="0.6"/>
+      <polygon points="0,0 1720,0 1720,40 0,40" fill="url(#glassHighlight)" opacity="0.8" filter="url(#glassReflection)"/>
+      <text x="860" y="30" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="600" fill="white" id="playerName" filter="url(#emboss3D)">PARK TAEJOON</text>
+      <text x="860" y="55" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="18" font-weight="600" fill="white" id="matchHistory" filter="url(#emboss3D)">PREVIOUS MATCH RESULTS</text>
+    </g>
+    
+    <!-- Player Info Section -->
+    <g id="playerInfoSection" transform="translate(0, 100)">
+      <polygon points="0,0 1720,0 1720,120 0,120" fill="white" filter="url(#dropShadow)"/>
+      <polygon points="0,0 1720,0 1720,120 0,120" fill="url(#glassGradient)" opacity="0.5"/>
+      <polygon points="0,0 1720,0 1720,60 0,60" fill="url(#glassHighlight)" opacity="0.7" filter="url(#glassReflection)"/>
+      
+      <!-- Blue Color Mark -->
+      <rect x="20" y="20" width="8" height="80" fill="#0066CC" filter="url(#emboss3D)"/>
+      
+      <!-- Player Name -->
+      <text x="50" y="45" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="28" font-weight="600" fill="black" id="playerName2" filter="url(#emboss3D)">PARK TAEJOON</text>
+      <text x="50" y="65" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16" font-weight="normal" fill="black" id="playerSeed" filter="url(#emboss3D)">(5)</text>
+      
+      <!-- Flag -->
+      <image x="50" y="80" width="60" height="30" href="../flags/svg/KOR.svg" id="playerFlag" filter="url(#dropShadow)"/>
+      
+      <!-- Country Code -->
+      <text x="50" y="110" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="20" font-weight="600" fill="black" id="playerCountry" filter="url(#emboss3D)">KOR</text>
+      
+      <!-- Statistics -->
+      <text x="400" y="45" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="20" font-weight="600" fill="black" filter="url(#emboss3D)">WINS: <tspan id="totalWins">8</tspan></text>
+      <text x="400" y="65" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="20" font-weight="600" fill="black" filter="url(#emboss3D)">LOSSES: <tspan id="totalLosses">2</tspan></text>
+      <text x="400" y="85" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="20" font-weight="600" fill="black" filter="url(#emboss3D)">WIN RATE: <tspan id="winRate">80%</tspan></text>
+    </g>
+    
+    <!-- Previous Matches Section -->
+    <g id="matchesSection" transform="translate(0, 240)">
+      <polygon points="0,0 1720,0 1720,300 0,300" fill="white" filter="url(#dropShadow)"/>
+      <polygon points="0,0 1720,0 1720,300 0,300" fill="url(#glassGradient)" opacity="0.5"/>
+      <polygon points="0,0 1720,0 1720,150 0,150" fill="url(#glassHighlight)" opacity="0.7" filter="url(#glassReflection)"/>
+      
+      <!-- Match 1 -->
+      <g id="match1" transform="translate(20, 20)">
+        <polygon points="0,0 540,0 540,80 0,80" fill="rgba(240,240,240,0.5)" filter="url(#dropShadow)"/>
+        <text x="20" y="25" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16" font-weight="600" fill="black" filter="url(#emboss3D)">Match #1</text>
+        <text x="20" y="45" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14" fill="black" filter="url(#emboss3D)">vs. GASHIM MAGOMEDOV (AZE)</text>
+        <text x="20" y="65" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="18" font-weight="600" fill="black" filter="url(#emboss3D)">Result: <tspan id="match1Result" fill="#10b981">WIN 2-0</tspan></text>
+      </g>
+      
+      <!-- Match 2 -->
+      <g id="match2" transform="translate(580, 20)">
+        <polygon points="0,0 540,0 540,80 0,80" fill="rgba(240,240,240,0.5)" filter="url(#dropShadow)"/>
+        <text x="20" y="25" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16" font-weight="600" fill="black" filter="url(#emboss3D)">Match #2</text>
+        <text x="20" y="45" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14" fill="black" filter="url(#emboss3D)">vs. CYRIAN RAVET (FRA)</text>
+        <text x="20" y="65" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="18" font-weight="600" fill="black" filter="url(#emboss3D)">Result: <tspan id="match2Result" fill="#10b981">WIN 2-1</tspan></text>
+      </g>
+      
+      <!-- Match 3 -->
+      <g id="match3" transform="translate(1140, 20)">
+        <polygon points="0,0 540,0 540,80 0,80" fill="rgba(240,240,240,0.5)" filter="url(#dropShadow)"/>
+        <text x="20" y="25" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16" font-weight="600" fill="black" filter="url(#emboss3D)">Match #3</text>
+        <text x="20" y="45" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14" fill="black" filter="url(#emboss3D)">vs. MOHAMED KHALIL (TUN)</text>
+        <text x="20" y="65" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="18" font-weight="600" fill="black" filter="url(#emboss3D)">Result: <tspan id="match3Result" fill="#ef4444">LOSS 1-2</tspan></text>
+      </g>
+      
+      <!-- Match 4 -->
+      <g id="match4" transform="translate(20, 120)">
+        <polygon points="0,0 540,0 540,80 0,80" fill="rgba(240,240,240,0.5)" filter="url(#dropShadow)"/>
+        <text x="20" y="25" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16" font-weight="600" fill="black" filter="url(#emboss3D)">Match #4</text>
+        <text x="20" y="45" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14" fill="black" filter="url(#emboss3D)">vs. ALEXANDER VOLKOV (RUS)</text>
+        <text x="20" y="65" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="18" font-weight="600" fill="black" filter="url(#emboss3D)">Result: <tspan id="match4Result" fill="#10b981">WIN 2-0</tspan></text>
+      </g>
+      
+      <!-- Match 5 -->
+      <g id="match5" transform="translate(580, 120)">
+        <polygon points="0,0 540,0 540,80 0,80" fill="rgba(240,240,240,0.5)" filter="url(#dropShadow)"/>
+        <text x="20" y="25" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16" font-weight="600" fill="black" filter="url(#emboss3D)">Match #5</text>
+        <text x="20" y="45" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14" fill="black" filter="url(#emboss3D)">vs. CARLOS MARTINEZ (ESP)</text>
+        <text x="20" y="65" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="18" font-weight="600" fill="black" filter="url(#emboss3D)">Result: <tspan id="match5Result" fill="#10b981">WIN 2-1</tspan></text>
+      </g>
+      
+      <!-- Match 6 -->
+      <g id="match6" transform="translate(1140, 120)">
+        <polygon points="0,0 540,0 540,80 0,80" fill="rgba(240,240,240,0.5)" filter="url(#dropShadow)"/>
+        <text x="20" y="25" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16" font-weight="600" fill="black" filter="url(#emboss3D)">Match #6</text>
+        <text x="20" y="45" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14" fill="black" filter="url(#emboss3D)">vs. DAVID CHEN (USA)</text>
+        <text x="20" y="65" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="18" font-weight="600" fill="black" filter="url(#emboss3D)">Result: <tspan id="match6Result" fill="#ef4444">LOSS 0-2</tspan></text>
+      </g>
+    </g>
+    
+    <!-- Footer Section -->
+    <g id="footerSection" transform="translate(0, 560)">
+      <polygon points="0,0 1720,0 1720,80 0,80" fill="url(#tealGradient)" filter="url(#dropShadow)"/>
+      <polygon points="0,0 1720,0 1720,80 0,80" fill="url(#glassGradient)" opacity="0.6"/>
+      <polygon points="0,0 1720,0 1720,40 0,40" fill="url(#glassHighlight)" opacity="0.8" filter="url(#glassReflection)"/>
+      <text x="860" y="30" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="600" fill="white" id="tournamentName" filter="url(#emboss3D)">OLYMPIC GAMES - TOKYO 2024</text>
+      <text x="860" y="55" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="18" font-weight="600" fill="white" id="weightClass" filter="url(#emboss3D)">MEN'S -58KG DIVISION</text>
+    </g>
+  </g>
+  
+  <!-- CSS for animations -->
+  <style>
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    @keyframes slideIn {
+      from { transform: translateX(-50px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    
+    .header-section {
+      animation: fadeIn 0.8s ease-out;
+    }
+    
+    .player-info-section {
+      animation: slideIn 0.6s ease-out;
+    }
+    
+    .matches-section {
+      animation: fadeIn 0.4s ease-out;
+    }
+    
+    .footer-section {
+      animation: fadeIn 0.4s ease-out;
+    }
+  </style>
+</svg> 

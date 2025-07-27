@@ -293,7 +293,7 @@ export function getFlagConfig(countryCode: string): FlagConfig {
  */
 export function getFlagUrl(countryCode: string): string {
   const config = getFlagConfig(countryCode);
-  return `/assets/flags/${config.countryCode}.png`;
+  return `/assets/flags/svg/${config.countryCode}.svg`;
 }
 
 /**

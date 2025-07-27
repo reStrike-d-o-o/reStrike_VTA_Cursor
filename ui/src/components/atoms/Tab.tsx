@@ -25,7 +25,7 @@ export const Tab: React.FC<TabProps> = ({
       id={id}
       onClick={onClick}
       className={`
-        flex items-center px-4 py-2 text-sm font-medium focus:outline-none transition-colors border-b-2
+        flex items-center px-4 py-2 text-sm font-medium focus:outline-none transition-colors border-b-2 whitespace-nowrap
         ${isActive 
           ? 'border-blue-500 text-blue-200 bg-[#181F26]' 
           : 'border-transparent text-gray-400 hover:text-blue-300'

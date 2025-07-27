@@ -1,0 +1,237 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1920" height="1080" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Gradients -->
+    <linearGradient id="tealGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#1B9DA3;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1B9DA3;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="goldGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#FFD700;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#FFD700;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="silverGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#C0C0C0;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#C0C0C0;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="bronzeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#CD7F32;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#CD7F32;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Enhanced glass effect gradient -->
+    <linearGradient id="glassGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:rgba(255,255,255,0.8);stop-opacity:1" />
+      <stop offset="25%" style="stop-color:rgba(255,255,255,0.4);stop-opacity:1" />
+      <stop offset="50%" style="stop-color:rgba(255,255,255,0.1);stop-opacity:1" />
+      <stop offset="75%" style="stop-color:rgba(255,255,255,0.3);stop-opacity:1" />
+      <stop offset="100%" style="stop-color:rgba(255,255,255,0.6);stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Glass highlight gradient for glossy effect -->
+    <linearGradient id="glassHighlight" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:rgba(255,255,255,0.9);stop-opacity:1" />
+      <stop offset="30%" style="stop-color:rgba(255,255,255,0.6);stop-opacity:1" />
+      <stop offset="70%" style="stop-color:rgba(255,255,255,0.2);stop-opacity:1" />
+      <stop offset="100%" style="stop-color:rgba(255,255,255,0.1);stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Enhanced 3D drop shadow filter -->
+    <filter id="dropShadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="4" dy="6" stdDeviation="8" flood-color="#000000" flood-opacity="0.4"/>
+      <feDropShadow dx="2" dy="3" stdDeviation="4" flood-color="#000000" flood-opacity="0.3"/>
+    </filter>
+    
+    <!-- Enhanced glass blur filter -->
+    <filter id="glassBlur" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="1"/>
+      <feColorMatrix type="matrix" values="1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 0.3 0"/>
+    </filter>
+    
+    <!-- Glass reflection filter -->
+    <filter id="glassReflection" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="0.5"/>
+      <feColorMatrix type="matrix" values="1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 0.4 0"/>
+    </filter>
+    
+    <!-- 3D emboss filter -->
+    <filter id="emboss3D" x="-20%" y="-20%" width="140%" height="140%">
+      <feConvolveMatrix order="3" kernelMatrix="0 -1 0 -1 5 -1 0 -1 0"/>
+      <feDropShadow dx="1" dy="1" stdDeviation="1" flood-color="#ffffff" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+  
+  <!-- Background overlay for better readability -->
+  <rect width="1920" height="1080" fill="rgba(0,0,0,0.3)" opacity="0"/>
+  
+  <!-- Main Victory Ceremony Container -->
+  <g transform="translate(100, 200)">
+    
+    <!-- Header Section -->
+    <g id="headerSection" transform="translate(0, 0)">
+      <polygon points="0,0 1720,0 1720,80 0,80" fill="url(#tealGradient)" filter="url(#dropShadow)"/>
+      <polygon points="0,0 1720,0 1720,80 0,80" fill="url(#glassGradient)" opacity="0.6"/>
+      <polygon points="0,0 1720,0 1720,40 0,40" fill="url(#glassHighlight)" opacity="0.8" filter="url(#glassReflection)"/>
+      <text x="860" y="30" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="600" fill="white" id="eventCategory" filter="url(#emboss3D)">MEN'S -58KG</text>
+      <text x="860" y="55" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="18" font-weight="600" fill="white" id="eventType" filter="url(#emboss3D)">VICTORY CEREMONY</text>
+    </g>
+    
+    <!-- Gold Medal Winner (Center, Highest) -->
+    <g id="goldSection" transform="translate(760, 100)">
+      <polygon points="0,0 200,0 200,300 0,300" fill="white" filter="url(#dropShadow)"/>
+      <polygon points="0,0 200,0 200,300 0,300" fill="url(#glassGradient)" opacity="0.5"/>
+      <polygon points="0,0 200,0 200,150 0,150" fill="url(#glassHighlight)" opacity="0.7" filter="url(#glassReflection)"/>
+      
+      <!-- Gold Color Mark -->
+      <rect x="20" y="20" width="8" height="260" fill="#FFD700" filter="url(#emboss3D)"/>
+      
+      <!-- Medal Icon -->
+      <circle cx="100" cy="60" r="30" fill="#FFD700" filter="url(#dropShadow)"/>
+      <text x="100" y="70" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="600" fill="white" filter="url(#emboss3D)">🥇</text>
+      
+      <!-- Country Code and Flag -->
+      <text x="100" y="120" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="20" font-weight="600" fill="black" id="goldPlayerCountry" filter="url(#emboss3D)">KOR</text>
+      <image x="60" y="130" width="80" height="50" href="../flags/svg/KOR.svg" id="goldPlayerFlag" filter="url(#dropShadow)"/>
+      
+      <!-- Player Name -->
+      <text x="100" y="200" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16" font-weight="600" fill="black" id="goldPlayerName" filter="url(#emboss3D)">PARK TAEJOON</text>
+      <text x="100" y="220" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="normal" fill="black" id="goldPlayerSeed" filter="url(#emboss3D)">(5)</text>
+      
+      <!-- Medal Text -->
+      <text x="100" y="250" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14" font-weight="600" fill="black" filter="url(#emboss3D)">GOLD MEDAL</text>
+      <text x="100" y="270" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="normal" fill="black" id="goldPlayerScore" filter="url(#emboss3D)">Final Score: 2-0</text>
+    </g>
+    
+    <!-- Silver Medal Winner (Left) -->
+    <g id="silverSection" transform="translate(500, 150)">
+      <polygon points="0,0 180,0 180,250 0,250" fill="white" filter="url(#dropShadow)"/>
+      <polygon points="0,0 180,0 180,250 0,250" fill="url(#glassGradient)" opacity="0.5"/>
+      <polygon points="0,0 180,0 180,125 0,125" fill="url(#glassHighlight)" opacity="0.7" filter="url(#glassReflection)"/>
+      
+      <!-- Silver Color Mark -->
+      <rect x="20" y="20" width="8" height="210" fill="#C0C0C0" filter="url(#emboss3D)"/>
+      
+      <!-- Medal Icon -->
+      <circle cx="90" cy="50" r="25" fill="#C0C0C0" filter="url(#dropShadow)"/>
+      <text x="90" y="60" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="20" font-weight="600" fill="white" filter="url(#emboss3D)">🥈</text>
+      
+      <!-- Country Code and Flag -->
+      <text x="90" y="100" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="18" font-weight="600" fill="black" id="silverPlayerCountry" filter="url(#emboss3D)">AZE</text>
+      <image x="55" y="110" width="70" height="40" href="../flags/svg/AZE.svg" id="silverPlayerFlag" filter="url(#dropShadow)"/>
+      
+      <!-- Player Name -->
+      <text x="90" y="165" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14" font-weight="600" fill="black" id="silverPlayerName" filter="url(#emboss3D)">GASHIM MAGOMEDOV</text>
+      <text x="90" y="180" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="normal" fill="black" id="silverPlayerSeed" filter="url(#emboss3D)">(10)</text>
+      
+      <!-- Medal Text -->
+      <text x="90" y="205" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="600" fill="black" filter="url(#emboss3D)">SILVER MEDAL</text>
+      <text x="90" y="220" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="normal" fill="black" id="silverPlayerScore" filter="url(#emboss3D)">Final Score: 0-2</text>
+    </g>
+    
+    <!-- Bronze Medal Winner 1 (Right) -->
+    <g id="bronze1Section" transform="translate(1040, 150)">
+      <polygon points="0,0 180,0 180,250 0,250" fill="white" filter="url(#dropShadow)"/>
+      <polygon points="0,0 180,0 180,250 0,250" fill="url(#glassGradient)" opacity="0.5"/>
+      <polygon points="0,0 180,0 180,125 0,125" fill="url(#glassHighlight)" opacity="0.7" filter="url(#glassReflection)"/>
+      
+      <!-- Bronze Color Mark -->
+      <rect x="20" y="20" width="8" height="210" fill="#CD7F32" filter="url(#emboss3D)"/>
+      
+      <!-- Medal Icon -->
+      <circle cx="90" cy="50" r="25" fill="#CD7F32" filter="url(#dropShadow)"/>
+      <text x="90" y="60" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="20" font-weight="600" fill="white" filter="url(#emboss3D)">🥉</text>
+      
+      <!-- Country Code and Flag -->
+      <text x="90" y="100" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="18" font-weight="600" fill="black" id="bronze1PlayerCountry" filter="url(#emboss3D)">FRA</text>
+      <image x="55" y="110" width="70" height="40" href="../flags/svg/FRA.svg" id="bronze1PlayerFlag" filter="url(#dropShadow)"/>
+      
+      <!-- Player Name -->
+      <text x="90" y="165" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14" font-weight="600" fill="black" id="bronze1PlayerName" filter="url(#emboss3D)">CYRIAN RAVET</text>
+      <text x="90" y="180" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="normal" fill="black" id="bronze1PlayerSeed" filter="url(#emboss3D)">(4)</text>
+      
+      <!-- Medal Text -->
+      <text x="90" y="205" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="600" fill="black" filter="url(#emboss3D)">BRONZE MEDAL</text>
+      <text x="90" y="220" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="normal" fill="black" id="bronze1PlayerScore" filter="url(#emboss3D)">Final Score: 2-1</text>
+    </g>
+    
+    <!-- Bronze Medal Winner 2 (Far Right) -->
+    <g id="bronze2Section" transform="translate(1240, 150)">
+      <polygon points="0,0 180,0 180,250 0,250" fill="white" filter="url(#dropShadow)"/>
+      <polygon points="0,0 180,0 180,250 0,250" fill="url(#glassGradient)" opacity="0.5"/>
+      <polygon points="0,0 180,0 180,125 0,125" fill="url(#glassHighlight)" opacity="0.7" filter="url(#glassReflection)"/>
+      
+      <!-- Bronze Color Mark -->
+      <rect x="20" y="20" width="8" height="210" fill="#CD7F32" filter="url(#emboss3D)"/>
+      
+      <!-- Medal Icon -->
+      <circle cx="90" cy="50" r="25" fill="#CD7F32" filter="url(#dropShadow)"/>
+      <text x="90" y="60" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="20" font-weight="600" fill="white" filter="url(#emboss3D)">🥉</text>
+      
+      <!-- Country Code and Flag -->
+      <text x="90" y="100" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="18" font-weight="600" fill="black" id="bronze2PlayerCountry" filter="url(#emboss3D)">TUN</text>
+      <image x="55" y="110" width="70" height="40" href="../flags/svg/TUN.svg" id="bronze2PlayerFlag" filter="url(#dropShadow)"/>
+      
+      <!-- Player Name -->
+      <text x="90" y="165" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14" font-weight="600" fill="black" id="bronze2PlayerName" filter="url(#emboss3D)">MOHAMED KHALIL</text>
+      <text x="90" y="180" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="normal" fill="black" id="bronze2PlayerSeed" filter="url(#emboss3D)">(1)</text>
+      
+      <!-- Medal Text -->
+      <text x="90" y="205" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="600" fill="black" filter="url(#emboss3D)">BRONZE MEDAL</text>
+      <text x="90" y="220" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="normal" fill="black" id="bronze2PlayerScore" filter="url(#emboss3D)">Final Score: 1-2</text>
+    </g>
+    
+    <!-- Footer Section -->
+    <g id="footerSection" transform="translate(0, 420)">
+      <polygon points="0,0 1720,0 1720,80 0,80" fill="url(#tealGradient)" filter="url(#dropShadow)"/>
+      <polygon points="0,0 1720,0 1720,80 0,80" fill="url(#glassGradient)" opacity="0.6"/>
+      <polygon points="0,0 1720,0 1720,40 0,40" fill="url(#glassHighlight)" opacity="0.8" filter="url(#glassReflection)"/>
+      <text x="860" y="30" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="600" fill="white" id="ceremonyTitle" filter="url(#emboss3D)">OLYMPIC GAMES - TOKYO 2024</text>
+      <text x="860" y="55" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="18" font-weight="600" fill="white" id="ceremonyDate" filter="url(#emboss3D)">July 25, 2024</text>
+    </g>
+  </g>
+  
+  <!-- CSS for animations -->
+  <style>
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    @keyframes winnerReveal {
+      from { transform: scale(0.8); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+    
+    @keyframes medalGlow {
+      0%, 100% { filter: brightness(1); }
+      50% { filter: brightness(1.3); }
+    }
+    
+    .header-section {
+      animation: fadeIn 0.8s ease-out;
+    }
+    
+    .gold-section {
+      animation: winnerReveal 1.5s ease-out;
+    }
+    
+    .silver-section {
+      animation: winnerReveal 1.5s ease-out 0.3s both;
+    }
+    
+    .bronze-section {
+      animation: winnerReveal 1.5s ease-out 0.6s both;
+    }
+    
+    .medal-glow {
+      animation: medalGlow 2s infinite;
+    }
+    
+    .footer-section {
+      animation: fadeIn 0.4s ease-out;
+    }
+  </style>
+</svg> 

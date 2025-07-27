@@ -9,6 +9,7 @@ import Icon from '../atoms/Icon';
 import TabGroup from '../molecules/TabGroup';
 import TabIcons from '../atoms/TabIcons';
 import FlagManagementPanel from './FlagManagementPanel';
+import ScoreboardManager from './ScoreboardManager';
 import { invoke as tauriInvoke } from '@tauri-apps/api/core';
 
 // Use the proper Tauri v2 invoke function with fallback
@@ -820,6 +821,11 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
     <FlagManagementPanel />
   );
 
+  // Scoreboard Content
+  const ScoreboardContent = () => (
+    <ScoreboardManager />
+  );
+
   return (
     <div className={className}>
       <TabGroup
@@ -835,6 +841,12 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
             label: 'Flag Management',
             icon: TabIcons.flags,
             content: <FlagManagementContent />
+          },
+          {
+            id: 'scoreboard',
+            label: 'Scoreboard',
+            icon: TabIcons.scoreboard,
+            content: <ScoreboardContent />
           }
         ]}
         activeTab={activeTab}

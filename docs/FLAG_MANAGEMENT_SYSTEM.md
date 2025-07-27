@@ -264,7 +264,7 @@ const defaultClassName = "w-8 h-6 object-cover rounded-sm shadow-sm";
 python scripts/media/download_official_ioc_flags.py
 
 # Verify flag count
-ls -1 ui/public/assets/flags/*.png | wc -l  # Should show 253
+ls -1 ui/public/assets/flags/svg/*.svg | wc -l  # Should show 260
 
 # Test React integration
 cd ui && npm start
@@ -285,7 +285,7 @@ test('getFlagConfig returns correct config for USA', () => {
 
 test('getFlagUrl returns correct path', () => {
   const url = getFlagUrl('USA');
-  expect(url).toBe('/assets/flags/USA.png');
+  expect(url).toBe('/assets/flags/svg/USA.svg');
 });
 ```
 
@@ -304,7 +304,7 @@ test('getFlagUrl returns correct path', () => {
 
 ```bash
 # Remove old flags
-rm ui/public/assets/flags/*.png
+rm ui/public/assets/flags/*.png  # Remove old PNG files
 
 # Download fresh flags
 python scripts/media/download_official_ioc_flags.py
@@ -332,7 +332,7 @@ const config = getFlagConfig("INVALID");
 console.log(config.fallbackEmoji); // Should show 🏳️
 
 // Check file exists
-ls ui/public/assets/flags/INVALID.png
+ls ui/public/assets/flags/svg/INVALID.svg
 ```
 
 #### **Download Script Errors**
