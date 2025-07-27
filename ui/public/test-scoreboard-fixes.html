@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scoreboard Overlay Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #1a1a1a;
+            color: white;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #333;
+            border-radius: 5px;
+        }
+        button {
+            background: #0066cc;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            margin: 5px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0052a3;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 3px;
+        }
+        .success { background: #28a745; }
+        .error { background: #dc3545; }
+        .info { background: #17a2b8; }
+    </style>
+</head>
+<body>
+    <h1>Scoreboard Overlay Test</h1>
+    
+    <div class="test-section">
+        <h2>Test PSS Events</h2>
+        <p>Click the buttons below to test different PSS event types:</p>
+        
+        <button onclick="testAthletesEvent()">Test Athletes Event</button>
+        <button onclick="testMatchConfigEvent()">Test Match Config</button>
+        <button onclick="testScoresEvent()">Test Scores</button>
+        <button onclick="testWarningsEvent()">Test Warnings</button>
+        <button onclick="testClockEvent()">Test Clock</button>
+        <button onclick="testRoundEvent()">Test Round</button>
+        <button onclick="testWinnerRoundsEvent()">Test Winner Rounds</button>
+        <button onclick="testRawEvents()">Test Raw Events</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test Results</h2>
+        <div id="test-results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Open Scoreboard Overlay</h2>
+        <p>Open the scoreboard overlay in a new window to see the updates:</p>
+        <button onclick="openScoreboardOverlay()">Open Scoreboard Overlay</button>
+        <button onclick="openPlayerIntroOverlay()">Open Player Intro Overlay</button>
+    </div>
+
+    <script>
+        function logResult(message, type = 'info') {
+            const results = document.getElementById('test-results');
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+            results.appendChild(div);
+            results.scrollTop = results.scrollHeight;
+        }
+
+        function testAthletesEvent() {
+            const event = {
+                type: 'athletes',
+                athlete1_long: 'Metko Kalašnjikov',
+                athlete1_short: 'M. Kalašnjikov',
+                athlete1_country: 'RUS',
+                athlete1_iocCode: 'RUS',
+                athlete2_long: 'Donald Zelensky',
+                athlete2_short: 'D. Zelensky',
+                athlete2_country: 'UKR',
+                athlete2_iocCode: 'UKR'
+            };
+            
+            // Send to WebSocket if available
+            if (window.testWebSocket && window.testWebSocket.readyState === WebSocket.OPEN) {
+                window.testWebSocket.send(JSON.stringify({
+                    type: 'pss_event',
+                    data: event
+                }));
+                logResult('Sent athletes event via WebSocket', 'success');
+            } else {
+                // Fallback to localStorage event
+                window.dispatchEvent(new CustomEvent('pss-event', { detail: event }));
+                logResult('Sent athletes event via localStorage', 'info');
+            }
+        }
+
+        function testMatchConfigEvent() {
+            const event = {
+                type: 'match_config',
+                number: 9999,
+                category: 'Round of 128',
+                weight: 'W-67kg',
+                division: 'Under 21'
+            };
+            
+            if (window.testWebSocket && window.testWebSocket.readyState === WebSocket.OPEN) {
+                window.testWebSocket.send(JSON.stringify({
+                    type: 'pss_event',
+                    data: event
+                }));
+                logResult('Sent match config event via WebSocket', 'success');
+            } else {
+                window.dispatchEvent(new CustomEvent('pss-event', { detail: event }));
+                logResult('Sent match config event via localStorage', 'info');
+            }
+        }
+
+        function testScoresEvent() {
+            const event = {
+                type: 'current_scores',
+                athlete1_score: 9,
+                athlete2_score: 7
+            };
+            
+            if (window.testWebSocket && window.testWebSocket.readyState === WebSocket.OPEN) {
+                window.testWebSocket.send(JSON.stringify({
+                    type: 'pss_event',
+                    data: event
+                }));
+                logResult('Sent scores event via WebSocket', 'success');
+            } else {
+                window.dispatchEvent(new CustomEvent('pss-event', { detail: event }));
+                logResult('Sent scores event via localStorage', 'info');
+            }
+        }
+
+        function testWarningsEvent() {
+            const event = {
+                type: 'warnings',
+                athlete1_warnings: 2,
+                athlete2_warnings: 1
+            };
+            
+            if (window.testWebSocket && window.testWebSocket.readyState === WebSocket.OPEN) {
+                window.testWebSocket.send(JSON.stringify({
+                    type: 'pss_event',
+                    data: event
+                }));
+                logResult('Sent warnings event via WebSocket', 'success');
+            } else {
+                window.dispatchEvent(new CustomEvent('pss-event', { detail: event }));
+                logResult('Sent warnings event via localStorage', 'info');
+            }
+        }
+
+        function testClockEvent() {
+            const event = {
+                type: 'clock',
+                time: '1:45'
+            };
+            
+            if (window.testWebSocket && window.testWebSocket.readyState === WebSocket.OPEN) {
+                window.testWebSocket.send(JSON.stringify({
+                    type: 'pss_event',
+                    data: event
+                }));
+                logResult('Sent clock event via WebSocket', 'success');
+            } else {
+                window.dispatchEvent(new CustomEvent('pss-event', { detail: event }));
+                logResult('Sent clock event via localStorage', 'info');
+            }
+        }
+
+        function testRoundEvent() {
+            const event = {
+                type: 'round',
+                current_round: 2
+            };
+            
+            if (window.testWebSocket && window.testWebSocket.readyState === WebSocket.OPEN) {
+                window.testWebSocket.send(JSON.stringify({
+                    type: 'pss_event',
+                    data: event
+                }));
+                logResult('Sent round event via WebSocket', 'success');
+            } else {
+                window.dispatchEvent(new CustomEvent('pss-event', { detail: event }));
+                logResult('Sent round event via localStorage', 'info');
+            }
+        }
+
+        function testWinnerRoundsEvent() {
+            const event = {
+                type: 'winner_rounds',
+                round1_winner: 1,
+                round2_winner: 2,
+                round3_winner: 0
+            };
+            
+            if (window.testWebSocket && window.testWebSocket.readyState === WebSocket.OPEN) {
+                window.testWebSocket.send(JSON.stringify({
+                    type: 'pss_event',
+                    data: event
+                }));
+                logResult('Sent winner rounds event via WebSocket', 'success');
+            } else {
+                window.dispatchEvent(new CustomEvent('pss-event', { detail: event }));
+                logResult('Sent winner rounds event via localStorage', 'info');
+            }
+        }
+
+        function testRawEvents() {
+            const rawEvents = [
+                'mch;9999;Round of 128;W-67kg;0;#0000ff;#FFFFFF;#ff0000;#FFFFFF;null;Under 21;3;120;cntDown;18;5;',
+                'wg1;2;wg2;1;',
+                'wrd;rd1;1;rd2;2;rd3;0;',
+                'clk;1:45;',
+                'rnd;2;',
+                'sc1;9;sc2;7;'
+            ];
+            
+            rawEvents.forEach((rawEvent, index) => {
+                setTimeout(() => {
+                    const event = {
+                        type: 'raw',
+                        message: rawEvent
+                    };
+                    
+                    if (window.testWebSocket && window.testWebSocket.readyState === WebSocket.OPEN) {
+                        window.testWebSocket.send(JSON.stringify({
+                            type: 'pss_event',
+                            data: event
+                        }));
+                        logResult(`Sent raw event ${index + 1}: ${rawEvent.substring(0, 20)}...`, 'success');
+                    } else {
+                        window.dispatchEvent(new CustomEvent('pss-event', { detail: event }));
+                        logResult(`Sent raw event ${index + 1}: ${rawEvent.substring(0, 20)}...`, 'info');
+                    }
+                }, index * 1000);
+            });
+        }
+
+        function openScoreboardOverlay() {
+            window.open('scoreboard-overlay.html', 'scoreboard', 'width=1920,height=1080');
+            logResult('Opened scoreboard overlay window', 'info');
+        }
+
+        function openPlayerIntroOverlay() {
+            window.open('player-introduction-overlay.html', 'player-intro', 'width=1920,height=1080');
+            logResult('Opened player introduction overlay window', 'info');
+        }
+
+        // Setup WebSocket connection for testing
+        function setupTestWebSocket() {
+            try {
+                const currentHost = window.location.hostname;
+                const wsHost = currentHost === 'localhost' || currentHost === '127.0.0.1' ? '127.0.0.1' : currentHost;
+                const wsUrl = `ws://${wsHost}:3001`;
+                
+                window.testWebSocket = new WebSocket(wsUrl);
+                
+                window.testWebSocket.onopen = function() {
+                    logResult('Test WebSocket connected', 'success');
+                };
+                
+                window.testWebSocket.onclose = function() {
+                    logResult('Test WebSocket disconnected', 'error');
+                };
+                
+                window.testWebSocket.onerror = function() {
+                    logResult('Test WebSocket error - using localStorage fallback', 'error');
+                };
+                
+            } catch (error) {
+                logResult('Failed to setup test WebSocket - using localStorage fallback', 'error');
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            logResult('Test page loaded', 'info');
+            setupTestWebSocket();
+        });
+    </script>
+</body>
+</html> 

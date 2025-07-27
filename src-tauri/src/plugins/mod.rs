@@ -8,6 +8,7 @@ pub mod plugin_store;
 pub mod plugin_udp;
 pub mod plugin_cpu_monitor;
 pub mod plugin_protocol_manager;
+pub mod plugin_websocket;  // WebSocket server for HTML overlays
 
 // Re-export key plugin types for easier access
 pub use plugin_database::{DatabasePlugin, DatabaseStatistics};  // Re-enabled for Phase 2
@@ -19,6 +20,7 @@ pub use plugin_store::StorePlugin;
 pub use plugin_license::LicensePlugin;
 pub use plugin_cpu_monitor::{CpuMonitorPlugin, CpuMonitorConfig, CpuProcessData, SystemCpuData};
 pub use plugin_protocol_manager::{ProtocolManager, ProtocolFile, ProtocolVersion, StreamDefinition};
+pub use plugin_websocket::WebSocketPlugin;
 
 /// Initialize all plugins
 pub async fn init() -> Result<(), Box<dyn std::error::Error>> {
@@ -34,6 +36,7 @@ pub async fn init() -> Result<(), Box<dyn std::error::Error>> {
     plugin_license::init()?;
     plugin_cpu_monitor::init()?;
     plugin_protocol_manager::init()?;
+    plugin_websocket::init()?;  // WebSocket server for HTML overlays
     
     println!("✅ All plugins initialized successfully");
     Ok(())

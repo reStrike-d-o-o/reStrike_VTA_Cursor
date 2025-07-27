@@ -92,6 +92,10 @@ async fn main() -> AppResult<()> {
             tauri_commands::obs_setup_status_listener,
             tauri_commands::cpu_setup_stats_listener,
             
+            // WebSocket commands for HTML overlays
+            tauri_commands::websocket_get_status,
+            tauri_commands::websocket_broadcast_pss_event,
+            
             // Video commands - Fixed names
             tauri_commands::video_play,
             tauri_commands::video_stop,
