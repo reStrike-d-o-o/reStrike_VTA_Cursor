@@ -7,6 +7,7 @@ import StatusDot from '../atoms/StatusDot';
 import { usePssMatchStore } from '../../stores/pssMatchStore';
 import { useAppStore } from '../../stores';
 
+
 interface ScoreboardManagerProps {
   className?: string;
 }
@@ -324,8 +325,9 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
       <div className="p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
         <h4 className="text-md font-semibold text-gray-100 mb-4">OBS Integration</h4>
         <div className="space-y-4">
+          {/* SVG Overlay URL */}
           <div className="p-3 bg-gray-700/30 rounded-lg">
-            <Label className="text-sm text-gray-300 mb-2">OBS Browser Source URL</Label>
+            <Label className="text-sm text-gray-300 mb-2">SVG Overlay URL (Legacy)</Label>
             <div className="flex items-center space-x-2">
               <Input
                 value={generateObsUrl()}
@@ -341,7 +343,52 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
               </Button>
             </div>
             <p className="text-xs text-gray-400 mt-2">
-              Add this URL as a Browser Source in OBS Studio for live streaming
+              Legacy SVG overlay (no real-time updates)
+            </p>
+          </div>
+
+          {/* HTML Overlay URLs */}
+          <div className="p-3 bg-blue-900/20 rounded-lg border border-blue-500/30">
+            <Label className="text-sm text-blue-300 mb-2">HTML Overlay URLs (Real-time PSS Updates)</Label>
+            <div className="space-y-3">
+              <div>
+                <Label className="text-xs text-gray-300">Scoreboard Overlay</Label>
+                <div className="flex items-center space-x-2">
+                  <Input
+                    value={`${window.location.origin}/scoreboard-overlay.html`}
+                    readOnly
+                    className="flex-1 text-xs"
+                  />
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => navigator.clipboard.writeText(`${window.location.origin}/scoreboard-overlay.html`)}
+                  >
+                    Copy
+                  </Button>
+                </div>
+              </div>
+              
+              <div>
+                <Label className="text-xs text-gray-300">Player Introduction Overlay</Label>
+                <div className="flex items-center space-x-2">
+                  <Input
+                    value={`${window.location.origin}/player-introduction-overlay.html`}
+                    readOnly
+                    className="flex-1 text-xs"
+                  />
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => navigator.clipboard.writeText(`${window.location.origin}/player-introduction-overlay.html`)}
+                  >
+                    Copy
+                  </Button>
+                </div>
+              </div>
+            </div>
+            <p className="text-xs text-blue-400 mt-2">
+              ✨ These HTML overlays support real-time PSS data updates via WebSocket events
             </p>
           </div>
 
@@ -359,7 +406,73 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
               <div className="text-xs text-gray-400 space-y-1 mt-1">
                 <div>Local: http://localhost:3000</div>
                 <div>Network: http://[your-ip]:3000</div>
-                <div>Enable network access for other computers</div>
+                <div>Use "npm run dev:network" for network access</div>
+                <div>WebSocket: ws://[your-ip]:3001</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* HTML Overlay Testing */}
+      <div className="p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
+        <h4 className="text-md font-semibold text-gray-100 mb-4">HTML Overlay Testing</h4>
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label className="text-sm text-gray-300">Test Scoreboard Overlay</Label>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => window.open('/scoreboard-overlay.html', '_blank')}
+                className="w-full mt-2"
+              >
+                Open in New Tab
+              </Button>
+              <p className="text-xs text-gray-400 mt-1">
+                Opens the scoreboard overlay in a new browser tab for testing
+              </p>
+            </div>
+            
+            <div>
+              <Label className="text-sm text-gray-300">Test Player Introduction</Label>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => window.open('/player-introduction-overlay.html', '_blank')}
+                className="w-full mt-2"
+              >
+                Open in New Tab
+              </Button>
+              <p className="text-xs text-gray-400 mt-1">
+                Opens the player introduction overlay in a new browser tab for testing
+              </p>
+            </div>
+          </div>
+          
+          <div className="p-3 bg-yellow-900/20 rounded-lg border border-yellow-500/30">
+            <div className="flex items-center space-x-2">
+              <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+              <span className="text-sm text-yellow-300 font-medium">Testing Instructions</span>
+            </div>
+            <div className="text-xs text-yellow-200 mt-2 space-y-1">
+              <div>1. Open an overlay in a new tab</div>
+              <div>2. Load a match in the main application</div>
+              <div>3. Watch for real-time updates in the overlay</div>
+              <div>4. Check browser console for PSS event logs</div>
+              <div>5. WebSocket server runs on ws://0.0.0.0:3001 (network accessible)</div>
+              <div>6. For network access, use "npm run dev:network"</div>
+            </div>
+            
+            <div className="mt-3 pt-3 border-t border-yellow-500/30">
+              <div className="text-xs text-yellow-200">
+                <strong>Network Setup:</strong>
+              </div>
+              <div className="text-xs text-yellow-200 mt-1 space-y-1">
+                <div>• Start with: npm run dev:network</div>
+                <div>• Find your IP: ipconfig (Windows) or ifconfig (Mac/Linux)</div>
+                <div>• Access from other computers: http://[your-ip]:3000</div>
+                <div>• WebSocket connects automatically to [your-ip]:3001</div>
               </div>
             </div>
           </div>

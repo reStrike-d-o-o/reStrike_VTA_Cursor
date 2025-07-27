@@ -12,6 +12,12 @@ export const handlePssEvent = (event: any) => {
   
   console.log('🎯 Processing PSS event:', event);
   
+  // Emit browser event for scoreboard overlays
+  emitBrowserEvent(event);
+  
+  // Broadcast event to HTML overlays via WebSocket
+  broadcastPssEventViaWebSocket(event);
+  
   // Handle different event types based on the event structure
   switch (event.type) {
     case 'athletes':
@@ -69,6 +75,47 @@ export const handlePssEvent = (event: any) => {
         }
       }
       break;
+  }
+};
+
+/**
+ * Broadcast PSS event via WebSocket to HTML overlays
+ * This function sends PSS events to the Tauri WebSocket server
+ */
+const broadcastPssEventViaWebSocket = async (event: any) => {
+  try {
+    // Check if Tauri is available
+    if (typeof window !== 'undefined' && window.__TAURI__) {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('websocket_broadcast_pss_event', { eventData: event });
+      console.log('📡 Broadcasted PSS event via WebSocket:', event.type);
+    }
+  } catch (error) {
+    console.warn('Failed to broadcast PSS event via WebSocket:', error);
+  }
+};
+
+/**
+ * Emit browser event for scoreboard overlays
+ * This function emits custom events that the HTML overlays can listen to
+ */
+const emitBrowserEvent = (event: any) => {
+  try {
+    // Check if we're in a browser environment
+    if (typeof window !== 'undefined' && typeof CustomEvent !== 'undefined') {
+      // Create a custom event for the browser overlays
+      const browserEvent = new CustomEvent('pss-event', {
+        detail: event,
+        bubbles: true,
+        cancelable: true
+      });
+      
+      // Dispatch the event
+      window.dispatchEvent(browserEvent);
+      console.log('📡 Emitted browser PSS event:', event.type);
+    }
+  } catch (error) {
+    console.error('❌ Error emitting browser event:', error);
   }
 };
 

@@ -1,7 +1,7 @@
 //! Main application class and lifecycle management
 
 use crate::types::{AppResult, AppState, AppView};
-use crate::plugins::{ObsPlugin, PlaybackPlugin, UdpPlugin, StorePlugin, LicensePlugin, CpuMonitorPlugin, ProtocolManager, DatabasePlugin};
+use crate::plugins::{ObsPlugin, PlaybackPlugin, UdpPlugin, StorePlugin, LicensePlugin, CpuMonitorPlugin, ProtocolManager, DatabasePlugin, WebSocketPlugin};
 use crate::logging::LogManager;
 use crate::config::ConfigManager;
 use std::sync::Arc;
@@ -23,6 +23,7 @@ pub struct App {
     cpu_monitor_plugin: CpuMonitorPlugin,
     protocol_manager: ProtocolManager,
     database_plugin: DatabasePlugin,
+    websocket_plugin: Arc<Mutex<WebSocketPlugin>>,
     log_manager: Arc<Mutex<LogManager>>,
 }
 
@@ -86,6 +87,10 @@ impl App {
             .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to initialize database plugin: {}", e)))?;
         log::info!("✅ Database plugin initialized");
         
+        // Initialize WebSocket plugin for HTML overlays
+        let websocket_plugin = Arc::new(Mutex::new(WebSocketPlugin::new(3001))); // Port 3001 for WebSocket server
+        log::info!("✅ WebSocket plugin initialized");
+        
         // Start UDP event handler
         let log_manager_clone = log_manager.clone();
         tokio::spawn(async move {
@@ -109,6 +114,7 @@ impl App {
             cpu_monitor_plugin,
             protocol_manager,
             database_plugin,
+            websocket_plugin,
             log_manager,
         })
     }
@@ -128,6 +134,15 @@ impl App {
     /// Start the application
     pub async fn start(&self) -> AppResult<()> {
         println!("▶️ Starting application...");
+        
+        // Start WebSocket server for HTML overlays
+        println!("🔗 Starting WebSocket server for HTML overlays...");
+        let mut websocket_plugin = self.websocket_plugin().lock().await;
+        if let Err(e) = websocket_plugin.start().await {
+            println!("⚠️ Failed to start WebSocket server: {}", e);
+        } else {
+            println!("✅ WebSocket server started successfully");
+        }
         
         // Check if UDP should auto-start
         let config = self.config_manager.get_config().await;
@@ -205,6 +220,11 @@ impl App {
     /// Get database plugin reference
     pub fn database_plugin(&self) -> &DatabasePlugin {
         &self.database_plugin
+    }
+    
+    /// Get WebSocket plugin reference
+    pub fn websocket_plugin(&self) -> &Arc<Mutex<WebSocketPlugin>> {
+        &self.websocket_plugin
     }
     
     /// Get log manager reference

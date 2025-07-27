@@ -3128,3 +3128,34 @@ pub async fn delete_log_archive(
         }))
     }
 }
+
+// WebSocket commands for HTML overlays
+#[tauri::command]
+pub async fn websocket_get_status(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+    log::info!("Getting WebSocket server status");
+    
+    let websocket_plugin = app.websocket_plugin().lock().await;
+    let status = websocket_plugin.get_status().await;
+    
+    Ok(status)
+}
+
+#[tauri::command]
+pub async fn websocket_broadcast_pss_event(
+    event_data: serde_json::Value,
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, String> {
+    log::info!("Broadcasting PSS event via WebSocket: {:?}", event_data);
+    
+    let websocket_plugin = app.websocket_plugin().lock().await;
+    match websocket_plugin.broadcast_pss_event(event_data).await {
+        Ok(_) => Ok(serde_json::json!({
+            "success": true,
+            "message": "PSS event broadcasted successfully"
+        })),
+        Err(e) => Ok(serde_json::json!({
+            "success": false,
+            "error": e.to_string()
+        }))
+    }
+}

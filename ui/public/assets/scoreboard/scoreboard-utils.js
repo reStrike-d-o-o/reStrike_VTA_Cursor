@@ -22,24 +22,44 @@ class ScoreboardOverlay {
 
   // Update player names
   updatePlayerName(player, name) {
-    const nameElement = this.svg.getElementById(`${player}PlayerName`);
-    if (nameElement) nameElement.textContent = name;
+    // Map player colors to SVG element IDs
+    const elementId = player === 'blue' ? 'player1Name' : 'player2Name';
+    const nameElement = this.svg.getElementById(elementId);
+    if (nameElement) {
+      nameElement.textContent = name;
+      console.log(`✅ Updated ${player} player name: ${name}`);
+    } else {
+      console.warn(`⚠️ Could not find ${elementId} element`);
+    }
   }
 
   // Update player scores
   updateScore(player, score) {
-    const scoreElement = this.svg.getElementById(`${player}PlayerScore`);
+    // Map player colors to SVG element IDs
+    const elementId = player === 'blue' ? 'player1Score' : 'player2Score';
+    const scoreElement = this.svg.getElementById(elementId);
     if (scoreElement) {
       scoreElement.textContent = score;
       scoreElement.classList.add('score-update');
       setTimeout(() => scoreElement.classList.remove('score-update'), 500);
+      console.log(`✅ Updated ${player} player score: ${score}`);
+    } else {
+      console.warn(`⚠️ Could not find ${elementId} element`);
     }
   }
 
-  // Update player countries
+  // Update player countries (flags)
   updateCountry(player, country) {
-    const countryElement = this.svg.getElementById(`${player}PlayerCountry`);
-    if (countryElement) countryElement.textContent = country;
+    // Map player colors to SVG element IDs
+    const elementId = player === 'blue' ? 'player1Flag' : 'player2Flag';
+    const flagElement = this.svg.getElementById(elementId);
+    if (flagElement) {
+      // Update the flag image source
+      flagElement.setAttribute('href', `../flags/svg/${country}.svg`);
+      console.log(`✅ Updated ${player} player country flag: ${country}`);
+    } else {
+      console.warn(`⚠️ Could not find ${elementId} element`);
+    }
   }
 
   // Update player seeds
@@ -50,14 +70,28 @@ class ScoreboardOverlay {
 
   // Update penalties and warnings
   updatePenalties(player, penalties, warnings) {
-    const penaltiesElement = this.svg.getElementById(`${player}PlayerFouls`);
-    if (penaltiesElement) penaltiesElement.textContent = penalties;
+    // Map player colors to SVG element IDs
+    const elementId = player === 'blue' ? 'player1Fouls' : 'player2Fouls';
+    const penaltiesElement = this.svg.getElementById(elementId);
+    if (penaltiesElement) {
+      penaltiesElement.textContent = warnings || penalties || 0;
+      console.log(`✅ Updated ${player} player warnings: ${warnings || penalties || 0}`);
+    } else {
+      console.warn(`⚠️ Could not find ${elementId} element`);
+    }
   }
 
   // Update round wins
   updateRoundWins(player, wins) {
-    const winsElement = this.svg.getElementById(`${player}PlayerRounds`);
-    if (winsElement) winsElement.textContent = wins;
+    // Map player colors to SVG element IDs
+    const elementId = player === 'blue' ? 'player1Rounds' : 'player2Rounds';
+    const winsElement = this.svg.getElementById(elementId);
+    if (winsElement) {
+      winsElement.textContent = wins || 0;
+      console.log(`✅ Updated ${player} player rounds: ${wins || 0}`);
+    } else {
+      console.warn(`⚠️ Could not find ${elementId} element`);
+    }
   }
 
   // Update match timer
@@ -65,6 +99,9 @@ class ScoreboardOverlay {
     const timerElement = this.svg.getElementById('matchTimer');
     if (timerElement) {
       timerElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+      console.log(`✅ Updated match timer: ${minutes}:${seconds.toString().padStart(2, '0')}`);
+    } else {
+      console.warn(`⚠️ Could not find matchTimer element`);
     }
   }
 
@@ -73,6 +110,9 @@ class ScoreboardOverlay {
     const roundElement = this.svg.getElementById('currentRound');
     if (roundElement) {
       roundElement.textContent = this.getOrdinalSuffix(round);
+      console.log(`✅ Updated current round: ${this.getOrdinalSuffix(round)}`);
+    } else {
+      console.warn(`⚠️ Could not find currentRound element`);
     }
   }
 
@@ -81,19 +121,32 @@ class ScoreboardOverlay {
     const injuryElement = this.svg.getElementById('injuryTime');
     if (injuryElement) {
       injuryElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+      console.log(`✅ Updated injury time: ${minutes}:${seconds.toString().padStart(2, '0')}`);
+    } else {
+      console.warn(`⚠️ Could not find injuryTime element`);
     }
   }
 
   // Update match category
   updateMatchCategory(category) {
-    const categoryElement = this.svg.getElementById('matchWeight');
-    if (categoryElement) categoryElement.textContent = category;
+    const categoryElement = this.svg.getElementById('matchCategory');
+    if (categoryElement) {
+      categoryElement.textContent = category;
+      console.log(`✅ Updated match category: ${category}`);
+    } else {
+      console.warn(`⚠️ Could not find matchCategory element`);
+    }
   }
 
-  // Update match type
+  // Update match type (weight class)
   updateMatchType(type) {
-    const typeElement = this.svg.getElementById('matchCategory');
-    if (typeElement) typeElement.textContent = type;
+    const typeElement = this.svg.getElementById('matchNumber');
+    if (typeElement) {
+      typeElement.textContent = type;
+      console.log(`✅ Updated match number: ${type}`);
+    } else {
+      console.warn(`⚠️ Could not find matchNumber element`);
+    }
   }
 
   // Get ordinal suffix for round numbers
@@ -364,5 +417,4 @@ if (typeof module !== 'undefined' && module.exports) {
   window.WinnerAnnouncementOverlay = WinnerAnnouncementOverlay;
   window.PreviousResultsOverlay = PreviousResultsOverlay;
   window.VictoryCeremonyOverlay = VictoryCeremonyOverlay;
-} 
 } 
