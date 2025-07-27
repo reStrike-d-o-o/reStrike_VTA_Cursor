@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   version="1.1"
+   width="900"
+   height="600"
+   id="svg2"
+   inkscape:version="0.91 r13725"
+   sodipodi:docname="Flag_of_Neutral_Paralympic_Athletes_(Paris_2024) ^xokMB2.svg">
+  <metadata
+     id="metadata20">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <defs
+     id="defs18" />
+  <sodipodi:namedview
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1"
+     objecttolerance="10"
+     gridtolerance="10"
+     guidetolerance="10"
+     inkscape:pageopacity="0"
+     inkscape:pageshadow="2"
+     inkscape:window-width="1366"
+     inkscape:window-height="705"
+     id="namedview16"
+     showgrid="false"
+     inkscape:zoom="0.22105328"
+     inkscape:cx="663.21661"
+     inkscape:cy="254.63576"
+     inkscape:window-x="-8"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg2" />
+  <g
+     transform="matrix(5,0,0,5,43.969316,1758.7727)"
+     id="g3385">
+    <rect
+       y="-351.75455"
+       x="-8.7938633"
+       height="120"
+       width="180"
+       id="rect3405-1"
+       style="opacity:1;fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:0.5;stroke-linecap:square;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:2;stroke-opacity:0.19607843" />
+    <g
+       transform="translate(-4.1087454,-201.76671)"
+       id="g3387-6">
+      <path
+         style="opacity:1;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.5;stroke-linecap:square;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:2;stroke-opacity:0.19607843"
+         d="m 595.79688,205.08398 -44.95899,190 60.7207,0 7.49024,-40.70898 42.13867,0 7.49023,40.70898 60.71875,0 -44.95898,-190 z m 41.51953,50 5.60156,0 10.44922,56.79102 -26.5,0 z"
+         transform="matrix(0.2,0,0,0.2,-4.6851178,-149.98783)"
+         id="rect3365-1"
+         inkscape:connector-curvature="0"
+         sodipodi:nodetypes="cccccccccccccc" />
+    </g>
+    <g
+       transform="translate(-4.1087454,-201.76671)"
+       id="g3393-6">
+      <path
+         style="opacity:1;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.5;stroke-linecap:square;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:2;stroke-opacity:0.19607843"
+         d="m 170.60352,205.08398 0,190 62.5,0 0,-146.35156 38.51367,146.35156 96.10156,0 0,-190 -62.5,0 0,137.0293 -36.06055,-137.0293 z"
+         transform="matrix(0.2,0,0,0.2,-4.6851178,-149.98783)"
+         id="rect3359-9"
+         inkscape:connector-curvature="0"
+         sodipodi:nodetypes="ccccccccccc" />
+    </g>
+    <g
+       id="g3381">
+      <path
+         style="opacity:1;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.5;stroke-linecap:square;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:2;stroke-opacity:0.19607843"
+         d="m 393.03906,205.08398 0,190 62.5,0 0,-46.4375 39.53321,0 c 0,0 29.99984,0.4645 43.13476,-11.40625 17.82112,-16.10625 16.13281,-50.30273 16.13281,-50.30273 l 0,-20.14648 c 0,0 1.68831,-34.19649 -16.13281,-50.30274 C 525.07211,204.61743 495.07227,205.084 495.07227,205.084 Z M 488.2168,252.875 c 3.89412,3.76685 3.62304,15.83984 3.62304,15.83984 l 0,16.29883 c 0,0 0.27106,12.073 -3.62304,15.83985 -3.21481,3.10995 -15.33203,2.79296 -15.33203,2.79296 l -17.34571,0 0,-53.56445 17.34571,0 c 4.52768,0.30945 11.99585,-0.11826 15.33203,2.79297 z"
+         transform="matrix(0.2,0,0,0.2,-8.7938632,-351.75454)"
+         id="rect3363-8"
+         inkscape:connector-curvature="0"
+         sodipodi:nodetypes="cccccsccsccccccccccc" />
+    </g>
+  </g>
+</svg>

@@ -2730,8 +2730,8 @@ pub async fn scan_and_populate_flags(app: State<'_, Arc<App>>) -> Result<serde_j
             continue;
         }
         
-        // Extract IOC code from filename (e.g., "USA.png" -> "USA")
-        let ioc_code = filename.trim_end_matches(".png").to_uppercase();
+        // Extract IOC code from filename (e.g., "USA.svg" -> "USA")
+        let ioc_code = filename.trim_end_matches(".svg").to_uppercase();
         
         // Get file metadata
         let metadata = match std::fs::metadata(&path) {

@@ -86,7 +86,7 @@ import { FlagImage } from '../utils/flagUtils';
 
 ### Direct Image Usage
 ```typescript
-<img src="/assets/flags/USA.png" alt="USA Flag" />
+<img src="/assets/flags/svg/USA.svg" alt="USA Flag" />
 ```
 
 ## 🛡️ Fallback System

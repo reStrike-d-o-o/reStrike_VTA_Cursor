@@ -1,0 +1,4015 @@
+{
+  "source_url": "https://en.wikipedia.org/wiki/List_of_IOC_country_codes",
+  "scraped_at": "1753647838.9375112",
+  "total_tables": 13,
+  "ioc_tables": 10,
+  "total_entries": 281,
+  "table_info": [
+    {
+      "table_index": 0,
+      "title": "Current NOCs",
+      "entries_count": 206,
+      "entries": [
+        {
+          "ioc_code": "AFG",
+          "country": "Afghanistan",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Flag_of_Afghanistan_%282013%E2%80%932021%29.svg/40px-Flag_of_Afghanistan_%282013%E2%80%932021%29.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "ALB",
+          "country": "Albania",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/Flag_of_Albania.svg/40px-Flag_of_Albania.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "ALG",
+          "country": "Algeria",
+          "notes": "AGR (1964)AGL (1968 S) from Spanish Argelia",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/Flag_of_Algeria.svg/40px-Flag_of_Algeria.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "AND",
+          "country": "Andorra",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Flag_of_Andorra.svg/40px-Flag_of_Andorra.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "ANG",
+          "country": "Angola",
+          "notes": "ANO (As referenced in IAAF World Championships Beijing 2015 Statistics Handbook)[1]",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9d/Flag_of_Angola.svg/40px-Flag_of_Angola.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "ANT",
+          "country": "Antigua and Barbuda",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/Flag_of_Antigua_and_Barbuda.svg/40px-Flag_of_Antigua_and_Barbuda.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "ARG",
+          "country": "Argentina",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Flag_of_Argentina.svg/40px-Flag_of_Argentina.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "ARM",
+          "country": "Armenia",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Flag_of_Armenia.svg/40px-Flag_of_Armenia.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "ARU",
+          "country": "Aruba",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/Flag_of_Aruba.svg/40px-Flag_of_Aruba.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "ASA",
+          "country": "American Samoa",
+          "notes": "AMS[1]",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Flag_of_American_Samoa.svg/40px-Flag_of_American_Samoa.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "AUS",
+          "country": "Australia",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/en/thumb/b/b9/Flag_of_Australia.svg/40px-Flag_of_Australia.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "AUT",
+          "country": "Austria",
+          "notes": "current code from French Autriche",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/41/Flag_of_Austria.svg/40px-Flag_of_Austria.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "AZE",
+          "country": "Azerbaijan",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Flag_of_Azerbaijan.svg/40px-Flag_of_Azerbaijan.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "BAH",
+          "country": "Bahamas",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/Flag_of_the_Bahamas.svg/40px-Flag_of_the_Bahamas.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "BAN",
+          "country": "Bangladesh",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f9/Flag_of_Bangladesh.svg/40px-Flag_of_Bangladesh.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "BAR",
+          "country": "Barbados",
+          "notes": "BAD (1964)[a]",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ef/Flag_of_Barbados.svg/40px-Flag_of_Barbados.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "BDI",
+          "country": "Burundi",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/50/Flag_of_Burundi.svg/40px-Flag_of_Burundi.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "BEL",
+          "country": "Belgium",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/92/Flag_of_Belgium_%28civil%29.svg/40px-Flag_of_Belgium_%28civil%29.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "BEN",
+          "country": "Benin",
+          "notes": "DAY (1964)DAH (1968–1976) as Dahomey",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0a/Flag_of_Benin.svg/40px-Flag_of_Benin.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "BER",
+          "country": "Bermuda",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Flag_of_Bermuda.svg/40px-Flag_of_Bermuda.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "BHU",
+          "country": "Bhutan",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Flag_of_Bhutan.svg/40px-Flag_of_Bhutan.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "BIH",
+          "country": "Bosnia and Herzegovina",
+          "notes": "BSH (1992 S), BOS[1] current code from Bosnian Bosna i Hercegovina",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Flag_of_Bosnia_and_Herzegovina.svg/40px-Flag_of_Bosnia_and_Herzegovina.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "BIZ",
+          "country": "Belize",
+          "notes": "HBR (1968–1972) from French Honduras britannique as British Honduras; also BHO[1]",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/Flag_of_Belize.svg/40px-Flag_of_Belize.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "BLR",
+          "country": "Belarus",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/85/Flag_of_Belarus.svg/40px-Flag_of_Belarus.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "BOL",
+          "country": "Bolivia",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/48/Flag_of_Bolivia.svg/40px-Flag_of_Bolivia.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "BOT",
+          "country": "Botswana",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Flag_of_Botswana.svg/40px-Flag_of_Botswana.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "BRA",
+          "country": "Brazil",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/en/thumb/0/05/Flag_of_Brazil.svg/40px-Flag_of_Brazil.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "BRN",
+          "country": "Bahrain",
+          "notes": "BHR[1]",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Flag_of_Bahrain.svg/40px-Flag_of_Bahrain.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "BRU",
+          "country": "Brunei",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Flag_of_Brunei.svg/40px-Flag_of_Brunei.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "BUL",
+          "country": "Bulgaria",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Flag_of_Bulgaria.svg/40px-Flag_of_Bulgaria.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "BUR",
+          "country": "Burkina Faso",
+          "notes": "VOL (1972–1984) as Upper Volta; also BKF[1]",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/Flag_of_Burkina_Faso.svg/40px-Flag_of_Burkina_Faso.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "CAF",
+          "country": "Central African Republic",
+          "notes": "AFC (1968)",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Flag_of_the_Central_African_Republic.svg/40px-Flag_of_the_Central_African_Republic.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "CAM",
+          "country": "Cambodia",
+          "notes": "CAB (1964)KHM (1972) as Khmer Republic",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/83/Flag_of_Cambodia.svg/40px-Flag_of_Cambodia.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "CAN",
+          "country": "Canada",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d9/Flag_of_Canada_%28Pantone%29.svg/40px-Flag_of_Canada_%28Pantone%29.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "CAY",
+          "country": "Cayman Islands",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Flag_of_the_Cayman_Islands.svg/40px-Flag_of_the_Cayman_Islands.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "CGO",
+          "country": "Republic of the Congo",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/92/Flag_of_the_Republic_of_the_Congo.svg/40px-Flag_of_the_Republic_of_the_Congo.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "CHA",
+          "country": "Chad",
+          "notes": "CHD (1964)",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/Flag_of_Chad.svg/40px-Flag_of_Chad.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "CHI",
+          "country": "Chile",
+          "notes": "CIL (1956 W1960 S) from Italian Cile",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/78/Flag_of_Chile.svg/40px-Flag_of_Chile.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "CHN",
+          "country": "People's Republic of China[3][4][5]",
+          "notes": "PRC (1952 S) as People's Republic of China",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Flag_of_the_People%27s_Republic_of_China.svg/40px-Flag_of_the_People%27s_Republic_of_China.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "CIV",
+          "country": "Ivory Coast",
+          "notes": "IVC (1964)CML (1968) from Spanish Costa de Marfilcurrent code from French Côte d'Ivoire",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fe/Flag_of_C%C3%B4te_d%27Ivoire.svg/40px-Flag_of_C%C3%B4te_d%27Ivoire.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "CMR",
+          "country": "Cameroon",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/Flag_of_Cameroon.svg/40px-Flag_of_Cameroon.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "COD",
+          "country": "Democratic Republic of the Congo",
+          "notes": "COK (1968) as Congo-KinshasaZAI (1972–1996) as Zaire",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Flag_of_the_Democratic_Republic_of_the_Congo.svg/40px-Flag_of_the_Democratic_Republic_of_the_Congo.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "COK",
+          "country": "Cook Islands",
+          "notes": "CKI[1]",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Flag_of_the_Cook_Islands.svg/40px-Flag_of_the_Cook_Islands.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "COL",
+          "country": "Colombia",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/21/Flag_of_Colombia.svg/40px-Flag_of_Colombia.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "COM",
+          "country": "Comoros",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/94/Flag_of_the_Comoros.svg/40px-Flag_of_the_Comoros.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "CPV",
+          "country": "Cape Verde",
+          "notes": "CVD[1]",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/38/Flag_of_Cape_Verde.svg/40px-Flag_of_Cape_Verde.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "CRC",
+          "country": "Costa Rica",
+          "notes": "COS (1964)",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Flag_of_Costa_Rica.svg/40px-Flag_of_Costa_Rica.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "CRO",
+          "country": "Croatia",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/Flag_of_Croatia.svg/40px-Flag_of_Croatia.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "CUB",
+          "country": "Cuba",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bd/Flag_of_Cuba.svg/40px-Flag_of_Cuba.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "CYP",
+          "country": "Cyprus",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Flag_of_Cyprus.svg/40px-Flag_of_Cyprus.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "CZE",
+          "country": "Czechia",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/Flag_of_the_Czech_Republic.svg/40px-Flag_of_the_Czech_Republic.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "DEN",
+          "country": "Denmark",
+          "notes": "DAN (1960 S1968 W)DIN (1968 S)previous codes taken from Italian Danimarca, French Danemark and Spanish Dinamarca",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Flag_of_Denmark.svg/40px-Flag_of_Denmark.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "DJI",
+          "country": "Djibouti",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/34/Flag_of_Djibouti.svg/40px-Flag_of_Djibouti.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "DMA",
+          "country": "Dominica",
+          "notes": "DMN[1]",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c4/Flag_of_Dominica.svg/40px-Flag_of_Dominica.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "DOM",
+          "country": "Dominican Republic",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Flag_of_the_Dominican_Republic.svg/40px-Flag_of_the_Dominican_Republic.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "ECU",
+          "country": "Ecuador",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e8/Flag_of_Ecuador.svg/40px-Flag_of_Ecuador.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "EGY",
+          "country": "Egypt",
+          "notes": "RAU (19601968)UAR (1964) as United Arab Republic previous codes taken from Italian Repubblica Araba Unita, French République Arabe Unie and Spanish República Árabe Unida",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fe/Flag_of_Egypt.svg/40px-Flag_of_Egypt.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "ERI",
+          "country": "Eritrea",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/29/Flag_of_Eritrea.svg/40px-Flag_of_Eritrea.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "ESA",
+          "country": "El Salvador",
+          "notes": "SAL (1964–1976)",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/34/Flag_of_El_Salvador.svg/40px-Flag_of_El_Salvador.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "ESP",
+          "country": "Spain",
+          "notes": "SPA (1956–19641968 W)current code taken from French Espagne or Spanish España",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/en/thumb/9/9a/Flag_of_Spain.svg/40px-Flag_of_Spain.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "EST",
+          "country": "Estonia",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/Flag_of_Estonia.svg/40px-Flag_of_Estonia.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "ETH",
+          "country": "Ethiopia",
+          "notes": "ETI (19601968)",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/Flag_of_Ethiopia.svg/40px-Flag_of_Ethiopia.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "FIJ",
+          "country": "Fiji",
+          "notes": "FIG (1960) from Italian Figi",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/ba/Flag_of_Fiji.svg/40px-Flag_of_Fiji.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "FIN",
+          "country": "Finland",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/Flag_of_Finland.svg/40px-Flag_of_Finland.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "FRA",
+          "country": "France",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/en/thumb/c/c3/Flag_of_France.svg/40px-Flag_of_France.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "FSM",
+          "country": "Federated States of Micronesia",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/Flag_of_the_Federated_States_of_Micronesia.svg/40px-Flag_of_the_Federated_States_of_Micronesia.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "GAB",
+          "country": "Gabon",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/04/Flag_of_Gabon.svg/40px-Flag_of_Gabon.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "GAM",
+          "country": "The Gambia",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/Flag_of_The_Gambia.svg/40px-Flag_of_The_Gambia.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "GBR",
+          "country": "Great Britain",
+          "notes": "GRB (1956 W–1960)GBI (1956 athletics;[6] 1964)",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/en/thumb/a/ae/Flag_of_the_United_Kingdom.svg/40px-Flag_of_the_United_Kingdom.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "GBS",
+          "country": "Guinea-Bissau",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/Flag_of_Guinea-Bissau.svg/40px-Flag_of_Guinea-Bissau.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "GEO",
+          "country": "Georgia",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Flag_of_Georgia.svg/40px-Flag_of_Georgia.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "GEQ",
+          "country": "Equatorial Guinea",
+          "notes": "current code taken from French Guinée équatoriale",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/Flag_of_Equatorial_Guinea.svg/40px-Flag_of_Equatorial_Guinea.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "GER",
+          "country": "Germany",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/en/thumb/b/ba/Flag_of_Germany.svg/40px-Flag_of_Germany.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "GHA",
+          "country": "Ghana",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Flag_of_Ghana.svg/40px-Flag_of_Ghana.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "GRE",
+          "country": "Greece",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Flag_of_Greece.svg/40px-Flag_of_Greece.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "GRN",
+          "country": "Grenada",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/Flag_of_Grenada.svg/40px-Flag_of_Grenada.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "GUA",
+          "country": "Guatemala",
+          "notes": "GUT (1964)",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/Flag_of_Guatemala.svg/40px-Flag_of_Guatemala.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "GUI",
+          "country": "Guinea",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ed/Flag_of_Guinea.svg/40px-Flag_of_Guinea.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "GUM",
+          "country": "Guam",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/07/Flag_of_Guam.svg/40px-Flag_of_Guam.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "GUY",
+          "country": "Guyana",
+          "notes": "GUA (1960)GUI (1964) BGU[1]",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/Flag_of_Guyana.svg/40px-Flag_of_Guyana.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "HAI",
+          "country": "Haiti",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/56/Flag_of_Haiti.svg/40px-Flag_of_Haiti.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "HKG",
+          "country": "Hong Kong",
+          "notes": "HOK (1960–1968)",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5b/Flag_of_Hong_Kong.svg/40px-Flag_of_Hong_Kong.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "HON",
+          "country": "Honduras",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/85/Flag_of_Honduras_%282022-%29.svg/40px-Flag_of_Honduras_%282022-%29.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "HUN",
+          "country": "Hungary",
+          "notes": "UNG (1956 W1960 S) from Italian Ungheria",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Flag_of_Hungary.svg/40px-Flag_of_Hungary.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "INA",
+          "country": "Indonesia",
+          "notes": "INS (1960)",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Flag_of_Indonesia.svg/40px-Flag_of_Indonesia.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "IND",
+          "country": "India",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/en/thumb/4/41/Flag_of_India.svg/40px-Flag_of_India.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "IRI",
+          "country": "Iran",
+          "notes": "IRN (1956–1988)IRA (1968 W)current code from Islamic Republic of Iran",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/Flag_of_Iran.svg/40px-Flag_of_Iran.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "IRL",
+          "country": "Ireland",
+          "notes": "current code taken from French Irlande. EIR (1956 athletics;[6] see Ireland at the Olympics § Name of the country)",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/45/Flag_of_Ireland.svg/40px-Flag_of_Ireland.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "IRQ",
+          "country": "Iraq",
+          "notes": "IRK (19601968) from French/Spanish Irak",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/Flag_of_Iraq.svg/40px-Flag_of_Iraq.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "ISL",
+          "country": "Iceland",
+          "notes": "ICE (1960 W1964 S)current code taken from French Islande, Icelandic Ísland or Spanish Islandia",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/ce/Flag_of_Iceland.svg/40px-Flag_of_Iceland.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "ISR",
+          "country": "Israel",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Flag_of_Israel.svg/40px-Flag_of_Israel.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "ISV",
+          "country": "Virgin Islands",
+          "notes": "current code taken from French Îles Vierges (des États-Unis)",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f8/Flag_of_the_United_States_Virgin_Islands.svg/40px-Flag_of_the_United_States_Virgin_Islands.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "ITA",
+          "country": "Italy",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/en/thumb/0/03/Flag_of_Italy.svg/40px-Flag_of_Italy.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "IVB",
+          "country": "British Virgin Islands",
+          "notes": "BVI[1]current code taken from French Îles Vierges britanniques",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/42/Flag_of_the_British_Virgin_Islands.svg/40px-Flag_of_the_British_Virgin_Islands.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "JAM",
+          "country": "Jamaica",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0a/Flag_of_Jamaica.svg/40px-Flag_of_Jamaica.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "JOR",
+          "country": "Jordan",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c0/Flag_of_Jordan.svg/40px-Flag_of_Jordan.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "JPN",
+          "country": "Japan",
+          "notes": "GIA (1956 W1960 S) from Italian GiapponeJAP (1960 W)",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/en/thumb/9/9e/Flag_of_Japan.svg/40px-Flag_of_Japan.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "KAZ",
+          "country": "Kazakhstan",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/Flag_of_Kazakhstan.svg/40px-Flag_of_Kazakhstan.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "KEN",
+          "country": "Kenya",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Flag_of_Kenya.svg/40px-Flag_of_Kenya.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "KGZ",
+          "country": "Kyrgyzstan",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c7/Flag_of_Kyrgyzstan.svg/40px-Flag_of_Kyrgyzstan.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "KIR",
+          "country": "Kiribati",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/Flag_of_Kiribati.svg/40px-Flag_of_Kiribati.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "KOR",
+          "country": "South Korea",
+          "notes": "COR (1956 W1960 S1968 S1972 S)previous code taken from Italian Corea, French Corée and Spanish Corea",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/Flag_of_South_Korea.svg/40px-Flag_of_South_Korea.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "KOS",
+          "country": "Kosovo",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1f/Flag_of_Kosovo.svg/40px-Flag_of_Kosovo.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "KSA",
+          "country": "Saudi Arabia",
+          "notes": "ARS (1968–1976) from French Arabie saouditeSAU (1980–1984)current code from Kingdom of Saudi Arabia",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/Flag_of_Saudi_Arabia.svg/40px-Flag_of_Saudi_Arabia.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "KUW",
+          "country": "Kuwait",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/aa/Flag_of_Kuwait.svg/40px-Flag_of_Kuwait.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "LAO",
+          "country": "Laos",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/56/Flag_of_Laos.svg/40px-Flag_of_Laos.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "LAT",
+          "country": "Latvia",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Flag_of_Latvia.svg/40px-Flag_of_Latvia.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "LBA",
+          "country": "Libya",
+          "notes": "LYA (1964)LBY (1968 W)",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Flag_of_Libya.svg/40px-Flag_of_Libya.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "LBN",
+          "country": "Lebanon",
+          "notes": "LEB (1960 W1964 S)LIB (1964–2016) from French Liban",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/59/Flag_of_Lebanon.svg/40px-Flag_of_Lebanon.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "LBR",
+          "country": "Liberia",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/Flag_of_Liberia.svg/40px-Flag_of_Liberia.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "LCA",
+          "country": "Saint Lucia",
+          "notes": "STL[1]",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Flag_of_Saint_Lucia.svg/40px-Flag_of_Saint_Lucia.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "LES",
+          "country": "Lesotho",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/Flag_of_Lesotho.svg/40px-Flag_of_Lesotho.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "LIE",
+          "country": "Liechtenstein",
+          "notes": "LIC (1956 W1964 S1968 W)",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/Flag_of_Liechtenstein.svg/40px-Flag_of_Liechtenstein.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "LTU",
+          "country": "Lithuania",
+          "notes": "LIT (1992 W)",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Flag_of_Lithuania.svg/40px-Flag_of_Lithuania.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "LUX",
+          "country": "Luxembourg",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/da/Flag_of_Luxembourg.svg/40px-Flag_of_Luxembourg.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "MAD",
+          "country": "Madagascar",
+          "notes": "MAG (1964)",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/Flag_of_Madagascar.svg/40px-Flag_of_Madagascar.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "MAR",
+          "country": "Morocco",
+          "notes": "MRC (1964); current code from French Maroc",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Flag_of_Morocco.svg/40px-Flag_of_Morocco.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "MAS",
+          "country": "Malaysia",
+          "notes": "MAL (1964–1988)",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/66/Flag_of_Malaysia.svg/40px-Flag_of_Malaysia.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "MAW",
+          "country": "Malawi",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/Flag_of_Malawi.svg/40px-Flag_of_Malawi.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "MDA",
+          "country": "Moldova",
+          "notes": "MLD (1994)",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/27/Flag_of_Moldova.svg/40px-Flag_of_Moldova.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "MDV",
+          "country": "Maldives",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Flag_of_Maldives.svg/40px-Flag_of_Maldives.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "MEX",
+          "country": "Mexico",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fc/Flag_of_Mexico.svg/40px-Flag_of_Mexico.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "MGL",
+          "country": "Mongolia",
+          "notes": "MON (1968 W)",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/Flag_of_Mongolia.svg/40px-Flag_of_Mongolia.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "MHL",
+          "country": "Marshall Islands",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/Flag_of_the_Marshall_Islands.svg/40px-Flag_of_the_Marshall_Islands.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "MKD",
+          "country": "North Macedonia",
+          "notes": "current code taken from Macedonian Македонија/Makedonija",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/79/Flag_of_North_Macedonia.svg/40px-Flag_of_North_Macedonia.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "MLI",
+          "country": "Mali",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/92/Flag_of_Mali.svg/40px-Flag_of_Mali.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "MLT",
+          "country": "Malta",
+          "notes": "MAT (1960–1964)",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/73/Flag_of_Malta.svg/40px-Flag_of_Malta.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "MNE",
+          "country": "Montenegro",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/64/Flag_of_Montenegro.svg/40px-Flag_of_Montenegro.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "MON",
+          "country": "Monaco",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/Flag_of_Monaco.svg/40px-Flag_of_Monaco.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "MOZ",
+          "country": "Mozambique",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d0/Flag_of_Mozambique.svg/40px-Flag_of_Mozambique.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "MRI",
+          "country": "Mauritius",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/Flag_of_Mauritius.svg/40px-Flag_of_Mauritius.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "MTN",
+          "country": "Mauritania",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/43/Flag_of_Mauritania.svg/40px-Flag_of_Mauritania.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "MYA",
+          "country": "Myanmar",
+          "notes": "BIR (1948–19601968–1988) from French  BirmanieBUR (1964) as Burma",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/Flag_of_Myanmar.svg/40px-Flag_of_Myanmar.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "NAM",
+          "country": "Namibia",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/00/Flag_of_Namibia.svg/40px-Flag_of_Namibia.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "NCA",
+          "country": "Nicaragua",
+          "notes": "NCG (1964)NIC (1968)",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Flag_of_Nicaragua.svg/40px-Flag_of_Nicaragua.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "NED",
+          "country": "Netherlands",
+          "notes": "OLA (1956 W) from Italian OlandaNET (1960 W)PBA (1960 S) from Italian Paesi BassiNLD (1964 S)HOL (1968–1988) as Hollandcurrent code taken from Dutch Nederland",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/20/Flag_of_the_Netherlands.svg/40px-Flag_of_the_Netherlands.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "NEP",
+          "country": "Nepal",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Flag_of_Nepal.svg/20px-Flag_of_Nepal.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "NGR",
+          "country": "Nigeria",
+          "notes": "NIG (1960 S)NGA (1964)",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/79/Flag_of_Nigeria.svg/40px-Flag_of_Nigeria.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "NIG",
+          "country": "Niger",
+          "notes": "NGR (1964)",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f4/Flag_of_Niger.svg/40px-Flag_of_Niger.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "NOR",
+          "country": "Norway",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d9/Flag_of_Norway.svg/40px-Flag_of_Norway.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "NRU",
+          "country": "Nauru",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Flag_of_Nauru.svg/40px-Flag_of_Nauru.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "NZL",
+          "country": "New Zealand",
+          "notes": "NZE (19601968 W)",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Flag_of_New_Zealand.svg/40px-Flag_of_New_Zealand.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "OMA",
+          "country": "Oman",
+          "notes": "OMN[1]",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Flag_of_Oman.svg/40px-Flag_of_Oman.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "PAK",
+          "country": "Pakistan",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/32/Flag_of_Pakistan.svg/40px-Flag_of_Pakistan.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "PAN",
+          "country": "Panama",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Flag_of_Panama.svg/40px-Flag_of_Panama.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "PAR",
+          "country": "Paraguay",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/27/Flag_of_Paraguay.svg/40px-Flag_of_Paraguay.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "PER",
+          "country": "Peru",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cf/Flag_of_Peru.svg/40px-Flag_of_Peru.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "PHI",
+          "country": "Philippines",
+          "notes": "FIL (19601968) from Spanish Filipinas and Italian Filippine",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/Flag_of_the_Philippines.svg/40px-Flag_of_the_Philippines.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "PLE",
+          "country": "Palestine",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/00/Flag_of_Palestine.svg/40px-Flag_of_Palestine.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "PLW",
+          "country": "Palau",
+          "notes": "from archaic English Pelew",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/48/Flag_of_Palau.svg/40px-Flag_of_Palau.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "PNG",
+          "country": "Papua New Guinea",
+          "notes": "NGY (1976–1980)NGU (1984–1988)",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/Flag_of_Papua_New_Guinea.svg/40px-Flag_of_Papua_New_Guinea.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "POL",
+          "country": "Poland",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/en/thumb/1/12/Flag_of_Poland.svg/40px-Flag_of_Poland.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "POR",
+          "country": "Portugal",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Flag_of_Portugal.svg/40px-Flag_of_Portugal.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "PRK",
+          "country": "North Korea",
+          "notes": "NKO (1964 S1968 W)CDN (1968) from French Corée du Nord or Spanish Corea del Nortecurrent code from People's Republic of Korea",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/51/Flag_of_North_Korea.svg/40px-Flag_of_North_Korea.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "PUR",
+          "country": "Puerto Rico",
+          "notes": "PRI (1960)PRO (1968)",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/28/Flag_of_Puerto_Rico.svg/40px-Flag_of_Puerto_Rico.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "QAT",
+          "country": "Qatar",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/Flag_of_Qatar.svg/40px-Flag_of_Qatar.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "ROU",
+          "country": "Romania",
+          "notes": "ROM (1956–19601972–2006)RUM (1964–1968) from obsolete spelling Rumaniacurrent code from French Roumanie",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/73/Flag_of_Romania.svg/40px-Flag_of_Romania.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "RSA",
+          "country": "South Africa",
+          "notes": "SAF (1960–1972)current code from Republic of South Africa",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/af/Flag_of_South_Africa.svg/40px-Flag_of_South_Africa.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "RUS",
+          "country": "Russia",
+          "notes": "From 1994 to 2016",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/en/thumb/f/f3/Flag_of_Russia.svg/40px-Flag_of_Russia.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "RWA",
+          "country": "Rwanda",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/17/Flag_of_Rwanda.svg/40px-Flag_of_Rwanda.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "SAM",
+          "country": "Samoa",
+          "notes": "WSM (1984–1996) as Western Samoa",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/Flag_of_Samoa.svg/40px-Flag_of_Samoa.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "SEN",
+          "country": "Senegal",
+          "notes": "SGL (1964)",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fd/Flag_of_Senegal.svg/40px-Flag_of_Senegal.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "SEY",
+          "country": "Seychelles",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fc/Flag_of_Seychelles.svg/40px-Flag_of_Seychelles.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "SGP",
+          "country": "Singapore",
+          "notes": "SIN (1959–2016)",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/48/Flag_of_Singapore.svg/40px-Flag_of_Singapore.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "SKN",
+          "country": "Saint Kitts and Nevis",
+          "notes": "STK[1]",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fe/Flag_of_Saint_Kitts_and_Nevis.svg/40px-Flag_of_Saint_Kitts_and_Nevis.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "SLE",
+          "country": "Sierra Leone",
+          "notes": "SLA (1968)",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/17/Flag_of_Sierra_Leone.svg/40px-Flag_of_Sierra_Leone.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "SLO",
+          "country": "Slovenia",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f0/Flag_of_Slovenia.svg/40px-Flag_of_Slovenia.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "SMR",
+          "country": "San Marino",
+          "notes": "SMA (1960–1964)",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b1/Flag_of_San_Marino.svg/40px-Flag_of_San_Marino.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "SOL",
+          "country": "Solomon Islands",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/74/Flag_of_the_Solomon_Islands.svg/40px-Flag_of_the_Solomon_Islands.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "SOM",
+          "country": "Somalia",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/Flag_of_Somalia.svg/40px-Flag_of_Somalia.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "SRB",
+          "country": "Serbia",
+          "notes": "from Serbian Srbija",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/ff/Flag_of_Serbia.svg/40px-Flag_of_Serbia.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "SRI",
+          "country": "Sri Lanka",
+          "notes": "CEY (1948–19641972) as CeylonCEI (1968 S) from Spanish Ceilán",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Flag_of_Sri_Lanka.svg/40px-Flag_of_Sri_Lanka.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "SSD",
+          "country": "South Sudan",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Flag_of_South_Sudan.svg/40px-Flag_of_South_Sudan.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "STP",
+          "country": "São Tomé and Príncipe",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0a/Flag_of_S%C3%A3o_Tom%C3%A9_and_Pr%C3%ADncipe.svg/40px-Flag_of_S%C3%A3o_Tom%C3%A9_and_Pr%C3%ADncipe.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "SUD",
+          "country": "Sudan",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/Flag_of_Sudan.svg/40px-Flag_of_Sudan.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "SUI",
+          "country": "Switzerland",
+          "notes": "SVI (1956 W1960 S) from Italian SvizzeraSWI (1960 W1964 S)current code from French Suisse",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Flag_of_Switzerland.svg/20px-Flag_of_Switzerland.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "SUR",
+          "country": "Suriname",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/60/Flag_of_Suriname.svg/40px-Flag_of_Suriname.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "SVK",
+          "country": "Slovakia",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e6/Flag_of_Slovakia.svg/40px-Flag_of_Slovakia.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "SWE",
+          "country": "Sweden",
+          "notes": "SVE (1956 W1960 S) from Italian SveziaSUE (1968 S) from Spanish Suecia",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/en/thumb/4/4c/Flag_of_Sweden.svg/40px-Flag_of_Sweden.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "SWZ",
+          "country": "Eswatini",
+          "notes": "current code from former name Swaziland",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fb/Flag_of_Eswatini.svg/40px-Flag_of_Eswatini.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "SYR",
+          "country": "Syria",
+          "notes": "SIR (1968) from Spanish Siria",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/54/Flag_of_Syria_%282025-%29.svg/40px-Flag_of_Syria_%282025-%29.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "TAN",
+          "country": "Tanzania",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/38/Flag_of_Tanzania.svg/40px-Flag_of_Tanzania.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "TGA",
+          "country": "Tonga",
+          "notes": "TON (1984)",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Flag_of_Tonga.svg/40px-Flag_of_Tonga.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "THA",
+          "country": "Thailand",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Flag_of_Thailand.svg/40px-Flag_of_Thailand.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "TJK",
+          "country": "Tajikistan",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d0/Flag_of_Tajikistan.svg/40px-Flag_of_Tajikistan.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "TKM",
+          "country": "Turkmenistan",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/Flag_of_Turkmenistan.svg/40px-Flag_of_Turkmenistan.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "TLS",
+          "country": "Timor-Leste",
+          "notes": "current code taken from Portuguese Timor-Leste",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/Flag_of_East_Timor.svg/40px-Flag_of_East_Timor.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "TOG",
+          "country": "Togo",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/68/Flag_of_Togo.svg/40px-Flag_of_Togo.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "TPE",
+          "country": "Republic of China[7][8][9][10]",
+          "notes": "RCF (1956–1960) as Republic of China, FormosaTWN (1964–1968) as TaiwanROC (1972–1976) as Republic of China",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/Flag_of_the_Republic_of_China.svg/40px-Flag_of_the_Republic_of_China.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "TTO",
+          "country": "Trinidad and Tobago",
+          "notes": "TRT (1964–1968)TRI (1972–2012)",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/64/Flag_of_Trinidad_and_Tobago.svg/40px-Flag_of_Trinidad_and_Tobago.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "TUN",
+          "country": "Tunisia",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/ce/Flag_of_Tunisia.svg/40px-Flag_of_Tunisia.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "TUR",
+          "country": "Turkey",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b4/Flag_of_Turkey.svg/40px-Flag_of_Turkey.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "TUV",
+          "country": "Tuvalu",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/38/Flag_of_Tuvalu.svg/40px-Flag_of_Tuvalu.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "UAE",
+          "country": "United Arab Emirates",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/Flag_of_the_United_Arab_Emirates.svg/40px-Flag_of_the_United_Arab_Emirates.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "UGA",
+          "country": "Uganda",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Flag_of_Uganda.svg/40px-Flag_of_Uganda.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "UKR",
+          "country": "Ukraine",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Flag_of_Ukraine.svg/40px-Flag_of_Ukraine.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "URU",
+          "country": "Uruguay",
+          "notes": "URG (1968)",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fe/Flag_of_Uruguay.svg/40px-Flag_of_Uruguay.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "USA",
+          "country": "United States",
+          "notes": "SUA (1960 S) from Italian Stati Uniti d'AmericaEUA (1968 S) from French États-Unis d'Amérique or Spanish Estados Unidos de América",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/en/thumb/a/a4/Flag_of_the_United_States.svg/40px-Flag_of_the_United_States.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "UZB",
+          "country": "Uzbekistan",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Flag_of_Uzbekistan.svg/40px-Flag_of_Uzbekistan.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "VAN",
+          "country": "Vanuatu",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/Flag_of_Vanuatu.svg/40px-Flag_of_Vanuatu.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "VEN",
+          "country": "Venezuela",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/06/Flag_of_Venezuela.svg/40px-Flag_of_Venezuela.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "VIE",
+          "country": "Vietnam",
+          "notes": "VET (1964)VNM (1952–1975) as Republic of Vietnam",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/21/Flag_of_Vietnam.svg/40px-Flag_of_Vietnam.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "VIN",
+          "country": "Saint Vincent and the Grenadines",
+          "notes": "STV[1]",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/Flag_of_Saint_Vincent_and_the_Grenadines.svg/40px-Flag_of_Saint_Vincent_and_the_Grenadines.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "YEM",
+          "country": "Yemen",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/Flag_of_Yemen.svg/40px-Flag_of_Yemen.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "ZAM",
+          "country": "Zambia",
+          "notes": "NRH (1964) as Northern Rhodesia",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/06/Flag_of_Zambia.svg/40px-Flag_of_Zambia.svg.png",
+          "table_source": "Current NOCs"
+        },
+        {
+          "ioc_code": "ZIM",
+          "country": "Zimbabwe",
+          "notes": "RHO (1960–1972) as Rhodesia",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6a/Flag_of_Zimbabwe.svg/40px-Flag_of_Zimbabwe.svg.png",
+          "table_source": "Current NOCs"
+        }
+      ]
+    },
+    {
+      "table_index": 1,
+      "title": "Current NPCs",
+      "entries_count": 2,
+      "entries": [
+        {
+          "ioc_code": "FRO",
+          "country": "Faroe Islands",
+          "notes": "The Faroese Sport Organisation for Disabled",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3c/Flag_of_the_Faroe_Islands.svg/40px-Flag_of_the_Faroe_Islands.svg.png",
+          "table_source": "Current NPCs"
+        },
+        {
+          "ioc_code": "MAC",
+          "country": "Macau, China",
+          "notes": "Associação Recreativa dos Deficientes de Macau",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/63/Flag_of_Macau.svg/40px-Flag_of_Macau.svg.png",
+          "table_source": "Current NPCs"
+        }
+      ]
+    },
+    {
+      "table_index": 2,
+      "title": "Codes still in use",
+      "entries_count": 13,
+      "entries": [
+        {
+          "ioc_code": "AHO",
+          "country": "Netherlands Antilles",
+          "notes": "ATO (1960)NAN (1964)code from French Antilles hollandaises",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ae/Flag_of_the_Netherlands_Antilles_%281986%E2%80%932010%29.svg/40px-Flag_of_the_Netherlands_Antilles_%281986%E2%80%932010%29.svg.png",
+          "table_source": "Codes still in use"
+        },
+        {
+          "ioc_code": "ANZ",
+          "country": "Australasia",
+          "notes": "Also AUA[1]",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/51/Flag_of_Australasian_team_for_Olympic_games.svg/40px-Flag_of_Australasian_team_for_Olympic_games.svg.png",
+          "table_source": "Codes still in use"
+        },
+        {
+          "ioc_code": "BOH",
+          "country": "Bohemia",
+          "notes": "",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b1/Flag_of_Bohemia.svg/40px-Flag_of_Bohemia.svg.png",
+          "table_source": "Codes still in use"
+        },
+        {
+          "ioc_code": "BWI",
+          "country": "British West Indies",
+          "notes": "ANT (1960) from Antilles",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/15/Flag_of_the_West_Indies_Federation_%281958%E2%80%931962%29.svg/40px-Flag_of_the_West_Indies_Federation_%281958%E2%80%931962%29.svg.png",
+          "table_source": "Codes still in use"
+        },
+        {
+          "ioc_code": "EUA",
+          "country": "United Team of Germany",
+          "notes": "code taken from French Équipe unifiée d'Allemagne",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/German_Olympic_flag_%281959-1968%29.svg/40px-German_Olympic_flag_%281959-1968%29.svg.png",
+          "table_source": "Codes still in use"
+        },
+        {
+          "ioc_code": "EUN",
+          "country": "Unified Team",
+          "notes": "code from the French Équipe unifiée or Spanish Equipo Unificado",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Olympic_flag.svg/40px-Olympic_flag.svg.png",
+          "table_source": "Codes still in use"
+        },
+        {
+          "ioc_code": "FRG",
+          "country": "West Germany",
+          "notes": "ALL (1968 W) from French AllemagneALE (1968 S) from Spanish AlemaniaGER (1972–1976)code FRG taken from Federal Republic of Germany",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/en/thumb/b/ba/Flag_of_Germany.svg/40px-Flag_of_Germany.svg.png",
+          "table_source": "Codes still in use"
+        },
+        {
+          "ioc_code": "GDR",
+          "country": "East Germany",
+          "notes": "ODE (1968 S) from German Ostdeutschlandcode GDR taken from German Democratic Republic",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a1/Flag_of_East_Germany.svg/40px-Flag_of_East_Germany.svg.png",
+          "table_source": "Codes still in use"
+        },
+        {
+          "ioc_code": "SCG",
+          "country": "Serbia and Montenegro",
+          "notes": "code from Serbian Србија и Црна Гора / Srbija i Crna Gora",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Flag_of_Serbia_and_Montenegro_%281992%E2%80%932006%29.svg/40px-Flag_of_Serbia_and_Montenegro_%281992%E2%80%932006%29.svg.png",
+          "table_source": "Codes still in use"
+        },
+        {
+          "ioc_code": "TCH",
+          "country": "Czechoslovakia",
+          "notes": "CSL (1956 W)CZE (1960 W)CSV (1960 S)CZS (1964 S)CHE (1968 S) from Spanish Checoslovaquia code taken from French Tchécoslovaquie",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/Flag_of_the_Czech_Republic.svg/40px-Flag_of_the_Czech_Republic.svg.png",
+          "table_source": "Codes still in use"
+        },
+        {
+          "ioc_code": "URS",
+          "country": "Soviet Union",
+          "notes": "SOV (1968 W)code from French Union des républiques socialistes soviétiques (URSS)",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Flag_of_the_Soviet_Union.svg/40px-Flag_of_the_Soviet_Union.svg.png",
+          "table_source": "Codes still in use"
+        },
+        {
+          "ioc_code": "VNM",
+          "country": "South Vietnam",
+          "notes": "Code of the State of Vietnam and then Republic of Vietnam from 1952 to 1975.[12][13][14]",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/Flag_of_South_Vietnam.svg/40px-Flag_of_South_Vietnam.svg.png",
+          "table_source": "Codes still in use"
+        },
+        {
+          "ioc_code": "YUG",
+          "country": "Yugoslavia",
+          "notes": "JUG (1956–19601968 W) from Југославија/Jugoslavija in native languagesYUS (1964 S)",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/Flag_of_Yugoslavia_%281946-1992%29.svg/40px-Flag_of_Yugoslavia_%281946-1992%29.svg.png",
+          "table_source": "Codes still in use"
+        }
+      ]
+    },
+    {
+      "table_index": 3,
+      "title": "Obsolete codes",
+      "entries_count": 21,
+      "entries": [
+        {
+          "ioc_code": "BIR",
+          "country": "BurmaFrom French Birmanie",
+          "notes": "1948–1988",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/10/Flag_of_Myanmar_%281974%E2%80%932010%29.svg/40px-Flag_of_Myanmar_%281974%E2%80%932010%29.svg.png",
+          "table_source": "Obsolete codes"
+        },
+        {
+          "ioc_code": "CEY",
+          "country": "Ceylon",
+          "notes": "1948–1972",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Flag_of_Sri_Lanka.svg/40px-Flag_of_Sri_Lanka.svg.png",
+          "table_source": "Obsolete codes"
+        },
+        {
+          "ioc_code": "DAH",
+          "country": "Dahomey",
+          "notes": "1964–1976",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0a/Flag_of_Benin.svg/40px-Flag_of_Benin.svg.png",
+          "table_source": "Obsolete codes"
+        },
+        {
+          "ioc_code": "GUI",
+          "country": "British Guiana",
+          "notes": "1948–1964",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/76/Flag_of_British_Guiana_%281955%E2%80%931966%29.svg/40px-Flag_of_British_Guiana_%281955%E2%80%931966%29.svg.png",
+          "table_source": "Obsolete codes"
+        },
+        {
+          "ioc_code": "HBR",
+          "country": "British HondurasFrom French Honduras britannique",
+          "notes": "1968–1972",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f4/Flag_of_British_Honduras_%281919%E2%80%931981%29.svg/40px-Flag_of_British_Honduras_%281919%E2%80%931981%29.svg.png",
+          "table_source": "Obsolete codes"
+        },
+        {
+          "ioc_code": "IHO",
+          "country": "Dutch East Indiescode from French Indes orientales hollandaises",
+          "notes": "1934–1938",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/20/Flag_of_the_Netherlands.svg/40px-Flag_of_the_Netherlands.svg.png",
+          "table_source": "Obsolete codes"
+        },
+        {
+          "ioc_code": "KHM",
+          "country": "Khmer RepublicFrom French République khmère",
+          "notes": "1972",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a8/Flag_of_the_Khmer_Republic.svg/40px-Flag_of_the_Khmer_Republic.svg.png",
+          "table_source": "Obsolete codes"
+        },
+        {
+          "ioc_code": "MAL",
+          "country": "MalayaFrom French Malaisie",
+          "notes": "1956–1960",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fb/Flag_of_Malaya_%281950%E2%80%931963%29.svg/40px-Flag_of_Malaya_%281950%E2%80%931963%29.svg.png",
+          "table_source": "Obsolete codes"
+        },
+        {
+          "ioc_code": "NBO",
+          "country": "North Borneo",
+          "notes": "1956",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Flag_of_North_Borneo_%281948%E2%80%931963%29.svg/40px-Flag_of_North_Borneo_%281948%E2%80%931963%29.svg.png",
+          "table_source": "Obsolete codes"
+        },
+        {
+          "ioc_code": "NRH",
+          "country": "Northern Rhodesia",
+          "notes": "1964",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/56/Flag_of_Northern_Rhodesia_%281939%E2%80%931964%29.svg/40px-Flag_of_Northern_Rhodesia_%281939%E2%80%931964%29.svg.png",
+          "table_source": "Obsolete codes"
+        },
+        {
+          "ioc_code": "RAU",
+          "country": "United Arab Republiccode from French République arabe unie",
+          "notes": "1960",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Flag_of_the_United_Arab_Republic_%281958%E2%80%931971%29%2C_Flag_of_Syria_%281980%E2%80%932024%29.svg/40px-Flag_of_the_United_Arab_Republic_%281958%E2%80%931971%29%2C_Flag_of_Syria_%281980%E2%80%932024%29.svg.png",
+          "table_source": "Obsolete codes"
+        },
+        {
+          "ioc_code": "RHO",
+          "country": "Rhodesiaalso Southern Rhodesia and Federation of Rhodesia and Nyasaland until it became Zimbabwe in 1980",
+          "notes": "1960–1972",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/Flag_of_Rhodesia_%281968%E2%80%931979%29.svg/40px-Flag_of_Rhodesia_%281968%E2%80%931979%29.svg.png",
+          "table_source": "Obsolete codes"
+        },
+        {
+          "ioc_code": "ROC",
+          "country": "Republic of China",
+          "notes": "1932–1976",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/Flag_of_the_Republic_of_China.svg/40px-Flag_of_the_Republic_of_China.svg.png",
+          "table_source": "Obsolete codes"
+        },
+        {
+          "ioc_code": "RU1",
+          "country": "Russian Empire",
+          "notes": "19001908–1912",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/en/thumb/f/f3/Flag_of_Russia.svg/40px-Flag_of_Russia.svg.png",
+          "table_source": "Obsolete codes"
+        },
+        {
+          "ioc_code": "SAA",
+          "country": "Saar",
+          "notes": "1952",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/Flag_of_Saar_%281947%E2%80%931956%29.svg/40px-Flag_of_Saar_%281947%E2%80%931956%29.svg.png",
+          "table_source": "Obsolete codes"
+        },
+        {
+          "ioc_code": "UAR",
+          "country": "United Arab Republic",
+          "notes": "1964–1968",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Flag_of_the_United_Arab_Republic_%281958%E2%80%931971%29%2C_Flag_of_Syria_%281980%E2%80%932024%29.svg/40px-Flag_of_the_United_Arab_Republic_%281958%E2%80%931971%29%2C_Flag_of_Syria_%281980%E2%80%932024%29.svg.png",
+          "table_source": "Obsolete codes"
+        },
+        {
+          "ioc_code": "VOL",
+          "country": "Upper Volta",
+          "notes": "1972–1984",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/Flag_of_Upper_Volta.svg/40px-Flag_of_Upper_Volta.svg.png",
+          "table_source": "Obsolete codes"
+        },
+        {
+          "ioc_code": "WSM",
+          "country": "Western Samoa",
+          "notes": "1984–1996",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/Flag_of_Samoa.svg/40px-Flag_of_Samoa.svg.png",
+          "table_source": "Obsolete codes"
+        },
+        {
+          "ioc_code": "YAR",
+          "country": "North Yemencode from Yemen Arab Republic",
+          "notes": "1984–1988",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/38/Flag_of_the_Yemen_Arab_Republic.svg/40px-Flag_of_the_Yemen_Arab_Republic.svg.png",
+          "table_source": "Obsolete codes"
+        },
+        {
+          "ioc_code": "YMD",
+          "country": "South Yemencode from Yemen Democratic Republic",
+          "notes": "1988",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/db/Flag_of_South_Yemen.svg/40px-Flag_of_South_Yemen.svg.png",
+          "table_source": "Obsolete codes"
+        },
+        {
+          "ioc_code": "ZAI",
+          "country": "ZaireFrom French Zaïre",
+          "notes": "1972–1996",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f8/Flag_of_Zaire_%281971%E2%80%931997%29.svg/40px-Flag_of_Zaire_%281971%E2%80%931997%29.svg.png",
+          "table_source": "Obsolete codes"
+        }
+      ]
+    },
+    {
+      "table_index": 4,
+      "title": "Special codes for Olympics",
+      "entries_count": 13,
+      "entries": [
+        {
+          "ioc_code": "AIN",
+          "country": "Individual Neutral Athletesfrom French Athlètes Individuels Neutres",
+          "notes": "2024",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0c/Flag_of_the_Individual_Neutral_Athletes_at_the_2024_Summer_Olympics.svg/40px-Flag_of_the_Individual_Neutral_Athletes_at_the_2024_Summer_Olympics.svg.png",
+          "table_source": "Special codes for Olympics"
+        },
+        {
+          "ioc_code": "ANZ",
+          "country": "Australasia",
+          "notes": "1908–1912",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/51/Flag_of_Australasian_team_for_Olympic_games.svg/40px-Flag_of_Australasian_team_for_Olympic_games.svg.png",
+          "table_source": "Special codes for Olympics"
+        },
+        {
+          "ioc_code": "COR",
+          "country": "Koreafrom French Corée",
+          "notes": "2018",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/21/Unification_flag_of_Korea_%28pre_2006%29.svg/40px-Unification_flag_of_Korea_%28pre_2006%29.svg.png",
+          "table_source": "Special codes for Olympics"
+        },
+        {
+          "ioc_code": "EOR",
+          "country": "Refugee Olympic Teamfrom French Équipe olympique des réfugiés",
+          "notes": "2016–2024",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Olympic_flag.svg/40px-Olympic_flag.svg.png",
+          "table_source": "Special codes for Olympics"
+        },
+        {
+          "ioc_code": "EUA",
+          "country": "United Team of Germanyfrom French Équipe unifiée d'Allemagne",
+          "notes": "1956–1964",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/German_Olympic_flag_%281959-1968%29.svg/40px-German_Olympic_flag_%281959-1968%29.svg.png",
+          "table_source": "Special codes for Olympics"
+        },
+        {
+          "ioc_code": "EUN",
+          "country": "Unified Teamfrom French Équipe unifiée",
+          "notes": "1992",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Olympic_flag.svg/40px-Olympic_flag.svg.png",
+          "table_source": "Special codes for Olympics"
+        },
+        {
+          "ioc_code": "IOP",
+          "country": "Independent Olympic Participants",
+          "notes": "19922014",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Olympic_flag.svg/40px-Olympic_flag.svg.png",
+          "table_source": "Special codes for Olympics"
+        },
+        {
+          "ioc_code": "IOA",
+          "country": "Independent Olympic Athletes",
+          "notes": "200020122016",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Olympic_flag.svg/40px-Olympic_flag.svg.png",
+          "table_source": "Special codes for Olympics"
+        },
+        {
+          "ioc_code": "IOC",
+          "country": "Athletes from Kuwait",
+          "notes": "2010–2012",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Olympic_flag.svg/40px-Olympic_flag.svg.png",
+          "table_source": "Special codes for Olympics"
+        },
+        {
+          "ioc_code": "MIX",
+          "country": "Mixed-NOCs",
+          "notes": "2010–",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Olympic_flag.svg/40px-Olympic_flag.svg.png",
+          "table_source": "Special codes for Olympics"
+        },
+        {
+          "ioc_code": "OAR",
+          "country": "Olympic Athletes from Russia",
+          "notes": "2018",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Olympic_flag.svg/40px-Olympic_flag.svg.png",
+          "table_source": "Special codes for Olympics"
+        },
+        {
+          "ioc_code": "ROC",
+          "country": "ROCfrom the abbreviation for Russian Olympic Committee",
+          "notes": "2020–2022",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/Russian_Olympic_Committee_flag.png/40px-Russian_Olympic_Committee_flag.png",
+          "table_source": "Special codes for Olympics"
+        },
+        {
+          "ioc_code": "XXB",
+          "country": "Mixed team",
+          "notes": "1896–1904",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Olympic_flag.svg/40px-Olympic_flag.svg.png",
+          "table_source": "Special codes for Olympics"
+        }
+      ]
+    },
+    {
+      "table_index": 5,
+      "title": "Special codes for Paralympics",
+      "entries_count": 7,
+      "entries": [
+        {
+          "ioc_code": "IPP",
+          "country": "Independent Paralympic Participants",
+          "notes": "1992",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f8/Paralympic_flag_%281988-1994%29.svg/40px-Paralympic_flag_%281988-1994%29.svg.png",
+          "table_source": "Special codes for Paralympics"
+        },
+        {
+          "ioc_code": "IPA",
+          "country": "Individual Paralympic Athletes",
+          "notes": "2000",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/Paralympic_flag_%281994-2004%29.svg/40px-Paralympic_flag_%281994-2004%29.svg.png",
+          "table_source": "Special codes for Paralympics"
+        },
+        {
+          "ioc_code": "IPA",
+          "country": "Independent Paralympic Athletes",
+          "notes": "2016",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9d/Paralympic_flag_%282010-2019%29.svg/40px-Paralympic_flag_%282010-2019%29.svg.png",
+          "table_source": "Special codes for Paralympics"
+        },
+        {
+          "ioc_code": "NPA",
+          "country": "Neutral Paralympic Athletes",
+          "notes": "20182024",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Flag_of_Neutral_Paralympic_Athletes_%28Paris_2024%29.svg/40px-Flag_of_Neutral_Paralympic_Athletes_%28Paris_2024%29.svg.png",
+          "table_source": "Special codes for Paralympics"
+        },
+        {
+          "ioc_code": "PNA",
+          "country": "Paralympic Neutral Athletes",
+          "notes": "–",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7f/Paralympic_flag_%282019%29.svg/40px-Paralympic_flag_%282019%29.svg.png",
+          "table_source": "Special codes for Paralympics"
+        },
+        {
+          "ioc_code": "RPC",
+          "country": "RPCfrom the abbreviation for Russian Paralympic Committee",
+          "notes": "2020",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/en/thumb/f/f6/Russian_Paralympic_Committee_special_emblem_%28Tokyo_2020%2C_Beijing_2022%29.jpg/40px-Russian_Paralympic_Committee_special_emblem_%28Tokyo_2020%2C_Beijing_2022%29.jpg",
+          "table_source": "Special codes for Paralympics"
+        },
+        {
+          "ioc_code": "RPT",
+          "country": "Refugee Paralympic Team",
+          "notes": "20202024",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7f/Paralympic_flag_%282019%29.svg/40px-Paralympic_flag_%282019%29.svg.png",
+          "table_source": "Special codes for Paralympics"
+        }
+      ]
+    },
+    {
+      "table_index": 6,
+      "title": "Special codes for World Games",
+      "entries_count": 1,
+      "entries": [
+        {
+          "ioc_code": "HNL[30]",
+          "country": "Haudenosaunee",
+          "notes": "2022",
+          "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/Flag_of_the_Iroquois_Confederacy.svg/40px-Flag_of_the_Iroquois_Confederacy.svg.png",
+          "table_source": "Special codes for World Games"
+        }
+      ]
+    },
+    {
+      "table_index": 8,
+      "title": "Sources",
+      "entries_count": 8,
+      "entries": [
+        {
+          "ioc_code": "Medals",
+          "country": "Medal table\nAll-time medal table\nyouth\nMedal table leaders by Olympic Games\nMedalists\nyouth\nMedal ties\nIncentives by country\nStripped medals\nOlympic diploma\nOlive wreath",
+          "notes": "",
+          "flag_url": null,
+          "table_source": "Sources"
+        },
+        {
+          "ioc_code": "Nations",
+          "country": "Summer Olympics\nWinter Olympics\ntropical nations\ncountry codes",
+          "notes": "",
+          "flag_url": null,
+          "table_source": "Sources"
+        },
+        {
+          "ioc_code": "Host cities",
+          "country": "Bids\nyouth\nVenues\nyouth\nOlympic Stadium",
+          "notes": "",
+          "flag_url": null,
+          "table_source": "Sources"
+        },
+        {
+          "ioc_code": "Ceremonies",
+          "country": "Olympic Mass\nPeople who opened the Olympics\nTorch relays\nlighters of the Olympic cauldron\nKeepers of the Olympic flag",
+          "notes": "",
+          "flag_url": null,
+          "table_source": "Sources"
+        },
+        {
+          "ioc_code": "Media",
+          "country": "Television\nOlympic Broadcasting Services\nOlympic Channel\nAmerican\nSocial media\nFilms\nsummer\nwinter\nVideo games",
+          "notes": "",
+          "flag_url": null,
+          "table_source": "Sources"
+        },
+        {
+          "ioc_code": "Symbols",
+          "country": "Flame\nOlympiad\nOath\nSongs and anthems\nHymn\nEmblem\nPoster\nMascots\nTattoo\nCoins\nsummer (pre-2000)\nsummer (2000-present)\nwinter\nPierre de Coubertin Medal\nOlympic Cup\nOlympic Diploma of Merit\nOlympic Laurel\nOlympic Order\nOlive wreath",
+          "notes": "",
+          "flag_url": null,
+          "table_source": "Sources"
+        },
+        {
+          "ioc_code": "Other",
+          "country": "Art competitions at the Olympics\nmedalists\nScandals and controversies\nantisemitism\ncolonialism\ndoping\nDeaths\nWWI\nWWII\nParticipation of women",
+          "notes": "",
+          "flag_url": null,
+          "table_source": "Sources"
+        },
+        {
+          "ioc_code": "Related",
+          "country": "Paralympic Games\nContinental\nAfrican\nAsian\nEuropean\nPacific\nPan-American\nOlympic Esports Series\nOlympic Esports Games\nDeaflympics\nSpecial Olympics\n1906 Intercalated Games\nAncient Olympic Games",
+          "notes": "",
+          "flag_url": null,
+          "table_source": "Sources"
+        }
+      ]
+    },
+    {
+      "table_index": 11,
+      "title": "Sources",
+      "entries_count": 9,
+      "entries": [
+        {
+          "ioc_code": "Administrative codes",
+          "country": "FIPS country code (FIPS 10-4)\nFIPS place code (FIPS 55)\nFIPS county code (FIPS 6-4)\nFIPS state code (FIPS 5-2)\nNUTS (EU)\nGSS codes (United Kingdom)\nSGC codes (Canada)\nUN M.49 (UN)",
+          "notes": "",
+          "flag_url": null,
+          "table_source": "Sources"
+        },
+        {
+          "ioc_code": "Airport codes",
+          "country": "IATA airport code\nICAO airport code",
+          "notes": "",
+          "flag_url": null,
+          "table_source": "Sources"
+        },
+        {
+          "ioc_code": "Country codes",
+          "country": "IANA country code\nISO 3166-1\nalpha-2\nalpha-3\nnumeric\nAircraft prefixes\nIOC country code\nFIFA country code\nVehicle country codes",
+          "notes": "",
+          "flag_url": null,
+          "table_source": "Sources"
+        },
+        {
+          "ioc_code": "Geodesicplace codes",
+          "country": "Global\nC-squares\nGeohash\nGeohash-36\nGEOREF\nInternational Map of the World indexing system\nMapcode\nMarsden square\nMilitary Grid Reference System\nNatural Area Code\nOpen Location Code\nQDGC\nUN/LOCODE\nUTM\nwhat3words\nWMO squares\nRegional\nICES Statistical Rectangles (north-east Atlantic region)\nIrish grid reference system\nNational Topographic System (Canada)\nOrdnance Survey National Grid (UK)\nNational Level Addressing Grid (India)",
+          "notes": "Global",
+          "flag_url": null,
+          "table_source": "Sources"
+        },
+        {
+          "ioc_code": "Global",
+          "country": "C-squares\nGeohash\nGeohash-36\nGEOREF\nInternational Map of the World indexing system\nMapcode\nMarsden square\nMilitary Grid Reference System\nNatural Area Code\nOpen Location Code\nQDGC\nUN/LOCODE\nUTM\nwhat3words\nWMO squares",
+          "notes": "",
+          "flag_url": null,
+          "table_source": "Sources"
+        },
+        {
+          "ioc_code": "Regional",
+          "country": "ICES Statistical Rectangles (north-east Atlantic region)\nIrish grid reference system\nNational Topographic System (Canada)\nOrdnance Survey National Grid (UK)\nNational Level Addressing Grid (India)",
+          "notes": "",
+          "flag_url": null,
+          "table_source": "Sources"
+        },
+        {
+          "ioc_code": "Postal codes",
+          "country": "Australian post codes\nCEP (Brazil)\nEircodes (Republic of Ireland)\nNew Zealand post codes\nPostal Index Number (India)\nUnited Kingdom post codes\nZIP Code (United States)",
+          "notes": "",
+          "flag_url": null,
+          "table_source": "Sources"
+        },
+        {
+          "ioc_code": "Telephony",
+          "country": "ITU-R country codes\nITU-T country calling codes\nITU-T mobile calling codes",
+          "notes": "",
+          "flag_url": null,
+          "table_source": "Sources"
+        },
+        {
+          "ioc_code": "Amateur radio",
+          "country": "Maidenhead Locator System\nHistorical : QRA locator",
+          "notes": "",
+          "flag_url": null,
+          "table_source": "Sources"
+        }
+      ]
+    },
+    {
+      "table_index": 12,
+      "title": "Sources",
+      "entries_count": 1,
+      "entries": [
+        {
+          "ioc_code": "Regional",
+          "country": "ICES Statistical Rectangles (north-east Atlantic region)\nIrish grid reference system\nNational Topographic System (Canada)\nOrdnance Survey National Grid (UK)\nNational Level Addressing Grid (India)",
+          "notes": "",
+          "flag_url": null,
+          "table_source": "Sources"
+        }
+      ]
+    }
+  ],
+  "all_entries": [
+    {
+      "ioc_code": "AFG",
+      "country": "Afghanistan",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Flag_of_Afghanistan_%282013%E2%80%932021%29.svg/40px-Flag_of_Afghanistan_%282013%E2%80%932021%29.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "ALB",
+      "country": "Albania",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/Flag_of_Albania.svg/40px-Flag_of_Albania.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "ALG",
+      "country": "Algeria",
+      "notes": "AGR (1964)AGL (1968 S) from Spanish Argelia",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/Flag_of_Algeria.svg/40px-Flag_of_Algeria.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "AND",
+      "country": "Andorra",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Flag_of_Andorra.svg/40px-Flag_of_Andorra.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "ANG",
+      "country": "Angola",
+      "notes": "ANO (As referenced in IAAF World Championships Beijing 2015 Statistics Handbook)[1]",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9d/Flag_of_Angola.svg/40px-Flag_of_Angola.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "ANT",
+      "country": "Antigua and Barbuda",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/Flag_of_Antigua_and_Barbuda.svg/40px-Flag_of_Antigua_and_Barbuda.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "ARG",
+      "country": "Argentina",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Flag_of_Argentina.svg/40px-Flag_of_Argentina.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "ARM",
+      "country": "Armenia",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Flag_of_Armenia.svg/40px-Flag_of_Armenia.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "ARU",
+      "country": "Aruba",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/Flag_of_Aruba.svg/40px-Flag_of_Aruba.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "ASA",
+      "country": "American Samoa",
+      "notes": "AMS[1]",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Flag_of_American_Samoa.svg/40px-Flag_of_American_Samoa.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "AUS",
+      "country": "Australia",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/en/thumb/b/b9/Flag_of_Australia.svg/40px-Flag_of_Australia.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "AUT",
+      "country": "Austria",
+      "notes": "current code from French Autriche",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/41/Flag_of_Austria.svg/40px-Flag_of_Austria.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "AZE",
+      "country": "Azerbaijan",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Flag_of_Azerbaijan.svg/40px-Flag_of_Azerbaijan.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "BAH",
+      "country": "Bahamas",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/Flag_of_the_Bahamas.svg/40px-Flag_of_the_Bahamas.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "BAN",
+      "country": "Bangladesh",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f9/Flag_of_Bangladesh.svg/40px-Flag_of_Bangladesh.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "BAR",
+      "country": "Barbados",
+      "notes": "BAD (1964)[a]",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ef/Flag_of_Barbados.svg/40px-Flag_of_Barbados.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "BDI",
+      "country": "Burundi",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/50/Flag_of_Burundi.svg/40px-Flag_of_Burundi.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "BEL",
+      "country": "Belgium",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/92/Flag_of_Belgium_%28civil%29.svg/40px-Flag_of_Belgium_%28civil%29.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "BEN",
+      "country": "Benin",
+      "notes": "DAY (1964)DAH (1968–1976) as Dahomey",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0a/Flag_of_Benin.svg/40px-Flag_of_Benin.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "BER",
+      "country": "Bermuda",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Flag_of_Bermuda.svg/40px-Flag_of_Bermuda.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "BHU",
+      "country": "Bhutan",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Flag_of_Bhutan.svg/40px-Flag_of_Bhutan.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "BIH",
+      "country": "Bosnia and Herzegovina",
+      "notes": "BSH (1992 S), BOS[1] current code from Bosnian Bosna i Hercegovina",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Flag_of_Bosnia_and_Herzegovina.svg/40px-Flag_of_Bosnia_and_Herzegovina.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "BIZ",
+      "country": "Belize",
+      "notes": "HBR (1968–1972) from French Honduras britannique as British Honduras; also BHO[1]",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/Flag_of_Belize.svg/40px-Flag_of_Belize.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "BLR",
+      "country": "Belarus",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/85/Flag_of_Belarus.svg/40px-Flag_of_Belarus.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "BOL",
+      "country": "Bolivia",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/48/Flag_of_Bolivia.svg/40px-Flag_of_Bolivia.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "BOT",
+      "country": "Botswana",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Flag_of_Botswana.svg/40px-Flag_of_Botswana.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "BRA",
+      "country": "Brazil",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/en/thumb/0/05/Flag_of_Brazil.svg/40px-Flag_of_Brazil.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "BRN",
+      "country": "Bahrain",
+      "notes": "BHR[1]",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Flag_of_Bahrain.svg/40px-Flag_of_Bahrain.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "BRU",
+      "country": "Brunei",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Flag_of_Brunei.svg/40px-Flag_of_Brunei.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "BUL",
+      "country": "Bulgaria",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Flag_of_Bulgaria.svg/40px-Flag_of_Bulgaria.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "BUR",
+      "country": "Burkina Faso",
+      "notes": "VOL (1972–1984) as Upper Volta; also BKF[1]",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/Flag_of_Burkina_Faso.svg/40px-Flag_of_Burkina_Faso.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "CAF",
+      "country": "Central African Republic",
+      "notes": "AFC (1968)",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Flag_of_the_Central_African_Republic.svg/40px-Flag_of_the_Central_African_Republic.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "CAM",
+      "country": "Cambodia",
+      "notes": "CAB (1964)KHM (1972) as Khmer Republic",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/83/Flag_of_Cambodia.svg/40px-Flag_of_Cambodia.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "CAN",
+      "country": "Canada",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d9/Flag_of_Canada_%28Pantone%29.svg/40px-Flag_of_Canada_%28Pantone%29.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "CAY",
+      "country": "Cayman Islands",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Flag_of_the_Cayman_Islands.svg/40px-Flag_of_the_Cayman_Islands.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "CGO",
+      "country": "Republic of the Congo",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/92/Flag_of_the_Republic_of_the_Congo.svg/40px-Flag_of_the_Republic_of_the_Congo.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "CHA",
+      "country": "Chad",
+      "notes": "CHD (1964)",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/Flag_of_Chad.svg/40px-Flag_of_Chad.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "CHI",
+      "country": "Chile",
+      "notes": "CIL (1956 W1960 S) from Italian Cile",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/78/Flag_of_Chile.svg/40px-Flag_of_Chile.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "CHN",
+      "country": "People's Republic of China[3][4][5]",
+      "notes": "PRC (1952 S) as People's Republic of China",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Flag_of_the_People%27s_Republic_of_China.svg/40px-Flag_of_the_People%27s_Republic_of_China.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "CIV",
+      "country": "Ivory Coast",
+      "notes": "IVC (1964)CML (1968) from Spanish Costa de Marfilcurrent code from French Côte d'Ivoire",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fe/Flag_of_C%C3%B4te_d%27Ivoire.svg/40px-Flag_of_C%C3%B4te_d%27Ivoire.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "CMR",
+      "country": "Cameroon",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/Flag_of_Cameroon.svg/40px-Flag_of_Cameroon.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "COD",
+      "country": "Democratic Republic of the Congo",
+      "notes": "COK (1968) as Congo-KinshasaZAI (1972–1996) as Zaire",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Flag_of_the_Democratic_Republic_of_the_Congo.svg/40px-Flag_of_the_Democratic_Republic_of_the_Congo.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "COK",
+      "country": "Cook Islands",
+      "notes": "CKI[1]",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Flag_of_the_Cook_Islands.svg/40px-Flag_of_the_Cook_Islands.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "COL",
+      "country": "Colombia",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/21/Flag_of_Colombia.svg/40px-Flag_of_Colombia.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "COM",
+      "country": "Comoros",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/94/Flag_of_the_Comoros.svg/40px-Flag_of_the_Comoros.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "CPV",
+      "country": "Cape Verde",
+      "notes": "CVD[1]",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/38/Flag_of_Cape_Verde.svg/40px-Flag_of_Cape_Verde.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "CRC",
+      "country": "Costa Rica",
+      "notes": "COS (1964)",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Flag_of_Costa_Rica.svg/40px-Flag_of_Costa_Rica.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "CRO",
+      "country": "Croatia",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/Flag_of_Croatia.svg/40px-Flag_of_Croatia.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "CUB",
+      "country": "Cuba",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bd/Flag_of_Cuba.svg/40px-Flag_of_Cuba.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "CYP",
+      "country": "Cyprus",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Flag_of_Cyprus.svg/40px-Flag_of_Cyprus.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "CZE",
+      "country": "Czechia",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/Flag_of_the_Czech_Republic.svg/40px-Flag_of_the_Czech_Republic.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "DEN",
+      "country": "Denmark",
+      "notes": "DAN (1960 S1968 W)DIN (1968 S)previous codes taken from Italian Danimarca, French Danemark and Spanish Dinamarca",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Flag_of_Denmark.svg/40px-Flag_of_Denmark.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "DJI",
+      "country": "Djibouti",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/34/Flag_of_Djibouti.svg/40px-Flag_of_Djibouti.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "DMA",
+      "country": "Dominica",
+      "notes": "DMN[1]",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c4/Flag_of_Dominica.svg/40px-Flag_of_Dominica.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "DOM",
+      "country": "Dominican Republic",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Flag_of_the_Dominican_Republic.svg/40px-Flag_of_the_Dominican_Republic.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "ECU",
+      "country": "Ecuador",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e8/Flag_of_Ecuador.svg/40px-Flag_of_Ecuador.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "EGY",
+      "country": "Egypt",
+      "notes": "RAU (19601968)UAR (1964) as United Arab Republic previous codes taken from Italian Repubblica Araba Unita, French République Arabe Unie and Spanish República Árabe Unida",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fe/Flag_of_Egypt.svg/40px-Flag_of_Egypt.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "ERI",
+      "country": "Eritrea",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/29/Flag_of_Eritrea.svg/40px-Flag_of_Eritrea.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "ESA",
+      "country": "El Salvador",
+      "notes": "SAL (1964–1976)",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/34/Flag_of_El_Salvador.svg/40px-Flag_of_El_Salvador.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "ESP",
+      "country": "Spain",
+      "notes": "SPA (1956–19641968 W)current code taken from French Espagne or Spanish España",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/en/thumb/9/9a/Flag_of_Spain.svg/40px-Flag_of_Spain.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "EST",
+      "country": "Estonia",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/Flag_of_Estonia.svg/40px-Flag_of_Estonia.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "ETH",
+      "country": "Ethiopia",
+      "notes": "ETI (19601968)",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/Flag_of_Ethiopia.svg/40px-Flag_of_Ethiopia.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "FIJ",
+      "country": "Fiji",
+      "notes": "FIG (1960) from Italian Figi",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/ba/Flag_of_Fiji.svg/40px-Flag_of_Fiji.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "FIN",
+      "country": "Finland",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/Flag_of_Finland.svg/40px-Flag_of_Finland.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "FRA",
+      "country": "France",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/en/thumb/c/c3/Flag_of_France.svg/40px-Flag_of_France.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "FSM",
+      "country": "Federated States of Micronesia",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/Flag_of_the_Federated_States_of_Micronesia.svg/40px-Flag_of_the_Federated_States_of_Micronesia.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "GAB",
+      "country": "Gabon",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/04/Flag_of_Gabon.svg/40px-Flag_of_Gabon.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "GAM",
+      "country": "The Gambia",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/Flag_of_The_Gambia.svg/40px-Flag_of_The_Gambia.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "GBR",
+      "country": "Great Britain",
+      "notes": "GRB (1956 W–1960)GBI (1956 athletics;[6] 1964)",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/en/thumb/a/ae/Flag_of_the_United_Kingdom.svg/40px-Flag_of_the_United_Kingdom.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "GBS",
+      "country": "Guinea-Bissau",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/Flag_of_Guinea-Bissau.svg/40px-Flag_of_Guinea-Bissau.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "GEO",
+      "country": "Georgia",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Flag_of_Georgia.svg/40px-Flag_of_Georgia.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "GEQ",
+      "country": "Equatorial Guinea",
+      "notes": "current code taken from French Guinée équatoriale",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/Flag_of_Equatorial_Guinea.svg/40px-Flag_of_Equatorial_Guinea.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "GER",
+      "country": "Germany",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/en/thumb/b/ba/Flag_of_Germany.svg/40px-Flag_of_Germany.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "GHA",
+      "country": "Ghana",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Flag_of_Ghana.svg/40px-Flag_of_Ghana.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "GRE",
+      "country": "Greece",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Flag_of_Greece.svg/40px-Flag_of_Greece.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "GRN",
+      "country": "Grenada",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/Flag_of_Grenada.svg/40px-Flag_of_Grenada.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "GUA",
+      "country": "Guatemala",
+      "notes": "GUT (1964)",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/Flag_of_Guatemala.svg/40px-Flag_of_Guatemala.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "GUI",
+      "country": "Guinea",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ed/Flag_of_Guinea.svg/40px-Flag_of_Guinea.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "GUM",
+      "country": "Guam",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/07/Flag_of_Guam.svg/40px-Flag_of_Guam.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "GUY",
+      "country": "Guyana",
+      "notes": "GUA (1960)GUI (1964) BGU[1]",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/Flag_of_Guyana.svg/40px-Flag_of_Guyana.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "HAI",
+      "country": "Haiti",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/56/Flag_of_Haiti.svg/40px-Flag_of_Haiti.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "HKG",
+      "country": "Hong Kong",
+      "notes": "HOK (1960–1968)",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5b/Flag_of_Hong_Kong.svg/40px-Flag_of_Hong_Kong.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "HON",
+      "country": "Honduras",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/85/Flag_of_Honduras_%282022-%29.svg/40px-Flag_of_Honduras_%282022-%29.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "HUN",
+      "country": "Hungary",
+      "notes": "UNG (1956 W1960 S) from Italian Ungheria",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Flag_of_Hungary.svg/40px-Flag_of_Hungary.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "INA",
+      "country": "Indonesia",
+      "notes": "INS (1960)",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Flag_of_Indonesia.svg/40px-Flag_of_Indonesia.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "IND",
+      "country": "India",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/en/thumb/4/41/Flag_of_India.svg/40px-Flag_of_India.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "IRI",
+      "country": "Iran",
+      "notes": "IRN (1956–1988)IRA (1968 W)current code from Islamic Republic of Iran",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/Flag_of_Iran.svg/40px-Flag_of_Iran.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "IRL",
+      "country": "Ireland",
+      "notes": "current code taken from French Irlande. EIR (1956 athletics;[6] see Ireland at the Olympics § Name of the country)",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/45/Flag_of_Ireland.svg/40px-Flag_of_Ireland.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "IRQ",
+      "country": "Iraq",
+      "notes": "IRK (19601968) from French/Spanish Irak",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/Flag_of_Iraq.svg/40px-Flag_of_Iraq.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "ISL",
+      "country": "Iceland",
+      "notes": "ICE (1960 W1964 S)current code taken from French Islande, Icelandic Ísland or Spanish Islandia",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/ce/Flag_of_Iceland.svg/40px-Flag_of_Iceland.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "ISR",
+      "country": "Israel",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Flag_of_Israel.svg/40px-Flag_of_Israel.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "ISV",
+      "country": "Virgin Islands",
+      "notes": "current code taken from French Îles Vierges (des États-Unis)",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f8/Flag_of_the_United_States_Virgin_Islands.svg/40px-Flag_of_the_United_States_Virgin_Islands.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "ITA",
+      "country": "Italy",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/en/thumb/0/03/Flag_of_Italy.svg/40px-Flag_of_Italy.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "IVB",
+      "country": "British Virgin Islands",
+      "notes": "BVI[1]current code taken from French Îles Vierges britanniques",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/42/Flag_of_the_British_Virgin_Islands.svg/40px-Flag_of_the_British_Virgin_Islands.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "JAM",
+      "country": "Jamaica",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0a/Flag_of_Jamaica.svg/40px-Flag_of_Jamaica.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "JOR",
+      "country": "Jordan",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c0/Flag_of_Jordan.svg/40px-Flag_of_Jordan.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "JPN",
+      "country": "Japan",
+      "notes": "GIA (1956 W1960 S) from Italian GiapponeJAP (1960 W)",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/en/thumb/9/9e/Flag_of_Japan.svg/40px-Flag_of_Japan.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "KAZ",
+      "country": "Kazakhstan",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/Flag_of_Kazakhstan.svg/40px-Flag_of_Kazakhstan.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "KEN",
+      "country": "Kenya",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Flag_of_Kenya.svg/40px-Flag_of_Kenya.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "KGZ",
+      "country": "Kyrgyzstan",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c7/Flag_of_Kyrgyzstan.svg/40px-Flag_of_Kyrgyzstan.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "KIR",
+      "country": "Kiribati",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/Flag_of_Kiribati.svg/40px-Flag_of_Kiribati.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "KOR",
+      "country": "South Korea",
+      "notes": "COR (1956 W1960 S1968 S1972 S)previous code taken from Italian Corea, French Corée and Spanish Corea",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/Flag_of_South_Korea.svg/40px-Flag_of_South_Korea.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "KOS",
+      "country": "Kosovo",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1f/Flag_of_Kosovo.svg/40px-Flag_of_Kosovo.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "KSA",
+      "country": "Saudi Arabia",
+      "notes": "ARS (1968–1976) from French Arabie saouditeSAU (1980–1984)current code from Kingdom of Saudi Arabia",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/Flag_of_Saudi_Arabia.svg/40px-Flag_of_Saudi_Arabia.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "KUW",
+      "country": "Kuwait",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/aa/Flag_of_Kuwait.svg/40px-Flag_of_Kuwait.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "LAO",
+      "country": "Laos",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/56/Flag_of_Laos.svg/40px-Flag_of_Laos.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "LAT",
+      "country": "Latvia",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Flag_of_Latvia.svg/40px-Flag_of_Latvia.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "LBA",
+      "country": "Libya",
+      "notes": "LYA (1964)LBY (1968 W)",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Flag_of_Libya.svg/40px-Flag_of_Libya.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "LBN",
+      "country": "Lebanon",
+      "notes": "LEB (1960 W1964 S)LIB (1964–2016) from French Liban",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/59/Flag_of_Lebanon.svg/40px-Flag_of_Lebanon.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "LBR",
+      "country": "Liberia",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/Flag_of_Liberia.svg/40px-Flag_of_Liberia.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "LCA",
+      "country": "Saint Lucia",
+      "notes": "STL[1]",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Flag_of_Saint_Lucia.svg/40px-Flag_of_Saint_Lucia.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "LES",
+      "country": "Lesotho",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/Flag_of_Lesotho.svg/40px-Flag_of_Lesotho.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "LIE",
+      "country": "Liechtenstein",
+      "notes": "LIC (1956 W1964 S1968 W)",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/Flag_of_Liechtenstein.svg/40px-Flag_of_Liechtenstein.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "LTU",
+      "country": "Lithuania",
+      "notes": "LIT (1992 W)",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Flag_of_Lithuania.svg/40px-Flag_of_Lithuania.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "LUX",
+      "country": "Luxembourg",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/da/Flag_of_Luxembourg.svg/40px-Flag_of_Luxembourg.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "MAD",
+      "country": "Madagascar",
+      "notes": "MAG (1964)",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/Flag_of_Madagascar.svg/40px-Flag_of_Madagascar.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "MAR",
+      "country": "Morocco",
+      "notes": "MRC (1964); current code from French Maroc",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Flag_of_Morocco.svg/40px-Flag_of_Morocco.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "MAS",
+      "country": "Malaysia",
+      "notes": "MAL (1964–1988)",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/66/Flag_of_Malaysia.svg/40px-Flag_of_Malaysia.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "MAW",
+      "country": "Malawi",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/Flag_of_Malawi.svg/40px-Flag_of_Malawi.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "MDA",
+      "country": "Moldova",
+      "notes": "MLD (1994)",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/27/Flag_of_Moldova.svg/40px-Flag_of_Moldova.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "MDV",
+      "country": "Maldives",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Flag_of_Maldives.svg/40px-Flag_of_Maldives.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "MEX",
+      "country": "Mexico",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fc/Flag_of_Mexico.svg/40px-Flag_of_Mexico.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "MGL",
+      "country": "Mongolia",
+      "notes": "MON (1968 W)",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/Flag_of_Mongolia.svg/40px-Flag_of_Mongolia.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "MHL",
+      "country": "Marshall Islands",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/Flag_of_the_Marshall_Islands.svg/40px-Flag_of_the_Marshall_Islands.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "MKD",
+      "country": "North Macedonia",
+      "notes": "current code taken from Macedonian Македонија/Makedonija",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/79/Flag_of_North_Macedonia.svg/40px-Flag_of_North_Macedonia.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "MLI",
+      "country": "Mali",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/92/Flag_of_Mali.svg/40px-Flag_of_Mali.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "MLT",
+      "country": "Malta",
+      "notes": "MAT (1960–1964)",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/73/Flag_of_Malta.svg/40px-Flag_of_Malta.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "MNE",
+      "country": "Montenegro",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/64/Flag_of_Montenegro.svg/40px-Flag_of_Montenegro.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "MON",
+      "country": "Monaco",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/Flag_of_Monaco.svg/40px-Flag_of_Monaco.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "MOZ",
+      "country": "Mozambique",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d0/Flag_of_Mozambique.svg/40px-Flag_of_Mozambique.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "MRI",
+      "country": "Mauritius",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/Flag_of_Mauritius.svg/40px-Flag_of_Mauritius.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "MTN",
+      "country": "Mauritania",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/43/Flag_of_Mauritania.svg/40px-Flag_of_Mauritania.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "MYA",
+      "country": "Myanmar",
+      "notes": "BIR (1948–19601968–1988) from French  BirmanieBUR (1964) as Burma",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/Flag_of_Myanmar.svg/40px-Flag_of_Myanmar.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "NAM",
+      "country": "Namibia",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/00/Flag_of_Namibia.svg/40px-Flag_of_Namibia.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "NCA",
+      "country": "Nicaragua",
+      "notes": "NCG (1964)NIC (1968)",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Flag_of_Nicaragua.svg/40px-Flag_of_Nicaragua.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "NED",
+      "country": "Netherlands",
+      "notes": "OLA (1956 W) from Italian OlandaNET (1960 W)PBA (1960 S) from Italian Paesi BassiNLD (1964 S)HOL (1968–1988) as Hollandcurrent code taken from Dutch Nederland",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/20/Flag_of_the_Netherlands.svg/40px-Flag_of_the_Netherlands.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "NEP",
+      "country": "Nepal",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Flag_of_Nepal.svg/20px-Flag_of_Nepal.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "NGR",
+      "country": "Nigeria",
+      "notes": "NIG (1960 S)NGA (1964)",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/79/Flag_of_Nigeria.svg/40px-Flag_of_Nigeria.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "NIG",
+      "country": "Niger",
+      "notes": "NGR (1964)",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f4/Flag_of_Niger.svg/40px-Flag_of_Niger.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "NOR",
+      "country": "Norway",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d9/Flag_of_Norway.svg/40px-Flag_of_Norway.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "NRU",
+      "country": "Nauru",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Flag_of_Nauru.svg/40px-Flag_of_Nauru.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "NZL",
+      "country": "New Zealand",
+      "notes": "NZE (19601968 W)",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Flag_of_New_Zealand.svg/40px-Flag_of_New_Zealand.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "OMA",
+      "country": "Oman",
+      "notes": "OMN[1]",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Flag_of_Oman.svg/40px-Flag_of_Oman.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "PAK",
+      "country": "Pakistan",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/32/Flag_of_Pakistan.svg/40px-Flag_of_Pakistan.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "PAN",
+      "country": "Panama",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Flag_of_Panama.svg/40px-Flag_of_Panama.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "PAR",
+      "country": "Paraguay",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/27/Flag_of_Paraguay.svg/40px-Flag_of_Paraguay.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "PER",
+      "country": "Peru",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cf/Flag_of_Peru.svg/40px-Flag_of_Peru.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "PHI",
+      "country": "Philippines",
+      "notes": "FIL (19601968) from Spanish Filipinas and Italian Filippine",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/Flag_of_the_Philippines.svg/40px-Flag_of_the_Philippines.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "PLE",
+      "country": "Palestine",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/00/Flag_of_Palestine.svg/40px-Flag_of_Palestine.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "PLW",
+      "country": "Palau",
+      "notes": "from archaic English Pelew",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/48/Flag_of_Palau.svg/40px-Flag_of_Palau.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "PNG",
+      "country": "Papua New Guinea",
+      "notes": "NGY (1976–1980)NGU (1984–1988)",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/Flag_of_Papua_New_Guinea.svg/40px-Flag_of_Papua_New_Guinea.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "POL",
+      "country": "Poland",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/en/thumb/1/12/Flag_of_Poland.svg/40px-Flag_of_Poland.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "POR",
+      "country": "Portugal",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Flag_of_Portugal.svg/40px-Flag_of_Portugal.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "PRK",
+      "country": "North Korea",
+      "notes": "NKO (1964 S1968 W)CDN (1968) from French Corée du Nord or Spanish Corea del Nortecurrent code from People's Republic of Korea",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/51/Flag_of_North_Korea.svg/40px-Flag_of_North_Korea.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "PUR",
+      "country": "Puerto Rico",
+      "notes": "PRI (1960)PRO (1968)",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/28/Flag_of_Puerto_Rico.svg/40px-Flag_of_Puerto_Rico.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "QAT",
+      "country": "Qatar",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/Flag_of_Qatar.svg/40px-Flag_of_Qatar.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "ROU",
+      "country": "Romania",
+      "notes": "ROM (1956–19601972–2006)RUM (1964–1968) from obsolete spelling Rumaniacurrent code from French Roumanie",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/73/Flag_of_Romania.svg/40px-Flag_of_Romania.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "RSA",
+      "country": "South Africa",
+      "notes": "SAF (1960–1972)current code from Republic of South Africa",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/af/Flag_of_South_Africa.svg/40px-Flag_of_South_Africa.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "RUS",
+      "country": "Russia",
+      "notes": "From 1994 to 2016",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/en/thumb/f/f3/Flag_of_Russia.svg/40px-Flag_of_Russia.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "RWA",
+      "country": "Rwanda",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/17/Flag_of_Rwanda.svg/40px-Flag_of_Rwanda.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "SAM",
+      "country": "Samoa",
+      "notes": "WSM (1984–1996) as Western Samoa",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/Flag_of_Samoa.svg/40px-Flag_of_Samoa.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "SEN",
+      "country": "Senegal",
+      "notes": "SGL (1964)",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fd/Flag_of_Senegal.svg/40px-Flag_of_Senegal.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "SEY",
+      "country": "Seychelles",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fc/Flag_of_Seychelles.svg/40px-Flag_of_Seychelles.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "SGP",
+      "country": "Singapore",
+      "notes": "SIN (1959–2016)",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/48/Flag_of_Singapore.svg/40px-Flag_of_Singapore.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "SKN",
+      "country": "Saint Kitts and Nevis",
+      "notes": "STK[1]",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fe/Flag_of_Saint_Kitts_and_Nevis.svg/40px-Flag_of_Saint_Kitts_and_Nevis.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "SLE",
+      "country": "Sierra Leone",
+      "notes": "SLA (1968)",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/17/Flag_of_Sierra_Leone.svg/40px-Flag_of_Sierra_Leone.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "SLO",
+      "country": "Slovenia",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f0/Flag_of_Slovenia.svg/40px-Flag_of_Slovenia.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "SMR",
+      "country": "San Marino",
+      "notes": "SMA (1960–1964)",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b1/Flag_of_San_Marino.svg/40px-Flag_of_San_Marino.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "SOL",
+      "country": "Solomon Islands",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/74/Flag_of_the_Solomon_Islands.svg/40px-Flag_of_the_Solomon_Islands.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "SOM",
+      "country": "Somalia",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/Flag_of_Somalia.svg/40px-Flag_of_Somalia.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "SRB",
+      "country": "Serbia",
+      "notes": "from Serbian Srbija",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/ff/Flag_of_Serbia.svg/40px-Flag_of_Serbia.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "SRI",
+      "country": "Sri Lanka",
+      "notes": "CEY (1948–19641972) as CeylonCEI (1968 S) from Spanish Ceilán",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Flag_of_Sri_Lanka.svg/40px-Flag_of_Sri_Lanka.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "SSD",
+      "country": "South Sudan",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Flag_of_South_Sudan.svg/40px-Flag_of_South_Sudan.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "STP",
+      "country": "São Tomé and Príncipe",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0a/Flag_of_S%C3%A3o_Tom%C3%A9_and_Pr%C3%ADncipe.svg/40px-Flag_of_S%C3%A3o_Tom%C3%A9_and_Pr%C3%ADncipe.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "SUD",
+      "country": "Sudan",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/Flag_of_Sudan.svg/40px-Flag_of_Sudan.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "SUI",
+      "country": "Switzerland",
+      "notes": "SVI (1956 W1960 S) from Italian SvizzeraSWI (1960 W1964 S)current code from French Suisse",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Flag_of_Switzerland.svg/20px-Flag_of_Switzerland.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "SUR",
+      "country": "Suriname",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/60/Flag_of_Suriname.svg/40px-Flag_of_Suriname.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "SVK",
+      "country": "Slovakia",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e6/Flag_of_Slovakia.svg/40px-Flag_of_Slovakia.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "SWE",
+      "country": "Sweden",
+      "notes": "SVE (1956 W1960 S) from Italian SveziaSUE (1968 S) from Spanish Suecia",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/en/thumb/4/4c/Flag_of_Sweden.svg/40px-Flag_of_Sweden.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "SWZ",
+      "country": "Eswatini",
+      "notes": "current code from former name Swaziland",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fb/Flag_of_Eswatini.svg/40px-Flag_of_Eswatini.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "SYR",
+      "country": "Syria",
+      "notes": "SIR (1968) from Spanish Siria",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/54/Flag_of_Syria_%282025-%29.svg/40px-Flag_of_Syria_%282025-%29.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "TAN",
+      "country": "Tanzania",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/38/Flag_of_Tanzania.svg/40px-Flag_of_Tanzania.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "TGA",
+      "country": "Tonga",
+      "notes": "TON (1984)",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Flag_of_Tonga.svg/40px-Flag_of_Tonga.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "THA",
+      "country": "Thailand",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Flag_of_Thailand.svg/40px-Flag_of_Thailand.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "TJK",
+      "country": "Tajikistan",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d0/Flag_of_Tajikistan.svg/40px-Flag_of_Tajikistan.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "TKM",
+      "country": "Turkmenistan",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/Flag_of_Turkmenistan.svg/40px-Flag_of_Turkmenistan.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "TLS",
+      "country": "Timor-Leste",
+      "notes": "current code taken from Portuguese Timor-Leste",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/Flag_of_East_Timor.svg/40px-Flag_of_East_Timor.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "TOG",
+      "country": "Togo",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/68/Flag_of_Togo.svg/40px-Flag_of_Togo.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "TPE",
+      "country": "Republic of China[7][8][9][10]",
+      "notes": "RCF (1956–1960) as Republic of China, FormosaTWN (1964–1968) as TaiwanROC (1972–1976) as Republic of China",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/Flag_of_the_Republic_of_China.svg/40px-Flag_of_the_Republic_of_China.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "TTO",
+      "country": "Trinidad and Tobago",
+      "notes": "TRT (1964–1968)TRI (1972–2012)",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/64/Flag_of_Trinidad_and_Tobago.svg/40px-Flag_of_Trinidad_and_Tobago.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "TUN",
+      "country": "Tunisia",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/ce/Flag_of_Tunisia.svg/40px-Flag_of_Tunisia.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "TUR",
+      "country": "Turkey",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b4/Flag_of_Turkey.svg/40px-Flag_of_Turkey.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "TUV",
+      "country": "Tuvalu",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/38/Flag_of_Tuvalu.svg/40px-Flag_of_Tuvalu.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "UAE",
+      "country": "United Arab Emirates",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/Flag_of_the_United_Arab_Emirates.svg/40px-Flag_of_the_United_Arab_Emirates.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "UGA",
+      "country": "Uganda",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Flag_of_Uganda.svg/40px-Flag_of_Uganda.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "UKR",
+      "country": "Ukraine",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Flag_of_Ukraine.svg/40px-Flag_of_Ukraine.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "URU",
+      "country": "Uruguay",
+      "notes": "URG (1968)",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fe/Flag_of_Uruguay.svg/40px-Flag_of_Uruguay.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "USA",
+      "country": "United States",
+      "notes": "SUA (1960 S) from Italian Stati Uniti d'AmericaEUA (1968 S) from French États-Unis d'Amérique or Spanish Estados Unidos de América",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/en/thumb/a/a4/Flag_of_the_United_States.svg/40px-Flag_of_the_United_States.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "UZB",
+      "country": "Uzbekistan",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Flag_of_Uzbekistan.svg/40px-Flag_of_Uzbekistan.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "VAN",
+      "country": "Vanuatu",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/Flag_of_Vanuatu.svg/40px-Flag_of_Vanuatu.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "VEN",
+      "country": "Venezuela",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/06/Flag_of_Venezuela.svg/40px-Flag_of_Venezuela.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "VIE",
+      "country": "Vietnam",
+      "notes": "VET (1964)VNM (1952–1975) as Republic of Vietnam",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/21/Flag_of_Vietnam.svg/40px-Flag_of_Vietnam.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "VIN",
+      "country": "Saint Vincent and the Grenadines",
+      "notes": "STV[1]",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/Flag_of_Saint_Vincent_and_the_Grenadines.svg/40px-Flag_of_Saint_Vincent_and_the_Grenadines.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "YEM",
+      "country": "Yemen",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/Flag_of_Yemen.svg/40px-Flag_of_Yemen.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "ZAM",
+      "country": "Zambia",
+      "notes": "NRH (1964) as Northern Rhodesia",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/06/Flag_of_Zambia.svg/40px-Flag_of_Zambia.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "ZIM",
+      "country": "Zimbabwe",
+      "notes": "RHO (1960–1972) as Rhodesia",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6a/Flag_of_Zimbabwe.svg/40px-Flag_of_Zimbabwe.svg.png",
+      "table_source": "Current NOCs"
+    },
+    {
+      "ioc_code": "FRO",
+      "country": "Faroe Islands",
+      "notes": "The Faroese Sport Organisation for Disabled",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3c/Flag_of_the_Faroe_Islands.svg/40px-Flag_of_the_Faroe_Islands.svg.png",
+      "table_source": "Current NPCs"
+    },
+    {
+      "ioc_code": "MAC",
+      "country": "Macau, China",
+      "notes": "Associação Recreativa dos Deficientes de Macau",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/63/Flag_of_Macau.svg/40px-Flag_of_Macau.svg.png",
+      "table_source": "Current NPCs"
+    },
+    {
+      "ioc_code": "AHO",
+      "country": "Netherlands Antilles",
+      "notes": "ATO (1960)NAN (1964)code from French Antilles hollandaises",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ae/Flag_of_the_Netherlands_Antilles_%281986%E2%80%932010%29.svg/40px-Flag_of_the_Netherlands_Antilles_%281986%E2%80%932010%29.svg.png",
+      "table_source": "Codes still in use"
+    },
+    {
+      "ioc_code": "ANZ",
+      "country": "Australasia",
+      "notes": "Also AUA[1]",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/51/Flag_of_Australasian_team_for_Olympic_games.svg/40px-Flag_of_Australasian_team_for_Olympic_games.svg.png",
+      "table_source": "Codes still in use"
+    },
+    {
+      "ioc_code": "BOH",
+      "country": "Bohemia",
+      "notes": "",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b1/Flag_of_Bohemia.svg/40px-Flag_of_Bohemia.svg.png",
+      "table_source": "Codes still in use"
+    },
+    {
+      "ioc_code": "BWI",
+      "country": "British West Indies",
+      "notes": "ANT (1960) from Antilles",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/15/Flag_of_the_West_Indies_Federation_%281958%E2%80%931962%29.svg/40px-Flag_of_the_West_Indies_Federation_%281958%E2%80%931962%29.svg.png",
+      "table_source": "Codes still in use"
+    },
+    {
+      "ioc_code": "EUA",
+      "country": "United Team of Germany",
+      "notes": "code taken from French Équipe unifiée d'Allemagne",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/German_Olympic_flag_%281959-1968%29.svg/40px-German_Olympic_flag_%281959-1968%29.svg.png",
+      "table_source": "Codes still in use"
+    },
+    {
+      "ioc_code": "EUN",
+      "country": "Unified Team",
+      "notes": "code from the French Équipe unifiée or Spanish Equipo Unificado",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Olympic_flag.svg/40px-Olympic_flag.svg.png",
+      "table_source": "Codes still in use"
+    },
+    {
+      "ioc_code": "FRG",
+      "country": "West Germany",
+      "notes": "ALL (1968 W) from French AllemagneALE (1968 S) from Spanish AlemaniaGER (1972–1976)code FRG taken from Federal Republic of Germany",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/en/thumb/b/ba/Flag_of_Germany.svg/40px-Flag_of_Germany.svg.png",
+      "table_source": "Codes still in use"
+    },
+    {
+      "ioc_code": "GDR",
+      "country": "East Germany",
+      "notes": "ODE (1968 S) from German Ostdeutschlandcode GDR taken from German Democratic Republic",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a1/Flag_of_East_Germany.svg/40px-Flag_of_East_Germany.svg.png",
+      "table_source": "Codes still in use"
+    },
+    {
+      "ioc_code": "SCG",
+      "country": "Serbia and Montenegro",
+      "notes": "code from Serbian Србија и Црна Гора / Srbija i Crna Gora",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Flag_of_Serbia_and_Montenegro_%281992%E2%80%932006%29.svg/40px-Flag_of_Serbia_and_Montenegro_%281992%E2%80%932006%29.svg.png",
+      "table_source": "Codes still in use"
+    },
+    {
+      "ioc_code": "TCH",
+      "country": "Czechoslovakia",
+      "notes": "CSL (1956 W)CZE (1960 W)CSV (1960 S)CZS (1964 S)CHE (1968 S) from Spanish Checoslovaquia code taken from French Tchécoslovaquie",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/Flag_of_the_Czech_Republic.svg/40px-Flag_of_the_Czech_Republic.svg.png",
+      "table_source": "Codes still in use"
+    },
+    {
+      "ioc_code": "URS",
+      "country": "Soviet Union",
+      "notes": "SOV (1968 W)code from French Union des républiques socialistes soviétiques (URSS)",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Flag_of_the_Soviet_Union.svg/40px-Flag_of_the_Soviet_Union.svg.png",
+      "table_source": "Codes still in use"
+    },
+    {
+      "ioc_code": "VNM",
+      "country": "South Vietnam",
+      "notes": "Code of the State of Vietnam and then Republic of Vietnam from 1952 to 1975.[12][13][14]",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/Flag_of_South_Vietnam.svg/40px-Flag_of_South_Vietnam.svg.png",
+      "table_source": "Codes still in use"
+    },
+    {
+      "ioc_code": "YUG",
+      "country": "Yugoslavia",
+      "notes": "JUG (1956–19601968 W) from Југославија/Jugoslavija in native languagesYUS (1964 S)",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/Flag_of_Yugoslavia_%281946-1992%29.svg/40px-Flag_of_Yugoslavia_%281946-1992%29.svg.png",
+      "table_source": "Codes still in use"
+    },
+    {
+      "ioc_code": "BIR",
+      "country": "BurmaFrom French Birmanie",
+      "notes": "1948–1988",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/10/Flag_of_Myanmar_%281974%E2%80%932010%29.svg/40px-Flag_of_Myanmar_%281974%E2%80%932010%29.svg.png",
+      "table_source": "Obsolete codes"
+    },
+    {
+      "ioc_code": "CEY",
+      "country": "Ceylon",
+      "notes": "1948–1972",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Flag_of_Sri_Lanka.svg/40px-Flag_of_Sri_Lanka.svg.png",
+      "table_source": "Obsolete codes"
+    },
+    {
+      "ioc_code": "DAH",
+      "country": "Dahomey",
+      "notes": "1964–1976",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0a/Flag_of_Benin.svg/40px-Flag_of_Benin.svg.png",
+      "table_source": "Obsolete codes"
+    },
+    {
+      "ioc_code": "GUI",
+      "country": "British Guiana",
+      "notes": "1948–1964",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/76/Flag_of_British_Guiana_%281955%E2%80%931966%29.svg/40px-Flag_of_British_Guiana_%281955%E2%80%931966%29.svg.png",
+      "table_source": "Obsolete codes"
+    },
+    {
+      "ioc_code": "HBR",
+      "country": "British HondurasFrom French Honduras britannique",
+      "notes": "1968–1972",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f4/Flag_of_British_Honduras_%281919%E2%80%931981%29.svg/40px-Flag_of_British_Honduras_%281919%E2%80%931981%29.svg.png",
+      "table_source": "Obsolete codes"
+    },
+    {
+      "ioc_code": "IHO",
+      "country": "Dutch East Indiescode from French Indes orientales hollandaises",
+      "notes": "1934–1938",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/20/Flag_of_the_Netherlands.svg/40px-Flag_of_the_Netherlands.svg.png",
+      "table_source": "Obsolete codes"
+    },
+    {
+      "ioc_code": "KHM",
+      "country": "Khmer RepublicFrom French République khmère",
+      "notes": "1972",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a8/Flag_of_the_Khmer_Republic.svg/40px-Flag_of_the_Khmer_Republic.svg.png",
+      "table_source": "Obsolete codes"
+    },
+    {
+      "ioc_code": "MAL",
+      "country": "MalayaFrom French Malaisie",
+      "notes": "1956–1960",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fb/Flag_of_Malaya_%281950%E2%80%931963%29.svg/40px-Flag_of_Malaya_%281950%E2%80%931963%29.svg.png",
+      "table_source": "Obsolete codes"
+    },
+    {
+      "ioc_code": "NBO",
+      "country": "North Borneo",
+      "notes": "1956",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Flag_of_North_Borneo_%281948%E2%80%931963%29.svg/40px-Flag_of_North_Borneo_%281948%E2%80%931963%29.svg.png",
+      "table_source": "Obsolete codes"
+    },
+    {
+      "ioc_code": "NRH",
+      "country": "Northern Rhodesia",
+      "notes": "1964",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/56/Flag_of_Northern_Rhodesia_%281939%E2%80%931964%29.svg/40px-Flag_of_Northern_Rhodesia_%281939%E2%80%931964%29.svg.png",
+      "table_source": "Obsolete codes"
+    },
+    {
+      "ioc_code": "RAU",
+      "country": "United Arab Republiccode from French République arabe unie",
+      "notes": "1960",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Flag_of_the_United_Arab_Republic_%281958%E2%80%931971%29%2C_Flag_of_Syria_%281980%E2%80%932024%29.svg/40px-Flag_of_the_United_Arab_Republic_%281958%E2%80%931971%29%2C_Flag_of_Syria_%281980%E2%80%932024%29.svg.png",
+      "table_source": "Obsolete codes"
+    },
+    {
+      "ioc_code": "RHO",
+      "country": "Rhodesiaalso Southern Rhodesia and Federation of Rhodesia and Nyasaland until it became Zimbabwe in 1980",
+      "notes": "1960–1972",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/Flag_of_Rhodesia_%281968%E2%80%931979%29.svg/40px-Flag_of_Rhodesia_%281968%E2%80%931979%29.svg.png",
+      "table_source": "Obsolete codes"
+    },
+    {
+      "ioc_code": "ROC",
+      "country": "Republic of China",
+      "notes": "1932–1976",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/Flag_of_the_Republic_of_China.svg/40px-Flag_of_the_Republic_of_China.svg.png",
+      "table_source": "Obsolete codes"
+    },
+    {
+      "ioc_code": "RU1",
+      "country": "Russian Empire",
+      "notes": "19001908–1912",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/en/thumb/f/f3/Flag_of_Russia.svg/40px-Flag_of_Russia.svg.png",
+      "table_source": "Obsolete codes"
+    },
+    {
+      "ioc_code": "SAA",
+      "country": "Saar",
+      "notes": "1952",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/Flag_of_Saar_%281947%E2%80%931956%29.svg/40px-Flag_of_Saar_%281947%E2%80%931956%29.svg.png",
+      "table_source": "Obsolete codes"
+    },
+    {
+      "ioc_code": "UAR",
+      "country": "United Arab Republic",
+      "notes": "1964–1968",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Flag_of_the_United_Arab_Republic_%281958%E2%80%931971%29%2C_Flag_of_Syria_%281980%E2%80%932024%29.svg/40px-Flag_of_the_United_Arab_Republic_%281958%E2%80%931971%29%2C_Flag_of_Syria_%281980%E2%80%932024%29.svg.png",
+      "table_source": "Obsolete codes"
+    },
+    {
+      "ioc_code": "VOL",
+      "country": "Upper Volta",
+      "notes": "1972–1984",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/Flag_of_Upper_Volta.svg/40px-Flag_of_Upper_Volta.svg.png",
+      "table_source": "Obsolete codes"
+    },
+    {
+      "ioc_code": "WSM",
+      "country": "Western Samoa",
+      "notes": "1984–1996",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/Flag_of_Samoa.svg/40px-Flag_of_Samoa.svg.png",
+      "table_source": "Obsolete codes"
+    },
+    {
+      "ioc_code": "YAR",
+      "country": "North Yemencode from Yemen Arab Republic",
+      "notes": "1984–1988",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/38/Flag_of_the_Yemen_Arab_Republic.svg/40px-Flag_of_the_Yemen_Arab_Republic.svg.png",
+      "table_source": "Obsolete codes"
+    },
+    {
+      "ioc_code": "YMD",
+      "country": "South Yemencode from Yemen Democratic Republic",
+      "notes": "1988",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/db/Flag_of_South_Yemen.svg/40px-Flag_of_South_Yemen.svg.png",
+      "table_source": "Obsolete codes"
+    },
+    {
+      "ioc_code": "ZAI",
+      "country": "ZaireFrom French Zaïre",
+      "notes": "1972–1996",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f8/Flag_of_Zaire_%281971%E2%80%931997%29.svg/40px-Flag_of_Zaire_%281971%E2%80%931997%29.svg.png",
+      "table_source": "Obsolete codes"
+    },
+    {
+      "ioc_code": "AIN",
+      "country": "Individual Neutral Athletesfrom French Athlètes Individuels Neutres",
+      "notes": "2024",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0c/Flag_of_the_Individual_Neutral_Athletes_at_the_2024_Summer_Olympics.svg/40px-Flag_of_the_Individual_Neutral_Athletes_at_the_2024_Summer_Olympics.svg.png",
+      "table_source": "Special codes for Olympics"
+    },
+    {
+      "ioc_code": "ANZ",
+      "country": "Australasia",
+      "notes": "1908–1912",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/51/Flag_of_Australasian_team_for_Olympic_games.svg/40px-Flag_of_Australasian_team_for_Olympic_games.svg.png",
+      "table_source": "Special codes for Olympics"
+    },
+    {
+      "ioc_code": "COR",
+      "country": "Koreafrom French Corée",
+      "notes": "2018",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/21/Unification_flag_of_Korea_%28pre_2006%29.svg/40px-Unification_flag_of_Korea_%28pre_2006%29.svg.png",
+      "table_source": "Special codes for Olympics"
+    },
+    {
+      "ioc_code": "EOR",
+      "country": "Refugee Olympic Teamfrom French Équipe olympique des réfugiés",
+      "notes": "2016–2024",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Olympic_flag.svg/40px-Olympic_flag.svg.png",
+      "table_source": "Special codes for Olympics"
+    },
+    {
+      "ioc_code": "EUA",
+      "country": "United Team of Germanyfrom French Équipe unifiée d'Allemagne",
+      "notes": "1956–1964",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/German_Olympic_flag_%281959-1968%29.svg/40px-German_Olympic_flag_%281959-1968%29.svg.png",
+      "table_source": "Special codes for Olympics"
+    },
+    {
+      "ioc_code": "EUN",
+      "country": "Unified Teamfrom French Équipe unifiée",
+      "notes": "1992",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Olympic_flag.svg/40px-Olympic_flag.svg.png",
+      "table_source": "Special codes for Olympics"
+    },
+    {
+      "ioc_code": "IOP",
+      "country": "Independent Olympic Participants",
+      "notes": "19922014",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Olympic_flag.svg/40px-Olympic_flag.svg.png",
+      "table_source": "Special codes for Olympics"
+    },
+    {
+      "ioc_code": "IOA",
+      "country": "Independent Olympic Athletes",
+      "notes": "200020122016",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Olympic_flag.svg/40px-Olympic_flag.svg.png",
+      "table_source": "Special codes for Olympics"
+    },
+    {
+      "ioc_code": "IOC",
+      "country": "Athletes from Kuwait",
+      "notes": "2010–2012",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Olympic_flag.svg/40px-Olympic_flag.svg.png",
+      "table_source": "Special codes for Olympics"
+    },
+    {
+      "ioc_code": "MIX",
+      "country": "Mixed-NOCs",
+      "notes": "2010–",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Olympic_flag.svg/40px-Olympic_flag.svg.png",
+      "table_source": "Special codes for Olympics"
+    },
+    {
+      "ioc_code": "OAR",
+      "country": "Olympic Athletes from Russia",
+      "notes": "2018",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Olympic_flag.svg/40px-Olympic_flag.svg.png",
+      "table_source": "Special codes for Olympics"
+    },
+    {
+      "ioc_code": "ROC",
+      "country": "ROCfrom the abbreviation for Russian Olympic Committee",
+      "notes": "2020–2022",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/Russian_Olympic_Committee_flag.png/40px-Russian_Olympic_Committee_flag.png",
+      "table_source": "Special codes for Olympics"
+    },
+    {
+      "ioc_code": "XXB",
+      "country": "Mixed team",
+      "notes": "1896–1904",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Olympic_flag.svg/40px-Olympic_flag.svg.png",
+      "table_source": "Special codes for Olympics"
+    },
+    {
+      "ioc_code": "IPP",
+      "country": "Independent Paralympic Participants",
+      "notes": "1992",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f8/Paralympic_flag_%281988-1994%29.svg/40px-Paralympic_flag_%281988-1994%29.svg.png",
+      "table_source": "Special codes for Paralympics"
+    },
+    {
+      "ioc_code": "IPA",
+      "country": "Individual Paralympic Athletes",
+      "notes": "2000",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/Paralympic_flag_%281994-2004%29.svg/40px-Paralympic_flag_%281994-2004%29.svg.png",
+      "table_source": "Special codes for Paralympics"
+    },
+    {
+      "ioc_code": "IPA",
+      "country": "Independent Paralympic Athletes",
+      "notes": "2016",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9d/Paralympic_flag_%282010-2019%29.svg/40px-Paralympic_flag_%282010-2019%29.svg.png",
+      "table_source": "Special codes for Paralympics"
+    },
+    {
+      "ioc_code": "NPA",
+      "country": "Neutral Paralympic Athletes",
+      "notes": "20182024",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Flag_of_Neutral_Paralympic_Athletes_%28Paris_2024%29.svg/40px-Flag_of_Neutral_Paralympic_Athletes_%28Paris_2024%29.svg.png",
+      "table_source": "Special codes for Paralympics"
+    },
+    {
+      "ioc_code": "PNA",
+      "country": "Paralympic Neutral Athletes",
+      "notes": "–",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7f/Paralympic_flag_%282019%29.svg/40px-Paralympic_flag_%282019%29.svg.png",
+      "table_source": "Special codes for Paralympics"
+    },
+    {
+      "ioc_code": "RPC",
+      "country": "RPCfrom the abbreviation for Russian Paralympic Committee",
+      "notes": "2020",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/en/thumb/f/f6/Russian_Paralympic_Committee_special_emblem_%28Tokyo_2020%2C_Beijing_2022%29.jpg/40px-Russian_Paralympic_Committee_special_emblem_%28Tokyo_2020%2C_Beijing_2022%29.jpg",
+      "table_source": "Special codes for Paralympics"
+    },
+    {
+      "ioc_code": "RPT",
+      "country": "Refugee Paralympic Team",
+      "notes": "20202024",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7f/Paralympic_flag_%282019%29.svg/40px-Paralympic_flag_%282019%29.svg.png",
+      "table_source": "Special codes for Paralympics"
+    },
+    {
+      "ioc_code": "HNL[30]",
+      "country": "Haudenosaunee",
+      "notes": "2022",
+      "flag_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/Flag_of_the_Iroquois_Confederacy.svg/40px-Flag_of_the_Iroquois_Confederacy.svg.png",
+      "table_source": "Special codes for World Games"
+    },
+    {
+      "ioc_code": "Medals",
+      "country": "Medal table\nAll-time medal table\nyouth\nMedal table leaders by Olympic Games\nMedalists\nyouth\nMedal ties\nIncentives by country\nStripped medals\nOlympic diploma\nOlive wreath",
+      "notes": "",
+      "flag_url": null,
+      "table_source": "Sources"
+    },
+    {
+      "ioc_code": "Nations",
+      "country": "Summer Olympics\nWinter Olympics\ntropical nations\ncountry codes",
+      "notes": "",
+      "flag_url": null,
+      "table_source": "Sources"
+    },
+    {
+      "ioc_code": "Host cities",
+      "country": "Bids\nyouth\nVenues\nyouth\nOlympic Stadium",
+      "notes": "",
+      "flag_url": null,
+      "table_source": "Sources"
+    },
+    {
+      "ioc_code": "Ceremonies",
+      "country": "Olympic Mass\nPeople who opened the Olympics\nTorch relays\nlighters of the Olympic cauldron\nKeepers of the Olympic flag",
+      "notes": "",
+      "flag_url": null,
+      "table_source": "Sources"
+    },
+    {
+      "ioc_code": "Media",
+      "country": "Television\nOlympic Broadcasting Services\nOlympic Channel\nAmerican\nSocial media\nFilms\nsummer\nwinter\nVideo games",
+      "notes": "",
+      "flag_url": null,
+      "table_source": "Sources"
+    },
+    {
+      "ioc_code": "Symbols",
+      "country": "Flame\nOlympiad\nOath\nSongs and anthems\nHymn\nEmblem\nPoster\nMascots\nTattoo\nCoins\nsummer (pre-2000)\nsummer (2000-present)\nwinter\nPierre de Coubertin Medal\nOlympic Cup\nOlympic Diploma of Merit\nOlympic Laurel\nOlympic Order\nOlive wreath",
+      "notes": "",
+      "flag_url": null,
+      "table_source": "Sources"
+    },
+    {
+      "ioc_code": "Other",
+      "country": "Art competitions at the Olympics\nmedalists\nScandals and controversies\nantisemitism\ncolonialism\ndoping\nDeaths\nWWI\nWWII\nParticipation of women",
+      "notes": "",
+      "flag_url": null,
+      "table_source": "Sources"
+    },
+    {
+      "ioc_code": "Related",
+      "country": "Paralympic Games\nContinental\nAfrican\nAsian\nEuropean\nPacific\nPan-American\nOlympic Esports Series\nOlympic Esports Games\nDeaflympics\nSpecial Olympics\n1906 Intercalated Games\nAncient Olympic Games",
+      "notes": "",
+      "flag_url": null,
+      "table_source": "Sources"
+    },
+    {
+      "ioc_code": "Administrative codes",
+      "country": "FIPS country code (FIPS 10-4)\nFIPS place code (FIPS 55)\nFIPS county code (FIPS 6-4)\nFIPS state code (FIPS 5-2)\nNUTS (EU)\nGSS codes (United Kingdom)\nSGC codes (Canada)\nUN M.49 (UN)",
+      "notes": "",
+      "flag_url": null,
+      "table_source": "Sources"
+    },
+    {
+      "ioc_code": "Airport codes",
+      "country": "IATA airport code\nICAO airport code",
+      "notes": "",
+      "flag_url": null,
+      "table_source": "Sources"
+    },
+    {
+      "ioc_code": "Country codes",
+      "country": "IANA country code\nISO 3166-1\nalpha-2\nalpha-3\nnumeric\nAircraft prefixes\nIOC country code\nFIFA country code\nVehicle country codes",
+      "notes": "",
+      "flag_url": null,
+      "table_source": "Sources"
+    },
+    {
+      "ioc_code": "Geodesicplace codes",
+      "country": "Global\nC-squares\nGeohash\nGeohash-36\nGEOREF\nInternational Map of the World indexing system\nMapcode\nMarsden square\nMilitary Grid Reference System\nNatural Area Code\nOpen Location Code\nQDGC\nUN/LOCODE\nUTM\nwhat3words\nWMO squares\nRegional\nICES Statistical Rectangles (north-east Atlantic region)\nIrish grid reference system\nNational Topographic System (Canada)\nOrdnance Survey National Grid (UK)\nNational Level Addressing Grid (India)",
+      "notes": "Global",
+      "flag_url": null,
+      "table_source": "Sources"
+    },
+    {
+      "ioc_code": "Global",
+      "country": "C-squares\nGeohash\nGeohash-36\nGEOREF\nInternational Map of the World indexing system\nMapcode\nMarsden square\nMilitary Grid Reference System\nNatural Area Code\nOpen Location Code\nQDGC\nUN/LOCODE\nUTM\nwhat3words\nWMO squares",
+      "notes": "",
+      "flag_url": null,
+      "table_source": "Sources"
+    },
+    {
+      "ioc_code": "Regional",
+      "country": "ICES Statistical Rectangles (north-east Atlantic region)\nIrish grid reference system\nNational Topographic System (Canada)\nOrdnance Survey National Grid (UK)\nNational Level Addressing Grid (India)",
+      "notes": "",
+      "flag_url": null,
+      "table_source": "Sources"
+    },
+    {
+      "ioc_code": "Postal codes",
+      "country": "Australian post codes\nCEP (Brazil)\nEircodes (Republic of Ireland)\nNew Zealand post codes\nPostal Index Number (India)\nUnited Kingdom post codes\nZIP Code (United States)",
+      "notes": "",
+      "flag_url": null,
+      "table_source": "Sources"
+    },
+    {
+      "ioc_code": "Telephony",
+      "country": "ITU-R country codes\nITU-T country calling codes\nITU-T mobile calling codes",
+      "notes": "",
+      "flag_url": null,
+      "table_source": "Sources"
+    },
+    {
+      "ioc_code": "Amateur radio",
+      "country": "Maidenhead Locator System\nHistorical : QRA locator",
+      "notes": "",
+      "flag_url": null,
+      "table_source": "Sources"
+    },
+    {
+      "ioc_code": "Regional",
+      "country": "ICES Statistical Rectangles (north-east Atlantic region)\nIrish grid reference system\nNational Topographic System (Canada)\nOrdnance Survey National Grid (UK)\nNational Level Addressing Grid (India)",
+      "notes": "",
+      "flag_url": null,
+      "table_source": "Sources"
+    }
+  ]
+}

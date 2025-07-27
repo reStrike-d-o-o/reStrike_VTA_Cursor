@@ -33,6 +33,40 @@ export const TabIcons = {
     </svg>
   ),
   
+  scoreboard: (
+    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      {/* Olympic-inspired scoreboard design */}
+      {/* Main scoreboard frame */}
+      <rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+      
+      {/* Header bar (like the dark blue bar in Olympic graphics) */}
+      <rect x="3" y="4" width="18" height="4" fill="currentColor" opacity="0.3"/>
+      
+      {/* Olympic rings inspired element - simplified */}
+      <circle cx="6" cy="6" r="1" stroke="currentColor" strokeWidth="1" fill="none"/>
+      <circle cx="8" cy="6" r="1" stroke="currentColor" strokeWidth="1" fill="none"/>
+      <circle cx="10" cy="6" r="1" stroke="currentColor" strokeWidth="1" fill="none"/>
+      
+      {/* Score display lines */}
+      <line x1="5" y1="10" x2="19" y2="10" stroke="currentColor" strokeWidth="1"/>
+      <line x1="5" y="12" x2="19" y2="12" stroke="currentColor" strokeWidth="1"/>
+      <line x1="5" y1="14" x2="19" y2="14" stroke="currentColor" strokeWidth="1"/>
+      
+      {/* Score indicators (dots instead of text) */}
+      <circle cx="7" cy="11" r="0.5" fill="currentColor"/>
+      <circle cx="9" cy="11" r="0.5" fill="currentColor"/>
+      <circle cx="7" cy="13" r="0.5" fill="currentColor"/>
+      <circle cx="9" cy="13" r="0.5" fill="currentColor"/>
+      <circle cx="7" cy="15" r="0.5" fill="currentColor"/>
+      <circle cx="9" cy="15" r="0.5" fill="currentColor"/>
+      
+      {/* Result indicators (small squares for wins) */}
+      <rect x="17" y="10.5" width="1" height="1" fill="currentColor"/>
+      <rect x="17" y="12.5" width="1" height="1" fill="currentColor"/>
+      <rect x="17" y="14.5" width="1" height="1" fill="currentColor"/>
+    </svg>
+  ),
+  
   // Database Icons
   overview: (
     <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">

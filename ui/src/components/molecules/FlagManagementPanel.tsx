@@ -96,19 +96,19 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
         
         if (result.success) {
           // Convert database flags to FlagInfo format
-          const dbFlags: FlagInfo[] = result.flags.map((flag: any) => ({
-            iocCode: flag.ioc_code || flag.filename?.replace('.png', '') || '',
-            countryName: flag.country_name || '',
-            flagPath: `/assets/flags/${flag.filename}`,
-            hasCustomMapping: !!flag.ioc_code,
-            pssCode: flag.ioc_code,
-            id: flag.id,
-            filename: flag.filename,
-            recognition_status: flag.recognition_status,
-            recognition_confidence: flag.recognition_confidence,
-            upload_date: flag.upload_date,
-            file_size: flag.file_size
-          }));
+                  const dbFlags: FlagInfo[] = result.flags.map((flag: any) => ({
+          iocCode: flag.ioc_code || flag.filename?.replace('.svg', '') || '',
+          countryName: flag.country_name || '',
+          flagPath: `/assets/flags/svg/${flag.filename}`,
+          hasCustomMapping: !!flag.ioc_code,
+          pssCode: flag.ioc_code,
+          id: flag.id,
+          filename: flag.filename,
+          recognition_status: flag.recognition_status,
+          recognition_confidence: flag.recognition_confidence,
+          upload_date: flag.upload_date,
+          file_size: flag.file_size
+        }));
           
           setFlags(dbFlags);
           setFilteredFlags(dbFlags);
@@ -124,7 +124,7 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
           return {
             iocCode,
             countryName: config.altText.replace(' Flag', ''),
-            flagPath: `/assets/flags/${iocCode}.png`,
+            flagPath: `/assets/flags/svg/${iocCode}.svg`,
             hasCustomMapping: true, // All flags have PSS mapping (same as IOC code)
             pssCode: iocCode // PSS code is the same as IOC code
           };
