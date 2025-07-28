@@ -210,6 +210,40 @@
        50% { opacity: 0.5; }
      }
      
+     /* Typewriter effect animations */
+     @keyframes typewriter {
+       from { width: 0; }
+       to { width: 100%; }
+     }
+     
+     @keyframes blink {
+       0%, 50% { border-color: transparent; }
+       51%, 100% { border-color: currentColor; }
+     }
+     
+     @keyframes fadeInText {
+       from { opacity: 0; }
+       to { opacity: 1; }
+     }
+     
+     .typewriter {
+       overflow: hidden;
+       white-space: nowrap;
+       border-right: 2px solid;
+       animation: typewriter 1.5s steps(40, end), blink 0.75s step-end infinite;
+     }
+     
+     .typewriter-complete {
+       overflow: visible;
+       white-space: normal;
+       border-right: none;
+       animation: fadeInText 0.5s ease-in;
+     }
+     
+     .fade-in {
+       animation: fadeInText 0.8s ease-in;
+     }
+     
      .header-section {
        animation: fadeIn 0.8s ease-out;
      }

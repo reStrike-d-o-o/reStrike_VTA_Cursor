@@ -29,7 +29,7 @@ class ScoreboardOverlay {
     const elementId = player === 'blue' ? 'player1Name' : 'player2Name';
     const nameElement = this.svg.getElementById(elementId);
     if (nameElement) {
-      nameElement.textContent = name;
+      this.applyTypewriterEffect(nameElement, name);
       console.log(`✅ Updated ${player} player name: ${name}`);
     } else {
       console.warn(`⚠️ Could not find ${elementId} element`);
@@ -169,7 +169,7 @@ class ScoreboardOverlay {
   updateMatchCategory(category) {
     const categoryElement = this.svg.getElementById('matchCategory');
     if (categoryElement) {
-      categoryElement.textContent = category;
+      this.applyTypewriterEffect(categoryElement, category);
       console.log(`✅ Updated match category: ${category}`);
     } else {
       console.warn(`⚠️ Could not find matchCategory element`);
@@ -178,13 +178,61 @@ class ScoreboardOverlay {
 
   // Update match type (weight class)
   updateMatchType(type) {
-    const typeElement = this.svg.getElementById('matchNumber');
+    const typeElement = this.svg.getElementById('matchType');
     if (typeElement) {
-      typeElement.textContent = type;
-      console.log(`✅ Updated match number: ${type}`);
+      this.applyTypewriterEffect(typeElement, type);
+      console.log(`✅ Updated match type: ${type}`);
     } else {
-      console.warn(`⚠️ Could not find matchNumber element`);
+      console.warn(`⚠️ Could not find matchType element`);
     }
+  }
+
+  // Apply typewriter effect to text element
+  applyTypewriterEffect(element, text) {
+    if (!element) return;
+    
+    // Clear any existing animations
+    element.classList.remove('typewriter', 'typewriter-complete', 'fade-in');
+    
+    // Set the text content
+    element.textContent = text;
+    
+    // Apply typewriter effect
+    element.classList.add('typewriter');
+    
+    // After typewriter animation completes, add fade-in effect
+    setTimeout(() => {
+      element.classList.remove('typewriter');
+      element.classList.add('typewriter-complete');
+    }, 1500);
+    
+    // Remove all animation classes after completion
+    setTimeout(() => {
+      element.classList.remove('typewriter-complete', 'fade-in');
+    }, 2000);
+  }
+
+  // Apply new match effect to all text elements
+  applyNewMatchEffect() {
+    console.log('🎬 Applying new match typewriter effect...');
+    
+    // Get all text elements that should have the effect
+    const textElements = [
+      { id: 'player1Name', text: this.svg.getElementById('player1Name')?.textContent || '' },
+      { id: 'player2Name', text: this.svg.getElementById('player2Name')?.textContent || '' },
+      { id: 'matchCategory', text: this.svg.getElementById('matchCategory')?.textContent || '' },
+      { id: 'matchNumber', text: this.svg.getElementById('matchNumber')?.textContent || '' }
+    ];
+    
+    // Apply staggered typewriter effects
+    textElements.forEach((item, index) => {
+      const element = this.svg.getElementById(item.id);
+      if (element && item.text) {
+        setTimeout(() => {
+          this.applyTypewriterEffect(element, item.text);
+        }, index * 300); // Stagger by 300ms
+      }
+    });
   }
 
   // Get ordinal suffix for round numbers
