@@ -248,7 +248,13 @@
                         handleRawEvent(event);
                         break;
                     default:
-                        console.log('📝 Unhandled event type:', event.type);
+                        // Check if this is an injury event disguised as 'other' type
+                        if (event.type === 'other' && (event.description?.includes('Injury') || event.event?.includes('Injury'))) {
+                            console.log('🩹 Parsing injury event from other type:', event);
+                            handleInjuryEventFromOther(event);
+                        } else {
+                            console.log('📝 Unhandled event type:', event.type);
+                        }
                 }
                 
                 updateDebugInfo();
@@ -403,6 +409,67 @@
             updateConnectionStatus(true);
         }
         
+        // Handle injury event (for properly typed events)
+        function handleInjuryEvent(event) {
+            console.log('🩹 Injury event:', event);
+            
+            if (event.time !== undefined) {
+                scoreboardInstance.updateInjuryTime(event.time);
+            }
+            
+            if (event.action) {
+                if (event.action === 'show') {
+                    scoreboardInstance.showInjurySection();
+                } else if (event.action === 'hide') {
+                    scoreboardInstance.hideInjurySection();
+                } else if (event.action === 'reset') {
+                    scoreboardInstance.resetInjuryTime();
+                }
+            }
+        }
+        
+        // Handle injury event from 'other' type (parsing from description/event string)
+        function handleInjuryEventFromOther(event) {
+            console.log('🩹 Parsing injury event from other type:', event);
+            
+            // Extract injury data from description or event string
+            const injuryString = event.description || event.event || '';
+            
+            // Parse the injury data using regex
+            const injuryMatch = injuryString.match(/Injury\s*\{\s*athlete:\s*(\d+),\s*time:\s*"([^"]+)",\s*action:\s*(Some\("([^"]+)"\)|None)\s*\}/);
+            
+            if (injuryMatch) {
+                const athlete = parseInt(injuryMatch[1]);
+                const time = injuryMatch[2];
+                const actionRaw = injuryMatch[3];
+                const action = injuryMatch[4] || null; // Extract from Some("action") or null
+                
+                console.log('🩹 Parsed injury data:', { athlete, time, action });
+                
+                // Update injury time
+                if (time) {
+                    scoreboardInstance.updateInjuryTime(time);
+                }
+                
+                // Handle action
+                if (action === 'show') {
+                    scoreboardInstance.showInjurySection();
+                    console.log('✅ Showing injury section');
+                } else if (action === 'hide') {
+                    scoreboardInstance.hideInjurySection();
+                    console.log('✅ Hiding injury section');
+                } else if (action === 'reset') {
+                    scoreboardInstance.resetInjuryTime();
+                    console.log('✅ Resetting injury time');
+                } else if (action === null) {
+                    // Just update the time without changing visibility
+                    console.log('✅ Updated injury time only');
+                }
+            } else {
+                console.warn('⚠️ Could not parse injury data from string:', injuryString);
+            }
+        }
+        
         // Handle raw PSS events (for backward compatibility)
         function handleRawEvent(event) {
             console.log('📝 Raw PSS event:', event);
@@ -518,6 +585,28 @@
                     handleScoresEvent(scores);
                 } catch (error) {
                     console.error('❌ Error parsing raw scores line:', error);
+                }
+            }
+            
+            // Parse injury time (ij1;, ij2;, ij0;) lines
+            else if (event.message.startsWith('ij1;') || event.message.startsWith('ij2;') || event.message.startsWith('ij0;')) {
+                try {
+                    const parts = event.message.split(';');
+                    const athlete = event.message.startsWith('ij1;') ? 1 : 
+                                  event.message.startsWith('ij2;') ? 2 : 0;
+                    const time = parts[1] || '0:00';
+                    const action = parts[2] || null;
+                    
+                    const injury = {
+                        athlete: athlete,
+                        time: time,
+                        action: action,
+                        type: 'injury'
+                    };
+                    
+                    handleInjuryEvent(injury);
+                } catch (error) {
+                    console.error('❌ Error parsing raw injury line:', error);
                 }
             }
         }

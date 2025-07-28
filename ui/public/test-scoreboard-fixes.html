@@ -57,8 +57,9 @@
         <button onclick="testInjuryEvent()">Test Injury Event</button>
         <button onclick="testInjuryShow()">Test Injury Show</button>
         <button onclick="testInjuryHide()">Test Injury Hide</button>
-        <button onclick="testInjuryReset()">Test Injury Reset</button>
-        <button onclick="testDefaultHiddenState()">Test Default Hidden State</button>
+                    <button onclick="testInjuryReset()">Test Injury Reset</button>
+            <button onclick="testDefaultHiddenState()">Test Default Hidden State</button>
+            <button onclick="testInjuryFromOtherType()">Test Injury From Other Type</button>
         <button onclick="testNewMatchEffect()">Test New Match Effect</button>
         <button onclick="testPlayerNameTypewriter()">Test Player Name Typewriter</button>
         <button onclick="testScoreTypewriter()">Test Score Typewriter</button>
@@ -491,6 +492,34 @@
             }
         }
 
+        // Test injury event parsing from 'other' type
+        function testInjuryFromOtherType() {
+            logResult('🩹 Testing injury event parsing from other type...', 'info');
+            
+            const testEvent = {
+                description: 'Event: Injury { athlete: 0, time: "01:00", action: Some("show") }',
+                event: 'Injury { athlete: 0, time: "01:00", action: Some("show") }',
+                type: 'other'
+            };
+            
+            if (window.testWebSocket && window.testWebSocket.readyState === WebSocket.OPEN) {
+                window.testWebSocket.send(JSON.stringify({
+                    type: 'pss_event',
+                    data: testEvent,
+                    timestamp: Date.now()
+                }));
+                logResult('Sent injury event from other type via WebSocket', 'success');
+            } else {
+                // Fallback to localStorage
+                localStorage.setItem('pss_event', JSON.stringify({
+                    type: 'pss_event',
+                    data: testEvent,
+                    timestamp: Date.now()
+                }));
+                logResult('Sent injury event from other type via localStorage', 'info');
+            }
+        }
+        
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             logResult('Test page loaded', 'info');
