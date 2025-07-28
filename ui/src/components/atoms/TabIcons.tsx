@@ -18,6 +18,54 @@ export const TabIcons = {
     </svg>
   ),
   
+  // OVR Icons
+  ovrIntegration: (
+    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+    </svg>
+  ),
+  
+  // Generic Integration icon (two arrows in opposite directions)
+  integrationArrows: (
+    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+    </svg>
+  ),
+  
+  // Punch/Kick icon for PSS drawer
+  punchKick: (
+    <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      {/* Fist - simple clenched fist */}
+      <rect x="6" y="8" width="8" height="8" rx="4" stroke="currentColor" strokeWidth="2" fill="none"/>
+      <path d="M10 8v8" stroke="currentColor" strokeWidth="2"/>
+      <path d="M12 8v8" stroke="currentColor" strokeWidth="2"/>
+      <path d="M14 8v8" stroke="currentColor" strokeWidth="2"/>
+      
+      {/* Kick - leg/foot */}
+      <path d="M16 8l2-2" stroke="currentColor" strokeWidth="2"/>
+      <path d="M18 6l2-2" stroke="currentColor" strokeWidth="2"/>
+      <path d="M20 4l2-2" stroke="currentColor" strokeWidth="2"/>
+      <path d="M16 8v4" stroke="currentColor" strokeWidth="2"/>
+      <path d="M18 6v4" stroke="currentColor" strokeWidth="2"/>
+      <path d="M20 4v4" stroke="currentColor" strokeWidth="2"/>
+      
+      {/* Dynamic lines representing movement */}
+      <path d="M14 10l2-2" stroke="currentColor" strokeWidth="1" opacity="0.6"/>
+      <path d="M12 8l2-2" stroke="currentColor" strokeWidth="1" opacity="0.6"/>
+    </svg>
+  ),
+  
+  tournament: (
+    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      {/* Medal icon */}
+      <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="2" fill="none"/>
+      <path d="M12 4v8" stroke="currentColor" strokeWidth="2"/>
+      <path d="M8 8l4 4 4-4" stroke="currentColor" strokeWidth="2"/>
+      <path d="M12 20v-4" stroke="currentColor" strokeWidth="2"/>
+      <path d="M8 16l4 4 4-4" stroke="currentColor" strokeWidth="2"/>
+    </svg>
+  ),
+  
   // PSS Icons
   udp: (
     <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">

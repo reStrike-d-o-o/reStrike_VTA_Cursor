@@ -4,8 +4,8 @@ import { usePssMatchStore } from '../../stores';
 
 // Fallback data when no PSS data is available
 const fallbackPlayers = [
-  { ioc: 'USA', name: 'Benjamin Smith', color: 'red' },
-  { ioc: 'JPN', name: 'Kei Tanaka', color: 'blue' },
+  { ioc: 'USA', name: 'Benjamin Smith', color: 'blue' },
+  { ioc: 'JPN', name: 'Kei Tanaka', color: 'red' },
 ];
 
 // Fallback match details
@@ -16,6 +16,23 @@ const fallbackMatchDetails = {
   number: '1254'
 };
 
+// Function to calculate optimal font size based on text length
+const getFontSizeClass = (text: string): string => {
+  const length = text.length;
+  
+  if (length <= 15) {
+    return 'text-base'; // 16px - default size (increased from 12)
+  } else if (length <= 21) {
+    return 'text-sm'; // 14px (increased from 16)
+  } else if (length <= 26) {
+    return 'text-xs'; // 12px (increased from 20)
+  } else if (length <= 32) {
+    return 'text-xs'; // 12px with additional scaling (increased from 25)
+  } else {
+    return 'text-xs'; // 12px with maximum scaling
+  }
+};
+
 // Function to shorten player names if they're too long
 const shortenPlayerName = (fullName: string): string => {
   const nameParts = fullName.split(' ');
@@ -23,8 +40,8 @@ const shortenPlayerName = (fullName: string): string => {
     const firstName = nameParts[0];
     const lastName = nameParts.slice(1).join(' ');
     
-    // If the full name is longer than 15 characters, shorten it
-    if (fullName.length > 15) {
+    // If the full name is longer than 20 characters, shorten it
+    if (fullName.length > 20) {
       return `${firstName.charAt(0)}. ${lastName}`;
     }
   }
@@ -58,33 +75,37 @@ const MatchDetailsSection: React.FC = () => {
   const player1 = athlete1 ? {
     ioc: athlete1.iocCode,
     name: athlete1.long,
-    color: 'red'
+    color: 'blue'
   } : fallbackPlayers[0];
 
   const player2 = athlete2 ? {
     ioc: athlete2.iocCode,
     name: athlete2.long,
-    color: 'blue'
+    color: 'red'
   } : fallbackPlayers[1];
+
+  // Process player names
+  const player1Name = shortenPlayerName(player1.name);
+  const player2Name = shortenPlayerName(player2.name);
+  
+  // Get the longer name to determine font size for both
+  const longerName = player1Name.length >= player2Name.length ? player1Name : player2Name;
+  const sharedFontSize = getFontSizeClass(longerName);
 
   return (
     <div className="mb-2 w-full flex flex-col items-center space-y-3 pt-4">
       {/* Players VS */}
-      <div className="flex items-center space-x-4">
-        {/* Red Player */}
-        <div className="flex items-center space-x-2">
-          <FlagImage countryCode={player1.ioc} className="w-8 h-6 object-cover rounded-sm shadow-sm" />
-          <span className="text-base text-white font-medium">{shortenPlayerName(player1.name)}</span>
-        </div>
+      <div className="flex items-center space-x-2">
+        {/* Blue Player Flag */}
+        <FlagImage countryCode={player1.ioc} className="w-8 h-6 object-cover rounded-sm shadow-sm" />
         
-        {/* VS */}
-        <span className="text-lg font-bold text-gray-300">VS</span>
+        {/* Combined Player Names */}
+        <span className={`${sharedFontSize} text-white font-medium whitespace-nowrap`}>
+          {player1Name} VS {player2Name}
+        </span>
         
-        {/* Blue Player */}
-        <div className="flex items-center space-x-2">
-          <span className="text-base text-white font-medium">{shortenPlayerName(player2.name)}</span>
-          <FlagImage countryCode={player2.ioc} className="w-8 h-6 object-cover rounded-sm shadow-sm" />
-        </div>
+        {/* Red Player Flag */}
+        <FlagImage countryCode={player2.ioc} className="w-8 h-6 object-cover rounded-sm shadow-sm" />
       </div>
       
       {/* Match Details */}

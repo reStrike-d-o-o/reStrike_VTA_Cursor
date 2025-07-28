@@ -32,13 +32,7 @@ const DRAWERS = [
   {
     key: 'pss',
     label: 'PSS',
-    icon: (
-      <svg width="24" height="24" fill="none" viewBox="0 0 24 24">
-        <rect x="6" y="3" width="12" height="6" rx="2" stroke="currentColor" strokeWidth="2"/>
-        <path d="M6 9l6 12 6-12" stroke="currentColor" strokeWidth="2"/>
-        <path d="M9 9v3l3 3 3-3V9" stroke="currentColor" strokeWidth="2"/>
-      </svg>
-    ),
+    icon: TabIcons.punchKick,
     description: 'UDP server, PSS protocol, event database, etc.'
   },
   {
@@ -52,6 +46,25 @@ const DRAWERS = [
       </svg>
     ),
     description: 'OBS connection management and options.'
+  },
+  {
+    key: 'ovr',
+    label: 'OVR',
+    icon: (
+      <svg width="24" height="24" fill="none" viewBox="0 0 24 24">
+        {/* Network computers icon */}
+        <rect x="3" y="3" width="8" height="6" rx="1" stroke="currentColor" strokeWidth="2"/>
+        <rect x="13" y="3" width="8" height="6" rx="1" stroke="currentColor" strokeWidth="2"/>
+        <rect x="3" y="15" width="8" height="6" rx="1" stroke="currentColor" strokeWidth="2"/>
+        <rect x="13" y="15" width="8" height="6" rx="1" stroke="currentColor" strokeWidth="2"/>
+        {/* Network connection lines */}
+        <path d="M11 6h2" stroke="currentColor" strokeWidth="2"/>
+        <path d="M11 18h2" stroke="currentColor" strokeWidth="2"/>
+        <path d="M8 9v6" stroke="currentColor" strokeWidth="2"/>
+        <path d="M16 9v6" stroke="currentColor" strokeWidth="2"/>
+      </svg>
+    ),
+    description: 'Overlay integration and tournament management.'
   },
   {
     key: 'video',
@@ -86,6 +99,8 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
   const [settingsTab, setSettingsTab] = useState('diagnostics');
   // OBS horizontal drawer state
   const [obsTab, setObsTab] = useState('websocket');
+  // OVR horizontal drawer state
+  const [ovrTab, setOvrTab] = useState('integration');
   
   // OBS Integration Settings state
   const [obsIntegrationSettings, setObsIntegrationSettings] = useState<ObsIntegrationSettings>({
@@ -203,10 +218,10 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
                 icon: TabIcons.websocket,
                 content: <WebSocketManager />
               },
-              {
-                id: 'integration',
-                label: 'Integration',
-                icon: TabIcons.integration,
+                                {
+                    id: 'integration',
+                    label: 'Integration',
+                    icon: TabIcons.integrationArrows,
                 content: (
                   <div className="space-y-6">
                     <div className="p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
@@ -252,6 +267,40 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
             ]}
             activeTab={obsTab}
             onTabChange={setObsTab}
+          />
+        )}
+        {drawer?.key === 'ovr' && (
+          <TabGroup
+            tabs={[
+                                {
+                    id: 'integration',
+                    label: 'Integration',
+                    icon: TabIcons.integrationArrows,
+                content: (
+                  <div className="space-y-6">
+                    <div className="p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
+                      <h3 className="text-lg font-semibold mb-4 text-gray-100">OVR Integration Settings</h3>
+                      {/* OVR specific settings will go here */}
+                    </div>
+                  </div>
+                )
+              },
+              {
+                id: 'tournament',
+                label: 'Tournament',
+                icon: TabIcons.tournament,
+                content: (
+                  <div className="space-y-6">
+                    <div className="p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
+                      <h3 className="text-lg font-semibold mb-4 text-gray-100">Tournament Management</h3>
+                      {/* Tournament management will go here */}
+                    </div>
+                  </div>
+                )
+              }
+            ]}
+            activeTab={ovrTab}
+            onTabChange={setOvrTab}
           />
         )}
         {drawer?.key === 'video' && (

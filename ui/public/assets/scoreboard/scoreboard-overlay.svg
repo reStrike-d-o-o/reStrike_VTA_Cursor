@@ -85,14 +85,17 @@
         <polygon points="0,0 900,0 900,120 0,120" fill="url(#glassGradient)" opacity="0.5"/>
         <polygon points="0,0 900,0 900,60 0,60" fill="url(#glassHighlight)" opacity="0.7" filter="url(#glassReflection)"/>
        
-       <!-- Blue Color Mark -->
+       <!-- Blue Color Mark with enhanced 3D glass effect -->
        <rect x="0" y="0" width="24" height="120" fill="#0066CC" filter="url(#emboss3D)"/>
+       <rect x="0" y="0" width="24" height="120" fill="url(#glassGradient)" opacity="0.4" filter="url(#glassReflection)"/>
+       <rect x="0" y="0" width="24" height="30" fill="url(#glassHighlight)" opacity="0.6" filter="url(#glassReflection)"/>
        
        <!-- Player Name -->
-       <text x="50" y="85" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="56" font-weight="600" fill="black" id="player1Name" filter="url(#emboss3D)">PARK TAEJOON</text>
+               <text x="44" y="65" text-anchor="start" dominant-baseline="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="56" font-weight="600" fill="black" id="player1Name" filter="url(#emboss3D)">Park Taejoon</text>
        
-       <!-- Flag after player name -->
+       <!-- Flag after player name with enhanced effects -->
        <image x="700" y="10" width="160" height="100" href="../flags/svg/KOR.svg" id="player1Flag" filter="url(#dropShadow)"/>
+       <rect x="700" y="10" width="160" height="100" fill="url(#glassGradient)" opacity="0.2" filter="url(#glassReflection)"/>
      </g>
      
                        <!-- Player 1 Score Section -->
@@ -125,14 +128,17 @@
         <polygon points="0,0 900,0 900,120 0,120" fill="url(#glassGradient)" opacity="0.5"/>
         <polygon points="0,0 900,0 900,60 0,60" fill="url(#glassHighlight)" opacity="0.7" filter="url(#glassReflection)"/>
        
-       <!-- Red Color Mark -->
+       <!-- Red Color Mark with enhanced 3D glass effect -->
        <rect x="0" y="0" width="24" height="120" fill="#CC0000" filter="url(#emboss3D)"/>
+       <rect x="0" y="0" width="24" height="120" fill="url(#glassGradient)" opacity="0.4" filter="url(#glassReflection)"/>
+       <rect x="0" y="0" width="24" height="30" fill="url(#glassHighlight)" opacity="0.6" filter="url(#glassReflection)"/>
        
        <!-- Player Name -->
-       <text x="50" y="85" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="56" font-weight="600" fill="black" id="player2Name" filter="url(#emboss3D)">GASHIM MAGOMEDOV</text>
+               <text x="44" y="65" text-anchor="start" dominant-baseline="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="56" font-weight="600" fill="black" id="player2Name" filter="url(#emboss3D)">Gashim Magomedov</text>
        
-       <!-- Flag after player name -->
+       <!-- Flag after player name with enhanced effects -->
        <image x="700" y="10" width="160" height="100" href="../flags/svg/RUS.svg" id="player2Flag" filter="url(#dropShadow)"/>
+       <rect x="700" y="10" width="160" height="100" fill="url(#glassGradient)" opacity="0.2" filter="url(#glassReflection)"/>
      </g>
      
                        <!-- Player 2 Score Section -->
@@ -210,38 +216,13 @@
        50% { opacity: 0.5; }
      }
      
-     /* Typewriter effect animations */
-     @keyframes typewriter {
-       from { width: 0; }
-       to { width: 100%; }
-     }
-     
-     @keyframes blink {
-       0%, 50% { border-color: transparent; }
-       51%, 100% { border-color: currentColor; }
+     .fade-in {
+       animation: fadeInText 0.8s ease-in;
      }
      
      @keyframes fadeInText {
        from { opacity: 0; }
        to { opacity: 1; }
-     }
-     
-     .typewriter {
-       overflow: hidden;
-       white-space: nowrap;
-       border-right: 2px solid;
-       animation: typewriter 1.5s steps(40, end), blink 0.75s step-end infinite;
-     }
-     
-     .typewriter-complete {
-       overflow: visible;
-       white-space: normal;
-       border-right: none;
-       animation: fadeInText 0.5s ease-in;
-     }
-     
-     .fade-in {
-       animation: fadeInText 0.8s ease-in;
      }
      
      .header-section {
@@ -276,5 +257,15 @@
      #player1Name[data-long="true"], #player2Name[data-long="true"] {
        font-size: 48px; /* Slightly smaller for long names */
      }
+     
+           /* Text update animation for score elements only */
+      #player1Score, #player2Score, #player1Rounds, #player2Rounds, #player1Fouls, #player2Fouls {
+        transition: transform 0.5s ease-in-out;
+      }
+      
+      #player1Score.update, #player2Score.update, #player1Rounds.update, #player2Rounds.update, 
+      #player1Fouls.update, #player2Fouls.update {
+        animation: scoreUpdate 0.5s ease-in-out;
+      }
    </style>
 </svg> 
