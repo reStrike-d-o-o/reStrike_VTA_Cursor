@@ -120,11 +120,20 @@ class ScoreboardOverlay {
   }
 
   // Update injury time
-  updateInjuryTime(minutes, seconds) {
+  updateInjuryTime(time) {
     const injuryElement = this.svg.getElementById('injuryTime');
     if (injuryElement) {
-      injuryElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-      console.log(`✅ Updated injury time: ${minutes}:${seconds.toString().padStart(2, '0')}`);
+      // Handle both string format ("1:00") and separate parameters (minutes, seconds)
+      if (typeof time === 'string') {
+        injuryElement.textContent = time;
+        console.log(`✅ Updated injury time: ${time}`);
+      } else {
+        // Fallback for separate minutes/seconds parameters
+        const minutes = arguments[0] || 0;
+        const seconds = arguments[1] || 0;
+        injuryElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        console.log(`✅ Updated injury time: ${minutes}:${seconds.toString().padStart(2, '0')}`);
+      }
     } else {
       console.warn(`⚠️ Could not find injuryTime element`);
     }
