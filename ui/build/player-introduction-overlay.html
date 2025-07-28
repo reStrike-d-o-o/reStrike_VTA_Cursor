@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>reStrike VTA - Player Introduction Overlay</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: transparent;
+            font-family: Arial, sans-serif;
+        }
+        
+        #overlay-container {
+            width: 1920px;
+            height: 1080px;
+            position: relative;
+        }
+        
+        #overlay-svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        
+        /* Animation classes for announcements */
+        .announcement-fade-in {
+            animation: fadeIn 0.8s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        
+        
+        /* Connection status indicator */
+        .connection-status {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #ef4444;
+            border: 2px solid #ffffff;
+            z-index: 1000;
+        }
+        
+        .connection-status.connected {
+            background: #10b981;
+        }
+        
+        /* Debug panel (hidden by default) */
+        .debug-panel {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            z-index: 1000;
+            display: none;
+        }
+        
+        .debug-panel.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <!-- Connection Status Indicator -->
+    <div id="connection-status" class="connection-status"></div>
+    
+    <!-- Debug Panel -->
+    <div id="debug-panel" class="debug-panel">
+        <div>PSS Status: <span id="pss-status">Disconnected</span></div>
+        <div>Last Update: <span id="last-update">Never</span></div>
+        <div>Player 1: <span id="debug-player1">-</span></div>
+        <div>Player 2: <span id="debug-player2">-</span></div>
+        <div>Player 1 Country: <span id="debug-country1">-</span></div>
+        <div>Player 2 Country: <span id="debug-country2">-</span></div>
+    </div>
+    
+    <!-- Overlay Container -->
+    <div id="overlay-container">
+        <object id="overlay-svg" data="assets/scoreboard/player-introduction-overlay.svg" type="image/svg+xml">
+            <!-- Fallback content if SVG fails to load -->
+            <div style="width: 1920px; height: 1080px; background: #000; color: white; display: flex; align-items: center; justify-content: center; font-size: 48px;">
+                Player Introduction Overlay Loading...
+            </div>
+        </object>
+    </div>
+
+    <!-- JavaScript Utilities -->
+    <script src="assets/scoreboard/scoreboard-utils.js"></script>
+    
+    <!-- PSS Event Integration Script -->
+    <script>
+        // Global variables
+        let overlayInstance = null;
+        let isConnected = false;
+        let lastUpdateTime = null;
+        
+        // Debug mode (set to true to show debug panel)
+        const DEBUG_MODE = false;
+        
+        // Initialize the overlay when SVG loads
+        function initializeOverlay() {
+            const svgObject = document.getElementById('overlay-svg');
+            
+            if (!svgObject) {
+                console.error('❌ SVG object not found');
+                return;
+            }
+            
+            console.log('🔍 Checking SVG object:', svgObject);
+            console.log('🔍 SVG object readyState:', svgObject.readyState);
+            
+            const svgDoc = svgObject.contentDocument || svgObject.contentWindow?.document;
+            
+            console.log('🔍 SVG document:', svgDoc);
+            
+            if (svgDoc && svgDoc.querySelector('svg')) {
+                console.log('🎯 Player Introduction Overlay SVG loaded, initializing...');
+                
+                try {
+                    // Initialize overlay utilities
+                    overlayInstance = new PlayerIntroductionOverlay(svgDoc.querySelector('svg'));
+                    
+                    // Set initial state
+                    updateConnectionStatus(false);
+                    updateDebugInfo();
+                    
+                    // Show debug panel if in debug mode
+                    if (DEBUG_MODE) {
+                        document.getElementById('debug-panel').classList.add('show');
+                    }
+                    
+                    console.log('✅ Player Introduction Overlay initialized successfully');
+                } catch (error) {
+                    console.error('❌ Error initializing overlay:', error);
+                    setTimeout(initializeOverlay, 1000); // Retry after 1 second
+                }
+            } else {
+                console.error('❌ Failed to load SVG document');
+                console.log('🔍 SVG object contentDocument:', svgObject.contentDocument);
+                console.log('🔍 SVG object contentWindow:', svgObject.contentWindow);
+                setTimeout(initializeOverlay, 1000); // Retry after 1 second
+            }
+        }
+        
+        // Update connection status indicator
+        function updateConnectionStatus(connected) {
+            isConnected = connected;
+            const statusElement = document.getElementById('connection-status');
+            const pssStatusElement = document.getElementById('pss-status');
+            
+            if (connected) {
+                statusElement.classList.add('connected');
+                pssStatusElement.textContent = 'Connected';
+                pssStatusElement.style.color = '#10b981';
+            } else {
+                statusElement.classList.remove('connected');
+                pssStatusElement.textContent = 'Disconnected';
+                pssStatusElement.style.color = '#ef4444';
+            }
+        }
+        
+        // Update debug information
+        function updateDebugInfo() {
+            const lastUpdateElement = document.getElementById('last-update');
+            if (lastUpdateTime) {
+                lastUpdateElement.textContent = lastUpdateTime.toLocaleTimeString();
+            }
+        }
+        
+        // Handle PSS events from Tauri
+        function handlePssEvent(event) {
+            console.log('📡 Received PSS event:', event);
+            lastUpdateTime = new Date();
+            
+            if (!overlayInstance) {
+                console.warn('⚠️ Overlay not initialized, ignoring event');
+                return;
+            }
+            
+            try {
+                // Update connection status
+                updateConnectionStatus(true);
+                
+                // Handle different event types
+                switch (event.type) {
+                    case 'athletes':
+                        handleAthletesEvent(event);
+                        break;
+                    case 'match_config':
+                        handleMatchConfigEvent(event);
+                        break;
+                    case 'fight_loaded':
+                        handleFightLoadedEvent(event);
+                        break;
+                    case 'raw':
+                        handleRawEvent(event);
+                        break;
+                    default:
+                        console.log('📝 Unhandled event type:', event.type);
+                }
+                
+                updateDebugInfo();
+                
+            } catch (error) {
+                console.error('❌ Error handling PSS event:', error);
+            }
+        }
+        
+        // Handle athletes event
+        function handleAthletesEvent(event) {
+            console.log('👥 Updating athletes:', event);
+            
+            // Update player names - athlete1 maps to player1 (blue), athlete2 maps to player2 (red)
+            if (event.athlete1_long) {
+                overlayInstance.updatePlayer1Name(event.athlete1_long);
+                document.getElementById('debug-player1').textContent = event.athlete1_long;
+            }
+            
+            if (event.athlete2_long) {
+                overlayInstance.updatePlayer2Name(event.athlete2_long);
+                document.getElementById('debug-player2').textContent = event.athlete2_long;
+            }
+            
+            // Update countries - use iocCode if available, otherwise use country code
+            if (event.athlete1_country) {
+                const countryCode = event.athlete1_iocCode || event.athlete1_country;
+                overlayInstance.updatePlayer1Flag(countryCode);
+                document.getElementById('debug-country1').textContent = countryCode;
+            }
+            
+            if (event.athlete2_country) {
+                const countryCode = event.athlete2_iocCode || event.athlete2_country;
+                overlayInstance.updatePlayer2Flag(countryCode);
+                document.getElementById('debug-country2').textContent = countryCode;
+            }
+        }
+        
+        // Handle match config event
+        function handleMatchConfigEvent(event) {
+            console.log('🏆 Updating match config:', event);
+            // Match config events are not typically used for player introductions
+        }
+        
+        // Handle fight loaded event
+        function handleFightLoadedEvent(event) {
+            console.log('🥊 Fight loaded event:', event);
+            updateConnectionStatus(true);
+            
+            // Apply announcement effect for new match
+            if (overlayInstance) {
+                setTimeout(() => {
+                    overlayInstance.applyAnnouncementEffect();
+                }, 500); // Small delay to ensure all data is loaded
+            }
+        }
+        
+        // Handle raw PSS events (for backward compatibility)
+        function handleRawEvent(event) {
+            console.log('📝 Raw PSS event:', event);
+            
+            if (!event.message) return;
+            
+            // Parse raw athlete (at1;, at2;) lines
+            if (event.message.startsWith('at1;') || event.message.startsWith('at2;')) {
+                try {
+                    const parts = event.message.split(';');
+                    const athlete = {
+                        athlete1_short: event.message.startsWith('at1;') ? parts[1] : null,
+                        athlete1_long: event.message.startsWith('at1;') ? parts[2] : null,
+                        athlete1_country: event.message.startsWith('at1;') ? parts[3] : null,
+                        athlete2_short: event.message.startsWith('at2;') ? parts[1] : null,
+                        athlete2_long: event.message.startsWith('at2;') ? parts[2] : null,
+                        athlete2_country: event.message.startsWith('at2;') ? parts[3] : null,
+                        type: 'athletes'
+                    };
+                    
+                    handleAthletesEvent(athlete);
+                } catch (error) {
+                    console.error('❌ Error parsing raw athlete line:', error);
+                }
+            }
+        }
+        
+
+        
+        // WebSocket connection for real-time PSS events
+        let websocket = null;
+        let reconnectAttempts = 0;
+        const maxReconnectAttempts = 5;
+        const reconnectDelay = 2000;
+        
+        function setupWebSocketConnection() {
+            console.log('🔗 Setting up WebSocket connection...');
+            
+            try {
+                // Get WebSocket URL from current location or use default
+                const currentHost = window.location.hostname;
+                const wsHost = currentHost === 'localhost' || currentHost === '127.0.0.1' ? '127.0.0.1' : currentHost;
+                const wsUrl = `ws://${wsHost}:3001`;
+                
+                console.log(`🔗 Connecting to WebSocket server at: ${wsUrl}`);
+                websocket = new WebSocket(wsUrl);
+                
+                websocket.onopen = function(event) {
+                    console.log('✅ WebSocket connected to reStrike VTA server');
+                    updateConnectionStatus(true);
+                    reconnectAttempts = 0;
+                    
+                    // Send ping to keep connection alive
+                    setInterval(() => {
+                        if (websocket.readyState === WebSocket.OPEN) {
+                            websocket.send('ping');
+                        }
+                    }, 30000);
+                };
+                
+                websocket.onmessage = function(event) {
+                    try {
+                        const data = JSON.parse(event.data);
+                        console.log('📡 WebSocket message received:', data);
+                        
+                        if (data.type === 'pss_event') {
+                            console.log('🎯 PSS event received via WebSocket:', data.data.type);
+                            handlePssEvent(data.data);
+                        } else if (data.type === 'connection') {
+                            console.log('🔗 Connection confirmed:', data.message);
+                        }
+                    } catch (error) {
+                        console.error('❌ Error parsing WebSocket message:', error);
+                    }
+                };
+                
+                websocket.onclose = function(event) {
+                    console.log('🔌 WebSocket connection closed');
+                    updateConnectionStatus(false);
+                    
+                    // Attempt to reconnect
+                    if (reconnectAttempts < maxReconnectAttempts) {
+                        reconnectAttempts++;
+                        console.log(`🔄 Attempting to reconnect (${reconnectAttempts}/${maxReconnectAttempts})...`);
+                        setTimeout(setupWebSocketConnection, reconnectDelay);
+                    } else {
+                        console.error('❌ Max reconnection attempts reached, falling back to localStorage');
+                        setupFallbackEventSystem();
+                    }
+                };
+                
+                websocket.onerror = function(error) {
+                    console.error('❌ WebSocket error:', error);
+                    updateConnectionStatus(false);
+                };
+                
+            } catch (error) {
+                console.error('❌ Failed to setup WebSocket connection:', error);
+                setupFallbackEventSystem();
+            }
+        }
+        
+        // Fallback event system for testing
+        function setupFallbackEventSystem() {
+            console.log('🔄 Setting up fallback event system...');
+            
+            // Listen for custom events (for testing)
+            window.addEventListener('pss-event', (event) => {
+                console.log('📡 Fallback PSS event received:', event.detail);
+                handlePssEvent(event.detail);
+            });
+            
+            // Listen for broadcasted events via localStorage
+            window.addEventListener('storage', (e) => {
+                if (e.key === 'pss_event' && e.newValue) {
+                    try {
+                        const eventData = JSON.parse(e.newValue);
+                        if (eventData.type === 'pss_event') {
+                            console.log('📡 Received broadcasted PSS event:', eventData.data);
+                            handlePssEvent(eventData.data);
+                        }
+                    } catch (error) {
+                        console.error('❌ Error parsing broadcasted event:', error);
+                    }
+                }
+            });
+            
+            // Simulate connection for testing
+            setTimeout(() => {
+                updateConnectionStatus(true);
+                console.log('✅ Fallback event system ready');
+            }, 2000);
+        }
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🚀 Player Introduction Overlay page loaded');
+            
+            // Initialize overlay when SVG loads
+            const svgObject = document.getElementById('overlay-svg');
+            svgObject.addEventListener('load', initializeOverlay);
+            
+            // Setup WebSocket connection for real-time PSS events
+            setupWebSocketConnection();
+            
+            // Initialize immediately if SVG is already loaded
+            if (svgObject.contentDocument) {
+                initializeOverlay();
+            }
+        });
+        
+        // Export functions for external access
+        window.PlayerIntroductionOverlayManager = {
+            handlePssEvent,
+            updateConnectionStatus,
+            overlayInstance: () => overlayInstance
+        };
+        
+        console.log('🎯 Player Introduction Overlay script loaded');
+    </script>
+</body>
+</html> 

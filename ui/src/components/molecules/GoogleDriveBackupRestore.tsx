@@ -5,6 +5,8 @@ import { GoogleDriveManager } from './GoogleDriveManager';
 import Button from '../atoms/Button';
 import TabGroup from './TabGroup';
 import TabIcons from '../atoms/TabIcons';
+import LottieIcon from '../atoms/LottieIcon';
+import { floppyDiscAnimation, downloadAnimation } from '../../assets/icons/json';
 
 interface BackupFileInfo {
   name: string;
@@ -116,7 +118,7 @@ export const GoogleDriveBackupRestore: React.FC = () => {
           {
             id: 'local',
             label: 'Local Backup',
-            icon: TabIcons.database,
+            icon: <LottieIcon animationData={floppyDiscAnimation} size={32} />,
             content: (
               <div className="space-y-4">
                 {/* Local Backup Controls */}
@@ -204,7 +206,7 @@ export const GoogleDriveBackupRestore: React.FC = () => {
           {
             id: 'google-drive',
             label: 'Google Drive',
-            icon: TabIcons.cloud,
+            icon: <LottieIcon animationData={downloadAnimation} size={32} />,
             content: (
               <div className="space-y-4">
                 {/* Google Drive Header */}

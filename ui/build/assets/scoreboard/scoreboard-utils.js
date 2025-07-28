@@ -3,6 +3,14 @@
  * Dynamic update functions for taekwondo competition overlays
  */
 
+// Utility function to properly capitalize names (first letter of each word)
+function capitalizeName(name) {
+  if (!name) return '';
+  return name.toLowerCase().split(' ').map(word => 
+    word.charAt(0).toUpperCase() + word.slice(1)
+  ).join(' ');
+}
+
 // Scoreboard Overlay Management Class
 class ScoreboardOverlay {
   constructor(svgElement) {
@@ -18,28 +26,53 @@ class ScoreboardOverlay {
     
     // Apply default theme
     this.applyTheme(this.currentTheme);
+    
+    // Ensure injury section is hidden by default
+    this.hideInjurySection();
   }
 
   // Update player names
   updatePlayerName(player, name) {
-    const nameElement = this.svg.getElementById(`${player}PlayerName`);
-    if (nameElement) nameElement.textContent = name;
+    // Map player colors to SVG element IDs
+    const elementId = player === 'blue' ? 'player1Name' : 'player2Name';
+    const nameElement = this.svg.getElementById(elementId);
+    if (nameElement) {
+      // Apply proper capitalization (first letter of each word)
+      const capitalizedName = capitalizeName(name);
+      nameElement.textContent = capitalizedName;
+      console.log(`✅ Updated ${player} player name: ${capitalizedName}`);
+    } else {
+      console.warn(`⚠️ Could not find ${elementId} element`);
+    }
   }
 
   // Update player scores
   updateScore(player, score) {
-    const scoreElement = this.svg.getElementById(`${player}PlayerScore`);
+    // Map player colors to SVG element IDs
+    const elementId = player === 'blue' ? 'player1Score' : 'player2Score';
+    const scoreElement = this.svg.getElementById(elementId);
     if (scoreElement) {
       scoreElement.textContent = score;
       scoreElement.classList.add('score-update');
       setTimeout(() => scoreElement.classList.remove('score-update'), 500);
+      console.log(`✅ Updated ${player} player score: ${score}`);
+    } else {
+      console.warn(`⚠️ Could not find ${elementId} element`);
     }
   }
 
-  // Update player countries
+  // Update player countries (flags)
   updateCountry(player, country) {
-    const countryElement = this.svg.getElementById(`${player}PlayerCountry`);
-    if (countryElement) countryElement.textContent = country;
+    // Map player colors to SVG element IDs
+    const elementId = player === 'blue' ? 'player1Flag' : 'player2Flag';
+    const flagElement = this.svg.getElementById(elementId);
+    if (flagElement) {
+      // Update the flag image source
+      flagElement.setAttribute('href', `../flags/svg/${country}.svg`);
+      console.log(`✅ Updated ${player} player country flag: ${country}`);
+    } else {
+      console.warn(`⚠️ Could not find ${elementId} element`);
+    }
   }
 
   // Update player seeds
@@ -50,14 +83,34 @@ class ScoreboardOverlay {
 
   // Update penalties and warnings
   updatePenalties(player, penalties, warnings) {
-    const penaltiesElement = this.svg.getElementById(`${player}PlayerFouls`);
-    if (penaltiesElement) penaltiesElement.textContent = penalties;
+    // Map player colors to SVG element IDs
+    const elementId = player === 'blue' ? 'player1Fouls' : 'player2Fouls';
+    const penaltiesElement = this.svg.getElementById(elementId);
+    if (penaltiesElement) {
+      penaltiesElement.textContent = warnings || penalties || 0;
+      // Apply pop-out animation
+      penaltiesElement.classList.add('update');
+      setTimeout(() => penaltiesElement.classList.remove('update'), 500);
+      console.log(`✅ Updated ${player} player warnings: ${warnings || penalties || 0}`);
+    } else {
+      console.warn(`⚠️ Could not find ${elementId} element`);
+    }
   }
 
   // Update round wins
   updateRoundWins(player, wins) {
-    const winsElement = this.svg.getElementById(`${player}PlayerRounds`);
-    if (winsElement) winsElement.textContent = wins;
+    // Map player colors to SVG element IDs
+    const elementId = player === 'blue' ? 'player1Rounds' : 'player2Rounds';
+    const winsElement = this.svg.getElementById(elementId);
+    if (winsElement) {
+      winsElement.textContent = wins || 0;
+      // Apply pop-out animation
+      winsElement.classList.add('update');
+      setTimeout(() => winsElement.classList.remove('update'), 500);
+      console.log(`✅ Updated ${player} player rounds: ${wins || 0}`);
+    } else {
+      console.warn(`⚠️ Could not find ${elementId} element`);
+    }
   }
 
   // Update match timer
@@ -65,6 +118,9 @@ class ScoreboardOverlay {
     const timerElement = this.svg.getElementById('matchTimer');
     if (timerElement) {
       timerElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+      console.log(`✅ Updated match timer: ${minutes}:${seconds.toString().padStart(2, '0')}`);
+    } else {
+      console.warn(`⚠️ Could not find matchTimer element`);
     }
   }
 
@@ -73,28 +129,142 @@ class ScoreboardOverlay {
     const roundElement = this.svg.getElementById('currentRound');
     if (roundElement) {
       roundElement.textContent = this.getOrdinalSuffix(round);
+      console.log(`✅ Updated current round: ${this.getOrdinalSuffix(round)}`);
+    } else {
+      console.warn(`⚠️ Could not find currentRound element`);
     }
   }
 
   // Update injury time
-  updateInjuryTime(minutes, seconds) {
+  updateInjuryTime(time) {
     const injuryElement = this.svg.getElementById('injuryTime');
     if (injuryElement) {
-      injuryElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+      // Handle both string format ("1:00") and separate parameters (minutes, seconds)
+      if (typeof time === 'string') {
+        injuryElement.textContent = time;
+        console.log(`✅ Updated injury time: ${time}`);
+      } else {
+        // Fallback for separate minutes/seconds parameters
+        const minutes = arguments[0] || 0;
+        const seconds = arguments[1] || 0;
+        injuryElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        console.log(`✅ Updated injury time: ${minutes}:${seconds.toString().padStart(2, '0')}`);
+      }
+    } else {
+      console.warn(`⚠️ Could not find injuryTime element`);
     }
   }
 
-  // Update match category
-  updateMatchCategory(category) {
-    const categoryElement = this.svg.getElementById('matchWeight');
-    if (categoryElement) categoryElement.textContent = category;
+  // Show injury section
+  showInjurySection() {
+    const injurySection = this.svg.getElementById('injurySection');
+    if (injurySection) {
+      injurySection.style.display = 'block';
+      injurySection.style.opacity = '1';
+      console.log('✅ Injury section shown');
+    } else {
+      console.warn('⚠️ Could not find injurySection element');
+    }
   }
 
-  // Update match type
-  updateMatchType(type) {
-    const typeElement = this.svg.getElementById('matchCategory');
-    if (typeElement) typeElement.textContent = type;
+  // Hide injury section
+  hideInjurySection() {
+    const injurySection = this.svg.getElementById('injurySection');
+    if (injurySection) {
+      injurySection.style.display = 'none';
+      injurySection.style.opacity = '0';
+      console.log('✅ Injury section hidden');
+    } else {
+      console.warn('⚠️ Could not find injurySection element');
+    }
   }
+
+  // Reset injury time to 0:00
+  resetInjuryTime() {
+    const injuryElement = this.svg.getElementById('injuryTime');
+    if (injuryElement) {
+      injuryElement.textContent = '0:00';
+      console.log('✅ Injury time reset to 0:00');
+    } else {
+      console.warn('⚠️ Could not find injuryTime element');
+    }
+  }
+
+  // Update combined match info (weight, division, category)
+  updateMatchInfo(weight, division, category) {
+    const matchInfoElement = this.svg.getElementById('matchInfo');
+    if (matchInfoElement) {
+      const combinedText = `${weight || ''} ${division || ''} ${category || ''}`.trim();
+      matchInfoElement.textContent = combinedText;
+      console.log(`✅ Updated match info: ${combinedText}`);
+    } else {
+      console.warn(`⚠️ Could not find matchInfo element`);
+    }
+  }
+
+  // Update match category (for backward compatibility)
+  updateMatchCategory(category) {
+    const matchInfoElement = this.svg.getElementById('matchInfo');
+    if (matchInfoElement) {
+      // Get current weight and division from the element
+      const currentText = matchInfoElement.textContent || '';
+      const parts = currentText.split(' ');
+      const weight = parts[0] || '';
+      const division = parts[1] || '';
+      const combinedText = `${weight} ${division} ${category || ''}`.trim();
+      matchInfoElement.textContent = combinedText;
+      console.log(`✅ Updated match category: ${category}`);
+    } else {
+      console.warn(`⚠️ Could not find matchInfo element`);
+    }
+  }
+
+  // Update match type (weight class) - for backward compatibility
+  updateMatchType(type) {
+    const typeElement = this.svg.getElementById('matchType');
+    if (typeElement) {
+      typeElement.textContent = type;
+      console.log(`✅ Updated match type: ${type}`);
+    } else {
+      console.warn(`⚠️ Could not find matchType element`);
+    }
+  }
+
+  // Update match weight (for backward compatibility)
+  updateMatchWeight(weight) {
+    const matchInfoElement = this.svg.getElementById('matchInfo');
+    if (matchInfoElement) {
+      // Get current division and category from the element
+      const currentText = matchInfoElement.textContent || '';
+      const parts = currentText.split(' ');
+      const division = parts[1] || '';
+      const category = parts.slice(2).join(' ') || '';
+      const combinedText = `${weight || ''} ${division} ${category}`.trim();
+      matchInfoElement.textContent = combinedText;
+      console.log(`✅ Updated match weight: ${weight}`);
+    } else {
+      console.warn(`⚠️ Could not find matchInfo element`);
+    }
+  }
+
+  // Update match division (for backward compatibility)
+  updateMatchDivision(division) {
+    const matchInfoElement = this.svg.getElementById('matchInfo');
+    if (matchInfoElement) {
+      // Get current weight and category from the element
+      const currentText = matchInfoElement.textContent || '';
+      const parts = currentText.split(' ');
+      const weight = parts[0] || '';
+      const category = parts.slice(2).join(' ') || '';
+      const combinedText = `${weight} ${division || ''} ${category}`.trim();
+      matchInfoElement.textContent = combinedText;
+      console.log(`✅ Updated match division: ${division}`);
+    } else {
+      console.warn(`⚠️ Could not find matchInfo element`);
+    }
+  }
+
+                    
 
   // Get ordinal suffix for round numbers
   getOrdinalSuffix(num) {
@@ -182,51 +352,169 @@ class ScoreboardOverlay {
 
 // Player Introduction Overlay Class
 class PlayerIntroductionOverlay extends ScoreboardOverlay {
-  setBlueLeft() {
-    // Update left player to blue
-    const leftSection = this.svg.getElementById('leftPlayerSection');
-    const rightSection = this.svg.getElementById('rightPlayerSection');
+  constructor(svgElement) {
+    super(svgElement);
+    this.initialize();
+  }
+
+  initialize() {
+    // Set initial transparency
+    this.setTransparency(this.transparency);
     
-    if (leftSection && rightSection) {
-      // Update color marks
-      const leftMark = leftSection.querySelector('rect[fill="#0066CC"]');
-      const rightMark = rightSection.querySelector('rect[fill="#CC0000"]');
-      
-      if (leftMark && rightMark) {
-        leftMark.setAttribute('fill', '#0066CC');
-        rightMark.setAttribute('fill', '#CC0000');
+    // Apply default theme
+    this.applyTheme(this.currentTheme);
+    
+    console.log('✅ Player Introduction Overlay initialized');
+  }
+
+  // Update Player 1 (Blue) information
+  updatePlayer1(name, country) {
+    this.updatePlayer1Name(name);
+    this.updatePlayer1Flag(country);
+  }
+
+  // Update Player 2 (Red) information
+  updatePlayer2(name, country) {
+    this.updatePlayer2Name(name);
+    this.updatePlayer2Flag(country);
+  }
+
+  // Update Player 1 name in the VS string
+  updatePlayer1Name(name) {
+    const nameElement = this.svg.getElementById('playerVSString');
+    if (nameElement) {
+      const currentText = nameElement.textContent;
+      const parts = currentText.split(' VS ');
+      if (parts.length === 2) {
+        const newText = `${capitalizeName(name)} VS ${parts[1]}`;
+        nameElement.textContent = newText;
+      } else {
+        const newText = `${capitalizeName(name)} VS Gashim Magomedov`;
+        nameElement.textContent = newText;
       }
+      
+      console.log(`✅ Updated Player 1 name: ${capitalizeName(name)}`);
     }
   }
 
-  setRedLeft() {
-    // Update left player to red
-    const leftSection = this.svg.getElementById('leftPlayerSection');
-    const rightSection = this.svg.getElementById('rightPlayerSection');
-    
-    if (leftSection && rightSection) {
-      // Update color marks
-      const leftMark = leftSection.querySelector('rect[fill="#0066CC"]');
-      const rightMark = rightSection.querySelector('rect[fill="#CC0000"]');
-      
-      if (leftMark && rightMark) {
-        leftMark.setAttribute('fill', '#CC0000');
-        rightMark.setAttribute('fill', '#0066CC');
+  // Update Player 2 name in the VS string
+  updatePlayer2Name(name) {
+    const nameElement = this.svg.getElementById('playerVSString');
+    if (nameElement) {
+      const currentText = nameElement.textContent;
+      const parts = currentText.split(' VS ');
+      if (parts.length === 2) {
+        const newText = `${parts[0]} VS ${capitalizeName(name)}`;
+        nameElement.textContent = newText;
+      } else {
+        const newText = `Park Taejoon VS ${capitalizeName(name)}`;
+        nameElement.textContent = newText;
       }
+      
+      console.log(`✅ Updated Player 2 name: ${capitalizeName(name)}`);
     }
   }
 
-  updateLeftPlayer(name, country, seed) {
-    this.updateElement('leftPlayerName', name);
-    this.updateElement('leftPlayerCountry', country);
-    this.updateElement('leftPlayerSeed', `(${seed})`);
+  // Update Player 1 flag
+  updatePlayer1Flag(countryCode) {
+    const flagElement = this.svg.getElementById('leftPlayerFlag');
+    if (flagElement) {
+      flagElement.setAttribute('href', `../flags/svg/${countryCode}.svg`);
+      
+             // Adjust glass effect rectangle after flag loads
+       const adjustLeftFlag = () => {
+         // Get the actual rendered width of the flag
+         const flagRect = flagElement.getBoundingClientRect();
+         const flagWidth = flagRect.width;
+         
+         if (flagWidth > 0) {
+           // Update the glass effect rectangle width
+           const glassRect = this.svg.getElementById('leftPlayerFlagGlass');
+           if (glassRect) {
+             glassRect.setAttribute('width', flagWidth.toString());
+           }
+           
+           console.log(`✅ Updated Player 1 flag glass effect: width=${flagWidth}`);
+         } else {
+           // If width is not available yet, try again after a short delay
+           setTimeout(adjustLeftFlag, 100);
+         }
+       };
+      
+      flagElement.onload = adjustLeftFlag;
+      setTimeout(adjustLeftFlag, 50);
+      
+      console.log(`✅ Updated Player 1 flag: ${countryCode}`);
+    }
   }
 
-  updateRightPlayer(name, country, seed) {
-    this.updateElement('rightPlayerName', name);
-    this.updateElement('rightPlayerCountry', country);
-    this.updateElement('rightPlayerSeed', `(${seed})`);
+  // Update Player 2 flag
+  updatePlayer2Flag(countryCode) {
+    const flagElement = this.svg.getElementById('rightPlayerFlag');
+    if (flagElement) {
+      flagElement.setAttribute('href', `../flags/svg/${countryCode}.svg`);
+      
+             // Dynamically adjust position after flag loads to ensure 20px right padding
+       const adjustFlagPosition = () => {
+         // Get the actual rendered width of the flag
+         const flagRect = flagElement.getBoundingClientRect();
+         const flagWidth = flagRect.width;
+         
+         if (flagWidth > 0) {
+           // Calculate new x position to ensure 20px right padding
+           // Red rectangle starts at x=1660, so flag should end at x=1640
+           const newX = 1640 - flagWidth;
+           
+           // Update flag position
+           flagElement.setAttribute('x', newX.toString());
+           
+           // Also update the glass effect rectangle position and width
+           const glassRect = this.svg.getElementById('rightPlayerFlagGlass');
+           if (glassRect) {
+             glassRect.setAttribute('x', newX.toString());
+             glassRect.setAttribute('width', flagWidth.toString());
+           }
+           
+           console.log(`✅ Updated Player 2 flag position: x=${newX}, width=${flagWidth}`);
+         } else {
+           // If width is not available yet, try again after a short delay
+           setTimeout(adjustFlagPosition, 100);
+         }
+       };
+      
+      // Wait for the flag to load and then adjust position
+      flagElement.onload = adjustFlagPosition;
+      
+      // Also try immediately in case the flag is already loaded
+      setTimeout(adjustFlagPosition, 50);
+      
+      console.log(`✅ Updated Player 2 flag: ${countryCode}`);
+    }
   }
+
+  // Apply announcement effect
+  applyAnnouncementEffect() {
+    const announcementSection = this.svg.getElementById('announcementSection');
+    if (announcementSection) {
+      announcementSection.classList.add('announcement-fade-in');
+      console.log('✅ Applied announcement effect');
+    }
+  }
+
+  // Update VS string directly
+  updateVSString(player1Name, player2Name) {
+    const nameElement = this.svg.getElementById('playerVSString');
+    if (nameElement) {
+      const newText = `${capitalizeName(player1Name)} VS ${capitalizeName(player2Name)}`;
+      nameElement.textContent = newText;
+      
+      console.log(`✅ Updated VS string: ${capitalizeName(player1Name)} VS ${capitalizeName(player2Name)}`);
+    }
+  }
+
+
+
+
 
   updateElement(id, value) {
     const element = this.svg.getElementById(id);
@@ -364,5 +652,4 @@ if (typeof module !== 'undefined' && module.exports) {
   window.WinnerAnnouncementOverlay = WinnerAnnouncementOverlay;
   window.PreviousResultsOverlay = PreviousResultsOverlay;
   window.VictoryCeremonyOverlay = VictoryCeremonyOverlay;
-} 
 } 
