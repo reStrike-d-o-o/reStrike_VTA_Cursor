@@ -14,18 +14,14 @@ interface ScoreboardManagerProps {
 
 interface OverlaySettings {
   type: 'scoreboard' | 'introduction' | 'winner' | 'results' | 'victory';
-  theme: 'default' | 'olympic' | 'dark' | 'bright';
   visible: boolean;
-  showNames: boolean; // true for full names, false for country codes
 }
 
 const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' }) => {
   // Overlay settings state
   const [overlaySettings, setOverlaySettings] = useState<OverlaySettings>({
     type: 'scoreboard',
-    theme: 'default',
     visible: false,
-    showNames: true,
   });
 
   // PSS data from store
@@ -49,41 +45,15 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
 
 
 
-  // Apply theme to SVG
-  const applyThemeToSvg = (svg: SVGElement, theme: string) => {
-    const root = svg;
-    
-    switch (theme) {
-      case 'olympic':
-        root.style.setProperty('--header-color', '#1e3a8a');
-        root.style.setProperty('--accent-color', '#14b8a6');
-        break;
-      case 'dark':
-        root.style.setProperty('--header-color', '#111827');
-        root.style.setProperty('--accent-color', '#6b7280');
-        break;
-      case 'bright':
-        root.style.setProperty('--header-color', '#3b82f6');
-        root.style.setProperty('--accent-color', '#fbbf24');
-        break;
-      default:
-        root.style.setProperty('--header-color', '#1e3a8a');
-        root.style.setProperty('--accent-color', '#14b8a6');
-    }
-  };
+
 
   // Update overlay content with PSS data
   const updateOverlayContent = (svg: SVGElement, settings: OverlaySettings) => {
     if (!isLoaded) return;
 
-    // Update player names/countries
-    if (settings.showNames) {
-      updateElement(svg, 'bluePlayerName', athlete1?.long || 'BLUE PLAYER');
-      updateElement(svg, 'redPlayerName', athlete2?.long || 'RED PLAYER');
-    } else {
-      updateElement(svg, 'bluePlayerCountry', athlete1?.iocCode || 'BLU');
-      updateElement(svg, 'redPlayerCountry', athlete2?.iocCode || 'RED');
-    }
+    // Update player names
+    updateElement(svg, 'bluePlayerName', athlete1?.long || 'BLUE PLAYER');
+    updateElement(svg, 'redPlayerName', athlete2?.long || 'RED PLAYER');
 
     // Update match information
     updateElement(svg, 'matchCategory', matchCategory || 'MEN\'S -58KG');
@@ -108,13 +78,7 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
 
 
 
-  // Color theme options
-  const themeOptions = [
-    { value: 'default', label: 'Default', description: 'Classic blue and teal' },
-    { value: 'olympic', label: 'Olympic', description: 'Olympic blue and gold' },
-    { value: 'dark', label: 'Dark', description: 'Dark theme with grey accents' },
-    { value: 'bright', label: 'Bright', description: 'Bright blue and yellow' },
-  ];
+
 
   // Overlay type options
   const overlayTypes = [
@@ -149,50 +113,9 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
         </div>
       </div>
 
-      {/* Color Theme Selection */}
-      <div className="p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
-        <h4 className="text-md font-semibold text-gray-100 mb-4">Color Theme</h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {themeOptions.map((theme) => (
-            <div
-              key={theme.value}
-              className={`p-3 rounded-lg border cursor-pointer transition-all duration-200 ${
-                overlaySettings.theme === theme.value
-                  ? 'border-blue-500 bg-blue-900/20'
-                  : 'border-gray-600 bg-gray-700/30 hover:bg-gray-700/50'
-              }`}
-              onClick={() => updateOverlaySettings({ theme: theme.value as any })}
-            >
-              <div className="font-medium text-gray-200">{theme.label}</div>
-              <div className="text-xs text-gray-400">{theme.description}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Display Options */}
-      <div className="p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
-        <h4 className="text-md font-semibold text-gray-100 mb-4">Display Options</h4>
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <Label className="text-sm text-gray-300">Player Names</Label>
-              <p className="text-xs text-gray-400">
-                {overlaySettings.showNames ? 'Show full names' : 'Show country codes'}
-              </p>
-            </div>
-            <Toggle
-              id="show-names"
-              checked={overlaySettings.showNames}
-              onChange={(e) => updateOverlaySettings({ showNames: e.target.checked })}
-              label=""
-              labelPosition="left"
-            />
-          </div>
 
 
-        </div>
-      </div>
+
 
 
 
@@ -295,14 +218,14 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
               <div>
                 <Label className="text-sm text-gray-300">Blue Player</Label>
                 <div className="text-sm text-gray-200 mt-1">
-                  {overlaySettings.showNames ? athlete1?.long : athlete1?.iocCode} ({athlete1?.short})
+                  {athlete1?.long} ({athlete1?.short})
                 </div>
               </div>
               
               <div>
                 <Label className="text-sm text-gray-300">Red Player</Label>
                 <div className="text-sm text-gray-200 mt-1">
-                  {overlaySettings.showNames ? athlete2?.long : athlete2?.iocCode} ({athlete2?.short})
+                  {athlete2?.long} ({athlete2?.short})
                 </div>
               </div>
 

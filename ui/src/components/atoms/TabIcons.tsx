@@ -66,14 +66,8 @@ export const TabIcons = {
     </svg>
   ),
   
-  // PSS Icons
-  udp: (
-    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <rect x="6" y="3" width="12" height="6" rx="2" stroke="currentColor" strokeWidth="2"/>
-      <path d="M6 9l6 12 6-12" stroke="currentColor" strokeWidth="2"/>
-      <path d="M9 9v3l3 3 3-3V9" stroke="currentColor" strokeWidth="2"/>
-    </svg>
-  ),
+  // PSS Icons - UDP will use Lottie algorithm.json icon
+  udp: null, // This will be replaced with LottieIcon in the component
   
   flags: (
     <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">

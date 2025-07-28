@@ -33,7 +33,7 @@ export const Tab: React.FC<TabProps> = ({
         ${className}
       `}
     >
-      {icon && <span className="w-4 h-4 mr-2">{icon}</span>}
+      {icon && <span className="w-8 h-8 mr-2 flex items-center justify-center">{icon}</span>}
       {label}
     </button>
   );
