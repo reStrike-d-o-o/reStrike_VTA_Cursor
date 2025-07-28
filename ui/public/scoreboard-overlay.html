@@ -326,6 +326,13 @@
         function handleFightLoadedEvent(event) {
             console.log('🥊 Fight loaded event:', event);
             updateConnectionStatus(true);
+            
+            // Apply typewriter effect for new match
+            if (scoreboardInstance) {
+                setTimeout(() => {
+                    scoreboardInstance.applyNewMatchEffect();
+                }, 500); // Small delay to ensure all data is loaded
+            }
         }
         
         // Handle warnings event

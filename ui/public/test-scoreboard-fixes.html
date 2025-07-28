@@ -59,6 +59,10 @@
         <button onclick="testInjuryHide()">Test Injury Hide</button>
         <button onclick="testInjuryReset()">Test Injury Reset</button>
         <button onclick="testDefaultHiddenState()">Test Default Hidden State</button>
+        <button onclick="testNewMatchEffect()">Test New Match Effect</button>
+        <button onclick="testPlayerNameTypewriter()">Test Player Name Typewriter</button>
+        <button onclick="testScoreTypewriter()">Test Score Typewriter</button>
+        <button onclick="testMatchConfigTypewriter()">Test Match Config Typewriter</button>
     </div>
     
     <div class="test-section">
@@ -360,6 +364,95 @@
             }, 2000);
             
             logResult('Testing default hidden state - check overlay window', 'info');
+        }
+
+        function testNewMatchEffect() {
+            logResult('🎬 Testing new match typewriter effect...', 'info');
+            
+            // Simulate a fight loaded event
+            const fightLoadedEvent = {
+                type: 'fight_loaded',
+                timestamp: new Date().toISOString()
+            };
+            
+            if (window.testWebSocket && window.testWebSocket.readyState === WebSocket.OPEN) {
+                window.testWebSocket.send(JSON.stringify({
+                    type: 'pss_event',
+                    data: fightLoadedEvent
+                }));
+                logResult('Sent fight loaded event via WebSocket', 'success');
+            } else {
+                window.dispatchEvent(new CustomEvent('pss-event', { detail: fightLoadedEvent }));
+                logResult('Sent fight loaded event via localStorage', 'info');
+            }
+        }
+
+        function testPlayerNameTypewriter() {
+            logResult('👤 Testing player name typewriter effect...', 'info');
+            
+            const athleteEvent = {
+                type: 'athletes',
+                athlete1_long: 'PARK TAEJOON',
+                athlete2_long: 'GASHIM MAGOMEDOV',
+                athlete1_country: 'KOR',
+                athlete2_country: 'RUS',
+                athlete1_iocCode: 'KOR',
+                athlete2_iocCode: 'RUS'
+            };
+            
+            if (window.testWebSocket && window.testWebSocket.readyState === WebSocket.OPEN) {
+                window.testWebSocket.send(JSON.stringify({
+                    type: 'pss_event',
+                    data: athleteEvent
+                }));
+                logResult('Sent athlete event via WebSocket', 'success');
+            } else {
+                window.dispatchEvent(new CustomEvent('pss-event', { detail: athleteEvent }));
+                logResult('Sent athlete event via localStorage', 'info');
+            }
+        }
+
+        function testScoreTypewriter() {
+            logResult('📊 Testing score typewriter effect...', 'info');
+            
+            const scoreEvent = {
+                type: 'current_scores',
+                athlete1_score: 9,
+                athlete2_score: 7
+            };
+            
+            if (window.testWebSocket && window.testWebSocket.readyState === WebSocket.OPEN) {
+                window.testWebSocket.send(JSON.stringify({
+                    type: 'pss_event',
+                    data: scoreEvent
+                }));
+                logResult('Sent score event via WebSocket', 'success');
+            } else {
+                window.dispatchEvent(new CustomEvent('pss-event', { detail: scoreEvent }));
+                logResult('Sent score event via localStorage', 'info');
+            }
+        }
+
+        function testMatchConfigTypewriter() {
+            logResult('🏆 Testing match config typewriter effect...', 'info');
+            
+            const matchConfigEvent = {
+                type: 'match_config',
+                category: 'GOLD MEDAL CONTEST',
+                weight: 'MALE -68KG',
+                number: 123456
+            };
+            
+            if (window.testWebSocket && window.testWebSocket.readyState === WebSocket.OPEN) {
+                window.testWebSocket.send(JSON.stringify({
+                    type: 'pss_event',
+                    data: matchConfigEvent
+                }));
+                logResult('Sent match config event via WebSocket', 'success');
+            } else {
+                window.dispatchEvent(new CustomEvent('pss-event', { detail: matchConfigEvent }));
+                logResult('Sent match config event via localStorage', 'info');
+            }
         }
 
         function openScoreboardOverlay() {

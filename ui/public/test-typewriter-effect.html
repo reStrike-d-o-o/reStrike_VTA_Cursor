@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Typewriter Effect Test - reStrike VTA</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #1B9DA3;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        
+        .test-section h3 {
+            color: #333;
+            margin-top: 0;
+        }
+        
+        button {
+            background: #1B9DA3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        button:hover {
+            background: #158a8f;
+        }
+        
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 2px 0;
+        }
+        
+        .log-entry.success {
+            color: #28a745;
+        }
+        
+        .log-entry.error {
+            color: #dc3545;
+        }
+        
+        .log-entry.info {
+            color: #17a2b8;
+        }
+        
+        .overlay-preview {
+            border: 2px solid #1B9DA3;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            background: #f8f9fa;
+        }
+        
+        .overlay-preview h4 {
+            margin-top: 0;
+            color: #1B9DA3;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🎬 Typewriter Effect Test - reStrike VTA Scoreboard</h1>
+        
+        <div class="test-section">
+            <h3>📋 Test Overview</h3>
+            <p>This page tests the typewriter effect functionality for the scoreboard overlay. The typewriter effect should:</p>
+            <ul>
+                <li>Apply to player names, match category, and match number when a new match is loaded</li>
+                <li>Show a typing animation with a blinking cursor</li>
+                <li>Stagger the animations for different elements</li>
+                <li>Complete with a fade-in effect</li>
+            </ul>
+        </div>
+        
+        <div class="test-section">
+            <h3>🎯 Test Controls</h3>
+            <button onclick="testNewMatchEffect()">Test New Match Effect</button>
+            <button onclick="testPlayerNameTypewriter()">Test Player Name Typewriter</button>
+            <button onclick="testScoreTypewriter()">Test Score Typewriter</button>
+            <button onclick="testMatchConfigTypewriter()">Test Match Config Typewriter</button>
+            <button onclick="openScoreboardOverlay()">Open Scoreboard Overlay</button>
+            <button onclick="clearLog()">Clear Log</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>📊 Test Results</h3>
+            <div id="test-log" class="log">
+                <div class="log-entry info">Ready to test typewriter effects...</div>
+            </div>
+        </div>
+        
+        <div class="overlay-preview">
+            <h4>🎬 Typewriter Effect Details</h4>
+            <p><strong>Animation Sequence:</strong></p>
+            <ol>
+                <li><strong>Typewriter Phase:</strong> Text appears character by character with blinking cursor (1.5s)</li>
+                <li><strong>Fade-in Phase:</strong> Smooth fade-in effect after typing completes (0.5s)</li>
+                <li><strong>Staggered Timing:</strong> Each element starts 300ms after the previous one</li>
+            </ol>
+            
+            <p><strong>Affected Elements:</strong></p>
+            <ul>
+                <li>Player 1 Name (Blue)</li>
+                <li>Player 2 Name (Red)</li>
+                <li>Match Category</li>
+                <li>Match Number</li>
+            </ul>
+            
+            <p><strong>CSS Classes:</strong></p>
+            <ul>
+                <li><code>.typewriter</code> - Active typing animation</li>
+                <li><code>.typewriter-complete</code> - Fade-in after typing</li>
+                <li><code>.fade-in</code> - General fade-in animation</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        function logResult(message, type = 'info') {
+            const log = document.getElementById('test-log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('test-log').innerHTML = '<div class="log-entry info">Log cleared...</div>';
+        }
+
+        function testNewMatchEffect() {
+            logResult('🎬 Testing new match typewriter effect...', 'info');
+            
+            // Simulate a fight loaded event
+            const fightLoadedEvent = {
+                type: 'fight_loaded',
+                timestamp: new Date().toISOString()
+            };
+            
+            // Send event to scoreboard overlay if it's open
+            const overlayWindow = window.open('', 'scoreboard');
+            if (overlayWindow && !overlayWindow.closed) {
+                try {
+                    overlayWindow.postMessage({
+                        type: 'pss_event',
+                        data: fightLoadedEvent
+                    }, '*');
+                    logResult('✅ Fight loaded event sent to overlay', 'success');
+                } catch (error) {
+                    logResult('❌ Error sending event to overlay: ' + error.message, 'error');
+                }
+            } else {
+                logResult('⚠️ Scoreboard overlay not open - opening it now...', 'info');
+                openScoreboardOverlay();
+                setTimeout(() => {
+                    testNewMatchEffect();
+                }, 2000);
+            }
+        }
+
+        function testPlayerNameTypewriter() {
+            logResult('👤 Testing player name typewriter effect...', 'info');
+            
+            const athleteEvent = {
+                type: 'athletes',
+                athlete1_long: 'PARK TAEJOON',
+                athlete2_long: 'GASHIM MAGOMEDOV',
+                athlete1_country: 'KOR',
+                athlete2_country: 'RUS',
+                athlete1_iocCode: 'KOR',
+                athlete2_iocCode: 'RUS'
+            };
+            
+            sendEventToOverlay(athleteEvent);
+        }
+
+        function testScoreTypewriter() {
+            logResult('📊 Testing score typewriter effect...', 'info');
+            
+            const scoreEvent = {
+                type: 'current_scores',
+                athlete1_score: 9,
+                athlete2_score: 7
+            };
+            
+            sendEventToOverlay(scoreEvent);
+        }
+
+        function testMatchConfigTypewriter() {
+            logResult('🏆 Testing match config typewriter effect...', 'info');
+            
+            const matchConfigEvent = {
+                type: 'match_config',
+                category: 'GOLD MEDAL CONTEST',
+                weight: 'MALE -68KG',
+                number: 123456
+            };
+            
+            sendEventToOverlay(matchConfigEvent);
+        }
+
+        function sendEventToOverlay(event) {
+            const overlayWindow = window.open('', 'scoreboard');
+            if (overlayWindow && !overlayWindow.closed) {
+                try {
+                    overlayWindow.postMessage({
+                        type: 'pss_event',
+                        data: event
+                    }, '*');
+                    logResult(`✅ ${event.type} event sent to overlay`, 'success');
+                } catch (error) {
+                    logResult('❌ Error sending event to overlay: ' + error.message, 'error');
+                }
+            } else {
+                logResult('⚠️ Scoreboard overlay not open - opening it now...', 'info');
+                openScoreboardOverlay();
+                setTimeout(() => {
+                    sendEventToOverlay(event);
+                }, 2000);
+            }
+        }
+
+        function openScoreboardOverlay() {
+            logResult('🔗 Opening scoreboard overlay...', 'info');
+            const overlayWindow = window.open('scoreboard-overlay.html', 'scoreboard', 'width=1920,height=1080');
+            
+            if (overlayWindow) {
+                logResult('✅ Scoreboard overlay opened successfully', 'success');
+                
+                // Wait for overlay to load, then send test data
+                setTimeout(() => {
+                    logResult('📡 Sending initial test data to overlay...', 'info');
+                    
+                    const testEvents = [
+                        {
+                            type: 'athletes',
+                            athlete1_long: 'PARK TAEJOON',
+                            athlete2_long: 'GASHIM MAGOMEDOV',
+                            athlete1_country: 'KOR',
+                            athlete2_country: 'RUS',
+                            athlete1_iocCode: 'KOR',
+                            athlete2_iocCode: 'RUS'
+                        },
+                        {
+                            type: 'match_config',
+                            category: 'GOLD MEDAL CONTEST',
+                            weight: 'MALE -68KG',
+                            number: 123456
+                        },
+                        {
+                            type: 'current_scores',
+                            athlete1_score: 9,
+                            athlete2_score: 7
+                        }
+                    ];
+                    
+                    testEvents.forEach((event, index) => {
+                        setTimeout(() => {
+                            sendEventToOverlay(event);
+                        }, index * 1000);
+                    });
+                }, 3000);
+            } else {
+                logResult('❌ Failed to open scoreboard overlay', 'error');
+            }
+        }
+
+        // Listen for messages from overlay
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.type === 'overlay_status') {
+                logResult(`📡 Overlay status: ${event.data.message}`, 'info');
+            }
+        });
+
+        // Initialize
+        logResult('🚀 Typewriter effect test page loaded', 'info');
+        logResult('💡 Click "Open Scoreboard Overlay" to start testing', 'info');
+    </script>
+</body>
+</html> 
