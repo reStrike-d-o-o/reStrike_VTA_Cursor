@@ -15,8 +15,10 @@ import ObsWebSocketManager from '../organisms/ObsWebSocketManager';
 import Toggle from '../atoms/Toggle';
 import TabGroup from '../molecules/TabGroup';
 import TabIcons from '../atoms/TabIcons';
+import LottieIcon from '../atoms/LottieIcon';
 import { useAppStore } from '../../stores';
 import { configCommands } from '../../utils/tauriCommands';
+import { flowChartAnimation, spyAnimation, plansAnimation, watcherAnimation, taekwondoAnimation, liveStreamingAnimation, settingsAnimation, robotAnimation } from '../../assets/icons/json';
 
 type AdvancedPanelProps = React.ComponentProps<'div'>;
 
@@ -32,62 +34,37 @@ const DRAWERS = [
   {
     key: 'pss',
     label: 'PSS',
-    icon: TabIcons.punchKick,
+    icon: <LottieIcon animationData={taekwondoAnimation} size={48} />,
     description: 'UDP server, PSS protocol, event database, etc.'
   },
   {
     key: 'obs',
     label: 'OBS',
-    icon: (
-      <svg width="24" height="24" fill="none" viewBox="0 0 24 24">
-        <rect x="3" y="7" width="15" height="10" rx="2" stroke="currentColor" strokeWidth="2"/>
-        <rect x="16" y="10" width="5" height="4" rx="1" stroke="currentColor" strokeWidth="2"/>
-        <circle cx="10.5" cy="12" r="2.5" stroke="currentColor" strokeWidth="2"/>
-      </svg>
-    ),
+    icon: <LottieIcon animationData={liveStreamingAnimation} size={48} />,
     description: 'OBS connection management and options.'
   },
   {
     key: 'ovr',
     label: 'OVR',
-    icon: (
-      <svg width="24" height="24" fill="none" viewBox="0 0 24 24">
-        {/* Network computers icon */}
-        <rect x="3" y="3" width="8" height="6" rx="1" stroke="currentColor" strokeWidth="2"/>
-        <rect x="13" y="3" width="8" height="6" rx="1" stroke="currentColor" strokeWidth="2"/>
-        <rect x="3" y="15" width="8" height="6" rx="1" stroke="currentColor" strokeWidth="2"/>
-        <rect x="13" y="15" width="8" height="6" rx="1" stroke="currentColor" strokeWidth="2"/>
-        {/* Network connection lines */}
-        <path d="M11 6h2" stroke="currentColor" strokeWidth="2"/>
-        <path d="M11 18h2" stroke="currentColor" strokeWidth="2"/>
-        <path d="M8 9v6" stroke="currentColor" strokeWidth="2"/>
-        <path d="M16 9v6" stroke="currentColor" strokeWidth="2"/>
-      </svg>
-    ),
+    icon: <LottieIcon animationData={plansAnimation} size={48} />,
     description: 'Overlay integration and tournament management.'
   },
   {
-    key: 'video',
-    label: 'Video',
-    icon: (
-      <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" strokeWidth="2"/><polygon points="10,9 16,12 10,15" fill="currentColor"/></svg>
-    ),
-    description: 'mpv video integration and controls.'
+    key: 'ivr',
+    label: 'IVR',
+    icon: <LottieIcon animationData={watcherAnimation} size={48} />,
+    description: 'Instant Video Replay integration and controls.'
   },
   {
     key: 'ai',
     label: 'AI',
-    icon: (
-      <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/><path d="M8 12a4 4 0 1 1 8 0 4 4 0 0 1-8 0z" stroke="currentColor" strokeWidth="2"/></svg>
-    ),
+    icon: <LottieIcon animationData={robotAnimation} size={48} />,
     description: 'AI report creation and data analyzer.'
   },
   {
     key: 'settings',
     label: 'Settings',
-    icon: (
-      <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06-.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.09A1.65 1.65 0 0 0 9 3.09V3a2 2 0 1 1 4 0v.09c0 .66.39 1.26 1 1.51h.09a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.09c.66 0 1.26.39 1.51 1H21a2 2 0 1 1 0 4h-.09c-.66 0-1.26.39-1.51 1z" stroke="currentColor" strokeWidth="2"/></svg>
-    ),
+    icon: <LottieIcon animationData={settingsAnimation} size={48} />,
     description: 'All settings, including Diagnostics & Logs Manager.'
   },
 ];
@@ -303,8 +280,8 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
             onTabChange={setOvrTab}
           />
         )}
-        {drawer?.key === 'video' && (
-          <div className="bg-gradient-to-br from-green-900/20 to-green-800/30 backdrop-blur-sm rounded-lg p-6 text-gray-200 border border-green-600/30 shadow-lg">[mpv video integration and controls will be implemented here]</div>
+        {drawer?.key === 'ivr' && (
+          <div className="bg-gradient-to-br from-green-900/20 to-green-800/30 backdrop-blur-sm rounded-lg p-6 text-gray-200 border border-green-600/30 shadow-lg">[Instant Video Replay integration and controls will be implemented here]</div>
         )}
         {drawer?.key === 'ai' && (
           <div className="bg-gradient-to-br from-purple-900/20 to-purple-800/30 backdrop-blur-sm rounded-lg p-6 text-gray-200 border border-purple-600/30 shadow-lg">[AI report creation and data analyzer will be implemented here]</div>

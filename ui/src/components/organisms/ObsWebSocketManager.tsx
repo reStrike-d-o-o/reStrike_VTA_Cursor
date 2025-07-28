@@ -283,30 +283,7 @@ const ObsWebSocketManager: React.FC = () => {
     }
   };
 
-  const testObsStatus = async () => {
-    console.log('Testing OBS status');
-    
-    try {
-      // Use Tauri command for OBS status
-      if (isTauriAvailable()) {
-        const result = await invoke('obs_get_status');
-        
-        if (result && typeof result === 'object' && 'success' in result && result.success) {
-          console.log('✅ OBS status retrieved successfully', result);
-          return result;
-        } else {
-          console.error('❌ Failed to get OBS status', result);
-          return null;
-        }
-      } else {
-        console.error('❌ Tauri not available for OBS status');
-        return null;
-      }
-    } catch (error) {
-      console.error('❌ Error getting OBS status', error);
-      return null;
-    }
-  };
+
 
 
 
@@ -611,33 +588,7 @@ const ObsWebSocketManager: React.FC = () => {
         </div>
       </div>
 
-      {/* Test Controls */}
-      <div className="bg-gray-800 rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-white mb-4">Test Controls</h3>
-        <div className="flex space-x-4">
-          <Button
-            onClick={testObsStatus}
-            variant="secondary"
-            size="sm"
-          >
-            Test OBS Status
-          </Button>
-          <Button
-            onClick={() => connections.forEach(conn => connectToObs(conn.name))}
-            variant="primary"
-            size="sm"
-          >
-            Connect All
-          </Button>
-          <Button
-            onClick={() => connections.forEach(conn => disconnectFromObs(conn.name))}
-            variant="secondary"
-            size="sm"
-          >
-            Disconnect All
-          </Button>
-        </div>
-      </div>
+
     </div>
   );
 };

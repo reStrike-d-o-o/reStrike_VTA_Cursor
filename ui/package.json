@@ -5,13 +5,13 @@
   "homepage": ".",
   "main": "src/App.tsx",
   "scripts": {
-    "start": "react-scripts start",
-    "start:fast": "set GENERATE_SOURCEMAP=false && react-scripts start",
-    "build": "react-scripts build",
-    "build:fast": "set GENERATE_SOURCEMAP=false && react-scripts build",
-    "dev:fast": "react-scripts start",
-    "dev:network": "set HOST=0.0.0.0 && react-scripts start",
-    "test": "react-scripts test",
+    "start": "craco start",
+    "start:fast": "set GENERATE_SOURCEMAP=false && craco start",
+    "build": "craco build",
+    "build:fast": "set GENERATE_SOURCEMAP=false && craco build",
+    "dev:fast": "craco start",
+    "dev:network": "set HOST=0.0.0.0 && craco start",
+    "test": "craco test",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write src/**/*.{ts,tsx,js,jsx}",
@@ -19,9 +19,11 @@
     "analyze": "npm run build && npx webpack-bundle-analyzer build/static/js/*.js"
   },
   "dependencies": {
+    "@craco/craco": "^7.1.0",
     "@tauri-apps/api": "^2.7.0",
     "@tauri-apps/plugin-dialog": "^2.3.1",
     "framer-motion": "^11.18.2",
+    "lottie-react": "^2.4.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "zustand": "^5.0.6"
