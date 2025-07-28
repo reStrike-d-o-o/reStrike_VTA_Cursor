@@ -165,18 +165,7 @@ const LiveDataPanel: React.FC = () => {
     // Component mounted
   }, []);
 
-  // Test Tauri API on component mount (only once)
-  useEffect(() => {
-    // Only test once on mount, not on every render
-    const testOnce = async () => {
-      try {
-        await window.__TAURI__.core.invoke('get_app_status');
-      } catch (error) {
-        // Tauri API test failed, but we can continue
-      }
-    };
-    testOnce();
-  }, []);
+
 
   // Auto-scroll to bottom when new data arrives if autoScroll is true
   useEffect(() => {

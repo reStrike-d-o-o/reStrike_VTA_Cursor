@@ -1205,56 +1205,7 @@ pub async fn cpu_update_config(app: State<'_, Arc<App>>, config: crate::plugins:
     }
 } 
 
-// Test command to verify CPU monitor plugin works
-#[tauri::command]
-pub async fn cpu_test_plugin(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
-    // println!("🚨 [CPU_TEST] ===== CPU TEST PLUGIN CALLED =====");
-    log::info!("[CPU_TEST] ===== CPU TEST PLUGIN CALLED =====");
-    
-    // println!("🚨 [CPU_TEST] CPU monitor plugin accessed successfully");
-    log::info!("[CPU_TEST] CPU monitor plugin accessed successfully");
-    
-    // Trigger immediate data collection
-    // println!("🚨 [CPU_TEST] Triggering immediate data collection...");
-    log::info!("[CPU_TEST] Triggering immediate data collection...");
-    match app.cpu_monitor_plugin().update_cpu_data().await {
-        Ok(_) => {
-            // println!("🚨 [CPU_TEST] Data collection successful");
-            log::info!("[CPU_TEST] Data collection successful");
-        },
-        Err(e) => {
-            // println!("🚨 [CPU_TEST] Data collection failed: {}", e);
-            log::error!("[CPU_TEST] Data collection failed: {}", e);
-        },
-    }
-    
-    let process_data = app.cpu_monitor_plugin().get_process_cpu_data().await;
-    // println!("🚨 [CPU_TEST] Process data count: {}", process_data.len());
-    log::info!("[CPU_TEST] Process data count: {}", process_data.len());
-    
-    let system_data = app.cpu_monitor_plugin().get_system_cpu_data().await;
-    // println!("🚨 [CPU_TEST] System data available: {}", system_data.is_some());
-    log::info!("[CPU_TEST] System data available: {}", system_data.is_some());
-    
-    // Log first few processes for debugging
-    for (i, process) in process_data.iter().take(3).enumerate() {
-        // println!("🚨 [CPU_TEST] Process {}: {} - CPU: {:.1}%, Memory: {:.1}MB", 
-        //     i, process.process_name, process.cpu_percent, process.memory_mb);
-        log::debug!("[CPU_TEST] Process {}: {} - CPU: {:.1}%, Memory: {:.1}MB", 
-            i, process.process_name, process.cpu_percent, process.memory_mb);
-    }
-    
-    let result = serde_json::json!({
-        "success": true,
-        "process_count": process_data.len(),
-        "system_available": system_data.is_some(),
-        "test_completed": true
-    });
-    
-    // println!("🚨 [CPU_TEST] Test completed successfully");
-    log::info!("[CPU_TEST] Test completed successfully");
-    Ok(result)
-} 
+ 
 
 #[tauri::command]
 pub async fn cpu_enable_monitoring(app: State<'_, Arc<App>>) -> Result<(), String> {

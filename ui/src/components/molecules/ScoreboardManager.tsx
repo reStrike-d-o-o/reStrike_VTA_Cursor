@@ -15,7 +15,6 @@ interface ScoreboardManagerProps {
 interface OverlaySettings {
   type: 'scoreboard' | 'introduction' | 'winner' | 'results' | 'victory';
   theme: 'default' | 'olympic' | 'dark' | 'bright';
-  transparency: number;
   visible: boolean;
   showNames: boolean; // true for full names, false for country codes
 }
@@ -25,15 +24,10 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
   const [overlaySettings, setOverlaySettings] = useState<OverlaySettings>({
     type: 'scoreboard',
     theme: 'default',
-    transparency: 1.0,
     visible: false,
     showNames: true,
   });
 
-  // Preview state
-  const [isPreviewMode, setIsPreviewMode] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState<string>('');
-  
   // PSS data from store
   const athlete1 = usePssMatchStore((state) => state.getAthlete1());
   const athlete2 = usePssMatchStore((state) => state.getAthlete2());
@@ -47,48 +41,13 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
   // Store reference
   const { overlaySettings: appOverlaySettings } = useAppStore();
 
-  // Preview iframe ref
-  const previewRef = useRef<HTMLIFrameElement>(null);
-
   // Update overlay settings
   const updateOverlaySettings = (updates: Partial<OverlaySettings>) => {
     const newSettings = { ...overlaySettings, ...updates };
     setOverlaySettings(newSettings);
-    
-    // Update preview if in preview mode
-    if (isPreviewMode && previewRef.current) {
-      updatePreview(newSettings);
-    }
   };
 
-  // Update preview overlay
-  const updatePreview = (settings: OverlaySettings) => {
-    if (!previewRef.current) return;
 
-    const iframe = previewRef.current;
-    const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-    
-    if (iframeDoc) {
-      // Update overlay type
-      const overlayPath = `/assets/scoreboard/${settings.type}-overlay.svg`;
-      iframe.src = overlayPath;
-      
-      // Apply settings after load
-      iframe.onload = () => {
-        const svg = iframeDoc.querySelector('svg');
-        if (svg) {
-          // Apply transparency
-          svg.style.opacity = settings.transparency.toString();
-          
-          // Apply theme
-          applyThemeToSvg(svg, settings.theme);
-          
-          // Update content based on PSS data
-          updateOverlayContent(svg, settings);
-        }
-      };
-    }
-  };
 
   // Apply theme to SVG
   const applyThemeToSvg = (svg: SVGElement, theme: string) => {
@@ -145,42 +104,9 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
     }
   };
 
-  // Toggle preview mode
-  const togglePreview = () => {
-    const newPreviewMode = !isPreviewMode;
-    setIsPreviewMode(newPreviewMode);
-    
-    if (newPreviewMode) {
-      setPreviewUrl(`/assets/scoreboard/${overlaySettings.type}-overlay.svg`);
-    } else {
-      setPreviewUrl('');
-    }
-  };
 
-  // Generate OBS URL
-  const generateObsUrl = () => {
-    const baseUrl = window.location.origin;
-    const overlayPath = `/assets/scoreboard/${overlaySettings.type}-overlay.svg`;
-    const params = new URLSearchParams({
-      theme: overlaySettings.theme,
-      transparency: overlaySettings.transparency.toString(),
-      showNames: overlaySettings.showNames.toString(),
-    });
-    
-    return `${baseUrl}${overlayPath}?${params.toString()}`;
-  };
 
-  // Copy OBS URL to clipboard
-  const copyObsUrl = async () => {
-    const url = generateObsUrl();
-    try {
-      await navigator.clipboard.writeText(url);
-      // Show success message (you can add a toast notification here)
-      console.log('OBS URL copied to clipboard:', url);
-    } catch (error) {
-      console.error('Failed to copy URL:', error);
-    }
-  };
+
 
   // Color theme options
   const themeOptions = [
@@ -201,16 +127,6 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
 
   return (
     <div className={`space-y-6 ${className}`}>
-      {/* Header */}
-      <div className="p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-100">Scoreboard Management</h3>
-          <StatusDot color={isLoaded ? 'green' : 'red'} />
-        </div>
-        <p className="text-sm text-gray-400">
-          Configure and manage scoreboard overlays for live streaming. All overlays support real-time PSS data updates.
-        </p>
-      </div>
 
       {/* Overlay Type Selection */}
       <div className="p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
@@ -274,79 +190,16 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
             />
           </div>
 
-          <div>
-            <Label htmlFor="transparency" className="text-sm text-gray-300">
-              Transparency: {Math.round(overlaySettings.transparency * 100)}%
-            </Label>
-            <input
-              id="transparency"
-              type="range"
-              min="0.1"
-              max="1.0"
-              step="0.1"
-              value={overlaySettings.transparency}
-              onChange={(e) => updateOverlaySettings({ transparency: parseFloat(e.target.value) })}
-              className="w-full mt-2"
-              aria-label="Transparency level"
-              title="Adjust overlay transparency"
-            />
-          </div>
+
         </div>
       </div>
 
-      {/* Preview Section */}
-      <div className="p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
-        <div className="flex items-center justify-between mb-4">
-          <h4 className="text-md font-semibold text-gray-100">Preview</h4>
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={togglePreview}
-          >
-            {isPreviewMode ? 'Hide Preview' : 'Show Preview'}
-          </Button>
-        </div>
-        
-        {isPreviewMode && (
-          <div className="border border-gray-600 rounded-lg overflow-hidden">
-            <iframe
-              ref={previewRef}
-              src={previewUrl}
-              width="100%"
-              height="400"
-              className="bg-white"
-              title="Overlay Preview"
-            />
-          </div>
-        )}
-      </div>
+
 
       {/* OBS Integration */}
       <div className="p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
         <h4 className="text-md font-semibold text-gray-100 mb-4">OBS Integration</h4>
         <div className="space-y-4">
-          {/* SVG Overlay URL */}
-          <div className="p-3 bg-gray-700/30 rounded-lg">
-            <Label className="text-sm text-gray-300 mb-2">SVG Overlay URL (Legacy)</Label>
-            <div className="flex items-center space-x-2">
-              <Input
-                value={generateObsUrl()}
-                readOnly
-                className="flex-1 text-sm"
-              />
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={copyObsUrl}
-              >
-                Copy
-              </Button>
-            </div>
-            <p className="text-xs text-gray-400 mt-2">
-              Legacy SVG overlay (no real-time updates)
-            </p>
-          </div>
-
           {/* HTML Overlay URLs */}
           <div className="p-3 bg-blue-900/20 rounded-lg border border-blue-500/30">
             <Label className="text-sm text-blue-300 mb-2">HTML Overlay URLs (Real-time PSS Updates)</Label>
@@ -414,70 +267,7 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
         </div>
       </div>
 
-      {/* HTML Overlay Testing */}
-      <div className="p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
-        <h4 className="text-md font-semibold text-gray-100 mb-4">HTML Overlay Testing</h4>
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label className="text-sm text-gray-300">Test Scoreboard Overlay</Label>
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => window.open('/scoreboard-overlay.html', '_blank')}
-                className="w-full mt-2"
-              >
-                Open in New Tab
-              </Button>
-              <p className="text-xs text-gray-400 mt-1">
-                Opens the scoreboard overlay in a new browser tab for testing
-              </p>
-            </div>
-            
-            <div>
-              <Label className="text-sm text-gray-300">Test Player Introduction</Label>
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => window.open('/player-introduction-overlay.html', '_blank')}
-                className="w-full mt-2"
-              >
-                Open in New Tab
-              </Button>
-              <p className="text-xs text-gray-400 mt-1">
-                Opens the player introduction overlay in a new browser tab for testing
-              </p>
-            </div>
-          </div>
-          
-          <div className="p-3 bg-yellow-900/20 rounded-lg border border-yellow-500/30">
-            <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-              <span className="text-sm text-yellow-300 font-medium">Testing Instructions</span>
-            </div>
-            <div className="text-xs text-yellow-200 mt-2 space-y-1">
-              <div>1. Open an overlay in a new tab</div>
-              <div>2. Load a match in the main application</div>
-              <div>3. Watch for real-time updates in the overlay</div>
-              <div>4. Check browser console for PSS event logs</div>
-              <div>5. WebSocket server runs on ws://0.0.0.0:3001 (network accessible)</div>
-              <div>6. For network access, use "npm run dev:network"</div>
-            </div>
-            
-            <div className="mt-3 pt-3 border-t border-yellow-500/30">
-              <div className="text-xs text-yellow-200">
-                <strong>Network Setup:</strong>
-              </div>
-              <div className="text-xs text-yellow-200 mt-1 space-y-1">
-                <div>• Start with: npm run dev:network</div>
-                <div>• Find your IP: ipconfig (Windows) or ifconfig (Mac/Linux)</div>
-                <div>• Access from other computers: http://[your-ip]:3000</div>
-                <div>• WebSocket connects automatically to [your-ip]:3001</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+
 
       {/* PSS Data Status */}
       <div className="p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
@@ -528,6 +318,8 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
           )}
         </div>
       </div>
+
+
     </div>
   );
 };

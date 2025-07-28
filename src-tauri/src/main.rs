@@ -171,7 +171,7 @@ async fn main() -> AppResult<()> {
             tauri_commands::cpu_get_system_data,
             tauri_commands::cpu_get_obs_usage,
             tauri_commands::cpu_update_config,
-            tauri_commands::cpu_test_plugin,
+
             tauri_commands::cpu_enable_monitoring,
             tauri_commands::cpu_disable_monitoring,
             tauri_commands::cpu_get_monitoring_status,

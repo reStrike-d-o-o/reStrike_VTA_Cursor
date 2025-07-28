@@ -13,31 +13,7 @@ const StatusBar: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const testObsStatus = (scenario: 'idle' | 'recording' | 'streaming' | 'both' | 'high-cpu') => {
-    let testStatus: ObsStatusInfo = {
-      is_recording: false,
-      is_streaming: false,
-      cpu_usage: 0,
-    };
-    switch (scenario) {
-      case 'idle':
-        testStatus = { is_recording: false, is_streaming: false, cpu_usage: 15 };
-        break;
-      case 'recording':
-        testStatus = { is_recording: true, is_streaming: false, cpu_usage: 45, recording_connection: 'OBS_SINGLE' };
-        break;
-      case 'streaming':
-        testStatus = { is_recording: false, is_streaming: true, cpu_usage: 35, streaming_connection: 'OBS_SINGLE' };
-        break;
-      case 'both':
-        testStatus = { is_recording: true, is_streaming: true, cpu_usage: 65, recording_connection: 'OBS_REC', streaming_connection: 'OBS_STR' };
-        break;
-      case 'high-cpu':
-        testStatus = { is_recording: true, is_streaming: false, cpu_usage: 85, recording_connection: 'OBS_SINGLE' };
-        break;
-    }
-    updateObsStatus(testStatus);
-  };
+
 
   const getCpuColor = (cpuUsage: number) => {
     if (cpuUsage <= 30) return 'bg-green-500';
@@ -54,14 +30,6 @@ const StatusBar: React.FC = () => {
 
   return (
     <div className="space-y-2">
-      {/* Test Controls (remove in production) */}
-      <div className="flex flex-wrap gap-1 text-xs">
-        <Button onClick={() => testObsStatus('idle')} variant="ghost" size="sm" className="px-2 py-1">Idle</Button>
-        <Button onClick={() => testObsStatus('recording')} variant="ghost" size="sm" className="px-2 py-1">REC</Button>
-        <Button onClick={() => testObsStatus('streaming')} variant="ghost" size="sm" className="px-2 py-1">STR</Button>
-        <Button onClick={() => testObsStatus('both')} variant="ghost" size="sm" className="px-2 py-1">Both</Button>
-        <Button onClick={() => testObsStatus('high-cpu')} variant="ghost" size="sm" className="px-2 py-1">High CPU</Button>
-      </div>
       {/* Status Bar */}
       <div className="flex items-center justify-between text-xs text-gray-400 border-t border-gray-700 pt-2">
         <div className="flex items-center space-x-1">
