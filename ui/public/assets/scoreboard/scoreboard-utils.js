@@ -18,6 +18,9 @@ class ScoreboardOverlay {
     
     // Apply default theme
     this.applyTheme(this.currentTheme);
+    
+    // Ensure injury section is hidden by default
+    this.hideInjurySection();
   }
 
   // Update player names
@@ -124,6 +127,41 @@ class ScoreboardOverlay {
       console.log(`✅ Updated injury time: ${minutes}:${seconds.toString().padStart(2, '0')}`);
     } else {
       console.warn(`⚠️ Could not find injuryTime element`);
+    }
+  }
+
+  // Show injury section
+  showInjurySection() {
+    const injurySection = this.svg.getElementById('injurySection');
+    if (injurySection) {
+      injurySection.style.display = 'block';
+      injurySection.style.opacity = '1';
+      console.log('✅ Injury section shown');
+    } else {
+      console.warn('⚠️ Could not find injurySection element');
+    }
+  }
+
+  // Hide injury section
+  hideInjurySection() {
+    const injurySection = this.svg.getElementById('injurySection');
+    if (injurySection) {
+      injurySection.style.display = 'none';
+      injurySection.style.opacity = '0';
+      console.log('✅ Injury section hidden');
+    } else {
+      console.warn('⚠️ Could not find injurySection element');
+    }
+  }
+
+  // Reset injury time to 0:00
+  resetInjuryTime() {
+    const injuryElement = this.svg.getElementById('injuryTime');
+    if (injuryElement) {
+      injuryElement.textContent = '0:00';
+      console.log('✅ Injury time reset to 0:00');
+    } else {
+      console.warn('⚠️ Could not find injuryTime element');
     }
   }
 
