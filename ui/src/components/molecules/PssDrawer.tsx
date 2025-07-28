@@ -8,9 +8,11 @@ import StatusDot from '../atoms/StatusDot';
 import Icon from '../atoms/Icon';
 import TabGroup from '../molecules/TabGroup';
 import TabIcons from '../atoms/TabIcons';
+import LottieIcon from '../atoms/LottieIcon';
 import FlagManagementPanel from './FlagManagementPanel';
 import ScoreboardManager from './ScoreboardManager';
 import { invoke as tauriInvoke } from '@tauri-apps/api/core';
+import { algorithmAnimation, locationAnimation } from '../../assets/icons/json';
 
 // Use the proper Tauri v2 invoke function with fallback
 const invoke = async (command: string, args?: any) => {
@@ -833,13 +835,13 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
           {
             id: 'udp',
             label: 'UDP Server & Protocol',
-            icon: TabIcons.udp,
+            icon: <LottieIcon animationData={algorithmAnimation} size={32} />,
             content: <UdpServerContent />
           },
           {
             id: 'flags',
             label: 'Flag Management',
-            icon: TabIcons.flags,
+            icon: <LottieIcon animationData={locationAnimation} size={32} />,
             content: <FlagManagementContent />
           },
           {
