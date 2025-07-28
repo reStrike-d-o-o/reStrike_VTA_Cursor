@@ -295,12 +295,9 @@
         function handleMatchConfigEvent(event) {
             console.log('🏆 Updating match config:', event);
             
-            if (event.category) {
-                scoreboardInstance.updateMatchCategory(event.category);
-            }
-            
-            if (event.weight) {
-                scoreboardInstance.updateMatchType(event.weight);
+            // Use the new combined method to update all match info at once
+            if (event.weight || event.division || event.category) {
+                scoreboardInstance.updateMatchInfo(event.weight, event.division, event.category);
             }
             
             if (event.number) {
