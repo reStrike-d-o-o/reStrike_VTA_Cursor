@@ -54,6 +54,11 @@
         <button onclick="testRoundEvent()">Test Round</button>
         <button onclick="testWinnerRoundsEvent()">Test Winner Rounds</button>
         <button onclick="testRawEvents()">Test Raw Events</button>
+        <button onclick="testInjuryEvent()">Test Injury Event</button>
+        <button onclick="testInjuryShow()">Test Injury Show</button>
+        <button onclick="testInjuryHide()">Test Injury Hide</button>
+        <button onclick="testInjuryReset()">Test Injury Reset</button>
+        <button onclick="testDefaultHiddenState()">Test Default Hidden State</button>
     </div>
     
     <div class="test-section">
@@ -227,7 +232,10 @@
                 'wrd;rd1;1;rd2;2;rd3;0;',
                 'clk;1:45;',
                 'rnd;2;',
-                'sc1;9;sc2;7;'
+                'sc1;9;sc2;7;',
+                'ij1;1:23;show;',
+                'ij2;0:45;',
+                'ij1;1:22;hide;'
             ];
             
             rawEvents.forEach((rawEvent, index) => {
@@ -249,6 +257,109 @@
                     }
                 }, index * 1000);
             });
+        }
+
+        function testInjuryEvent() {
+            const event = {
+                type: 'injury',
+                time: '1:23',
+                action: null
+            };
+            
+            if (window.testWebSocket && window.testWebSocket.readyState === WebSocket.OPEN) {
+                window.testWebSocket.send(JSON.stringify({
+                    type: 'pss_event',
+                    data: event
+                }));
+                logResult('Sent injury event via WebSocket', 'success');
+            } else {
+                window.dispatchEvent(new CustomEvent('pss-event', { detail: event }));
+                logResult('Sent injury event via localStorage', 'info');
+            }
+        }
+
+        function testInjuryShow() {
+            const event = {
+                type: 'injury',
+                time: '1:23',
+                action: 'show'
+            };
+            
+            if (window.testWebSocket && window.testWebSocket.readyState === WebSocket.OPEN) {
+                window.testWebSocket.send(JSON.stringify({
+                    type: 'pss_event',
+                    data: event
+                }));
+                logResult('Sent injury show event via WebSocket', 'success');
+            } else {
+                window.dispatchEvent(new CustomEvent('pss-event', { detail: event }));
+                logResult('Sent injury show event via localStorage', 'info');
+            }
+        }
+
+        function testInjuryHide() {
+            const event = {
+                type: 'injury',
+                time: '0:00',
+                action: 'hide'
+            };
+            
+            if (window.testWebSocket && window.testWebSocket.readyState === WebSocket.OPEN) {
+                window.testWebSocket.send(JSON.stringify({
+                    type: 'pss_event',
+                    data: event
+                }));
+                logResult('Sent injury hide event via WebSocket', 'success');
+            } else {
+                window.dispatchEvent(new CustomEvent('pss-event', { detail: event }));
+                logResult('Sent injury hide event via localStorage', 'info');
+            }
+        }
+
+        function testInjuryReset() {
+            const event = {
+                type: 'injury',
+                time: '0:00',
+                action: 'reset'
+            };
+            
+            if (window.testWebSocket && window.testWebSocket.readyState === WebSocket.OPEN) {
+                window.testWebSocket.send(JSON.stringify({
+                    type: 'pss_event',
+                    data: event
+                }));
+                logResult('Sent injury reset event via WebSocket', 'success');
+            } else {
+                window.dispatchEvent(new CustomEvent('pss-event', { detail: event }));
+                logResult('Sent injury reset event via localStorage', 'info');
+            }
+        }
+
+        function testDefaultHiddenState() {
+            // This test checks if the injury section is hidden by default
+            // It opens the scoreboard overlay and logs the state
+            const overlayWindow = window.open('scoreboard-overlay.html', 'scoreboard', 'width=1920,height=1080');
+            
+            // Wait a moment for the overlay to load, then check the state
+            setTimeout(() => {
+                try {
+                    if (overlayWindow && !overlayWindow.closed) {
+                        const injurySection = overlayWindow.document.getElementById('injurySection');
+                        if (injurySection) {
+                            const isHidden = injurySection.style.display === 'none' || 
+                                           injurySection.getAttribute('display') === 'none';
+                            logResult(`Injury section default state: ${isHidden ? 'HIDDEN ✅' : 'VISIBLE ❌'}`, 
+                                    isHidden ? 'success' : 'error');
+                        } else {
+                            logResult('Could not find injurySection element', 'error');
+                        }
+                    }
+                } catch (error) {
+                    logResult('Error checking default hidden state: ' + error.message, 'error');
+                }
+            }, 2000);
+            
+            logResult('Testing default hidden state - check overlay window', 'info');
         }
 
         function openScoreboardOverlay() {

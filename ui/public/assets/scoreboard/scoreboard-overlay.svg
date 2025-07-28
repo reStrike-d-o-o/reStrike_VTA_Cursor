@@ -178,7 +178,7 @@
        </g>
        
                <!-- Injury Time Section -->
-        <g id="injurySection">
+        <g id="injurySection" display="none">
           <polygon points="360,0 520,0 520,80 360,80" fill="url(#yellowGradient)" filter="url(#dropShadow)"/>
           <polygon points="360,0 520,0 520,80 360,80" fill="url(#glassGradient)" opacity="0.5"/>
           <polygon points="360,0 520,0 520,40 360,40" fill="url(#glassHighlight)" opacity="0.7" filter="url(#glassReflection)"/>
