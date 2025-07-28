@@ -134,20 +134,28 @@ const DockBar: React.FC = () => {
             
             {/* Copyright Section with Logo */}
             <div className="flex-shrink-0 flex flex-col items-start justify-center py-3 px-4 border-t border-gray-600/30 bg-gray-800/20 backdrop-blur-sm">
-              <div className="text-xs text-gray-400 mb-2">All rights reserved ®:</div>
-              <div className="relative z-10" style={{ minHeight: '32px', minWidth: '32px' }}>
-                <img 
-                  src="/assets/img/logo.png" 
-                  alt="reStrike VTA Logo" 
-                  className="h-8 w-auto object-contain"
-                  onError={(e) => {
-                    // console.log('Logo failed to load:', e);
-                    e.currentTarget.style.display = 'none';
-                  }}
-                  onLoad={() => {
-                    // console.log('Logo loaded successfully');
-                  }}
-                />
+              <div className="flex items-center justify-between w-full mb-2">
+                <div className="text-xs text-gray-400">All rights reserved ®:</div>
+                <div className="text-xs text-gray-400">Inspired by:</div>
+              </div>
+              <div className="flex items-center justify-between w-full">
+                <div className="relative z-10" style={{ minHeight: '32px', minWidth: '32px' }}>
+                  <img 
+                    src="/assets/img/logo.png" 
+                    alt="reStrike VTA Logo" 
+                    className="h-8 w-auto object-contain"
+                    onError={(e) => {
+                      // console.log('Logo failed to load:', e);
+                      e.currentTarget.style.display = 'none';
+                    }}
+                    onLoad={() => {
+                      // console.log('Logo loaded successfully');
+                    }}
+                  />
+                </div>
+                <div className="text-lg font-mono text-gray-300" style={{ fontSize: '32px', lineHeight: '32px', marginTop: '3px' }}>
+                  E7 88 B1
+                </div>
               </div>
             </div>
             
