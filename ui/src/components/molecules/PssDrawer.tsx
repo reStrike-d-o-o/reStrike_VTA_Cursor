@@ -12,7 +12,7 @@ import LottieIcon from '../atoms/LottieIcon';
 import FlagManagementPanel from './FlagManagementPanel';
 import ScoreboardManager from './ScoreboardManager';
 import { invoke as tauriInvoke } from '@tauri-apps/api/core';
-import { algorithmAnimation, locationAnimation } from '../../assets/icons/json';
+import { algorithmAnimation, locationAnimation, scoreboardAnimation } from '../../assets/icons/json';
 
 // Use the proper Tauri v2 invoke function with fallback
 const invoke = async (command: string, args?: any) => {
@@ -847,7 +847,7 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
           {
             id: 'scoreboard',
             label: 'Scoreboard',
-            icon: TabIcons.scoreboard,
+            icon: <LottieIcon animationData={scoreboardAnimation} size={32} />,
             content: <ScoreboardContent />
           }
         ]}
