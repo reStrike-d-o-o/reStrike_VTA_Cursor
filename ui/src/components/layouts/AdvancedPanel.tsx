@@ -18,7 +18,7 @@ import TabIcons from '../atoms/TabIcons';
 import LottieIcon from '../atoms/LottieIcon';
 import { useAppStore } from '../../stores';
 import { configCommands } from '../../utils/tauriCommands';
-import { flowChartAnimation, spyAnimation, plansAnimation, watcherAnimation, taekwondoAnimation, liveStreamingAnimation, settingsAnimation, robotAnimation } from '../../assets/icons/json';
+import { flowChartAnimation, spyAnimation, plansAnimation, watcherAnimation, taekwondoAnimation, liveStreamingAnimation, settingsAnimation, robotAnimation, noConnectionAnimation, businessAnimation, tournamentAnimation } from '../../assets/icons/json';
 
 type AdvancedPanelProps = React.ComponentProps<'div'>;
 
@@ -192,13 +192,13 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
               {
                 id: 'websocket',
                 label: 'WebSocket',
-                icon: TabIcons.websocket,
+                icon: <LottieIcon animationData={noConnectionAnimation} size={32} />,
                 content: <WebSocketManager />
               },
                                 {
                     id: 'integration',
                     label: 'Integration',
-                    icon: TabIcons.integrationArrows,
+                    icon: <LottieIcon animationData={businessAnimation} size={32} />,
                 content: (
                   <div className="space-y-6">
                     <div className="p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
@@ -252,7 +252,7 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
                                 {
                     id: 'integration',
                     label: 'Integration',
-                    icon: TabIcons.integrationArrows,
+                    icon: <LottieIcon animationData={businessAnimation} size={32} />,
                 content: (
                   <div className="space-y-6">
                     <div className="p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
@@ -265,7 +265,7 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
               {
                 id: 'tournament',
                 label: 'Tournament',
-                icon: TabIcons.tournament,
+                icon: <LottieIcon animationData={tournamentAnimation} size={32} />,
                 content: (
                   <div className="space-y-6">
                     <div className="p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
