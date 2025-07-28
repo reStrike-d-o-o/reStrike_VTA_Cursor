@@ -174,18 +174,36 @@ class ScoreboardOverlay {
     }
   }
 
-  // Update match category
-  updateMatchCategory(category) {
-    const categoryElement = this.svg.getElementById('matchCategory');
-    if (categoryElement) {
-      this.applyTypewriterEffect(categoryElement, category);
-      console.log(`✅ Updated match category: ${category}`);
+  // Update combined match info (weight, division, category)
+  updateMatchInfo(weight, division, category) {
+    const matchInfoElement = this.svg.getElementById('matchInfo');
+    if (matchInfoElement) {
+      const combinedText = `${weight || ''} ${division || ''} ${category || ''}`.trim();
+      this.applyTypewriterEffect(matchInfoElement, combinedText);
+      console.log(`✅ Updated match info: ${combinedText}`);
     } else {
-      console.warn(`⚠️ Could not find matchCategory element`);
+      console.warn(`⚠️ Could not find matchInfo element`);
     }
   }
 
-  // Update match type (weight class)
+  // Update match category (for backward compatibility)
+  updateMatchCategory(category) {
+    const matchInfoElement = this.svg.getElementById('matchInfo');
+    if (matchInfoElement) {
+      // Get current weight and division from the element
+      const currentText = matchInfoElement.textContent || '';
+      const parts = currentText.split(' ');
+      const weight = parts[0] || '';
+      const division = parts[1] || '';
+      const combinedText = `${weight} ${division} ${category || ''}`.trim();
+      this.applyTypewriterEffect(matchInfoElement, combinedText);
+      console.log(`✅ Updated match category: ${category}`);
+    } else {
+      console.warn(`⚠️ Could not find matchInfo element`);
+    }
+  }
+
+  // Update match type (weight class) - for backward compatibility
   updateMatchType(type) {
     const typeElement = this.svg.getElementById('matchType');
     if (typeElement) {
@@ -193,6 +211,40 @@ class ScoreboardOverlay {
       console.log(`✅ Updated match type: ${type}`);
     } else {
       console.warn(`⚠️ Could not find matchType element`);
+    }
+  }
+
+  // Update match weight (for backward compatibility)
+  updateMatchWeight(weight) {
+    const matchInfoElement = this.svg.getElementById('matchInfo');
+    if (matchInfoElement) {
+      // Get current division and category from the element
+      const currentText = matchInfoElement.textContent || '';
+      const parts = currentText.split(' ');
+      const division = parts[1] || '';
+      const category = parts.slice(2).join(' ') || '';
+      const combinedText = `${weight || ''} ${division} ${category}`.trim();
+      this.applyTypewriterEffect(matchInfoElement, combinedText);
+      console.log(`✅ Updated match weight: ${weight}`);
+    } else {
+      console.warn(`⚠️ Could not find matchInfo element`);
+    }
+  }
+
+  // Update match division (for backward compatibility)
+  updateMatchDivision(division) {
+    const matchInfoElement = this.svg.getElementById('matchInfo');
+    if (matchInfoElement) {
+      // Get current weight and category from the element
+      const currentText = matchInfoElement.textContent || '';
+      const parts = currentText.split(' ');
+      const weight = parts[0] || '';
+      const category = parts.slice(2).join(' ') || '';
+      const combinedText = `${weight} ${division || ''} ${category}`.trim();
+      this.applyTypewriterEffect(matchInfoElement, combinedText);
+      console.log(`✅ Updated match division: ${division}`);
+    } else {
+      console.warn(`⚠️ Could not find matchInfo element`);
     }
   }
 
@@ -229,7 +281,7 @@ class ScoreboardOverlay {
     const textElements = [
       { id: 'player1Name', text: this.svg.getElementById('player1Name')?.textContent || '' },
       { id: 'player2Name', text: this.svg.getElementById('player2Name')?.textContent || '' },
-      { id: 'matchCategory', text: this.svg.getElementById('matchCategory')?.textContent || '' },
+      { id: 'matchInfo', text: this.svg.getElementById('matchInfo')?.textContent || '' },
       { id: 'matchNumber', text: this.svg.getElementById('matchNumber')?.textContent || '' }
     ];
     
