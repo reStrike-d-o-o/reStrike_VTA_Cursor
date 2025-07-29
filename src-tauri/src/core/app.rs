@@ -78,14 +78,20 @@ impl App {
         }
         log::info!("✅ Protocol manager plugin initialized");
         
-        let protocol_manager_arc = Arc::new(protocol_manager.clone());
-        let udp_plugin = UdpPlugin::new(crate::plugins::plugin_udp::UdpServerConfig::default(), udp_event_tx, protocol_manager_arc);
-        log::info!("✅ UDP plugin initialized");
-        
-        // Initialize database plugin
+        // Initialize database plugin first (needed for UDP plugin)
         let database_plugin = DatabasePlugin::new()
             .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to initialize database plugin: {}", e)))?;
         log::info!("✅ Database plugin initialized");
+        
+        let protocol_manager_arc = Arc::new(protocol_manager.clone());
+        let database_plugin_arc = Arc::new(database_plugin.clone());
+        let udp_plugin = UdpPlugin::new(
+            crate::plugins::plugin_udp::UdpServerConfig::default(), 
+            udp_event_tx, 
+            protocol_manager_arc,
+            database_plugin_arc,
+        );
+        log::info!("✅ UDP plugin initialized");
         
         // Initialize WebSocket plugin for HTML overlays
         let websocket_plugin = Arc::new(Mutex::new(WebSocketPlugin::new(3001))); // Port 3001 for WebSocket server

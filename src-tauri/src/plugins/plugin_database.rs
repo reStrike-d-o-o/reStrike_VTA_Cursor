@@ -157,7 +157,7 @@ impl DatabasePlugin {
         provider.set_setting(key, value).await
     }
 
-    /// Get database connection for direct access
+    /// Get database connection for direct operations
     pub async fn get_connection(&self) -> AppResult<tokio::sync::MutexGuard<'_, rusqlite::Connection>> {
         self.connection.get_connection().await
             .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))
@@ -166,6 +166,262 @@ impl DatabasePlugin {
     /// Run database migrations
     pub async fn run_migrations(&self) -> AppResult<()> {
         Self::run_migrations_internal(self.connection.clone()).await
+    }
+
+    // PSS and UDP Subsystem Methods
+
+    /// Get all network interfaces
+    pub async fn get_network_interfaces(&self) -> AppResult<Vec<crate::database::models::NetworkInterface>> {
+        let conn = self.connection.get_connection().await
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
+        crate::database::operations::PssUdpOperations::get_network_interfaces(&*conn)
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get network interfaces: {}", e)))
+    }
+
+    /// Get recommended network interface
+    pub async fn get_recommended_interface(&self) -> AppResult<Option<crate::database::models::NetworkInterface>> {
+        let conn = self.connection.get_connection().await
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
+        crate::database::operations::PssUdpOperations::get_recommended_interface(&*conn)
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get recommended interface: {}", e)))
+    }
+
+    /// Add or update network interface
+    pub async fn upsert_network_interface(&self, interface: &crate::database::models::NetworkInterface) -> AppResult<i64> {
+        let mut conn = self.connection.get_connection().await
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
+        crate::database::operations::PssUdpOperations::upsert_network_interface(&mut *conn, interface)
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to upsert network interface: {}", e)))
+    }
+
+    /// Get all UDP server configurations
+    pub async fn get_udp_server_configs(&self) -> AppResult<Vec<crate::database::models::UdpServerConfig>> {
+        let conn = self.connection.get_connection().await
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
+        crate::database::operations::PssUdpOperations::get_udp_server_configs(&*conn)
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get UDP server configs: {}", e)))
+    }
+
+    /// Get UDP server configuration by ID
+    pub async fn get_udp_server_config(&self, config_id: i64) -> AppResult<Option<crate::database::models::UdpServerConfig>> {
+        let conn = self.connection.get_connection().await
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
+        crate::database::operations::PssUdpOperations::get_udp_server_config(&*conn, config_id)
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get UDP server config: {}", e)))
+    }
+
+    /// Add or update UDP server configuration
+    pub async fn upsert_udp_server_config(&self, config: &crate::database::models::UdpServerConfig) -> AppResult<i64> {
+        let mut conn = self.connection.get_connection().await
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
+        crate::database::operations::PssUdpOperations::upsert_udp_server_config(&mut *conn, config)
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to upsert UDP server config: {}", e)))
+    }
+
+    /// Create new UDP server session
+    pub async fn create_udp_server_session(&self, server_config_id: i64) -> AppResult<i64> {
+        let mut conn = self.connection.get_connection().await
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
+        crate::database::operations::PssUdpOperations::create_udp_server_session(&mut *conn, server_config_id)
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to create UDP server session: {}", e)))
+    }
+
+    /// Update UDP server session statistics
+    pub async fn update_udp_server_session_stats(
+        &self,
+        session_id: i64,
+        packets_received: i32,
+        packets_parsed: i32,
+        parse_errors: i32,
+        total_bytes_received: i32,
+        average_packet_size: f64,
+        max_packet_size_seen: i32,
+        min_packet_size_seen: i32,
+        unique_clients_count: i32,
+    ) -> AppResult<()> {
+        let mut conn = self.connection.get_connection().await
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
+        crate::database::operations::PssUdpOperations::update_udp_server_session_stats(
+            &mut *conn,
+            session_id,
+            packets_received,
+            packets_parsed,
+            parse_errors,
+            total_bytes_received,
+            average_packet_size,
+            max_packet_size_seen,
+            min_packet_size_seen,
+            unique_clients_count,
+        )
+        .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to update UDP server session stats: {}", e)))
+    }
+
+    /// End UDP server session
+    pub async fn end_udp_server_session(&self, session_id: i64, status: &str, error_message: Option<&str>) -> AppResult<()> {
+        let mut conn = self.connection.get_connection().await
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
+        crate::database::operations::PssUdpOperations::end_udp_server_session(&mut *conn, session_id, status, error_message)
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to end UDP server session: {}", e)))
+    }
+
+    /// Get UDP server session by ID
+    pub async fn get_udp_server_session(&self, session_id: i64) -> AppResult<Option<crate::database::models::UdpServerSession>> {
+        let conn = self.connection.get_connection().await
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
+        crate::database::operations::PssUdpOperations::get_udp_server_session(&*conn, session_id)
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get UDP server session: {}", e)))
+    }
+
+    /// Get recent UDP server sessions
+    pub async fn get_recent_udp_server_sessions(&self, limit: i64) -> AppResult<Vec<crate::database::models::UdpServerSession>> {
+        let conn = self.connection.get_connection().await
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
+        crate::database::operations::PssUdpOperations::get_recent_udp_server_sessions(&*conn, limit)
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get recent UDP server sessions: {}", e)))
+    }
+
+    /// Add or update UDP client connection
+    pub async fn upsert_udp_client_connection(&self, client: &crate::database::models::UdpClientConnection) -> AppResult<i64> {
+        let mut conn = self.connection.get_connection().await
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
+        crate::database::operations::PssUdpOperations::upsert_udp_client_connection(&mut *conn, client)
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to upsert UDP client connection: {}", e)))
+    }
+
+    /// Get active client connections for a session
+    pub async fn get_active_client_connections(&self, session_id: i64) -> AppResult<Vec<crate::database::models::UdpClientConnection>> {
+        let conn = self.connection.get_connection().await
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
+        crate::database::operations::PssUdpOperations::get_active_client_connections(&*conn, session_id)
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get active client connections: {}", e)))
+    }
+
+    /// Get all PSS event types
+    pub async fn get_pss_event_types(&self) -> AppResult<Vec<crate::database::models::PssEventType>> {
+        let conn = self.connection.get_connection().await
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
+        crate::database::operations::PssUdpOperations::get_pss_event_types(&*conn)
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get PSS event types: {}", e)))
+    }
+
+    /// Get PSS event type by code
+    pub async fn get_pss_event_type_by_code(&self, event_code: &str) -> AppResult<Option<crate::database::models::PssEventType>> {
+        let conn = self.connection.get_connection().await
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
+        crate::database::operations::PssUdpOperations::get_pss_event_type_by_code(&*conn, event_code)
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get PSS event type: {}", e)))
+    }
+
+    /// Get or create PSS match
+    pub async fn get_or_create_pss_match(&self, match_id: &str) -> AppResult<i64> {
+        let mut conn = self.connection.get_connection().await
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
+        crate::database::operations::PssUdpOperations::get_or_create_pss_match(&mut *conn, match_id)
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get or create PSS match: {}", e)))
+    }
+
+    /// Update PSS match information
+    pub async fn update_pss_match(&self, match_id: i64, match_data: &crate::database::models::PssMatch) -> AppResult<()> {
+        let mut conn = self.connection.get_connection().await
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
+        crate::database::operations::PssUdpOperations::update_pss_match(&mut *conn, match_id, match_data)
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to update PSS match: {}", e)))
+    }
+
+    /// Get or create PSS athlete
+    pub async fn get_or_create_pss_athlete(&self, athlete_code: &str, short_name: &str) -> AppResult<i64> {
+        let mut conn = self.connection.get_connection().await
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
+        crate::database::operations::PssUdpOperations::get_or_create_pss_athlete(&mut *conn, athlete_code, short_name)
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get or create PSS athlete: {}", e)))
+    }
+
+    /// Update PSS athlete information
+    pub async fn update_pss_athlete(&self, athlete_id: i64, athlete_data: &crate::database::models::PssAthlete) -> AppResult<()> {
+        let mut conn = self.connection.get_connection().await
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
+        crate::database::operations::PssUdpOperations::update_pss_athlete(&mut *conn, athlete_id, athlete_data)
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to update PSS athlete: {}", e)))
+    }
+
+    /// Store PSS event
+    pub async fn store_pss_event(&self, event: &crate::database::models::PssEventV2) -> AppResult<i64> {
+        let mut conn = self.connection.get_connection().await
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
+        crate::database::operations::PssUdpOperations::store_pss_event(&mut *conn, event)
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to store PSS event: {}", e)))
+    }
+
+    /// Get PSS events for a session
+    pub async fn get_pss_events_for_session(&self, session_id: i64, limit: Option<i64>) -> AppResult<Vec<crate::database::models::PssEventV2>> {
+        let conn = self.connection.get_connection().await
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
+        crate::database::operations::PssUdpOperations::get_pss_events_for_session(&*conn, session_id, limit)
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get PSS events for session: {}", e)))
+    }
+
+    /// Get PSS events for a match
+    pub async fn get_pss_events_for_match(&self, match_id: i64, limit: Option<i64>) -> AppResult<Vec<crate::database::models::PssEventV2>> {
+        let conn = self.connection.get_connection().await
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
+        crate::database::operations::PssUdpOperations::get_pss_events_for_match(&*conn, match_id, limit)
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get PSS events for match: {}", e)))
+    }
+
+    /// Store PSS event details
+    pub async fn store_pss_event_details(&self, event_id: i64, details: &[(String, Option<String>, String)]) -> AppResult<()> {
+        let mut conn = self.connection.get_connection().await
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
+        crate::database::operations::PssUdpOperations::store_pss_event_details(&mut *conn, event_id, details)
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to store PSS event details: {}", e)))
+    }
+
+    /// Get PSS event details
+    pub async fn get_pss_event_details(&self, event_id: i64) -> AppResult<Vec<crate::database::models::PssEventDetail>> {
+        let conn = self.connection.get_connection().await
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
+        crate::database::operations::PssUdpOperations::get_pss_event_details(&*conn, event_id)
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get PSS event details: {}", e)))
+    }
+
+    /// Store PSS score
+    pub async fn store_pss_score(&self, score: &crate::database::models::PssScore) -> AppResult<i64> {
+        let mut conn = self.connection.get_connection().await
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
+        crate::database::operations::PssUdpOperations::store_pss_score(&mut *conn, score)
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to store PSS score: {}", e)))
+    }
+
+    /// Get current scores for a match
+    pub async fn get_current_scores_for_match(&self, match_id: i64) -> AppResult<Vec<crate::database::models::PssScore>> {
+        let conn = self.connection.get_connection().await
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
+        crate::database::operations::PssUdpOperations::get_current_scores_for_match(&*conn, match_id)
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get current scores for match: {}", e)))
+    }
+
+    /// Store PSS warning
+    pub async fn store_pss_warning(&self, warning: &crate::database::models::PssWarning) -> AppResult<i64> {
+        let mut conn = self.connection.get_connection().await
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
+        crate::database::operations::PssUdpOperations::store_pss_warning(&mut *conn, warning)
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to store PSS warning: {}", e)))
+    }
+
+    /// Get current warnings for a match
+    pub async fn get_current_warnings_for_match(&self, match_id: i64) -> AppResult<Vec<crate::database::models::PssWarning>> {
+        let conn = self.connection.get_connection().await
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
+        crate::database::operations::PssUdpOperations::get_current_warnings_for_match(&*conn, match_id)
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get current warnings for match: {}", e)))
+    }
+
+    /// Get UDP server statistics
+    pub async fn get_udp_server_statistics(&self) -> AppResult<serde_json::Value> {
+        let conn = self.connection.get_connection().await
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
+        crate::database::operations::PssUdpOperations::get_udp_server_statistics(&*conn)
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get UDP server statistics: {}", e)))
     }
 
     /// Internal method to run database migrations

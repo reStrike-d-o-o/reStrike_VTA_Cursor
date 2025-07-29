@@ -6,6 +6,13 @@ use tokio::sync::mpsc;
 use serde::{Deserialize, Serialize};
 use crate::types::{AppError, AppResult};
 use crate::plugins::ProtocolManager;
+use crate::plugins::plugin_database::DatabasePlugin;
+use crate::database::models::{
+    NetworkInterface, UdpServerConfig as DbUdpServerConfig, UdpServerSession, 
+    UdpClientConnection, PssEventV2, PssEventType, PssMatch, PssAthlete, 
+    PssScore, PssWarning, PssEventDetail
+};
+use chrono::{DateTime, Utc};
 
 /// Initialize the UDP plugin
 pub fn init() -> Result<(), Box<dyn std::error::Error>> {
@@ -167,6 +174,11 @@ pub struct UdpServer {
     stats: Arc<Mutex<UdpStats>>,
     protocol_manager: Arc<ProtocolManager>,
     recent_events: Arc<Mutex<VecDeque<PssEvent>>>,
+    database: Arc<DatabasePlugin>,
+    current_session_id: Arc<Mutex<Option<i64>>>,
+    current_match_id: Arc<Mutex<Option<i64>>>,
+    athlete_cache: Arc<Mutex<std::collections::HashMap<String, i64>>>,
+    event_type_cache: Arc<Mutex<std::collections::HashMap<String, i64>>>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -183,7 +195,12 @@ pub struct UdpStats {
 }
 
 impl UdpServer {
-    pub fn new(config: UdpServerConfig, event_tx: mpsc::UnboundedSender<PssEvent>, protocol_manager: Arc<ProtocolManager>) -> Self {
+    pub fn new(
+        config: UdpServerConfig, 
+        event_tx: mpsc::UnboundedSender<PssEvent>, 
+        protocol_manager: Arc<ProtocolManager>,
+        database: Arc<DatabasePlugin>,
+    ) -> Self {
         Self {
             config,
             status: Arc::new(Mutex::new(UdpServerStatus::Stopped)),
@@ -191,12 +208,42 @@ impl UdpServer {
             socket: Arc::new(Mutex::new(None)),
             stats: Arc::new(Mutex::new(UdpStats::default())),
             protocol_manager,
-            recent_events: Arc::new(Mutex::new(VecDeque::new())),
+            recent_events: Arc::new(Mutex::new(VecDeque::with_capacity(100))),
+            database,
+            current_session_id: Arc::new(Mutex::new(None)),
+            current_match_id: Arc::new(Mutex::new(None)),
+            athlete_cache: Arc::new(Mutex::new(std::collections::HashMap::new())),
+            event_type_cache: Arc::new(Mutex::new(std::collections::HashMap::new())),
         }
     }
 
     pub async fn start(&self, config: &crate::config::types::AppConfig) -> AppResult<()> {
         let network_settings = &config.udp.listener.network_interface;
+        
+        // Create database session first
+        let db_config = DbUdpServerConfig {
+            id: None,
+            port: self.config.port,
+            bind_address: self.config.bind_address.clone(),
+            enabled: self.config.enabled,
+            auto_start: self.config.auto_start,
+            max_clients: 100,
+            timeout_seconds: 30,
+            buffer_size: 8192,
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        };
+
+        let config_id = self.database.upsert_udp_server_config(&db_config).await?;
+        let session_id = self.database.create_udp_server_session(config_id).await?;
+        
+        {
+            let mut current_session = self.current_session_id.lock().unwrap();
+            *current_session = Some(session_id);
+        }
+
+        // Initialize event type cache
+        self.initialize_event_type_cache().await?;
         
         // Determine the best IP address to bind to
         let bind_ip = if network_settings.auto_detect {
@@ -258,20 +305,42 @@ impl UdpServer {
         let stats_clone = self.stats.clone();
         let protocol_manager = self.protocol_manager.clone();
         let recent_events_clone = self.recent_events.clone();
+        let database_clone = self.database.clone();
+        let current_session_id_clone = self.current_session_id.clone();
+        let current_match_id_clone = self.current_match_id.clone();
+        let athlete_cache_clone = self.athlete_cache.clone();
+        let event_type_cache_clone = self.event_type_cache.clone();
 
         thread::spawn(move || {
-            Self::listen_loop(socket_clone, event_tx, status_clone, stats_clone, protocol_manager, recent_events_clone);
+            Self::listen_loop(
+                socket_clone, 
+                event_tx, 
+                status_clone, 
+                stats_clone, 
+                protocol_manager, 
+                recent_events_clone,
+                database_clone,
+                current_session_id_clone,
+                current_match_id_clone,
+                athlete_cache_clone,
+                event_type_cache_clone,
+            );
         });
 
-        println!("🎯 UDP PSS Server started on {}", bind_addr);
+        log::info!("🚀 UDP server started on {}", bind_addr);
         Ok(())
     }
 
     pub fn stop(&self) -> AppResult<()> {
-        // Clear the socket (this will break the listening loop)
-        {
-            let mut socket_guard = self.socket.lock().unwrap();
-            *socket_guard = None;
+        // End database session
+        if let Some(session_id) = *self.current_session_id.lock().unwrap() {
+            // Note: This is a blocking operation, but it's acceptable for shutdown
+            if let Err(e) = tokio::runtime::Handle::current().block_on(
+                self.database.end_udp_server_session(session_id, "stopped", None)
+            ) {
+                log::error!("Failed to end database session: {}", e);
+            }
+            *self.current_session_id.lock().unwrap() = None;
         }
 
         // Update status
@@ -280,7 +349,13 @@ impl UdpServer {
             *status = UdpServerStatus::Stopped;
         }
 
-        println!("🎯 UDP PSS Server stopped");
+        // Close socket
+        {
+            let mut socket_guard = self.socket.lock().unwrap();
+            *socket_guard = None;
+        }
+
+        log::info!("🛑 UDP server stopped");
         Ok(())
     }
 
@@ -300,13 +375,363 @@ impl UdpServer {
     }
 
     pub fn add_event(&self, event: PssEvent) {
-        let mut events = self.recent_events.lock().unwrap();
-        events.push_back(event);
-        
-        // Keep only the last 100 events
-        if events.len() > 100 {
-            events.pop_front();
+        // Add to recent events (existing logic)
+        {
+            let mut recent = self.recent_events.lock().unwrap();
+            if recent.len() >= 100 {
+                recent.pop_front();
+            }
+            recent.push_back(event.clone());
         }
+
+        // Store in database (async operation)
+        let database = self.database.clone();
+        let current_session_id = self.current_session_id.clone();
+        let current_match_id = self.current_match_id.clone();
+        let athlete_cache = self.athlete_cache.clone();
+        let event_type_cache = self.event_type_cache.clone();
+        
+        tokio::spawn(async move {
+            if let Err(e) = Self::store_event_in_database(
+                &database,
+                &current_session_id,
+                &current_match_id,
+                &athlete_cache,
+                &event_type_cache,
+                &event
+            ).await {
+                log::error!("Failed to store event in database: {}", e);
+            }
+        });
+
+        // Send to event channel (existing logic)
+        if let Err(e) = self.event_tx.send(event) {
+            log::error!("Failed to send event: {}", e);
+        }
+    }
+
+    async fn initialize_event_type_cache(&self) -> AppResult<()> {
+        let event_types = self.database.get_pss_event_types().await?;
+        let mut cache = self.event_type_cache.lock().unwrap();
+        
+        for event_type in event_types {
+            if let Some(id) = event_type.id {
+                cache.insert(event_type.event_code.clone(), id);
+            }
+        }
+        
+        Ok(())
+    }
+
+    async fn store_event_in_database(
+        database: &DatabasePlugin,
+        current_session_id: &Arc<Mutex<Option<i64>>>,
+        current_match_id: &Arc<Mutex<Option<i64>>>,
+        athlete_cache: &Arc<Mutex<std::collections::HashMap<String, i64>>>,
+        event_type_cache: &Arc<Mutex<std::collections::HashMap<String, i64>>>,
+        event: &PssEvent,
+    ) -> AppResult<()> {
+        let session_id = match *current_session_id.lock().unwrap() {
+            Some(id) => id,
+            None => return Ok(()), // No active session
+        };
+
+        // Convert PSS event to database model
+        let db_event = Self::convert_pss_event_to_db_model(
+            event, 
+            session_id, 
+            current_match_id,
+            event_type_cache,
+            database
+        ).await?;
+        
+        let event_id = database.store_pss_event(&db_event).await?;
+
+        // Store event details if available
+        if let Some(details) = Self::extract_event_details(event) {
+            database.store_pss_event_details(event_id, &details).await?;
+        }
+
+        // Handle special event types
+        match event {
+            PssEvent::MatchConfig { match_id, .. } => {
+                Self::handle_match_config_event(database, current_match_id, match_id).await?;
+            }
+            PssEvent::Athletes { athlete1_short, athlete2_short, .. } => {
+                Self::handle_athletes_event(database, athlete_cache, athlete1_short, athlete2_short).await?;
+            }
+            PssEvent::CurrentScores { athlete1_score, athlete2_score } => {
+                Self::handle_scores_event(database, current_match_id, *athlete1_score, *athlete2_score).await?;
+            }
+            PssEvent::Warnings { athlete1_warnings, athlete2_warnings } => {
+                Self::handle_warnings_event(database, current_match_id, *athlete1_warnings, *athlete2_warnings).await?;
+            }
+            _ => {}
+        }
+
+        Ok(())
+    }
+
+    async fn convert_pss_event_to_db_model(
+        event: &PssEvent, 
+        session_id: i64,
+        current_match_id: &Arc<Mutex<Option<i64>>>,
+        event_type_cache: &Arc<Mutex<std::collections::HashMap<String, i64>>>,
+        database: &DatabasePlugin,
+    ) -> AppResult<PssEventV2> {
+        let event_type_id = Self::get_event_type_id(event, event_type_cache, database).await?;
+        let match_id = *current_match_id.lock().unwrap();
+
+        Ok(PssEventV2 {
+            id: None,
+            session_id,
+            match_id,
+            event_type_id,
+            event_code: Self::get_event_code(event),
+            timestamp: Utc::now(),
+            raw_data: serde_json::to_string(event)?,
+            processed: false,
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        })
+    }
+
+    async fn get_event_type_id(
+        event: &PssEvent,
+        event_type_cache: &Arc<Mutex<std::collections::HashMap<String, i64>>>,
+        database: &DatabasePlugin,
+    ) -> AppResult<i64> {
+        let event_code = Self::get_event_code(event);
+        
+        // Check cache first
+        {
+            let cache = event_type_cache.lock().unwrap();
+            if let Some(&id) = cache.get(&event_code) {
+                return Ok(id);
+            }
+        }
+
+        // Get from database
+        if let Some(event_type) = database.get_pss_event_type_by_code(&event_code).await? {
+            if let Some(id) = event_type.id {
+                // Update cache
+                event_type_cache.lock().unwrap().insert(event_code, id);
+                return Ok(id);
+            }
+        }
+
+        // For now, return a default ID (event types should be pre-populated)
+        Ok(1)
+    }
+
+    fn get_event_code(event: &PssEvent) -> String {
+        match event {
+            PssEvent::Points { .. } => "POINTS".to_string(),
+            PssEvent::HitLevel { .. } => "HIT_LEVEL".to_string(),
+            PssEvent::Warnings { .. } => "WARNINGS".to_string(),
+            PssEvent::Injury { .. } => "INJURY".to_string(),
+            PssEvent::Challenge { .. } => "CHALLENGE".to_string(),
+            PssEvent::Break { .. } => "BREAK".to_string(),
+            PssEvent::WinnerRounds { .. } => "WINNER_ROUNDS".to_string(),
+            PssEvent::Winner { .. } => "WINNER".to_string(),
+            PssEvent::Athletes { .. } => "ATHLETES".to_string(),
+            PssEvent::MatchConfig { .. } => "MATCH_CONFIG".to_string(),
+            PssEvent::Scores { .. } => "SCORES".to_string(),
+            PssEvent::CurrentScores { .. } => "CURRENT_SCORES".to_string(),
+            PssEvent::Clock { .. } => "CLOCK".to_string(),
+            PssEvent::Round { .. } => "ROUND".to_string(),
+            PssEvent::FightLoaded => "FIGHT_LOADED".to_string(),
+            PssEvent::FightReady => "FIGHT_READY".to_string(),
+            PssEvent::Raw(_) => "RAW".to_string(),
+        }
+    }
+
+    fn extract_event_details(event: &PssEvent) -> Option<Vec<(String, Option<String>, String)>> {
+        match event {
+            PssEvent::Points { athlete, point_type } => Some(vec![
+                ("athlete".to_string(), Some(athlete.to_string()), "u8".to_string()),
+                ("point_type".to_string(), Some(point_type.to_string()), "u8".to_string()),
+            ]),
+            PssEvent::HitLevel { athlete, level } => Some(vec![
+                ("athlete".to_string(), Some(athlete.to_string()), "u8".to_string()),
+                ("level".to_string(), Some(level.to_string()), "u8".to_string()),
+            ]),
+            PssEvent::Warnings { athlete1_warnings, athlete2_warnings } => Some(vec![
+                ("athlete1_warnings".to_string(), Some(athlete1_warnings.to_string()), "u8".to_string()),
+                ("athlete2_warnings".to_string(), Some(athlete2_warnings.to_string()), "u8".to_string()),
+            ]),
+            PssEvent::Injury { athlete, time, action } => Some(vec![
+                ("athlete".to_string(), Some(athlete.to_string()), "u8".to_string()),
+                ("time".to_string(), Some(time.clone()), "String".to_string()),
+                ("action".to_string(), action.as_ref().map(|a| a.clone()), "Option<String>".to_string()),
+            ]),
+            PssEvent::Challenge { source, accepted, won, canceled } => Some(vec![
+                ("source".to_string(), Some(source.to_string()), "u8".to_string()),
+                ("accepted".to_string(), accepted.map(|a| a.to_string()), "Option<bool>".to_string()),
+                ("won".to_string(), won.map(|w| w.to_string()), "Option<bool>".to_string()),
+                ("canceled".to_string(), Some(canceled.to_string()), "bool".to_string()),
+            ]),
+            PssEvent::Break { time, action } => Some(vec![
+                ("time".to_string(), Some(time.clone()), "String".to_string()),
+                ("action".to_string(), action.as_ref().map(|a| a.clone()), "Option<String>".to_string()),
+            ]),
+            PssEvent::WinnerRounds { round1_winner, round2_winner, round3_winner } => Some(vec![
+                ("round1_winner".to_string(), Some(round1_winner.to_string()), "u8".to_string()),
+                ("round2_winner".to_string(), Some(round2_winner.to_string()), "u8".to_string()),
+                ("round3_winner".to_string(), Some(round3_winner.to_string()), "u8".to_string()),
+            ]),
+            PssEvent::Winner { name, classification } => Some(vec![
+                ("name".to_string(), Some(name.clone()), "String".to_string()),
+                ("classification".to_string(), classification.as_ref().map(|c| c.clone()), "Option<String>".to_string()),
+            ]),
+            PssEvent::Athletes { athlete1_short, athlete1_long, athlete1_country, athlete2_short, athlete2_long, athlete2_country } => Some(vec![
+                ("athlete1_short".to_string(), Some(athlete1_short.clone()), "String".to_string()),
+                ("athlete1_long".to_string(), Some(athlete1_long.clone()), "String".to_string()),
+                ("athlete1_country".to_string(), Some(athlete1_country.clone()), "String".to_string()),
+                ("athlete2_short".to_string(), Some(athlete2_short.clone()), "String".to_string()),
+                ("athlete2_long".to_string(), Some(athlete2_long.clone()), "String".to_string()),
+                ("athlete2_country".to_string(), Some(athlete2_country.clone()), "String".to_string()),
+            ]),
+            PssEvent::MatchConfig { number, category, weight, rounds, colors, match_id, division, total_rounds, round_duration, countdown_type, count_up, format } => Some(vec![
+                ("number".to_string(), Some(number.to_string()), "u32".to_string()),
+                ("category".to_string(), Some(category.clone()), "String".to_string()),
+                ("weight".to_string(), Some(weight.clone()), "String".to_string()),
+                ("rounds".to_string(), Some(rounds.to_string()), "u8".to_string()),
+                ("match_id".to_string(), Some(match_id.clone()), "String".to_string()),
+                ("division".to_string(), Some(division.clone()), "String".to_string()),
+                ("total_rounds".to_string(), Some(total_rounds.to_string()), "u8".to_string()),
+                ("round_duration".to_string(), Some(round_duration.to_string()), "u32".to_string()),
+                ("countdown_type".to_string(), Some(countdown_type.clone()), "String".to_string()),
+                ("count_up".to_string(), Some(count_up.to_string()), "u32".to_string()),
+                ("format".to_string(), Some(format.to_string()), "u8".to_string()),
+            ]),
+            PssEvent::Scores { athlete1_r1, athlete2_r1, athlete1_r2, athlete2_r2, athlete1_r3, athlete2_r3 } => Some(vec![
+                ("athlete1_r1".to_string(), Some(athlete1_r1.to_string()), "u8".to_string()),
+                ("athlete2_r1".to_string(), Some(athlete2_r1.to_string()), "u8".to_string()),
+                ("athlete1_r2".to_string(), Some(athlete1_r2.to_string()), "u8".to_string()),
+                ("athlete2_r2".to_string(), Some(athlete2_r2.to_string()), "u8".to_string()),
+                ("athlete1_r3".to_string(), Some(athlete1_r3.to_string()), "u8".to_string()),
+                ("athlete2_r3".to_string(), Some(athlete2_r3.to_string()), "u8".to_string()),
+            ]),
+            PssEvent::CurrentScores { athlete1_score, athlete2_score } => Some(vec![
+                ("athlete1_score".to_string(), Some(athlete1_score.to_string()), "u8".to_string()),
+                ("athlete2_score".to_string(), Some(athlete2_score.to_string()), "u8".to_string()),
+            ]),
+            PssEvent::Clock { time, action } => Some(vec![
+                ("time".to_string(), Some(time.clone()), "String".to_string()),
+                ("action".to_string(), action.as_ref().map(|a| a.clone()), "Option<String>".to_string()),
+            ]),
+            PssEvent::Round { current_round } => Some(vec![
+                ("current_round".to_string(), Some(current_round.to_string()), "u8".to_string()),
+            ]),
+            PssEvent::Raw(message) => Some(vec![
+                ("message".to_string(), Some(message.clone()), "String".to_string()),
+            ]),
+            _ => None,
+        }
+    }
+
+    async fn handle_match_config_event(
+        database: &DatabasePlugin,
+        current_match_id: &Arc<Mutex<Option<i64>>>,
+        match_id: &str,
+    ) -> AppResult<()> {
+        let db_match_id = database.get_or_create_pss_match(match_id).await?;
+        *current_match_id.lock().unwrap() = Some(db_match_id);
+        Ok(())
+    }
+
+    async fn handle_athletes_event(
+        database: &DatabasePlugin,
+        athlete_cache: &Arc<Mutex<std::collections::HashMap<String, i64>>>,
+        athlete1_short: &str,
+        athlete2_short: &str,
+    ) -> AppResult<()> {
+        let athlete1_id = database.get_or_create_pss_athlete(athlete1_short, athlete1_short).await?;
+        let athlete2_id = database.get_or_create_pss_athlete(athlete2_short, athlete2_short).await?;
+        
+        // Update cache
+        {
+            let mut cache = athlete_cache.lock().unwrap();
+            cache.insert(athlete1_short.to_string(), athlete1_id);
+            cache.insert(athlete2_short.to_string(), athlete2_id);
+        }
+        
+        Ok(())
+    }
+
+    async fn handle_scores_event(
+        database: &DatabasePlugin,
+        current_match_id: &Arc<Mutex<Option<i64>>>,
+        athlete1_score: u8,
+        athlete2_score: u8,
+    ) -> AppResult<()> {
+        if let Some(match_id) = *current_match_id.lock().unwrap() {
+            let score1 = PssScore {
+                id: None,
+                match_id,
+                athlete_id: 1, // Default athlete IDs
+                round_number: 1,
+                score_value: athlete1_score as i32,
+                score_type: "current".to_string(),
+                timestamp: Utc::now(),
+                created_at: Utc::now(),
+                updated_at: Utc::now(),
+            };
+            
+            let score2 = PssScore {
+                id: None,
+                match_id,
+                athlete_id: 2, // Default athlete IDs
+                round_number: 1,
+                score_value: athlete2_score as i32,
+                score_type: "current".to_string(),
+                timestamp: Utc::now(),
+                created_at: Utc::now(),
+                updated_at: Utc::now(),
+            };
+            
+            database.store_pss_score(&score1).await?;
+            database.store_pss_score(&score2).await?;
+        }
+        
+        Ok(())
+    }
+
+    async fn handle_warnings_event(
+        database: &DatabasePlugin,
+        current_match_id: &Arc<Mutex<Option<i64>>>,
+        athlete1_warnings: u8,
+        athlete2_warnings: u8,
+    ) -> AppResult<()> {
+        if let Some(match_id) = *current_match_id.lock().unwrap() {
+            let warning1 = PssWarning {
+                id: None,
+                match_id,
+                athlete_id: 1, // Default athlete IDs
+                warning_type: "gam_jeom".to_string(),
+                warning_count: athlete1_warnings as i32,
+                timestamp: Utc::now(),
+                created_at: Utc::now(),
+                updated_at: Utc::now(),
+            };
+            
+            let warning2 = PssWarning {
+                id: None,
+                match_id,
+                athlete_id: 2, // Default athlete IDs
+                warning_type: "gam_jeom".to_string(),
+                warning_count: athlete2_warnings as i32,
+                timestamp: Utc::now(),
+                created_at: Utc::now(),
+                updated_at: Utc::now(),
+            };
+            
+            database.store_pss_warning(&warning1).await?;
+            database.store_pss_warning(&warning2).await?;
+        }
+        
+        Ok(())
     }
 
     fn listen_loop(
@@ -316,6 +741,11 @@ impl UdpServer {
         stats: Arc<Mutex<UdpStats>>,
         protocol_manager: Arc<ProtocolManager>,
         recent_events: Arc<Mutex<VecDeque<PssEvent>>>,
+        database: Arc<DatabasePlugin>,
+        current_session_id: Arc<Mutex<Option<i64>>>,
+        current_match_id: Arc<Mutex<Option<i64>>>,
+        athlete_cache: Arc<Mutex<std::collections::HashMap<String, i64>>>,
+        event_type_cache: Arc<Mutex<std::collections::HashMap<String, i64>>>,
     ) {
         let mut buffer = [0; 1024];
 
@@ -380,6 +810,27 @@ impl UdpServer {
                                 stats_guard.packets_parsed += 1;
                             }
 
+                            // Store event in database (async operation)
+                            let database_clone = database.clone();
+                            let current_session_id_clone = current_session_id.clone();
+                            let current_match_id_clone = current_match_id.clone();
+                            let athlete_cache_clone = athlete_cache.clone();
+                            let event_type_cache_clone = event_type_cache.clone();
+                            let event_clone = event.clone();
+                            
+                            tokio::spawn(async move {
+                                if let Err(e) = Self::store_event_in_database(
+                                    &database_clone,
+                                    &current_session_id_clone,
+                                    &current_match_id_clone,
+                                    &athlete_cache_clone,
+                                    &event_type_cache_clone,
+                                    &event_clone
+                                ).await {
+                                    log::error!("Failed to store event in database: {}", e);
+                                }
+                            });
+
                             // Add event to recent events storage
                             {
                                 let mut events_guard = recent_events.lock().unwrap();
@@ -394,7 +845,7 @@ impl UdpServer {
                             // Send event (ignore errors if no receiver)
                             if let Err(_) = event_tx.send(event) {
                                 // Don't break the loop, just log the warning
-                                println!("⚠️ Failed to send PSS event - receiver may have been dropped");
+                                log::warn!("⚠️ Failed to send PSS event - receiver may have been dropped");
                                 // Continue listening for more packets
                             }
                         }
