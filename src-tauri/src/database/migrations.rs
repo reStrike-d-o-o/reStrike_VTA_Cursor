@@ -630,6 +630,395 @@ impl Migration for Migration3 {
     }
 }
 
+/// Migration 4: PSS and UDP subsystem integration with normalization
+pub struct Migration4;
+
+impl Migration for Migration4 {
+    fn version(&self) -> u32 {
+        4
+    }
+    
+    fn description(&self) -> &str {
+        "PSS and UDP subsystem integration with network interfaces, server statistics, enhanced events, and normalized relationships"
+    }
+    
+    fn up(&self, conn: &Connection) -> SqliteResult<()> {
+        // Create network_interfaces table for UDP server configuration
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS network_interfaces (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                address TEXT NOT NULL,
+                netmask TEXT,
+                broadcast TEXT,
+                is_loopback BOOLEAN NOT NULL DEFAULT 0,
+                is_active BOOLEAN NOT NULL DEFAULT 0,
+                is_recommended BOOLEAN NOT NULL DEFAULT 0,
+                speed_mbps INTEGER,
+                mtu INTEGER,
+                mac_address TEXT,
+                interface_type TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                UNIQUE(name, address)
+            )",
+            [],
+        )?;
+        
+        // Create udp_server_configs table for UDP server settings
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS udp_server_configs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL UNIQUE,
+                port INTEGER NOT NULL,
+                bind_address TEXT NOT NULL,
+                network_interface_id INTEGER,
+                enabled BOOLEAN NOT NULL DEFAULT 1,
+                auto_start BOOLEAN NOT NULL DEFAULT 0,
+                max_packet_size INTEGER DEFAULT 1024,
+                buffer_size INTEGER DEFAULT 8192,
+                timeout_ms INTEGER DEFAULT 1000,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY (network_interface_id) REFERENCES network_interfaces(id)
+            )",
+            [],
+        )?;
+        
+        // Create udp_server_sessions table for tracking server runtime sessions
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS udp_server_sessions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                server_config_id INTEGER NOT NULL,
+                start_time TEXT NOT NULL,
+                end_time TEXT,
+                status TEXT NOT NULL DEFAULT 'running',
+                packets_received INTEGER DEFAULT 0,
+                packets_parsed INTEGER DEFAULT 0,
+                parse_errors INTEGER DEFAULT 0,
+                total_bytes_received INTEGER DEFAULT 0,
+                average_packet_size REAL DEFAULT 0.0,
+                max_packet_size_seen INTEGER DEFAULT 0,
+                min_packet_size_seen INTEGER DEFAULT 0,
+                unique_clients_count INTEGER DEFAULT 0,
+                error_message TEXT,
+                FOREIGN KEY (server_config_id) REFERENCES udp_server_configs(id)
+            )",
+            [],
+        )?;
+        
+        // Create udp_client_connections table for tracking client connections
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS udp_client_connections (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id INTEGER NOT NULL,
+                client_address TEXT NOT NULL,
+                client_port INTEGER NOT NULL,
+                first_seen TEXT NOT NULL,
+                last_seen TEXT NOT NULL,
+                packets_received INTEGER DEFAULT 0,
+                total_bytes_received INTEGER DEFAULT 0,
+                is_active BOOLEAN NOT NULL DEFAULT 1,
+                FOREIGN KEY (session_id) REFERENCES udp_server_sessions(id),
+                UNIQUE(session_id, client_address, client_port)
+            )",
+            [],
+        )?;
+        
+        // Create pss_event_types table for normalized event type definitions
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS pss_event_types (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                event_code TEXT NOT NULL UNIQUE,
+                event_name TEXT NOT NULL,
+                description TEXT,
+                category TEXT NOT NULL,
+                is_active BOOLEAN NOT NULL DEFAULT 1,
+                created_at TEXT NOT NULL
+            )",
+            [],
+        )?;
+        
+        // Create pss_matches table for match information
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS pss_matches (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                match_id TEXT NOT NULL UNIQUE,
+                match_number INTEGER,
+                category TEXT,
+                weight_class TEXT,
+                division TEXT,
+                total_rounds INTEGER DEFAULT 3,
+                round_duration INTEGER, -- in seconds
+                countdown_type TEXT,
+                format_type INTEGER,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )",
+            [],
+        )?;
+        
+        // Create pss_athletes table for athlete information
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS pss_athletes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                athlete_code TEXT NOT NULL UNIQUE,
+                short_name TEXT NOT NULL,
+                long_name TEXT,
+                country_code TEXT,
+                flag_id INTEGER,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY (flag_id) REFERENCES flags(id)
+            )",
+            [],
+        )?;
+        
+        // Create pss_match_athletes table for match-athlete relationships
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS pss_match_athletes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                match_id INTEGER NOT NULL,
+                athlete_id INTEGER NOT NULL,
+                athlete_position INTEGER NOT NULL, -- 1 or 2
+                bg_color TEXT,
+                fg_color TEXT,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (match_id) REFERENCES pss_matches(id),
+                FOREIGN KEY (athlete_id) REFERENCES pss_athletes(id),
+                UNIQUE(match_id, athlete_position)
+            )",
+            [],
+        )?;
+        
+        // Create pss_rounds table for round information
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS pss_rounds (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                match_id INTEGER NOT NULL,
+                round_number INTEGER NOT NULL,
+                start_time TEXT,
+                end_time TEXT,
+                duration INTEGER, -- in seconds
+                winner_athlete_position INTEGER, -- 1, 2, or NULL for draw
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (match_id) REFERENCES pss_matches(id),
+                UNIQUE(match_id, round_number)
+            )",
+            [],
+        )?;
+        
+        // Enhanced pss_events table with normalized relationships
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS pss_events_v2 (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id INTEGER NOT NULL,
+                match_id INTEGER,
+                round_id INTEGER,
+                event_type_id INTEGER NOT NULL,
+                timestamp TEXT NOT NULL,
+                raw_data TEXT NOT NULL,
+                parsed_data TEXT, -- JSON serialized parsed event data
+                event_sequence INTEGER, -- sequence number within session
+                processing_time_ms INTEGER, -- time taken to parse event
+                is_valid BOOLEAN NOT NULL DEFAULT 1,
+                error_message TEXT,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (session_id) REFERENCES udp_server_sessions(id),
+                FOREIGN KEY (match_id) REFERENCES pss_matches(id),
+                FOREIGN KEY (round_id) REFERENCES pss_rounds(id),
+                FOREIGN KEY (event_type_id) REFERENCES pss_event_types(id)
+            )",
+            [],
+        )?;
+        
+        // Create pss_event_details table for event-specific data
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS pss_event_details (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                event_id INTEGER NOT NULL,
+                detail_key TEXT NOT NULL,
+                detail_value TEXT,
+                detail_type TEXT NOT NULL, -- string, integer, float, boolean, json
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (event_id) REFERENCES pss_events_v2(id),
+                UNIQUE(event_id, detail_key)
+            )",
+            [],
+        )?;
+        
+        // Create pss_scores table for score tracking
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS pss_scores (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                match_id INTEGER NOT NULL,
+                round_id INTEGER,
+                athlete_position INTEGER NOT NULL, -- 1 or 2
+                score_type TEXT NOT NULL, -- current, round1, round2, round3, total
+                score_value INTEGER NOT NULL DEFAULT 0,
+                timestamp TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (match_id) REFERENCES pss_matches(id),
+                FOREIGN KEY (round_id) REFERENCES pss_rounds(id)
+            )",
+            [],
+        )?;
+        
+        // Create pss_warnings table for warning/gam-jeom tracking
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS pss_warnings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                match_id INTEGER NOT NULL,
+                round_id INTEGER,
+                athlete_position INTEGER NOT NULL, -- 1 or 2
+                warning_type TEXT NOT NULL, -- warning, gam_jeom
+                warning_count INTEGER NOT NULL DEFAULT 0,
+                timestamp TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (match_id) REFERENCES pss_matches(id),
+                FOREIGN KEY (round_id) REFERENCES pss_rounds(id)
+            )",
+            [],
+        )?;
+        
+        // Create indices for performance
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_network_interfaces_active ON network_interfaces(is_active, is_recommended)",
+            [],
+        )?;
+        
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_udp_server_configs_enabled ON udp_server_configs(enabled)",
+            [],
+        )?;
+        
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_udp_server_sessions_status ON udp_server_sessions(status, start_time)",
+            [],
+        )?;
+        
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_udp_client_connections_session ON udp_client_connections(session_id, is_active)",
+            [],
+        )?;
+        
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_events_v2_timestamp ON pss_events_v2(timestamp)",
+            [],
+        )?;
+        
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_events_v2_match ON pss_events_v2(match_id, round_id)",
+            [],
+        )?;
+        
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_events_v2_session ON pss_events_v2(session_id, event_sequence)",
+            [],
+        )?;
+        
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_event_details_event ON pss_event_details(event_id)",
+            [],
+        )?;
+        
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_scores_match ON pss_scores(match_id, round_id, athlete_position)",
+            [],
+        )?;
+        
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_warnings_match ON pss_warnings(match_id, round_id, athlete_position)",
+            [],
+        )?;
+        
+        // Populate pss_event_types with standard PSS event types
+        let event_types = vec![
+            // Points events
+            ("pt1", "Points Athlete 1", "Points scored by athlete 1", "points"),
+            ("pt2", "Points Athlete 2", "Points scored by athlete 2", "points"),
+            
+            // Hit level events
+            ("hl1", "Hit Level Athlete 1", "Hit level for athlete 1", "hit_level"),
+            ("hl2", "Hit Level Athlete 2", "Hit level for athlete 2", "hit_level"),
+            
+            // Warnings/Gam-jeom events
+            ("wg1", "Warnings Athlete 1", "Warnings for athlete 1", "warnings"),
+            ("wg2", "Warnings Athlete 2", "Warnings for athlete 2", "warnings"),
+            
+            // Injury events
+            ("ij0", "Injury Unidentified", "Injury time for unidentified athlete", "injury"),
+            ("ij1", "Injury Athlete 1", "Injury time for athlete 1", "injury"),
+            ("ij2", "Injury Athlete 2", "Injury time for athlete 2", "injury"),
+            
+            // Challenge/IVR events
+            ("ch0", "Challenge Referee", "Challenge initiated by referee", "challenge"),
+            ("ch1", "Challenge Athlete 1", "Challenge initiated by athlete 1", "challenge"),
+            ("ch2", "Challenge Athlete 2", "Challenge initiated by athlete 2", "challenge"),
+            
+            // Break events
+            ("br", "Break", "Match break time", "break"),
+            
+            // Winner events
+            ("wr", "Winner Rounds", "Round winners", "winner"),
+            ("wn", "Winner", "Match winner", "winner"),
+            
+            // Athlete events
+            ("at", "Athletes", "Athlete information", "athletes"),
+            
+            // Match configuration
+            ("mc", "Match Config", "Match configuration", "match_config"),
+            
+            // Scores
+            ("sc", "Scores", "Current scores", "scores"),
+            
+            // Clock events
+            ("cl", "Clock", "Match clock", "clock"),
+            
+            // Round events
+            ("rd", "Round", "Round information", "round"),
+            
+            // System events
+            ("fl", "Fight Loaded", "Fight loaded event", "system"),
+            ("fr", "Fight Ready", "Fight ready event", "system"),
+        ];
+        
+        for (code, name, description, category) in event_types {
+            conn.execute(
+                "INSERT OR IGNORE INTO pss_event_types (event_code, event_name, description, category, created_at) VALUES (?, ?, ?, ?, datetime('now'))",
+                [code, name, description, category],
+            )?;
+        }
+        
+        // Insert default UDP server configuration
+        conn.execute(
+            "INSERT OR IGNORE INTO udp_server_configs (name, port, bind_address, enabled, auto_start, created_at, updated_at) VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))",
+            ["Default PSS Server", 6000, "0.0.0.0", 1, 0],
+        )?;
+        
+        Ok(())
+    }
+    
+    fn down(&self, conn: &Connection) -> SqliteResult<()> {
+        // Drop tables in reverse order
+        conn.execute("DROP TABLE IF EXISTS pss_warnings", [])?;
+        conn.execute("DROP TABLE IF EXISTS pss_scores", [])?;
+        conn.execute("DROP TABLE IF EXISTS pss_event_details", [])?;
+        conn.execute("DROP TABLE IF EXISTS pss_events_v2", [])?;
+        conn.execute("DROP TABLE IF EXISTS pss_rounds", [])?;
+        conn.execute("DROP TABLE IF EXISTS pss_match_athletes", [])?;
+        conn.execute("DROP TABLE IF EXISTS pss_athletes", [])?;
+        conn.execute("DROP TABLE IF EXISTS pss_matches", [])?;
+        conn.execute("DROP TABLE IF EXISTS pss_event_types", [])?;
+        conn.execute("DROP TABLE IF EXISTS udp_client_connections", [])?;
+        conn.execute("DROP TABLE IF EXISTS udp_server_sessions", [])?;
+        conn.execute("DROP TABLE IF EXISTS udp_server_configs", [])?;
+        conn.execute("DROP TABLE IF EXISTS network_interfaces", [])?;
+        
+        Ok(())
+    }
+}
+
 /// Migration manager for handling database schema updates
 pub struct MigrationManager {
     migrations: Vec<Box<dyn Migration>>,
@@ -642,6 +1031,7 @@ impl MigrationManager {
         migrations.push(Box::new(Migration1));
         migrations.push(Box::new(Migration2));
         migrations.push(Box::new(Migration3));
+        migrations.push(Box::new(Migration4));
         
         Self { migrations }
     }
