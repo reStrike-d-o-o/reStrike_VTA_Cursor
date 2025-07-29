@@ -1,7 +1,7 @@
 //! Main application class and lifecycle management
 
 use crate::types::{AppResult, AppState, AppView};
-use crate::plugins::{ObsPlugin, PlaybackPlugin, UdpPlugin, StorePlugin, LicensePlugin, CpuMonitorPlugin, ProtocolManager, DatabasePlugin, WebSocketPlugin};
+use crate::plugins::{ObsPlugin, PlaybackPlugin, UdpPlugin, StorePlugin, LicensePlugin, CpuMonitorPlugin, ProtocolManager, DatabasePlugin, WebSocketPlugin, TournamentPlugin};
 use crate::logging::LogManager;
 use crate::config::ConfigManager;
 use std::sync::Arc;
@@ -24,6 +24,7 @@ pub struct App {
     protocol_manager: ProtocolManager,
     database_plugin: DatabasePlugin,
     websocket_plugin: Arc<Mutex<WebSocketPlugin>>,
+    tournament_plugin: TournamentPlugin,
     log_manager: Arc<Mutex<LogManager>>,
 }
 
@@ -97,6 +98,10 @@ impl App {
         let websocket_plugin = Arc::new(Mutex::new(WebSocketPlugin::new(3001))); // Port 3001 for WebSocket server
         log::info!("✅ WebSocket plugin initialized");
         
+        // Initialize tournament plugin
+        let tournament_plugin = TournamentPlugin::new(database_plugin.get_database_connection());
+        log::info!("✅ Tournament plugin initialized");
+        
         // Start UDP event handler
         let log_manager_clone = log_manager.clone();
         tokio::spawn(async move {
@@ -121,6 +126,7 @@ impl App {
             protocol_manager,
             database_plugin,
             websocket_plugin,
+            tournament_plugin,
             log_manager,
         })
     }
@@ -231,6 +237,11 @@ impl App {
     /// Get WebSocket plugin reference
     pub fn websocket_plugin(&self) -> &Arc<Mutex<WebSocketPlugin>> {
         &self.websocket_plugin
+    }
+    
+    /// Get tournament plugin reference
+    pub fn tournament_plugin(&self) -> &TournamentPlugin {
+        &self.tournament_plugin
     }
     
     /// Get log manager reference

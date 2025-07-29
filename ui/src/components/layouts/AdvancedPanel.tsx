@@ -11,6 +11,7 @@ import { DatabaseManagementPanel } from '../molecules/DatabaseManagementPanel';
 import { GoogleDriveBackupRestore } from '../molecules/GoogleDriveBackupRestore';
 import DatabaseMigrationPanel from '../molecules/DatabaseMigrationPanel';
 import FlagManagementPanel from '../molecules/FlagManagementPanel';
+import TournamentManagementPanel from '../molecules/TournamentManagementPanel';
 import ObsWebSocketManager from '../organisms/ObsWebSocketManager';
 import Toggle from '../atoms/Toggle';
 import TabGroup from '../molecules/TabGroup';
@@ -270,7 +271,7 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
                   <div className="space-y-6">
                     <div className="p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
                       <h3 className="text-lg font-semibold mb-4 text-gray-100">Tournament Management</h3>
-                      {/* Tournament management will go here */}
+                      <TournamentManagementPanel />
                     </div>
                   </div>
                 )

@@ -1019,6 +1019,168 @@ impl Migration for Migration4 {
     }
 }
 
+/// Migration 5: Tournament management system
+pub struct Migration5;
+
+impl Migration for Migration5 {
+    fn version(&self) -> u32 {
+        5
+    }
+    
+    fn description(&self) -> &str {
+        "Tournament management system with tournaments, tournament days, and PSS integration"
+    }
+    
+    fn up(&self, conn: &Connection) -> SqliteResult<()> {
+        // Create tournaments table
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS tournaments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL UNIQUE,
+                duration_days INTEGER NOT NULL DEFAULT 1,
+                city TEXT NOT NULL,
+                country TEXT NOT NULL,
+                country_code TEXT,
+                logo_path TEXT,
+                status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'active', 'ended')),
+                start_date DATETIME,
+                end_date DATETIME,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )",
+            [],
+        )?;
+        
+        // Create tournament_days table
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS tournament_days (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tournament_id INTEGER NOT NULL,
+                day_number INTEGER NOT NULL,
+                date DATE NOT NULL,
+                status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'active', 'completed')),
+                start_time DATETIME,
+                end_time DATETIME,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY (tournament_id) REFERENCES tournaments(id) ON DELETE CASCADE,
+                UNIQUE(tournament_id, day_number)
+            )",
+            [],
+        )?;
+        
+        // Add tournament_id to existing PSS tables
+        conn.execute(
+            "ALTER TABLE pss_matches ADD COLUMN tournament_id INTEGER REFERENCES tournaments(id)",
+            [],
+        )?;
+        
+        conn.execute(
+            "ALTER TABLE pss_events_v2 ADD COLUMN tournament_id INTEGER REFERENCES tournaments(id)",
+            [],
+        )?;
+        
+        conn.execute(
+            "ALTER TABLE pss_scores ADD COLUMN tournament_id INTEGER REFERENCES tournaments(id)",
+            [],
+        )?;
+        
+        conn.execute(
+            "ALTER TABLE pss_warnings ADD COLUMN tournament_id INTEGER REFERENCES tournaments(id)",
+            [],
+        )?;
+        
+        // Add tournament_day_id to PSS tables
+        conn.execute(
+            "ALTER TABLE pss_matches ADD COLUMN tournament_day_id INTEGER REFERENCES tournament_days(id)",
+            [],
+        )?;
+        
+        conn.execute(
+            "ALTER TABLE pss_events_v2 ADD COLUMN tournament_day_id INTEGER REFERENCES tournament_days(id)",
+            [],
+        )?;
+        
+        conn.execute(
+            "ALTER TABLE pss_scores ADD COLUMN tournament_day_id INTEGER REFERENCES tournament_days(id)",
+            [],
+        )?;
+        
+        conn.execute(
+            "ALTER TABLE pss_warnings ADD COLUMN tournament_day_id INTEGER REFERENCES tournament_days(id)",
+            [],
+        )?;
+        
+        // Create indices for performance
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_tournaments_status ON tournaments(status)",
+            [],
+        )?;
+        
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_tournaments_city_country ON tournaments(city, country)",
+            [],
+        )?;
+        
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_tournament_days_tournament ON tournament_days(tournament_id)",
+            [],
+        )?;
+        
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_tournament_days_status ON tournament_days(status)",
+            [],
+        )?;
+        
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_matches_tournament ON pss_matches(tournament_id)",
+            [],
+        )?;
+        
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_events_v2_tournament ON pss_events_v2(tournament_id)",
+            [],
+        )?;
+        
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_scores_tournament ON pss_scores(tournament_id)",
+            [],
+        )?;
+        
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_warnings_tournament ON pss_warnings(tournament_id)",
+            [],
+        )?;
+        
+        // Insert default tournament for testing
+        conn.execute(
+            "INSERT OR IGNORE INTO tournaments (name, duration_days, city, country, country_code, status, start_date, end_date, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))",
+            ["Sample Tournament", &3.to_string(), "Seoul", "South Korea", "KOR", "draft", "2025-02-01 09:00:00", "2025-02-03 18:00:00"],
+        )?;
+        
+        Ok(())
+    }
+    
+    fn down(&self, conn: &Connection) -> SqliteResult<()> {
+        // Remove indices
+        conn.execute("DROP INDEX IF EXISTS idx_tournaments_status", [])?;
+        conn.execute("DROP INDEX IF EXISTS idx_tournaments_city_country", [])?;
+        conn.execute("DROP INDEX IF EXISTS idx_tournament_days_tournament", [])?;
+        conn.execute("DROP INDEX IF EXISTS idx_tournament_days_status", [])?;
+        conn.execute("DROP INDEX IF EXISTS idx_pss_matches_tournament", [])?;
+        conn.execute("DROP INDEX IF EXISTS idx_pss_events_v2_tournament", [])?;
+        conn.execute("DROP INDEX IF EXISTS idx_pss_scores_tournament", [])?;
+        conn.execute("DROP INDEX IF EXISTS idx_pss_warnings_tournament", [])?;
+        
+        // Note: SQLite doesn't support DROP COLUMN, so we'll need to recreate tables
+        // For now, we'll just drop the tournament tables
+        conn.execute("DROP TABLE IF EXISTS tournament_days", [])?;
+        conn.execute("DROP TABLE IF EXISTS tournaments", [])?;
+        
+        Ok(())
+    }
+}
+
 /// Migration manager for handling database schema updates
 pub struct MigrationManager {
     migrations: Vec<Box<dyn Migration>>,
@@ -1032,6 +1194,7 @@ impl MigrationManager {
         migrations.push(Box::new(Migration2));
         migrations.push(Box::new(Migration3));
         migrations.push(Box::new(Migration4));
+        migrations.push(Box::new(Migration5));
         
         Self { migrations }
     }
