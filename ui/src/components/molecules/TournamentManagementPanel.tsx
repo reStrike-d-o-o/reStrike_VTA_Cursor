@@ -105,7 +105,7 @@ const TournamentManagementPanel: React.FC = () => {
       setError(null);
       
       const result = await invoke('tournament_get_all');
-      const data = JSON.parse(result as string);
+      const data = result as any;
       
       if (data.success) {
         setTournaments(data.tournaments);
@@ -122,7 +122,7 @@ const TournamentManagementPanel: React.FC = () => {
   const loadTournamentDays = async (tournamentId: number) => {
     try {
       const result = await invoke('tournament_get_days', { tournamentId });
-      const data = JSON.parse(result as string);
+      const data = result as any;
       
       if (data.success) {
         setTournamentDays(data.days);
@@ -141,7 +141,7 @@ const TournamentManagementPanel: React.FC = () => {
       
       // Get tournament details
       const tournamentResult = await invoke('tournament_get', { tournamentId });
-      const tournamentData = JSON.parse(tournamentResult as string);
+      const tournamentData = tournamentResult as any;
       
       if (!tournamentData.success) {
         throw new Error(tournamentData.error || 'Failed to load tournament');
@@ -151,7 +151,7 @@ const TournamentManagementPanel: React.FC = () => {
       
       // Get tournament days
       const daysResult = await invoke('tournament_get_days', { tournamentId });
-      const daysData = JSON.parse(daysResult as string);
+      const daysData = daysResult as any;
       
       if (!daysData.success) {
         throw new Error(daysData.error || 'Failed to load tournament days');
@@ -161,7 +161,7 @@ const TournamentManagementPanel: React.FC = () => {
       
       // Get tournament statistics from PSS tables
       const statsResult = await invoke('get_tournament_statistics', { tournamentId });
-      const statsData = JSON.parse(statsResult as string);
+      const statsData = statsResult as any;
       
       if (!statsData.success) {
         throw new Error(statsData.error || 'Failed to load tournament statistics');
@@ -209,7 +209,7 @@ const TournamentManagementPanel: React.FC = () => {
         city: formData.city,
         country: formData.country
       });
-      const data = JSON.parse(result as string);
+      const data = result as any;
       
       if (data.success) {
         setLocationVerification({
@@ -257,7 +257,7 @@ const TournamentManagementPanel: React.FC = () => {
           tournamentId,
           logoPath
         });
-        const data = JSON.parse(result as string);
+        const data = result as any;
         
         if (data.success) {
           // Update the tournament in the list
@@ -290,7 +290,7 @@ const TournamentManagementPanel: React.FC = () => {
         countryCode: formData.country_code || null,
         startDate: formData.start_date || null
       });
-      const data = JSON.parse(result as string);
+      const data = result as any;
       
       if (data.success) {
         setShowAddForm(false);
@@ -333,7 +333,7 @@ const TournamentManagementPanel: React.FC = () => {
         startDate: formData.start_date || null,
         endDate: selectedTournament.end_date || null
       });
-      const data = JSON.parse(result as string);
+      const data = result as any;
       
       if (data.success) {
         setShowEditForm(false);
@@ -368,7 +368,7 @@ const TournamentManagementPanel: React.FC = () => {
       setError(null);
       
       const result = await invoke('tournament_delete', { tournamentId });
-      const data = JSON.parse(result as string);
+      const data = result as any;
       
       if (data.success) {
         await loadTournaments();
@@ -392,7 +392,7 @@ const TournamentManagementPanel: React.FC = () => {
       setError(null);
       
       const result = await invoke('tournament_start_day', { tournamentDayId: dayId });
-      const data = JSON.parse(result as string);
+      const data = result as any;
       
       if (data.success) {
         setShowStartDayModal(false);
@@ -416,7 +416,7 @@ const TournamentManagementPanel: React.FC = () => {
       setError(null);
       
       const result = await invoke('tournament_end_day', { tournamentDayId: dayId });
-      const data = JSON.parse(result as string);
+      const data = result as any;
       
       if (data.success) {
         setShowEndDayModal(false);
