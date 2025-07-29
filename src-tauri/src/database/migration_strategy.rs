@@ -7,6 +7,7 @@ use std::path::Path;
 use std::io::Write;
 
 /// Migration strategy for transitioning from JSON to database settings
+#[derive(Clone)]
 pub struct MigrationStrategy {
     config_manager: ConfigManager,
 }

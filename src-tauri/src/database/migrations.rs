@@ -993,7 +993,7 @@ impl Migration for Migration4 {
         // Insert default UDP server configuration
         conn.execute(
             "INSERT OR IGNORE INTO udp_server_configs (name, port, bind_address, enabled, auto_start, created_at, updated_at) VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))",
-            ["Default PSS Server", 6000, "0.0.0.0", 1, 0],
+            ["Default PSS Server", &6000.to_string(), "0.0.0.0", &1.to_string(), &0.to_string()],
         )?;
         
         Ok(())

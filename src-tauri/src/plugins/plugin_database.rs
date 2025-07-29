@@ -12,6 +12,7 @@ use tokio::sync::Mutex;
 use std::path::Path;
 
 /// Database plugin for managing UI settings and migrations
+#[derive(Clone)]
 pub struct DatabasePlugin {
     connection: Arc<DatabaseConnection>,
     migration_strategy: MigrationStrategy,
