@@ -1,6 +1,6 @@
 # reStrike VTA - Windows-Only Project Context Rules
 
-## Latest Development Status (2025-01-28):
+## Latest Development Status (2025-01-29):
 - ✅ Windows-only, production-ready, Rust+React (Tauri) application
 - ✅ Docker/devcontainer fully removed from all onboarding, docs, and scripts
 - ✅ Modular, plugin-based Rust backend (AppResult/AppError, crate naming, import style)
@@ -10,7 +10,8 @@
 - ✅ Performance best practices for both frontend and backend are required
 - ✅ **Tab System Infrastructure**: Reusable Tab and TabGroup components with flat styling
 - ✅ **Flag Management System**: Complete implementation with 253+ IOC flags and PSS code mapping
-- ✅ **Documentation Consolidation**: Streamlined and updated documentation structure
+- ✅ **Database Integration**: Complete PSS and UDP subsystem integration with maximally normalized tables
+- ✅ **Comprehensive Documentation**: 6 main consolidated documentation files covering all aspects
 
 ---
 
@@ -23,6 +24,13 @@
 - All navigation indexes (docs/README.md, scripts/README.md) must be kept up to date
 - **Flag assets**: 253+ IOC flags stored in `ui/public/assets/flags/`
 - **Tab components**: Reusable Tab and TabGroup in `ui/src/components/atoms/`
+- **Main Documentation**: 6 consolidated files in root directory:
+  - `DATABASE_INTEGRATION_GUIDE.md` - Database structure, models, relationships, and integration
+  - `BACKEND_ARCHITECTURE.md` - Backend structure, plugin system, and core systems
+  - `FRONTEND_ARCHITECTURE.md` - Frontend structure, component architecture, and UI system
+  - `DATA_FLOW_ARCHITECTURE.md` - Data flow patterns and system integration
+  - `LAYER_WIRING_DIAGRAM.md` - Layer connections, dependencies, and communication patterns
+  - `UI_DESIGN_GUIDELINES.md` - UI development guidelines, component system, and design patterns
 
 ## 2. Naming Conventions
 - **Documentation**: `kebab-case.md` (e.g., `container-restart.md`, `software-requirements.md`)
@@ -40,6 +48,15 @@
 - All documentation and onboarding must reference this file and be updated after any major change
 - **Preservation Before Deletion/Refactor**: Before deleting or refactoring any file, always copy the code to a backup file (e.g., .copy or .bak extension) to preserve the existing code, then proceed with deletion or refactor. This ensures no code is lost and allows for easy rollback if needed.
 - **Documentation Consolidation**: Regularly consolidate duplicate documentation and remove obsolete files
+- **Main Documentation Rule**: ALWAYS update the 6 main documentation files instead of creating new .md files. These are the single source of truth for all project documentation.
+- **Documentation Management Rule**: When adding new information or making changes to project architecture, components, or systems, ALWAYS update the appropriate main documentation file:
+  - Database changes → Update `DATABASE_INTEGRATION_GUIDE.md`
+  - Backend changes → Update `BACKEND_ARCHITECTURE.md`
+  - Frontend changes → Update `FRONTEND_ARCHITECTURE.md`
+  - Data flow changes → Update `DATA_FLOW_ARCHITECTURE.md`
+  - Layer wiring changes → Update `LAYER_WIRING_DIAGRAM.md`
+  - UI/UX changes → Update `UI_DESIGN_GUIDELINES.md`
+  - NEVER create new standalone .md files for information that belongs in these main documents
 
 ## 4. Performance Best Practices
 - **Frontend**:
@@ -67,10 +84,11 @@
 - This file (`.cursor/rules/context.mdc`) is the **single source of truth** for all project architecture, onboarding, coding, structure, naming, maintenance, and performance conventions.
 - All onboarding, build, and documentation must reference this file and be updated after any major change.
 - All team members must follow these conventions when adding or modifying files.
+- **Main Documentation**: The 6 consolidated documentation files are the single source of truth for their respective domains.
 
 ---
 
-_Last updated: 2025-01-28_
+_Last updated: 2025-01-29_
 
 ## 🖥️ Windows-Only Native Application
 - This project is a **native Windows desktop application** (no Docker/devcontainer).
@@ -86,6 +104,13 @@ _Last updated: 2025-01-28_
   - `README.md` (Windows installation, quick start)
   - `.cursor/rules/context.mdc` (this file - context rules)
   - `docs/README.md` (documentation navigation)
+  - **Main Consolidated Documentation** (6 files in root directory):
+    - `DATABASE_INTEGRATION_GUIDE.md` - Complete database architecture and integration
+    - `BACKEND_ARCHITECTURE.md` - Backend structure and plugin system
+    - `FRONTEND_ARCHITECTURE.md` - Frontend structure and component system
+    - `DATA_FLOW_ARCHITECTURE.md` - Data flow patterns and integration
+    - `LAYER_WIRING_DIAGRAM.md` - Layer connections and dependencies
+    - `UI_DESIGN_GUIDELINES.md` - UI development guidelines and design system
   - All relevant `.md` files in `docs/`, especially:
     - `FLAG_MANAGEMENT_SYSTEM.md`
     - `development/AI_AGENT_WINDOWS_GUIDE.md`
@@ -102,7 +127,28 @@ _Last updated: 2025-01-28_
   - Chat history from previous sessions
 
 ## 🏗️ Architecture & Conventions
-- **Backend:** Rust (Tauri plugin architecture, modular, plugin-based)
+
+### **Database Architecture**
+- **SQLite Database**: Single-file database with comprehensive schema
+- **Maximal Normalization**: All tables follow 3NF principles
+- **PSS Integration**: Complete Protocol Scoring System integration with UDP events
+- **Key Tables**:
+  - `network_interfaces` - Network interface management
+  - `udp_server_configs` - UDP server configuration
+  - `udp_server_sessions` - Session tracking
+  - `udp_client_connections` - Client connection management
+  - `pss_event_types` - Event type definitions
+  - `pss_matches` - Match information
+  - `pss_athletes` - Athlete data
+  - `pss_events_v2` - Event storage with raw and parsed data
+  - `pss_event_details` - Detailed event information
+  - `pss_scores` - Score tracking
+  - `pss_warnings` - Warning management
+- **Migration System**: Custom migration strategy with version tracking
+- **Performance**: In-memory caching for frequently accessed data
+
+### **Backend Architecture**
+- **Rust (Tauri plugin architecture, modular, plugin-based)**
   - All plugin/core methods use `AppResult<T>` and propagate errors as `AppError`.
   - `AppError::IoError` is ONLY for `std::io::Error`.
   - Custom error messages use `AppError::ConfigError` or other appropriate variant.
@@ -110,12 +156,21 @@ _Last updated: 2025-01-28_
     - Use `plugins::plugin_obs` NOT `obs` (after reorganization)
     - All plugins are under `src/plugins/` module
     - Core modules: `core::`, `config::`, `logging::`, `types::`
+  - **Plugin System**:
+    - `DatabasePlugin` - Database operations and migrations
+    - `UdpPlugin` - UDP server and PSS event handling
+    - `ObsPlugin` - OBS Studio integration
+    - `CpuMonitorPlugin` - System monitoring
+    - `LicensePlugin` - License management
   - **Error handling:**
     - When returning errors to API responses expecting `Option<String>`, use `e.to_string()`
     - When converting `std::io::Error` to `AppError`, use `AppError::IoError(e)`
     - When converting `std::io::Error` to `AppError::ConfigError`, use `AppError::ConfigError(e.to_string())`
+  - **Async Operations**: Tokio-based async/await for database operations
+  - **Shared State**: Arc<Mutex<T>> for thread-safe access to shared resources
 
-- **Frontend:** React 18 + TypeScript + Tailwind CSS
+### **Frontend Architecture**
+- **React 18 + TypeScript + Tailwind CSS**
   - **Atomic Design System**: Complete component hierarchy (atoms, molecules, organisms, layouts)
   - **Tab System**: Reusable Tab and TabGroup components with flat styling
   - **Flag Management**: Complete system with 253+ IOC flags and PSS code mapping
@@ -126,6 +181,25 @@ _Last updated: 2025-01-28_
     - Molecules: EventTableSection, LiveDataPanel, CpuMonitoringSection, FlagManagementPanel
     - Organisms: EventTable, MatchInfoSection, ObsWebSocketManager, SidebarSmall, SidebarBig
     - Layouts: DockBar, AdvancedPanel, StatusbarAdvanced
+  - **UI Design System**:
+    - Modern gradient style: `bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg`
+    - Color system: Blue-300 for headings, gray-300 for body text, semantic colors for status
+    - Typography: Inter font stack with semantic hierarchy
+    - Responsive design: Tailwind breakpoints with adaptive layouts
+
+### **Data Flow Architecture**
+- **PSS Event Processing**: UDP → Parse → Validate → Store → UI Update
+- **Real-time Events**: Event-driven architecture with Tauri events
+- **Database Operations**: Async operations with caching for performance
+- **State Synchronization**: Frontend-backend state synchronization via Tauri commands
+- **Error Handling**: Comprehensive error propagation and user feedback
+
+### **Layer Wiring**
+- **Presentation Layer**: React components with Tauri integration
+- **Bridge Layer**: Tauri commands and events for IPC
+- **Application Layer**: Plugin system with shared state management
+- **Plugin Layer**: Modular plugins for specific functionality
+- **Data Layer**: SQLite database with migration system
 
 ## 🎨 UI Development Guidelines
 - **UI Work Boundaries**: ONLY modify UI files (React components, styling)
@@ -150,7 +224,9 @@ _Last updated: 2025-01-28_
 - **Status Indicators**: Use `bg-green-900 text-green-300` for success, `bg-yellow-900 text-yellow-300` for warnings, `bg-red-900 text-red-300` for errors
 - **Interactive Elements**: Use `bg-gray-700/30 rounded border border-gray-600/20` for interactive containers within panels
 
-## 🚀 Recent Major Updates (2025-01-28)
+## 🚀 Recent Major Updates (2025-01-29)
+- **Database Integration**: Complete PSS and UDP subsystem integration with maximally normalized tables
+- **Comprehensive Documentation**: 6 main consolidated documentation files covering all aspects
 - **Tab System Infrastructure**: Reusable Tab and TabGroup components with flat styling
 - **OBS Drawer Organization**: WebSocket and Integration tabs with consistent design
 - **PSS Drawer Organization**: UDP Server & Protocol and Flag Management tabs
@@ -176,8 +252,10 @@ _Last updated: 2025-01-28_
 - **Advanced Panel**: Comprehensive settings and diagnostics with tabbed interface
 - **Tab System**: Reusable tab components with flat styling
 - **PSS Protocol**: UDP-based event handling with country code mapping
+- **Database Integration**: Complete PSS and UDP data storage with normalized schema
 
 ## 🎯 Next Steps
 - **Immediate Priorities**: OBS Integration, Event System, Video Player
 - **Future Enhancements**: AI Integration, Advanced Analytics, Multi-language Support
 - **Documentation**: Keep all documentation updated and consolidated
+- **Database**: Monitor performance and optimize queries as needed

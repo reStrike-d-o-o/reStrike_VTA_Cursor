@@ -8,11 +8,10 @@ use crate::types::{AppError, AppResult};
 use crate::plugins::ProtocolManager;
 use crate::plugins::plugin_database::DatabasePlugin;
 use crate::database::models::{
-    NetworkInterface, UdpServerConfig as DbUdpServerConfig, UdpServerSession, 
-    UdpClientConnection, PssEventV2, PssEventType, PssMatch, PssAthlete, 
-    PssScore, PssWarning, PssEventDetail
+    UdpServerConfig as DbUdpServerConfig, PssEventV2, 
+    PssScore, PssWarning
 };
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 
 /// Initialize the UDP plugin
 pub fn init() -> Result<(), Box<dyn std::error::Error>> {
@@ -223,13 +222,15 @@ impl UdpServer {
         // Create database session first
         let db_config = DbUdpServerConfig {
             id: None,
+            name: "Default PSS Server".to_string(),
             port: self.config.port,
             bind_address: self.config.bind_address.clone(),
+            network_interface_id: None,
             enabled: self.config.enabled,
             auto_start: self.config.auto_start,
-            max_clients: 100,
-            timeout_seconds: 30,
+            max_packet_size: 8192,
             buffer_size: 8192,
+            timeout_ms: 30000,
             created_at: Utc::now(),
             updated_at: Utc::now(),
         };
@@ -390,6 +391,7 @@ impl UdpServer {
         let current_match_id = self.current_match_id.clone();
         let athlete_cache = self.athlete_cache.clone();
         let event_type_cache = self.event_type_cache.clone();
+        let event_clone = event.clone();
         
         tokio::spawn(async move {
             if let Err(e) = Self::store_event_in_database(
@@ -398,7 +400,7 @@ impl UdpServer {
                 &current_match_id,
                 &athlete_cache,
                 &event_type_cache,
-                &event
+                &event_clone
             ).await {
                 log::error!("Failed to store event in database: {}", e);
             }
@@ -480,19 +482,25 @@ impl UdpServer {
         database: &DatabasePlugin,
     ) -> AppResult<PssEventV2> {
         let event_type_id = Self::get_event_type_id(event, event_type_cache, database).await?;
-        let match_id = *current_match_id.lock().unwrap();
+        let match_id = {
+            let guard = current_match_id.lock().unwrap();
+            *guard
+        };
 
         Ok(PssEventV2 {
             id: None,
             session_id,
             match_id,
+            round_id: None,
             event_type_id,
-            event_code: Self::get_event_code(event),
             timestamp: Utc::now(),
             raw_data: serde_json::to_string(event)?,
-            processed: false,
+            parsed_data: None,
+            event_sequence: 0,
+            processing_time_ms: None,
+            is_valid: true,
+            error_message: None,
             created_at: Utc::now(),
-            updated_at: Utc::now(),
         })
     }
 
@@ -512,10 +520,14 @@ impl UdpServer {
         }
 
         // Get from database
-        if let Some(event_type) = database.get_pss_event_type_by_code(&event_code).await? {
+        let event_type = database.get_pss_event_type_by_code(&event_code).await?;
+        if let Some(event_type) = event_type {
             if let Some(id) = event_type.id {
                 // Update cache
-                event_type_cache.lock().unwrap().insert(event_code, id);
+                {
+                    let mut cache = event_type_cache.lock().unwrap();
+                    cache.insert(event_code, id);
+                }
                 return Ok(id);
             }
         }
@@ -592,7 +604,7 @@ impl UdpServer {
                 ("athlete2_long".to_string(), Some(athlete2_long.clone()), "String".to_string()),
                 ("athlete2_country".to_string(), Some(athlete2_country.clone()), "String".to_string()),
             ]),
-            PssEvent::MatchConfig { number, category, weight, rounds, colors, match_id, division, total_rounds, round_duration, countdown_type, count_up, format } => Some(vec![
+            PssEvent::MatchConfig { number, category, weight, rounds, colors: _, match_id, division, total_rounds, round_duration, countdown_type, count_up, format } => Some(vec![
                 ("number".to_string(), Some(number.to_string()), "u32".to_string()),
                 ("category".to_string(), Some(category.clone()), "String".to_string()),
                 ("weight".to_string(), Some(weight.clone()), "String".to_string()),
@@ -666,29 +678,32 @@ impl UdpServer {
         athlete1_score: u8,
         athlete2_score: u8,
     ) -> AppResult<()> {
-        if let Some(match_id) = *current_match_id.lock().unwrap() {
+        let match_id = {
+            let guard = current_match_id.lock().unwrap();
+            *guard
+        };
+        
+        if let Some(match_id) = match_id {
             let score1 = PssScore {
                 id: None,
                 match_id,
-                athlete_id: 1, // Default athlete IDs
-                round_number: 1,
-                score_value: athlete1_score as i32,
+                round_id: None,
+                athlete_position: 1, // Use athlete_position instead of athlete_id
                 score_type: "current".to_string(),
+                score_value: athlete1_score as i32,
                 timestamp: Utc::now(),
                 created_at: Utc::now(),
-                updated_at: Utc::now(),
             };
             
             let score2 = PssScore {
                 id: None,
                 match_id,
-                athlete_id: 2, // Default athlete IDs
-                round_number: 1,
-                score_value: athlete2_score as i32,
+                round_id: None,
+                athlete_position: 2, // Use athlete_position instead of athlete_id
                 score_type: "current".to_string(),
+                score_value: athlete2_score as i32,
                 timestamp: Utc::now(),
                 created_at: Utc::now(),
-                updated_at: Utc::now(),
             };
             
             database.store_pss_score(&score1).await?;
@@ -704,27 +719,32 @@ impl UdpServer {
         athlete1_warnings: u8,
         athlete2_warnings: u8,
     ) -> AppResult<()> {
-        if let Some(match_id) = *current_match_id.lock().unwrap() {
+        let match_id = {
+            let guard = current_match_id.lock().unwrap();
+            *guard
+        };
+        
+        if let Some(match_id) = match_id {
             let warning1 = PssWarning {
                 id: None,
                 match_id,
-                athlete_id: 1, // Default athlete IDs
+                round_id: None,
+                athlete_position: 1, // Use athlete_position instead of athlete_id
                 warning_type: "gam_jeom".to_string(),
                 warning_count: athlete1_warnings as i32,
                 timestamp: Utc::now(),
                 created_at: Utc::now(),
-                updated_at: Utc::now(),
             };
             
             let warning2 = PssWarning {
                 id: None,
                 match_id,
-                athlete_id: 2, // Default athlete IDs
+                round_id: None,
+                athlete_position: 2, // Use athlete_position instead of athlete_id
                 warning_type: "gam_jeom".to_string(),
                 warning_count: athlete2_warnings as i32,
                 timestamp: Utc::now(),
                 created_at: Utc::now(),
-                updated_at: Utc::now(),
             };
             
             database.store_pss_warning(&warning1).await?;
