@@ -1106,7 +1106,7 @@ pub struct Tournament {
     pub country: String,
     pub country_code: Option<String>,
     pub logo_path: Option<String>,
-    pub status: String, // 'draft', 'active', 'completed', 'cancelled'
+    pub status: String, // 'pending', 'active', 'ended'
     pub start_date: Option<DateTime<Utc>>,
     pub end_date: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
@@ -1131,7 +1131,7 @@ impl Tournament {
             country,
             country_code,
             logo_path: None,
-            status: "draft".to_string(),
+            status: "pending".to_string(),
             start_date: None,
             end_date: None,
             created_at: now,
