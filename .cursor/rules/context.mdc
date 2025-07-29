@@ -11,7 +11,7 @@
 - ✅ **Tab System Infrastructure**: Reusable Tab and TabGroup components with flat styling
 - ✅ **Flag Management System**: Complete implementation with 253+ IOC flags and PSS code mapping
 - ✅ **Database Integration**: Complete PSS and UDP subsystem integration with maximally normalized tables
-- ✅ **Comprehensive Documentation**: 6 main consolidated documentation files covering all aspects
+- ✅ **Documentation Consolidation**: 6 main consolidated documents in `docs/architecture/` as single source of truth
 
 ---
 
@@ -24,13 +24,13 @@
 - All navigation indexes (docs/README.md, scripts/README.md) must be kept up to date
 - **Flag assets**: 253+ IOC flags stored in `ui/public/assets/flags/`
 - **Tab components**: Reusable Tab and TabGroup in `ui/src/components/atoms/`
-- **Main Documentation**: 6 consolidated files in root directory:
-  - `DATABASE_INTEGRATION_GUIDE.md` - Database structure, models, relationships, and integration
-  - `BACKEND_ARCHITECTURE.md` - Backend structure, plugin system, and core systems
-  - `FRONTEND_ARCHITECTURE.md` - Frontend structure, component architecture, and UI system
-  - `DATA_FLOW_ARCHITECTURE.md` - Data flow patterns and system integration
-  - `LAYER_WIRING_DIAGRAM.md` - Layer connections, dependencies, and communication patterns
-  - `UI_DESIGN_GUIDELINES.md` - UI development guidelines, component system, and design patterns
+- **Main Documentation**: 6 consolidated files in `docs/architecture/`:
+  - `docs/architecture/DATABASE_INTEGRATION_GUIDE.md` - Database structure, models, relationships, and integration
+  - `docs/architecture/BACKEND_ARCHITECTURE.md` - Backend structure, plugin system, and core systems
+  - `docs/architecture/FRONTEND_ARCHITECTURE.md` - Frontend structure, component architecture, and UI system
+  - `docs/architecture/DATA_FLOW_ARCHITECTURE.md` - Data flow patterns and system integration
+  - `docs/architecture/LAYER_WIRING_DIAGRAM.md` - Layer connections, dependencies, and communication patterns
+  - `docs/architecture/UI_DESIGN_GUIDELINES.md` - UI development guidelines, component system, and design patterns
 
 ## 2. Naming Conventions
 - **Documentation**: `kebab-case.md` (e.g., `container-restart.md`, `software-requirements.md`)
@@ -50,13 +50,142 @@
 - **Documentation Consolidation**: Regularly consolidate duplicate documentation and remove obsolete files
 - **Main Documentation Rule**: ALWAYS update the 6 main documentation files instead of creating new .md files. These are the single source of truth for all project documentation.
 - **Documentation Management Rule**: When adding new information or making changes to project architecture, components, or systems, ALWAYS update the appropriate main documentation file:
-  - Database changes → Update `DATABASE_INTEGRATION_GUIDE.md`
-  - Backend changes → Update `BACKEND_ARCHITECTURE.md`
-  - Frontend changes → Update `FRONTEND_ARCHITECTURE.md`
-  - Data flow changes → Update `DATA_FLOW_ARCHITECTURE.md`
-  - Layer wiring changes → Update `LAYER_WIRING_DIAGRAM.md`
-  - UI/UX changes → Update `UI_DESIGN_GUIDELINES.md`
+  - Database changes → Update `docs/architecture/DATABASE_INTEGRATION_GUIDE.md`
+  - Backend changes → Update `docs/architecture/BACKEND_ARCHITECTURE.md`
+  - Frontend changes → Update `docs/architecture/FRONTEND_ARCHITECTURE.md`
+  - Data flow changes → Update `docs/architecture/DATA_FLOW_ARCHITECTURE.md`
+  - Layer wiring changes → Update `docs/architecture/LAYER_WIRING_DIAGRAM.md`
+  - UI/UX changes → Update `docs/architecture/UI_DESIGN_GUIDELINES.md`
   - NEVER create new standalone .md files for information that belongs in these main documents
+
+## 📋 Documentation Update Rules by Task Category
+
+### **Database & Data Management Tasks**
+**When to Update**: Any database schema changes, new tables, migrations, data models, or database operations
+**Primary Document**: `docs/architecture/DATABASE_INTEGRATION_GUIDE.md`
+**Update Content**:
+- Add new table definitions and relationships
+- Document migration changes and version updates
+- Update data model descriptions
+- Add new database operations and methods
+- Document performance optimizations
+- Update normalization strategies
+
+**Examples**:
+- "Add new PSS event table" → Update DATABASE_INTEGRATION_GUIDE.md
+- "Optimize database queries" → Update DATABASE_INTEGRATION_GUIDE.md
+- "Add new migration" → Update DATABASE_INTEGRATION_GUIDE.md
+
+### **Backend & Rust Development Tasks**
+**When to Update**: Any Rust code changes, plugin modifications, new Tauri commands, or backend architecture changes
+**Primary Document**: `docs/architecture/BACKEND_ARCHITECTURE.md`
+**Update Content**:
+- Document new plugins and their functionality
+- Update plugin architecture descriptions
+- Add new Tauri commands and their purposes
+- Document error handling patterns
+- Update async operation patterns
+- Document shared state management changes
+
+**Examples**:
+- "Add new UDP plugin" → Update BACKEND_ARCHITECTURE.md
+- "Implement new Tauri command" → Update BACKEND_ARCHITECTURE.md
+- "Fix error handling in plugin" → Update BACKEND_ARCHITECTURE.md
+
+### **Frontend & React Development Tasks**
+**When to Update**: Any React component changes, UI state management, new components, or frontend architecture changes
+**Primary Document**: `docs/architecture/FRONTEND_ARCHITECTURE.md`
+**Update Content**:
+- Document new components and their hierarchy
+- Update atomic design system descriptions
+- Add new state management patterns
+- Document component integration patterns
+- Update UI patterns and conventions
+- Document new hooks or utilities
+
+**Examples**:
+- "Add new React component" → Update FRONTEND_ARCHITECTURE.md
+- "Implement new Zustand store" → Update FRONTEND_ARCHITECTURE.md
+- "Update atomic design system" → Update FRONTEND_ARCHITECTURE.md
+
+### **Data Flow & Event Processing Tasks**
+**When to Update**: Any changes to data flow, event processing, real-time communication, or system integration patterns
+**Primary Document**: `docs/architecture/DATA_FLOW_ARCHITECTURE.md`
+**Update Content**:
+- Document new event types and processing
+- Update data flow diagrams and descriptions
+- Add new integration patterns
+- Document real-time communication changes
+- Update event handling strategies
+- Document data transformation patterns
+
+**Examples**:
+- "Add new PSS event type" → Update DATA_FLOW_ARCHITECTURE.md
+- "Implement real-time event streaming" → Update DATA_FLOW_ARCHITECTURE.md
+- "Update UDP event processing" → Update DATA_FLOW_ARCHITECTURE.md
+
+### **System Architecture & Layer Wiring Tasks**
+**When to Update**: Any changes to system architecture, layer connections, dependencies, or component relationships
+**Primary Document**: `docs/architecture/LAYER_WIRING_DIAGRAM.md`
+**Update Content**:
+- Update layer connection diagrams
+- Document new dependencies and relationships
+- Add new architectural patterns
+- Update component interaction patterns
+- Document new integration points
+- Update system boundaries and interfaces
+
+**Examples**:
+- "Add new system layer" → Update LAYER_WIRING_DIAGRAM.md
+- "Update plugin dependencies" → Update LAYER_WIRING_DIAGRAM.md
+- "Implement new integration pattern" → Update LAYER_WIRING_DIAGRAM.md
+
+### **UI/UX & Design System Tasks**
+**When to Update**: Any UI design changes, styling updates, component styling, or design system modifications
+**Primary Document**: `docs/architecture/UI_DESIGN_GUIDELINES.md`
+**Update Content**:
+- Document new design patterns and components
+- Update styling guidelines and conventions
+- Add new UI patterns and interactions
+- Document theme system changes
+- Update accessibility guidelines
+- Document responsive design patterns
+
+**Examples**:
+- "Add new UI component" → Update UI_DESIGN_GUIDELINES.md
+- "Update color scheme" → Update UI_DESIGN_GUIDELINES.md
+- "Implement new design pattern" → Update UI_DESIGN_GUIDELINES.md
+
+### **Cross-Cutting Concerns**
+**When to Update**: Tasks that affect multiple areas or have system-wide impact
+**Primary Documents**: Update ALL relevant main documents
+**Update Strategy**:
+- Identify all affected areas
+- Update each relevant main document
+- Ensure consistency across documents
+- Cross-reference related changes
+
+**Examples**:
+- "Implement new feature affecting frontend and backend" → Update both FRONTEND_ARCHITECTURE.md and BACKEND_ARCHITECTURE.md
+- "Add new system-wide configuration" → Update multiple relevant documents
+- "Implement new authentication system" → Update BACKEND_ARCHITECTURE.md, DATA_FLOW_ARCHITECTURE.md, and UI_DESIGN_GUIDELINES.md
+
+### **Documentation Update Process**
+1. **Identify Task Category**: Determine which category the task belongs to
+2. **Select Primary Document**: Choose the main document to update based on the category
+3. **Update Content**: Add relevant information to the appropriate sections
+4. **Cross-Reference**: Update related documents if the change affects multiple areas
+5. **Maintain Consistency**: Ensure all documents remain consistent and up-to-date
+
+### **Update Priority Rules**
+- **High Priority**: Core architecture changes, new features, breaking changes
+- **Medium Priority**: Enhancements, optimizations, bug fixes with architectural impact
+- **Low Priority**: Minor updates, documentation improvements, formatting changes
+
+### **Update Frequency**
+- **Immediate**: After completing any architectural change or new feature
+- **Weekly**: Review and update documentation for accumulated changes
+- **Monthly**: Comprehensive review and consolidation of all documentation
 
 ## 4. Performance Best Practices
 - **Frontend**:
@@ -97,34 +226,10 @@ _Last updated: 2025-01-29_
 
 ## 📚 Required Documentation Context
 - **ALWAYS include:**
-  - `PROJECT_CONTEXT.md` (master project overview - CRITICAL)
-  - `PROJECT_STRUCTURE.md` (detailed project organization)
-  - `FRONTEND_DEVELOPMENT_SUMMARY.md` (frontend architecture details)
-  - `LIBRARY_STRUCTURE.md` (backend architecture and plugin system)
-  - `README.md` (Windows installation, quick start)
-  - `.cursor/rules/context.mdc` (this file - context rules)
-  - `docs/README.md` (documentation navigation)
-  - **Main Consolidated Documentation** (6 files in root directory):
-    - `DATABASE_INTEGRATION_GUIDE.md` - Complete database architecture and integration
-    - `BACKEND_ARCHITECTURE.md` - Backend structure and plugin system
-    - `FRONTEND_ARCHITECTURE.md` - Frontend structure and component system
-    - `DATA_FLOW_ARCHITECTURE.md` - Data flow patterns and integration
-    - `LAYER_WIRING_DIAGRAM.md` - Layer connections and dependencies
-    - `UI_DESIGN_GUIDELINES.md` - UI development guidelines and design system
-  - All relevant `.md` files in `docs/`, especially:
-    - `FLAG_MANAGEMENT_SYSTEM.md`
-    - `development/AI_AGENT_WINDOWS_GUIDE.md`
-    - `project/FLAG_MANAGEMENT_MODULE_PLAN.md`
-    - `project/automation-quick-setup.md`
-    - `project/github-integration-guide.md`
-    - `project/github-integration-status.md`
-    - `project/project-management-summary.md`
-    - `requirements/software-requirements.md`
-    - `requirements/ui-design-document.md`
-    - `integration/obs-dual-protocol.md`
-    - `integration/obs-websocket-config.md`
-    - `development/checklists/DEV-CONTAINER-CHECKLIST-UPDATED.md` (for onboarding, but ignore Docker steps)
-  - Chat history from previous sessions
+  - `docs/architecture/` (6 main consolidated documents - CRITICAL)
+  - `README.md` (project overview)
+  - `.cursor/rules/context.mdc` (this file - CRITICAL)
+  - Previous chat history for continuity
 
 ## 🏗️ Architecture & Conventions
 
@@ -226,7 +331,7 @@ _Last updated: 2025-01-29_
 
 ## 🚀 Recent Major Updates (2025-01-29)
 - **Database Integration**: Complete PSS and UDP subsystem integration with maximally normalized tables
-- **Comprehensive Documentation**: 6 main consolidated documentation files covering all aspects
+- **Documentation Consolidation**: 6 main consolidated documents in `docs/architecture/` as single source of truth
 - **Tab System Infrastructure**: Reusable Tab and TabGroup components with flat styling
 - **OBS Drawer Organization**: WebSocket and Integration tabs with consistent design
 - **PSS Drawer Organization**: UDP Server & Protocol and Flag Management tabs
@@ -234,7 +339,7 @@ _Last updated: 2025-01-29_
 - **PSS Code Mapping**: Simplified mapping where PSS codes = IOC codes
 - **Flag Integration**: All systems using flags from `ui/public/assets/flags/`
 - **User Experience**: Clear, intuitive interface for flag management
-- **Documentation Consolidation**: Streamlined and updated documentation structure
+- **Documentation Structure**: Clean, organized documentation with no duplicates
 
 ## 🔧 Development Workflow
 - **Starting Development**: `cd src-tauri && cargo tauri dev`

@@ -124,13 +124,45 @@ cd ui && npm start
 ## 📚 Documentation
 
 ### Core Documentation
-- **[Architecture Guide](docs/ARCHITECTURE.md)**: Detailed system architecture and design patterns
-- **[Development Guide](docs/DEVELOPMENT.md)**: Development setup, coding standards, and workflows
-- **[OBS Integration Guide](docs/OBS_INTEGRATION.md)**: OBS WebSocket integration and connection management
-- **[Project Context](docs/PROJECT_CONTEXT.md)**: Comprehensive project overview and technical details
+The project documentation is organized in a consolidated structure with the following main documents:
 
-### Feature Documentation
-- **[Flag Management System](docs/FLAG_MANAGEMENT_SYSTEM.md)**: IOC flag system and management
+#### **Main Architecture Documents** (in `docs/architecture/`)
+- **[Database Integration Guide](docs/architecture/DATABASE_INTEGRATION_GUIDE.md)**: Complete database architecture, models, and integration patterns
+- **[Backend Architecture](docs/architecture/BACKEND_ARCHITECTURE.md)**: Backend structure, plugin system, and Rust implementation
+- **[Frontend Architecture](docs/architecture/FRONTEND_ARCHITECTURE.md)**: Frontend structure, React components, and UI patterns
+- **[Data Flow Architecture](docs/architecture/DATA_FLOW_ARCHITECTURE.md)**: System data flow, event processing, and integration patterns
+- **[Layer Wiring Diagram](docs/architecture/LAYER_WIRING_DIAGRAM.md)**: Layer connections, dependencies, and system architecture
+- **[UI Design Guidelines](docs/architecture/UI_DESIGN_GUIDELINES.md)**: UI development guidelines, design system, and component patterns
+
+#### **Development Guides** (in `docs/development/`)
+- **[Windows Setup Guide](docs/development/WINDOWS_SETUP_GUIDE.md)**: Windows development environment setup
+- **[AI Agent Windows Guide](docs/development/AI_AGENT_WINDOWS_GUIDE.md)**: AI assistant setup and configuration
+- **[Development Management](docs/development/development-management.md)**: Development workflows and project management
+
+#### **Integration Guides** (in `docs/integration/`)
+- **[OBS Integration](docs/integration/OBS_INTEGRATION.md)**: OBS WebSocket integration and connection management
+- **[Flag Management](docs/integration/FLAG_MANAGEMENT.md)**: IOC flag system and management
+
+#### **Requirements** (in `docs/requirements/`)
+- **[Product Requirements](docs/requirements/PRODUCT_REQUIREMENTS.md)**: Product specifications and requirements
+- **[Software Requirements](docs/requirements/SOFTWARE_REQUIREMENTS.md)**: Technical requirements and dependencies
+
+### Documentation Structure
+```
+docs/
+├── architecture/                       # Main consolidated docs (authoritative)
+│   ├── DATABASE_INTEGRATION_GUIDE.md
+│   ├── BACKEND_ARCHITECTURE.md
+│   ├── FRONTEND_ARCHITECTURE.md
+│   ├── DATA_FLOW_ARCHITECTURE.md
+│   ├── LAYER_WIRING_DIAGRAM.md
+│   └── UI_DESIGN_GUIDELINES.md
+├── development/                        # Development guides
+├── integration/                        # Integration guides
+└── requirements/                       # Requirements docs
+```
+
+**Note**: The 6 main architecture documents in `docs/architecture/` serve as the single source of truth for all project documentation. All other documentation references and builds upon these core documents.
 
 ## 🔧 Configuration System
 
