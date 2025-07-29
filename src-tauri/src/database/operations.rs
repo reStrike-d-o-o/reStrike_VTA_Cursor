@@ -1001,8 +1001,29 @@ impl PssUdpOperations {
 pub struct TournamentOperations;
 
 impl TournamentOperations {
+    /// Check if tournament name already exists
+    pub fn tournament_name_exists(conn: &Connection, name: &str) -> DatabaseResult<bool> {
+        let count: i64 = conn.query_row(
+            "SELECT COUNT(*) FROM tournaments WHERE name = ?",
+            params![name],
+            |row| row.get(0)
+        )?;
+        
+        Ok(count > 0)
+    }
+
     /// Create a new tournament
     pub fn create_tournament(conn: &mut Connection, tournament: &crate::database::models::Tournament) -> DatabaseResult<i64> {
+        // Check if tournament name already exists
+        if Self::tournament_name_exists(conn, &tournament.name)? {
+            return Err(crate::database::DatabaseError::Sqlite(
+                rusqlite::Error::SqliteFailure(
+                    rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_CONSTRAINT_UNIQUE),
+                    Some("Tournament name already exists".to_string())
+                )
+            ));
+        }
+
         let tournament_id = conn.execute(
             "INSERT INTO tournaments (name, duration_days, city, country, country_code, logo_path, status, start_date, end_date, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             params![
