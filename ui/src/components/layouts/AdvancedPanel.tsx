@@ -255,11 +255,8 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
                     label: 'Integration',
                     icon: <LottieIcon animationData={businessAnimation} size={32} />,
                 content: (
-                  <div className="space-y-6">
-                    <div className="p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
-                      <h3 className="text-lg font-semibold mb-4 text-gray-100">OVR Integration Settings</h3>
-                      {/* OVR specific settings will go here */}
-                    </div>
+                  <div className="text-gray-400 text-center py-8">
+                    OVR Integration Settings will be implemented here
                   </div>
                 )
               },
@@ -267,14 +264,7 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
                 id: 'tournament',
                 label: 'Tournament',
                 icon: <LottieIcon animationData={tournamentAnimation} size={32} />,
-                content: (
-                  <div className="space-y-6">
-                    <div className="p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
-                      <h3 className="text-lg font-semibold mb-4 text-gray-100">Tournament Management</h3>
-                      <TournamentManagementPanel />
-                    </div>
-                  </div>
-                )
+                content: <TournamentManagementPanel />
               }
             ]}
             activeTab={ovrTab}
