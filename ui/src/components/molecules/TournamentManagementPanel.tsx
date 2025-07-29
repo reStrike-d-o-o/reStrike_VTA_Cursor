@@ -460,16 +460,16 @@ const TournamentManagementPanel: React.FC = () => {
     switch (status) {
       case 'pending': return 'bg-yellow-400';
       case 'active': return 'bg-green-400';
-      case 'ended': return 'bg-blue-400';
+      case 'ended': return 'bg-red-400';
       default: return 'bg-gray-400';
     }
   };
 
   const getDayStatusColor = (status: string) => {
     switch (status) {
-      case 'pending': return 'bg-gray-400';
+      case 'pending': return 'bg-yellow-400';
       case 'active': return 'bg-green-400';
-      case 'completed': return 'bg-blue-400';
+      case 'completed': return 'bg-red-400';
       default: return 'bg-gray-400';
     }
   };
@@ -748,7 +748,7 @@ const TournamentManagementPanel: React.FC = () => {
                   <div className="text-sm text-gray-400">Active Day</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-400">{tournamentOverview.completed_days}</div>
+                  <div className="text-2xl font-bold text-red-400">{tournamentOverview.completed_days}</div>
                   <div className="text-sm text-gray-400">Completed Days</div>
                 </div>
               </div>
