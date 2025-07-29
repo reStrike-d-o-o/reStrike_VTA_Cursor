@@ -996,3 +996,232 @@ impl PssUdpOperations {
         }))
     }
 } 
+
+/// Tournament Operations for managing tournaments and tournament days
+pub struct TournamentOperations;
+
+impl TournamentOperations {
+    /// Create a new tournament
+    pub fn create_tournament(conn: &mut Connection, tournament: &crate::database::models::Tournament) -> DatabaseResult<i64> {
+        let tournament_id = conn.execute(
+            "INSERT INTO tournaments (name, duration_days, city, country, country_code, logo_path, status, start_date, end_date, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            params![
+                tournament.name,
+                tournament.duration_days,
+                tournament.city,
+                tournament.country,
+                tournament.country_code,
+                tournament.logo_path,
+                tournament.status,
+                tournament.start_date.map(|d| d.to_rfc3339()),
+                tournament.end_date.map(|d| d.to_rfc3339()),
+                tournament.created_at.to_rfc3339(),
+                tournament.updated_at.to_rfc3339(),
+            ]
+        )?;
+        
+        Ok(tournament_id as i64)
+    }
+    
+    /// Get all tournaments
+    pub fn get_tournaments(conn: &Connection) -> DatabaseResult<Vec<crate::database::models::Tournament>> {
+        let mut stmt = conn.prepare(
+            "SELECT id, name, duration_days, city, country, country_code, logo_path, status, start_date, end_date, created_at, updated_at FROM tournaments ORDER BY created_at DESC"
+        )?;
+        
+        let rows = stmt.query_map([], |row| crate::database::models::Tournament::from_row(row))?;
+        
+        let mut tournaments = Vec::new();
+        for row in rows {
+            tournaments.push(row?);
+        }
+        
+        Ok(tournaments)
+    }
+    
+    /// Get tournament by ID
+    pub fn get_tournament(conn: &Connection, tournament_id: i64) -> DatabaseResult<Option<crate::database::models::Tournament>> {
+        let tournament = conn.query_row(
+            "SELECT id, name, duration_days, city, country, country_code, logo_path, status, start_date, end_date, created_at, updated_at FROM tournaments WHERE id = ?",
+            params![tournament_id],
+            |row| crate::database::models::Tournament::from_row(row)
+        ).optional()?;
+        
+        Ok(tournament)
+    }
+    
+    /// Update tournament
+    pub fn update_tournament(conn: &mut Connection, tournament_id: i64, tournament: &crate::database::models::Tournament) -> DatabaseResult<()> {
+        conn.execute(
+            "UPDATE tournaments SET name = ?, duration_days = ?, city = ?, country = ?, country_code = ?, logo_path = ?, status = ?, start_date = ?, end_date = ?, updated_at = ? WHERE id = ?",
+            params![
+                tournament.name,
+                tournament.duration_days,
+                tournament.city,
+                tournament.country,
+                tournament.country_code,
+                tournament.logo_path,
+                tournament.status,
+                tournament.start_date.map(|d| d.to_rfc3339()),
+                tournament.end_date.map(|d| d.to_rfc3339()),
+                Utc::now().to_rfc3339(),
+                tournament_id,
+            ]
+        )?;
+        
+        Ok(())
+    }
+    
+    /// Delete tournament
+    pub fn delete_tournament(conn: &mut Connection, tournament_id: i64) -> DatabaseResult<()> {
+        conn.execute("DELETE FROM tournaments WHERE id = ?", params![tournament_id])?;
+        Ok(())
+    }
+    
+    /// Create tournament days for a tournament
+    pub fn create_tournament_days(conn: &mut Connection, tournament_id: i64, start_date: chrono::DateTime<chrono::Utc>, duration_days: i32) -> DatabaseResult<()> {
+        let tx = conn.transaction()?;
+        
+        for day_number in 1..=duration_days {
+            let day_date = start_date + chrono::Duration::days((day_number - 1) as i64);
+            let tournament_day = crate::database::models::TournamentDay::new(tournament_id, day_number, day_date);
+            
+            tx.execute(
+                "INSERT INTO tournament_days (tournament_id, day_number, date, status, start_time, end_time, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                params![
+                    tournament_day.tournament_id,
+                    tournament_day.day_number,
+                    tournament_day.date.to_rfc3339(),
+                    tournament_day.status,
+                    tournament_day.start_time.map(|t| t.to_rfc3339()),
+                    tournament_day.end_time.map(|t| t.to_rfc3339()),
+                    tournament_day.created_at.to_rfc3339(),
+                    tournament_day.updated_at.to_rfc3339(),
+                ]
+            )?;
+        }
+        
+        tx.commit()?;
+        Ok(())
+    }
+    
+    /// Get tournament days for a tournament
+    pub fn get_tournament_days(conn: &Connection, tournament_id: i64) -> DatabaseResult<Vec<crate::database::models::TournamentDay>> {
+        let mut stmt = conn.prepare(
+            "SELECT id, tournament_id, day_number, date, status, start_time, end_time, created_at, updated_at FROM tournament_days WHERE tournament_id = ? ORDER BY day_number"
+        )?;
+        
+        let rows = stmt.query_map(params![tournament_id], |row| crate::database::models::TournamentDay::from_row(row))?;
+        
+        let mut days = Vec::new();
+        for row in rows {
+            days.push(row?);
+        }
+        
+        Ok(days)
+    }
+    
+    /// Start a tournament day
+    pub fn start_tournament_day(conn: &mut Connection, tournament_day_id: i64) -> DatabaseResult<()> {
+        let now = Utc::now();
+        
+        // Update the tournament day status
+        conn.execute(
+            "UPDATE tournament_days SET status = ?, start_time = ?, updated_at = ? WHERE id = ?",
+            params!["active", now.to_rfc3339(), now.to_rfc3339(), tournament_day_id]
+        )?;
+        
+        // Check if this is the first day and start the tournament
+        let tournament_id: i64 = conn.query_row(
+            "SELECT tournament_id FROM tournament_days WHERE id = ?",
+            params![tournament_day_id],
+            |row| row.get(0)
+        )?;
+        
+        let day_number: i32 = conn.query_row(
+            "SELECT day_number FROM tournament_days WHERE id = ?",
+            params![tournament_day_id],
+            |row| row.get(0)
+        )?;
+        
+        if day_number == 1 {
+            conn.execute(
+                "UPDATE tournaments SET status = ?, start_date = ?, updated_at = ? WHERE id = ?",
+                params!["active", now.to_rfc3339(), now.to_rfc3339(), tournament_id]
+            )?;
+        }
+        
+        Ok(())
+    }
+    
+    /// End a tournament day
+    pub fn end_tournament_day(conn: &mut Connection, tournament_day_id: i64) -> DatabaseResult<()> {
+        let now = Utc::now();
+        
+        // Update the tournament day status
+        conn.execute(
+            "UPDATE tournament_days SET status = ?, end_time = ?, updated_at = ? WHERE id = ?",
+            params!["completed", now.to_rfc3339(), now.to_rfc3339(), tournament_day_id]
+        )?;
+        
+        // Check if this is the last day and end the tournament
+        let tournament_id: i64 = conn.query_row(
+            "SELECT tournament_id FROM tournament_days WHERE id = ?",
+            params![tournament_day_id],
+            |row| row.get(0)
+        )?;
+        
+        let day_number: i32 = conn.query_row(
+            "SELECT day_number FROM tournament_days WHERE id = ?",
+            params![tournament_day_id],
+            |row| row.get(0)
+        )?;
+        
+        let total_days: i32 = conn.query_row(
+            "SELECT duration_days FROM tournaments WHERE id = ?",
+            params![tournament_id],
+            |row| row.get(0)
+        )?;
+        
+        if day_number == total_days {
+            conn.execute(
+                "UPDATE tournaments SET status = ?, end_date = ?, updated_at = ? WHERE id = ?",
+                params!["completed", now.to_rfc3339(), now.to_rfc3339(), tournament_id]
+            )?;
+        }
+        
+        Ok(())
+    }
+    
+    /// Get active tournament
+    pub fn get_active_tournament(conn: &Connection) -> DatabaseResult<Option<crate::database::models::Tournament>> {
+        let tournament = conn.query_row(
+            "SELECT id, name, duration_days, city, country, country_code, logo_path, status, start_date, end_date, created_at, updated_at FROM tournaments WHERE status = 'active' ORDER BY created_at DESC LIMIT 1",
+            [],
+            |row| crate::database::models::Tournament::from_row(row)
+        ).optional()?;
+        
+        Ok(tournament)
+    }
+    
+    /// Get active tournament day
+    pub fn get_active_tournament_day(conn: &Connection, tournament_id: i64) -> DatabaseResult<Option<crate::database::models::TournamentDay>> {
+        let day = conn.query_row(
+            "SELECT id, tournament_id, day_number, date, status, start_time, end_time, created_at, updated_at FROM tournament_days WHERE tournament_id = ? AND status = 'active' ORDER BY day_number DESC LIMIT 1",
+            params![tournament_id],
+            |row| crate::database::models::TournamentDay::from_row(row)
+        ).optional()?;
+        
+        Ok(day)
+    }
+    
+    /// Update tournament logo
+    pub fn update_tournament_logo(conn: &mut Connection, tournament_id: i64, logo_path: &str) -> DatabaseResult<()> {
+        conn.execute(
+            "UPDATE tournaments SET logo_path = ?, updated_at = ? WHERE id = ?",
+            params![logo_path, Utc::now().to_rfc3339(), tournament_id]
+        )?;
+        
+        Ok(())
+    }
+} 

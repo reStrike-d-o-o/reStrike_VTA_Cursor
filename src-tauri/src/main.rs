@@ -213,6 +213,21 @@ async fn main() -> AppResult<()> {
             tauri_commands::get_table_data,
             tauri_commands::get_flag_mappings_data,
             
+            // Tournament Management commands
+            tauri_commands::tournament_create,
+            tauri_commands::tournament_get_all,
+            tauri_commands::tournament_get,
+            tauri_commands::tournament_update,
+            tauri_commands::tournament_delete,
+            tauri_commands::tournament_get_days,
+            tauri_commands::tournament_start_day,
+            tauri_commands::tournament_end_day,
+            tauri_commands::tournament_get_active,
+            tauri_commands::tournament_get_active_day,
+            tauri_commands::tournament_update_logo,
+            tauri_commands::tournament_verify_location,
+            tauri_commands::get_tournament_statistics,
+            
             // Flag management commands
             tauri_commands::scan_and_populate_flags,
             tauri_commands::get_flags_data,

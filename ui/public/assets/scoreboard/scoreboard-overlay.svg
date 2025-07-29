@@ -108,10 +108,10 @@
      
                        <!-- Player 1 Rounds Section -->
        <g id="player1RoundsSection" transform="translate(1060, 100)">
-         <polygon points="0,0 120,0 120,120 0,120" fill="white" filter="url(#dropShadow)"/>
-         <polygon points="0,0 120,0 120,120 0,120" fill="url(#glassGradient)" opacity="0.5"/>
-         <polygon points="0,0 120,0 120,60 0,60" fill="url(#glassHighlight)" opacity="0.7" filter="url(#glassReflection)"/>
-        <text x="60" y="85" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="56" font-weight="600" fill="black" id="player1Rounds" filter="url(#emboss3D)">1</text>
+         <polygon points="0,0 120,0 120,120 0,120" fill="#0066CC" filter="url(#dropShadow)"/>
+         <polygon points="0,0 120,0 120,120 0,120" fill="url(#glassGradient)" opacity="0.6"/>
+         <polygon points="0,0 120,0 120,60 0,60" fill="url(#glassHighlight)" opacity="0.8" filter="url(#glassReflection)"/>
+        <text x="60" y="85" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="56" font-weight="600" fill="white" id="player1Rounds" filter="url(#emboss3D)">1</text>
       </g>
      
                                                <!-- Player 1 Warnings Section -->
@@ -151,10 +151,10 @@
      
                        <!-- Player 2 Rounds Section -->
        <g id="player2RoundsSection" transform="translate(1060, 240)">
-         <polygon points="0,0 120,0 120,120 0,120" fill="white" filter="url(#dropShadow)"/>
-         <polygon points="0,0 120,0 120,120 0,120" fill="url(#glassGradient)" opacity="0.5"/>
-         <polygon points="0,0 120,0 120,60 0,60" fill="url(#glassHighlight)" opacity="0.7" filter="url(#glassReflection)"/>
-        <text x="60" y="85" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="56" font-weight="600" fill="black" id="player2Rounds" filter="url(#emboss3D)">2</text>
+         <polygon points="0,0 120,0 120,120 0,120" fill="#CC0000" filter="url(#dropShadow)"/>
+         <polygon points="0,0 120,0 120,120 0,120" fill="url(#glassGradient)" opacity="0.6"/>
+         <polygon points="0,0 120,0 120,60 0,60" fill="url(#glassHighlight)" opacity="0.8" filter="url(#glassReflection)"/>
+        <text x="60" y="85" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="56" font-weight="600" fill="white" id="player2Rounds" filter="url(#emboss3D)">2</text>
       </g>
      
                                                <!-- Player 2 Warnings Section -->

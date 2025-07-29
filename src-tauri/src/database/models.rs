@@ -1095,3 +1095,138 @@ impl PssWarning {
         })
     }
 } 
+
+/// Tournament model for database storage
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Tournament {
+    pub id: Option<i64>,
+    pub name: String,
+    pub duration_days: i32,
+    pub city: String,
+    pub country: String,
+    pub country_code: Option<String>,
+    pub logo_path: Option<String>,
+    pub status: String, // 'draft', 'active', 'completed', 'cancelled'
+    pub start_date: Option<DateTime<Utc>>,
+    pub end_date: Option<DateTime<Utc>>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+impl Tournament {
+    /// Create a new tournament
+    pub fn new(
+        name: String,
+        duration_days: i32,
+        city: String,
+        country: String,
+        country_code: Option<String>,
+    ) -> Self {
+        let now = Utc::now();
+        Self {
+            id: None,
+            name,
+            duration_days,
+            city,
+            country,
+            country_code,
+            logo_path: None,
+            status: "draft".to_string(),
+            start_date: None,
+            end_date: None,
+            created_at: now,
+            updated_at: now,
+        }
+    }
+    
+    /// Create from database row
+    pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
+        Ok(Self {
+            id: row.get("id")?,
+            name: row.get("name")?,
+            duration_days: row.get("duration_days")?,
+            city: row.get("city")?,
+            country: row.get("country")?,
+            country_code: row.get("country_code")?,
+            logo_path: row.get("logo_path")?,
+            status: row.get("status")?,
+            start_date: row.get::<_, Option<String>>("start_date")?
+                .map(|s| DateTime::parse_from_rfc3339(&s)
+                    .map_err(|_| rusqlite::Error::InvalidColumnType(0, "start_date".to_string(), rusqlite::types::Type::Text))
+                    .map(|dt| dt.with_timezone(&Utc)))
+                .transpose()?,
+            end_date: row.get::<_, Option<String>>("end_date")?
+                .map(|s| DateTime::parse_from_rfc3339(&s)
+                    .map_err(|_| rusqlite::Error::InvalidColumnType(0, "end_date".to_string(), rusqlite::types::Type::Text))
+                    .map(|dt| dt.with_timezone(&Utc)))
+                .transpose()?,
+            created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
+                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "created_at".to_string(), rusqlite::types::Type::Text))?
+                .with_timezone(&Utc),
+            updated_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("updated_at")?)
+                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "updated_at".to_string(), rusqlite::types::Type::Text))?
+                .with_timezone(&Utc),
+        })
+    }
+}
+
+/// Tournament Day model for database storage
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TournamentDay {
+    pub id: Option<i64>,
+    pub tournament_id: i64,
+    pub day_number: i32,
+    pub date: DateTime<Utc>,
+    pub status: String, // 'pending', 'active', 'completed'
+    pub start_time: Option<DateTime<Utc>>,
+    pub end_time: Option<DateTime<Utc>>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+impl TournamentDay {
+    /// Create a new tournament day
+    pub fn new(tournament_id: i64, day_number: i32, date: DateTime<Utc>) -> Self {
+        let now = Utc::now();
+        Self {
+            id: None,
+            tournament_id,
+            day_number,
+            date,
+            status: "pending".to_string(),
+            start_time: None,
+            end_time: None,
+            created_at: now,
+            updated_at: now,
+        }
+    }
+    
+    /// Create from database row
+    pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
+        Ok(Self {
+            id: row.get("id")?,
+            tournament_id: row.get("tournament_id")?,
+            day_number: row.get("day_number")?,
+            date: DateTime::parse_from_rfc3339(&row.get::<_, String>("date")?)
+                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "date".to_string(), rusqlite::types::Type::Text))?
+                .with_timezone(&Utc),
+            status: row.get("status")?,
+            start_time: row.get::<_, Option<String>>("start_time")?
+                .map(|s| DateTime::parse_from_rfc3339(&s)
+                    .map_err(|_| rusqlite::Error::InvalidColumnType(0, "start_time".to_string(), rusqlite::types::Type::Text))
+                    .map(|dt| dt.with_timezone(&Utc)))
+                .transpose()?,
+            end_time: row.get::<_, Option<String>>("end_time")?
+                .map(|s| DateTime::parse_from_rfc3339(&s)
+                    .map_err(|_| rusqlite::Error::InvalidColumnType(0, "end_time".to_string(), rusqlite::types::Type::Text))
+                    .map(|dt| dt.with_timezone(&Utc)))
+                .transpose()?,
+            created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
+                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "created_at".to_string(), rusqlite::types::Type::Text))?
+                .with_timezone(&Utc),
+            updated_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("updated_at")?)
+                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "updated_at".to_string(), rusqlite::types::Type::Text))?
+                .with_timezone(&Utc),
+        })
+    }
+} 

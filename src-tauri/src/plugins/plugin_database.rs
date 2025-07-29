@@ -88,6 +88,11 @@ impl DatabasePlugin {
         self.connection.is_accessible().await
     }
 
+    /// Get database connection for other plugins
+    pub fn get_database_connection(&self) -> Arc<DatabaseConnection> {
+        self.connection.clone()
+    }
+    
     /// Get database file size
     pub fn get_file_size(&self) -> AppResult<u64> {
         self.connection.get_file_size()

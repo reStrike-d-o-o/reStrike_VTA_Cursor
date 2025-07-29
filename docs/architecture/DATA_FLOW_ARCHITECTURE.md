@@ -48,7 +48,7 @@ The reStrike VTA data flow architecture provides comprehensive real-time event p
 #### Complete Event Lifecycle
 ```
 ┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-│   UDP       │───▶│   PSS       │───▶│  Database   │───▶│   Frontend  │
+│   UDP       │───▶│   PSS       │───▶│  Database  │───▶│   Frontend  │
 │  Server     │    │  Parser     │    │   Storage   │    │    UI       │
 └─────────────┘    └─────────────┘    └─────────────┘    └─────────────┘
        │                   │                   │                   │
@@ -111,18 +111,18 @@ The system supports both OBS WebSocket v4 and v5 protocols simultaneously:
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    OBS Integration Layer                    │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │
-│  │   OBS v4    │  │   OBS v5    │  │  Protocol   │        │
-│  │  Protocol   │  │  Protocol   │  │  Detector   │        │
-│  └─────────────┘  └─────────────┘  └─────────────┘        │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐          │
+│  │   OBS v4    │  │   OBS v5    │  │  Protocol   │          │
+│  │  Protocol   │  │  Protocol   │  │  Detector   │          │
+│  └─────────────┘  └─────────────┘  └─────────────┘          │
 └─────────────────────────────────────────────────────────────┘
                               │
 ┌─────────────────────────────────────────────────────────────┐
 │                   Unified OBS Interface                     │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │
-│  │ Connection  │  │   Scene     │  │ Recording   │        │
-│  │ Management  │  │  Control    │  │  Control    │        │
-│  └─────────────┘  └─────────────┘  └─────────────┘        │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐          │
+│  │ Connection  │  │   Scene     │  │ Recording   │          │
+│  │ Management  │  │  Control    │  │  Control    │          │
+│  └─────────────┘  └─────────────┘  └─────────────┘          │
 └─────────────────────────────────────────────────────────────┘
 ```
 
