@@ -296,7 +296,7 @@ const TournamentManagementPanel: React.FC = () => {
         city: formData.city,
         country: formData.country,
         countryCode: formData.country_code || null,
-        startDate: formData.start_date && formData.start_date.trim() !== '' ? formData.start_date : null
+        startDate: formData.start_date && formData.start_date.trim() !== '' ? convertToRFC3339(formData.start_date) : null
       });
       const data = result as any;
       
@@ -338,7 +338,7 @@ const TournamentManagementPanel: React.FC = () => {
         countryCode: formData.country_code || null,
         logoPath: selectedTournament.logo_path || null,
         status: selectedTournament.status,
-        startDate: formData.start_date && formData.start_date.trim() !== '' ? formData.start_date : null,
+        startDate: formData.start_date && formData.start_date.trim() !== '' ? convertToRFC3339(formData.start_date) : null,
         endDate: selectedTournament.end_date || null
       });
       const data = result as any;
@@ -450,7 +450,7 @@ const TournamentManagementPanel: React.FC = () => {
       city: tournament.city,
       country: tournament.country,
       country_code: tournament.country_code || '',
-      start_date: tournament.start_date || '',
+      start_date: tournament.start_date ? convertFromRFC3339(tournament.start_date) : '',
     });
     setLocationVerification({ verified: !!tournament.country_code });
     setShowEditForm(true);
@@ -480,6 +480,40 @@ const TournamentManagementPanel: React.FC = () => {
       case 'active': return 'Active';
       case 'ended': return 'Ended';
       default: return status;
+    }
+  };
+
+  // Helper function to convert datetime-local to RFC3339
+  const convertToRFC3339 = (datetimeLocal: string): string => {
+    if (!datetimeLocal || datetimeLocal.trim() === '') {
+      return '';
+    }
+    
+    // datetime-local format: "2024-01-15T10:30"
+    // RFC3339 format: "2024-01-15T10:30:00Z"
+    const date = new Date(datetimeLocal);
+    return date.toISOString();
+  };
+
+  // Helper function to convert RFC3339 to datetime-local
+  const convertFromRFC3339 = (rfc3339: string): string => {
+    if (!rfc3339 || rfc3339.trim() === '') {
+      return '';
+    }
+    
+    try {
+      const date = new Date(rfc3339);
+      // Convert to local timezone and format for datetime-local input
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      
+      return `${year}-${month}-${day}T${hours}:${minutes}`;
+    } catch (error) {
+      console.error('Error converting RFC3339 to datetime-local:', error);
+      return '';
     }
   };
 

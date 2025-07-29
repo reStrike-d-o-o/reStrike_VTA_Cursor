@@ -1043,8 +1043,8 @@ impl Migration for Migration5 {
                 country_code TEXT,
                 logo_path TEXT,
                 status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'active', 'ended')),
-                start_date DATETIME,
-                end_date DATETIME,
+                start_date TEXT,
+                end_date TEXT,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
             )",
@@ -1059,8 +1059,8 @@ impl Migration for Migration5 {
                 day_number INTEGER NOT NULL,
                 date DATE NOT NULL,
                 status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'active', 'completed')),
-                start_time DATETIME,
-                end_time DATETIME,
+                start_time TEXT,
+                end_time TEXT,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL,
                 FOREIGN KEY (tournament_id) REFERENCES tournaments(id) ON DELETE CASCADE,
@@ -1181,6 +1181,111 @@ impl Migration for Migration5 {
     }
 }
 
+/// Migration 6: Fix date column types for tournament tables
+pub struct Migration6;
+
+impl Migration for Migration6 {
+    fn version(&self) -> u32 {
+        6
+    }
+    
+    fn description(&self) -> &str {
+        "Fix date column types from DATETIME to TEXT for tournament tables"
+    }
+    
+    fn up(&self, conn: &Connection) -> SqliteResult<()> {
+        // SQLite doesn't support ALTER COLUMN TYPE, so we need to recreate the tables
+        // First, create new tables with correct column types
+        
+        // Create new tournaments table with TEXT date columns
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS tournaments_new (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL UNIQUE,
+                duration_days INTEGER NOT NULL DEFAULT 1,
+                city TEXT NOT NULL,
+                country TEXT NOT NULL,
+                country_code TEXT,
+                logo_path TEXT,
+                status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'active', 'ended')),
+                start_date TEXT,
+                end_date TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )",
+            [],
+        )?;
+        
+        // Create new tournament_days table with TEXT date columns
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS tournament_days_new (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tournament_id INTEGER NOT NULL,
+                day_number INTEGER NOT NULL,
+                date TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'active', 'completed')),
+                start_time TEXT,
+                end_time TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY (tournament_id) REFERENCES tournaments_new(id) ON DELETE CASCADE,
+                UNIQUE(tournament_id, day_number)
+            )",
+            [],
+        )?;
+        
+        // Copy data from old tables to new tables (if they exist)
+        conn.execute(
+            "INSERT INTO tournaments_new SELECT * FROM tournaments",
+            [],
+        ).ok(); // Ignore error if old table doesn't exist
+        
+        conn.execute(
+            "INSERT INTO tournament_days_new SELECT * FROM tournament_days",
+            [],
+        ).ok(); // Ignore error if old table doesn't exist
+        
+        // Drop old tables
+        conn.execute("DROP TABLE IF EXISTS tournament_days", []).ok();
+        conn.execute("DROP TABLE IF EXISTS tournaments", []).ok();
+        
+        // Rename new tables to original names
+        conn.execute("ALTER TABLE tournaments_new RENAME TO tournaments", []).ok();
+        conn.execute("ALTER TABLE tournament_days_new RENAME TO tournament_days", []).ok();
+        
+        // Recreate indices
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_tournaments_status ON tournaments(status)",
+            [],
+        )?;
+        
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_tournaments_city_country ON tournaments(city, country)",
+            [],
+        )?;
+        
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_tournament_days_tournament ON tournament_days(tournament_id)",
+            [],
+        )?;
+        
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_tournament_days_status ON tournament_days(status)",
+            [],
+        )?;
+        
+        Ok(())
+    }
+    
+    fn down(&self, _conn: &Connection) -> SqliteResult<()> {
+        // This migration is mostly about fixing column types
+        // The down migration would be complex and not really needed
+        // Just log that this is a one-way migration
+        println!("Migration 6 is a one-way migration to fix column types");
+        Ok(())
+    }
+}
+
 /// Migration manager for handling database schema updates
 pub struct MigrationManager {
     migrations: Vec<Box<dyn Migration>>,
@@ -1195,6 +1300,7 @@ impl MigrationManager {
         migrations.push(Box::new(Migration3));
         migrations.push(Box::new(Migration4));
         migrations.push(Box::new(Migration5));
+        migrations.push(Box::new(Migration6));
         
         Self { migrations }
     }
