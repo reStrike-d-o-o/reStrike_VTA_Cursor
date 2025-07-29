@@ -1207,7 +1207,7 @@ impl TournamentOperations {
         if day_number == total_days {
             conn.execute(
                 "UPDATE tournaments SET status = ?, end_date = ?, updated_at = ? WHERE id = ?",
-                params!["completed", now.to_rfc3339(), now.to_rfc3339(), tournament_id]
+                params!["ended", now.to_rfc3339(), now.to_rfc3339(), tournament_id]
             )?;
         }
         

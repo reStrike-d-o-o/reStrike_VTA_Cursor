@@ -1155,7 +1155,7 @@ impl Migration for Migration5 {
         // Insert default tournament for testing
         conn.execute(
             "INSERT OR IGNORE INTO tournaments (name, duration_days, city, country, country_code, status, start_date, end_date, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))",
-            ["Sample Tournament", &3.to_string(), "Seoul", "South Korea", "KOR", "draft", "2025-02-01 09:00:00", "2025-02-03 18:00:00"],
+            ["Sample Tournament", &3.to_string(), "Seoul", "South Korea", "KOR", "pending", "2025-02-01 09:00:00", "2025-02-03 18:00:00"],
         )?;
         
         Ok(())

@@ -50,11 +50,10 @@ impl TournamentPlugin {
         let tournament_id = TournamentOperations::create_tournament(&mut *conn, &tournament)
             .map_err(|e| AppError::ConfigError(format!("Failed to create tournament: {}", e)))?;
         
-        // Create tournament days if start_date is provided
-        if let Some(start_date) = start_date {
-            TournamentOperations::create_tournament_days(&mut *conn, tournament_id, start_date, duration_days)
-                .map_err(|e| AppError::ConfigError(format!("Failed to create tournament days: {}", e)))?;
-        }
+        // Always create tournament days
+        let start_date_for_days = start_date.unwrap_or_else(|| Utc::now());
+        TournamentOperations::create_tournament_days(&mut *conn, tournament_id, start_date_for_days, duration_days)
+            .map_err(|e| AppError::ConfigError(format!("Failed to create tournament days: {}", e)))?;
         
         Ok(tournament_id)
     }
