@@ -3126,9 +3126,13 @@ pub async fn tournament_create(
     log::info!("Creating tournament: {} in {}, {}", name, city, country);
     
     let start_date_parsed = if let Some(date_str) = start_date {
-        Some(chrono::DateTime::parse_from_rfc3339(&date_str)
-            .map(|dt| dt.with_timezone(&chrono::Utc))
-            .map_err(|e| format!("Invalid start date format: {}", e))?)
+        if date_str.trim().is_empty() {
+            None
+        } else {
+            Some(chrono::DateTime::parse_from_rfc3339(&date_str)
+                .map(|dt| dt.with_timezone(&chrono::Utc))
+                .map_err(|e| format!("Invalid start date format '{}': {}", date_str, e))?)
+        }
     } else {
         None
     };
@@ -3246,17 +3250,25 @@ pub async fn tournament_update(
     log::info!("Updating tournament: {}", tournament_id);
     
     let start_date_parsed = if let Some(date_str) = start_date {
-        Some(chrono::DateTime::parse_from_rfc3339(&date_str)
-            .map(|dt| dt.with_timezone(&chrono::Utc))
-            .map_err(|e| format!("Invalid start date format: {}", e))?)
+        if date_str.trim().is_empty() {
+            None
+        } else {
+            Some(chrono::DateTime::parse_from_rfc3339(&date_str)
+                .map(|dt| dt.with_timezone(&chrono::Utc))
+                .map_err(|e| format!("Invalid start date format '{}': {}", date_str, e))?)
+        }
     } else {
         None
     };
     
     let end_date_parsed = if let Some(date_str) = end_date {
-        Some(chrono::DateTime::parse_from_rfc3339(&date_str)
-            .map(|dt| dt.with_timezone(&chrono::Utc))
-            .map_err(|e| format!("Invalid end date format: {}", e))?)
+        if date_str.trim().is_empty() {
+            None
+        } else {
+            Some(chrono::DateTime::parse_from_rfc3339(&date_str)
+                .map(|dt| dt.with_timezone(&chrono::Utc))
+                .map_err(|e| format!("Invalid end date format '{}': {}", date_str, e))?)
+        }
     } else {
         None
     };

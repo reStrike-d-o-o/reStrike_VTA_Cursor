@@ -296,7 +296,7 @@ const TournamentManagementPanel: React.FC = () => {
         city: formData.city,
         country: formData.country,
         countryCode: formData.country_code || null,
-        startDate: formData.start_date || null
+        startDate: formData.start_date && formData.start_date.trim() !== '' ? formData.start_date : null
       });
       const data = result as any;
       
@@ -338,7 +338,7 @@ const TournamentManagementPanel: React.FC = () => {
         countryCode: formData.country_code || null,
         logoPath: selectedTournament.logo_path || null,
         status: selectedTournament.status,
-        startDate: formData.start_date || null,
+        startDate: formData.start_date && formData.start_date.trim() !== '' ? formData.start_date : null,
         endDate: selectedTournament.end_date || null
       });
       const data = result as any;
