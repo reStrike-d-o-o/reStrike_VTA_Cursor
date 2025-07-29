@@ -156,40 +156,69 @@ impl TournamentPlugin {
     /// Verify city and country using OpenStreetMap Nominatim API
     pub async fn verify_city_country(&self, city: String, country: String) -> AppResult<LocationVerification> {
         tokio::task::spawn_blocking(move || {
-            let client = reqwest::blocking::Client::new();
+            let client = reqwest::blocking::Client::builder()
+                .timeout(std::time::Duration::from_secs(10))
+                .build()
+                .map_err(|e| AppError::ConfigError(format!("Failed to create HTTP client: {}", e)))?;
+            
             let query = format!("{}, {}", city, country);
             let encoded_query = urlencoding::encode(&query);
             let url = format!("https://nominatim.openstreetmap.org/search?q={}&format=json&limit=1", encoded_query);
             
             let response = client.get(&url)
                 .header("User-Agent", "reStrike-VTA-Tournament-Manager/1.0")
-                .send()
-                .map_err(|e| AppError::ConfigError(format!("Failed to send request: {}", e)))?;
+                .send();
             
-            if !response.status().is_success() {
-                return Err(AppError::ConfigError(format!("API request failed with status: {}", response.status())));
+            match response {
+                Ok(response) => {
+                    if !response.status().is_success() {
+                        return Ok(LocationVerification {
+                            verified: false,
+                            country_code: None,
+                            display_name: None,
+                        });
+                    }
+                    
+                    match response.json::<Vec<serde_json::Value>>() {
+                        Ok(data) => {
+                            if data.is_empty() {
+                                return Ok(LocationVerification {
+                                    verified: false,
+                                    country_code: None,
+                                    display_name: None,
+                                });
+                            }
+                            
+                            let result = &data[0];
+                            let display_name = result["display_name"].as_str().unwrap_or("").to_string();
+                            let country_code = result["address"]["country_code"].as_str().map(|s| s.to_uppercase());
+                            
+                            Ok(LocationVerification {
+                                verified: true,
+                                country_code,
+                                display_name: Some(display_name),
+                            })
+                        },
+                        Err(_) => {
+                            // JSON parsing failed, return unverified
+                            Ok(LocationVerification {
+                                verified: false,
+                                country_code: None,
+                                display_name: None,
+                            })
+                        }
+                    }
+                },
+                Err(e) => {
+                    // Network error - return unverified instead of failing
+                    log::warn!("Location verification failed for '{}': {}", query, e);
+                    Ok(LocationVerification {
+                        verified: false,
+                        country_code: None,
+                        display_name: None,
+                    })
+                }
             }
-            
-            let data: Vec<serde_json::Value> = response.json()
-                .map_err(|e| AppError::ConfigError(format!("Failed to parse JSON response: {}", e)))?;
-            
-            if data.is_empty() {
-                return Ok(LocationVerification {
-                    verified: false,
-                    country_code: None,
-                    display_name: None,
-                });
-            }
-            
-            let result = &data[0];
-            let display_name = result["display_name"].as_str().unwrap_or("").to_string();
-            let country_code = result["address"]["country_code"].as_str().map(|s| s.to_uppercase());
-            
-            Ok(LocationVerification {
-                verified: true,
-                country_code,
-                display_name: Some(display_name),
-            })
         }).await
         .map_err(|e| AppError::ConfigError(format!("Task join error: {}", e)))?
     }

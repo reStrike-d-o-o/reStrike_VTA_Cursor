@@ -212,12 +212,20 @@ const TournamentManagementPanel: React.FC = () => {
       const data = result as any;
       
       if (data.success) {
-        setLocationVerification({
-          verified: true,
-          country_code: data.country_code,
-          display_name: data.display_name
-        });
-        setFormData(prev => ({ ...prev, country_code: data.country_code }));
+        if (data.verified) {
+          setLocationVerification({
+            verified: true,
+            country_code: data.country_code,
+            display_name: data.display_name
+          });
+          setFormData(prev => ({ ...prev, country_code: data.country_code }));
+        } else {
+          // Location not found or network issue
+          setLocationVerification({
+            verified: false,
+            error: 'Location not found or network unavailable. You can still proceed with manual entry.'
+          });
+        }
       } else {
         setLocationVerification({
           verified: false,
@@ -227,7 +235,7 @@ const TournamentManagementPanel: React.FC = () => {
     } catch (err) {
       setLocationVerification({
         verified: false,
-        error: `Verification error: ${err}`
+        error: 'Network error. You can still proceed with manual entry.'
       });
     } finally {
       setIsVerifyingLocation(false);
