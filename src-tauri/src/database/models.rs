@@ -1531,3 +1531,156 @@ impl TournamentDay {
         })
     }
 } 
+
+/// OBS Scene model for managing OBS scenes
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ObsScene {
+    pub id: Option<i64>,
+    pub scene_name: String,
+    pub scene_id: String,
+    pub is_active: bool,
+    pub last_seen_at: DateTime<Utc>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+impl ObsScene {
+    pub fn new(scene_name: String, scene_id: String) -> Self {
+        let now = Utc::now();
+        Self {
+            id: None,
+            scene_name,
+            scene_id,
+            is_active: true,
+            last_seen_at: now,
+            created_at: now,
+            updated_at: now,
+        }
+    }
+
+    pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
+        Ok(Self {
+            id: row.get("id")?,
+            scene_name: row.get("scene_name")?,
+            scene_id: row.get("scene_id")?,
+            is_active: row.get("is_active")?,
+            last_seen_at: parse_datetime_from_db(&row.get::<_, String>("last_seen_at")?, "last_seen_at")?,
+            created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
+            updated_at: parse_datetime_from_db(&row.get::<_, String>("updated_at")?, "updated_at")?,
+        })
+    }
+}
+
+/// Overlay Template model for managing overlay animations
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OverlayTemplate {
+    pub id: Option<i64>,
+    pub name: String,
+    pub description: Option<String>,
+    pub theme: String,
+    pub colors: Option<String>, // JSON string for color configuration
+    pub animation_type: String,
+    pub duration_ms: i32,
+    pub is_active: bool,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+impl OverlayTemplate {
+    pub fn new(
+        name: String,
+        description: Option<String>,
+        theme: String,
+        colors: Option<String>,
+        animation_type: String,
+        duration_ms: i32,
+    ) -> Self {
+        let now = Utc::now();
+        Self {
+            id: None,
+            name,
+            description,
+            theme,
+            colors,
+            animation_type,
+            duration_ms,
+            is_active: true,
+            created_at: now,
+            updated_at: now,
+        }
+    }
+
+    pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
+        Ok(Self {
+            id: row.get("id")?,
+            name: row.get("name")?,
+            description: row.get("description")?,
+            theme: row.get("theme")?,
+            colors: row.get("colors")?,
+            animation_type: row.get("animation_type")?,
+            duration_ms: row.get("duration_ms")?,
+            is_active: row.get("is_active")?,
+            created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
+            updated_at: parse_datetime_from_db(&row.get::<_, String>("updated_at")?, "updated_at")?,
+        })
+    }
+}
+
+/// Event Trigger model for PSS event triggers
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EventTrigger {
+    pub id: Option<i64>,
+    pub tournament_id: Option<i64>,
+    pub tournament_day_id: Option<i64>,
+    pub event_type: String, // PSS event type (e.g., 'pt1', 'wg1', 'mch', etc.)
+    pub trigger_type: String, // 'scene', 'overlay', 'both'
+    pub obs_scene_id: Option<i64>,
+    pub overlay_template_id: Option<i64>,
+    pub is_enabled: bool,
+    pub priority: i32,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+impl EventTrigger {
+    pub fn new(
+        tournament_id: Option<i64>,
+        tournament_day_id: Option<i64>,
+        event_type: String,
+        trigger_type: String,
+        obs_scene_id: Option<i64>,
+        overlay_template_id: Option<i64>,
+        priority: i32,
+    ) -> Self {
+        let now = Utc::now();
+        Self {
+            id: None,
+            tournament_id,
+            tournament_day_id,
+            event_type,
+            trigger_type,
+            obs_scene_id,
+            overlay_template_id,
+            is_enabled: true,
+            priority,
+            created_at: now,
+            updated_at: now,
+        }
+    }
+
+    pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
+        Ok(Self {
+            id: row.get("id")?,
+            tournament_id: row.get("tournament_id")?,
+            tournament_day_id: row.get("tournament_day_id")?,
+            event_type: row.get("event_type")?,
+            trigger_type: row.get("trigger_type")?,
+            obs_scene_id: row.get("obs_scene_id")?,
+            overlay_template_id: row.get("overlay_template_id")?,
+            is_enabled: row.get("is_enabled")?,
+            priority: row.get("priority")?,
+            created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
+            updated_at: parse_datetime_from_db(&row.get::<_, String>("updated_at")?, "updated_at")?,
+        })
+    }
+} 
