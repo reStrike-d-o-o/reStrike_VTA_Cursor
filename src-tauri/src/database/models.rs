@@ -1629,6 +1629,9 @@ impl OverlayTemplate {
 /// Event Trigger model for PSS event triggers
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EventTrigger {
+    pub action: String,
+    pub target_type: String,
+    pub delay_ms: i64,
     pub id: Option<i64>,
     pub tournament_id: Option<i64>,
     pub tournament_day_id: Option<i64>,

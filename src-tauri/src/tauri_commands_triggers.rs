@@ -69,6 +69,9 @@ pub async fn triggers_save(app: State<'_, Arc<App>>, payload: Vec<EventTriggerPa
     for p in payload {
         let now = Utc::now();
         let row = EventTrigger {
+            action: p.action.clone(),
+            target_type: p.target_type.clone(),
+            delay_ms: p.delay_ms.unwrap_or(0),
             id: p.id,
             tournament_id: p.tournament_id,
             tournament_day_id: p.tournament_day_id,
