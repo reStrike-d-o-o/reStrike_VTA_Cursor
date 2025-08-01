@@ -18,8 +18,8 @@ const TriggerRow: React.FC<{ event: string }> = ({ event }) => {
   const overlayId = existing?.overlay_template_id;
 
   return (
-    <tr className="border-b border-gray-600 text-sm">
-      <td className="px-2 py-1 text-left">
+    <tr className="relative border-b border-gray-600 text-sm">
+      <td className="px-2 py-1 text-center w-6">
         <input
           type="checkbox"
           aria-label={`enable ${event}`}
@@ -80,7 +80,7 @@ const TriggerRow: React.FC<{ event: string }> = ({ event }) => {
 };
 
 export const TriggersTable: React.FC<Props> = ({ tournamentId, dayId }) => {
-  const { events, loading, fetchData } = useTriggersStore();
+  const { events, loading, dirty, fetchData, saveChanges } = useTriggersStore();
 
   useEffect(() => {
     fetchData(tournamentId, dayId);
@@ -89,8 +89,8 @@ export const TriggersTable: React.FC<Props> = ({ tournamentId, dayId }) => {
   if (loading) return <div className="p-4">Loading triggers…</div>;
 
   return (
-    <div className="overflow-auto max-h-[70vh]">
-      <table className="w-full text-left border-collapse">
+    <div className="flex flex-col h-full">
+      <div className="flex-1 overflow-auto">\n      <table className="w-full text-left border-collapse">
         <thead className="sticky top-0 bg-gray-800">
           <tr className="text-xs uppercase tracking-wider">
             <th className="px-2 py-1"></th>
@@ -105,9 +105,9 @@ export const TriggersTable: React.FC<Props> = ({ tournamentId, dayId }) => {
             <TriggerRow key={ev} event={ev} />
           ))}
         </tbody>
-      </table>
-      <div className="mt-4 text-right">
-        <Button variant="primary" onClick={() => useTriggersStore.getState().saveChanges()}>Save</Button>
+      </table>\n      </div>
+      <div className="border-t border-gray-700 bg-gray-800 p-2 text-right">
+        <Button variant="primary" onClick={saveChanges} disabled={!dirty}>Save</Button>
       </div>
     </div>
   );
