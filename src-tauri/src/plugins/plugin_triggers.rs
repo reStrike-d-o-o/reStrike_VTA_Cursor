@@ -1,4 +1,5 @@
 use crate::database::{DatabaseConnection, models::{ObsScene, OverlayTemplate, EventTrigger}};
+use once_cell::sync::OnceCell;
 use crate::plugins::plugin_obs::ObsPlugin;
 use crate::types::AppResult;
 use std::collections::HashMap;
@@ -7,6 +8,8 @@ use tokio::sync::RwLock;
 use serde::{Serialize, Deserialize};
 
 /// Trigger system plugin for handling PSS event-driven automation
+pub static TRIGGER_PLUGIN_GLOBAL: OnceCell<std::sync::Arc<TriggerPlugin>> = OnceCell::new();
+
 pub struct TriggerPlugin {
     db: Arc<DatabaseConnection>,
     obs_plugin: Arc<ObsPlugin>,
@@ -163,6 +166,8 @@ impl TriggerPlugin {
     pub async fn initialize(&self) -> AppResult<()> {
         log::info!("🎯 Initializing Trigger Plugin");
         // Register global shortcuts for pause/resume
+        // Store global reference
+        let _ = TRIGGER_PLUGIN_GLOBAL.set(std::sync::Arc::new(self.clone()));
         #[cfg(feature = "tauri-runtime")] // compile guard
         {
             use tauri::Manager;
@@ -316,6 +321,10 @@ impl TriggerPlugin {
     
     /// Public setter to pause/resume system; emits Tauri event and handles buffered rdy replay
     #[allow(dead_code)]
+    pub fn set_resume_delay(&self, ms: u64) {
+        self.resume_delay_ms.store(ms, std::sync::atomic::Ordering::SeqCst);
+    }
+
     pub fn set_paused(&self, paused: bool) {
         let was = self.paused.swap(paused, std::sync::atomic::Ordering::SeqCst);
         if was == paused {

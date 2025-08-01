@@ -7,6 +7,7 @@ import {
 } from '../../stores/triggersStore';
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '../atoms/Select';
 import Button from '../atoms/Button';
+import { useConfirmStore } from '../../stores/confirmStore';
 import Input from '../atoms/Input';
 
 interface Props {
@@ -244,7 +245,16 @@ export const TriggersTable: React.FC<Props> = ({ tournamentId, dayId }) => {
       {/* Right: buttons */}
       <div className="w-40 ml-4 flex flex-col gap-2">
         <Button onClick={addRow}>Add</Button>
-        <Button variant="danger" onClick={deleteSelectedRow}>
+        <Button
+          variant="danger"
+          onClick={() => {
+            useConfirmStore.getState().open({
+              title: 'Delete Row',
+              message: 'This will remove the selected trigger row.',
+              delayMs: 3000,
+              action: deleteSelectedRow,
+            });
+          }}>
           Delete
         </Button>
         <Button variant="secondary">Load</Button>

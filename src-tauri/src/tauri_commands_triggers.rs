@@ -64,7 +64,7 @@ pub struct EventTriggerPayload {
 }
 
 #[tauri::command]
-pub async fn triggers_save(app: State<'_, Arc<App>>, payload: Vec<EventTriggerPayload>) -> Result<(), TauriError> {
+pub async fn triggers_save(app: State<'_, Arc<App>>, payload: Vec<EventTriggerPayload>, resume_delay_ms: Option<u64>) -> Result<(), TauriError> {
     let conn = app.database_plugin().get_database_connection();
     for p in payload {
         let now = Utc::now();
@@ -88,6 +88,13 @@ pub async fn triggers_save(app: State<'_, Arc<App>>, payload: Vec<EventTriggerPa
             conn.update_event_trigger(&row).await.map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
         } else {
             conn.insert_event_trigger(&row).await.map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+        }
+    }
+
+    // Apply resume delay to plugin if provided
+    if let Some(delay) = resume_delay_ms {
+        if let Some(plugin) = crate::plugins::plugin_triggers::TRIGGER_PLUGIN_GLOBAL.get() {
+            plugin.set_resume_delay(delay);
         }
     }
     Ok(())

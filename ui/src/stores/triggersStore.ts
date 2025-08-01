@@ -226,7 +226,7 @@ export const useTriggersStore = create<TriggersStore>((set, get) => ({
     });
 
     try {
-      await invoke('triggers_save', { payload, resumeDelay });
+      await invoke('triggers_save', { payload, resume_delay_ms: resumeDelay });
       set({ dirty: false });
     } catch (err) {
       console.error(err);
