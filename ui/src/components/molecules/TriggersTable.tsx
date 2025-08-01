@@ -79,6 +79,7 @@ const TriggerRow: React.FC<{ event: string }> = ({ event }) => {
   );
 };
 
+// TODO: refactor to separate file if grows
 export const TriggersTable: React.FC<Props> = ({ tournamentId, dayId }) => {
   const { events, loading, dirty, fetchData, saveChanges } = useTriggersStore();
 
@@ -89,15 +90,17 @@ export const TriggersTable: React.FC<Props> = ({ tournamentId, dayId }) => {
   if (loading) return <div className="p-4">Loading triggers…</div>;
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex h-full">
+      {/* Table area */}
+      <div className="flex-1 flex flex-col">
+        <div className="flex-1 overflow-auto">
       <div className="flex-1 overflow-auto">\n      <table className="w-full text-left border-collapse">
         <thead className="sticky top-0 bg-gray-800">
           <tr className="text-xs uppercase tracking-wider">
-            <th className="px-2 py-1"></th>
-            <th className="px-2 py-1">Event</th>
-            <th className="px-2 py-1">Trigger Type</th>
-            <th className="px-2 py-1">Scene</th>
-            <th className="px-2 py-1">Overlay</th>
+            <th className="px-2 py-1 w-[100px]">Event</th>
+            <th className="px-2 py-1 w-[100px]">Action</th>
+            <th className="px-2 py-1 w-[100px]">Target Type</th>
+            <th className="px-2 py-1 w-[100px]">Target</th>
           </tr>
         </thead>
         <tbody>
