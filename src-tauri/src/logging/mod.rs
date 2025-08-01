@@ -30,7 +30,7 @@ impl Default for LogConfig {
             retention_days: 30,
             log_dir: "logs".to_string(),
             archive_dir: "logs/archives".to_string(),
-            enabled_subsystems: vec!["app".to_string(), "pss".to_string(), "obs".to_string(), "udp".to_string()],
+            enabled_subsystems: vec!["app".to_string(), "pss".to_string(), "obs".to_string(), "udp".to_string(), "websocket".to_string(), "db".to_string()],
         }
     }
 }

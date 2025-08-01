@@ -914,8 +914,8 @@ impl UdpServer {
             return Ok(ValidationResult::Valid); // Invalid range format, skip
         }
 
-        let min_val: i32 = range_parts[0].parse().unwrap_or(0);
-        let max_val: i32 = range_parts[1].parse().unwrap_or(999);
+        let min_val: i32 = range_parts.get(0).unwrap_or(&"0").parse().unwrap_or(0);
+        let max_val: i32 = range_parts.get(1).unwrap_or(&"999").parse().unwrap_or(999);
 
         let value = match event {
             PssEvent::Points { point_type, .. } if rule.rule_name.contains("point_type") => Some(*point_type as i32),
@@ -1102,8 +1102,8 @@ impl UdpServer {
             return false;
         }
         
-        let minutes: Result<i32, _> = parts[0].parse();
-        let seconds: Result<i32, _> = parts[1].parse();
+        let minutes: Result<i32, _> = parts.get(0).unwrap_or(&"0").parse();
+        let seconds: Result<i32, _> = parts.get(1).unwrap_or(&"0").parse();
         
         minutes.is_ok() && seconds.is_ok() && 
         minutes.unwrap() >= 0 && *seconds.as_ref().unwrap() >= 0 && seconds.unwrap() < 60
@@ -2013,7 +2013,7 @@ impl UdpServer {
                 if parts.len() != 2 {
                     return false;
                 }
-                parts[0].parse::<u8>().is_ok() && parts[1].parse::<u8>().is_ok()
+                parts.get(0).unwrap_or(&"0").parse::<u8>().is_ok() && parts.get(1).unwrap_or(&"0").parse::<u8>().is_ok()
                 } else {
                 // Format: ss
                 time.parse::<u8>().is_ok()
@@ -2192,7 +2192,7 @@ impl UdpServer {
                 let mut round3_winner = 0;
                 
                 for i in 1..parts.len() {
-                    match parts[i] {
+                    match *parts.get(i).unwrap_or(&"") {
                         "rd1" if i + 1 < parts.len() => {
                             round1_winner = parse_u8(i + 1, "round1 winner", 0, 2).unwrap_or(0);
                         }
