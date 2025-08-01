@@ -12,7 +12,7 @@ import LottieIcon from '../atoms/LottieIcon';
 import FlagManagementPanel from './FlagManagementPanel';
 import ScoreboardManager from './ScoreboardManager';
 import { invoke as tauriInvoke } from '@tauri-apps/api/core';
-import { algorithmAnimation, locationAnimation, scoreboardAnimation } from '../../assets/icons/json';
+import { algorithmAnimation, locationAnimation, scoreboardAnimation, crossbowAnimation } from '../../assets/icons/json';
 
 // Use the proper Tauri v2 invoke function with fallback
 const invoke = async (command: string, args?: any) => {
@@ -955,6 +955,80 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
     <ScoreboardManager />
   );
 
+  // Triggers Content
+  const TriggersContent = () => (
+    <div className="space-y-6">
+      <div className="bg-gray-800/50 rounded-lg p-6">
+        <h3 className="text-lg font-semibold text-gray-100 mb-4">Event Triggers</h3>
+        <p className="text-sm text-gray-300 mb-4">
+          Configure automatic triggers and actions based on PSS events and match conditions.
+        </p>
+        
+        <div className="space-y-4">
+          <div className="bg-gray-700/50 rounded-lg p-4">
+            <h4 className="text-md font-medium text-gray-200 mb-3">Match Triggers</h4>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-300">Auto-start recording</p>
+                  <p className="text-xs text-gray-400">Start video recording when match begins</p>
+                </div>
+                <Toggle id="auto-record" checked={false} onChange={() => {}} />
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-300">Auto-stop recording</p>
+                  <p className="text-xs text-gray-400">Stop recording when match ends</p>
+                </div>
+                <Toggle id="auto-stop" checked={false} onChange={() => {}} />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gray-700/50 rounded-lg p-4">
+            <h4 className="text-md font-medium text-gray-200 mb-3">Score Triggers</h4>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-300">Point threshold alerts</p>
+                  <p className="text-xs text-gray-400">Notify when score reaches certain points</p>
+                </div>
+                <Toggle id="point-alerts" checked={false} onChange={() => {}} />
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-300">Win condition detection</p>
+                  <p className="text-xs text-gray-400">Automatically detect match winners</p>
+                </div>
+                <Toggle id="win-detection" checked={false} onChange={() => {}} />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gray-700/50 rounded-lg p-4">
+            <h4 className="text-md font-medium text-gray-200 mb-3">System Triggers</h4>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-300">Connection monitoring</p>
+                  <p className="text-xs text-gray-400">Alert on UDP connection issues</p>
+                </div>
+                <Toggle id="connection-monitor" checked={true} onChange={() => {}} />
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-300">Performance alerts</p>
+                  <p className="text-xs text-gray-400">Notify on high CPU/memory usage</p>
+                </div>
+                <Toggle id="performance-alerts" checked={false} onChange={() => {}} />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className={className}>
       <TabGroup
@@ -976,6 +1050,12 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
             label: 'Scoreboard',
             icon: <LottieIcon animationData={scoreboardAnimation} size={32} />,
             content: <ScoreboardContent />
+          },
+          {
+            id: 'triggers',
+            label: 'Triggers',
+            icon: <LottieIcon animationData={crossbowAnimation} size={32} />,
+            content: <TriggersContent />
           }
         ]}
         activeTab={activeTab}

@@ -5,10 +5,13 @@ const logTypes = [
   { key: 'pss', label: 'PSS' },
   { key: 'obs', label: 'OBS' },
   { key: 'udp', label: 'UDP' },
-  { key: 'arc', label: 'ARC' },
+  { key: 'websocket', label: 'WebSocket' },
+  { key: 'db', label: 'Database' },
+  { key: 'app', label: 'Application' },
+  { key: 'arc', label: 'Archive' },
 ];
 
-type LogType = 'pss' | 'obs' | 'udp' | 'arc';
+type LogType = 'pss' | 'obs' | 'udp' | 'websocket' | 'db' | 'app' | 'arc';
 
 type LogFileInfo = {
   name: string;
