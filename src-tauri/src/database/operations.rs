@@ -2087,7 +2087,7 @@ impl DataArchivalOperations {
         )?;
 
         // Remove restored events from archive
-        let removed_from_archive = conn.execute(
+        let _removed_from_archive = conn.execute(
             "DELETE FROM pss_events_v2_archive 
              WHERE created_at BETWEEN ? AND ?",
             [start_date, end_date],

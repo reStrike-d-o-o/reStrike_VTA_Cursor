@@ -3,7 +3,7 @@ use crate::database::{
     connection::{DatabaseConnection, DatabaseConnectionPool, PooledConnection},
     models::*,
     operations::*,
-    DatabaseError, DatabaseResult,
+    DatabaseError,
     UiSettingsOperations,
     MigrationStrategy,
     MigrationResult,
@@ -15,6 +15,7 @@ use tokio::sync::Mutex;
 use std::path::Path;
 
 /// Phase 2 Optimization: Enhanced Database Plugin with Connection Pooling
+#[derive(Clone)]
 pub struct DatabasePlugin {
     connection_pool: Arc<DatabaseConnectionPool>,
     connection: Arc<DatabaseConnection>,
@@ -59,7 +60,7 @@ impl DatabasePlugin {
     pub fn get_pooled_connection(&self) -> Result<PooledConnection, DatabaseError> {
         self.connection_pool
             .get_connection()
-            .map_err(|e| DatabaseError::ConnectionError(e.to_string()))
+            .map_err(|e| DatabaseError::Connection(e.to_string()))
     }
 
     /// Get pool statistics for monitoring
