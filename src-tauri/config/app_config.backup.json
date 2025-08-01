@@ -1,7 +1,7 @@
 {
   "app": {
     "version": "0.1.0",
-    "last_save": "2025-08-01T00:29:36.790027400+00:00",
+    "last_save": "2025-08-01T12:22:53.340301+00:00",
     "startup": {
       "auto_start_udp": false,
       "auto_connect_obs": false,
@@ -64,12 +64,12 @@
   "udp": {
     "listener": {
       "port": 8888,
-      "bind_address": "127.0.0.1",
+      "bind_address": "192.168.3.16",
       "enabled": true,
       "buffer_size": 8192,
       "timeout_seconds": 30,
       "network_interface": {
-        "auto_detect": true,
+        "auto_detect": false,
         "preferred_type": "wifi",
         "fallback_to_localhost": true,
         "selected_interface": "Wireless LAN adapter Wi-Fi"
