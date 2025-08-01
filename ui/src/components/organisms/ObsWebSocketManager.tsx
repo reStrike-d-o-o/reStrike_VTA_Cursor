@@ -125,11 +125,14 @@ const ObsWebSocketManager: React.FC = () => {
     // Start backend listener once
     obsCommands.setupStatusListener().catch((e) => console.error('obs status listener setup failed', e));
 
-    const unlistenPromise = window.__TAURI__.event.listen('obs_status', (event: any) => {
+    let unlistenPromise: Promise<() => void> = Promise.resolve(() => {});
+    if (window.__TAURI__?.event) {
+      unlistenPromise = window.__TAURI__.event.listen('obs_status', (event: any) => {
       if (event && event.payload) {
         updateObsStatus(event.payload);
       }
     });
+    }
 
     return () => {
       unlistenPromise.then((unsub: () => void) => unsub()).catch(() => {});
@@ -162,7 +165,7 @@ const ObsWebSocketManager: React.FC = () => {
     };
 
     // Listen for OBS events
-    const unsubscribe = window.__TAURI__.event.listen('obs_event', handleObsEvent);
+    const unsubscribe: Promise<() => void> = window.__TAURI__?.event?.listen ? window.__TAURI__.event.listen('obs_event', handleObsEvent) : Promise.resolve(() => {});
     
     return () => {
       unsubscribe.then((unsub: () => void) => unsub());

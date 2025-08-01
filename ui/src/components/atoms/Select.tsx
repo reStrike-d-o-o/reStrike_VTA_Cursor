@@ -8,6 +8,7 @@ interface SelectProps {
   className?: string;
 }
 
+
 interface SelectTriggerProps {
   children: React.ReactNode;
   className?: string;
@@ -38,7 +39,8 @@ const Select: React.FC<SelectProps> = ({
   children,
   value,
   onValueChange,
-  className = ''
+  className = '',
+  disabled = false
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedValue, setSelectedValue] = useState(value || '');
@@ -62,7 +64,7 @@ const Select: React.FC<SelectProps> = ({
   };
 
   return (
-    <div ref={selectRef} className={`relative ${className}`}>
+    <div ref={selectRef} className={`relative ${disabled ? 'opacity-50 pointer-events-none' : ''} ${className}`}>
       {React.Children.map(children, (child) => {
         if (React.isValidElement(child)) {
           if (child.type === SelectTrigger) {

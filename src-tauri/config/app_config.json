@@ -1,7 +1,7 @@
 {
   "app": {
     "version": "0.1.0",
-    "last_save": "2025-08-01T12:22:53.355897+00:00",
+    "last_save": "2025-08-01T17:05:55.294726300+00:00",
     "startup": {
       "auto_start_udp": false,
       "auto_connect_obs": false,
