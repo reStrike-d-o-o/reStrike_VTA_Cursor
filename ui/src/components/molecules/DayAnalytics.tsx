@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { usePssMatchStore } from '@/stores/pssMatchStore';
+import { Card, CardContent, CardHeader, CardTitle } from '../atoms/Card';
+import { Badge } from '../atoms/Badge';
+import { Progress } from '../atoms/Progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../atoms/Tabs';
+import { usePssMatchStore } from '../../stores/pssMatchStore';
 
 interface DayStats {
   date: string;
@@ -79,14 +79,17 @@ export const DayAnalytics: React.FC<DayAnalyticsProps> = ({
   });
 
   const [isLoading, setIsLoading] = useState(true);
-  const { events } = usePssMatchStore();
+  const { matchData } = usePssMatchStore();
+  
+  // Mock events data for now - this should be replaced with actual PSS events
+  const events: any[] = [];
 
   useEffect(() => {
     const calculateDayStats = () => {
       const targetDate = date || new Date().toISOString().split('T')[0];
       
-      // Filter events for this specific day
-      const dayEvents = events.filter(event => {
+      // Filter events for the specified day
+      const dayEvents = events.filter((event: any) => {
         const eventDate = new Date(event.timestamp).toISOString().split('T')[0];
         return eventDate === targetDate && (!tournamentId || event.tournament_id === tournamentId);
       });

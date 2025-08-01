@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { AthleteAnalytics } from '@/components/molecules/AthleteAnalytics';
-import { MatchAnalytics } from '@/components/molecules/MatchAnalytics';
-import { TournamentAnalytics } from '@/components/molecules/TournamentAnalytics';
-import { DayAnalytics } from '@/components/molecules/DayAnalytics';
-import { usePssMatchStore } from '@/stores/pssMatchStore';
+import { Card, CardContent, CardHeader, CardTitle } from '../atoms/Card';
+import { Badge } from '../atoms/Badge';
+import Button from '../atoms/Button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../atoms/Tabs';
+import { Input } from '../atoms/Input';
+import { Label } from '../atoms/Label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../atoms/Select';
+import { AthleteAnalytics } from '../molecules/AthleteAnalytics';
+import { MatchAnalytics } from '../molecules/MatchAnalytics';
+import { TournamentAnalytics } from '../molecules/TournamentAnalytics';
+import { DayAnalytics } from '../molecules/DayAnalytics';
+import { usePssMatchStore } from '../../stores/pssMatchStore';
 
 interface AnalyticsDrawerProps {
   isOpen: boolean;
