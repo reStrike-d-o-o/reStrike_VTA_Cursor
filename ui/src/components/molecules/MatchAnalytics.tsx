@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { usePssMatchStore } from '@/stores/pssMatchStore';
+import { Card, CardContent, CardHeader, CardTitle } from '../atoms/Card';
+import { Badge } from '../atoms/Badge';
+import { Progress } from '../atoms/Progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../atoms/Tabs';
+import { usePssMatchStore } from '../../stores/pssMatchStore';
 
 interface MatchStats {
   matchId: string;
@@ -82,12 +82,15 @@ export const MatchAnalytics: React.FC<MatchAnalyticsProps> = ({
   });
 
   const [isLoading, setIsLoading] = useState(true);
-  const { events } = usePssMatchStore();
+  const { matchData } = usePssMatchStore();
+  
+  // Mock events data for now - this should be replaced with actual PSS events
+  const events: any[] = [];
 
   useEffect(() => {
     const calculateMatchStats = () => {
       // Filter events for this specific match
-      const matchEvents = events.filter(event => event.match_id === matchId);
+      const matchEvents = events.filter((event: any) => event.match_id === matchId);
       
       if (matchEvents.length === 0) {
         setIsLoading(false);
@@ -182,7 +185,7 @@ export const MatchAnalytics: React.FC<MatchAnalyticsProps> = ({
         }
       });
 
-      const duration = startTime && endTime ? (endTime.getTime() - startTime.getTime()) / 1000 : 0;
+      const duration = startTime && endTime ? ((endTime as Date).getTime() - (startTime as Date).getTime()) / 1000 : 0;
       const matchIntensity = duration > 0 ? totalEvents / duration : 0;
 
       setStats({

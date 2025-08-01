@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { usePssMatchStore } from '@/stores/pssMatchStore';
+import { Card, CardContent, CardHeader, CardTitle } from '../atoms/Card';
+import { Badge } from '../atoms/Badge';
+import { Progress } from '../atoms/Progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../atoms/Tabs';
+import { usePssMatchStore } from '../../stores/pssMatchStore';
 
 interface AthleteStats {
   totalMatches: number;
@@ -45,12 +45,15 @@ export const AthleteAnalytics: React.FC<AthleteAnalyticsProps> = ({
   });
 
   const [isLoading, setIsLoading] = useState(true);
-  const { events } = usePssMatchStore();
+  const { matchData } = usePssMatchStore();
+  
+  // Mock events data for now - this should be replaced with actual PSS events
+  const events: any[] = [];
 
   useEffect(() => {
     const calculateStats = () => {
       // Filter events for this athlete
-      const athleteEvents = events.filter(event => 
+      const athleteEvents = events.filter((event: any) => 
         event.athlete1_code === athleteId || event.athlete2_code === athleteId
       );
 
@@ -80,7 +83,7 @@ export const AthleteAnalytics: React.FC<AthleteAnalyticsProps> = ({
         let matchInjuries = 0;
         let isWinner = false;
 
-        matchEvents.forEach(event => {
+        matchEvents.forEach((event: any) => {
           // Count points
           if (event.event_type === 'point' || event.event_type === 'score') {
             if (event.athlete1_code === athleteId && event.score1) {

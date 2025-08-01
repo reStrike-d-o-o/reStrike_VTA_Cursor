@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { usePssMatchStore } from '@/stores/pssMatchStore';
+import { Card, CardContent, CardHeader, CardTitle } from '../atoms/Card';
+import { Badge } from '../atoms/Badge';
+import { Progress } from '../atoms/Progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../atoms/Tabs';
+import { usePssMatchStore } from '../../stores/pssMatchStore';
 
 interface TournamentStats {
   totalMatches: number;
@@ -73,13 +73,16 @@ export const TournamentAnalytics: React.FC<TournamentAnalyticsProps> = ({
   });
 
   const [isLoading, setIsLoading] = useState(true);
-  const { events } = usePssMatchStore();
+  const { matchData } = usePssMatchStore();
+  
+  // Mock events data for now - this should be replaced with actual PSS events
+  const events: any[] = [];
 
   useEffect(() => {
     const calculateTournamentStats = () => {
-      // Filter events for this tournament (if tournamentId is provided)
+      // Filter events for this tournament
       const tournamentEvents = tournamentId 
-        ? events.filter(event => event.tournament_id === tournamentId)
+        ? events.filter((event: any) => event.tournament_id === tournamentId)
         : events;
 
       if (tournamentEvents.length === 0) {
