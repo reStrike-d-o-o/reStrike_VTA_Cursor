@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 
 interface SelectProps {
+  disabled?: boolean;
   children: React.ReactNode;
   value?: string;
   onValueChange?: (value: string) => void;

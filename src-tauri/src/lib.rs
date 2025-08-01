@@ -10,6 +10,7 @@ pub mod database;
 pub mod types;
 pub mod plugins;
 pub mod tauri_commands;
+pub mod tauri_commands_triggers;
 pub mod logging;
 pub mod utils;
 pub mod ui_settings;
