@@ -6,12 +6,16 @@ import { useEnvironment } from './hooks/useEnvironment';
 import { usePssEvents } from './hooks/usePssEvents';
 import { invoke } from '@tauri-apps/api/core';
 
+import { useTriggersStore } from './stores/triggersStore';
+import PausedOverlay from './components/molecules/PausedOverlay';
+
 const App: React.FC = () => {
   const isAdvancedPanelOpen = useAppStore((state) => state.isAdvancedPanelOpen);
   const windowSettings = useAppStore((state) => state.windowSettings);
   const loadWindowSettings = useAppStore((state) => state.loadWindowSettings);
   const { tauriAvailable, environment, isLoading } = useEnvironment();
   
+  const paused = useTriggersStore((s) => s.paused);
   // Initialize PSS event listener for real-time events
   const { setupEventListener, fetchPendingEvents } = usePssEvents();
   
@@ -51,6 +55,8 @@ const App: React.FC = () => {
   
   return (
     <div className="h-screen flex flex-col bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white overflow-hidden">
+      {paused && <PausedOverlay />}
+
       {/* Subtle background pattern overlay */}
       <div className="absolute inset-0 bg-gradient-to-br from-gray-800/20 to-gray-900/30 opacity-50"></div>
       

@@ -51,6 +51,7 @@ export interface OverlayTemplate {
 }
 
 interface TriggersStore {
+  paused: boolean;
   // meta / helpers
   loading: boolean;
   dirty: boolean;
@@ -80,6 +81,7 @@ export const useTriggersStore = create<TriggersStore>((set, get) => ({
   // ------------ initial state ------------
   loading: false,
   dirty: false,
+  paused: false,
 
   eventsCatalog: [],
   scenes: [],
@@ -133,6 +135,9 @@ export const useTriggersStore = create<TriggersStore>((set, get) => ({
         window.__TAURI__.event.listen('obs_scenes_updated', async () => {
           const scenesLatest = await invoke<ObsScene[]>('triggers_list_obs_scenes');
           set({ scenes: scenesLatest });
+        });
+        window.__TAURI__.event.listen('triggers_paused_changed', (e: any) => {
+          set({ paused: !!e.payload });
         });
         set({ _obsListenerRegistered: true });
       }

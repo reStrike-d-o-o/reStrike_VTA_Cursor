@@ -13,6 +13,9 @@ pub struct TriggerPlugin {
     enabled_triggers: Arc<RwLock<HashMap<String, Vec<EventTrigger>>>>,
     current_tournament_id: Arc<RwLock<Option<i64>>>,
     current_tournament_day_id: Arc<RwLock<Option<i64>>>,
+    paused: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    buffered_rdy: Arc<RwLock<Option<String>>>,
+    resume_delay_ms: std::sync::Arc<std::sync::atomic::AtomicU64>,
 }
 
 /// PSS Event types extracted from protocol
@@ -126,6 +129,21 @@ pub struct TriggerExecutionResult {
     pub execution_time_ms: u64,
 }
 
+impl Clone for TriggerPlugin {
+    fn clone(&self) -> Self {
+        Self {
+            db: self.db.clone(),
+            obs_plugin: self.obs_plugin.clone(),
+            enabled_triggers: self.enabled_triggers.clone(),
+            current_tournament_id: self.current_tournament_id.clone(),
+            current_tournament_day_id: self.current_tournament_day_id.clone(),
+            paused: self.paused.clone(),
+            buffered_rdy: self.buffered_rdy.clone(),
+            resume_delay_ms: self.resume_delay_ms.clone(),
+        }
+    }
+}
+
 impl TriggerPlugin {
     /// Create a new trigger plugin
     pub fn new(db: Arc<DatabaseConnection>, obs_plugin: Arc<ObsPlugin>) -> Self {
@@ -135,12 +153,31 @@ impl TriggerPlugin {
             enabled_triggers: Arc::new(RwLock::new(HashMap::new())),
             current_tournament_id: Arc::new(RwLock::new(None)),
             current_tournament_day_id: Arc::new(RwLock::new(None)),
+            paused: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
+            buffered_rdy: Arc::new(RwLock::new(None)),
+            resume_delay_ms: std::sync::Arc::new(std::sync::atomic::AtomicU64::new(2000)),
         }
     }
     
     /// Initialize the trigger plugin
     pub async fn initialize(&self) -> AppResult<()> {
         log::info!("🎯 Initializing Trigger Plugin");
+        // Register global shortcuts for pause/resume
+        #[cfg(feature = "tauri-runtime")] // compile guard
+        {
+            use tauri::Manager;
+            if let Some(app_handle) = tauri::AppHandle::try_get() {
+                let plugin_clone = self.clone();
+                // Pause shortcut
+                let _ = tauri_plugin_global_shortcut::register(&app_handle, "Ctrl+Shift+P", move || {
+                    plugin_clone.set_paused(true);
+                });
+                let plugin_clone2 = self.clone();
+                let _ = tauri_plugin_global_shortcut::register(&app_handle, "Ctrl+Shift+R", move || {
+                    plugin_clone2.set_paused(false);
+                });
+            }
+        }
         
         // Load all enabled triggers
         self.load_enabled_triggers().await?;
@@ -277,6 +314,33 @@ impl TriggerPlugin {
         Ok(())
     }
     
+    /// Public setter to pause/resume system; emits Tauri event and handles buffered rdy replay
+    #[allow(dead_code)]
+    pub fn set_paused(&self, paused: bool) {
+        let was = self.paused.swap(paused, std::sync::atomic::Ordering::SeqCst);
+        if was == paused {
+            return;
+        }
+        // Emit tauri event on state change
+        #[cfg(feature = "tauri-runtime")]
+        if let Some(app) = tauri::AppHandle::try_get() {
+            let _ = app.emit_all("triggers_paused_changed", paused);
+        }
+        if !paused {
+            // resumed – spawn task to process buffered event after delay
+            let delay_ms = self.resume_delay_ms.load(std::sync::atomic::Ordering::SeqCst);
+            let plugin = self.clone();
+            tokio::spawn(async move {
+                tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
+                let mut buf = plugin.buffered_rdy.write().await;
+                if let Some(rdy_raw) = buf.take() {
+                    let msg = format!("rdy;{}", rdy_raw);
+                    let _ = plugin.process_pss_event(&msg).await;
+                }
+            });
+        }
+    }
+
     /// Parse PSS message and extract event type
     pub fn parse_pss_message(&self, message: &str) -> Option<PssEventType> {
         let parts: Vec<&str> = message.split(';').collect();
@@ -337,6 +401,14 @@ impl TriggerPlugin {
             }
         };
         
+        // If system is paused, only buffer the last 'rdy' message and ignore others
+        if self.paused.load(std::sync::atomic::Ordering::SeqCst) {
+            if let PssEventType::Rdy(raw) = &event_type {
+                let mut buf = self.buffered_rdy.write().await;
+                *buf = Some(raw.clone());
+            }
+            return Ok(results);
+        }
         // Get event type string for trigger lookup
         let event_type_str = match &event_type {
             PssEventType::Pt1(_) => "pt1",
