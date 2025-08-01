@@ -1,15 +1,160 @@
-use rusqlite::Connection;
+use rusqlite::{Connection, Result as SqliteResult};
 use std::path::PathBuf;
-use std::sync::Arc;
-use tokio::sync::Mutex;
+use std::sync::{Arc, Mutex};
+use std::collections::VecDeque;
+use std::time::{Duration, Instant};
+use tokio::sync::Mutex as TokioMutex;
 use std::fs;
 use std::time::{SystemTime, UNIX_EPOCH};
 use crate::database::{DatabaseError, DatabaseResult, DATABASE_FILE};
 
+/// Phase 2 Optimization: Database Connection Pool
+/// Manages a pool of database connections for high-volume operations
+pub struct DatabaseConnectionPool {
+    connections: Arc<Mutex<VecDeque<Connection>>>,
+    max_connections: usize,
+    connection_timeout: Duration,
+    last_cleanup: Arc<Mutex<Instant>>,
+}
+
+impl DatabaseConnectionPool {
+    /// Create a new connection pool
+    pub fn new(max_connections: usize) -> Self {
+        Self {
+            connections: Arc::new(Mutex::new(VecDeque::new())),
+            max_connections,
+            connection_timeout: Duration::from_secs(300), // 5 minutes
+            last_cleanup: Arc::new(Mutex::new(Instant::now())),
+        }
+    }
+
+    /// Get a connection from the pool or create a new one
+    pub fn get_connection(&self) -> SqliteResult<PooledConnection> {
+        let mut connections = self.connections.lock().unwrap();
+        
+        // Try to get an existing connection
+        if let Some(conn) = connections.pop_front() {
+            // Check if connection is still valid
+            if let Ok(_) = conn.execute("SELECT 1", []) {
+                return Ok(PooledConnection {
+                    connection: Some(conn),
+                    pool: self.connections.clone(),
+                    max_connections: self.max_connections,
+                });
+            }
+        }
+
+        // Create a new connection if pool is empty or connection was invalid
+        let conn = DatabaseConnection::create_connection()?;
+        self.configure_connection(&conn)?;
+        
+        Ok(PooledConnection {
+            connection: Some(conn),
+            pool: self.connections.clone(),
+            max_connections: self.max_connections,
+        })
+    }
+
+    /// Configure a connection with performance optimizations
+    fn configure_connection(&self, conn: &Connection) -> SqliteResult<()> {
+        // Phase 1 optimizations (already implemented)
+        conn.execute("PRAGMA journal_mode = WAL", [])?;
+        conn.execute("PRAGMA synchronous = NORMAL", [])?;
+        conn.execute("PRAGMA cache_size = -65536", [])?; // 64MB cache
+        conn.execute("PRAGMA temp_store = MEMORY", [])?;
+        conn.execute("PRAGMA mmap_size = 134217728", [])?; // 128MB mmap
+        conn.execute("PRAGMA recursive_triggers = ON", [])?;
+        conn.execute("PRAGMA busy_timeout = 30000", [])?;
+        conn.execute("PRAGMA optimize", [])?;
+        conn.execute("PRAGMA page_size = 4096", [])?;
+
+        // Phase 2 optimizations
+        conn.execute("PRAGMA auto_vacuum = INCREMENTAL", [])?; // Better space management
+        conn.execute("PRAGMA wal_autocheckpoint = 1000", [])?; // Checkpoint every 1000 pages
+        conn.execute("PRAGMA checkpoint_fullfsync = OFF", [])?; // Faster checkpoints
+        conn.execute("PRAGMA locking_mode = NORMAL", [])?; // Balance between concurrency and safety
+
+        Ok(())
+    }
+
+    /// Clean up old connections periodically
+    pub fn cleanup_old_connections(&self) {
+        let mut last_cleanup = self.last_cleanup.lock().unwrap();
+        if last_cleanup.elapsed() > Duration::from_secs(60) { // Cleanup every minute
+            let mut connections = self.connections.lock().unwrap();
+            
+            // Remove connections that are too old
+            let now = Instant::now();
+            connections.retain(|conn| {
+                // For now, we'll keep all connections as SQLite doesn't expose connection age
+                // In a more sophisticated implementation, we could track connection creation time
+                true
+            });
+
+            // Limit pool size
+            while connections.len() > self.max_connections {
+                connections.pop_back();
+            }
+
+            *last_cleanup = now;
+        }
+    }
+
+    /// Get pool statistics
+    pub fn get_pool_stats(&self) -> PoolStats {
+        let connections = self.connections.lock().unwrap();
+        PoolStats {
+            available_connections: connections.len(),
+            max_connections: self.max_connections,
+            pool_utilization: connections.len() as f64 / self.max_connections as f64,
+        }
+    }
+}
+
+/// A pooled database connection that returns to the pool when dropped
+pub struct PooledConnection {
+    connection: Option<Connection>,
+    pool: Arc<Mutex<VecDeque<Connection>>>,
+    max_connections: usize,
+}
+
+impl PooledConnection {
+    /// Get a reference to the underlying connection
+    pub fn connection(&self) -> &Connection {
+        self.connection.as_ref().unwrap()
+    }
+
+    /// Get a mutable reference to the underlying connection
+    pub fn connection_mut(&mut self) -> &mut Connection {
+        self.connection.as_mut().unwrap()
+    }
+}
+
+impl Drop for PooledConnection {
+    fn drop(&mut self) {
+        if let Some(conn) = self.connection.take() {
+            let mut pool = self.pool.lock().unwrap();
+            
+            // Only return to pool if it's not full
+            if pool.len() < self.max_connections {
+                pool.push_back(conn);
+            }
+        }
+    }
+}
+
+/// Pool statistics for monitoring
+#[derive(Debug, Clone)]
+pub struct PoolStats {
+    pub available_connections: usize,
+    pub max_connections: usize,
+    pub pool_utilization: f64,
+}
+
 /// Database connection wrapper with thread-safe access and safety measures
 #[derive(Clone)]
 pub struct DatabaseConnection {
-    connection: Arc<Mutex<Connection>>,
+    connection: Arc<TokioMutex<Connection>>,
 }
 
 impl DatabaseConnection {
@@ -30,7 +175,7 @@ impl DatabaseConnection {
         Self::configure_connection(&connection)?;
         
         Ok(Self {
-            connection: Arc::new(Mutex::new(connection)),
+            connection: Arc::new(TokioMutex::new(connection)),
         })
     }
     
@@ -52,16 +197,16 @@ impl DatabaseConnection {
         conn.execute("PRAGMA synchronous = FULL", [])
             .map_err(|e| DatabaseError::Initialization(format!("Failed to set synchronous mode: {}", e)))?;
         
-        // Set cache size to 32MB for better performance
-        conn.execute("PRAGMA cache_size = -32768", []) // Negative value means KB, so -32768 = 32MB
+        // Phase 1 Optimization: Enhanced cache size to 64MB for high-volume performance
+        conn.execute("PRAGMA cache_size = -65536", []) // Negative value means KB, so -65536 = 64MB
             .map_err(|e| DatabaseError::Initialization(format!("Failed to set cache size: {}", e)))?;
         
         // Set temp store to memory for better performance
         conn.execute("PRAGMA temp_store = MEMORY", [])
             .map_err(|e| DatabaseError::Initialization(format!("Failed to set temp store: {}", e)))?;
         
-        // Set mmap size to 64MB for better performance on large databases
-        let _: i64 = conn.query_row("PRAGMA mmap_size = 67108864", [], |row| row.get(0)) // 64MB in bytes
+        // Phase 1 Optimization: Enhanced mmap size to 128MB for high-volume performance
+        let _: i64 = conn.query_row("PRAGMA mmap_size = 134217728", [], |row| row.get(0)) // 128MB in bytes
             .map_err(|e| DatabaseError::Initialization(format!("Failed to set mmap size: {}", e)))?;
         
         // Enable recursive triggers
@@ -71,6 +216,23 @@ impl DatabaseConnection {
         // Set busy timeout to 30 seconds to handle concurrent access
         conn.busy_timeout(std::time::Duration::from_secs(30))
             .map_err(|e| DatabaseError::Initialization(format!("Failed to set busy timeout: {}", e)))?;
+        
+        // Phase 1 Optimization: Additional performance settings for high-volume processing
+        // Optimize for bulk operations
+        conn.execute("PRAGMA optimize", [])
+            .map_err(|e| DatabaseError::Initialization(format!("Failed to optimize database: {}", e)))?;
+        
+        // Set page size to 4KB for better performance
+        conn.execute("PRAGMA page_size = 4096", [])
+            .map_err(|e| DatabaseError::Initialization(format!("Failed to set page size: {}", e)))?;
+        
+        // Enable memory-mapped I/O for better performance
+        conn.execute("PRAGMA mmap_size = 134217728", []) // 128MB
+            .map_err(|e| DatabaseError::Initialization(format!("Failed to set mmap size: {}", e)))?;
+        
+        // Set WAL auto-checkpoint to 1000 pages for better performance
+        conn.execute("PRAGMA wal_autocheckpoint = 1000", [])
+            .map_err(|e| DatabaseError::Initialization(format!("Failed to set WAL autocheckpoint: {}", e)))?;
         
         Ok(())
     }

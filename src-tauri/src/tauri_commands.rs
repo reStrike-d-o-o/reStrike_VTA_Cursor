@@ -3929,4 +3929,112 @@ pub async fn clear_udp_tournament_context(
         .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))
 }
 
+/// Phase 1 Optimization: Get UDP server performance metrics
+#[tauri::command]
+pub async fn get_udp_performance_metrics(
+    app: tauri::State<'_, crate::core::app::App>,
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("Getting UDP performance metrics");
+    let metrics = app.udp_plugin().get_performance_metrics();
+    serde_json::to_value(metrics)
+        .map_err(|e| TauriError::from(anyhow::anyhow!("Failed to serialize performance metrics: {}", e)))
+}
+
+/// Phase 1 Optimization: Get UDP server memory usage
+#[tauri::command]
+pub async fn get_udp_memory_usage(
+    app: tauri::State<'_, crate::core::app::App>,
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("Getting UDP memory usage");
+    let usage = app.udp_plugin().get_memory_usage();
+    serde_json::to_value(usage)
+        .map_err(|e| TauriError::from(anyhow::anyhow!("Failed to serialize memory usage: {}", e)))
+}
+
+/// Phase 2 Optimization: Archive events older than specified days
+#[tauri::command]
+pub async fn archive_old_events(
+    app: tauri::State<'_, crate::core::app::App>,
+    days_old: i64,
+) -> Result<usize, TauriError> {
+    log::info!("Archiving events older than {} days", days_old);
+    let archived_count = app.database_plugin().archive_old_events(days_old).await
+        .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
+    log::info!("✅ Archived {} events", archived_count);
+    Ok(archived_count)
+}
+
+/// Phase 2 Optimization: Get archive statistics
+#[tauri::command]
+pub async fn get_archive_statistics(
+    app: tauri::State<'_, crate::core::app::App>,
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("Getting archive statistics");
+    let stats = app.database_plugin().get_archive_statistics().await
+        .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
+    serde_json::to_value(stats)
+        .map_err(|e| TauriError::from(anyhow::anyhow!("Failed to serialize archive statistics: {}", e)))
+}
+
+/// Phase 2 Optimization: Restore events from archive
+#[tauri::command]
+pub async fn restore_from_archive(
+    app: tauri::State<'_, crate::core::app::App>,
+    start_date: String,
+    end_date: String,
+) -> Result<usize, TauriError> {
+    log::info!("Restoring events from archive between {} and {}", start_date, end_date);
+    let restored_count = app.database_plugin().restore_from_archive(&start_date, &end_date).await
+        .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
+    log::info!("✅ Restored {} events from archive", restored_count);
+    Ok(restored_count)
+}
+
+/// Phase 2 Optimization: Clean up old archive data
+#[tauri::command]
+pub async fn cleanup_old_archive_data(
+    app: tauri::State<'_, crate::core::app::App>,
+    days_old: i64,
+) -> Result<usize, TauriError> {
+    log::info!("Cleaning up archive data older than {} days", days_old);
+    let deleted_count = app.database_plugin().cleanup_old_archive_data(days_old).await
+        .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
+    log::info!("✅ Cleaned up {} archived events", deleted_count);
+    Ok(deleted_count)
+}
+
+/// Phase 2 Optimization: Optimize archive tables
+#[tauri::command]
+pub async fn optimize_archive_tables(
+    app: tauri::State<'_, crate::core::app::App>,
+) -> Result<(), TauriError> {
+    log::info!("Optimizing archive tables");
+    app.database_plugin().optimize_archive_tables().await
+        .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
+    log::info!("✅ Archive tables optimized successfully");
+    Ok(())
+}
+
+/// Phase 2 Optimization: Get database pool statistics
+#[tauri::command]
+pub async fn get_database_pool_stats(
+    app: tauri::State<'_, crate::core::app::App>,
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("Getting database pool statistics");
+    let stats = app.database_plugin().get_pool_stats();
+    serde_json::to_value(stats)
+        .map_err(|e| TauriError::from(anyhow::anyhow!("Failed to serialize pool statistics: {}", e)))
+}
+
+/// Phase 2 Optimization: Clean up database pool
+#[tauri::command]
+pub async fn cleanup_database_pool(
+    app: tauri::State<'_, crate::core::app::App>,
+) -> Result<(), TauriError> {
+    log::info!("Cleaning up database connection pool");
+    app.database_plugin().cleanup_pool();
+    log::info!("✅ Database pool cleaned up");
+    Ok(())
+}
+
 

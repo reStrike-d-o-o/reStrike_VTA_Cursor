@@ -6,11 +6,13 @@ use serde::{Deserialize, Serialize};
 use crate::types::{AppError, AppResult};
 use crate::plugins::ProtocolManager;
 use crate::plugins::plugin_database::DatabasePlugin;
+use crate::plugins::performance_monitor::PerformanceMonitor;
 use crate::database::models::{
     UdpServerConfig as DbUdpServerConfig, PssEventV2, 
     PssScore, PssWarning
 };
 use chrono::Utc;
+use std::time::{Duration, Instant};
 
 /// Validation result enum
 #[derive(Debug)]
@@ -172,6 +174,7 @@ pub enum UdpServerStatus {
     Error(String),
 }
 
+#[derive(Clone)]
 pub struct UdpServer {
     status: Arc<Mutex<UdpServerStatus>>,
     event_tx: mpsc::UnboundedSender<PssEvent>,
@@ -190,7 +193,17 @@ pub struct UdpServer {
     // Tournament context tracking
     current_tournament_id: Arc<Mutex<Option<i64>>>,
     current_tournament_day_id: Arc<Mutex<Option<i64>>>,
+    // Phase 1 Optimization: Event batching for high-volume processing
+    event_batch: Arc<Mutex<Vec<PssEvent>>>,
+    batch_processor_task: Arc<Mutex<Option<tokio::task::JoinHandle<()>>>>,
+    batch_tx: mpsc::UnboundedSender<PssEvent>,
+    // Phase 1 Optimization: Performance monitoring
+    performance_monitor: Arc<PerformanceMonitor>,
 }
+
+// Phase 1 Optimization: Performance monitoring structs
+
+
 
 #[derive(Debug, Clone, Default)]
 pub struct UdpStats {
@@ -211,7 +224,10 @@ impl UdpServer {
         protocol_manager: Arc<ProtocolManager>,
         database: Arc<DatabasePlugin>,
     ) -> Self {
-        Self {
+        // Phase 1 Optimization: Create batch processing channel
+        let (batch_tx, batch_rx) = mpsc::unbounded_channel::<PssEvent>();
+        
+        let server = Self {
             status: Arc::new(Mutex::new(UdpServerStatus::Stopped)),
             event_tx,
             socket: Arc::new(Mutex::new(None)),
@@ -229,7 +245,180 @@ impl UdpServer {
             // Tournament context tracking
             current_tournament_id: Arc::new(Mutex::new(None)),
             current_tournament_day_id: Arc::new(Mutex::new(None)),
+            // Phase 1 Optimization: Event batching for high-volume processing
+            event_batch: Arc::new(Mutex::new(Vec::new())),
+            batch_processor_task: Arc::new(Mutex::new(None)),
+            batch_tx,
+            // Phase 1 Optimization: Performance monitoring
+            performance_monitor: Arc::new(PerformanceMonitor::new()),
+        };
+        
+        // Start batch processor task
+        let batch_processor = server.clone_for_batch_processor();
+        let batch_task = tokio::spawn(async move {
+            Self::batch_processor_loop(batch_rx, batch_processor).await;
+        });
+        
+        {
+            let mut task_guard = server.batch_processor_task.lock().unwrap();
+            *task_guard = Some(batch_task);
         }
+        
+        server
+    }
+
+    /// Clone the server for batch processor (without the batch_tx to avoid double ownership)
+    fn clone_for_batch_processor(&self) -> Self {
+        Self {
+            status: self.status.clone(),
+            event_tx: self.event_tx.clone(),
+            socket: self.socket.clone(),
+            stats: self.stats.clone(),
+            protocol_manager: self.protocol_manager.clone(),
+            recent_events: self.recent_events.clone(),
+            database: self.database.clone(),
+            current_session_id: self.current_session_id.clone(),
+            current_match_id: self.current_match_id.clone(),
+            athlete_cache: self.athlete_cache.clone(),
+            event_type_cache: self.event_type_cache.clone(),
+            listener_task: self.listener_task.clone(),
+            recent_hit_levels: self.recent_hit_levels.clone(),
+            current_tournament_id: self.current_tournament_id.clone(),
+            current_tournament_day_id: self.current_tournament_day_id.clone(),
+            event_batch: self.event_batch.clone(),
+            batch_processor_task: self.batch_processor_task.clone(),
+            batch_tx: mpsc::unbounded_channel().0, // Dummy channel for clone
+            performance_monitor: self.performance_monitor.clone(),
+        }
+    }
+
+    /// Phase 1 Optimization: Batch processor loop for high-volume event processing
+    async fn batch_processor_loop(
+        mut batch_rx: mpsc::UnboundedReceiver<PssEvent>,
+        server: Self,
+    ) {
+        const BATCH_SIZE: usize = 100; // Process 100 events per batch
+        const BATCH_TIMEOUT: Duration = Duration::from_millis(500); // 500ms timeout
+        
+        let mut batch = Vec::with_capacity(BATCH_SIZE);
+        let mut last_batch_time = Instant::now();
+        
+        log::info!("🚀 Starting batch processor for high-volume event processing");
+        
+        while let Some(event) = batch_rx.recv().await {
+            batch.push(event);
+            
+            let should_process = batch.len() >= BATCH_SIZE || 
+                               last_batch_time.elapsed() >= BATCH_TIMEOUT;
+            
+            if should_process {
+                let events_to_process = std::mem::replace(&mut batch, Vec::with_capacity(BATCH_SIZE));
+                last_batch_time = Instant::now();
+                
+                // Process batch asynchronously
+                let server_clone = server.clone_for_batch_processor();
+                tokio::spawn(async move {
+                    if let Err(e) = Self::process_event_batch(server_clone, events_to_process).await {
+                        log::error!("❌ Batch processing failed: {}", e);
+                    }
+                });
+            }
+        }
+        
+        // Process remaining events
+        if !batch.is_empty() {
+            if let Err(e) = Self::process_event_batch(server, batch).await {
+                log::error!("❌ Final batch processing failed: {}", e);
+            }
+        }
+        
+        log::info!("🛑 Batch processor stopped");
+    }
+
+    /// Phase 1 Optimization: Process a batch of events efficiently
+    async fn process_event_batch(server: Self, events: Vec<PssEvent>) -> AppResult<()> {
+        let start_time = Instant::now();
+        let batch_size = events.len();
+        
+        log::debug!("📦 Processing batch of {} events", batch_size);
+        
+        // Phase 1 Optimization: Update memory usage
+        server.performance_monitor.update_memory_usage();
+        
+        // Use a single transaction for the entire batch
+        let database = server.database.clone();
+        let current_session_id = server.current_session_id.clone();
+        let current_match_id = server.current_match_id.clone();
+        let athlete_cache = server.athlete_cache.clone();
+        let event_type_cache = server.event_type_cache.clone();
+        let recent_hit_levels = server.recent_hit_levels.clone();
+        let current_tournament_id = server.current_tournament_id.clone();
+        let current_tournament_day_id = server.current_tournament_day_id.clone();
+        
+        // Process events in parallel within the batch
+        let mut tasks = Vec::new();
+        for event in events {
+            let db_clone = database.clone();
+            let session_clone = current_session_id.clone();
+            let match_clone = current_match_id.clone();
+            let athlete_clone = athlete_cache.clone();
+            let event_type_clone = event_type_cache.clone();
+            let hit_levels_clone = recent_hit_levels.clone();
+            let tournament_clone = current_tournament_id.clone();
+            let tournament_day_clone = current_tournament_day_id.clone();
+            
+            let task = tokio::spawn(async move {
+                Self::store_event_in_database(
+                    &db_clone,
+                    &session_clone,
+                    &match_clone,
+                    &athlete_clone,
+                    &event_type_clone,
+                    &event,
+                    &hit_levels_clone,
+                    &tournament_clone,
+                    &tournament_day_clone,
+                ).await
+            });
+            tasks.push(task);
+        }
+        
+        // Wait for all tasks to complete
+        let mut success_count = 0;
+        let mut error_count = 0;
+        for task in tasks {
+            match task.await {
+                Ok(Ok(_)) => {
+                    success_count += 1;
+                    // Phase 1 Optimization: Record successful event processing
+                    server.performance_monitor.record_event_arrival();
+                }
+                Ok(Err(e)) => {
+                    error_count += 1;
+                    log::warn!("⚠️ Event storage failed in batch: {}", e);
+                }
+                Err(e) => {
+                    error_count += 1;
+                    log::warn!("⚠️ Task failed in batch: {}", e);
+                }
+            }
+        }
+        
+        let processing_time = start_time.elapsed();
+        
+        // Phase 1 Optimization: Record batch processing metrics
+        server.performance_monitor.record_event_processed(processing_time.as_millis() as u64);
+        
+        log::info!("✅ Batch processed: {}/{} events in {:?} ({} errors)", 
+                  success_count, batch_size, processing_time, error_count);
+        
+        // Update statistics
+        if let Ok(mut stats) = server.stats.lock() {
+            stats.packets_parsed += success_count as u64;
+            stats.parse_errors += error_count as u64;
+        }
+        
+        Ok(())
     }
 
     pub async fn start(&self, config: &crate::config::types::AppConfig) -> AppResult<()> {
@@ -448,6 +637,16 @@ impl UdpServer {
         events.iter().cloned().collect()
     }
 
+    /// Phase 1 Optimization: Get performance metrics
+    pub fn get_performance_metrics(&self) -> crate::plugins::performance_monitor::PerformanceMetrics {
+        self.performance_monitor.get_performance_metrics()
+    }
+
+    /// Phase 1 Optimization: Get memory usage
+    pub fn get_memory_usage(&self) -> crate::plugins::performance_monitor::MemoryUsageStats {
+        self.performance_monitor.get_memory_stats()
+    }
+
     pub fn add_event(&self, event: PssEvent) {
         // Add to recent events (existing logic)
         {
@@ -458,32 +657,10 @@ impl UdpServer {
             recent.push_back(event.clone());
         }
 
-        // Store in database (async operation)
-        let database = self.database.clone();
-        let current_session_id = self.current_session_id.clone();
-        let current_match_id = self.current_match_id.clone();
-        let athlete_cache = self.athlete_cache.clone();
-        let event_type_cache = self.event_type_cache.clone();
-        let recent_hit_levels = self.recent_hit_levels.clone();
-        let current_tournament_id = self.current_tournament_id.clone();
-        let current_tournament_day_id = self.current_tournament_day_id.clone();
-        let event_clone = event.clone();
-        
-        tokio::spawn(async move {
-            if let Err(e) = Self::store_event_in_database(
-                &database,
-                &current_session_id,
-                &current_match_id,
-                &athlete_cache,
-                &event_type_cache,
-                &event_clone,
-                &recent_hit_levels,
-                &current_tournament_id,
-                &current_tournament_day_id,
-            ).await {
-                log::error!("Failed to store event in database: {}", e);
-            }
-        });
+        // Phase 1 Optimization: Send to batch processor for high-volume processing
+        if let Err(e) = self.batch_tx.send(event.clone()) {
+            log::error!("❌ Failed to send event to batch processor: {}", e);
+        }
 
         // Send to event channel (existing logic)
         if let Err(e) = self.event_tx.send(event) {

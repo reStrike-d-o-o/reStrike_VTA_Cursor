@@ -241,9 +241,20 @@ async fn main() -> AppResult<()> {
             tauri_commands::get_unknown_events,
             
             // Tournament Context Management commands
-            tauri_commands::set_udp_tournament_context,
-            tauri_commands::get_udp_tournament_context,
-            tauri_commands::clear_udp_tournament_context,
+                    tauri_commands::set_udp_tournament_context,
+        tauri_commands::get_udp_tournament_context,
+        tauri_commands::clear_udp_tournament_context,
+                    tauri_commands::get_udp_performance_metrics,
+            tauri_commands::get_udp_memory_usage,
+            
+            // Phase 2 Optimization - Data Archival commands
+            tauri_commands::archive_old_events,
+            tauri_commands::get_archive_statistics,
+            tauri_commands::restore_from_archive,
+            tauri_commands::cleanup_old_archive_data,
+            tauri_commands::optimize_archive_tables,
+            tauri_commands::get_database_pool_stats,
+            tauri_commands::cleanup_database_pool,
             
             // Flag management commands
             tauri_commands::scan_and_populate_flags,

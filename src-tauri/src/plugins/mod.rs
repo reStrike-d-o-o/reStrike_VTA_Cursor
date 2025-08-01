@@ -10,6 +10,7 @@ pub mod plugin_cpu_monitor;
 pub mod plugin_protocol_manager;
 pub mod plugin_websocket;  // WebSocket server for HTML overlays
 pub mod plugin_tournament; // Tournament management system
+pub mod performance_monitor; // Phase 1 Optimization: Performance monitoring
 
 // Re-export key plugin types for easier access
 pub use plugin_database::{DatabasePlugin, DatabaseStatistics};  // Re-enabled for Phase 2
@@ -23,6 +24,7 @@ pub use plugin_cpu_monitor::{CpuMonitorPlugin, CpuMonitorConfig, CpuProcessData,
 pub use plugin_protocol_manager::{ProtocolManager, ProtocolFile, ProtocolVersion, StreamDefinition};
 pub use plugin_websocket::WebSocketPlugin;
 pub use plugin_tournament::{TournamentPlugin, LocationVerification, CreateTournamentRequest, UpdateTournamentRequest};
+pub use performance_monitor::{PerformanceMonitor, MemoryTracker, ProcessingStats, EventRateTracker, PerformanceMetrics, MemoryUsageStats, ProcessingPerformanceStats};
 
 /// Initialize all plugins
 pub async fn init() -> Result<(), Box<dyn std::error::Error>> {
