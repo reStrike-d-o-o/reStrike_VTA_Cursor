@@ -30,7 +30,7 @@ export const AnalyticsDrawer: React.FC<AnalyticsDrawerProps> = ({
   const { matchData } = usePssMatchStore();
   
   // Mock events data for now - this should be replaced with actual PSS events
-  const events: any[] = [];
+  const events = React.useRef<any[]>([]).current;
 
   // Extract unique athletes, matches, and tournaments from events
   const athletes = Array.from(new Set(

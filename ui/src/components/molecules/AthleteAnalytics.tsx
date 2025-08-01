@@ -48,7 +48,7 @@ export const AthleteAnalytics: React.FC<AthleteAnalyticsProps> = ({
   const { matchData } = usePssMatchStore();
   
   // Mock events data for now - this should be replaced with actual PSS events
-  const events: any[] = [];
+  const events = React.useRef<any[]>([]).current;
 
   useEffect(() => {
     const calculateStats = () => {
