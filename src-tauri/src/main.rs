@@ -273,6 +273,29 @@ async fn main() -> AppResult<()> {
             tauri_commands::drive_restore_from_archive,
             tauri_commands::drive_delete_backup_archive,
             tauri_commands::drive_get_connection_status,
+            
+            // Phase 3: Advanced Caching Commands
+            tauri_commands::get_cache_statistics,
+            tauri_commands::clear_cache,
+            tauri_commands::invalidate_tournament_cache,
+            tauri_commands::invalidate_match_cache,
+            
+            // Phase 3: Event Stream Commands
+            tauri_commands::get_stream_statistics,
+            tauri_commands::send_event_to_stream,
+            
+            // Phase 3: Load Balancer Commands
+            tauri_commands::get_distributor_statistics,
+            tauri_commands::get_server_statistics,
+            tauri_commands::add_server,
+            tauri_commands::remove_server,
+            
+            // Phase 3: Advanced Analytics Commands
+            tauri_commands::get_tournament_analytics,
+            tauri_commands::get_performance_analytics,
+            tauri_commands::get_athlete_analytics,
+            tauri_commands::get_match_analytics,
+            tauri_commands::get_analytics_history,
         ])
         .setup(|app| {
             log::info!("Tauri application setup complete");

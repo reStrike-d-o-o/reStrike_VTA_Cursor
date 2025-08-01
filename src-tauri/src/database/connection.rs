@@ -62,7 +62,12 @@ impl DatabaseConnectionPool {
         conn.execute("PRAGMA synchronous = NORMAL", [])?;
         conn.execute("PRAGMA cache_size = -65536", [])?; // 64MB cache
         conn.execute("PRAGMA temp_store = MEMORY", [])?;
-        conn.execute("PRAGMA mmap_size = 134217728", [])?; // 128MB mmap
+        
+        // Optional mmap size setting (may not be supported in all SQLite builds)
+        if let Err(e) = conn.execute("PRAGMA mmap_size = 134217728", []) { // 128MB mmap
+            log::warn!("Failed to set mmap size (this is optional): {}", e);
+        }
+        
         conn.execute("PRAGMA recursive_triggers = ON", [])?;
         conn.execute("PRAGMA busy_timeout = 30000", [])?;
         conn.execute("PRAGMA optimize", [])?;
@@ -70,7 +75,12 @@ impl DatabaseConnectionPool {
 
         // Phase 2 optimizations
         conn.execute("PRAGMA auto_vacuum = INCREMENTAL", [])?; // Better space management
-        conn.execute("PRAGMA wal_autocheckpoint = 1000", [])?; // Checkpoint every 1000 pages
+        
+        // Optional WAL autocheckpoint setting
+        if let Err(e) = conn.execute("PRAGMA wal_autocheckpoint = 1000", []) { // Checkpoint every 1000 pages
+            log::warn!("Failed to set WAL autocheckpoint (this is optional): {}", e);
+        }
+        
         conn.execute("PRAGMA checkpoint_fullfsync = OFF", [])?; // Faster checkpoints
         conn.execute("PRAGMA locking_mode = NORMAL", [])?; // Balance between concurrency and safety
 
@@ -205,9 +215,10 @@ impl DatabaseConnection {
         conn.execute("PRAGMA temp_store = MEMORY", [])
             .map_err(|e| DatabaseError::Initialization(format!("Failed to set temp store: {}", e)))?;
         
-        // Phase 1 Optimization: Enhanced mmap size to 128MB for high-volume performance
-        let _: i64 = conn.query_row("PRAGMA mmap_size = 134217728", [], |row| row.get(0)) // 128MB in bytes
-            .map_err(|e| DatabaseError::Initialization(format!("Failed to set mmap size: {}", e)))?;
+        // Phase 1 Optimization: Enhanced mmap size to 128MB for high-volume performance (optional)
+        if let Err(e) = conn.execute("PRAGMA mmap_size = 134217728", []) { // 128MB in bytes
+            log::warn!("Failed to set mmap size (this is optional): {}", e);
+        }
         
         // Enable recursive triggers
         conn.execute("PRAGMA recursive_triggers = ON", [])
@@ -226,13 +237,10 @@ impl DatabaseConnection {
         conn.execute("PRAGMA page_size = 4096", [])
             .map_err(|e| DatabaseError::Initialization(format!("Failed to set page size: {}", e)))?;
         
-        // Enable memory-mapped I/O for better performance
-        conn.execute("PRAGMA mmap_size = 134217728", []) // 128MB
-            .map_err(|e| DatabaseError::Initialization(format!("Failed to set mmap size: {}", e)))?;
-        
-        // Set WAL auto-checkpoint to 1000 pages for better performance
-        conn.execute("PRAGMA wal_autocheckpoint = 1000", [])
-            .map_err(|e| DatabaseError::Initialization(format!("Failed to set WAL autocheckpoint: {}", e)))?;
+        // Set WAL auto-checkpoint to 1000 pages for better performance (optional)
+        if let Err(e) = conn.execute("PRAGMA wal_autocheckpoint = 1000", []) {
+            log::warn!("Failed to set WAL autocheckpoint (this is optional): {}", e);
+        }
         
         Ok(())
     }

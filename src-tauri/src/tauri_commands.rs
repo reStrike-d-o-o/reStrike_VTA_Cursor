@@ -4037,4 +4037,107 @@ pub async fn cleanup_database_pool(
     Ok(())
 }
 
+// Phase 3: Advanced Caching Commands
+#[tauri::command]
+pub async fn get_cache_statistics(app: tauri::State<'_, crate::core::app::App>) -> Result<serde_json::Value, tauri::Error> {
+    let cache_stats = app.event_cache().get_cache_stats().await;
+    serde_json::to_value(cache_stats)
+        .map_err(|e| tauri::Error::from(anyhow::anyhow!("Failed to serialize cache statistics: {}", e)))
+}
+
+#[tauri::command]
+pub async fn clear_cache(app: tauri::State<'_, crate::core::app::App>) -> Result<(), tauri::Error> {
+    app.event_cache().clear_all().await
+        .map_err(|e| tauri::Error::from(anyhow::anyhow!("Failed to clear cache: {}", e)))
+}
+
+#[tauri::command]
+pub async fn invalidate_tournament_cache(app: tauri::State<'_, crate::core::app::App>, tournament_id: i64) -> Result<(), tauri::Error> {
+    app.event_cache().invalidate_tournament(tournament_id).await
+        .map_err(|e| tauri::Error::from(anyhow::anyhow!("Failed to invalidate tournament cache: {}", e)))
+}
+
+#[tauri::command]
+pub async fn invalidate_match_cache(app: tauri::State<'_, crate::core::app::App>, match_id: i64) -> Result<(), tauri::Error> {
+    app.event_cache().invalidate_match(match_id).await
+        .map_err(|e| tauri::Error::from(anyhow::anyhow!("Failed to invalidate match cache: {}", e)))
+}
+
+// Phase 3: Event Stream Commands
+#[tauri::command]
+pub async fn get_stream_statistics(app: tauri::State<'_, crate::core::app::App>) -> Result<serde_json::Value, tauri::Error> {
+    let stream_stats = app.event_stream_processor().get_statistics().await;
+    serde_json::to_value(stream_stats)
+        .map_err(|e| tauri::Error::from(anyhow::anyhow!("Failed to serialize stream statistics: {}", e)))
+}
+
+#[tauri::command]
+pub async fn send_event_to_stream(app: tauri::State<'_, crate::core::app::App>, event: crate::database::models::PssEventV2) -> Result<(), tauri::Error> {
+    app.event_stream_processor().send_event(event).await
+        .map_err(|e| tauri::Error::from(anyhow::anyhow!("Failed to send event to stream: {}", e)))
+}
+
+// Phase 3: Load Balancer Commands
+#[tauri::command]
+pub async fn get_distributor_statistics(app: tauri::State<'_, crate::core::app::App>) -> Result<serde_json::Value, tauri::Error> {
+    let distributor_stats = app.event_distributor().get_statistics().await;
+    serde_json::to_value(distributor_stats)
+        .map_err(|e| tauri::Error::from(anyhow::anyhow!("Failed to serialize distributor statistics: {}", e)))
+}
+
+#[tauri::command]
+pub async fn get_server_statistics(app: tauri::State<'_, crate::core::app::App>) -> Result<serde_json::Value, tauri::Error> {
+    let server_stats = app.event_distributor().get_server_statistics().await;
+    serde_json::to_value(server_stats)
+        .map_err(|e| tauri::Error::from(anyhow::anyhow!("Failed to serialize server statistics: {}", e)))
+}
+
+#[tauri::command]
+pub async fn add_server(app: tauri::State<'_, crate::core::app::App>, server_id: String, bind_address: String, port: u16) -> Result<(), tauri::Error> {
+    app.event_distributor().add_server(server_id, bind_address, port).await
+        .map_err(|e| tauri::Error::from(anyhow::anyhow!("Failed to add server: {}", e)))
+}
+
+#[tauri::command]
+pub async fn remove_server(app: tauri::State<'_, crate::core::app::App>, server_id: String) -> Result<(), tauri::Error> {
+    app.event_distributor().remove_server(&server_id).await
+        .map_err(|e| tauri::Error::from(anyhow::anyhow!("Failed to remove server: {}", e)))
+}
+
+// Phase 3: Advanced Analytics Commands
+#[tauri::command]
+pub async fn get_tournament_analytics(app: tauri::State<'_, crate::core::app::App>) -> Result<serde_json::Value, tauri::Error> {
+    let tournament_analytics = app.advanced_analytics().get_tournament_analytics().await;
+    serde_json::to_value(tournament_analytics)
+        .map_err(|e| tauri::Error::from(anyhow::anyhow!("Failed to serialize tournament analytics: {}", e)))
+}
+
+#[tauri::command]
+pub async fn get_performance_analytics(app: tauri::State<'_, crate::core::app::App>) -> Result<serde_json::Value, tauri::Error> {
+    let performance_analytics = app.advanced_analytics().get_performance_analytics().await;
+    serde_json::to_value(performance_analytics)
+        .map_err(|e| tauri::Error::from(anyhow::anyhow!("Failed to serialize performance analytics: {}", e)))
+}
+
+#[tauri::command]
+pub async fn get_athlete_analytics(app: tauri::State<'_, crate::core::app::App>) -> Result<serde_json::Value, tauri::Error> {
+    let athlete_analytics = app.advanced_analytics().get_athlete_analytics().await;
+    serde_json::to_value(athlete_analytics)
+        .map_err(|e| tauri::Error::from(anyhow::anyhow!("Failed to serialize athlete analytics: {}", e)))
+}
+
+#[tauri::command]
+pub async fn get_match_analytics(app: tauri::State<'_, crate::core::app::App>) -> Result<serde_json::Value, tauri::Error> {
+    let match_analytics = app.advanced_analytics().get_match_analytics().await;
+    serde_json::to_value(match_analytics)
+        .map_err(|e| tauri::Error::from(anyhow::anyhow!("Failed to serialize match analytics: {}", e)))
+}
+
+#[tauri::command]
+pub async fn get_analytics_history(app: tauri::State<'_, crate::core::app::App>, limit: Option<usize>) -> Result<serde_json::Value, tauri::Error> {
+    let analytics_history = app.advanced_analytics().get_analytics_history(limit).await;
+    serde_json::to_value(analytics_history)
+        .map_err(|e| tauri::Error::from(anyhow::anyhow!("Failed to serialize analytics history: {}", e)))
+}
+
 

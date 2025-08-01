@@ -1,30 +1,37 @@
 // Plugin modules
-pub mod plugin_database;  // Re-enabled for Phase 2
-pub mod plugin_drive;     // Google Drive integration
-pub mod plugin_license;
+pub mod plugin_udp;
+pub mod plugin_websocket;
+pub mod plugin_database;
+pub mod plugin_drive;
 pub mod plugin_obs;
 pub mod plugin_playback;
 pub mod plugin_store;
-pub mod plugin_udp;
+pub mod plugin_license;
 pub mod plugin_cpu_monitor;
 pub mod plugin_protocol_manager;
-pub mod plugin_websocket;  // WebSocket server for HTML overlays
-pub mod plugin_tournament; // Tournament management system
-pub mod performance_monitor; // Phase 1 Optimization: Performance monitoring
+pub mod plugin_tournament;
+pub mod performance_monitor;
+pub mod event_cache;
+pub mod event_stream;
+pub mod load_balancer;
+pub mod advanced_analytics;
 
-// Re-export key plugin types for easier access
-pub use plugin_database::{DatabasePlugin, DatabaseStatistics};  // Re-enabled for Phase 2
-pub use plugin_drive::drive_plugin;  // Google Drive integration
-pub use plugin_obs::{ObsPlugin, ObsConnectionConfig, ObsWebSocketVersion, ObsStatusInfo, ObsEvent};
-pub use plugin_playback::PlaybackPlugin;
 pub use plugin_udp::UdpPlugin;
+pub use plugin_websocket::WebSocketPlugin;
+pub use plugin_database::DatabasePlugin;
+pub use plugin_drive::drive_plugin;
+pub use plugin_obs::{ObsPlugin, ObsConnectionConfig, ObsWebSocketVersion, ObsStatusInfo, ObsEvent, ObsConnectionStatus};
+pub use plugin_playback::PlaybackPlugin;
 pub use plugin_store::StorePlugin;
 pub use plugin_license::LicensePlugin;
 pub use plugin_cpu_monitor::{CpuMonitorPlugin, CpuMonitorConfig, CpuProcessData, SystemCpuData};
 pub use plugin_protocol_manager::{ProtocolManager, ProtocolFile, ProtocolVersion, StreamDefinition};
-pub use plugin_websocket::WebSocketPlugin;
 pub use plugin_tournament::{TournamentPlugin, LocationVerification, CreateTournamentRequest, UpdateTournamentRequest};
 pub use performance_monitor::{PerformanceMonitor, MemoryTracker, ProcessingStats, EventRateTracker, PerformanceMetrics, MemoryUsageStats, ProcessingPerformanceStats};
+pub use event_cache::{EventCache, CacheConfig, CacheStatistics, AthleteStatistics, TournamentStatistics, MatchStatistics};
+pub use event_stream::{EventStreamProcessor, EventStreamConfig, StreamStatistics, RealTimeAnalytics, EventStreamSubscriber};
+pub use load_balancer::{EventDistributor, LoadBalancer, LoadBalancerConfig, LoadDistributionStrategy, ServerHealth, ServerStatistics, DistributorStatistics, UdpServerInstance};
+pub use advanced_analytics::{AdvancedAnalytics, AnalyticsConfig, TournamentAnalytics, PerformanceAnalytics, AthleteAnalytics, MatchAnalytics, AnalyticsSnapshot, AthletePerformance, SystemPerformance, EventProcessingPerformance, DatabasePerformance, CachePerformance, NetworkPerformance, MatchPerformance, PerformancePoint, MatchPerformancePoint};
 
 /// Initialize all plugins
 pub async fn init() -> Result<(), Box<dyn std::error::Error>> {
