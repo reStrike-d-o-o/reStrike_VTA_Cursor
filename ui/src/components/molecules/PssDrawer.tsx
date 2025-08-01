@@ -13,6 +13,7 @@ import FlagManagementPanel from './FlagManagementPanel';
 import ScoreboardManager from './ScoreboardManager';
 import { invoke as tauriInvoke } from '@tauri-apps/api/core';
 import { algorithmAnimation, locationAnimation, scoreboardAnimation, crossbowAnimation } from '../../assets/icons/json';
+import { TriggersTable } from './TriggersTable';
 
 // Use the proper Tauri v2 invoke function with fallback
 const invoke = async (command: string, args?: any) => {
@@ -20,9 +21,9 @@ const invoke = async (command: string, args?: any) => {
     // Try the proper Tauri v2 API first
     return await tauriInvoke(command, args);
   } catch (error) {
-    // If that fails, try the global window.__TAURI__.core.invoke
-    if (typeof window !== 'undefined' && window.__TAURI__ && window.__TAURI__.core) {
-      return await window.__TAURI__.core.invoke(command, args);
+    // If that fails, try the global (window as any).__TAURI__.core.invoke
+    if (typeof window !== 'undefined' && (window as any).__TAURI__ && (window as any).__TAURI__.core) {
+      return await (window as any).__TAURI__.core.invoke(command, args);
     }
     throw new Error('Tauri v2 core module not available - ensure app is running in desktop mode');
   }
@@ -1055,7 +1056,7 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
             id: 'triggers',
             label: 'Triggers',
             icon: <LottieIcon animationData={crossbowAnimation} size={32} />,
-            content: <TriggersContent />
+            content: <TriggersTable />
           }
         ]}
         activeTab={activeTab}
