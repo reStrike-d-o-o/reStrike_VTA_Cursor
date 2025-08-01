@@ -239,6 +239,42 @@ const LiveDataPanel: React.FC = () => {
   // Subscribe to pushed live_data events (filtered by current type)
   useLiveDataEvents(enabled, selectedType);
 
+  // Listen for log events from the backend
+  useEffect(() => {
+    if (!tauriAvailable || !enabled) return;
+
+    const setupLogListener = async () => {
+      try {
+        if (typeof window !== 'undefined' && window.__TAURI__ && window.__TAURI__.event) {
+          const unlisten = await window.__TAURI__.event.listen('log_event', (event: any) => {
+            console.log('📋 Received log event:', event.payload);
+            
+            if (event.payload && event.payload.type === 'log') {
+              // Add log message to live data store
+              addData({
+                subsystem: 'udp', // Treat log events as UDP subsystem
+                data: event.payload.message,
+                type: 'info'
+              });
+            }
+          });
+          
+          return unlisten;
+        }
+      } catch (error) {
+        console.error('Failed to setup log listener:', error);
+      }
+    };
+
+    const cleanup = setupLogListener();
+    
+    return () => {
+      cleanup.then(unlisten => {
+        if (unlisten) unlisten();
+      }).catch(() => {});
+    };
+  }, [tauriAvailable, enabled, addData]);
+
   const handleToggle = async () => {
     clearError();
     const newEnabled = !enabled;

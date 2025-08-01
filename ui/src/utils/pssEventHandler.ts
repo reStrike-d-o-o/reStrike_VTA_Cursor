@@ -11,6 +11,8 @@ export const handlePssEvent = (event: any) => {
   const store = usePssMatchStore.getState();
   
   console.log('🎯 Processing PSS event:', event);
+  console.log('🎯 Event type:', event.type);
+  console.log('🎯 Event structure:', JSON.stringify(event, null, 2));
   
   // Emit browser event for scoreboard overlays
   emitBrowserEvent(event);
@@ -21,27 +23,71 @@ export const handlePssEvent = (event: any) => {
   // Handle different event types based on the event structure
   switch (event.type) {
     case 'athletes':
+      console.log('🎯 Handling athletes event');
       handleAthletesEvent(event, store);
       break;
     case 'match_config':
+      console.log('🎯 Handling match_config event');
       handleMatchConfigEvent(event, store);
       break;
     case 'scores':
+      console.log('🎯 Handling scores event');
       handleScoresEvent(event, store);
       break;
     case 'current_scores':
+      console.log('🎯 Handling current_scores event');
       handleCurrentScoresEvent(event, store);
       break;
     case 'winner_rounds':
+      console.log('🎯 Handling winner_rounds event');
       handleWinnerRoundsEvent(event, store);
       break;
     case 'fight_loaded':
+      console.log('🎯 Handling fight_loaded event');
       handleFightLoadedEvent(event, store);
       break;
     case 'fight_ready':
+      console.log('🎯 Handling fight_ready event');
       handleFightReadyEvent(event, store);
       break;
+    case 'points':
+      // Handle points events (for future scoring features)
+      console.log('🎯 Points event:', event);
+      break;
+    case 'hit_level':
+      // Handle hit level events (for future features)
+      console.log('🎯 Hit level event:', event);
+      break;
+    case 'warnings':
+      // Handle warnings events (for future features)
+      console.log('🎯 Warnings event:', event);
+      break;
+    case 'clock':
+      // Handle clock events (for future features)
+      console.log('🎯 Clock event:', event);
+      break;
+    case 'round':
+      // Handle round events (for future features)
+      console.log('🎯 Round event:', event);
+      break;
+    case 'injury':
+      // Handle injury events (for future features)
+      console.log('🎯 Injury event:', event);
+      break;
+    case 'challenge':
+      // Handle challenge events (for future features)
+      console.log('🎯 Challenge event:', event);
+      break;
+    case 'break':
+      // Handle break events (for future features)
+      console.log('🎯 Break event:', event);
+      break;
+    case 'winner':
+      // Handle winner events (for future features)
+      console.log('🎯 Winner event:', event);
+      break;
     default:
+      console.log('🎯 Unknown event type:', event.type);
       // Handle raw events or unknown types
       if (event.event === 'FightLoaded') {
         handleFightLoadedEvent(event, store);
@@ -125,22 +171,48 @@ const emitBrowserEvent = (event: any) => {
  */
 const handleAthletesEvent = (event: any, store: any) => {
   try {
-    // Extract athlete data from the event
-    const athlete1: PssAthleteInfo = {
-      short: event.athlete1_short || '',
-      long: event.athlete1_long || '',
-      country: event.athlete1_country || '',
-      iocCode: getBestFlagCode(event.athlete1_country || ''), // Convert PSS code to IOC code
-    };
+    console.log('🎯 handleAthletesEvent called with:', event);
+    
+    let athlete1: PssAthleteInfo;
+    let athlete2: PssAthleteInfo;
 
-    const athlete2: PssAthleteInfo = {
-      short: event.athlete2_short || '',
-      long: event.athlete2_long || '',
-      country: event.athlete2_country || '',
-      iocCode: getBestFlagCode(event.athlete2_country || ''), // Convert PSS code to IOC code
-    };
+    // Handle new JSON structure from UDP server
+    if (event.athlete1 && event.athlete2) {
+      console.log('🎯 Using new JSON structure');
+      athlete1 = {
+        short: event.athlete1.short || '',
+        long: event.athlete1.long || '',
+        country: event.athlete1.country || '',
+        iocCode: getBestFlagCode(event.athlete1.country || ''),
+      };
 
+      athlete2 = {
+        short: event.athlete2.short || '',
+        long: event.athlete2.long || '',
+        country: event.athlete2.country || '',
+        iocCode: getBestFlagCode(event.athlete2.country || ''),
+      };
+    } else {
+      console.log('🎯 Using legacy structure');
+      // Handle legacy structure
+      athlete1 = {
+        short: event.athlete1_short || '',
+        long: event.athlete1_long || '',
+        country: event.athlete1_country || '',
+        iocCode: getBestFlagCode(event.athlete1_country || ''),
+      };
+
+      athlete2 = {
+        short: event.athlete2_short || '',
+        long: event.athlete2_long || '',
+        country: event.athlete2_country || '',
+        iocCode: getBestFlagCode(event.athlete2_country || ''),
+      };
+    }
+
+    console.log('🎯 Processed athletes:', { athlete1, athlete2 });
     store.updateAthletes(athlete1, athlete2);
+    console.log('✅ Updated athletes in store');
   } catch (error) {
     console.error('Error handling athletes event:', error);
   }
@@ -152,6 +224,8 @@ const handleAthletesEvent = (event: any, store: any) => {
  */
 const handleMatchConfigEvent = (event: any, store: any) => {
   try {
+    console.log('🎯 handleMatchConfigEvent called with:', event);
+    
     const matchConfig: PssMatchConfig = {
       number: event.number || 0,
       category: event.category || '',
@@ -163,7 +237,9 @@ const handleMatchConfigEvent = (event: any, store: any) => {
       format: event.format || 1,
     };
 
+    console.log('🎯 Processed match config:', matchConfig);
     store.updateMatchConfig(matchConfig);
+    console.log('✅ Updated match config in store');
   } catch (error) {
     console.error('Error handling match config event:', error);
   }

@@ -36,11 +36,29 @@ export const usePssEvents = () => {
       // Listen for PSS events from the backend
       if (typeof window !== 'undefined' && window.__TAURI__ && window.__TAURI__.event) {
         const unlisten = await window.__TAURI__.event.listen('pss_event', (event: any) => {
-          console.log('📡 Received PSS event:', event.payload);
-          handlePssEvent(event.payload);
+          console.log('📡 Received PSS event:', event);
+          console.log('📡 Event payload:', event.payload);
+          console.log('📡 Event payload type:', typeof event.payload);
+          console.log('📡 Event payload keys:', Object.keys(event.payload || {}));
+          
+          // Ensure we have a valid payload
+          if (event.payload && typeof event.payload === 'object') {
+            handlePssEvent(event.payload);
+          } else {
+            console.warn('⚠️ Invalid PSS event payload:', event.payload);
+          }
         });
         
-        listenerRef.current = unlisten;
+        // Listen for log events from the backend
+        const logUnlisten = await window.__TAURI__.event.listen('log_event', (event: any) => {
+          console.log('📋 Log event:', event.payload);
+          // You can add log event handling here for the Live Data panel
+        });
+        
+        listenerRef.current = () => {
+          unlisten();
+          logUnlisten();
+        };
         isListeningRef.current = true;
         console.log('✅ PSS event listener setup complete');
       }
@@ -68,11 +86,13 @@ export const usePssEvents = () => {
     try {
       const result = await pssCommands.getEvents();
       
-      if (result.success && result.data && Array.isArray(result.data)) {
+      if (result && result.success && result.data && Array.isArray(result.data)) {
         console.log('📋 Fetching pending events:', result.data.length);
         result.data.forEach((event: PssEvent) => {
           handlePssEvent(event);
         });
+      } else {
+        console.log('📋 No pending events to fetch or invalid response:', result);
       }
     } catch (error) {
       console.error('❌ Error fetching pending events:', error);

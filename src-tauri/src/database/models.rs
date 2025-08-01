@@ -1,8 +1,31 @@
-use serde::{Deserialize, Serialize};
-use chrono::{DateTime, Utc};
 use rusqlite::Row;
+use serde::{Serialize, Deserialize};
+use chrono::{DateTime, Utc};
 
-/// PSS Event model for database storage
+/// Helper function to parse DateTime from database string with fallback formats
+fn parse_datetime_from_db(date_str: &str, field_name: &str) -> rusqlite::Result<DateTime<Utc>> {
+    // Try to parse as RFC3339 first, then fallback to other formats
+    DateTime::parse_from_rfc3339(date_str)
+        .map(|dt| dt.with_timezone(&Utc))
+        .or_else(|_| {
+            // Try ISO 8601 format without timezone
+            chrono::NaiveDateTime::parse_from_str(date_str, "%Y-%m-%dT%H:%M:%S")
+                .map(|ndt| ndt.and_utc())
+        })
+        .or_else(|_| {
+            // Try simple date format
+            chrono::NaiveDateTime::parse_from_str(date_str, "%Y-%m-%d %H:%M:%S")
+                .map(|ndt| ndt.and_utc())
+        })
+        .or_else(|_| {
+            // Try date only format
+            chrono::NaiveDate::parse_from_str(date_str, "%Y-%m-%d")
+                .map(|nd| nd.and_hms_opt(0, 0, 0).unwrap().and_utc())
+        })
+        .map_err(|_| rusqlite::Error::InvalidColumnType(0, field_name.to_string(), rusqlite::types::Type::Text))
+}
+
+/// PSS Event model for storing raw PSS events
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PssEvent {
     pub id: Option<i64>,
@@ -701,9 +724,7 @@ impl PssEventType {
             description: row.get("description")?,
             category: row.get("category")?,
             is_active: row.get("is_active")?,
-            created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
-                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "created_at".to_string(), rusqlite::types::Type::Text))?
-                .with_timezone(&Utc),
+            created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
         })
     }
 }

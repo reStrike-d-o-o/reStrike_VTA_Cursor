@@ -7,9 +7,13 @@ use crate::config::ConfigManager;
 use std::sync::Arc;
 use std::path::PathBuf;
 use tokio::sync::{RwLock, Mutex, broadcast};
+use tauri::Emitter;
 
-// Global PSS event broadcaster for real-time event emission
+// Global PSS event broadcaster for real-time event emission to WebSocket overlays
 static PSS_EVENT_BROADCASTER: std::sync::OnceLock<broadcast::Sender<serde_json::Value>> = std::sync::OnceLock::new();
+
+// Global Tauri app handle for real-time event emission to frontend
+static TAURI_APP_HANDLE: std::sync::OnceLock<tauri::AppHandle> = std::sync::OnceLock::new();
 
 /// Main application class that orchestrates all systems
 pub struct App {
@@ -26,6 +30,8 @@ pub struct App {
     websocket_plugin: Arc<Mutex<WebSocketPlugin>>,
     tournament_plugin: TournamentPlugin,
     log_manager: Arc<Mutex<LogManager>>,
+    app_handle: Option<tauri::AppHandle>, // Store app handle for real-time emission
+    udp_event_rx: Arc<Mutex<Option<tokio::sync::mpsc::UnboundedReceiver<crate::plugins::plugin_udp::PssEvent>>>>, // Store UDP event receiver
 }
 
 impl App {
@@ -33,8 +39,8 @@ impl App {
     pub async fn new() -> AppResult<Self> {
         log::info!("🚀 Creating new application instance...");
         
-        // Initialize global PSS event broadcaster
-        PSS_EVENT_BROADCASTER.get_or_init(|| broadcast::channel(100).0);
+        // Initialize global PSS event broadcaster for WebSocket overlays
+        PSS_EVENT_BROADCASTER.get_or_init(|| broadcast::channel(1000).0); // Large buffer for real-time performance
         
         let state = Arc::new(RwLock::new(AppState::default()));
         
@@ -102,11 +108,7 @@ impl App {
         let tournament_plugin = TournamentPlugin::new(database_plugin.get_database_connection());
         log::info!("✅ Tournament plugin initialized");
         
-        // Start UDP event handler
-        let log_manager_clone = log_manager.clone();
-        tokio::spawn(async move {
-            Self::handle_udp_events(udp_event_rx, log_manager_clone).await;
-        });
+        // Note: UDP event handler will be started in start() method when UDP server starts
         
         // Load OBS connections from config manager
         let config_connections = config_manager.get_obs_connections().await;
@@ -128,6 +130,8 @@ impl App {
             websocket_plugin,
             tournament_plugin,
             log_manager,
+            app_handle: None, // Will be set when app handle is available
+            udp_event_rx: Arc::new(Mutex::new(Some(udp_event_rx))), // Store UDP event receiver for later use
         })
     }
     
@@ -154,6 +158,15 @@ impl App {
             println!("⚠️ Failed to start WebSocket server: {}", e);
         } else {
             println!("✅ WebSocket server started successfully");
+            
+            // Connect WebSocket plugin to PSS event broadcaster for real-time overlays
+            if let Some(pss_receiver) = Self::subscribe_to_pss_events() {
+                let websocket_plugin_clone = self.websocket_plugin().clone();
+                tokio::spawn(async move {
+                    Self::handle_pss_to_websocket(pss_receiver, websocket_plugin_clone).await;
+                });
+                println!("✅ WebSocket plugin connected to PSS event broadcaster");
+            }
         }
         
         // Check if UDP should auto-start
@@ -164,6 +177,15 @@ impl App {
                 println!("⚠️ Failed to auto-start UDP server: {}", e);
             } else {
                 println!("✅ UDP server auto-started successfully");
+                
+                // Start UDP event handler when UDP server starts
+                if let Some(udp_event_rx) = self.udp_event_rx.lock().await.take() {
+                    let log_manager_clone = self.log_manager().clone();
+                    tokio::spawn(async move {
+                        Self::handle_udp_events(udp_event_rx, log_manager_clone).await;
+                    });
+                    println!("✅ UDP event handler started");
+                }
             }
         }
         
@@ -176,7 +198,7 @@ impl App {
         println!("⏹️ Stopping application...");
         
         // Stop all subsystems
-        self.udp_plugin.stop()?;
+        self.udp_plugin.stop().await?;
         
         println!("✅ Application stopped successfully");
         Ok(())
@@ -253,19 +275,95 @@ impl App {
     pub fn config_manager(&self) -> &ConfigManager {
         &self.config_manager
     }
+    
+    /// Set the Tauri app handle for real-time frontend emission
+    pub fn set_app_handle(&mut self, app_handle: tauri::AppHandle) {
+        self.app_handle = Some(app_handle);
+        log::info!("✅ Tauri app handle set for real-time frontend emission");
+    }
+    
+    /// Emit PSS event to Tauri frontend if app handle is available
+    pub fn emit_to_frontend(&self, event_json: serde_json::Value) {
+        if let Some(app_handle) = &self.app_handle {
+            if let Err(e) = app_handle.emit("pss_event", event_json) {
+                log::warn!("⚠️ Failed to emit PSS event to Tauri frontend: {}", e);
+            }
+        }
+    }
+    
+    /// Start UDP event handler manually (for when UDP is started manually)
+    pub async fn start_udp_event_handler(&self) {
+        if let Some(udp_event_rx) = self.udp_event_rx.lock().await.take() {
+            let log_manager_clone = self.log_manager().clone();
+            tokio::spawn(async move {
+                Self::handle_udp_events(udp_event_rx, log_manager_clone).await;
+            });
+            println!("✅ UDP event handler started manually");
+        }
+    }
 
-    /// Emit a PSS event to all listeners
+    /// Set the global Tauri app handle for frontend event emission
+    pub fn set_global_app_handle(app_handle: tauri::AppHandle) {
+        if let Err(_) = TAURI_APP_HANDLE.set(app_handle) {
+            log::warn!("⚠️ Global app handle already set");
+        } else {
+            log::info!("✅ Global Tauri app handle set for frontend event emission");
+        }
+    }
+
+    /// Emit a PSS event to both WebSocket overlays and Tauri frontend
     pub fn emit_pss_event(event_json: serde_json::Value) {
+        // Emit to frontend via Tauri events
+        if let Some(app_handle) = TAURI_APP_HANDLE.get() {
+            if let Err(e) = app_handle.emit("pss_event", event_json.clone()) {
+                log::warn!("⚠️ Failed to emit PSS event to frontend: {}", e);
+            }
+        }
+        
+        // Broadcast to WebSocket overlays
         if let Some(broadcaster) = PSS_EVENT_BROADCASTER.get() {
             if let Err(e) = broadcaster.send(event_json) {
-                log::warn!("⚠️ Failed to broadcast PSS event: {}", e);
+                log::warn!("⚠️ Failed to broadcast PSS event to WebSocket overlays: {}", e);
+            }
+        }
+    }
+    
+    /// Emit log events to frontend for Live Data panel
+    pub fn emit_log_event(log_message: String) {
+        // Emit to frontend via Tauri events
+        if let Some(app_handle) = TAURI_APP_HANDLE.get() {
+            let log_event = serde_json::json!({
+                "type": "log",
+                "message": log_message,
+                "timestamp": chrono::Utc::now().timestamp_millis()
+            });
+            
+            if let Err(e) = app_handle.emit("log_event", log_event) {
+                log::warn!("⚠️ Failed to emit log event to frontend: {}", e);
             }
         }
     }
 
-    /// Get a receiver for PSS events
+    /// Get a receiver for PSS events (for WebSocket plugin)
     pub fn subscribe_to_pss_events() -> Option<broadcast::Receiver<serde_json::Value>> {
         PSS_EVENT_BROADCASTER.get().map(|broadcaster| broadcaster.subscribe())
+    }
+    
+    /// Handle PSS events and forward them to WebSocket clients
+    async fn handle_pss_to_websocket(
+        mut pss_receiver: broadcast::Receiver<serde_json::Value>,
+        websocket_plugin: Arc<Mutex<WebSocketPlugin>>,
+    ) {
+        log::info!("🔗 PSS to WebSocket bridge started");
+        
+        while let Ok(event) = pss_receiver.recv().await {
+            let websocket_plugin_guard = websocket_plugin.lock().await;
+            if let Err(e) = websocket_plugin_guard.broadcast_pss_event(event).await {
+                log::error!("❌ Failed to broadcast PSS event to WebSocket clients: {}", e);
+            }
+        }
+        
+        log::warn!("⚠️ PSS to WebSocket bridge stopped");
     }
     
     /// Handle UDP events
@@ -276,7 +374,7 @@ impl App {
         log::info!("🎯 UDP event handler started");
         
         while let Some(event) = event_rx.recv().await {
-            // Convert PSS event to JSON for frontend emission
+            // Convert PSS event to JSON for real-time emission
             let event_json = match &event {
                 crate::plugins::plugin_udp::PssEvent::Points { athlete, point_type } => {
                     serde_json::json!({
@@ -407,8 +505,12 @@ impl App {
                 }
             };
 
-            // Emit event to frontend listeners
+            // HYBRID APPROACH: Real-time emission to WebSocket overlays
+            // Broadcast to WebSocket overlays (HTML overlays) - Real-time
             Self::emit_pss_event(event_json.clone());
+
+            // TODO: Add Tauri frontend emission when app handle is available
+            // TODO: Add database storage for persistence
 
             // Process different event types for logging
             match event {

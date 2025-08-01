@@ -8,12 +8,14 @@
 //! - User preferences and session data
 
 pub mod connection;
+pub mod maintenance;
 pub mod migrations;
 pub mod operations;
 pub mod migration_strategy;
 pub mod models;
 
 pub use connection::DatabaseConnection;
+pub use maintenance::{DatabaseMaintenance, MaintenanceConfig, MaintenanceStatistics, MaintenanceResult, MaintenanceNeeded, DatabaseInfo};
 pub use operations::UiSettingsOperations;
 pub use migration_strategy::{MigrationStrategy, MigrationResult, HybridSettingsProvider};
 
@@ -70,7 +72,7 @@ impl SchemaVersion {
 pub type DatabaseResult<T> = Result<T, DatabaseError>;
 
 /// Current schema version - increment when adding new migrations
-pub const CURRENT_SCHEMA_VERSION: u32 = 6;
+pub const CURRENT_SCHEMA_VERSION: u32 = 7;
 
 /// Database file name
 pub const DATABASE_FILE: &str = "restrike_vta.db"; 

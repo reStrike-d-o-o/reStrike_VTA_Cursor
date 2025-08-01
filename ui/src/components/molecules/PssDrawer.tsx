@@ -133,8 +133,75 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
   useEffect(() => {
     if (!udpSettings.network_interface.auto_detect) {
       loadNetworkInterfaces();
+    } else {
+      loadBestInterface();
     }
   }, [udpSettings.network_interface.auto_detect]);
+
+  // Load best interface when component mounts and when auto-detect is enabled
+  useEffect(() => {
+    if (udpSettings.network_interface.auto_detect) {
+      loadBestInterface();
+    }
+  }, []);
+
+  // Auto-copy IP address when best interface changes or auto-detect is enabled
+  useEffect(() => {
+    if (udpSettings.network_interface.auto_detect && bestInterface && bestInterface.ip_addresses.length > 0) {
+      // Find the best IPv4 address (prefer private addresses)
+      const bestIp = bestInterface.ip_addresses.find(ip => {
+        const ipAddr = ip.split('/')[0]; // Remove subnet mask if present
+        return ipAddr !== '127.0.0.1' && ipAddr !== '::1';
+      }) || bestInterface.ip_addresses[0];
+      
+      if (bestIp) {
+        const ipAddr = bestIp.split('/')[0]; // Remove subnet mask
+        setUdpSettings(prev => ({
+          ...prev,
+          bind_address: ipAddr
+        }));
+      }
+    }
+  }, [bestInterface, udpSettings.network_interface.auto_detect]);
+
+  // Auto-copy IP address when manual interface is selected
+  useEffect(() => {
+    if (!udpSettings.network_interface.auto_detect && udpSettings.network_interface.selected_interface) {
+      const selectedInterface = networkInterfaces.find(iface => iface.name === udpSettings.network_interface.selected_interface);
+      if (selectedInterface && selectedInterface.ip_addresses.length > 0) {
+        // Find the best IPv4 address (prefer private addresses)
+        const bestIp = selectedInterface.ip_addresses.find(ip => {
+          const ipAddr = ip.split('/')[0]; // Remove subnet mask if present
+          return ipAddr !== '127.0.0.1' && ipAddr !== '::1';
+        }) || selectedInterface.ip_addresses[0];
+        
+        if (bestIp) {
+          const ipAddr = bestIp.split('/')[0]; // Remove subnet mask
+          setUdpSettings(prev => ({
+            ...prev,
+            bind_address: ipAddr
+          }));
+        }
+      }
+    }
+  }, [udpSettings.network_interface.selected_interface, networkInterfaces, udpSettings.network_interface.auto_detect]);
+
+  // Get all available IPv4 addresses for dropdown
+  const getAvailableIpAddresses = () => {
+    const addresses: string[] = [];
+    networkInterfaces.forEach(iface => {
+      if (iface.media_state === 'connected' && iface.ip_addresses.length > 0) {
+        iface.ip_addresses.forEach(ip => {
+          const ipAddr = ip.split('/')[0]; // Remove subnet mask
+          // Only include IPv4 addresses that are not localhost
+          if (ipAddr !== '127.0.0.1' && ipAddr !== '::1' && !addresses.includes(ipAddr)) {
+            addresses.push(ipAddr);
+          }
+        });
+      }
+    });
+    return addresses;
+  };
 
   const loadProtocolVersions = async () => {
     try {
@@ -257,7 +324,7 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
         },
       };
 
-      await invoke('update_settings', { settings: updatedSettings });
+      await invoke('update_udp_settings', { settings: { udp: updatedSettings.udp } });
       
       setUdpPort(udpSettings.port);
       await loadBestInterface();
@@ -473,6 +540,9 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
               />
             </div>
           </div>
+          
+
+
         </div>
 
         {/* Advanced Settings (Expandable) */}
@@ -499,15 +569,48 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
                 </div>
 
                 <div>
-                  <Label htmlFor="bind-address" className="text-xs text-gray-400">Bind Address</Label>
-                  <Input
-                    id="bind-address"
-                    type="text"
-                    value={udpSettings.bind_address}
-                    onChange={(e) => setUdpSettings(prev => ({ ...prev, bind_address: e.target.value }))}
-                    placeholder="127.0.0.1"
-                    className="mt-1 text-sm"
-                  />
+                  <Label htmlFor="bind-address" className="text-xs text-gray-400">
+                    Bind Address
+                    {udpSettings.network_interface.auto_detect && bestInterface && (
+                      <span className="ml-2 text-blue-400 text-xs">(Auto-detected from {bestInterface.name})</span>
+                    )}
+                    {!udpSettings.network_interface.auto_detect && udpSettings.network_interface.selected_interface && (
+                      <span className="ml-2 text-green-400 text-xs">(Auto-copied from selected interface)</span>
+                    )}
+                  </Label>
+                  {udpSettings.network_interface.auto_detect ? (
+                    <div className="relative">
+                      <Input
+                        id="bind-address"
+                        type="text"
+                        value={udpSettings.bind_address}
+                        onChange={(e) => setUdpSettings(prev => ({ ...prev, bind_address: e.target.value }))}
+                        placeholder="127.0.0.1"
+                        className="mt-1 text-sm pr-8"
+                        readOnly={udpSettings.network_interface.auto_detect}
+                      />
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 mt-1">
+                        <svg className="h-4 w-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                    </div>
+                  ) : (
+                    <select
+                      id="bind-address"
+                      value={udpSettings.bind_address}
+                      onChange={(e) => setUdpSettings(prev => ({ ...prev, bind_address: e.target.value }))}
+                      className="mt-1 block w-full rounded-md border-gray-600 bg-gray-700 text-gray-200 text-sm"
+                      aria-label="Select bind address"
+                    >
+                      <option value="127.0.0.1">127.0.0.1 (localhost)</option>
+                      {getAvailableIpAddresses().map((ip) => (
+                        <option key={ip} value={ip}>
+                          {ip}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               </div>
 
@@ -530,28 +633,49 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
                   <Label htmlFor="auto-detect" className="ml-2 text-xs text-gray-400">
                     Auto-detect network interface
                   </Label>
+                  <div className="mt-1 ml-6 text-xs text-gray-500">
+                    When enabled, automatically selects the best network interface and copies its IP address to the bind address field.
+                  </div>
                 </div>
 
                 {udpSettings.network_interface.auto_detect && (
-                  <div>
-                    <Label htmlFor="preferred-type" className="text-xs text-gray-400">Preferred Type</Label>
-                    <select
-                      id="preferred-type"
-                      value={udpSettings.network_interface.preferred_type}
-                      onChange={(e) => setUdpSettings(prev => ({
-                        ...prev,
-                        network_interface: {
-                          ...prev.network_interface,
-                          preferred_type: e.target.value,
-                        }
-                      }))}
-                      className="mt-1 block w-full rounded-md border-gray-600 bg-gray-700 text-gray-200 text-sm"
-                      aria-label="Preferred interface type"
-                    >
-                      <option value="ethernet">Ethernet</option>
-                      <option value="wifi">WiFi</option>
-                      <option value="any">Any</option>
-                    </select>
+                  <div className="space-y-3">
+                    <div>
+                      <Label htmlFor="preferred-type" className="text-xs text-gray-400">Preferred Type</Label>
+                      <select
+                        id="preferred-type"
+                        value={udpSettings.network_interface.preferred_type}
+                        onChange={(e) => setUdpSettings(prev => ({
+                          ...prev,
+                          network_interface: {
+                            ...prev.network_interface,
+                            preferred_type: e.target.value,
+                          }
+                        }))}
+                        className="mt-1 block w-full rounded-md border-gray-600 bg-gray-700 text-gray-200 text-sm"
+                        aria-label="Preferred interface type"
+                      >
+                        <option value="ethernet">Ethernet</option>
+                        <option value="wifi">WiFi</option>
+                        <option value="any">Any</option>
+                      </select>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-gray-400">Current Best Interface</span>
+                      <button
+                        onClick={loadBestInterface}
+                        className="text-xs text-blue-400 hover:text-blue-300 underline"
+                      >
+                        Refresh
+                      </button>
+                    </div>
+                    {bestInterface && (
+                      <div className="p-2 bg-blue-900/20 border border-blue-600/30 rounded text-xs">
+                        <div className="text-blue-300 font-medium">{bestInterface.name}</div>
+                        <div className="text-gray-400">{bestInterface.type} - {bestInterface.media_state}</div>
+                        <div className="text-gray-400">IP: {bestInterface.ip_addresses.join(', ')}</div>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -586,6 +710,9 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
                         </option>
                       ))}
                     </select>
+                    <div className="mt-1 text-xs text-gray-500">
+                      When auto-detect is disabled, you can manually select a network interface and choose from available IP addresses in the bind address dropdown.
+                    </div>
                   </div>
                 )}
 
@@ -643,7 +770,7 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
                         <div>
                           <div className="font-medium text-gray-300">IP Addresses:</div>
                           {iface.ip_addresses.map((ip, index) => (
-                            <div key={index} className="ml-2 text-xs">
+                            <div key={index} className="text-xs text-left">
                               {ip}
                               {iface.subnet_masks[index] && (
                                 <span className="text-gray-500 ml-1">/ {iface.subnet_masks[index]}</span>
@@ -653,12 +780,12 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
                         </div>
                       )}
                       {iface.default_gateway && (
-                        <div className="text-xs">
+                        <div className="text-xs text-left">
                           <span className="text-gray-500">Gateway:</span> {iface.default_gateway}
                         </div>
                       )}
                       {iface.dns_suffix && (
-                        <div className="text-xs">
+                        <div className="text-xs text-left">
                           <span className="text-gray-500">DNS:</span> {iface.dns_suffix}
                         </div>
                       )}

@@ -29,6 +29,20 @@ impl WebSocketPlugin {
 
     /// Start the WebSocket server
     pub async fn start(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        // Initialize Windows networking if needed
+        #[cfg(target_os = "windows")]
+        {
+            use winapi::um::winsock2::{WSAStartup, WSADATA};
+            
+            unsafe {
+                let mut wsa_data: WSADATA = std::mem::zeroed();
+                let result = WSAStartup(0x0202, &mut wsa_data); // MAKEWORD(2, 2) = 0x0202
+                if result != 0 {
+                    warn!("WSAStartup failed, but continuing with WebSocket server");
+                }
+            }
+        }
+        
         let addr = format!("0.0.0.0:{}", self.port);
         let listener = tokio::net::TcpListener::bind(&addr).await?;
         

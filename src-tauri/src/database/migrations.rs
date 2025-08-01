@@ -1184,6 +1184,8 @@ impl Migration for Migration5 {
 /// Migration 6: Fix date column types for tournament tables
 pub struct Migration6;
 
+pub struct Migration7;
+
 impl Migration for Migration6 {
     fn version(&self) -> u32 {
         6
@@ -1286,6 +1288,129 @@ impl Migration for Migration6 {
     }
 }
 
+impl Migration for Migration7 {
+    fn version(&self) -> u32 {
+        7
+    }
+
+    fn description(&self) -> &str {
+        "Add database indexes for performance optimization"
+    }
+
+    fn up(&self, conn: &Connection) -> SqliteResult<()> {
+        // PSS Events indexes
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_events_v2_session_id ON pss_events_v2(session_id)", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_events_v2_match_id ON pss_events_v2(match_id)", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_events_v2_event_type_id ON pss_events_v2(event_type_id)", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_events_v2_timestamp ON pss_events_v2(timestamp)", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_events_v2_created_at ON pss_events_v2(created_at)", [])?;
+
+        // PSS Event Types indexes
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_event_types_event_code ON pss_event_types(event_code)", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_event_types_category ON pss_event_types(category)", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_event_types_is_active ON pss_event_types(is_active)", [])?;
+
+        // PSS Matches indexes
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_matches_match_id ON pss_matches(match_id)", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_matches_created_at ON pss_matches(created_at)", [])?;
+
+        // PSS Athletes indexes
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_athletes_athlete_code ON pss_athletes(athlete_code)", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_athletes_created_at ON pss_athletes(created_at)", [])?;
+
+        // PSS Scores indexes
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_scores_match_id ON pss_scores(match_id)", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_scores_athlete_position ON pss_scores(athlete_position)", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_scores_timestamp ON pss_scores(timestamp)", [])?;
+
+        // PSS Warnings indexes
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_warnings_match_id ON pss_warnings(match_id)", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_warnings_athlete_position ON pss_warnings(athlete_position)", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_warnings_timestamp ON pss_warnings(timestamp)", [])?;
+
+        // UDP Server Configs indexes
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_udp_server_configs_name ON udp_server_configs(name)", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_udp_server_configs_enabled ON udp_server_configs(enabled)", [])?;
+
+        // UDP Server Sessions indexes
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_udp_server_sessions_config_id ON udp_server_sessions(server_config_id)", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_udp_server_sessions_status ON udp_server_sessions(status)", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_udp_server_sessions_start_time ON udp_server_sessions(start_time)", [])?;
+
+        // UDP Client Connections indexes
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_udp_client_connections_session_id ON udp_client_connections(session_id)", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_udp_client_connections_client_address ON udp_client_connections(client_address)", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_udp_client_connections_first_seen ON udp_client_connections(first_seen)", [])?;
+
+        // Network Interfaces indexes
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_network_interfaces_name ON network_interfaces(name)", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_network_interfaces_is_active ON network_interfaces(is_active)", [])?;
+
+        // Tournaments indexes
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_tournaments_name ON tournaments(name)", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_tournaments_status ON tournaments(status)", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_tournaments_start_date ON tournaments(start_date)", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_tournaments_created_at ON tournaments(created_at)", [])?;
+
+        // Tournament Days indexes
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_tournament_days_tournament_id ON tournament_days(tournament_id)", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_tournament_days_status ON tournament_days(status)", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_tournament_days_date ON tournament_days(date)", [])?;
+
+        // Settings indexes (from Migration2)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_settings_keys_name ON settings_keys(key_name)", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_settings_keys_category ON settings_keys(category_id)", [])?;
+
+        // Settings Categories indexes
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_settings_categories_name ON settings_categories(name)", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_settings_categories_display_order ON settings_categories(display_order)", [])?;
+
+        // Settings Values indexes
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_settings_values_key ON settings_values(key_id)", [])?;
+
+        // Settings History indexes
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_settings_history_key ON settings_history(key_id)", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_settings_history_created ON settings_history(created_at)", [])?;
+
+        // Schema Version indexes
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_schema_version_version ON schema_version(version)", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_schema_version_applied_at ON schema_version(applied_at)", [])?;
+
+        log::info!("✅ Database indexes created successfully");
+        Ok(())
+    }
+
+    fn down(&self, conn: &Connection) -> SqliteResult<()> {
+        // Drop all indexes
+        let indexes = [
+            "idx_pss_events_v2_session_id", "idx_pss_events_v2_match_id", "idx_pss_events_v2_event_type_id",
+            "idx_pss_events_v2_timestamp", "idx_pss_events_v2_created_at", "idx_pss_event_types_event_code",
+            "idx_pss_event_types_category", "idx_pss_event_types_is_active", "idx_pss_matches_match_id",
+            "idx_pss_matches_created_at", "idx_pss_athletes_athlete_code", "idx_pss_athletes_created_at",
+            "idx_pss_scores_match_id", "idx_pss_scores_athlete_position", "idx_pss_scores_timestamp",
+            "idx_pss_warnings_match_id", "idx_pss_warnings_athlete_position", "idx_pss_warnings_timestamp",
+            "idx_udp_server_configs_name", "idx_udp_server_configs_enabled", "idx_udp_server_sessions_config_id",
+            "idx_udp_server_sessions_status", "idx_udp_server_sessions_start_time", "idx_udp_client_connections_session_id",
+            "idx_udp_client_connections_client_address", "idx_udp_client_connections_first_seen", "idx_network_interfaces_name",
+            "idx_network_interfaces_is_active", 
+            "idx_tournaments_name", "idx_tournaments_status", "idx_tournaments_start_date", "idx_tournaments_created_at", 
+            "idx_tournament_days_tournament_id", "idx_tournament_days_status", "idx_tournament_days_date", 
+            "idx_settings_keys_name", "idx_settings_keys_category", "idx_settings_categories_name", 
+            "idx_settings_categories_display_order", "idx_settings_values_key", "idx_settings_history_key", "idx_settings_history_created", 
+            "idx_schema_version_version", "idx_schema_version_applied_at"
+        ];
+
+        for index in &indexes {
+            if let Err(e) = conn.execute(&format!("DROP INDEX IF EXISTS {}", index), []) {
+                log::warn!("Failed to drop index {}: {}", index, e);
+            }
+        }
+
+        log::info!("✅ Database indexes dropped successfully");
+        Ok(())
+    }
+}
+
 /// Migration manager for handling database schema updates
 pub struct MigrationManager {
     migrations: Vec<Box<dyn Migration>>,
@@ -1301,6 +1426,7 @@ impl MigrationManager {
         migrations.push(Box::new(Migration4));
         migrations.push(Box::new(Migration5));
         migrations.push(Box::new(Migration6));
+        migrations.push(Box::new(Migration7));
         
         Self { migrations }
     }

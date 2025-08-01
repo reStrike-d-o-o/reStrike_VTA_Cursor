@@ -439,27 +439,58 @@ impl PssUdpOperations {
             )?;
             id
         } else {
-            // Insert new config
-            tx.execute(
-                "INSERT INTO udp_server_configs (
-                    name, port, bind_address, network_interface_id, enabled, auto_start,
-                    max_packet_size, buffer_size, timeout_ms, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                params![
-                    config.name,
-                    config.port,
-                    config.bind_address,
-                    config.network_interface_id,
-                    config.enabled,
-                    config.auto_start,
-                    config.max_packet_size,
-                    config.buffer_size,
-                    config.timeout_ms,
-                    config.created_at.to_rfc3339(),
-                    config.updated_at.to_rfc3339()
-                ]
-            )?;
-            tx.last_insert_rowid()
+            // Check if config with same name exists
+            let existing_id: Option<i64> = tx.query_row(
+                "SELECT id FROM udp_server_configs WHERE name = ?",
+                params![config.name],
+                |row| row.get(0)
+            ).optional()?;
+            
+            if let Some(existing_id) = existing_id {
+                // Update existing config
+                tx.execute(
+                    "UPDATE udp_server_configs SET 
+                        port = ?, bind_address = ?, network_interface_id = ?, 
+                        enabled = ?, auto_start = ?, max_packet_size = ?, buffer_size = ?, 
+                        timeout_ms = ?, updated_at = ?
+                    WHERE id = ?",
+                    params![
+                        config.port,
+                        config.bind_address,
+                        config.network_interface_id,
+                        config.enabled,
+                        config.auto_start,
+                        config.max_packet_size,
+                        config.buffer_size,
+                        config.timeout_ms,
+                        Utc::now().to_rfc3339(),
+                        existing_id
+                    ]
+                )?;
+                existing_id
+            } else {
+                // Insert new config
+                tx.execute(
+                    "INSERT INTO udp_server_configs (
+                        name, port, bind_address, network_interface_id, enabled, auto_start,
+                        max_packet_size, buffer_size, timeout_ms, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    params![
+                        config.name,
+                        config.port,
+                        config.bind_address,
+                        config.network_interface_id,
+                        config.enabled,
+                        config.auto_start,
+                        config.max_packet_size,
+                        config.buffer_size,
+                        config.timeout_ms,
+                        config.created_at.to_rfc3339(),
+                        config.updated_at.to_rfc3339()
+                    ]
+                )?;
+                tx.last_insert_rowid()
+            }
         };
         
         tx.commit()?;
