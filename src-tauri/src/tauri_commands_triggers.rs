@@ -76,14 +76,12 @@ pub async fn triggers_save(app: State<'_, Arc<App>>, payload: Vec<EventTriggerPa
             tournament_id: p.tournament_id,
             tournament_day_id: p.tournament_day_id,
             event_type: p.event_type.clone(),
-            trigger_type: p.target_type.clone(),
+            trigger_type: p.target_type.clone(), // legacy field still required elsewhere
             obs_scene_id: p.obs_scene_id,
             overlay_template_id: p.overlay_template_id,
             is_enabled: p.is_enabled,
             priority: p.priority,
             // Additional fields for new schema
-            action: p.action.clone(),
-            delay_ms: p.delay_ms.unwrap_or(0),
             created_at: now,
             updated_at: now,
         };
