@@ -165,7 +165,6 @@ pub enum UdpServerStatus {
 }
 
 pub struct UdpServer {
-    config: UdpServerConfig,
     status: Arc<Mutex<UdpServerStatus>>,
     event_tx: mpsc::UnboundedSender<PssEvent>,
     socket: Arc<Mutex<Option<UdpSocket>>>,
@@ -195,13 +194,11 @@ pub struct UdpStats {
 
 impl UdpServer {
     pub fn new(
-        config: UdpServerConfig, 
         event_tx: mpsc::UnboundedSender<PssEvent>, 
         protocol_manager: Arc<ProtocolManager>,
         database: Arc<DatabasePlugin>,
     ) -> Self {
         Self {
-            config,
             status: Arc::new(Mutex::new(UdpServerStatus::Stopped)),
             event_tx,
             socket: Arc::new(Mutex::new(None)),
@@ -1223,7 +1220,7 @@ impl UdpServer {
         let parts: Vec<&str> = clean_message.split(';').collect();
         
         if parts.is_empty() {
-            return Err(AppError::ConfigError("Empty message".to_string()));
+            return Ok(PssEvent::Raw(message.to_string()));
         }
 
         // Handle connection status messages (not PSS events)
@@ -1492,6 +1489,28 @@ impl UdpServer {
                 } else {
                     Ok(PssEvent::Raw(message.to_string()))
                 }
+            }
+
+            // Additional events that were missing and causing panics
+            "ref" => {
+                // Referee/judge event - handle as raw for now
+                Ok(PssEvent::Raw(message.to_string()))
+            }
+            "sup" => {
+                // Supervision event - handle as raw for now
+                Ok(PssEvent::Raw(message.to_string()))
+            }
+            "win" => {
+                // Winner event - handle as raw for now
+                Ok(PssEvent::Raw(message.to_string()))
+            }
+            "rst" => {
+                // Reset/statistics event - handle as raw for now
+                Ok(PssEvent::Raw(message.to_string()))
+            }
+            "rsr" => {
+                // Reset event - handle as raw for now
+                Ok(PssEvent::Raw(message.to_string()))
             }
 
             // Default: return as raw message
