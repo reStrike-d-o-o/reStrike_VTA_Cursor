@@ -10,6 +10,7 @@ pub mod plugin_license;
 pub mod plugin_cpu_monitor;
 pub mod plugin_protocol_manager;
 pub mod plugin_tournament;
+pub mod plugin_triggers;
 pub mod performance_monitor;
 pub mod event_cache;
 pub mod event_stream;
@@ -27,6 +28,7 @@ pub use plugin_license::LicensePlugin;
 pub use plugin_cpu_monitor::{CpuMonitorPlugin, CpuMonitorConfig, CpuProcessData, SystemCpuData};
 pub use plugin_protocol_manager::{ProtocolManager, ProtocolFile, ProtocolVersion, StreamDefinition};
 pub use plugin_tournament::{TournamentPlugin, LocationVerification, CreateTournamentRequest, UpdateTournamentRequest};
+pub use plugin_triggers::{TriggerPlugin, PssEventType, TriggerType, TriggerExecutionResult};
 pub use performance_monitor::{PerformanceMonitor, MemoryTracker, ProcessingStats, EventRateTracker, PerformanceMetrics, MemoryUsageStats, ProcessingPerformanceStats};
 pub use event_cache::{EventCache, CacheConfig, CacheStatistics, AthleteStatistics, TournamentStatistics, MatchStatistics};
 pub use event_stream::{EventStreamProcessor, EventStreamConfig, StreamStatistics, RealTimeAnalytics, EventStreamSubscriber};
@@ -49,6 +51,7 @@ pub async fn init() -> Result<(), Box<dyn std::error::Error>> {
     plugin_protocol_manager::init()?;
     plugin_websocket::init()?;  // WebSocket server for HTML overlays
     plugin_tournament::init()?; // Tournament management system
+    plugin_triggers::init()?;   // Trigger system for PSS events
     
     println!("✅ All plugins initialized successfully");
     Ok(())

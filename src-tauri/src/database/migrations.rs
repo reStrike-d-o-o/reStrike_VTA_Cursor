@@ -1693,6 +1693,140 @@ impl Migration for Migration8 {
     }
 }
 
+pub struct Migration9;
+
+impl Migration for Migration9 {
+    fn version(&self) -> u32 {
+        9
+    }
+
+    fn description(&self) -> &str {
+        "Add trigger system tables: obs_scenes, overlay_templates, event_triggers"
+    }
+
+    fn up(&self, conn: &Connection) -> SqliteResult<()> {
+        // Create obs_scenes table for OBS scene management
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS obs_scenes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                scene_name TEXT NOT NULL UNIQUE,
+                scene_id TEXT NOT NULL,
+                is_active BOOLEAN NOT NULL DEFAULT 1,
+                last_seen_at TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )",
+            [],
+        )?;
+
+        // Create overlay_templates table for available overlays
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS overlay_templates (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL UNIQUE,
+                description TEXT,
+                theme TEXT NOT NULL DEFAULT 'default',
+                colors TEXT, -- JSON string for color configuration
+                animation_type TEXT NOT NULL DEFAULT 'fade',
+                duration_ms INTEGER NOT NULL DEFAULT 3000,
+                is_active BOOLEAN NOT NULL DEFAULT 1,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )",
+            [],
+        )?;
+
+        // Create event_triggers table for PSS event triggers
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS event_triggers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tournament_id INTEGER,
+                tournament_day_id INTEGER,
+                event_type TEXT NOT NULL, -- PSS event type (e.g., 'pt1', 'wg1', 'mch', etc.)
+                trigger_type TEXT NOT NULL CHECK (trigger_type IN ('scene', 'overlay', 'both')),
+                obs_scene_id INTEGER,
+                overlay_template_id INTEGER,
+                is_enabled BOOLEAN NOT NULL DEFAULT 1,
+                priority INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY (tournament_id) REFERENCES tournaments(id) ON DELETE CASCADE,
+                FOREIGN KEY (tournament_day_id) REFERENCES tournament_days(id) ON DELETE CASCADE,
+                FOREIGN KEY (obs_scene_id) REFERENCES obs_scenes(id) ON DELETE SET NULL,
+                FOREIGN KEY (overlay_template_id) REFERENCES overlay_templates(id) ON DELETE SET NULL,
+                UNIQUE(tournament_id, tournament_day_id, event_type)
+            )",
+            [],
+        )?;
+
+        // Create indices for performance
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_obs_scenes_active ON obs_scenes(is_active)",
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_obs_scenes_name ON obs_scenes(scene_name)",
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_overlay_templates_active ON overlay_templates(is_active)",
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_overlay_templates_theme ON overlay_templates(theme)",
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_event_triggers_tournament ON event_triggers(tournament_id)",
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_event_triggers_tournament_day ON event_triggers(tournament_day_id)",
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_event_triggers_event_type ON event_triggers(event_type)",
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_event_triggers_enabled ON event_triggers(is_enabled)",
+            [],
+        )?;
+
+        // Insert default overlay templates
+        let now = chrono::Utc::now().to_rfc3339();
+        conn.execute(
+            "INSERT OR IGNORE INTO overlay_templates (name, description, theme, colors, animation_type, duration_ms, is_active, created_at, updated_at) VALUES 
+            ('Point Scored', 'Overlay for when a point is scored', 'default', '{\"primary\": \"#00ff00\", \"secondary\": \"#ffffff\"}', 'slide', 2000, 1, ?, ?),
+            ('Warning Issued', 'Overlay for when a warning is issued', 'default', '{\"primary\": \"#ff0000\", \"secondary\": \"#ffffff\"}', 'fade', 3000, 1, ?, ?),
+            ('Match Start', 'Overlay for match start', 'default', '{\"primary\": \"#0000ff\", \"secondary\": \"#ffffff\"}', 'zoom', 4000, 1, ?, ?),
+            ('Round End', 'Overlay for round end', 'default', '{\"primary\": \"#ffff00\", \"secondary\": \"#000000\"}', 'slide', 2500, 1, ?, ?),
+            ('Winner', 'Overlay for match winner', 'default', '{\"primary\": \"#ffd700\", \"secondary\": \"#000000\"}', 'bounce', 5000, 1, ?, ?)",
+            [&now, &now, &now, &now, &now, &now, &now, &now, &now, &now],
+        )?;
+
+        log::info!("✅ Migration 9: Trigger system tables created successfully");
+        Ok(())
+    }
+
+    fn down(&self, conn: &Connection) -> SqliteResult<()> {
+        // Drop tables in reverse order
+        conn.execute("DROP TABLE IF EXISTS event_triggers", [])?;
+        conn.execute("DROP TABLE IF EXISTS overlay_templates", [])?;
+        conn.execute("DROP TABLE IF EXISTS obs_scenes", [])?;
+
+        log::warn!("⚠️ Migration 9 rollback: Trigger system tables dropped");
+        Ok(())
+    }
+}
+
 /// Migration manager for handling database schema updates
 pub struct MigrationManager {
     migrations: Vec<Box<dyn Migration>>,
@@ -1709,7 +1843,8 @@ impl MigrationManager {
         migrations.push(Box::new(Migration5));
         migrations.push(Box::new(Migration6));
         migrations.push(Box::new(Migration7));
-        migrations.push(Box::new(Migration8)); // Add new migration
+        migrations.push(Box::new(Migration8));
+        migrations.push(Box::new(Migration9)); // Add trigger system migration
         
         Self { migrations }
     }

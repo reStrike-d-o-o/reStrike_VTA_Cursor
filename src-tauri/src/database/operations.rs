@@ -2,7 +2,13 @@ use rusqlite::{Connection, Result as SqliteResult, params, OptionalExtension};
 use chrono::Utc;
 use crate::database::{
     DatabaseResult,
-    models::{SettingsKey, SettingsValue, SettingsHistory, SettingsCategory},
+    DatabaseConnection,
+    models::{SettingsKey, SettingsValue, SettingsHistory, SettingsCategory,
+        Tournament, TournamentDay, NetworkInterface, UdpServerConfig, UdpServerSession, 
+        UdpClientConnection, PssEventType, PssMatch, PssAthlete, PssEventV2, PssEventDetail, 
+        PssScore, PssWarning, PssUnknownEvent, PssEventValidationRule, PssEventValidationResult, 
+        PssEventStatistics, PssEventRecognitionHistory, ObsScene, OverlayTemplate, EventTrigger
+    },
 };
 
 /// UI Settings Operations for managing UI configuration
@@ -301,13 +307,13 @@ impl PssUdpOperations {
     // Network Interface Operations
     
     /// Get all network interfaces
-    pub fn get_network_interfaces(conn: &Connection) -> DatabaseResult<Vec<crate::database::models::NetworkInterface>> {
+    pub fn get_network_interfaces(conn: &Connection) -> DatabaseResult<Vec<NetworkInterface>> {
         let mut stmt = conn.prepare(
             "SELECT * FROM network_interfaces ORDER BY is_recommended DESC, is_active DESC, name"
         )?;
         
         let interfaces = stmt.query_map([], |row| {
-            crate::database::models::NetworkInterface::from_row(row)
+            NetworkInterface::from_row(row)
         })?
         .collect::<Result<Vec<_>, _>>()?;
         
@@ -315,18 +321,18 @@ impl PssUdpOperations {
     }
     
     /// Get recommended network interface
-    pub fn get_recommended_interface(conn: &Connection) -> DatabaseResult<Option<crate::database::models::NetworkInterface>> {
+    pub fn get_recommended_interface(conn: &Connection) -> DatabaseResult<Option<NetworkInterface>> {
         let interface = conn.query_row(
             "SELECT * FROM network_interfaces WHERE is_recommended = 1 AND is_active = 1 LIMIT 1",
             [],
-            |row| crate::database::models::NetworkInterface::from_row(row)
+            |row| NetworkInterface::from_row(row)
         ).optional()?;
         
         Ok(interface)
     }
     
     /// Add or update network interface
-    pub fn upsert_network_interface(conn: &mut Connection, interface: &crate::database::models::NetworkInterface) -> DatabaseResult<i64> {
+    pub fn upsert_network_interface(conn: &mut Connection, interface: &NetworkInterface) -> DatabaseResult<i64> {
         let tx = conn.transaction()?;
         
         let interface_id = if let Some(id) = interface.id {
@@ -387,13 +393,13 @@ impl PssUdpOperations {
     // UDP Server Configuration Operations
     
     /// Get all UDP server configurations
-    pub fn get_udp_server_configs(conn: &Connection) -> DatabaseResult<Vec<crate::database::models::UdpServerConfig>> {
+    pub fn get_udp_server_configs(conn: &Connection) -> DatabaseResult<Vec<UdpServerConfig>> {
         let mut stmt = conn.prepare(
             "SELECT * FROM udp_server_configs ORDER BY name"
         )?;
         
         let configs = stmt.query_map([], |row| {
-            crate::database::models::UdpServerConfig::from_row(row)
+            UdpServerConfig::from_row(row)
         })?
         .collect::<Result<Vec<_>, _>>()?;
         
@@ -401,18 +407,18 @@ impl PssUdpOperations {
     }
     
     /// Get UDP server configuration by ID
-    pub fn get_udp_server_config(conn: &Connection, config_id: i64) -> DatabaseResult<Option<crate::database::models::UdpServerConfig>> {
+    pub fn get_udp_server_config(conn: &Connection, config_id: i64) -> DatabaseResult<Option<UdpServerConfig>> {
         let config = conn.query_row(
             "SELECT * FROM udp_server_configs WHERE id = ?",
             params![config_id],
-            |row| crate::database::models::UdpServerConfig::from_row(row)
+            |row| UdpServerConfig::from_row(row)
         ).optional()?;
         
         Ok(config)
     }
     
     /// Add or update UDP server configuration
-    pub fn upsert_udp_server_config(conn: &mut Connection, config: &crate::database::models::UdpServerConfig) -> DatabaseResult<i64> {
+    pub fn upsert_udp_server_config(conn: &mut Connection, config: &UdpServerConfig) -> DatabaseResult<i64> {
         let tx = conn.transaction()?;
         
         let config_id = if let Some(id) = config.id {
@@ -501,7 +507,7 @@ impl PssUdpOperations {
     
     /// Create new UDP server session
     pub fn create_udp_server_session(conn: &mut Connection, server_config_id: i64) -> DatabaseResult<i64> {
-        let session = crate::database::models::UdpServerSession::new(server_config_id);
+        let session = UdpServerSession::new(server_config_id);
         
         let session_id = conn.execute(
             "INSERT INTO udp_server_sessions (
@@ -580,24 +586,24 @@ impl PssUdpOperations {
     }
     
     /// Get UDP server session by ID
-    pub fn get_udp_server_session(conn: &Connection, session_id: i64) -> DatabaseResult<Option<crate::database::models::UdpServerSession>> {
+    pub fn get_udp_server_session(conn: &Connection, session_id: i64) -> DatabaseResult<Option<UdpServerSession>> {
         let session = conn.query_row(
             "SELECT * FROM udp_server_sessions WHERE id = ?",
             params![session_id],
-            |row| crate::database::models::UdpServerSession::from_row(row)
+            |row| UdpServerSession::from_row(row)
         ).optional()?;
         
         Ok(session)
     }
     
     /// Get recent UDP server sessions
-    pub fn get_recent_udp_server_sessions(conn: &Connection, limit: i64) -> DatabaseResult<Vec<crate::database::models::UdpServerSession>> {
+    pub fn get_recent_udp_server_sessions(conn: &Connection, limit: i64) -> DatabaseResult<Vec<UdpServerSession>> {
         let mut stmt = conn.prepare(
             "SELECT * FROM udp_server_sessions ORDER BY start_time DESC LIMIT ?"
         )?;
         
         let sessions = stmt.query_map(params![limit], |row| {
-            crate::database::models::UdpServerSession::from_row(row)
+            UdpServerSession::from_row(row)
         })?
         .collect::<Result<Vec<_>, _>>()?;
         
@@ -607,7 +613,7 @@ impl PssUdpOperations {
     // UDP Client Connection Operations
     
     /// Add or update UDP client connection
-    pub fn upsert_udp_client_connection(conn: &mut Connection, client: &crate::database::models::UdpClientConnection) -> DatabaseResult<i64> {
+    pub fn upsert_udp_client_connection(conn: &mut Connection, client: &UdpClientConnection) -> DatabaseResult<i64> {
         let tx = conn.transaction()?;
         
         let client_id = if let Some(id) = client.id {
@@ -651,13 +657,13 @@ impl PssUdpOperations {
     }
     
     /// Get active client connections for a session
-    pub fn get_active_client_connections(conn: &Connection, session_id: i64) -> DatabaseResult<Vec<crate::database::models::UdpClientConnection>> {
+    pub fn get_active_client_connections(conn: &Connection, session_id: i64) -> DatabaseResult<Vec<UdpClientConnection>> {
         let mut stmt = conn.prepare(
             "SELECT * FROM udp_client_connections WHERE session_id = ? AND is_active = 1 ORDER BY last_seen DESC"
         )?;
         
         let clients = stmt.query_map(params![session_id], |row| {
-            crate::database::models::UdpClientConnection::from_row(row)
+            UdpClientConnection::from_row(row)
         })?
         .collect::<Result<Vec<_>, _>>()?;
         
@@ -667,13 +673,13 @@ impl PssUdpOperations {
     // PSS Event Type Operations
     
     /// Get all PSS event types
-    pub fn get_pss_event_types(conn: &Connection) -> DatabaseResult<Vec<crate::database::models::PssEventType>> {
+    pub fn get_pss_event_types(conn: &Connection) -> DatabaseResult<Vec<PssEventType>> {
         let mut stmt = conn.prepare(
             "SELECT * FROM pss_event_types WHERE is_active = 1 ORDER BY category, event_code"
         )?;
         
         let event_types = stmt.query_map([], |row| {
-            crate::database::models::PssEventType::from_row(row)
+            PssEventType::from_row(row)
         })?
         .collect::<Result<Vec<_>, _>>()?;
         
@@ -681,11 +687,11 @@ impl PssUdpOperations {
     }
     
     /// Get PSS event type by code
-    pub fn get_pss_event_type_by_code(conn: &Connection, event_code: &str) -> DatabaseResult<Option<crate::database::models::PssEventType>> {
+    pub fn get_pss_event_type_by_code(conn: &Connection, event_code: &str) -> DatabaseResult<Option<PssEventType>> {
         let event_type = conn.query_row(
             "SELECT * FROM pss_event_types WHERE event_code = ? AND is_active = 1",
             params![event_code],
-            |row| crate::database::models::PssEventType::from_row(row)
+            |row| PssEventType::from_row(row)
         ).optional()?;
         
         Ok(event_type)
@@ -708,7 +714,7 @@ impl PssUdpOperations {
             id
         } else {
             // Create new match
-            let match_obj = crate::database::models::PssMatch::new(match_id.to_string());
+            let match_obj = PssMatch::new(match_id.to_string());
             tx.execute(
                 "INSERT INTO pss_matches (
                     match_id, total_rounds, created_at, updated_at
@@ -728,7 +734,7 @@ impl PssUdpOperations {
     }
     
     /// Update PSS match information
-    pub fn update_pss_match(conn: &mut Connection, match_id: i64, match_data: &crate::database::models::PssMatch) -> DatabaseResult<()> {
+    pub fn update_pss_match(conn: &mut Connection, match_id: i64, match_data: &PssMatch) -> DatabaseResult<()> {
         conn.execute(
             "UPDATE pss_matches SET 
                 match_number = ?, category = ?, weight_class = ?, division = ?,
@@ -768,7 +774,7 @@ impl PssUdpOperations {
             id
         } else {
             // Create new athlete
-            let athlete = crate::database::models::PssAthlete::new(athlete_code.to_string(), short_name.to_string());
+            let athlete = PssAthlete::new(athlete_code.to_string(), short_name.to_string());
             tx.execute(
                 "INSERT INTO pss_athletes (
                     athlete_code, short_name, created_at, updated_at
@@ -788,7 +794,7 @@ impl PssUdpOperations {
     }
     
     /// Update PSS athlete information
-    pub fn update_pss_athlete(conn: &mut Connection, athlete_id: i64, athlete_data: &crate::database::models::PssAthlete) -> DatabaseResult<()> {
+    pub fn update_pss_athlete(conn: &mut Connection, athlete_id: i64, athlete_data: &PssAthlete) -> DatabaseResult<()> {
         conn.execute(
             "UPDATE pss_athletes SET 
                 long_name = ?, country_code = ?, flag_id = ?, updated_at = ?
@@ -808,7 +814,7 @@ impl PssUdpOperations {
     // PSS Event Operations
     
     /// Store PSS event
-    pub fn store_pss_event(conn: &mut Connection, event: &crate::database::models::PssEventV2) -> DatabaseResult<i64> {
+    pub fn store_pss_event(conn: &mut Connection, event: &PssEventV2) -> DatabaseResult<i64> {
         let event_id = conn.execute(
             "INSERT INTO pss_events_v2 (
                 session_id, match_id, round_id, event_type_id, timestamp, raw_data,
@@ -834,14 +840,14 @@ impl PssUdpOperations {
     }
     
     /// Get PSS events for a session
-    pub fn get_pss_events_for_session(conn: &Connection, session_id: i64, limit: Option<i64>) -> DatabaseResult<Vec<crate::database::models::PssEventV2>> {
+    pub fn get_pss_events_for_session(conn: &Connection, session_id: i64, limit: Option<i64>) -> DatabaseResult<Vec<PssEventV2>> {
         let limit = limit.unwrap_or(100);
         let mut stmt = conn.prepare(
             "SELECT * FROM pss_events_v2 WHERE session_id = ? ORDER BY event_sequence DESC LIMIT ?"
         )?;
         
         let events = stmt.query_map(params![session_id, limit], |row| {
-            crate::database::models::PssEventV2::from_row(row)
+            PssEventV2::from_row(row)
         })?
         .collect::<Result<Vec<_>, _>>()?;
         
@@ -849,14 +855,14 @@ impl PssUdpOperations {
     }
     
     /// Get PSS events for a match
-    pub fn get_pss_events_for_match(conn: &Connection, match_id: i64, limit: Option<i64>) -> DatabaseResult<Vec<crate::database::models::PssEventV2>> {
+    pub fn get_pss_events_for_match(conn: &Connection, match_id: i64, limit: Option<i64>) -> DatabaseResult<Vec<PssEventV2>> {
         let limit = limit.unwrap_or(100);
         let mut stmt = conn.prepare(
             "SELECT * FROM pss_events_v2 WHERE match_id = ? ORDER BY timestamp DESC LIMIT ?"
         )?;
         
         let events = stmt.query_map(params![match_id, limit], |row| {
-            crate::database::models::PssEventV2::from_row(row)
+            PssEventV2::from_row(row)
         })?
         .collect::<Result<Vec<_>, _>>()?;
         
@@ -870,7 +876,7 @@ impl PssUdpOperations {
         let tx = conn.transaction()?;
         
         for (key, value, detail_type) in details {
-            let detail = crate::database::models::PssEventDetail::new(
+            let detail = PssEventDetail::new(
                 event_id,
                 key.clone(),
                 value.clone(),
@@ -895,13 +901,13 @@ impl PssUdpOperations {
     }
     
     /// Get PSS event details
-    pub fn get_pss_event_details(conn: &Connection, event_id: i64) -> DatabaseResult<Vec<crate::database::models::PssEventDetail>> {
+    pub fn get_pss_event_details(conn: &Connection, event_id: i64) -> DatabaseResult<Vec<PssEventDetail>> {
         let mut stmt = conn.prepare(
             "SELECT * FROM pss_event_details WHERE event_id = ? ORDER BY detail_key"
         )?;
         
         let details = stmt.query_map(params![event_id], |row| {
-            crate::database::models::PssEventDetail::from_row(row)
+            PssEventDetail::from_row(row)
         })?
         .collect::<Result<Vec<_>, _>>()?;
         
@@ -911,7 +917,7 @@ impl PssUdpOperations {
     // PSS Score Operations
     
     /// Store PSS score
-    pub fn store_pss_score(conn: &mut Connection, score: &crate::database::models::PssScore) -> DatabaseResult<i64> {
+    pub fn store_pss_score(conn: &mut Connection, score: &PssScore) -> DatabaseResult<i64> {
         let score_id = conn.execute(
             "INSERT INTO pss_scores (
                 match_id, round_id, athlete_position, score_type, score_value, timestamp, created_at
@@ -931,13 +937,13 @@ impl PssUdpOperations {
     }
     
     /// Get current scores for a match
-    pub fn get_current_scores_for_match(conn: &Connection, match_id: i64) -> DatabaseResult<Vec<crate::database::models::PssScore>> {
+    pub fn get_current_scores_for_match(conn: &Connection, match_id: i64) -> DatabaseResult<Vec<PssScore>> {
         let mut stmt = conn.prepare(
             "SELECT * FROM pss_scores WHERE match_id = ? AND score_type = 'current' ORDER BY timestamp DESC LIMIT 2"
         )?;
         
         let scores = stmt.query_map(params![match_id], |row| {
-            crate::database::models::PssScore::from_row(row)
+            PssScore::from_row(row)
         })?
         .collect::<Result<Vec<_>, _>>()?;
         
@@ -947,7 +953,7 @@ impl PssUdpOperations {
     // PSS Warning Operations
     
     /// Store PSS warning
-    pub fn store_pss_warning(conn: &mut Connection, warning: &crate::database::models::PssWarning) -> DatabaseResult<i64> {
+    pub fn store_pss_warning(conn: &mut Connection, warning: &PssWarning) -> DatabaseResult<i64> {
         let warning_id = conn.execute(
             "INSERT INTO pss_warnings (
                 match_id, round_id, athlete_position, warning_type, warning_count, timestamp, created_at
@@ -967,13 +973,13 @@ impl PssUdpOperations {
     }
     
     /// Get current warnings for a match
-    pub fn get_current_warnings_for_match(conn: &Connection, match_id: i64) -> DatabaseResult<Vec<crate::database::models::PssWarning>> {
+    pub fn get_current_warnings_for_match(conn: &Connection, match_id: i64) -> DatabaseResult<Vec<PssWarning>> {
         let mut stmt = conn.prepare(
             "SELECT * FROM pss_warnings WHERE match_id = ? ORDER BY timestamp DESC"
         )?;
         
         let warnings = stmt.query_map(params![match_id], |row| {
-            crate::database::models::PssWarning::from_row(row)
+            PssWarning::from_row(row)
         })?
         .collect::<Result<Vec<_>, _>>()?;
         
@@ -1045,7 +1051,7 @@ impl TournamentOperations {
     }
 
     /// Create a new tournament
-    pub fn create_tournament(conn: &mut Connection, tournament: &crate::database::models::Tournament) -> DatabaseResult<i64> {
+    pub fn create_tournament(conn: &mut Connection, tournament: &Tournament) -> DatabaseResult<i64> {
         // Check if tournament name already exists
         if Self::tournament_name_exists(conn, &tournament.name)? {
             return Err(crate::database::DatabaseError::Sqlite(
@@ -1077,12 +1083,12 @@ impl TournamentOperations {
     }
     
     /// Get all tournaments
-    pub fn get_tournaments(conn: &Connection) -> DatabaseResult<Vec<crate::database::models::Tournament>> {
+    pub fn get_tournaments(conn: &Connection) -> DatabaseResult<Vec<Tournament>> {
         let mut stmt = conn.prepare(
             "SELECT id, name, duration_days, city, country, country_code, logo_path, status, start_date, end_date, created_at, updated_at FROM tournaments ORDER BY created_at DESC"
         )?;
         
-        let rows = stmt.query_map([], |row| crate::database::models::Tournament::from_row(row))?;
+        let rows = stmt.query_map([], |row| Tournament::from_row(row))?;
         
         let mut tournaments = Vec::new();
         for row in rows {
@@ -1093,18 +1099,18 @@ impl TournamentOperations {
     }
     
     /// Get tournament by ID
-    pub fn get_tournament(conn: &Connection, tournament_id: i64) -> DatabaseResult<Option<crate::database::models::Tournament>> {
+    pub fn get_tournament(conn: &Connection, tournament_id: i64) -> DatabaseResult<Option<Tournament>> {
         let tournament = conn.query_row(
             "SELECT id, name, duration_days, city, country, country_code, logo_path, status, start_date, end_date, created_at, updated_at FROM tournaments WHERE id = ?",
             params![tournament_id],
-            |row| crate::database::models::Tournament::from_row(row)
+            |row| Tournament::from_row(row)
         ).optional()?;
         
         Ok(tournament)
     }
     
     /// Update tournament
-    pub fn update_tournament(conn: &mut Connection, tournament_id: i64, tournament: &crate::database::models::Tournament) -> DatabaseResult<()> {
+    pub fn update_tournament(conn: &mut Connection, tournament_id: i64, tournament: &Tournament) -> DatabaseResult<()> {
         conn.execute(
             "UPDATE tournaments SET name = ?, duration_days = ?, city = ?, country = ?, country_code = ?, logo_path = ?, status = ?, start_date = ?, end_date = ?, updated_at = ? WHERE id = ?",
             params![
@@ -1137,7 +1143,7 @@ impl TournamentOperations {
         
         for day_number in 1..=duration_days {
             let day_date = start_date + chrono::Duration::days((day_number - 1) as i64);
-            let tournament_day = crate::database::models::TournamentDay::new(tournament_id, day_number, day_date);
+            let tournament_day = TournamentDay::new(tournament_id, day_number, day_date);
             
             tx.execute(
                 "INSERT INTO tournament_days (tournament_id, day_number, date, status, start_time, end_time, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
@@ -1159,12 +1165,12 @@ impl TournamentOperations {
     }
     
     /// Get tournament days for a tournament
-    pub fn get_tournament_days(conn: &Connection, tournament_id: i64) -> DatabaseResult<Vec<crate::database::models::TournamentDay>> {
+    pub fn get_tournament_days(conn: &Connection, tournament_id: i64) -> DatabaseResult<Vec<TournamentDay>> {
         let mut stmt = conn.prepare(
             "SELECT id, tournament_id, day_number, date, status, start_time, end_time, created_at, updated_at FROM tournament_days WHERE tournament_id = ? ORDER BY day_number"
         )?;
         
-        let rows = stmt.query_map(params![tournament_id], |row| crate::database::models::TournamentDay::from_row(row))?;
+        let rows = stmt.query_map(params![tournament_id], |row| TournamentDay::from_row(row))?;
         
         let mut days = Vec::new();
         for row in rows {
@@ -1247,22 +1253,22 @@ impl TournamentOperations {
     }
     
     /// Get active tournament
-    pub fn get_active_tournament(conn: &Connection) -> DatabaseResult<Option<crate::database::models::Tournament>> {
+    pub fn get_active_tournament(conn: &Connection) -> DatabaseResult<Option<Tournament>> {
         let tournament = conn.query_row(
             "SELECT id, name, duration_days, city, country, country_code, logo_path, status, start_date, end_date, created_at, updated_at FROM tournaments WHERE status = 'active' ORDER BY created_at DESC LIMIT 1",
             [],
-            |row| crate::database::models::Tournament::from_row(row)
+            |row| Tournament::from_row(row)
         ).optional()?;
         
         Ok(tournament)
     }
     
     /// Get active tournament day
-    pub fn get_active_tournament_day(conn: &Connection, tournament_id: i64) -> DatabaseResult<Option<crate::database::models::TournamentDay>> {
+    pub fn get_active_tournament_day(conn: &Connection, tournament_id: i64) -> DatabaseResult<Option<TournamentDay>> {
         let day = conn.query_row(
             "SELECT id, tournament_id, day_number, date, status, start_time, end_time, created_at, updated_at FROM tournament_days WHERE tournament_id = ? AND status = 'active' ORDER BY day_number DESC LIMIT 1",
             params![tournament_id],
-            |row| crate::database::models::TournamentDay::from_row(row)
+            |row| TournamentDay::from_row(row)
         ).optional()?;
         
         Ok(day)
@@ -1286,7 +1292,7 @@ impl PssEventStatusOperations {
     /// Store a PSS event with status mark
     pub fn store_pss_event_with_status(
         conn: &mut Connection, 
-        event: &crate::database::models::PssEventV2
+        event: &PssEventV2
     ) -> DatabaseResult<i64> {
         let tx = conn.transaction()?;
         
@@ -1344,7 +1350,7 @@ impl PssEventStatusOperations {
         )?;
         
         // Record status change in history
-        let history = crate::database::models::PssEventRecognitionHistory::new(
+        let history = PssEventRecognitionHistory::new(
             event_id,
             current_status,
             new_status.to_string(),
@@ -1377,7 +1383,7 @@ impl PssEventStatusOperations {
     /// Store unknown event
     pub fn store_unknown_event(
         conn: &mut Connection,
-        unknown_event: &crate::database::models::PssUnknownEvent,
+        unknown_event: &PssUnknownEvent,
     ) -> DatabaseResult<i64> {
         let tx = conn.transaction()?;
         
@@ -1433,7 +1439,7 @@ impl PssEventStatusOperations {
         conn: &Connection,
         event_code: &str,
         protocol_version: &str,
-    ) -> DatabaseResult<Vec<crate::database::models::PssEventValidationRule>> {
+    ) -> DatabaseResult<Vec<PssEventValidationRule>> {
         let mut stmt = conn.prepare(
             "SELECT id, event_code, protocol_version, rule_name, rule_type, rule_definition, 
                     error_message, is_active, created_at, updated_at 
@@ -1443,7 +1449,7 @@ impl PssEventStatusOperations {
         )?;
         
         let rows = stmt.query_map(params![event_code, protocol_version], |row| {
-            crate::database::models::PssEventValidationRule::from_row(row)
+            PssEventValidationRule::from_row(row)
         })?;
         
         let mut rules = Vec::new();
@@ -1457,7 +1463,7 @@ impl PssEventStatusOperations {
     /// Store validation result
     pub fn store_validation_result(
         conn: &mut Connection,
-        validation_result: &crate::database::models::PssEventValidationResult,
+        validation_result: &PssEventValidationResult,
     ) -> DatabaseResult<i64> {
         let validation_result_id = conn.execute(
             "INSERT INTO pss_event_validation_results (
@@ -1531,7 +1537,7 @@ impl PssEventStatusOperations {
             }
         } else {
             // Create new statistics record
-            let stats = crate::database::models::PssEventStatistics::new(session_id, event_type_id);
+            let stats = PssEventStatistics::new(session_id, event_type_id);
             let total_events = 1;
             let mut recognized_events = 0;
             let mut unknown_events = 0;
@@ -1580,7 +1586,7 @@ impl PssEventStatusOperations {
     pub fn get_session_statistics(
         conn: &Connection,
         session_id: i64,
-    ) -> DatabaseResult<Vec<crate::database::models::PssEventStatistics>> {
+    ) -> DatabaseResult<Vec<PssEventStatistics>> {
         let mut stmt = conn.prepare(
             "SELECT id, session_id, event_type_id, total_events, recognized_events, unknown_events,
                     partial_events, deprecated_events, validation_errors, parsing_errors,
@@ -1592,7 +1598,7 @@ impl PssEventStatusOperations {
         )?;
         
         let rows = stmt.query_map(params![session_id], |row| {
-            crate::database::models::PssEventStatistics::from_row(row)
+            PssEventStatistics::from_row(row)
         })?;
         
         let mut statistics = Vec::new();
@@ -1608,7 +1614,7 @@ impl PssEventStatusOperations {
         conn: &Connection,
         session_id: Option<i64>,
         limit: Option<i64>,
-    ) -> DatabaseResult<Vec<crate::database::models::PssUnknownEvent>> {
+    ) -> DatabaseResult<Vec<PssUnknownEvent>> {
         let limit = limit.unwrap_or(100);
         
         let sql = if let Some(_session_id) = session_id {
@@ -1629,9 +1635,9 @@ impl PssEventStatusOperations {
         let mut stmt = conn.prepare(sql)?;
         
         let rows = if let Some(session_id) = session_id {
-            stmt.query_map(params![session_id, limit], crate::database::models::PssUnknownEvent::from_row)?
+            stmt.query_map(params![session_id, limit], PssUnknownEvent::from_row)?
         } else {
-            stmt.query_map(params![limit], crate::database::models::PssUnknownEvent::from_row)?
+            stmt.query_map(params![limit], PssUnknownEvent::from_row)?
         };
         
         let mut unknown_events = Vec::new();
@@ -1646,7 +1652,7 @@ impl PssEventStatusOperations {
     pub fn get_event_recognition_history(
         conn: &Connection,
         event_id: i64,
-    ) -> DatabaseResult<Vec<crate::database::models::PssEventRecognitionHistory>> {
+    ) -> DatabaseResult<Vec<PssEventRecognitionHistory>> {
         let mut stmt = conn.prepare(
             "SELECT id, event_id, old_status, new_status, changed_by, change_reason,
                     protocol_version, raw_data, parsed_data, created_at
@@ -1656,7 +1662,7 @@ impl PssEventStatusOperations {
         )?;
         
         let rows = stmt.query_map(params![event_id], |row| {
-            crate::database::models::PssEventRecognitionHistory::from_row(row)
+            PssEventRecognitionHistory::from_row(row)
         })?;
         
         let mut history = Vec::new();
@@ -1673,7 +1679,7 @@ impl PssEventStatusOperations {
         session_id: i64,
         recognition_status: &str,
         limit: Option<i64>,
-    ) -> DatabaseResult<Vec<crate::database::models::PssEventV2>> {
+    ) -> DatabaseResult<Vec<PssEventV2>> {
         let limit = limit.unwrap_or(100);
         
         let mut stmt = conn.prepare(
@@ -1687,7 +1693,7 @@ impl PssEventStatusOperations {
         )?;
         
         let rows = stmt.query_map(params![session_id, recognition_status, limit], |row| {
-            crate::database::models::PssEventV2::from_row(row)
+            PssEventV2::from_row(row)
         })?;
         
         let mut events = Vec::new();
@@ -1829,7 +1835,7 @@ pub struct PssEventOperations;
 
 impl PssEventOperations {
     /// Get PSS event type by code
-    pub fn get_pss_event_type_by_code(conn: &Connection, event_code: &str) -> DatabaseResult<Option<crate::database::models::PssEventType>> {
+    pub fn get_pss_event_type_by_code(conn: &Connection, event_code: &str) -> DatabaseResult<Option<PssEventType>> {
         let mut stmt = conn.prepare(
             "SELECT id, event_code, event_name, description, category, is_active, created_at 
              FROM pss_event_types 
@@ -1837,7 +1843,7 @@ impl PssEventOperations {
         )?;
         
         let mut rows = stmt.query_map(params![event_code], |row| {
-            crate::database::models::PssEventType::from_row(row)
+            PssEventType::from_row(row)
         })?;
         
         if let Some(row) = rows.next() {
@@ -1848,7 +1854,7 @@ impl PssEventOperations {
     }
 
     /// Upsert PSS event type
-    pub fn upsert_pss_event_type(conn: &mut Connection, event_type: &crate::database::models::PssEventType) -> DatabaseResult<i64> {
+    pub fn upsert_pss_event_type(conn: &mut Connection, event_type: &PssEventType) -> DatabaseResult<i64> {
         let tx = conn.transaction()?;
         
         // Check if event type already exists
@@ -1895,7 +1901,7 @@ impl PssEventOperations {
     }
 
     /// Get all PSS event types
-    pub fn get_all_pss_event_types(conn: &Connection) -> DatabaseResult<Vec<crate::database::models::PssEventType>> {
+    pub fn get_all_pss_event_types(conn: &Connection) -> DatabaseResult<Vec<PssEventType>> {
         let mut stmt = conn.prepare(
             "SELECT id, event_code, event_name, description, category, is_active, created_at 
              FROM pss_event_types 
@@ -1903,7 +1909,7 @@ impl PssEventOperations {
         )?;
         
         let rows = stmt.query_map([], |row| {
-            crate::database::models::PssEventType::from_row(row)
+            PssEventType::from_row(row)
         })?;
         
         let mut event_types = Vec::new();
@@ -2162,4 +2168,394 @@ pub struct ArchiveStatistics {
     pub oldest_archived: Option<String>,
     pub newest_archived: Option<String>,
     pub archive_size_bytes: i64,
+}
+
+// ============================================================================
+// TRIGGER SYSTEM OPERATIONS
+// ============================================================================
+
+impl DatabaseConnection {
+    // ========================================================================
+    // OBS SCENE OPERATIONS
+    // ========================================================================
+    
+    /// Get all OBS scenes
+    pub async fn get_obs_scenes(&self) -> DatabaseResult<Vec<ObsScene>> {
+        let conn = self.get_connection().await?;
+        let mut stmt = conn.prepare("SELECT * FROM obs_scenes ORDER BY scene_name")?;
+        
+        let scenes = stmt.query_map([], |row| ObsScene::from_row(row))?
+            .collect::<Result<Vec<_>, _>>()?;
+        
+        Ok(scenes)
+    }
+    
+    /// Get active OBS scenes only
+    pub async fn get_active_obs_scenes(&self) -> DatabaseResult<Vec<ObsScene>> {
+        let conn = self.get_connection().await?;
+        let mut stmt = conn.prepare("SELECT * FROM obs_scenes WHERE is_active = 1 ORDER BY scene_name")?;
+        
+        let scenes = stmt.query_map([], |row| ObsScene::from_row(row))?
+            .collect::<Result<Vec<_>, _>>()?;
+        
+        Ok(scenes)
+    }
+    
+    /// Get OBS scene by name
+    pub async fn get_obs_scene_by_name(&self, scene_name: &str) -> DatabaseResult<Option<ObsScene>> {
+        let conn = self.get_connection().await?;
+        let mut stmt = conn.prepare("SELECT * FROM obs_scenes WHERE scene_name = ?")?;
+        
+        let scene = stmt.query_row([scene_name], |row| ObsScene::from_row(row))
+            .optional()?;
+        
+        Ok(scene)
+    }
+    
+    /// Insert or update OBS scene
+    pub async fn upsert_obs_scene(&self, scene: &ObsScene) -> DatabaseResult<i64> {
+        let conn = self.get_connection().await?;
+        let now = chrono::Utc::now().to_rfc3339();
+        
+        let id = conn.execute(
+            "INSERT OR REPLACE INTO obs_scenes (scene_name, scene_id, is_active, last_seen_at, created_at, updated_at) 
+             VALUES (?, ?, ?, ?, ?, ?)",
+            [
+                &scene.scene_name,
+                &scene.scene_id,
+                &(scene.is_active as i32).to_string(),
+                &scene.last_seen_at.to_rfc3339(),
+                &scene.created_at.to_rfc3339(),
+                &now,
+            ],
+        )?;
+        
+        Ok(id as i64)
+    }
+    
+    /// Mark OBS scene as inactive
+    pub async fn mark_obs_scene_inactive(&self, scene_name: &str) -> DatabaseResult<()> {
+        let conn = self.get_connection().await?;
+        let now = chrono::Utc::now().to_rfc3339();
+        
+        conn.execute(
+            "UPDATE obs_scenes SET is_active = 0, updated_at = ? WHERE scene_name = ?",
+            [&now, scene_name],
+        )?;
+        
+        Ok(())
+    }
+    
+    /// Update OBS scene last seen timestamp
+    pub async fn update_obs_scene_last_seen(&self, scene_name: &str) -> DatabaseResult<()> {
+        let conn = self.get_connection().await?;
+        let now = chrono::Utc::now().to_rfc3339();
+        
+        conn.execute(
+            "UPDATE obs_scenes SET last_seen_at = ?, updated_at = ? WHERE scene_name = ?",
+            [&now, &now, scene_name],
+        )?;
+        
+        Ok(())
+    }
+    
+    /// Sync OBS scenes from WebSocket (mark unseen scenes as inactive)
+    pub async fn sync_obs_scenes(&self, active_scene_names: &[String]) -> DatabaseResult<()> {
+        let conn = self.get_connection().await?;
+        let now = chrono::Utc::now().to_rfc3339();
+        
+        // Mark all scenes as inactive first
+        conn.execute(
+            "UPDATE obs_scenes SET is_active = 0, updated_at = ?",
+            [&now],
+        )?;
+        
+        // Mark active scenes as active and update last_seen
+        for scene_name in active_scene_names {
+            conn.execute(
+                "UPDATE obs_scenes SET is_active = 1, last_seen_at = ?, updated_at = ? WHERE scene_name = ?",
+                [&now, &now, scene_name],
+            )?;
+        }
+        
+        Ok(())
+    }
+    
+    // ========================================================================
+    // OVERLAY TEMPLATE OPERATIONS
+    // ========================================================================
+    
+    /// Get all overlay templates
+    pub async fn get_overlay_templates(&self) -> DatabaseResult<Vec<OverlayTemplate>> {
+        let conn = self.get_connection().await?;
+        let mut stmt = conn.prepare("SELECT * FROM overlay_templates ORDER BY name")?;
+        
+        let templates = stmt.query_map([], |row| OverlayTemplate::from_row(row))?
+            .collect::<Result<Vec<_>, _>>()?;
+        
+        Ok(templates)
+    }
+    
+    /// Get active overlay templates only
+    pub async fn get_active_overlay_templates(&self) -> DatabaseResult<Vec<OverlayTemplate>> {
+        let conn = self.get_connection().await?;
+        let mut stmt = conn.prepare("SELECT * FROM overlay_templates WHERE is_active = 1 ORDER BY name")?;
+        
+        let templates = stmt.query_map([], |row| OverlayTemplate::from_row(row))?
+            .collect::<Result<Vec<_>, _>>()?;
+        
+        Ok(templates)
+    }
+    
+    /// Get overlay template by name
+    pub async fn get_overlay_template_by_name(&self, name: &str) -> DatabaseResult<Option<OverlayTemplate>> {
+        let conn = self.get_connection().await?;
+        let mut stmt = conn.prepare("SELECT * FROM overlay_templates WHERE name = ?")?;
+        
+        let template = stmt.query_row([name], |row| OverlayTemplate::from_row(row))
+            .optional()?;
+        
+        Ok(template)
+    }
+    
+    /// Insert overlay template
+    pub async fn insert_overlay_template(&self, template: &OverlayTemplate) -> DatabaseResult<i64> {
+        let conn = self.get_connection().await?;
+        let now = chrono::Utc::now().to_rfc3339();
+        
+        let id = conn.execute(
+            "INSERT INTO overlay_templates (name, description, theme, colors, animation_type, duration_ms, is_active, created_at, updated_at) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            [
+                &template.name,
+                &template.description.as_deref().unwrap_or("").to_string(),
+                &template.theme,
+                &template.colors.as_deref().unwrap_or("").to_string(),
+                &template.animation_type,
+                &template.duration_ms.to_string(),
+                &(template.is_active as i32).to_string(),
+                &template.created_at.to_rfc3339(),
+                &now,
+            ],
+        )?;
+        
+        Ok(id as i64)
+    }
+    
+    /// Update overlay template
+    pub async fn update_overlay_template(&self, template: &OverlayTemplate) -> DatabaseResult<()> {
+        let conn = self.get_connection().await?;
+        let now = chrono::Utc::now().to_rfc3339();
+        
+        conn.execute(
+            "UPDATE overlay_templates SET description = ?, theme = ?, colors = ?, animation_type = ?, duration_ms = ?, is_active = ?, updated_at = ? 
+             WHERE id = ?",
+            [
+                &template.description.as_deref().unwrap_or("").to_string(),
+                &template.theme,
+                &template.colors.as_deref().unwrap_or("").to_string(),
+                &template.animation_type,
+                &template.duration_ms.to_string(),
+                &(template.is_active as i32).to_string(),
+                &now,
+                &template.id.unwrap_or(0).to_string(),
+            ],
+        )?;
+        
+        Ok(())
+    }
+    
+    /// Delete overlay template
+    pub async fn delete_overlay_template(&self, id: i64) -> DatabaseResult<()> {
+        let conn = self.get_connection().await?;
+        
+        conn.execute("DELETE FROM overlay_templates WHERE id = ?", [id])?;
+        
+        Ok(())
+    }
+    
+    // ========================================================================
+    // EVENT TRIGGER OPERATIONS
+    // ========================================================================
+    
+    /// Get all event triggers
+    pub async fn get_event_triggers(&self) -> DatabaseResult<Vec<EventTrigger>> {
+        let conn = self.get_connection().await?;
+        let mut stmt = conn.prepare("SELECT * FROM event_triggers ORDER BY priority DESC, event_type")?;
+        
+        let triggers = stmt.query_map([], |row| EventTrigger::from_row(row))?
+            .collect::<Result<Vec<_>, _>>()?;
+        
+        Ok(triggers)
+    }
+    
+    /// Get event triggers for a specific tournament
+    pub async fn get_event_triggers_for_tournament(&self, tournament_id: i64) -> DatabaseResult<Vec<EventTrigger>> {
+        let conn = self.get_connection().await?;
+        let mut stmt = conn.prepare(
+            "SELECT * FROM event_triggers WHERE tournament_id = ? ORDER BY priority DESC, event_type"
+        )?;
+        
+        let triggers = stmt.query_map([tournament_id], |row| EventTrigger::from_row(row))?
+            .collect::<Result<Vec<_>, _>>()?;
+        
+        Ok(triggers)
+    }
+    
+    /// Get event triggers for a specific tournament day
+    pub async fn get_event_triggers_for_tournament_day(&self, tournament_day_id: i64) -> DatabaseResult<Vec<EventTrigger>> {
+        let conn = self.get_connection().await?;
+        let mut stmt = conn.prepare(
+            "SELECT * FROM event_triggers WHERE tournament_day_id = ? ORDER BY priority DESC, event_type"
+        )?;
+        
+        let triggers = stmt.query_map([tournament_day_id], |row| EventTrigger::from_row(row))?
+            .collect::<Result<Vec<_>, _>>()?;
+        
+        Ok(triggers)
+    }
+    
+    /// Get global event triggers (no tournament/day specified)
+    pub async fn get_global_event_triggers(&self) -> DatabaseResult<Vec<EventTrigger>> {
+        let conn = self.get_connection().await?;
+        let mut stmt = conn.prepare(
+            "SELECT * FROM event_triggers WHERE tournament_id IS NULL AND tournament_day_id IS NULL ORDER BY priority DESC, event_type"
+        )?;
+        
+        let triggers = stmt.query_map([], |row| EventTrigger::from_row(row))?
+            .collect::<Result<Vec<_>, _>>()?;
+        
+        Ok(triggers)
+    }
+    
+    /// Get enabled event triggers for a specific event type
+    pub async fn get_enabled_triggers_for_event(&self, event_type: &str, tournament_id: Option<i64>, tournament_day_id: Option<i64>) -> DatabaseResult<Vec<EventTrigger>> {
+        let conn = self.get_connection().await?;
+        
+        let mut query = String::from(
+            "SELECT * FROM event_triggers WHERE event_type = ? AND is_enabled = 1"
+        );
+        let mut params: Vec<Box<dyn rusqlite::ToSql>> = vec![Box::new(event_type.to_string())];
+        
+        if let Some(tid) = tournament_id {
+            query.push_str(" AND (tournament_id = ? OR tournament_id IS NULL)");
+            params.push(Box::new(tid));
+        }
+        
+        if let Some(tdid) = tournament_day_id {
+            query.push_str(" AND (tournament_day_id = ? OR tournament_day_id IS NULL)");
+            params.push(Box::new(tdid));
+        }
+        
+        query.push_str(" ORDER BY priority DESC");
+        
+        let mut stmt = conn.prepare(&query)?;
+        let triggers = stmt.query_map(rusqlite::params_from_iter(params.iter()), |row| EventTrigger::from_row(row))?
+            .collect::<Result<Vec<_>, _>>()?;
+        
+        Ok(triggers)
+    }
+    
+    /// Insert event trigger
+    pub async fn insert_event_trigger(&self, trigger: &EventTrigger) -> DatabaseResult<i64> {
+        let conn = self.get_connection().await?;
+        let now = chrono::Utc::now().to_rfc3339();
+        
+        let id = conn.execute(
+            "INSERT INTO event_triggers (tournament_id, tournament_day_id, event_type, trigger_type, obs_scene_id, overlay_template_id, is_enabled, priority, created_at, updated_at) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            [
+                &trigger.tournament_id.map(|id| id.to_string()).unwrap_or_default(),
+                &trigger.tournament_day_id.map(|id| id.to_string()).unwrap_or_default(),
+                &trigger.event_type,
+                &trigger.trigger_type,
+                &trigger.obs_scene_id.map(|id| id.to_string()).unwrap_or_default(),
+                &trigger.overlay_template_id.map(|id| id.to_string()).unwrap_or_default(),
+                &(trigger.is_enabled as i32).to_string(),
+                &trigger.priority.to_string(),
+                &trigger.created_at.to_rfc3339(),
+                &now,
+            ],
+        )?;
+        
+        Ok(id as i64)
+    }
+    
+    /// Update event trigger
+    pub async fn update_event_trigger(&self, trigger: &EventTrigger) -> DatabaseResult<()> {
+        let conn = self.get_connection().await?;
+        let now = chrono::Utc::now().to_rfc3339();
+        
+        conn.execute(
+            "UPDATE event_triggers SET tournament_id = ?, tournament_day_id = ?, event_type = ?, trigger_type = ?, obs_scene_id = ?, overlay_template_id = ?, is_enabled = ?, priority = ?, updated_at = ? 
+             WHERE id = ?",
+            [
+                &trigger.tournament_id.map(|id| id.to_string()).unwrap_or_default(),
+                &trigger.tournament_day_id.map(|id| id.to_string()).unwrap_or_default(),
+                &trigger.event_type,
+                &trigger.trigger_type,
+                &trigger.obs_scene_id.map(|id| id.to_string()).unwrap_or_default(),
+                &trigger.overlay_template_id.map(|id| id.to_string()).unwrap_or_default(),
+                &(trigger.is_enabled as i32).to_string(),
+                &trigger.priority.to_string(),
+                &now,
+                &trigger.id.unwrap_or(0).to_string(),
+            ],
+        )?;
+        
+        Ok(())
+    }
+    
+    /// Delete event trigger
+    pub async fn delete_event_trigger(&self, id: i64) -> DatabaseResult<()> {
+        let conn = self.get_connection().await?;
+        
+        conn.execute("DELETE FROM event_triggers WHERE id = ?", [id])?;
+        
+        Ok(())
+    }
+    
+    /// Enable/disable event trigger
+    pub async fn set_event_trigger_enabled(&self, id: i64, enabled: bool) -> DatabaseResult<()> {
+        let conn = self.get_connection().await?;
+        let now = chrono::Utc::now().to_rfc3339();
+        
+        conn.execute(
+            "UPDATE event_triggers SET is_enabled = ?, updated_at = ? WHERE id = ?",
+            [&(enabled as i32).to_string(), &now, &id.to_string()],
+        )?;
+        
+        Ok(())
+    }
+    
+    /// Copy triggers from one tournament to another
+    pub async fn copy_triggers_to_tournament(&self, source_tournament_id: i64, target_tournament_id: i64) -> DatabaseResult<()> {
+        let conn = self.get_connection().await?;
+        let now = chrono::Utc::now().to_rfc3339();
+        
+        conn.execute(
+            "INSERT INTO event_triggers (tournament_id, tournament_day_id, event_type, trigger_type, obs_scene_id, overlay_template_id, is_enabled, priority, created_at, updated_at)
+             SELECT ?, tournament_day_id, event_type, trigger_type, obs_scene_id, overlay_template_id, is_enabled, priority, ?, ?
+             FROM event_triggers WHERE tournament_id = ?",
+            [&target_tournament_id.to_string(), &now, &now, &source_tournament_id.to_string()],
+        )?;
+        
+        Ok(())
+    }
+    
+    /// Save triggers as template (global triggers)
+    pub async fn save_triggers_as_template(&self, tournament_id: i64, template_name: &str) -> DatabaseResult<()> {
+        let conn = self.get_connection().await?;
+        let now = chrono::Utc::now().to_rfc3339();
+        
+        // Create a special template trigger with the template name
+        conn.execute(
+            "INSERT INTO event_triggers (tournament_id, tournament_day_id, event_type, trigger_type, obs_scene_id, overlay_template_id, is_enabled, priority, created_at, updated_at)
+             SELECT NULL, NULL, event_type, trigger_type, obs_scene_id, overlay_template_id, is_enabled, priority, ?, ?
+             FROM event_triggers WHERE tournament_id = ?",
+            [&now, &now, &tournament_id.to_string()],
+        )?;
+        
+        Ok(())
+    }
 } 
