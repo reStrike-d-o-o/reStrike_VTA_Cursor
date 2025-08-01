@@ -11,7 +11,7 @@ use crate::database::{DatabaseError, DatabaseResult, DATABASE_FILE};
 /// Phase 2 Optimization: Database Connection Pool
 /// Manages a pool of database connections for high-volume operations
 pub struct DatabaseConnectionPool {
-    connections: Arc<Mutex<VecDeque<Connection>>>,
+    connections: Arc<Mutex<VecDeque<rusqlite::Connection>>>,
     max_connections: usize,
     connection_timeout: Duration,
     last_cleanup: Arc<Mutex<Instant>>,
@@ -45,7 +45,7 @@ impl DatabaseConnectionPool {
         }
 
         // Create a new connection if pool is empty or connection was invalid
-        let conn = DatabaseConnection::create_connection()?;
+        let conn = rusqlite::Connection::open(crate::database::DATABASE_FILE)?;
         self.configure_connection(&conn)?;
         
         Ok(PooledConnection {
@@ -56,7 +56,7 @@ impl DatabaseConnectionPool {
     }
 
     /// Configure a connection with performance optimizations
-    fn configure_connection(&self, conn: &Connection) -> SqliteResult<()> {
+    fn configure_connection(&self, conn: &rusqlite::Connection) -> SqliteResult<()> {
         // Phase 1 optimizations (already implemented)
         conn.execute("PRAGMA journal_mode = WAL", [])?;
         conn.execute("PRAGMA synchronous = NORMAL", [])?;
@@ -85,7 +85,7 @@ impl DatabaseConnectionPool {
             
             // Remove connections that are too old
             let now = Instant::now();
-            connections.retain(|conn| {
+            connections.retain(|_conn| {
                 // For now, we'll keep all connections as SQLite doesn't expose connection age
                 // In a more sophisticated implementation, we could track connection creation time
                 true
@@ -113,19 +113,19 @@ impl DatabaseConnectionPool {
 
 /// A pooled database connection that returns to the pool when dropped
 pub struct PooledConnection {
-    connection: Option<Connection>,
-    pool: Arc<Mutex<VecDeque<Connection>>>,
+    connection: Option<rusqlite::Connection>,
+    pool: Arc<Mutex<VecDeque<rusqlite::Connection>>>,
     max_connections: usize,
 }
 
 impl PooledConnection {
     /// Get a reference to the underlying connection
-    pub fn connection(&self) -> &Connection {
+    pub fn connection(&self) -> &rusqlite::Connection {
         self.connection.as_ref().unwrap()
     }
 
     /// Get a mutable reference to the underlying connection
-    pub fn connection_mut(&mut self) -> &mut Connection {
+    pub fn connection_mut(&mut self) -> &mut rusqlite::Connection {
         self.connection.as_mut().unwrap()
     }
 }
@@ -144,7 +144,7 @@ impl Drop for PooledConnection {
 }
 
 /// Pool statistics for monitoring
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct PoolStats {
     pub available_connections: usize,
     pub max_connections: usize,
