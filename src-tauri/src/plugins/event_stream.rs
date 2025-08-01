@@ -324,14 +324,8 @@ impl EventStreamProcessor {
 
     /// Process a single event
     async fn process_single_event(cache: &Arc<EventCache>, event: &PssEventV2) -> AppResult<()> {
-        // This is where you would implement specific event processing logic
-        // For now, we'll just update the cache
-        
-        // Note: PssEventV2 has event_type_id (i64), not event_type (String)
-        // We would need to map event_type_id to string codes or use a different approach
-        // For now, we'll skip specific event processing
+        // Update match statistics if match_id is present
         if let Some(match_id) = event.match_id {
-            // Update match statistics for any event with a match_id
             Self::update_match_statistics(cache, match_id, event).await?;
         }
         

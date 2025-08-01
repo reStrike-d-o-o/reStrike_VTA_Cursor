@@ -92,7 +92,7 @@ impl App {
         log::info!("✅ Protocol manager plugin initialized");
         
         // Initialize database plugin first (needed for UDP plugin)
-        let database_plugin = DatabasePlugin::new()
+        let database_plugin = DatabasePlugin::new().await
             .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to initialize database plugin: {}", e)))?;
         log::info!("✅ Database plugin initialized");
         

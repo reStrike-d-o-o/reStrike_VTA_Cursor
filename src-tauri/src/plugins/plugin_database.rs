@@ -25,7 +25,7 @@ pub struct DatabasePlugin {
 
 impl DatabasePlugin {
     /// Create a new database plugin with connection pooling
-    pub fn new() -> AppResult<Self> {
+    pub async fn new() -> AppResult<Self> {
         let connection = Arc::new(DatabaseConnection::new()?);
         
         // Phase 2: Initialize connection pool with 10 connections for high-volume operations
@@ -45,13 +45,11 @@ impl DatabasePlugin {
             hybrid_provider,
         };
 
-        // Run database migrations automatically in a separate task
-        let connection_clone = plugin.connection.clone();
-        tokio::spawn(async move {
-            if let Err(e) = Self::run_migrations_internal(connection_clone).await {
-                log::error!("Failed to run database migrations: {}", e);
-            }
-        });
+        // Run database migrations synchronously to ensure they complete before any database operations
+        if let Err(e) = Self::run_migrations_internal(plugin.connection.clone()).await {
+            log::error!("Failed to run database migrations: {}", e);
+            return Err(crate::types::AppError::ConfigError(format!("Database migration failed: {}", e)));
+        }
 
         Ok(plugin)
     }
