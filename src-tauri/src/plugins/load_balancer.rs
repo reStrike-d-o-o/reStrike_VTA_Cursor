@@ -332,7 +332,7 @@ impl EventDistributor {
     }
 
     /// Update server statistics
-    async fn update_server_statistics(&self, server_id: &str, _event: &PssEventV2) -> AppResult<()> {
+    async fn update_server_statistics(&self, server_id: &str, event: &PssEventV2) -> AppResult<()> {
         let mut servers = self.servers.write().await;
         
         if let Some(server) = servers.get_mut(server_id) {
@@ -344,6 +344,23 @@ impl EventDistributor {
             if elapsed.as_secs() > 0 {
                 server.statistics.events_per_second = 
                     server.statistics.total_events_processed as f64 / elapsed.as_secs() as f64;
+            }
+            
+            // Cache the distributed event for quick access
+            if let Some(match_id) = event.match_id {
+                let _ = self.cache.set_match_stats(match_id, crate::plugins::event_cache::MatchStatistics {
+                    match_id,
+                    event_count: 1,
+                    duration_seconds: 0,
+                    athlete1_score: 0,
+                    athlete2_score: 0,
+                    last_updated: std::time::SystemTime::now(),
+                }).await;
+            }
+            
+            // Cache match events for quick access
+            if let Some(match_id) = event.match_id {
+                let _ = self.cache.set_match_events(match_id, vec![event.clone()]).await;
             }
         }
         

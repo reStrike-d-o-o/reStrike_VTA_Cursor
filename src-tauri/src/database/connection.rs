@@ -30,29 +30,44 @@ impl DatabaseConnectionPool {
 
     /// Get a connection from the pool or create a new one
     pub fn get_connection(&self) -> SqliteResult<PooledConnection> {
-        let mut connections = self.connections.lock().unwrap();
+        let start_time = Instant::now();
         
-        // Try to get an existing connection
-        if let Some(conn) = connections.pop_front() {
-            // Check if connection is still valid
-            if let Ok(_) = conn.execute("SELECT 1", []) {
+        loop {
+            let mut connections = self.connections.lock().unwrap();
+            
+            // Try to get an existing connection
+            if let Some(conn) = connections.pop_front() {
+                // Check if connection is still valid
+                if let Ok(_) = conn.execute("SELECT 1", []) {
+                    return Ok(PooledConnection {
+                        connection: Some(conn),
+                        pool: self.connections.clone(),
+                        max_connections: self.max_connections,
+                    });
+                }
+            }
+
+            // Create a new connection if pool is empty or connection was invalid
+            if connections.len() < self.max_connections {
+                let conn = rusqlite::Connection::open(crate::database::DATABASE_FILE)?;
+                self.configure_connection(&conn)?;
+                
                 return Ok(PooledConnection {
                     connection: Some(conn),
                     pool: self.connections.clone(),
                     max_connections: self.max_connections,
                 });
             }
+            
+            // Check if we've exceeded the timeout
+            if start_time.elapsed() > self.connection_timeout {
+                return Err(rusqlite::Error::InvalidPath("Connection timeout reached".to_string().into()));
+            }
+            
+            // Release lock and wait a bit before retrying
+            drop(connections);
+            std::thread::sleep(Duration::from_millis(10));
         }
-
-        // Create a new connection if pool is empty or connection was invalid
-        let conn = rusqlite::Connection::open(crate::database::DATABASE_FILE)?;
-        self.configure_connection(&conn)?;
-        
-        Ok(PooledConnection {
-            connection: Some(conn),
-            pool: self.connections.clone(),
-            max_connections: self.max_connections,
-        })
     }
 
     /// Configure a connection with performance optimizations
