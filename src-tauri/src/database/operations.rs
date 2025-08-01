@@ -1831,7 +1831,7 @@ impl PssEventOperations {
     /// Get PSS event type by code
     pub fn get_pss_event_type_by_code(conn: &Connection, event_code: &str) -> DatabaseResult<Option<crate::database::models::PssEventType>> {
         let mut stmt = conn.prepare(
-            "SELECT id, event_code, event_name, description, created_at, updated_at 
+            "SELECT id, event_code, event_name, description, category, is_active, created_at 
              FROM pss_event_types 
              WHERE event_code = ?"
         )?;
@@ -1859,15 +1859,16 @@ impl PssEventOperations {
         ).optional()?;
         
         let event_type_id = if let Some(id) = existing_id {
-            // Update existing event type
+            // Update existing event type - note: pss_event_types table doesn't have updated_at
             tx.execute(
                 "UPDATE pss_event_types SET 
-                    event_name = ?, description = ?, updated_at = ?
+                    event_name = ?, description = ?, category = ?, is_active = ?
                 WHERE id = ?",
                 params![
                     event_type.event_name,
                     event_type.description,
-                    event_type.created_at.to_rfc3339(),
+                    event_type.category,
+                    event_type.is_active,
                     id
                 ]
             )?;
@@ -1875,13 +1876,14 @@ impl PssEventOperations {
         } else {
             // Insert new event type
             tx.execute(
-                "INSERT INTO pss_event_types (event_code, event_name, description, created_at, updated_at) 
-                 VALUES (?, ?, ?, ?, ?)",
+                "INSERT INTO pss_event_types (event_code, event_name, description, category, is_active, created_at) 
+                 VALUES (?, ?, ?, ?, ?, ?)",
                 params![
                     event_type.event_code,
                     event_type.event_name,
                     event_type.description,
-                    event_type.created_at.to_rfc3339(),
+                    event_type.category,
+                    event_type.is_active,
                     event_type.created_at.to_rfc3339()
                 ]
             )?;
@@ -1895,7 +1897,7 @@ impl PssEventOperations {
     /// Get all PSS event types
     pub fn get_all_pss_event_types(conn: &Connection) -> DatabaseResult<Vec<crate::database::models::PssEventType>> {
         let mut stmt = conn.prepare(
-            "SELECT id, event_code, event_name, description, created_at, updated_at 
+            "SELECT id, event_code, event_name, description, category, is_active, created_at 
              FROM pss_event_types 
              ORDER BY event_code"
         )?;
