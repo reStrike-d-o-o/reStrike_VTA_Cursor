@@ -717,15 +717,15 @@ impl UdpServer {
 
         // Convert PSS event to database model with enhanced status tracking
         let mut db_event = Self::convert_pss_event_to_db_model(
-            event,
-            session_id,
+            event, 
+            session_id, 
             current_match_id,
             event_type_cache,
             database,
             current_tournament_id,
             current_tournament_day_id,
         ).await?;
-
+        
         // Determine recognition status based on event type
         let (recognition_status, parser_confidence, validation_errors) = Self::determine_event_status(event, database).await?;
         
@@ -1163,7 +1163,7 @@ impl UdpServer {
         // Check cache first without holding the lock across await
         let event_type_id = {
             let cached_id = {
-                let cache = event_type_cache.lock().unwrap();
+            let cache = event_type_cache.lock().unwrap();
                 cache.get(&event_code).copied()
             };
             
@@ -1171,7 +1171,7 @@ impl UdpServer {
                 id
             } else {
                 // Get or create event type
-                let event_type = database.get_pss_event_type_by_code(&event_code).await?;
+        let event_type = database.get_pss_event_type_by_code(&event_code).await?;
                 let id = if let Some(et) = event_type {
                     et.id.unwrap_or(0)
                 } else {
@@ -1417,8 +1417,8 @@ impl UdpServer {
         match event {
             PssEvent::Points { athlete, point_type } => {
                 let mut details = vec![
-                    ("athlete".to_string(), Some(athlete.to_string()), "u8".to_string()),
-                    ("point_type".to_string(), Some(point_type.to_string()), "u8".to_string()),
+                ("athlete".to_string(), Some(athlete.to_string()), "u8".to_string()),
+                ("point_type".to_string(), Some(point_type.to_string()), "u8".to_string()),
                 ];
                 
                 // Add recent hit levels for this athlete (within last 5 seconds)
@@ -1737,12 +1737,12 @@ impl UdpServer {
                     match parse_result {
                         Ok(parse_result) => {
                             match parse_result {
-                                Ok(event) => {
-                                    // Update stats
-                                    {
-                                        let mut stats_guard = stats.lock().unwrap();
-                                        stats_guard.packets_parsed += 1;
-                                    }
+                        Ok(event) => {
+                            // Update stats
+                            {
+                                let mut stats_guard = stats.lock().unwrap();
+                                stats_guard.packets_parsed += 1;
+                            }
 
                                     // Track hit level events for statistics
                                     match &event {
@@ -1773,44 +1773,44 @@ impl UdpServer {
                                         _ => {}
                                     }
 
-                                    // Store event in database (now properly async)
-                                    let database_clone = database.clone();
-                                    let current_session_id_clone = current_session_id.clone();
-                                    let current_match_id_clone = current_match_id.clone();
-                                    let athlete_cache_clone = athlete_cache.clone();
-                                    let event_type_cache_clone = event_type_cache.clone();
+                            // Store event in database (now properly async)
+                            let database_clone = database.clone();
+                            let current_session_id_clone = current_session_id.clone();
+                            let current_match_id_clone = current_match_id.clone();
+                            let athlete_cache_clone = athlete_cache.clone();
+                            let event_type_cache_clone = event_type_cache.clone();
                                     let recent_hit_levels_clone = recent_hit_levels.clone();
                                     let tournament_id_clone = tournament_id.clone();
                                     let tournament_day_id_clone = tournament_day_id.clone();
-                                    let event_clone = event.clone();
-                                    
-                                    // Spawn async task for database operation
-                                    tokio::spawn(async move {
-                                        if let Err(e) = Self::store_event_in_database(
-                                            &database_clone,
-                                            &current_session_id_clone,
-                                            &current_match_id_clone,
-                                            &athlete_cache_clone,
-                                            &event_type_cache_clone,
+                            let event_clone = event.clone();
+                            
+                            // Spawn async task for database operation
+                            tokio::spawn(async move {
+                                if let Err(e) = Self::store_event_in_database(
+                                    &database_clone,
+                                    &current_session_id_clone,
+                                    &current_match_id_clone,
+                                    &athlete_cache_clone,
+                                    &event_type_cache_clone,
                                             &event_clone,
                                             &recent_hit_levels_clone,
                                             &tournament_id_clone,
                                             &tournament_day_id_clone,
-                                        ).await {
-                                            log::error!("Failed to store event in database: {}", e);
-                                        }
-                                    });
+                                ).await {
+                                    log::error!("Failed to store event in database: {}", e);
+                                }
+                            });
 
-                                    // Add event to recent events storage
-                                    {
-                                        let mut events_guard = recent_events.lock().unwrap();
-                                        events_guard.push_back(event.clone());
-                                        
-                                        // Keep only the last 100 events
-                                        if events_guard.len() > 100 {
-                                            events_guard.pop_front();
-                                        }
-                                    }
+                            // Add event to recent events storage
+                            {
+                                let mut events_guard = recent_events.lock().unwrap();
+                                events_guard.push_back(event.clone());
+                                
+                                // Keep only the last 100 events
+                                if events_guard.len() > 100 {
+                                    events_guard.pop_front();
+                                }
+                            }
 
                                     // Send event to frontend via Tauri events
                                     let event_json = Self::convert_pss_event_to_json(&event);
@@ -1830,15 +1830,15 @@ impl UdpServer {
                                     // Stream log to frontend for Live Data panel
                                     let log_message = format!("🎯 UDP-EVENT: {:?}", event);
                                     crate::core::app::App::emit_log_event(log_message);
-                                }
-                                Err(e) => {
-                                    // Update error stats
-                                    {
-                                        let mut stats_guard = stats.lock().unwrap();
-                                        stats_guard.parse_errors += 1;
-                                    }
-                                    
-                                    println!("⚠️ Failed to parse PSS message '{}': {}", message, e);
+                        }
+                        Err(e) => {
+                            // Update error stats
+                            {
+                                let mut stats_guard = stats.lock().unwrap();
+                                stats_guard.parse_errors += 1;
+                            }
+                            
+                            println!("⚠️ Failed to parse PSS message '{}': {}", message, e);
                                     
                                     // Create raw event and add to storage
                                     let raw_event = PssEvent::Raw(message.clone());
@@ -1958,7 +1958,7 @@ impl UdpServer {
         let get_part = |index: usize| -> Option<&str> {
             if index < parts.len() {
                 Some(parts[index])
-            } else {
+                } else {
                 None
             }
         };
@@ -2014,7 +2014,7 @@ impl UdpServer {
                     return false;
                 }
                 parts[0].parse::<u8>().is_ok() && parts[1].parse::<u8>().is_ok()
-            } else {
+                } else {
                 // Format: ss
                 time.parse::<u8>().is_ok()
             }
@@ -2037,7 +2037,7 @@ impl UdpServer {
         };
 
         // Main parsing logic with comprehensive error handling
-        let result = match parts[0] {
+        let result = match *parts.get(0).unwrap_or(&"") {
             // Points events (pt1, pt2)
             "pt1" => {
                 let point_type = parse_u8(1, "point type", 1, 5)?;
@@ -2054,25 +2054,25 @@ impl UdpServer {
             "hl1" => {
                 let level = parse_u8(1, "hit level", 1, 100)?;
                 log::debug!("✅ Parsed HitLevel event: athlete=1, level={}", level);
-                Ok(PssEvent::HitLevel { athlete: 1, level })
+                    Ok(PssEvent::HitLevel { athlete: 1, level })
             }
             "hl2" => {
                 let level = parse_u8(1, "hit level", 1, 100)?;
                 log::debug!("✅ Parsed HitLevel event: athlete=2, level={}", level);
-                Ok(PssEvent::HitLevel { athlete: 2, level })
+                    Ok(PssEvent::HitLevel { athlete: 2, level })
             }
 
             // Warnings/Gam-jeom events (wg1, wg2)
             "wg1" => {
                 // Parse warnings: wg1;1;wg2;2;
                 let athlete1_warnings = parse_u8(1, "athlete1 warnings", 0, 10)?;
-                let athlete2_warnings = if parts.len() >= 4 && parts[2] == "wg2" {
+                let athlete2_warnings = if parts.len() >= 4 && *parts.get(2).unwrap_or(&"") == "wg2" {
                     parse_u8(3, "athlete2 warnings", 0, 10)?
                 } else {
                     0
                 };
                 log::debug!("✅ Parsed Warnings event: a1={}, a2={}", athlete1_warnings, athlete2_warnings);
-                Ok(PssEvent::Warnings { athlete1_warnings, athlete2_warnings })
+                    Ok(PssEvent::Warnings { athlete1_warnings, athlete2_warnings })
             }
             "wg2" => {
                 // Handle wg2 as part of wg1 event or standalone
@@ -2088,7 +2088,7 @@ impl UdpServer {
 
             // Injury events (ij0, ij1, ij2)
             "ij0" | "ij1" | "ij2" => {
-                let athlete = match parts[0] {
+                let athlete = match *parts.get(0).unwrap_or(&"") {
                     "ij0" => 0,
                     "ij1" => 1,
                     "ij2" => 2,
@@ -2115,17 +2115,17 @@ impl UdpServer {
                             None
                         }
                     }
-                } else {
-                    None
-                };
-                
+                    } else {
+                        None
+                    };
+
                 log::debug!("✅ Parsed Injury event: athlete={}, time={}, action={:?}", athlete, time, action);
-                Ok(PssEvent::Injury { athlete, time, action })
+                    Ok(PssEvent::Injury { athlete, time, action })
             }
 
             // Challenge/IVR events (ch0, ch1, ch2)
             "ch0" | "ch1" | "ch2" => {
-                let source = match parts[0] {
+                let source = match *parts.get(0).unwrap_or(&"") {
                     "ch0" => 0, // Referee
                     "ch1" => 1, // Athlete 1
                     "ch2" => 2, // Athlete 2
@@ -2136,7 +2136,7 @@ impl UdpServer {
                     let val = parse_u8(1, "challenge accepted", 0, 255)?;
                     if val == 255 { // -1 in u8 representation
                         Some(false)
-                    } else {
+                        } else {
                         Some(val == 1)
                     }
                 } else {
@@ -2176,12 +2176,12 @@ impl UdpServer {
                             None
                         }
                     }
-                } else {
-                    None
-                };
-                
+                    } else {
+                        None
+                    };
+
                 log::debug!("✅ Parsed Break event: time={}, action={:?}", time, action);
-                Ok(PssEvent::Break { time, action })
+                    Ok(PssEvent::Break { time, action })
             }
 
             // Winner rounds events (wrd)
@@ -2220,12 +2220,12 @@ impl UdpServer {
                 let name = get_string(1, "winner name", 100)?;
                 let classification = if parts.len() > 2 {
                     Some(get_string(2, "classification", 50)?)
-                } else {
-                    None
-                };
-                
+                    } else {
+                        None
+                    };
+
                 log::debug!("✅ Parsed Winner event: name={}, classification={:?}", name, classification);
-                Ok(PssEvent::Winner { name, classification })
+                    Ok(PssEvent::Winner { name, classification })
             }
 
             // Athletes events (at1)
@@ -2308,7 +2308,7 @@ impl UdpServer {
             "s11" | "s21" | "s12" | "s22" | "s13" | "s23" => {
                 // Parse individual score updates
                 let score = parse_u8(1, "score", 0, 50)?;
-                let (athlete1_r1, athlete2_r1, athlete1_r2, athlete2_r2, athlete1_r3, athlete2_r3) = match parts[0] {
+                let (athlete1_r1, athlete2_r1, athlete1_r2, athlete2_r2, athlete1_r3, athlete2_r3) = match *parts.get(0).unwrap_or(&"") {
                     "s11" => (score, 0, 0, 0, 0, 0),
                     "s21" => (0, score, 0, 0, 0, 0),
                     "s12" => (0, 0, score, 0, 0, 0),
@@ -2318,20 +2318,20 @@ impl UdpServer {
                     _ => (0, 0, 0, 0, 0, 0),
                 };
                 
-                log::debug!("✅ Parsed Scores event: {}={}", parts[0], score);
+                log::debug!("✅ Parsed Scores event: {}={}", *parts.get(0).unwrap_or(&""), score);
                 Ok(PssEvent::Scores { athlete1_r1, athlete2_r1, athlete1_r2, athlete2_r2, athlete1_r3, athlete2_r3 })
             }
 
             // Current scores events (sc1, sc2)
             "sc1" | "sc2" => {
                 let score = parse_u8(1, "current score", 0, 50)?;
-                let (athlete1_score, athlete2_score) = match parts[0] {
+                let (athlete1_score, athlete2_score) = match *parts.get(0).unwrap_or(&"") {
                     "sc1" => (score, 0),
                     "sc2" => (0, score),
                     _ => (0, 0),
                 };
                 
-                log::debug!("✅ Parsed CurrentScores event: {}={}", parts[0], score);
+                log::debug!("✅ Parsed CurrentScores event: {}={}", *parts.get(0).unwrap_or(&""), score);
                 Ok(PssEvent::CurrentScores { athlete1_score, athlete2_score })
             }
 
@@ -2357,24 +2357,24 @@ impl UdpServer {
                             None
                         }
                     }
-                } else {
-                    None
-                };
-                
+                    } else {
+                        None
+                    };
+
                 log::debug!("✅ Parsed Clock event: time={}, action={:?}", time, action);
-                Ok(PssEvent::Clock { time, action })
+                    Ok(PssEvent::Clock { time, action })
             }
 
             // Round events (rnd)
             "rnd" => {
                 let current_round = parse_u8(1, "current round", 1, 10)?;
                 log::debug!("✅ Parsed Round event: round={}", current_round);
-                Ok(PssEvent::Round { current_round })
+                    Ok(PssEvent::Round { current_round })
             }
 
             // Fight loaded events (pre)
             "pre" => {
-                if parts.len() > 1 && parts[1] == "FightLoaded" {
+                if parts.len() > 1 && *parts.get(1).unwrap_or(&"") == "FightLoaded" {
                     log::debug!("✅ Parsed FightLoaded event");
                     Ok(PssEvent::FightLoaded)
                 } else {
@@ -2385,7 +2385,7 @@ impl UdpServer {
 
             // Fight ready events (rdy)
             "rdy" => {
-                if parts.len() > 1 && parts[1] == "FightReady" {
+                if parts.len() > 1 && *parts.get(1).unwrap_or(&"") == "FightReady" {
                     log::debug!("✅ Parsed FightReady event");
                     Ok(PssEvent::FightReady)
                 } else {
