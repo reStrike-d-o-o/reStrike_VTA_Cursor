@@ -233,7 +233,12 @@ async fn main() -> AppResult<()> {
         tauri_commands::database_run_optimize,
         tauri_commands::database_run_full_maintenance,
         tauri_commands::database_get_info,
-        tauri_commands::database_get_maintenance_status,
+                    tauri_commands::database_get_maintenance_status,
+            
+            // Event Status Analysis commands
+            tauri_commands::get_comprehensive_event_statistics,
+            tauri_commands::get_events_by_status,
+            tauri_commands::get_unknown_events,
             
             // Flag management commands
             tauri_commands::scan_and_populate_flags,

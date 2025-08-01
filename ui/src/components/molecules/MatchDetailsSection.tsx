@@ -69,6 +69,24 @@ const MatchDetailsSection: React.FC = () => {
       matchDivision,
       isLoaded
     });
+    
+    // Check if data is undefined
+    if (!athlete1 || !athlete2) {
+      console.warn('⚠️ Athletes data is undefined:', { athlete1, athlete2 });
+    }
+    
+    if (!matchNumber || !matchCategory || !matchWeight || !matchDivision) {
+      console.warn('⚠️ Match config data is undefined:', { 
+        matchNumber, 
+        matchCategory, 
+        matchWeight, 
+        matchDivision 
+      });
+    }
+    
+    if (!isLoaded) {
+      console.warn('⚠️ Match is not loaded');
+    }
   }, [athlete1, athlete2, matchNumber, matchCategory, matchWeight, matchDivision, isLoaded]);
 
   // Use PSS data if available, otherwise fallback to dummy data

@@ -314,8 +314,16 @@ impl DatabasePlugin {
     pub async fn get_pss_event_type_by_code(&self, event_code: &str) -> AppResult<Option<crate::database::models::PssEventType>> {
         let conn = self.connection.get_connection().await
             .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
-        crate::database::operations::PssUdpOperations::get_pss_event_type_by_code(&*conn, event_code)
+        crate::database::operations::PssEventOperations::get_pss_event_type_by_code(&*conn, event_code)
             .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get PSS event type: {}", e)))
+    }
+
+    /// Upsert PSS event type
+    pub async fn upsert_pss_event_type(&self, event_type: &crate::database::models::PssEventType) -> AppResult<i64> {
+        let mut conn = self.connection.get_connection().await
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
+        crate::database::operations::PssEventOperations::upsert_pss_event_type(&mut *conn, event_type)
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to upsert PSS event type: {}", e)))
     }
 
     /// Get or create PSS match
@@ -428,6 +436,125 @@ impl DatabasePlugin {
             .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
         crate::database::operations::PssUdpOperations::get_udp_server_statistics(&*conn)
             .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get UDP server statistics: {}", e)))
+    }
+
+    // PSS Event Status Operations
+
+    /// Store a PSS event with status mark
+    pub async fn store_pss_event_with_status(&self, event: &crate::database::models::PssEventV2) -> AppResult<i64> {
+        let mut conn = self.connection.get_connection().await
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
+        crate::database::operations::PssEventStatusOperations::store_pss_event_with_status(&mut *conn, event)
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to store PSS event with status: {}", e)))
+    }
+
+    /// Update event recognition status and record history
+    pub async fn update_event_recognition_status(
+        &self,
+        event_id: i64,
+        new_status: &str,
+        changed_by: &str,
+        change_reason: Option<&str>,
+    ) -> AppResult<()> {
+        let mut conn = self.connection.get_connection().await
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
+        crate::database::operations::PssEventStatusOperations::update_event_recognition_status(
+            &mut *conn, event_id, new_status, changed_by, change_reason
+        )
+        .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to update event recognition status: {}", e)))
+    }
+
+    /// Store unknown event
+    pub async fn store_unknown_event(&self, unknown_event: &crate::database::models::PssUnknownEvent) -> AppResult<i64> {
+        let mut conn = self.connection.get_connection().await
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
+        crate::database::operations::PssEventStatusOperations::store_unknown_event(&mut *conn, unknown_event)
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to store unknown event: {}", e)))
+    }
+
+    /// Get validation rules for an event type
+    pub async fn get_validation_rules(
+        &self,
+        event_code: &str,
+        protocol_version: &str,
+    ) -> AppResult<Vec<crate::database::models::PssEventValidationRule>> {
+        let conn = self.connection.get_connection().await
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
+        crate::database::operations::PssEventStatusOperations::get_validation_rules(&*conn, event_code, protocol_version)
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get validation rules: {}", e)))
+    }
+
+    /// Store validation result
+    pub async fn store_validation_result(&self, validation_result: &crate::database::models::PssEventValidationResult) -> AppResult<i64> {
+        let mut conn = self.connection.get_connection().await
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
+        crate::database::operations::PssEventStatusOperations::store_validation_result(&mut *conn, validation_result)
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to store validation result: {}", e)))
+    }
+
+    /// Update event statistics
+    pub async fn update_event_statistics(
+        &self,
+        session_id: i64,
+        event_type_id: Option<i64>,
+        recognition_status: &str,
+        processing_time_ms: Option<i32>,
+    ) -> AppResult<()> {
+        let mut conn = self.connection.get_connection().await
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
+        crate::database::operations::PssEventStatusOperations::update_event_statistics(
+            &mut *conn, session_id, event_type_id, recognition_status, processing_time_ms
+        )
+        .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to update event statistics: {}", e)))
+    }
+
+    /// Get event statistics for a session
+    pub async fn get_session_statistics(&self, session_id: i64) -> AppResult<Vec<crate::database::models::PssEventStatistics>> {
+        let conn = self.connection.get_connection().await
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
+        crate::database::operations::PssEventStatusOperations::get_session_statistics(&*conn, session_id)
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get session statistics: {}", e)))
+    }
+
+    /// Get unknown events for analysis
+    pub async fn get_unknown_events(
+        &self,
+        session_id: Option<i64>,
+        limit: Option<i64>,
+    ) -> AppResult<Vec<crate::database::models::PssUnknownEvent>> {
+        let conn = self.connection.get_connection().await
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
+        crate::database::operations::PssEventStatusOperations::get_unknown_events(&*conn, session_id, limit)
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get unknown events: {}", e)))
+    }
+
+    /// Get recognition history for an event
+    pub async fn get_event_recognition_history(&self, event_id: i64) -> AppResult<Vec<crate::database::models::PssEventRecognitionHistory>> {
+        let conn = self.connection.get_connection().await
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
+        crate::database::operations::PssEventStatusOperations::get_event_recognition_history(&*conn, event_id)
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get event recognition history: {}", e)))
+    }
+
+    /// Get events by recognition status
+    pub async fn get_events_by_status(
+        &self,
+        session_id: i64,
+        recognition_status: &str,
+        limit: Option<i64>,
+    ) -> AppResult<Vec<crate::database::models::PssEventV2>> {
+        let conn = self.connection.get_connection().await
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
+        crate::database::operations::PssEventStatusOperations::get_events_by_status(&*conn, session_id, recognition_status, limit)
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get events by status: {}", e)))
+    }
+
+    /// Get comprehensive event statistics with status breakdown
+    pub async fn get_comprehensive_event_statistics(&self, session_id: i64) -> AppResult<serde_json::Value> {
+        let conn = self.connection.get_connection().await
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
+        crate::database::operations::PssEventStatusOperations::get_comprehensive_event_statistics(&*conn, session_id)
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get comprehensive event statistics: {}", e)))
     }
 
     /// Internal method to run database migrations

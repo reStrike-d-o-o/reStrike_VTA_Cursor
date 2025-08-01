@@ -1503,7 +1503,7 @@ pub async fn get_best_network_interface() -> Result<serde_json::Value, String> {
 /// Get the best IP address for a specific interface
 #[tauri::command]
 pub async fn get_best_ip_address_for_interface(interface_name: String) -> Result<serde_json::Value, String> {
-    let settings = crate::config::NetworkInterfaceSettings::default();
+    let _settings = crate::config::NetworkInterfaceSettings::default();
     match crate::utils::NetworkDetector::get_interfaces() {
         Ok(interfaces) => {
             // Find the specified interface
@@ -3818,4 +3818,76 @@ pub async fn database_get_maintenance_status(_app: State<'_, Arc<App>>) -> Resul
             "backup_before_maintenance": config.backup_before_maintenance
         }
     }))
+}
+
+/// Get comprehensive event statistics with status breakdown
+#[tauri::command]
+pub async fn get_comprehensive_event_statistics(
+    session_id: i64,
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, String> {
+    log::info!("Getting comprehensive event statistics for session {}", session_id);
+    
+    match app.database_plugin().get_comprehensive_event_statistics(session_id).await {
+        Ok(stats) => Ok(stats),
+        Err(e) => {
+            log::error!("Failed to get comprehensive event statistics: {}", e);
+            Err(format!("Failed to get event statistics: {}", e))
+        }
+    }
+}
+
+/// Get events by recognition status
+#[tauri::command]
+pub async fn get_events_by_status(
+    session_id: i64,
+    recognition_status: String,
+    limit: Option<i64>,
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, String> {
+    log::info!("Getting events by status: {} for session {}", recognition_status, session_id);
+    
+    match app.database_plugin().get_events_by_status(session_id, &recognition_status, limit).await {
+        Ok(events) => {
+            let events_json: Vec<serde_json::Value> = events.into_iter()
+                .map(|event| serde_json::to_value(event).unwrap_or_default())
+                .collect();
+            Ok(serde_json::json!({
+                "success": true,
+                "events": events_json,
+                "count": events_json.len()
+            }))
+        }
+        Err(e) => {
+            log::error!("Failed to get events by status: {}", e);
+            Err(format!("Failed to get events by status: {}", e))
+        }
+    }
+}
+
+/// Get unknown events for analysis
+#[tauri::command]
+pub async fn get_unknown_events(
+    session_id: Option<i64>,
+    limit: Option<i64>,
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, String> {
+    log::info!("Getting unknown events");
+    
+    match app.database_plugin().get_unknown_events(session_id, limit).await {
+        Ok(events) => {
+            let events_json: Vec<serde_json::Value> = events.into_iter()
+                .map(|event| serde_json::to_value(event).unwrap_or_default())
+                .collect();
+            Ok(serde_json::json!({
+                "success": true,
+                "events": events_json,
+                "count": events_json.len()
+            }))
+        }
+        Err(e) => {
+            log::error!("Failed to get unknown events: {}", e);
+            Err(format!("Failed to get unknown events: {}", e))
+        }
+    }
 }
