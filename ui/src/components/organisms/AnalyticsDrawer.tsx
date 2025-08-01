@@ -3,8 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '../atoms/Card';
 import { Badge } from '../atoms/Badge';
 import Button from '../atoms/Button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../atoms/Tabs';
-import { Input } from '../atoms/Input';
-import { Label } from '../atoms/Label';
+import Input from '../atoms/Input';
+import Label from '../atoms/Label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../atoms/Select';
 import { AthleteAnalytics } from '../molecules/AthleteAnalytics';
 import { MatchAnalytics } from '../molecules/MatchAnalytics';
@@ -27,7 +27,10 @@ export const AnalyticsDrawer: React.FC<AnalyticsDrawerProps> = ({
   const [selectedTournament, setSelectedTournament] = useState<string>('');
   const [activeTab, setActiveTab] = useState<string>('tournament');
 
-  const { events } = usePssMatchStore();
+  const { matchData } = usePssMatchStore();
+  
+  // Mock events data for now - this should be replaced with actual PSS events
+  const events: any[] = [];
 
   // Extract unique athletes, matches, and tournaments from events
   const athletes = Array.from(new Set(
@@ -70,7 +73,7 @@ export const AnalyticsDrawer: React.FC<AnalyticsDrawerProps> = ({
               <h2 className="text-2xl font-bold">📊 Analytics Dashboard</h2>
               <Badge variant="secondary">Real-time</Badge>
             </div>
-            <Button variant="outline" onClick={onClose}>
+            <Button variant="ghost" onClick={onClose}>
               ✕ Close
             </Button>
           </div>
