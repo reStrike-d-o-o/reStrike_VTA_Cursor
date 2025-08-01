@@ -26,42 +26,67 @@ export const usePssEvents = () => {
   // Set up real-time PSS event listener using Tauri v2
   const setupEventListener = async () => {
     if (isListeningRef.current) {
+      console.log('🎯 Event listener already set up, skipping...');
       return;
     }
 
+    console.log('🎯 Setting up PSS event listener...');
+
     try {
+      // Check if Tauri is available
+      if (typeof window === 'undefined') {
+        console.warn('⚠️ Window is undefined, cannot set up event listener');
+        return;
+      }
+
+      if (!window.__TAURI__) {
+        console.warn('⚠️ Tauri is not available, cannot set up event listener');
+        return;
+      }
+
+      if (!window.__TAURI__.event) {
+        console.warn('⚠️ Tauri event system is not available');
+        return;
+      }
+
+      console.log('✅ Tauri environment is available');
+
       // Set up the event listener on the backend
+      console.log('🎯 Setting up backend event listener...');
       await pssCommands.setupEventListener();
+      console.log('✅ Backend event listener setup complete');
       
       // Listen for PSS events from the backend
-      if (typeof window !== 'undefined' && window.__TAURI__ && window.__TAURI__.event) {
-        const unlisten = await window.__TAURI__.event.listen('pss_event', (event: any) => {
-          console.log('📡 Received PSS event:', event);
-          console.log('📡 Event payload:', event.payload);
-          console.log('📡 Event payload type:', typeof event.payload);
-          console.log('📡 Event payload keys:', Object.keys(event.payload || {}));
-          
-          // Ensure we have a valid payload
-          if (event.payload && typeof event.payload === 'object') {
-            handlePssEvent(event.payload);
-          } else {
-            console.warn('⚠️ Invalid PSS event payload:', event.payload);
-          }
-        });
+      console.log('🎯 Setting up frontend PSS event listener...');
+      const unlisten = await window.__TAURI__.event.listen('pss_event', (event: any) => {
+        console.log('📡 Received PSS event:', event);
+        console.log('📡 Event payload:', event.payload);
+        console.log('📡 Event payload type:', typeof event.payload);
+        console.log('📡 Event payload keys:', Object.keys(event.payload || {}));
         
-        // Listen for log events from the backend
-        const logUnlisten = await window.__TAURI__.event.listen('log_event', (event: any) => {
-          console.log('📋 Log event:', event.payload);
-          // You can add log event handling here for the Live Data panel
-        });
-        
-        listenerRef.current = () => {
-          unlisten();
-          logUnlisten();
-        };
-        isListeningRef.current = true;
-        console.log('✅ PSS event listener setup complete');
-      }
+        // Ensure we have a valid payload
+        if (event.payload && typeof event.payload === 'object') {
+          console.log('✅ Valid payload received, processing event...');
+          handlePssEvent(event.payload);
+        } else {
+          console.warn('⚠️ Invalid PSS event payload:', event.payload);
+        }
+      });
+      
+      // Listen for log events from the backend
+      console.log('🎯 Setting up frontend log event listener...');
+      const logUnlisten = await window.__TAURI__.event.listen('log_event', (event: any) => {
+        console.log('📋 Log event:', event.payload);
+        // You can add log event handling here for the Live Data panel
+      });
+      
+      listenerRef.current = () => {
+        console.log('🧹 Cleaning up event listeners...');
+        unlisten();
+        logUnlisten();
+      };
+      isListeningRef.current = true;
+      console.log('✅ PSS event listener setup complete');
     } catch (error) {
       console.error('❌ Failed to setup PSS event listener:', error);
     }
@@ -84,6 +109,7 @@ export const usePssEvents = () => {
   // Fetch any pending events (fallback for missed events)
   const fetchPendingEvents = async () => {
     try {
+      console.log('📋 Fetching pending events...');
       const result = await pssCommands.getEvents();
       
       if (result && result.success && result.data && Array.isArray(result.data)) {
@@ -99,30 +125,36 @@ export const usePssEvents = () => {
     }
   };
 
-  // Manual event emission (for testing)
+  // Emit a test event to verify the system is working
   const emitTestEvent = async (eventData: any) => {
     try {
+      console.log('🧪 Emitting test event:', eventData);
       await pssCommands.emitEvent(eventData);
+      console.log('✅ Test event emitted successfully');
     } catch (error) {
-      console.error('❌ Error emitting test event:', error);
+      console.error('❌ Failed to emit test event:', error);
     }
   };
 
-  // Emit pending events to frontend
+  // Emit any pending events
   const emitPendingEvents = async () => {
     try {
+      console.log('📤 Emitting pending events...');
       await pssCommands.emitPendingEvents();
+      console.log('✅ Pending events emitted');
     } catch (error) {
       console.error('❌ Error emitting pending events:', error);
     }
   };
 
+  // Set up event listener on mount
   useEffect(() => {
-    // Set up event listener when component mounts
+    console.log('🎯 usePssEvents hook mounted');
     setupEventListener();
-
-    // Clean up when component unmounts
+    
+    // Clean up on unmount
     return () => {
+      console.log('🎯 usePssEvents hook unmounting');
       cleanupEventListener();
     };
   }, []);

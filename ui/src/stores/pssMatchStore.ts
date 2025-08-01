@@ -35,23 +35,33 @@ export const usePssMatchStore = create<PssMatchStore>((set, get) => ({
   
   // Actions
   updateAthletes: (athlete1: PssAthleteInfo, athlete2: PssAthleteInfo) => {
-    set((state) => ({
-      matchData: {
-        ...state.matchData,
-        athletes: { athlete1, athlete2 },
-        lastUpdated: new Date().toISOString(),
-      },
-    }));
+    console.log('🎯 updateAthletes called with:', { athlete1, athlete2 });
+    set((state) => {
+      const newState = {
+        matchData: {
+          ...state.matchData,
+          athletes: { athlete1, athlete2 },
+          lastUpdated: new Date().toISOString(),
+        },
+      };
+      console.log('🎯 New store state after updateAthletes:', newState);
+      return newState;
+    });
   },
   
   updateMatchConfig: (config: PssMatchConfig) => {
-    set((state) => ({
-      matchData: {
-        ...state.matchData,
-        matchConfig: config,
-        lastUpdated: new Date().toISOString(),
-      },
-    }));
+    console.log('🎯 updateMatchConfig called with:', config);
+    set((state) => {
+      const newState = {
+        matchData: {
+          ...state.matchData,
+          matchConfig: config,
+          lastUpdated: new Date().toISOString(),
+        },
+      };
+      console.log('🎯 New store state after updateMatchConfig:', newState);
+      return newState;
+    });
   },
   
   updateScores: (scores: PssScores) => {

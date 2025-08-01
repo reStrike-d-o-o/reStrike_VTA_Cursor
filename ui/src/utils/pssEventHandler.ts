@@ -8,11 +8,12 @@ import { getBestFlagCode } from './countryCodeMapping';
  * Handles both match setup data and scoring data (for future use)
  */
 export const handlePssEvent = (event: any) => {
-  const store = usePssMatchStore.getState();
-  
-  console.log('🎯 Processing PSS event:', event);
+  console.log('🎯 handlePssEvent called with event:', event);
   console.log('🎯 Event type:', event.type);
   console.log('🎯 Event structure:', JSON.stringify(event, null, 2));
+  
+  const store = usePssMatchStore.getState();
+  console.log('🎯 Current store state:', store.matchData);
   
   // Emit browser event for scoreboard overlays
   emitBrowserEvent(event);
@@ -98,30 +99,13 @@ export const handlePssEvent = (event: any) => {
       }
 
       // Parse raw match config (mch;) lines to update match config
-      if (event.type === 'raw' && typeof event.message === 'string' && event.message.startsWith('mch;')) {
-        try {
-          const parts = event.message.split(';');
-          /* Expected format:
-             mch;matchNumber;category;weight;???;bgColor1;fontColor1;bgColor2;fontColor2;null;division;totalRounds;roundDuration;countdownType;format;???;
-           */
-          const matchConfig: PssMatchConfig = {
-            number: parseInt(parts[1]) || 0,
-            category: parts[2] || '',
-            weight: parts[3]?.replace(/\s+/g, '') || '', // trim spaces like "M -68kg" -> "M-68kg"
-            division: parts[10] || '',
-            totalRounds: parseInt(parts[11]) || 3,
-            roundDuration: parseInt(parts[12]) || 120,
-            countdownType: parts[13] || '',
-            format: parseInt(parts[14]) || 1,
-          };
-          store.updateMatchConfig(matchConfig);
-          console.log('✅ Updated match config:', matchConfig);
-        } catch (rawErr) {
-          console.error('Error parsing raw mch line:', rawErr);
-        }
+      if (event.message && event.message.startsWith('mch;')) {
+        console.log('🎯 Parsing raw match config message:', event.message);
+        // TODO: Parse raw match config message
       }
-      break;
   }
+  
+  console.log('🎯 handlePssEvent completed');
 };
 
 /**

@@ -1411,6 +1411,288 @@ impl Migration for Migration7 {
     }
 }
 
+/// Migration 8: PSS Event Status Mark System and Recognition History
+pub struct Migration8;
+
+impl Migration for Migration8 {
+    fn version(&self) -> u32 {
+        8
+    }
+
+    fn description(&self) -> &str {
+        "PSS Event Status Mark System with recognition history, unknown event collection, and enhanced validation"
+    }
+
+    fn up(&self, conn: &Connection) -> SqliteResult<()> {
+        // Add recognition_status field to pss_events_v2 table
+        conn.execute(
+            "ALTER TABLE pss_events_v2 ADD COLUMN recognition_status TEXT NOT NULL DEFAULT 'recognized' CHECK (recognition_status IN ('recognized', 'unknown', 'partial', 'deprecated'))",
+            [],
+        )?;
+
+        // Add protocol_version field to track which protocol version was used for parsing
+        conn.execute(
+            "ALTER TABLE pss_events_v2 ADD COLUMN protocol_version TEXT DEFAULT '2.3'",
+            [],
+        )?;
+
+        // Add parser_confidence field to store confidence scores
+        conn.execute(
+            "ALTER TABLE pss_events_v2 ADD COLUMN parser_confidence REAL DEFAULT 1.0 CHECK (parser_confidence >= 0.0 AND parser_confidence <= 1.0)",
+            [],
+        )?;
+
+        // Add validation_errors field to store validation error details
+        conn.execute(
+            "ALTER TABLE pss_events_v2 ADD COLUMN validation_errors TEXT",
+            [],
+        )?;
+
+        // Create pss_event_recognition_history table for tracking status changes
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS pss_event_recognition_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                event_id INTEGER NOT NULL,
+                old_status TEXT NOT NULL,
+                new_status TEXT NOT NULL,
+                changed_by TEXT NOT NULL DEFAULT 'system',
+                change_reason TEXT,
+                protocol_version TEXT,
+                raw_data TEXT NOT NULL,
+                parsed_data TEXT,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (event_id) REFERENCES pss_events_v2(id) ON DELETE CASCADE
+            )",
+            [],
+        )?;
+
+        // Create pss_unknown_events table for collecting unrecognized events
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS pss_unknown_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id INTEGER NOT NULL,
+                raw_data TEXT NOT NULL,
+                first_seen TEXT NOT NULL,
+                last_seen TEXT NOT NULL,
+                occurrence_count INTEGER DEFAULT 1,
+                pattern_hash TEXT,
+                suggested_event_type TEXT,
+                notes TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY (session_id) REFERENCES udp_server_sessions(id) ON DELETE CASCADE
+            )",
+            [],
+        )?;
+
+        // Create pss_event_validation_rules table for protocol validation
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS pss_event_validation_rules (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                event_code TEXT NOT NULL,
+                protocol_version TEXT NOT NULL,
+                rule_name TEXT NOT NULL,
+                rule_type TEXT NOT NULL CHECK (rule_type IN ('format', 'data_type', 'range', 'required', 'custom')),
+                rule_definition TEXT NOT NULL,
+                error_message TEXT,
+                is_active BOOLEAN NOT NULL DEFAULT 1,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                UNIQUE(event_code, protocol_version, rule_name)
+            )",
+            [],
+        )?;
+
+        // Create pss_event_validation_results table for storing validation results
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS pss_event_validation_results (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                event_id INTEGER NOT NULL,
+                rule_id INTEGER NOT NULL,
+                validation_passed BOOLEAN NOT NULL,
+                error_message TEXT,
+                validation_time_ms INTEGER,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (event_id) REFERENCES pss_events_v2(id) ON DELETE CASCADE,
+                FOREIGN KEY (rule_id) REFERENCES pss_event_validation_rules(id) ON DELETE CASCADE
+            )",
+            [],
+        )?;
+
+        // Create pss_event_statistics table for tracking event processing metrics
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS pss_event_statistics (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id INTEGER NOT NULL,
+                event_type_id INTEGER,
+                total_events INTEGER DEFAULT 0,
+                recognized_events INTEGER DEFAULT 0,
+                unknown_events INTEGER DEFAULT 0,
+                partial_events INTEGER DEFAULT 0,
+                deprecated_events INTEGER DEFAULT 0,
+                validation_errors INTEGER DEFAULT 0,
+                parsing_errors INTEGER DEFAULT 0,
+                average_processing_time_ms REAL DEFAULT 0.0,
+                min_processing_time_ms INTEGER,
+                max_processing_time_ms INTEGER,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY (session_id) REFERENCES udp_server_sessions(id) ON DELETE CASCADE,
+                FOREIGN KEY (event_type_id) REFERENCES pss_event_types(id) ON DELETE SET NULL
+            )",
+            [],
+        )?;
+
+        // Create indices for performance
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_events_v2_recognition_status ON pss_events_v2(recognition_status)",
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_events_v2_protocol_version ON pss_events_v2(protocol_version)",
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_events_v2_parser_confidence ON pss_events_v2(parser_confidence)",
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_event_recognition_history_event_id ON pss_event_recognition_history(event_id)",
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_event_recognition_history_status_change ON pss_event_recognition_history(old_status, new_status)",
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_event_recognition_history_created_at ON pss_event_recognition_history(created_at)",
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_unknown_events_session_id ON pss_unknown_events(session_id)",
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_unknown_events_pattern_hash ON pss_unknown_events(pattern_hash)",
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_unknown_events_first_seen ON pss_unknown_events(first_seen)",
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_event_validation_rules_event_code ON pss_event_validation_rules(event_code)",
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_event_validation_rules_protocol_version ON pss_event_validation_rules(protocol_version)",
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_event_validation_rules_active ON pss_event_validation_rules(is_active)",
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_event_validation_results_event_id ON pss_event_validation_results(event_id)",
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_event_validation_results_rule_id ON pss_event_validation_results(rule_id)",
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_event_validation_results_passed ON pss_event_validation_results(validation_passed)",
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_event_statistics_session_id ON pss_event_statistics(session_id)",
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_event_statistics_event_type_id ON pss_event_statistics(event_type_id)",
+            [],
+        )?;
+
+        // Populate validation rules for PSS v2.3 protocol
+        let validation_rules = vec![
+            // Points events validation
+            ("pt1", "2.3", "point_type_range", "range", "1-5", "Point type must be between 1 and 5"),
+            ("pt2", "2.3", "point_type_range", "range", "1-5", "Point type must be between 1 and 5"),
+            
+            // Hit level events validation
+            ("hl1", "2.3", "hit_level_range", "range", "1-100", "Hit level must be between 1 and 100"),
+            ("hl2", "2.3", "hit_level_range", "range", "1-100", "Hit level must be between 1 and 100"),
+            
+            // Warnings events validation
+            ("wg1", "2.3", "warning_count_range", "range", "0-4", "Warning count must be between 0 and 4"),
+            ("wg2", "2.3", "warning_count_range", "range", "0-4", "Warning count must be between 0 and 4"),
+            
+            // Injury time format validation
+            ("ij0", "2.3", "time_format", "format", "m:ss", "Time must be in m:ss format"),
+            ("ij1", "2.3", "time_format", "format", "m:ss", "Time must be in m:ss format"),
+            ("ij2", "2.3", "time_format", "format", "m:ss", "Time must be in m:ss format"),
+            
+            // Challenge events validation
+            ("ch0", "2.3", "challenge_status", "data_type", "integer", "Challenge status must be integer"),
+            ("ch1", "2.3", "challenge_status", "data_type", "integer", "Challenge status must be integer"),
+            ("ch2", "2.3", "challenge_status", "data_type", "integer", "Challenge status must be integer"),
+            
+            // Clock events validation
+            ("clk", "2.3", "time_format", "format", "m:ss", "Time must be in m:ss format"),
+            
+            // Round events validation
+            ("rnd", "2.3", "round_number_range", "range", "1-3", "Round number must be between 1 and 3"),
+            
+            // Match config validation
+            ("mch", "2.3", "match_number_positive", "range", "1-9999", "Match number must be positive"),
+            ("mch", "2.3", "total_rounds_range", "range", "1-5", "Total rounds must be between 1 and 5"),
+            ("mch", "2.3", "round_duration_positive", "range", "1-9999", "Round duration must be positive"),
+        ];
+
+        let current_time = chrono::Utc::now().to_rfc3339();
+        for (event_code, protocol_version, rule_name, rule_type, rule_definition, error_message) in validation_rules {
+            conn.execute(
+                "INSERT OR IGNORE INTO pss_event_validation_rules (event_code, protocol_version, rule_name, rule_type, rule_definition, error_message, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                [event_code, protocol_version, rule_name, rule_type, rule_definition, error_message, &current_time, &current_time],
+            )?;
+        }
+
+        log::info!("✅ Migration 8 completed: PSS Event Status Mark System added");
+        Ok(())
+    }
+
+    fn down(&self, conn: &Connection) -> SqliteResult<()> {
+        // Drop new tables
+        conn.execute("DROP TABLE IF EXISTS pss_event_statistics", [])?;
+        conn.execute("DROP TABLE IF EXISTS pss_event_validation_results", [])?;
+        conn.execute("DROP TABLE IF EXISTS pss_event_validation_rules", [])?;
+        conn.execute("DROP TABLE IF EXISTS pss_unknown_events", [])?;
+        conn.execute("DROP TABLE IF EXISTS pss_event_recognition_history", [])?;
+
+        // Note: SQLite doesn't support DROP COLUMN, so we can't remove the added columns
+        // The columns will remain but won't affect functionality
+        log::warn!("⚠️ Migration 8 rollback: New columns in pss_events_v2 table cannot be removed (SQLite limitation)");
+        
+        Ok(())
+    }
+}
+
 /// Migration manager for handling database schema updates
 pub struct MigrationManager {
     migrations: Vec<Box<dyn Migration>>,
@@ -1427,6 +1709,7 @@ impl MigrationManager {
         migrations.push(Box::new(Migration5));
         migrations.push(Box::new(Migration6));
         migrations.push(Box::new(Migration7));
+        migrations.push(Box::new(Migration8)); // Add new migration
         
         Self { migrations }
     }

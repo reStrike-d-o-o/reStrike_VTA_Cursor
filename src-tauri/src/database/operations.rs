@@ -877,8 +877,9 @@ impl PssUdpOperations {
                 detail_type.clone(),
             );
             
+            // Use INSERT OR REPLACE to handle duplicate key violations gracefully
             tx.execute(
-                "INSERT INTO pss_event_details (event_id, detail_key, detail_value, detail_type, created_at) VALUES (?, ?, ?, ?, ?)",
+                "INSERT OR REPLACE INTO pss_event_details (event_id, detail_key, detail_value, detail_type, created_at) VALUES (?, ?, ?, ?, ?)",
                 params![
                     detail.event_id,
                     detail.detail_key,
@@ -1274,6 +1275,649 @@ impl TournamentOperations {
             params![logo_path, Utc::now().to_rfc3339(), tournament_id]
         )?;
         
+        Ok(())
+    }
+} 
+
+/// PSS Event Status Mark Operations for managing event recognition and validation
+pub struct PssEventStatusOperations;
+
+impl PssEventStatusOperations {
+    /// Store a PSS event with status mark
+    pub fn store_pss_event_with_status(
+        conn: &mut Connection, 
+        event: &crate::database::models::PssEventV2
+    ) -> DatabaseResult<i64> {
+        let tx = conn.transaction()?;
+        
+        let event_id = tx.execute(
+            "INSERT INTO pss_events_v2 (
+                session_id, match_id, round_id, event_type_id, timestamp, raw_data, 
+                parsed_data, event_sequence, processing_time_ms, is_valid, error_message,
+                recognition_status, protocol_version, parser_confidence, validation_errors, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            params![
+                event.session_id,
+                event.match_id,
+                event.round_id,
+                event.event_type_id,
+                event.timestamp.to_rfc3339(),
+                event.raw_data,
+                event.parsed_data,
+                event.event_sequence,
+                event.processing_time_ms,
+                event.is_valid,
+                event.error_message,
+                event.recognition_status,
+                event.protocol_version,
+                event.parser_confidence,
+                event.validation_errors,
+                event.created_at.to_rfc3339()
+            ]
+        )?;
+        
+        tx.commit()?;
+        Ok(event_id as i64)
+    }
+
+    /// Update event recognition status and record history
+    pub fn update_event_recognition_status(
+        conn: &mut Connection,
+        event_id: i64,
+        new_status: &str,
+        changed_by: &str,
+        change_reason: Option<&str>,
+    ) -> DatabaseResult<()> {
+        let tx = conn.transaction()?;
+        
+        // Get current status
+        let current_status: String = tx.query_row(
+            "SELECT recognition_status FROM pss_events_v2 WHERE id = ?",
+            params![event_id],
+            |row| row.get(0)
+        )?;
+        
+        // Update event status
+        tx.execute(
+            "UPDATE pss_events_v2 SET recognition_status = ? WHERE id = ?",
+            params![new_status, event_id]
+        )?;
+        
+        // Record status change in history
+        let history = crate::database::models::PssEventRecognitionHistory::new(
+            event_id,
+            current_status,
+            new_status.to_string(),
+            changed_by.to_string(),
+            "".to_string(), // We'll get raw_data separately if needed
+        );
+        
+        tx.execute(
+            "INSERT INTO pss_event_recognition_history (
+                event_id, old_status, new_status, changed_by, change_reason, 
+                protocol_version, raw_data, parsed_data, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            params![
+                history.event_id,
+                history.old_status,
+                history.new_status,
+                history.changed_by,
+                change_reason,
+                history.protocol_version,
+                history.raw_data,
+                history.parsed_data,
+                history.created_at.to_rfc3339()
+            ]
+        )?;
+        
+        tx.commit()?;
+        Ok(())
+    }
+
+    /// Store unknown event
+    pub fn store_unknown_event(
+        conn: &mut Connection,
+        unknown_event: &crate::database::models::PssUnknownEvent,
+    ) -> DatabaseResult<i64> {
+        let tx = conn.transaction()?;
+        
+        // Check if this pattern already exists
+        let existing_id: Option<i64> = tx.query_row(
+            "SELECT id FROM pss_unknown_events WHERE session_id = ? AND raw_data = ?",
+            params![unknown_event.session_id, unknown_event.raw_data],
+            |row| row.get(0)
+        ).optional()?;
+        
+        if let Some(existing_id) = existing_id {
+            // Update existing record
+            tx.execute(
+                "UPDATE pss_unknown_events SET 
+                    last_seen = ?, occurrence_count = occurrence_count + 1, updated_at = ?
+                WHERE id = ?",
+                params![
+                    unknown_event.last_seen.to_rfc3339(),
+                    unknown_event.updated_at.to_rfc3339(),
+                    existing_id
+                ]
+            )?;
+            tx.commit()?;
+            Ok(existing_id)
+        } else {
+            // Insert new record
+            let unknown_event_id = tx.execute(
+                "INSERT INTO pss_unknown_events (
+                    session_id, raw_data, first_seen, last_seen, occurrence_count,
+                    pattern_hash, suggested_event_type, notes, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                params![
+                    unknown_event.session_id,
+                    unknown_event.raw_data,
+                    unknown_event.first_seen.to_rfc3339(),
+                    unknown_event.last_seen.to_rfc3339(),
+                    unknown_event.occurrence_count,
+                    unknown_event.pattern_hash,
+                    unknown_event.suggested_event_type,
+                    unknown_event.notes,
+                    unknown_event.created_at.to_rfc3339(),
+                    unknown_event.updated_at.to_rfc3339()
+                ]
+            )?;
+            
+            tx.commit()?;
+            Ok(unknown_event_id as i64)
+        }
+    }
+
+    /// Get validation rules for an event type
+    pub fn get_validation_rules(
+        conn: &Connection,
+        event_code: &str,
+        protocol_version: &str,
+    ) -> DatabaseResult<Vec<crate::database::models::PssEventValidationRule>> {
+        let mut stmt = conn.prepare(
+            "SELECT id, event_code, protocol_version, rule_name, rule_type, rule_definition, 
+                    error_message, is_active, created_at, updated_at 
+             FROM pss_event_validation_rules 
+             WHERE event_code = ? AND protocol_version = ? AND is_active = 1
+             ORDER BY rule_name"
+        )?;
+        
+        let rows = stmt.query_map(params![event_code, protocol_version], |row| {
+            crate::database::models::PssEventValidationRule::from_row(row)
+        })?;
+        
+        let mut rules = Vec::new();
+        for row in rows {
+            rules.push(row?);
+        }
+        
+        Ok(rules)
+    }
+
+    /// Store validation result
+    pub fn store_validation_result(
+        conn: &mut Connection,
+        validation_result: &crate::database::models::PssEventValidationResult,
+    ) -> DatabaseResult<i64> {
+        let validation_result_id = conn.execute(
+            "INSERT INTO pss_event_validation_results (
+                event_id, rule_id, validation_passed, error_message, validation_time_ms, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?)",
+            params![
+                validation_result.event_id,
+                validation_result.rule_id,
+                validation_result.validation_passed,
+                validation_result.error_message,
+                validation_result.validation_time_ms,
+                validation_result.created_at.to_rfc3339()
+            ]
+        )?;
+        
+        Ok(validation_result_id as i64)
+    }
+
+    /// Update event statistics
+    pub fn update_event_statistics(
+        conn: &mut Connection,
+        session_id: i64,
+        event_type_id: Option<i64>,
+        recognition_status: &str,
+        processing_time_ms: Option<i32>,
+    ) -> DatabaseResult<()> {
+        let tx = conn.transaction()?;
+        
+        // Get or create statistics record
+        let stats_id: Option<i64> = tx.query_row(
+            "SELECT id FROM pss_event_statistics WHERE session_id = ? AND event_type_id IS ?",
+            params![session_id, event_type_id],
+            |row| row.get(0)
+        ).optional()?;
+        
+        if let Some(stats_id) = stats_id {
+            // Update existing statistics
+            let update_sql = match recognition_status {
+                "recognized" => "recognized_events = recognized_events + 1",
+                "unknown" => "unknown_events = unknown_events + 1",
+                "partial" => "partial_events = partial_events + 1",
+                "deprecated" => "deprecated_events = deprecated_events + 1",
+                _ => "total_events = total_events + 1",
+            };
+            
+            tx.execute(
+                &format!("UPDATE pss_event_statistics SET 
+                    total_events = total_events + 1, 
+                    {}, 
+                    updated_at = ? 
+                    WHERE id = ?", update_sql),
+                params![chrono::Utc::now().to_rfc3339(), stats_id]
+            )?;
+            
+            // Update processing time statistics if available
+            if let Some(processing_time) = processing_time_ms {
+                tx.execute(
+                    "UPDATE pss_event_statistics SET 
+                        average_processing_time_ms = (
+                            (average_processing_time_ms * total_events + ?) / (total_events + 1)
+                        ),
+                        min_processing_time_ms = CASE 
+                            WHEN min_processing_time_ms IS NULL OR ? < min_processing_time_ms 
+                            THEN ? ELSE min_processing_time_ms END,
+                        max_processing_time_ms = CASE 
+                            WHEN max_processing_time_ms IS NULL OR ? > max_processing_time_ms 
+                            THEN ? ELSE max_processing_time_ms END
+                    WHERE id = ?",
+                    params![processing_time, processing_time, processing_time, processing_time, processing_time, stats_id]
+                )?;
+            }
+        } else {
+            // Create new statistics record
+            let stats = crate::database::models::PssEventStatistics::new(session_id, event_type_id);
+            let total_events = 1;
+            let mut recognized_events = 0;
+            let mut unknown_events = 0;
+            let mut partial_events = 0;
+            let mut deprecated_events = 0;
+            
+            match recognition_status {
+                "recognized" => recognized_events = 1,
+                "unknown" => unknown_events = 1,
+                "partial" => partial_events = 1,
+                "deprecated" => deprecated_events = 1,
+                _ => {}
+            }
+            
+            tx.execute(
+                "INSERT INTO pss_event_statistics (
+                    session_id, event_type_id, total_events, recognized_events, unknown_events,
+                    partial_events, deprecated_events, validation_errors, parsing_errors,
+                    average_processing_time_ms, min_processing_time_ms, max_processing_time_ms,
+                    created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                params![
+                    stats.session_id,
+                    stats.event_type_id,
+                    total_events,
+                    recognized_events,
+                    unknown_events,
+                    partial_events,
+                    deprecated_events,
+                    stats.validation_errors,
+                    stats.parsing_errors,
+                    processing_time_ms.unwrap_or(0) as f64,
+                    processing_time_ms,
+                    processing_time_ms,
+                    stats.created_at.to_rfc3339(),
+                    stats.updated_at.to_rfc3339()
+                ]
+            )?;
+        }
+        
+        tx.commit()?;
+        Ok(())
+    }
+
+    /// Get event statistics for a session
+    pub fn get_session_statistics(
+        conn: &Connection,
+        session_id: i64,
+    ) -> DatabaseResult<Vec<crate::database::models::PssEventStatistics>> {
+        let mut stmt = conn.prepare(
+            "SELECT id, session_id, event_type_id, total_events, recognized_events, unknown_events,
+                    partial_events, deprecated_events, validation_errors, parsing_errors,
+                    average_processing_time_ms, min_processing_time_ms, max_processing_time_ms,
+                    created_at, updated_at
+             FROM pss_event_statistics 
+             WHERE session_id = ?
+             ORDER BY total_events DESC"
+        )?;
+        
+        let rows = stmt.query_map(params![session_id], |row| {
+            crate::database::models::PssEventStatistics::from_row(row)
+        })?;
+        
+        let mut statistics = Vec::new();
+        for row in rows {
+            statistics.push(row?);
+        }
+        
+        Ok(statistics)
+    }
+
+    /// Get unknown events for analysis
+    pub fn get_unknown_events(
+        conn: &Connection,
+        session_id: Option<i64>,
+        limit: Option<i64>,
+    ) -> DatabaseResult<Vec<crate::database::models::PssUnknownEvent>> {
+        let limit = limit.unwrap_or(100);
+        
+        let sql = if let Some(_session_id) = session_id {
+            "SELECT id, session_id, raw_data, first_seen, last_seen, occurrence_count,
+                    pattern_hash, suggested_event_type, notes, created_at, updated_at
+             FROM pss_unknown_events 
+             WHERE session_id = ?
+             ORDER BY occurrence_count DESC, last_seen DESC
+             LIMIT ?"
+        } else {
+            "SELECT id, session_id, raw_data, first_seen, last_seen, occurrence_count,
+                    pattern_hash, suggested_event_type, notes, created_at, updated_at
+             FROM pss_unknown_events 
+             ORDER BY occurrence_count DESC, last_seen DESC
+             LIMIT ?"
+        };
+        
+        let mut stmt = conn.prepare(sql)?;
+        
+        let rows = if let Some(session_id) = session_id {
+            stmt.query_map(params![session_id, limit], crate::database::models::PssUnknownEvent::from_row)?
+        } else {
+            stmt.query_map(params![limit], crate::database::models::PssUnknownEvent::from_row)?
+        };
+        
+        let mut unknown_events = Vec::new();
+        for row in rows {
+            unknown_events.push(row?);
+        }
+        
+        Ok(unknown_events)
+    }
+
+    /// Get recognition history for an event
+    pub fn get_event_recognition_history(
+        conn: &Connection,
+        event_id: i64,
+    ) -> DatabaseResult<Vec<crate::database::models::PssEventRecognitionHistory>> {
+        let mut stmt = conn.prepare(
+            "SELECT id, event_id, old_status, new_status, changed_by, change_reason,
+                    protocol_version, raw_data, parsed_data, created_at
+             FROM pss_event_recognition_history 
+             WHERE event_id = ?
+             ORDER BY created_at DESC"
+        )?;
+        
+        let rows = stmt.query_map(params![event_id], |row| {
+            crate::database::models::PssEventRecognitionHistory::from_row(row)
+        })?;
+        
+        let mut history = Vec::new();
+        for row in rows {
+            history.push(row?);
+        }
+        
+        Ok(history)
+    }
+
+    /// Get events by recognition status
+    pub fn get_events_by_status(
+        conn: &Connection,
+        session_id: i64,
+        recognition_status: &str,
+        limit: Option<i64>,
+    ) -> DatabaseResult<Vec<crate::database::models::PssEventV2>> {
+        let limit = limit.unwrap_or(100);
+        
+        let mut stmt = conn.prepare(
+            "SELECT id, session_id, match_id, round_id, event_type_id, timestamp, raw_data,
+                    parsed_data, event_sequence, processing_time_ms, is_valid, error_message,
+                    recognition_status, protocol_version, parser_confidence, validation_errors, created_at
+             FROM pss_events_v2 
+             WHERE session_id = ? AND recognition_status = ?
+             ORDER BY created_at DESC
+             LIMIT ?"
+        )?;
+        
+        let rows = stmt.query_map(params![session_id, recognition_status, limit], |row| {
+            crate::database::models::PssEventV2::from_row(row)
+        })?;
+        
+        let mut events = Vec::new();
+        for row in rows {
+            events.push(row?);
+        }
+        
+        Ok(events)
+    }
+
+    /// Get comprehensive event statistics with status breakdown
+    pub fn get_comprehensive_event_statistics(
+        conn: &Connection,
+        session_id: i64,
+    ) -> DatabaseResult<serde_json::Value> {
+        // Get overall statistics
+        let overall_stats = conn.query_row(
+            "SELECT 
+                COUNT(*) as total_events,
+                SUM(CASE WHEN recognition_status = 'recognized' THEN 1 ELSE 0 END) as recognized_events,
+                SUM(CASE WHEN recognition_status = 'unknown' THEN 1 ELSE 0 END) as unknown_events,
+                SUM(CASE WHEN recognition_status = 'partial' THEN 1 ELSE 0 END) as partial_events,
+                SUM(CASE WHEN recognition_status = 'deprecated' THEN 1 ELSE 0 END) as deprecated_events,
+                AVG(parser_confidence) as avg_confidence,
+                AVG(processing_time_ms) as avg_processing_time,
+                MIN(processing_time_ms) as min_processing_time,
+                MAX(processing_time_ms) as max_processing_time
+            FROM pss_events_v2 
+            WHERE session_id = ?",
+            params![session_id],
+            |row| {
+                Ok(serde_json::json!({
+                    "total_events": row.get::<_, i64>(0)?,
+                    "recognized_events": row.get::<_, i64>(1)?,
+                    "unknown_events": row.get::<_, i64>(2)?,
+                    "partial_events": row.get::<_, i64>(3)?,
+                    "deprecated_events": row.get::<_, i64>(4)?,
+                    "avg_confidence": row.get::<_, Option<f64>>(5)?,
+                    "avg_processing_time": row.get::<_, Option<f64>>(6)?,
+                    "min_processing_time": row.get::<_, Option<i32>>(7)?,
+                    "max_processing_time": row.get::<_, Option<i32>>(8)?
+                }))
+            }
+        )?;
+
+        // Get statistics by event type
+        let mut event_type_stats = conn.prepare(
+            "SELECT 
+                et.event_code,
+                et.event_name,
+                COUNT(*) as total,
+                SUM(CASE WHEN e.recognition_status = 'recognized' THEN 1 ELSE 0 END) as recognized,
+                SUM(CASE WHEN e.recognition_status = 'unknown' THEN 1 ELSE 0 END) as unknown,
+                SUM(CASE WHEN e.recognition_status = 'partial' THEN 1 ELSE 0 END) as partial,
+                AVG(e.parser_confidence) as avg_confidence,
+                AVG(e.processing_time_ms) as avg_processing_time
+            FROM pss_events_v2 e
+            JOIN pss_event_types et ON e.event_type_id = et.id
+            WHERE e.session_id = ?
+            GROUP BY et.id, et.event_code, et.event_name
+            ORDER BY total DESC"
+        )?;
+
+        let event_type_rows = event_type_stats.query_map(params![session_id], |row| {
+            Ok(serde_json::json!({
+                "event_code": row.get::<_, String>(0)?,
+                "event_name": row.get::<_, String>(1)?,
+                "total": row.get::<_, i64>(2)?,
+                "recognized": row.get::<_, i64>(3)?,
+                "unknown": row.get::<_, i64>(4)?,
+                "partial": row.get::<_, i64>(5)?,
+                "avg_confidence": row.get::<_, Option<f64>>(6)?,
+                "avg_processing_time": row.get::<_, Option<f64>>(7)?
+            }))
+        })?;
+
+        let mut event_type_stats_vec = Vec::new();
+        for row in event_type_rows {
+            event_type_stats_vec.push(row?);
+        }
+
+        // Get validation error breakdown
+        let mut validation_errors = conn.prepare(
+            "SELECT 
+                validation_errors,
+                COUNT(*) as count
+            FROM pss_events_v2 
+            WHERE session_id = ? AND validation_errors IS NOT NULL
+            GROUP BY validation_errors
+            ORDER BY count DESC
+            LIMIT 10"
+        )?;
+
+        let validation_rows = validation_errors.query_map(params![session_id], |row| {
+            Ok(serde_json::json!({
+                "error": row.get::<_, String>(0)?,
+                "count": row.get::<_, i64>(1)?
+            }))
+        })?;
+
+        let mut validation_errors_vec = Vec::new();
+        for row in validation_rows {
+            validation_errors_vec.push(row?);
+        }
+
+        // Get unknown events summary
+        let unknown_events_summary = conn.query_row(
+            "SELECT 
+                COUNT(*) as total_unknown,
+                COUNT(DISTINCT pattern_hash) as unique_patterns,
+                MAX(occurrence_count) as max_occurrences
+            FROM pss_unknown_events 
+            WHERE session_id = ?",
+            params![session_id],
+            |row| {
+                Ok(serde_json::json!({
+                    "total_unknown": row.get::<_, i64>(0)?,
+                    "unique_patterns": row.get::<_, i64>(1)?,
+                    "max_occurrences": row.get::<_, i64>(2)?
+                }))
+            }
+        ).unwrap_or_else(|_| serde_json::json!({
+            "total_unknown": 0,
+            "unique_patterns": 0,
+            "max_occurrences": 0
+        }));
+
+        Ok(serde_json::json!({
+            "overall": overall_stats,
+            "by_event_type": event_type_stats_vec,
+            "validation_errors": validation_errors_vec,
+            "unknown_events": unknown_events_summary
+        }))
+    }
+} 
+
+/// PSS Event Operations for managing event types and basic event operations
+pub struct PssEventOperations;
+
+impl PssEventOperations {
+    /// Get PSS event type by code
+    pub fn get_pss_event_type_by_code(conn: &Connection, event_code: &str) -> DatabaseResult<Option<crate::database::models::PssEventType>> {
+        let mut stmt = conn.prepare(
+            "SELECT id, event_code, event_name, description, created_at, updated_at 
+             FROM pss_event_types 
+             WHERE event_code = ?"
+        )?;
+        
+        let mut rows = stmt.query_map(params![event_code], |row| {
+            crate::database::models::PssEventType::from_row(row)
+        })?;
+        
+        if let Some(row) = rows.next() {
+            Ok(Some(row?))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Upsert PSS event type
+    pub fn upsert_pss_event_type(conn: &mut Connection, event_type: &crate::database::models::PssEventType) -> DatabaseResult<i64> {
+        let tx = conn.transaction()?;
+        
+        // Check if event type already exists
+        let existing_id: Option<i64> = tx.query_row(
+            "SELECT id FROM pss_event_types WHERE event_code = ?",
+            params![event_type.event_code],
+            |row| row.get(0)
+        ).optional()?;
+        
+        let event_type_id = if let Some(id) = existing_id {
+            // Update existing event type
+            tx.execute(
+                "UPDATE pss_event_types SET 
+                    event_name = ?, description = ?, updated_at = ?
+                WHERE id = ?",
+                params![
+                    event_type.event_name,
+                    event_type.description,
+                    event_type.created_at.to_rfc3339(),
+                    id
+                ]
+            )?;
+            id
+        } else {
+            // Insert new event type
+            tx.execute(
+                "INSERT INTO pss_event_types (event_code, event_name, description, created_at, updated_at) 
+                 VALUES (?, ?, ?, ?, ?)",
+                params![
+                    event_type.event_code,
+                    event_type.event_name,
+                    event_type.description,
+                    event_type.created_at.to_rfc3339(),
+                    event_type.created_at.to_rfc3339()
+                ]
+            )?;
+            tx.last_insert_rowid()
+        };
+        
+        tx.commit()?;
+        Ok(event_type_id)
+    }
+
+    /// Get all PSS event types
+    pub fn get_all_pss_event_types(conn: &Connection) -> DatabaseResult<Vec<crate::database::models::PssEventType>> {
+        let mut stmt = conn.prepare(
+            "SELECT id, event_code, event_name, description, created_at, updated_at 
+             FROM pss_event_types 
+             ORDER BY event_code"
+        )?;
+        
+        let rows = stmt.query_map([], |row| {
+            crate::database::models::PssEventType::from_row(row)
+        })?;
+        
+        let mut event_types = Vec::new();
+        for row in rows {
+            event_types.push(row?);
+        }
+        
+        Ok(event_types)
+    }
+
+    /// Delete PSS event type
+    pub fn delete_pss_event_type(conn: &mut Connection, event_type_id: i64) -> DatabaseResult<()> {
+        conn.execute(
+            "DELETE FROM pss_event_types WHERE id = ?",
+            params![event_type_id]
+        )?;
         Ok(())
     }
 } 

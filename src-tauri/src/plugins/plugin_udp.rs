@@ -12,6 +12,14 @@ use crate::database::models::{
 };
 use chrono::Utc;
 
+/// Validation result enum
+#[derive(Debug)]
+enum ValidationResult {
+    Valid,
+    Partial(Vec<String>),
+    Invalid(Vec<String>),
+}
+
 /// Initialize the UDP plugin
 pub fn init() -> Result<(), Box<dyn std::error::Error>> {
     log::info!("🔧 Initializing UDP plugin...");
@@ -177,6 +185,8 @@ pub struct UdpServer {
     athlete_cache: Arc<Mutex<std::collections::HashMap<String, i64>>>,
     event_type_cache: Arc<Mutex<std::collections::HashMap<String, i64>>>,
     listener_task: Arc<Mutex<Option<tokio::task::JoinHandle<()>>>>,
+    // Hit level tracking for statistics
+    recent_hit_levels: Arc<Mutex<std::collections::HashMap<u8, Vec<(u8, std::time::SystemTime)>>>>, // athlete -> [(level, timestamp)]
 }
 
 #[derive(Debug, Clone, Default)]
@@ -211,6 +221,8 @@ impl UdpServer {
             athlete_cache: Arc::new(Mutex::new(std::collections::HashMap::new())),
             event_type_cache: Arc::new(Mutex::new(std::collections::HashMap::new())),
             listener_task: Arc::new(Mutex::new(None)),
+            // Hit level tracking for statistics
+            recent_hit_levels: Arc::new(Mutex::new(std::collections::HashMap::new())),
         }
     }
 
@@ -328,6 +340,7 @@ impl UdpServer {
         let current_match_id_clone = self.current_match_id.clone();
         let athlete_cache_clone = self.athlete_cache.clone();
         let event_type_cache_clone = self.event_type_cache.clone();
+        let recent_hit_levels_clone = self.recent_hit_levels.clone();
 
         let listener_task = tokio::spawn(async move {
             Self::listen_loop_async(
@@ -342,6 +355,7 @@ impl UdpServer {
                 current_match_id_clone,
                 athlete_cache_clone,
                 event_type_cache_clone,
+                recent_hit_levels_clone,
             ).await;
         });
 
@@ -440,6 +454,7 @@ impl UdpServer {
         let current_match_id = self.current_match_id.clone();
         let athlete_cache = self.athlete_cache.clone();
         let event_type_cache = self.event_type_cache.clone();
+        let recent_hit_levels = self.recent_hit_levels.clone();
         let event_clone = event.clone();
         
         tokio::spawn(async move {
@@ -449,7 +464,8 @@ impl UdpServer {
                 &current_match_id,
                 &athlete_cache,
                 &event_type_cache,
-                &event_clone
+                &event_clone,
+                &recent_hit_levels,
             ).await {
                 log::error!("Failed to store event in database: {}", e);
             }
@@ -496,130 +512,517 @@ impl UdpServer {
         athlete_cache: &Arc<Mutex<std::collections::HashMap<String, i64>>>,
         event_type_cache: &Arc<Mutex<std::collections::HashMap<String, i64>>>,
         event: &PssEvent,
+        recent_hit_levels: &Arc<Mutex<std::collections::HashMap<u8, Vec<(u8, std::time::SystemTime)>>>>,
     ) -> AppResult<()> {
-        let session_id = match *current_session_id.lock().unwrap() {
-            Some(id) => id,
-            None => return Ok(()), // No active session
+        let start_time = std::time::Instant::now();
+        
+        // Get session ID
+        let session_id = {
+            let session_guard = current_session_id.lock().unwrap();
+            session_guard.ok_or_else(|| AppError::ConfigError("No active UDP session".to_string()))?
         };
 
-        // Convert PSS event to database model
-        let db_event = Self::convert_pss_event_to_db_model(
+        // Convert PSS event to database model with enhanced status tracking
+        let mut db_event = Self::convert_pss_event_to_db_model(
             event, 
-            session_id, 
+            session_id,
             current_match_id,
             event_type_cache,
-            database
+            database,
         ).await?;
-        
-        let event_id = database.store_pss_event(&db_event).await?;
 
-        // Store event details if available
-        if let Some(details) = Self::extract_event_details(event) {
-            database.store_pss_event_details(event_id, &details).await?;
+        // Determine recognition status based on event type
+        let (recognition_status, parser_confidence, validation_errors) = Self::determine_event_status(event, database).await?;
+        
+        // Update event with status information
+        db_event.recognition_status = recognition_status.clone();
+        db_event.parser_confidence = Some(parser_confidence);
+        db_event.validation_errors = validation_errors;
+        db_event.processing_time_ms = Some(start_time.elapsed().as_millis() as i32);
+
+        // Store event with status
+        let event_id = database.store_pss_event_with_status(&db_event).await?;
+
+        // Update event statistics
+        if let Err(e) = database.update_event_statistics(
+            session_id,
+            Some(db_event.event_type_id),
+            &recognition_status,
+            db_event.processing_time_ms,
+        ).await {
+            log::warn!("⚠️ Failed to update event statistics: {}", e);
         }
 
-        // Handle special event types
+        // Handle specific event types
         match event {
             PssEvent::MatchConfig { match_id, .. } => {
-                Self::handle_match_config_event(database, current_match_id, match_id).await?;
+                if let Err(e) = Self::handle_match_config_event(database, current_match_id, match_id).await {
+                    log::warn!("⚠️ Failed to handle match config event: {}", e);
+                }
             }
-            PssEvent::Athletes { athlete1_short, athlete2_short, .. } => {
-                Self::handle_athletes_event(database, athlete_cache, athlete1_short, athlete2_short).await?;
+            PssEvent::Athletes { athlete1_short, athlete1_long, athlete1_country, athlete2_short, athlete2_long, athlete2_country } => {
+                if let Err(e) = Self::handle_athletes_event(
+                    database, 
+                    athlete_cache, 
+                    athlete1_short, 
+                    athlete1_long, 
+                    athlete1_country, 
+                    athlete2_short, 
+                    athlete2_long, 
+                    athlete2_country
+                ).await {
+                    log::warn!("⚠️ Failed to handle athletes event: {}", e);
+                }
             }
             PssEvent::CurrentScores { athlete1_score, athlete2_score } => {
-                Self::handle_scores_event(database, current_match_id, *athlete1_score, *athlete2_score).await?;
+                if let Err(e) = Self::handle_scores_event(database, current_match_id, *athlete1_score, *athlete2_score).await {
+                    log::warn!("⚠️ Failed to handle scores event: {}", e);
+                }
             }
             PssEvent::Warnings { athlete1_warnings, athlete2_warnings } => {
-                Self::handle_warnings_event(database, current_match_id, *athlete1_warnings, *athlete2_warnings).await?;
+                if let Err(e) = Self::handle_warnings_event(database, current_match_id, *athlete1_warnings, *athlete2_warnings).await {
+                    log::warn!("⚠️ Failed to handle warnings event: {}", e);
+                }
             }
             _ => {}
+        }
+
+        // Extract and store event details
+        if let Some(details) = Self::extract_event_details(event, recent_hit_levels) {
+            if let Err(e) = database.store_pss_event_details(event_id, &details).await {
+                log::warn!("⚠️ Failed to store event details: {}", e);
+            }
+        }
+
+        // If event is unknown, store it in unknown events table
+        if recognition_status == "unknown" {
+            let unknown_event = crate::database::models::PssUnknownEvent::new(
+                session_id,
+                db_event.raw_data.clone(),
+            );
+            if let Err(e) = database.store_unknown_event(&unknown_event).await {
+                log::warn!("⚠️ Failed to store unknown event: {}", e);
+            }
         }
 
         Ok(())
     }
 
-    async fn convert_pss_event_to_db_model(
+    /// Determine event recognition status and confidence
+    async fn determine_event_status(event: &PssEvent, database: &DatabasePlugin) -> AppResult<(String, f64, Option<String>)> {
+        let event_code = Self::get_event_code(event);
+        
+        // Check if this is a recognized event type
+        let event_type = database.get_pss_event_type_by_code(&event_code).await?;
+        
+        if event_type.is_none() {
+            // Unknown event type
+            return Ok(("unknown".to_string(), 0.0, Some("Event type not recognized".to_string())));
+        }
+        
+        // Validate event against protocol rules
+        let validation_result = Self::validate_event_against_protocol(event, &event_code, database).await?;
+        
+        match validation_result {
+            ValidationResult::Valid => {
+                Ok(("recognized".to_string(), 1.0, None))
+            }
+            ValidationResult::Partial(errors) => {
+                let error_msg = format!("Partial validation: {}", errors.join("; "));
+                Ok(("partial".to_string(), 0.7, Some(error_msg)))
+            }
+            ValidationResult::Invalid(errors) => {
+                let error_msg = format!("Validation failed: {}", errors.join("; "));
+                Ok(("unknown".to_string(), 0.3, Some(error_msg)))
+            }
+        }
+    }
+
+    /// Validation result enum
+
+
+    /// Validate event against PSS protocol rules
+    async fn validate_event_against_protocol(
         event: &PssEvent, 
+        event_code: &str, 
+        database: &DatabasePlugin
+    ) -> AppResult<ValidationResult> {
+        let start_time = std::time::Instant::now();
+        
+        // Get validation rules for this event type and protocol version
+        let rules = database.get_validation_rules(event_code, "2.3").await?;
+        
+        if rules.is_empty() {
+            // No validation rules found, consider it valid but with lower confidence
+            return Ok(ValidationResult::Partial(vec!["No validation rules defined".to_string()]));
+        }
+        
+        let mut errors = Vec::new();
+        let mut passed_rules = 0;
+        
+        for rule in &rules {
+            if !rule.is_active {
+                continue;
+            }
+            
+            match Self::apply_validation_rule(event, rule) {
+                Ok(ValidationResult::Valid) => {
+                    passed_rules += 1;
+                }
+                Ok(ValidationResult::Partial(partial_errors)) => {
+                    errors.extend(partial_errors);
+                    passed_rules += 1; // Partial is still considered passed
+                }
+                Ok(ValidationResult::Invalid(rule_errors)) => {
+                    errors.extend(rule_errors);
+                }
+                Err(e) => {
+                    errors.push(format!("Validation rule '{}' failed: {}", rule.rule_name, e));
+                }
+            }
+        }
+        
+        let _validation_time = start_time.elapsed().as_millis() as i32;
+        
+        // Determine overall validation result
+        if errors.is_empty() {
+            Ok(ValidationResult::Valid)
+        } else if passed_rules > 0 && passed_rules >= rules.len() / 2 {
+            // At least half the rules passed
+            Ok(ValidationResult::Partial(errors))
+        } else {
+            // Most rules failed
+            Ok(ValidationResult::Invalid(errors))
+        }
+    }
+
+    /// Apply a single validation rule
+    fn apply_validation_rule(event: &PssEvent, rule: &crate::database::models::PssEventValidationRule) -> AppResult<ValidationResult> {
+        match rule.rule_type.as_str() {
+            "range" => Self::validate_range_rule(event, rule),
+            "format" => Self::validate_format_rule(event, rule),
+            "data_type" => Self::validate_data_type_rule(event, rule),
+            "required" => Self::validate_required_rule(event, rule),
+            "custom" => Self::validate_custom_rule(event, rule),
+            _ => {
+                let error = format!("Unknown validation rule type: {}", rule.rule_type);
+                Ok(ValidationResult::Invalid(vec![error]))
+            }
+        }
+    }
+
+    /// Validate range rule
+    fn validate_range_rule(event: &PssEvent, rule: &crate::database::models::PssEventValidationRule) -> AppResult<ValidationResult> {
+        // Parse range from rule definition (e.g., "1-5", "0-4")
+        let range_parts: Vec<&str> = rule.rule_definition.split('-').collect();
+        if range_parts.len() != 2 {
+            return Ok(ValidationResult::Valid); // Invalid range format, skip
+        }
+
+        let min_val: i32 = range_parts[0].parse().unwrap_or(0);
+        let max_val: i32 = range_parts[1].parse().unwrap_or(999);
+
+        let value = match event {
+            PssEvent::Points { point_type, .. } if rule.rule_name.contains("point_type") => Some(*point_type as i32),
+            PssEvent::HitLevel { level, .. } if rule.rule_name.contains("hit_level") => Some(*level as i32),
+            PssEvent::Warnings { athlete1_warnings, .. } if rule.rule_name.contains("warning_count") => Some(*athlete1_warnings as i32),
+            PssEvent::Warnings { athlete2_warnings, .. } if rule.rule_name.contains("warning_count") => Some(*athlete2_warnings as i32),
+            PssEvent::Round { current_round } if rule.rule_name.contains("round_number") => Some(*current_round as i32),
+            _ => None,
+        };
+
+        if let Some(val) = value {
+            if val < min_val || val > max_val {
+                let error_msg = rule.error_message.clone().unwrap_or_else(|| {
+                    format!("Value {} is outside valid range {}-{}", val, min_val, max_val)
+                });
+                return Ok(ValidationResult::Invalid(vec![error_msg]));
+            }
+        }
+
+        Ok(ValidationResult::Valid)
+    }
+
+    /// Validate format rule
+    fn validate_format_rule(event: &PssEvent, rule: &crate::database::models::PssEventValidationRule) -> AppResult<ValidationResult> {
+        match event {
+            PssEvent::Clock { time, .. } |
+            PssEvent::Injury { time, .. } |
+            PssEvent::Break { time, .. } if rule.rule_name.contains("time_format") => {
+                if !Self::is_valid_time_format(time) {
+                    let error_msg = rule.error_message.clone().unwrap_or_else(|| {
+                        format!("Invalid time format: {}", time)
+                    });
+                    return Ok(ValidationResult::Invalid(vec![error_msg]));
+                }
+            }
+            _ => {}
+        }
+
+        Ok(ValidationResult::Valid)
+    }
+
+    /// Validate data type rule
+    fn validate_data_type_rule(_event: &PssEvent, _rule: &crate::database::models::PssEventValidationRule) -> AppResult<ValidationResult> {
+        // This is mostly handled by the parsing stage, but we can add additional checks here
+        Ok(ValidationResult::Valid)
+    }
+
+    /// Validate required rule
+    fn validate_required_rule(event: &PssEvent, rule: &crate::database::models::PssEventValidationRule) -> AppResult<ValidationResult> {
+        // Check if required fields are present and not empty
+        match event {
+            PssEvent::Athletes { athlete1_short, athlete2_short, .. } => {
+                if athlete1_short.is_empty() || athlete2_short.is_empty() {
+                    let error_msg = rule.error_message.clone().unwrap_or_else(|| {
+                        "Athlete names are required".to_string()
+                    });
+                    return Ok(ValidationResult::Invalid(vec![error_msg]));
+                }
+            }
+            PssEvent::MatchConfig { match_id, .. } => {
+                if match_id.is_empty() {
+                    let error_msg = rule.error_message.clone().unwrap_or_else(|| {
+                        "Match ID is required".to_string()
+                    });
+                    return Ok(ValidationResult::Invalid(vec![error_msg]));
+                }
+            }
+            _ => {}
+        }
+
+        Ok(ValidationResult::Valid)
+    }
+
+    /// Validate custom rule
+    fn validate_custom_rule(event: &PssEvent, rule: &crate::database::models::PssEventValidationRule) -> AppResult<ValidationResult> {
+        // Parse the custom rule definition
+        let rule_def = &rule.rule_definition;
+        
+        // Handle different custom validation scenarios
+        match rule_def.as_str() {
+            "athlete_number_valid" => {
+                // Validate athlete numbers are 1 or 2
+                let mut errors = Vec::new();
+                match event {
+                    PssEvent::Points { athlete, .. } |
+                    PssEvent::HitLevel { athlete, .. } => {
+                        if *athlete != 1 && *athlete != 2 {
+                            errors.push(format!("Invalid athlete number: {}", athlete));
+                        }
+                    }
+                    PssEvent::Injury { athlete, .. } => {
+                        if *athlete > 2 {
+                            errors.push(format!("Invalid athlete number: {}", athlete));
+                        }
+                    }
+                    _ => {}
+                }
+                
+                if errors.is_empty() {
+                    Ok(ValidationResult::Valid)
+                } else {
+                    Ok(ValidationResult::Invalid(errors))
+                }
+            }
+            "time_format_valid" => {
+                // Validate time format for clock and injury events
+                let mut errors = Vec::new();
+                match event {
+                    PssEvent::Clock { time, .. } |
+                    PssEvent::Injury { time, .. } |
+                    PssEvent::Break { time, .. } => {
+                        if !Self::is_valid_time_format(time) {
+                            errors.push(format!("Invalid time format: {}", time));
+                        }
+                    }
+                    _ => {}
+                }
+                
+                if errors.is_empty() {
+                    Ok(ValidationResult::Valid)
+                } else {
+                    Ok(ValidationResult::Invalid(errors))
+                }
+            }
+            "challenge_status_valid" => {
+                // Validate challenge status values
+                let mut errors = Vec::new();
+                match event {
+                    PssEvent::Challenge { accepted, won, canceled, .. } => {
+                        if *canceled && accepted.is_some() {
+                            errors.push("Challenge cannot be both canceled and have acceptance status".to_string());
+                        }
+                        if let Some(_won_val) = won {
+                            if accepted != &Some(true) {
+                                errors.push("Challenge result cannot be set without acceptance".to_string());
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+                
+                if errors.is_empty() {
+                    Ok(ValidationResult::Valid)
+                } else {
+                    Ok(ValidationResult::Invalid(errors))
+                }
+            }
+            "match_config_valid" => {
+                // Validate match configuration
+                let mut errors = Vec::new();
+                match event {
+                    PssEvent::MatchConfig { number, rounds, round_duration, .. } => {
+                        if *number == 0 {
+                            errors.push("Match number cannot be zero".to_string());
+                        }
+                        if *rounds < 1 || *rounds > 5 {
+                            errors.push(format!("Invalid number of rounds: {}", rounds));
+                        }
+                        if *round_duration < 30 || *round_duration > 3600 {
+                            errors.push(format!("Invalid round duration: {} seconds", round_duration));
+                        }
+                    }
+                    _ => {}
+                }
+                
+                if errors.is_empty() {
+                    Ok(ValidationResult::Valid)
+                } else {
+                    Ok(ValidationResult::Invalid(errors))
+                }
+            }
+            _ => {
+                // Unknown custom rule, log warning but don't fail
+                log::warn!("Unknown custom validation rule: {}", rule_def);
+                Ok(ValidationResult::Valid)
+            }
+        }
+    }
+
+    /// Check if time format is valid (m:ss)
+    fn is_valid_time_format(time: &str) -> bool {
+        let parts: Vec<&str> = time.split(':').collect();
+        if parts.len() != 2 {
+            return false;
+        }
+        
+        let minutes: Result<i32, _> = parts[0].parse();
+        let seconds: Result<i32, _> = parts[1].parse();
+        
+        minutes.is_ok() && seconds.is_ok() && 
+        minutes.unwrap() >= 0 && *seconds.as_ref().unwrap() >= 0 && seconds.unwrap() < 60
+    }
+
+    /// Get event code for validation
+    fn get_event_code(event: &PssEvent) -> String {
+        match event {
+            PssEvent::Points { .. } => "pt".to_string(),
+            PssEvent::HitLevel { .. } => "hl".to_string(),
+            PssEvent::Warnings { .. } => "wg".to_string(),
+            PssEvent::Injury { .. } => "ij".to_string(),
+            PssEvent::Challenge { .. } => "ch".to_string(),
+            PssEvent::Break { .. } => "brk".to_string(),
+            PssEvent::WinnerRounds { .. } => "wrd".to_string(),
+            PssEvent::Winner { .. } => "wmh".to_string(),
+            PssEvent::Athletes { .. } => "at".to_string(),
+            PssEvent::MatchConfig { .. } => "mch".to_string(),
+            PssEvent::Scores { .. } => "s".to_string(),
+            PssEvent::CurrentScores { .. } => "sc".to_string(),
+            PssEvent::Clock { .. } => "clk".to_string(),
+            PssEvent::Round { .. } => "rnd".to_string(),
+            PssEvent::FightLoaded => "pre".to_string(),
+            PssEvent::FightReady => "rdy".to_string(),
+            PssEvent::Raw(raw_msg) => {
+                // Try to extract event code from raw messages for better categorization
+                if raw_msg.starts_with("avt;") {
+                    "avt".to_string()
+                } else if raw_msg.starts_with("ref;") {
+                    "ref".to_string()
+                } else if raw_msg.starts_with("sup;") {
+                    "sup".to_string()
+                } else if raw_msg.starts_with("rst;") {
+                    "rst".to_string()
+                } else if raw_msg.starts_with("rsr;") {
+                    "rsr".to_string()
+                } else if raw_msg.starts_with("win;") {
+                    "win".to_string()
+                } else {
+                    "raw".to_string()
+                }
+            },
+        }
+    }
+
+    async fn convert_pss_event_to_db_model(
+        event: &PssEvent,
         session_id: i64,
         current_match_id: &Arc<Mutex<Option<i64>>>,
         event_type_cache: &Arc<Mutex<std::collections::HashMap<String, i64>>>,
         database: &DatabasePlugin,
     ) -> AppResult<PssEventV2> {
-        let event_type_id = Self::get_event_type_id(event, event_type_cache, database).await?;
-        let match_id = {
-            let guard = current_match_id.lock().unwrap();
-            *guard
-        };
-
-        Ok(PssEventV2 {
-            id: None,
-            session_id,
-            match_id,
-            round_id: None,
-            event_type_id,
-            timestamp: Utc::now(),
-            raw_data: serde_json::to_string(event)?,
-            parsed_data: None,
-            event_sequence: 0,
-            processing_time_ms: None,
-            is_valid: true,
-            error_message: None,
-            created_at: Utc::now(),
-        })
-    }
-
-    async fn get_event_type_id(
-        event: &PssEvent,
-        event_type_cache: &Arc<Mutex<std::collections::HashMap<String, i64>>>,
-        database: &DatabasePlugin,
-    ) -> AppResult<i64> {
+        // Get event type ID
         let event_code = Self::get_event_code(event);
-        
-        // Check cache first
-        {
-            let cache = event_type_cache.lock().unwrap();
-            if let Some(&id) = cache.get(&event_code) {
-                return Ok(id);
-            }
-        }
-
-        // Get from database
-        let event_type = database.get_pss_event_type_by_code(&event_code).await?;
-        if let Some(event_type) = event_type {
-            if let Some(id) = event_type.id {
-                // Update cache
+        // Check cache first without holding the lock across await
+        let event_type_id = {
+            let cached_id = {
+                let cache = event_type_cache.lock().unwrap();
+                cache.get(&event_code).copied()
+            };
+            
+            if let Some(id) = cached_id {
+                id
+            } else {
+                // Get or create event type
+                let event_type = database.get_pss_event_type_by_code(&event_code).await?;
+                let id = if let Some(et) = event_type {
+                    et.id.unwrap_or(0)
+                } else {
+                    // Create new event type if it doesn't exist
+                    let new_event_type = crate::database::models::PssEventType::new(
+                        event_code.clone(),
+                        format!("PSS Event: {}", event_code),
+                        "PSS protocol event".to_string(),
+                        Some("PSS protocol event".to_string()),
+                    );
+                    database.upsert_pss_event_type(&new_event_type).await?
+                };
+                
+                // Update cache after the async operation
                 {
                     let mut cache = event_type_cache.lock().unwrap();
-                    cache.insert(event_code, id);
+                    cache.insert(event_code.clone(), id);
                 }
-                return Ok(id);
+                id
             }
+        };
+
+        // Get match ID if available
+        let match_id = {
+            let match_guard = current_match_id.lock().unwrap();
+            *match_guard
+        };
+
+        // Create database event model
+        let db_event = PssEventV2::new(
+            session_id,
+            event_type_id,
+            Utc::now(),
+            format!("{:?}", event), // Raw data representation
+            0, // Event sequence will be set by database
+        );
+
+        // Set match and round IDs
+        let mut db_event = db_event;
+        db_event.match_id = match_id;
+        db_event.round_id = None; // TODO: Track current round
+
+        // Set parsed data as JSON
+        if let Ok(json_data) = serde_json::to_string(event) {
+            db_event.parsed_data = Some(json_data);
         }
 
-        // For now, return a default ID (event types should be pre-populated)
-        Ok(1)
-    }
-
-    fn get_event_code(event: &PssEvent) -> String {
-        match event {
-            PssEvent::Points { .. } => "POINTS".to_string(),
-            PssEvent::HitLevel { .. } => "HIT_LEVEL".to_string(),
-            PssEvent::Warnings { .. } => "WARNINGS".to_string(),
-            PssEvent::Injury { .. } => "INJURY".to_string(),
-            PssEvent::Challenge { .. } => "CHALLENGE".to_string(),
-            PssEvent::Break { .. } => "BREAK".to_string(),
-            PssEvent::WinnerRounds { .. } => "WINNER_ROUNDS".to_string(),
-            PssEvent::Winner { .. } => "WINNER".to_string(),
-            PssEvent::Athletes { .. } => "ATHLETES".to_string(),
-            PssEvent::MatchConfig { .. } => "MATCH_CONFIG".to_string(),
-            PssEvent::Scores { .. } => "SCORES".to_string(),
-            PssEvent::CurrentScores { .. } => "CURRENT_SCORES".to_string(),
-            PssEvent::Clock { .. } => "CLOCK".to_string(),
-            PssEvent::Round { .. } => "ROUND".to_string(),
-            PssEvent::FightLoaded => "FIGHT_LOADED".to_string(),
-            PssEvent::FightReady => "FIGHT_READY".to_string(),
-            PssEvent::Raw(_) => "RAW".to_string(),
-        }
+        Ok(db_event)
     }
 
     fn convert_pss_event_to_json(event: &PssEvent) -> serde_json::Value {
@@ -800,12 +1203,56 @@ impl UdpServer {
         }
     }
 
-    fn extract_event_details(event: &PssEvent) -> Option<Vec<(String, Option<String>, String)>> {
+    fn extract_event_details(event: &PssEvent, recent_hit_levels: &Arc<Mutex<std::collections::HashMap<u8, Vec<(u8, std::time::SystemTime)>>>>) -> Option<Vec<(String, Option<String>, String)>> {
         match event {
-            PssEvent::Points { athlete, point_type } => Some(vec![
-                ("athlete".to_string(), Some(athlete.to_string()), "u8".to_string()),
-                ("point_type".to_string(), Some(point_type.to_string()), "u8".to_string()),
-            ]),
+            PssEvent::Points { athlete, point_type } => {
+                let mut details = vec![
+                    ("athlete".to_string(), Some(athlete.to_string()), "u8".to_string()),
+                    ("point_type".to_string(), Some(point_type.to_string()), "u8".to_string()),
+                ];
+                
+                // Add recent hit levels for this athlete (within last 5 seconds)
+                let hit_levels_data = recent_hit_levels.lock().unwrap();
+                if let Some(athlete_hit_levels) = hit_levels_data.get(athlete) {
+                    let now = std::time::SystemTime::now();
+                    let time_window_ms = 5000; // 5 seconds
+                    
+                    // Filter hit levels within the time window
+                    let recent_hit_levels: Vec<u8> = athlete_hit_levels
+                        .iter()
+                        .filter_map(|(level, timestamp)| {
+                            if let Ok(duration) = now.duration_since(*timestamp) {
+                                if duration.as_millis() <= time_window_ms as u128 {
+                                    Some(*level)
+                                } else {
+                                    None
+                                }
+                            } else {
+                                None
+                            }
+                        })
+                        .collect();
+                    
+                    if !recent_hit_levels.is_empty() {
+                        let hit_levels_str = recent_hit_levels.iter()
+                            .map(|level| level.to_string())
+                            .collect::<Vec<_>>()
+                            .join(",");
+                        details.push(("recent_hit_levels".to_string(), Some(hit_levels_str), "String".to_string()));
+                        
+                        // Add the highest hit level in the recent window
+                        if let Some(max_level) = recent_hit_levels.iter().max() {
+                            details.push(("max_hit_level".to_string(), Some(max_level.to_string()), "u8".to_string()));
+                        }
+                        
+                        // Add the average hit level in the recent window
+                        let avg_level = recent_hit_levels.iter().sum::<u8>() as f32 / recent_hit_levels.len() as f32;
+                        details.push(("avg_hit_level".to_string(), Some(format!("{:.1}", avg_level)), "float".to_string()));
+                    }
+                }
+                
+                Some(details)
+            },
             PssEvent::HitLevel { athlete, level } => Some(vec![
                 ("athlete".to_string(), Some(athlete.to_string()), "u8".to_string()),
                 ("level".to_string(), Some(level.to_string()), "u8".to_string()),
@@ -899,10 +1346,14 @@ impl UdpServer {
         database: &DatabasePlugin,
         athlete_cache: &Arc<Mutex<std::collections::HashMap<String, i64>>>,
         athlete1_short: &str,
+        athlete1_long: &str,
+        _athlete1_country: &str,
         athlete2_short: &str,
+        athlete2_long: &str,
+        _athlete2_country: &str,
     ) -> AppResult<()> {
-        let athlete1_id = database.get_or_create_pss_athlete(athlete1_short, athlete1_short).await?;
-        let athlete2_id = database.get_or_create_pss_athlete(athlete2_short, athlete2_short).await?;
+        let athlete1_id = database.get_or_create_pss_athlete(athlete1_short, athlete1_long).await?;
+        let athlete2_id = database.get_or_create_pss_athlete(athlete2_short, athlete2_long).await?;
         
         // Update cache
         {
@@ -1008,6 +1459,7 @@ impl UdpServer {
         current_match_id: Arc<Mutex<Option<i64>>>,
         athlete_cache: Arc<Mutex<std::collections::HashMap<String, i64>>>,
         event_type_cache: Arc<Mutex<std::collections::HashMap<String, i64>>>,
+        recent_hit_levels: Arc<Mutex<std::collections::HashMap<u8, Vec<(u8, std::time::SystemTime)>>>>,
     ) {
         println!("🎯 UDP PSS Server listening loop started (async)");
         
@@ -1080,12 +1532,42 @@ impl UdpServer {
                                         stats_guard.packets_parsed += 1;
                                     }
 
+                                    // Track hit level events for statistics
+                                    match &event {
+                                        PssEvent::HitLevel { athlete, level } => {
+                                            // Track this hit level for potential linking with point events
+                                            let mut hit_levels = recent_hit_levels.lock().unwrap();
+                                            let now = std::time::SystemTime::now();
+                                            
+                                            // Get or create the athlete's hit level history
+                                            let athlete_hit_levels = hit_levels.entry(*athlete).or_insert_with(Vec::new);
+                                            
+                                            // Add the new hit level with timestamp
+                                            athlete_hit_levels.push((*level, now));
+                                            
+                                            // Keep only the last 10 hit levels per athlete (to avoid memory bloat)
+                                            if athlete_hit_levels.len() > 10 {
+                                                athlete_hit_levels.remove(0);
+                                            }
+                                            
+                                            log::debug!("🎯 Tracked hit level for athlete {}: level {}", athlete, level);
+                                        }
+                                        PssEvent::FightLoaded | PssEvent::FightReady => {
+                                            // Clear hit level tracking when a new fight starts
+                                            let mut hit_levels = recent_hit_levels.lock().unwrap();
+                                            hit_levels.clear();
+                                            log::debug!("🧹 Cleared hit level tracking for new fight");
+                                        }
+                                        _ => {}
+                                    }
+
                                     // Store event in database (now properly async)
                                     let database_clone = database.clone();
                                     let current_session_id_clone = current_session_id.clone();
                                     let current_match_id_clone = current_match_id.clone();
                                     let athlete_cache_clone = athlete_cache.clone();
                                     let event_type_cache_clone = event_type_cache.clone();
+                                    let recent_hit_levels_clone = recent_hit_levels.clone();
                                     let event_clone = event.clone();
                                     
                                     // Spawn async task for database operation
@@ -1096,7 +1578,8 @@ impl UdpServer {
                                             &current_match_id_clone,
                                             &athlete_cache_clone,
                                             &event_type_cache_clone,
-                                            &event_clone
+                                            &event_clone,
+                                            &recent_hit_levels_clone,
                                         ).await {
                                             log::error!("Failed to store event in database: {}", e);
                                         }
@@ -1215,21 +1698,27 @@ impl UdpServer {
 
 
     fn parse_pss_message(message: &str, protocol_manager: &ProtocolManager) -> AppResult<PssEvent> {
+        // Log the incoming message for debugging
+        log::debug!("🔍 Parsing PSS message: '{}'", message);
+        
         // Clean the message: remove trailing semicolons and normalize
-        let clean_message = message.trim_end_matches(';');
+        let clean_message = message.trim_end_matches(';').trim();
         let parts: Vec<&str> = clean_message.split(';').collect();
         
-        if parts.is_empty() {
+        // Handle empty or whitespace-only messages
+        if clean_message.is_empty() {
+            log::warn!("⚠️ Received empty message, returning Raw event");
             return Ok(PssEvent::Raw(message.to_string()));
         }
 
         // Handle connection status messages (not PSS events)
         if message.contains("Udp Port") && (message.contains("connected") || message.contains("disconnected")) {
+            log::debug!("📡 Connection status message: {}", message);
             return Ok(PssEvent::Raw(message.to_string()));
         }
 
         // Get protocol parsing rules from the protocol manager
-        let protocol_rules = match tokio::runtime::Handle::try_current() {
+        let _protocol_rules = match tokio::runtime::Handle::try_current() {
             Ok(handle) => {
                 // We're in an async context, use block_in_place
                 handle.block_on(async {
@@ -1238,20 +1727,14 @@ impl UdpServer {
             }
             Err(_) => {
                 // We're not in an async context, skip protocol rules for now
-                // This prevents runtime creation issues in standard threads
                 log::debug!("Skipping protocol rules in non-async context");
                 Ok(std::collections::HashMap::new())
             }
         }.unwrap_or_default();
 
-        // TODO: Use protocol_rules for validation and enhanced parsing
-        // For now, we'll use the existing parsing logic but log protocol usage
-        if !protocol_rules.is_empty() {
-            log::debug!("Using protocol rules for parsing: {:?}", protocol_rules);
-        }
-
         // Ensure we have at least one part before accessing parts[0]
         if parts.is_empty() {
+            log::warn!("⚠️ Message has no parts after splitting: '{}'", message);
             return Ok(PssEvent::Raw(message.to_string()));
         }
 
@@ -1264,258 +1747,492 @@ impl UdpServer {
             }
         };
 
-        // Helper function to safely parse a part as u8
-        let parse_u8 = |index: usize, field_name: &str| -> AppResult<u8> {
-            get_part(index)
-                .ok_or_else(|| AppError::ConfigError(format!("Missing {} at position {}", field_name, index)))?
-                .parse::<u8>()
-                .map_err(|_| AppError::ConfigError(format!("Invalid {}: {}", field_name, get_part(index).unwrap_or(""))))
+        // Helper function to safely parse a part as u8 with validation
+        let parse_u8 = |index: usize, field_name: &str, min: u8, max: u8| -> AppResult<u8> {
+            let value = get_part(index)
+                .ok_or_else(|| AppError::ConfigError(format!("Missing {} at position {}", field_name, index)))?;
+            
+            let parsed = value.parse::<u8>()
+                .map_err(|_| AppError::ConfigError(format!("Invalid {}: '{}' (not a valid u8)", field_name, value)))?;
+            
+            if parsed < min || parsed > max {
+                return Err(AppError::ConfigError(format!("{} value {} is out of range [{}, {}]", field_name, parsed, min, max)));
+            }
+            
+            Ok(parsed)
         };
 
-        // Helper function to safely parse a part as u32
-        let parse_u32 = |index: usize, field_name: &str| -> AppResult<u32> {
-            get_part(index)
-                .ok_or_else(|| AppError::ConfigError(format!("Missing {} at position {}", field_name, index)))?
-                .parse::<u32>()
-                .map_err(|_| AppError::ConfigError(format!("Invalid {}: {}", field_name, get_part(index).unwrap_or(""))))
+        // Helper function to safely parse a part as u32 with validation
+        let parse_u32 = |index: usize, field_name: &str, min: u32, max: u32| -> AppResult<u32> {
+            let value = get_part(index)
+                .ok_or_else(|| AppError::ConfigError(format!("Missing {} at position {}", field_name, index)))?;
+            
+            let parsed = value.parse::<u32>()
+                .map_err(|_| AppError::ConfigError(format!("Invalid {}: '{}' (not a valid u32)", field_name, value)))?;
+            
+            if parsed < min || parsed > max {
+                return Err(AppError::ConfigError(format!("{} value {} is out of range [{}, {}]", field_name, parsed, min, max)));
+            }
+            
+            Ok(parsed)
         };
 
-        match parts[0] {
-            // Points events
+        // Helper function to safely get a string part with validation
+        let get_string = |index: usize, field_name: &str, max_length: usize| -> AppResult<String> {
+            let value = get_part(index)
+                .ok_or_else(|| AppError::ConfigError(format!("Missing {} at position {}", field_name, index)))?;
+            
+            if value.len() > max_length {
+                return Err(AppError::ConfigError(format!("{} too long: {} chars (max {})", field_name, value.len(), max_length)));
+            }
+            
+            Ok(value.to_string())
+        };
+
+        // Helper function to validate time format (m:ss or ss)
+        let validate_time_format = |time: &str| -> bool {
+            if time.contains(':') {
+                // Format: m:ss
+                let parts: Vec<&str> = time.split(':').collect();
+                if parts.len() != 2 {
+                    return false;
+                }
+                parts[0].parse::<u8>().is_ok() && parts[1].parse::<u8>().is_ok()
+            } else {
+                // Format: ss
+                time.parse::<u8>().is_ok()
+            }
+        };
+
+        // Helper function to validate color format (#RRGGBB)
+        let validate_color_format = |color: &str| -> bool {
+            color.starts_with('#') && color.len() == 7 && color[1..].chars().all(|c| c.is_ascii_hexdigit())
+        };
+
+        // Helper function to safely parse with fallback to raw
+        let parse_with_fallback = |result: AppResult<PssEvent>| -> AppResult<PssEvent> {
+            match result {
+                Ok(event) => Ok(event),
+                Err(e) => {
+                    log::warn!("⚠️ Parsing failed for '{}': {}. Returning as Raw event.", message, e);
+                    Ok(PssEvent::Raw(message.to_string()))
+                }
+            }
+        };
+
+        // Main parsing logic with comprehensive error handling
+        let result = match parts[0] {
+            // Points events (pt1, pt2)
             "pt1" => {
-                let point_type = parse_u8(1, "point type")?;
+                let point_type = parse_u8(1, "point type", 1, 5)?;
+                log::debug!("✅ Parsed Points event: athlete=1, type={}", point_type);
                 Ok(PssEvent::Points { athlete: 1, point_type })
             }
             "pt2" => {
-                let point_type = parse_u8(1, "point type")?;
+                let point_type = parse_u8(1, "point type", 1, 5)?;
+                log::debug!("✅ Parsed Points event: athlete=2, type={}", point_type);
                 Ok(PssEvent::Points { athlete: 2, point_type })
             }
 
-            // Hit level events
+            // Hit level events (hl1, hl2)
             "hl1" => {
-                let level = parse_u8(1, "hit level")?;
+                let level = parse_u8(1, "hit level", 1, 100)?;
+                log::debug!("✅ Parsed HitLevel event: athlete=1, level={}", level);
                 Ok(PssEvent::HitLevel { athlete: 1, level })
             }
             "hl2" => {
-                let level = parse_u8(1, "hit level")?;
+                let level = parse_u8(1, "hit level", 1, 100)?;
+                log::debug!("✅ Parsed HitLevel event: athlete=2, level={}", level);
                 Ok(PssEvent::HitLevel { athlete: 2, level })
             }
 
-            // Warning events (wg1;1;wg2;2;)
+            // Warnings/Gam-jeom events (wg1, wg2)
             "wg1" => {
-                // This is a complex parsing as it includes both athletes
-                // Expected format: wg1;1;wg2;2;
-                if get_part(2) == Some("wg2") {
-                    let athlete1_warnings = parse_u8(1, "athlete1 warnings")?;
-                    let athlete2_warnings = parse_u8(3, "athlete2 warnings")?;
-                    
-                    Ok(PssEvent::Warnings { athlete1_warnings, athlete2_warnings })
+                // Parse warnings: wg1;1;wg2;2;
+                let athlete1_warnings = parse_u8(1, "athlete1 warnings", 0, 10)?;
+                let athlete2_warnings = if parts.len() >= 4 && parts[2] == "wg2" {
+                    parse_u8(3, "athlete2 warnings", 0, 10)?
                 } else {
-                    Err(AppError::ConfigError("Invalid warning format".to_string()))
+                    0
+                };
+                log::debug!("✅ Parsed Warnings event: a1={}, a2={}", athlete1_warnings, athlete2_warnings);
+                Ok(PssEvent::Warnings { athlete1_warnings, athlete2_warnings })
+            }
+            "wg2" => {
+                // Handle wg2 as part of wg1 event or standalone
+                if parts.len() >= 2 {
+                    let athlete2_warnings = parse_u8(1, "athlete2 warnings", 0, 10)?;
+                    log::debug!("✅ Parsed Warnings event: a1=0, a2={}", athlete2_warnings);
+                    Ok(PssEvent::Warnings { athlete1_warnings: 0, athlete2_warnings })
+                } else {
+                    log::warn!("⚠️ Incomplete wg2 event, defaulting to 0 warnings");
+                    Ok(PssEvent::Warnings { athlete1_warnings: 0, athlete2_warnings: 0 })
                 }
             }
 
-            // Injury events
+            // Injury events (ij0, ij1, ij2)
             "ij0" | "ij1" | "ij2" => {
                 let athlete = match parts[0] {
                     "ij0" => 0,
                     "ij1" => 1,
                     "ij2" => 2,
-                    _ => return Err(AppError::ConfigError("Invalid injury athlete".to_string())),
+                    _ => 0,
                 };
-
-                let time = get_part(1)
-                    .ok_or_else(|| AppError::ConfigError("Missing injury time".to_string()))?
-                    .to_string();
-                let action = get_part(2).map(|s| s.to_string());
-
+                
+                if parts.len() < 2 {
+                    log::warn!("⚠️ Incomplete injury event, missing time");
+                    return Ok(PssEvent::Raw(message.to_string()));
+                }
+                
+                let time = get_string(1, "injury time", 10)?;
+                if !validate_time_format(&time) {
+                    log::warn!("⚠️ Invalid injury time format: '{}'", time);
+                    return Ok(PssEvent::Raw(message.to_string()));
+                }
+                
+                let action = if parts.len() > 2 {
+                    let action_str = get_string(2, "injury action", 10)?;
+                    match action_str.as_str() {
+                        "show" | "hide" | "reset" => Some(action_str),
+                        _ => {
+                            log::warn!("⚠️ Unknown injury action: '{}'", action_str);
+                            None
+                        }
+                    }
+                } else {
+                    None
+                };
+                
+                log::debug!("✅ Parsed Injury event: athlete={}, time={}, action={:?}", athlete, time, action);
                 Ok(PssEvent::Injury { athlete, time, action })
             }
 
-            // Challenge events
+            // Challenge/IVR events (ch0, ch1, ch2)
             "ch0" | "ch1" | "ch2" => {
                 let source = match parts[0] {
-                    "ch0" => 0,
-                    "ch1" => 1,
-                    "ch2" => 2,
-                    _ => return Err(AppError::ConfigError("Invalid challenge source".to_string())),
+                    "ch0" => 0, // Referee
+                    "ch1" => 1, // Athlete 1
+                    "ch2" => 2, // Athlete 2
+                    _ => 0,
                 };
-
-                let (accepted, won, canceled) = match (get_part(1), get_part(2)) {
-                    (None, None) => (None, None, false),
-                    (Some("-1"), None) => (None, None, true),
-                    (Some(val1), None) => {
-                        let acc = val1.parse::<u8>().ok().map(|v| v == 1);
-                        (acc, None, false)
+                
+                let accepted = if parts.len() > 1 {
+                    let val = parse_u8(1, "challenge accepted", 0, 255)?;
+                    if val == 255 { // -1 in u8 representation
+                        Some(false)
+                    } else {
+                        Some(val == 1)
                     }
-                    (Some(val1), Some(val2)) => {
-                        let acc = val1.parse::<u8>().ok().map(|v| v == 1);
-                        let won_val = val2.parse::<u8>().ok().map(|v| v == 1);
-                        (acc, won_val, false)
-                    }
-                    _ => (None, None, false),
+                } else {
+                    None
                 };
-
+                
+                let won = if parts.len() > 2 {
+                    Some(parse_u8(2, "challenge won", 0, 1)? == 1)
+                } else {
+                    None
+                };
+                
+                let canceled = accepted == Some(false);
+                log::debug!("✅ Parsed Challenge event: source={}, accepted={:?}, won={:?}, canceled={}", source, accepted, won, canceled);
                 Ok(PssEvent::Challenge { source, accepted, won, canceled })
             }
 
-            // Break events
+            // Break events (brk)
             "brk" => {
-                let time = get_part(1)
-                    .ok_or_else(|| AppError::ConfigError("Missing break time".to_string()))?
-                    .to_string();
-                let action = get_part(2).map(|s| s.to_string());
-
+                if parts.len() < 2 {
+                    log::warn!("⚠️ Incomplete break event, missing time");
+                    return Ok(PssEvent::Raw(message.to_string()));
+                }
+                
+                let time = get_string(1, "break time", 10)?;
+                if !validate_time_format(&time) {
+                    log::warn!("⚠️ Invalid break time format: '{}'", time);
+                    return Ok(PssEvent::Raw(message.to_string()));
+                }
+                
+                let action = if parts.len() > 2 {
+                    let action_str = get_string(2, "break action", 10)?;
+                    match action_str.as_str() {
+                        "stop" | "stopEnd" => Some(action_str),
+                        _ => {
+                            log::warn!("⚠️ Unknown break action: '{}'", action_str);
+                            None
+                        }
+                    }
+                } else {
+                    None
+                };
+                
+                log::debug!("✅ Parsed Break event: time={}, action={:?}", time, action);
                 Ok(PssEvent::Break { time, action })
             }
 
-            // Winner rounds
+            // Winner rounds events (wrd)
             "wrd" => {
-                // Expected format: wrd;rd1;0;rd2;0;rd3;0
-                if get_part(1) == Some("rd1") && get_part(3) == Some("rd2") && get_part(5) == Some("rd3") {
-                    let round1_winner = parse_u8(2, "round1 winner")?;
-                    let round2_winner = parse_u8(4, "round2 winner")?;
-                    let round3_winner = parse_u8(6, "round3 winner")?;
-
-                    Ok(PssEvent::WinnerRounds { round1_winner, round2_winner, round3_winner })
-                } else {
-                    Err(AppError::ConfigError("Invalid winner rounds format".to_string()))
+                // Parse: wrd;rd1;0;rd2;0;rd3;0
+                let mut round1_winner = 0;
+                let mut round2_winner = 0;
+                let mut round3_winner = 0;
+                
+                for i in 1..parts.len() {
+                    match parts[i] {
+                        "rd1" if i + 1 < parts.len() => {
+                            round1_winner = parse_u8(i + 1, "round1 winner", 0, 2).unwrap_or(0);
+                        }
+                        "rd2" if i + 1 < parts.len() => {
+                            round2_winner = parse_u8(i + 1, "round2 winner", 0, 2).unwrap_or(0);
+                        }
+                        "rd3" if i + 1 < parts.len() => {
+                            round3_winner = parse_u8(i + 1, "round3 winner", 0, 2).unwrap_or(0);
+                        }
+                        _ => {}
+                    }
                 }
+                
+                log::debug!("✅ Parsed WinnerRounds event: r1={}, r2={}, r3={}", round1_winner, round2_winner, round3_winner);
+                Ok(PssEvent::WinnerRounds { round1_winner, round2_winner, round3_winner })
             }
 
-            // Final winner
+            // Winner events (wmh)
             "wmh" => {
-                let name = get_part(1)
-                    .ok_or_else(|| AppError::ConfigError("Missing winner name".to_string()))?
-                    .to_string();
-                let classification = get_part(2).map(|s| s.to_string());
-
+                if parts.len() < 2 {
+                    log::warn!("⚠️ Incomplete winner event, missing name");
+                    return Ok(PssEvent::Raw(message.to_string()));
+                }
+                
+                let name = get_string(1, "winner name", 100)?;
+                let classification = if parts.len() > 2 {
+                    Some(get_string(2, "classification", 50)?)
+                } else {
+                    None
+                };
+                
+                log::debug!("✅ Parsed Winner event: name={}, classification={:?}", name, classification);
                 Ok(PssEvent::Winner { name, classification })
             }
 
-            // Athletes info
+            // Athletes events (at1)
             "at1" => {
-                // Expected format: at1;short;long;country;at2;short;long;country;
-                if get_part(4) == Some("at2") {
+                // Parse: at1;N. DESMOND;Nicolas DESMOND;MRN;at2;M. THIBAULT;Marcel THIBAULT;SUI;
+                if parts.len() >= 7 {
+                    let athlete1_short = get_string(1, "athlete1 short", 50)?;
+                    let athlete1_long = get_string(2, "athlete1 long", 100)?;
+                    let athlete1_country = get_string(3, "athlete1 country", 10)?;
+                    let athlete2_short = get_string(5, "athlete2 short", 50)?;
+                    let athlete2_long = get_string(6, "athlete2 long", 100)?;
+                    let athlete2_country = get_string(7, "athlete2 country", 10)?;
+                    
+                    log::debug!("✅ Parsed Athletes event: a1='{}'({}), a2='{}'({})", 
+                               athlete1_short, athlete1_country, athlete2_short, athlete2_country);
+                    
                     Ok(PssEvent::Athletes {
-                        athlete1_short: get_part(1).unwrap_or("").to_string(),
-                        athlete1_long: get_part(2).unwrap_or("").to_string(),
-                        athlete1_country: get_part(3).unwrap_or("").to_string(),
-                        athlete2_short: get_part(5).unwrap_or("").to_string(),
-                        athlete2_long: get_part(6).unwrap_or("").to_string(),
-                        athlete2_country: get_part(7).unwrap_or("").to_string(),
+                        athlete1_short,
+                        athlete1_long,
+                        athlete1_country,
+                        athlete2_short,
+                        athlete2_long,
+                        athlete2_country,
                     })
                 } else {
-                    Err(AppError::ConfigError("Invalid athletes format".to_string()))
+                    log::warn!("⚠️ Incomplete athletes event, expected 7+ parts, got {}", parts.len());
+                    Ok(PssEvent::Raw(message.to_string()))
                 }
             }
 
-            // Clock events
-            "clk" => {
-                let time = get_part(1)
-                    .ok_or_else(|| AppError::ConfigError("Missing clock time".to_string()))?
-                    .to_string();
-                let action = get_part(2).map(|s| s.to_string());
+            // Match configuration events (mch)
+            "mch" => {
+                // Parse: mch;101;Round of 16;M- 80 kg;1;#0000ff;#FFFFFF;#ff0000;#FFFFFF;a14ddd5c;Senior;3;120;cntDown;18;1;
+                if parts.len() >= 15 {
+                    let number = parse_u32(1, "match number", 1, 9999)?;
+                    let category = get_string(2, "category", 100)?;
+                    let weight = get_string(3, "weight", 50)?;
+                    let rounds = parse_u8(4, "rounds", 1, 10)?;
+                    let bg1 = get_string(5, "bg1", 10)?;
+                    let fg1 = get_string(6, "fg1", 10)?;
+                    let bg2 = get_string(7, "bg2", 10)?;
+                    let fg2 = get_string(8, "fg2", 10)?;
+                    let match_id = get_string(9, "match_id", 50)?;
+                    let division = get_string(10, "division", 50)?;
+                    let total_rounds = parse_u8(11, "total_rounds", 1, 10)?;
+                    let round_duration = parse_u32(12, "round_duration", 30, 600)?;
+                    let countdown_type = get_string(13, "countdown_type", 20)?;
+                    let count_up = parse_u32(14, "count_up", 0, 999)?;
+                    let format = parse_u8(15, "format", 1, 10)?;
+                    
+                    // Validate color formats
+                    if !validate_color_format(&bg1) || !validate_color_format(&fg1) || 
+                       !validate_color_format(&bg2) || !validate_color_format(&fg2) {
+                        log::warn!("⚠️ Invalid color format in match config");
+                    }
+                    
+                    log::debug!("✅ Parsed MatchConfig event: #{} {} {} ({} rounds)", number, category, weight, total_rounds);
+                    
+                    Ok(PssEvent::MatchConfig {
+                        number,
+                        category,
+                        weight,
+                        rounds,
+                        colors: (bg1, fg1, bg2, fg2),
+                        match_id,
+                        division,
+                        total_rounds,
+                        round_duration,
+                        countdown_type,
+                        count_up,
+                        format,
+                    })
+                } else {
+                    log::warn!("⚠️ Incomplete match config event, expected 15+ parts, got {}", parts.len());
+                    Ok(PssEvent::Raw(message.to_string()))
+                }
+            }
 
+            // Scores events (s11, s21, s12, s22, s13, s23)
+            "s11" | "s21" | "s12" | "s22" | "s13" | "s23" => {
+                // Parse individual score updates
+                let score = parse_u8(1, "score", 0, 50)?;
+                let (athlete1_r1, athlete2_r1, athlete1_r2, athlete2_r2, athlete1_r3, athlete2_r3) = match parts[0] {
+                    "s11" => (score, 0, 0, 0, 0, 0),
+                    "s21" => (0, score, 0, 0, 0, 0),
+                    "s12" => (0, 0, score, 0, 0, 0),
+                    "s22" => (0, 0, 0, score, 0, 0),
+                    "s13" => (0, 0, 0, 0, score, 0),
+                    "s23" => (0, 0, 0, 0, 0, score),
+                    _ => (0, 0, 0, 0, 0, 0),
+                };
+                
+                log::debug!("✅ Parsed Scores event: {}={}", parts[0], score);
+                Ok(PssEvent::Scores { athlete1_r1, athlete2_r1, athlete1_r2, athlete2_r2, athlete1_r3, athlete2_r3 })
+            }
+
+            // Current scores events (sc1, sc2)
+            "sc1" | "sc2" => {
+                let score = parse_u8(1, "current score", 0, 50)?;
+                let (athlete1_score, athlete2_score) = match parts[0] {
+                    "sc1" => (score, 0),
+                    "sc2" => (0, score),
+                    _ => (0, 0),
+                };
+                
+                log::debug!("✅ Parsed CurrentScores event: {}={}", parts[0], score);
+                Ok(PssEvent::CurrentScores { athlete1_score, athlete2_score })
+            }
+
+            // Clock events (clk)
+            "clk" => {
+                if parts.len() < 2 {
+                    log::warn!("⚠️ Incomplete clock event, missing time");
+                    return Ok(PssEvent::Raw(message.to_string()));
+                }
+                
+                let time = get_string(1, "clock time", 10)?;
+                if !validate_time_format(&time) {
+                    log::warn!("⚠️ Invalid clock time format: '{}'", time);
+                    return Ok(PssEvent::Raw(message.to_string()));
+                }
+                
+                let action = if parts.len() > 2 {
+                    let action_str = get_string(2, "clock action", 10)?;
+                    match action_str.as_str() {
+                        "start" | "stop" => Some(action_str),
+                        _ => {
+                            log::warn!("⚠️ Unknown clock action: '{}'", action_str);
+                            None
+                        }
+                    }
+                } else {
+                    None
+                };
+                
+                log::debug!("✅ Parsed Clock event: time={}, action={:?}", time, action);
                 Ok(PssEvent::Clock { time, action })
             }
 
-            // Round events
+            // Round events (rnd)
             "rnd" => {
-                let current_round = parse_u8(1, "round")?;
+                let current_round = parse_u8(1, "current round", 1, 10)?;
+                log::debug!("✅ Parsed Round event: round={}", current_round);
                 Ok(PssEvent::Round { current_round })
             }
 
-            // Match configuration events
-            "mch" => {
-                // Expected format: mch;number;category;weight;rounds;bg1;fg1;bg2;fg2;match_id;division;total_rounds;round_duration;countdown_type;format;
-                let number = parse_u32(1, "match number")?;
-                let category = get_part(2).unwrap_or("").to_string();
-                let weight = get_part(3).unwrap_or("").to_string();
-                let rounds = parse_u8(4, "rounds")?;
-                let colors = (
-                    get_part(5).unwrap_or("").to_string(),
-                    get_part(6).unwrap_or("").to_string(),
-                    get_part(7).unwrap_or("").to_string(),
-                    get_part(8).unwrap_or("").to_string()
-                );
-                let match_id = get_part(9).unwrap_or("").to_string();
-                let division = get_part(10).unwrap_or("").to_string();
-                let total_rounds = parse_u8(11, "total rounds")?;
-                let round_duration = parse_u32(12, "round duration")?;
-                let countdown_type = get_part(13).unwrap_or("").to_string();
-                let format = parse_u8(14, "format")?;
-                
-                Ok(PssEvent::MatchConfig {
-                    number,
-                    category,
-                    weight,
-                    rounds,
-                    colors,
-                    match_id,
-                    division,
-                    total_rounds,
-                    round_duration,
-                    countdown_type,
-                    count_up: 0, // Not used in this format
-                    format,
-                })
-            }
-
-            // Scores events (round-by-round)
-            "s11" | "s21" | "s12" | "s22" | "s13" | "s23" => {
-                // These are individual score events, we'll handle them as raw for now
-                // and let the frontend parse them from the raw message
-                Ok(PssEvent::Raw(message.to_string()))
-            }
-
-            // Current scores events
-            "sc1" | "sc2" => {
-                // These are current total scores, we'll handle them as raw for now
-                Ok(PssEvent::Raw(message.to_string()))
-            }
-
-            // System events
+            // Fight loaded events (pre)
             "pre" => {
-                if get_part(1) == Some("FightLoaded") {
+                if parts.len() > 1 && parts[1] == "FightLoaded" {
+                    log::debug!("✅ Parsed FightLoaded event");
                     Ok(PssEvent::FightLoaded)
                 } else {
+                    log::warn!("⚠️ Unknown pre event: '{}'", message);
                     Ok(PssEvent::Raw(message.to_string()))
                 }
             }
+
+            // Fight ready events (rdy)
             "rdy" => {
-                if get_part(1) == Some("FightReady") {
+                if parts.len() > 1 && parts[1] == "FightReady" {
+                    log::debug!("✅ Parsed FightReady event");
                     Ok(PssEvent::FightReady)
                 } else {
+                    log::warn!("⚠️ Unknown rdy event: '{}'", message);
                     Ok(PssEvent::Raw(message.to_string()))
                 }
+            }
+
+            // Winner events (win)
+            "win" => {
+                if parts.len() > 1 {
+                    let winner = get_string(1, "winner", 20)?;
+                    let winner_upper = winner.to_uppercase();
+                    if winner_upper != "BLUE" && winner_upper != "RED" {
+                        log::warn!("⚠️ Unknown winner value: '{}'", winner);
+                    }
+                    log::debug!("✅ Parsed Winner event: {}", winner);
+                    Ok(PssEvent::Winner { name: winner, classification: None })
+                } else {
+                    log::warn!("⚠️ Incomplete win event, missing winner");
+                    Ok(PssEvent::Raw(message.to_string()))
+                }
+            }
+
+            // Athlete video time events (avt)
+            "avt" => {
+                let video_time = parse_u8(1, "video time", 0, 255)?;
+                log::debug!("✅ Parsed AthleteVideoTime event: {}", video_time);
+                // Handle as raw for now since we don't have a specific event type
+                Ok(PssEvent::Raw(format!("avt;{};", video_time)))
             }
 
             // Additional events that were missing and causing panics
             "ref" => {
                 // Referee/judge event - handle as raw for now
+                log::debug!("📋 Referee event: {}", message);
                 Ok(PssEvent::Raw(message.to_string()))
             }
             "sup" => {
                 // Supervision event - handle as raw for now
-                Ok(PssEvent::Raw(message.to_string()))
-            }
-            "win" => {
-                // Winner event - handle as raw for now
+                log::debug!("📋 Supervision event: {}", message);
                 Ok(PssEvent::Raw(message.to_string()))
             }
             "rst" => {
                 // Reset/statistics event - handle as raw for now
+                log::debug!("📋 Reset/Statistics event: {}", message);
                 Ok(PssEvent::Raw(message.to_string()))
             }
             "rsr" => {
                 // Reset event - handle as raw for now
+                log::debug!("📋 Reset event: {}", message);
                 Ok(PssEvent::Raw(message.to_string()))
             }
 
-            // Default: return as raw message
-            _ => Ok(PssEvent::Raw(message.to_string())),
-        }
+            // Handle any other unknown event types gracefully
+            unknown_event => {
+                log::info!("❓ Unknown PSS event type: '{}' in message: '{}'", unknown_event, message);
+                Ok(PssEvent::Raw(message.to_string()))
+            }
+        };
+
+        // Apply fallback logic to prevent crashes
+        parse_with_fallback(result)
     }
 }
 
@@ -1569,3 +2286,4 @@ mod tests {
         }
     }
 }
+

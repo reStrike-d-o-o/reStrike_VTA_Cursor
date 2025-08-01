@@ -924,7 +924,7 @@ impl PssRound {
     }
 }
 
-/// Enhanced PSS Event model with normalized relationships
+/// Enhanced PSS Event model with normalized relationships and status marks
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PssEventV2 {
     pub id: Option<i64>,
@@ -939,6 +939,11 @@ pub struct PssEventV2 {
     pub processing_time_ms: Option<i32>,
     pub is_valid: bool,
     pub error_message: Option<String>,
+    // New fields for status mark system
+    pub recognition_status: String, // 'recognized', 'unknown', 'partial', 'deprecated'
+    pub protocol_version: Option<String>,
+    pub parser_confidence: Option<f64>,
+    pub validation_errors: Option<String>,
     pub created_at: DateTime<Utc>,
 }
 
@@ -963,6 +968,10 @@ impl PssEventV2 {
             processing_time_ms: None,
             is_valid: true,
             error_message: None,
+            recognition_status: "recognized".to_string(),
+            protocol_version: Some("2.3".to_string()),
+            parser_confidence: Some(1.0),
+            validation_errors: None,
             created_at: Utc::now(),
         }
     }
@@ -983,9 +992,273 @@ impl PssEventV2 {
             processing_time_ms: row.get("processing_time_ms")?,
             is_valid: row.get("is_valid")?,
             error_message: row.get("error_message")?,
+            recognition_status: row.get("recognition_status")?,
+            protocol_version: row.get("protocol_version")?,
+            parser_confidence: row.get("parser_confidence")?,
+            validation_errors: row.get("validation_errors")?,
             created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
                 .map_err(|_| rusqlite::Error::InvalidColumnType(0, "created_at".to_string(), rusqlite::types::Type::Text))?
                 .with_timezone(&Utc),
+        })
+    }
+}
+
+/// PSS Event Recognition History model for tracking status changes
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PssEventRecognitionHistory {
+    pub id: Option<i64>,
+    pub event_id: i64,
+    pub old_status: String,
+    pub new_status: String,
+    pub changed_by: String,
+    pub change_reason: Option<String>,
+    pub protocol_version: Option<String>,
+    pub raw_data: String,
+    pub parsed_data: Option<String>,
+    pub created_at: DateTime<Utc>,
+}
+
+impl PssEventRecognitionHistory {
+    pub fn new(
+        event_id: i64,
+        old_status: String,
+        new_status: String,
+        changed_by: String,
+        raw_data: String,
+    ) -> Self {
+        Self {
+            id: None,
+            event_id,
+            old_status,
+            new_status,
+            changed_by,
+            change_reason: None,
+            protocol_version: Some("2.3".to_string()),
+            raw_data,
+            parsed_data: None,
+            created_at: Utc::now(),
+        }
+    }
+    
+    pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
+        Ok(Self {
+            id: row.get("id")?,
+            event_id: row.get("event_id")?,
+            old_status: row.get("old_status")?,
+            new_status: row.get("new_status")?,
+            changed_by: row.get("changed_by")?,
+            change_reason: row.get("change_reason")?,
+            protocol_version: row.get("protocol_version")?,
+            raw_data: row.get("raw_data")?,
+            parsed_data: row.get("parsed_data")?,
+            created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
+        })
+    }
+}
+
+/// PSS Unknown Events model for collecting unrecognized events
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PssUnknownEvent {
+    pub id: Option<i64>,
+    pub session_id: i64,
+    pub raw_data: String,
+    pub first_seen: DateTime<Utc>,
+    pub last_seen: DateTime<Utc>,
+    pub occurrence_count: i32,
+    pub pattern_hash: Option<String>,
+    pub suggested_event_type: Option<String>,
+    pub notes: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+impl PssUnknownEvent {
+    pub fn new(session_id: i64, raw_data: String) -> Self {
+        let now = Utc::now();
+        Self {
+            id: None,
+            session_id,
+            raw_data,
+            first_seen: now,
+            last_seen: now,
+            occurrence_count: 1,
+            pattern_hash: None,
+            suggested_event_type: None,
+            notes: None,
+            created_at: now,
+            updated_at: now,
+        }
+    }
+    
+    pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
+        Ok(Self {
+            id: row.get("id")?,
+            session_id: row.get("session_id")?,
+            raw_data: row.get("raw_data")?,
+            first_seen: parse_datetime_from_db(&row.get::<_, String>("first_seen")?, "first_seen")?,
+            last_seen: parse_datetime_from_db(&row.get::<_, String>("last_seen")?, "last_seen")?,
+            occurrence_count: row.get("occurrence_count")?,
+            pattern_hash: row.get("pattern_hash")?,
+            suggested_event_type: row.get("suggested_event_type")?,
+            notes: row.get("notes")?,
+            created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
+            updated_at: parse_datetime_from_db(&row.get::<_, String>("updated_at")?, "updated_at")?,
+        })
+    }
+}
+
+/// PSS Event Validation Rule model for protocol validation
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PssEventValidationRule {
+    pub id: Option<i64>,
+    pub event_code: String,
+    pub protocol_version: String,
+    pub rule_name: String,
+    pub rule_type: String, // 'format', 'data_type', 'range', 'required', 'custom'
+    pub rule_definition: String,
+    pub error_message: Option<String>,
+    pub is_active: bool,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+impl PssEventValidationRule {
+    pub fn new(
+        event_code: String,
+        protocol_version: String,
+        rule_name: String,
+        rule_type: String,
+        rule_definition: String,
+        error_message: Option<String>,
+    ) -> Self {
+        let now = Utc::now();
+        Self {
+            id: None,
+            event_code,
+            protocol_version,
+            rule_name,
+            rule_type,
+            rule_definition,
+            error_message,
+            is_active: true,
+            created_at: now,
+            updated_at: now,
+        }
+    }
+    
+    pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
+        Ok(Self {
+            id: row.get("id")?,
+            event_code: row.get("event_code")?,
+            protocol_version: row.get("protocol_version")?,
+            rule_name: row.get("rule_name")?,
+            rule_type: row.get("rule_type")?,
+            rule_definition: row.get("rule_definition")?,
+            error_message: row.get("error_message")?,
+            is_active: row.get("is_active")?,
+            created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
+            updated_at: parse_datetime_from_db(&row.get::<_, String>("updated_at")?, "updated_at")?,
+        })
+    }
+}
+
+/// PSS Event Validation Result model for storing validation results
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PssEventValidationResult {
+    pub id: Option<i64>,
+    pub event_id: i64,
+    pub rule_id: i64,
+    pub validation_passed: bool,
+    pub error_message: Option<String>,
+    pub validation_time_ms: Option<i32>,
+    pub created_at: DateTime<Utc>,
+}
+
+impl PssEventValidationResult {
+    pub fn new(event_id: i64, rule_id: i64, validation_passed: bool) -> Self {
+        Self {
+            id: None,
+            event_id,
+            rule_id,
+            validation_passed,
+            error_message: None,
+            validation_time_ms: None,
+            created_at: Utc::now(),
+        }
+    }
+    
+    pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
+        Ok(Self {
+            id: row.get("id")?,
+            event_id: row.get("event_id")?,
+            rule_id: row.get("rule_id")?,
+            validation_passed: row.get("validation_passed")?,
+            error_message: row.get("error_message")?,
+            validation_time_ms: row.get("validation_time_ms")?,
+            created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
+        })
+    }
+}
+
+/// PSS Event Statistics model for tracking event processing metrics
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PssEventStatistics {
+    pub id: Option<i64>,
+    pub session_id: i64,
+    pub event_type_id: Option<i64>,
+    pub total_events: i32,
+    pub recognized_events: i32,
+    pub unknown_events: i32,
+    pub partial_events: i32,
+    pub deprecated_events: i32,
+    pub validation_errors: i32,
+    pub parsing_errors: i32,
+    pub average_processing_time_ms: f64,
+    pub min_processing_time_ms: Option<i32>,
+    pub max_processing_time_ms: Option<i32>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+impl PssEventStatistics {
+    pub fn new(session_id: i64, event_type_id: Option<i64>) -> Self {
+        let now = Utc::now();
+        Self {
+            id: None,
+            session_id,
+            event_type_id,
+            total_events: 0,
+            recognized_events: 0,
+            unknown_events: 0,
+            partial_events: 0,
+            deprecated_events: 0,
+            validation_errors: 0,
+            parsing_errors: 0,
+            average_processing_time_ms: 0.0,
+            min_processing_time_ms: None,
+            max_processing_time_ms: None,
+            created_at: now,
+            updated_at: now,
+        }
+    }
+    
+    pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
+        Ok(Self {
+            id: row.get("id")?,
+            session_id: row.get("session_id")?,
+            event_type_id: row.get("event_type_id")?,
+            total_events: row.get("total_events")?,
+            recognized_events: row.get("recognized_events")?,
+            unknown_events: row.get("unknown_events")?,
+            partial_events: row.get("partial_events")?,
+            deprecated_events: row.get("deprecated_events")?,
+            validation_errors: row.get("validation_errors")?,
+            parsing_errors: row.get("parsing_errors")?,
+            average_processing_time_ms: row.get("average_processing_time_ms")?,
+            min_processing_time_ms: row.get("min_processing_time_ms")?,
+            max_processing_time_ms: row.get("max_processing_time_ms")?,
+            created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
+            updated_at: parse_datetime_from_db(&row.get::<_, String>("updated_at")?, "updated_at")?,
         })
     }
 }
