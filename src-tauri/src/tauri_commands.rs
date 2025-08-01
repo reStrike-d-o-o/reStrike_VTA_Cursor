@@ -1,6 +1,6 @@
-use serde::{Deserialize, Serialize};
+﻿use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use tauri::{State, Emitter};
+use tauri::{State, Emitter, Error as TauriError};
 use crate::core::app::App;
 use crate::logging::archival::{AutoArchiveConfig, ArchiveSchedule};
 use dirs;
@@ -17,62 +17,62 @@ pub struct LogFileInfo {
 
 // Core app commands
 #[tauri::command]
-pub async fn get_app_status(_app: State<'_, Arc<App>>) -> Result<String, String> {
+pub async fn get_app_status(_app: State<'_, Arc<App>>) -> Result<String, TauriError> {
     log::info!("Getting app status");
     Ok("Running".to_string())
 }
 
 #[tauri::command]
-pub async fn shutdown_app(app: State<'_, Arc<App>>) -> Result<(), String> {
+pub async fn shutdown_app(app: State<'_, Arc<App>>) -> Result<(), TauriError> {
     log::info!("Shutting down app");
-    app.stop().await.map_err(|e| e.to_string())?;
+    app.stop().await.map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
     Ok(())
 }
 
 // UDP commands
 #[tauri::command]
-pub async fn start_udp_server(app: State<'_, Arc<App>>) -> Result<(), String> {
+pub async fn start_udp_server(app: State<'_, Arc<App>>) -> Result<(), TauriError> {
     log::info!("Starting UDP server");
     let config = app.config_manager().get_config().await;
-    app.udp_plugin().start(&config).await.map_err(|e| e.to_string())?;
+    app.udp_plugin().start(&config).await.map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
     Ok(())
 }
 
 #[tauri::command]
-pub async fn stop_udp_server(app: State<'_, Arc<App>>) -> Result<(), String> {
+pub async fn stop_udp_server(app: State<'_, Arc<App>>) -> Result<(), TauriError> {
     log::info!("Stopping UDP server");
-    app.udp_plugin().stop().await.map_err(|e| e.to_string())?;
+    app.udp_plugin().stop().await.map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
     Ok(())
 }
 
 #[tauri::command]
-pub async fn get_udp_status(app: State<'_, Arc<App>>) -> Result<String, String> {
+pub async fn get_udp_status(app: State<'_, Arc<App>>) -> Result<String, TauriError> {
     log::info!("Getting UDP status");
     let status = app.udp_plugin().get_status();
     let status_str = match status {
         crate::plugins::plugin_udp::UdpServerStatus::Stopped => "Stopped",
         crate::plugins::plugin_udp::UdpServerStatus::Starting => "Starting",
         crate::plugins::plugin_udp::UdpServerStatus::Running => "Running",
-        crate::plugins::plugin_udp::UdpServerStatus::Error(e) => return Err(e),
+        crate::plugins::plugin_udp::UdpServerStatus::Error(e) => return Err(TauriError::from(anyhow::anyhow!("{}", e))),
     };
     Ok(status_str.to_string())
 }
 
 #[tauri::command]
-pub async fn update_udp_settings(settings: serde_json::Value, app: State<'_, Arc<App>>) -> Result<(), String> {
+pub async fn update_udp_settings(settings: serde_json::Value, app: State<'_, Arc<App>>) -> Result<(), TauriError> {
     log::info!("Updating UDP settings: {:?}", settings);
     
     // Update the app configuration
     app.config_manager().update_udp_settings_from_json(settings).await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
     
     // If UDP server is running, restart it with new settings
     let status = app.udp_plugin().get_status();
     if matches!(status, crate::plugins::plugin_udp::UdpServerStatus::Running) {
         log::info!("UDP server is running, restarting with new settings");
-        app.udp_plugin().stop().await.map_err(|e| e.to_string())?;
+        app.udp_plugin().stop().await.map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
         let config = app.config_manager().get_config().await;
-        app.udp_plugin().start(&config).await.map_err(|e| e.to_string())?;
+        app.udp_plugin().start(&config).await.map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
     }
     
     Ok(())
@@ -80,7 +80,7 @@ pub async fn update_udp_settings(settings: serde_json::Value, app: State<'_, Arc
 
 // OBS commands - Fixed names to match frontend expectations
 #[tauri::command]
-pub async fn obs_connect(url: String, app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+pub async fn obs_connect(url: String, app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("OBS connect called with URL: {}", url);
     
     // Parse the URL to extract connection details
@@ -113,7 +113,7 @@ pub async fn obs_add_connection(
     password: Option<String>,
     enabled: bool,
     app: State<'_, Arc<App>>,
-) -> Result<serde_json::Value, String> {
+) -> Result<serde_json::Value, TauriError> {
     log::info!("OBS add connection called: {}@{}:{}", name, host, port);
     
     // Always use v5 protocol
@@ -174,7 +174,7 @@ pub async fn obs_add_connection(
 pub async fn obs_connect_to_connection(
     connection_name: String,
     app: State<'_, Arc<App>>,
-) -> Result<serde_json::Value, String> {
+) -> Result<serde_json::Value, TauriError> {
     log::info!("OBS connect to connection called: {}", connection_name);
     
     match app.obs_plugin().connect_obs(&connection_name).await {
@@ -193,7 +193,7 @@ pub async fn obs_connect_to_connection(
 pub async fn obs_get_connection_status(
     connection_name: String,
     app: State<'_, Arc<App>>,
-) -> Result<serde_json::Value, String> {
+) -> Result<serde_json::Value, TauriError> {
     log::info!("OBS get connection status called: {}", connection_name);
     
     match app.obs_plugin().get_connection_status(&connection_name).await {
@@ -220,7 +220,7 @@ pub async fn obs_get_connection_status(
 }
 
 #[tauri::command]
-pub async fn obs_get_connections(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+pub async fn obs_get_connections(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("OBS get connections called");
     
     let connections = app.config_manager().get_obs_connections().await;
@@ -259,9 +259,9 @@ pub async fn obs_get_connections(app: State<'_, Arc<App>>) -> Result<serde_json:
 }
 
 #[tauri::command]
-pub async fn obs_disconnect(connection_name: String, app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+pub async fn obs_disconnect(connection_name: String, app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("OBS disconnect called for connection: {}", connection_name);
-    app.obs_plugin().disconnect_obs(&connection_name).await.map_err(|e| e.to_string())?;
+    app.obs_plugin().disconnect_obs(&connection_name).await.map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
     Ok(serde_json::json!({
         "success": true,
         "message": "OBS disconnection initiated"
@@ -269,11 +269,11 @@ pub async fn obs_disconnect(connection_name: String, app: State<'_, Arc<App>>) -
 }
 
 #[tauri::command]
-pub async fn obs_remove_connection(connection_name: String, app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+pub async fn obs_remove_connection(connection_name: String, app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("OBS remove connection called for connection: {}", connection_name);
     
     // Remove from OBS plugin
-    app.obs_plugin().remove_connection(&connection_name).await.map_err(|e| e.to_string())?;
+    app.obs_plugin().remove_connection(&connection_name).await.map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
     
     // Also remove from configuration manager
     let mut connections = app.config_manager().get_obs_connections().await;
@@ -290,7 +290,7 @@ pub async fn obs_remove_connection(connection_name: String, app: State<'_, Arc<A
 }
 
 #[tauri::command]
-pub async fn obs_get_status(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+pub async fn obs_get_status(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("OBS get status called");
     match app.obs_plugin().get_obs_status().await {
         Ok(status) => Ok(serde_json::json!({
@@ -305,7 +305,7 @@ pub async fn obs_get_status(app: State<'_, Arc<App>>) -> Result<serde_json::Valu
 }
 
 #[tauri::command]
-pub async fn obs_start_recording(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+pub async fn obs_start_recording(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("OBS start recording called");
     // Get the first available connection
     let connections = app.obs_plugin().get_connection_names().await;
@@ -329,7 +329,7 @@ pub async fn obs_start_recording(app: State<'_, Arc<App>>) -> Result<serde_json:
 }
 
 #[tauri::command]
-pub async fn obs_stop_recording(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+pub async fn obs_stop_recording(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("OBS stop recording called");
     // Get the first available connection
     let connections = app.obs_plugin().get_connection_names().await;
@@ -353,23 +353,23 @@ pub async fn obs_stop_recording(app: State<'_, Arc<App>>) -> Result<serde_json::
 }
 
 #[tauri::command]
-pub async fn obs_command(_action: String, _params: serde_json::Value, _app: State<'_, Arc<App>>) -> Result<(), String> {
+pub async fn obs_command(_action: String, _params: serde_json::Value, _app: State<'_, Arc<App>>) -> Result<(), TauriError> {
     Ok(())
 }
 
 #[tauri::command]
-pub async fn obs_emit_event(event_data: serde_json::Value, window: tauri::Window) -> Result<(), String> {
+pub async fn obs_emit_event(event_data: serde_json::Value, window: tauri::Window) -> Result<(), TauriError> {
     log::info!("Emitting OBS event to frontend: {:?}", event_data);
     if let Err(e) = window.emit("obs_event", event_data) {
         log::error!("Failed to emit OBS event: {}", e);
-        return Err(e.to_string());
+        return Err(TauriError::from(anyhow::anyhow!("{}", e)));
     }
     Ok(())
 }
 
 // Video commands
 #[tauri::command]
-pub async fn video_play(path: String, app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+pub async fn video_play(path: String, app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Video play called with path: {}", path);
     
     // Create a video clip from the path
@@ -403,7 +403,7 @@ pub async fn video_play(path: String, app: State<'_, Arc<App>>) -> Result<serde_
 }
 
 #[tauri::command]
-pub async fn video_stop(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+pub async fn video_stop(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Video stop called");
     match app.playback_plugin().stop() {
         Ok(_) => Ok(serde_json::json!({
@@ -418,7 +418,7 @@ pub async fn video_stop(app: State<'_, Arc<App>>) -> Result<serde_json::Value, S
 }
 
 #[tauri::command]
-pub async fn video_get_info(path: String, _app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+pub async fn video_get_info(path: String, _app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Video get info called for path: {}", path);
     match crate::plugins::plugin_playback::VideoUtils::get_video_info(&path) {
         Ok(info) => Ok(serde_json::json!({
@@ -435,126 +435,126 @@ pub async fn video_get_info(path: String, _app: State<'_, Arc<App>>) -> Result<s
 }
 
 #[tauri::command]
-pub async fn extract_clip(_connection: String, _app: State<'_, Arc<App>>) -> Result<(), String> {
+pub async fn extract_clip(_connection: String, _app: State<'_, Arc<App>>) -> Result<(), TauriError> {
     Ok(())
 }
 
 // Store commands
 #[tauri::command]
-pub async fn save_event(_event: serde_json::Value, _app: State<'_, Arc<App>>) -> Result<(), String> {
+pub async fn save_event(_event: serde_json::Value, _app: State<'_, Arc<App>>) -> Result<(), TauriError> {
     Ok(())
 }
 
 #[tauri::command]
-pub async fn get_events(_app: State<'_, Arc<App>>) -> Result<Vec<serde_json::Value>, String> {
+pub async fn get_events(_app: State<'_, Arc<App>>) -> Result<Vec<serde_json::Value>, TauriError> {
     Ok(vec![])
 }
 
 #[tauri::command]
-pub async fn clear_events(_app: State<'_, Arc<App>>) -> Result<(), String> {
+pub async fn clear_events(_app: State<'_, Arc<App>>) -> Result<(), TauriError> {
     Ok(())
 }
 
 // License commands
 #[tauri::command]
-pub async fn activate_license(_key: String, _app: State<'_, Arc<App>>) -> Result<(), String> {
+pub async fn activate_license(_key: String, _app: State<'_, Arc<App>>) -> Result<(), TauriError> {
     Ok(())
 }
 
 #[tauri::command]
-pub async fn validate_license(_app: State<'_, Arc<App>>) -> Result<(), String> {
+pub async fn validate_license(_app: State<'_, Arc<App>>) -> Result<(), TauriError> {
     Ok(())
 }
 
 #[tauri::command]
-pub async fn get_license_status(_app: State<'_, Arc<App>>) -> Result<String, String> {
+pub async fn get_license_status(_app: State<'_, Arc<App>>) -> Result<String, TauriError> {
     Ok("Valid".to_string())
 }
 
 // Settings commands
 #[tauri::command]
-pub async fn get_settings(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+pub async fn get_settings(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting application settings");
     
     let config = app.config_manager().get_config().await;
     let config_json = serde_json::to_value(config)
-        .map_err(|e| format!("Failed to serialize config: {}", e))?;
+        .map_err(|e| TauriError::from(anyhow::anyhow!("Failed to serialize config: {}", e)))?;
     Ok(config_json)
 }
 
 #[tauri::command]
-pub async fn update_settings(settings: serde_json::Value, app: State<'_, Arc<App>>) -> Result<(), String> {
+pub async fn update_settings(settings: serde_json::Value, app: State<'_, Arc<App>>) -> Result<(), TauriError> {
     log::info!("Updating application settings");
     
     let config: crate::config::AppConfig = serde_json::from_value(settings)
-        .map_err(|e| format!("Failed to deserialize settings: {}", e))?;
+        .map_err(|e| TauriError::from(anyhow::anyhow!("Failed to deserialize settings: {}", e)))?;
     
     app.config_manager().update_config(config).await
-        .map_err(|e| format!("Failed to update settings: {}", e))
+        .map_err(|e| TauriError::from(anyhow::anyhow!("Failed to update settings: {}", e)))
 }
 
 #[tauri::command]
-pub async fn get_config_stats(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+pub async fn get_config_stats(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting configuration statistics");
     
     match app.config_manager().get_config_stats().await {
         Ok(stats) => {
             let stats_json = serde_json::to_value(stats)
-                .map_err(|e| format!("Failed to serialize stats: {}", e))?;
+                .map_err(|e| TauriError::from(anyhow::anyhow!("Failed to serialize stats: {}", e)))?;
             Ok(stats_json)
         }
-        Err(e) => Err(format!("Failed to get config stats: {}", e))
+        Err(e) => Err(TauriError::from(anyhow::anyhow!("Failed to get config stats: {}", e)))
     }
 }
 
 #[tauri::command]
-pub async fn reset_settings(app: State<'_, Arc<App>>) -> Result<(), String> {
+pub async fn reset_settings(app: State<'_, Arc<App>>) -> Result<(), TauriError> {
     log::info!("Resetting settings to defaults");
     
     app.config_manager().reset_to_defaults().await
-        .map_err(|e| format!("Failed to reset settings: {}", e))
+        .map_err(|e| TauriError::from(anyhow::anyhow!("Failed to reset settings: {}", e)))
 }
 
 #[tauri::command]
-pub async fn export_settings(export_path: String, app: State<'_, Arc<App>>) -> Result<(), String> {
+pub async fn export_settings(export_path: String, app: State<'_, Arc<App>>) -> Result<(), TauriError> {
     log::info!("Exporting settings to: {}", export_path);
     
     let path = std::path::Path::new(&export_path);
     app.config_manager().export_config(path).await
-        .map_err(|e| format!("Failed to export settings: {}", e))
+        .map_err(|e| TauriError::from(anyhow::anyhow!("Failed to export settings: {}", e)))
 }
 
 #[tauri::command]
-pub async fn import_settings(import_path: String, app: State<'_, Arc<App>>) -> Result<(), String> {
+pub async fn import_settings(import_path: String, app: State<'_, Arc<App>>) -> Result<(), TauriError> {
     log::info!("Importing settings from: {}", import_path);
     
     let path = std::path::Path::new(&import_path);
     app.config_manager().import_config(path).await
-        .map_err(|e| format!("Failed to import settings: {}", e))
+        .map_err(|e| TauriError::from(anyhow::anyhow!("Failed to import settings: {}", e)))
 }
 
 #[tauri::command]
-pub async fn restore_settings_backup(app: State<'_, Arc<App>>) -> Result<(), String> {
+pub async fn restore_settings_backup(app: State<'_, Arc<App>>) -> Result<(), TauriError> {
     log::info!("Restoring settings from backup");
     
     app.config_manager().restore_from_backup().await
-        .map_err(|e| format!("Failed to restore settings backup: {}", e))
+        .map_err(|e| TauriError::from(anyhow::anyhow!("Failed to restore settings backup: {}", e)))
 }
 
 // Flag commands
 #[tauri::command]
-pub async fn get_flag_url(_ioc_code: String, _app: State<'_, Arc<App>>) -> Result<String, String> {
+pub async fn get_flag_url(_ioc_code: String, _app: State<'_, Arc<App>>) -> Result<String, TauriError> {
     Ok("".to_string())
 }
 
 #[tauri::command]
-pub async fn download_flags(_app: State<'_, Arc<App>>) -> Result<(), String> {
+pub async fn download_flags(_app: State<'_, Arc<App>>) -> Result<(), TauriError> {
     Ok(())
 }
 
 // PSS commands
 #[tauri::command]
-pub async fn pss_start_listener(port: u16, app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+pub async fn pss_start_listener(port: u16, app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("PSS start listener called on port: {}", port);
     
     // Update the UDP server configuration with the new port
@@ -582,7 +582,7 @@ pub async fn pss_start_listener(port: u16, app: State<'_, Arc<App>>) -> Result<s
 }
 
 #[tauri::command]
-pub async fn pss_stop_listener(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+pub async fn pss_stop_listener(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("PSS stop listener called");
     match app.udp_plugin().stop().await {
         Ok(_) => Ok(serde_json::json!({
@@ -597,7 +597,7 @@ pub async fn pss_stop_listener(app: State<'_, Arc<App>>) -> Result<serde_json::V
 }
 
 #[tauri::command]
-pub async fn pss_get_events(app: State<'_, Arc<App>>) -> Result<Vec<serde_json::Value>, String> {
+pub async fn pss_get_events(app: State<'_, Arc<App>>) -> Result<Vec<serde_json::Value>, TauriError> {
     log::info!("PSS get events called");
     
     let events = app.udp_plugin().get_recent_events();
@@ -740,7 +740,7 @@ pub async fn pss_get_events(app: State<'_, Arc<App>>) -> Result<Vec<serde_json::
 
 // System commands
 #[tauri::command]
-pub async fn system_get_info(_app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+pub async fn system_get_info(_app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("System get info called");
     Ok(serde_json::json!({
         "success": true,
@@ -750,13 +750,13 @@ pub async fn system_get_info(_app: State<'_, Arc<App>>) -> Result<serde_json::Va
 }
 
 #[tauri::command]
-pub async fn system_open_file_dialog() -> Result<String, String> {
+pub async fn system_open_file_dialog() -> Result<String, TauriError> {
     // Placeholder for native file dialog - not implemented
-    Err("File dialog not available".to_string())
+    Err(TauriError::from(anyhow::anyhow!("File dialog not available")))
 }
 
 #[tauri::command]
-pub async fn restore_backup_with_dialog() -> Result<serde_json::Value, String> {
+pub async fn restore_backup_with_dialog() -> Result<serde_json::Value, TauriError> {
     // Placeholder for dialog-based restore - not implemented
     Ok(serde_json::json!({ "success": false, "error": "File dialog not available" }))
 }
@@ -767,7 +767,7 @@ pub async fn restore_backup_with_dialog() -> Result<serde_json::Value, String> {
 pub async fn list_log_files(
     subsystem: Option<String>,
     app: State<'_, Arc<App>>,
-) -> Result<serde_json::Value, String> {
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Listing log files for subsystem: {:?}", subsystem);
     
     let log_manager = app.log_manager().lock().await;
@@ -787,18 +787,18 @@ pub async fn list_log_files(
 pub async fn download_log_file(
     filename: String,
     app: State<'_, Arc<App>>,
-) -> Result<Vec<u8>, String> {
+) -> Result<Vec<u8>, TauriError> {
     log::info!("Downloading log file: {}", filename);
     
     let log_manager = app.log_manager().lock().await;
     match log_manager.read_log_file(&filename) {
         Ok(contents) => Ok(contents),
-        Err(e) => Err(format!("Failed to read log file: {}", e))
+        Err(e) => Err(TauriError::from(anyhow::anyhow!("Failed to read log file: {}", e)))
     }
 }
 
 #[tauri::command]
-pub async fn list_archives(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+pub async fn list_archives(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Listing archives");
     
     let log_manager = app.log_manager().lock().await;
@@ -818,7 +818,7 @@ pub async fn list_archives(app: State<'_, Arc<App>>) -> Result<serde_json::Value
 pub async fn extract_archive(
     archive_name: String,
     app: State<'_, Arc<App>>,
-) -> Result<serde_json::Value, String> {
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Extracting archive: {}", archive_name);
     
     let log_manager = app.log_manager().lock().await;
@@ -838,13 +838,13 @@ pub async fn extract_archive(
 pub async fn download_archive(
     archive_name: String,
     app: State<'_, Arc<App>>,
-) -> Result<Vec<u8>, String> {
+) -> Result<Vec<u8>, TauriError> {
     log::info!("Downloading archive: {}", archive_name);
     
     let log_manager = app.log_manager().lock().await;
     match log_manager.download_archive(&archive_name) {
         Ok(contents) => Ok(contents),
-        Err(e) => Err(format!("Failed to read archive: {}", e))
+        Err(e) => Err(TauriError::from(anyhow::anyhow!("Failed to read archive: {}", e)))
     }
 }
 
@@ -854,7 +854,7 @@ pub async fn set_live_data_streaming(
     enabled: bool,
     app: State<'_, Arc<App>>,
     window: tauri::Window,
-) -> Result<serde_json::Value, String> {
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Setting live data streaming for {}: {}", subsystem, enabled);
     
     // Clone window once for emitting events (available throughout function)
@@ -964,19 +964,19 @@ pub async fn set_live_data_streaming(
 
 // Legacy commands for backward compatibility
 #[tauri::command]
-pub async fn start_live_data(subsystem: String, app: State<'_, Arc<App>>, window: tauri::Window) -> Result<(), String> {
+pub async fn start_live_data(subsystem: String, app: State<'_, Arc<App>>, window: tauri::Window) -> Result<(), TauriError> {
     set_live_data_streaming(subsystem, true, app, window).await?;
     Ok(())
 }
 
 #[tauri::command]
-pub async fn stop_live_data(subsystem: String, app: State<'_, Arc<App>>, window: tauri::Window) -> Result<(), String> {
+pub async fn stop_live_data(subsystem: String, app: State<'_, Arc<App>>, window: tauri::Window) -> Result<(), TauriError> {
     set_live_data_streaming(subsystem, false, app, window).await?;
     Ok(())
 }
 
 #[tauri::command]
-pub async fn get_live_data(subsystem: String, app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+pub async fn get_live_data(subsystem: String, app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting live data for subsystem: {}", subsystem);
     
     match subsystem.as_str() {
@@ -1066,7 +1066,7 @@ pub async fn get_live_data(subsystem: String, app: State<'_, Arc<App>>) -> Resul
 }
 
 #[tauri::command]
-pub async fn obs_get_debug_info(connection_name: String, app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+pub async fn obs_get_debug_info(connection_name: String, app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting OBS debug info for connection: {}", connection_name);
     
     match app.obs_plugin().get_latest_events(&connection_name).await {
@@ -1082,7 +1082,7 @@ pub async fn obs_get_debug_info(connection_name: String, app: State<'_, Arc<App>
 }
 
 #[tauri::command]
-pub async fn obs_toggle_full_events(enabled: bool, app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+pub async fn obs_toggle_full_events(enabled: bool, app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Toggling OBS full events display: {}", enabled);
     
     app.obs_plugin().toggle_full_events(enabled).await;
@@ -1094,7 +1094,7 @@ pub async fn obs_toggle_full_events(enabled: bool, app: State<'_, Arc<App>>) -> 
 }
 
 #[tauri::command]
-pub async fn obs_get_full_events_setting(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+pub async fn obs_get_full_events_setting(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting OBS full events setting");
     
     let enabled = app.obs_plugin().get_full_events_setting().await;
@@ -1106,7 +1106,7 @@ pub async fn obs_get_full_events_setting(app: State<'_, Arc<App>>) -> Result<ser
 }
 
 #[tauri::command]
-pub async fn obs_emit_event_to_frontend(event_data: serde_json::Value, window: tauri::Window) -> Result<serde_json::Value, String> {
+pub async fn obs_emit_event_to_frontend(event_data: serde_json::Value, window: tauri::Window) -> Result<serde_json::Value, TauriError> {
     log::info!("Emitting OBS event to frontend: {:?}", event_data);
     
     match window.emit("obs_event", event_data) {
@@ -1122,7 +1122,7 @@ pub async fn obs_emit_event_to_frontend(event_data: serde_json::Value, window: t
 }
 
 #[tauri::command]
-pub async fn obs_get_recent_events(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+pub async fn obs_get_recent_events(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     let events = app.obs_plugin().get_recent_events().await;
     
     // Convert RecentEvent structs to JSON
@@ -1143,38 +1143,38 @@ pub async fn obs_get_recent_events(app: State<'_, Arc<App>>) -> Result<serde_jso
 
 // CPU Monitoring Commands
 #[tauri::command]
-pub async fn cpu_get_process_data(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
-    // println!("🚨 [CPU_CMD] ===== CPU GET PROCESS DATA CALLED =====");
+pub async fn cpu_get_process_data(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    // println!("ðŸš¨ [CPU_CMD] ===== CPU GET PROCESS DATA CALLED =====");
     log::info!("[CPU_CMD] ===== CPU GET PROCESS DATA CALLED =====");
     
-    // println!("🚨 [CPU_CMD] Triggering immediate data collection...");
+    // println!("ðŸš¨ [CPU_CMD] Triggering immediate data collection...");
     log::info!("[CPU_CMD] Triggering immediate data collection...");
     
     match app.cpu_monitor_plugin().update_cpu_data().await {
         Ok(_) => {
-            // println!("🚨 [CPU_CMD] Data collection successful");
+            // println!("ðŸš¨ [CPU_CMD] Data collection successful");
             log::info!("[CPU_CMD] Data collection successful");
         },
         Err(e) => {
-            // println!("🚨 [CPU_CMD] Failed to update CPU data: {}", e);
+            // println!("ðŸš¨ [CPU_CMD] Failed to update CPU data: {}", e);
             log::error!("[CPU_CMD] Failed to update CPU data: {}", e);
         },
     }
     
     let process_data = app.cpu_monitor_plugin().get_process_cpu_data().await;
     
-    // println!("🚨 [CPU_CMD] Process data count: {}", process_data.len());
+    // println!("ðŸš¨ [CPU_CMD] Process data count: {}", process_data.len());
     log::info!("[CPU_CMD] Process data count: {}", process_data.len());
     
     // Log first few processes for debugging
     for (i, process) in process_data.iter().take(3).enumerate() {
-        // println!("🚨 [CPU_CMD] Process {}: {} - CPU: {:.1}%, Memory: {:.1}MB", 
+        // println!("ðŸš¨ [CPU_CMD] Process {}: {} - CPU: {:.1}%, Memory: {:.1}MB", 
         //     i, process.process_name, process.cpu_percent, process.memory_mb);
         log::debug!("[CPU_CMD] Process {}: {} - CPU: {:.1}%, Memory: {:.1}MB", 
             i, process.process_name, process.cpu_percent, process.memory_mb);
     }
     
-    // println!("🚨 [CPU_CMD] Returning result with {} processes", process_data.len());
+    // println!("ðŸš¨ [CPU_CMD] Returning result with {} processes", process_data.len());
     log::info!("[CPU_CMD] Returning result with {} processes", process_data.len());
     
     Ok(serde_json::json!({
@@ -1184,26 +1184,26 @@ pub async fn cpu_get_process_data(app: State<'_, Arc<App>>) -> Result<serde_json
 }
 
 #[tauri::command]
-pub async fn cpu_get_system_data(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
-    // println!("🚨 [CPU_CMD] ===== CPU GET SYSTEM DATA CALLED =====");
+pub async fn cpu_get_system_data(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    // println!("ðŸš¨ [CPU_CMD] ===== CPU GET SYSTEM DATA CALLED =====");
     log::info!("[CPU_CMD] ===== CPU GET SYSTEM DATA CALLED =====");
     
     // Trigger immediate data collection
-    // println!("🚨 [CPU_CMD] Triggering immediate data collection...");
+    // println!("ðŸš¨ [CPU_CMD] Triggering immediate data collection...");
     log::info!("[CPU_CMD] Triggering immediate data collection...");
     match app.cpu_monitor_plugin().update_cpu_data().await {
         Ok(_) => {
-            // println!("🚨 [CPU_CMD] Data collection successful");
+            // println!("ðŸš¨ [CPU_CMD] Data collection successful");
             log::info!("[CPU_CMD] Data collection successful");
         },
         Err(e) => {
-            // println!("🚨 [CPU_CMD] Failed to update CPU data: {}", e);
+            // println!("ðŸš¨ [CPU_CMD] Failed to update CPU data: {}", e);
             log::error!("[CPU_CMD] Failed to update CPU data: {}", e);
         },
     }
     
     let system_data = app.cpu_monitor_plugin().get_system_cpu_data().await;
-    // println!("🚨 [CPU_CMD] System data available: {}", system_data.is_some());
+    // println!("ðŸš¨ [CPU_CMD] System data available: {}", system_data.is_some());
     log::info!("[CPU_CMD] System data available: {}", system_data.is_some());
     
     let result = serde_json::json!({
@@ -1211,13 +1211,13 @@ pub async fn cpu_get_system_data(app: State<'_, Arc<App>>) -> Result<serde_json:
         "system": system_data
     });
     
-    // println!("🚨 [CPU_CMD] Returning system data");
+    // println!("ðŸš¨ [CPU_CMD] Returning system data");
     log::info!("[CPU_CMD] Returning system data");
     Ok(result)
 }
 
 #[tauri::command]
-pub async fn cpu_get_obs_usage(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+pub async fn cpu_get_obs_usage(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     let obs_cpu = app.cpu_monitor_plugin().get_obs_cpu_usage().await;
     
     Ok(serde_json::json!({
@@ -1227,20 +1227,20 @@ pub async fn cpu_get_obs_usage(app: State<'_, Arc<App>>) -> Result<serde_json::V
 }
 
 #[tauri::command]
-pub async fn cpu_update_config(app: State<'_, Arc<App>>, config: crate::plugins::CpuMonitorConfig) -> Result<serde_json::Value, String> {
+pub async fn cpu_update_config(app: State<'_, Arc<App>>, config: crate::plugins::CpuMonitorConfig) -> Result<serde_json::Value, TauriError> {
     match app.cpu_monitor_plugin().update_config(config).await {
         Ok(_) => Ok(serde_json::json!({
             "success": true,
             "message": "CPU monitoring configuration updated"
         })),
-        Err(e) => Err(format!("Failed to update CPU monitoring config: {}", e))
+        Err(e) => Err(TauriError::from(anyhow::anyhow!("Failed to update CPU monitoring config: {}", e)))
     }
 } 
 
  
 
 #[tauri::command]
-pub async fn cpu_enable_monitoring(app: State<'_, Arc<App>>) -> Result<(), String> {
+pub async fn cpu_enable_monitoring(app: State<'_, Arc<App>>) -> Result<(), TauriError> {
     log::info!("[CPU_CMD] ===== ENABLE CPU MONITORING CALLED =====");
     
     match app.cpu_monitor_plugin().enable_monitoring().await {
@@ -1250,13 +1250,13 @@ pub async fn cpu_enable_monitoring(app: State<'_, Arc<App>>) -> Result<(), Strin
         },
         Err(e) => {
             log::error!("[CPU_CMD] Failed to enable CPU monitoring: {}", e);
-            Err(e.to_string())
+            Err(TauriError::from(anyhow::anyhow!("{}", e)))
         }
     }
 }
 
 #[tauri::command]
-pub async fn cpu_disable_monitoring(app: State<'_, Arc<App>>) -> Result<(), String> {
+pub async fn cpu_disable_monitoring(app: State<'_, Arc<App>>) -> Result<(), TauriError> {
     log::info!("[CPU_CMD] ===== DISABLE CPU MONITORING CALLED =====");
     
     match app.cpu_monitor_plugin().disable_monitoring().await {
@@ -1266,13 +1266,13 @@ pub async fn cpu_disable_monitoring(app: State<'_, Arc<App>>) -> Result<(), Stri
         },
         Err(e) => {
             log::error!("[CPU_CMD] Failed to disable CPU monitoring: {}", e);
-            Err(e.to_string())
+            Err(TauriError::from(anyhow::anyhow!("{}", e)))
         }
     }
 }
 
 #[tauri::command]
-pub async fn cpu_get_monitoring_status(app: State<'_, Arc<App>>) -> Result<bool, String> {
+pub async fn cpu_get_monitoring_status(app: State<'_, Arc<App>>) -> Result<bool, TauriError> {
     log::info!("[CPU_CMD] ===== GET CPU MONITORING STATUS CALLED =====");
     
     match app.cpu_monitor_plugin().is_monitoring_enabled().await {
@@ -1282,21 +1282,21 @@ pub async fn cpu_get_monitoring_status(app: State<'_, Arc<App>>) -> Result<bool,
         },
         Err(e) => {
             log::error!("[CPU_CMD] Failed to get CPU monitoring status: {}", e);
-            Err(e.to_string())
+            Err(TauriError::from(anyhow::anyhow!("{}", e)))
         }
     }
 }
 
 // Protocol Management Commands
 #[tauri::command]
-pub async fn protocol_get_versions(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+pub async fn protocol_get_versions(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     let log_manager = app.log_manager().lock().await;
     if let Err(e) = log_manager.log("pss", "INFO", "Getting protocol versions") {
         log::error!("Failed to log protocol get versions: {}", e);
     }
     
-    let versions = app.protocol_manager().get_versions().await.map_err(|e| e.to_string())?;
-    let current_protocol = app.protocol_manager().get_current_protocol().await.map_err(|e| e.to_string())?;
+    let versions = app.protocol_manager().get_versions().await.map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
+    let current_protocol = app.protocol_manager().get_current_protocol().await.map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
     
     Ok(serde_json::json!({
         "success": true,
@@ -1309,7 +1309,7 @@ pub async fn protocol_get_versions(app: State<'_, Arc<App>>) -> Result<serde_jso
 pub async fn protocol_set_active_version(
     version: String,
     app: State<'_, Arc<App>>,
-) -> Result<serde_json::Value, String> {
+) -> Result<serde_json::Value, TauriError> {
     let log_manager = app.log_manager().lock().await;
     if let Err(e) = log_manager.log("pss", "INFO", &format!("Setting active protocol version: {}", version)) {
         log::error!("Failed to log protocol set active version: {}", e);
@@ -1332,7 +1332,7 @@ pub async fn protocol_upload_file(
     file_content: Vec<u8>,
     filename: String,
     app: State<'_, Arc<App>>,
-) -> Result<serde_json::Value, String> {
+) -> Result<serde_json::Value, TauriError> {
     let log_manager = app.log_manager().lock().await;
     if let Err(e) = log_manager.log("pss", "INFO", &format!("Uploading protocol file: {}", filename)) {
         log::error!("Failed to log protocol upload: {}", e);
@@ -1355,7 +1355,7 @@ pub async fn protocol_upload_file(
 pub async fn protocol_delete_version(
     version: String,
     app: State<'_, Arc<App>>,
-) -> Result<serde_json::Value, String> {
+) -> Result<serde_json::Value, TauriError> {
     let log_manager = app.log_manager().lock().await;
     if let Err(e) = log_manager.log("pss", "INFO", &format!("Deleting protocol version: {}", version)) {
         log::error!("Failed to log protocol delete: {}", e);
@@ -1377,18 +1377,18 @@ pub async fn protocol_delete_version(
 pub async fn protocol_export_file(
     version: String,
     app: State<'_, Arc<App>>,
-) -> Result<Vec<u8>, String> {
+) -> Result<Vec<u8>, TauriError> {
     let log_manager = app.log_manager().lock().await;
     if let Err(e) = log_manager.log("pss", "INFO", &format!("Exporting protocol file: {}", version)) {
         log::error!("Failed to log protocol export: {}", e);
     }
     
     app.protocol_manager().export_protocol_file(&version).await
-        .map_err(|e| e.to_string())
+        .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))
 }
 
 #[tauri::command]
-pub async fn protocol_get_current(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+pub async fn protocol_get_current(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     let log_manager = app.log_manager().lock().await;
     if let Err(e) = log_manager.log("pss", "INFO", "Getting current protocol") {
         log::error!("Failed to log protocol get current: {}", e);
@@ -1412,7 +1412,7 @@ pub async fn protocol_get_current(app: State<'_, Arc<App>>) -> Result<serde_json
 
 /// Get available network interfaces
 #[tauri::command]
-pub async fn get_network_interfaces() -> Result<serde_json::Value, String> {
+pub async fn get_network_interfaces() -> Result<serde_json::Value, TauriError> {
     match crate::utils::NetworkDetector::get_interfaces() {
         Ok(interfaces) => {
             let interface_data: Vec<serde_json::Value> = interfaces
@@ -1458,7 +1458,7 @@ pub async fn get_network_interfaces() -> Result<serde_json::Value, String> {
 
 /// Get the best network interface based on current configuration
 #[tauri::command]
-pub async fn get_best_network_interface() -> Result<serde_json::Value, String> {
+pub async fn get_best_network_interface() -> Result<serde_json::Value, TauriError> {
     let settings = crate::config::NetworkInterfaceSettings::default();
     match crate::utils::NetworkDetector::get_best_interface(&settings) {
         Ok(Some(interface)) => {
@@ -1502,7 +1502,7 @@ pub async fn get_best_network_interface() -> Result<serde_json::Value, String> {
 
 /// Get the best IP address for a specific interface
 #[tauri::command]
-pub async fn get_best_ip_address_for_interface(interface_name: String) -> Result<serde_json::Value, String> {
+pub async fn get_best_ip_address_for_interface(interface_name: String) -> Result<serde_json::Value, TauriError> {
     let _settings = crate::config::NetworkInterfaceSettings::default();
     match crate::utils::NetworkDetector::get_interfaces() {
         Ok(interfaces) => {
@@ -1555,26 +1555,26 @@ pub async fn get_best_ip_address_for_interface(interface_name: String) -> Result
 
 // PSS Event Emission Command
 #[tauri::command]
-pub async fn pss_emit_event(event_data: serde_json::Value, window: tauri::Window) -> Result<(), String> {
-    log::info!("🧪 Emitting PSS event via hybrid approach: {:?}", event_data);
+pub async fn pss_emit_event(event_data: serde_json::Value, window: tauri::Window) -> Result<(), TauriError> {
+    log::info!("ðŸ§ª Emitting PSS event via hybrid approach: {:?}", event_data);
     
     // HYBRID APPROACH: Real-time emission to both systems
     // 1. Emit to Tauri frontend (React components) - Real-time
     if let Err(e) = window.emit("pss_event", event_data.clone()) {
-        log::error!("❌ Failed to emit PSS event to Tauri frontend: {}", e);
-        return Err(e.to_string());
+        log::error!("âŒ Failed to emit PSS event to Tauri frontend: {}", e);
+        return Err(TauriError::from(anyhow::anyhow!("{}", e)));
     }
     
     // 2. Broadcast to WebSocket overlays (HTML overlays) - Real-time
     crate::core::app::App::emit_pss_event(event_data);
     
-    log::info!("✅ Successfully emitted PSS event via hybrid approach");
+    log::info!("âœ… Successfully emitted PSS event via hybrid approach");
     Ok(())
 }
 
 // Get and emit PSS events to frontend
 #[tauri::command]
-pub async fn pss_emit_pending_events(window: tauri::Window, app: State<'_, Arc<App>>) -> Result<(), String> {
+pub async fn pss_emit_pending_events(window: tauri::Window, app: State<'_, Arc<App>>) -> Result<(), TauriError> {
     log::info!("Getting and emitting pending PSS events");
     
     // Get events from the UDP plugin
@@ -1715,7 +1715,7 @@ pub async fn pss_emit_pending_events(window: tauri::Window, app: State<'_, Arc<A
         log::info!("Emitting PSS event to frontend: {:?}", event_json);
         if let Err(e) = window.emit("pss_event", event_json) {
             log::error!("Failed to emit PSS event: {}", e);
-            return Err(e.to_string());
+            return Err(TauriError::from(anyhow::anyhow!("{}", e)));
         }
     }
     
@@ -1724,18 +1724,18 @@ pub async fn pss_emit_pending_events(window: tauri::Window, app: State<'_, Arc<A
 
 // Set up PSS event listener that emits events to frontend
 #[tauri::command]
-pub async fn pss_setup_event_listener(_window: tauri::Window) -> Result<(), String> {
+pub async fn pss_setup_event_listener(_window: tauri::Window) -> Result<(), TauriError> {
     log::info!("Setting up PSS event listener for frontend");
     
     // Note: This command is no longer needed since we're using the original working mechanism
     // The frontend will fetch events via pss_get_events or they will be emitted via pss_emit_event
-    log::info!("✅ PSS event listener setup complete (using original mechanism)");
+    log::info!("âœ… PSS event listener setup complete (using original mechanism)");
     
     Ok(())
 } 
 
 #[tauri::command]
-pub async fn obs_setup_status_listener(window: tauri::Window, app: State<'_, Arc<App>>) -> Result<(), String> {
+pub async fn obs_setup_status_listener(window: tauri::Window, app: State<'_, Arc<App>>) -> Result<(), TauriError> {
     log::info!("Setting up OBS status listener for frontend");
 
     let window_clone = window.clone();
@@ -1772,7 +1772,7 @@ pub async fn obs_setup_status_listener(window: tauri::Window, app: State<'_, Arc
 } 
 
 #[tauri::command]
-pub async fn cpu_setup_stats_listener(window: tauri::Window, app: State<'_, Arc<App>>) -> Result<(), String> {
+pub async fn cpu_setup_stats_listener(window: tauri::Window, app: State<'_, Arc<App>>) -> Result<(), TauriError> {
     log::info!("Setting up CPU stats listener for frontend");
 
     let window_clone = window.clone();
@@ -1806,61 +1806,61 @@ pub async fn cpu_setup_stats_listener(window: tauri::Window, app: State<'_, Arc<
 
 // Window Management Commands
 #[tauri::command]
-pub async fn set_window_fullscreen(window: tauri::Window) -> Result<(), String> {
+pub async fn set_window_fullscreen(window: tauri::Window) -> Result<(), TauriError> {
     log::info!("Setting window to fullscreen");
-    window.set_fullscreen(true).map_err(|e| e.to_string())?;
+    window.set_fullscreen(true).map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
     Ok(())
 }
 
 #[tauri::command]
-pub async fn set_window_compact(width: Option<f64>, height: Option<f64>, window: tauri::Window) -> Result<(), String> {
+pub async fn set_window_compact(width: Option<f64>, height: Option<f64>, window: tauri::Window) -> Result<(), TauriError> {
     let default_width = 350.0;
     let default_height = 1080.0;
     
     log::info!("Setting window to compact mode: {}x{}", width.unwrap_or(default_width), height.unwrap_or(default_height));
-    window.set_fullscreen(false).map_err(|e| e.to_string())?;
+    window.set_fullscreen(false).map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
     window.set_size(tauri::Size::Logical(tauri::LogicalSize::new(
         width.unwrap_or(default_width), 
         height.unwrap_or(default_height)
-    ))).map_err(|e| e.to_string())?;
+    ))).map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
     Ok(())
 }
 
 #[tauri::command]
-pub async fn set_window_custom_size(width: f64, height: f64, window: tauri::Window) -> Result<(), String> {
+pub async fn set_window_custom_size(width: f64, height: f64, window: tauri::Window) -> Result<(), TauriError> {
     log::info!("Setting window to custom size: {}x{}", width, height);
-    window.set_fullscreen(false).map_err(|e| e.to_string())?;
+    window.set_fullscreen(false).map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
     window.set_size(tauri::Size::Logical(tauri::LogicalSize::new(width, height)))
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
     Ok(())
 }
 
 #[tauri::command]
-pub async fn set_window_position(x: f64, y: f64, window: tauri::Window) -> Result<(), String> {
+pub async fn set_window_position(x: f64, y: f64, window: tauri::Window) -> Result<(), TauriError> {
     log::info!("Setting window position: x={}, y={}", x, y);
     window.set_position(tauri::Position::Logical(tauri::LogicalPosition::new(x, y)))
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
     Ok(())
 }
 
 #[tauri::command]
-pub async fn set_window_startup_position(window: tauri::Window) -> Result<(), String> {
+pub async fn set_window_startup_position(window: tauri::Window) -> Result<(), TauriError> {
     log::info!("Setting window to startup position: x=1, y=1");
     
     // Set window to compact mode (350x1080)
-    window.set_fullscreen(false).map_err(|e| e.to_string())?;
+    window.set_fullscreen(false).map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
     window.set_size(tauri::Size::Logical(tauri::LogicalSize::new(350.0, 1080.0)))
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
     
     // Set position to x=1, y=1
     window.set_position(tauri::Position::Logical(tauri::LogicalPosition::new(1.0, 1.0)))
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
     
     Ok(())
 }
 
 #[tauri::command]
-pub async fn save_window_settings(settings: serde_json::Value, _app: State<'_, Arc<App>>) -> Result<(), String> {
+pub async fn save_window_settings(settings: serde_json::Value, _app: State<'_, Arc<App>>) -> Result<(), TauriError> {
     log::info!("Saving window settings: {:?}", settings);
     
     // For now, just log the settings - we'll implement proper persistence later
@@ -1870,7 +1870,7 @@ pub async fn save_window_settings(settings: serde_json::Value, _app: State<'_, A
 }
 
 #[tauri::command]
-pub async fn load_window_settings(_app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+pub async fn load_window_settings(_app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Loading window settings");
     
     // Return default settings for now
@@ -1885,7 +1885,7 @@ pub async fn load_window_settings(_app: State<'_, Arc<App>>) -> Result<serde_jso
 }
 
 #[tauri::command]
-pub async fn get_screen_size() -> Result<serde_json::Value, String> {
+pub async fn get_screen_size() -> Result<serde_json::Value, TauriError> {
     log::info!("Getting screen size");
     
     // This would need to be implemented with proper screen detection
@@ -1898,7 +1898,7 @@ pub async fn get_screen_size() -> Result<serde_json::Value, String> {
 
 // UI Settings Migration Commands
 #[tauri::command]
-pub async fn initialize_ui_settings_database() -> Result<serde_json::Value, String> {
+pub async fn initialize_ui_settings_database() -> Result<serde_json::Value, TauriError> {
     log::info!("Initializing UI settings database");
     
     // This command should initialize the database schema, not just UI settings
@@ -1911,7 +1911,7 @@ pub async fn initialize_ui_settings_database() -> Result<serde_json::Value, Stri
 
 // Database Plugin Commands
 #[tauri::command]
-pub async fn db_initialize_ui_settings(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+pub async fn db_initialize_ui_settings(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Initializing UI settings in database");
     
     match app.database_plugin().initialize_ui_settings().await {
@@ -1927,7 +1927,7 @@ pub async fn db_initialize_ui_settings(app: State<'_, Arc<App>>) -> Result<serde
 }
 
 #[tauri::command]
-pub async fn db_get_ui_setting(key: String, app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+pub async fn db_get_ui_setting(key: String, app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting UI setting: {}", key);
     
     match app.database_plugin().get_ui_setting(&key).await {
@@ -1950,7 +1950,7 @@ pub async fn db_set_ui_setting(
     changed_by: String, 
     change_reason: Option<String>, 
     app: State<'_, Arc<App>>
-) -> Result<serde_json::Value, String> {
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Setting UI setting: {} = {}", key, value);
     
     match app.database_plugin().set_ui_setting(&key, &value, &changed_by, change_reason.as_deref()).await {
@@ -1966,7 +1966,7 @@ pub async fn db_set_ui_setting(
 }
 
 #[tauri::command]
-pub async fn db_get_all_ui_settings(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+pub async fn db_get_all_ui_settings(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting all UI settings");
     
     match app.database_plugin().get_all_ui_settings().await {
@@ -1985,7 +1985,7 @@ pub async fn db_get_all_ui_settings(app: State<'_, Arc<App>>) -> Result<serde_js
 }
 
 #[tauri::command]
-pub async fn db_get_database_info(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+pub async fn db_get_database_info(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting database information");
     
     let is_accessible = app.database_plugin().is_accessible().await;
@@ -2042,7 +2042,7 @@ pub async fn db_get_database_info(app: State<'_, Arc<App>>) -> Result<serde_json
 
 // Database Migration Commands
 #[tauri::command]
-pub async fn migrate_json_to_database(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+pub async fn migrate_json_to_database(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Starting JSON to database migration");
     
     match app.database_plugin().migrate_json_to_database().await {
@@ -2064,7 +2064,7 @@ pub async fn migrate_json_to_database(app: State<'_, Arc<App>>) -> Result<serde_
 }
 
 #[tauri::command]
-pub async fn create_json_backup(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+pub async fn create_json_backup(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Creating JSON settings backup");
     
     match app.database_plugin().create_json_backup().await {
@@ -2083,7 +2083,7 @@ pub async fn create_json_backup(app: State<'_, Arc<App>>) -> Result<serde_json::
 pub async fn restore_from_json_backup(
     app: State<'_, Arc<App>>,
     backup_path: String
-) -> Result<serde_json::Value, String> {
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Restoring from JSON backup: {}", backup_path);
     
     match app.database_plugin().restore_from_json_backup(&backup_path).await {
@@ -2102,7 +2102,7 @@ pub async fn restore_from_json_backup(
 pub async fn restore_from_backup(
     app: State<'_, Arc<App>>,
     backup_path: String
-) -> Result<serde_json::Value, String> {
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Restoring from backup: {}", backup_path);
     
     match app.database_plugin().restore_from_json_backup(&backup_path).await {
@@ -2118,7 +2118,7 @@ pub async fn restore_from_backup(
 }
 
 #[tauri::command]
-pub async fn get_migration_status(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+pub async fn get_migration_status(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting migration status");
     
     // Get database status
@@ -2167,7 +2167,7 @@ pub async fn get_migration_status(app: State<'_, Arc<App>>) -> Result<serde_json
 pub async fn enable_database_mode(
     app: State<'_, Arc<App>>,
     enabled: bool
-) -> Result<serde_json::Value, String> {
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Setting database mode to: {}", enabled);
     
     match app.database_plugin().set_database_mode(enabled).await {
@@ -2183,7 +2183,7 @@ pub async fn enable_database_mode(
 }
 
 #[tauri::command]
-pub async fn get_database_preview(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+pub async fn get_database_preview(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting database preview");
     
     // Get all UI settings from database
@@ -2225,7 +2225,7 @@ pub async fn get_database_preview(app: State<'_, Arc<App>>) -> Result<serde_json
 }
 
 #[tauri::command]
-pub async fn get_database_tables(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+pub async fn get_database_tables(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting database tables");
     
     let conn = match app.database_plugin().get_connection().await {
@@ -2244,10 +2244,10 @@ pub async fn get_database_tables(app: State<'_, Arc<App>>) -> Result<serde_json:
             let mut table_names = Vec::new();
             let rows = stmt.query_map([], |row| {
                 Ok(row.get::<_, String>(0)?)
-            }).map_err(|e| format!("Failed to query tables: {}", e))?;
+            }).map_err(|e| TauriError::from(anyhow::anyhow!("Failed to query tables: {}", e)))?;
             
             for row in rows {
-                let table_name = row.map_err(|e| format!("Failed to get table name: {}", e))?;
+                let table_name = row.map_err(|e| TauriError::from(anyhow::anyhow!("Failed to get table name: {}", e)))?;
                 table_names.push(table_name);
             }
             table_names
@@ -2268,7 +2268,7 @@ pub async fn get_database_tables(app: State<'_, Arc<App>>) -> Result<serde_json:
 pub async fn get_table_data(
     app: State<'_, Arc<App>>,
     table_name: String
-) -> Result<serde_json::Value, String> {
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting data for table: {}", table_name);
     
     let conn = match app.database_plugin().get_connection().await {
@@ -2291,10 +2291,10 @@ pub async fn get_table_data(
                     "not_null": row.get::<_, i32>(3)? == 1,
                     "primary_key": row.get::<_, i32>(5)? == 1
                 }))
-            }).map_err(|e| format!("Failed to query schema: {}", e))?;
+            }).map_err(|e| TauriError::from(anyhow::anyhow!("Failed to query schema: {}", e)))?;
             
             for row in rows {
-                let column = row.map_err(|e| format!("Failed to get column info: {}", e))?;
+                let column = row.map_err(|e| TauriError::from(anyhow::anyhow!("Failed to get column info: {}", e)))?;
                 column_info.push(column);
             }
             column_info
@@ -2327,10 +2327,10 @@ pub async fn get_table_data(
                     row_data.insert(column_name.to_string(), value);
                 }
                 Ok(serde_json::Value::Object(row_data))
-            }).map_err(|e| format!("Failed to query table data: {}", e))?;
+            }).map_err(|e| TauriError::from(anyhow::anyhow!("Failed to query table data: {}", e)))?;
             
             for row in rows {
-                let row_data = row.map_err(|e| format!("Failed to get row data: {}", e))?;
+                let row_data = row.map_err(|e| TauriError::from(anyhow::anyhow!("Failed to get row data: {}", e)))?;
                 table_data.push(row_data);
             }
             table_data
@@ -2352,32 +2352,32 @@ pub async fn get_table_data(
 
 // Google Drive commands
 #[tauri::command]
-pub async fn drive_request_auth_url() -> Result<String, String> {
+pub async fn drive_request_auth_url() -> Result<String, TauriError> {
     let (url, _csrf_token) = crate::plugins::drive_plugin()
         .auth_url()
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
     Ok(url)
 }
 
 #[tauri::command]
-pub async fn drive_complete_auth(code: String) -> Result<(), String> {
+pub async fn drive_complete_auth(code: String) -> Result<(), TauriError> {
     crate::plugins::drive_plugin()
         .exchange_code(code)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))
 }
 
 #[tauri::command]
-pub async fn drive_save_credentials(id: String, secret: String) -> Result<(), String> {
+pub async fn drive_save_credentials(id: String, secret: String) -> Result<(), TauriError> {
     crate::plugins::drive_plugin()
         .save_credentials(id, secret)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))
 }
 
 #[tauri::command]
-pub async fn list_backup_files() -> Result<Vec<BackupFileInfo>, String> {
+pub async fn list_backup_files() -> Result<Vec<BackupFileInfo>, TauriError> {
     // Use the backups directory outside the project
     let backup_dir = match dirs::data_dir() {
         Some(data_dir) => data_dir.join("reStrikeVTA").join("backups"),
@@ -2425,7 +2425,7 @@ pub struct BackupFileInfo {
 }
 
 #[tauri::command]
-pub async fn drive_list_files() -> Result<serde_json::Value, String> {
+pub async fn drive_list_files() -> Result<serde_json::Value, TauriError> {
     log::info!("Listing Google Drive files");
     
     match crate::plugins::drive_plugin().list_files().await {
@@ -2441,7 +2441,7 @@ pub async fn drive_list_files() -> Result<serde_json::Value, String> {
 }
 
 #[tauri::command]
-pub async fn drive_upload_backup_archive() -> Result<serde_json::Value, String> {
+pub async fn drive_upload_backup_archive() -> Result<serde_json::Value, TauriError> {
     log::info!("=== DRIVE_UPLOAD_BACKUP_ARCHIVE COMMAND START ===");
     log::info!("Creating and uploading backup archive to Google Drive");
     
@@ -2483,7 +2483,7 @@ pub async fn drive_upload_backup_archive() -> Result<serde_json::Value, String> 
 }
 
 #[tauri::command]
-pub async fn drive_download_backup_archive(file_id: String) -> Result<serde_json::Value, String> {
+pub async fn drive_download_backup_archive(file_id: String) -> Result<serde_json::Value, TauriError> {
     log::info!("Downloading backup archive from Google Drive: {}", file_id);
     
     // Use the new download_backup_archive method
@@ -2500,7 +2500,7 @@ pub async fn drive_download_backup_archive(file_id: String) -> Result<serde_json
 }
 
 #[tauri::command]
-pub async fn drive_delete_backup_archive(file_id: String) -> Result<serde_json::Value, String> {
+pub async fn drive_delete_backup_archive(file_id: String) -> Result<serde_json::Value, TauriError> {
     log::info!("Deleting backup archive from Google Drive: {}", file_id);
     
     match crate::plugins::drive_plugin().delete_backup_archive(&file_id).await {
@@ -2516,7 +2516,7 @@ pub async fn drive_delete_backup_archive(file_id: String) -> Result<serde_json::
 }
 
 #[tauri::command]
-pub async fn drive_get_connection_status() -> Result<serde_json::Value, String> {
+pub async fn drive_get_connection_status() -> Result<serde_json::Value, TauriError> {
     log::info!("Checking Google Drive connection status");
     
     log::info!("About to call drive_plugin().is_connected()");
@@ -2558,7 +2558,7 @@ pub async fn drive_get_connection_status() -> Result<serde_json::Value, String> 
 }
 
 #[tauri::command]
-pub async fn drive_restore_from_archive(file_id: String) -> Result<serde_json::Value, String> {
+pub async fn drive_restore_from_archive(file_id: String) -> Result<serde_json::Value, TauriError> {
     log::info!("Restoring from Google Drive archive: {}", file_id);
     
     match crate::plugins::drive_plugin().restore_from_archive(&file_id).await {
@@ -2574,7 +2574,7 @@ pub async fn drive_restore_from_archive(file_id: String) -> Result<serde_json::V
 }
 
 #[tauri::command]
-pub async fn drive_test_connection() -> Result<serde_json::Value, String> {
+pub async fn drive_test_connection() -> Result<serde_json::Value, TauriError> {
     log::info!("Testing Google Drive connection");
     
     // First check if connected
@@ -2608,7 +2608,7 @@ pub async fn drive_test_connection() -> Result<serde_json::Value, String> {
 }
 
 #[tauri::command]
-pub async fn drive_list_all_files() -> Result<serde_json::Value, String> {
+pub async fn drive_list_all_files() -> Result<serde_json::Value, TauriError> {
     log::info!("Listing all Google Drive files");
     
     match crate::plugins::drive_plugin().list_all_files().await {
@@ -2624,7 +2624,7 @@ pub async fn drive_list_all_files() -> Result<serde_json::Value, String> {
 }
 
 #[tauri::command]
-pub async fn get_flag_mappings_data(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+pub async fn get_flag_mappings_data(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting flag mappings data");
     
     let conn = match app.database_plugin().get_connection().await {
@@ -2672,10 +2672,10 @@ pub async fn get_flag_mappings_data(app: State<'_, Arc<App>>) -> Result<serde_js
                     "created_at": row.get::<_, String>(5)?,
                     "updated_at": row.get::<_, String>(6)?
                 }))
-            }).map_err(|e| format!("Failed to query flag mappings: {}", e))?;
+            }).map_err(|e| TauriError::from(anyhow::anyhow!("Failed to query flag mappings: {}", e)))?;
             
             for row in rows {
-                let mapping = row.map_err(|e| format!("Failed to get mapping data: {}", e))?;
+                let mapping = row.map_err(|e| TauriError::from(anyhow::anyhow!("Failed to get mapping data: {}", e)))?;
                 mapping_data.push(mapping);
             }
             mapping_data
@@ -2695,7 +2695,7 @@ pub async fn get_flag_mappings_data(app: State<'_, Arc<App>>) -> Result<serde_js
 }
 
 #[tauri::command]
-pub async fn scan_and_populate_flags(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+pub async fn scan_and_populate_flags(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Scanning and populating flags table");
     
     let conn = match app.database_plugin().get_connection().await {
@@ -2839,7 +2839,7 @@ pub async fn scan_and_populate_flags(app: State<'_, Arc<App>>) -> Result<serde_j
 }
 
 #[tauri::command]
-pub async fn get_flags_data(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+pub async fn get_flags_data(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting flags data");
     
     let conn = match app.database_plugin().get_connection().await {
@@ -2870,10 +2870,10 @@ pub async fn get_flags_data(app: State<'_, Arc<App>>) -> Result<serde_json::Valu
                     "file_path": row.get::<_, String>(9)?,
                     "is_recognized": row.get::<_, bool>(10)?
                 }))
-            }).map_err(|e| format!("Failed to query flags: {}", e))?;
+            }).map_err(|e| TauriError::from(anyhow::anyhow!("Failed to query flags: {}", e)))?;
             
             for row in rows {
-                let flag = row.map_err(|e| format!("Failed to get flag data: {}", e))?;
+                let flag = row.map_err(|e| TauriError::from(anyhow::anyhow!("Failed to get flag data: {}", e)))?;
                 flag_data.push(flag);
             }
             flag_data
@@ -2890,10 +2890,10 @@ pub async fn get_flags_data(app: State<'_, Arc<App>>) -> Result<serde_json::Valu
             let mut stats_map = std::collections::HashMap::new();
             let rows = stmt.query_map([], |row| {
                 Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))
-            }).map_err(|e| format!("Failed to query flag statistics: {}", e))?;
+            }).map_err(|e| TauriError::from(anyhow::anyhow!("Failed to query flag statistics: {}", e)))?;
             
             for row in rows {
-                let (status, count) = row.map_err(|e| format!("Failed to get stats: {}", e))?;
+                let (status, count) = row.map_err(|e| TauriError::from(anyhow::anyhow!("Failed to get stats: {}", e)))?;
                 stats_map.insert(status, count);
             }
             stats_map
@@ -2915,7 +2915,7 @@ pub async fn get_flags_data(app: State<'_, Arc<App>>) -> Result<serde_json::Valu
 }
 
 #[tauri::command]
-pub async fn clear_flags_table(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+pub async fn clear_flags_table(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Clearing flags table");
     
     let conn = match app.database_plugin().get_connection().await {
@@ -2947,7 +2947,7 @@ pub async fn clear_flags_table(app: State<'_, Arc<App>>) -> Result<serde_json::V
 #[tauri::command]
 pub async fn create_complete_log_archive(
     app: State<'_, Arc<App>>,
-) -> Result<serde_json::Value, String> {
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Creating complete log archive");
     
     let log_manager = app.log_manager().lock().await;
@@ -2971,7 +2971,7 @@ pub async fn create_complete_log_archive(
 #[tauri::command]
 pub async fn create_and_upload_log_archive(
     app: State<'_, Arc<App>>,
-) -> Result<serde_json::Value, String> {
+) -> Result<serde_json::Value, TauriError> {
     log::info!("=== CREATE_AND_UPLOAD_LOG_ARCHIVE COMMAND START ===");
     
     // Add comprehensive error logging to app.log
@@ -3016,7 +3016,7 @@ pub async fn create_and_upload_log_archive(
 #[tauri::command]
 pub async fn create_upload_and_cleanup_log_archive(
     app: State<'_, Arc<App>>,
-) -> Result<serde_json::Value, String> {
+) -> Result<serde_json::Value, TauriError> {
     log::info!("=== CREATE_UPLOAD_AND_CLEANUP_LOG_ARCHIVE COMMAND START ===");
     
     // Add comprehensive error logging to app.log
@@ -3061,7 +3061,7 @@ pub async fn create_upload_and_cleanup_log_archive(
 #[tauri::command]
 pub async fn get_auto_archive_config(
     _app: State<'_, Arc<App>>,
-) -> Result<serde_json::Value, String> {
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting auto-archive configuration");
     
     // For now, return a default config. In a real implementation, 
@@ -3084,7 +3084,7 @@ pub async fn get_auto_archive_config(
 pub async fn set_auto_archive_config(
     config: AutoArchiveConfig,
     _app: State<'_, Arc<App>>,
-) -> Result<serde_json::Value, String> {
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Setting auto-archive configuration: enabled={}, schedule={:?}", 
                config.enabled, config.schedule);
     
@@ -3101,7 +3101,7 @@ pub async fn set_auto_archive_config(
 pub async fn check_auto_archive_status(
     config: AutoArchiveConfig,
     app: State<'_, Arc<App>>,
-) -> Result<serde_json::Value, String> {
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Checking auto-archive status");
     
     let log_manager = app.log_manager().lock().await;
@@ -3123,7 +3123,7 @@ pub async fn check_auto_archive_status(
 pub async fn perform_auto_archive(
     mut config: AutoArchiveConfig,
     app: State<'_, Arc<App>>,
-) -> Result<serde_json::Value, String> {
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Performing auto-archive");
     
     let log_manager = app.log_manager().lock().await;
@@ -3144,7 +3144,7 @@ pub async fn perform_auto_archive(
 pub async fn delete_log_archive(
     archive_name: String,
     app: State<'_, Arc<App>>,
-) -> Result<serde_json::Value, String> {
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Deleting log archive: {}", archive_name);
     
     let log_manager = app.log_manager().lock().await;
@@ -3162,7 +3162,7 @@ pub async fn delete_log_archive(
 
 // WebSocket commands for HTML overlays
 #[tauri::command]
-pub async fn websocket_get_status(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+pub async fn websocket_get_status(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting WebSocket server status");
     
     let websocket_plugin = app.websocket_plugin().lock().await;
@@ -3175,7 +3175,7 @@ pub async fn websocket_get_status(app: State<'_, Arc<App>>) -> Result<serde_json
 pub async fn websocket_broadcast_pss_event(
     event_data: serde_json::Value,
     app: State<'_, Arc<App>>,
-) -> Result<serde_json::Value, String> {
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Broadcasting PSS event via WebSocket: {:?}", event_data);
     
     let websocket_plugin = app.websocket_plugin().lock().await;
@@ -3202,7 +3202,7 @@ pub async fn tournament_create(
     country_code: Option<String>,
     start_date: Option<String>,
     app: State<'_, Arc<App>>,
-) -> Result<serde_json::Value, String> {
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Creating tournament: {} in {}, {}", name, city, country);
     
     let start_date_parsed = if let Some(date_str) = start_date {
@@ -3211,7 +3211,7 @@ pub async fn tournament_create(
         } else {
             Some(chrono::DateTime::parse_from_rfc3339(&date_str)
                 .map(|dt| dt.with_timezone(&chrono::Utc))
-                .map_err(|e| format!("Invalid start date format '{}': {}", date_str, e))?)
+                .map_err(|e| TauriError::from(anyhow::anyhow!("Invalid start date format '{}': {}", date_str, e)))?)
         }
     } else {
         None
@@ -3238,7 +3238,7 @@ pub async fn tournament_create(
 }
 
 #[tauri::command]
-pub async fn tournament_get_all(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+pub async fn tournament_get_all(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting all tournaments");
     
     match app.tournament_plugin().get_tournaments().await {
@@ -3277,7 +3277,7 @@ pub async fn tournament_get_all(app: State<'_, Arc<App>>) -> Result<serde_json::
 pub async fn tournament_get(
     tournament_id: i64,
     app: State<'_, Arc<App>>,
-) -> Result<serde_json::Value, String> {
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting tournament: {}", tournament_id);
     
     match app.tournament_plugin().get_tournament(tournament_id).await {
@@ -3326,7 +3326,7 @@ pub async fn tournament_update(
     start_date: Option<String>,
     end_date: Option<String>,
     app: State<'_, Arc<App>>,
-) -> Result<serde_json::Value, String> {
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Updating tournament: {}", tournament_id);
     
     let start_date_parsed = if let Some(date_str) = start_date {
@@ -3335,7 +3335,7 @@ pub async fn tournament_update(
         } else {
             Some(chrono::DateTime::parse_from_rfc3339(&date_str)
                 .map(|dt| dt.with_timezone(&chrono::Utc))
-                .map_err(|e| format!("Invalid start date format '{}': {}", date_str, e))?)
+                .map_err(|e| TauriError::from(anyhow::anyhow!("Invalid start date format '{}': {}", date_str, e)))?)
         }
     } else {
         None
@@ -3347,7 +3347,7 @@ pub async fn tournament_update(
         } else {
             Some(chrono::DateTime::parse_from_rfc3339(&date_str)
                 .map(|dt| dt.with_timezone(&chrono::Utc))
-                .map_err(|e| format!("Invalid end date format '{}': {}", date_str, e))?)
+                .map_err(|e| TauriError::from(anyhow::anyhow!("Invalid end date format '{}': {}", date_str, e)))?)
         }
     } else {
         None
@@ -3384,7 +3384,7 @@ pub async fn tournament_update(
 pub async fn tournament_delete(
     tournament_id: i64,
     app: State<'_, Arc<App>>,
-) -> Result<serde_json::Value, String> {
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Deleting tournament: {}", tournament_id);
     
     match app.tournament_plugin().delete_tournament(tournament_id).await {
@@ -3403,7 +3403,7 @@ pub async fn tournament_delete(
 pub async fn tournament_get_days(
     tournament_id: i64,
     app: State<'_, Arc<App>>,
-) -> Result<serde_json::Value, String> {
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting tournament days for tournament: {}", tournament_id);
     
     match app.tournament_plugin().get_tournament_days(tournament_id).await {
@@ -3439,7 +3439,7 @@ pub async fn tournament_get_days(
 pub async fn tournament_start_day(
     tournament_day_id: i64,
     app: State<'_, Arc<App>>,
-) -> Result<serde_json::Value, String> {
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Starting tournament day: {}", tournament_day_id);
     
     match app.tournament_plugin().start_tournament_day(tournament_day_id).await {
@@ -3458,7 +3458,7 @@ pub async fn tournament_start_day(
 pub async fn tournament_end_day(
     tournament_day_id: i64,
     app: State<'_, Arc<App>>,
-) -> Result<serde_json::Value, String> {
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Ending tournament day: {}", tournament_day_id);
     
     match app.tournament_plugin().end_tournament_day(tournament_day_id).await {
@@ -3474,7 +3474,7 @@ pub async fn tournament_end_day(
 }
 
 #[tauri::command]
-pub async fn tournament_get_active(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+pub async fn tournament_get_active(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting active tournament");
     
     match app.tournament_plugin().get_active_tournament().await {
@@ -3514,7 +3514,7 @@ pub async fn tournament_get_active(app: State<'_, Arc<App>>) -> Result<serde_jso
 pub async fn tournament_get_active_day(
     tournament_id: i64,
     app: State<'_, Arc<App>>,
-) -> Result<serde_json::Value, String> {
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting active tournament day for tournament: {}", tournament_id);
     
     match app.tournament_plugin().get_active_tournament_day(tournament_id).await {
@@ -3552,7 +3552,7 @@ pub async fn tournament_update_logo(
     tournament_id: i64,
     logo_path: String,
     app: State<'_, Arc<App>>,
-) -> Result<serde_json::Value, String> {
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Updating tournament logo for tournament: {}", tournament_id);
     
     match app.tournament_plugin().update_tournament_logo(tournament_id, logo_path).await {
@@ -3572,7 +3572,7 @@ pub async fn tournament_verify_location(
     city: String,
     country: String,
     app: State<'_, Arc<App>>,
-) -> Result<serde_json::Value, String> {
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Verifying location: {}, {}", city, country);
     
     match app.tournament_plugin().verify_city_country(city, country).await {
@@ -3593,7 +3593,7 @@ pub async fn tournament_verify_location(
 pub async fn get_tournament_statistics(
     tournament_id: i64,
     app: State<'_, Arc<App>>,
-) -> Result<serde_json::Value, String> {
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting tournament statistics for tournament: {}", tournament_id);
     
     match app.tournament_plugin().get_tournament_statistics(tournament_id).await {
@@ -3610,7 +3610,7 @@ pub async fn get_tournament_statistics(
 
 // Database optimization commands
 #[tauri::command]
-pub async fn database_run_vacuum(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+pub async fn database_run_vacuum(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Running database VACUUM operation");
     
     let db_conn = app.database_plugin().get_database_connection();
@@ -3634,7 +3634,7 @@ pub async fn database_run_vacuum(app: State<'_, Arc<App>>) -> Result<serde_json:
 }
 
 #[tauri::command]
-pub async fn database_run_integrity_check(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+pub async fn database_run_integrity_check(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Running database integrity check");
     
     let db_conn = app.database_plugin().get_database_connection();
@@ -3667,7 +3667,7 @@ pub async fn database_run_integrity_check(app: State<'_, Arc<App>>) -> Result<se
 }
 
 #[tauri::command]
-pub async fn database_run_analyze(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+pub async fn database_run_analyze(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Running database ANALYZE operation");
     
     let db_conn = app.database_plugin().get_database_connection();
@@ -3691,7 +3691,7 @@ pub async fn database_run_analyze(app: State<'_, Arc<App>>) -> Result<serde_json
 }
 
 #[tauri::command]
-pub async fn database_run_optimize(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+pub async fn database_run_optimize(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Running database OPTIMIZE operation");
     
     let db_conn = app.database_plugin().get_database_connection();
@@ -3715,7 +3715,7 @@ pub async fn database_run_optimize(app: State<'_, Arc<App>>) -> Result<serde_jso
 }
 
 #[tauri::command]
-pub async fn database_run_full_maintenance(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+pub async fn database_run_full_maintenance(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Running full database maintenance");
     
     let db_conn = app.database_plugin().get_database_connection();
@@ -3746,7 +3746,7 @@ pub async fn database_run_full_maintenance(app: State<'_, Arc<App>>) -> Result<s
 }
 
 #[tauri::command]
-pub async fn database_get_info(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+pub async fn database_get_info(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting database information");
     
     let db_conn = app.database_plugin().get_database_connection();
@@ -3781,7 +3781,7 @@ pub async fn database_get_info(app: State<'_, Arc<App>>) -> Result<serde_json::V
 }
 
 #[tauri::command]
-pub async fn database_get_maintenance_status(_app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+pub async fn database_get_maintenance_status(_app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting database maintenance status");
     
     let maintenance = crate::database::DatabaseMaintenance::new_default();
@@ -3825,14 +3825,14 @@ pub async fn database_get_maintenance_status(_app: State<'_, Arc<App>>) -> Resul
 pub async fn get_comprehensive_event_statistics(
     session_id: i64,
     app: State<'_, Arc<App>>,
-) -> Result<serde_json::Value, String> {
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting comprehensive event statistics for session {}", session_id);
     
     match app.database_plugin().get_comprehensive_event_statistics(session_id).await {
         Ok(stats) => Ok(stats),
         Err(e) => {
             log::error!("Failed to get comprehensive event statistics: {}", e);
-            Err(format!("Failed to get event statistics: {}", e))
+            Err(TauriError::from(anyhow::anyhow!("Failed to get event statistics: {}", e)))
         }
     }
 }
@@ -3844,7 +3844,7 @@ pub async fn get_events_by_status(
     recognition_status: String,
     limit: Option<i64>,
     app: State<'_, Arc<App>>,
-) -> Result<serde_json::Value, String> {
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting events by status: {} for session {}", recognition_status, session_id);
     
     match app.database_plugin().get_events_by_status(session_id, &recognition_status, limit).await {
@@ -3860,7 +3860,7 @@ pub async fn get_events_by_status(
         }
         Err(e) => {
             log::error!("Failed to get events by status: {}", e);
-            Err(format!("Failed to get events by status: {}", e))
+            Err(TauriError::from(anyhow::anyhow!("Failed to get events by status: {}", e)))
         }
     }
 }
@@ -3871,7 +3871,7 @@ pub async fn get_unknown_events(
     session_id: Option<i64>,
     limit: Option<i64>,
     app: State<'_, Arc<App>>,
-) -> Result<serde_json::Value, String> {
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting unknown events");
     
     match app.database_plugin().get_unknown_events(session_id, limit).await {
@@ -3887,7 +3887,46 @@ pub async fn get_unknown_events(
         }
         Err(e) => {
             log::error!("Failed to get unknown events: {}", e);
-            Err(format!("Failed to get unknown events: {}", e))
+            Err(TauriError::from(anyhow::anyhow!("Failed to get unknown events: {}", e)))
         }
     }
 }
+
+/// Set tournament context for UDP event tracking
+#[tauri::command]
+pub async fn set_udp_tournament_context(
+    app: tauri::State<'_, crate::core::app::App>,
+    tournament_id: Option<i64>,
+    tournament_day_id: Option<i64>,
+) -> Result<(), TauriError> {
+    log::info!("Setting UDP tournament context: tournament_id={:?}, tournament_day_id={:?}", tournament_id, tournament_day_id);
+    
+    app.udp_plugin().set_tournament_context(tournament_id, tournament_day_id).await
+        .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))
+}
+
+/// Get current tournament context from UDP server
+#[tauri::command]
+pub async fn get_udp_tournament_context(
+    app: tauri::State<'_, crate::core::app::App>,
+) -> Result<serde_json::Value, TauriError> {
+    let (tournament_id, tournament_day_id) = app.udp_plugin().get_tournament_context();
+    
+    Ok(serde_json::json!({
+        "tournament_id": tournament_id,
+        "tournament_day_id": tournament_day_id
+    }))
+}
+
+/// Clear tournament context from UDP server
+#[tauri::command]
+pub async fn clear_udp_tournament_context(
+    app: tauri::State<'_, crate::core::app::App>,
+) -> Result<(), TauriError> {
+    log::info!("Clearing UDP tournament context");
+    
+    app.udp_plugin().clear_tournament_context().await
+        .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))
+}
+
+

@@ -240,6 +240,11 @@ async fn main() -> AppResult<()> {
             tauri_commands::get_events_by_status,
             tauri_commands::get_unknown_events,
             
+            // Tournament Context Management commands
+            tauri_commands::set_udp_tournament_context,
+            tauri_commands::get_udp_tournament_context,
+            tauri_commands::clear_udp_tournament_context,
+            
             // Flag management commands
             tauri_commands::scan_and_populate_flags,
             tauri_commands::get_flags_data,

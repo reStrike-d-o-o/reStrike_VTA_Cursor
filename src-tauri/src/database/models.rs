@@ -944,6 +944,9 @@ pub struct PssEventV2 {
     pub protocol_version: Option<String>,
     pub parser_confidence: Option<f64>,
     pub validation_errors: Option<String>,
+    // Tournament context fields
+    pub tournament_id: Option<i64>,
+    pub tournament_day_id: Option<i64>,
     pub created_at: DateTime<Utc>,
 }
 
@@ -972,6 +975,8 @@ impl PssEventV2 {
             protocol_version: Some("2.3".to_string()),
             parser_confidence: Some(1.0),
             validation_errors: None,
+            tournament_id: None,
+            tournament_day_id: None,
             created_at: Utc::now(),
         }
     }
@@ -996,6 +1001,8 @@ impl PssEventV2 {
             protocol_version: row.get("protocol_version")?,
             parser_confidence: row.get("parser_confidence")?,
             validation_errors: row.get("validation_errors")?,
+            tournament_id: row.get("tournament_id")?,
+            tournament_day_id: row.get("tournament_day_id")?,
             created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
                 .map_err(|_| rusqlite::Error::InvalidColumnType(0, "created_at".to_string(), rusqlite::types::Type::Text))?
                 .with_timezone(&Utc),
