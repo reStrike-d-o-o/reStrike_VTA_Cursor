@@ -57,12 +57,17 @@ export const useTriggersStore = create<TriggersStore>((set, get) => ({
   async fetchData(tournamentId?: number, dayId?: number) {
     set({ loading: true, dirty: false });
     try {
-      const [events, scenes, overlays, triggers] = await Promise.all([
+      const defaultEvents = ['pre','rdy','rnd','sup','wrd','wmh'];
+      const [eventsResp, scenesResp, overlaysResp, triggersResp] = await Promise.all([
         invoke<string[]>('triggers_list_pss_events'),
         invoke<ObsScene[]>('triggers_list_obs_scenes'),
         invoke<OverlayTemplate[]>('triggers_list_active_overlays'),
         invoke<TriggerRow[]>('triggers_get', { tournamentId, dayId }),
       ]);
+      const events = Array.isArray(eventsResp) && eventsResp.length ? eventsResp : defaultEvents;
+      const scenes = Array.isArray(scenesResp) ? scenesResp : [];
+      const overlays = Array.isArray(overlaysResp) ? overlaysResp : [];
+      const triggers = Array.isArray(triggersResp) ? triggersResp : [];
       set({ events, scenes, overlays, triggers, loading: false });
     } catch (err) {
       console.error(err);
