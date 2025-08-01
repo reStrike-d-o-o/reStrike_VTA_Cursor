@@ -1923,3 +1923,243 @@ impl PssEventOperations {
         Ok(())
     }
 } 
+
+/// Phase 2 Optimization: Data Archival Strategy
+/// Manages automatic archival of old events to improve performance
+pub struct DataArchivalOperations;
+
+impl DataArchivalOperations {
+    /// Archive events older than specified days
+    pub fn archive_old_events(conn: &mut rusqlite::Connection, days_old: i64) -> DatabaseResult<usize> {
+        let start_time = std::time::Instant::now();
+        
+        // Create archive table if it doesn't exist
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS pss_events_v2_archive (
+                id INTEGER PRIMARY KEY,
+                session_id INTEGER NOT NULL,
+                match_id INTEGER,
+                event_type_id INTEGER NOT NULL,
+                event_code TEXT NOT NULL,
+                event_data TEXT,
+                raw_data TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                tournament_id INTEGER,
+                tournament_day_id INTEGER,
+                recognition_status TEXT DEFAULT 'recognized',
+                protocol_version TEXT DEFAULT '2.3',
+                parser_confidence INTEGER DEFAULT 100,
+                validation_errors TEXT,
+                processing_time_ms INTEGER
+            )",
+            [],
+        )?;
+
+        // Create indices for archive table
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_archive_session_id ON pss_events_v2_archive(session_id)",
+            [],
+        )?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_archive_created_at ON pss_events_v2_archive(created_at)",
+            [],
+        )?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_archive_tournament ON pss_events_v2_archive(tournament_id, tournament_day_id)",
+            [],
+        )?;
+
+        // Archive events older than specified days
+        let archived_count = conn.execute(
+            "INSERT INTO pss_events_v2_archive 
+             SELECT * FROM pss_events_v2 
+             WHERE created_at < datetime('now', '-{} days')",
+            [days_old],
+        )?;
+
+        // Delete archived events from main table
+        let deleted_count = conn.execute(
+            "DELETE FROM pss_events_v2 
+             WHERE created_at < datetime('now', '-{} days')",
+            [days_old],
+        )?;
+
+        // Archive related event details
+        let archived_details = conn.execute(
+            "INSERT INTO pss_event_details_archive 
+             SELECT * FROM pss_event_details 
+             WHERE event_id IN (
+                 SELECT id FROM pss_events_v2_archive 
+                 WHERE created_at < datetime('now', '-{} days')
+             )",
+            [days_old],
+        )?;
+
+        // Delete archived event details from main table
+        let deleted_details = conn.execute(
+            "DELETE FROM pss_event_details 
+             WHERE event_id IN (
+                 SELECT id FROM pss_events_v2_archive 
+                 WHERE created_at < datetime('now', '-{} days')
+             )",
+            [days_old],
+        )?;
+
+        let duration = start_time.elapsed();
+        log::info!(
+            "📦 Archived {} events and {} details in {:?} (deleted {} events and {} details)",
+            archived_count,
+            archived_details,
+            duration,
+            deleted_count,
+            deleted_details
+        );
+
+        Ok(archived_count)
+    }
+
+    /// Get archive statistics
+    pub fn get_archive_statistics(conn: &rusqlite::Connection) -> DatabaseResult<ArchiveStatistics> {
+        let archived_events = conn.query_row(
+            "SELECT COUNT(*) FROM pss_events_v2_archive",
+            [],
+            |row| row.get(0),
+        )?;
+
+        let archived_details = conn.query_row(
+            "SELECT COUNT(*) FROM pss_event_details_archive",
+            [],
+            |row| row.get(0),
+        )?;
+
+        let oldest_archived = conn.query_row(
+            "SELECT MIN(created_at) FROM pss_events_v2_archive",
+            [],
+            |row| row.get::<_, Option<String>>(0),
+        )?;
+
+        let newest_archived = conn.query_row(
+            "SELECT MAX(created_at) FROM pss_events_v2_archive",
+            [],
+            |row| row.get::<_, Option<String>>(0),
+        )?;
+
+        let archive_size = conn.query_row(
+            "SELECT SUM(length(raw_data)) FROM pss_events_v2_archive",
+            [],
+            |row| row.get::<_, Option<i64>>(0),
+        )?;
+
+        Ok(ArchiveStatistics {
+            archived_events,
+            archived_details,
+            oldest_archived,
+            newest_archived,
+            archive_size_bytes: archive_size.unwrap_or(0),
+        })
+    }
+
+    /// Restore events from archive (for data recovery)
+    pub fn restore_from_archive(
+        conn: &mut rusqlite::Connection,
+        start_date: &str,
+        end_date: &str,
+    ) -> DatabaseResult<usize> {
+        let start_time = std::time::Instant::now();
+
+        // Restore events from archive
+        let restored_events = conn.execute(
+            "INSERT INTO pss_events_v2 
+             SELECT * FROM pss_events_v2_archive 
+             WHERE created_at BETWEEN ? AND ?",
+            [start_date, end_date],
+        )?;
+
+        // Restore event details
+        let restored_details = conn.execute(
+            "INSERT INTO pss_event_details 
+             SELECT * FROM pss_event_details_archive 
+             WHERE event_id IN (
+                 SELECT id FROM pss_events_v2 
+                 WHERE created_at BETWEEN ? AND ?
+             )",
+            [start_date, end_date],
+        )?;
+
+        // Remove restored events from archive
+        let removed_from_archive = conn.execute(
+            "DELETE FROM pss_events_v2_archive 
+             WHERE created_at BETWEEN ? AND ?",
+            [start_date, end_date],
+        )?;
+
+        let duration = start_time.elapsed();
+        log::info!(
+            "🔄 Restored {} events and {} details from archive in {:?}",
+            restored_events,
+            restored_details,
+            duration
+        );
+
+        Ok(restored_events)
+    }
+
+    /// Clean up old archive data (permanent deletion)
+    pub fn cleanup_old_archive_data(conn: &mut rusqlite::Connection, days_old: i64) -> DatabaseResult<usize> {
+        let start_time = std::time::Instant::now();
+
+        // Delete old archived events
+        let deleted_events = conn.execute(
+            "DELETE FROM pss_events_v2_archive 
+             WHERE created_at < datetime('now', '-{} days')",
+            [days_old],
+        )?;
+
+        // Delete old archived event details
+        let deleted_details = conn.execute(
+            "DELETE FROM pss_event_details_archive 
+             WHERE event_id NOT IN (SELECT id FROM pss_events_v2_archive)",
+            [],
+        )?;
+
+        let duration = start_time.elapsed();
+        log::info!(
+            "🗑️ Cleaned up {} archived events and {} details in {:?}",
+            deleted_events,
+            deleted_details,
+            duration
+        );
+
+        Ok(deleted_events)
+    }
+
+    /// Optimize archive tables
+    pub fn optimize_archive_tables(conn: &mut rusqlite::Connection) -> DatabaseResult<()> {
+        log::info!("🔧 Optimizing archive tables...");
+
+        // VACUUM archive tables
+        conn.execute("VACUUM pss_events_v2_archive", [])?;
+        conn.execute("VACUUM pss_event_details_archive", [])?;
+
+        // Analyze tables for better query planning
+        conn.execute("ANALYZE pss_events_v2_archive", [])?;
+        conn.execute("ANALYZE pss_event_details_archive", [])?;
+
+        // Optimize indices
+        conn.execute("REINDEX pss_events_v2_archive", [])?;
+        conn.execute("REINDEX pss_event_details_archive", [])?;
+
+        log::info!("✅ Archive tables optimized successfully");
+        Ok(())
+    }
+}
+
+/// Archive statistics for monitoring
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct ArchiveStatistics {
+    pub archived_events: i64,
+    pub archived_details: i64,
+    pub oldest_archived: Option<String>,
+    pub newest_archived: Option<String>,
+    pub archive_size_bytes: i64,
+} 

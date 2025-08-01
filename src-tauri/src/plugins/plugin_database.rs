@@ -1,6 +1,9 @@
 use crate::types::AppResult;
 use crate::database::{
-    DatabaseConnection,
+    connection::{DatabaseConnection, DatabaseConnectionPool, PooledConnection},
+    models::*,
+    operations::*,
+    DatabaseError, DatabaseResult,
     UiSettingsOperations,
     MigrationStrategy,
     MigrationResult,
@@ -11,17 +14,21 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use std::path::Path;
 
-/// Database plugin for managing UI settings and migrations
-#[derive(Clone)]
+/// Phase 2 Optimization: Enhanced Database Plugin with Connection Pooling
 pub struct DatabasePlugin {
+    connection_pool: Arc<DatabaseConnectionPool>,
     connection: Arc<DatabaseConnection>,
     migration_strategy: MigrationStrategy,
     hybrid_provider: Arc<Mutex<HybridSettingsProvider>>,
 }
 
 impl DatabasePlugin {
+    /// Create a new database plugin with connection pooling
     pub fn new() -> AppResult<Self> {
         let connection = Arc::new(DatabaseConnection::new()?);
+        
+        // Phase 2: Initialize connection pool with 10 connections for high-volume operations
+        let connection_pool = Arc::new(DatabaseConnectionPool::new(10));
         
         // Initialize config manager with default config directory
         let config_dir = Path::new("config");
@@ -31,6 +38,7 @@ impl DatabasePlugin {
         let hybrid_provider = Arc::new(Mutex::new(HybridSettingsProvider::new(config_manager.clone())));
 
         let plugin = Self {
+            connection_pool,
             connection,
             migration_strategy,
             hybrid_provider,
@@ -45,6 +53,23 @@ impl DatabasePlugin {
         });
 
         Ok(plugin)
+    }
+
+    /// Get a pooled connection for high-performance operations
+    pub fn get_pooled_connection(&self) -> Result<PooledConnection, DatabaseError> {
+        self.connection_pool
+            .get_connection()
+            .map_err(|e| DatabaseError::ConnectionError(e.to_string()))
+    }
+
+    /// Get pool statistics for monitoring
+    pub fn get_pool_stats(&self) -> crate::database::connection::PoolStats {
+        self.connection_pool.get_pool_stats()
+    }
+
+    /// Clean up old connections in the pool
+    pub fn cleanup_pool(&self) {
+        self.connection_pool.cleanup_old_connections();
     }
 
     /// Initialize UI settings in database
@@ -555,6 +580,48 @@ impl DatabasePlugin {
             .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
         crate::database::operations::PssEventStatusOperations::get_comprehensive_event_statistics(&*conn, session_id)
             .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get comprehensive event statistics: {}", e)))
+    }
+
+    // Phase 2: Data Archival Operations
+
+    /// Archive events older than specified days
+    pub async fn archive_old_events(&self, days_old: i64) -> AppResult<usize> {
+        let mut conn = self.connection.get_connection().await
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
+        crate::database::operations::DataArchivalOperations::archive_old_events(&mut *conn, days_old)
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to archive old events: {}", e)))
+    }
+
+    /// Get archive statistics
+    pub async fn get_archive_statistics(&self) -> AppResult<crate::database::operations::ArchiveStatistics> {
+        let conn = self.connection.get_connection().await
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
+        crate::database::operations::DataArchivalOperations::get_archive_statistics(&*conn)
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get archive statistics: {}", e)))
+    }
+
+    /// Restore events from archive
+    pub async fn restore_from_archive(&self, start_date: &str, end_date: &str) -> AppResult<usize> {
+        let mut conn = self.connection.get_connection().await
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
+        crate::database::operations::DataArchivalOperations::restore_from_archive(&mut *conn, start_date, end_date)
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to restore from archive: {}", e)))
+    }
+
+    /// Clean up old archive data
+    pub async fn cleanup_old_archive_data(&self, days_old: i64) -> AppResult<usize> {
+        let mut conn = self.connection.get_connection().await
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
+        crate::database::operations::DataArchivalOperations::cleanup_old_archive_data(&mut *conn, days_old)
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to cleanup archive data: {}", e)))
+    }
+
+    /// Optimize archive tables
+    pub async fn optimize_archive_tables(&self) -> AppResult<()> {
+        let mut conn = self.connection.get_connection().await
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
+        crate::database::operations::DataArchivalOperations::optimize_archive_tables(&mut *conn)
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to optimize archive tables: {}", e)))
     }
 
     /// Internal method to run database migrations
