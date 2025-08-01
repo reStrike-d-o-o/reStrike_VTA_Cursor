@@ -41,7 +41,7 @@ pub async fn start_udp_server(app: State<'_, Arc<App>>) -> Result<(), String> {
 #[tauri::command]
 pub async fn stop_udp_server(app: State<'_, Arc<App>>) -> Result<(), String> {
     log::info!("Stopping UDP server");
-    app.udp_plugin().stop().map_err(|e| e.to_string())?;
+    app.udp_plugin().stop().await.map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -56,6 +56,26 @@ pub async fn get_udp_status(app: State<'_, Arc<App>>) -> Result<String, String> 
         crate::plugins::plugin_udp::UdpServerStatus::Error(e) => return Err(e),
     };
     Ok(status_str.to_string())
+}
+
+#[tauri::command]
+pub async fn update_udp_settings(settings: serde_json::Value, app: State<'_, Arc<App>>) -> Result<(), String> {
+    log::info!("Updating UDP settings: {:?}", settings);
+    
+    // Update the app configuration
+    app.config_manager().update_udp_settings_from_json(settings).await
+        .map_err(|e| e.to_string())?;
+    
+    // If UDP server is running, restart it with new settings
+    let status = app.udp_plugin().get_status();
+    if matches!(status, crate::plugins::plugin_udp::UdpServerStatus::Running) {
+        log::info!("UDP server is running, restarting with new settings");
+        app.udp_plugin().stop().await.map_err(|e| e.to_string())?;
+        let config = app.config_manager().get_config().await;
+        app.udp_plugin().start(&config).await.map_err(|e| e.to_string())?;
+    }
+    
+    Ok(())
 }
 
 // OBS commands - Fixed names to match frontend expectations
@@ -536,12 +556,24 @@ pub async fn download_flags(_app: State<'_, Arc<App>>) -> Result<(), String> {
 #[tauri::command]
 pub async fn pss_start_listener(port: u16, app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
     log::info!("PSS start listener called on port: {}", port);
-            let config = app.config_manager().get_config().await;
-        match app.udp_plugin().start(&config).await {
-        Ok(_) => Ok(serde_json::json!({
-            "success": true,
-            "message": "PSS listener started"
-        })),
+    
+    // Update the UDP server configuration with the new port
+    let mut config = app.config_manager().get_config().await;
+    config.udp.listener.port = port;
+    
+    // Update the UDP plugin's internal configuration
+    app.udp_plugin().update_config(port, "127.0.0.1".to_string()).await;
+    
+    match app.udp_plugin().start(&config).await {
+        Ok(_) => {
+            // Start UDP event handler when UDP server starts
+            app.inner().start_udp_event_handler().await;
+            
+            Ok(serde_json::json!({
+                "success": true,
+                "message": format!("PSS listener started on port {} with event handler", port)
+            }))
+        },
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": e.to_string()
@@ -552,7 +584,7 @@ pub async fn pss_start_listener(port: u16, app: State<'_, Arc<App>>) -> Result<s
 #[tauri::command]
 pub async fn pss_stop_listener(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
     log::info!("PSS stop listener called");
-    match app.udp_plugin().stop() {
+    match app.udp_plugin().stop().await {
         Ok(_) => Ok(serde_json::json!({
             "success": true,
             "message": "PSS listener stopped"
@@ -602,7 +634,7 @@ pub async fn pss_get_events(app: State<'_, Arc<App>>) -> Result<Vec<serde_json::
                     "type": "clock",
                     "time": time,
                     "action": action,
-                    "description": format!("Clock: {} {:?}", time, action.unwrap_or_default())
+                    "description": format!("Clock: {} {:?}", time, action.as_ref().unwrap_or(&String::new()))
                 })
             }
             crate::plugins::plugin_udp::PssEvent::Round { current_round } => {
@@ -1466,16 +1498,77 @@ pub async fn get_best_network_interface() -> Result<serde_json::Value, String> {
             "error": e.to_string()
         }))
     }
+}
+
+/// Get the best IP address for a specific interface
+#[tauri::command]
+pub async fn get_best_ip_address_for_interface(interface_name: String) -> Result<serde_json::Value, String> {
+    let settings = crate::config::NetworkInterfaceSettings::default();
+    match crate::utils::NetworkDetector::get_interfaces() {
+        Ok(interfaces) => {
+            // Find the specified interface
+            if let Some(interface) = interfaces.into_iter().find(|iface| iface.name == interface_name) {
+                // Get the best IP address for this interface
+                let best_ip = interface.ip_addresses.iter()
+                    .find(|ip| {
+                        if let std::net::IpAddr::V4(ipv4) = ip {
+                            // Prefer private addresses for UDP server binding
+                            !ipv4.is_loopback() && ipv4.is_private()
+                        } else {
+                            false
+                        }
+                    })
+                    .or_else(|| interface.ip_addresses.iter()
+                        .find(|ip| {
+                            if let std::net::IpAddr::V4(ipv4) = ip {
+                                !ipv4.is_loopback()
+                            } else {
+                                false
+                            }
+                        }))
+                    .or_else(|| interface.ip_addresses.first());
+
+                if let Some(ip) = best_ip {
+                    Ok(serde_json::json!({
+                        "success": true,
+                        "ip_address": ip.to_string()
+                    }))
+                } else {
+                    Ok(serde_json::json!({
+                        "success": false,
+                        "error": "No suitable IP address found for interface"
+                    }))
+                }
+            } else {
+                Ok(serde_json::json!({
+                    "success": false,
+                    "error": "Interface not found"
+                }))
+            }
+        }
+        Err(e) => Ok(serde_json::json!({
+            "success": false,
+            "error": e.to_string()
+        }))
+    }
 } 
 
 // PSS Event Emission Command
 #[tauri::command]
 pub async fn pss_emit_event(event_data: serde_json::Value, window: tauri::Window) -> Result<(), String> {
-    log::info!("Emitting PSS event to frontend: {:?}", event_data);
-    if let Err(e) = window.emit("pss_event", event_data) {
-        log::error!("Failed to emit PSS event: {}", e);
+    log::info!("🧪 Emitting PSS event via hybrid approach: {:?}", event_data);
+    
+    // HYBRID APPROACH: Real-time emission to both systems
+    // 1. Emit to Tauri frontend (React components) - Real-time
+    if let Err(e) = window.emit("pss_event", event_data.clone()) {
+        log::error!("❌ Failed to emit PSS event to Tauri frontend: {}", e);
         return Err(e.to_string());
     }
+    
+    // 2. Broadcast to WebSocket overlays (HTML overlays) - Real-time
+    crate::core::app::App::emit_pss_event(event_data);
+    
+    log::info!("✅ Successfully emitted PSS event via hybrid approach");
     Ok(())
 }
 
@@ -1519,7 +1612,7 @@ pub async fn pss_emit_pending_events(window: tauri::Window, app: State<'_, Arc<A
                     "type": "clock",
                     "time": time,
                     "action": action,
-                    "description": format!("Clock: {} {:?}", time, action.unwrap_or_default())
+                    "description": format!("Clock: {} {:?}", time, action.as_ref().unwrap_or(&String::new()))
                 })
             }
             crate::plugins::plugin_udp::PssEvent::Round { current_round } => {
@@ -1631,25 +1724,12 @@ pub async fn pss_emit_pending_events(window: tauri::Window, app: State<'_, Arc<A
 
 // Set up PSS event listener that emits events to frontend
 #[tauri::command]
-pub async fn pss_setup_event_listener(window: tauri::Window) -> Result<(), String> {
+pub async fn pss_setup_event_listener(_window: tauri::Window) -> Result<(), String> {
     log::info!("Setting up PSS event listener for frontend");
     
-    // Get a receiver for PSS events
-    if let Some(mut receiver) = crate::core::app::App::subscribe_to_pss_events() {
-        // Spawn a task to listen for events and emit them to the frontend
-        tokio::spawn(async move {
-            while let Ok(event_data) = receiver.recv().await {
-                log::info!("📡 Emitting PSS event to frontend: {:?}", event_data);
-                if let Err(e) = window.emit("pss_event", event_data) {
-                    log::error!("Failed to emit PSS event to frontend: {}", e);
-                }
-            }
-        });
-        log::info!("✅ PSS event listener setup complete");
-    } else {
-        log::warn!("⚠️ PSS event broadcaster not initialized");
-        return Err("PSS event broadcaster not initialized".to_string());
-    }
+    // Note: This command is no longer needed since we're using the original working mechanism
+    // The frontend will fetch events via pss_get_events or they will be emitted via pss_emit_event
+    log::info!("✅ PSS event listener setup complete (using original mechanism)");
     
     Ok(())
 } 
@@ -3526,4 +3606,216 @@ pub async fn get_tournament_statistics(
             "error": e.to_string()
         }))
     }
+}
+
+// Database optimization commands
+#[tauri::command]
+pub async fn database_run_vacuum(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+    log::info!("Running database VACUUM operation");
+    
+    let db_conn = app.database_plugin().get_database_connection();
+    let mut maintenance = crate::database::DatabaseMaintenance::new_default();
+    
+    match maintenance.run_vacuum(&db_conn).await {
+        Ok(_) => {
+            Ok(serde_json::json!({
+                "success": true,
+                "message": "Database VACUUM completed successfully"
+            }))
+        }
+        Err(e) => {
+            log::error!("Database VACUUM failed: {}", e);
+            Ok(serde_json::json!({
+                "success": false,
+                "error": e.to_string()
+            }))
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn database_run_integrity_check(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+    log::info!("Running database integrity check");
+    
+    let db_conn = app.database_plugin().get_database_connection();
+    let mut maintenance = crate::database::DatabaseMaintenance::new_default();
+    
+    match maintenance.run_integrity_check(&db_conn).await {
+        Ok(integrity_ok) => {
+            if integrity_ok {
+                Ok(serde_json::json!({
+                    "success": true,
+                    "message": "Database integrity check passed",
+                    "integrity_ok": true
+                }))
+            } else {
+                Ok(serde_json::json!({
+                    "success": false,
+                    "message": "Database integrity check failed",
+                    "integrity_ok": false
+                }))
+            }
+        }
+        Err(e) => {
+            log::error!("Database integrity check error: {}", e);
+            Ok(serde_json::json!({
+                "success": false,
+                "error": e.to_string()
+            }))
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn database_run_analyze(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+    log::info!("Running database ANALYZE operation");
+    
+    let db_conn = app.database_plugin().get_database_connection();
+    let mut maintenance = crate::database::DatabaseMaintenance::new_default();
+    
+    match maintenance.run_analyze(&db_conn).await {
+        Ok(_) => {
+            Ok(serde_json::json!({
+                "success": true,
+                "message": "Database ANALYZE completed successfully"
+            }))
+        }
+        Err(e) => {
+            log::error!("Database ANALYZE failed: {}", e);
+            Ok(serde_json::json!({
+                "success": false,
+                "error": e.to_string()
+            }))
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn database_run_optimize(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+    log::info!("Running database OPTIMIZE operation");
+    
+    let db_conn = app.database_plugin().get_database_connection();
+    let mut maintenance = crate::database::DatabaseMaintenance::new_default();
+    
+    match maintenance.run_optimize(&db_conn).await {
+        Ok(_) => {
+            Ok(serde_json::json!({
+                "success": true,
+                "message": "Database OPTIMIZE completed successfully"
+            }))
+        }
+        Err(e) => {
+            log::error!("Database OPTIMIZE failed: {}", e);
+            Ok(serde_json::json!({
+                "success": false,
+                "error": e.to_string()
+            }))
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn database_run_full_maintenance(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+    log::info!("Running full database maintenance");
+    
+    let db_conn = app.database_plugin().get_database_connection();
+    let mut maintenance = crate::database::DatabaseMaintenance::new_default();
+    
+    match maintenance.run_full_maintenance(&db_conn).await {
+        Ok(result) => {
+            Ok(serde_json::json!({
+                "success": true,
+                "message": "Full database maintenance completed",
+                "result": {
+                    "integrity_check_passed": result.integrity_check_passed,
+                    "analyze_success": result.analyze_success,
+                    "optimize_success": result.optimize_success,
+                    "vacuum_success": result.vacuum_success,
+                    "total_duration_secs": result.total_duration.as_secs()
+                }
+            }))
+        }
+        Err(e) => {
+            log::error!("Full database maintenance failed: {}", e);
+            Ok(serde_json::json!({
+                "success": false,
+                "error": e.to_string()
+            }))
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn database_get_info(app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+    log::info!("Getting database information");
+    
+    let db_conn = app.database_plugin().get_database_connection();
+    let maintenance = crate::database::DatabaseMaintenance::new_default();
+    
+    match maintenance.get_database_info(&db_conn).await {
+        Ok(info) => {
+            Ok(serde_json::json!({
+                "success": true,
+                "info": {
+                    "total_size": info.total_size,
+                    "used_size": info.used_size,
+                    "free_size": info.free_size,
+                    "fragmentation_percentage": info.fragmentation_percentage,
+                    "page_count": info.page_count,
+                    "page_size": info.page_size,
+                    "freelist_count": info.freelist_count,
+                    "cache_size": info.cache_size,
+                    "journal_mode": info.journal_mode,
+                    "synchronous": info.synchronous
+                }
+            }))
+        }
+        Err(e) => {
+            log::error!("Failed to get database info: {}", e);
+            Ok(serde_json::json!({
+                "success": false,
+                "error": e.to_string()
+            }))
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn database_get_maintenance_status(_app: State<'_, Arc<App>>) -> Result<serde_json::Value, String> {
+    log::info!("Getting database maintenance status");
+    
+    let maintenance = crate::database::DatabaseMaintenance::new_default();
+    let needed = maintenance.check_maintenance_needed();
+    let stats = maintenance.get_statistics();
+    let config = maintenance.get_config();
+    
+    Ok(serde_json::json!({
+        "success": true,
+        "maintenance_needed": {
+            "vacuum_needed": needed.vacuum_needed,
+            "integrity_check_needed": needed.integrity_check_needed,
+            "analyze_needed": needed.analyze_needed,
+            "optimize_needed": needed.optimize_needed,
+            "any_needed": needed.any_needed()
+        },
+        "statistics": {
+            "last_vacuum": stats.last_vacuum,
+            "last_integrity_check": stats.last_integrity_check,
+            "last_analyze": stats.last_analyze,
+            "last_optimize": stats.last_optimize,
+            "vacuum_count": stats.vacuum_count,
+            "integrity_check_count": stats.integrity_check_count,
+            "analyze_count": stats.analyze_count,
+            "optimize_count": stats.optimize_count,
+            "total_maintenance_time_secs": stats.total_maintenance_time_secs
+        },
+        "config": {
+            "vacuum_interval_secs": config.vacuum_interval.as_secs(),
+            "integrity_check_interval_secs": config.integrity_check_interval.as_secs(),
+            "analyze_interval_secs": config.analyze_interval.as_secs(),
+            "optimize_interval_secs": config.optimize_interval.as_secs(),
+            "max_vacuum_time_secs": config.max_vacuum_time.as_secs(),
+            "backup_before_maintenance": config.backup_before_maintenance
+        }
+    }))
 }

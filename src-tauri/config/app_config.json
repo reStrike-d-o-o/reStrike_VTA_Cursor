@@ -1,7 +1,7 @@
 {
   "app": {
     "version": "0.1.0",
-    "last_save": "2025-07-25T09:08:26.425192800+00:00",
+    "last_save": "2025-08-01T01:12:24.991763300+00:00",
     "startup": {
       "auto_start_udp": false,
       "auto_connect_obs": false,
@@ -64,15 +64,15 @@
   "udp": {
     "listener": {
       "port": 8888,
-      "bind_address": "127.0.0.1",
+      "bind_address": "192.168.3.16",
       "enabled": true,
       "buffer_size": 8192,
       "timeout_seconds": 30,
       "network_interface": {
-        "auto_detect": true,
+        "auto_detect": false,
         "preferred_type": "wifi",
         "fallback_to_localhost": true,
-        "selected_interface": null
+        "selected_interface": "Wireless LAN adapter Wi-Fi"
       }
     },
     "pss": {
@@ -112,6 +112,12 @@
       "include_subsystem": true
     },
     "subsystems": {
+      "obs": {
+        "name": "obs",
+        "level": "info",
+        "enabled": false,
+        "custom_file": null
+      },
       "pss": {
         "name": "pss",
         "level": "info",
@@ -122,12 +128,6 @@
         "name": "udp",
         "level": "info",
         "enabled": true,
-        "custom_file": null
-      },
-      "obs": {
-        "name": "obs",
-        "level": "info",
-        "enabled": false,
         "custom_file": null
       }
     },
@@ -140,7 +140,7 @@
       "archive_enabled": true
     },
     "live_data": {
-      "enabled": false,
+      "enabled": true,
       "interval_seconds": 5,
       "max_data_points": 1000,
       "real_time": false

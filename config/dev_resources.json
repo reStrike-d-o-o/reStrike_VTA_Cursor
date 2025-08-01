@@ -27,7 +27,7 @@
       "auto_start": false
     },
     "udp_pss": {
-      "port": 6000,
+      "port": 8888,
       "service": "UDP PSS Protocol",
       "protocol": "UDP",
       "description": "WT competition data collection",

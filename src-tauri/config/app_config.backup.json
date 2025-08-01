@@ -1,7 +1,7 @@
 {
   "app": {
     "version": "0.1.0",
-    "last_save": "2025-07-25T09:08:23.924816300+00:00",
+    "last_save": "2025-08-01T00:29:36.790027400+00:00",
     "startup": {
       "auto_start_udp": false,
       "auto_connect_obs": false,
@@ -72,7 +72,7 @@
         "auto_detect": true,
         "preferred_type": "wifi",
         "fallback_to_localhost": true,
-        "selected_interface": null
+        "selected_interface": "Wireless LAN adapter Wi-Fi"
       }
     },
     "pss": {
@@ -118,14 +118,14 @@
         "enabled": false,
         "custom_file": null
       },
-      "udp": {
-        "name": "udp",
+      "pss": {
+        "name": "pss",
         "level": "info",
         "enabled": true,
         "custom_file": null
       },
-      "pss": {
-        "name": "pss",
+      "udp": {
+        "name": "udp",
         "level": "info",
         "enabled": true,
         "custom_file": null

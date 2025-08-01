@@ -278,10 +278,21 @@ export const pssCommands = {
     try {
       if (isTauriAvailable()) {
         const result = await safeInvoke('pss_get_events');
-        return {
-          success: true,
-          data: result || [],
-        };
+        
+        // The backend returns either Vec<serde_json::Value> or String (error)
+        if (Array.isArray(result)) {
+          return {
+            success: true,
+            data: result || [],
+          };
+        } else {
+          // If result is a string, it's an error message
+          return { 
+            success: false, 
+            error: typeof result === 'string' ? result : 'Unknown error', 
+            data: [] 
+          };
+        }
       }
       return { success: false, error: 'Tauri not available', data: [] };
     } catch (error) {

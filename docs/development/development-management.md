@@ -193,7 +193,7 @@ python3 scripts/manage_dev_resources.py update
 |------|---------|-------------|------------|
 | 3000 | React Frontend | React development server | ✅ Yes |
 | 1420 | Tauri Backend | Tauri development server | ❌ No |
-| 6000 | UDP PSS Protocol | WT competition data collection | ❌ No |
+| 8888 | UDP PSS Protocol | WT competition data collection | ❌ No |
 | 4455 | OBS WebSocket | OBS Studio WebSocket control | ❌ No |
 | 8080 | Development Server | Additional development services | ❌ No |
 

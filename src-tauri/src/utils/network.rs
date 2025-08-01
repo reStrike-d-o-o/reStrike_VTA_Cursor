@@ -126,17 +126,26 @@ impl NetworkDetector {
     /// Get the best IP address for binding
     pub fn get_best_ip_address(settings: &NetworkInterfaceSettings) -> AppResult<IpAddr> {
         if let Some(interface) = Self::get_best_interface(settings)? {
-            // Prefer IPv4 addresses
+            // First, try to find a private IPv4 address (local network)
             for ip in &interface.ip_addresses {
                 if let IpAddr::V4(ipv4) = ip {
-                    // Skip localhost and private addresses if we want external
-                    if !ipv4.is_loopback() && !ipv4.is_private() {
+                    // Prefer private addresses for UDP server binding
+                    if !ipv4.is_loopback() && ipv4.is_private() {
                         return Ok(*ip);
                     }
                 }
             }
             
-            // Fallback to any IPv4 address
+            // Second, try to find any non-loopback IPv4 address
+            for ip in &interface.ip_addresses {
+                if let IpAddr::V4(ipv4) = ip {
+                    if !ipv4.is_loopback() {
+                        return Ok(*ip);
+                    }
+                }
+            }
+            
+            // Third, try to find any IPv4 address
             for ip in &interface.ip_addresses {
                 if let IpAddr::V4(_) = ip {
                     return Ok(*ip);

@@ -71,10 +71,9 @@ async fn main() -> AppResult<()> {
             
             // UDP commands
             tauri_commands::start_udp_server,
-        tauri_commands::get_network_interfaces,
-        tauri_commands::get_best_network_interface,
             tauri_commands::stop_udp_server,
             tauri_commands::get_udp_status,
+            tauri_commands::update_udp_settings,
             
             // OBS commands - Fixed names
             tauri_commands::obs_connect,
@@ -112,8 +111,9 @@ async fn main() -> AppResult<()> {
             
             // System commands
             tauri_commands::system_get_info,
-            tauri_commands::get_network_interfaces,
-            tauri_commands::get_best_network_interface,
+                    tauri_commands::get_network_interfaces,
+        tauri_commands::get_best_network_interface,
+        tauri_commands::get_best_ip_address_for_interface,
             
             // Store commands
             tauri_commands::save_event,
@@ -227,6 +227,13 @@ async fn main() -> AppResult<()> {
             tauri_commands::tournament_update_logo,
             tauri_commands::tournament_verify_location,
             tauri_commands::get_tournament_statistics,
+        tauri_commands::database_run_vacuum,
+        tauri_commands::database_run_integrity_check,
+        tauri_commands::database_run_analyze,
+        tauri_commands::database_run_optimize,
+        tauri_commands::database_run_full_maintenance,
+        tauri_commands::database_get_info,
+        tauri_commands::database_get_maintenance_status,
             
             // Flag management commands
             tauri_commands::scan_and_populate_flags,
@@ -246,8 +253,12 @@ async fn main() -> AppResult<()> {
             tauri_commands::drive_delete_backup_archive,
             tauri_commands::drive_get_connection_status,
         ])
-        .setup(|_app| {
+        .setup(|app| {
             log::info!("Tauri application setup complete");
+            
+            // Set the global app handle for frontend event emission
+            re_strike_vta::core::app::App::set_global_app_handle(app.handle().clone());
+            
             Ok(())
         })
         .run(tauri::generate_context!())

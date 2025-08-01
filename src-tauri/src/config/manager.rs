@@ -157,6 +157,60 @@ impl ConfigManager {
         Ok(())
     }
     
+    /// Update UDP settings from JSON
+    pub async fn update_udp_settings_from_json(&self, settings: serde_json::Value) -> AppResult<()> {
+        let mut config = self.config.write().await;
+        
+        // Update UDP listener settings
+        if let Some(udp_data) = settings.get("udp") {
+            if let Some(listener_data) = udp_data.get("listener") {
+                if let Some(port) = listener_data.get("port") {
+                    if let Some(port_val) = port.as_u64() {
+                        config.udp.listener.port = port_val as u16;
+                    }
+                }
+                if let Some(bind_address) = listener_data.get("bind_address") {
+                    if let Some(bind_address_val) = bind_address.as_str() {
+                        config.udp.listener.bind_address = bind_address_val.to_string();
+                    }
+                }
+                if let Some(enabled) = listener_data.get("enabled") {
+                    if let Some(enabled_val) = enabled.as_bool() {
+                        config.udp.listener.enabled = enabled_val;
+                    }
+                }
+                
+                // Update network interface settings
+                if let Some(network_data) = listener_data.get("network_interface") {
+                    if let Some(auto_detect) = network_data.get("auto_detect") {
+                        if let Some(auto_detect_val) = auto_detect.as_bool() {
+                            config.udp.listener.network_interface.auto_detect = auto_detect_val;
+                        }
+                    }
+                    if let Some(preferred_type) = network_data.get("preferred_type") {
+                        if let Some(preferred_type_val) = preferred_type.as_str() {
+                            config.udp.listener.network_interface.preferred_type = preferred_type_val.to_string();
+                        }
+                    }
+                    if let Some(fallback_to_localhost) = network_data.get("fallback_to_localhost") {
+                        if let Some(fallback_val) = fallback_to_localhost.as_bool() {
+                            config.udp.listener.network_interface.fallback_to_localhost = fallback_val;
+                        }
+                    }
+                    if let Some(selected_interface) = network_data.get("selected_interface") {
+                        if let Some(selected_interface_val) = selected_interface.as_str() {
+                            config.udp.listener.network_interface.selected_interface = Some(selected_interface_val.to_string());
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Save the updated configuration
+        self.save_config(&*config).await?;
+        Ok(())
+    }
+    
     /// Get logging settings
     pub async fn get_logging_settings(&self) -> crate::config::LoggingSettings {
         self.config.read().await.logging.clone()
