@@ -1933,20 +1933,27 @@ impl UdpServer {
             return Ok(PssEvent::Raw(message.to_string()));
         }
 
-        // Get protocol parsing rules from the protocol manager
-        let _protocol_rules = match tokio::runtime::Handle::try_current() {
-            Ok(handle) => {
-                // We're in an async context, use block_in_place
-                handle.block_on(async {
-                    protocol_manager.get_parsing_rules().await
-                })
+        // Get protocol parsing rules from the protocol manager in a context-safe way
+        let _protocol_rules = if tokio::runtime::Handle::try_current().is_ok() {
+            // We are already inside a Tokio runtime. Use block_in_place to run a blocking
+            // operation without panicking. This avoids the `Handle::block_on` panic that
+            // occurs when called from an async context.
+            tokio::task::block_in_place(|| {
+                // futures::executor::block_on is allowed inside a blocking section.
+                futures::executor::block_on(async { protocol_manager.get_parsing_rules().await })
+            })
+        } else {
+            // We are in a pure synchronous context. Create a lightweight runtime just for
+            // this call so we can await the async function safely.
+            match tokio::runtime::Runtime::new() {
+                Ok(rt) => rt.block_on(async { protocol_manager.get_parsing_rules().await }),
+                Err(e) => {
+                    log::error!("Failed to create temporary Tokio runtime: {}", e);
+                    Ok(std::collections::HashMap::new())
+                }
             }
-            Err(_) => {
-                // We're not in an async context, skip protocol rules for now
-                log::debug!("Skipping protocol rules in non-async context");
-                Ok(std::collections::HashMap::new())
-            }
-        }.unwrap_or_default();
+        }
+        .unwrap_or_default();
 
         // Ensure we have at least one part before accessing parts[0]
         if parts.is_empty() {
