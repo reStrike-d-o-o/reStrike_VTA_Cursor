@@ -70,8 +70,8 @@ export const useTriggersStore = create<TriggersStore>((set, get) => ({
     }
   },
 
-  updateTrigger(eventType, partial) {
-    set(state => {
+  updateTrigger(eventType: string, partial: Partial<TriggerRow>) {
+    set((state: TriggersStore) => {
       const idx = state.triggers.findIndex((t: TriggerRow) => t.event_type === eventType);
       const newTriggers = [...state.triggers];
       if (idx >= 0) {

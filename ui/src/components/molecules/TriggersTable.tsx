@@ -10,7 +10,7 @@ interface Props {
 
 const TriggerRow: React.FC<{ event: string }> = ({ event }) => {
   const { triggers, scenes, overlays, updateTrigger } = useTriggersStore();
-  const existing = triggers.find((t: TriggerRow) => t.event_type === event);
+  const existing = triggers.find((t: import('../../stores/triggersStore').TriggerRow) => t.event_type === event);
 
   const checked = existing?.is_enabled ?? false;
   const triggerType: TriggerType = existing?.trigger_type ?? 'scene';
@@ -31,7 +31,7 @@ const TriggerRow: React.FC<{ event: string }> = ({ event }) => {
       <td className="px-2 py-1">
         <Select
           value={triggerType}
-          onValueChange={(v) => updateTrigger(event, { trigger_type: v as TriggerType })}
+          onValueChange={(v: string) => updateTrigger(event, { trigger_type: v as TriggerType })}
         >
           <SelectTrigger>
             <SelectValue placeholder="Type" />
@@ -53,7 +53,7 @@ const TriggerRow: React.FC<{ event: string }> = ({ event }) => {
             <SelectValue placeholder={scenes.length ? 'Scene' : 'Please connect OBS_REC'} />
           </SelectTrigger>
           <SelectContent>
-            {scenes.map((s: any) => (
+            {scenes.map((s: import('../../stores/triggersStore').ObsScene) => (
               <SelectItem key={s.id} value={s.id.toString()}>{s.scene_name}</SelectItem>
             ))}
           </SelectContent>
@@ -69,7 +69,7 @@ const TriggerRow: React.FC<{ event: string }> = ({ event }) => {
             <SelectValue placeholder="Overlay" />
           </SelectTrigger>
           <SelectContent>
-            {overlays.map((o: any) => (
+            {overlays.map((o: import('../../stores/triggersStore').OverlayTemplate) => (
               <SelectItem key={o.id} value={o.id.toString()}>{o.name}</SelectItem>
             ))}
           </SelectContent>
