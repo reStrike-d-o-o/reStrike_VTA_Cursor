@@ -1,7 +1,7 @@
 //! Main application class and lifecycle management
 
 use crate::types::{AppResult, AppState, AppView};
-use crate::plugins::{ObsPlugin, PlaybackPlugin, UdpPlugin, StorePlugin, LicensePlugin, CpuMonitorPlugin, ProtocolManager, DatabasePlugin, WebSocketPlugin, TournamentPlugin};
+use crate::plugins::{ObsPlugin, PlaybackPlugin, UdpPlugin, StorePlugin, LicensePlugin, CpuMonitorPlugin, ProtocolManager, DatabasePlugin, WebSocketPlugin, TournamentPlugin, EventCache, EventStreamProcessor, EventDistributor, AdvancedAnalytics};
 use crate::logging::LogManager;
 use crate::config::ConfigManager;
 use std::sync::Arc;
@@ -32,6 +32,12 @@ pub struct App {
     log_manager: Arc<Mutex<LogManager>>,
     app_handle: Option<tauri::AppHandle>, // Store app handle for real-time emission
     udp_event_rx: Arc<Mutex<Option<tokio::sync::mpsc::UnboundedReceiver<crate::plugins::plugin_udp::PssEvent>>>>, // Store UDP event receiver
+    
+    // Phase 3: Advanced Scaling Components
+    event_cache: Arc<EventCache>,
+    event_stream_processor: Arc<EventStreamProcessor>,
+    event_distributor: Arc<EventDistributor>,
+    advanced_analytics: Arc<AdvancedAnalytics>,
 }
 
 impl App {
@@ -99,6 +105,19 @@ impl App {
         );
         log::info!("✅ UDP plugin initialized");
         
+        // Initialize Phase 3: Advanced Scaling Components
+        let event_cache = Arc::new(EventCache::new());
+        log::info!("✅ Event cache initialized");
+        
+        let event_stream_processor = Arc::new(EventStreamProcessor::new(event_cache.clone()));
+        log::info!("✅ Event stream processor initialized");
+        
+        let event_distributor = Arc::new(EventDistributor::new(event_cache.clone()));
+        log::info!("✅ Event distributor initialized");
+        
+        let advanced_analytics = Arc::new(AdvancedAnalytics::new(event_cache.clone()));
+        log::info!("✅ Advanced analytics initialized");
+        
         // Initialize WebSocket plugin for HTML overlays
         let websocket_plugin = Arc::new(Mutex::new(WebSocketPlugin::new(3001))); // Port 3001 for WebSocket server
         log::info!("✅ WebSocket plugin initialized");
@@ -131,6 +150,10 @@ impl App {
             log_manager,
             app_handle: None, // Will be set when app handle is available
             udp_event_rx: Arc::new(Mutex::new(Some(udp_event_rx))), // Store UDP event receiver for later use
+            event_cache,
+            event_stream_processor,
+            event_distributor,
+            advanced_analytics,
         })
     }
     
@@ -273,6 +296,23 @@ impl App {
     /// Get configuration manager reference
     pub fn config_manager(&self) -> &ConfigManager {
         &self.config_manager
+    }
+    
+    // Phase 3: Advanced Scaling Component Getters
+    pub fn event_cache(&self) -> &Arc<EventCache> {
+        &self.event_cache
+    }
+    
+    pub fn event_stream_processor(&self) -> &Arc<EventStreamProcessor> {
+        &self.event_stream_processor
+    }
+    
+    pub fn event_distributor(&self) -> &Arc<EventDistributor> {
+        &self.event_distributor
+    }
+    
+    pub fn advanced_analytics(&self) -> &Arc<AdvancedAnalytics> {
+        &self.advanced_analytics
     }
     
     /// Set the Tauri app handle for real-time frontend emission
