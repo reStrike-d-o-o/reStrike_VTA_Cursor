@@ -284,6 +284,12 @@ async fn main() -> AppResult<()> {
             tauri_commands::get_stream_statistics,
             tauri_commands::send_event_to_stream,
             
+            // Trigger system commands
+            re_strike_vta::tauri_commands_triggers::triggers_list_pss_events,
+            re_strike_vta::tauri_commands_triggers::triggers_list_obs_scenes,
+            re_strike_vta::tauri_commands_triggers::triggers_list_active_overlays,
+            re_strike_vta::tauri_commands_triggers::triggers_get,
+            re_strike_vta::tauri_commands_triggers::triggers_save,
             // Phase 3: Load Balancer Commands
             tauri_commands::get_distributor_statistics,
             tauri_commands::get_server_statistics,

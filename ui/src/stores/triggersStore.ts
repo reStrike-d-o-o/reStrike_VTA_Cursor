@@ -34,6 +34,7 @@ export interface OverlayTemplate {
 }
 
 interface TriggersStore {
+  _obsListenerRegistered?: boolean;
   loading: boolean;
   events: string[];
   scenes: ObsScene[];
@@ -53,6 +54,7 @@ export const useTriggersStore = create<TriggersStore>((set, get) => ({
   overlays: [],
   triggers: [],
   dirty: false,
+  _obsListenerRegistered: false,
 
   async fetchData(tournamentId?: number, dayId?: number) {
     set({ loading: true, dirty: false });
@@ -68,7 +70,15 @@ export const useTriggersStore = create<TriggersStore>((set, get) => ({
       const scenes = Array.isArray(scenesResp) ? scenesResp : [];
       const overlays = Array.isArray(overlaysResp) ? overlaysResp : [];
       const triggers = Array.isArray(triggersResp) ? triggersResp : [];
-      set({ events, scenes, overlays, triggers, loading: false });
+      set(state => ({ ...state, events, scenes, overlays, triggers, loading: false }));
+
+      if (!get()._obsListenerRegistered && typeof window !== 'undefined' && window.__TAURI__?.event?.listen) {
+        window.__TAURI__.event.listen('obs_scenes_updated', async () => {
+          const scenesLatest = await invoke<ObsScene[]>('triggers_list_obs_scenes');
+          set({ scenes: scenesLatest });
+        });
+        set({ _obsListenerRegistered: true });
+      }
     } catch (err) {
       console.error(err);
       set({ loading: false });
