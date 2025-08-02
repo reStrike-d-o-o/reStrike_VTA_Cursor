@@ -2463,7 +2463,7 @@ impl DatabaseConnection {
         
         let id = conn.execute(
             "INSERT INTO event_triggers (tournament_id, tournament_day_id, event_type, trigger_type, obs_scene_id, overlay_template_id, is_enabled, priority, created_at, updated_at) 
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
             [
                 &trigger.tournament_id.map(|id| id.to_string()).unwrap_or_default(),
                 &trigger.tournament_day_id.map(|id| id.to_string()).unwrap_or_default(),
