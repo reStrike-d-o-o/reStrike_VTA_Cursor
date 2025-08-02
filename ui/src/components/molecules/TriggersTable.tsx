@@ -236,8 +236,12 @@ export const TriggersTable: React.FC<Props> = ({ tournamentId, dayId }) => {
           >
             Delete
           </Button>
-          <Button variant="secondary" onClick={() => useTriggersStore.getState().fetchScenes()}>
-            Load OBS scenes
+          <Button 
+            variant="secondary" 
+            onClick={() => useTriggersStore.getState().fetchScenes()}
+            disabled={loading}
+          >
+            {loading ? 'Loading...' : 'Load OBS Scenes'}
           </Button>
           <div className="mt-4">
             <label className="text-xs block mb-1">Resume delay (ms)</label>

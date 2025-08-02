@@ -1095,13 +1095,9 @@ pub async fn obs_toggle_full_events(enabled: bool, app: State<'_, Arc<App>>) -> 
 
 #[tauri::command]
 pub async fn obs_get_full_events_setting(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
-    log::info!("Getting OBS full events setting");
-    
-    let enabled = app.obs_plugin().get_full_events_setting().await;
-    
+    let setting = app.obs_plugin().get_full_events_setting().await;
     Ok(serde_json::json!({
-        "success": true,
-        "enabled": enabled
+        "enabled": setting
     }))
 }
 
@@ -4138,6 +4134,57 @@ pub async fn get_analytics_history(app: tauri::State<'_, crate::core::app::App>,
     let analytics_history = app.advanced_analytics().get_analytics_history(limit).await;
     serde_json::to_value(analytics_history)
         .map_err(|e| tauri::Error::from(anyhow::anyhow!("Failed to serialize analytics history: {}", e)))
+}
+
+#[tauri::command]
+pub async fn obs_list_scenes(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    log::info!("Getting scenes from all connected OBS instances");
+    
+    let mut all_scenes = Vec::new();
+    let connection_names = app.obs_plugin().get_connection_names().await;
+    
+    // Collect connection statuses first
+    let mut connection_statuses = Vec::new();
+    for connection_name in &connection_names {
+        let status = app.obs_plugin().get_connection_status(connection_name).await;
+        connection_statuses.push((connection_name.clone(), status));
+    }
+    
+    for (connection_name, status) in connection_statuses {
+        // Check if connection is connected/authenticated
+        let is_connected = matches!(status, Some(s) if matches!(s, crate::plugins::plugin_obs::ObsConnectionStatus::Connected | crate::plugins::plugin_obs::ObsConnectionStatus::Authenticated));
+        
+        if is_connected {
+            match app.obs_plugin().get_scenes(&connection_name).await {
+                Ok(scene_names) => {
+                    for (idx, scene_name) in scene_names.iter().enumerate() {
+                        all_scenes.push(serde_json::json!({
+                            "id": idx,
+                            "scene_name": scene_name,
+                            "scene_id": scene_name, // OBS WebSocket v5 uses scene name as ID
+                            "is_active": true,
+                            "connection_name": connection_name
+                        }));
+                    }
+                }
+                Err(e) => {
+                    log::warn!("Failed to get scenes from connection '{}': {}", connection_name, e);
+                }
+            }
+        } else {
+            log::info!("Skipping connection '{}' - not connected (status: {:?})", connection_name, status);
+        }
+    }
+    
+    let connected_count = connection_statuses.iter()
+        .filter(|(_, status)| matches!(status, Some(s) if matches!(s, crate::plugins::plugin_obs::ObsConnectionStatus::Connected | crate::plugins::plugin_obs::ObsConnectionStatus::Authenticated)))
+        .count();
+    
+    Ok(serde_json::json!({
+        "scenes": all_scenes,
+        "total_connections": connection_names.len(),
+        "connected_connections": connected_count
+    }))
 }
 
 
