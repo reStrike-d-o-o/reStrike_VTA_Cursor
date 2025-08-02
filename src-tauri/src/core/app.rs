@@ -119,7 +119,8 @@ impl App {
         log::info!("✅ Advanced analytics initialized");
         
         // Initialize WebSocket plugin for HTML overlays
-        let websocket_plugin = Arc::new(Mutex::new(WebSocketPlugin::new(3001))); // Port 3001 for WebSocket server
+        let (event_tx, _event_rx) = tokio::sync::mpsc::unbounded_channel::<crate::plugins::plugin_udp::PssEvent>();
+        let websocket_plugin = Arc::new(Mutex::new(WebSocketPlugin::new(event_tx))); // Port 3001 for WebSocket server
         log::info!("✅ WebSocket plugin initialized");
         
         // Initialize tournament plugin
@@ -175,8 +176,8 @@ impl App {
         
         // Start WebSocket server for HTML overlays
         println!("🔗 Starting WebSocket server for HTML overlays...");
-        let mut websocket_plugin = self.websocket_plugin().lock().await;
-        if let Err(e) = websocket_plugin.start().await {
+        let websocket_plugin = self.websocket_plugin().lock().await;
+        if let Err(e) = websocket_plugin.start(3001).await {
             println!("⚠️ Failed to start WebSocket server: {}", e);
         } else {
             println!("✅ WebSocket server started successfully");
@@ -397,7 +398,7 @@ impl App {
         
         while let Ok(event) = pss_receiver.recv().await {
             let websocket_plugin_guard = websocket_plugin.lock().await;
-            if let Err(e) = websocket_plugin_guard.broadcast_pss_event(event).await {
+            if let Err(e) = websocket_plugin_guard.broadcast_event(&event) {
                 log::error!("❌ Failed to broadcast PSS event to WebSocket clients: {}", e);
             }
         }
