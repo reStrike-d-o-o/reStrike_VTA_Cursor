@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { useLiveDataStore, LiveDataWebSocket, parsePssEvent } from '../stores/liveDataStore';
 import { useAppStore } from '../stores/index';
 
@@ -14,6 +14,31 @@ export const useLiveDataEvents = () => {
   
   const { isManualModeEnabled } = useAppStore();
 
+  // Memoize the WebSocket message handler to prevent infinite loops
+  const handleWebSocketMessage = useCallback((data: any) => {
+    console.log('📡 Received WebSocket message:', data);
+    
+    // Handle different message types
+    if (data.type === 'pss_event') {
+      const event = parsePssEvent(data.raw_data, data.timestamp);
+      if (event) {
+        addEvent(event);
+        
+        // Update round and time if provided
+        if (data.round) {
+          setCurrentRound(data.round);
+        }
+        if (data.time) {
+          setCurrentTime(data.time);
+        }
+      }
+    } else if (data.type === 'connection_status') {
+      setConnectionStatus(data.connected);
+    } else if (data.type === 'error') {
+      console.error('WebSocket error:', data.message);
+    }
+  }, [addEvent, setCurrentRound, setCurrentTime, setConnectionStatus]);
+
   useEffect(() => {
     // Only connect when manual mode is OFF
     if (isManualModeEnabled) {
@@ -26,29 +51,7 @@ export const useLiveDataEvents = () => {
     }
 
     // Create WebSocket connection
-    const ws = new LiveDataWebSocket('ws://localhost:8080', (data) => {
-      console.log('📡 Received WebSocket message:', data);
-      
-      // Handle different message types
-      if (data.type === 'pss_event') {
-        const event = parsePssEvent(data.raw_data, data.timestamp);
-        if (event) {
-          addEvent(event);
-          
-          // Update round and time if provided
-          if (data.round) {
-            setCurrentRound(data.round);
-          }
-          if (data.time) {
-            setCurrentTime(data.time);
-          }
-        }
-      } else if (data.type === 'connection_status') {
-        setConnectionStatus(data.connected);
-      } else if (data.type === 'error') {
-        console.error('WebSocket error:', data.message);
-      }
-    });
+    const ws = new LiveDataWebSocket('ws://localhost:3001', handleWebSocketMessage);
 
     wsRef.current = ws;
     ws.connect();
@@ -61,7 +64,7 @@ export const useLiveDataEvents = () => {
         setConnectionStatus(false);
       }
     };
-  }, [isManualModeEnabled]); // Removed function dependencies to prevent infinite loops
+  }, [isManualModeEnabled, handleWebSocketMessage]); // Added handleWebSocketMessage to dependencies
 
   // Clear events when manual mode is enabled
   useEffect(() => {
