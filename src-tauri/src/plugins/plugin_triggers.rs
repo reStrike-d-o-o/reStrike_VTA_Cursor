@@ -1,4 +1,4 @@
-use crate::database::{DatabaseConnection, models::{ObsScene, OverlayTemplate, EventTrigger}};
+use crate::database::{DatabaseConnection, models::{OverlayTemplate, EventTrigger}};
 use once_cell::sync::OnceCell;
 use crate::plugins::plugin_obs::ObsPlugin;
 use crate::types::AppResult;
@@ -168,8 +168,7 @@ impl TriggerPlugin {
         // Register global shortcuts for pause/resume
         // Store global reference
         let _ = TRIGGER_PLUGIN_GLOBAL.set(std::sync::Arc::new(self.clone()));
-        #[cfg(feature = "tauri-runtime")] // compile guard
-        {
+                {
             use tauri::Manager;
             if let Some(app_handle) = tauri::AppHandle::try_get() {
                 let plugin_clone = self.clone();
@@ -331,8 +330,7 @@ impl TriggerPlugin {
             return;
         }
         // Emit tauri event on state change
-        #[cfg(feature = "tauri-runtime")]
-        if let Some(app) = tauri::AppHandle::try_get() {
+                if let Some(app) = tauri::AppHandle::try_get() {
             let _ = app.emit_all("triggers_paused_changed", paused);
         }
         if !paused {

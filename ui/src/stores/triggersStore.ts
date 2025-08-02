@@ -51,6 +51,7 @@ export interface OverlayTemplate {
 }
 
 interface TriggersStore {
+  fetchScenes: () => Promise<void>;
   paused: boolean;
   // meta / helpers
   loading: boolean;
@@ -97,6 +98,16 @@ export const useTriggersStore = create<TriggersStore>((set, get) => ({
   })(),
 
   // ------------ actions ------------
+  async fetchScenes() {
+    try {
+      const scenesResp = await invoke<ObsScene[]>('triggers_list_obs_scenes');
+      const scenes = Array.isArray(scenesResp) ? scenesResp : [];
+      set({ scenes });
+    } catch (err) {
+      console.error(err);
+    }
+  },
+
   async fetchData(tournamentId?: number, dayId?: number) {
     set({ loading: true, dirty: false });
     try {
