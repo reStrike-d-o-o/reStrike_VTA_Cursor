@@ -66,13 +66,24 @@ const DockBar: React.FC = () => {
   };
 
   // Handle Manual mode toggle
-  const handleManualModeToggle = () => {
+  const handleManualModeToggle = (event: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('Manual mode toggle clicked!', { 
+      currentState: isManualModeEnabled, 
+      eventTarget: event.target.checked 
+    });
+    // The toggle was clicked, show confirmation dialog
     setShowManualDialog(true);
   };
 
   // Handle Manual mode confirmation
   const handleManualModeConfirm = () => {
+    console.log('Manual mode confirmed!', { 
+      currentState: isManualModeEnabled 
+    });
     toggleManualMode();
+    console.log('Manual mode toggled!', { 
+      newState: !isManualModeEnabled 
+    });
   };
 
   // Handle New Match button click
