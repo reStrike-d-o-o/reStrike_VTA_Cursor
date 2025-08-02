@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import Button from '../atoms/Button';
 
@@ -18,14 +18,31 @@ interface TableData {
 }
 
 const DatabaseMigrationPanel: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('migration');
+  const [activeTab, setActiveTab] = useState<'migration' | 'status' | 'preview'>('migration');
   const [migrationStatus, setMigrationStatus] = useState<MigrationStatus | null>(null);
   const [databaseTables, setDatabaseTables] = useState<string[]>([]);
   const [selectedTable, setSelectedTable] = useState<string>('');
   const [tableData, setTableData] = useState<TableData | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  // Refs for scroll synchronization
+  const headerScrollRef = useRef<HTMLDivElement>(null);
+  const bodyScrollRef = useRef<HTMLDivElement>(null);
+
+  // Scroll synchronization functions
+  const handleHeaderScroll = () => {
+    if (headerScrollRef.current && bodyScrollRef.current) {
+      bodyScrollRef.current.scrollLeft = headerScrollRef.current.scrollLeft;
+    }
+  };
+
+  const handleBodyScroll = () => {
+    if (headerScrollRef.current && bodyScrollRef.current) {
+      headerScrollRef.current.scrollLeft = bodyScrollRef.current.scrollLeft;
+    }
+  };
 
   useEffect(() => {
     loadMigrationStatus();
@@ -311,13 +328,18 @@ const DatabaseMigrationPanel: React.FC = () => {
               </div>
 
               <div className="w-full">
-                <div className="w-full overflow-x-auto">
-                  <div className="max-h-64 overflow-y-auto border border-gray-700 rounded">
+                <div className="w-[1360px] border border-gray-700 rounded overflow-hidden">
+                  {/* Header Table - Fixed, only horizontal scroll */}
+                  <div 
+                    className="overflow-x-auto" 
+                    ref={headerScrollRef}
+                    onScroll={handleHeaderScroll}
+                  >
                     <table className="min-w-full text-left text-sm text-gray-200">
-                      <thead className="bg-[#101820] sticky top-0 z-10">
+                      <thead className="bg-[#101820]">
                         <tr>
                           {(tableData.columns || []).map(column => (
-                            <th key={column.name} className="px-3 py-2 font-semibold whitespace-nowrap">
+                            <th key={column.name} className="px-3 py-2 font-semibold whitespace-nowrap border-b border-gray-700">
                               {column.name}
                               {column.primary_key && <span className="text-blue-400 ml-1">🔑</span>}
                               {column.not_null && <span className="text-red-400 ml-1">*</span>}
@@ -325,11 +347,21 @@ const DatabaseMigrationPanel: React.FC = () => {
                           ))}
                         </tr>
                       </thead>
+                    </table>
+                  </div>
+                  
+                  {/* Body Table - Vertical scroll with horizontal scroll sync */}
+                  <div 
+                    className="max-h-64 overflow-y-auto overflow-x-auto" 
+                    ref={bodyScrollRef}
+                    onScroll={handleBodyScroll}
+                  >
+                    <table className="min-w-full text-left text-sm text-gray-200">
                       <tbody>
                         {(tableData.rows || []).map((row, index) => (
                           <tr key={index} className="hover:bg-blue-900 transition-colors">
                             {(tableData.columns || []).map(column => (
-                              <td key={column.name} className="px-3 py-2 whitespace-nowrap">
+                              <td key={column.name} className="px-3 py-2 whitespace-nowrap border-b border-gray-700/30">
                                 {row[column.name] !== null && row[column.name] !== undefined 
                                   ? String(row[column.name]) 
                                   : <span className="text-gray-500">null</span>
@@ -340,12 +372,13 @@ const DatabaseMigrationPanel: React.FC = () => {
                         ))}
                       </tbody>
                     </table>
-                    {tableData.rows && tableData.rows.length > 0 && (
-                      <p className="text-xs text-gray-400 mt-2 px-3">
-                        Showing all {tableData.rows.length} rows
-                      </p>
-                    )}
                   </div>
+                  
+                  {tableData.rows && tableData.rows.length > 0 && (
+                    <p className="text-xs text-gray-400 mt-2 px-3">
+                      Showing all {tableData.rows.length} rows
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
