@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { useSettingsStore } from './settingsStore';
 
 interface ConfirmState {
   isOpen: boolean;
@@ -6,9 +7,8 @@ interface ConfirmState {
   message: string;
   delayMs: number;
   remaining: number;
-  autoDisable: boolean;
   action?: () => void;
-  open: (opts: { title: string; message: string; delayMs: number; action: () => void }) => void;
+  open: (o: { title: string; message: string; delayMs?: number; action: () => void }) => void;
   cancel: () => void;
   confirm: () => void;
 }
@@ -19,26 +19,23 @@ export const useConfirmStore = create<ConfirmState>((set, get) => ({
   message: '',
   delayMs: 5000,
   remaining: 0,
-  autoDisable: false,
 
   open({ title, message, delayMs, action }) {
-    const { confirmationsEnabled, safetyDelayMs } = require('../stores/settingsStore').useSettingsStore.getState();
+    const { confirmationsEnabled, safetyDelayMs } = useSettingsStore.getState();
     if (!confirmationsEnabled) {
       action();
       return;
     }
-    const effectiveDelay = delayMs ?? safetyDelayMs;
-
-    set({ isOpen: true, title, message, delayMs: effectiveDelay, remaining: Math.ceil(effectiveDelay / 1000), action });
-    // countdown timer
-    let secondsLeft = Math.ceil(delayMs / 1000);
-    const interval = setInterval(() => {
-      secondsLeft -= 1;
-      if (secondsLeft <= 0) {
-        clearInterval(interval);
+    const eff = delayMs ?? safetyDelayMs;
+    set({ isOpen: true, title, message, delayMs: eff, remaining: Math.ceil(eff / 1000), action });
+    let secs = Math.ceil(eff / 1000);
+    const timer = setInterval(() => {
+      secs -= 1;
+      if (secs <= 0) {
+        clearInterval(timer);
         set({ remaining: 0 });
       } else {
-        set({ remaining: secondsLeft });
+        set({ remaining: secs });
       }
     }, 1000);
   },
