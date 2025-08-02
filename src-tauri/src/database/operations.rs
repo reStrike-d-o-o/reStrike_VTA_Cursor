@@ -2461,20 +2461,21 @@ impl DatabaseConnection {
         let conn = self.get_connection().await?;
         let now = chrono::Utc::now().to_rfc3339();
         
+        use rusqlite::params;
         let id = conn.execute(
             "INSERT INTO event_triggers (tournament_id, tournament_day_id, event_type, trigger_type, obs_scene_id, overlay_template_id, is_enabled, priority, created_at, updated_at) 
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
-            [
-                &trigger.tournament_id.map(|id| id.to_string()).unwrap_or_default(),
-                &trigger.tournament_day_id.map(|id| id.to_string()).unwrap_or_default(),
-                &trigger.event_type,
-                &trigger.trigger_type,
-                &trigger.obs_scene_id.map(|id| id.to_string()).unwrap_or_default(),
-                &trigger.overlay_template_id.map(|id| id.to_string()).unwrap_or_default(),
-                &(trigger.is_enabled as i32).to_string(),
-                &trigger.priority.to_string(),
-                &trigger.created_at.to_rfc3339(),
-                &now,
+            params![
+                trigger.tournament_id,
+                trigger.tournament_day_id,
+                trigger.event_type,
+                trigger.trigger_type,
+                trigger.obs_scene_id,
+                trigger.overlay_template_id,
+                trigger.is_enabled,
+                trigger.priority,
+                trigger.created_at.to_rfc3339(),
+                now,
             ],
         )?;
         
@@ -2486,20 +2487,21 @@ impl DatabaseConnection {
         let conn = self.get_connection().await?;
         let now = chrono::Utc::now().to_rfc3339();
         
+        use rusqlite::params;
         conn.execute(
             "UPDATE event_triggers SET tournament_id = ?, tournament_day_id = ?, event_type = ?, trigger_type = ?, obs_scene_id = ?, overlay_template_id = ?, is_enabled = ?, priority = ?, updated_at = ? 
              WHERE id = ?",
-            [
-                &trigger.tournament_id.map(|id| id.to_string()).unwrap_or_default(),
-                &trigger.tournament_day_id.map(|id| id.to_string()).unwrap_or_default(),
-                &trigger.event_type,
-                &trigger.trigger_type,
-                &trigger.obs_scene_id.map(|id| id.to_string()).unwrap_or_default(),
-                &trigger.overlay_template_id.map(|id| id.to_string()).unwrap_or_default(),
-                &(trigger.is_enabled as i32).to_string(),
-                &trigger.priority.to_string(),
-                &now,
-                &trigger.id.unwrap_or(0).to_string(),
+            params![
+                trigger.tournament_id,
+                trigger.tournament_day_id,
+                trigger.event_type,
+                trigger.trigger_type,
+                trigger.obs_scene_id,
+                trigger.overlay_template_id,
+                trigger.is_enabled,
+                trigger.priority,
+                now,
+                trigger.id,
             ],
         )?;
         

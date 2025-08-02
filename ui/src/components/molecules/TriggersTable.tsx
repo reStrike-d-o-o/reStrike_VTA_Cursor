@@ -33,7 +33,7 @@ interface RowProps {
   eventsCatalog: string[];
 }
 
-const Row: React.FC<RowProps> = ({ row, index, eventsCatalog }) => {
+const RowComponent: React.FC<RowProps> = ({ row, index, eventsCatalog }) => {
   const { scenes, overlays, updateRow, selectRow, selectedIndex } = useTriggersStore();
   const isSelected = selectedIndex === index;
 
@@ -193,6 +193,8 @@ const Row: React.FC<RowProps> = ({ row, index, eventsCatalog }) => {
     </tr>
   );
 };
+
+const Row = React.memo(RowComponent);
 
 export const TriggersTable: React.FC<Props> = ({ tournamentId, dayId }) => {
   const {
