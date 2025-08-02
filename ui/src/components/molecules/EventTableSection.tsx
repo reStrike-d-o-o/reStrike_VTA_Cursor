@@ -2,23 +2,24 @@ import React, { useRef, useEffect, useState } from 'react';
 import Button from '../atoms/Button';
 import { StatusDot } from '../atoms/StatusDot';
 
+// Dummy events data with updated event types including TH (Technical Head) and TB (Technical Body)
 const events = [
   { round: 'R1', time: '02.00.123', event: 'H', color: 'blue' },
   { round: 'R1', time: '01.45.456', event: 'P', color: 'red' },
   { round: 'R1', time: '01.30.789', event: 'R', color: 'yellow' },
   { round: 'R1', time: '01.15.234', event: 'K', color: 'blue' },
-  { round: 'R1', time: '01.00.567', event: 'S', color: 'red' },
+  { round: 'R1', time: '01.00.567', event: 'TH', color: 'red' },
   { round: 'R2', time: '02.00.321', event: 'H', color: 'red' },
   { round: 'R2', time: '01.50.654', event: 'P', color: 'blue' },
   { round: 'R2', time: '01.40.987', event: 'R', color: 'yellow' },
   { round: 'R2', time: '01.30.210', event: 'K', color: 'red' },
   { round: 'R2', time: '01.20.543', event: 'R', color: 'yellow' },
-  { round: 'R2', time: '01.10.876', event: 'S', color: 'blue' },
+  { round: 'R2', time: '01.10.876', event: 'TB', color: 'blue' },
   { round: 'R3', time: '02.00.111', event: 'H', color: 'blue' },
   { round: 'R3', time: '01.55.222', event: 'P', color: 'red' },
   { round: 'R3', time: '01.50.333', event: 'R', color: 'yellow' },
   { round: 'R3', time: '01.45.444', event: 'K', color: 'red' },
-  { round: 'R3', time: '01.40.555', event: 'S', color: 'blue' },
+  { round: 'R3', time: '01.40.555', event: 'TB', color: 'blue' },
   { round: 'R3', time: '01.35.666', event: 'R', color: 'yellow' },
   { round: 'R3', time: '01.30.777', event: 'R', color: 'yellow' },
 ];
@@ -28,11 +29,13 @@ const colorOptions = [
   { color: 'blue', class: 'bg-blue-500' },
   { color: 'yellow', class: 'bg-yellow-400' },
 ];
+// Event type filter buttons (order: H, K, P, TH, TB, R)
 const eventTypeOptions = [
   { label: 'HEAD', value: 'H' },
   { label: 'KICK', value: 'K' },
   { label: 'PUNCH', value: 'P' },
-  { label: 'SPINN', value: 'S' },
+  { label: 'TECH HEAD', value: 'TH' },
+  { label: 'TECH BODY', value: 'TB' },
   { label: 'REFEREE', value: 'R' },
 ];
 
@@ -140,7 +143,7 @@ const EventTableSection: React.FC = () => {
                   title={type.label}
                   className="w-8 h-8 p-0 text-xs font-bold"
                 >
-                  {type.label.charAt(0)}
+                  {type.value}
                 </Button>
               ))}
             </div>
