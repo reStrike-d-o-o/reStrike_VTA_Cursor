@@ -2031,6 +2031,9 @@ impl Migration for Migration14 {
         // Disable foreign key constraints temporarily
         conn.execute("PRAGMA foreign_keys = OFF", [])?;
         
+        // Drop the temporary table if it exists from a previous failed migration
+        let _ = conn.execute("DROP TABLE IF EXISTS pss_matches_old", []);
+        
         // Revert back to INTEGER (this might lose data if match_number contains non-numeric values)
         conn.execute(
             "CREATE TABLE pss_matches_old (

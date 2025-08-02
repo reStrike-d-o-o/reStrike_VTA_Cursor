@@ -61,14 +61,14 @@ export const useLiveDataEvents = () => {
         setConnectionStatus(false);
       }
     };
-  }, [isManualModeEnabled, addEvent, setCurrentRound, setCurrentTime, setConnectionStatus]);
+  }, [isManualModeEnabled]); // Removed function dependencies to prevent infinite loops
 
   // Clear events when manual mode is enabled
   useEffect(() => {
     if (isManualModeEnabled) {
       clearEvents();
     }
-  }, [isManualModeEnabled, clearEvents]);
+  }, [isManualModeEnabled]); // Removed clearEvents dependency
 
   return {
     isConnected: useLiveDataStore.getState().isConnected,
