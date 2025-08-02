@@ -66,6 +66,11 @@ const DockBar: React.FC = () => {
     setShowManualDialog(true);
   };
 
+  // Handle Manual mode confirmation
+  const handleManualModeConfirm = () => {
+    toggleManualMode();
+  };
+
   return (
     <>
       <div className="flex flex-col w-full h-full min-h-0 bg-gradient-to-b from-gray-900/95 to-gray-800/90 backdrop-blur-sm border-r border-gray-600/30 shadow-xl overflow-hidden">
@@ -104,6 +109,37 @@ const DockBar: React.FC = () => {
                     </ReplayButton>
                   </div>
                 </div>
+                
+                {/* Manual Mode Buttons - Only show when manual mode is enabled */}
+                {isManualModeEnabled && (
+                  <div className="flex flex-col items-center space-y-2">
+                    {/* New Match Button */}
+                    <div className="relative group">
+                      <div className="absolute inset-0 bg-green-500/20 rounded-lg blur-sm group-hover:bg-green-500/30 transition-all duration-300"></div>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => { /* TODO: Implement New Match action */ }}
+                        className="w-32 relative z-10 bg-green-600 hover:bg-green-700"
+                      >
+                        New Match
+                      </Button>
+                    </div>
+                    
+                    {/* Restore Button */}
+                    <div className="relative group">
+                      <div className="absolute inset-0 bg-red-500/20 rounded-lg blur-sm group-hover:bg-red-500/30 transition-all duration-300"></div>
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        onClick={() => { /* TODO: Implement Restore action */ }}
+                        className="w-32 relative z-10"
+                      >
+                        Restore
+                      </Button>
+                    </div>
+                  </div>
+                )}
                 
                 {/* Manual Mode Toggle and Advanced Button Stack */}
                 <div className="flex flex-col items-center space-y-2">
@@ -180,7 +216,7 @@ const DockBar: React.FC = () => {
       <ManualModeDialog
         isOpen={showManualDialog}
         onClose={() => setShowManualDialog(false)}
-        onToggle={toggleManualMode}
+        onConfirm={handleManualModeConfirm}
         isEnabled={isManualModeEnabled}
       />
     </>

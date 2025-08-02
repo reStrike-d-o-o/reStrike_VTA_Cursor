@@ -1922,6 +1922,42 @@ impl Migration for Migration12 {
     }
 }
 
+pub struct Migration13;
+
+impl Migration for Migration13 {
+    fn version(&self) -> u32 {
+        13
+    }
+    
+    fn description(&self) -> &str {
+        "Add creation_mode field to pss_matches and update match_number to string"
+    }
+    
+    fn up(&self, conn: &Connection) -> SqliteResult<()> {
+        // Add creation_mode column to pss_matches table
+        conn.execute(
+            "ALTER TABLE pss_matches ADD COLUMN creation_mode TEXT NOT NULL DEFAULT 'Automatic'",
+            [],
+        )?;
+        
+        // Update existing records to have 'Automatic' creation_mode
+        conn.execute(
+            "UPDATE pss_matches SET creation_mode = 'Automatic' WHERE creation_mode IS NULL",
+            [],
+        )?;
+        
+        log::info!("Successfully added creation_mode field to pss_matches table");
+        Ok(())
+    }
+    
+    fn down(&self, _conn: &Connection) -> SqliteResult<()> {
+        // Note: SQLite doesn't support dropping columns, so we can't easily rollback
+        // This is a limitation of SQLite
+        log::warn!("Cannot rollback creation_mode column addition (SQLite limitation)");
+        Ok(())
+    }
+}
+
 /// Migration manager for handling database schema updates
 pub struct MigrationManager {
     migrations: Vec<Box<dyn Migration>>,
@@ -1943,6 +1979,7 @@ impl MigrationManager {
         migrations.push(Box::new(Migration10)); // Add columns action, target_type, delay_ms
         migrations.push(Box::new(Migration11)); // Add url column to overlay_templates
         migrations.push(Box::new(Migration12)); // Add status and error columns to obs_connections
+        migrations.push(Box::new(Migration13)); // Add creation_mode field to pss_matches
         
         Self { migrations }
     }
