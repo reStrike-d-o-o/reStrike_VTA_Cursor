@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { DndContext, DragEndEvent, useDroppable } from '@dnd-kit/core';
 import DragPalette from './DragPalette';
 import {
@@ -7,7 +7,6 @@ import {
   DelayTriggerRow,
   TriggerRow,
 } from '../../stores/triggersStore';
-import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '../atoms/Select';
 import Button from '../atoms/Button';
 import { useConfirmStore } from '../../stores/confirmStore';
 import Input from '../atoms/Input';
@@ -32,11 +31,12 @@ const humanReadableEvent = (ev: string) => {
 interface RowProps {
   row: TriggerRow;
   index: number;
-  eventsCatalog: string[];
 }
 
 // Generic droppable TD
-const DroppableCell: React.FC<React.PropsWithChildren<{ id: string; className?: string }>> = ({ id, className = '', children }) => {
+const DroppableCell: React.FC<
+  React.PropsWithChildren<{ id: string; className?: string }>
+> = ({ id, className = '', children }) => {
   const { isOver, setNodeRef } = useDroppable({ id });
   return (
     <td
@@ -48,162 +48,75 @@ const DroppableCell: React.FC<React.PropsWithChildren<{ id: string; className?: 
   );
 };
 
-const RowComponent: React.FC<RowProps> = ({ row, index, eventsCatalog }) => {
-  const { scenes, overlays, updateRow, selectRow, selectedIndex } = useTriggersStore();
+const RowComponent: React.FC<RowProps> = ({ row, index }) => {
+  const { scenes, overlays, updateRow, selectRow, selectedIndex } =
+    useTriggersStore();
   const isSelected = selectedIndex === index;
 
-  // Handlers
-  const handleEventChange = (value: string) => {
-    if (value === 'delay') {
-      const delayRow: DelayTriggerRow = {
-        kind: 'delay',
-        delay_ms: 300,
-        priority: row.priority,
-      };
-      updateRow(index, delayRow);
-    } else {
-      const eventRow: Partial<EventTriggerRow> = {
-        kind: 'event',
-        event_type: value,
-        action: 'show',
-        target_type: 'scene',
-        obs_scene_id: undefined,
-        overlay_template_id: undefined,
-      };
-      updateRow(index, eventRow);
-    }
-  };
-
-  const rowClass = `border-b border-gray-600 text-sm hover:bg-blue-900 ${isSelected ? 'bg-blue-900' : ''}`;
+  const rowClass = `border-b border-gray-600 text-sm hover:bg-blue-900 ${
+    isSelected ? 'bg-blue-900' : ''
+  }`;
 
   if (row.kind === 'delay') {
-    const delayRow = row as DelayTriggerRow;
+    const dRow = row as DelayTriggerRow;
     return (
       <tr className={rowClass} onClick={() => selectRow(index)}>
-        {/* Event column */}
-        <td className="px-3 py-2 w-[100px]">
-          <Select value="delay" onValueChange={handleEventChange}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {eventsCatalog.map((e) => (
-                <SelectItem key={e} value={e}>
-                  {humanReadableEvent(e)}
-                </SelectItem>
-              ))}
-              <SelectItem value="delay">Delay</SelectItem>
-            </SelectContent>
-          </Select>
-        </td>
-        {/* Delay ms column (Action column slot) */}
-        <td className="px-3 py-2 w-[100px]">
+        <DroppableCell
+          id={`cell-${index}-event`}
+          className="px-3 py-2 w-[100px] capitalize"
+        >
+          Delay
+        </DroppableCell>
+        <DroppableCell id={`cell-${index}-action`} className="px-3 py-2 w-[100px]">
           <Input
             type="number"
             min={50}
-            value={delayRow.delay_ms}
+            value={dRow.delay_ms}
             onChange={(e) => updateRow(index, { delay_ms: Number(e.target.value) })}
           />
-        </td>
-        {/* Disabled columns */}
-        <td className="px-3 py-2 w-[100px] text-gray-500">—</td>
-        <td className="px-3 py-2 w-[100px] text-gray-500">—</td>
+        </DroppableCell>
+        <DroppableCell id={`cell-${index}-tt`} className="px-3 py-2 w-[100px] text-gray-500">
+          —
+        </DroppableCell>
+        <DroppableCell id={`cell-${index}-target`} className="px-3 py-2 w-[100px] text-gray-500">
+          —
+        </DroppableCell>
       </tr>
     );
   }
 
-  // Event row rendering
   const evRow = row as EventTriggerRow;
-  const targetType = evRow.target_type;
+  const sceneName = useMemo(() => {
+    const s = scenes.find((sc) => sc.id === evRow.obs_scene_id);
+    if (!s) return '';
+    return s.connection_name ? `${s.connection_name} – ${s.scene_name}` : s.scene_name;
+  }, [scenes, evRow.obs_scene_id]);
+
+  const overlayName = useMemo(() => {
+    const o = overlays.find((ov) => ov.id === evRow.overlay_template_id);
+    if (!o) return '';
+    return o.theme ? `${o.name} – ${o.theme}` : o.name;
+  }, [overlays, evRow.overlay_template_id]);
 
   return (
     <tr className={rowClass} onClick={() => selectRow(index)}>
-      {/* Event column */}
-      <DroppableCell id={`cell-${index}-event`} className="px-3 py-2 w-[100px] capitalize">
-        <Select value={evRow.event_type} onValueChange={handleEventChange}>
-          <SelectTrigger>
-            <SelectValue placeholder="Event" />
-          </SelectTrigger>
-          <SelectContent>
-            {eventsCatalog.map((e) => (
-              <SelectItem key={e} value={e}>
-                {humanReadableEvent(e)}
-              </SelectItem>
-            ))}
-            <SelectItem value="delay">Delay</SelectItem>
-          </SelectContent>
-        </Select>
+      <DroppableCell
+        id={`cell-${index}-event`}
+        className="px-3 py-2 w-[100px] capitalize"
+      >
+        {humanReadableEvent(evRow.event_type)}
       </DroppableCell>
 
-      {/* Action column */}
       <DroppableCell id={`cell-${index}-action`} className="px-3 py-2 w-[100px]">
-        <Select
-          value={evRow.action}
-          onValueChange={(v) => updateRow(index, { action: v as 'show' | 'hide' })}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Action" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="show">Show</SelectItem>
-            <SelectItem value="hide">Hide</SelectItem>
-          </SelectContent>
-        </Select>
+        {evRow.action}
       </DroppableCell>
 
-      {/* Target Type */}
       <DroppableCell id={`cell-${index}-tt`} className="px-3 py-2 w-[100px]">
-        <Select
-          value={targetType}
-          onValueChange={(v) => updateRow(index, { target_type: v as 'scene' | 'overlay' })}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="scene">OBS scene</SelectItem>
-            <SelectItem value="overlay">Overlay</SelectItem>
-          </SelectContent>
-        </Select>
+        {evRow.target_type}
       </DroppableCell>
 
-      {/* Target */}
       <DroppableCell id={`cell-${index}-target`} className="px-3 py-2 w-[100px]">
-        {targetType === 'scene' ? (
-          <Select
-            value={evRow.obs_scene_id?.toString()}
-            onValueChange={(v) => updateRow(index, { obs_scene_id: Number(v) })}
-            disabled={!scenes.length}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder={scenes.length ? 'Scene' : 'No scenes'} />
-            </SelectTrigger>
-            <SelectContent>
-              {scenes.map((s) => (
-                <SelectItem key={s.id} value={s.id.toString()}>
-                  {s.connection_name ? `${s.connection_name} – ${s.scene_name}` : s.scene_name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        ) : (
-          <Select
-            value={evRow.overlay_template_id?.toString()}
-            onValueChange={(v) => updateRow(index, { overlay_template_id: Number(v) })}
-            disabled={!overlays.length}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder={overlays.length ? 'Overlay' : 'No overlays'} />
-            </SelectTrigger>
-            <SelectContent>
-              {overlays.map((o) => (
-                <SelectItem key={o.id} value={o.id.toString()}>
-                  {o.theme ? `${o.name} – ${o.theme}` : o.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
+        {evRow.target_type === 'scene' ? sceneName : overlayName}
       </DroppableCell>
     </tr>
   );
@@ -215,38 +128,39 @@ export const TriggersTable: React.FC<Props> = ({ tournamentId, dayId }) => {
   const handleDragEnd = (e: DragEndEvent) => {
     const { over, active } = e;
     if (!over) return;
-    const targetId = over.id.toString(); // e.g., cell-2-action
-    const [cell, rowStr, col] = targetId.split('-');
-    if (cell !== 'cell') return;
-    const rowIdx = Number(rowStr);
-    const set = useTriggersStore.getState();
+    const parts = over.id.toString().split('-');
+    if (parts[0] !== 'cell') return;
+    const rowIdx = Number(parts[1]);
+    const column = parts[2];
+    const store = useTriggersStore.getState();
 
-    if (active.id.toString().startsWith('ev-')) {
-      const ev = active.id.toString().substring(3);
-      set.updateRow(rowIdx, { kind: 'event', event_type: ev } as Partial<EventTriggerRow>);
+    const aid = active.id.toString();
+
+    if (column === 'event' && aid.startsWith('ev-')) {
+      store.updateRow(rowIdx, { kind: 'event', event_type: aid.substring(3) });
     }
-    if (active.id.toString().startsWith('act-')) {
-      const act = active.id.toString().substring(4);
+    if (column === 'action' && aid.startsWith('act-')) {
+      const act = aid.substring(4);
       if (act === 'delay') {
-        // convert entire row to delay
-        set.updateRow(rowIdx, { kind: 'delay', delay_ms: 300 });
+        store.updateRow(rowIdx, { kind: 'delay', delay_ms: 300 });
       } else {
-        set.updateRow(rowIdx, { kind: 'event', action: act as 'show' | 'hide' });
+        store.updateRow(rowIdx, { kind: 'event', action: act as 'show' | 'hide' });
       }
     }
-
-    if (active.id.toString().startsWith('scene-')) {
-      const sceneId = Number(active.id.toString().substring(6));
-      set.updateRow(rowIdx, { obs_scene_id: sceneId, target_type: 'scene' });
-    }
-    if (active.id.toString().startsWith('ov-')) {
-      const ovId = Number(active.id.toString().substring(3));
-      set.updateRow(rowIdx, { overlay_template_id: ovId, target_type: 'overlay' });
+    if (column === 'target') {
+      if (aid.startsWith('scene-')) {
+        const id = Number(aid.substring(6));
+        store.updateRow(rowIdx, { obs_scene_id: id, target_type: 'scene' });
+      }
+      if (aid.startsWith('ov-')) {
+        const id = Number(aid.substring(3));
+        store.updateRow(rowIdx, { overlay_template_id: id, target_type: 'overlay' });
+      }
     }
   };
+
   const {
     rows,
-    eventsCatalog,
     loading,
     dirty,
     resumeDelay,
@@ -255,6 +169,8 @@ export const TriggersTable: React.FC<Props> = ({ tournamentId, dayId }) => {
     saveChanges,
     addRow,
     deleteSelectedRow,
+    scenes,
+    overlays,
   } = useTriggersStore();
 
   useEffect(() => {
@@ -265,33 +181,38 @@ export const TriggersTable: React.FC<Props> = ({ tournamentId, dayId }) => {
 
   return (
     <div className="flex h-full">
-      {/* Left: table */}
-      <div className="flex-1 flex flex-col">
-        <div className="flex-1 overflow-auto">
-          <table className="min-w-full text-left text-sm text-gray-200 border-collapse">
-            <thead className="sticky top-0 bg-[#101820] z-10">
-              <tr>
-                <th className="px-3 py-2 w-[100px]">Event</th>
-                <th className="px-3 py-2 w-[100px]">Action</th>
-                <th className="px-3 py-2 w-[100px]">Target Type</th>
-                <th className="px-3 py-2 w-[100px]">Target</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row, idx) => (
-                <Row key={idx} row={row} index={idx} eventsCatalog={eventsCatalog} />
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div className="border-t border-gray-700 bg-gray-800 p-2 text-right">
-          <Button variant="primary" onClick={saveChanges} disabled={!dirty}>
-            Save
-          </Button>
-        </div>
-      </div>
+      {/* Palette */}
+      <DragPalette scenes={scenes} overlays={overlays} />
 
-      {/* Right: buttons */}
+      {/* Table */}
+      <DndContext onDragEnd={handleDragEnd}>
+        <div className="flex-1 flex flex-col">
+          <div className="flex-1 overflow-auto">
+            <table className="min-w-full text-left text-sm text-gray-200 border-collapse">
+              <thead className="sticky top-0 bg-[#101820] z-10">
+                <tr>
+                  <th className="px-3 py-2 w-[100px]">Event</th>
+                  <th className="px-3 py-2 w-[100px]">Action</th>
+                  <th className="px-3 py-2 w-[100px]">Target Type</th>
+                  <th className="px-3 py-2 w-[100px]">Target</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row, idx) => (
+                  <Row key={idx} row={row} index={idx} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="border-t border-gray-700 bg-gray-800 p-2 text-right">
+            <Button variant="primary" onClick={saveChanges} disabled={!dirty}>
+              Save
+            </Button>
+          </div>
+        </div>
+      </DndContext>
+
+      {/* Buttons */}
       <div className="w-40 ml-4 flex flex-col gap-2">
         <Button onClick={addRow}>Add</Button>
         <Button
@@ -303,11 +224,13 @@ export const TriggersTable: React.FC<Props> = ({ tournamentId, dayId }) => {
               delayMs: 3000,
               action: deleteSelectedRow,
             });
-          }}>
+          }}
+        >
           Delete
         </Button>
-        <Button variant="secondary" onClick={() => useTriggersStore.getState().fetchScenes()}>Load OBS scenes</Button>
-        <Button variant="secondary">Test</Button>
+        <Button variant="secondary" onClick={() => useTriggersStore.getState().fetchScenes()}>
+          Load OBS scenes
+        </Button>
         <div className="mt-4">
           <label className="text-xs block mb-1">Resume delay (ms)</label>
           <Input
@@ -321,3 +244,6 @@ export const TriggersTable: React.FC<Props> = ({ tournamentId, dayId }) => {
     </div>
   );
 };
+
+export default TriggersTable;
+
