@@ -6,6 +6,21 @@ import Label from '../atoms/Label';
 import StatusDot from '../atoms/StatusDot';
 import { usePssMatchStore } from '../../stores/pssMatchStore';
 import { useAppStore } from '../../stores';
+import { invoke as tauriInvoke } from '@tauri-apps/api/core';
+
+// Use the proper Tauri v2 invoke function with fallback
+const invoke = async (command: string, args?: any) => {
+  try {
+    // Try the proper Tauri v2 API first
+    return await tauriInvoke(command, args);
+  } catch (error) {
+    // If that fails, try the global (window as any).__TAURI__.core.invoke
+    if (typeof window !== 'undefined' && (window as any).__TAURI__ && (window as any).__TAURI__.core) {
+      return await (window as any).__TAURI__.core.invoke(command, args);
+    }
+    throw new Error('Tauri v2 core module not available - ensure app is running in desktop mode');
+  }
+};
 
 
 interface ScoreboardManagerProps {
