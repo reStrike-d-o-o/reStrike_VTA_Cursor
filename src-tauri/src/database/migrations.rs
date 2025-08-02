@@ -1971,6 +1971,9 @@ impl Migration for Migration14 {
     }
     
     fn up(&self, conn: &Connection) -> SqliteResult<()> {
+        // Disable foreign key constraints temporarily
+        conn.execute("PRAGMA foreign_keys = OFF", [])?;
+        
         // SQLite doesn't support ALTER COLUMN TYPE, so we need to recreate the table
         // First, create a temporary table with the new schema
         conn.execute(
@@ -2014,11 +2017,17 @@ impl Migration for Migration14 {
         // Rename the new table to the original name
         conn.execute("ALTER TABLE pss_matches_new RENAME TO pss_matches", [])?;
         
+        // Re-enable foreign key constraints
+        conn.execute("PRAGMA foreign_keys = ON", [])?;
+        
         log::info!("Successfully changed match_number column from INTEGER to TEXT");
         Ok(())
     }
     
     fn down(&self, conn: &Connection) -> SqliteResult<()> {
+        // Disable foreign key constraints temporarily
+        conn.execute("PRAGMA foreign_keys = OFF", [])?;
+        
         // Revert back to INTEGER (this might lose data if match_number contains non-numeric values)
         conn.execute(
             "CREATE TABLE pss_matches_old (
@@ -2061,6 +2070,9 @@ impl Migration for Migration14 {
         
         // Rename the old table back
         conn.execute("ALTER TABLE pss_matches_old RENAME TO pss_matches", [])?;
+        
+        // Re-enable foreign key constraints
+        conn.execute("PRAGMA foreign_keys = ON", [])?;
         
         log::info!("Successfully reverted match_number column back to INTEGER");
         Ok(())
