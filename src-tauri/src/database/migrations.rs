@@ -1858,6 +1858,35 @@ impl Migration for Migration10 {
     }
 }
 
+pub struct Migration11;
+
+impl Migration for Migration11 {
+    fn version(&self) -> u32 {
+        11
+    }
+
+    fn description(&self) -> &str {
+        "Add url column to overlay_templates table and clear existing data"
+    }
+
+    fn up(&self, conn: &Connection) -> SqliteResult<()> {
+        // Clear existing overlay_templates data
+        conn.execute("DELETE FROM overlay_templates", [])?;
+        
+        // Add url column to overlay_templates table
+        conn.execute("ALTER TABLE overlay_templates ADD COLUMN url TEXT", [])?;
+        
+        log::info!("✅ Migration 11: Added url column to overlay_templates and cleared existing data");
+        Ok(())
+    }
+
+    fn down(&self, _conn: &Connection) -> SqliteResult<()> {
+        // SQLite does not support DROP COLUMN; no-op but log warning
+        log::warn!("⚠️  Migration 11 rollback: Cannot drop url column due to SQLite limitations");
+        Ok(())
+    }
+}
+
 /// Migration manager for handling database schema updates
 pub struct MigrationManager {
     migrations: Vec<Box<dyn Migration>>,
@@ -1877,6 +1906,7 @@ impl MigrationManager {
         migrations.push(Box::new(Migration8));
         migrations.push(Box::new(Migration9)); // Trigger system migration
         migrations.push(Box::new(Migration10)); // Add columns action, target_type, delay_ms
+        migrations.push(Box::new(Migration11)); // Add url column to overlay_templates
         
         Self { migrations }
     }
