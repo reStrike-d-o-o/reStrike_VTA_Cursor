@@ -99,7 +99,7 @@ pub enum PssEvent {
     
     // Match configuration
     MatchConfig {
-        number: u32,
+        number: String, // Changed from u32 to String to support values like "245.A"
         category: String,
         weight: String,
         rounds: u8,
@@ -432,12 +432,8 @@ impl UdpServer {
             *status = UdpServerStatus::Starting;
         }
         
-        // Start WebSocket server for real-time event broadcasting
-        if let Err(e) = self.websocket_server.start(8080).await {
-            log::warn!("Failed to start WebSocket server: {}", e);
-        } else {
-            log::info!("🔌 WebSocket server started on port 8080");
-        }
+        // WebSocket server is started by the core app, no need to start it here
+        log::info!("🔌 WebSocket server will be managed by core app");
         
         // Initialize event type cache
         if let Err(e) = self.initialize_event_type_cache().await {
@@ -1020,8 +1016,8 @@ impl UdpServer {
                 let mut errors = Vec::new();
                 match event {
                     PssEvent::MatchConfig { number, rounds, round_duration, .. } => {
-                        if *number == 0 {
-                            errors.push("Match number cannot be zero".to_string());
+                        if number.is_empty() {
+                            errors.push("Match number cannot be empty".to_string());
                         }
                         if *rounds < 1 || *rounds > 5 {
                             errors.push(format!("Invalid number of rounds: {}", rounds));
@@ -2221,7 +2217,7 @@ impl UdpServer {
             "mch" => {
                 // Parse: mch;101;Round of 16;M- 80 kg;1;#0000ff;#FFFFFF;#ff0000;#FFFFFF;a14ddd5c;Senior;3;120;cntDown;18;1;
                 if parts.len() >= 15 {
-                    let number = parse_u32(1, "match number", 1, 9999)?;
+                    let number = get_string(1, "match number", 20)?; // Changed to get_string to support values like "245.A"
                     let category = get_string(2, "category", 100)?;
                     let weight = get_string(3, "weight", 50)?;
                     let rounds = parse_u8(4, "rounds", 1, 10)?;
