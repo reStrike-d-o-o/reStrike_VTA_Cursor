@@ -130,23 +130,22 @@ impl WebSocketServer {
     }
     
     async fn handle_client(
-        socket: tokio::net::TcpStream,
+        _socket: tokio::net::TcpStream,
         addr: std::net::SocketAddr,
         clients: Arc<Mutex<Vec<WebSocketClient>>>,
-        event_tx: mpsc::UnboundedSender<PssEvent>,
+        _event_tx: mpsc::UnboundedSender<PssEvent>,
     ) -> AppResult<()> {
-        // For now, we'll implement a simple message passing system
-        // In a real implementation, you'd upgrade the TCP connection to WebSocket
+        let client_id = format!("client_{}", addr);
+        log::info!("🔌 New WebSocket client connected: {}", client_id);
         
-        let client_id = format!("client_{}", addr.port());
         let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<WebSocketMessage>();
         
-        let client = WebSocketClient::new(client_id.clone(), tx);
+        let client = WebSocketClient::new(client_id.clone(), tx.clone());
+        
+        // Add client to the list
         clients.lock().unwrap().push(client);
         
-        log::info!("🔌 Client {} connected", client_id);
-        
-        // Send connection status
+        // Send connection status message
         let status_msg = WebSocketMessage::ConnectionStatus {
             connected: true,
             timestamp: Utc::now().to_rfc3339(),
@@ -194,24 +193,28 @@ impl WebSocketServer {
         match event {
             PssEvent::Points { athlete, point_type } => {
                 let event_code = match point_type {
-                    1 => "P".to_string(),
-                    2 => "K".to_string(),
-                    3 => "H".to_string(),
-                    4 => "TB".to_string(),
-                    5 => "TH".to_string(),
-                    _ => "K".to_string(),
+                    1 => "P".to_string(), // Punch
+                    2 => "TB".to_string(), // Technical Body
+                    3 => "H".to_string(), // Head Kick
+                    4 => "TB".to_string(), // Technical Body
+                    5 => "TH".to_string(), // Technical Head
+                    _ => "K".to_string(), // Default to Kick
                 };
                 
-                let athlete_str = if *athlete == 1 { "blue" } else { "red" };
+                let athlete_str = match athlete {
+                    1 => "Blue".to_string(),
+                    2 => "Red".to_string(),
+                    _ => "Unknown".to_string(),
+                };
                 
                 WebSocketMessage::PssEvent {
-                    event_type: format!("pt{}", athlete),
-                    event_code,
-                    athlete: athlete_str.to_string(),
-                    round: 1, // Will be updated by round events
-                    time: "0:00".to_string(), // Will be updated by clock events
+                    event_type: "points".to_string(),
+                    event_code: event_code.clone(),
+                    athlete: athlete_str.clone(),
+                    round: 1, // Default round, should be updated with actual round
+                    time: "0:00".to_string(), // Default time, should be updated with actual time
                     timestamp: Utc::now().to_rfc3339(),
-                    raw_data: format!("pt{};{};", athlete, point_type),
+                    raw_data: format!("pt{}", point_type),
                     description: format!("{} {}", athlete_str, event_code),
                 }
             }

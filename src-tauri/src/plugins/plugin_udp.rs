@@ -557,6 +557,7 @@ impl UdpServer {
         let recent_hit_levels_clone = self.recent_hit_levels.clone();
         let tournament_id_clone = self.current_tournament_id.clone();
         let tournament_day_id_clone = self.current_tournament_day_id.clone();
+        let websocket_server_clone = self.websocket_server.clone();
 
         let listener_task = tokio::spawn(async move {
             Self::listen_loop_async(
@@ -574,6 +575,7 @@ impl UdpServer {
                 recent_hit_levels_clone,
                 tournament_id_clone,
                 tournament_day_id_clone,
+                websocket_server_clone,
             ).await;
         });
 
@@ -733,13 +735,11 @@ impl UdpServer {
         ).await?;
         
         // Store event in database
-        let event_id = database.store_pss_event_v2(&event_model).await?;
+        let event_id = database.store_pss_event(&event_model).await?;
         
         // Extract and store event details
         if let Some(details) = Self::extract_event_details(event, recent_hit_levels) {
-            for (key, value, detail_type) in details {
-                database.store_event_detail(event_id, &key, value.as_deref(), &detail_type).await?;
-            }
+            database.store_pss_event_details(event_id, &details).await?;
         }
         
         // Broadcast event to WebSocket clients for real-time updates
@@ -1623,6 +1623,7 @@ impl UdpServer {
         recent_hit_levels: Arc<Mutex<std::collections::HashMap<u8, Vec<(u8, std::time::SystemTime)>>>>,
         tournament_id: Arc<Mutex<Option<i64>>>,
         tournament_day_id: Arc<Mutex<Option<i64>>>,
+        websocket_server: Arc<WebSocketServer>,
     ) {
         println!("🎯 UDP PSS Server listening loop started (async)");
         
@@ -1730,12 +1731,11 @@ impl UdpServer {
                             let current_match_id_clone = current_match_id.clone();
                             let athlete_cache_clone = athlete_cache.clone();
                             let event_type_cache_clone = event_type_cache.clone();
-                                    let recent_hit_levels_clone = recent_hit_levels.clone();
-                                    let tournament_id_clone = tournament_id.clone();
-                                    let tournament_day_id_clone = tournament_day_id.clone();
-                            let event_clone = event.clone();
+                            let recent_hit_levels_clone = recent_hit_levels.clone();
+                            let tournament_id_clone = tournament_id.clone();
+                            let tournament_day_id_clone = tournament_day_id.clone();
+                            let websocket_server_clone = websocket_server.clone();
                             
-                            // Spawn async task for database operation
                             tokio::spawn(async move {
                                 if let Err(e) = Self::store_event_in_database(
                                     &database_clone,
@@ -1743,11 +1743,11 @@ impl UdpServer {
                                     &current_match_id_clone,
                                     &athlete_cache_clone,
                                     &event_type_cache_clone,
-                                            &event_clone,
-                                            &recent_hit_levels_clone,
-                                            &tournament_id_clone,
-                                            &tournament_day_id_clone,
-                                    &server.websocket_server,
+                                    &event,
+                                    &recent_hit_levels_clone,
+                                    &tournament_id_clone,
+                                    &tournament_day_id_clone,
+                                    &websocket_server_clone,
                                 ).await {
                                     log::error!("Failed to store event in database: {}", e);
                                 }
