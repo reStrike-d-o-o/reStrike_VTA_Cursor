@@ -7,6 +7,7 @@ use crate::types::{AppError, AppResult};
 use crate::plugins::ProtocolManager;
 use crate::plugins::plugin_database::DatabasePlugin;
 use crate::plugins::performance_monitor::PerformanceMonitor;
+use crate::plugins::plugin_websocket::WebSocketServer;
 use crate::database::models::{
     UdpServerConfig as DbUdpServerConfig, PssEventV2, 
     PssScore, PssWarning
@@ -199,6 +200,8 @@ pub struct UdpServer {
     batch_tx: mpsc::UnboundedSender<PssEvent>,
     // Phase 1 Optimization: Performance monitoring
     performance_monitor: Arc<PerformanceMonitor>,
+    // WebSocket server for real-time event broadcasting
+    websocket_server: Arc<WebSocketServer>,
 }
 
 // Phase 1 Optimization: Performance monitoring structs
@@ -224,8 +227,11 @@ impl UdpServer {
         protocol_manager: Arc<ProtocolManager>,
         database: Arc<DatabasePlugin>,
     ) -> Self {
-        // Phase 1 Optimization: Create batch processing channel
         let (batch_tx, batch_rx) = mpsc::unbounded_channel::<PssEvent>();
+        let performance_monitor = Arc::new(PerformanceMonitor::new());
+        
+        // Create WebSocket server for real-time event broadcasting
+        let websocket_server = Arc::new(WebSocketServer::new(event_tx.clone()));
         
         let server = Self {
             status: Arc::new(Mutex::new(UdpServerStatus::Stopped)),
@@ -240,29 +246,22 @@ impl UdpServer {
             athlete_cache: Arc::new(Mutex::new(std::collections::HashMap::new())),
             event_type_cache: Arc::new(Mutex::new(std::collections::HashMap::new())),
             listener_task: Arc::new(Mutex::new(None)),
-            // Hit level tracking for statistics
             recent_hit_levels: Arc::new(Mutex::new(std::collections::HashMap::new())),
-            // Tournament context tracking
             current_tournament_id: Arc::new(Mutex::new(None)),
             current_tournament_day_id: Arc::new(Mutex::new(None)),
-            // Phase 1 Optimization: Event batching for high-volume processing
             event_batch: Arc::new(Mutex::new(Vec::new())),
             batch_processor_task: Arc::new(Mutex::new(None)),
             batch_tx,
-            // Phase 1 Optimization: Performance monitoring
-            performance_monitor: Arc::new(PerformanceMonitor::new()),
+            performance_monitor: performance_monitor.clone(),
+            websocket_server,
         };
         
-        // Start batch processor task
-        let batch_processor = server.clone_for_batch_processor();
+        // Start batch processor
+        let server_clone = server.clone_for_batch_processor();
         let batch_task = tokio::spawn(async move {
-            Self::batch_processor_loop(batch_rx, batch_processor).await;
+            Self::batch_processor_loop(batch_rx, server_clone).await;
         });
-        
-        {
-            let mut task_guard = server.batch_processor_task.lock().unwrap();
-            *task_guard = Some(batch_task);
-        }
+        *server.batch_processor_task.lock().unwrap() = Some(batch_task);
         
         server
     }
@@ -289,6 +288,7 @@ impl UdpServer {
             batch_processor_task: self.batch_processor_task.clone(),
             batch_tx: mpsc::unbounded_channel().0, // Dummy channel for clone
             performance_monitor: self.performance_monitor.clone(),
+            websocket_server: self.websocket_server.clone(),
         }
     }
 
@@ -378,6 +378,7 @@ impl UdpServer {
                     &hit_levels_clone,
                     &tournament_clone,
                     &tournament_day_clone,
+                    &server.websocket_server,
                 ).await
             });
             tasks.push(task);
@@ -422,6 +423,27 @@ impl UdpServer {
     }
 
     pub async fn start(&self, config: &crate::config::types::AppConfig) -> AppResult<()> {
+        log::info!("🚀 Starting UDP server...");
+        
+        // Update status
+        {
+            let mut status = self.status.lock().unwrap();
+            *status = UdpServerStatus::Starting;
+        }
+        
+        // Start WebSocket server for real-time event broadcasting
+        if let Err(e) = self.websocket_server.start(8080).await {
+            log::warn!("Failed to start WebSocket server: {}", e);
+        } else {
+            log::info!("🔌 WebSocket server started on port 8080");
+        }
+        
+        // Initialize event type cache
+        if let Err(e) = self.initialize_event_type_cache().await {
+            log::error!("Failed to initialize event type cache: {}", e);
+            return Err(e);
+        }
+        
         let network_settings = &config.udp.listener.network_interface;
         
         // Check if already running
@@ -461,9 +483,6 @@ impl UdpServer {
             *current_session = Some(session_id);
         }
 
-        // Initialize event type cache
-        self.initialize_event_type_cache().await?;
-        
         // Determine the best IP address to bind to
         let bind_ip = if network_settings.auto_detect {
             match crate::utils::NetworkDetector::get_best_ip_address(network_settings) {
@@ -573,52 +592,38 @@ impl UdpServer {
     }
 
     pub async fn stop(&self) -> AppResult<()> {
-        // Update status to stopping first
+        log::info!("🛑 Stopping UDP server...");
+        
+        // Update status
         {
             let mut status = self.status.lock().unwrap();
-            if matches!(*status, UdpServerStatus::Stopped) {
-                return Ok(()); // Already stopped
-            }
             *status = UdpServerStatus::Stopped;
         }
-
-        // End database session
-        if let Some(session_id) = *self.current_session_id.lock().unwrap() {
-            // Use async operation to end the database session
-            let database = self.database.clone();
-            let session_id_clone = session_id;
-            
-            // Spawn async task to end the database session
-            tokio::spawn(async move {
-                if let Err(e) = database.end_udp_server_session(session_id_clone, "stopped", None).await {
-                    log::error!("Failed to end database session: {}", e);
-                }
-            });
-            
-            *self.current_session_id.lock().unwrap() = None;
+        
+        // Stop WebSocket server
+        if let Err(e) = self.websocket_server.stop().await {
+            log::warn!("Failed to stop WebSocket server: {}", e);
+        } else {
+            log::info!("🔌 WebSocket server stopped");
         }
-
+        
+        // Stop listener task
+        if let Some(task) = self.listener_task.lock().unwrap().take() {
+            task.abort();
+        }
+        
+        // Stop batch processor task
+        if let Some(task) = self.batch_processor_task.lock().unwrap().take() {
+            task.abort();
+        }
+        
         // Close socket
         {
             let mut socket_guard = self.socket.lock().unwrap();
             *socket_guard = None;
         }
-
-        // Cancel the listener task if it's running
-        {
-            let mut listener_task_guard = self.listener_task.lock().unwrap();
-            if let Some(task) = listener_task_guard.take() {
-                task.abort();
-                log::info!("Listener task aborted.");
-            }
-        }
-
-        log::info!("🛑 UDP server stopped");
         
-        // Log server stop for Live Data panel
-        let stop_log_message = "🛑 UDP server stopped".to_string();
-        crate::core::app::App::emit_log_event(stop_log_message);
-        
+        log::info!("✅ UDP server stopped successfully");
         Ok(())
     }
 
@@ -706,19 +711,20 @@ impl UdpServer {
         recent_hit_levels: &Arc<Mutex<std::collections::HashMap<u8, Vec<(u8, std::time::SystemTime)>>>>,
         current_tournament_id: &Arc<Mutex<Option<i64>>>,
         current_tournament_day_id: &Arc<Mutex<Option<i64>>>,
+        websocket_server: &Arc<WebSocketServer>,
     ) -> AppResult<()> {
-        let start_time = std::time::Instant::now();
+        let start_time = Instant::now();
         
         // Get session ID
         let session_id = {
             let session_guard = current_session_id.lock().unwrap();
-            session_guard.ok_or_else(|| AppError::ConfigError("No active UDP session".to_string()))?
+            session_guard.ok_or_else(|| AppError::ConfigError("No active session".to_string()))?
         };
-
-        // Convert PSS event to database model with enhanced status tracking
-        let mut db_event = Self::convert_pss_event_to_db_model(
-            event, 
-            session_id, 
+        
+        // Convert PSS event to database model
+        let event_model = Self::convert_pss_event_to_db_model(
+            event,
+            session_id,
             current_match_id,
             event_type_cache,
             database,
@@ -726,80 +732,25 @@ impl UdpServer {
             current_tournament_day_id,
         ).await?;
         
-        // Determine recognition status based on event type
-        let (recognition_status, parser_confidence, validation_errors) = Self::determine_event_status(event, database).await?;
+        // Store event in database
+        let event_id = database.store_pss_event_v2(&event_model).await?;
         
-        // Update event with status information
-        db_event.recognition_status = recognition_status.clone();
-        db_event.parser_confidence = Some(parser_confidence);
-        db_event.validation_errors = validation_errors;
-        db_event.processing_time_ms = Some(start_time.elapsed().as_millis() as i32);
-
-        // Store event with status
-        let event_id = database.store_pss_event_with_status(&db_event).await?;
-
-        // Update event statistics
-        if let Err(e) = database.update_event_statistics(
-            session_id,
-            Some(db_event.event_type_id),
-            &recognition_status,
-            db_event.processing_time_ms,
-        ).await {
-            log::warn!("⚠️ Failed to update event statistics: {}", e);
-        }
-
-        // Handle specific event types
-        match event {
-            PssEvent::MatchConfig { match_id, .. } => {
-                if let Err(e) = Self::handle_match_config_event(database, current_match_id, match_id).await {
-                    log::warn!("⚠️ Failed to handle match config event: {}", e);
-                }
-            }
-            PssEvent::Athletes { athlete1_short, athlete1_long, athlete1_country, athlete2_short, athlete2_long, athlete2_country } => {
-                if let Err(e) = Self::handle_athletes_event(
-                    database, 
-                    athlete_cache, 
-                    athlete1_short, 
-                    athlete1_long, 
-                    athlete1_country, 
-                    athlete2_short, 
-                    athlete2_long, 
-                    athlete2_country
-                ).await {
-                    log::warn!("⚠️ Failed to handle athletes event: {}", e);
-                }
-            }
-            PssEvent::CurrentScores { athlete1_score, athlete2_score } => {
-                if let Err(e) = Self::handle_scores_event(database, current_match_id, *athlete1_score, *athlete2_score).await {
-                    log::warn!("⚠️ Failed to handle scores event: {}", e);
-                }
-            }
-            PssEvent::Warnings { athlete1_warnings, athlete2_warnings } => {
-                if let Err(e) = Self::handle_warnings_event(database, current_match_id, *athlete1_warnings, *athlete2_warnings).await {
-                    log::warn!("⚠️ Failed to handle warnings event: {}", e);
-                }
-            }
-            _ => {}
-        }
-
         // Extract and store event details
         if let Some(details) = Self::extract_event_details(event, recent_hit_levels) {
-            if let Err(e) = database.store_pss_event_details(event_id, &details).await {
-                log::warn!("⚠️ Failed to store event details: {}", e);
+            for (key, value, detail_type) in details {
+                database.store_event_detail(event_id, &key, value.as_deref(), &detail_type).await?;
             }
         }
-
-        // If event is unknown, store it in unknown events table
-        if recognition_status == "unknown" {
-            let unknown_event = crate::database::models::PssUnknownEvent::new(
-                session_id,
-                db_event.raw_data.clone(),
-            );
-            if let Err(e) = database.store_unknown_event(&unknown_event).await {
-                log::warn!("⚠️ Failed to store unknown event: {}", e);
-            }
+        
+        // Broadcast event to WebSocket clients for real-time updates
+        if let Err(e) = websocket_server.broadcast_event(event) {
+            log::warn!("Failed to broadcast event to WebSocket: {}", e);
         }
-
+        
+        // Update performance metrics
+        let processing_time = start_time.elapsed().as_millis() as i32;
+        log::debug!("Event processed in {}ms: {:?}", processing_time, event);
+        
         Ok(())
     }
 
@@ -1796,6 +1747,7 @@ impl UdpServer {
                                             &recent_hit_levels_clone,
                                             &tournament_id_clone,
                                             &tournament_day_id_clone,
+                                    &server.websocket_server,
                                 ).await {
                                     log::error!("Failed to store event in database: {}", e);
                                 }

@@ -14,6 +14,7 @@ import { useEnvironment } from '../../hooks/useEnvironment';
 import { invoke } from '@tauri-apps/api/core';
 import { usePssMatchStore } from '../../stores/pssMatchStore';
 import { PssAthleteInfo, PssMatchConfig } from '../../types';
+import { useLiveDataEvents } from '../../hooks/useLiveDataEvents';
 
 const DockBar: React.FC = () => {
   const { tauriAvailable } = useEnvironment();
@@ -29,6 +30,9 @@ const DockBar: React.FC = () => {
   const authenticateAdvancedMode = useAppStore((state) => state.authenticateAdvancedMode);
   const deauthenticateAdvancedMode = useAppStore((state) => state.deauthenticateAdvancedMode);
   const toggleManualMode = useAppStore((state) => state.toggleManualMode);
+  
+  // Real-time event connection
+  const { isConnected } = useLiveDataEvents();
   
   // Local state
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);

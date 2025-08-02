@@ -1,34 +1,15 @@
 import React, { useRef, useEffect, useState } from 'react';
 import Button from '../atoms/Button';
 import { StatusDot } from '../atoms/StatusDot';
-
-// Dummy events data with updated event types including TH (Technical Head) and TB (Technical Body)
-const events = [
-  { round: 'R1', time: '02.00.123', event: 'H', color: 'blue' },
-  { round: 'R1', time: '01.45.456', event: 'P', color: 'red' },
-  { round: 'R1', time: '01.30.789', event: 'R', color: 'yellow' },
-  { round: 'R1', time: '01.15.234', event: 'K', color: 'blue' },
-  { round: 'R1', time: '01.00.567', event: 'TH', color: 'red' },
-  { round: 'R2', time: '02.00.321', event: 'H', color: 'red' },
-  { round: 'R2', time: '01.50.654', event: 'P', color: 'blue' },
-  { round: 'R2', time: '01.40.987', event: 'R', color: 'yellow' },
-  { round: 'R2', time: '01.30.210', event: 'K', color: 'red' },
-  { round: 'R2', time: '01.20.543', event: 'R', color: 'yellow' },
-  { round: 'R2', time: '01.10.876', event: 'TB', color: 'blue' },
-  { round: 'R3', time: '02.00.111', event: 'H', color: 'blue' },
-  { round: 'R3', time: '01.55.222', event: 'P', color: 'red' },
-  { round: 'R3', time: '01.50.333', event: 'R', color: 'yellow' },
-  { round: 'R3', time: '01.45.444', event: 'K', color: 'red' },
-  { round: 'R3', time: '01.40.555', event: 'TB', color: 'blue' },
-  { round: 'R3', time: '01.35.666', event: 'R', color: 'yellow' },
-  { round: 'R3', time: '01.30.777', event: 'R', color: 'yellow' },
-];
+import { useLiveDataStore, PssEventData } from '../../stores/liveDataStore';
+import { useAppStore } from '../../stores/index';
 
 const colorOptions = [
   { color: 'red', class: 'bg-red-500' },
   { color: 'blue', class: 'bg-blue-500' },
-  { color: 'yellow', class: 'bg-yellow-400' },
+  { color: 'referee', class: 'bg-yellow-400' },
 ];
+
 // Event type filter buttons (order: H, K, P, TH, TB, R)
 const eventTypeOptions = [
   { label: 'HEAD', value: 'H' },
@@ -44,32 +25,81 @@ const EventTableSection: React.FC = () => {
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
   const [colorFilter, setColorFilter] = useState<string | null>(null);
   const [eventTypeFilter, setEventTypeFilter] = useState<string | null>(null);
+  
+  // Get real-time data from stores
+  const { 
+    events, 
+    currentRound, 
+    currentTime, 
+    isConnected, 
+    getFilteredEvents,
+    clearEvents 
+  } = useLiveDataStore();
+  
+  const { isManualModeEnabled } = useAppStore();
 
+  // Auto-scroll to top when new events arrive (since newest are now at top)
   useEffect(() => {
     if (tableRef.current) {
-      tableRef.current.scrollTop = tableRef.current.scrollHeight;
+      tableRef.current.scrollTop = 0;
     }
-  }, []);
+  }, [events]);
 
   const handleScrollTopAndClear = () => {
     if (tableRef.current) {
-      tableRef.current.scrollTop = 0;
+      tableRef.current.scrollTop = tableRef.current.scrollHeight;
     }
     setColorFilter(null);
     setEventTypeFilter(null);
   };
 
-  // Filtering logic
-  const filteredEvents = events.filter(e => {
-    const colorMatch = colorFilter ? e.color === colorFilter : true;
-    const eventTypeMatch = eventTypeFilter ? e.event === eventTypeFilter : true;
-    return colorMatch && eventTypeMatch;
-  });
+  // Filtering logic - only show events when manual mode is OFF
+  const filteredEvents = isManualModeEnabled ? [] : getFilteredEvents(colorFilter, eventTypeFilter);
+
+  // Format time for display (convert from "m:ss" to "mm.ss.000" format)
+  const formatTimeForDisplay = (time: string): string => {
+    if (!time || time === '0:00') return '00.00.000';
+    
+    const parts = time.split(':');
+    if (parts.length === 2) {
+      const minutes = parts[0].padStart(2, '0');
+      const seconds = parts[1].padStart(2, '0');
+      return `${minutes}.${seconds}.000`;
+    }
+    
+    return time;
+  };
+
+  // Get athlete color for display
+  const getAthleteColor = (athlete: string): string => {
+    switch (athlete) {
+      case 'blue': return 'bg-blue-500';
+      case 'red': return 'bg-red-500';
+      case 'referee': return 'bg-yellow-400';
+      default: return 'bg-gray-500';
+    }
+  };
 
   return (
     <div className="flex flex-col space-y-4 overflow-hidden pt-4">
-      {/* Section Title */}
-      <div className="flex-shrink-0 text-lg font-semibold text-gray-200">Event Table</div>
+      {/* Section Title with Connection Status */}
+      <div className="flex-shrink-0 flex items-center justify-between">
+        <div className="text-lg font-semibold text-gray-200">Event Table</div>
+        <div className="flex items-center space-x-2">
+          <StatusDot 
+            color={isConnected ? 'bg-green-500' : 'bg-red-500'} 
+            size="w-3 h-3" 
+          />
+          <span className="text-xs text-gray-400">
+            {isConnected ? 'Connected' : 'Disconnected'}
+          </span>
+          {isManualModeEnabled && (
+            <span className="text-xs text-yellow-400 bg-yellow-900/20 px-2 py-1 rounded">
+              Manual Mode
+            </span>
+          )}
+        </div>
+      </div>
       
       {/* Centered wrapper for Event Table and Filter Stack */}
       <div className="flex justify-center flex-1 min-h-0 overflow-hidden">
@@ -98,24 +128,39 @@ const EventTableSection: React.FC = () => {
                 ))}
               </div>
             </div>
+            
             {/* Event Rows */}
             <div ref={tableRef} className="h-64 space-y-1 overflow-y-auto bg-[#1a2a3a] rounded-md p-3">
-              {filteredEvents.map((event, idx) => (
-                <div
-                  key={idx}
-                  className={`flex text-sm cursor-pointer transition-colors duration-150 rounded px-2 py-2 ${
-                    selectedIdx === idx ? 'bg-blue-900/60 border border-blue-400' : 'hover:bg-gray-700/50'
-                  }`}
-                  onClick={() => setSelectedIdx(idx)}
-                >
-                  <div className="w-16 text-gray-300 font-bold mr-2 ml-8">{event.round}</div>
-                  <div className="w-24 text-gray-300 mr-2">{event.time}</div>
-                  <div className="w-32 flex items-center space-x-2 pl-10">
-                    <StatusDot color={`bg-${event.color}-500`} size="w-4 h-4" />
-                    <span className="text-white font-medium">{event.event}</span>
-                  </div>
+              {isManualModeEnabled ? (
+                <div className="flex items-center justify-center h-full text-gray-500 text-sm">
+                  Manual Mode Active - Real-time events disabled
                 </div>
-              ))}
+              ) : filteredEvents.length === 0 ? (
+                <div className="flex items-center justify-center h-full text-gray-500 text-sm">
+                  {isConnected ? 'Waiting for events...' : 'Not connected to PSS'}
+                </div>
+              ) : (
+                filteredEvents.map((event, idx) => (
+                  <div
+                    key={event.id}
+                    className={`flex text-sm cursor-pointer transition-colors duration-150 rounded px-2 py-2 ${
+                      selectedIdx === idx ? 'bg-blue-900/60 border border-blue-400' : 'hover:bg-gray-700/50'
+                    }`}
+                    onClick={() => setSelectedIdx(idx)}
+                  >
+                    <div className="w-16 text-gray-300 font-bold mr-2 ml-8">
+                      R{event.round}
+                    </div>
+                    <div className="w-24 text-gray-300 mr-2">
+                      {formatTimeForDisplay(event.time)}
+                    </div>
+                    <div className="w-32 flex items-center space-x-2 pl-10">
+                      <StatusDot color={getAthleteColor(event.athlete)} size="w-4 h-4" />
+                      <span className="text-white font-medium">{event.eventCode}</span>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
           
@@ -126,10 +171,22 @@ const EventTableSection: React.FC = () => {
               variant="secondary"
               size="sm"
               onClick={handleScrollTopAndClear}
-              title="Scroll to top and clear filters"
+              title="Scroll to bottom (oldest events) and clear filters"
               className="absolute top-0 w-8 h-8 p-0 flex items-center justify-center text-base"
             >
               ↑
+            </Button>
+            
+            {/* Clear Events Button - positioned in middle */}
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={clearEvents}
+              title="Clear all events"
+              className="absolute top-12 w-8 h-8 p-0 flex items-center justify-center text-xs"
+              disabled={isManualModeEnabled}
+            >
+              C
             </Button>
             
             {/* Event Type Filter Buttons - positioned to align with table bottom */}
@@ -142,12 +199,25 @@ const EventTableSection: React.FC = () => {
                   onClick={() => setEventTypeFilter(eventTypeFilter === type.value ? null : type.value)}
                   title={type.label}
                   className="w-8 h-8 p-0 text-xs font-bold"
+                  disabled={isManualModeEnabled}
                 >
                   {type.value}
                 </Button>
               ))}
             </div>
           </div>
+        </div>
+      </div>
+      
+      {/* Current Status Bar */}
+      <div className="flex-shrink-0 flex items-center justify-between text-xs text-gray-400 border-t border-gray-600 pt-2">
+        <div className="flex items-center space-x-4">
+          <span>Round: {currentRound}</span>
+          <span>Time: {currentTime}</span>
+        </div>
+        <div className="flex items-center space-x-2">
+          <span>Events: {events.length}</span>
+          <span>Filtered: {filteredEvents.length}</span>
         </div>
       </div>
     </div>
