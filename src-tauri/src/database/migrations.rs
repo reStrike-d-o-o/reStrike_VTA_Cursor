@@ -1830,6 +1830,34 @@ impl Migration for Migration9 {
     }
 }
 
+// ---------------- Migration10 ------------------------
+impl Migration for Migration10 {
+    fn version(&self) -> u32 {
+        10
+    }
+
+    fn description(&self) -> &str {
+        "Add action, target_type, delay_ms columns to event_triggers"
+    }
+
+    fn up(&self, conn: &Connection) -> SqliteResult<()> {
+        // Add new columns with default values if they do not already exist
+        // Note: SQLite's ALTER TABLE ADD COLUMN only adds if the column does not exist
+        conn.execute("ALTER TABLE event_triggers ADD COLUMN action TEXT NOT NULL DEFAULT 'show'", [])?;
+        conn.execute("ALTER TABLE event_triggers ADD COLUMN target_type TEXT NOT NULL DEFAULT 'scene'", [])?;
+        conn.execute("ALTER TABLE event_triggers ADD COLUMN delay_ms INTEGER NOT NULL DEFAULT 0", [])?;
+
+        log::info!("✅ Migration 10: Added action, target_type, delay_ms columns to event_triggers");
+        Ok(())
+    }
+
+    fn down(&self, _conn: &Connection) -> SqliteResult<()> {
+        // SQLite does not support DROP COLUMN; no-op but log warning
+        log::warn!("⚠️  Migration 10 rollback: Cannot drop columns action, target_type, delay_ms due to SQLite limitations");
+        Ok(())
+    }
+}
+
 /// Migration manager for handling database schema updates
 pub struct MigrationManager {
     migrations: Vec<Box<dyn Migration>>,
@@ -1847,7 +1875,8 @@ impl MigrationManager {
         migrations.push(Box::new(Migration6));
         migrations.push(Box::new(Migration7));
         migrations.push(Box::new(Migration8));
-        migrations.push(Box::new(Migration9)); // Add trigger system migration
+        migrations.push(Box::new(Migration9)); // Trigger system migration
+        migrations.push(Box::new(Migration10)); // Add columns action, target_type, delay_ms
         
         Self { migrations }
     }
