@@ -41,13 +41,8 @@ const DragPalette: React.FC<DragPaletteProps> = ({ scenes, overlays }) => {
       ))}
 
       <h3 className="text-xs font-bold text-gray-300 mt-4 mb-1">Actions</h3>
-      {['show', 'hide'].map(a => (
+      {['show', 'hide', 'delay'].map(a => (
         <DraggableBadge key={a} id={`act-${a}`} label={a} colorClass="bg-green-600" />
-      ))}
-
-      <h3 className="text-xs font-bold text-gray-300 mt-4 mb-1">Target Type</h3>
-      {['scene', 'overlay'].map(t => (
-        <DraggableBadge key={t} id={`tt-${t}`} label={t} colorClass="bg-purple-600" />
       ))}
 
       <h3 className="text-xs font-bold text-gray-300 mt-4 mb-1">Scenes</h3>

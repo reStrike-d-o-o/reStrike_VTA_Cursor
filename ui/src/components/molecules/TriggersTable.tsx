@@ -36,7 +36,7 @@ interface RowProps {
 }
 
 // Generic droppable TD
-const DroppableCell: React.FC<{ id: string; className?: string; }> = ({ id, className = '', children }) => {
+const DroppableCell: React.FC<React.PropsWithChildren<{ id: string; className?: string }>> = ({ id, className = '', children }) => {
   const { isOver, setNodeRef } = useDroppable({ id });
   return (
     <td
@@ -226,13 +226,15 @@ export const TriggersTable: React.FC<Props> = ({ tournamentId, dayId }) => {
       set.updateRow(rowIdx, { kind: 'event', event_type: ev } as Partial<EventTriggerRow>);
     }
     if (active.id.toString().startsWith('act-')) {
-      const act = active.id.toString().substring(4) as 'show' | 'hide';
-      set.updateRow(rowIdx, { action: act });
+      const act = active.id.toString().substring(4);
+      if (act === 'delay') {
+        // convert entire row to delay
+        set.updateRow(rowIdx, { kind: 'delay', delay_ms: 300 });
+      } else {
+        set.updateRow(rowIdx, { kind: 'event', action: act as 'show' | 'hide' });
+      }
     }
-    if (active.id.toString().startsWith('tt-')) {
-      const ttype = active.id.toString().substring(3) as 'scene' | 'overlay';
-      set.updateRow(rowIdx, { target_type: ttype });
-    }
+
     if (active.id.toString().startsWith('scene-')) {
       const sceneId = Number(active.id.toString().substring(6));
       set.updateRow(rowIdx, { obs_scene_id: sceneId, target_type: 'scene' });
@@ -304,7 +306,7 @@ export const TriggersTable: React.FC<Props> = ({ tournamentId, dayId }) => {
           }}>
           Delete
         </Button>
-        <Button variant="secondary">Load</Button>
+        <Button variant="secondary" onClick={() => useTriggersStore.getState().fetchScenes()}>Load OBS scenes</Button>
         <Button variant="secondary">Test</Button>
         <div className="mt-4">
           <label className="text-xs block mb-1">Resume delay (ms)</label>
