@@ -7,9 +7,11 @@ import Toggle from '../atoms/Toggle';
 import StatusbarDock from './StatusbarDock';
 import PasswordDialog from '../molecules/PasswordDialog';
 import ManualModeDialog from '../molecules/ManualModeDialog';
+import NewMatchDialog from '../molecules/NewMatchDialog';
 import { useAppStore } from '../../stores';
 import { windowCommands } from '../../utils/tauriCommands';
 import { useEnvironment } from '../../hooks/useEnvironment';
+import { invoke } from '@tauri-apps/api/core';
 
 const DockBar: React.FC = () => {
   const { tauriAvailable } = useEnvironment();
@@ -73,6 +75,41 @@ const DockBar: React.FC = () => {
     toggleManualMode();
   };
 
+  // Handle New Match button click
+  const handleNewMatchClick = () => {
+    setShowNewMatchDialog(true);
+  };
+
+  // Handle Restore button click
+  const handleRestoreClick = async () => {
+    setIsRestoring(true);
+    try {
+      const result = await invoke('manual_restore_data');
+      console.log('Restore result:', result);
+      // TODO: Update all stores with restored data
+      alert('Data restored successfully!');
+    } catch (error) {
+      console.error('Failed to restore data:', error);
+      alert('Failed to restore data. Please check the console for details.');
+    } finally {
+      setIsRestoring(false);
+    }
+  };
+
+  // Handle New Match creation
+  const handleNewMatchCreate = async (matchData: any) => {
+    try {
+      const result = await invoke('manual_create_match', { matchData });
+      console.log('New match created:', result);
+      // TODO: Update MatchDetailsSection with new data
+      alert('New match created successfully!');
+      setShowNewMatchDialog(false);
+    } catch (error) {
+      console.error('Failed to create new match:', error);
+      alert('Failed to create new match. Please check the console for details.');
+    }
+  };
+
   return (
     <>
       <div className="flex flex-col w-full h-full min-h-0 bg-gradient-to-b from-gray-900/95 to-gray-800/90 backdrop-blur-sm border-r border-gray-600/30 shadow-xl overflow-hidden">
@@ -121,7 +158,7 @@ const DockBar: React.FC = () => {
                       <Button
                         variant="primary"
                         size="sm"
-                        onClick={() => { /* TODO: Implement New Match action */ }}
+                        onClick={handleNewMatchClick}
                         className="w-32 relative z-10 bg-green-600 hover:bg-green-700"
                       >
                         New Match
@@ -134,10 +171,11 @@ const DockBar: React.FC = () => {
                       <Button
                         variant="danger"
                         size="sm"
-                        onClick={() => { /* TODO: Implement Restore action */ }}
+                        onClick={handleRestoreClick}
                         className="w-32 relative z-10"
+                        disabled={isRestoring}
                       >
-                        Restore
+                        {isRestoring ? 'Restoring...' : 'Restore'}
                       </Button>
                     </div>
                   </div>
@@ -220,6 +258,13 @@ const DockBar: React.FC = () => {
         onClose={() => setShowManualDialog(false)}
         onConfirm={handleManualModeConfirm}
         isEnabled={isManualModeEnabled}
+      />
+
+      {/* New Match Dialog */}
+      <NewMatchDialog
+        isOpen={showNewMatchDialog}
+        onClose={() => setShowNewMatchDialog(false)}
+        onStartMatch={handleNewMatchCreate}
       />
     </>
   );

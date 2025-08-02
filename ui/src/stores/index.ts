@@ -104,7 +104,7 @@ export interface AppActions {
   // Advanced Mode Authentication Actions
   authenticateAdvancedMode: (password: string) => boolean;
   deauthenticateAdvancedMode: () => void;
-  toggleManualMode: (code: string) => boolean;
+  toggleManualMode: () => void;
   
   // Window Settings Actions
   updateWindowSettings: (settings: Partial<AppState['windowSettings']>) => void;
@@ -284,14 +284,10 @@ export const useAppStore = create<AppStore>()(
         });
       },
       
-      toggleManualMode: (code) => {
-        const isValid = code === 'el Manuel';
-        if (isValid) {
-          set((state) => ({ 
-            isManualModeEnabled: !state.isManualModeEnabled 
-          }));
-        }
-        return isValid;
+      toggleManualMode: () => {
+        set((state) => ({ 
+          isManualModeEnabled: !state.isManualModeEnabled 
+        }));
       },
 
       // Window Settings Actions

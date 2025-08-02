@@ -36,8 +36,7 @@ pub async fn manual_create_match(
 ) -> Result<serde_json::Value, String> {
     log::info!("Creating manual match: {:?}", match_data);
     
-    let conn = app.database_plugin().get_database_connection().await
-        .map_err(|e| format!("Failed to get database connection: {}", e))?;
+    let conn = app.database_plugin().get_database_connection();
     
     // Create the match
     let mut pss_match = PssMatch::new(format!("manual_{}", match_data.match_number));
@@ -90,8 +89,7 @@ pub async fn manual_restore_data(
 ) -> Result<serde_json::Value, String> {
     log::info!("Restoring all app data from database");
     
-    let conn = app.database_plugin().get_database_connection().await
-        .map_err(|e| format!("Failed to get database connection: {}", e))?;
+    let conn = app.database_plugin().get_database_connection();
     
     // Get the latest match data
     let matches = PssUdpOperations::get_pss_matches(&*conn, Some(1))
@@ -134,8 +132,7 @@ pub async fn manual_get_statistics(
 ) -> Result<serde_json::Value, String> {
     log::info!("Getting manual match statistics");
     
-    let conn = app.database_plugin().get_database_connection().await
-        .map_err(|e| format!("Failed to get database connection: {}", e))?;
+    let conn = app.database_plugin().get_database_connection();
     
     // Get all manual matches
     let manual_matches = PssUdpOperations::get_pss_matches_by_creation_mode(&*conn, "Manual")
