@@ -299,6 +299,10 @@ async fn main() -> AppResult<()> {
             re_strike_vta::tauri_commands_obs_connections::obs_connections_delete,
             re_strike_vta::tauri_commands_obs_connections::obs_connections_clear_all,
             re_strike_vta::tauri_commands_obs_connections::obs_connections_sync_from_config,
+            // Manual Mode Commands
+            re_strike_vta::tauri_commands_manual_mode::manual_create_match,
+            re_strike_vta::tauri_commands_manual_mode::manual_restore_data,
+            re_strike_vta::tauri_commands_manual_mode::manual_get_statistics,
             // OBS Commands
             tauri_commands::obs_connect,
             tauri_commands::obs_add_connection,

@@ -13,6 +13,7 @@ pub mod tauri_commands;
 pub mod tauri_commands_triggers;
 pub mod tauri_commands_overlays;
 pub mod tauri_commands_obs_connections;
+pub mod tauri_commands_manual_mode;
 pub mod logging;
 pub mod utils;
 pub mod ui_settings;

@@ -29,6 +29,8 @@ const DockBar: React.FC = () => {
   // Local state
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [showManualDialog, setShowManualDialog] = useState(false);
+  const [showNewMatchDialog, setShowNewMatchDialog] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
 
   // Handle Advanced button click
   const handleAdvancedClick = async () => {
