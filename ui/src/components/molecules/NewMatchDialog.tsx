@@ -12,13 +12,13 @@ interface NewMatchDialogProps {
 export interface ManualMatchData {
   player1: {
     name: string;
-    iocCode: string;
+    ioc_code: string;
   };
   player2: {
     name: string;
-    iocCode: string;
+    ioc_code: string;
   };
-  matchNumber: string;
+  match_number: string;
   category: string;
   weight: string;
   division: string;
@@ -30,9 +30,9 @@ const NewMatchDialog: React.FC<NewMatchDialogProps> = ({
   onStartMatch
 }) => {
   const [matchData, setMatchData] = useState<ManualMatchData>({
-    player1: { name: '', iocCode: '' },
-    player2: { name: '', iocCode: '' },
-    matchNumber: '',
+    player1: { name: '', ioc_code: '' },
+    player2: { name: '', ioc_code: '' },
+    match_number: '',
     category: '',
     weight: '',
     division: ''
@@ -45,7 +45,7 @@ const NewMatchDialog: React.FC<NewMatchDialogProps> = ({
     }));
   };
 
-  const handlePlayerChange = (player: 'player1' | 'player2', field: 'name' | 'iocCode', value: string) => {
+  const handlePlayerChange = (player: 'player1' | 'player2', field: 'name' | 'ioc_code', value: string) => {
     setMatchData(prev => ({
       ...prev,
       [player]: {
@@ -57,9 +57,9 @@ const NewMatchDialog: React.FC<NewMatchDialogProps> = ({
 
   const handleStartMatch = () => {
     // Validate required fields
-    if (!matchData.player1.name || !matchData.player1.iocCode ||
-        !matchData.player2.name || !matchData.player2.iocCode ||
-        !matchData.matchNumber || !matchData.category || !matchData.weight || !matchData.division) {
+    if (!matchData.player1.name || !matchData.player1.ioc_code ||
+        !matchData.player2.name || !matchData.player2.ioc_code ||
+        !matchData.match_number || !matchData.category || !matchData.weight || !matchData.division) {
       alert('Please fill in all required fields');
       return;
     }
@@ -101,15 +101,15 @@ const NewMatchDialog: React.FC<NewMatchDialogProps> = ({
                 <div className="flex items-center space-x-2">
                   <Input
                     type="text"
-                    value={matchData.player1.iocCode}
-                    onChange={(e) => handlePlayerChange('player1', 'iocCode', e.target.value.toUpperCase())}
+                    value={matchData.player1.ioc_code}
+                    onChange={(e) => handlePlayerChange('player1', 'ioc_code', e.target.value.toUpperCase())}
                     placeholder="USA"
                     className="w-full"
                     maxLength={3}
                   />
-                  {matchData.player1.iocCode && (
+                  {matchData.player1.ioc_code && (
                     <div className="flex-shrink-0">
-                      <FlagImage countryCode={matchData.player1.iocCode} className="w-8 h-6" />
+                      <FlagImage countryCode={matchData.player1.ioc_code} className="w-8 h-6" />
                     </div>
                   )}
                 </div>
@@ -136,15 +136,15 @@ const NewMatchDialog: React.FC<NewMatchDialogProps> = ({
                 <div className="flex items-center space-x-2">
                   <Input
                     type="text"
-                    value={matchData.player2.iocCode}
-                    onChange={(e) => handlePlayerChange('player2', 'iocCode', e.target.value.toUpperCase())}
+                    value={matchData.player2.ioc_code}
+                    onChange={(e) => handlePlayerChange('player2', 'ioc_code', e.target.value.toUpperCase())}
                     placeholder="JPN"
                     className="w-full"
                     maxLength={3}
                   />
-                  {matchData.player2.iocCode && (
+                  {matchData.player2.ioc_code && (
                     <div className="flex-shrink-0">
-                      <FlagImage countryCode={matchData.player2.iocCode} className="w-8 h-6" />
+                      <FlagImage countryCode={matchData.player2.ioc_code} className="w-8 h-6" />
                     </div>
                   )}
                 </div>
@@ -160,8 +160,8 @@ const NewMatchDialog: React.FC<NewMatchDialogProps> = ({
                 <label className="block text-sm font-medium text-gray-300 mb-1">Match Number</label>
                 <Input
                   type="text"
-                  value={matchData.matchNumber}
-                  onChange={(e) => handleInputChange('matchNumber', e.target.value)}
+                  value={matchData.match_number}
+                  onChange={(e) => handleInputChange('match_number', e.target.value)}
                   placeholder="1254"
                   className="w-full"
                 />

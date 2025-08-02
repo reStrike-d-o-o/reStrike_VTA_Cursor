@@ -109,6 +109,7 @@ const DockBar: React.FC = () => {
 
   // Handle New Match creation
   const handleNewMatchCreate = async (matchData: any) => {
+    console.log('Creating new match with data:', matchData);
     try {
       const result = await invoke('manual_create_match', { matchData });
       console.log('New match created:', result);
