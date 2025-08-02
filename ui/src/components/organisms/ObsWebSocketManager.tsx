@@ -54,19 +54,18 @@ const ObsWebSocketManager: React.FC = () => {
       if (isTauriAvailable()) {
         try {
           setLoading(true);
-          const result = await invoke('obs_get_connections');
+          const result = await invoke('obs_connections_get_all');
           
-          if (result && typeof result === 'object' && 'success' in result && result.success) {
-            const backendConnections = result.connections || [];
-            console.log('Backend connections:', backendConnections);
-            const formattedConnections: ObsConnection[] = backendConnections.map((conn: any) => {
-              // Map backend status to frontend status
+          if (result && Array.isArray(result)) {
+            console.log('Database connections:', result);
+            const formattedConnections: ObsConnection[] = result.map((conn: any) => {
+              // Map database status to frontend status
               let frontendStatus: ObsConnection['status'] = 'disconnected';
-              if (conn.status === 'Connected' || conn.status === 'Authenticated') {
+              if (conn.status === 'connected' || conn.status === 'authenticated') {
                 frontendStatus = 'connected';
-              } else if (conn.status === 'Connecting' || conn.status === 'Authenticating') {
+              } else if (conn.status === 'connecting' || conn.status === 'authenticating') {
                 frontendStatus = 'connecting';
-              } else if (conn.status === 'Error') {
+              } else if (conn.status === 'error') {
                 frontendStatus = 'error';
               } else {
                 frontendStatus = 'disconnected';
@@ -76,8 +75,9 @@ const ObsWebSocketManager: React.FC = () => {
                 name: conn.name,
                 host: conn.host,
                 port: conn.port,
-                enabled: conn.enabled ?? true,
-                status: frontendStatus
+                enabled: conn.is_active ?? true,
+                status: frontendStatus,
+                error: conn.error
               };
             });
             console.log('Formatted connections:', formattedConnections);
@@ -96,11 +96,11 @@ const ObsWebSocketManager: React.FC = () => {
           console.error('Failed to load OBS connections:', error);
           // Set default connection on error
           setConnections([{
-      name: 'OBS Studio 1',
-      host: 'localhost',
-      port: 4455,
+            name: 'OBS Studio 1',
+            host: 'localhost',
+            port: 4455,
             enabled: true,
-      status: 'disconnected'
+            status: 'disconnected'
           }]);
         } finally {
           setLoading(false);
@@ -109,13 +109,6 @@ const ObsWebSocketManager: React.FC = () => {
     };
 
     loadConnections();
-
-    // Set up periodic refresh of connection status
-    const refreshInterval = setInterval(loadConnections, 3000); // Refresh every 3 seconds
-
-    return () => {
-      clearInterval(refreshInterval);
-    };
   }, []);
 
   // Setup OBS status listener (push-based)
@@ -298,26 +291,26 @@ const ObsWebSocketManager: React.FC = () => {
       enabled: true,
       status: 'disconnected'
     };
-    setConnections([...connections, newConnection]);
+    
+    saveConnection(newConnection);
   };
 
   const refreshConnections = async () => {
     if (isTauriAvailable()) {
       try {
         setLoading(true);
-        const result = await invoke('obs_get_connections');
+        const result = await invoke('obs_connections_get_all');
         
-        if (result && typeof result === 'object' && 'success' in result && result.success) {
-          const backendConnections = result.connections || [];
-          console.log('Refreshed backend connections:', backendConnections);
-          const formattedConnections: ObsConnection[] = backendConnections.map((conn: any) => {
-            // Map backend status to frontend status
+        if (result && Array.isArray(result)) {
+          console.log('Refreshed database connections:', result);
+          const formattedConnections: ObsConnection[] = result.map((conn: any) => {
+            // Map database status to frontend status
             let frontendStatus: ObsConnection['status'] = 'disconnected';
-            if (conn.status === 'Connected' || conn.status === 'Authenticated') {
+            if (conn.status === 'connected' || conn.status === 'authenticated') {
               frontendStatus = 'connected';
-            } else if (conn.status === 'Connecting' || conn.status === 'Authenticating') {
+            } else if (conn.status === 'connecting' || conn.status === 'authenticating') {
               frontendStatus = 'connecting';
-            } else if (conn.status === 'Error') {
+            } else if (conn.status === 'error') {
               frontendStatus = 'error';
             } else {
               frontendStatus = 'disconnected';
@@ -327,11 +320,11 @@ const ObsWebSocketManager: React.FC = () => {
               name: conn.name,
               host: conn.host,
               port: conn.port,
-              enabled: conn.enabled ?? true,
-              status: frontendStatus
+              enabled: conn.is_active ?? true,
+              status: frontendStatus,
+              error: conn.error
             };
           });
-          console.log('Refreshed formatted connections:', formattedConnections);
           setConnections(formattedConnections);
         }
       } catch (error) {
@@ -342,8 +335,55 @@ const ObsWebSocketManager: React.FC = () => {
     }
   };
 
+  const saveConnection = async (connection: ObsConnection) => {
+    if (isTauriAvailable()) {
+      try {
+        const payload = {
+          id: undefined,
+          name: connection.name,
+          host: connection.host,
+          port: connection.port,
+          password: undefined,
+          is_active: connection.enabled,
+          status: connection.status,
+          error: connection.error
+        };
+        
+        await invoke('obs_connections_save', { connection: payload });
+        await refreshConnections();
+      } catch (error) {
+        console.error('Failed to save OBS connection:', error);
+      }
+    }
+  };
+
+  const deleteConnection = async (name: string) => {
+    if (isTauriAvailable()) {
+      try {
+        await invoke('obs_connections_delete', { name });
+        await refreshConnections();
+      } catch (error) {
+        console.error('Failed to delete OBS connection:', error);
+      }
+    }
+  };
+
+  const syncFromConfig = async () => {
+    if (isTauriAvailable()) {
+      try {
+        setLoading(true);
+        await invoke('obs_connections_sync_from_config');
+        await refreshConnections();
+      } catch (error) {
+        console.error('Failed to sync connections from config:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
   const removeConnection = (name: string) => {
-    setConnections(connections.filter((conn: ObsConnection) => conn.name !== name));
+    deleteConnection(name);
   };
 
   const getStatusColor = (status: ObsConnection['status']) => {
@@ -398,6 +438,14 @@ const ObsWebSocketManager: React.FC = () => {
               {loading ? 'Refreshing...' : 'Refresh'}
             </Button>
             <Button 
+              onClick={syncFromConfig} 
+              variant="secondary" 
+              size="sm"
+              disabled={loading}
+            >
+              {loading ? 'Syncing...' : 'Sync from Config'}
+            </Button>
+            <Button 
               onClick={async () => {
                 console.log('Manual refresh triggered');
                 await refreshConnections();
@@ -414,9 +462,9 @@ const ObsWebSocketManager: React.FC = () => {
             >
               Force Refresh
             </Button>
-          <Button onClick={addConnection} variant="primary" size="sm">
-            Add Connection
-          </Button>
+            <Button onClick={addConnection} variant="primary" size="sm">
+              Add Connection
+            </Button>
           </div>
         </div>
 

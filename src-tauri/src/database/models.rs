@@ -100,6 +100,8 @@ pub struct ObsConnection {
     pub port: u16,
     pub password: Option<String>,
     pub is_active: bool,
+    pub status: String, // 'disconnected', 'connecting', 'connected', 'authenticating', 'authenticated', 'error'
+    pub error: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -115,6 +117,8 @@ impl ObsConnection {
             port,
             password,
             is_active: false,
+            status: "disconnected".to_string(),
+            error: None,
             created_at: now,
             updated_at: now,
         }
@@ -129,6 +133,8 @@ impl ObsConnection {
             port: row.get("port")?,
             password: row.get("password")?,
             is_active: row.get("is_active")?,
+            status: row.get("status")?,
+            error: row.get("error")?,
             created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
                 .map_err(|_| rusqlite::Error::InvalidColumnType(0, "created_at".to_string(), rusqlite::types::Type::Text))?
                 .with_timezone(&Utc),

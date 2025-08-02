@@ -32,12 +32,30 @@ interface OverlaySettings {
   visible: boolean;
 }
 
+interface OverlayTemplate {
+  id?: number;
+  name: string;
+  description?: string;
+  theme: string;
+  colors?: string;
+  animation_type: string;
+  duration_ms: number;
+  is_active: boolean;
+  url?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' }) => {
   // Overlay settings state
   const [overlaySettings, setOverlaySettings] = useState<OverlaySettings>({
     type: 'scoreboard',
     visible: false,
   });
+
+  // Overlay templates state
+  const [overlayTemplates, setOverlayTemplates] = useState<OverlayTemplate[]>([]);
+  const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
 
   // PSS data from store
   const athlete1 = usePssMatchStore((state) => state.getAthlete1());
@@ -51,6 +69,51 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
 
   // Store reference
   const { overlaySettings: appOverlaySettings } = useAppStore();
+
+  // Load overlay templates on component mount
+  useEffect(() => {
+    loadOverlayTemplates();
+  }, []);
+
+  // Load overlay templates from database
+  const loadOverlayTemplates = async () => {
+    try {
+      setIsLoadingTemplates(true);
+      const templates = await invoke('overlays_sync_templates', { templates: [] });
+      setOverlayTemplates(templates as OverlayTemplate[]);
+    } catch (error) {
+      console.error('Failed to load overlay templates:', error);
+    } finally {
+      setIsLoadingTemplates(false);
+    }
+  };
+
+  // Toggle overlay template active status
+  const toggleOverlayActive = async (templateId: number, isActive: boolean) => {
+    try {
+      const updatedTemplates = overlayTemplates.map(template => 
+        template.id === templateId ? { ...template, is_active: isActive } : template
+      );
+      
+      await invoke('overlays_sync_templates', { templates: updatedTemplates });
+      setOverlayTemplates(updatedTemplates);
+    } catch (error) {
+      console.error('Failed to update overlay template:', error);
+    }
+  };
+
+  // Populate overlay templates from files
+  const populateOverlayTemplates = async () => {
+    try {
+      setIsLoadingTemplates(true);
+      const templates = await invoke('overlays_populate_from_files');
+      setOverlayTemplates(templates as OverlayTemplate[]);
+    } catch (error) {
+      console.error('Failed to populate overlay templates:', error);
+    } finally {
+      setIsLoadingTemplates(false);
+    }
+  };
 
   // Update overlay settings
   const updateOverlaySettings = (updates: Partial<OverlaySettings>) => {
@@ -255,6 +318,85 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
             </>
           )}
         </div>
+      </div>
+
+      {/* Overlay Types Section */}
+      <div className="p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
+        <div className="flex items-center justify-between mb-4">
+          <h4 className="text-md font-semibold text-gray-100">Overlay Types</h4>
+          <div className="flex items-center space-x-2">
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={populateOverlayTemplates}
+              disabled={isLoadingTemplates}
+            >
+              {isLoadingTemplates ? 'Loading...' : 'Populate from Files'}
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={loadOverlayTemplates}
+              disabled={isLoadingTemplates}
+            >
+              {isLoadingTemplates ? 'Loading...' : 'Refresh'}
+            </Button>
+          </div>
+        </div>
+        
+        {isLoadingTemplates ? (
+          <div className="text-sm text-gray-400">Loading overlay templates...</div>
+        ) : overlayTemplates.length === 0 ? (
+          <div className="text-sm text-gray-400">No overlay templates found</div>
+        ) : (
+          <div className="space-y-3">
+            {overlayTemplates.map((template) => (
+              <div
+                key={template.id}
+                className={`p-3 rounded-lg border transition-all duration-200 ${
+                  template.is_active
+                    ? 'border-green-500 bg-green-900/20'
+                    : 'border-gray-600 bg-gray-700/30'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm font-medium text-gray-200">
+                        {template.name}
+                      </span>
+                      {template.is_active && (
+                        <span className="px-2 py-1 bg-green-900/30 text-green-300 text-xs rounded border border-green-600/30">
+                          Active
+                        </span>
+                      )}
+                    </div>
+                    {template.description && (
+                      <p className="text-xs text-gray-400 mt-1">{template.description}</p>
+                    )}
+                    <div className="flex items-center space-x-4 mt-2 text-xs text-gray-500">
+                      <span>Theme: {template.theme}</span>
+                      <span>Animation: {template.animation_type}</span>
+                      <span>Duration: {template.duration_ms}ms</span>
+                      {template.url && (
+                        <span className="text-blue-400">URL: {template.url}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Toggle
+                      id={`overlay-${template.id}`}
+                      checked={template.is_active}
+                      onChange={(e) => toggleOverlayActive(template.id!, e.target.checked)}
+                      label="Active"
+                      labelPosition="left"
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
 

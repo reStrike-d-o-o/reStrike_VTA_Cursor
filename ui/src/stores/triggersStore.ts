@@ -105,21 +105,25 @@ export const useTriggersStore = create<TriggersStore>((set, get) => ({
       let scenes: ObsScene[] = Array.isArray(scenesResp) ? scenesResp : [];
       if (!scenes.length) {
         try {
-          const raw = await invoke<any[]>('obs_list_scenes');
-          if (Array.isArray(raw)) {
-            scenes = raw.map((s: any, idx: number) => ({
+          const raw = await invoke<any>('obs_list_scenes');
+          if (raw && raw.scenes && Array.isArray(raw.scenes)) {
+            scenes = raw.scenes.map((s: any, idx: number) => ({
               id: s.id ?? idx,
               scene_name: s.scene_name ?? s.name ?? `Scene ${idx}`,
               scene_id: s.scene_id ?? String(idx),
               is_active: true,
               connection_name: s.connection_name ?? undefined,
             }));
+            console.log(`Loaded ${scenes.length} scenes from ${raw.connected_connections}/${raw.total_connections} connected OBS instances`);
           }
-        } catch (_) {}
+        } catch (error) {
+          console.error('Failed to fetch scenes from OBS WebSocket:', error);
+        }
       }
       set({ scenes, loading: false });
     } catch (err) {
-      console.error(err);
+      console.error('Failed to fetch scenes:', err);
+      set({ loading: false });
     }
   },
 

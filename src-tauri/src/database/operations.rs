@@ -7,7 +7,8 @@ use crate::database::{
         Tournament, TournamentDay, NetworkInterface, UdpServerConfig, UdpServerSession, 
         UdpClientConnection, PssEventType, PssMatch, PssAthlete, PssEventV2, PssEventDetail, 
         PssScore, PssWarning, PssUnknownEvent, PssEventValidationRule, PssEventValidationResult, 
-        PssEventStatistics, PssEventRecognitionHistory, ObsScene, OverlayTemplate, EventTrigger
+        PssEventStatistics, PssEventRecognitionHistory, ObsScene, OverlayTemplate, EventTrigger,
+        ObsConnection
     },
 };
 
@@ -2270,7 +2271,7 @@ impl DatabaseConnection {
             [&now],
         )?;
         
-        // Mark active scenes as active and update last_seen
+        // Mark active scenes as active
         for scene_name in active_scene_names {
             conn.execute(
                 "UPDATE obs_scenes SET is_active = 1, last_seen_at = ?, updated_at = ? WHERE scene_name = ?",
@@ -2559,6 +2560,103 @@ impl DatabaseConnection {
              FROM event_triggers WHERE tournament_id = ?",
             [&now, &now, &tournament_id.to_string()],
         )?;
+        
+        Ok(())
+    }
+
+    // ========================================================================
+    // OBS CONNECTION OPERATIONS
+    // ========================================================================
+    
+    /// Get all OBS connections
+    pub async fn get_obs_connections(&self) -> DatabaseResult<Vec<ObsConnection>> {
+        let conn = self.get_connection().await?;
+        let mut stmt = conn.prepare("SELECT * FROM obs_connections ORDER BY name")?;
+        
+        let connections = stmt.query_map([], |row| ObsConnection::from_row(row))?
+            .collect::<Result<Vec<_>, _>>()?;
+        
+        Ok(connections)
+    }
+    
+    /// Get active OBS connections only
+    pub async fn get_active_obs_connections(&self) -> DatabaseResult<Vec<ObsConnection>> {
+        let conn = self.get_connection().await?;
+        let mut stmt = conn.prepare("SELECT * FROM obs_connections WHERE is_active = 1 ORDER BY name")?;
+        
+        let connections = stmt.query_map([], |row| ObsConnection::from_row(row))?
+            .collect::<Result<Vec<_>, _>>()?;
+        
+        Ok(connections)
+    }
+    
+    /// Get OBS connection by name
+    pub async fn get_obs_connection_by_name(&self, name: &str) -> DatabaseResult<Option<ObsConnection>> {
+        let conn = self.get_connection().await?;
+        let mut stmt = conn.prepare("SELECT * FROM obs_connections WHERE name = ?")?;
+        
+        let connection = stmt.query_row([name], |row| ObsConnection::from_row(row))
+            .optional()?;
+        
+        Ok(connection)
+    }
+    
+    /// Insert or update OBS connection
+    pub async fn upsert_obs_connection(&self, connection: &ObsConnection) -> DatabaseResult<i64> {
+        let conn = self.get_connection().await?;
+        let now = chrono::Utc::now().to_rfc3339();
+        
+        let id = conn.execute(
+            "INSERT OR REPLACE INTO obs_connections (name, host, port, password, is_active, status, error, created_at, updated_at) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            [
+                &connection.name,
+                &connection.host,
+                &connection.port.to_string(),
+                &connection.password.as_deref().unwrap_or("").to_string(),
+                &(connection.is_active as i32).to_string(),
+                &connection.status,
+                &connection.error.as_deref().unwrap_or("").to_string(),
+                &connection.created_at.to_rfc3339(),
+                &now,
+            ],
+        )?;
+        
+        Ok(id as i64)
+    }
+    
+    /// Update OBS connection status
+    pub async fn update_obs_connection_status(&self, name: &str, status: &str, error: Option<&str>) -> DatabaseResult<()> {
+        let conn = self.get_connection().await?;
+        let now = chrono::Utc::now().to_rfc3339();
+        
+        conn.execute(
+            "UPDATE obs_connections SET status = ?, error = ?, updated_at = ? WHERE name = ?",
+            [
+                status,
+                &error.unwrap_or("").to_string(),
+                &now,
+                name,
+            ],
+        )?;
+        
+        Ok(())
+    }
+    
+    /// Delete OBS connection
+    pub async fn delete_obs_connection(&self, name: &str) -> DatabaseResult<()> {
+        let conn = self.get_connection().await?;
+        
+        conn.execute("DELETE FROM obs_connections WHERE name = ?", [name])?;
+        
+        Ok(())
+    }
+    
+    /// Clear all OBS connections
+    pub async fn clear_obs_connections(&self) -> DatabaseResult<()> {
+        let conn = self.get_connection().await?;
+        
+        conn.execute("DELETE FROM obs_connections", [])?;
         
         Ok(())
     }

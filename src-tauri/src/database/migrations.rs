@@ -1887,6 +1887,41 @@ impl Migration for Migration11 {
     }
 }
 
+pub struct Migration12;
+
+impl Migration for Migration12 {
+    fn version(&self) -> u32 {
+        12
+    }
+
+    fn description(&self) -> &str {
+        "Add status and error fields to obs_connections table"
+    }
+
+    fn up(&self, conn: &Connection) -> SqliteResult<()> {
+        // Add status column to obs_connections table
+        conn.execute(
+            "ALTER TABLE obs_connections ADD COLUMN status TEXT NOT NULL DEFAULT 'disconnected'",
+            [],
+        )?;
+        
+        // Add error column to obs_connections table
+        conn.execute(
+            "ALTER TABLE obs_connections ADD COLUMN error TEXT",
+            [],
+        )?;
+        
+        log::info!("✅ Migration 12: Added status and error columns to obs_connections table");
+        Ok(())
+    }
+
+    fn down(&self, _conn: &Connection) -> SqliteResult<()> {
+        // SQLite does not support DROP COLUMN; no-op but log warning
+        log::warn!("⚠️  Migration 12 rollback: Cannot drop columns status, error due to SQLite limitations");
+        Ok(())
+    }
+}
+
 /// Migration manager for handling database schema updates
 pub struct MigrationManager {
     migrations: Vec<Box<dyn Migration>>,
@@ -1907,6 +1942,7 @@ impl MigrationManager {
         migrations.push(Box::new(Migration9)); // Trigger system migration
         migrations.push(Box::new(Migration10)); // Add columns action, target_type, delay_ms
         migrations.push(Box::new(Migration11)); // Add url column to overlay_templates
+        migrations.push(Box::new(Migration12)); // Add status and error columns to obs_connections
         
         Self { migrations }
     }
