@@ -1034,6 +1034,112 @@ impl PssUdpOperations {
             "recent_events_24h": recent_events
         }))
     }
+
+    pub fn get_pss_matches(conn: &Connection, limit: Option<i64>) -> DatabaseResult<Vec<PssMatch>> {
+        let limit_clause = limit.map(|l| format!(" LIMIT {}", l)).unwrap_or_default();
+        let query = format!(
+            "SELECT * FROM pss_matches ORDER BY created_at DESC{}",
+            limit_clause
+        );
+        
+        let mut stmt = conn.prepare(&query)?;
+        let matches = stmt.query_map([], |row| PssMatch::from_row(row))?
+            .collect::<Result<Vec<_>, _>>()?;
+        
+        Ok(matches)
+    }
+
+    pub fn get_pss_matches_by_creation_mode(conn: &Connection, creation_mode: &str) -> DatabaseResult<Vec<PssMatch>> {
+        let mut stmt = conn.prepare(
+            "SELECT * FROM pss_matches WHERE creation_mode = ? ORDER BY created_at DESC"
+        )?;
+        
+        let matches = stmt.query_map([creation_mode], |row| PssMatch::from_row(row))?
+            .collect::<Result<Vec<_>, _>>()?;
+        
+        Ok(matches)
+    }
+
+    pub fn insert_pss_match(conn: &Connection, pss_match: &PssMatch) -> DatabaseResult<i64> {
+        let match_id = conn.execute(
+            "INSERT INTO pss_matches (match_id, match_number, category, weight_class, division, total_rounds, round_duration, countdown_type, format_type, creation_mode, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            params![
+                pss_match.match_id,
+                pss_match.match_number,
+                pss_match.category,
+                pss_match.weight_class,
+                pss_match.division,
+                pss_match.total_rounds,
+                pss_match.round_duration,
+                pss_match.countdown_type,
+                pss_match.format_type,
+                pss_match.creation_mode,
+                pss_match.created_at.to_rfc3339(),
+                pss_match.updated_at.to_rfc3339(),
+            ],
+        )?;
+        
+        Ok(match_id)
+    }
+
+    pub fn insert_pss_athlete(conn: &Connection, athlete: &PssAthlete) -> DatabaseResult<i64> {
+        let athlete_id = conn.execute(
+            "INSERT INTO pss_athletes (athlete_code, short_name, long_name, country_code, flag_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            params![
+                athlete.athlete_code,
+                athlete.short_name,
+                athlete.long_name,
+                athlete.country_code,
+                athlete.flag_id,
+                athlete.created_at.to_rfc3339(),
+                athlete.updated_at.to_rfc3339(),
+            ],
+        )?;
+        
+        Ok(athlete_id)
+    }
+
+    pub fn insert_pss_match_athlete(conn: &Connection, match_athlete: &PssMatchAthlete) -> DatabaseResult<i64> {
+        let match_athlete_id = conn.execute(
+            "INSERT INTO pss_match_athletes (match_id, athlete_id, athlete_position, bg_color, fg_color, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+            params![
+                match_athlete.match_id,
+                match_athlete.athlete_id,
+                match_athlete.athlete_position,
+                match_athlete.bg_color,
+                match_athlete.fg_color,
+                match_athlete.created_at.to_rfc3339(),
+            ],
+        )?;
+        
+        Ok(match_athlete_id)
+    }
+
+    pub fn get_all_settings(conn: &Connection) -> DatabaseResult<serde_json::Value> {
+        // Get all settings from the normalized settings system
+        let mut stmt = conn.prepare(
+            "SELECT c.name as category, k.key_name, k.display_name, v.value, k.data_type 
+             FROM settings_categories c
+             JOIN settings_keys k ON c.id = k.category_id
+             LEFT JOIN settings_values v ON k.id = v.key_id
+             ORDER BY c.display_order, k.key_name"
+        )?;
+        
+        let settings = stmt.query_map([], |row| {
+            Ok(serde_json::json!({
+                "category": row.get::<_, String>(0)?,
+                "key": row.get::<_, String>(1)?,
+                "display_name": row.get::<_, String>(2)?,
+                "value": row.get::<_, Option<String>>(3)?,
+                "data_type": row.get::<_, String>(4)?
+            }))
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+        
+        Ok(serde_json::json!({
+            "settings": settings
+        }))
+    }
 } 
 
 /// Tournament Operations for managing tournaments and tournament days
