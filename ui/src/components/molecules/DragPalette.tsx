@@ -20,7 +20,7 @@ const DraggableBadge: React.FC<BadgeProps> = ({ id, label, colorClass }) => {
     transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
     cursor: 'grab',
     zIndex: 1000,
-    position: 'relative',
+    position: transform ? 'fixed' : 'relative',
   };
 
   const color = colorClass.replace('bg-', '');

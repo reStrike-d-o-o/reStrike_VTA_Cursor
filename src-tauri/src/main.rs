@@ -290,6 +290,7 @@ async fn main() -> AppResult<()> {
             re_strike_vta::tauri_commands_triggers::triggers_list_active_overlays,
             re_strike_vta::tauri_commands_triggers::triggers_get,
             re_strike_vta::tauri_commands_triggers::triggers_save,
+            re_strike_vta::tauri_commands_overlays::overlays_sync_templates,
             // Phase 3: Load Balancer Commands
             tauri_commands::get_distributor_statistics,
             tauri_commands::get_server_statistics,
