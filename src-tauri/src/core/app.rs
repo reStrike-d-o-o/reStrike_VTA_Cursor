@@ -398,7 +398,7 @@ impl App {
         
         while let Ok(event) = pss_receiver.recv().await {
             let websocket_plugin_guard = websocket_plugin.lock().await;
-            if let Err(e) = websocket_plugin_guard.broadcast_event(&event) {
+            if let Err(e) = websocket_plugin_guard.broadcast_json_event(&event) {
                 log::error!("❌ Failed to broadcast PSS event to WebSocket clients: {}", e);
             }
         }

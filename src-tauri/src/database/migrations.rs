@@ -1974,6 +1974,9 @@ impl Migration for Migration14 {
         // Disable foreign key constraints temporarily
         conn.execute("PRAGMA foreign_keys = OFF", [])?;
         
+        // Drop the temporary table if it exists from a previous failed migration
+        let _ = conn.execute("DROP TABLE IF EXISTS pss_matches_new", []);
+        
         // SQLite doesn't support ALTER COLUMN TYPE, so we need to recreate the table
         // First, create a temporary table with the new schema
         conn.execute(

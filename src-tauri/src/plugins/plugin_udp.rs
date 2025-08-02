@@ -366,6 +366,7 @@ impl UdpServer {
             let hit_levels_clone = recent_hit_levels.clone();
             let tournament_clone = current_tournament_id.clone();
             let tournament_day_clone = current_tournament_day_id.clone();
+            let websocket_server_clone = server.websocket_server.clone();
             
             let task = tokio::spawn(async move {
                 Self::store_event_in_database(
@@ -378,7 +379,7 @@ impl UdpServer {
                     &hit_levels_clone,
                     &tournament_clone,
                     &tournament_day_clone,
-                    &server.websocket_server,
+                    &websocket_server_clone,
                 ).await
             });
             tasks.push(task);
@@ -1726,6 +1727,7 @@ impl UdpServer {
                                     }
 
                             // Store event in database (now properly async)
+                            let event_clone = event.clone();
                             let database_clone = database.clone();
                             let current_session_id_clone = current_session_id.clone();
                             let current_match_id_clone = current_match_id.clone();
@@ -1743,7 +1745,7 @@ impl UdpServer {
                                     &current_match_id_clone,
                                     &athlete_cache_clone,
                                     &event_type_cache_clone,
-                                    &event,
+                                    &event_clone,
                                     &recent_hit_levels_clone,
                                     &tournament_id_clone,
                                     &tournament_day_id_clone,

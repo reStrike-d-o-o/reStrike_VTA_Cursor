@@ -178,12 +178,59 @@ impl WebSocketServer {
     
     pub fn broadcast_event(&self, event: &PssEvent) -> AppResult<()> {
         let message = self.convert_pss_event_to_ws_message(event);
-        
-        let clients = self.clients.lock().unwrap();
-        for client in clients.iter() {
-            if let Err(e) = client.send(message.clone()) {
-                log::warn!("Failed to send event to client {}: {}", client.id, e);
+        self.broadcast_message(message)
+    }
+    
+    /// Broadcast a JSON event to all connected WebSocket clients (for scoreboard overlay)
+    pub fn broadcast_json_event(&self, event_json: &serde_json::Value) -> AppResult<()> {
+        // Convert JSON to WebSocket message format
+        let message = match event_json {
+            serde_json::Value::Object(obj) => {
+                let event_type = obj.get("type").and_then(|v| v.as_str()).unwrap_or("unknown");
+                let description = obj.get("description").and_then(|v| v.as_str()).unwrap_or("");
+                
+                WebSocketMessage::PssEvent {
+                    event_type: event_type.to_string(),
+                    event_code: obj.get("event_code").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+                    athlete: obj.get("athlete").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+                    round: obj.get("round").and_then(|v| v.as_u64()).unwrap_or(1) as u8,
+                    time: obj.get("time").and_then(|v| v.as_str()).unwrap_or("0:00").to_string(),
+                    timestamp: chrono::Utc::now().to_rfc3339(),
+                    raw_data: serde_json::to_string(event_json).unwrap_or_default(),
+                    description: description.to_string(),
+                }
             }
+            _ => {
+                WebSocketMessage::PssEvent {
+                    event_type: "unknown".to_string(),
+                    event_code: "".to_string(),
+                    athlete: "".to_string(),
+                    round: 1,
+                    time: "0:00".to_string(),
+                    timestamp: chrono::Utc::now().to_rfc3339(),
+                    raw_data: serde_json::to_string(event_json).unwrap_or_default(),
+                    description: "Unknown event".to_string(),
+                }
+            }
+        };
+        
+        self.broadcast_message(message)
+    }
+    
+    /// Broadcast a WebSocket message to all connected clients
+    fn broadcast_message(&self, message: WebSocketMessage) -> AppResult<()> {
+        let mut clients = self.clients.lock().unwrap();
+        let mut disconnected_clients = Vec::new();
+        
+        for (index, client) in clients.iter().enumerate() {
+            if let Err(_) = client.send(message.clone()) {
+                disconnected_clients.push(index);
+            }
+        }
+        
+        // Remove disconnected clients
+        for index in disconnected_clients.iter().rev() {
+            clients.remove(*index);
         }
         
         Ok(())
