@@ -188,7 +188,7 @@ export const TriggersTable: React.FC<Props> = ({ tournamentId, dayId }) => {
     <DndContext onDragEnd={handleDragEnd}>
       <div className="flex h-full">
         {/* Palette */}
-        <DragPalette scenes={scenes} overlays={overlays} />
+        
 
         {/* Table */}
         <div className="flex-1 flex flex-col border-r border-gray-700">
@@ -208,6 +208,10 @@ export const TriggersTable: React.FC<Props> = ({ tournamentId, dayId }) => {
                 ))}
               </tbody>
             </table>
+          </div>
+          {/* Badge palette row */}
+          <div className="border-t border-gray-700 bg-gray-800/70 backdrop-blur-sm p-2 flex flex-row space-x-4 overflow-x-auto">
+            <DragPalette scenes={scenes} overlays={overlays} />
           </div>
           <div className="border-t border-gray-700 bg-gray-800 p-2 text-right">
             <Button variant="primary" onClick={saveChanges} disabled={!dirty}>
