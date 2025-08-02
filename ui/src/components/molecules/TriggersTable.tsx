@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { DndContext, DragEndEvent } from '@dnd-kit/core';
+import { DndContext, DragEndEvent, useDroppable } from '@dnd-kit/core';
 import DragPalette from './DragPalette';
 import {
   useTriggersStore,
@@ -34,6 +34,19 @@ interface RowProps {
   index: number;
   eventsCatalog: string[];
 }
+
+// Generic droppable TD
+const DroppableCell: React.FC<{ id: string; className?: string; }> = ({ id, className = '', children }) => {
+  const { isOver, setNodeRef } = useDroppable({ id });
+  return (
+    <td
+      ref={setNodeRef}
+      className={`${className} ${isOver ? 'ring-2 ring-blue-400' : ''}`}
+    >
+      {children}
+    </td>
+  );
+};
 
 const RowComponent: React.FC<RowProps> = ({ row, index, eventsCatalog }) => {
   const { scenes, overlays, updateRow, selectRow, selectedIndex } = useTriggersStore();
@@ -106,7 +119,7 @@ const RowComponent: React.FC<RowProps> = ({ row, index, eventsCatalog }) => {
   return (
     <tr className={rowClass} onClick={() => selectRow(index)}>
       {/* Event column */}
-      <td className="px-3 py-2 w-[100px] capitalize">
+      <DroppableCell id={`cell-${index}-event`} className="px-3 py-2 w-[100px] capitalize">
         <Select value={evRow.event_type} onValueChange={handleEventChange}>
           <SelectTrigger>
             <SelectValue placeholder="Event" />
@@ -120,10 +133,10 @@ const RowComponent: React.FC<RowProps> = ({ row, index, eventsCatalog }) => {
             <SelectItem value="delay">Delay</SelectItem>
           </SelectContent>
         </Select>
-      </td>
+      </DroppableCell>
 
       {/* Action column */}
-      <td className="px-3 py-2 w-[100px]">
+      <DroppableCell id={`cell-${index}-action`} className="px-3 py-2 w-[100px]">
         <Select
           value={evRow.action}
           onValueChange={(v) => updateRow(index, { action: v as 'show' | 'hide' })}
@@ -136,10 +149,10 @@ const RowComponent: React.FC<RowProps> = ({ row, index, eventsCatalog }) => {
             <SelectItem value="hide">Hide</SelectItem>
           </SelectContent>
         </Select>
-      </td>
+      </DroppableCell>
 
       {/* Target Type */}
-      <td className="px-3 py-2 w-[100px]">
+      <DroppableCell id={`cell-${index}-tt`} className="px-3 py-2 w-[100px]">
         <Select
           value={targetType}
           onValueChange={(v) => updateRow(index, { target_type: v as 'scene' | 'overlay' })}
@@ -152,10 +165,10 @@ const RowComponent: React.FC<RowProps> = ({ row, index, eventsCatalog }) => {
             <SelectItem value="overlay">Overlay</SelectItem>
           </SelectContent>
         </Select>
-      </td>
+      </DroppableCell>
 
       {/* Target */}
-      <td className="px-3 py-2 w-[100px]">
+      <DroppableCell id={`cell-${index}-target`} className="px-3 py-2 w-[100px]">
         {targetType === 'scene' ? (
           <Select
             value={evRow.obs_scene_id?.toString()}
@@ -191,7 +204,7 @@ const RowComponent: React.FC<RowProps> = ({ row, index, eventsCatalog }) => {
             </SelectContent>
           </Select>
         )}
-      </td>
+      </DroppableCell>
     </tr>
   );
 };
