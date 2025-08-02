@@ -181,9 +181,9 @@ export const useTriggersStore = create<TriggersStore>((set, get) => ({
     set(state => {
       const newRow: EventTriggerRow = {
         kind: 'event',
-        event_type: state.eventsCatalog[0] ?? 'pre',
-        action: 'show',
-        target_type: 'scene',
+        event_type: '',
+        action: '',
+        target_type: '',
         obs_scene_id: undefined,
         overlay_template_id: undefined,
         is_enabled: true,
