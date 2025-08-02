@@ -7,6 +7,13 @@ interface BadgeProps {
   colorClass: string;
 }
 
+const humanReadableEvent = (ev: string) => {
+  const map: Record<string, string> = {
+    pre: 'Match Ready', rdy: 'Match Loaded', rnd: 'Round Start', sup: 'Break', wrd: 'Round End', wmh: 'Match Winner',
+  };
+  return map[ev] ?? ev;
+};
+
 const DraggableBadge: React.FC<BadgeProps> = ({ id, label, colorClass }) => {
   const { attributes, listeners, setNodeRef, transform } = useDraggable({ id });
   const style: React.CSSProperties = {
@@ -16,15 +23,17 @@ const DraggableBadge: React.FC<BadgeProps> = ({ id, label, colorClass }) => {
     position: 'relative',
   };
 
+  const containerBg = colorClass.replace('bg-', 'bg-') + '/10';
+  const borderColor = colorClass.replace('bg-', 'border-') + '/20';
   return (
     <div
       ref={setNodeRef}
       {...listeners}
       {...attributes}
       style={style}
-      className={`px-3 py-1 rounded-full text-xs font-semibold text-white ${colorClass} select-none mb-2`}
+      className={`flex items-center px-3 py-1 rounded-lg backdrop-blur-sm text-xs font-medium select-none mb-2 ${containerBg} ${borderColor} border`}
     >
-      {label}
+      <span>{label}</span>
     </div>
   );
 };
@@ -34,12 +43,12 @@ interface DragPaletteProps {
   overlays: { id: number; name: string; theme: string | null }[];
 }
 
-const DragPalette: React.FC<DragPaletteProps> = ({ scenes, overlays }) => {
+const DragPalette: React.FC<React.PropsWithChildren<DragPaletteProps & {className?:string}>> = ({ scenes, overlays, className='' }) => {
   return (
-    <div className="w-40 p-2 border-r border-gray-700 overflow-y-auto" style={{ maxHeight: '600px' }}>
+    <div className={`w-40 p-2 border-r border-gray-700 overflow-y-auto ${className}`} style={{ maxHeight: '600px' }}>
       <h3 className="text-xs font-bold text-gray-300 mb-1">Events</h3>
       {['pre', 'rdy', 'rnd', 'sup', 'wrd', 'wmh'].map(ev => (
-        <DraggableBadge key={ev} id={`ev-${ev}`} label={ev} colorClass="bg-blue-600" />
+        <DraggableBadge key={ev} id={`ev-${ev}`} label={humanReadableEvent(ev)} colorClass="bg-blue-600" />
       ))}
 
       <h3 className="text-xs font-bold text-gray-300 mt-4 mb-1">Actions</h3>
