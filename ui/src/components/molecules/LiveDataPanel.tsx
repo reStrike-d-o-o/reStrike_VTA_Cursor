@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { diagLogsCommands, configCommands } from '../../utils/tauriCommands';
 import { useEnvironment } from '../../hooks/useEnvironment';
-import { useLiveDataStore, LiveDataType } from '../../stores/liveDataStore';
+import { useLiveDataStore } from '../../stores/liveDataStore';
 import Toggle from '../atoms/Toggle';
 import { useLiveDataEvents } from '../../hooks/useLiveDataEvents';
 
@@ -19,37 +19,23 @@ const invoke = async (command: string, args?: any) => {
   }
 };
 
-
-
-const logTypes = [
-  { key: 'pss', label: 'PSS' },
-  { key: 'obs', label: 'OBS' },
-  { key: 'udp', label: 'UDP' },
-];
-
 const LiveDataPanel: React.FC = () => {
   const { tauriAvailable, environment, isWindows, isWeb } = useEnvironment();
   const {
-    enabled,
-    selectedType,
-    data,
-    loading,
-    error,
-    connecting,
-    setEnabled,
-    setSelectedType,
-    addData,
-    clearData,
-    setLoading,
-    setError,
-    clearError,
-    setConnecting,
+    events,
+    currentRound,
+    currentTime,
+    isConnected,
+    lastUpdate,
+    clearEvents,
   } = useLiveDataStore();
+  
+  // Use the new live data events hook
+  const { isConnected: wsConnected, eventCount } = useLiveDataEvents();
+  
   const [showFullEvents, setShowFullEvents] = useState(false);
   const [isLoadingSettings, setIsLoadingSettings] = useState(true);
   const liveDataRef = useRef<HTMLDivElement>(null);
-  // Polling removed – backend now pushes events via Tauri
-  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const [autoScroll, setAutoScroll] = useState(false);
 
   // Load live data settings from configuration
@@ -59,8 +45,7 @@ const LiveDataPanel: React.FC = () => {
       const result = await configCommands.getSettings();
       if (result.success && result.data?.logging?.live_data) {
         const liveDataSettings = result.data.logging.live_data;
-        setEnabled(liveDataSettings.enabled ?? true);
-        // Note: selectedType is not stored in config, so we keep the default
+        // Note: Live data is now automatically managed by the PSS event system
       }
     } catch (error) {
       console.error('Failed to load live data settings:', error);
@@ -101,191 +86,75 @@ const LiveDataPanel: React.FC = () => {
   useEffect(() => {
     const loadFullEventsSetting = async () => {
       try {
-        const result = await invoke('obs_get_full_events_setting');
-        if (result && result.success) {
-          setShowFullEvents(result.enabled);
+        const result = await configCommands.getSettings();
+        if (result.success && result.data?.logging?.full_events !== undefined) {
+          setShowFullEvents(result.data.logging.full_events);
         }
       } catch (error) {
         console.error('Failed to load full events setting:', error);
       }
     };
+
     loadFullEventsSetting();
   }, []);
 
-  // Poll for OBS events when full events are enabled
-  useEffect(() => {
-    if (!tauriAvailable || selectedType !== 'obs' || !showFullEvents) return;
-
-    // Set up polling for OBS events every 3 seconds when full events are enabled
-    const eventPollingInterval = setInterval(async () => {
-      try {
-        const result = await invoke('obs_get_recent_events');
-        if (result && result.success && result.events && result.events.length > 0) {
-          result.events.forEach((event: any) => {
-            const formattedEvent = `[OBS-EVENT][${event.connection_name}] ${event.event_type}: ${JSON.stringify(event.data)}`;
-            addData({
-              subsystem: 'obs',
-              data: formattedEvent,
-              type: 'info'
-            });
-          });
-        }
-      } catch (error) {
-        console.error('❌ Failed to fetch OBS events:', error);
-      }
-    }, 3000);
-
-    return () => {
-      clearInterval(eventPollingInterval);
-    };
-  }, [tauriAvailable, selectedType, showFullEvents, addData]);
-
-  // Poll for UDP/PSS events when UDP is selected
-  useEffect(() => {
-    // Disabled polling for PSS/UDP events – we now rely on push events via Tauri
-    return () => {};
-  }, [tauriAvailable, selectedType, enabled, addData]);
-
-  // Handle full events toggle
+  // Save full events setting
   const handleFullEventsToggle = async () => {
+    const newValue = !showFullEvents;
+    setShowFullEvents(newValue);
+    
     try {
-      const newValue = !showFullEvents;
-      const result = await invoke('obs_toggle_full_events', { enabled: newValue });
-      if (result && result.success) {
-        setShowFullEvents(newValue);
-        console.log('Full events toggle:', result.message);
+      const result = await configCommands.getSettings();
+      if (result.success) {
+        const updatedSettings = {
+          ...result.data,
+          logging: {
+            ...result.data.logging,
+            full_events: newValue,
+          },
+        };
+        await configCommands.updateSettings(updatedSettings);
+        console.log('Full events setting saved successfully');
       }
     } catch (error) {
-      console.error('Failed to toggle full events:', error);
+      console.error('Failed to save full events setting:', error);
     }
   };
 
-  // Debug logging on mount only
-  useEffect(() => {
-    // Component mounted
-  }, []);
+  // Format live data for display
+  const formatLiveData = (data: any): string => {
+    if (typeof data === 'string') {
+      return data;
+    }
+    
+    if (typeof data === 'object') {
+      try {
+        return JSON.stringify(data, null, 2);
+      } catch {
+        return String(data);
+      }
+    }
+    
+    return String(data);
+  };
 
-
-
-  // Auto-scroll to bottom when new data arrives if autoScroll is true
+  // Auto-scroll to bottom when new events arrive
   useEffect(() => {
     if (autoScroll && liveDataRef.current) {
       liveDataRef.current.scrollTop = liveDataRef.current.scrollHeight;
     }
-  }, [data, autoScroll]);
+  }, [events, autoScroll]);
 
   // Polling removed – no longer required
 
-  // Format live data for display
-  const formatLiveData = (data: any): string => {
-    switch (data.subsystem) {
-      case 'obs':
-        return `OBS Status: Recording=${data.is_recording ? 'ON' : 'OFF'}, Streaming=${data.is_streaming ? 'ON' : 'OFF'}, CPU=${data.cpu_usage.toFixed(1)}%, Recording Conn=${data.recording_connection || 'None'}, Streaming Conn=${data.streaming_connection || 'None'}`;
-      
-      case 'pss':
-        return `PSS Stats: Packets=${data.packets_received}, Parsed=${data.packets_parsed}, Errors=${data.parse_errors}, Clients=${data.connected_clients}, Last Packet=${data.last_packet_time ? new Date(data.last_packet_time * 1000).toLocaleTimeString() : 'Never'}`;
-      
-      case 'udp':
-        return `📡 UDP Server: ${data.status} | 🏃 Running: ${data.is_running ? 'Yes' : 'No'} | 📦 Packets: ${data.packets_received} | ✅ Parsed: ${data.packets_parsed} | ❌ Errors: ${data.parse_errors} | 👥 Clients: ${data.connected_clients} | 📊 Bytes: ${data.total_bytes_received} | ⏱️ Uptime: ${data.uptime}`;
-      
-      default:
-        return JSON.stringify(data, null, 2);
-    }
-  };
-
-  // Handle streaming toggle and type change
-  useEffect(() => {
-    setError('');
-    setConnecting(true);
-
-    // Debug logging
-    console.log('🔍 LiveDataPanel Environment Check:', {
-      tauriAvailable,
-      windowTauri: typeof window !== 'undefined' ? !!window.__TAURI__ : 'undefined',
-      selectedType,
-      enabled
-    });
-
-    const setupStreaming = async () => {
-      try {
-        if (tauriAvailable) {
-          // Tell backend to start / stop streaming for selected subsystem
-          try {
-            await diagLogsCommands.setLiveDataStreaming(selectedType, enabled);
-          } catch (err) {
-            console.error('setLiveDataStreaming error:', err);
-          }
-        } else {
-          setError('Tauri not available - running in web mode');
-        }
-      } catch (err) {
-        console.error('Streaming setup error:', err);
-        setError(`Streaming error: ${err}`);
-      } finally {
-        setConnecting(false);
-      }
-    };
-
-    setupStreaming();
-
-    return () => {
-      // Ensure backend stops pushing events when component unmounts
-      if (tauriAvailable) {
-        diagLogsCommands.setLiveDataStreaming(selectedType, false).catch(() => {});
-      }
-    };
-  }, [enabled, selectedType, tauriAvailable]);
-
-  // Subscribe to pushed live_data events (filtered by current type)
-  useLiveDataEvents(enabled, selectedType);
-
-  // Listen for log events from the backend
-  useEffect(() => {
-    if (!tauriAvailable || !enabled) return;
-
-    const setupLogListener = async () => {
-      try {
-        if (typeof window !== 'undefined' && window.__TAURI__ && window.__TAURI__.event) {
-          const unlisten = await window.__TAURI__.event.listen('log_event', (event: any) => {
-            console.log('📋 Received log event:', event.payload);
-            
-            if (event.payload && event.payload.type === 'log') {
-              // Add log message to live data store
-              addData({
-                subsystem: 'udp', // Treat log events as UDP subsystem
-                data: event.payload.message,
-                type: 'info'
-              });
-            }
-          });
-          
-          return unlisten;
-        }
-      } catch (error) {
-        console.error('Failed to setup log listener:', error);
-      }
-    };
-
-    const cleanup = setupLogListener();
-    
-    return () => {
-      cleanup.then(unlisten => {
-        if (unlisten) unlisten();
-      }).catch(() => {});
-    };
-  }, [tauriAvailable, enabled, addData]);
-
   const handleToggle = async () => {
-    clearError();
-    const newEnabled = !enabled;
-    setEnabled(newEnabled);
-    await saveLiveDataSettings(newEnabled);
+    // Live data is now automatically managed by the PSS event system
+    console.log('Live data toggle - now managed automatically');
   };
 
-  const handleTypeChange = (newType: LiveDataType) => {
-    clearError();
-    clearData(); // wipe previous log when type changes
-    setSelectedType(newType);
+  const handleTypeChange = (newType: string) => {
+    // Type selection is now handled by the PSS event system
+    console.log('Live data type change - now managed automatically');
   };
 
   const scrollToTop = () => {
@@ -297,7 +166,6 @@ const LiveDataPanel: React.FC = () => {
   const scrollToBottom = () => {
     if (liveDataRef.current) {
       liveDataRef.current.scrollTop = liveDataRef.current.scrollHeight;
-      setAutoScroll(true);
     }
   };
 
@@ -318,88 +186,109 @@ const LiveDataPanel: React.FC = () => {
       
       <div className="flex items-center gap-3 mb-3">
         <Toggle
-          checked={enabled} 
+          checked={true} 
           onChange={handleToggle} 
           label="Enable"
           labelPosition="right"
-          disabled={connecting}
+          disabled={false}
         />
-        {connecting && (
-          <span className="text-blue-400 text-sm">Connecting...</span>
-        )}
         <span className="text-gray-200 font-medium" id="live-type-label">Type:</span>
         <select
           className="bg-[#101820] border border-gray-700 rounded px-2 py-1 text-gray-100"
-          value={selectedType}
-          onChange={e => handleTypeChange(e.target.value as LiveDataType)}
+          value="pss"
+          onChange={e => handleTypeChange(e.target.value)}
           aria-labelledby="live-type-label"
           title="Select live data type"
           aria-label="Select live data type"
-          disabled={connecting}
+          disabled={false}
         >
-          {logTypes.map(type => (
-            <option key={type.key} value={type.key}>{type.label}</option>
-          ))}
+          <option value="pss">PSS</option>
+          <option value="udp">UDP</option>
+          <option value="obs">OBS</option>
         </select>
-        {selectedType === 'obs' && (
-          <Toggle
-            checked={showFullEvents} 
-            onChange={handleFullEventsToggle} 
-            label="Full Events"
-            labelPosition="right"
-            disabled={connecting}
-            className="ml-4"
-          />
+        <Toggle
+          checked={showFullEvents}
+          onChange={handleFullEventsToggle}
+          label="Full Events"
+          labelPosition="right"
+          disabled={false}
+          className="ml-4"
+        />
+      </div>
+
+      {/* Connection Status */}
+      <div className="flex items-center gap-2 mb-3 text-sm">
+        <span className={`w-2 h-2 rounded-full ${wsConnected ? 'bg-green-500' : 'bg-red-500'}`}></span>
+        <span className="text-gray-300">
+          {wsConnected ? 'Connected' : 'Disconnected'} | 
+          Events: {eventCount} | 
+          Round: {currentRound} | 
+          Time: {currentTime}
+        </span>
+      </div>
+
+      {/* Live Data Display */}
+      <div 
+        ref={liveDataRef}
+        className="flex-1 bg-[#0a0f14] border border-gray-700 rounded p-3 overflow-y-auto text-sm font-mono"
+        style={{ 
+          maxHeight: '400px',
+          minHeight: '200px'
+        }}
+      >
+        {events.length === 0 ? (
+          <div className="text-gray-500 text-center py-8">
+            No PSS events available. 
+            {!wsConnected && ' WebSocket not connected.'}
+          </div>
+        ) : (
+          events.map((event, index) => {
+            const color = 'text-green-400';
+            const emoji = '📡';
+            return (
+              <div key={event.id} className={`${color} mb-1`}>
+                <span className="text-gray-500">[{index + 1}]</span> {emoji} {event.description}
+                <div className="text-gray-400 ml-4 text-xs">
+                  Round: {event.round} | Time: {event.time} | Type: {event.eventCode}
+                </div>
+              </div>
+            );
+          })
         )}
       </div>
-      {error && (
-        <div className="mb-3 p-2 bg-red-900/20 border border-red-700 rounded text-red-400 text-sm">
-          {error}
+      
+      {events.length > 0 && (
+        <div className="absolute top-2 right-2 flex gap-1">
+          <button
+            onClick={scrollToTop}
+            className="bg-gray-700 hover:bg-gray-600 text-white px-2 py-1 rounded text-xs"
+            title="Scroll to top"
+          >
+            ↑
+          </button>
+          <button
+            onClick={scrollToBottom}
+            className="bg-gray-700 hover:bg-gray-600 text-white px-2 py-1 rounded text-xs"
+            title="Scroll to bottom"
+          >
+            ↓
+          </button>
+          <button
+            onClick={() => setAutoScroll(!autoScroll)}
+            className={`px-2 py-1 rounded text-xs ${autoScroll ? 'bg-blue-600 text-white' : 'bg-gray-700 text-white hover:bg-gray-600'}`}
+            title="Toggle auto-scroll"
+          >
+            🔄
+          </button>
+          <button
+            onClick={clearEvents}
+            className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs"
+            title="Clear all events"
+          >
+            🗑️
+          </button>
         </div>
       )}
-      <div className="relative">
-        <div
-          ref={liveDataRef}
-          className="bg-black border border-gray-700 rounded p-3 h-48 overflow-y-auto font-mono text-sm text-green-400"
-          style={{ whiteSpace: 'pre-wrap' }}
-          onScroll={() => {
-            if (!liveDataRef.current) return;
-            const el = liveDataRef.current;
-            const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 5;
-            setAutoScroll(atBottom);
-          }}
-        >
-          {data.filter(e => e.subsystem === selectedType).length === 0 ? 'No live data available. Enable streaming to see data.' : 
-            data.filter(e => e.subsystem === selectedType).map((entry, index) => {
-              const color = entry.type === 'error' ? 'text-red-400' : entry.type === 'warning' ? 'text-yellow-300' : entry.type === 'debug' ? 'text-blue-300' : 'text-green-400';
-              const emoji = entry.type === 'error' ? '❌' : entry.type === 'warning' ? '⚠️' : entry.type === 'debug' ? '🐞' : '📡';
-              return (
-                <div key={index} className={`mb-1 ${color}`}>
-                  <span className="text-green-600">[{entry.timestamp}]</span> {emoji} {entry.data}
-                </div>
-              );
-            })
-          }
-        </div>
-        {data.length > 0 && (
-          <div className="absolute top-2 right-2 flex gap-1">
-            <button
-              onClick={scrollToTop}
-              className="bg-[#101820] hover:bg-gray-700 text-green-400 text-xs px-2 py-1 rounded border border-gray-600 transition-colors"
-              title="Scroll to top"
-            >
-              ↑ Top
-            </button>
-            <button
-              onClick={scrollToBottom}
-              className="bg-[#101820] hover:bg-gray-700 text-green-400 text-xs px-2 py-1 rounded border border-gray-600 transition-colors"
-              title="Scroll to bottom"
-            >
-              ↓ Bottom
-            </button>
-          </div>
-        )}
-      </div>
     </div>
   );
 };

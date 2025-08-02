@@ -1,57 +1,77 @@
 import { useEffect, useRef } from 'react';
-import { useLiveDataStore, LiveDataType } from '../stores/liveDataStore';
+import { useLiveDataStore, LiveDataWebSocket, parsePssEvent } from '../stores/liveDataStore';
+import { useAppStore } from '../stores/index';
 
-/**
- * Hook that subscribes to backend "live_data" events via Tauri v2 event system
- * and pushes them into the LiveDataStore. It automatically cleans up on
- * component unmount or when `enabled` flag changes.
- */
-export const useLiveDataEvents = (enabled: boolean, selectedType: LiveDataType) => {
-  const { addData } = useLiveDataStore();
-  const listenerRef = useRef<Promise<() => void> | null>(null);
+export const useLiveDataEvents = () => {
+  const wsRef = useRef<LiveDataWebSocket | null>(null);
+  const { 
+    addEvent, 
+    setCurrentRound, 
+    setCurrentTime, 
+    setConnectionStatus,
+    clearEvents 
+  } = useLiveDataStore();
+  
+  const { isManualModeEnabled } = useAppStore();
 
   useEffect(() => {
-    // Helper to attach listener
-    const attach = async () => {
-      if (!enabled) return;
+    // Only connect when manual mode is OFF
+    if (isManualModeEnabled) {
+      if (wsRef.current) {
+        wsRef.current.disconnect();
+        wsRef.current = null;
+        setConnectionStatus(false);
+      }
+      return;
+    }
 
-      try {
-        if (typeof window === 'undefined' || !window.__TAURI__?.event) {
-          console.warn('Tauri event API not available – running in web mode?');
-          return;
-        }
-
-        // Listen for generic live_data events (emitted from Rust backend)
-        listenerRef.current = window.__TAURI__.event.listen(
-          'live_data',
-          (event: any) => {
-            try {
-              const payload = event.payload || {};
-              const subsystem: LiveDataType = (payload.subsystem as LiveDataType) || 'pss';
-              if (subsystem !== selectedType) return; // ignore other subsystems
-
-              const data: string = payload.data || JSON.stringify(payload);
-
-              addData({ subsystem, data, type: 'info' });
-            } catch (err) {
-              console.error('Error processing live_data payload:', err);
-            }
+    // Create WebSocket connection
+    const ws = new LiveDataWebSocket('ws://localhost:8080', (data) => {
+      console.log('📡 Received WebSocket message:', data);
+      
+      // Handle different message types
+      if (data.type === 'pss_event') {
+        const event = parsePssEvent(data.raw_data, data.timestamp);
+        if (event) {
+          addEvent(event);
+          
+          // Update round and time if provided
+          if (data.round) {
+            setCurrentRound(data.round);
           }
-        );
-      } catch (err) {
-        console.error('Failed to register live_data listener:', err);
+          if (data.time) {
+            setCurrentTime(data.time);
+          }
+        }
+      } else if (data.type === 'connection_status') {
+        setConnectionStatus(data.connected);
+      } else if (data.type === 'error') {
+        console.error('WebSocket error:', data.message);
       }
-    };
+    });
 
-    // Attach on mount / when enabled turns true
-    attach();
+    wsRef.current = ws;
+    ws.connect();
 
-    // Cleanup on disable/unmount
+    // Cleanup on unmount or when manual mode is enabled
     return () => {
-      if (listenerRef.current) {
-        listenerRef.current.then((unlisten) => unlisten()).catch(() => {});
-        listenerRef.current = null;
+      if (wsRef.current) {
+        wsRef.current.disconnect();
+        wsRef.current = null;
+        setConnectionStatus(false);
       }
     };
-  }, [enabled, selectedType, addData]);
+  }, [isManualModeEnabled, addEvent, setCurrentRound, setCurrentTime, setConnectionStatus]);
+
+  // Clear events when manual mode is enabled
+  useEffect(() => {
+    if (isManualModeEnabled) {
+      clearEvents();
+    }
+  }, [isManualModeEnabled, clearEvents]);
+
+  return {
+    isConnected: useLiveDataStore.getState().isConnected,
+    eventCount: useLiveDataStore.getState().events.length,
+  };
 }; 
