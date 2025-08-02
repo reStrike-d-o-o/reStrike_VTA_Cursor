@@ -1695,6 +1695,9 @@ impl Migration for Migration8 {
 
 pub struct Migration9;
 
+// ---------------- Migration10 ------------------------
+pub struct Migration10;
+
 impl Migration for Migration9 {
     fn version(&self) -> u32 {
         9
