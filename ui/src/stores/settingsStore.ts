@@ -7,19 +7,17 @@ interface SettingsState {
   toggleConfirmations: (enabled: boolean) => void;
 }
 
-export const useSettingsStore = create<SettingsState>((set) => {
-  const storedDelay = typeof window !== 'undefined' ? Number(localStorage.getItem('safetyDelayMs') || '5000') : 5000;
-  const storedEnabled = typeof window !== 'undefined' ? localStorage.getItem('confirmationsEnabled') !== 'false' : true;
-  return {
-    safetyDelayMs: storedDelay || 5000,
-    confirmationsEnabled: storedEnabled,
-    setSafetyDelay(ms) {
-      set({ safetyDelayMs: ms });
-      if (typeof window !== 'undefined') localStorage.setItem('safetyDelayMs', String(ms));
-    },
-    toggleConfirmations(enabled) {
-      set({ confirmationsEnabled: enabled });
-      if (typeof window !== 'undefined') localStorage.setItem('confirmationsEnabled', String(enabled));
-    },
-  };
-});
+export const useSettingsStore = create<SettingsState>((set) => ({
+  safetyDelayMs: Number(localStorage.getItem('safetyDelayMs') || '5000'),
+  confirmationsEnabled: localStorage.getItem('confirmationsEnabled') !== 'false',
+
+  setSafetyDelay(ms: number) {
+    set({ safetyDelayMs: ms });
+    localStorage.setItem('safetyDelayMs', String(ms));
+  },
+
+  toggleConfirmations(enabled: boolean) {
+    set({ confirmationsEnabled: enabled });
+    localStorage.setItem('confirmationsEnabled', String(enabled));
+  },
+}));
