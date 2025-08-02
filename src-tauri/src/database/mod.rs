@@ -72,7 +72,7 @@ impl SchemaVersion {
 pub type DatabaseResult<T> = Result<T, DatabaseError>;
 
 /// Current schema version - increment when adding new migrations
-pub const CURRENT_SCHEMA_VERSION: u32 = 13;
+pub const CURRENT_SCHEMA_VERSION: u32 = 14;
 
 /// Database file name
 pub const DATABASE_FILE: &str = "restrike_vta.db"; 

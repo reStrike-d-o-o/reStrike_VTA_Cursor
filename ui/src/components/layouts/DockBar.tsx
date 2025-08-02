@@ -12,6 +12,8 @@ import { useAppStore } from '../../stores';
 import { windowCommands } from '../../utils/tauriCommands';
 import { useEnvironment } from '../../hooks/useEnvironment';
 import { invoke } from '@tauri-apps/api/core';
+import { usePssMatchStore } from '../../stores/pssMatchStore';
+import { PssAthleteInfo, PssMatchConfig } from '../../types';
 
 const DockBar: React.FC = () => {
   const { tauriAvailable } = useEnvironment();
@@ -113,7 +115,42 @@ const DockBar: React.FC = () => {
     try {
       const result = await invoke('manual_create_match', { matchData });
       console.log('New match created:', result);
-      // TODO: Update MatchDetailsSection with new data
+      
+      // Update the PSS match store with the new match data
+      const { updateAthletes, updateMatchConfig, setMatchLoaded } = usePssMatchStore.getState();
+      
+      // Create athlete info objects
+      const athlete1: PssAthleteInfo = {
+        short: matchData.player1.name.split(' ')[0], // First name as short name
+        long: matchData.player1.name,
+        country: matchData.player1.ioc_code,
+        iocCode: matchData.player1.ioc_code
+      };
+      
+      const athlete2: PssAthleteInfo = {
+        short: matchData.player2.name.split(' ')[0], // First name as short name
+        long: matchData.player2.name,
+        country: matchData.player2.ioc_code,
+        iocCode: matchData.player2.ioc_code
+      };
+      
+      // Create match config object
+      const matchConfig: PssMatchConfig = {
+        number: parseInt(matchData.match_number) || 0,
+        category: matchData.category,
+        weight: matchData.weight,
+        division: matchData.division,
+        totalRounds: 3, // Default to 3 rounds
+        roundDuration: 120, // Default to 2 minutes
+        countdownType: 'standard',
+        format: 1
+      };
+      
+      // Update the store
+      updateAthletes(athlete1, athlete2);
+      updateMatchConfig(matchConfig);
+      setMatchLoaded(true);
+      
       alert('New match created successfully!');
       setShowNewMatchDialog(false);
     } catch (error) {
