@@ -1582,6 +1582,7 @@ pub struct OverlayTemplate {
     pub animation_type: String,
     pub duration_ms: i32,
     pub is_active: bool,
+    pub url: Option<String>, // URL/path to the overlay file
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -1594,6 +1595,7 @@ impl OverlayTemplate {
         colors: Option<String>,
         animation_type: String,
         duration_ms: i32,
+        url: Option<String>,
     ) -> Self {
         let now = Utc::now();
         Self {
@@ -1605,6 +1607,7 @@ impl OverlayTemplate {
             animation_type,
             duration_ms,
             is_active: true,
+            url,
             created_at: now,
             updated_at: now,
         }
@@ -1620,6 +1623,7 @@ impl OverlayTemplate {
             animation_type: row.get("animation_type")?,
             duration_ms: row.get("duration_ms")?,
             is_active: row.get("is_active")?,
+            url: row.get("url")?,
             created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
             updated_at: parse_datetime_from_db(&row.get::<_, String>("updated_at")?, "updated_at")?,
         })

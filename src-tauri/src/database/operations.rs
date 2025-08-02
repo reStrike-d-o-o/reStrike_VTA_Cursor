@@ -2324,8 +2324,8 @@ impl DatabaseConnection {
         let now = chrono::Utc::now().to_rfc3339();
         
         let id = conn.execute(
-            "INSERT INTO overlay_templates (name, description, theme, colors, animation_type, duration_ms, is_active, created_at, updated_at) 
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO overlay_templates (name, description, theme, colors, animation_type, duration_ms, is_active, url, created_at, updated_at) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             [
                 &template.name,
                 &template.description.as_deref().unwrap_or("").to_string(),
@@ -2334,6 +2334,7 @@ impl DatabaseConnection {
                 &template.animation_type,
                 &template.duration_ms.to_string(),
                 &(template.is_active as i32).to_string(),
+                &template.url.as_deref().unwrap_or("").to_string(),
                 &template.created_at.to_rfc3339(),
                 &now,
             ],
@@ -2348,7 +2349,7 @@ impl DatabaseConnection {
         let now = chrono::Utc::now().to_rfc3339();
         
         conn.execute(
-            "UPDATE overlay_templates SET description = ?, theme = ?, colors = ?, animation_type = ?, duration_ms = ?, is_active = ?, updated_at = ? 
+            "UPDATE overlay_templates SET description = ?, theme = ?, colors = ?, animation_type = ?, duration_ms = ?, is_active = ?, url = ?, updated_at = ? 
              WHERE id = ?",
             [
                 &template.description.as_deref().unwrap_or("").to_string(),
@@ -2357,6 +2358,7 @@ impl DatabaseConnection {
                 &template.animation_type,
                 &template.duration_ms.to_string(),
                 &(template.is_active as i32).to_string(),
+                &template.url.as_deref().unwrap_or("").to_string(),
                 &now,
                 &template.id.unwrap_or(0).to_string(),
             ],
