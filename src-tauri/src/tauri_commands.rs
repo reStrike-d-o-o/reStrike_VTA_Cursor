@@ -4150,12 +4150,12 @@ pub async fn obs_list_scenes(app: State<'_, Arc<App>>) -> Result<serde_json::Val
         connection_statuses.push((connection_name.clone(), status));
     }
     
-    for (connection_name, status) in connection_statuses {
+    for (connection_name, status) in &connection_statuses {
         // Check if connection is connected/authenticated
         let is_connected = matches!(status, Some(s) if matches!(s, crate::plugins::plugin_obs::ObsConnectionStatus::Connected | crate::plugins::plugin_obs::ObsConnectionStatus::Authenticated));
         
         if is_connected {
-            match app.obs_plugin().get_scenes(&connection_name).await {
+            match app.obs_plugin().get_scenes(connection_name).await {
                 Ok(scene_names) => {
                     for (idx, scene_name) in scene_names.iter().enumerate() {
                         all_scenes.push(serde_json::json!({
