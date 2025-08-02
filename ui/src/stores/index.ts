@@ -285,9 +285,16 @@ export const useAppStore = create<AppStore>()(
       },
       
       toggleManualMode: () => {
-        set((state) => ({ 
-          isManualModeEnabled: !state.isManualModeEnabled 
-        }));
+        console.log('toggleManualMode called!', { 
+          currentState: get().isManualModeEnabled 
+        });
+        set((state) => {
+          const newState = !state.isManualModeEnabled;
+          console.log('Setting manual mode to:', newState);
+          return { 
+            isManualModeEnabled: newState 
+          };
+        });
       },
 
       // Window Settings Actions
