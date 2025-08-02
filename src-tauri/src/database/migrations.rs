@@ -1958,6 +1958,115 @@ impl Migration for Migration13 {
     }
 }
 
+/// Migration 14: Change match_number from INTEGER to TEXT
+pub struct Migration14;
+
+impl Migration for Migration14 {
+    fn version(&self) -> u32 {
+        14
+    }
+    
+    fn description(&self) -> &str {
+        "Change match_number column from INTEGER to TEXT to support non-integer match numbers"
+    }
+    
+    fn up(&self, conn: &Connection) -> SqliteResult<()> {
+        // SQLite doesn't support ALTER COLUMN TYPE, so we need to recreate the table
+        // First, create a temporary table with the new schema
+        conn.execute(
+            "CREATE TABLE pss_matches_new (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                match_id TEXT NOT NULL UNIQUE,
+                match_number TEXT,
+                category TEXT,
+                weight_class TEXT,
+                division TEXT,
+                total_rounds INTEGER DEFAULT 3,
+                round_duration INTEGER,
+                countdown_type TEXT,
+                format_type INTEGER,
+                creation_mode TEXT DEFAULT 'Automatic',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )",
+            [],
+        )?;
+        
+        // Copy data from old table to new table, converting match_number to TEXT
+        conn.execute(
+            "INSERT INTO pss_matches_new 
+             SELECT id, match_id, 
+                    CASE 
+                        WHEN match_number IS NULL THEN NULL 
+                        ELSE CAST(match_number AS TEXT) 
+                    END as match_number,
+                    category, weight_class, division, total_rounds, 
+                    round_duration, countdown_type, format_type, 
+                    COALESCE(creation_mode, 'Automatic') as creation_mode,
+                    created_at, updated_at
+             FROM pss_matches",
+            [],
+        )?;
+        
+        // Drop the old table
+        conn.execute("DROP TABLE pss_matches", [])?;
+        
+        // Rename the new table to the original name
+        conn.execute("ALTER TABLE pss_matches_new RENAME TO pss_matches", [])?;
+        
+        log::info!("Successfully changed match_number column from INTEGER to TEXT");
+        Ok(())
+    }
+    
+    fn down(&self, conn: &Connection) -> SqliteResult<()> {
+        // Revert back to INTEGER (this might lose data if match_number contains non-numeric values)
+        conn.execute(
+            "CREATE TABLE pss_matches_old (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                match_id TEXT NOT NULL UNIQUE,
+                match_number INTEGER,
+                category TEXT,
+                weight_class TEXT,
+                division TEXT,
+                total_rounds INTEGER DEFAULT 3,
+                round_duration INTEGER,
+                countdown_type TEXT,
+                format_type INTEGER,
+                creation_mode TEXT DEFAULT 'Automatic',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )",
+            [],
+        )?;
+        
+        // Copy data back, converting TEXT to INTEGER where possible
+        conn.execute(
+            "INSERT INTO pss_matches_old 
+             SELECT id, match_id, 
+                    CASE 
+                        WHEN match_number IS NULL THEN NULL 
+                        WHEN match_number GLOB '*[^0-9]*' THEN NULL  -- Contains non-numeric chars
+                        ELSE CAST(match_number AS INTEGER) 
+                    END as match_number,
+                    category, weight_class, division, total_rounds, 
+                    round_duration, countdown_type, format_type, 
+                    COALESCE(creation_mode, 'Automatic') as creation_mode,
+                    created_at, updated_at
+             FROM pss_matches",
+            [],
+        )?;
+        
+        // Drop the new table
+        conn.execute("DROP TABLE pss_matches", [])?;
+        
+        // Rename the old table back
+        conn.execute("ALTER TABLE pss_matches_old RENAME TO pss_matches", [])?;
+        
+        log::info!("Successfully reverted match_number column back to INTEGER");
+        Ok(())
+    }
+}
+
 /// Migration manager for handling database schema updates
 pub struct MigrationManager {
     migrations: Vec<Box<dyn Migration>>,
@@ -1980,6 +2089,7 @@ impl MigrationManager {
         migrations.push(Box::new(Migration11)); // Add url column to overlay_templates
         migrations.push(Box::new(Migration12)); // Add status and error columns to obs_connections
         migrations.push(Box::new(Migration13)); // Add creation_mode field to pss_matches
+        migrations.push(Box::new(Migration14)); // Change match_number from INTEGER to TEXT
         
         Self { migrations }
     }
