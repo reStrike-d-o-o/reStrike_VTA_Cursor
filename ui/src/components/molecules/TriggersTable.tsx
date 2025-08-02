@@ -1,4 +1,6 @@
 import React, { useEffect } from 'react';
+import { DndContext, DragEndEvent } from '@dnd-kit/core';
+import DragPalette from './DragPalette';
 import {
   useTriggersStore,
   EventTriggerRow,
@@ -197,6 +199,36 @@ const RowComponent: React.FC<RowProps> = ({ row, index, eventsCatalog }) => {
 const Row = React.memo(RowComponent);
 
 export const TriggersTable: React.FC<Props> = ({ tournamentId, dayId }) => {
+  const handleDragEnd = (e: DragEndEvent) => {
+    const { over, active } = e;
+    if (!over) return;
+    const targetId = over.id.toString(); // e.g., cell-2-action
+    const [cell, rowStr, col] = targetId.split('-');
+    if (cell !== 'cell') return;
+    const rowIdx = Number(rowStr);
+    const set = useTriggersStore.getState();
+
+    if (active.id.toString().startsWith('ev-')) {
+      const ev = active.id.toString().substring(3);
+      set.updateRow(rowIdx, { kind: 'event', event_type: ev } as Partial<EventTriggerRow>);
+    }
+    if (active.id.toString().startsWith('act-')) {
+      const act = active.id.toString().substring(4) as 'show' | 'hide';
+      set.updateRow(rowIdx, { action: act });
+    }
+    if (active.id.toString().startsWith('tt-')) {
+      const ttype = active.id.toString().substring(3) as 'scene' | 'overlay';
+      set.updateRow(rowIdx, { target_type: ttype });
+    }
+    if (active.id.toString().startsWith('scene-')) {
+      const sceneId = Number(active.id.toString().substring(6));
+      set.updateRow(rowIdx, { obs_scene_id: sceneId, target_type: 'scene' });
+    }
+    if (active.id.toString().startsWith('ov-')) {
+      const ovId = Number(active.id.toString().substring(3));
+      set.updateRow(rowIdx, { overlay_template_id: ovId, target_type: 'overlay' });
+    }
+  };
   const {
     rows,
     eventsCatalog,

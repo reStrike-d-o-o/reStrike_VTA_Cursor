@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@craco/craco": "^7.1.0",
+    "@dnd-kit/core": "^6.3.1",
     "@tauri-apps/api": "^2.7.0",
     "@tauri-apps/plugin-dialog": "^2.3.1",
     "framer-motion": "^11.18.2",
