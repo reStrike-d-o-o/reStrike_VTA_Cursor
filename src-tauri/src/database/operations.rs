@@ -5,7 +5,7 @@ use crate::database::{
     DatabaseConnection,
     models::{SettingsKey, SettingsValue, SettingsHistory, SettingsCategory,
         Tournament, TournamentDay, NetworkInterface, UdpServerConfig, UdpServerSession, 
-        UdpClientConnection, PssEventType, PssMatch, PssAthlete, PssEventV2, PssEventDetail, 
+        UdpClientConnection, PssEventType, PssMatch, PssAthlete, PssMatchAthlete, PssEventV2, PssEventDetail, 
         PssScore, PssWarning, PssUnknownEvent, PssEventValidationRule, PssEventValidationResult, 
         PssEventStatistics, PssEventRecognitionHistory, ObsScene, OverlayTemplate, EventTrigger,
         ObsConnection
@@ -1079,7 +1079,7 @@ impl PssUdpOperations {
             ],
         )?;
         
-        Ok(match_id)
+        Ok(match_id as i64)
     }
 
     pub fn insert_pss_athlete(conn: &Connection, athlete: &PssAthlete) -> DatabaseResult<i64> {
@@ -1096,7 +1096,7 @@ impl PssUdpOperations {
             ],
         )?;
         
-        Ok(athlete_id)
+        Ok(athlete_id as i64)
     }
 
     pub fn insert_pss_match_athlete(conn: &Connection, match_athlete: &PssMatchAthlete) -> DatabaseResult<i64> {
@@ -1112,7 +1112,7 @@ impl PssUdpOperations {
             ],
         )?;
         
-        Ok(match_athlete_id)
+        Ok(match_athlete_id as i64)
     }
 
     pub fn get_all_settings(conn: &Connection) -> DatabaseResult<serde_json::Value> {
@@ -1140,6 +1140,20 @@ impl PssUdpOperations {
             "settings": settings
         }))
     }
+
+    pub fn get_obs_connections(conn: &Connection) -> DatabaseResult<Vec<ObsConnection>> {
+        let mut stmt = conn.prepare(
+            "SELECT id, name, host, port, password, is_active, status, error, created_at, updated_at 
+             FROM obs_connections ORDER BY name"
+        )?;
+        
+        let connections = stmt.query_map([], |row| ObsConnection::from_row(row))?
+            .collect::<Result<Vec<_>, _>>()?;
+        
+        Ok(connections)
+    }
+
+
 } 
 
 /// Tournament Operations for managing tournaments and tournament days
