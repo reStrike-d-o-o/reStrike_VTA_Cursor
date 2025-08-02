@@ -110,7 +110,11 @@ export const useTriggersStore = create<TriggersStore>((set, get) => ({
 
       const eventsCatalog = Array.isArray(eventsResp) && eventsResp.length ? eventsResp : defaultEvents;
       const scenes = Array.isArray(scenesResp) ? scenesResp : [];
-      const overlays = Array.isArray(overlaysResp) ? overlaysResp : [];
+      let overlays = Array.isArray(overlaysResp) ? overlaysResp : [] as OverlayTemplate[];
+      if (!overlays.length) {
+        // provide a placeholder disabled overlay to allow UI testing
+        overlays = [{ id: -1, name: 'No overlays', theme: null }];
+      }
 
       // Convert DB triggers to TriggerRow list (kind = event)
       const rows: TriggerRow[] = Array.isArray(triggersResp)
@@ -182,7 +186,17 @@ export const useTriggersStore = create<TriggersStore>((set, get) => ({
   updateRow(index: number, partial: Partial<TriggerRow>) {
     set(state => {
       if (!(index in state.rows)) return {};
-      const updated: TriggerRow = { ...state.rows[index], ...partial } as TriggerRow;
+
+      let updated: TriggerRow;
+
+      // If the caller switches the kind (event ↔ delay), replace the row entirely
+      if (partial.kind && partial.kind !== state.rows[index].kind) {
+        updated = { ...partial } as TriggerRow;
+      } else {
+        // normal shallow merge
+        updated = { ...state.rows[index], ...partial } as TriggerRow;
+      }
+
       const newRows = [...state.rows];
       newRows[index] = updated;
       return { rows: newRows, dirty: true };
