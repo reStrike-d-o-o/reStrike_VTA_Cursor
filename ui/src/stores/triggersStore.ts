@@ -99,10 +99,25 @@ export const useTriggersStore = create<TriggersStore>((set, get) => ({
 
   // ------------ actions ------------
   async fetchScenes() {
+    set({ loading: true });
     try {
       const scenesResp = await invoke<ObsScene[]>('triggers_list_obs_scenes');
-      const scenes = Array.isArray(scenesResp) ? scenesResp : [];
-      set({ scenes });
+      let scenes: ObsScene[] = Array.isArray(scenesResp) ? scenesResp : [];
+      if (!scenes.length) {
+        try {
+          const raw = await invoke<any[]>('obs_list_scenes');
+          if (Array.isArray(raw)) {
+            scenes = raw.map((s: any, idx: number) => ({
+              id: s.id ?? idx,
+              scene_name: s.scene_name ?? s.name ?? `Scene ${idx}`,
+              scene_id: s.scene_id ?? String(idx),
+              is_active: true,
+              connection_name: s.connection_name ?? undefined,
+            }));
+          }
+        } catch (_) {}
+      }
+      set({ scenes, loading: false });
     } catch (err) {
       console.error(err);
     }
