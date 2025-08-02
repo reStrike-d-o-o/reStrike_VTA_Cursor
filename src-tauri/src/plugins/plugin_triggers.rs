@@ -169,7 +169,7 @@ impl TriggerPlugin {
         // Store global reference
         let _ = TRIGGER_PLUGIN_GLOBAL.set(std::sync::Arc::new(self.clone()));
         // Global shortcuts require the optional plugin; wrap in cfg to compile when present
-        #[cfg(feature = "global-shortcut")]
+        #[cfg(feature = "custom-protocol")]
         {
             use tauri::Manager;
             if let Some(app_handle) = tauri::AppHandle::try_get() {
@@ -332,7 +332,7 @@ impl TriggerPlugin {
             return;
         }
         // Emit tauri event on state change
-                #[cfg(feature = "global-shortcut")]
+                #[cfg(feature = "custom-protocol")]
         if let Some(app) = tauri::AppHandle::try_get() {
             let _ = app.emit_all("triggers_paused_changed", paused);
         }
