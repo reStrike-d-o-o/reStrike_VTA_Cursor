@@ -740,7 +740,7 @@ impl PssEventType {
 pub struct PssMatch {
     pub id: Option<i64>,
     pub match_id: String,
-    pub match_number: Option<i32>,
+    pub match_number: Option<String>, // Changed from i32 to String to support non-integer match numbers
     pub category: Option<String>,
     pub weight_class: Option<String>,
     pub division: Option<String>,
@@ -748,6 +748,7 @@ pub struct PssMatch {
     pub round_duration: Option<i32>,
     pub countdown_type: Option<String>,
     pub format_type: Option<i32>,
+    pub creation_mode: String, // 'Automatic' or 'Manual'
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -766,6 +767,7 @@ impl PssMatch {
             round_duration: None,
             countdown_type: None,
             format_type: None,
+            creation_mode: "Automatic".to_string(),
             created_at: now,
             updated_at: now,
         }
@@ -783,6 +785,7 @@ impl PssMatch {
             round_duration: row.get("round_duration")?,
             countdown_type: row.get("countdown_type")?,
             format_type: row.get("format_type")?,
+            creation_mode: row.get("creation_mode")?,
             created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
                 .map_err(|_| rusqlite::Error::InvalidColumnType(0, "created_at".to_string(), rusqlite::types::Type::Text))?
                 .with_timezone(&Utc),
