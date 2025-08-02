@@ -2544,7 +2544,7 @@ impl DatabaseConnection {
     }
     
     /// Save triggers as template (global triggers)
-    pub async fn save_triggers_as_template(&self, tournament_id: i64, template_name: &str) -> DatabaseResult<()> {
+    pub async fn save_triggers_as_template(&self, tournament_id: i64, _template_name: &str) -> DatabaseResult<()> {
         let conn = self.get_connection().await?;
         let now = chrono::Utc::now().to_rfc3339();
         

@@ -1657,6 +1657,9 @@ impl EventTrigger {
     ) -> Self {
         let now = Utc::now();
         Self {
+            action: "show".to_string(),
+            target_type: "scene".to_string(),
+            delay_ms: 0,
             id: None,
             tournament_id,
             tournament_day_id,
@@ -1676,6 +1679,9 @@ impl EventTrigger {
             id: row.get("id")?,
             tournament_id: row.get("tournament_id")?,
             tournament_day_id: row.get("tournament_day_id")?,
+            action: row.get("action")?,
+            target_type: row.get("target_type")?,
+            delay_ms: row.get("delay_ms")?,
             event_type: row.get("event_type")?,
             trigger_type: row.get("trigger_type")?,
             obs_scene_id: row.get("obs_scene_id")?,
