@@ -23,15 +23,17 @@ const DraggableBadge: React.FC<BadgeProps> = ({ id, label, colorClass }) => {
     position: 'relative',
   };
 
-  const containerBg = colorClass.replace('bg-', 'bg-') + '/10';
-  const borderColor = colorClass.replace('bg-', 'border-') + '/20';
+  const color = colorClass.replace('bg-', '');
+  const containerBg = `bg-${color}/10`;
+  const borderColor = `border-${color}/20`;
+  const textColor = `text-${color.replace('600','400')}`;
   return (
     <div
       ref={setNodeRef}
       {...listeners}
       {...attributes}
       style={style}
-      className={`flex items-center px-3 py-1 rounded-lg backdrop-blur-sm text-xs font-medium select-none mb-2 ${containerBg} ${borderColor} border`}
+      className={`flex items-center px-3 py-1 rounded-lg backdrop-blur-sm text-xs font-medium select-none mb-2 ${containerBg} ${borderColor} border ${textColor}`}
     >
       <span>{label}</span>
     </div>
