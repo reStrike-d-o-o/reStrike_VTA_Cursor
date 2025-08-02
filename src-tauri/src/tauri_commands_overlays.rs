@@ -1,7 +1,6 @@
 use crate::database::models::OverlayTemplate;
-use crate::types::AppResult;
 use chrono::Utc;
-use tauri::{State, command};
+use tauri::{State, command, Error as TauriError};
 use std::sync::Arc;
 
 #[derive(serde::Deserialize)]
@@ -16,7 +15,7 @@ pub struct OverlayTemplatePayload {
 }
 
 #[command]
-pub async fn overlays_sync_templates(app: State<'_, Arc<crate::App>>, templates: Vec<OverlayTemplatePayload>) -> AppResult<Vec<OverlayTemplate>> {
+pub async fn overlays_sync_templates(app: State<'_, Arc<crate::App>>, templates: Vec<OverlayTemplatePayload>) -> Result<Vec<OverlayTemplate>, TauriError> {
     let conn = app.database_plugin().get_database_connection();
 
     // Insert or update each template
@@ -34,10 +33,15 @@ pub async fn overlays_sync_templates(app: State<'_, Arc<crate::App>>, templates:
             created_at: now,
             updated_at: now,
         };
-        let _ = conn.insert_overlay_template(&tpl).await;
+        conn.insert_overlay_template(&tpl)
+            .await
+            .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
     }
 
     // Return fresh list
-    let list = conn.get_active_overlay_templates().await?;
+    let list = conn
+        .get_active_overlay_templates()
+        .await
+        .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
     Ok(list)
 }
