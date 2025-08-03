@@ -24,6 +24,7 @@ interface LiveDataState {
   // Actions
   addEvent: (event: PssEventData) => void;
   clearEvents: () => void;
+  storeEventsToDatabase: (matchId: string) => Promise<void>;
   setCurrentRound: (round: number) => void;
   setCurrentTime: (time: string) => void;
   setConnectionStatus: (connected: boolean) => void;
@@ -54,6 +55,38 @@ export const useLiveDataStore = create<LiveDataState>()(
         events: [],
         lastUpdate: new Date().toISOString(),
       });
+    },
+    
+    storeEventsToDatabase: async (matchId: string) => {
+      const { events } = get();
+      if (events.length === 0) return;
+      
+      try {
+        // Import invoke dynamically to avoid SSR issues
+        const { invoke } = await import('@tauri-apps/api/core');
+        
+        // Store each event to the database
+        for (const event of events) {
+          await invoke('store_pss_event', {
+            eventData: {
+              match_id: matchId,
+              event_type: event.eventType,
+              event_code: event.eventCode,
+              athlete: event.athlete,
+              round: event.round,
+              time: event.time,
+              timestamp: event.timestamp,
+              raw_data: event.rawData,
+              description: event.description
+            }
+          });
+        }
+        
+        console.log(`✅ Stored ${events.length} events to database for match ${matchId}`);
+      } catch (error) {
+        console.error('❌ Failed to store events to database:', error);
+        throw error;
+      }
     },
     
     setCurrentRound: (round: number) => {

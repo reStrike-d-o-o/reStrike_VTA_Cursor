@@ -17,6 +17,7 @@ use std::time::{Duration, Instant};
 
 /// Validation result enum
 #[derive(Debug)]
+#[allow(dead_code)]
 enum ValidationResult {
     Valid,
     Partial(Vec<String>),
@@ -752,6 +753,7 @@ impl UdpServer {
     }
 
     /// Determine event recognition status and confidence
+    #[allow(dead_code)]
     async fn determine_event_status(event: &PssEvent, database: &DatabasePlugin) -> AppResult<(String, f64, Option<String>)> {
         let event_code = Self::get_event_code(event);
         
@@ -785,6 +787,7 @@ impl UdpServer {
 
 
     /// Validate event against PSS protocol rules
+    #[allow(dead_code)]
     async fn validate_event_against_protocol(
         event: &PssEvent, 
         event_code: &str, 
@@ -840,6 +843,7 @@ impl UdpServer {
     }
 
     /// Apply a single validation rule
+    #[allow(dead_code)]
     fn apply_validation_rule(event: &PssEvent, rule: &crate::database::models::PssEventValidationRule) -> AppResult<ValidationResult> {
         match rule.rule_type.as_str() {
             "range" => Self::validate_range_rule(event, rule),
@@ -855,6 +859,7 @@ impl UdpServer {
     }
 
     /// Validate range rule
+    #[allow(dead_code)]
     fn validate_range_rule(event: &PssEvent, rule: &crate::database::models::PssEventValidationRule) -> AppResult<ValidationResult> {
         // Parse range from rule definition (e.g., "1-5", "0-4")
         let range_parts: Vec<&str> = rule.rule_definition.split('-').collect();
@@ -887,6 +892,7 @@ impl UdpServer {
     }
 
     /// Validate format rule
+    #[allow(dead_code)]
     fn validate_format_rule(event: &PssEvent, rule: &crate::database::models::PssEventValidationRule) -> AppResult<ValidationResult> {
         match event {
             PssEvent::Clock { time, .. } |
@@ -906,12 +912,14 @@ impl UdpServer {
     }
 
     /// Validate data type rule
+    #[allow(dead_code)]
     fn validate_data_type_rule(_event: &PssEvent, _rule: &crate::database::models::PssEventValidationRule) -> AppResult<ValidationResult> {
         // This is mostly handled by the parsing stage, but we can add additional checks here
         Ok(ValidationResult::Valid)
     }
 
     /// Validate required rule
+    #[allow(dead_code)]
     fn validate_required_rule(event: &PssEvent, rule: &crate::database::models::PssEventValidationRule) -> AppResult<ValidationResult> {
         // Check if required fields are present and not empty
         match event {
@@ -938,6 +946,7 @@ impl UdpServer {
     }
 
     /// Validate custom rule
+    #[allow(dead_code)]
     fn validate_custom_rule(event: &PssEvent, rule: &crate::database::models::PssEventValidationRule) -> AppResult<ValidationResult> {
         // Parse the custom rule definition
         let rule_def = &rule.rule_definition;
@@ -1045,6 +1054,7 @@ impl UdpServer {
     }
 
     /// Check if time format is valid (m:ss)
+    #[allow(dead_code)]
     fn is_valid_time_format(time: &str) -> bool {
         let parts: Vec<&str> = time.split(':').collect();
         if parts.len() != 2 {
@@ -1491,6 +1501,7 @@ impl UdpServer {
         }
     }
 
+    #[allow(dead_code)]
     async fn handle_match_config_event(
         database: &DatabasePlugin,
         current_match_id: &Arc<Mutex<Option<i64>>>,
@@ -1501,6 +1512,7 @@ impl UdpServer {
         Ok(())
     }
 
+    #[allow(dead_code)]
     async fn handle_athletes_event(
         database: &DatabasePlugin,
         athlete_cache: &Arc<Mutex<std::collections::HashMap<String, i64>>>,
@@ -1524,6 +1536,7 @@ impl UdpServer {
         Ok(())
     }
 
+    #[allow(dead_code)]
     async fn handle_scores_event(
         database: &DatabasePlugin,
         current_match_id: &Arc<Mutex<Option<i64>>>,
@@ -1565,6 +1578,7 @@ impl UdpServer {
         Ok(())
     }
 
+    #[allow(dead_code)]
     async fn handle_warnings_event(
         database: &DatabasePlugin,
         current_match_id: &Arc<Mutex<Option<i64>>>,

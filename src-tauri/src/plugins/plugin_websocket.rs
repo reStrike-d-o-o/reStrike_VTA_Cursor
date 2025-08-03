@@ -29,6 +29,7 @@ pub enum WebSocketMessage {
         message: String,
         timestamp: String,
     },
+    RawJson(serde_json::Value),
 }
 
 #[derive(Debug, Clone)]
@@ -50,6 +51,11 @@ impl WebSocketClient {
     pub fn send(&self, message: WebSocketMessage) -> Result<(), AppError> {
         self.sender.send(message)
             .map_err(|e| AppError::ConfigError(format!("Failed to send message to client {}: {}", self.id, e)))
+    }
+    
+    pub fn send_raw_json(&self, json: serde_json::Value) -> Result<(), AppError> {
+        self.sender.send(WebSocketMessage::RawJson(json))
+            .map_err(|e| AppError::ConfigError(format!("Failed to send JSON message to client {}: {}", self.id, e)))
     }
 }
 
@@ -156,7 +162,6 @@ impl WebSocketServer {
         let (mut ws_sender, mut ws_receiver) = ws_stream.split();
         
         // Handle incoming WebSocket messages
-        let tx_clone = tx.clone();
         let client_id_receive = client_id.clone();
         let client_id_send = client_id.clone();
         let clients_clone = clients.clone();
@@ -192,8 +197,16 @@ impl WebSocketServer {
         // Handle outgoing messages
         let send_task = tokio::spawn(async move {
             while let Some(message) = rx.recv().await {
-                let json = serde_json::to_string(&message)
-                    .map_err(|e| AppError::ConfigError(format!("Failed to serialize message: {}", e)))?;
+                let json = match message {
+                    WebSocketMessage::RawJson(json_value) => {
+                        serde_json::to_string(&json_value)
+                            .map_err(|e| AppError::ConfigError(format!("Failed to serialize raw JSON: {}", e)))?
+                    },
+                    _ => {
+                        serde_json::to_string(&message)
+                            .map_err(|e| AppError::ConfigError(format!("Failed to serialize message: {}", e)))?
+                    }
+                };
                 
                 if let Err(e) = ws_sender.send(Message::Text(json)).await {
                     log::error!("Failed to send message to {}: {}", client_id_send, e);
@@ -262,8 +275,42 @@ impl WebSocketServer {
         let mut clients = self.clients.lock().unwrap();
         let mut disconnected_clients = Vec::new();
         
+        // Convert WebSocketMessage to the format expected by scoreboard overlay
+        let overlay_message = match message {
+            WebSocketMessage::PssEvent { event_type, event_code, athlete, round, time, timestamp, raw_data, description } => {
+                serde_json::json!({
+                    "type": "pss_event",
+                    "data": {
+                        "type": event_type,
+                        "event_code": event_code,
+                        "athlete": athlete,
+                        "round": round,
+                        "time": time,
+                        "timestamp": timestamp,
+                        "raw_data": raw_data,
+                        "description": description
+                    }
+                })
+            },
+            WebSocketMessage::ConnectionStatus { connected, timestamp } => {
+                serde_json::json!({
+                    "type": "connection",
+                    "connected": connected,
+                    "timestamp": timestamp
+                })
+            },
+            WebSocketMessage::Error { message, timestamp } => {
+                serde_json::json!({
+                    "type": "error",
+                    "message": message,
+                    "timestamp": timestamp
+                })
+            },
+            WebSocketMessage::RawJson(json_value) => json_value
+        };
+        
         for (index, client) in clients.iter().enumerate() {
-            if let Err(_) = client.send(message.clone()) {
+            if let Err(_) = client.send_raw_json(overlay_message.clone()) {
                 disconnected_clients.push(index);
             }
         }

@@ -49,14 +49,15 @@ const shortenPlayerName = (fullName: string): string => {
 };
 
 const MatchDetailsSection: React.FC = () => {
-  // Get data from PSS store
-  const athlete1 = usePssMatchStore((state) => state.getAthlete1());
-  const athlete2 = usePssMatchStore((state) => state.getAthlete2());
-  const matchNumber = usePssMatchStore((state) => state.getMatchNumber());
-  const matchCategory = usePssMatchStore((state) => state.getMatchCategory());
-  const matchWeight = usePssMatchStore((state) => state.getMatchWeight());
-  const matchDivision = usePssMatchStore((state) => state.getMatchDivision());
-  const isLoaded = usePssMatchStore((state) => state.matchData.isLoaded);
+  // Get data from PSS store - use direct property selectors to avoid infinite loops
+  const matchData = usePssMatchStore((state) => state.matchData);
+  const athlete1 = matchData.athletes?.athlete1;
+  const athlete2 = matchData.athletes?.athlete2;
+  const matchNumber = matchData.matchConfig?.number;
+  const matchCategory = matchData.matchConfig?.category;
+  const matchWeight = matchData.matchConfig?.weight;
+  const matchDivision = matchData.matchConfig?.division;
+  const isLoaded = matchData.isLoaded;
 
   // Debug logging
   React.useEffect(() => {

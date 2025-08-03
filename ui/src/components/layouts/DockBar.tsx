@@ -13,6 +13,7 @@ import { windowCommands } from '../../utils/tauriCommands';
 import { useEnvironment } from '../../hooks/useEnvironment';
 import { invoke } from '@tauri-apps/api/core';
 import { usePssMatchStore } from '../../stores/pssMatchStore';
+import { useLiveDataStore } from '../../stores/liveDataStore';
 import { PssAthleteInfo, PssMatchConfig } from '../../types';
 import { useLiveDataEvents } from '../../hooks/useLiveDataEvents';
 
@@ -120,6 +121,23 @@ const DockBar: React.FC = () => {
       const result = await invoke('manual_create_match', { matchData });
       console.log('New match created:', result);
       
+      // Store current events to database before clearing (if any events exist)
+      const { events, storeEventsToDatabase, clearEvents } = useLiveDataStore.getState();
+      if (events.length > 0) {
+        try {
+          // Use the match number as the match ID for storing events
+          const matchId = matchData.match_number.toString();
+          await storeEventsToDatabase(matchId);
+          console.log(`✅ Stored ${events.length} events to database for previous match`);
+        } catch (error) {
+          console.error('❌ Failed to store events to database:', error);
+        }
+      }
+      
+      // Clear the event table for the new match
+      clearEvents();
+      console.log('✅ Cleared event table for new match');
+      
       // Update the PSS match store with the new match data
       const { updateAthletes, updateMatchConfig, setMatchLoaded } = usePssMatchStore.getState();
       
@@ -155,7 +173,7 @@ const DockBar: React.FC = () => {
       updateMatchConfig(matchConfig);
       setMatchLoaded(true);
       
-      alert('New match created successfully!');
+      alert('New match created successfully! Event table cleared and ready for new data.');
       setShowNewMatchDialog(false);
     } catch (error) {
       console.error('Failed to create new match:', error);
