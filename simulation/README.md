@@ -201,6 +201,28 @@ The simulator includes a comprehensive self-test system that monitors all system
 - **UI Components**: Manual Mode Toggle, Event Table Rendering, Simulation Panel, PSS Drawer
 - **Performance**: Event Processing Speed, Memory Usage, Network Latency, Concurrent Connections
 
+**Selective Testing** ✨ **NEW**
+- **Category Selection**: Choose specific test categories to run
+- **Toggle Controls**: Enable/disable individual categories
+- **Bulk Operations**: Select all or deselect all categories
+- **Visual Feedback**: Real-time status updates and progress monitoring
+- **Comprehensive Reports**: Detailed markdown reports with recommendations
+
+**Usage:**
+```bash
+# List available test categories
+python main.py --list-test-categories
+
+# Run comprehensive self-test (all categories)
+python main.py --self-test
+
+# Run selective self-test for specific categories
+python main.py --self-test --test-categories "Backend Services" "Frontend Integration"
+
+# Run multiple categories
+python main.py --self-test --test-categories "Backend Services" "Simulation System" "Performance"
+```
+
 **Features:**
 - **Comprehensive Testing**: 24 individual tests across 6 categories
 - **Real-time Monitoring**: Progress tracking and status updates

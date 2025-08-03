@@ -4501,6 +4501,103 @@ pub async fn simulation_run_automated(
                     }))
                 }
             }
+            
+            #[tauri::command]
+            pub async fn simulation_get_self_test_categories(_app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+                log::info!("Getting self-test categories");
+                
+                let result = std::process::Command::new("python")
+                    .args(&[
+                        "simulation/main.py",
+                        "--list-test-categories"
+                    ])
+                    .output();
+                
+                match result {
+                    Ok(output) => {
+                        let stdout = String::from_utf8_lossy(&output.stdout);
+                        let stderr = String::from_utf8_lossy(&output.stderr);
+                        
+                        if output.status.success() {
+                            // Parse categories from output
+                            let categories: Vec<String> = stdout
+                                .lines()
+                                .filter(|line| line.trim().starts_with("• "))
+                                .map(|line| line.trim()[2..].to_string())
+                                .collect();
+                            
+                            Ok(serde_json::json!({
+                                "success": true,
+                                "data": {
+                                    "categories": categories,
+                                    "output": stdout.to_string(),
+                                    "error": stderr.to_string()
+                                }
+                            }))
+                        } else {
+                            Ok(serde_json::json!({
+                                "success": false,
+                                "error": format!("Failed to get categories: {}", stderr),
+                                "data": {
+                                    "output": stdout.to_string(),
+                                    "error": stderr.to_string()
+                                }
+                            }))
+                        }
+                    },
+                    Err(e) => Ok(serde_json::json!({
+                        "success": false,
+                        "error": format!("Failed to get categories: {}", e)
+                    }))
+                }
+            }
+            
+            #[tauri::command]
+            pub async fn simulation_run_selective_self_test(
+                selected_categories: Vec<String>,
+                _app: State<'_, Arc<App>>
+            ) -> Result<serde_json::Value, TauriError> {
+                log::info!("Running selective self-test for categories: {:?}", selected_categories);
+                
+                let mut args = vec!["simulation/main.py", "--self-test"];
+                args.extend(selected_categories.iter().map(|s| s.as_str()));
+                
+                let result = std::process::Command::new("python")
+                    .args(&args)
+                    .output();
+                
+                match result {
+                    Ok(output) => {
+                        let stdout = String::from_utf8_lossy(&output.stdout);
+                        let stderr = String::from_utf8_lossy(&output.stderr);
+                        
+                        if output.status.success() {
+                            Ok(serde_json::json!({
+                                "success": true,
+                                "data": {
+                                    "output": stdout.to_string(),
+                                    "error": stderr.to_string(),
+                                    "exitCode": output.status.code().unwrap_or(0)
+                                }
+                            }))
+                        } else {
+                            Ok(serde_json::json!({
+                                "success": false,
+                                "error": format!("Selective self-test failed: {}", stderr),
+                                "data": {
+                                    "output": stdout.to_string(),
+                                    "error": stderr.to_string(),
+                                    "exitCode": output.status.code().unwrap_or(1)
+                                }
+                            }))
+                        }
+                    },
+                    Err(e) => Ok(serde_json::json!({
+                        "success": false,
+                        "error": format!("Failed to run selective self-test: {}", e)
+                    }))
+                }
+            }
 
 // Helper function to parse scenarios from command output
 fn parse_scenarios_from_output(output: &str) -> Vec<serde_json::Value> {

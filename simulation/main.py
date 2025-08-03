@@ -7,7 +7,7 @@ import sys
 import os
 import json
 import time
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 
 # Add the core directory to the path
 sys.path.append(os.path.join(os.path.dirname(__file__), 'core'))
@@ -151,14 +151,26 @@ class SimulationManager:
             print(f"Failed to start self-test system: {e}")
             return False
     
-    def run_self_test(self) -> Dict[str, Any]:
-        """Run comprehensive self-test"""
+    def get_self_test_categories(self) -> List[str]:
+        """Get available self-test categories"""
+        if not self.self_test_system:
+            if not self.start_self_test():
+                return []
+        
+        try:
+            return self.self_test_system.get_available_categories()
+        except Exception as e:
+            print(f"Failed to get self-test categories: {e}")
+            return []
+    
+    def run_self_test(self, selected_categories: Optional[List[str]] = None) -> Dict[str, Any]:
+        """Run comprehensive self-test or selective categories"""
         if not self.self_test_system:
             if not self.start_self_test():
                 return {"error": "Failed to initialize self-test system"}
         
         try:
-            return self.self_test_system.run_comprehensive_test()
+            return self.self_test_system.run_comprehensive_test(selected_categories)
         except Exception as e:
             return {"error": f"Self-test failed: {str(e)}"}
     
@@ -246,6 +258,8 @@ def main():
     parser.add_argument("--duration", type=int, default=30, help="Duration for demo/random mode")
     parser.add_argument("--list-scenarios", action="store_true", help="List available automated scenarios")
     parser.add_argument("--self-test", action="store_true", help="Run comprehensive self-test")
+    parser.add_argument("--list-test-categories", action="store_true", help="List available self-test categories")
+    parser.add_argument("--test-categories", nargs="+", help="Specific test categories to run (space-separated)")
     
     args = parser.parse_args()
     
@@ -265,12 +279,25 @@ def main():
             print()
         return 0
     
+    # List test categories if requested
+    if args.list_test_categories:
+        print("Available Self-Test Categories:")
+        print("=" * 50)
+        categories = manager.get_self_test_categories()
+        for category in categories:
+            print(f"• {category}")
+        print()
+        return 0
+    
     # Run self-test if requested
     if args.self_test or args.mode == "self-test":
-        print("🧪 Starting comprehensive self-test...")
+        if args.test_categories:
+            print(f"🧪 Starting selective self-test for categories: {', '.join(args.test_categories)}")
+        else:
+            print("🧪 Starting comprehensive self-test...")
         print("=" * 50)
         
-        result = manager.run_self_test()
+        result = manager.run_self_test(args.test_categories)
         
         if "error" in result:
             print(f"❌ Self-test failed: {result['error']}")

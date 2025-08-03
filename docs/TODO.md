@@ -91,6 +91,9 @@
 - ✅ **Test Categories**: 24 tests across 6 categories (Backend, Frontend, Simulation, Data Flow, UI, Performance) ✨ **NEW**
 - ✅ **Markdown Reports**: Detailed test reports with recommendations and system health assessment ✨ **NEW**
 - ✅ **Frontend Integration**: Self-test panel with rich text display and real-time monitoring ✨ **NEW**
+- ✅ **Selective Testing**: Choose specific test categories to run ✨ **NEW**
+- ✅ **Category Management**: Toggle individual categories, select all, deselect all ✨ **NEW**
+- ✅ **Enhanced UI**: Toggle controls for selective testing with visual feedback ✨ **NEW**
 - ✅ **Event Table Real-time Updates**: Implemented with proper filtering
 - ✅ **Database Storage Framework**: Basic structure in place
 - ✅ **Interference Prevention Rules**: Added to project context
