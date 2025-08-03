@@ -5,6 +5,7 @@ import Input from '../atoms/Input';
 import Label from '../atoms/Label';
 import StatusDot from '../atoms/StatusDot';
 import Icon from '../atoms/Icon';
+import SelfTestPanel from './SelfTestPanel';
 import { invoke as tauriInvoke } from '@tauri-apps/api/core';
 
 // Use the proper Tauri v2 invoke function with fallback
@@ -59,10 +60,11 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
   const [success, setSuccess] = useState<string>('');
   
   // Automated simulation state
-  const [showAutomated, setShowAutomated] = useState(false);
-  const [selectedAutomatedScenario, setSelectedAutomatedScenario] = useState('');
-  const [automatedScenarios, setAutomatedScenarios] = useState<AutomatedScenario[]>([]);
-  const [progress, setProgress] = useState({ current: 0, total: 0 });
+                const [showAutomated, setShowAutomated] = useState(false);
+              const [showSelfTest, setShowSelfTest] = useState(false);
+              const [selectedAutomatedScenario, setSelectedAutomatedScenario] = useState('');
+              const [automatedScenarios, setAutomatedScenarios] = useState<AutomatedScenario[]>([]);
+              const [progress, setProgress] = useState({ current: 0, total: 0 });
 
   // Load simulation status
   const loadStatus = async () => {
@@ -242,15 +244,25 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
         </div>
       )}
 
-      {/* Mode Toggle */}
-      <div className="flex items-center justify-between">
-        <Label>Automated Simulation</Label>
-        <Toggle
-          checked={showAutomated}
-          onChange={setShowAutomated}
-          disabled={status.isRunning}
-        />
-      </div>
+                        {/* Mode Toggles */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label>Automated Simulation</Label>
+                      <Toggle
+                        checked={showAutomated}
+                        onChange={setShowAutomated}
+                        disabled={status.isRunning}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Label>System Self-Test</Label>
+                      <Toggle
+                        checked={showSelfTest}
+                        onChange={setShowSelfTest}
+                        disabled={status.isRunning}
+                      />
+                    </div>
+                  </div>
 
       {showAutomated ? (
         /* Automated Simulation Panel */
@@ -320,11 +332,14 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
             >
               Stop
             </Button>
-          </div>
-        </div>
-      ) : (
-        /* Manual Simulation Panel */
-        <div className="space-y-4">
+                                </div>
+                    </div>
+                  ) : showSelfTest ? (
+                    /* Self-Test Panel */
+                    <SelfTestPanel />
+                  ) : (
+                    /* Manual Simulation Panel */
+                    <div className="space-y-4">
           {/* Mode Selection */}
           <div>
             <Label>Simulation Mode</Label>

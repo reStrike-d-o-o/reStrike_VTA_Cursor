@@ -181,7 +181,32 @@ python main.py --mode automated --scenario quick_test
 
 # Test with custom duration
 python main.py --mode automated --scenario training_session
+
+# Run comprehensive self-test
+python main.py --self-test
+
+# Test self-test system
+python tests/test_self_test.py
 ```
+
+### Self-Test System
+
+The simulator includes a comprehensive self-test system that monitors all system integrations:
+
+**Test Categories:**
+- **Backend Services**: UDP Server, WebSocket Server, Database Connection, Tauri Commands
+- **Frontend Integration**: React App Status, WebSocket Client, Event Table Updates, Scoreboard Overlay
+- **Simulation System**: Python Simulator, PSS Protocol, Event Generation, Automated Scenarios
+- **Data Flow**: UDP to WebSocket, Event Parsing, Real-time Updates, Data Persistence
+- **UI Components**: Manual Mode Toggle, Event Table Rendering, Simulation Panel, PSS Drawer
+- **Performance**: Event Processing Speed, Memory Usage, Network Latency, Concurrent Connections
+
+**Features:**
+- **Comprehensive Testing**: 24 individual tests across 6 categories
+- **Real-time Monitoring**: Progress tracking and status updates
+- **Detailed Reporting**: Markdown format reports with recommendations
+- **Performance Metrics**: Memory usage, network latency, processing speed
+- **Integration Validation**: End-to-end system connectivity testing
 
 ## 🔍 Troubleshooting
 

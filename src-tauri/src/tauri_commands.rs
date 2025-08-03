@@ -4388,53 +4388,119 @@ pub async fn simulation_run_automated(
     }
 }
 
-#[tauri::command]
-pub async fn simulation_get_detailed_status(_app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
-    log::info!("Getting detailed simulation status");
-    
-    // Check if Python process is running
-    let process_result = std::process::Command::new("tasklist")
-        .args(&["/FI", "IMAGENAME eq python.exe"])
-        .output();
-    
-    let is_running = match process_result {
-        Ok(output) => {
-            let output_str = String::from_utf8_lossy(&output.stdout);
-            output_str.contains("python.exe")
-        },
-        Err(_) => false
-    };
-    
-    // Get scenarios if not running
-    let scenarios = if !is_running {
-        let scenarios_result = std::process::Command::new("python")
-            .args(&["simulation/main.py", "--list-scenarios"])
-            .output();
-        
-        match scenarios_result {
-            Ok(output) => {
-                let output_str = String::from_utf8_lossy(&output.stdout);
-                parse_scenarios_from_output(&output_str)
-            },
-            Err(_) => vec![]
-        }
-    } else {
-        vec![]
-    };
-    
-    Ok(serde_json::json!({
-        "success": true,
-        "data": {
-            "isRunning": is_running,
-            "isConnected": is_running,
-            "currentScenario": if is_running { "Running" } else { "None" },
-            "currentMode": if is_running { "Automated" } else { "None" },
-            "eventsSent": 0,
-            "lastEvent": if is_running { "Processing" } else { "None" },
-            "automatedScenarios": scenarios
-        }
-    }))
-}
+            #[tauri::command]
+            pub async fn simulation_get_detailed_status(_app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+                log::info!("Getting detailed simulation status");
+                
+                // Check if Python process is running
+                let process_result = std::process::Command::new("tasklist")
+                    .args(&["/FI", "IMAGENAME eq python.exe"])
+                    .output();
+                
+                let is_running = match process_result {
+                    Ok(output) => {
+                        let output_str = String::from_utf8_lossy(&output.stdout);
+                        output_str.contains("python.exe")
+                    },
+                    Err(_) => false
+                };
+                
+                // Get scenarios if not running
+                let scenarios = if !is_running {
+                    let scenarios_result = std::process::Command::new("python")
+                        .args(&["simulation/main.py", "--list-scenarios"])
+                        .output();
+                    
+                    match scenarios_result {
+                        Ok(output) => {
+                            let output_str = String::from_utf8_lossy(&output.stdout);
+                            parse_scenarios_from_output(&output_str)
+                        },
+                        Err(_) => vec![]
+                    }
+                } else {
+                    vec![]
+                };
+                
+                Ok(serde_json::json!({
+                    "success": true,
+                    "data": {
+                        "isRunning": is_running,
+                        "isConnected": is_running,
+                        "currentScenario": if is_running { "Running" } else { "None" },
+                        "currentMode": if is_running { "Automated" } else { "None" },
+                        "eventsSent": 0,
+                        "lastEvent": if is_running { "Processing" } else { "None" },
+                        "automatedScenarios": scenarios
+                    }
+                }))
+            }
+            
+            #[tauri::command]
+            pub async fn simulation_run_self_test(_app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+                log::info!("Running comprehensive self-test");
+                
+                let result = std::process::Command::new("python")
+                    .args(&[
+                        "simulation/main.py",
+                        "--self-test"
+                    ])
+                    .output();
+                
+                match result {
+                    Ok(output) => {
+                        let stdout = String::from_utf8_lossy(&output.stdout);
+                        let stderr = String::from_utf8_lossy(&output.stderr);
+                        
+                        if output.status.success() {
+                            Ok(serde_json::json!({
+                                "success": true,
+                                "data": {
+                                    "output": stdout.to_string(),
+                                    "error": stderr.to_string(),
+                                    "exitCode": output.status.code().unwrap_or(0)
+                                }
+                            }))
+                        } else {
+                            Ok(serde_json::json!({
+                                "success": false,
+                                "error": format!("Self-test failed: {}", stderr),
+                                "data": {
+                                    "output": stdout.to_string(),
+                                    "error": stderr.to_string(),
+                                    "exitCode": output.status.code().unwrap_or(1)
+                                }
+                            }))
+                        }
+                    },
+                    Err(e) => Ok(serde_json::json!({
+                        "success": false,
+                        "error": format!("Failed to run self-test: {}", e)
+                    }))
+                }
+            }
+            
+            #[tauri::command]
+            pub async fn simulation_get_self_test_report(_app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+                log::info!("Getting self-test report");
+                
+                let report_path = "simulation/self_test_report.md";
+                let result = std::fs::read_to_string(report_path);
+                
+                match result {
+                    Ok(content) => Ok(serde_json::json!({
+                        "success": true,
+                        "data": {
+                            "report": content,
+                            "path": report_path
+                        }
+                    })),
+                    Err(e) => Ok(serde_json::json!({
+                        "success": false,
+                        "error": format!("Failed to read self-test report: {}", e)
+                    }))
+                }
+            }
 
 // Helper function to parse scenarios from command output
 fn parse_scenarios_from_output(output: &str) -> Vec<serde_json::Value> {

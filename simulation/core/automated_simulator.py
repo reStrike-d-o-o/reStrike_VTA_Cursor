@@ -498,6 +498,10 @@ class AutomatedSimulator:
         data = event["data"]
         
         try:
+            if not self.simulator:
+                self._update_status(f"Cannot execute {event_type} event: simulator not initialized")
+                return
+                
             if event_type == "points":
                 self.simulator.add_point(data["athlete"], data["point_type"])
             elif event_type == "warnings":
@@ -512,6 +516,12 @@ class AutomatedSimulator:
                     self.simulator.start_break(data["duration"])
                 else:
                     self.simulator.end_break()
+            elif event_type == "challenge":
+                # Handle challenge events
+                source = data.get("source", 1)
+                accepted = data.get("accepted", True)
+                won = data.get("won", True)
+                self.simulator.event_generator.challenge(source, accepted, won)
             elif event_type == "round":
                 self.simulator.event_generator.round(data["round"])
             elif event_type == "clock":
