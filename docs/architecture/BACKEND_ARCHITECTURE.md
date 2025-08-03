@@ -98,6 +98,519 @@ pub enum PluginStatus {
 ```rust
 #[derive(Clone)]
 pub struct DatabasePlugin {
+```
+
+### Analytics System
+
+#### Overview
+The analytics system provides comprehensive performance metrics and insights for athletes, matches, tournaments, and daily operations. It processes real-time PSS events to generate statistics and trends.
+
+#### Key Components
+
+##### Event Processing Pipeline
+- **Real-time Event Processing**: Automatic recalculation when new PSS events arrive
+- **Efficient Data Filtering**: Memory-optimized statistics calculation
+- **Event Timeline Analysis**: Comprehensive event tracking and analysis
+
+##### Performance Metrics
+- **Win Rates**: Match statistics and performance tracking
+- **Points Scoring**: Performance trends and scoring analysis
+- **Warning Tracking**: Discipline and rule violation monitoring
+- **Match Intensity**: Efficiency metrics and completion rates
+
+##### Database Operations
+- **Connection Pooling**: Timeout mechanisms with retry logic
+- **Robust Error Handling**: Comprehensive error management
+- **Schema Version Management**: Proper migration system
+- **Performance Optimization**: Efficient queries and indexing
+
+#### Analytics Components
+
+##### AthleteAnalytics
+- Individual athlete performance metrics
+- Win/loss statistics and win rate calculation
+- Points scored and average points per match
+- Warning and injury tracking
+- Best performance tracking
+- Performance trends analysis
+
+##### MatchAnalytics
+- Detailed match statistics and duration tracking
+- Individual athlete performance within matches
+- Event distribution analysis (points, warnings, injuries, other)
+- Match intensity calculation (events per minute)
+- Winner determination and match completion status
+- Timeline analysis
+
+##### TournamentAnalytics
+- Overall tournament statistics and metrics
+- Top 10 athletes by points with win rates
+- Top 10 countries by performance
+- Match completion rates and efficiency
+- Event distribution across tournament
+- Average match duration and intensity
+
+##### DayAnalytics
+- Daily performance metrics and statistics
+- Hourly activity timeline with peak hour identification
+- Top athletes of the day
+- Day efficiency and completion rates
+- Event distribution by type
+- Match intensity and performance metrics
+
+#### Technical Implementation
+
+##### Backend Optimizations
+- Connection pooling with timeout mechanisms
+- Efficient database queries and indexing
+- Robust error handling and recovery
+- Memory-optimized event processing
+
+##### Frontend Integration
+- Real-time event processing from PSS data
+- Efficient state management with React hooks
+- Proper TypeScript typing for all components
+- Responsive design patterns
+
+##### Performance Features
+- Efficient React rendering with proper dependency arrays
+- Memoized calculations for expensive operations
+- Lazy loading of analytics components
+- Optimized re-rendering patterns
+
+## Development Workflow
+
+### Starting Development
+```bash
+# From project root - starts both frontend and backend
+cd src-tauri
+cargo tauri dev
+```
+
+This single command:
+1. Starts React development server (port 3000)
+2. Builds Rust backend
+3. Launches native Windows application
+4. Enables hot reload for both frontend and backend
+
+### Alternative Manual Start
+```bash
+# Terminal 1: Start React dev server
+cd ui
+npm run start:fast
+
+# Terminal 2: Start Tauri app
+cd src-tauri
+cargo tauri dev
+```
+
+### Build Commands
+```bash
+# Development build
+cd ui
+npm run build
+
+# Production build with Tauri
+cd src-tauri
+cargo tauri build
+```
+
+### Environment Detection
+
+#### Tauri API Detection
+The application automatically detects whether it's running in native Windows mode or web mode:
+
+```typescript
+// ui/src/hooks/useEnvironment.ts
+export const useEnvironment = () => {
+  const [tauriAvailable, setTauriAvailable] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const checkTauriAvailability = async () => {
+      try {
+        // Check if Tauri API is available
+        if (typeof window !== 'undefined' && window.__TAURI__) {
+          setTauriAvailable(true);
+        }
+      } catch (error) {
+        console.warn('Tauri API not available:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkTauriAvailability();
+  }, []);
+
+  return { tauriAvailable, isLoading };
+};
+```
+
+### Performance Best Practices
+
+#### Backend (Rust)
+- Use optimized dev profile: `opt-level=1`, `codegen-units=256`, `incremental=true`, `lto=false`
+- Enable incremental compilation and debug assertions
+- Use `./scripts/development/fast-dev.sh` for fast dev cycles
+- Clean build artifacts regularly (`cargo clean`)
+- Monitor build times and optimize as needed
+
+#### General
+- Always use fast scripts for development
+- Clean caches and artifacts weekly or when performance degrades
+- Review and optimize imports and dependencies regularly
+
+## Development Environment Management
+
+### Overview
+The development environment includes several tools to help manage port management, service monitoring, and cleanup utilities.
+
+### Quick Start
+
+#### Using the Main Wrapper Script
+```bash
+# Show all available commands
+./scripts/dev.sh help
+
+# Check current status
+./scripts/dev.sh status
+
+# Start all services
+./scripts/dev.sh start-all
+
+# Stop all services
+./scripts/dev.sh stop-all
+
+# Clean up environment
+./scripts/dev.sh cleanup
+```
+
+### Available Tools
+
+#### 1. Development Wrapper (`scripts/dev.sh`)
+
+**Development Commands:**
+- `start-frontend` - Start React frontend
+- `start-backend` - Start Rust backend
+- `start-all` - Start both frontend and backend
+- `stop-all` - Stop all development servers
+
+**Management Commands:**
+- `status` - Show development environment status
+- `ports` - List all ports and their status
+- `services` - List all services and their status
+- `cleanup` - Full cleanup (stop processes, clear cache)
+- `quick-cleanup` - Quick cleanup (stop processes only)
+- `health` - Run health checks
+
+**Utility Commands:**
+- `install-deps` - Install all dependencies
+- `build` - Build the project
+- `test` - Run tests
+- `update-config` - Update configuration status
+
+#### 2. Cleanup Script (`scripts/cleanup_dev_environment.sh`)
+
+**Commands:**
+- `--cleanup, -c` - Full cleanup (stop processes, clear cache, check ports)
+- `--quick, -q` - Quick cleanup (stop processes only)
+- `--status, -s` - Show current status
+- `--help, -h` - Show help message
+
+**Examples:**
+```bash
+# Full cleanup
+./scripts/cleanup_dev_environment.sh --cleanup
+
+# Quick cleanup (just stop processes)
+./scripts/cleanup_dev_environment.sh --quick
+```
+
+## Windows Development Setup
+
+### Prerequisites Checklist
+
+#### System Requirements
+- ✅ **Windows 10/11** (64-bit)
+- ✅ **8GB RAM minimum** (16GB recommended)
+- ✅ **10GB free disk space**
+- ✅ **Administrator privileges** (for installation)
+- ✅ **Internet connection** (for downloads)
+
+#### Required Software
+- ✅ **VSCode** (Latest version)
+- ✅ **Node.js** (v24+ LTS)
+- ✅ **Rust** (Latest stable)
+- ✅ **Git** (Latest version)
+- ✅ **Python** (v3.8+ for scripts)
+- ✅ **OBS Studio** (v29+ for testing)
+- ✅ **mpv** (Windows build for video playback)
+
+### Installation Steps
+
+#### 1. Install Core Development Tools
+
+**VSCode Extensions to Install:**
+- **Rust Analyzer** (rust-lang.rust-analyzer)
+- **TypeScript and JavaScript Language Features** (built-in)
+- **ES7+ React/Redux/React-Native snippets** (dsznajder.es7-react-js-snippets)
+- **Tailwind CSS IntelliSense** (bradlc.vscode-tailwindcss)
+- **GitLens** (eamodio.gitlens)
+- **Thunder Client** (rangav.vscode-thunder-client)
+- **Error Lens** (usernamehw.errorlens)
+- **Auto Rename Tag** (formulahendry.auto-rename-tag)
+
+**Installation Commands:**
+```powershell
+# Node.js
+# Download from: https://nodejs.org/en/download/
+node --version  # Should show v24.x.x
+npm --version   # Should show 10.x.x
+
+# Rust
+# Download rustup-init.exe from: https://rustup.rs/
+rustc --version  # Should show rustc 1.75.x
+cargo --version  # Should show cargo 1.75.x
+
+# Git
+# Download from: https://git-scm.com/download/win
+git --version
+
+# Python
+# Download from: https://www.python.org/downloads/
+# IMPORTANT: Check "Add Python to PATH" during installation
+python --version  # Should show Python 3.8+
+pip --version
+```
+
+#### 2. Install Tauri CLI and Dependencies
+
+```powershell
+# Install Tauri CLI
+cargo install tauri-cli
+
+# Install frontend dependencies
+cd ui
+npm install
+
+# Install backend dependencies
+cd ../src-tauri
+cargo build
+```
+
+#### 3. Verify Installation
+
+```powershell
+# Check all tools are available
+node --version
+npm --version
+rustc --version
+cargo --version
+git --version
+python --version
+
+# Test Tauri development
+cd src-tauri
+cargo tauri dev
+```
+
+## Software Requirements Specification
+
+### Prerequisites
+- **Operating System:** Windows 10/11 (Windows recommended for full feature support)
+- **Node.js:** v24 or higher (latest LTS recommended)
+- **Rust:** Stable (install via [rustup.rs](https://rustup.rs/))
+- **Tauri CLI:** Install with `cargo install tauri-cli`
+- **Frontend:** React 18, TypeScript, Zustand, Tailwind CSS, framer-motion
+- **Bundler:** Tauri
+- **react-scripts:** 5.0.1 (required for React 18 compatibility)
+
+### System Design
+- **Modules & Responsibilities**  
+  - **Core Bus (Microkernel)**  
+    - Central event router; loads and manages plugins.  
+  - **UDP Plugin**  
+    - Rust-based listener on configurable IPv4 interface; parses PSS datagrams against TXT schema.  
+  - **OBS Plugin**  
+    - Manages one or more OBS Studio instances via WebSocket; handles buffer clipping on demand.  
+  - **Playback Plugin**  
+    - Shell-invokes `mpv` with `--start=10`; hides/restores UI.  
+  - **Event Store Plugin**  
+    - Persists events in SQLite; superfast bulk writes; exposes query API.  
+  - **AI Analysis Plugin**  
+    - Tags incoming events; prepares for future video-content AI modules.  
+  - **Flag Management Plugin**  
+    - Manages IOC flag recognition and display; handles flag downloads and updates.
+  - **UI Overlay**  
+    - Tauri + React front-end; docks left/right; global shortcuts; collapsed/expanded modes.  
+  - **License Plugin**  
+    - Hardware-locked activation via REST; periodic background validation with offline grace.  
+  - **Settings & Diagnostics**  
+    - Single tabbed panel; network, protocol file, OBS creds, shortcuts, log-viewer.
+
+### Architecture Pattern
+- **Microkernel (Plugin) Architecture**  
+  - Lightweight core managing lifecycle and inter-plugin events.  
+  - Plugins are independently testable, updatable, and deployable.  
+- **Layered within Plugins**  
+  1. **Infrastructure** (Rust/Node I/O, WebSocket, SQLite)  
+  2. **Domain Logic** (parsing, OBS commands, licensing rules, flag management)  
+  3. **Application API** (commands/events published to bus)  
+  4. **Presentation** (UI plugin subscribes to events, issues commands)
+
+### State Management
+- **Frontend (React)**  
+  - **Zustand** for simple, scalable stores:  
+    - `useUdpEventsStore`, `useObsStatusStore`, `useUiStore`, `useLicenseStore`, `useFlagStore`  
+  - Plugins expose commands via Tauri; UI subscribes to bus events.  
+- **Backend (Rust)**  
+  - **tokio::sync::broadcast** channel for inter-plugin events.  
+  - Each plugin maintains minimal internal state, responds to messages via the bus.
+
+### Data Flow
+1. **UDP datagram** → UDP Plugin parses → emits `EventParsed` on bus.  
+2. **EventParsed** → Event Store persists → emits `EventStored` → UI subscribes → updates table.  
+3. **User clicks "Replay"** → UI invokes Tauri command → Core Bus → OBS Plugin extracts buffer clip → emits `ClipReady` → Playback Plugin launches `mpv`.  
+4. **OBS status change** → OBS Plugin emits `ObsStatus` → UI store updates record button animation.  
+5. **Manual Mode toggle** → UI confirms → emits `ManualModeToggled` → Core Bus → UI enters editable mode.
+6. **Flag display** → UI requests flag → Flag Plugin provides flag URL → UI displays flag image.
+
+### Technical Stack
+- **Shell & IPC**: Tauri (Rust backend + Node.js runtime)  
+- **UI**: React + Tailwind CSS + framer-motion  
+- **State**: Zustand (frontend) + tokio broadcast (backend)  
+- **Protocol Parsing**: Rust module loading TXT schema at runtime  
+- **Database**: SQLite via `rusqlite` (backend)  
+- **OBS Integration**: `obs-websocket-rs` plugin  
+- **Playback**: `mpv` via Tauri's `shell` API  
+- **Licensing**: Rust HTTP client (`reqwest`) for REST; fingerprint via `sysinfo` + `machine_uid`  
+- **Hotkeys**: `tauri-plugin-global-shortcut`
+- **Flag Management**: IOC flag recognition and display system
+
+### Authentication Process
+- **Activation Flow**  
+  1. UI prompts for license key → Tauri → License Plugin POST `/api/activate` with fingerprint  
+  2. Server returns JWT + expiry → stored encrypted in filesystem  
+- **Validation Flow**  
+  - On startup & daily: License Plugin POST `/api/validate`  
+  - If offline: track days since last success; warn after 5 days; disable after 7  
+- **Revocation**  
+  - Server can revoke keys; on validation failure UI locks down and prompts reactivation
+
+### Route Design
+- **Internal (Tauri Commands)**  
+  - `udp:start(iface,port)`, `obs:cmd(action,params)`, `replay:play(recId)`, `license:activate(key)`, `settings:update(opts)`, `flag:get(iocCode)`  
+- **Event Topics**  
+  - `EventParsed`, `EventStored`, `ObsStatus`, `ClipReady`, `LicenseStatus`, `UiStateChange`, `FlagUpdated`  
+- **External REST**  
+  - `POST /api/activate`  
+  - `POST /api/validate`  
+  - `GET /api/license-info`
+
+### API Design
+- **Tauri Command Handlers** (Rust)  
+  ```rust
+  #[tauri::command]
+  fn obs_cmd(action: String, params: JsonValue) -> Result<(), Error> { /* … */ }
+  ```
+
+## OBS WebSocket Integration
+
+### Overview
+reStrike VTA supports both OBS WebSocket v4 and v5 protocols simultaneously, allowing connection to multiple OBS instances running different protocol versions with a unified interface.
+
+### Architecture
+
+#### Backend Components
+1. **`src-tauri/src/plugins/plugin_obs.rs`** - Main OBS WebSocket plugin
+   - `ObsPlugin` - Manages multiple OBS connections
+   - `ObsConnectionConfig` - Configuration for each connection
+   - `ObsWebSocketVersion` - Protocol version enum (V4/V5)
+   - Protocol-agnostic API methods
+
+2. **`src-tauri/src/tauri_commands.rs`** - Tauri command handlers
+   - Bridges frontend with backend OBS plugin
+   - Handles all OBS operations (connect, disconnect, scene control, etc.)
+   - Provides unified response format
+
+#### Key Features
+- **Multiple Connections**: Support for unlimited OBS instances
+- **Protocol Detection**: Automatic protocol version handling
+- **Event System**: Real-time status updates and events
+- **Error Handling**: Comprehensive error management
+- **Thread Safety**: Arc<Mutex> for concurrent access
+
+### Protocol Differences Handled
+
+#### OBS WebSocket v4
+```json
+// Request Format
+{
+  "request-type": "GetCurrentScene",
+  "message-id": "uuid-here"
+}
+
+// Response Format
+{
+  "scene-name": "Scene Name",
+  "is-recording": true
+}
+```
+
+#### OBS WebSocket v5
+```json
+// Request Format
+{
+  "op": 6,
+  "d": {
+    "requestType": "GetCurrentProgramScene",
+    "requestId": "uuid-here"
+  }
+}
+
+// Response Format
+{
+  "requestStatus": {
+    "result": true,
+    "code": 100
+  },
+  "responseData": {
+    "sceneName": "Scene Name",
+    "outputActive": true
+  }
+}
+```
+
+### Frontend Integration
+
+#### Core Components
+1. **`ui/src/components/ObsWebSocketManager.tsx`** - Main UI component
+   - Connection management interface
+   - Protocol version selection
+   - Real-time status display
+   - Connection controls (connect/disconnect)
+
+2. **Tauri Integration** - Frontend-backend communication
+   - Type-safe command invocations
+   - Real-time event handling
+   - Error handling and user feedback
+
+### Connection Management
+
+```rust
+// Add a new OBS connection
+let config = ObsConnectionConfig {
+    name: "Main OBS".to_string(),
+    host: "localhost".to_string(),
+    port: 4444,
+    password: Some("password".to_string()),
+    protocol_version: ObsWebSocketVersion::V4,
+};
+
+// Connect to OBS instance
+obs_plugin.add_connection(config).await?;
+```
     connection: Arc<DatabaseConnection>,
     migration_strategy: MigrationStrategy,
     hybrid_provider: Arc<Mutex<HybridSettingsProvider>>,

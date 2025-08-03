@@ -97,7 +97,260 @@ The reStrike VTA data flow architecture provides comprehensive real-time event p
    ```rust
    // Emit event to frontend
    app_handle.emit_all("pss_event", event_data)?;
-   
+   ```
+
+## Enhanced PSS Event System
+
+### Status Mark System
+
+#### Recognition Status Values
+- **`recognized`**: Event is fully understood and parsed correctly
+- **`unknown`**: Event format is not recognized or validation failed
+- **`partial`**: Event partially parsed but some fields unknown
+- **`deprecated`**: Event type is no longer used in current protocol
+
+#### Status Tracking
+- Automatic status assignment based on parsing and validation results
+- Status change history tracking in `pss_event_recognition_history` table
+- Ability to update status manually for protocol evolution
+
+### Event Validation
+
+#### Protocol Compliance
+- Validation against PSS v2.3 specification
+- Range checking for numeric values
+- Format validation for time strings
+- Required field validation
+- Custom validation rules
+
+#### Validation Rules
+The system includes predefined validation rules for:
+- Point types (1-5)
+- Hit levels (1-100)
+- Warning counts (0-4)
+- Round numbers (1-3)
+- Time formats (m:ss)
+- Required fields
+
+### Unknown Event Collection
+
+#### Automatic Collection
+- All unrecognized events are stored in `pss_unknown_events` table
+- Pattern analysis for unknown events
+- Occurrence counting and tracking
+- Support for future protocol updates
+
+#### Unknown Event Analysis
+- Raw data storage for debugging
+- Pattern hashing for similarity detection
+- Suggested event type classification
+- Notes and metadata for analysis
+
+### Enhanced Event Details
+
+#### Hit Level Tracking
+- Automatic linking of hit levels with point events
+- Time-window based hit level collection (5 seconds)
+- Statistical analysis (max, average hit levels)
+- Storage of all hit levels regardless of point events
+
+#### Processing Metadata
+- Processing time tracking
+- Protocol version used for parsing
+- Parser confidence scores
+- Validation error details
+
+### Database Schema Enhancements
+
+#### New Tables
+- `pss_event_recognition_history`: Status change tracking
+- `pss_unknown_events`: Unknown event collection
+- `pss_event_validation_rules`: Protocol validation rules
+- `pss_event_validation_results`: Validation result storage
+- `pss_event_statistics`: Event processing metrics
+
+#### Enhanced Fields
+- `recognition_status`: Event recognition status
+- `protocol_version`: Protocol version used
+- `parser_confidence`: Confidence score (0.0-1.0)
+- `validation_errors`: Validation error details
+- `processing_time_ms`: Processing time tracking
+
+### Implementation Details
+
+#### Database Operations
+
+##### PssEventStatusOperations
+```rust
+// Store event with status
+store_pss_event_with_status(conn, event) -> i64
+
+// Update recognition status
+update_event_recognition_status(conn, event_id, new_status, changed_by, reason) -> ()
+
+// Store unknown event
+store_unknown_event(conn, unknown_event) -> i64
+
+// Get validation rules
+get_validation_rules(conn, event_code, protocol_version) -> Vec<PssEventValidationRule>
+```
+
+#### Event Processing Pipeline
+```rust
+// Enhanced event processing with status tracking
+pub async fn process_pss_event(event: PssEvent) -> AppResult<()> {
+    // 1. Parse event
+    let parsed_event = parse_pss_event(&event)?;
+    
+    // 2. Validate against rules
+    let validation_result = validate_event(&parsed_event)?;
+    
+    // 3. Determine recognition status
+    let status = determine_recognition_status(&parsed_event, &validation_result);
+    
+    // 4. Store with status
+    let event_id = store_pss_event_with_status(&parsed_event, status).await?;
+    
+    // 5. Update statistics
+    update_event_statistics(event_id, &validation_result).await?;
+    
+    Ok(())
+}
+```
+
+#### Real-time Event Broadcasting
+```rust
+// Enhanced WebSocket message with action field
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WebSocketMessage {
+    pub event_type: String,
+    pub event_code: String,
+    pub athlete: String,
+    pub round: u8,
+    pub time: String,
+    pub timestamp: String,
+    pub raw_data: String,
+    pub description: String,
+    pub action: Option<String>, // New field for injury events
+}
+
+// Broadcast with enhanced data
+pub async fn broadcast_enhanced_event(event: &PssEvent) -> AppResult<()> {
+    let message = WebSocketMessage {
+        event_type: event.event_type.clone(),
+        event_code: get_event_code(event),
+        athlete: get_athlete_string(event),
+        round: get_current_round(),
+        time: get_event_time(event),
+        timestamp: Utc::now().to_rfc3339(),
+        raw_data: event.raw_data.clone(),
+        description: generate_description(event),
+        action: get_action_field(event), // Include action for injury events
+    };
+    
+         websocket_server.broadcast_message(message).await?;
+     Ok(())
+ }
+```
+
+## Hit Level Tracking System
+
+### Overview
+The hit level tracking system monitors hit level events (`hl1`, `hl2`) and links them with subsequent point events (`pt1`, `pt2`) for statistical analysis. This provides insights into the relationship between hit intensity and scoring.
+
+### Implementation Details
+
+#### Data Structure
+```rust
+recent_hit_levels: Arc<Mutex<std::collections::HashMap<u8, Vec<(u8, std::time::SystemTime)>>>>, // athlete -> [(level, timestamp)]
+```
+
+This stores:
+- **Key**: Athlete number (1 or 2)
+- **Value**: Vector of tuples containing (hit_level, timestamp)
+- **Limit**: Maximum 10 hit levels per athlete to prevent memory bloat
+
+#### Hit Level Tracking Logic
+```rust
+// Track hit level events for statistics
+match &event {
+    PssEvent::HitLevel { athlete, level } => {
+        // Track this hit level for potential linking with point events
+        let mut hit_levels = recent_hit_levels.lock().unwrap();
+        let now = std::time::SystemTime::now();
+        
+        // Get or create the athlete's hit level history
+        let athlete_hit_levels = hit_levels.entry(*athlete).or_insert_with(Vec::new);
+        
+        // Add the new hit level with timestamp
+        athlete_hit_levels.push((*level, now));
+        
+        // Keep only the last 10 hit levels per athlete
+        if athlete_hit_levels.len() > 10 {
+            athlete_hit_levels.drain(0..athlete_hit_levels.len() - 10);
+        }
+        
+        log::debug!("🎯 Tracked hit level for athlete {}: level {}", athlete, level);
+    }
+    PssEvent::FightLoaded | PssEvent::FightReady => {
+        // Clear hit level tracking when a new fight starts
+        let mut hit_levels = recent_hit_levels.lock().unwrap();
+        hit_levels.clear();
+        log::debug!("🧹 Cleared hit level tracking for new fight");
+    }
+    _ => {}
+}
+```
+
+#### Enhanced Event Details
+```rust
+PssEvent::Points { athlete, point_type } => {
+    let mut details = vec![
+        ("athlete".to_string(), Some(athlete.to_string()), "u8".to_string()),
+        ("point_type".to_string(), Some(point_type.to_string()), "u8".to_string()),
+    ];
+    
+    // Add recent hit levels for this athlete (within last 5 seconds)
+    let hit_levels_data = recent_hit_levels.lock().unwrap();
+    if let Some(athlete_hit_levels) = hit_levels_data.get(athlete) {
+        let now = std::time::SystemTime::now();
+        let time_window_ms = 5000; // 5 seconds
+        
+        // Filter hit levels within the time window
+        let recent_hit_levels: Vec<u8> = athlete_hit_levels
+            .iter()
+            .filter_map(|(level, timestamp)| {
+                if let Ok(duration) = now.duration_since(*timestamp) {
+                    if duration.as_millis() <= time_window_ms as u128 {
+                        Some(*level)
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            })
+            .collect();
+        
+        if !recent_hit_levels.is_empty() {
+            let hit_levels_str = recent_hit_levels.iter()
+                .map(|level| level.to_string())
+                .collect::<Vec<_>>()
+                .join(",");
+            details.push(("recent_hit_levels".to_string(), Some(hit_levels_str), "String".to_string()));
+        }
+    }
+    
+    details
+}
+```
+
+### Statistical Analysis
+- **Time-window based collection**: 5-second window for linking hit levels with points
+- **Statistical analysis**: Max, average hit levels for each point event
+- **Storage**: All hit levels stored regardless of point events for comprehensive analysis
+- **Memory management**: Automatic cleanup to prevent memory bloat
+```
    // Update UI in real-time
    frontend_store.update_events(event_data);
    ```
