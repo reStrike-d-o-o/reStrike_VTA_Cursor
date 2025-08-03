@@ -94,6 +94,7 @@
 - ✅ **Selective Testing**: Choose specific test categories to run ✨ **NEW**
 - ✅ **Category Management**: Toggle individual categories, select all, deselect all ✨ **NEW**
 - ✅ **Enhanced UI**: Toggle controls for selective testing with visual feedback ✨ **NEW**
+- ✅ **Warning Limit Rule**: 5-warning limit per athlete per round with automatic round loss ✨ **NEW**
 - ✅ **Event Table Real-time Updates**: Implemented with proper filtering
 - ✅ **Database Storage Framework**: Basic structure in place
 - ✅ **Interference Prevention Rules**: Added to project context

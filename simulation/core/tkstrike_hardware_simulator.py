@@ -431,12 +431,20 @@ class tkStrikeHardwareSimulator:
         return self.send_messages(messages)
     
     def add_warning(self, athlete: int) -> bool:
-        """Add a warning for the specified athlete"""
+        """Add a warning for the specified athlete (with 5-warning limit per round)"""
         if athlete not in [1, 2]:
             print("❌ Invalid athlete (must be 1 or 2)")
             return False
         
-        print(f"\n⚠️ Adding warning for Athlete {athlete}")
+        # Check current warning count for this athlete in current round
+        current_warnings = (self.event_generator.athlete1_warnings 
+                           if athlete == 1 else self.event_generator.athlete2_warnings)
+        
+        if current_warnings >= 5:
+            print(f"❌ Athlete {athlete} already has 5 warnings - cannot add more")
+            return False
+        
+        print(f"\n⚠️ Adding warning for Athlete {athlete} ({current_warnings + 1}/5)")
         
         # Update warnings
         if athlete == 1:
@@ -445,10 +453,61 @@ class tkStrikeHardwareSimulator:
             self.event_generator.athlete2_warnings += 1
         
         # Send warning event
-        return self.send_message(self.event_generator.warnings(
+        success = self.send_message(self.event_generator.warnings(
             self.event_generator.athlete1_warnings,
             self.event_generator.athlete2_warnings
         ))
+        
+        # Check if this was the 5th warning
+        if (athlete == 1 and self.event_generator.athlete1_warnings == 5) or \
+           (athlete == 2 and self.event_generator.athlete2_warnings == 5):
+            print(f"🚨 Athlete {athlete} has reached 5 warnings - Round ends automatically!")
+            self._handle_round_loss(athlete)
+        
+        return success
+    
+    def _handle_round_loss(self, losing_athlete: int):
+        """Handle automatic round loss due to 5 warnings"""
+        winning_athlete = 3 - losing_athlete  # 1 becomes 2, 2 becomes 1
+        
+        print(f"🏆 Athlete {winning_athlete} wins the round due to Athlete {losing_athlete}'s 5 warnings")
+        
+        # Stop the clock
+        self.send_message(self.event_generator.clock("0:00", "stop"))
+        
+        # Set round winner
+        round_winner_data = {
+            1: (winning_athlete, 0, 0),
+            2: (0, winning_athlete, 0),
+            3: (0, 0, winning_athlete)
+        }
+        
+        self.send_message(self.event_generator.winner_rounds(*round_winner_data.get(self.event_generator.current_round, (0, 0, 0))))
+        
+        # End the match
+        self.send_message(self.event_generator.winner(f"Athlete {winning_athlete}"))
+        self.send_message(self.event_generator.winner_final(f"Athlete {winning_athlete}"))
+        
+        print(f"🎯 Match ended - Athlete {winning_athlete} is the winner!")
+    
+    def reset_warnings_for_new_round(self):
+        """Reset warning counts for a new round"""
+        self.event_generator.athlete1_warnings = 0
+        self.event_generator.athlete2_warnings = 0
+        print("🔄 Warning counts reset for new round")
+    
+    def change_round(self, round_num: int) -> bool:
+        """Change to a new round and reset warnings"""
+        print(f"\n🔄 Changing to Round {round_num}")
+        
+        # Update current round
+        self.event_generator.current_round = round_num
+        
+        # Reset warnings for new round
+        self.reset_warnings_for_new_round()
+        
+        # Send round change message
+        return self.send_message(self.event_generator.round(round_num))
     
     def start_injury_time(self, athlete: int = 0, duration: int = 60) -> bool:
         """Start injury time"""

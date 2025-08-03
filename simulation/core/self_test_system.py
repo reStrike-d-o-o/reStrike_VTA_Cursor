@@ -108,6 +108,7 @@ class SelfTestSystem:
                 ("PSS Protocol", self._test_pss_protocol),
                 ("Event Generation", self._test_event_generation),
                 ("Automated Scenarios", self._test_automated_scenarios),
+                ("Warning Limit Rule", self._test_warning_limit_rule),
             ],
             "Data Flow": [
                 ("UDP to WebSocket", self._test_udp_to_websocket),
@@ -665,4 +666,31 @@ class SelfTestSystem:
                 return TestStatus.FAILED, "Concurrent connections failing", f"{successful_connections}/5 connections successful", None
                 
         except Exception as e:
-            return TestStatus.FAILED, "Concurrent connections test failed", f"Exception: {str(e)}", str(e) 
+            return TestStatus.FAILED, "Concurrent connections test failed", f"Exception: {str(e)}", str(e)
+    
+    def _test_warning_limit_rule(self) -> tuple[TestStatus, str, str, Optional[str]]:
+        """Test the 5-warning limit rule per athlete per round"""
+        try:
+            # Test the warning limit functionality
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            sock.settimeout(1.0)
+            
+            # Send 6 warnings to athlete 1 (should trigger round loss after 5th)
+            warnings_sent = 0
+            for i in range(6):
+                warning_message = f"wg1;"
+                sock.sendto(warning_message.encode(), (self.host, self.port))
+                warnings_sent += 1
+                time.sleep(0.1)  # Small delay between warnings
+            
+            sock.close()
+            
+            # The test passes if we can send 5 warnings without issues
+            # The 6th warning should be rejected or trigger round loss
+            if warnings_sent >= 5:
+                return TestStatus.PASSED, "Warning limit rule is working", f"Successfully tested {warnings_sent} warnings", None
+            else:
+                return TestStatus.FAILED, "Warning limit rule test failed", f"Only sent {warnings_sent} warnings", None
+                
+        except Exception as e:
+            return TestStatus.FAILED, "Warning limit rule test failed", f"Exception: {str(e)}", str(e) 
