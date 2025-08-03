@@ -250,7 +250,7 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
                       <Label>Automated Simulation</Label>
                       <Toggle
                         checked={showAutomated}
-                        onChange={setShowAutomated}
+                        onChange={(e) => setShowAutomated(e.target.checked)}
                         disabled={status.isRunning}
                       />
                     </div>
@@ -258,7 +258,7 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
                       <Label>System Self-Test</Label>
                       <Toggle
                         checked={showSelfTest}
-                        onChange={setShowSelfTest}
+                        onChange={(e) => setShowSelfTest(e.target.checked)}
                         disabled={status.isRunning}
                       />
                     </div>
