@@ -2221,7 +2221,7 @@ impl UdpServer {
                     let number = get_string(1, "match number", 20)?; // Changed to get_string to support values like "245.A"
                     let category = get_string(2, "category", 100)?;
                     let weight = get_string(3, "weight", 50)?;
-                    let rounds = parse_u8(4, "rounds", 1, 10)?;
+                    let rounds = parse_u8(4, "rounds", 0, 10)?; // Allow 0 for initialization
                     let bg1 = get_string(5, "bg1", 10)?;
                     let fg1 = get_string(6, "fg1", 10)?;
                     let bg2 = get_string(7, "bg2", 10)?;
