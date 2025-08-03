@@ -168,13 +168,8 @@ impl WebSocketServer {
                         log::debug!("Received text message from {}: {}", client_id_receive, text);
                         // Handle text messages (ping, etc.)
                         if text == "ping" {
-                            if let Err(e) = tx_clone.send(WebSocketMessage::ConnectionStatus {
-                                connected: true,
-                                timestamp: Utc::now().to_rfc3339(),
-                            }) {
-                                log::error!("Failed to send ping response: {}", e);
-                                break;
-                            }
+                            // Just log the ping, don't send a response to avoid loops
+                            log::debug!("Received ping from {}", client_id_receive);
                         }
                     }
                     Ok(Message::Close(_)) => {
