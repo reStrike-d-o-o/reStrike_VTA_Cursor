@@ -4,6 +4,14 @@ import { useAppStore } from '../stores/index';
 
 export const useLiveDataEvents = () => {
   const wsRef = useRef<LiveDataWebSocket | null>(null);
+  const storeRef = useRef<{
+    addEvent: any;
+    setCurrentRound: any;
+    setCurrentTime: any;
+    setConnectionStatus: any;
+    clearEvents: any;
+  } | null>(null);
+  
   const { 
     addEvent, 
     setCurrentRound, 
@@ -14,30 +22,44 @@ export const useLiveDataEvents = () => {
   
   const { isManualModeEnabled } = useAppStore();
 
+  // Update the ref with latest store functions
+  useEffect(() => {
+    storeRef.current = {
+      addEvent,
+      setCurrentRound,
+      setCurrentTime,
+      setConnectionStatus,
+      clearEvents
+    };
+  }, [addEvent, setCurrentRound, setCurrentTime, setConnectionStatus, clearEvents]);
+
   // Memoize the WebSocket message handler to prevent infinite loops
   const handleWebSocketMessage = useCallback((data: any) => {
     console.log('📡 Received WebSocket message:', data);
+    
+    const store = storeRef.current;
+    if (!store) return;
     
     // Handle different message types
     if (data.type === 'pss_event') {
       const event = parsePssEvent(data.raw_data, data.timestamp);
       if (event) {
-        addEvent(event);
+        store.addEvent(event);
         
         // Update round and time if provided
         if (data.round) {
-          setCurrentRound(data.round);
+          store.setCurrentRound(data.round);
         }
         if (data.time) {
-          setCurrentTime(data.time);
+          store.setCurrentTime(data.time);
         }
       }
     } else if (data.type === 'connection_status') {
-      setConnectionStatus(data.connected);
+      store.setConnectionStatus(data.connected);
     } else if (data.type === 'error') {
       console.error('WebSocket error:', data.message);
     }
-  }, [addEvent, setCurrentRound, setCurrentTime, setConnectionStatus]);
+  }, []); // Empty dependency array - no dependencies
 
   useEffect(() => {
     // Only connect when manual mode is OFF
@@ -47,6 +69,8 @@ export const useLiveDataEvents = () => {
         wsRef.current = null;
         setConnectionStatus(false);
       }
+      // Clear events when manual mode is enabled
+      clearEvents();
       return;
     }
 
@@ -64,14 +88,7 @@ export const useLiveDataEvents = () => {
         setConnectionStatus(false);
       }
     };
-  }, [isManualModeEnabled, handleWebSocketMessage]); // Added handleWebSocketMessage to dependencies
-
-  // Clear events when manual mode is enabled
-  useEffect(() => {
-    if (isManualModeEnabled) {
-      clearEvents();
-    }
-  }, [isManualModeEnabled]); // Removed clearEvents dependency
+  }, [isManualModeEnabled]); // Removed all function dependencies
 
   return {
     isConnected: useLiveDataStore.getState().isConnected,

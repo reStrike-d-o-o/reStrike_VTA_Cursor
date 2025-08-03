@@ -1019,9 +1019,10 @@ impl UdpServer {
                         if number.is_empty() {
                             errors.push("Match number cannot be empty".to_string());
                         }
-                        if *rounds < 1 || *rounds > 5 {
+                        if *rounds > 5 {
                             errors.push(format!("Invalid number of rounds: {}", rounds));
                         }
+                        // Allow 0 as valid (initialization state)
                         if *round_duration < 30 || *round_duration > 3600 {
                             errors.push(format!("Invalid round duration: {} seconds", round_duration));
                         }
