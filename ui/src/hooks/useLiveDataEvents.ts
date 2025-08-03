@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { useLiveDataStore, LiveDataWebSocket, parsePssEvent } from '../stores/liveDataStore';
+import { useLiveDataStore, LiveDataWebSocket, parsePssEvent, PssEventData } from '../stores/liveDataStore';
 import { useAppStore } from '../stores/index';
 
 export const useLiveDataEvents = () => {
@@ -32,20 +32,32 @@ export const useLiveDataEvents = () => {
       console.log('📡 Received WebSocket message:', data);
       
       // Handle different message types using direct store access
-      if (data.type === 'pss_event') {
-        const event = parsePssEvent(data.raw_data, data.timestamp);
-        if (event) {
-          useLiveDataStore.getState().addEvent(event);
-          
-          // Update round and time if provided
-          if (data.round) {
-            useLiveDataStore.getState().setCurrentRound(data.round);
-          }
-          if (data.time) {
-            useLiveDataStore.getState().setCurrentTime(data.time);
-          }
+      if (data.type === 'pss_event' && data.data) {
+        const eventData = data.data;
+        
+        // Create event directly from structured data instead of parsing raw_data
+        const event: PssEventData = {
+          id: `${eventData.type}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          eventType: eventData.type as any,
+          eventCode: eventData.event_code || '',
+          athlete: eventData.athlete as any,
+          round: eventData.round || 1,
+          time: eventData.time || '0:00',
+          timestamp: eventData.timestamp || new Date().toISOString(),
+          rawData: eventData.raw_data || '',
+          description: eventData.description || '',
+        };
+        
+        useLiveDataStore.getState().addEvent(event);
+        
+        // Update round and time if provided
+        if (eventData.round) {
+          useLiveDataStore.getState().setCurrentRound(eventData.round);
         }
-      } else if (data.type === 'connection_status') {
+        if (eventData.time) {
+          useLiveDataStore.getState().setCurrentTime(eventData.time);
+        }
+      } else if (data.type === 'connection') {
         useLiveDataStore.getState().setConnectionStatus(data.connected);
       } else if (data.type === 'error') {
         console.error('WebSocket error:', data.message);

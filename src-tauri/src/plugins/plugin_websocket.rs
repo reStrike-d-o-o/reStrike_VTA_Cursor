@@ -278,18 +278,53 @@ impl WebSocketServer {
         // Convert WebSocketMessage to the format expected by scoreboard overlay
         let overlay_message = match message {
             WebSocketMessage::PssEvent { event_type, event_code, athlete, round, time, timestamp, raw_data, description } => {
+                // Parse additional fields from raw_data for specific event types
+                let mut json_data = serde_json::json!({
+                    "type": event_type,
+                    "event_code": event_code,
+                    "athlete": athlete,
+                    "round": round,
+                    "time": time,
+                    "timestamp": timestamp,
+                    "raw_data": raw_data,
+                    "description": description
+                });
+                
+                // Add specific fields for athletes event
+                if event_type == "athletes" {
+                    let parts: Vec<&str> = raw_data.split(';').collect();
+                    if parts.len() >= 6 {
+                        json_data["athlete1_short"] = serde_json::Value::String(parts[1].to_string());
+                        json_data["athlete1_long"] = serde_json::Value::String(parts[2].to_string());
+                        json_data["athlete1_country"] = serde_json::Value::String(parts[3].to_string());
+                        json_data["athlete2_short"] = serde_json::Value::String(parts[4].to_string());
+                        json_data["athlete2_long"] = serde_json::Value::String(parts[5].to_string());
+                        json_data["athlete2_country"] = serde_json::Value::String(parts[6].to_string());
+                    }
+                }
+                
+                // Add specific fields for match_config event
+                if event_type == "match_config" {
+                    let parts: Vec<&str> = raw_data.split(';').collect();
+                    if parts.len() >= 3 {
+                        json_data["number"] = serde_json::Value::String(parts[1].to_string());
+                        json_data["category"] = serde_json::Value::String(parts[2].to_string());
+                        json_data["weight"] = serde_json::Value::String(parts[3].to_string());
+                    }
+                }
+                
+                // Add specific fields for current_scores event
+                if event_type == "current_scores" {
+                    let parts: Vec<&str> = raw_data.split(';').collect();
+                    if parts.len() >= 2 {
+                        json_data["athlete1_score"] = serde_json::Value::Number(parts[1].parse::<i64>().unwrap_or(0).into());
+                        json_data["athlete2_score"] = serde_json::Value::Number(parts[2].parse::<i64>().unwrap_or(0).into());
+                    }
+                }
+                
                 serde_json::json!({
                     "type": "pss_event",
-                    "data": {
-                        "type": event_type,
-                        "event_code": event_code,
-                        "athlete": athlete,
-                        "round": round,
-                        "time": time,
-                        "timestamp": timestamp,
-                        "raw_data": raw_data,
-                        "description": description
-                    }
+                    "data": json_data
                 })
             },
             WebSocketMessage::ConnectionStatus { connected, timestamp } => {
@@ -379,7 +414,7 @@ impl WebSocketServer {
                 }
             }
             
-            PssEvent::Athletes { athlete1_long, athlete2_long, athlete1_country, athlete2_country, .. } => {
+            PssEvent::Athletes { athlete1_short, athlete1_long, athlete1_country, athlete2_short, athlete2_long, athlete2_country } => {
                 WebSocketMessage::PssEvent {
                     event_type: "athletes".to_string(),
                     event_code: "".to_string(),
@@ -387,7 +422,7 @@ impl WebSocketServer {
                     round: 1,
                     time: "0:00".to_string(),
                     timestamp: Utc::now().to_rfc3339(),
-                    raw_data: format!("at1;{};{};at2;{};{}", athlete1_long, athlete1_country, athlete2_long, athlete2_country),
+                    raw_data: format!("at1;{};{};{};at2;{};{};{}", athlete1_short, athlete1_long, athlete1_country, athlete2_short, athlete2_long, athlete2_country),
                     description: format!("Athletes - {} vs {}", athlete1_long, athlete2_long),
                 }
             }
@@ -431,6 +466,117 @@ impl WebSocketServer {
                 }
             }
             
+            PssEvent::Injury { athlete, time, action } => {
+                let athlete_str = match athlete {
+                    0 => "unknown".to_string(),
+                    1 => "blue".to_string(),
+                    2 => "red".to_string(),
+                    _ => "unknown".to_string(),
+                };
+                
+                WebSocketMessage::PssEvent {
+                    event_type: "injury".to_string(),
+                    event_code: "".to_string(),
+                    athlete: athlete_str.clone(),
+                    round: 1,
+                    time: time.clone(),
+                    timestamp: Utc::now().to_rfc3339(),
+                    raw_data: format!("inj;{};{}", athlete, time),
+                    description: format!("Injury - {}: {} {}", athlete_str, time, action.as_deref().unwrap_or("")),
+                }
+            }
+            
+            PssEvent::Challenge { source, accepted, won, canceled } => {
+                let source_str = match source {
+                    0 => "referee".to_string(),
+                    1 => "blue".to_string(),
+                    2 => "red".to_string(),
+                    _ => "unknown".to_string(),
+                };
+                
+                WebSocketMessage::PssEvent {
+                    event_type: "challenge".to_string(),
+                    event_code: "".to_string(),
+                    athlete: source_str.clone(),
+                    round: 1,
+                    time: "0:00".to_string(),
+                    timestamp: Utc::now().to_rfc3339(),
+                    raw_data: format!("ch;{};{};{};{}", source, accepted.unwrap_or(false), won.unwrap_or(false), canceled),
+                    description: format!("Challenge - {} (accepted: {}, won: {}, canceled: {})", source_str, accepted.unwrap_or(false), won.unwrap_or(false), canceled),
+                }
+            }
+            
+            PssEvent::Break { time, action } => {
+                WebSocketMessage::PssEvent {
+                    event_type: "break".to_string(),
+                    event_code: "".to_string(),
+                    athlete: "".to_string(),
+                    round: 1,
+                    time: time.clone(),
+                    timestamp: Utc::now().to_rfc3339(),
+                    raw_data: format!("brk;{};{}", time, action.as_deref().unwrap_or("")),
+                    description: format!("Break - {} {}", time, action.as_deref().unwrap_or("")),
+                }
+            }
+            
+            PssEvent::WinnerRounds { round1_winner, round2_winner, round3_winner } => {
+                WebSocketMessage::PssEvent {
+                    event_type: "winner_rounds".to_string(),
+                    event_code: "".to_string(),
+                    athlete: "".to_string(),
+                    round: 1,
+                    time: "0:00".to_string(),
+                    timestamp: Utc::now().to_rfc3339(),
+                    raw_data: format!("wr1;{};wr2;{};wr3;{}", round1_winner, round2_winner, round3_winner),
+                    description: format!("Winner Rounds - R1: {}, R2: {}, R3: {}", round1_winner, round2_winner, round3_winner),
+                }
+            }
+            
+            PssEvent::Winner { name, classification } => {
+                WebSocketMessage::PssEvent {
+                    event_type: "winner".to_string(),
+                    event_code: "".to_string(),
+                    athlete: "".to_string(),
+                    round: 1,
+                    time: "0:00".to_string(),
+                    timestamp: Utc::now().to_rfc3339(),
+                    raw_data: format!("win;{};{}", name, classification.as_deref().unwrap_or("")),
+                    description: format!("Winner - {} ({})", name, classification.as_deref().unwrap_or("")),
+                }
+            }
+            
+            PssEvent::Scores { athlete1_r1, athlete2_r1, athlete1_r2, athlete2_r2, athlete1_r3, athlete2_r3 } => {
+                WebSocketMessage::PssEvent {
+                    event_type: "scores".to_string(),
+                    event_code: "".to_string(),
+                    athlete: "".to_string(),
+                    round: 1,
+                    time: "0:00".to_string(),
+                    timestamp: Utc::now().to_rfc3339(),
+                    raw_data: format!("sc1r1;{};sc2r1;{};sc1r2;{};sc2r2;{};sc1r3;{};sc2r3;{}", athlete1_r1, athlete2_r1, athlete1_r2, athlete2_r2, athlete1_r3, athlete2_r3),
+                    description: format!("Scores - R1: {}:{}, R2: {}:{}, R3: {}:{}", athlete1_r1, athlete2_r1, athlete1_r2, athlete2_r2, athlete1_r3, athlete2_r3),
+                }
+            }
+            
+            PssEvent::HitLevel { athlete, level } => {
+                let athlete_str = match athlete {
+                    1 => "blue".to_string(),
+                    2 => "red".to_string(),
+                    _ => "unknown".to_string(),
+                };
+                
+                WebSocketMessage::PssEvent {
+                    event_type: "hit_level".to_string(),
+                    event_code: "H".to_string(),
+                    athlete: athlete_str.clone(),
+                    round: 1,
+                    time: "0:00".to_string(),
+                    timestamp: Utc::now().to_rfc3339(),
+                    raw_data: format!("hl{};{}", athlete, level),
+                    description: format!("Hit Level - {}: {}", athlete_str, level),
+                }
+            }
+            
             PssEvent::FightLoaded => {
                 WebSocketMessage::PssEvent {
                     event_type: "fight_loaded".to_string(),
@@ -470,18 +616,7 @@ impl WebSocketServer {
                 }
             }
             
-            _ => {
-                WebSocketMessage::PssEvent {
-                    event_type: "unknown".to_string(),
-                    event_code: "".to_string(),
-                    athlete: "".to_string(),
-                    round: 1,
-                    time: "0:00".to_string(),
-                    timestamp: Utc::now().to_rfc3339(),
-                    raw_data: format!("{:?}", event),
-                    description: "Unknown event type".to_string(),
-                }
-            }
+
         }
     }
     
