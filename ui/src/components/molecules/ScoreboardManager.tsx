@@ -57,15 +57,19 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
   const [overlayTemplates, setOverlayTemplates] = useState<OverlayTemplate[]>([]);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
 
-  // PSS data from store
-  const athlete1 = usePssMatchStore((state) => state.getAthlete1());
-  const athlete2 = usePssMatchStore((state) => state.getAthlete2());
-  const matchNumber = usePssMatchStore((state) => state.getMatchNumber());
-  const matchCategory = usePssMatchStore((state) => state.getMatchCategory());
-  const matchWeight = usePssMatchStore((state) => state.getMatchWeight());
-  const matchDivision = usePssMatchStore((state) => state.getMatchDivision());
-  const totalScore = usePssMatchStore((state) => state.getTotalScore());
-  const isLoaded = usePssMatchStore((state) => state.matchData.isLoaded);
+  // PSS data from store - use direct property selectors to avoid infinite loops
+  const matchData = usePssMatchStore((state) => state.matchData);
+  const athlete1 = matchData.athletes?.athlete1;
+  const athlete2 = matchData.athletes?.athlete2;
+  const matchNumber = matchData.matchConfig?.number;
+  const matchCategory = matchData.matchConfig?.category;
+  const matchWeight = matchData.matchConfig?.weight;
+  const matchDivision = matchData.matchConfig?.division;
+  const totalScore = matchData.currentScores ? {
+    athlete1: matchData.currentScores.athlete1_score,
+    athlete2: matchData.currentScores.athlete2_score,
+  } : undefined;
+  const isLoaded = matchData.isLoaded;
 
   // Store reference
   const { overlaySettings: appOverlaySettings } = useAppStore();

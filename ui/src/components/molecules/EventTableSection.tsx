@@ -82,17 +82,10 @@ const EventTableSection: React.FC = () => {
 
   return (
     <div className="flex flex-col space-y-4 overflow-hidden pt-4">
-      {/* Section Title with Connection Status */}
+      {/* Section Title */}
       <div className="flex-shrink-0 flex items-center justify-between">
         <div className="text-lg font-semibold text-gray-200">Event Table</div>
         <div className="flex items-center space-x-2">
-          <StatusDot 
-            color={isConnected ? 'bg-green-500' : 'bg-red-500'} 
-            size="w-3 h-3" 
-          />
-          <span className="text-xs text-gray-400">
-            {isConnected ? 'Connected' : 'Disconnected'}
-          </span>
           {isManualModeEnabled && (
             <span className="text-xs text-yellow-400 bg-yellow-900/20 px-2 py-1 rounded">
               Manual Mode
@@ -177,17 +170,7 @@ const EventTableSection: React.FC = () => {
               ↑
             </Button>
             
-            {/* Clear Events Button - positioned in middle */}
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={clearEvents}
-              title="Clear all events"
-              className="absolute top-12 w-8 h-8 p-0 flex items-center justify-center text-xs"
-              disabled={isManualModeEnabled}
-            >
-              C
-            </Button>
+
             
             {/* Event Type Filter Buttons - positioned to align with table bottom */}
             <div className="absolute bottom-0 flex flex-col space-y-2" style={{ transform: 'translateY(50px)' }}>
