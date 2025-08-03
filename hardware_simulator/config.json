@@ -1,0 +1,139 @@
+{
+  "simulator": {
+    "name": "tkStrike Hardware Simulator",
+    "version": "1.0.0",
+    "description": "Hardware simulator for tkStrikeGen3 implementing PSS v2.3 protocol",
+    "protocol_version": "2.3",
+    "default_host": "127.0.0.1",
+    "default_port": 6000
+  },
+  "scenarios": {
+    "basic": {
+      "name": "Basic Match",
+      "description": "Standard match with basic athletes",
+      "athlete1": {
+        "short_name": "J. SMITH",
+        "long_name": "John Smith",
+        "country_code": "USA",
+        "color": "blue"
+      },
+      "athlete2": {
+        "short_name": "A. JONES",
+        "long_name": "Alice Jones",
+        "country_code": "GBR",
+        "color": "red"
+      },
+      "config": {
+        "number": "101",
+        "category": "Round of 16",
+        "weight": "M- 80 kg",
+        "rounds": 1,
+        "colors": ["#0000ff", "#FFFFFF", "#ff0000", "#FFFFFF"],
+        "division": "Senior",
+        "total_rounds": 3,
+        "round_duration": 120,
+        "countdown_type": "cntDown",
+        "count_up": 18,
+        "format": 1
+      }
+    },
+    "championship": {
+      "name": "Championship Match",
+      "description": "High-level championship match",
+      "athlete1": {
+        "short_name": "N. DESMOND",
+        "long_name": "Nicolas DESMOND",
+        "country_code": "MRN",
+        "color": "blue"
+      },
+      "athlete2": {
+        "short_name": "M. THIBAULT",
+        "long_name": "Marcel THIBAULT",
+        "country_code": "SUI",
+        "color": "red"
+      },
+      "config": {
+        "number": "245.A",
+        "category": "Final",
+        "weight": "M- 80 kg",
+        "rounds": 1,
+        "colors": ["#0000ff", "#FFFFFF", "#ff0000", "#FFFFFF"],
+        "division": "Senior",
+        "total_rounds": 3,
+        "round_duration": 120,
+        "countdown_type": "cntDown",
+        "count_up": 18,
+        "format": 1
+      }
+    },
+    "training": {
+      "name": "Training Match",
+      "description": "Training session match",
+      "athlete1": {
+        "short_name": "T. TRAINER",
+        "long_name": "Tom Trainer",
+        "country_code": "KOR",
+        "color": "blue"
+      },
+      "athlete2": {
+        "short_name": "S. STUDENT",
+        "long_name": "Sam Student",
+        "country_code": "KOR",
+        "color": "red"
+      },
+      "config": {
+        "number": "T001",
+        "category": "Training",
+        "weight": "M- 80 kg",
+        "rounds": 1,
+        "colors": ["#00ff00", "#000000", "#ff00ff", "#FFFFFF"],
+        "division": "Senior",
+        "total_rounds": 3,
+        "round_duration": 180,
+        "countdown_type": "cntUp",
+        "count_up": 20,
+        "format": 1
+      }
+    }
+  },
+  "events": {
+    "point_types": {
+      "1": "Punch",
+      "2": "Body",
+      "3": "Head",
+      "4": "Technical Body",
+      "5": "Technical Head"
+    },
+    "hit_levels": {
+      "min": 1,
+      "max": 100,
+      "default": 50
+    },
+    "injury_duration": {
+      "min": 30,
+      "max": 120,
+      "default": 60
+    },
+    "break_duration": {
+      "min": 30,
+      "max": 120,
+      "default": 60
+    }
+  },
+  "timing": {
+    "message_delay": 0.1,
+    "clock_interval": 1.0,
+    "demo_delays": {
+      "point": 2,
+      "warning": 2,
+      "injury": 5,
+      "break": 3
+    }
+  },
+  "logging": {
+    "enabled": true,
+    "level": "INFO",
+    "file": "simulator.log",
+    "format": "%(asctime)s - %(levelname)s - %(message)s"
+  }
+} 
