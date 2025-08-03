@@ -18,6 +18,7 @@ from tkstrike_hardware_simulator import (
     SimulatorMode
 )
 from automated_simulator import AutomatedSimulator
+from self_test_system import SelfTestSystem
 
 class SimulationManager:
     """Manages simulation operations for reStrikeVTA integration"""
@@ -27,6 +28,7 @@ class SimulationManager:
         self.port = port
         self.simulator = None
         self.automated_simulator = None
+        self.self_test_system = None
         self.is_running = False
         
     def start_simulator(self) -> bool:
@@ -131,6 +133,45 @@ class SimulationManager:
             print(f"Failed to get automated scenarios: {e}")
             return []
     
+    def start_self_test(self) -> bool:
+        """Initialize and start the self-test system"""
+        try:
+            self.self_test_system = SelfTestSystem(self.host, self.port)
+            
+            # Set up callbacks for status updates
+            def status_callback(message: str):
+                print(f"[SELF-TEST] {message}")
+            
+            def progress_callback(current: int, total: int):
+                print(f"[SELF-TEST] Progress: {current}/{total} tests completed")
+            
+            self.self_test_system.set_callbacks(status_callback, progress_callback)
+            return True
+        except Exception as e:
+            print(f"Failed to start self-test system: {e}")
+            return False
+    
+    def run_self_test(self) -> Dict[str, Any]:
+        """Run comprehensive self-test"""
+        if not self.self_test_system:
+            if not self.start_self_test():
+                return {"error": "Failed to initialize self-test system"}
+        
+        try:
+            return self.self_test_system.run_comprehensive_test()
+        except Exception as e:
+            return {"error": f"Self-test failed: {str(e)}"}
+    
+    def get_self_test_report(self) -> str:
+        """Get markdown format self-test report"""
+        if not self.self_test_system:
+            return "# Self-Test Report\n\nNo test results available."
+        
+        try:
+            return self.self_test_system.generate_markdown_report()
+        except Exception as e:
+            return f"# Self-Test Report\n\nError generating report: {str(e)}"
+    
     def add_point(self, athlete: int, point_type: int) -> bool:
         """Add a point for an athlete"""
         if not self.simulator or not self.is_running:
@@ -200,10 +241,11 @@ def main():
     parser = argparse.ArgumentParser(description="tkStrike Hardware Simulator")
     parser.add_argument("--host", default="127.0.0.1", help="Target host")
     parser.add_argument("--port", type=int, default=8888, help="Target port")
-    parser.add_argument("--mode", choices=["demo", "random", "interactive", "automated"], default="demo", help="Simulation mode")
+    parser.add_argument("--mode", choices=["demo", "random", "interactive", "automated", "self-test"], default="demo", help="Simulation mode")
     parser.add_argument("--scenario", choices=["basic", "championship", "training", "quick_test", "training_session", "tournament_day", "championship"], default="basic", help="Match scenario")
     parser.add_argument("--duration", type=int, default=30, help="Duration for demo/random mode")
     parser.add_argument("--list-scenarios", action="store_true", help="List available automated scenarios")
+    parser.add_argument("--self-test", action="store_true", help="Run comprehensive self-test")
     
     args = parser.parse_args()
     
@@ -221,6 +263,37 @@ def main():
             print(f"  Matches: {scenario['match_count']}")
             print(f"  Est. Duration: {scenario['estimated_duration']} seconds")
             print()
+        return 0
+    
+    # Run self-test if requested
+    if args.self_test or args.mode == "self-test":
+        print("🧪 Starting comprehensive self-test...")
+        print("=" * 50)
+        
+        result = manager.run_self_test()
+        
+        if "error" in result:
+            print(f"❌ Self-test failed: {result['error']}")
+            return 1
+        
+        print("\n📊 Self-Test Results:")
+        print("=" * 50)
+        print(f"Overall Status: {result['overall_status']}")
+        print(f"Total Tests: {result['summary']['total_tests']}")
+        print(f"Passed: {result['summary']['passed']} ✅")
+        print(f"Failed: {result['summary']['failed']} ❌")
+        print(f"Warnings: {result['summary']['warnings']} ⚠️")
+        print(f"Success Rate: {result['summary']['success_rate']:.1f}%")
+        print(f"Duration: {result['duration']:.2f} seconds")
+        
+        # Generate and save markdown report
+        report = manager.get_self_test_report()
+        report_path = "self_test_report.md"
+        with open(report_path, "w", encoding="utf-8") as f:
+            f.write(report)
+        
+        print(f"\n📄 Detailed report saved to: {report_path}")
+        print("\n" + "=" * 50)
         return 0
     
     # Start appropriate simulator
