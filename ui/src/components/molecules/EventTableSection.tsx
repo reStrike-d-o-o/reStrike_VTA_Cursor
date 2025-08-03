@@ -53,8 +53,15 @@ const EventTableSection: React.FC = () => {
     setEventTypeFilter(null);
   };
 
-  // Filtering logic - only show events when manual mode is OFF
-  const filteredEvents = isManualModeEnabled ? [] : getFilteredEvents(colorFilter, eventTypeFilter);
+  // Filtering logic - only show important events when manual mode is OFF
+  const allEvents = isManualModeEnabled ? [] : getFilteredEvents(colorFilter, eventTypeFilter);
+  
+  // Filter to only show important events for the event table
+  const filteredEvents = allEvents.filter(event => {
+    // Only show events with specific event codes that are important for the table
+    const importantEventCodes = ['K', 'P', 'H', 'TH', 'TB', 'R'];
+    return importantEventCodes.includes(event.eventCode);
+  });
 
   // Format time for display (convert from "m:ss" to "mm.ss.000" format)
   const formatTimeForDisplay = (time: string): string => {
@@ -199,8 +206,8 @@ const EventTableSection: React.FC = () => {
           <span>Time: {currentTime}</span>
         </div>
         <div className="flex items-center space-x-2">
-          <span>Events: {events.length}</span>
-          <span>Filtered: {filteredEvents.length}</span>
+          <span>Total: {events.length}</span>
+          <span>Table: {filteredEvents.length}</span>
         </div>
       </div>
     </div>
