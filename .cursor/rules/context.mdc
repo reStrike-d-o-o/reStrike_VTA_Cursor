@@ -364,3 +364,49 @@ _Last updated: 2025-01-29_
 - **Future Enhancements**: AI Integration, Advanced Analytics, Multi-language Support
 - **Documentation**: Keep all documentation updated and consolidated
 - **Database**: Monitor performance and optimize queries as needed
+
+## 🛡️ Interference Prevention Rules
+
+### **Critical System Integration Rules**
+- **Scoreboard Overlay Protection**: When modifying WebSocket message structures or event conversion logic, ALWAYS ensure scoreboard overlay compatibility:
+  - Scoreboard overlay expects specific time formats and field structures
+  - Injury events must preserve original `time` values for scoreboard display
+  - New fields (like `action`) must be optional and backward compatible
+  - Test scoreboard overlay functionality after any WebSocket changes
+
+- **Event Table vs Scoreboard Separation**: 
+  - Event Table (DockBar) shows filtered events (K, P, H, TH, TB, R) with current time
+  - Scoreboard overlay needs ALL events with original time values
+  - Time manipulation for Event Table must NOT affect scoreboard overlay
+  - Use `current_time` state only for Event Table events, preserve original times for scoreboard
+
+### **Component Safety Rules**
+- **Before Altering Functions/Components**: ALWAYS check for potential interference with other parts of the app:
+  1. **Identify Dependencies**: List all components/functions that use the target code
+  2. **Check Data Flow**: Verify how data flows between affected components
+  3. **Test Integration Points**: Ensure WebSocket, database, and UI integrations remain functional
+  4. **Validate Backward Compatibility**: New changes must not break existing functionality
+  5. **Document Changes**: Update relevant architecture documentation
+
+- **WebSocket Message Structure Changes**:
+  - Adding new fields must be optional (`Option<T>`)
+  - Existing fields must maintain their current types and meanings
+  - Test both Event Table and Scoreboard overlay after changes
+  - Verify database storage compatibility
+
+- **Event Processing Changes**:
+  - PSS event parsing must preserve all original data
+  - Time manipulation must be selective (Event Table vs Scoreboard)
+  - Database storage must include all event data
+  - Real-time updates must work for all consumers
+
+### **Testing Requirements**
+- **After Any WebSocket Changes**: Test both Event Table and Scoreboard overlay
+- **After Event Processing Changes**: Verify database storage and retrieval
+- **After UI Component Changes**: Test all related components and data flow
+- **Before Committing**: Ensure no regression in existing functionality
+
+### **Documentation Requirements**
+- **Update Architecture Docs**: Any system changes must be documented in relevant architecture files
+- **Cross-Reference Changes**: Update multiple architecture files if changes affect multiple systems
+- **Preserve Working Code**: Never break working functionality without clear justification and rollback plan

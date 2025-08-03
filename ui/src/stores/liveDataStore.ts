@@ -4,7 +4,7 @@ import { subscribeWithSelector } from 'zustand/middleware';
 // PSS Event types based on protocol specification
 export interface PssEventData {
   id: string;
-  eventType: 'pt1' | 'pt2' | 'wg1' | 'wg2' | 'ch0' | 'ch1' | 'ch2' | 'clk' | 'rnd' | 'hl1' | 'hl2';
+  eventType: string; // All PSS event types from backend
   eventCode: string; // K, P, H, TH, TB, R
   athlete: 'blue' | 'red' | 'referee';
   round: number;

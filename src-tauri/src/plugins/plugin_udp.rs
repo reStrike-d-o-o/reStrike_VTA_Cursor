@@ -1071,38 +1071,48 @@ impl UdpServer {
     /// Get event code for validation
     fn get_event_code(event: &PssEvent) -> String {
         match event {
-            PssEvent::Points { .. } => "pt".to_string(),
-            PssEvent::HitLevel { .. } => "hl".to_string(),
-            PssEvent::Warnings { .. } => "wg".to_string(),
-            PssEvent::Injury { .. } => "ij".to_string(),
-            PssEvent::Challenge { .. } => "ch".to_string(),
-            PssEvent::Break { .. } => "brk".to_string(),
-            PssEvent::WinnerRounds { .. } => "wrd".to_string(),
-            PssEvent::Winner { .. } => "wmh".to_string(),
-            PssEvent::Athletes { .. } => "at".to_string(),
-            PssEvent::MatchConfig { .. } => "mch".to_string(),
-            PssEvent::Scores { .. } => "s".to_string(),
-            PssEvent::CurrentScores { .. } => "sc".to_string(),
-            PssEvent::Clock { .. } => "clk".to_string(),
-            PssEvent::Round { .. } => "rnd".to_string(),
-            PssEvent::FightLoaded => "pre".to_string(),
-            PssEvent::FightReady => "rdy".to_string(),
+            PssEvent::Points { point_type, .. } => {
+                // Map point types to specific event codes according to PSS protocol
+                match point_type {
+                    1 => "P".to_string(),   // Punch
+                    2 => "TB".to_string(), // Technical Body
+                    3 => "H".to_string(),  // Head Kick
+                    4 => "TB".to_string(), // Technical Body
+                    5 => "TH".to_string(), // Technical Head
+                    _ => "K".to_string(),  // Default to Kick
+                }
+            },
+            PssEvent::HitLevel { .. } => "H".to_string(), // Hit Level
+            PssEvent::Warnings { .. } => "R".to_string(), // Warning/Gam-jeom
+            PssEvent::Challenge { .. } => "R".to_string(), // Challenge/IVR
+            PssEvent::Injury { .. } => "R".to_string(), // Injury time
+            PssEvent::Break { .. } => "R".to_string(), // Break
+            PssEvent::WinnerRounds { .. } => "R".to_string(), // Winner rounds
+            PssEvent::Winner { .. } => "R".to_string(), // Winner
+            PssEvent::Athletes { .. } => "R".to_string(), // Athletes info
+            PssEvent::MatchConfig { .. } => "R".to_string(), // Match config
+            PssEvent::Scores { .. } => "R".to_string(), // Scores
+            PssEvent::CurrentScores { .. } => "R".to_string(), // Current scores
+            PssEvent::Clock { .. } => "R".to_string(), // Clock
+            PssEvent::Round { .. } => "R".to_string(), // Round
+            PssEvent::FightLoaded => "R".to_string(), // Fight loaded
+            PssEvent::FightReady => "R".to_string(), // Fight ready
             PssEvent::Raw(raw_msg) => {
                 // Try to extract event code from raw messages for better categorization
                 if raw_msg.starts_with("avt;") {
-                    "avt".to_string()
+                    "R".to_string()
                 } else if raw_msg.starts_with("ref;") {
-                    "ref".to_string()
+                    "R".to_string()
                 } else if raw_msg.starts_with("sup;") {
-                    "sup".to_string()
+                    "R".to_string()
                 } else if raw_msg.starts_with("rst;") {
-                    "rst".to_string()
+                    "R".to_string()
                 } else if raw_msg.starts_with("rsr;") {
-                    "rsr".to_string()
+                    "R".to_string()
                 } else if raw_msg.starts_with("win;") {
-                    "win".to_string()
+                    "R".to_string()
                 } else {
-                    "raw".to_string()
+                    "R".to_string()
                 }
             },
         }
