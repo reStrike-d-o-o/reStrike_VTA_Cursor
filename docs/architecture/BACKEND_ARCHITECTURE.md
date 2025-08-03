@@ -29,7 +29,7 @@ src-tauri/
 ├── src/
 │   ├── main.rs              # Tauri app entry point
 │   ├── lib.rs               # Library exports and plugin registration
-│   ├── tauri_commands.rs    # Tauri command definitions (1835 lines)
+│   ├── tauri_commands.rs    # Tauri command definitions (4200+ lines)
 │   ├── core/                # Core application functionality
 │   │   ├── app.rs           # Application state and lifecycle
 │   │   ├── config.rs        # Configuration management
@@ -65,6 +65,26 @@ src-tauri/
 ├── tauri.conf.json          # Tauri configuration
 ├── capabilities.json        # Tauri capabilities
 └── build.rs                 # Build script
+
+simulation/                   # Hardware Simulator Module
+├── core/                    # Core simulator implementation
+│   └── tkstrike_hardware_simulator.py
+├── config/                  # Configuration files
+│   └── config.json
+├── tests/                   # Test scripts
+│   ├── test_simulator.py
+│   ├── test_integration.py
+│   └── quick_test.py
+├── examples/                # Example usage scripts
+│   └── example_usage.py
+├── docs/                    # Documentation
+│   ├── README.md
+│   ├── INTEGRATION_GUIDE.md
+│   ├── QUICKSTART.md
+│   ├── INTEGRATION_SUMMARY.md
+│   └── SIMULATOR_SUMMARY.md
+├── main.py                  # Main entry point
+└── requirements.txt         # Python dependencies
 ```
 
 ## Plugin System
@@ -93,6 +113,48 @@ pub enum PluginStatus {
 ```
 
 ### Core Plugins
+
+#### Simulation Integration
+The backend includes comprehensive simulation support through Tauri commands that interface with the Python-based tkStrike Hardware Simulator:
+
+```rust
+// Simulation commands in tauri_commands.rs
+#[tauri::command]
+pub async fn simulation_start(
+    mode: String,
+    scenario: String,
+    duration: u32,
+    _app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError>
+
+#[tauri::command]
+pub async fn simulation_stop(_app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError>
+
+#[tauri::command]
+pub async fn simulation_get_status(_app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError>
+
+#[tauri::command]
+pub async fn simulation_send_event(
+    event_type: String,
+    params: serde_json::Value,
+    _app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError>
+```
+
+**Features:**
+- **One-click Simulation**: Start/stop simulation from PSS drawer
+- **Multiple Scenarios**: Basic, championship, and training matches
+- **Real-time Control**: Manual event generation and monitoring
+- **Protocol Compliance**: Full PSS v2.3 protocol implementation
+- **Integration**: Seamless integration with existing UDP and WebSocket systems
+
+**Usage:**
+```bash
+# Start simulation from command line
+python simulation/main.py --mode demo --scenario basic --duration 30
+
+# Or use the integrated UI in PSS drawer > Simulation tab
+```
 
 #### Database Plugin
 ```rust

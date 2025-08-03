@@ -10,7 +10,14 @@
 - [ ] **Update all cross-references and links**
 - [ ] **Create single source of truth for project documentation**
 
-#### **2. Database Storage Implementation** ⚡ **HIGH PRIORITY**
+#### **2. Simulation Testing & Enhancement** ⚡ **HIGH PRIORITY**
+- [ ] **Test simulation integration with real reStrikeVTA application**
+- [ ] **Verify all simulation scenarios work correctly**
+- [ ] **Test manual event generation from UI**
+- [ ] **Validate real-time status updates**
+- [ ] **Test simulation with Event Table and Scoreboard Overlay**
+
+#### **3. Database Storage Implementation** ⚡ **HIGH PRIORITY**
 - [ ] **Implement full `store_pss_event` Tauri command** (currently disabled)
 - [ ] **Map `PssEventData` to `PssEventV2` database model**
 - [ ] **Add proper error handling and validation**
@@ -66,6 +73,10 @@
 ### **📊 Completed Tasks** ✅
 
 #### **Recent Achievements (2025-01-29)**
+- ✅ **Hardware Simulator Integration**: Complete PSS v2.3 protocol simulator with UI integration
+- ✅ **Simulation Tab**: Added to PSS drawer with one-click operation
+- ✅ **Simulation Commands**: Backend Tauri commands for simulation control
+- ✅ **Simulation Panel**: Frontend component with real-time status monitoring
 - ✅ **Injury Action Support**: Fully implemented and tested
 - ✅ **Scoreboard Overlay Compatibility**: Verified and working
 - ✅ **Event Table Real-time Updates**: Implemented with proper filtering

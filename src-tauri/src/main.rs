@@ -328,6 +328,12 @@ async fn main() -> AppResult<()> {
             tauri_commands::get_athlete_analytics,
             tauri_commands::get_match_analytics,
             tauri_commands::get_analytics_history,
+            
+            // Simulation commands
+            tauri_commands::simulation_start,
+            tauri_commands::simulation_stop,
+            tauri_commands::simulation_get_status,
+            tauri_commands::simulation_send_event,
         ])
         .setup(|app| {
             log::info!("Tauri application setup complete");
