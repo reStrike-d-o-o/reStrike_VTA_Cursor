@@ -4,6 +4,97 @@
 
 The reStrike VTA frontend is built with React 18, TypeScript, and Tailwind CSS, providing a modern, responsive user interface for the Windows desktop application. The frontend follows atomic design principles and integrates seamlessly with the Tauri backend through a comprehensive command and event system.
 
+## Product Requirements
+
+### Elevator Pitch
+A cross-platform Instant Video Replay Manager designed for taekwondo referees, enabling rapid video review and AI-assisted data analysis. The app integrates with taekwondo PSS systems via UDP, controls OBS Studio over WebSocket, and manages local video playback using mpv. With built-in automation, an intuitive manual mode, AI-ready architecture, and a licensing system tied to local hardware, it empowers referees to resolve match challenges within seconds.
+
+### Target Users
+- **Primary Users**: Taekwondo referees during live competitions
+- **Secondary Users**: Tournament organizers and technical assistants
+- **Usage Context**: Fast-paced match environments where decisions must be made within 20 seconds or less
+
+### Core Features
+- **UDP Server**: Listens to and parses datagrams from PSS systems
+- **OBS Studio Control**: WebSocket control for multiple OBS instances
+- **Video Playback**: Launch clips in `mpv` player with UI auto-hide/restore
+- **Recording Archive**: Auto-named recordings with match metadata and visual timeline
+- **Manual Mode**: Bypass UDP to directly control OBS and playback via UI
+- **Local Storage**: SQLite DB stores parsed UDP events, metadata, and settings
+- **AI Data Analyzer**: Parses and interprets structured event data from UDP
+- **Licensing System**: One-time online activation tied to hardware
+- **Logging System**: All logs saved in dedicated 'log' folder
+
+### User Stories
+- **As a referee**, I want the most recent recording to play instantly when a challenge is raised
+- **As a referee**, I want a searchable list of previous clips organized by match
+- **As a referee**, I want visual timelines on each recording showing significant moments
+- **As a referee**, I want a simple interface with minimal input to avoid distractions
+- **As a technical assistant**, I want to configure protocol formats and logging
+- **As an organizer**, I want the license to be secure and tied to the machine
+
+## Flag Management System
+
+### Overview
+The Flag Management System provides comprehensive IOC (International Olympic Committee) flag support with 253 flags covering current NOCs, historic NOCs, and special Olympic/Paralympic codes.
+
+### System Status
+- **Database Migration**: Successfully migrated to database-backed flag management system
+- **253 IOC Entries**: Automatically populated into `flag_mappings` table
+- **Frontend Integration**: Complete React UI integration with database toggle
+- **Real-time Updates**: PSS code synchronization and live flag management
+
+### Flag Collection Statistics
+
+#### Total Flags: 253
+- **Current NOCs (Table 1)**: 206 flags - Main Olympic countries
+- **Additional Territories (Table 2)**: 2 flags - Faroe Islands, Macau
+- **Historic NOCs (Table 3)**: 12 flags - Soviet Union, Yugoslavia, East/West Germany
+- **Historic Country Names (Table 4)**: 18 flags - Burma, Ceylon, Zaire, etc.
+- **Special Olympic Codes (Table 5)**: 10 flags - Refugee Olympic Team, Independent Athletes
+- **Special Paralympic Codes (Table 6)**: 5 flags - Refugee Paralympic Team, etc.
+
+#### By Region
+- **Africa**: 47 flags
+- **Asia**: 13 flags  
+- **Europe**: 48 flags
+- **North America**: 21 flags
+- **Oceania**: 8 flags
+- **South America**: 16 flags
+- **Historic/Special**: 100 flags
+
+### Technical Implementation
+
+#### Database Schema
+- **`flags`**: Flag file metadata (id, filename, file_size, upload_date, recognition_status, etc.)
+- **`flag_mappings`**: IOC to PSS code mappings (253+ entries populated automatically)
+- **`recognition_history`**: Historical flag recognition data
+- **`settings`**: Flag management system settings
+
+#### Tauri Commands
+- **`get_flag_mappings_data`**: Retrieve flag mapping statistics
+- **`scan_and_populate_flags`**: Scan filesystem and populate flags table
+- **`get_flags_data`**: Retrieve flag metadata from database
+- **`clear_flags_table`**: Clear flags table for re-scanning
+
+#### Frontend Integration
+- **Database Toggle**: Switch between file-based and database-backed flag loading
+- **Real-time Statistics**: Live display of flag counts and recognition status
+- **PSS Code Synchronization**: Proper update of PSS codes when selecting flags
+- **File Management**: Scan, populate, and clear flag database operations
+
+#### React Components
+- **File**: `ui/src/utils/flagUtils.tsx`
+- **Components**: `FlagImage`, `getFlagConfig`, `getFlagUrl`
+- **Fallbacks**: Emoji flags for all 253 IOC codes
+- **Error Handling**: Automatic fallback to emoji on image load failure
+
+#### Flag Storage
+- **Directory**: `ui/public/assets/flags/`
+- **Format**: PNG images
+- **Naming**: `{IOC}.png` (e.g., `USA.png`, `GBR.png`)
+- **Size**: Optimized 40px width from Wikipedia
+
 ## Architecture
 
 ### Core Architecture
