@@ -1723,7 +1723,8 @@ impl UdpServer {
                                             
                                             // Keep only the last 10 hit levels per athlete (to avoid memory bloat)
                                             if athlete_hit_levels.len() > 10 {
-                                                athlete_hit_levels.remove(0);
+                                                // Remove the oldest entries (first elements) to keep only the last 10
+                                                athlete_hit_levels.drain(0..athlete_hit_levels.len() - 10);
                                             }
                                             
                                             log::debug!("🎯 Tracked hit level for athlete {}: level {}", athlete, level);
