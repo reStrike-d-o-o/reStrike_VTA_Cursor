@@ -72,13 +72,22 @@ class SelfTestSystem:
         if self.progress_callback:
             self.progress_callback(current, total)
     
-    def run_comprehensive_test(self) -> Dict[str, Any]:
-        """Run comprehensive self-test of all systems"""
+    def get_available_categories(self) -> List[str]:
+        """Get list of available test categories"""
+        return [
+            "Backend Services",
+            "Frontend Integration", 
+            "Simulation System",
+            "Data Flow",
+            "UI Components",
+            "Performance"
+        ]
+    
+    def run_comprehensive_test(self, selected_categories: Optional[List[str]] = None) -> Dict[str, Any]:
+        """Run comprehensive self-test of all systems or selected categories"""
         self.start_time = datetime.now()
         self.is_running = True
         self.results = {}
-        
-        self._update_status("Starting comprehensive self-test...")
         
         # Define test categories and their tests
         test_categories = {
@@ -119,6 +128,19 @@ class SelfTestSystem:
                 ("Concurrent Connections", self._test_concurrent_connections),
             ]
         }
+        
+        # Filter categories if specific ones are selected
+        if selected_categories:
+            available_categories = self.get_available_categories()
+            valid_categories = [cat for cat in selected_categories if cat in available_categories]
+            if not valid_categories:
+                self._update_status("No valid categories selected. Running all tests.")
+                valid_categories = available_categories
+            
+            test_categories = {k: v for k, v in test_categories.items() if k in valid_categories}
+            self._update_status(f"Starting selective self-test for categories: {', '.join(valid_categories)}")
+        else:
+            self._update_status("Starting comprehensive self-test...")
         
         total_tests = sum(len(tests) for tests in test_categories.values())
         current_test = 0

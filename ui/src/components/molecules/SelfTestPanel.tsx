@@ -3,6 +3,7 @@ import Button from '../atoms/Button';
 import Label from '../atoms/Label';
 import StatusDot from '../atoms/StatusDot';
 import Icon from '../atoms/Icon';
+import Toggle from '../atoms/Toggle';
 import { invoke as tauriInvoke } from '@tauri-apps/api/core';
 
 // Use the proper Tauri v2 invoke function with fallback
@@ -43,6 +44,32 @@ const SelfTestPanel: React.FC<SelfTestPanelProps> = ({ className = '' }) => {
   const [reportContent, setReportContent] = useState<string>('');
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
+  
+  // Selective testing state
+  const [showSelective, setShowSelective] = useState(false);
+  const [availableCategories, setAvailableCategories] = useState<string[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [isLoadingCategories, setIsLoadingCategories] = useState(false);
+
+  // Load available categories
+  const loadCategories = async () => {
+    try {
+      setIsLoadingCategories(true);
+      const result = await invoke('simulation_get_self_test_categories');
+      
+      if (result.success) {
+        setAvailableCategories(result.data.categories);
+        // Select all categories by default
+        setSelectedCategories(result.data.categories);
+      } else {
+        setError('Failed to load test categories');
+      }
+    } catch (error) {
+      setError(`Failed to load categories: ${error}`);
+    } finally {
+      setIsLoadingCategories(false);
+    }
+  };
 
   // Run comprehensive self-test
   const runSelfTest = async () => {
@@ -53,10 +80,15 @@ const SelfTestPanel: React.FC<SelfTestPanelProps> = ({ className = '' }) => {
       setTestResult(null);
       setReportContent('');
 
-      const result = await invoke('simulation_run_self_test');
+      let result;
+      if (showSelective && selectedCategories.length > 0) {
+        result = await invoke('simulation_run_selective_self_test', { selectedCategories });
+      } else {
+        result = await invoke('simulation_run_self_test');
+      }
 
       if (result.success) {
-        setSuccess('Self-test completed successfully!');
+        setSuccess(showSelective ? 'Selective self-test completed successfully!' : 'Self-test completed successfully!');
         
         // Get the detailed report
         const reportResult = await invoke('simulation_get_self_test_report');
@@ -119,6 +151,32 @@ const SelfTestPanel: React.FC<SelfTestPanelProps> = ({ className = '' }) => {
       setIsRunning(false);
     }
   };
+
+  // Toggle category selection
+  const toggleCategory = (category: string) => {
+    setSelectedCategories(prev => {
+      if (prev.includes(category)) {
+        return prev.filter(c => c !== category);
+      } else {
+        return [...prev, category];
+      }
+    });
+  };
+
+  // Select all categories
+  const selectAllCategories = () => {
+    setSelectedCategories([...availableCategories]);
+  };
+
+  // Deselect all categories
+  const deselectAllCategories = () => {
+    setSelectedCategories([]);
+  };
+
+  // Load categories on component mount
+  useEffect(() => {
+    loadCategories();
+  }, []);
 
   // Clear messages after 10 seconds
   useEffect(() => {
@@ -188,6 +246,69 @@ const SelfTestPanel: React.FC<SelfTestPanelProps> = ({ className = '' }) => {
         </div>
       )}
 
+      {/* Selective Testing Toggle */}
+      <div className="flex items-center justify-between">
+        <Label>Selective Testing</Label>
+        <Toggle
+          checked={showSelective}
+          onChange={(e) => setShowSelective(e.target.checked)}
+          disabled={isRunning}
+        />
+      </div>
+
+      {/* Category Selection */}
+      {showSelective && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <Label>Test Categories</Label>
+            <div className="flex space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={selectAllCategories}
+                disabled={isRunning || isLoadingCategories}
+              >
+                Select All
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={deselectAllCategories}
+                disabled={isRunning || isLoadingCategories}
+              >
+                Deselect All
+              </Button>
+            </div>
+          </div>
+          
+          {isLoadingCategories ? (
+            <div className="flex items-center justify-center py-4">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+              <span className="ml-2 text-sm text-gray-400">Loading categories...</span>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {availableCategories.map((category) => (
+                <div key={category} className="flex items-center space-x-3">
+                  <Toggle
+                    checked={selectedCategories.includes(category)}
+                    onChange={() => toggleCategory(category)}
+                    disabled={isRunning}
+                  />
+                  <span className="text-sm text-gray-300">{category}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          
+          {selectedCategories.length === 0 && (
+            <div className="text-center py-2 text-sm text-yellow-400">
+              ⚠️ No categories selected. Please select at least one category to run tests.
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Test Results Summary */}
       {testResult && (
         <div className="bg-gray-800/50 border border-gray-600 rounded-lg p-4">
@@ -240,7 +361,7 @@ const SelfTestPanel: React.FC<SelfTestPanelProps> = ({ className = '' }) => {
           variant="primary"
           size="sm"
           onClick={runSelfTest}
-          disabled={isRunning}
+          disabled={isRunning || (showSelective && selectedCategories.length === 0)}
           className="flex-1"
         >
           {isRunning ? (
@@ -251,7 +372,7 @@ const SelfTestPanel: React.FC<SelfTestPanelProps> = ({ className = '' }) => {
           ) : (
             <div className="flex items-center space-x-2">
               <Icon name="play" className="w-4 h-4" />
-              <span>Run Self-Test</span>
+              <span>{showSelective ? 'Run Selective Test' : 'Run Self-Test'}</span>
             </div>
           )}
         </Button>
