@@ -123,40 +123,35 @@ export const useLiveDataStore = create<LiveDataState>()(
 
 // Event parsing utilities based on PSS protocol
 export const parsePssEvent = (rawData: string, timestamp: string): PssEventData | null => {
+  // Handle undefined or null rawData
+  if (!rawData || typeof rawData !== 'string') {
+    console.warn('parsePssEvent: Invalid rawData:', rawData);
+    return null;
+  }
+  
   const parts = rawData.split(';').filter(p => p.trim() !== '');
   if (parts.length === 0) return null;
   
   const eventType = parts[0];
   const id = `${eventType}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   
-  // Parse different event types based on PSS protocol
+  // Parse different event types based on simplified backend format
   switch (eventType) {
     case 'pt1':
     case 'pt2': {
-      // Points events: pt1;1; or pt2;3;
-      if (parts.length < 2) return null;
-      const pointType = parseInt(parts[1]);
+      // Points events: pt1 or pt2 (point type is in the event_code from backend)
       const athlete = eventType === 'pt1' ? 'blue' : 'red';
-      
-      let eventCode = 'K'; // Default to kick
-      switch (pointType) {
-        case 1: eventCode = 'P'; break; // Punch
-        case 2: eventCode = 'K'; break; // Body kick
-        case 3: eventCode = 'H'; break; // Head kick
-        case 4: eventCode = 'TB'; break; // Technical body
-        case 5: eventCode = 'TH'; break; // Technical head
-      }
       
       return {
         id,
         eventType: eventType as any,
-        eventCode,
+        eventCode: 'P', // Will be updated by backend event_code
         athlete,
         round: 1, // Will be updated by round events
         time: '0:00', // Will be updated by clock events
         timestamp,
         rawData,
-        description: `${athlete} ${eventCode}`,
+        description: `${athlete} point`,
       };
     }
     
