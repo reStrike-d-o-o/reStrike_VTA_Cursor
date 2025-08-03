@@ -1,84 +1,57 @@
 # reStrikeVTA Self-Test Report
 
-**Generated:** 2025-08-04 01:07:18
+**Generated:** 2025-08-04 01:13:34
 
 ## 📊 Overall Summary
 
-- **Total Tests:** 4
-- **Passed:** 1 ✅
-- **Failed:** 1 ❌
-- **Warnings:** 2 ⚠️
-- **Success Rate:** 25.0%
+- **Total Tests:** 5
+- **Passed:** 4 ✅
+- **Failed:** 0 ❌
+- **Warnings:** 1 ⚠️
+- **Success Rate:** 80.0%
 
-## 🔧 Backend Services
+## 🔧 Simulation System
 
-**Summary:** 1/4 passed (25.0%)
+**Summary:** 4/5 passed (80.0%)
 
-### ❌ UDP Server
-**Status:** FAILED
-**Duration:** 0.00s
-**Description:** UDP server is not accessible
-**Details:** Connection failed: [WinError 10054] An existing connection was forcibly closed by the remote host
-**Error:** `[WinError 10054] An existing connection was forcibly closed by the remote host`
+### ✅ Python Simulator
+**Status:** PASSED
+**Duration:** 0.61s
+**Description:** Python simulator is working
+**Details:** Successfully listed scenarios
 
-### ✅ WebSocket Server
+### ✅ PSS Protocol
 **Status:** PASSED
 **Duration:** 0.00s
-**Description:** WebSocket server is accessible
-**Details:** Successfully connected and closed
+**Description:** PSS protocol is working
+**Details:** Successfully sent PSS test message
 
-### ⚠️ Database Connection
+### ⚠️ Event Generation
 **Status:** WARNING
-**Duration:** 0.19s
-**Description:** Database command failed
-**Details:** Command output: error: unrecognized subcommand 'invoke'
+**Duration:** 0.94s
+**Description:** Event generation test incomplete
+**Details:** Output: [AUTO] Failed to start simulator: 'charmap' codec can't encode character '\u274c' in position 0: character maps to <undefined>
+Failed to start automated simulator
 
-  tip: a similar subcommand exists: 'info'
 
-Usage: cargo tauri [OPTIONS] <COMMAND>
+### ✅ Automated Scenarios
+**Status:** PASSED
+**Duration:** 0.66s
+**Description:** Automated scenarios are available
+**Details:** Found 4 scenarios
 
-For more information, try '--help'.
-
-**Error:** `error: unrecognized subcommand 'invoke'
-
-  tip: a similar subcommand exists: 'info'
-
-Usage: cargo tauri [OPTIONS] <COMMAND>
-
-For more information, try '--help'.
-`
-
-### ⚠️ Tauri Commands
-**Status:** WARNING
-**Duration:** 0.22s
-**Description:** Tauri command execution failed
-**Details:** Command output: error: unrecognized subcommand 'invoke'
-
-  tip: a similar subcommand exists: 'info'
-
-Usage: cargo tauri [OPTIONS] <COMMAND>
-
-For more information, try '--help'.
-
-**Error:** `error: unrecognized subcommand 'invoke'
-
-  tip: a similar subcommand exists: 'info'
-
-Usage: cargo tauri [OPTIONS] <COMMAND>
-
-For more information, try '--help'.
-`
+### ✅ Warning Limit Rule
+**Status:** PASSED
+**Duration:** 0.60s
+**Description:** Warning limit rule is working
+**Details:** Successfully tested 6 warnings
 
 ## 💡 Recommendations
-
-### Critical Issues
-- Address failed tests before production deployment
-- Review error messages for specific failure causes
 
 ### Warnings
 - Investigate warning conditions for potential issues
 - Consider performance optimizations where applicable
 
 ### System Health
-- ❌ System requires attention
-- Multiple critical failures detected
+- ⚠️ System is generally healthy with minor issues
+- Review warnings and failed tests

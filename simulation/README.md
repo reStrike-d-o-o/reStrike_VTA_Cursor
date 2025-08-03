@@ -299,6 +299,16 @@ simulation_run_automated(scenario_name, custom_config)
 simulation_get_detailed_status()
 ```
 
+### Warning Limit Rule
+The simulator implements a 5-warning limit per athlete per round:
+- **Automatic Enforcement**: Athletes cannot receive more than 5 warnings per round
+- **Round Loss**: When an athlete reaches 5 warnings, the round automatically ends
+- **Winner Determination**: The opposite athlete wins the round
+- **Round Reset**: Warning counts reset when a new round begins
+- **Match End**: The match ends immediately when a round is lost due to warnings
+
+This rule applies to both manual and automated simulation modes.
+
 ## 📚 References
 
 - **PSS Protocol**: World Taekwondo PSS v2.3 Specification
@@ -339,4 +349,4 @@ This simulator is part of the reStrikeVTA project and follows the same licensing
 **Protocol**: PSS v2.3  
 **Compatibility**: tkStrikeGen3, reStrikeVTA  
 **Last Updated**: 2025-01-29  
-**Features**: Manual + Automated Simulation ✨ 
+**Features**: Manual + Automated Simulation + Warning Limit Rule ✨ 

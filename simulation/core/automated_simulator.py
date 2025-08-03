@@ -118,48 +118,76 @@ class MatchConfigGenerator:
         )
 
 class EventSequenceGenerator:
-    """Generates realistic event sequences for matches"""
+    """Generates realistic event sequences for automated simulation"""
     
     def __init__(self, scenario: AutomatedScenario):
         self.scenario = scenario
         self.current_time = 0
-        self.round_duration = 120  # Default 2 minutes
-        
+        # Warning tracking per athlete per round
+        self.athlete1_warnings_round = 0
+        self.athlete2_warnings_round = 0
+        self.current_round = 1
+        self.round_start_time = 0
+        self.round_duration = 120  # 2 minutes per round
+    
     def generate_match_events(self, match_duration: int) -> List[Dict[str, Any]]:
-        """Generate a realistic sequence of events for a match"""
+        """Generate a complete sequence of events for a match"""
         events = []
-        self.current_time = 0
         
-        # Start with match setup events
+        # Add setup events
         events.extend(self._generate_setup_events())
         
-        # Generate match events based on duration and probabilities
+        # Generate events throughout the match
         while self.current_time < match_duration:
+            # Check if round should end due to warnings
+            if self.athlete1_warnings_round >= 5:
+                events.extend(self._generate_round_loss_events(1))
+                break
+            elif self.athlete2_warnings_round >= 5:
+                events.extend(self._generate_round_loss_events(2))
+                break
+            
+            # Check if round time has expired
+            if self.current_time - self.round_start_time >= self.round_duration:
+                events.extend(self._generate_round_change_events())
+                continue
+            
+            # Generate random event
             event = self._generate_random_event()
             if event:
                 events.append(event)
-            
-            # Advance time
-            time_advance = random.uniform(1.0, 5.0)  # 1-5 seconds between events
-            self.current_time += time_advance
-            
-            # Check for round changes
-            if self.current_time >= self.round_duration and len(events) < match_duration / 10:
-                events.extend(self._generate_round_change_events())
-                self.current_time = 0  # Reset for new round
+                self.current_time += random.uniform(5, 15)  # Random time between events
+            else:
+                self.current_time += 10  # No event, advance time
         
-        # End with match conclusion events
+        # Add conclusion events
         events.extend(self._generate_conclusion_events())
         
         return events
     
+    def _generate_round_loss_events(self, losing_athlete: int) -> List[Dict[str, Any]]:
+        """Generate events when an athlete loses due to 5 warnings"""
+        winning_athlete = 3 - losing_athlete  # 1 becomes 2, 2 becomes 1
+        
+        events = [
+            # Stop the clock
+            {"type": "clock", "time": self.current_time, "data": {"time": "0:00", "action": "stop"}},
+            # Set round winner
+            {"type": "winner_rounds", "time": self.current_time + 1, "data": {"round": self.current_round, "winner": winning_athlete}},
+            # End the match
+            {"type": "winner", "time": self.current_time + 2, "data": {"winner": winning_athlete}},
+            {"type": "winner_final", "time": self.current_time + 3, "data": {"winner": winning_athlete}}
+        ]
+        
+        return events
+    
     def _generate_setup_events(self) -> List[Dict[str, Any]]:
-        """Generate match setup events"""
+        """Generate initial setup events"""
         return [
-            {"type": "fight_loaded", "time": 0, "data": {}},
-            {"type": "athletes", "time": 1, "data": {}},
-            {"type": "match_config", "time": 2, "data": {}},
-            {"type": "fight_ready", "time": 3, "data": {}},
+            {"type": "fight_loaded", "time": 0},
+            {"type": "athletes", "time": 1},
+            {"type": "match_config", "time": 2},
+            {"type": "fight_ready", "time": 3},
             {"type": "round", "time": 4, "data": {"round": 1}},
             {"type": "clock", "time": 5, "data": {"time": "2:00", "action": "start"}}
         ]
@@ -167,24 +195,39 @@ class EventSequenceGenerator:
     def _generate_random_event(self) -> Optional[Dict[str, Any]]:
         """Generate a random event based on scenario probabilities"""
         rand = random.random()
+        cumulative_prob = 0
         
-        if rand < self.scenario.point_probability:
-            return self._generate_point_event()
-        elif rand < self.scenario.point_probability + self.scenario.warning_probability:
+        # Check warning probability first (to respect limits)
+        if (self.athlete1_warnings_round < 5 and self.athlete2_warnings_round < 5 and 
+            rand < self.scenario.warning_probability):
             return self._generate_warning_event()
-        elif rand < self.scenario.point_probability + self.scenario.warning_probability + self.scenario.injury_probability:
+        cumulative_prob += self.scenario.warning_probability
+        
+        # Point probability
+        if rand < cumulative_prob + self.scenario.point_probability:
+            return self._generate_point_event()
+        cumulative_prob += self.scenario.point_probability
+        
+        # Injury probability
+        if rand < cumulative_prob + self.scenario.injury_probability:
             return self._generate_injury_event()
-        elif rand < self.scenario.point_probability + self.scenario.warning_probability + self.scenario.injury_probability + self.scenario.break_probability:
+        cumulative_prob += self.scenario.injury_probability
+        
+        # Break probability
+        if rand < cumulative_prob + self.scenario.break_probability:
             return self._generate_break_event()
-        elif rand < self.scenario.point_probability + self.scenario.warning_probability + self.scenario.injury_probability + self.scenario.break_probability + self.scenario.challenge_probability:
+        cumulative_prob += self.scenario.break_probability
+        
+        # Challenge probability
+        if rand < cumulative_prob + self.scenario.challenge_probability:
             return self._generate_challenge_event()
         
         return None
     
     def _generate_point_event(self) -> Dict[str, Any]:
         """Generate a point event"""
-        athlete = random.choice([1, 2])  # Blue or Red
-        point_type = random.choice([1, 2, 3, 4, 5])  # Different point types
+        athlete = random.choice([1, 2])
+        point_type = random.choice([1, 2, 3, 4])  # Different point types
         
         return {
             "type": "points",
@@ -196,8 +239,24 @@ class EventSequenceGenerator:
         }
     
     def _generate_warning_event(self) -> Dict[str, Any]:
-        """Generate a warning event"""
-        athlete = random.choice([1, 2])
+        """Generate a warning event (respecting 5-warning limit)"""
+        # Only give warnings to athletes who haven't reached the limit
+        available_athletes = []
+        if self.athlete1_warnings_round < 5:
+            available_athletes.append(1)
+        if self.athlete2_warnings_round < 5:
+            available_athletes.append(2)
+        
+        if not available_athletes:
+            return None  # No warnings possible
+        
+        athlete = random.choice(available_athletes)
+        
+        # Update warning count
+        if athlete == 1:
+            self.athlete1_warnings_round += 1
+        else:
+            self.athlete2_warnings_round += 1
         
         return {
             "type": "warnings",
@@ -253,9 +312,15 @@ class EventSequenceGenerator:
     
     def _generate_round_change_events(self) -> List[Dict[str, Any]]:
         """Generate round change events"""
+        # Reset warning counts for new round
+        self.athlete1_warnings_round = 0
+        self.athlete2_warnings_round = 0
+        self.current_round += 1
+        self.round_start_time = self.current_time
+        
         return [
             {"type": "clock", "time": self.current_time, "data": {"time": "0:00", "action": "stop"}},
-            {"type": "round", "time": self.current_time + 1, "data": {"round": 2}},
+            {"type": "round", "time": self.current_time + 1, "data": {"round": self.current_round}},
             {"type": "clock", "time": self.current_time + 2, "data": {"time": "2:00", "action": "start"}}
         ]
     
@@ -495,7 +560,7 @@ class AutomatedSimulator:
     def _execute_event(self, event: Dict[str, Any]):
         """Execute a single event"""
         event_type = event["type"]
-        data = event["data"]
+        data = event.get("data", {})
         
         try:
             if not self.simulator:
@@ -523,13 +588,32 @@ class AutomatedSimulator:
                 won = data.get("won", True)
                 self.simulator.event_generator.challenge(source, accepted, won)
             elif event_type == "round":
-                self.simulator.event_generator.round(data["round"])
+                self.simulator.change_round(data["round"])
             elif event_type == "clock":
                 self.simulator.event_generator.clock(data["time"], data.get("action"))
             elif event_type == "winner":
                 self.simulator.event_generator.winner(f"Athlete {data['winner']}")
             elif event_type == "winner_final":
                 self.simulator.event_generator.winner_final(f"Athlete {data['winner']}")
+            elif event_type == "winner_rounds":
+                # Handle round winner events
+                round_num = data.get("round", 1)
+                winner = data.get("winner", 1)
+                self.simulator.event_generator.winner_rounds(
+                    round1_winner=winner if round_num == 1 else 0,
+                    round2_winner=winner if round_num == 2 else 0,
+                    round3_winner=winner if round_num == 3 else 0
+                )
+            elif event_type == "fight_loaded":
+                self.simulator.event_generator.fight_loaded()
+            elif event_type == "athletes":
+                # This would need athlete data, handled in setup
+                pass
+            elif event_type == "match_config":
+                # This would need config data, handled in setup
+                pass
+            elif event_type == "fight_ready":
+                self.simulator.event_generator.fight_ready()
             
             self._update_status(f"Executed {event_type} event")
             
