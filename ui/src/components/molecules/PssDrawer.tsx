@@ -11,8 +11,9 @@ import TabIcons from '../atoms/TabIcons';
 import LottieIcon from '../atoms/LottieIcon';
 import FlagManagementPanel from './FlagManagementPanel';
 import ScoreboardManager from './ScoreboardManager';
+import SimulationPanel from './SimulationPanel';
 import { invoke as tauriInvoke } from '@tauri-apps/api/core';
-import { algorithmAnimation, locationAnimation, scoreboardAnimation, crossbowAnimation } from '../../assets/icons/json';
+import { algorithmAnimation, locationAnimation, scoreboardAnimation, crossbowAnimation, robotAnimation } from '../../assets/icons/json';
 import { TriggersTable } from './TriggersTable';
 
 // Use the proper Tauri v2 invoke function with fallback
@@ -1051,6 +1052,12 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
             label: 'Scoreboard',
             icon: <LottieIcon animationData={scoreboardAnimation} size={32} />,
             content: <ScoreboardContent />
+          },
+          {
+            id: 'simulation',
+            label: 'Simulation',
+            icon: <LottieIcon animationData={robotAnimation} size={32} />,
+            content: <SimulationPanel />
           },
           {
             id: 'triggers',

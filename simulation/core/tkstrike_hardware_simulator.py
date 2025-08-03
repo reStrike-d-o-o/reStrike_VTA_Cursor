@@ -261,6 +261,26 @@ class tkStrikeHardwareSimulator:
         self.clock_thread = None
         self.clock_running = False
         
+        # Load configuration
+        self.config = self._load_config()
+    
+    def _load_config(self) -> Dict[str, Any]:
+        """Load configuration from config file"""
+        try:
+            import os
+            config_path = os.path.join(os.path.dirname(__file__), '..', 'config', 'config.json')
+            with open(config_path, 'r') as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"Warning: Could not load config file: {e}")
+            # Return default config
+            return {
+                "simulator": {
+                    "default_host": "127.0.0.1",
+                    "default_port": 8888
+                }
+            }
+        
     def connect(self) -> bool:
         """Connect to tkStrikeGen3"""
         try:

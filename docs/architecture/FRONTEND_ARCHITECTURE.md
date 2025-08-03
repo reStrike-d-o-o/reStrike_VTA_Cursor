@@ -24,6 +24,7 @@ A cross-platform Instant Video Replay Manager designed for taekwondo referees, e
 - **AI Data Analyzer**: Parses and interprets structured event data from UDP
 - **Licensing System**: One-time online activation tied to hardware
 - **Logging System**: All logs saved in dedicated 'log' folder
+- **Hardware Simulator**: Integrated PSS v2.3 protocol simulator for testing and development
 
 ### User Stories
 - **As a referee**, I want the most recent recording to play instantly when a challenge is raised
@@ -88,6 +89,59 @@ The Flag Management System provides comprehensive IOC (International Olympic Com
 - **Components**: `FlagImage`, `getFlagConfig`, `getFlagUrl`
 - **Fallbacks**: Emoji flags for all 253 IOC codes
 - **Error Handling**: Automatic fallback to emoji on image load failure
+
+### Simulation Integration
+
+#### Overview
+The frontend includes comprehensive simulation support through a dedicated Simulation tab in the PSS drawer, providing one-click access to the tkStrike Hardware Simulator.
+
+#### Simulation Panel Component
+- **File**: `ui/src/components/molecules/SimulationPanel.tsx`
+- **Integration**: PSS drawer tab with robot animation icon
+- **Features**: Real-time status monitoring, scenario selection, manual event control
+
+#### Key Features
+- **Status Monitoring**: Real-time display of simulation status and connection state
+- **Scenario Control**: Dropdown selection for basic, championship, and training matches
+- **Mode Selection**: Demo, random events, and interactive modes
+- **Manual Events**: One-click buttons for points, warnings, and injury time
+- **Duration Control**: Configurable simulation duration (10-600 seconds)
+
+#### Tauri Integration
+```typescript
+// Simulation commands
+const startSimulation = async () => {
+  const result = await invoke('simulation_start', {
+    mode: selectedMode,
+    scenario: selectedScenario,
+    duration: duration
+  });
+};
+
+const stopSimulation = async () => {
+  const result = await invoke('simulation_stop');
+};
+
+const sendManualEvent = async (eventType: string, params: any) => {
+  const result = await invoke('simulation_send_event', {
+    eventType,
+    params
+  });
+};
+```
+
+#### UI Components
+- **Status Indicators**: Green/red dots for running/stopped states
+- **Control Buttons**: Start/stop simulation with loading states
+- **Event Buttons**: Manual event generation (Blue Punch, Red Head Kick, etc.)
+- **Real-time Updates**: 2-second polling for status updates
+- **Error Handling**: Comprehensive error display and success messages
+
+#### Integration Points
+- **PSS Drawer**: Simulation tab with robot animation icon
+- **Event Table**: Real-time event display from simulator
+- **Scoreboard Overlay**: Live score updates from simulation events
+- **WebSocket**: Real-time event broadcasting to connected clients
 
 #### Flag Storage
 - **Directory**: `ui/public/assets/flags/`

@@ -4202,4 +4202,121 @@ pub async fn obs_list_scenes(app: State<'_, Arc<App>>) -> Result<serde_json::Val
     }))
 }
 
+// Simulation commands
+#[tauri::command]
+pub async fn simulation_start(
+    mode: String,
+    scenario: String,
+    duration: u32,
+    _app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("Starting simulation: mode={}, scenario={}, duration={}", mode, scenario, duration);
+    
+    // For now, we'll use a simple approach by calling the Python simulator
+    // In a production environment, you might want to integrate this more tightly
+    let result = std::process::Command::new("python")
+        .args(&[
+            "simulation/main.py",
+            "--mode", &mode,
+            "--scenario", &scenario,
+            "--duration", &duration.to_string(),
+            "--host", "127.0.0.1",
+            "--port", "8888"
+        ])
+        .spawn();
+    
+    match result {
+        Ok(_) => Ok(serde_json::json!({
+            "success": true,
+            "message": "Simulation started successfully"
+        })),
+        Err(e) => Ok(serde_json::json!({
+            "success": false,
+            "error": format!("Failed to start simulation: {}", e)
+        }))
+    }
+}
+
+#[tauri::command]
+pub async fn simulation_stop(_app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    log::info!("Stopping simulation");
+    
+    // Kill any running Python simulation processes
+    let result = std::process::Command::new("taskkill")
+        .args(&["/F", "/IM", "python.exe"])
+        .output();
+    
+    match result {
+        Ok(_) => Ok(serde_json::json!({
+            "success": true,
+            "message": "Simulation stopped successfully"
+        })),
+        Err(e) => Ok(serde_json::json!({
+            "success": false,
+            "error": format!("Failed to stop simulation: {}", e)
+        }))
+    }
+}
+
+#[tauri::command]
+pub async fn simulation_get_status(_app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    log::info!("Getting simulation status");
+    
+    // Check if Python simulation process is running
+    let result = std::process::Command::new("tasklist")
+        .args(&["/FI", "IMAGENAME eq python.exe"])
+        .output();
+    
+    let is_running = match result {
+        Ok(output) => {
+            let output_str = String::from_utf8_lossy(&output.stdout);
+            output_str.contains("python.exe")
+        },
+        Err(_) => false
+    };
+    
+    Ok(serde_json::json!({
+        "success": true,
+        "data": {
+            "isRunning": is_running,
+            "isConnected": is_running, // Assume connected if running
+            "currentScenario": if is_running { "Unknown" } else { "None" },
+            "currentMode": if is_running { "Unknown" } else { "None" },
+            "eventsSent": 0, // Would need to track this separately
+            "lastEvent": if is_running { "Unknown" } else { "None" }
+        }
+    }))
+}
+
+#[tauri::command]
+pub async fn simulation_send_event(
+    event_type: String,
+    params: serde_json::Value,
+    _app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("Sending simulation event: type={}, params={:?}", event_type, params);
+    
+    // For now, we'll use a simple approach by calling the Python simulator
+    // In a production environment, you might want to integrate this more tightly
+    let result = std::process::Command::new("python")
+        .args(&[
+            "simulation/main.py",
+            "--mode", "interactive",
+            "--host", "127.0.0.1",
+            "--port", "8888"
+        ])
+        .spawn();
+    
+    match result {
+        Ok(_) => Ok(serde_json::json!({
+            "success": true,
+            "message": format!("{} event sent successfully", event_type)
+        })),
+        Err(e) => Ok(serde_json::json!({
+            "success": false,
+            "error": format!("Failed to send {} event: {}", event_type, e)
+        }))
+    }
+}
+
 
