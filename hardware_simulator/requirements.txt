@@ -1,0 +1,29 @@
+# tkStrike Hardware Simulator Requirements
+# This simulator uses only Python standard library modules
+# No external dependencies are required
+
+# Python version requirement
+# Python >= 3.7
+
+# Standard library modules used:
+# - socket (UDP communication)
+# - time (timing and delays)
+# - json (configuration loading)
+# - random (random event generation)
+# - argparse (command line arguments)
+# - threading (clock simulation)
+# - typing (type hints)
+# - dataclasses (data structures)
+# - enum (enumerations)
+# - uuid (unique identifiers)
+# - datetime (timestamps)
+
+# Optional dependencies for enhanced functionality:
+# - logging (if you want to enable file logging)
+# - unittest (for running tests)
+
+# Development dependencies:
+# - pytest (for running tests)
+# - black (code formatting)
+# - flake8 (linting)
+# - mypy (type checking) 
