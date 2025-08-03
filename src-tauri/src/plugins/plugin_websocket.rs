@@ -1,11 +1,14 @@
-use std::sync::{Arc, Mutex};
-use tokio::sync::mpsc;
-use serde::{Deserialize, Serialize};
-use crate::types::{AppError, AppResult};
+use crate::types::{AppResult, AppError};
 use crate::plugins::plugin_udp::PssEvent;
+use tokio::sync::mpsc;
+use std::sync::{Arc, Mutex};
 use chrono::Utc;
+use serde::{Serialize, Deserialize};
+use tokio_tungstenite::accept_async;
+use tokio::net::TcpListener;
+use futures_util::{SinkExt, StreamExt};
+use tokio_tungstenite::tungstenite::Message;
 
-/// WebSocket message types
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum WebSocketMessage {
     PssEvent {
@@ -28,8 +31,7 @@ pub enum WebSocketMessage {
     },
 }
 
-/// WebSocket client connection
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct WebSocketClient {
     pub id: String,
     pub sender: tokio::sync::mpsc::UnboundedSender<WebSocketMessage>,
@@ -44,14 +46,13 @@ impl WebSocketClient {
             connected_at: Utc::now(),
         }
     }
-    
+
     pub fn send(&self, message: WebSocketMessage) -> Result<(), AppError> {
         self.sender.send(message)
-            .map_err(|_| AppError::ConfigError("Failed to send WebSocket message".to_string()))
+            .map_err(|e| AppError::ConfigError(format!("Failed to send message to client {}: {}", self.id, e)))
     }
 }
 
-/// WebSocket server for real-time PSS events
 pub struct WebSocketServer {
     clients: Arc<Mutex<Vec<WebSocketClient>>>,
     event_tx: mpsc::UnboundedSender<PssEvent>,
@@ -100,37 +101,30 @@ impl WebSocketServer {
         clients: Arc<Mutex<Vec<WebSocketClient>>>,
         event_tx: mpsc::UnboundedSender<PssEvent>,
     ) -> AppResult<()> {
-        // For now, we'll use a simple TCP server approach
-        // In a real implementation, you'd use a proper WebSocket library like tokio-tungstenite
-        
-        let listener = tokio::net::TcpListener::bind(format!("127.0.0.1:{}", port)).await
+        let addr = format!("127.0.0.1:{}", port);
+        let listener = TcpListener::bind(&addr).await
             .map_err(|e| AppError::ConfigError(format!("Failed to bind WebSocket server: {}", e)))?;
         
-        log::info!("🔌 WebSocket server listening on port {}", port);
+        log::info!("🔌 WebSocket server listening on {}", addr);
         
-        loop {
-            match listener.accept().await {
-                Ok((socket, addr)) => {
-                    log::info!("🔌 New WebSocket connection from {}", addr);
-                    
-                    let clients_clone = clients.clone();
-                    let event_tx_clone = event_tx.clone();
-                    
-                    tokio::spawn(async move {
-                        if let Err(e) = Self::handle_client(socket, addr, clients_clone, event_tx_clone).await {
-                            log::error!("Client handler error: {}", e);
-                        }
-                    });
+        while let Ok((stream, addr)) = listener.accept().await {
+            log::info!("🔌 New WebSocket connection from {}", addr);
+            
+            let clients_clone = clients.clone();
+            let event_tx_clone = event_tx.clone();
+            
+            tokio::spawn(async move {
+                if let Err(e) = Self::handle_client(stream, addr, clients_clone, event_tx_clone).await {
+                    log::error!("Client handler error: {}", e);
                 }
-                Err(e) => {
-                    log::error!("Failed to accept WebSocket connection: {}", e);
-                }
-            }
+            });
         }
+        
+        Ok(())
     }
     
     async fn handle_client(
-        _socket: tokio::net::TcpStream,
+        stream: tokio::net::TcpStream,
         addr: std::net::SocketAddr,
         clients: Arc<Mutex<Vec<WebSocketClient>>>,
         _event_tx: mpsc::UnboundedSender<PssEvent>,
@@ -138,8 +132,11 @@ impl WebSocketServer {
         let client_id = format!("client_{}", addr);
         log::info!("🔌 New WebSocket client connected: {}", client_id);
         
-        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<WebSocketMessage>();
+        // Accept the WebSocket connection
+        let ws_stream = accept_async(stream).await
+            .map_err(|e| AppError::ConfigError(format!("Failed to accept WebSocket: {}", e)))?;
         
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<WebSocketMessage>();
         let client = WebSocketClient::new(client_id.clone(), tx.clone());
         
         // Add client to the list
@@ -155,22 +152,70 @@ impl WebSocketServer {
             log::error!("Failed to send connection status: {}", e);
         }
         
-        // Handle incoming messages (simplified for now)
-        while let Some(message) = rx.recv().await {
-            // Process the message and potentially forward PSS events
-            match message {
-                WebSocketMessage::PssEvent { .. } => {
-                    // Forward to PSS event system
-                    log::debug!("Received PSS event from client {}", client_id);
-                }
-                _ => {
-                    log::debug!("Received message from client {}: {:?}", client_id, message);
+        // Split the WebSocket stream
+        let (mut ws_sender, mut ws_receiver) = ws_stream.split();
+        
+        // Handle incoming WebSocket messages
+        let tx_clone = tx.clone();
+        let client_id_receive = client_id.clone();
+        let client_id_send = client_id.clone();
+        let clients_clone = clients.clone();
+        
+        let receive_task = tokio::spawn(async move {
+            while let Some(msg) = ws_receiver.next().await {
+                match msg {
+                    Ok(Message::Text(text)) => {
+                        log::debug!("Received text message from {}: {}", client_id_receive, text);
+                        // Handle text messages (ping, etc.)
+                        if text == "ping" {
+                            if let Err(e) = tx_clone.send(WebSocketMessage::ConnectionStatus {
+                                connected: true,
+                                timestamp: Utc::now().to_rfc3339(),
+                            }) {
+                                log::error!("Failed to send ping response: {}", e);
+                                break;
+                            }
+                        }
+                    }
+                    Ok(Message::Close(_)) => {
+                        log::info!("Client {} requested close", client_id_receive);
+                        break;
+                    }
+                    Ok(Message::Ping(_data)) => {
+                        // Note: We can't send pong here because ws_sender is moved
+                        log::debug!("Received ping from {}", client_id_receive);
+                    }
+                    Err(e) => {
+                        log::error!("WebSocket error from {}: {}", client_id_receive, e);
+                        break;
+                    }
+                    _ => {}
                 }
             }
+        });
+        
+        // Handle outgoing messages
+        let send_task = tokio::spawn(async move {
+            while let Some(message) = rx.recv().await {
+                let json = serde_json::to_string(&message)
+                    .map_err(|e| AppError::ConfigError(format!("Failed to serialize message: {}", e)))?;
+                
+                if let Err(e) = ws_sender.send(Message::Text(json)).await {
+                    log::error!("Failed to send message to {}: {}", client_id_send, e);
+                    break;
+                }
+            }
+            Ok::<(), AppError>(())
+        });
+        
+        // Wait for either task to complete
+        tokio::select! {
+            _ = receive_task => {},
+            _ = send_task => {},
         }
         
         // Remove client when disconnected
-        clients.lock().unwrap().retain(|c| c.id != client_id);
+        clients_clone.lock().unwrap().retain(|c| c.id != client_id);
         log::info!("🔌 Client {} disconnected", client_id);
         
         Ok(())
@@ -249,9 +294,9 @@ impl WebSocketServer {
                 };
                 
                 let athlete_str = match athlete {
-                    1 => "Blue".to_string(),
-                    2 => "Red".to_string(),
-                    _ => "Unknown".to_string(),
+                    1 => "blue".to_string(),
+                    2 => "red".to_string(),
+                    _ => "unknown".to_string(),
                 };
                 
                 WebSocketMessage::PssEvent {
@@ -267,107 +312,132 @@ impl WebSocketServer {
             }
             
             PssEvent::Warnings { athlete1_warnings, athlete2_warnings } => {
-                // Create warning events for both athletes
-                let mut messages = Vec::new();
-                
-                if *athlete1_warnings > 0 {
-                    messages.push(WebSocketMessage::PssEvent {
-                        event_type: "wg1".to_string(),
-                        event_code: "R".to_string(),
-                        athlete: "blue".to_string(),
-                        round: 1,
-                        time: "0:00".to_string(),
-                        timestamp: Utc::now().to_rfc3339(),
-                        raw_data: format!("wg1;{};wg2;{};", athlete1_warnings, athlete2_warnings),
-                        description: format!("blue warning ({})", athlete1_warnings),
-                    });
-                }
-                
-                if *athlete2_warnings > 0 {
-                    messages.push(WebSocketMessage::PssEvent {
-                        event_type: "wg2".to_string(),
-                        event_code: "R".to_string(),
-                        athlete: "red".to_string(),
-                        round: 1,
-                        time: "0:00".to_string(),
-                        timestamp: Utc::now().to_rfc3339(),
-                        raw_data: format!("wg1;{};wg2;{};", athlete1_warnings, athlete2_warnings),
-                        description: format!("red warning ({})", athlete2_warnings),
-                    });
-                }
-                
-                // Return the first message for now (in a real implementation, you'd send both)
-                messages.first().cloned().unwrap_or_else(|| WebSocketMessage::Error {
-                    message: "Invalid warning event".to_string(),
+                WebSocketMessage::PssEvent {
+                    event_type: "warnings".to_string(),
+                    event_code: "R".to_string(),
+                    athlete: "referee".to_string(),
+                    round: 1,
+                    time: "0:00".to_string(),
                     timestamp: Utc::now().to_rfc3339(),
-                })
+                    raw_data: format!("wg1;{};wg2;{}", athlete1_warnings, athlete2_warnings),
+                    description: format!("Warnings - Blue: {}, Red: {}", athlete1_warnings, athlete2_warnings),
+                }
+            }
+            
+            PssEvent::MatchConfig { number, category, weight, .. } => {
+                WebSocketMessage::PssEvent {
+                    event_type: "match_config".to_string(),
+                    event_code: "".to_string(),
+                    athlete: "".to_string(),
+                    round: 1,
+                    time: "0:00".to_string(),
+                    timestamp: Utc::now().to_rfc3339(),
+                    raw_data: format!("mch;{};{};{}", number, category, weight),
+                    description: format!("Match Config - #{} {} {}", number, category, weight),
+                }
+            }
+            
+            PssEvent::Athletes { athlete1_long, athlete2_long, athlete1_country, athlete2_country, .. } => {
+                WebSocketMessage::PssEvent {
+                    event_type: "athletes".to_string(),
+                    event_code: "".to_string(),
+                    athlete: "".to_string(),
+                    round: 1,
+                    time: "0:00".to_string(),
+                    timestamp: Utc::now().to_rfc3339(),
+                    raw_data: format!("at1;{};{};at2;{};{}", athlete1_long, athlete1_country, athlete2_long, athlete2_country),
+                    description: format!("Athletes - {} vs {}", athlete1_long, athlete2_long),
+                }
+            }
+            
+            PssEvent::CurrentScores { athlete1_score, athlete2_score } => {
+                WebSocketMessage::PssEvent {
+                    event_type: "current_scores".to_string(),
+                    event_code: "".to_string(),
+                    athlete: "".to_string(),
+                    round: 1,
+                    time: "0:00".to_string(),
+                    timestamp: Utc::now().to_rfc3339(),
+                    raw_data: format!("sc1;{};sc2;{}", athlete1_score, athlete2_score),
+                    description: format!("Scores - Blue: {}, Red: {}", athlete1_score, athlete2_score),
+                }
             }
             
             PssEvent::Clock { time, .. } => {
                 WebSocketMessage::PssEvent {
-                    event_type: "clk".to_string(),
-                    event_code: "T".to_string(),
-                    athlete: "referee".to_string(),
+                    event_type: "clock".to_string(),
+                    event_code: "".to_string(),
+                    athlete: "".to_string(),
                     round: 1,
                     time: time.clone(),
                     timestamp: Utc::now().to_rfc3339(),
-                    raw_data: format!("clk;{};", time),
+                    raw_data: format!("clk;{}", time),
                     description: format!("Clock: {}", time),
                 }
             }
             
             PssEvent::Round { current_round } => {
                 WebSocketMessage::PssEvent {
-                    event_type: "rnd".to_string(),
-                    event_code: "R".to_string(),
-                    athlete: "referee".to_string(),
+                    event_type: "round".to_string(),
+                    event_code: "".to_string(),
+                    athlete: "".to_string(),
                     round: *current_round,
                     time: "0:00".to_string(),
                     timestamp: Utc::now().to_rfc3339(),
-                    raw_data: format!("rnd;{};", current_round),
-                    description: format!("Round {}", current_round),
+                    raw_data: format!("rnd;{}", current_round),
+                    description: format!("Round: {}", current_round),
                 }
             }
             
-            PssEvent::Challenge { source, .. } => {
-                let athlete = match source {
-                    0 => "referee",
-                    1 => "blue",
-                    2 => "red",
-                    _ => "referee",
-                };
-                
+            PssEvent::FightLoaded => {
                 WebSocketMessage::PssEvent {
-                    event_type: format!("ch{}", source),
-                    event_code: "R".to_string(),
-                    athlete: athlete.to_string(),
+                    event_type: "fight_loaded".to_string(),
+                    event_code: "".to_string(),
+                    athlete: "".to_string(),
                     round: 1,
                     time: "0:00".to_string(),
                     timestamp: Utc::now().to_rfc3339(),
-                    raw_data: format!("ch{};", source),
-                    description: format!("{} challenge", athlete),
+                    raw_data: "pre;FightLoaded".to_string(),
+                    description: "Fight Loaded".to_string(),
                 }
             }
             
-            PssEvent::HitLevel { athlete, level } => {
-                let athlete_str = if *athlete == 1 { "blue" } else { "red" };
-                
+            PssEvent::FightReady => {
                 WebSocketMessage::PssEvent {
-                    event_type: format!("hl{}", athlete),
-                    event_code: "H".to_string(),
-                    athlete: athlete_str.to_string(),
+                    event_type: "fight_ready".to_string(),
+                    event_code: "".to_string(),
+                    athlete: "".to_string(),
                     round: 1,
                     time: "0:00".to_string(),
                     timestamp: Utc::now().to_rfc3339(),
-                    raw_data: format!("hl{};{};", athlete, level),
-                    description: format!("{} hit (level {})", athlete_str, level),
+                    raw_data: "rdy;FightReady".to_string(),
+                    description: "Fight Ready".to_string(),
+                }
+            }
+            
+            PssEvent::Raw(raw_msg) => {
+                WebSocketMessage::PssEvent {
+                    event_type: "raw".to_string(),
+                    event_code: "".to_string(),
+                    athlete: "".to_string(),
+                    round: 1,
+                    time: "0:00".to_string(),
+                    timestamp: Utc::now().to_rfc3339(),
+                    raw_data: raw_msg.clone(),
+                    description: format!("Raw PSS: {}", raw_msg),
                 }
             }
             
             _ => {
-                WebSocketMessage::Error {
-                    message: format!("Unhandled PSS event: {:?}", event),
+                WebSocketMessage::PssEvent {
+                    event_type: "unknown".to_string(),
+                    event_code: "".to_string(),
+                    athlete: "".to_string(),
+                    round: 1,
+                    time: "0:00".to_string(),
                     timestamp: Utc::now().to_rfc3339(),
+                    raw_data: format!("{:?}", event),
+                    description: "Unknown event type".to_string(),
                 }
             }
         }
@@ -378,11 +448,8 @@ impl WebSocketServer {
     }
 }
 
-/// Initialize the WebSocket plugin
 pub fn init() -> Result<(), Box<dyn std::error::Error>> {
-    log::info!("🔌 Initializing WebSocket plugin...");
     Ok(())
 }
 
-// Re-export the main plugin type
 pub type WebSocketPlugin = WebSocketServer; 

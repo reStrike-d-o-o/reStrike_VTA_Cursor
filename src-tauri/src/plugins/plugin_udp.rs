@@ -704,7 +704,7 @@ impl UdpServer {
         database: &DatabasePlugin,
         current_session_id: &Arc<Mutex<Option<i64>>>,
         current_match_id: &Arc<Mutex<Option<i64>>>,
-        athlete_cache: &Arc<Mutex<std::collections::HashMap<String, i64>>>,
+        _athlete_cache: &Arc<Mutex<std::collections::HashMap<String, i64>>>,
         event_type_cache: &Arc<Mutex<std::collections::HashMap<String, i64>>>,
         event: &PssEvent,
         recent_hit_levels: &Arc<Mutex<std::collections::HashMap<u8, Vec<(u8, std::time::SystemTime)>>>>,
