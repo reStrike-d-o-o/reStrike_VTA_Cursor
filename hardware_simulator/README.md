@@ -60,6 +60,34 @@ This simulator allows you to:
 
 ## 🎮 Usage
 
+### Integration with reStrikeVTA
+
+This simulator is designed to work with the reStrikeVTA project. To test the integration:
+
+1. **Start reStrikeVTA**:
+   ```bash
+   cd src-tauri
+   cargo tauri dev
+   ```
+
+2. **Run Quick Test**:
+   ```bash
+   cd hardware_simulator
+   python quick_test.py
+   ```
+
+3. **Run Integration Tests**:
+   ```bash
+   python test_integration.py
+   ```
+
+4. **Use Interactive Mode**:
+   ```bash
+   python tkstrike_hardware_simulator.py --interactive
+   ```
+
+For detailed integration instructions, see `INTEGRATION_GUIDE.md`.
+
 ### Basic Usage
 
 ```bash
