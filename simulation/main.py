@@ -17,6 +17,7 @@ from tkstrike_hardware_simulator import (
     MatchScenario, 
     SimulatorMode
 )
+from automated_simulator import AutomatedSimulator
 
 class SimulationManager:
     """Manages simulation operations for reStrikeVTA integration"""
@@ -25,6 +26,7 @@ class SimulationManager:
         self.host = host
         self.port = port
         self.simulator = None
+        self.automated_simulator = None
         self.is_running = False
         
     def start_simulator(self) -> bool:
@@ -39,11 +41,36 @@ class SimulationManager:
             print(f"Failed to start simulator: {e}")
             return False
     
+    def start_automated_simulator(self) -> bool:
+        """Initialize and start the automated simulator"""
+        try:
+            self.automated_simulator = AutomatedSimulator(self.host, self.port)
+            
+            # Set up callbacks for status updates
+            def status_callback(message: str):
+                print(f"[AUTO] {message}")
+            
+            def progress_callback(current: int, total: int):
+                print(f"[AUTO] Progress: {current}/{total} matches completed")
+            
+            self.automated_simulator.set_callbacks(status_callback, progress_callback)
+            
+            if self.automated_simulator.start_simulator():
+                self.is_running = True
+                return True
+            return False
+        except Exception as e:
+            print(f"Failed to start automated simulator: {e}")
+            return False
+    
     def stop_simulator(self):
         """Stop and cleanup the simulator"""
         if self.simulator:
             self.simulator.disconnect()
             self.simulator = None
+        if self.automated_simulator:
+            self.automated_simulator.stop_simulator()
+            self.automated_simulator = None
         self.is_running = False
     
     def load_scenario(self, scenario: str) -> bool:
@@ -82,6 +109,27 @@ class SimulationManager:
         except Exception as e:
             print(f"Failed to run random events: {e}")
             return False
+    
+    def run_automated_simulation(self, scenario_name: str, custom_config: Optional[Dict[str, Any]] = None) -> bool:
+        """Run automated simulation with specified scenario"""
+        if not self.automated_simulator or not self.is_running:
+            return False
+        
+        try:
+            return self.automated_simulator.run_automated_simulation(scenario_name, custom_config)
+        except Exception as e:
+            print(f"Failed to run automated simulation: {e}")
+            return False
+    
+    def get_automated_scenarios(self) -> list:
+        """Get list of available automated scenarios"""
+        try:
+            # Create a temporary automated simulator just to get scenarios
+            temp_simulator = AutomatedSimulator()
+            return temp_simulator.get_available_scenarios()
+        except Exception as e:
+            print(f"Failed to get automated scenarios: {e}")
+            return []
     
     def add_point(self, athlete: int, point_type: int) -> bool:
         """Add a point for an athlete"""
@@ -129,12 +177,21 @@ class SimulationManager:
     
     def get_status(self) -> Dict[str, Any]:
         """Get current simulation status"""
-        return {
+        status = {
             "is_running": self.is_running,
             "host": self.host,
             "port": self.port,
-            "connected": self.simulator.connected if self.simulator else False
+            "connected": False,
+            "automated_scenarios": self.get_automated_scenarios()
         }
+        
+        if self.simulator:
+            status["connected"] = self.simulator.connected
+        elif self.automated_simulator:
+            status["connected"] = self.automated_simulator.simulator.connected if self.automated_simulator.simulator else False
+            status["current_scenario"] = self.automated_simulator.current_scenario.name if self.automated_simulator.current_scenario else None
+        
+        return status
 
 def main():
     """Main function for command line usage"""
@@ -143,18 +200,38 @@ def main():
     parser = argparse.ArgumentParser(description="tkStrike Hardware Simulator")
     parser.add_argument("--host", default="127.0.0.1", help="Target host")
     parser.add_argument("--port", type=int, default=8888, help="Target port")
-    parser.add_argument("--mode", choices=["demo", "random", "interactive"], default="demo", help="Simulation mode")
-    parser.add_argument("--scenario", choices=["basic", "championship", "training"], default="basic", help="Match scenario")
+    parser.add_argument("--mode", choices=["demo", "random", "interactive", "automated"], default="demo", help="Simulation mode")
+    parser.add_argument("--scenario", choices=["basic", "championship", "training", "quick_test", "training_session", "tournament_day", "championship"], default="basic", help="Match scenario")
     parser.add_argument("--duration", type=int, default=30, help="Duration for demo/random mode")
+    parser.add_argument("--list-scenarios", action="store_true", help="List available automated scenarios")
     
     args = parser.parse_args()
     
     # Create simulation manager
     manager = SimulationManager(args.host, args.port)
     
-    if not manager.start_simulator():
-        print("Failed to start simulator")
-        return 1
+    # List scenarios if requested
+    if args.list_scenarios:
+        print("Available Automated Scenarios:")
+        print("=" * 50)
+        scenarios = manager.get_automated_scenarios()
+        for scenario in scenarios:
+            print(f"• {scenario['display_name']}")
+            print(f"  Description: {scenario['description']}")
+            print(f"  Matches: {scenario['match_count']}")
+            print(f"  Est. Duration: {scenario['estimated_duration']} seconds")
+            print()
+        return 0
+    
+    # Start appropriate simulator
+    if args.mode == "automated":
+        if not manager.start_automated_simulator():
+            print("Failed to start automated simulator")
+            return 1
+    else:
+        if not manager.start_simulator():
+            print("Failed to start simulator")
+            return 1
     
     try:
         if args.mode == "demo":
@@ -167,6 +244,9 @@ def main():
             print("Starting interactive mode...")
             if manager.simulator:
                 manager.simulator.interactive_mode()
+        elif args.mode == "automated":
+            print(f"Running automated {args.scenario} simulation...")
+            manager.run_automated_simulation(args.scenario)
     except KeyboardInterrupt:
         print("\nSimulation interrupted by user")
     finally:

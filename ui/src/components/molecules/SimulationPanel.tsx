@@ -26,6 +26,15 @@ interface SimulationStatus {
   currentMode: string;
   eventsSent: number;
   lastEvent: string;
+  automatedScenarios?: AutomatedScenario[];
+}
+
+interface AutomatedScenario {
+  name: string;
+  display_name: string;
+  description: string;
+  match_count: number;
+  estimated_duration: number;
 }
 
 interface SimulationPanelProps {
@@ -48,16 +57,40 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
+  
+  // Automated simulation state
+  const [showAutomated, setShowAutomated] = useState(false);
+  const [selectedAutomatedScenario, setSelectedAutomatedScenario] = useState('');
+  const [automatedScenarios, setAutomatedScenarios] = useState<AutomatedScenario[]>([]);
+  const [progress, setProgress] = useState({ current: 0, total: 0 });
 
   // Load simulation status
   const loadStatus = async () => {
     try {
-      const result = await invoke('simulation_get_status');
+      const result = await invoke('simulation_get_detailed_status');
       if (result.success) {
         setStatus(result.data);
+        if (result.data.automatedScenarios) {
+          setAutomatedScenarios(result.data.automatedScenarios);
+        }
       }
     } catch (error) {
       console.error('Failed to load simulation status:', error);
+    }
+  };
+
+  // Load automated scenarios
+  const loadAutomatedScenarios = async () => {
+    try {
+      const result = await invoke('simulation_get_scenarios');
+      if (result.success) {
+        setAutomatedScenarios(result.data);
+        if (result.data.length > 0 && !selectedAutomatedScenario) {
+          setSelectedAutomatedScenario(result.data[0].name);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load automated scenarios:', error);
     }
   };
 
@@ -82,6 +115,30 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
       }
     } catch (error) {
       setError(`Failed to start simulation: ${error}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Start automated simulation
+  const startAutomatedSimulation = async () => {
+    try {
+      setIsLoading(true);
+      setError('');
+      setSuccess('');
+
+      const result = await invoke('simulation_run_automated', {
+        scenario_name: selectedAutomatedScenario
+      });
+
+      if (result.success) {
+        setSuccess(`Automated ${selectedAutomatedScenario} simulation started successfully!`);
+        await loadStatus();
+      } else {
+        setError(result.error || 'Failed to start automated simulation');
+      }
+    } catch (error) {
+      setError(`Failed to start automated simulation: ${error}`);
     } finally {
       setIsLoading(false);
     }
@@ -112,9 +169,6 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
   // Send manual event
   const sendManualEvent = async (eventType: string, params: any) => {
     try {
-      setError('');
-      setSuccess('');
-
       const result = await invoke('simulation_send_event', {
         eventType,
         params
@@ -131,94 +185,154 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
     }
   };
 
-  // Load status on component mount
+  // Load initial data
   useEffect(() => {
     loadStatus();
-    const interval = setInterval(loadStatus, 2000); // Update every 2 seconds
+    loadAutomatedScenarios();
+  }, []);
+
+  // Auto-refresh status
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadStatus();
+    }, 2000);
+
     return () => clearInterval(interval);
   }, []);
 
+  // Clear messages after 5 seconds
+  useEffect(() => {
+    if (success || error) {
+      const timer = setTimeout(() => {
+        setSuccess('');
+        setError('');
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [success, error]);
+
   return (
     <div className={`space-y-6 ${className}`}>
-      {/* Status Section */}
-      <div className="bg-gray-800/50 rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-gray-100 mb-4">Simulation Status</h3>
-        
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <div className="flex items-center space-x-2">
-            <StatusDot 
-              color={status.isRunning ? 'bg-green-500' : 'bg-red-500'} 
-              size="w-3 h-3" 
-            />
-            <span className="text-sm text-gray-300">
-              {status.isRunning ? 'Running' : 'Stopped'}
-            </span>
-          </div>
-          
-          <div className="flex items-center space-x-2">
-            <StatusDot 
-              color={status.isConnected ? 'bg-green-500' : 'bg-red-500'} 
-              size="w-3 h-3" 
-            />
-            <span className="text-sm text-gray-300">
-              {status.isConnected ? 'Connected' : 'Disconnected'}
-            </span>
-          </div>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-3">
+          <Icon name="robot" className="w-6 h-6 text-blue-400" />
+          <h3 className="text-lg font-semibold text-gray-200">Simulation Control</h3>
         </div>
-
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <span className="text-gray-400">Scenario:</span>
-            <span className="text-gray-200 ml-2">{status.currentScenario}</span>
-          </div>
-          <div>
-            <span className="text-gray-400">Mode:</span>
-            <span className="text-gray-200 ml-2">{status.currentMode}</span>
-          </div>
-          <div>
-            <span className="text-gray-400">Events Sent:</span>
-            <span className="text-gray-200 ml-2">{status.eventsSent}</span>
-          </div>
-          <div>
-            <span className="text-gray-400">Last Event:</span>
-            <span className="text-gray-200 ml-2">{status.lastEvent}</span>
-          </div>
+        <div className="flex items-center space-x-2">
+          <StatusDot
+            color={status.isConnected ? 'bg-green-500' : 'bg-red-500'}
+            size="w-3 h-3"
+          />
+          <span className="text-xs text-gray-400">
+            {status.isConnected ? 'Connected' : 'Disconnected'}
+          </span>
         </div>
       </div>
 
-      {/* Control Section */}
-      <div className="bg-gray-800/50 rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-gray-100 mb-4">Simulation Control</h3>
-        
+      {/* Status Messages */}
+      {error && (
+        <div className="bg-red-900/20 border border-red-500/50 rounded-lg p-3">
+          <p className="text-red-400 text-sm">{error}</p>
+        </div>
+      )}
+      {success && (
+        <div className="bg-green-900/20 border border-green-500/50 rounded-lg p-3">
+          <p className="text-green-400 text-sm">{success}</p>
+        </div>
+      )}
+
+      {/* Mode Toggle */}
+      <div className="flex items-center justify-between">
+        <Label>Automated Simulation</Label>
+        <Toggle
+          checked={showAutomated}
+          onChange={setShowAutomated}
+          disabled={status.isRunning}
+        />
+      </div>
+
+      {showAutomated ? (
+        /* Automated Simulation Panel */
         <div className="space-y-4">
           {/* Scenario Selection */}
           <div>
-            <Label htmlFor="scenario" className="text-sm text-gray-300 mb-2 block">
-              Scenario
-            </Label>
+            <Label>Automated Scenario</Label>
             <select
-              id="scenario"
-              value={selectedScenario}
-              onChange={(e) => setSelectedScenario(e.target.value)}
-              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              aria-label="Select simulation scenario"
+              value={selectedAutomatedScenario}
+              onChange={(e) => setSelectedAutomatedScenario(e.target.value)}
+              disabled={status.isRunning || isLoading}
+              className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-gray-200 focus:border-blue-500 focus:outline-none"
+              aria-label="Select automated simulation scenario"
             >
-              <option value="basic">Basic Match</option>
-              <option value="championship">Championship Match</option>
-              <option value="training">Training Match</option>
+              {automatedScenarios.map((scenario) => (
+                <option key={scenario.name} value={scenario.name}>
+                  {scenario.display_name} ({scenario.match_count} matches, ~{Math.round(scenario.estimated_duration / 60)}min)
+                </option>
+              ))}
             </select>
+            {selectedAutomatedScenario && (
+              <p className="text-xs text-gray-400 mt-1">
+                {automatedScenarios.find(s => s.name === selectedAutomatedScenario)?.description}
+              </p>
+            )}
           </div>
 
+          {/* Progress Bar */}
+          {status.isRunning && progress.total > 0 && (
+            <div>
+              <div className="flex justify-between text-xs text-gray-400 mb-1">
+                <span>Progress</span>
+                <span>{progress.current}/{progress.total} matches</span>
+              </div>
+              <div className="w-full bg-gray-700 rounded-full h-2">
+                <div
+                  className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${(progress.current / progress.total) * 100}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Control Buttons */}
+          <div className="flex space-x-2">
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={startAutomatedSimulation}
+              disabled={status.isRunning || isLoading || !selectedAutomatedScenario}
+              className="flex-1"
+            >
+              {isLoading ? (
+                <div className="flex items-center space-x-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span>Starting...</span>
+                </div>
+              ) : (
+                <span>Start Automated</span>
+              )}
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={stopSimulation}
+              disabled={!status.isRunning || isLoading}
+            >
+              Stop
+            </Button>
+          </div>
+        </div>
+      ) : (
+        /* Manual Simulation Panel */
+        <div className="space-y-4">
           {/* Mode Selection */}
           <div>
-            <Label htmlFor="mode" className="text-sm text-gray-300 mb-2 block">
-              Mode
-            </Label>
+            <Label>Simulation Mode</Label>
             <select
-              id="mode"
               value={selectedMode}
               onChange={(e) => setSelectedMode(e.target.value)}
-              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={status.isRunning || isLoading}
+              className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-gray-200 focus:border-blue-500 focus:outline-none"
               aria-label="Select simulation mode"
             >
               <option value="demo">Demo</option>
@@ -227,136 +341,114 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
             </select>
           </div>
 
-          {/* Duration (for demo/random modes) */}
-          {selectedMode !== 'interactive' && (
-            <div>
-              <Label htmlFor="duration" className="text-sm text-gray-300 mb-2 block">
-                Duration (seconds)
-              </Label>
-              <Input
-                id="duration"
-                type="number"
-                value={duration}
-                onChange={(e) => setDuration(parseInt(e.target.value) || 30)}
-                min="10"
-                max="600"
-                className="w-full"
-              />
-            </div>
-          )}
+          {/* Scenario Selection */}
+          <div>
+            <Label>Scenario</Label>
+            <select
+              value={selectedScenario}
+              onChange={(e) => setSelectedScenario(e.target.value)}
+              disabled={status.isRunning || isLoading}
+              className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-gray-200 focus:border-blue-500 focus:outline-none"
+              aria-label="Select simulation scenario"
+            >
+              <option value="basic">Basic Match</option>
+              <option value="championship">Championship</option>
+              <option value="training">Training</option>
+            </select>
+          </div>
+
+          {/* Duration Input */}
+          <div>
+            <Label>Duration (seconds)</Label>
+            <Input
+              type="number"
+              value={duration}
+              onChange={(e) => setDuration(parseInt(e.target.value) || 30)}
+              disabled={status.isRunning || isLoading}
+              min={10}
+              max={600}
+            />
+          </div>
 
           {/* Control Buttons */}
-          <div className="flex space-x-3 pt-2">
+          <div className="flex space-x-2">
             <Button
+              variant="primary"
+              size="sm"
               onClick={startSimulation}
-              disabled={isLoading || status.isRunning}
+              disabled={status.isRunning || isLoading}
               className="flex-1"
             >
-              {isLoading ? 'Starting...' : 'Start Simulation'}
+              {isLoading ? (
+                <div className="flex items-center space-x-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span>Starting...</span>
+                </div>
+              ) : (
+                <span>Start Simulation</span>
+              )}
             </Button>
-            
             <Button
-              onClick={stopSimulation}
-              disabled={isLoading || !status.isRunning}
               variant="secondary"
-              className="flex-1"
+              size="sm"
+              onClick={stopSimulation}
+              disabled={!status.isRunning || isLoading}
             >
-              {isLoading ? 'Stopping...' : 'Stop Simulation'}
+              Stop
             </Button>
           </div>
-        </div>
-      </div>
 
-      {/* Manual Events Section */}
-      <div className="bg-gray-800/50 rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-gray-100 mb-4">Manual Events</h3>
-        <p className="text-sm text-gray-300 mb-4">
-          Send individual events manually (requires simulation to be running).
-        </p>
-        
-        <div className="grid grid-cols-2 gap-3">
-          <Button
-            onClick={() => sendManualEvent('point', { athlete: 1, pointType: 1 })}
-            disabled={!status.isRunning}
-            size="sm"
-            variant="outline"
-          >
-            Blue Punch
-          </Button>
-          
-          <Button
-            onClick={() => sendManualEvent('point', { athlete: 2, pointType: 3 })}
-            disabled={!status.isRunning}
-            size="sm"
-            variant="outline"
-          >
-            Red Head Kick
-          </Button>
-          
-          <Button
-            onClick={() => sendManualEvent('warning', { athlete: 1 })}
-            disabled={!status.isRunning}
-            size="sm"
-            variant="outline"
-          >
-            Blue Warning
-          </Button>
-          
-          <Button
-            onClick={() => sendManualEvent('warning', { athlete: 2 })}
-            disabled={!status.isRunning}
-            size="sm"
-            variant="outline"
-          >
-            Red Warning
-          </Button>
-          
-          <Button
-            onClick={() => sendManualEvent('injury', { athlete: 1, duration: 30 })}
-            disabled={!status.isRunning}
-            size="sm"
-            variant="outline"
-          >
-            Blue Injury
-          </Button>
-          
-          <Button
-            onClick={() => sendManualEvent('injury', { athlete: 2, duration: 30 })}
-            disabled={!status.isRunning}
-            size="sm"
-            variant="outline"
-          >
-            Red Injury
-          </Button>
-        </div>
-      </div>
-
-      {/* Messages */}
-      {error && (
-        <div className="bg-red-900/20 border border-red-500/50 rounded-lg p-4">
-          <div className="flex items-center space-x-2">
-            <Icon name="alert-circle" className="text-red-400" />
-            <span className="text-red-300">{error}</span>
-          </div>
-        </div>
-      )}
-      
-      {success && (
-        <div className="bg-green-900/20 border border-green-500/50 rounded-lg p-4">
-          <div className="flex items-center space-x-2">
-            <Icon name="check-circle" className="text-green-400" />
-            <span className="text-green-300">{success}</span>
+          {/* Manual Event Buttons */}
+          <div>
+            <Label>Manual Events</Label>
+            <div className="grid grid-cols-2 gap-2 mt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => sendManualEvent('point', { athlete: 1, point_type: 1 })}
+                disabled={status.isRunning || isLoading}
+              >
+                Blue Punch
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => sendManualEvent('point', { athlete: 2, point_type: 3 })}
+                disabled={status.isRunning || isLoading}
+              >
+                Red Head Kick
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => sendManualEvent('warning', { athlete: 1 })}
+                disabled={status.isRunning || isLoading}
+              >
+                Blue Warning
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => sendManualEvent('injury', { athlete: 1, duration: 60 })}
+                disabled={status.isRunning || isLoading}
+              >
+                Injury Time
+              </Button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Information */}
-      <div className="bg-blue-900/20 border border-blue-500/50 rounded-lg p-4">
-        <h4 className="text-sm font-medium text-blue-200 mb-2">About Simulation</h4>
-        <p className="text-xs text-blue-300">
-          The tkStrike Hardware Simulator sends realistic PSS v2.3 protocol events to test reStrikeVTA functionality. 
-          Events are sent to UDP port 8888 and will appear in the Event Table and Scoreboard Overlay.
-        </p>
+      {/* Current Status */}
+      <div className="bg-gray-800/50 rounded-lg p-3">
+        <h4 className="text-sm font-medium text-gray-300 mb-2">Current Status</h4>
+        <div className="space-y-1 text-xs text-gray-400">
+          <div>Running: {status.isRunning ? 'Yes' : 'No'}</div>
+          <div>Scenario: {status.currentScenario}</div>
+          <div>Mode: {status.currentMode}</div>
+          <div>Events Sent: {status.eventsSent}</div>
+          <div>Last Event: {status.lastEvent}</div>
+        </div>
       </div>
     </div>
   );

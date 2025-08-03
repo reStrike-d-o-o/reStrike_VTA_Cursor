@@ -4212,8 +4212,6 @@ pub async fn simulation_start(
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Starting simulation: mode={}, scenario={}, duration={}", mode, scenario, duration);
     
-    // For now, we'll use a simple approach by calling the Python simulator
-    // In a production environment, you might want to integrate this more tightly
     let result = std::process::Command::new("python")
         .args(&[
             "simulation/main.py",
@@ -4241,7 +4239,6 @@ pub async fn simulation_start(
 pub async fn simulation_stop(_app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Stopping simulation");
     
-    // Kill any running Python simulation processes
     let result = std::process::Command::new("taskkill")
         .args(&["/F", "/IM", "python.exe"])
         .output();
@@ -4262,7 +4259,6 @@ pub async fn simulation_stop(_app: State<'_, Arc<App>>) -> Result<serde_json::Va
 pub async fn simulation_get_status(_app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting simulation status");
     
-    // Check if Python simulation process is running
     let result = std::process::Command::new("tasklist")
         .args(&["/FI", "IMAGENAME eq python.exe"])
         .output();
@@ -4296,8 +4292,6 @@ pub async fn simulation_send_event(
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Sending simulation event: type={}, params={:?}", event_type, params);
     
-    // For now, we'll use a simple approach by calling the Python simulator
-    // In a production environment, you might want to integrate this more tightly
     let result = std::process::Command::new("python")
         .args(&[
             "simulation/main.py",
@@ -4317,6 +4311,176 @@ pub async fn simulation_send_event(
             "error": format!("Failed to send {} event: {}", event_type, e)
         }))
     }
+}
+
+// New automated simulation commands
+#[tauri::command]
+pub async fn simulation_get_scenarios(_app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    log::info!("Getting available automated scenarios");
+    
+    let result = std::process::Command::new("python")
+        .args(&[
+            "simulation/main.py",
+            "--list-scenarios"
+        ])
+        .output();
+    
+    match result {
+        Ok(output) => {
+            let output_str = String::from_utf8_lossy(&output.stdout);
+            log::info!("Scenarios output: {}", output_str);
+            
+            // Parse the scenarios from the output
+            let scenarios = parse_scenarios_from_output(&output_str);
+            
+            Ok(serde_json::json!({
+                "success": true,
+                "data": scenarios
+            }))
+        },
+        Err(e) => Ok(serde_json::json!({
+            "success": false,
+            "error": format!("Failed to get scenarios: {}", e)
+        }))
+    }
+}
+
+#[tauri::command]
+pub async fn simulation_run_automated(
+    scenario_name: String,
+    custom_config: Option<serde_json::Value>,
+    _app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("Running automated simulation: scenario={}", scenario_name);
+    
+    let mut args = vec![
+        "simulation/main.py".to_string(),
+        "--mode".to_string(),
+        "automated".to_string(),
+        "--scenario".to_string(),
+        scenario_name.clone(),
+        "--host".to_string(),
+        "127.0.0.1".to_string(),
+        "--port".to_string(),
+        "8888".to_string(),
+    ];
+    
+    // Add custom config if provided
+    if let Some(config) = custom_config {
+        if let Some(config_str) = config.as_str() {
+            args.extend_from_slice(&["--config".to_string(), config_str.to_string()]);
+        }
+    }
+    
+    let result = std::process::Command::new("python")
+        .args(&args)
+        .spawn();
+    
+    match result {
+        Ok(_) => Ok(serde_json::json!({
+            "success": true,
+            "message": format!("Automated {} simulation started successfully", scenario_name)
+        })),
+        Err(e) => Ok(serde_json::json!({
+            "success": false,
+            "error": format!("Failed to start automated simulation: {}", e)
+        }))
+    }
+}
+
+#[tauri::command]
+pub async fn simulation_get_detailed_status(_app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    log::info!("Getting detailed simulation status");
+    
+    // Check if Python process is running
+    let process_result = std::process::Command::new("tasklist")
+        .args(&["/FI", "IMAGENAME eq python.exe"])
+        .output();
+    
+    let is_running = match process_result {
+        Ok(output) => {
+            let output_str = String::from_utf8_lossy(&output.stdout);
+            output_str.contains("python.exe")
+        },
+        Err(_) => false
+    };
+    
+    // Get scenarios if not running
+    let scenarios = if !is_running {
+        let scenarios_result = std::process::Command::new("python")
+            .args(&["simulation/main.py", "--list-scenarios"])
+            .output();
+        
+        match scenarios_result {
+            Ok(output) => {
+                let output_str = String::from_utf8_lossy(&output.stdout);
+                parse_scenarios_from_output(&output_str)
+            },
+            Err(_) => vec![]
+        }
+    } else {
+        vec![]
+    };
+    
+    Ok(serde_json::json!({
+        "success": true,
+        "data": {
+            "isRunning": is_running,
+            "isConnected": is_running,
+            "currentScenario": if is_running { "Running" } else { "None" },
+            "currentMode": if is_running { "Automated" } else { "None" },
+            "eventsSent": 0,
+            "lastEvent": if is_running { "Processing" } else { "None" },
+            "automatedScenarios": scenarios
+        }
+    }))
+}
+
+// Helper function to parse scenarios from command output
+fn parse_scenarios_from_output(output: &str) -> Vec<serde_json::Value> {
+    let mut scenarios = Vec::new();
+    let lines: Vec<&str> = output.lines().collect();
+    
+    let mut current_scenario = serde_json::Map::new();
+    let mut in_scenario = false;
+    
+    for line in lines {
+        let line = line.trim();
+        
+        if line.starts_with("• ") {
+            // New scenario
+            if in_scenario && !current_scenario.is_empty() {
+                scenarios.push(serde_json::Value::Object(current_scenario.clone()));
+            }
+            
+            current_scenario.clear();
+            in_scenario = true;
+            
+            let name = line[2..].trim();
+            current_scenario.insert("display_name".to_string(), serde_json::Value::String(name.to_string()));
+            current_scenario.insert("name".to_string(), serde_json::Value::String(name.to_lowercase().replace(" ", "_")));
+        } else if line.starts_with("  Description: ") && in_scenario {
+            let description = line[14..].trim();
+            current_scenario.insert("description".to_string(), serde_json::Value::String(description.to_string()));
+        } else if line.starts_with("  Matches: ") && in_scenario {
+            let matches = line[10..].trim();
+            if let Ok(count) = matches.parse::<i32>() {
+                current_scenario.insert("match_count".to_string(), serde_json::Value::Number(count.into()));
+            }
+        } else if line.starts_with("  Est. Duration: ") && in_scenario {
+            let duration = line[16..].trim();
+            if let Ok(seconds) = duration.parse::<i32>() {
+                current_scenario.insert("estimated_duration".to_string(), serde_json::Value::Number(seconds.into()));
+            }
+        }
+    }
+    
+    // Add the last scenario
+    if in_scenario && !current_scenario.is_empty() {
+        scenarios.push(serde_json::Value::Object(current_scenario));
+    }
+    
+    scenarios
 }
 
 
