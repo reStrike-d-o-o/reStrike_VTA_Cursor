@@ -1661,7 +1661,7 @@ impl Migration for Migration8 {
             
             // Match config validation
             ("mch", "2.3", "match_number_positive", "range", "1-9999", "Match number must be positive"),
-            ("mch", "2.3", "total_rounds_range", "range", "1-5", "Total rounds must be between 1 and 5"),
+            ("mch", "2.3", "total_rounds_range", "range", "0-5", "Total rounds must be between 0 and 5"),
             ("mch", "2.3", "round_duration_positive", "range", "1-9999", "Round duration must be positive"),
         ];
 
