@@ -5,7 +5,7 @@
     "description": "Hardware simulator for tkStrikeGen3 implementing PSS v2.3 protocol",
     "protocol_version": "2.3",
     "default_host": "127.0.0.1",
-    "default_port": 6000
+    "default_port": 8888
   },
   "scenarios": {
     "basic": {
