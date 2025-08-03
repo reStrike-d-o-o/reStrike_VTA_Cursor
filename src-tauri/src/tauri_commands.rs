@@ -4214,7 +4214,7 @@ pub async fn simulation_start(
     
     let result = std::process::Command::new("python")
         .args(&[
-            "simulation/main.py",
+            "../simulation/main.py",
             "--mode", &mode,
             "--scenario", &scenario,
             "--duration", &duration.to_string(),
@@ -4294,7 +4294,7 @@ pub async fn simulation_send_event(
     
     let result = std::process::Command::new("python")
         .args(&[
-            "simulation/main.py",
+            "../simulation/main.py",
             "--mode", "interactive",
             "--host", "127.0.0.1",
             "--port", "8888"
@@ -4320,7 +4320,7 @@ pub async fn simulation_get_scenarios(_app: State<'_, Arc<App>>) -> Result<serde
     
     let result = std::process::Command::new("python")
         .args(&[
-            "simulation/main.py",
+            "../simulation/main.py",
             "--list-scenarios"
         ])
         .output();
@@ -4354,7 +4354,7 @@ pub async fn simulation_run_automated(
     log::info!("Running automated simulation: scenario={}", scenario_name);
     
     let mut args = vec![
-        "simulation/main.py".to_string(),
+        "../simulation/main.py".to_string(),
         "--mode".to_string(),
         "automated".to_string(),
         "--scenario".to_string(),
@@ -4405,21 +4405,17 @@ pub async fn simulation_run_automated(
                     Err(_) => false
                 };
                 
-                // Get scenarios if not running
-                let scenarios = if !is_running {
-                    let scenarios_result = std::process::Command::new("python")
-                        .args(&["simulation/main.py", "--list-scenarios"])
-                        .output();
-                    
-                    match scenarios_result {
-                        Ok(output) => {
-                            let output_str = String::from_utf8_lossy(&output.stdout);
-                            parse_scenarios_from_output(&output_str)
-                        },
-                        Err(_) => vec![]
-                    }
-                } else {
-                    vec![]
+                // Always try to get scenarios
+                let scenarios_result = std::process::Command::new("python")
+                    .args(&["../simulation/main.py", "--list-scenarios"])
+                    .output();
+                
+                let scenarios = match scenarios_result {
+                    Ok(output) => {
+                        let output_str = String::from_utf8_lossy(&output.stdout);
+                        parse_scenarios_from_output(&output_str)
+                    },
+                    Err(_) => vec![]
                 };
                 
                 Ok(serde_json::json!({
@@ -4442,7 +4438,7 @@ pub async fn simulation_run_automated(
                 
                 let result = std::process::Command::new("python")
                     .args(&[
-                        "simulation/main.py",
+                        "../simulation/main.py",
                         "--self-test"
                     ])
                     .output();
@@ -4484,7 +4480,7 @@ pub async fn simulation_run_automated(
             pub async fn simulation_get_self_test_report(_app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
                 log::info!("Getting self-test report");
                 
-                let report_path = "simulation/self_test_report.md";
+                let report_path = "../simulation/self_test_report.md";
                 let result = std::fs::read_to_string(report_path);
                 
                 match result {
@@ -4508,7 +4504,7 @@ pub async fn simulation_run_automated(
                 
                 let result = std::process::Command::new("python")
                     .args(&[
-                        "simulation/main.py",
+                        "../simulation/main.py",
                         "--list-test-categories"
                     ])
                     .output();

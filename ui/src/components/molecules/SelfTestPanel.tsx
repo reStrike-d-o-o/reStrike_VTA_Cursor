@@ -57,15 +57,37 @@ const SelfTestPanel: React.FC<SelfTestPanelProps> = ({ className = '' }) => {
       setIsLoadingCategories(true);
       const result = await invoke('simulation_get_self_test_categories');
       
-      if (result.success) {
+      if (result.success && result.data.categories && result.data.categories.length > 0) {
         setAvailableCategories(result.data.categories);
         // Select all categories by default
         setSelectedCategories(result.data.categories);
       } else {
-        setError('Failed to load test categories');
+        // Fallback categories if backend fails
+        const fallbackCategories = [
+          'Backend Services',
+          'Frontend Integration', 
+          'Simulation System',
+          'Data Flow',
+          'UI Components',
+          'Performance'
+        ];
+        setAvailableCategories(fallbackCategories);
+        setSelectedCategories(fallbackCategories);
+        setError('Using fallback categories - backend categories failed to load');
       }
     } catch (error) {
-      setError(`Failed to load categories: ${error}`);
+      // Fallback categories if backend fails
+      const fallbackCategories = [
+        'Backend Services',
+        'Frontend Integration', 
+        'Simulation System',
+        'Data Flow',
+        'UI Components',
+        'Performance'
+      ];
+      setAvailableCategories(fallbackCategories);
+      setSelectedCategories(fallbackCategories);
+      setError(`Using fallback categories - failed to load: ${error}`);
     } finally {
       setIsLoadingCategories(false);
     }
@@ -178,13 +200,13 @@ const SelfTestPanel: React.FC<SelfTestPanelProps> = ({ className = '' }) => {
     loadCategories();
   }, []);
 
-  // Clear messages after 10 seconds
+  // Clear messages after 5 seconds
   useEffect(() => {
     if (success || error) {
       const timer = setTimeout(() => {
         setSuccess('');
         setError('');
-      }, 10000);
+      }, 5000);
       return () => clearTimeout(timer);
     }
   }, [success, error]);
@@ -220,7 +242,7 @@ const SelfTestPanel: React.FC<SelfTestPanelProps> = ({ className = '' }) => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <Icon name="test-tube" className="w-6 h-6 text-purple-400" />
+          <Icon name="🧪" className="w-6 h-6 text-purple-400" />
           <h3 className="text-lg font-semibold text-gray-200">System Self-Test</h3>
         </div>
         <div className="flex items-center space-x-2">
@@ -236,8 +258,14 @@ const SelfTestPanel: React.FC<SelfTestPanelProps> = ({ className = '' }) => {
 
       {/* Status Messages */}
       {error && (
-        <div className="bg-red-900/20 border border-red-500/50 rounded-lg p-3">
-          <p className="text-red-400 text-sm">{error}</p>
+        <div className={`rounded-lg p-3 ${
+          error.includes('fallback') 
+            ? 'bg-yellow-900/20 border border-yellow-500/50' 
+            : 'bg-red-900/20 border border-red-500/50'
+        }`}>
+          <p className={`text-sm ${
+            error.includes('fallback') ? 'text-yellow-400' : 'text-red-400'
+          }`}>{error}</p>
         </div>
       )}
       {success && (
@@ -371,7 +399,7 @@ const SelfTestPanel: React.FC<SelfTestPanelProps> = ({ className = '' }) => {
             </div>
           ) : (
             <div className="flex items-center space-x-2">
-              <Icon name="play" className="w-4 h-4" />
+              <Icon name="▶️" className="w-4 h-4" />
               <span>{showSelective ? 'Run Selective Test' : 'Run Self-Test'}</span>
             </div>
           )}
@@ -399,27 +427,27 @@ const SelfTestPanel: React.FC<SelfTestPanelProps> = ({ className = '' }) => {
         <h4 className="text-md font-semibold text-gray-200 mb-3">Test Categories</h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
           <div className="flex items-center space-x-2">
-            <Icon name="server" className="w-4 h-4 text-blue-400" />
+            <Icon name="🖥️" className="w-4 h-4 text-blue-400" />
             <span className="text-gray-300">Backend Services</span>
           </div>
           <div className="flex items-center space-x-2">
-            <Icon name="monitor" className="w-4 h-4 text-green-400" />
+            <Icon name="🖥️" className="w-4 h-4 text-green-400" />
             <span className="text-gray-300">Frontend Integration</span>
           </div>
           <div className="flex items-center space-x-2">
-            <Icon name="robot" className="w-4 h-4 text-purple-400" />
+            <Icon name="🤖" className="w-4 h-4 text-purple-400" />
             <span className="text-gray-300">Simulation System</span>
           </div>
           <div className="flex items-center space-x-2">
-            <Icon name="database" className="w-4 h-4 text-yellow-400" />
+            <Icon name="🗄️" className="w-4 h-4 text-yellow-400" />
             <span className="text-gray-300">Data Flow</span>
           </div>
           <div className="flex items-center space-x-2">
-            <Icon name="layout" className="w-4 h-4 text-pink-400" />
+            <Icon name="📱" className="w-4 h-4 text-pink-400" />
             <span className="text-gray-300">UI Components</span>
           </div>
           <div className="flex items-center space-x-2">
-            <Icon name="gauge" className="w-4 h-4 text-orange-400" />
+            <Icon name="📊" className="w-4 h-4 text-orange-400" />
             <span className="text-gray-300">Performance</span>
           </div>
         </div>

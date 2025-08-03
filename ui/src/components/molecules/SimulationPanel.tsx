@@ -218,7 +218,7 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <Icon name="robot" className="w-6 h-6 text-blue-400" />
+          <Icon name="🤖" className="w-6 h-6 text-blue-400" />
           <h3 className="text-lg font-semibold text-gray-200">Simulation Control</h3>
         </div>
         <div className="flex items-center space-x-2">
