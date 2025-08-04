@@ -190,6 +190,47 @@ class ScoreboardOverlay {
     }
   }
 
+  // Apply new match effect (typewriter animation for new matches)
+  applyNewMatchEffect() {
+    console.log('🎬 Applying new match effect');
+    
+    // Add a subtle animation to indicate new match data
+    const elements = [
+      this.svg.getElementById('player1Name'),
+      this.svg.getElementById('player2Name'),
+      this.svg.getElementById('player1Score'),
+      this.svg.getElementById('player2Score'),
+      this.svg.getElementById('currentRound'),
+      this.svg.getElementById('matchTimer')
+    ];
+    
+    elements.forEach((element, index) => {
+      if (element) {
+        // Add a brief flash effect
+        element.style.transition = 'all 0.3s ease';
+        element.style.transform = 'scale(1.05)';
+        element.style.filter = 'brightness(1.2)';
+        
+        setTimeout(() => {
+          element.style.transform = 'scale(1)';
+          element.style.filter = 'brightness(1)';
+        }, 300 + (index * 50)); // Stagger the animations
+      }
+    });
+    
+    // Reset scores and timer to initial state
+    this.updateScore('blue', 0);
+    this.updateScore('red', 0);
+    this.updateRound(1);
+    this.updateTimer(2, 0); // Default 2:00 timer
+    this.updatePenalties('blue', null, 0);
+    this.updatePenalties('red', null, 0);
+    this.updateRoundWins('blue', 0);
+    this.updateRoundWins('red', 0);
+    
+    console.log('✅ New match effect applied');
+  }
+
   // Update combined match info (weight, division, category)
   updateMatchInfo(weight, division, category) {
     const matchInfoElement = this.svg.getElementById('matchInfo');
