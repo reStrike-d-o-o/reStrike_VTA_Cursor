@@ -1102,6 +1102,7 @@ impl UdpServer {
             PssEvent::Round { .. } => "R".to_string(), // Round
             PssEvent::FightLoaded => "R".to_string(), // Fight loaded
             PssEvent::FightReady => "R".to_string(), // Fight ready
+            PssEvent::Supervision { .. } => "R".to_string(), // Supervision
             PssEvent::Raw(raw_msg) => {
                 // Try to extract event code from raw messages for better categorization
                 if raw_msg.starts_with("avt;") {
