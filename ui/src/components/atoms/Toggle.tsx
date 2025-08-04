@@ -6,7 +6,7 @@ export interface ToggleProps extends React.InputHTMLAttributes<HTMLInputElement>
 }
 
 const Toggle = React.forwardRef<HTMLInputElement, ToggleProps>(
-  ({ label, labelPosition = 'right', className = '', onChange, ...props }, ref) => {
+  ({ label = '', labelPosition = 'right', className = '', onChange, ...props }, ref) => {
     const handleClick = (e: React.MouseEvent) => {
       console.log('Toggle handleClick called!', { label, labelPosition });
       // Prevent the click from bubbling up

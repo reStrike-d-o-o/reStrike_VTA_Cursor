@@ -362,6 +362,7 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
                     <div className="flex items-center justify-between">
                       <Label>Automated Simulation</Label>
                       <Toggle
+                        label=""
                         checked={showAutomated}
                         onChange={(e) => setShowAutomated(e.target.checked)}
                         disabled={status.isRunning}
@@ -370,6 +371,7 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
                     <div className="flex items-center justify-between">
                       <Label>System Self-Test</Label>
                       <Toggle
+                        label=""
                         checked={showSelfTest}
                         onChange={(e) => setShowSelfTest(e.target.checked)}
                         disabled={status.isRunning}
