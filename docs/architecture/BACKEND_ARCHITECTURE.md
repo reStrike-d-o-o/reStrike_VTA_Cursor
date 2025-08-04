@@ -749,6 +749,89 @@ impl UdpPlugin {
 }
 ```
 
+##### **Panic Prevention and Defensive Programming**
+
+The UDP Plugin implements comprehensive panic prevention and defensive programming patterns to ensure robust operation:
+
+**1. JSON Serialization Error Handling**
+```rust
+// Safely serialize JSON with error handling
+match serde_json::to_string(&event_json) {
+    Ok(json_string) => {
+        log::info!("📤 Emitting event JSON: {}", json_string);
+        
+        // Emit to Tauri frontend
+        if let Err(e) = event_tx.send(event.clone()) {
+            log::warn!("⚠️ Failed to send PSS event to internal channel: {}", e);
+        }
+        
+        // Emit to frontend via core app's unified event emission
+        crate::core::app::App::emit_pss_event(event_json);
+        
+        // Stream log to frontend for Live Data panel
+        let log_message = format!("🎯 UDP-EVENT: {:?}", event);
+        crate::core::app::App::emit_log_event(log_message);
+    }
+    Err(e) => {
+        log::error!("❌ Failed to serialize PSS event to JSON: {}", e);
+        log::error!("❌ Event that failed: {:?}", event);
+        
+        // Still try to send the event to internal channel
+        if let Err(e) = event_tx.send(event.clone()) {
+            log::warn!("⚠️ Failed to send PSS event to internal channel: {}", e);
+        }
+    }
+}
+```
+
+**2. Defensive Programming in Event Conversion**
+```rust
+fn convert_pss_event_to_json(event: &PssEvent) -> serde_json::Value {
+    // Add defensive programming to handle any potential issues
+    match event {
+        PssEvent::Clock { time, action } => {
+            // Defensive programming for clock events
+            let safe_time = time.as_str();
+            let safe_action = action.as_ref().map(|a| a.as_str()).unwrap_or("");
+            let description = format!("Clock: {} {:?}", safe_time, safe_action);
+            
+            serde_json::json!({
+                "type": "clock",
+                "time": safe_time,
+                "action": safe_action,
+                "description": description,
+                "timestamp": chrono::Utc::now().timestamp_millis()
+            })
+        }
+        PssEvent::Raw(message) => {
+            // Defensive programming for raw messages
+            let safe_message = message.as_str();
+            let description = format!("Raw message: {}", safe_message);
+            
+            serde_json::json!({
+                "type": "raw",
+                "message": safe_message,
+                "description": description,
+                "timestamp": chrono::Utc::now().timestamp_millis()
+            })
+        }
+        // ... other event types with similar defensive patterns
+    }
+}
+```
+
+**3. Error Recovery Strategies**
+- **Graceful Degradation**: Continue operation when serialization fails
+- **Event Preservation**: Ensure events reach internal channels even if JSON serialization fails
+- **Comprehensive Logging**: Detailed error logging for debugging
+- **Safe String Handling**: Use `as_str()` and `unwrap_or("")` for potentially problematic strings
+
+**4. Benefits of Defensive Programming**
+- **Panic Prevention**: Eliminates application crashes from serialization errors
+- **Data Integrity**: Ensures events are processed even when JSON conversion fails
+- **Debugging Support**: Comprehensive error logging for troubleshooting
+- **System Reliability**: Robust operation under various error conditions
+
 #### OBS Plugin
 ```rust
 pub struct ObsPlugin {

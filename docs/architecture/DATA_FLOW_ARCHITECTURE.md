@@ -953,6 +953,338 @@ Event Stream
 
 ---
 
+## 🎯 Manual Override Detection System
+
+### Overview
+The manual override detection system provides intelligent detection and handling of manual changes made in the external PSS software. This system ensures that manual overrides (score changes, round changes, time corrections, warning adjustments) are properly detected and handled without disrupting normal event processing.
+
+### Detection Methods
+
+#### **1. Manual Round Change Detection**
+```javascript
+// Detect manual round changes
+function isManualRoundChange(event) {
+    // Check if this is a round change during stopped clock
+    if (isClockStopped() && event.type === 'round') {
+        return true;
+    }
+    
+    // Check for rapid round changes (multiple within 5 seconds)
+    const recentRoundEvents = getRecentEvents('round', 5000);
+    return recentRoundEvents.length >= 2;
+}
+```
+
+**Detection Criteria:**
+- **Round changes during stopped clock**: Indicates manual intervention
+- **Rapid round changes**: Multiple round changes within 5 seconds
+- **Pattern analysis**: Unusual round change patterns
+
+#### **2. Manual Score Change Detection**
+```javascript
+// Detect manual score changes
+function isManualScoreChange(event, newBlueScore, newRedScore) {
+    // 1. Score change during stopped clock
+    if (isClockStopped() && event.type === 'points') {
+        return true;
+    }
+    
+    // 2. Score change during time correction
+    if (hasRecentTimeCorrection() && event.type === 'points') {
+        return true;
+    }
+    
+    // 3. Large score jump (3 or more points)
+    const scoreJump = calculateScoreJump(newBlueScore, newRedScore);
+    if (scoreJump >= 3) {
+        return true;
+    }
+    
+    // 4. Rapid point messages
+    if (hasRapidPointMessages()) {
+        return true;
+    }
+    
+    return false;
+}
+```
+
+**Detection Criteria:**
+- **Score changes during stopped clock**: Manual intervention during paused time
+- **Score changes during time correction**: Changes made during `clk;XX:XX;corr` events
+- **Large score jumps**: Unusual score increases (3+ points at once)
+- **Rapid point messages**: Multiple point events within 2 seconds
+
+#### **3. Manual Time Change Detection**
+```javascript
+// Detect manual time changes
+function isManualTimeChange(event) {
+    // Check for time correction action
+    if (event.type === 'clock' && event.action === 'corr') {
+        return true;
+    }
+    return false;
+}
+```
+
+**Detection Criteria:**
+- **Time correction events**: `clk;XX:XX;corr` messages indicate manual time adjustments
+- **Time changes during stopped periods**: Unusual time modifications
+
+#### **4. Manual Warning Change Detection**
+```javascript
+// Detect manual warning changes
+function isManualWarningChange(event, newBlueWarnings, newRedWarnings) {
+    // Warning change during stopped clock
+    if (isClockStopped()) {
+        return true;
+    }
+    
+    // Warning change during time correction
+    if (hasRecentTimeCorrection()) {
+        return true;
+    }
+    
+    // Unusual warning pattern (multiple warnings in quick succession)
+    const recentWarningEvents = getRecentEvents('warnings', 3000);
+    return recentWarningEvents.length >= 2;
+}
+```
+
+**Detection Criteria:**
+- **Warning changes during stopped clock**: Manual intervention during paused time
+- **Warning changes during time correction**: Changes made during time correction events
+- **Rapid warning changes**: Multiple warning events within 3 seconds
+
+### State Tracking System
+
+#### **Clock State Management**
+```javascript
+const manualOverrideState = {
+    // Clock state tracking
+    clockState: 'stopped', // 'running', 'stopped'
+    lastClockTime: null,
+    lastClockAction: null,
+    
+    // Recent events tracking (last 10 events for pattern detection)
+    recentEvents: [],
+    maxRecentEvents: 10,
+    
+    // Manual change detection
+    lastManualRoundChange: null,
+    lastManualScoreChange: null,
+    lastManualTimeChange: null,
+    
+    // Score tracking for jump detection
+    lastBlueScore: 0,
+    lastRedScore: 0,
+    
+    // Warning tracking
+    lastBlueWarnings: 0,
+    lastRedWarnings: 0,
+    
+    // Time correction tracking
+    hasRecentTimeCorrection: false,
+    timeCorrectionThreshold: 5000, // 5 seconds
+    lastTimeCorrection: null
+};
+```
+
+#### **Event Pattern Analysis**
+```javascript
+// Safely check for rapid point messages
+function hasRapidPointMessages() {
+    const recentPointEvents = getRecentEvents('points', 2000);
+    return recentPointEvents.length >= 2;
+}
+
+// Safely calculate score jump
+function calculateScoreJump(newBlueScore, newRedScore) {
+    const blueJump = Math.abs(newBlueScore - lastBlueScore);
+    const redJump = Math.abs(newRedScore - lastRedScore);
+    return Math.max(blueJump, redJump);
+}
+```
+
+### Handling Strategies
+
+#### **1. Manual Round Change Handling**
+```javascript
+// Handle manual round change (preserve all data)
+function handleManualRoundChange(event) {
+    // Update round number but preserve all other data
+    scoreboardInstance.updateRound(event.current_round);
+    
+    // DO NOT reset scores, warnings, or other data
+    // This is the key difference from normal round changes
+}
+```
+
+**Key Behavior:**
+- **Update round number**: Change the displayed round
+- **Preserve scores**: Keep current scores intact
+- **Preserve warnings**: Keep current warnings intact
+- **Preserve time**: Keep current time intact
+
+#### **2. Manual Score Change Handling**
+```javascript
+// Handle manual score change (accept immediately)
+function handleManualScoreChange(event, newBlueScore, newRedScore) {
+    // Update scores immediately
+    scoreboardInstance.updateScores(newBlueScore, newRedScore);
+    
+    // Update tracking state
+    manualOverrideState.lastBlueScore = newBlueScore;
+    manualOverrideState.lastRedScore = newRedScore;
+}
+```
+
+**Key Behavior:**
+- **Immediate acceptance**: Accept manual score changes without validation
+- **Real-time updates**: Update scoreboard immediately
+- **State tracking**: Update internal tracking state
+
+#### **3. Manual Time Change Handling**
+```javascript
+// Handle manual time change (accept immediately)
+function handleManualTimeChange(event) {
+    // Update time immediately
+    const timeParts = event.time.split(':');
+    const minutes = parseInt(timeParts[0]) || 0;
+    const seconds = parseInt(timeParts[1]) || 0;
+    scoreboardInstance.updateTimer(minutes, seconds);
+}
+```
+
+**Key Behavior:**
+- **Immediate acceptance**: Accept manual time changes
+- **Time correction tracking**: Track time correction events
+- **Real-time updates**: Update scoreboard immediately
+
+#### **4. Manual Warning Change Handling**
+```javascript
+// Handle manual warning change (accept immediately)
+function handleManualWarningChange(event, newBlueWarnings, newRedWarnings) {
+    // Update warnings immediately
+    scoreboardInstance.updatePenalties(newBlueWarnings, newRedWarnings);
+    
+    // Update tracking state
+    manualOverrideState.lastBlueWarnings = newBlueWarnings;
+    manualOverrideState.lastRedWarnings = newRedWarnings;
+}
+```
+
+**Key Behavior:**
+- **Immediate acceptance**: Accept manual warning changes
+- **Real-time updates**: Update scoreboard immediately
+- **State tracking**: Update internal tracking state
+
+### Error Handling and Safety
+
+#### **Robust Error Handling**
+```javascript
+// Safely get current timestamp
+function getCurrentTimestamp() {
+    try {
+        return Date.now();
+    } catch (error) {
+        console.warn('⚠️ Error getting timestamp:', error);
+        return 0;
+    }
+}
+
+// Safely add event to recent events
+function addToRecentEvents(event) {
+    try {
+        manualOverrideState.recentEvents.push({
+            event: event,
+            timestamp: getCurrentTimestamp()
+        });
+        
+        // Keep only the last N events
+        if (manualOverrideState.recentEvents.length > maxRecentEvents) {
+            manualOverrideState.recentEvents.shift();
+        }
+    } catch (error) {
+        console.warn('⚠️ Error adding to recent events:', error);
+    }
+}
+```
+
+#### **Panic Prevention**
+- **Try-catch blocks**: All detection functions wrapped in error handling
+- **Safe utility functions**: Fallback values for all operations
+- **Defensive programming**: Safe data access patterns
+- **Graceful degradation**: Continue operation when errors occur
+
+### Integration with Event Processing
+
+#### **Event Handler Integration**
+```javascript
+// Main event handler with manual override detection
+function handlePssEvent(event) {
+    // Add event to recent events for pattern detection
+    addToRecentEvents(event);
+    
+    // Update clock state tracking
+    if (event.type === 'clock') {
+        updateClockState(event);
+    }
+    
+    // Check for manual overrides BEFORE normal processing
+    if (isManualTimeChange(event)) {
+        handleManualTimeChange(event);
+        return;
+    }
+    
+    if (isManualRoundChange(event)) {
+        handleManualRoundChange(event);
+        return;
+    }
+    
+    // Normal event processing
+    processNormalEvent(event);
+}
+```
+
+#### **Scoreboard Overlay Integration**
+```javascript
+// Scoreboard overlay with manual override support
+function handleScoresEvent(event) {
+    // Check for manual score change
+    if (isManualScoreChange(event, blueScore, redScore)) {
+        handleManualScoreChange(event, blueScore, redScore);
+    } else {
+        // Normal score update
+        scoreboardInstance.updateScores(blueScore, redScore);
+    }
+}
+```
+
+### Benefits and Impact
+
+#### **1. Accurate Manual Change Detection**
+- **Reliable detection**: Multiple detection methods for accuracy
+- **Pattern recognition**: Intelligent pattern analysis
+- **Context awareness**: Clock state and timing awareness
+
+#### **2. Proper Data Handling**
+- **Data preservation**: Manual round changes preserve all data
+- **Immediate acceptance**: Manual changes accepted immediately
+- **Real-time updates**: Instant scoreboard updates
+
+#### **3. System Reliability**
+- **Panic-free operation**: Comprehensive error handling
+- **Graceful degradation**: Continue operation during errors
+- **Robust state tracking**: Reliable state management
+
+#### **4. User Experience**
+- **Seamless operation**: Manual changes work as expected
+- **No data loss**: All data preserved during manual changes
+- **Real-time feedback**: Immediate visual updates
+
+---
+
 ## 🔮 Future Data Flow Enhancements
 
 ### **1. Advanced Event Processing**

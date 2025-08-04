@@ -967,6 +967,302 @@ describe('EventTable', () => {
 - **Bundle Size**: Monitor and optimize bundle size
 - **Caching**: Implement appropriate caching strategies
 
+## 🎯 Scoreboard Overlay System
+
+### Overview
+The scoreboard overlay system provides real-time display of match information for broadcasting and arena displays. The overlay is designed as a standalone HTML application that receives WebSocket events and updates the scoreboard display in real-time.
+
+### Architecture
+
+#### **File Structure**
+```
+ui/public/
+├── scoreboard-overlay.html          # Main scoreboard overlay
+├── player-introduction-overlay.html # Player introduction overlay
+├── websocket-debug.html            # WebSocket debugging tool
+└── assets/scoreboard/
+    ├── scoreboard-overlay.svg      # Scoreboard SVG template
+    ├── scoreboard-utils.js         # Scoreboard utility functions
+    └── scoreboard-name-utils.js    # Name management utilities
+```
+
+#### **Core Components**
+
+**1. ScoreboardOverlay Class**
+```javascript
+class ScoreboardOverlay {
+    constructor(svgElement) {
+        this.svg = svgElement;
+        this.initializeElements();
+    }
+    
+    // Core update methods
+    updateScore(player, score) { /* Update player scores */ }
+    updateRoundWins(player, wins) { /* Update round wins */ }
+    updateRound(round) { /* Update current round */ }
+    updateTimer(minutes, seconds) { /* Update match timer */ }
+    updatePenalties(player, penalties) { /* Update warnings */ }
+    updatePlayerName(player, name) { /* Update player names */ }
+    updateInjuryTime(time) { /* Update injury time display */ }
+}
+```
+
+**2. Manual Override Detection System**
+```javascript
+// Robust manual override detection with panic prevention
+const manualOverrideState = {
+    clockState: 'stopped',
+    recentEvents: [],
+    lastBlueScore: 0,
+    lastRedScore: 0,
+    lastBlueWarnings: 0,
+    lastRedWarnings: 0,
+    timeCorrectionThreshold: 5000
+};
+
+// Detection functions with comprehensive error handling
+function isManualRoundChange(event) {
+    try {
+        if (isClockStopped() && event.type === 'round') {
+            return true;
+        }
+        // Additional detection logic...
+        return false;
+    } catch (error) {
+        console.warn('⚠️ Error detecting manual round change:', error);
+        return false;
+    }
+}
+```
+
+### Manual Override Detection
+
+#### **Detection Methods**
+
+**1. Manual Round Change Detection**
+- **Round changes during stopped clock**: Indicates manual intervention
+- **Rapid round changes**: Multiple round changes within 5 seconds
+- **Pattern analysis**: Unusual round change patterns
+
+**2. Manual Score Change Detection**
+- **Score changes during stopped clock**: Manual intervention during paused time
+- **Score changes during time correction**: Changes made during `clk;XX:XX;corr` events
+- **Large score jumps**: Unusual score increases (3+ points at once)
+- **Rapid point messages**: Multiple point events within 2 seconds
+
+**3. Manual Time Change Detection**
+- **Time correction events**: `clk;XX:XX;corr` messages indicate manual time adjustments
+- **Time changes during stopped periods**: Unusual time modifications
+
+**4. Manual Warning Change Detection**
+- **Warning changes during stopped clock**: Manual intervention during paused time
+- **Warning changes during time correction**: Changes made during time correction events
+- **Rapid warning changes**: Multiple warning events within 3 seconds
+
+#### **Handling Strategies**
+
+**1. Manual Round Change Handling**
+```javascript
+function handleManualRoundChange(event) {
+    // Update round number but preserve all other data
+    scoreboardInstance.updateRound(event.current_round);
+    
+    // DO NOT reset scores, warnings, or other data
+    // This is the key difference from normal round changes
+}
+```
+
+**2. Manual Score Change Handling**
+```javascript
+function handleManualScoreChange(event, newBlueScore, newRedScore) {
+    // Update scores immediately
+    scoreboardInstance.updateScores(newBlueScore, newRedScore);
+    
+    // Update tracking state
+    manualOverrideState.lastBlueScore = newBlueScore;
+    manualOverrideState.lastRedScore = newRedScore;
+}
+```
+
+**3. Manual Time Change Handling**
+```javascript
+function handleManualTimeChange(event) {
+    // Update time immediately
+    const timeParts = event.time.split(':');
+    const minutes = parseInt(timeParts[0]) || 0;
+    const seconds = parseInt(timeParts[1]) || 0;
+    scoreboardInstance.updateTimer(minutes, seconds);
+}
+```
+
+**4. Manual Warning Change Handling**
+```javascript
+function handleManualWarningChange(event, newBlueWarnings, newRedWarnings) {
+    // Update warnings immediately
+    scoreboardInstance.updatePenalties(newBlueWarnings, newRedWarnings);
+    
+    // Update tracking state
+    manualOverrideState.lastBlueWarnings = newBlueWarnings;
+    manualOverrideState.lastRedWarnings = newRedWarnings;
+}
+```
+
+### Error Handling and Safety
+
+#### **Panic Prevention**
+- **Try-catch blocks**: All detection functions wrapped in error handling
+- **Safe utility functions**: Fallback values for all operations
+- **Defensive programming**: Safe data access patterns
+- **Graceful degradation**: Continue operation when errors occur
+
+#### **Robust Error Handling**
+```javascript
+// Safely get current timestamp
+function getCurrentTimestamp() {
+    try {
+        return Date.now();
+    } catch (error) {
+        console.warn('⚠️ Error getting timestamp:', error);
+        return 0;
+    }
+}
+
+// Safely add event to recent events
+function addToRecentEvents(event) {
+    try {
+        manualOverrideState.recentEvents.push({
+            event: event,
+            timestamp: getCurrentTimestamp()
+        });
+        
+        // Keep only the last N events
+        if (manualOverrideState.recentEvents.length > maxRecentEvents) {
+            manualOverrideState.recentEvents.shift();
+        }
+    } catch (error) {
+        console.warn('⚠️ Error adding to recent events:', error);
+    }
+}
+```
+
+### Event Processing Integration
+
+#### **Main Event Handler**
+```javascript
+function handlePssEvent(event) {
+    // Add event to recent events for pattern detection
+    addToRecentEvents(event);
+    
+    // Update clock state tracking
+    if (event.type === 'clock') {
+        updateClockState(event);
+    }
+    
+    // Check for manual overrides BEFORE normal processing
+    if (isManualTimeChange(event)) {
+        handleManualTimeChange(event);
+        return;
+    }
+    
+    if (isManualRoundChange(event)) {
+        handleManualRoundChange(event);
+        return;
+    }
+    
+    // Normal event processing
+    processNormalEvent(event);
+}
+```
+
+#### **Scoreboard Integration**
+```javascript
+function handleScoresEvent(event) {
+    // Check for manual score change
+    if (isManualScoreChange(event, blueScore, redScore)) {
+        handleManualScoreChange(event, blueScore, redScore);
+    } else {
+        // Normal score update
+        scoreboardInstance.updateScores(blueScore, redScore);
+    }
+}
+```
+
+### Benefits and Impact
+
+#### **1. Accurate Manual Change Detection**
+- **Reliable detection**: Multiple detection methods for accuracy
+- **Pattern recognition**: Intelligent pattern analysis
+- **Context awareness**: Clock state and timing awareness
+
+#### **2. Proper Data Handling**
+- **Data preservation**: Manual round changes preserve all data
+- **Immediate acceptance**: Manual changes accepted immediately
+- **Real-time updates**: Instant scoreboard updates
+
+#### **3. System Reliability**
+- **Panic-free operation**: Comprehensive error handling
+- **Graceful degradation**: Continue operation during errors
+- **Robust state tracking**: Reliable state management
+
+#### **4. User Experience**
+- **Seamless operation**: Manual changes work as expected
+- **No data loss**: All data preserved during manual changes
+- **Real-time feedback**: Immediate visual updates
+
+### WebSocket Integration
+
+#### **Event Reception**
+```javascript
+// WebSocket connection for real-time events
+const websocket = new WebSocket('ws://localhost:8080');
+
+websocket.onmessage = function(event) {
+    try {
+        const data = JSON.parse(event.data);
+        handlePssEvent(data);
+    } catch (error) {
+        console.error('❌ Error parsing WebSocket message:', error);
+    }
+};
+```
+
+#### **Connection Management**
+```javascript
+// Connection status tracking
+function updateConnectionStatus(connected) {
+    const statusElement = document.getElementById('connection-status');
+    if (connected) {
+        statusElement.classList.add('connected');
+    } else {
+        statusElement.classList.remove('connected');
+    }
+}
+```
+
+### Styling and Design
+
+#### **Visual Design**
+- **High contrast**: Optimized for arena displays
+- **Large text**: Readable from distance
+- **Professional appearance**: Clean, modern interface
+- **Responsive layout**: Adapts to different screen sizes
+
+#### **Animation System**
+```css
+/* Score update animations */
+.score-update {
+    animation: scorePulse 0.5s ease-in-out;
+}
+
+@keyframes scorePulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+```
+
+---
+
 ## Future Enhancements
 
 ### Planned Features

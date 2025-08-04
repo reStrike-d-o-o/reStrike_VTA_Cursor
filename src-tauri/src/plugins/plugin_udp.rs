@@ -1211,6 +1211,7 @@ impl UdpServer {
     }
 
     fn convert_pss_event_to_json(event: &PssEvent) -> serde_json::Value {
+        // Add defensive programming to handle any potential issues
         match event {
             PssEvent::Points { athlete, point_type } => {
                 serde_json::json!({
@@ -1347,11 +1348,16 @@ impl UdpServer {
                 })
             }
             PssEvent::Clock { time, action } => {
+                // Defensive programming for clock events
+                let safe_time = time.as_str();
+                let safe_action = action.as_ref().map(|a| a.as_str()).unwrap_or("");
+                let description = format!("Clock: {} {:?}", safe_time, safe_action);
+                
                 serde_json::json!({
                     "type": "clock",
-                    "time": time,
-                    "action": action,
-                    "description": format!("Clock: {} {:?}", time, action.as_ref().unwrap_or(&String::new())),
+                    "time": safe_time,
+                    "action": safe_action,
+                    "description": description,
                     "timestamp": chrono::Utc::now().timestamp_millis()
                 })
             }
@@ -1386,10 +1392,14 @@ impl UdpServer {
                 })
             }
             PssEvent::Raw(message) => {
+                // Defensive programming for raw messages
+                let safe_message = message.as_str();
+                let description = format!("Raw message: {}", safe_message);
+                
                 serde_json::json!({
                     "type": "raw",
-                    "message": message,
-                    "description": format!("Raw message: {}", message),
+                    "message": safe_message,
+                    "description": description,
                     "timestamp": chrono::Utc::now().timestamp_millis()
                 })
             }
@@ -1810,19 +1820,34 @@ impl UdpServer {
                                     
                                     // Log the parsed event and JSON for debugging
                                     log::info!("🎯 Parsed PSS event: {:?}", event);
-                                    log::info!("📤 Emitting event JSON: {}", serde_json::to_string(&event_json).unwrap_or_default());
                                     
-                                    // Emit to Tauri frontend
-                                    if let Err(e) = event_tx.send(event.clone()) {
-                                        log::warn!("⚠️ Failed to send PSS event to internal channel: {}", e);
+                                    // Safely serialize JSON with error handling
+                                    match serde_json::to_string(&event_json) {
+                                        Ok(json_string) => {
+                                            log::info!("📤 Emitting event JSON: {}", json_string);
+                                            
+                                            // Emit to Tauri frontend
+                                            if let Err(e) = event_tx.send(event.clone()) {
+                                                log::warn!("⚠️ Failed to send PSS event to internal channel: {}", e);
+                                            }
+                                            
+                                            // Emit to frontend via core app's unified event emission
+                                            crate::core::app::App::emit_pss_event(event_json);
+                                            
+                                            // Stream log to frontend for Live Data panel
+                                            let log_message = format!("🎯 UDP-EVENT: {:?}", event);
+                                            crate::core::app::App::emit_log_event(log_message);
+                                        }
+                                        Err(e) => {
+                                            log::error!("❌ Failed to serialize PSS event to JSON: {}", e);
+                                            log::error!("❌ Event that failed: {:?}", event);
+                                            
+                                            // Still try to send the event to internal channel
+                                            if let Err(e) = event_tx.send(event.clone()) {
+                                                log::warn!("⚠️ Failed to send PSS event to internal channel: {}", e);
+                                            }
+                                        }
                                     }
-                                    
-                                    // Emit to frontend via core app's unified event emission
-                                    crate::core::app::App::emit_pss_event(event_json);
-                                    
-                                    // Stream log to frontend for Live Data panel
-                                    let log_message = format!("🎯 UDP-EVENT: {:?}", event);
-                                    crate::core::app::App::emit_log_event(log_message);
                         }
                         Err(e) => {
                             // Update error stats
