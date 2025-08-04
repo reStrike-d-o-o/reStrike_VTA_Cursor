@@ -4740,31 +4740,56 @@ fn parse_scenarios_from_output(output: &str) -> Vec<serde_json::Value> {
     let mut scenarios = Vec::new();
     let lines: Vec<&str> = output.lines().collect();
     
+    log::info!("Parsing {} lines from output", lines.len());
+    log::debug!("Raw output: {}", output);
+    
     let mut current_scenario = serde_json::Map::new();
     let mut in_scenario = false;
     
-    for line in lines {
+    for (line_num, line) in lines.iter().enumerate() {
         let line = line.trim();
+        log::debug!("Line {}: '{}'", line_num, line);
         
-        if line.starts_with("• ") {
+        // Check for scenario start with multiple possible bullet characters
+        if line.starts_with("• ") || line.starts_with("- ") || line.starts_with("* ") || line.starts_with("  ") || line.starts_with("ò ") {
             // New scenario
             if in_scenario && !current_scenario.is_empty() {
                 scenarios.push(serde_json::Value::Object(current_scenario.clone()));
+                log::debug!("Added scenario: {:?}", current_scenario);
             }
             
             current_scenario.clear();
             in_scenario = true;
             
-            let name = line[2..].trim();
-            current_scenario.insert("display_name".to_string(), serde_json::Value::String(name.to_string()));
-            current_scenario.insert("name".to_string(), serde_json::Value::String(name.to_lowercase().replace(" ", "_")));
+            // Extract name after bullet point
+            let name = if line.starts_with("• ") {
+                line[2..].trim()
+            } else if line.starts_with("- ") {
+                line[2..].trim()
+            } else if line.starts_with("* ") {
+                line[2..].trim()
+            } else if line.starts_with("  ") {
+                line[2..].trim()
+            } else if line.starts_with("ò ") {
+                line[2..].trim()
+            } else {
+                line
+            };
+            
+            if !name.is_empty() {
+                current_scenario.insert("display_name".to_string(), serde_json::Value::String(name.to_string()));
+                current_scenario.insert("name".to_string(), serde_json::Value::String(name.to_lowercase().replace(" ", "_")));
+                log::debug!("Found scenario: {}", name);
+            }
         } else if line.starts_with("  Description: ") && in_scenario {
             let description = line[14..].trim();
             current_scenario.insert("description".to_string(), serde_json::Value::String(description.to_string()));
+            log::debug!("Added description: {}", description);
         } else if line.starts_with("  Matches: ") && in_scenario {
             let matches = line[10..].trim();
             if let Ok(count) = matches.parse::<i32>() {
                 current_scenario.insert("match_count".to_string(), serde_json::Value::Number(count.into()));
+                log::debug!("Added match count: {}", count);
             }
         } else if line.starts_with("  Est. Duration: ") && in_scenario {
             let duration = line[16..].trim();
@@ -4773,6 +4798,7 @@ fn parse_scenarios_from_output(output: &str) -> Vec<serde_json::Value> {
             if let Some(seconds_str) = duration_parts.first() {
                 if let Ok(seconds) = seconds_str.parse::<f64>() {
                     current_scenario.insert("estimated_duration".to_string(), serde_json::Value::Number(serde_json::Number::from_f64(seconds).unwrap_or(serde_json::Number::from(0))));
+                    log::debug!("Added duration: {}", seconds);
                 }
             }
         }
@@ -4780,9 +4806,11 @@ fn parse_scenarios_from_output(output: &str) -> Vec<serde_json::Value> {
     
     // Add the last scenario
     if in_scenario && !current_scenario.is_empty() {
-        scenarios.push(serde_json::Value::Object(current_scenario));
+        scenarios.push(serde_json::Value::Object(current_scenario.clone()));
+        log::debug!("Added final scenario: {:?}", current_scenario);
     }
     
+    log::info!("Parsed {} scenarios successfully", scenarios.len());
     scenarios
 }
 
