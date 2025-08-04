@@ -267,7 +267,9 @@ impl UdpServer {
         let batch_task = tokio::spawn(async move {
             Self::batch_processor_loop(batch_rx, server_clone).await;
         });
-        *server.batch_processor_task.lock().unwrap() = Some(batch_task);
+        if let Ok(mut task_guard) = server.batch_processor_task.lock() {
+            *task_guard = Some(batch_task);
+        }
         
         server
     }
@@ -613,19 +615,24 @@ impl UdpServer {
         }
         
         // Stop listener task
-        if let Some(task) = self.listener_task.lock().unwrap().take() {
-            task.abort();
+        if let Ok(mut task_guard) = self.listener_task.lock() {
+            if let Some(task) = task_guard.take() {
+                task.abort();
+            }
         }
         
         // Stop batch processor task
-        if let Some(task) = self.batch_processor_task.lock().unwrap().take() {
-            task.abort();
+        if let Ok(mut task_guard) = self.batch_processor_task.lock() {
+            if let Some(task) = task_guard.take() {
+                task.abort();
+            }
         }
         
         // Close socket
         {
-            let mut socket_guard = self.socket.lock().unwrap();
-            *socket_guard = None;
+            if let Ok(mut socket_guard) = self.socket.lock() {
+                *socket_guard = None;
+            }
         }
         
         log::info!("✅ UDP server stopped successfully");
@@ -633,18 +640,15 @@ impl UdpServer {
     }
 
     pub fn get_status(&self) -> UdpServerStatus {
-        let status = self.status.lock().unwrap();
-        status.clone()
+        self.status.lock().map(|status| status.clone()).unwrap_or(UdpServerStatus::Stopped)
     }
 
     pub fn get_stats(&self) -> UdpStats {
-        let stats = self.stats.lock().unwrap();
-        stats.clone()
+        self.stats.lock().map(|stats| stats.clone()).unwrap_or_default()
     }
 
     pub fn get_recent_events(&self) -> Vec<PssEvent> {
-        let events = self.recent_events.lock().unwrap();
-        events.iter().cloned().collect()
+        self.recent_events.lock().map(|events| events.iter().cloned().collect()).unwrap_or_default()
     }
 
     /// Phase 1 Optimization: Get performance metrics
@@ -660,11 +664,12 @@ impl UdpServer {
     pub fn add_event(&self, event: PssEvent) {
         // Add to recent events (existing logic)
         {
-            let mut recent = self.recent_events.lock().unwrap();
-            if recent.len() >= 100 {
-                recent.pop_front();
+            if let Ok(mut recent) = self.recent_events.lock() {
+                if recent.len() >= 100 {
+                    recent.pop_front();
+                }
+                recent.push_back(event.clone());
             }
-            recent.push_back(event.clone());
         }
 
         // Phase 1 Optimization: Send to batch processor for high-volume processing
@@ -685,17 +690,16 @@ impl UdpServer {
     }
 
     async fn initialize_event_type_cache(&self) -> AppResult<()> {
-        match self.database.get_pss_event_types().await {
+                match self.database.get_pss_event_types().await {
             Ok(event_types) => {
-                let mut cache = self.event_type_cache.lock().unwrap();
-                
-                for event_type in event_types {
-                    if let Some(id) = event_type.id {
-                        cache.insert(event_type.event_code.clone(), id);
+                if let Ok(mut cache) = self.event_type_cache.lock() {
+                    for event_type in event_types {
+                        if let Some(id) = event_type.id {
+                            cache.insert(event_type.event_code.clone(), id);
+                        }
                     }
+                    log::info!("✅ Event type cache initialized with {} types", cache.len());
                 }
-                
-                log::info!("✅ Event type cache initialized with {} types", cache.len());
                 Ok(())
             }
             Err(e) => {
@@ -1094,14 +1098,14 @@ impl UdpServer {
             PssEvent::Break { .. } => "O".to_string(), // Break
             PssEvent::WinnerRounds { .. } => "O".to_string(), // Winner rounds
             PssEvent::Winner { .. } => "O".to_string(), // Winner
-            PssEvent::Athletes { .. } => "O".to_string(), // Athletes info
-            PssEvent::MatchConfig { .. } => "O".to_string(), // Match config
-            PssEvent::Scores { .. } => "R".to_string(), // Scores
-            PssEvent::CurrentScores { .. } => "R".to_string(), // Current scores
-            PssEvent::Clock { .. } => "O".to_string(), // Clock
-            PssEvent::Round { .. } => "O".to_string(), // Round
-            PssEvent::FightLoaded => "O".to_string(), // Fight loaded
-            PssEvent::FightReady => "O".to_string(), // Fight ready
+            PssEvent::Athletes { .. } => "O".to_string(), // Athletes info (pre-match)
+            PssEvent::MatchConfig { .. } => "O".to_string(), // Match config (pre-match)
+            PssEvent::Scores { .. } => "O".to_string(), // Scores (changed from R to O)
+            PssEvent::CurrentScores { .. } => "O".to_string(), // Current scores (changed from R to O)
+            PssEvent::Clock { .. } => "O".to_string(), // Clock (system event)
+            PssEvent::Round { .. } => "O".to_string(), // Round (system event)
+            PssEvent::FightLoaded => "O".to_string(), // Fight loaded (pre-match)
+            PssEvent::FightReady => "O".to_string(), // Fight ready (pre-match)
             PssEvent::Supremacy { .. } => "O".to_string(), // Supremacy
             PssEvent::Raw(raw_msg) => {
                 // Try to extract event code from raw messages for better categorization

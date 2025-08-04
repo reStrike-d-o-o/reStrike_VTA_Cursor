@@ -69,6 +69,7 @@ pub struct WebSocketServer {
     server_task: Arc<Mutex<Option<tokio::task::JoinHandle<()>>>>,
     current_time: Arc<Mutex<String>>, // Track current time from Clock events
     current_round: Arc<Mutex<u8>>, // Track current round
+    match_started: Arc<Mutex<bool>>, // Track if match has started (after FightReady)
 }
 
 impl WebSocketServer {
@@ -79,6 +80,7 @@ impl WebSocketServer {
             server_task: Arc::new(Mutex::new(None)),
             current_time: Arc::new(Mutex::new("2:00".to_string())), // Default time
             current_round: Arc::new(Mutex::new(1)), // Default round
+            match_started: Arc::new(Mutex::new(false)), // Match starts as not ready
         }
     }
     
@@ -94,19 +96,25 @@ impl WebSocketServer {
             }
         });
         
-        *self.server_task.lock().unwrap() = Some(task);
+        if let Ok(mut task_guard) = self.server_task.lock() {
+            *task_guard = Some(task);
+        }
         Ok(())
     }
     
     pub async fn stop(&self) -> AppResult<()> {
         log::info!("🔌 Stopping WebSocket server");
         
-        if let Some(task) = self.server_task.lock().unwrap().take() {
-            task.abort();
+        if let Ok(mut task_guard) = self.server_task.lock() {
+            if let Some(task) = task_guard.take() {
+                task.abort();
+            }
         }
         
         // Clear all clients
-        self.clients.lock().unwrap().clear();
+        if let Ok(mut clients_guard) = self.clients.lock() {
+            clients_guard.clear();
+        }
         Ok(())
     }
     
@@ -154,7 +162,9 @@ impl WebSocketServer {
         let client = WebSocketClient::new(client_id.clone(), tx.clone());
         
         // Add client to the list
-        clients.lock().unwrap().push(client);
+        if let Ok(mut clients_guard) = clients.lock() {
+            clients_guard.push(client);
+        }
         
         // Send connection status message
         let status_msg = WebSocketMessage::ConnectionStatus {
@@ -231,7 +241,9 @@ impl WebSocketServer {
         }
         
         // Remove client when disconnected
-        clients_clone.lock().unwrap().retain(|c| c.id != client_id);
+        if let Ok(mut clients_guard) = clients_clone.lock() {
+            clients_guard.retain(|c| c.id != client_id);
+        }
         log::info!("🔌 Client {} disconnected", client_id);
         
         Ok(())
@@ -284,7 +296,8 @@ impl WebSocketServer {
     
     /// Broadcast a WebSocket message to all connected clients
     fn broadcast_message(&self, message: WebSocketMessage) -> AppResult<()> {
-        let mut clients = self.clients.lock().unwrap();
+        let mut clients = self.clients.lock()
+            .map_err(|e| AppError::ConfigError(format!("Failed to lock clients mutex: {}", e)))?;
         let mut disconnected_clients = Vec::new();
         
         // Convert WebSocketMessage to the format expected by overlays
@@ -347,15 +360,22 @@ impl WebSocketServer {
             WebSocketMessage::RawJson(json_value) => json_value
         };
         
+        // Collect indices of disconnected clients
         for (index, client) in clients.iter().enumerate() {
             if let Err(_) = client.send_raw_json(overlay_message.clone()) {
                 disconnected_clients.push(index);
             }
         }
         
-        // Remove disconnected clients
-        for index in disconnected_clients.iter().rev() {
-            clients.remove(*index);
+        // Remove disconnected clients in reverse order to maintain correct indices
+        if !disconnected_clients.is_empty() {
+            // Sort in descending order to remove from highest index first
+            disconnected_clients.sort_by(|a, b| b.cmp(a));
+            for &index in &disconnected_clients {
+                if index < clients.len() {
+                    clients.remove(index);
+                }
+            }
         }
         
         Ok(())
@@ -365,17 +385,40 @@ impl WebSocketServer {
         // Update current time and round based on Clock and Round events
         match event {
             PssEvent::Clock { time, .. } => {
-                *self.current_time.lock().unwrap() = time.clone();
+                if let Ok(mut time_guard) = self.current_time.lock() {
+                    *time_guard = time.clone();
+                }
             }
             PssEvent::Round { current_round } => {
-                *self.current_round.lock().unwrap() = *current_round;
+                if let Ok(mut round_guard) = self.current_round.lock() {
+                    *round_guard = *current_round;
+                }
+            }
+            PssEvent::FightLoaded => {
+                // Reset match started flag when new fight is loaded
+                if let Ok(mut match_guard) = self.match_started.lock() {
+                    *match_guard = false;
+                }
+            }
+            PssEvent::FightReady => {
+                // Mark match as started when FightReady is received
+                if let Ok(mut match_guard) = self.match_started.lock() {
+                    *match_guard = true;
+                }
             }
             _ => {}
         }
         
         // Get current time and round for use in events
-        let current_time = self.current_time.lock().unwrap().clone();
-        let current_round = *self.current_round.lock().unwrap();
+        let current_time = self.current_time.lock()
+            .map(|guard| guard.clone())
+            .unwrap_or_else(|_| "2:00".to_string());
+        let current_round = self.current_round.lock()
+            .map(|guard| *guard)
+            .unwrap_or_else(|_| 1);
+        let match_started = self.match_started.lock()
+            .map(|guard| *guard)
+            .unwrap_or_else(|_| false);
         
         // Get event code from UDP plugin's get_event_code function
         let event_code = crate::plugins::plugin_udp::UdpServer::get_event_code(event);
@@ -392,26 +435,34 @@ impl WebSocketServer {
         
         match event {
             PssEvent::Points { athlete, point_type } => {
-                
-                let athlete_str = match athlete {
-                    1 => "blue".to_string(),
-                    2 => "red".to_string(),
-                    _ => "unknown".to_string(),
+                // Determine if this is a referee-awarded point (during match) or regular point
+                let (athlete_str, event_code_for_points) = if match_started {
+                    // After match starts, points are referee-awarded (yellow/R)
+                    ("yellow".to_string(), "R".to_string())
+                } else {
+                    // Before match starts, regular points (blue/red/K/P/H)
+                    let athlete_str = match athlete {
+                        1 => "blue".to_string(),
+                        2 => "red".to_string(),
+                        _ => "unknown".to_string(),
+                    };
+                    (athlete_str, event_code.clone())
                 };
                 
                 WebSocketMessage::PssEvent {
                     event_type: "points".to_string(),
-                    event_code: event_code.clone(),
+                    event_code: event_code_for_points.clone(),
                     athlete: athlete_str.clone(),
                     round: current_round,
                     time: current_time.clone(),
                     timestamp: pss_timestamp.clone(),
                     raw_data: format!("pt{}", point_type),
-                    description: format!("{} {}", athlete_str, event_code),
+                    description: format!("{} {}", athlete_str, event_code_for_points),
                     action: None,
                     structured_data: serde_json::json!({
                         "athlete": *athlete,
-                        "point_type": *point_type
+                        "point_type": *point_type,
+                        "match_started": match_started
                     }),
                 }
             }
@@ -438,7 +489,7 @@ impl WebSocketServer {
                 WebSocketMessage::PssEvent {
                     event_type: "winner_rounds".to_string(),
                     event_code: event_code.clone(),
-                    athlete: "yellow".to_string(),
+                    athlete: "".to_string(), // Changed from yellow to empty (less frequent)
                     round: current_round,
                     time: current_time.clone(),
                     timestamp: pss_timestamp.clone(),
@@ -454,9 +505,10 @@ impl WebSocketServer {
             }
             
             PssEvent::MatchConfig { number, category, weight, rounds, colors, match_id, division, total_rounds, round_duration, countdown_type, count_up, format } => {
+                // Skip pre-match configuration events - don't show in Event Table
                 WebSocketMessage::PssEvent {
                     event_type: "match_config".to_string(),
-                    event_code: event_code.clone(),
+                    event_code: "O".to_string(), // Changed to O so it won't show in Event Table
                     athlete: "".to_string(),
                     round: current_round,
                     time: "0:00".to_string(),
@@ -482,9 +534,10 @@ impl WebSocketServer {
             }
             
             PssEvent::Athletes { athlete1_short, athlete1_long, athlete1_country, athlete2_short, athlete2_long, athlete2_country } => {
+                // Skip pre-match athlete info events - don't show in Event Table
                 WebSocketMessage::PssEvent {
                     event_type: "athletes".to_string(),
-                    event_code: event_code.clone(),
+                    event_code: "O".to_string(), // Changed to O so it won't show in Event Table
                     athlete: "".to_string(),
                     round: current_round,
                     time: "0:00".to_string(),
@@ -511,7 +564,7 @@ impl WebSocketServer {
                     event_code: event_code.clone(),
                     athlete: "".to_string(),
                     round: current_round,
-                    time: current_time.clone(),
+                    time: "0:00".to_string(), // Current scores don't have specific time
                     timestamp: pss_timestamp.clone(),
                     raw_data: format!("sc1;{};sc2;{}", athlete1_score, athlete2_score),
                     description: format!("Current Scores - Blue: {}, Red: {}", athlete1_score, athlete2_score),
@@ -529,7 +582,7 @@ impl WebSocketServer {
                     event_code: event_code.clone(),
                     athlete: "".to_string(),
                     round: current_round,
-                    time: current_time.clone(),
+                    time: "0:00".to_string(), // Scores don't have specific time
                     timestamp: pss_timestamp.clone(),
                     raw_data: format!("s11;{};s21;{};s12;{};s22;{};s13;{};s23;{}", 
                         athlete1_r1, athlete2_r1, athlete1_r2, athlete2_r2, athlete1_r3, athlete2_r3),
@@ -700,9 +753,10 @@ impl WebSocketServer {
             }
             
             PssEvent::FightLoaded => {
+                // Skip pre-match loading events - don't show in Event Table
                 WebSocketMessage::PssEvent {
                     event_type: "fight_loaded".to_string(),
-                    event_code: event_code.clone(),
+                    event_code: "O".to_string(), // Changed to O so it won't show in Event Table
                     athlete: "".to_string(),
                     round: current_round,
                     time: current_time.clone(),
@@ -715,9 +769,10 @@ impl WebSocketServer {
             }
             
             PssEvent::FightReady => {
+                // Skip pre-match ready events - don't show in Event Table
                 WebSocketMessage::PssEvent {
                     event_type: "fight_ready".to_string(),
-                    event_code: event_code.clone(),
+                    event_code: "O".to_string(), // Changed to O so it won't show in Event Table
                     athlete: "".to_string(),
                     round: current_round,
                     time: current_time.clone(),
@@ -768,7 +823,7 @@ impl WebSocketServer {
     }
     
     pub fn get_client_count(&self) -> usize {
-        self.clients.lock().unwrap().len()
+        self.clients.lock().map(|guard| guard.len()).unwrap_or(0)
     }
 }
 
