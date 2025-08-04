@@ -605,64 +605,101 @@ pub async fn pss_get_events(app: State<'_, Arc<App>>) -> Result<Vec<serde_json::
     
     // Convert PssEvent enum to JSON
     let event_json: Vec<serde_json::Value> = events.into_iter().map(|event| {
+        let event_code = crate::plugins::plugin_udp::UdpServer::get_event_code(&event);
+        
         match event {
             crate::plugins::plugin_udp::PssEvent::Points { athlete, point_type } => {
+                let athlete_str = match athlete {
+                    1 => "blue",
+                    2 => "red",
+                    _ => "unknown"
+                };
                 serde_json::json!({
                     "type": "points",
-                    "athlete": athlete,
+                    "event_code": event_code,
+                    "athlete": athlete_str,
                     "point_type": point_type,
+                    "round": 1, // Will be updated by WebSocket plugin
+                    "time": "2:00", // Will be updated by WebSocket plugin
                     "description": format!("Athlete {} scored {} points", athlete, point_type)
                 })
             }
             crate::plugins::plugin_udp::PssEvent::HitLevel { athlete, level } => {
+                let athlete_str = match athlete {
+                    1 => "blue",
+                    2 => "red",
+                    _ => "unknown"
+                };
                 serde_json::json!({
                     "type": "hit_level",
-                    "athlete": athlete,
+                    "event_code": event_code,
+                    "athlete": athlete_str,
                     "level": level,
+                    "round": 1, // Will be updated by WebSocket plugin
+                    "time": "2:00", // Will be updated by WebSocket plugin
                     "description": format!("Athlete {} hit level {}", athlete, level)
                 })
             }
             crate::plugins::plugin_udp::PssEvent::Warnings { athlete1_warnings, athlete2_warnings } => {
                 serde_json::json!({
                     "type": "warnings",
+                    "event_code": event_code,
+                    "athlete": "yellow",
                     "athlete1_warnings": athlete1_warnings,
                     "athlete2_warnings": athlete2_warnings,
+                    "round": 1, // Will be updated by WebSocket plugin
+                    "time": "2:00", // Will be updated by WebSocket plugin
                     "description": format!("Warnings - Athlete1: {}, Athlete2: {}", athlete1_warnings, athlete2_warnings)
                 })
             }
             crate::plugins::plugin_udp::PssEvent::Clock { time, action } => {
                 serde_json::json!({
                     "type": "clock",
+                    "event_code": event_code,
+                    "athlete": "",
                     "time": time,
                     "action": action,
+                    "round": 1, // Will be updated by WebSocket plugin
                     "description": format!("Clock: {} {:?}", time, action.as_ref().unwrap_or(&String::new()))
                 })
             }
             crate::plugins::plugin_udp::PssEvent::Round { current_round } => {
                 serde_json::json!({
                     "type": "round",
+                    "event_code": event_code,
+                    "athlete": "",
                     "current_round": current_round,
+                    "round": current_round,
+                    "time": "2:00", // Will be updated by WebSocket plugin
                     "description": format!("Round {}", current_round)
                 })
             }
             crate::plugins::plugin_udp::PssEvent::WinnerRounds { round1_winner, round2_winner, round3_winner } => {
                 serde_json::json!({
                     "type": "winner_rounds",
+                    "event_code": event_code,
+                    "athlete": "yellow",
                     "round1_winner": round1_winner,
                     "round2_winner": round2_winner,
                     "round3_winner": round3_winner,
+                    "round": 1, // Will be updated by WebSocket plugin
+                    "time": "2:00", // Will be updated by WebSocket plugin
                     "description": format!("Winner Rounds - R1: {}, R2: {}, R3: {}", round1_winner, round2_winner, round3_winner)
                 })
             }
             crate::plugins::plugin_udp::PssEvent::Scores { athlete1_r1, athlete2_r1, athlete1_r2, athlete2_r2, athlete1_r3, athlete2_r3 } => {
                 serde_json::json!({
                     "type": "scores",
+                    "event_code": event_code,
+                    "athlete": "yellow",
                     "athlete1_r1": athlete1_r1,
                     "athlete2_r1": athlete2_r1,
                     "athlete1_r2": athlete1_r2,
                     "athlete2_r2": athlete2_r2,
                     "athlete1_r3": athlete1_r3,
                     "athlete2_r3": athlete2_r3,
+                    "round": 1, // Will be updated by WebSocket plugin
+                    "time": "2:00", // Will be updated by WebSocket plugin
                     "description": format!("Scores - A1: R1={}, R2={}, R3={} | A2: R1={}, R2={}, R3={}", 
                         athlete1_r1, athlete1_r2, athlete1_r3, athlete2_r1, athlete2_r2, athlete2_r3)
                 })
@@ -670,26 +707,36 @@ pub async fn pss_get_events(app: State<'_, Arc<App>>) -> Result<Vec<serde_json::
             crate::plugins::plugin_udp::PssEvent::CurrentScores { athlete1_score, athlete2_score } => {
                 serde_json::json!({
                     "type": "current_scores",
+                    "event_code": event_code,
+                    "athlete": "yellow",
                     "athlete1_score": athlete1_score,
                     "athlete2_score": athlete2_score,
+                    "round": 1, // Will be updated by WebSocket plugin
+                    "time": "2:00", // Will be updated by WebSocket plugin
                     "description": format!("Current Scores - A1: {}, A2: {}", athlete1_score, athlete2_score)
                 })
             }
             crate::plugins::plugin_udp::PssEvent::Athletes { athlete1_short, athlete1_long, athlete1_country, athlete2_short, athlete2_long, athlete2_country } => {
                 serde_json::json!({
                     "type": "athletes",
+                    "event_code": event_code,
+                    "athlete": "yellow",
                     "athlete1_short": athlete1_short,
                     "athlete1_long": athlete1_long,
                     "athlete1_country": athlete1_country,
                     "athlete2_short": athlete2_short,
                     "athlete2_long": athlete2_long,
                     "athlete2_country": athlete2_country,
+                    "round": 1, // Will be updated by WebSocket plugin
+                    "time": "2:00", // Will be updated by WebSocket plugin
                     "description": format!("Athletes - {} ({}) vs {} ({})", athlete1_short, athlete1_country, athlete2_short, athlete2_country)
                 })
             }
             crate::plugins::plugin_udp::PssEvent::MatchConfig { number, category, weight, rounds, colors, match_id, division, total_rounds, round_duration, countdown_type, count_up, format } => {
                 serde_json::json!({
                     "type": "match_config",
+                    "event_code": event_code,
+                    "athlete": "yellow",
                     "number": number,
                     "category": category,
                     "weight": weight,
@@ -702,34 +749,52 @@ pub async fn pss_get_events(app: State<'_, Arc<App>>) -> Result<Vec<serde_json::
                     "countdown_type": countdown_type,
                     "count_up": count_up,
                     "format": format,
+                    "round": 1, // Will be updated by WebSocket plugin
+                    "time": "2:00", // Will be updated by WebSocket plugin
                     "description": format!("Match Config - #{} {} {} ({})", number, category, weight, division)
                 })
             }
             crate::plugins::plugin_udp::PssEvent::FightLoaded => {
                 serde_json::json!({
                     "type": "fight_loaded",
+                    "event_code": event_code,
+                    "athlete": "",
                     "event": "FightLoaded",
+                    "round": 1, // Will be updated by WebSocket plugin
+                    "time": "2:00", // Will be updated by WebSocket plugin
                     "description": "Fight Loaded"
                 })
             }
             crate::plugins::plugin_udp::PssEvent::FightReady => {
                 serde_json::json!({
                     "type": "fight_ready",
+                    "event_code": event_code,
+                    "athlete": "",
                     "event": "FightReady",
+                    "round": 1, // Will be updated by WebSocket plugin
+                    "time": "2:00", // Will be updated by WebSocket plugin
                     "description": "Fight Ready"
                 })
             }
             crate::plugins::plugin_udp::PssEvent::Raw(message) => {
                 serde_json::json!({
                     "type": "raw",
+                    "event_code": event_code,
+                    "athlete": "",
                     "message": message,
+                    "round": 1, // Will be updated by WebSocket plugin
+                    "time": "2:00", // Will be updated by WebSocket plugin
                     "description": format!("Raw message: {}", message)
                 })
             }
             _ => {
                 serde_json::json!({
                     "type": "other",
+                    "event_code": event_code,
+                    "athlete": "",
                     "event": format!("{:?}", event),
+                    "round": 1, // Will be updated by WebSocket plugin
+                    "time": "2:00", // Will be updated by WebSocket plugin
                     "description": format!("Event: {:?}", event)
                 })
             }
@@ -1579,64 +1644,101 @@ pub async fn pss_emit_pending_events(window: tauri::Window, app: State<'_, Arc<A
     
     // Convert and emit each event
     for event in events {
+        let event_code = crate::plugins::plugin_udp::UdpServer::get_event_code(&event);
+        
         let event_json = match event {
             crate::plugins::plugin_udp::PssEvent::Points { athlete, point_type } => {
+                let athlete_str = match athlete {
+                    1 => "blue",
+                    2 => "red",
+                    _ => "unknown"
+                };
                 serde_json::json!({
                     "type": "points",
-                    "athlete": athlete,
+                    "event_code": event_code,
+                    "athlete": athlete_str,
                     "point_type": point_type,
+                    "round": 1, // Will be updated by WebSocket plugin
+                    "time": "2:00", // Will be updated by WebSocket plugin
                     "description": format!("Athlete {} scored {} points", athlete, point_type)
                 })
             }
             crate::plugins::plugin_udp::PssEvent::HitLevel { athlete, level } => {
+                let athlete_str = match athlete {
+                    1 => "blue",
+                    2 => "red",
+                    _ => "unknown"
+                };
                 serde_json::json!({
                     "type": "hit_level",
-                    "athlete": athlete,
+                    "event_code": event_code,
+                    "athlete": athlete_str,
                     "level": level,
+                    "round": 1, // Will be updated by WebSocket plugin
+                    "time": "2:00", // Will be updated by WebSocket plugin
                     "description": format!("Athlete {} hit level {}", athlete, level)
                 })
             }
             crate::plugins::plugin_udp::PssEvent::Warnings { athlete1_warnings, athlete2_warnings } => {
                 serde_json::json!({
                     "type": "warnings",
+                    "event_code": event_code,
+                    "athlete": "yellow",
                     "athlete1_warnings": athlete1_warnings,
                     "athlete2_warnings": athlete2_warnings,
+                    "round": 1, // Will be updated by WebSocket plugin
+                    "time": "2:00", // Will be updated by WebSocket plugin
                     "description": format!("Warnings - Athlete1: {}, Athlete2: {}", athlete1_warnings, athlete2_warnings)
                 })
             }
             crate::plugins::plugin_udp::PssEvent::Clock { time, action } => {
                 serde_json::json!({
                     "type": "clock",
+                    "event_code": event_code,
+                    "athlete": "",
                     "time": time,
                     "action": action,
+                    "round": 1, // Will be updated by WebSocket plugin
                     "description": format!("Clock: {} {:?}", time, action.as_ref().unwrap_or(&String::new()))
                 })
             }
             crate::plugins::plugin_udp::PssEvent::Round { current_round } => {
                 serde_json::json!({
                     "type": "round",
+                    "event_code": event_code,
+                    "athlete": "",
                     "current_round": current_round,
+                    "round": current_round,
+                    "time": "2:00", // Will be updated by WebSocket plugin
                     "description": format!("Round {}", current_round)
                 })
             }
             crate::plugins::plugin_udp::PssEvent::WinnerRounds { round1_winner, round2_winner, round3_winner } => {
                 serde_json::json!({
                     "type": "winner_rounds",
+                    "event_code": event_code,
+                    "athlete": "yellow",
                     "round1_winner": round1_winner,
                     "round2_winner": round2_winner,
                     "round3_winner": round3_winner,
+                    "round": 1, // Will be updated by WebSocket plugin
+                    "time": "2:00", // Will be updated by WebSocket plugin
                     "description": format!("Winner Rounds - R1: {}, R2: {}, R3: {}", round1_winner, round2_winner, round3_winner)
                 })
             }
             crate::plugins::plugin_udp::PssEvent::Scores { athlete1_r1, athlete2_r1, athlete1_r2, athlete2_r2, athlete1_r3, athlete2_r3 } => {
                 serde_json::json!({
                     "type": "scores",
+                    "event_code": event_code,
+                    "athlete": "yellow",
                     "athlete1_r1": athlete1_r1,
                     "athlete2_r1": athlete2_r1,
                     "athlete1_r2": athlete1_r2,
                     "athlete2_r2": athlete2_r2,
                     "athlete1_r3": athlete1_r3,
                     "athlete2_r3": athlete2_r3,
+                    "round": 1, // Will be updated by WebSocket plugin
+                    "time": "2:00", // Will be updated by WebSocket plugin
                     "description": format!("Scores - A1: R1={}, R2={}, R3={} | A2: R1={}, R2={}, R3={}", 
                         athlete1_r1, athlete1_r2, athlete1_r3, athlete2_r1, athlete2_r2, athlete2_r3)
                 })
@@ -1644,8 +1746,12 @@ pub async fn pss_emit_pending_events(window: tauri::Window, app: State<'_, Arc<A
             crate::plugins::plugin_udp::PssEvent::CurrentScores { athlete1_score, athlete2_score } => {
                 serde_json::json!({
                     "type": "current_scores",
+                    "event_code": event_code,
+                    "athlete": "yellow",
                     "athlete1_score": athlete1_score,
                     "athlete2_score": athlete2_score,
+                    "round": 1, // Will be updated by WebSocket plugin
+                    "time": "2:00", // Will be updated by WebSocket plugin
                     "description": format!("Current Scores - A1: {}, A2: {}", athlete1_score, athlete2_score)
                 })
             }
