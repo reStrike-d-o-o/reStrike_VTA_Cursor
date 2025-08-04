@@ -1,70 +1,242 @@
 # reStrike VTA - Project TODO
 
-## 🎯 **Current Status: Documentation Consolidation & System Optimization**
+## 🎯 **Current Status: OBS Integration & Performance Optimization Implementation**
 
 ### **📋 Immediate Priorities (This Week)**
 
-#### **1. Documentation Consolidation** ⚡ **HIGH PRIORITY**
-- [ ] **Consolidate all standalone .md files into 6 main architecture documents**
-- [ ] **Delete unnecessary .md files after consolidation**
-- [ ] **Update all cross-references and links**
-- [ ] **Create single source of truth for project documentation**
+#### **1. OBS Integration Implementation** ⚡ **HIGH PRIORITY**
+- [ ] **Database Schema Migration**: Add `rec_timestamp`, `str_timestamp`, `ivr_link` fields to `pss_events_v2`
+- [ ] **Create Unified OBS Sessions Table**: Implement `obs_sessions` table with session types
+- [ ] **Database Triggers**: Implement automatic timestamp calculation triggers
+- [ ] **YouTube Chapter View**: Create database view for chapter generation
+- [ ] **OBS WebSocket Integration**: Implement OBS connection management
+- [ ] **IVR Trigger System**: Implement challenge/IVR triggering rules
+- [ ] **Stream Interruption Handling**: Implement automatic detection and time offset management
 
-#### **2. Simulation Testing & Enhancement** ⚡ **HIGH PRIORITY**
-- [x] **Test simulation integration with real reStrikeVTA application**
-- [x] **Verify all simulation scenarios work correctly**
-- [x] **Test manual event generation from UI**
-- [x] **Validate real-time status updates**
-- [x] **Test simulation with Event Table and Scoreboard Overlay**
-- [x] **Add automated simulation capabilities** ✨ **COMPLETED**
-- [x] **Implement multi-match scenarios** ✨ **COMPLETED**
-- [x] **Create realistic event generation** ✨ **COMPLETED**
-- [x] **Add progress tracking and status monitoring** ✨ **COMPLETED**
-- [x] **Robust dependency management** ✨ **COMPLETED**
-- [x] **Cross-platform Python detection** ✨ **COMPLETED**
-- [x] **Automatic dependency installation** ✨ **COMPLETED**
-- [x] **Enhanced error handling and UI feedback** ✨ **COMPLETED**
+#### **2. Performance Optimization Implementation** ⚡ **HIGH PRIORITY**
+- [ ] **UDP Processing Optimization**: Implement bounded channels and batch processing
+- [ ] **Database Connection Pooling**: Add connection pool with health checks
+- [ ] **WebSocket Binary Serialization**: Switch from JSON to Protocol Buffers
+- [ ] **Frontend Memoization**: Implement React.memo and useMemo optimizations
+- [ ] **Event Table Virtualization**: Add react-window for large event lists
+- [ ] **Memory Management**: Implement object pooling and cleanup strategies
 
-#### **3. Database Storage Implementation** ⚡ **HIGH PRIORITY**
-- [ ] **Implement full `store_pss_event` Tauri command** (currently disabled)
-- [ ] **Map `PssEventData` to `PssEventV2` database model**
-- [ ] **Add proper error handling and validation**
-- [ ] **Test database storage with real PSS events**
+#### **3. Backend Implementation Tasks** ⚡ **HIGH PRIORITY**
+- [ ] **Update PSS Event Processing**: Add OBS timestamp calculation logic
+- [ ] **Implement OBS Session Management**: Add unified session management functions
+- [ ] **Add Stream Interruption Functions**: Implement detection and handling logic
+- [ ] **Create YouTube Chapter Generation**: Implement chapter file creation
+- [ ] **Update Tauri Commands**: Add new OBS and performance-related commands
 
-#### **3. Real-time System Verification** ⚡ **HIGH PRIORITY**
-- [ ] **Test Event Table real-time updates**
-- [ ] **Verify Scoreboard overlay functionality**
-- [ ] **Confirm injury action show/hide works correctly**
-- [ ] **Test manual mode toggle and new match creation**
+#### **4. Frontend Implementation Tasks** ⚡ **HIGH PRIORITY**
+- [ ] **Update Event Table**: Add OBS timestamp fields display
+- [ ] **Implement OBS UI Components**: Add connection status and session controls
+- [ ] **Add IVR Integration**: Implement IVR trigger button and status display
+- [ ] **Create Performance Monitoring**: Add frontend performance metrics
+- [ ] **Implement Virtualized Lists**: Add react-window for event tables
 
-#### **4. Manual Override Detection Testing** ⚡ **HIGH PRIORITY**
-- [ ] **Test manual round change detection and handling**
-- [ ] **Test manual score change detection and handling**
-- [ ] **Test manual time change detection and handling**
-- [ ] **Test manual warning change detection and handling**
-- [ ] **Verify data preservation during manual round changes**
-- [ ] **Test extreme edge cases and rapid manual changes**
-- [ ] **Validate panic-free operation under all manual override scenarios**
+#### **5. Master/Slave Architecture Implementation** ⚡ **HIGH PRIORITY**
+- [ ] **Master Node Setup**: Create central database and management system
+- [ ] **Slave Auto-Discovery**: Implement network discovery and registration
+- [ ] **Remote Control System**: Create master control interface for all slaves
+- [ ] **YT Manager Integration**: Implement YouTube stream and chat management
+- [ ] **IVR Central Desk**: Create centralized IVR review and management
+- [ ] **Shared Folder Management**: Implement recording synchronization
+- [ ] **Health Monitoring**: Add system-wide health monitoring and alerting
 
-### **🔧 System Improvements**
+### **🔧 Performance Optimization Rule**
 
-#### **4. Analytics Integration**
-- [ ] **Integrate analytics drawer into main application UI**
-- [ ] **Add analytics button to sidebar or main navigation**
-- [ ] **Test with real PSS event data**
-- [ ] **Add export functionality for analytics reports**
+#### **📋 Performance Implementation Rule** ⚡ **NEW RULE**
+**Implement all possible performance/resource improvements while working on new tasks, gradually solving the same issues on already implemented features and functionalities while preserving the working condition of the existing code and functions. Always research the impact of changes to related code and functionalities.**
 
-#### **5. Performance Optimizations**
-- [ ] **Optimize WebSocket message processing**
-- [ ] **Improve database query performance**
-- [ ] **Reduce frontend re-rendering**
-- [ ] **Implement proper caching strategies**
+**Implementation Guidelines:**
+1. **Gradual Implementation**: Apply optimizations incrementally, not all at once
+2. **Preserve Functionality**: Ensure existing features continue to work
+3. **Research Impact**: Study how changes affect related systems
+4. **Test Thoroughly**: Test each optimization before moving to the next
+5. **Monitor Performance**: Track improvements and identify new bottlenecks
+6. **Document Changes**: Update documentation for all optimizations
+7. **Rollback Plan**: Maintain ability to revert changes if needed
 
-#### **6. Error Handling & Validation**
-- [ ] **Add comprehensive error handling for all PSS events**
-- [ ] **Implement event validation against PSS v2.3 specification**
-- [ ] **Add user-friendly error messages**
-- [ ] **Create error logging and monitoring**
+### **📊 Detailed Priority List**
+
+#### **Week 1: Database & Core Infrastructure**
+**Priority 1: Database Schema Updates**
+1. **Database Migration Scripts** (2 hours)
+   - Create migration for `pss_events_v2` new fields
+   - Create `obs_sessions` table with indices
+   - Implement database triggers for timestamp calculation
+   - Test migration rollback procedures
+
+2. **Database Operations** (3 hours)
+   - Implement unified OBS session management functions
+   - Add stream interruption handling functions
+   - Create YouTube chapter generation functions
+   - Add performance monitoring queries
+
+**Priority 2: Backend Core Updates**
+3. **PSS Event Processing** (2 hours)
+   - Update `convert_pss_event_to_db_model` with OBS fields
+   - Implement timestamp calculation logic
+   - Add IVR link processing
+   - Test with real PSS events
+
+4. **OBS Integration Backend** (4 hours)
+   - Implement OBS WebSocket connection management
+   - Add OBS session management logic
+   - Implement IVR trigger processing
+   - Add stream interruption detection
+
+#### **Week 2: Frontend & Performance**
+**Priority 1: Frontend OBS Integration**
+5. **OBS UI Components** (3 hours)
+   - Create OBS connection status indicators
+   - Implement session control panels
+   - Add IVR trigger button and status
+   - Create YouTube chapter generation UI
+
+6. **Event Table Updates** (2 hours)
+   - Add OBS timestamp fields to event display
+   - Implement IVR link click handling
+   - Add performance monitoring display
+   - Test with real event data
+
+**Priority 2: Performance Optimization**
+7. **UDP Processing Optimization** (3 hours)
+   - Implement bounded channels (size: 1000)
+   - Add batch processing (batch size: 50)
+   - Implement zero-copy parsing
+   - Add performance metrics collection
+
+8. **Database Optimization** (2 hours)
+   - Implement connection pooling (pool size: 10-20)
+   - Add batch inserts for PSS events
+   - Implement prepared statement caching
+   - Add query performance monitoring
+
+#### **Week 3: Advanced Performance & Testing**
+**Priority 1: WebSocket & Frontend Performance**
+9. **WebSocket Optimization** (3 hours)
+   - Implement binary serialization (Protocol Buffers)
+   - Add asynchronous broadcasting
+   - Implement message compression
+   - Add backpressure handling
+
+10. **Frontend Performance** (4 hours)
+    - Implement React.memo for event components
+    - Add react-window virtualization
+    - Implement normalized state management
+    - Add memory cleanup and caching
+
+**Priority 2: Testing & Validation**
+11. **Performance Testing** (3 hours)
+    - Create performance benchmarks
+    - Test with high-load scenarios (1000+ events/second)
+    - Validate memory usage targets
+    - Test CPU usage under load
+
+12. **Integration Testing** (2 hours)
+    - Test OBS integration end-to-end
+    - Validate stream interruption handling
+    - Test YouTube chapter generation
+    - Verify all optimizations work together
+
+#### **Week 4: Monitoring & Documentation**
+**Priority 1: Performance Monitoring**
+13. **Performance Dashboard** (3 hours)
+    - Create performance metrics dashboard
+    - Implement real-time monitoring
+    - Add alerting for performance issues
+    - Create performance reports
+
+14. **Memory & Resource Monitoring** (2 hours)
+    - Implement memory usage tracking
+    - Add CPU usage monitoring
+    - Create resource cleanup strategies
+    - Add performance profiling
+
+**Priority 2: Documentation & Cleanup**
+15. **Documentation Updates** (2 hours)
+    - Update all architecture documents
+    - Create performance optimization guides
+    - Document OBS integration procedures
+    - Update API documentation
+
+16. **Code Cleanup & Optimization** (2 hours)
+    - Remove unused code and dependencies
+    - Optimize bundle sizes
+    - Clean up performance monitoring code
+    - Final testing and validation
+
+#### **Week 5-6: Master/Slave Architecture Core**
+**Priority 1: Master Node Infrastructure**
+17. **Master Database Schema** (4 hours)
+    - Implement central database tables
+    - Create data synchronization logic
+    - Add health monitoring tables
+    - Set up central tournament management
+
+18. **Network Discovery System** (4 hours)
+    - Implement UDP broadcast discovery
+    - Add mDNS/Bonjour support
+    - Create auto-registration system
+    - Test network discovery reliability
+
+19. **Basic Master/Slave Communication** (6 hours)
+    - Implement command processing
+    - Add heartbeat system
+    - Create status reporting
+    - Test communication reliability
+
+#### **Week 7-8: Master Control Features**
+**Priority 1: Remote Control System**
+20. **Remote Control Drawer** (6 hours)
+    - Create bulk operations interface
+    - Implement individual slave control
+    - Add tournament management features
+    - Test all control operations
+
+21. **Health Monitoring Dashboard** (4 hours)
+    - Implement system health dashboard
+    - Add performance metrics collection
+    - Create alerting system
+    - Test monitoring accuracy
+
+#### **Week 9-10: Advanced Master Features**
+**Priority 1: YT Manager & Centralized Overlay**
+22. **YT Manager Implementation** (8 hours)
+    - Implement YouTube API integration
+    - Add stream management
+    - Create chat moderation tools
+    - **NEW: Centralized Current Matches View implementation**
+    - Test YouTube integration
+
+23. **Centralized Current Matches View** (6 hours)
+    - Implement Master WebSocket client infrastructure
+    - Create centralized match data processing
+    - Build YT Manager overlay component
+    - Add real-time match data from all slaves
+    - Test centralized overlay functionality
+
+24. **IVR Central Desk** (6 hours)
+    - Implement event review system
+    - Add video management
+    - Create reporting tools
+    - Test IVR review workflow
+
+#### **Week 11-12: Optimization & Integration**
+**Priority 1: Performance & Testing**
+25. **Master/Slave Performance Optimization** (6 hours)
+    - Optimize data transfer
+    - Implement caching strategies
+    - Add compression
+    - Test performance under load
+
+26. **Comprehensive Testing & Deployment** (4 hours)
+    - Test all master/slave features
+    - Create deployment guides
+    - Document master/slave procedures
+    - Final integration testing
 
 ### **🚀 Future Enhancements**
 
@@ -90,29 +262,36 @@
 ### **📊 Completed Tasks** ✅
 
 #### **Recent Achievements (2025-01-29)**
-- ✅ **Manual Override Detection System**: Comprehensive detection and handling of manual changes in PSS software ✨ **NEW**
-- ✅ **Panic Prevention**: Robust error handling and defensive programming in UDP plugin ✨ **NEW**
+- ✅ **Centralized Current Matches View Design**: Master WebSocket client and YT Manager overlay design ✨ **NEW**
+- ✅ **OBS Integration Design**: Comprehensive OBS session management and integration design ✨ **NEW**
+- ✅ **Performance Optimization Strategy**: Multi-phase performance optimization plan ✨ **NEW**
+- ✅ **Database Schema Enhancement**: Unified OBS sessions table design ✨ **NEW**
+- ✅ **Frontend Performance Strategy**: React optimization and virtualization plan ✨ **NEW**
+- ✅ **Stream Interruption Handling**: Automatic detection and time offset management design ✨ **NEW**
+- ✅ **YouTube Chapter Generation**: Database-driven chapter generation system design ✨ **NEW**
+- ✅ **Manual Override Detection System**: Comprehensive detection and handling of manual changes in PSS software
+- ✅ **Panic Prevention**: Robust error handling and defensive programming in UDP plugin
 - ✅ **Hardware Simulator Integration**: Complete PSS v2.3 protocol simulator with UI integration
 - ✅ **Simulation Tab**: Added to PSS drawer with one-click operation
 - ✅ **Simulation Commands**: Backend Tauri commands for simulation control
 - ✅ **Simulation Panel**: Frontend component with real-time status monitoring
 - ✅ **Injury Action Support**: Fully implemented and tested
 - ✅ **Scoreboard Overlay Compatibility**: Verified and working
-- ✅ **Automated Simulation**: Multi-match scenarios with realistic event generation ✨ **NEW**
-- ✅ **Random Athlete Generation**: Realistic athlete data from multiple countries ✨ **NEW**
-- ✅ **Dynamic Match Configs**: Random match configurations and categories ✨ **NEW**
-- ✅ **Progress Tracking**: Real-time progress monitoring for automated simulations ✨ **NEW**
-- ✅ **System Self-Test**: Comprehensive testing of all system integrations ✨ **NEW**
-- ✅ **Test Categories**: 24 tests across 6 categories (Backend, Frontend, Simulation, Data Flow, UI, Performance) ✨ **NEW**
-- ✅ **Markdown Reports**: Detailed test reports with recommendations and system health assessment ✨ **NEW**
-- ✅ **Frontend Integration**: Self-test panel with rich text display and real-time monitoring ✨ **NEW**
-- ✅ **Selective Testing**: Choose specific test categories to run ✨ **NEW**
-- ✅ **Category Management**: Toggle individual categories, select all, deselect all ✨ **NEW**
-- ✅ **Enhanced UI**: Toggle controls for selective testing with visual feedback ✨ **NEW**
-- ✅ **Warning Limit Rule**: 5-warning limit per athlete per round with automatic round loss ✨ **NEW**
-- ✅ **Robust Dependency Management**: Cross-platform Python detection and auto-installation ✨ **NEW**
-- ✅ **Enhanced Error Handling**: User-friendly error messages with actionable solutions ✨ **NEW**
-- ✅ **UI Retry & Install Buttons**: One-click dependency installation and retry options ✨ **NEW**
+- ✅ **Automated Simulation**: Multi-match scenarios with realistic event generation
+- ✅ **Random Athlete Generation**: Realistic athlete data from multiple countries
+- ✅ **Dynamic Match Configs**: Random match configurations and categories
+- ✅ **Progress Tracking**: Real-time progress monitoring for automated simulations
+- ✅ **System Self-Test**: Comprehensive testing of all system integrations
+- ✅ **Test Categories**: 24 tests across 6 categories (Backend, Frontend, Simulation, Data Flow, UI, Performance)
+- ✅ **Markdown Reports**: Detailed test reports with recommendations and system health assessment
+- ✅ **Frontend Integration**: Self-test panel with rich text display and real-time monitoring
+- ✅ **Selective Testing**: Choose specific test categories to run
+- ✅ **Category Management**: Toggle individual categories, select all, deselect all
+- ✅ **Enhanced UI**: Toggle controls for selective testing with visual feedback
+- ✅ **Warning Limit Rule**: 5-warning limit per athlete per round with automatic round loss
+- ✅ **Robust Dependency Management**: Cross-platform Python detection and auto-installation
+- ✅ **Enhanced Error Handling**: User-friendly error messages with actionable solutions
+- ✅ **UI Retry & Install Buttons**: One-click dependency installation and retry options
 - ✅ **Event Table Real-time Updates**: Implemented with proper filtering
 - ✅ **Database Storage Framework**: Basic structure in place
 - ✅ **Interference Prevention Rules**: Added to project context
@@ -132,8 +311,9 @@
 ### **🐛 Known Issues**
 
 #### **Critical Issues**
-- **Database Storage**: `store_pss_event` command is temporarily disabled
-- **Documentation Fragmentation**: Too many standalone .md files
+- **OBS Integration**: Not yet implemented (in design phase)
+- **Performance Optimization**: Not yet implemented (in planning phase)
+- **Database Storage**: `store_pss_event` command needs OBS field updates
 
 #### **Minor Issues**
 - **Performance**: Some WebSocket messages could be optimized
@@ -141,10 +321,29 @@
 
 ### **📈 Success Metrics**
 
-#### **Documentation Goals**
-- [ ] **Reduce .md files from 40+ to 7 (6 main + 1 TODO)**
-- [ ] **100% cross-reference accuracy**
-- [ ] **Single source of truth for all documentation**
+#### **Performance Goals**
+- [ ] **Latency**: < 50ms for UDP event processing
+- [ ] **Throughput**: 1000+ events/second sustained
+- [ ] **Memory Usage**: < 100MB for normal operation
+- [ ] **CPU Usage**: < 10% average, < 30% peak
+- [ ] **Database**: < 5ms average query time
+
+#### **OBS Integration Goals**
+- [ ] **100% OBS session management** (recording, streaming, replay buffer)
+- [ ] **Automatic timestamp calculation** (rec_timestamp, str_timestamp)
+- [ ] **Stream interruption resilience** with time offset management
+- [ ] **YouTube chapter generation** from PSS event data
+- [ ] **IVR integration** with video replay functionality
+
+#### **Master/Slave Architecture Goals**
+- [ ] **100% slave auto-discovery** on local network
+- [ ] **Centralized control** of all slave nodes
+- [ ] **Real-time health monitoring** of all systems
+- [ ] **YouTube stream management** with chat moderation
+- [ ] **Centralized IVR review** and video management
+- [ ] **Automated tournament management** workflows
+- [ ] **Shared folder synchronization** for recordings
+- [ ] **Minimal slave performance impact** (< 5% overhead)
 
 #### **System Goals**
 - [ ] **100% real-time event processing**
@@ -154,19 +353,25 @@
 
 ### **🎯 Next Sprint Goals**
 
-1. **Complete documentation consolidation** (Priority 1)
-2. **Implement full database storage** (Priority 1)
-3. **Verify all real-time systems** (Priority 1)
-4. **Begin analytics integration** (Priority 2)
+1. **Complete OBS integration implementation** (Priority 1)
+2. **Implement performance optimizations** (Priority 1)
+3. **Test all new features thoroughly** (Priority 1)
+4. **Update documentation and monitoring** (Priority 2)
+5. **Begin Master/Slave architecture implementation** (Priority 1)
+6. **Implement network discovery system** (Priority 1)
 
 ### **📝 Notes**
 
-- **Interference Prevention**: All changes must follow the new rules in `.cursor/rules/context.mdc`
+- **Performance Rule**: All new development must follow the performance optimization rule
+- **OBS Integration**: Follow the detailed triggering rules and session management
+- **Master/Slave Architecture**: Ensure minimal impact on slave performance (< 5% overhead)
+- **Network Discovery**: Implement robust auto-discovery with fallback mechanisms
 - **Testing Required**: Every change must be tested for Event Table and Scoreboard compatibility
 - **Documentation**: All changes must be documented in the appropriate main architecture file
-- **Performance**: Maintain fast development and build times
+- **Performance**: Maintain fast development and build times while implementing optimizations 
 
 ---
 
 **Last Updated**: 2025-01-29  
-**Next Review**: 2025-02-05 
+**Next Review**: 2025-02-05  
+**Performance Rule**: Implement all possible performance/resource improvements gradually while preserving existing functionality 

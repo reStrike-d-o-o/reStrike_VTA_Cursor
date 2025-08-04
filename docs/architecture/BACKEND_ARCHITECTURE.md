@@ -1436,6 +1436,703 @@ cargo tauri build --target x86_64-pc-windows-msvc
 # - Documentation and licenses
 ```
 
+---
+
+## 🎥 OBS Integration System
+
+### **OBS WebSocket Management**
+
+The backend includes comprehensive OBS Studio integration through WebSocket connections for recording, streaming, and replay buffer management:
+
+#### **OBS Connection Types**
+```rust
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ObsConnectionType {
+    OBS_REC,    // Recording connection
+    OBS_STR,    // Streaming connection
+    OBS_BOTH,   // Both recording and streaming
+}
+
+#[derive(Debug, Clone)]
+pub struct ObsConnection {
+    pub connection_type: ObsConnectionType,
+    pub websocket_url: String,
+    pub password: Option<String>,
+    pub is_connected: Arc<AtomicBool>,
+    pub last_heartbeat: Arc<Mutex<Instant>>,
+    pub connection_handle: Option<JoinHandle<()>>,
+}
+```
+
+#### **OBS Session Management**
+```rust
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ObsSession {
+    pub id: Option<i64>,
+    pub session_id: i64,
+    pub session_type: String,           // 'stream', 'recording', 'replay_buffer'
+    pub obs_connection: String,         // 'OBS_REC', 'OBS_STR', 'OBS_BOTH'
+    pub start_timestamp: String,
+    pub end_timestamp: Option<String>,
+    pub tournament_id: Option<i64>,
+    pub tournament_day_id: Option<i64>,
+    pub session_number: i32,
+    pub is_active: bool,
+    pub interruption_reason: Option<String>,
+    pub time_offset_seconds: i64,
+    pub cumulative_offset_seconds: i64,
+    pub recording_path: Option<String>,
+    pub recording_name: Option<String>,
+    pub stream_key: Option<String>,
+    pub replay_buffer_duration: i32,
+    pub replay_buffer_path: Option<String>,
+    pub created_at: String,
+}
+
+impl ObsSession {
+    pub fn new_stream_session(session_id: i64, tournament_day_id: i64) -> Self {
+        Self {
+            id: None,
+            session_id,
+            session_type: "stream".to_string(),
+            obs_connection: "OBS_STR".to_string(),
+            start_timestamp: chrono::Utc::now().to_rfc3339(),
+            end_timestamp: None,
+            tournament_id: None,
+            tournament_day_id: Some(tournament_day_id),
+            session_number: 1,
+            is_active: true,
+            interruption_reason: None,
+            time_offset_seconds: 0,
+            cumulative_offset_seconds: 0,
+            recording_path: None,
+            recording_name: None,
+            stream_key: None,
+            replay_buffer_duration: 20,
+            replay_buffer_path: None,
+            created_at: chrono::Utc::now().to_rfc3339(),
+        }
+    }
+
+    pub fn new_recording_session(session_id: i64, tournament_day_id: i64) -> Self {
+        Self {
+            id: None,
+            session_id,
+            session_type: "recording".to_string(),
+            obs_connection: "OBS_REC".to_string(),
+            start_timestamp: chrono::Utc::now().to_rfc3339(),
+            end_timestamp: None,
+            tournament_id: None,
+            tournament_day_id: Some(tournament_day_id),
+            session_number: 1,
+            is_active: true,
+            interruption_reason: None,
+            time_offset_seconds: 0,
+            cumulative_offset_seconds: 0,
+            recording_path: None,
+            recording_name: None,
+            stream_key: None,
+            replay_buffer_duration: 20,
+            replay_buffer_path: None,
+            created_at: chrono::Utc::now().to_rfc3339(),
+        }
+    }
+}
+```
+
+### **OBS Integration Triggering Rules**
+
+#### **New Match Loaded and Ready Trigger**
+```rust
+impl ObsIntegration {
+    pub async fn handle_new_match_loaded(&self, match_data: &MatchData) -> AppResult<()> {
+        // Setup recording path: Tournament name/current active tournament Day name
+        let recording_path = format!(
+            "C:/Users/{}/Videos/{}/{}",
+            whoami::username(),
+            match_data.tournament_name,
+            match_data.tournament_day_name
+        );
+
+        // Setup recording name: matchNumber+player1+player1 country IOC+vs+player2+player2 country IOC
+        let recording_name = format!(
+            "{}_{}_{}_vs_{}_{}",
+            match_data.match_number,
+            match_data.player1_name,
+            match_data.player1_country_ioc,
+            match_data.player2_name,
+            match_data.player2_country_ioc
+        );
+
+        // Setup video replay buffer 20s
+        let replay_buffer_duration = 20;
+
+        // Setup video replay buffer saving location
+        let replay_buffer_path = format!("{}/IVR recordings", recording_path);
+
+        // Start recording and replay buffer
+        self.obs_rec_connection.set_recording_path(&recording_path).await?;
+        self.obs_rec_connection.set_recording_name(&recording_name).await?;
+        self.obs_rec_connection.set_replay_buffer_duration(replay_buffer_duration).await?;
+        self.obs_rec_connection.set_replay_buffer_path(&replay_buffer_path).await?;
+        self.obs_rec_connection.start_recording().await?;
+        self.obs_rec_connection.start_replay_buffer().await?;
+
+        // Calculate str_timestamp for OBS_STR
+        if let Some(stream_start) = self.obs_str_connection.get_stream_start_time().await? {
+            let str_timestamp = self.calculate_str_timestamp(&match_data.timestamp, &stream_start);
+            // Save str_timestamp to database
+            self.update_event_str_timestamp(match_data.event_id, &str_timestamp).await?;
+        }
+
+        Ok(())
+    }
+}
+```
+
+#### **Challenge/IVR or Replay Button Trigger**
+```rust
+impl ObsIntegration {
+    pub async fn handle_challenge_ivr_trigger(&self, event_data: &PssEventData) -> AppResult<()> {
+        // Save video replay buffer
+        let replay_clip_path = self.obs_rec_connection.save_replay_buffer().await?;
+
+        // Calculate rec_timestamp for all events in last 20s
+        let events_last_20s = self.get_events_last_20_seconds(event_data.session_id).await?;
+        for event in events_last_20s {
+            if event.rec_timestamp.is_none() {
+                let rec_timestamp = self.calculate_rec_timestamp(&event.timestamp).await?;
+                self.update_event_rec_timestamp(event.id, &rec_timestamp).await?;
+            }
+        }
+
+        // Open last saved video replay buffer clip in .mvp player
+        self.open_replay_clip_in_mvp_player(&replay_clip_path).await?;
+
+        // Add IVR link to all events in last 20 seconds
+        for event in events_last_20s {
+            if event.ivr_link.is_none() {
+                self.update_event_ivr_link(event.id, &replay_clip_path).await?;
+            }
+        }
+
+        // Change scene to IVR_SCENE
+        self.obs_str_connection.set_current_scene("IVR_SCENE").await?;
+
+        // Activate starting animation
+        self.activate_ivr_stream_overlay_animation("start").await?;
+
+        Ok(())
+    }
+}
+```
+
+#### **Challenge Resolution or Video Close Trigger**
+```rust
+impl ObsIntegration {
+    pub async fn handle_challenge_resolution(&self) -> AppResult<()> {
+        // Activate closing animation
+        self.activate_ivr_stream_overlay_animation("close").await?;
+
+        // Change scene to LIVE_SCENE
+        self.obs_str_connection.set_current_scene("LIVE_SCENE").await?;
+
+        // Check if video replay buffer is active, if not, activate it
+        if !self.obs_rec_connection.is_replay_buffer_active().await? {
+            self.obs_rec_connection.start_replay_buffer().await?;
+        }
+
+        Ok(())
+    }
+}
+```
+
+### **Stream Interruption Handling**
+
+#### **Automatic Stream Restart Detection**
+```rust
+impl ObsIntegration {
+    pub async fn detect_and_handle_stream_restart(&self, tournament_day_id: i64) -> AppResult<()> {
+        // Check if current stream session is still active
+        if let Some(active_session) = self.get_active_stream_session(tournament_day_id).await? {
+            // Check if OBS stream is still connected
+            if !self.obs_str_connection.is_connected().await? {
+                // Stream was interrupted, end current session
+                self.end_active_stream_session(tournament_day_id, "stream_interruption").await?;
+                
+                // Start new stream session
+                let new_session = self.start_new_stream_session(tournament_day_id).await?;
+                
+                // Calculate time offset
+                let time_offset = self.calculate_stream_time_offset(tournament_day_id).await?;
+                
+                // Update cumulative offset for all subsequent sessions
+                self.update_cumulative_offset(tournament_day_id, "stream", time_offset).await?;
+                
+                // Recalculate str_timestamps for all events in current tournament day
+                self.recalculate_str_timestamps(tournament_day_id).await?;
+            }
+        }
+
+        Ok(())
+    }
+
+    pub async fn handle_stream_interruption(
+        &self,
+        tournament_day_id: i64,
+        reason: &str
+    ) -> AppResult<()> {
+        // End current active session
+        self.end_active_stream_session(tournament_day_id, reason).await?;
+
+        // Start new session
+        let new_session = self.start_new_stream_session(tournament_day_id).await?;
+
+        // Calculate and apply time offset
+        let time_offset = self.calculate_session_time_offset(tournament_day_id, "stream").await?;
+        self.update_cumulative_offset(tournament_day_id, "stream", time_offset).await?;
+
+        Ok(())
+    }
+}
+```
+
+### **YouTube Chapter Generation**
+
+#### **Database-Driven Chapter Generation**
+```rust
+impl ObsIntegration {
+    pub async fn generate_youtube_chapters(
+        &self,
+        tournament_day_id: i64,
+        output_path: &str
+    ) -> AppResult<()> {
+        // Get all events with str_timestamp for the tournament day
+        let events = self.get_events_with_str_timestamp(tournament_day_id).await?;
+
+        // Group events by session and match
+        let mut chapters = Vec::new();
+        for event in events {
+            if let (Some(str_timestamp), Some(match_number), Some(event_category)) = 
+                (&event.str_timestamp, &event.match_number, &event.event_category) {
+                
+                let chapter_line = format!(
+                    "{} {} - {}",
+                    str_timestamp,
+                    self.get_event_category_description(event_category),
+                    event.description.as_deref().unwrap_or("")
+                );
+                
+                chapters.push(chapter_line);
+            }
+        }
+
+        // Write to file
+        let mut file = tokio::fs::File::create(output_path).await?;
+        let content = chapters.join("\n");
+        file.write_all(content.as_bytes()).await?;
+
+        Ok(())
+    }
+
+    fn get_event_category_description(&self, category: &str) -> &'static str {
+        match category {
+            "R" => "Referee Decision",
+            "K" => "Kick Event",
+            "P" => "Punch Point",
+            "H" => "Head Point",
+            "TH" => "Technical Head Point",
+            "TB" => "Technical Body Point",
+            _ => "Match Event",
+        }
+    }
+}
+```
+
+---
+
+## ⚡ Performance Optimization Strategy
+
+### **Current Performance Analysis**
+
+#### **Identified Performance Bottlenecks**
+1. **UDP Event Processing**: High-frequency PSS events (100+ events/second)
+2. **Database Operations**: Frequent inserts and real-time queries
+3. **WebSocket Broadcasting**: JSON serialization and synchronous broadcasting
+4. **Memory Management**: Event caching and WebSocket client management
+5. **CPU Usage**: Heavy processing in main thread
+
+#### **Performance Targets**
+- **Latency**: < 50ms for UDP event processing
+- **Throughput**: 1000+ events/second sustained
+- **Memory Usage**: < 100MB for normal operation
+- **CPU Usage**: < 10% average, < 30% peak
+- **Database**: < 5ms average query time
+
+### **Multi-Phase Optimization Implementation**
+
+#### **Phase 1: UDP Processing Optimization (Priority 1)**
+
+**Bounded Channels Implementation**
+```rust
+// Replace unbounded channels with bounded channels
+pub struct OptimizedUdpPlugin {
+    event_receiver: tokio::sync::mpsc::Receiver<PssEvent>,
+    event_sender: tokio::sync::mpsc::Sender<PssEvent>,
+    batch_processor: tokio::sync::mpsc::Sender<Vec<PssEvent>>,
+    // ... other fields
+}
+
+impl OptimizedUdpPlugin {
+    pub fn new() -> Self {
+        let (event_sender, event_receiver) = tokio::sync::mpsc::channel(1000); // Bounded channel
+        let (batch_sender, batch_receiver) = tokio::sync::mpsc::channel(100);  // Bounded batch channel
+        
+        Self {
+            event_receiver,
+            event_sender,
+            batch_processor: batch_sender,
+            // ... initialize other fields
+        }
+    }
+
+    pub async fn process_events_batch(&mut self) -> AppResult<()> {
+        let mut batch = Vec::with_capacity(50);
+        let mut timeout = tokio::time::sleep(Duration::from_millis(100));
+
+        loop {
+            tokio::select! {
+                event = self.event_receiver.recv() => {
+                    match event {
+                        Some(event) => {
+                            batch.push(event);
+                            if batch.len() >= 50 {
+                                self.batch_processor.send(batch.drain(..).collect()).await?;
+                            }
+                        }
+                        None => break,
+                    }
+                }
+                _ = &mut timeout => {
+                    if !batch.is_empty() {
+                        self.batch_processor.send(batch.drain(..).collect()).await?;
+                    }
+                    timeout = tokio::time::sleep(Duration::from_millis(100));
+                }
+            }
+        }
+
+        Ok(())
+    }
+}
+```
+
+**Zero-Copy PSS Protocol Parsing**
+```rust
+use bytes::{Buf, BufMut, BytesMut};
+
+pub struct OptimizedPssParser {
+    buffer: BytesMut,
+}
+
+impl OptimizedPssParser {
+    pub fn parse_event_zero_copy(&mut self, data: &[u8]) -> AppResult<PssEvent> {
+        self.buffer.extend_from_slice(data);
+        
+        // Parse without allocating new strings
+        let event_type = self.buffer.get_u8();
+        let timestamp = self.buffer.get_u64_le();
+        let data_length = self.buffer.get_u16_le();
+        
+        // Use slice instead of allocating new Vec
+        let event_data = self.buffer.copy_to_bytes(data_length as usize);
+        
+        Ok(PssEvent {
+            event_type,
+            timestamp,
+            data: event_data.to_vec(), // Only allocate when needed
+        })
+    }
+}
+```
+
+#### **Phase 2: Database Optimization (Priority 1)**
+
+**Connection Pooling Implementation**
+```rust
+use deadpool_sqlite::{Config, Pool, Runtime};
+
+pub struct OptimizedDatabasePlugin {
+    pool: Pool,
+    prepared_statements: Arc<Mutex<HashMap<String, rusqlite::Statement<'static>>>>,
+}
+
+impl OptimizedDatabasePlugin {
+    pub async fn new() -> AppResult<Self> {
+        let config = Config::new("database.db");
+        let pool = config.create_pool(Some(Runtime::Tokio1), deadpool_sqlite::Manager::new)?;
+        
+        Ok(Self {
+            pool,
+            prepared_statements: Arc::new(Mutex::new(HashMap::new())),
+        })
+    }
+
+    pub async fn batch_insert_events(&self, events: Vec<PssEventV2>) -> AppResult<()> {
+        let conn = self.pool.get().await?;
+        
+        // Use prepared statement for batch insert
+        let stmt = conn.prepare_cached(
+            "INSERT OR REPLACE INTO pss_events_v2 
+             (timestamp, event_type, data, event_category, tournament_id, tournament_day_id, match_number, rec_timestamp, str_timestamp, ivr_link) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        ).await?;
+
+        // Batch insert with transaction
+        let tx = conn.transaction().await?;
+        for event in events {
+            tx.execute(&stmt, rusqlite::params![
+                event.timestamp,
+                event.event_type,
+                event.data,
+                event.event_category,
+                event.tournament_id,
+                event.tournament_day_id,
+                event.match_number,
+                event.rec_timestamp,
+                event.str_timestamp,
+                event.ivr_link,
+            ]).await?;
+        }
+        tx.commit().await?;
+
+        Ok(())
+    }
+}
+```
+
+#### **Phase 3: WebSocket Optimization (Priority 2)**
+
+**Binary Serialization with Protocol Buffers**
+```rust
+use prost::Message;
+
+#[derive(Message)]
+pub struct OptimizedPssEvent {
+    #[prost(uint32, tag = "1")]
+    pub event_type: u32,
+    #[prost(bytes, tag = "2")]
+    pub data: Vec<u8>,
+    #[prost(uint64, tag = "3")]
+    pub timestamp: u64,
+    #[prost(string, optional, tag = "4")]
+    pub event_category: Option<String>,
+    #[prost(string, optional, tag = "5")]
+    pub rec_timestamp: Option<String>,
+    #[prost(string, optional, tag = "6")]
+    pub str_timestamp: Option<String>,
+    #[prost(string, optional, tag = "7")]
+    pub ivr_link: Option<String>,
+}
+
+impl OptimizedWebSocketServer {
+    pub async fn broadcast_event_optimized(&self, event: &PssEvent) -> AppResult<()> {
+        // Serialize to binary format
+        let optimized_event = OptimizedPssEvent {
+            event_type: event.event_type as u32,
+            data: event.data.clone(),
+            timestamp: event.timestamp,
+            event_category: event.event_category.clone(),
+            rec_timestamp: event.rec_timestamp.clone(),
+            str_timestamp: event.str_timestamp.clone(),
+            ivr_link: event.ivr_link.clone(),
+        };
+
+        let binary_data = optimized_event.encode_to_vec();
+
+        // Asynchronous broadcast with backpressure
+        let clients = self.clients.clone();
+        tokio::spawn(async move {
+            let mut failed_clients = Vec::new();
+
+            for client in clients.lock().await.iter() {
+                if let Err(_) = client.send_binary(&binary_data).await {
+                    failed_clients.push(client.id.clone());
+                }
+            }
+
+            // Remove failed clients
+            if !failed_clients.is_empty() {
+                let mut clients_guard = clients.lock().await;
+                clients_guard.retain(|client| !failed_clients.contains(&client.id));
+            }
+        });
+
+        Ok(())
+    }
+}
+```
+
+#### **Phase 4: Memory and Resource Management (Priority 3)**
+
+**Object Pooling for Event Objects**
+```rust
+use std::collections::VecDeque;
+use std::sync::Mutex;
+
+pub struct EventObjectPool {
+    pool: Arc<Mutex<VecDeque<PssEvent>>>,
+    max_pool_size: usize,
+}
+
+impl EventObjectPool {
+    pub fn new(max_size: usize) -> Self {
+        Self {
+            pool: Arc::new(Mutex::new(VecDeque::with_capacity(max_size))),
+            max_pool_size: max_size,
+        }
+    }
+
+    pub fn acquire(&self) -> Option<PssEvent> {
+        self.pool.lock().unwrap().pop_front()
+    }
+
+    pub fn release(&self, mut event: PssEvent) {
+        // Reset event to initial state
+        event.data.clear();
+        event.event_category = None;
+        event.rec_timestamp = None;
+        event.str_timestamp = None;
+        event.ivr_link = None;
+
+        let mut pool = self.pool.lock().unwrap();
+        if pool.len() < self.max_pool_size {
+            pool.push_back(event);
+        }
+    }
+}
+```
+
+**Memory Monitoring and Cleanup**
+```rust
+use sysinfo::{System, SystemExt, ProcessExt};
+
+pub struct MemoryMonitor {
+    system: System,
+    memory_threshold: u64, // MB
+}
+
+impl MemoryMonitor {
+    pub fn new(memory_threshold_mb: u64) -> Self {
+        Self {
+            system: System::new_all(),
+            memory_threshold: memory_threshold_mb * 1024 * 1024, // Convert to bytes
+        }
+    }
+
+    pub async fn check_memory_usage(&mut self) -> AppResult<()> {
+        self.system.refresh_memory();
+        let used_memory = self.system.used_memory();
+
+        if used_memory > self.memory_threshold {
+            // Trigger memory cleanup
+            self.perform_memory_cleanup().await?;
+        }
+
+        Ok(())
+    }
+
+    async fn perform_memory_cleanup(&self) -> AppResult<()> {
+        // Clear event caches
+        // Force garbage collection
+        // Clear unused prepared statements
+        // Compact database
+        Ok(())
+    }
+}
+```
+
+### **Performance Monitoring and Metrics**
+
+#### **Tracing and Profiling**
+```rust
+use tracing::{info, warn, error, instrument};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+
+pub struct PerformanceMonitor {
+    metrics: Arc<Mutex<PerformanceMetrics>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct PerformanceMetrics {
+    pub udp_events_processed: u64,
+    pub database_operations: u64,
+    pub websocket_messages_sent: u64,
+    pub average_processing_time: Duration,
+    pub memory_usage_mb: u64,
+    pub cpu_usage_percent: f64,
+}
+
+impl PerformanceMonitor {
+    #[instrument(skip(self))]
+    pub async fn record_udp_event_processed(&self, processing_time: Duration) {
+        let mut metrics = self.metrics.lock().unwrap();
+        metrics.udp_events_processed += 1;
+        metrics.average_processing_time = 
+            (metrics.average_processing_time + processing_time) / 2;
+    }
+
+    #[instrument(skip(self))]
+    pub async fn record_database_operation(&self, operation_time: Duration) {
+        let mut metrics = self.metrics.lock().unwrap();
+        metrics.database_operations += 1;
+    }
+
+    pub async fn get_performance_report(&self) -> PerformanceMetrics {
+        self.metrics.lock().unwrap().clone()
+    }
+}
+```
+
+### **Implementation Timeline and Priority**
+
+#### **Week 1-2: Critical Path Optimizations**
+1. **UDP Bounded Channels**: Implement size-limited event queues
+2. **Database Connection Pooling**: Add connection pool with health checks
+3. **WebSocket Binary Serialization**: Switch to Protocol Buffers
+4. **Basic Memory Monitoring**: Add memory usage tracking
+
+#### **Week 3-4: Advanced Optimizations**
+1. **Batch Processing**: Implement event batching in UDP plugin
+2. **Database Batch Inserts**: Use batch inserts for PSS events
+3. **Object Pooling**: Implement event object pooling
+4. **Performance Metrics**: Add comprehensive performance monitoring
+
+#### **Month 2: Monitoring and Tuning**
+1. **Async Processing**: Move heavy processing to background tasks
+2. **Caching Layer**: Implement Redis or in-memory caching
+3. **Compression**: Add gzip compression to WebSocket messages
+4. **Performance Dashboard**: Create monitoring dashboard
+
+### **Expected Performance Improvements**
+
+#### **Latency Improvements**
+- **UDP Processing**: 70% reduction (from 150ms to 45ms)
+- **Database Queries**: 80% reduction (from 25ms to 5ms)
+- **WebSocket Broadcasting**: 60% reduction (from 100ms to 40ms)
+
+#### **Throughput Improvements**
+- **Event Processing**: 5x increase (from 200 to 1000 events/second)
+- **Database Operations**: 10x increase (from 100 to 1000 operations/second)
+- **WebSocket Messages**: 3x increase (from 500 to 1500 messages/second)
+
+#### **Resource Usage Targets**
+- **CPU Usage**: < 10% average, < 30% peak
+- **Memory Usage**: < 100MB for normal operation, < 200MB peak
+- **Network Bandwidth**: < 1MB/s for normal operation
+
+---
+
 ## Future Enhancements
 
 ### Planned Features

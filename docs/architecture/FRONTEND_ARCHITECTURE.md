@@ -1263,6 +1263,743 @@ function updateConnectionStatus(connected) {
 
 ---
 
+## ⚡ Frontend Performance Optimization
+
+### **Current Performance Analysis**
+
+#### **Identified Frontend Bottlenecks**
+1. **Event Table Rendering**: Large event lists causing slow rendering
+2. **Real-time Updates**: Frequent re-renders of event components
+3. **State Management**: Inefficient state updates and subscriptions
+4. **Memory Usage**: Event caching and component memory leaks
+5. **WebSocket Processing**: JSON parsing and state updates
+
+#### **Performance Targets**
+- **Event Table Rendering**: < 100ms for 1000+ events
+- **Real-time Updates**: < 50ms for single event updates
+- **Memory Usage**: < 50MB for normal operation
+- **CPU Usage**: < 5% average for UI operations
+- **Bundle Size**: < 2MB initial load
+
+### **Multi-Phase Frontend Optimization**
+
+#### **Phase 1: React Component Optimization (Priority 1)**
+
+**Memoization Implementation**
+```typescript
+// Memoized event components with custom comparison
+const EventItem = React.memo<{ event: PssEventData }>(({ event }) => {
+  return (
+    <div className="event-item">
+      <span className="event-type">{event.eventType}</span>
+      <span className="event-time">{event.time}</span>
+      <span className="event-description">{event.description}</span>
+      {event.rec_timestamp && (
+        <span className="rec-timestamp">REC: {event.rec_timestamp}</span>
+      )}
+      {event.str_timestamp && (
+        <span className="str-timestamp">STR: {event.str_timestamp}</span>
+      )}
+      {event.ivr_link && (
+        <span className="ivr-link">🎥</span>
+      )}
+    </div>
+  );
+}, (prevProps, nextProps) => {
+  // Custom comparison for optimal re-rendering
+  return (
+    prevProps.event.id === nextProps.event.id &&
+    prevProps.event.timestamp === nextProps.event.timestamp &&
+    prevProps.event.rec_timestamp === nextProps.event.rec_timestamp &&
+    prevProps.event.str_timestamp === nextProps.event.str_timestamp &&
+    prevProps.event.ivr_link === nextProps.event.ivr_link
+  );
+});
+
+// Memoized event list with virtualization
+const EventTableSection: React.FC = () => {
+  const { events, loading, error } = useDatabaseEventStore();
+  
+  const memoizedEvents = useMemo(() => {
+    return events.map(event => ({
+      ...event,
+      key: `${event.id}-${event.timestamp}`,
+    }));
+  }, [events]);
+
+  const handleEventClick = useCallback((eventId: string) => {
+    // Handle event click with IVR link
+    const event = events.find(e => e.id === eventId);
+    if (event?.ivr_link) {
+      window.open(event.ivr_link, '_blank');
+    }
+  }, [events]);
+
+  if (loading) return <div className="loading">Loading events...</div>;
+  if (error) return <div className="error">Error: {error}</div>;
+
+  return (
+    <div className="event-table-section">
+      <VirtualizedEventList
+        events={memoizedEvents}
+        onEventClick={handleEventClick}
+        height={400}
+        itemSize={35}
+      />
+    </div>
+  );
+};
+```
+
+**Virtualized Event List Implementation**
+```typescript
+import { FixedSizeList as List } from 'react-window';
+
+interface VirtualizedEventListProps {
+  events: PssEventData[];
+  onEventClick: (eventId: string) => void;
+  height: number;
+  itemSize: number;
+}
+
+const VirtualizedEventList: React.FC<VirtualizedEventListProps> = ({
+  events,
+  onEventClick,
+  height,
+  itemSize,
+}) => {
+  const Row = useCallback(({ index, style }: { index: number; style: CSSProperties }) => {
+    const event = events[index];
+    
+    return (
+      <div style={style} className="event-row">
+        <EventItem 
+          event={event} 
+          onClick={() => onEventClick(event.id)}
+        />
+      </div>
+    );
+  }, [events, onEventClick]);
+
+  return (
+    <List
+      height={height}
+      itemCount={events.length}
+      itemSize={itemSize}
+      width="100%"
+    >
+      {Row}
+    </List>
+  );
+};
+```
+
+#### **Phase 2: State Management Optimization (Priority 2)**
+
+**Normalized State Structure**
+```typescript
+// Normalized state for better performance
+interface NormalizedEventState {
+  entities: {
+    events: Record<string, PssEventData>;
+    sessions: Record<string, SessionData>;
+    tournaments: Record<string, TournamentData>;
+  };
+  ids: {
+    events: string[];
+    sessions: string[];
+    tournaments: string[];
+  };
+  filters: {
+    eventType: string[];
+    timeRange: [Date, Date];
+    tournamentId: string | null;
+  };
+  pagination: {
+    currentPage: number;
+    pageSize: number;
+    totalCount: number;
+  };
+}
+
+// Optimized event store with selective subscriptions
+export const useOptimizedEventStore = () => {
+  const store = useEventStore();
+  
+  // Subscribe only to relevant state changes
+  const events = useEventStore(state => state.entities.events);
+  const eventIds = useEventStore(state => state.ids.events);
+  const filters = useEventStore(state => state.filters);
+  
+  // Memoized filtered events
+  const filteredEvents = useMemo(() => {
+    return eventIds
+      .map(id => events[id])
+      .filter(event => {
+        if (filters.eventType.length > 0 && !filters.eventType.includes(event.eventType)) {
+          return false;
+        }
+        if (filters.tournamentId && event.tournamentId !== filters.tournamentId) {
+          return false;
+        }
+        return true;
+      })
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  }, [events, eventIds, filters]);
+
+  return {
+    events: filteredEvents,
+    filters,
+    setFilter: store.setFilter,
+    clearFilters: store.clearFilters,
+  };
+};
+```
+
+**Batch State Updates**
+```typescript
+// Batch multiple state updates together
+export const useBatchEventUpdates = () => {
+  const store = useEventStore();
+  
+  const batchAddEvents = useCallback((newEvents: PssEventData[]) => {
+    store.batchUpdate(state => {
+      const newState = { ...state };
+      
+      // Add new events to entities
+      newEvents.forEach(event => {
+        newState.entities.events[event.id] = event;
+        if (!newState.ids.events.includes(event.id)) {
+          newState.ids.events.push(event.id);
+        }
+      });
+      
+      // Update pagination
+      newState.pagination.totalCount += newEvents.length;
+      
+      return newState;
+    });
+  }, [store]);
+
+  return { batchAddEvents };
+};
+```
+
+#### **Phase 3: WebSocket Optimization (Priority 2)**
+
+**Binary Message Processing**
+```typescript
+// Binary WebSocket message processing
+interface BinaryPssEvent {
+  eventType: number;
+  data: Uint8Array;
+  timestamp: number;
+  eventCategory?: string;
+  recTimestamp?: string;
+  strTimestamp?: string;
+  ivrLink?: string;
+}
+
+class OptimizedWebSocketClient {
+  private ws: WebSocket | null = null;
+  private messageQueue: BinaryPssEvent[] = [];
+  private processing = false;
+
+  constructor(private url: string) {}
+
+  connect() {
+    this.ws = new WebSocket(this.url);
+    this.ws.binaryType = 'arraybuffer';
+    
+    this.ws.onmessage = (event) => {
+      if (event.data instanceof ArrayBuffer) {
+        this.processBinaryMessage(event.data);
+      }
+    };
+  }
+
+  private processBinaryMessage(data: ArrayBuffer) {
+    // Decode binary message using Protocol Buffers
+    const event = this.decodeBinaryEvent(data);
+    this.messageQueue.push(event);
+    
+    // Process in batches
+    if (!this.processing) {
+      this.processMessageQueue();
+    }
+  }
+
+  private async processMessageQueue() {
+    this.processing = true;
+    
+    while (this.messageQueue.length > 0) {
+      const batch = this.messageQueue.splice(0, 50); // Process 50 at a time
+      
+      // Batch update state
+      useEventStore.getState().batchAddEvents(
+        batch.map(event => this.convertToPssEventData(event))
+      );
+      
+      // Small delay to prevent blocking
+      await new Promise(resolve => setTimeout(resolve, 1));
+    }
+    
+    this.processing = false;
+  }
+
+  private decodeBinaryEvent(data: ArrayBuffer): BinaryPssEvent {
+    // Protocol Buffer decoding implementation
+    // This would use the same schema as the backend
+    return {} as BinaryPssEvent;
+  }
+}
+```
+
+#### **Phase 4: Memory Management (Priority 3)**
+
+**Component Memory Cleanup**
+```typescript
+// Automatic memory cleanup for components
+const useMemoryCleanup = () => {
+  useEffect(() => {
+    return () => {
+      // Cleanup on component unmount
+      // Clear any cached data
+      // Remove event listeners
+      // Clear timers
+    };
+  }, []);
+};
+
+// Event cache with size limits
+class EventCache {
+  private cache = new Map<string, PssEventData>();
+  private maxSize = 1000;
+  private accessOrder: string[] = [];
+
+  set(key: string, value: PssEventData) {
+    if (this.cache.size >= this.maxSize) {
+      // Remove least recently used
+      const lruKey = this.accessOrder.shift();
+      if (lruKey) {
+        this.cache.delete(lruKey);
+      }
+    }
+    
+    this.cache.set(key, value);
+    this.updateAccessOrder(key);
+  }
+
+  get(key: string): PssEventData | undefined {
+    const value = this.cache.get(key);
+    if (value) {
+      this.updateAccessOrder(key);
+    }
+    return value;
+  }
+
+  private updateAccessOrder(key: string) {
+    const index = this.accessOrder.indexOf(key);
+    if (index > -1) {
+      this.accessOrder.splice(index, 1);
+    }
+    this.accessOrder.push(key);
+  }
+}
+```
+
+**Debounced Updates**
+```typescript
+// Debounced state updates for performance
+import { debounce } from 'lodash';
+
+const useDebouncedEventUpdates = () => {
+  const store = useEventStore();
+  
+  const debouncedAddEvent = useMemo(
+    () => debounce((event: PssEventData) => {
+      store.addEvent(event);
+    }, 100), // 100ms debounce
+    [store]
+  );
+
+  const debouncedUpdateEvent = useMemo(
+    () => debounce((eventId: string, updates: Partial<PssEventData>) => {
+      store.updateEvent(eventId, updates);
+    }, 50), // 50ms debounce
+    [store]
+  );
+
+  return {
+    addEvent: debouncedAddEvent,
+    updateEvent: debouncedUpdateEvent,
+  };
+};
+```
+
+### **Performance Monitoring**
+
+#### **Frontend Performance Metrics**
+```typescript
+// Performance monitoring for frontend
+class FrontendPerformanceMonitor {
+  private metrics = {
+    renderTime: 0,
+    eventProcessingTime: 0,
+    memoryUsage: 0,
+    componentRenders: 0,
+  };
+
+  recordRenderTime(componentName: string, renderTime: number) {
+    this.metrics.renderTime = renderTime;
+    console.log(`🎨 ${componentName} rendered in ${renderTime}ms`);
+  }
+
+  recordEventProcessingTime(processingTime: number) {
+    this.metrics.eventProcessingTime = processingTime;
+    console.log(`⚡ Event processed in ${processingTime}ms`);
+  }
+
+  recordMemoryUsage() {
+    if ('memory' in performance) {
+      const memory = (performance as any).memory;
+      this.metrics.memoryUsage = memory.usedJSHeapSize / 1024 / 1024; // MB
+      console.log(`💾 Memory usage: ${this.metrics.memoryUsage.toFixed(2)}MB`);
+    }
+  }
+
+  getPerformanceReport() {
+    return { ...this.metrics };
+  }
+}
+
+// Performance monitoring hook
+const usePerformanceMonitoring = (componentName: string) => {
+  const monitor = useMemo(() => new FrontendPerformanceMonitor(), []);
+  
+  useEffect(() => {
+    const startTime = performance.now();
+    
+    return () => {
+      const endTime = performance.now();
+      monitor.recordRenderTime(componentName, endTime - startTime);
+    };
+  });
+};
+```
+
+### **Expected Frontend Performance Improvements**
+
+#### **Rendering Performance**
+- **Event Table Rendering**: 80% reduction (from 500ms to 100ms for 1000 events)
+- **Component Re-renders**: 70% reduction through memoization
+- **Memory Usage**: 50% reduction through virtualization and cleanup
+- **Bundle Size**: 30% reduction through code splitting
+
+#### **Real-time Performance**
+- **Event Updates**: 60% reduction (from 100ms to 40ms)
+- **WebSocket Processing**: 70% reduction through binary messages
+- **State Updates**: 50% reduction through batching
+- **CPU Usage**: 40% reduction for UI operations
+
+---
+
+## 🎥 OBS Integration UI Components
+
+### **OBS Connection Status**
+
+#### **Connection Status Indicator**
+```typescript
+interface ObsConnectionStatus {
+  obsRec: boolean;
+  obsStr: boolean;
+  recording: boolean;
+  streaming: boolean;
+  replayBuffer: boolean;
+}
+
+const ObsConnectionStatus: React.FC = () => {
+  const { obsStatus } = useObsStore();
+  
+  return (
+    <div className="obs-connection-status">
+      <div className="status-item">
+        <StatusDot 
+          status={obsStatus.obsRec ? 'connected' : 'disconnected'} 
+          label="OBS REC"
+        />
+      </div>
+      <div className="status-item">
+        <StatusDot 
+          status={obsStatus.obsStr ? 'connected' : 'disconnected'} 
+          label="OBS STR"
+        />
+      </div>
+      <div className="status-item">
+        <StatusDot 
+          status={obsStatus.recording ? 'active' : 'inactive'} 
+          label="Recording"
+        />
+      </div>
+      <div className="status-item">
+        <StatusDot 
+          status={obsStatus.streaming ? 'active' : 'inactive'} 
+          label="Streaming"
+        />
+      </div>
+      <div className="status-item">
+        <StatusDot 
+          status={obsStatus.replayBuffer ? 'active' : 'inactive'} 
+          label="Replay Buffer"
+        />
+      </div>
+    </div>
+  );
+};
+```
+
+### **OBS Session Management**
+
+#### **Session Control Panel**
+```typescript
+const ObsSessionControl: React.FC = () => {
+  const { 
+    startRecordingSession, 
+    startStreamingSession, 
+    stopSession,
+    currentSession 
+  } = useObsStore();
+
+  const handleStartRecording = async () => {
+    try {
+      await startRecordingSession();
+    } catch (error) {
+      console.error('Failed to start recording session:', error);
+    }
+  };
+
+  const handleStartStreaming = async () => {
+    try {
+      await startStreamingSession();
+    } catch (error) {
+      console.error('Failed to start streaming session:', error);
+    }
+  };
+
+  return (
+    <div className="obs-session-control">
+      <h3>OBS Session Management</h3>
+      
+      <div className="session-buttons">
+        <Button 
+          onClick={handleStartRecording}
+          disabled={currentSession?.type === 'recording'}
+          variant="primary"
+        >
+          Start Recording Session
+        </Button>
+        
+        <Button 
+          onClick={handleStartStreaming}
+          disabled={currentSession?.type === 'streaming'}
+          variant="primary"
+        >
+          Start Streaming Session
+        </Button>
+        
+        <Button 
+          onClick={stopSession}
+          disabled={!currentSession}
+          variant="danger"
+        >
+          Stop Session
+        </Button>
+      </div>
+
+      {currentSession && (
+        <div className="current-session-info">
+          <h4>Current Session</h4>
+          <p>Type: {currentSession.type}</p>
+          <p>Started: {new Date(currentSession.startTime).toLocaleString()}</p>
+          <p>Duration: {formatDuration(currentSession.duration)}</p>
+        </div>
+      )}
+    </div>
+  );
+};
+```
+
+### **IVR (Instant Video Replay) Integration**
+
+#### **IVR Trigger Button**
+```typescript
+const IvrTriggerButton: React.FC = () => {
+  const { triggerIvr, isIvrActive } = useObsStore();
+  
+  const handleIvrTrigger = async () => {
+    try {
+      await triggerIvr();
+    } catch (error) {
+      console.error('Failed to trigger IVR:', error);
+    }
+  };
+
+  return (
+    <Button
+      onClick={handleIvrTrigger}
+      disabled={isIvrActive}
+      variant="warning"
+      className="ivr-trigger-button"
+    >
+      🎥 Instant Video Replay
+    </Button>
+  );
+};
+```
+
+#### **IVR Status Display**
+```typescript
+const IvrStatusDisplay: React.FC = () => {
+  const { ivrStatus, currentReplayClip } = useObsStore();
+  
+  return (
+    <div className="ivr-status-display">
+      <h4>IVR Status</h4>
+      
+      <div className="ivr-info">
+        <StatusDot 
+          status={ivrStatus.isActive ? 'active' : 'inactive'} 
+          label="IVR Active"
+        />
+        
+        {currentReplayClip && (
+          <div className="replay-clip-info">
+            <p>Clip: {currentReplayClip.name}</p>
+            <p>Duration: {currentReplayClip.duration}s</p>
+            <p>Path: {currentReplayClip.path}</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+```
+
+### **YouTube Chapter Generation**
+
+#### **Chapter Generation Control**
+```typescript
+const YouTubeChapterGenerator: React.FC = () => {
+  const { generateChapters, isGenerating } = useObsStore();
+  const [outputPath, setOutputPath] = useState('');
+  
+  const handleGenerateChapters = async () => {
+    if (!outputPath) {
+      alert('Please specify output path');
+      return;
+    }
+    
+    try {
+      await generateChapters(outputPath);
+      alert('YouTube chapters generated successfully!');
+    } catch (error) {
+      console.error('Failed to generate chapters:', error);
+      alert('Failed to generate chapters');
+    }
+  };
+
+  return (
+    <div className="youtube-chapter-generator">
+      <h4>YouTube Chapter Generation</h4>
+      
+      <div className="input-group">
+        <Label htmlFor="output-path">Output Path:</Label>
+        <Input
+          id="output-path"
+          value={outputPath}
+          onChange={(e) => setOutputPath(e.target.value)}
+          placeholder="C:/path/to/chapters.txt"
+        />
+      </div>
+      
+      <Button
+        onClick={handleGenerateChapters}
+        disabled={isGenerating || !outputPath}
+        variant="primary"
+      >
+        {isGenerating ? 'Generating...' : 'Generate Chapters'}
+      </Button>
+    </div>
+  );
+};
+```
+
+### **Stream Interruption Management**
+
+#### **Interruption Detection and Handling**
+```typescript
+const StreamInterruptionManager: React.FC = () => {
+  const { 
+    detectInterruption, 
+    handleInterruption, 
+    interruptionHistory 
+  } = useObsStore();
+  
+  const handleManualInterruption = async (reason: string) => {
+    try {
+      await handleInterruption(reason);
+    } catch (error) {
+      console.error('Failed to handle interruption:', error);
+    }
+  };
+
+  return (
+    <div className="stream-interruption-manager">
+      <h4>Stream Interruption Management</h4>
+      
+      <div className="interruption-controls">
+        <Button
+          onClick={() => detectInterruption()}
+          variant="info"
+        >
+          Detect Interruption
+        </Button>
+        
+        <Button
+          onClick={() => handleManualInterruption('manual_stop')}
+          variant="warning"
+        >
+          Manual Stop
+        </Button>
+        
+        <Button
+          onClick={() => handleManualInterruption('network_issue')}
+          variant="danger"
+        >
+          Network Issue
+        </Button>
+      </div>
+
+      {interruptionHistory.length > 0 && (
+        <div className="interruption-history">
+          <h5>Interruption History</h5>
+          <ul>
+            {interruptionHistory.map((interruption, index) => (
+              <li key={index}>
+                {new Date(interruption.timestamp).toLocaleString()} - 
+                {interruption.reason} (Offset: {interruption.timeOffset}s)
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+};
+```
+
+---
+
 ## Future Enhancements
 
 ### Planned Features
