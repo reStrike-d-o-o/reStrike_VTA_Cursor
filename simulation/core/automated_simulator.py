@@ -489,6 +489,11 @@ class AutomatedSimulator:
     
     def _load_custom_match(self, athlete1: Athlete, athlete2: Athlete, config: MatchConfig):
         """Load a custom match with generated data"""
+        # Store the current athlete and match config data for later use
+        self.current_athlete1 = athlete1
+        self.current_athlete2 = athlete2
+        self.current_match_config = config
+        
         # Create custom scenario data
         scenario_data = {
             "athlete1": {
@@ -607,11 +612,22 @@ class AutomatedSimulator:
             elif event_type == "fight_loaded":
                 self.simulator.event_generator.fight_loaded()
             elif event_type == "athletes":
-                # This would need athlete data, handled in setup
-                pass
+                # Send athlete data using the stored athlete information
+                if hasattr(self, 'current_athlete1') and hasattr(self, 'current_athlete2'):
+                    self.simulator.event_generator.athletes(self.current_athlete1, self.current_athlete2)
+                else:
+                    # Generate random athletes if not set
+                    athlete1 = AthleteGenerator.generate_athlete()
+                    athlete2 = AthleteGenerator.generate_athlete()
+                    self.simulator.event_generator.athletes(athlete1, athlete2)
             elif event_type == "match_config":
-                # This would need config data, handled in setup
-                pass
+                # Send match config data using the stored config information
+                if hasattr(self, 'current_match_config'):
+                    self.simulator.event_generator.match_config(self.current_match_config)
+                else:
+                    # Generate random config if not set
+                    config = MatchConfigGenerator.generate_config()
+                    self.simulator.event_generator.match_config(config)
             elif event_type == "fight_ready":
                 self.simulator.event_generator.fight_ready()
             
