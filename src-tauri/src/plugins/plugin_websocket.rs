@@ -508,7 +508,7 @@ impl WebSocketServer {
                     round: current_round,
                     time: current_time.clone(),
                     timestamp: Utc::now().to_rfc3339(),
-                    raw_data: format!("scr1;{};scr2;{}", athlete1_score, athlete2_score),
+                    raw_data: format!("sc1;{};sc2;{}", athlete1_score, athlete2_score),
                     description: format!("Current Scores - Blue: {}, Red: {}", athlete1_score, athlete2_score),
                     action: None,
                     structured_data: serde_json::json!({
@@ -526,7 +526,7 @@ impl WebSocketServer {
                     round: current_round,
                     time: current_time.clone(),
                     timestamp: Utc::now().to_rfc3339(),
-                    raw_data: format!("scr1;{};{};scr2;{};{};scr3;{};{}", 
+                    raw_data: format!("s11;{};s21;{};s12;{};s22;{};s13;{};s23;{}", 
                         athlete1_r1, athlete2_r1, athlete1_r2, athlete2_r2, athlete1_r3, athlete2_r3),
                     description: format!("Scores - R1: {}-{}, R2: {}-{}, R3: {}-{}", 
                         athlete1_r1, athlete2_r1, athlete1_r2, athlete2_r2, athlete1_r3, athlete2_r3),
