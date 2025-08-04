@@ -61,19 +61,35 @@ pub fn get_simulation_main_py() -> Result<PathBuf, SimulationEnvError> {
     let possible_paths = vec![
         // Development mode: relative to current working directory
         std::env::current_dir().map(|p| p.join("simulation/main.py")).ok(),
-        // Production mode: relative to executable
+        // Production mode: relative to executable (bundled resources)
         std::env::current_exe().map(|exe| {
-            exe.parent().map(|parent| parent.join("../simulation/main.py"))
+            exe.parent().map(|parent| parent.join("simulation/main.py"))
+        }).ok().flatten(),
+        // Alternative production path: resources directory
+        std::env::current_exe().map(|exe| {
+            exe.parent().map(|parent| parent.join("resources/simulation/main.py"))
         }).ok().flatten(),
         // Fallback: try src-tauri relative paths
         std::env::current_dir().map(|p| p.join("src-tauri/../simulation/main.py")).ok(),
+        // Additional fallback: try from project root
+        std::env::current_dir().map(|p| p.join("../simulation/main.py")).ok(),
     ];
 
-    for path in possible_paths {
+    for path in &possible_paths {
         if let Some(path) = path {
+            log::debug!("Checking simulation path: {:?}", path);
             if path.exists() {
-                return Ok(path);
+                log::info!("Found simulation main.py at: {:?}", path);
+                return Ok(path.clone());
             }
+        }
+    }
+
+    // Log all attempted paths for debugging
+    log::error!("Simulation main.py not found. Attempted paths:");
+    for path in &possible_paths {
+        if let Some(path) = path {
+            log::error!("  - {:?} (exists: {})", path, path.exists());
         }
     }
 
@@ -86,19 +102,35 @@ pub fn get_simulation_requirements() -> Result<PathBuf, SimulationEnvError> {
     let possible_paths = vec![
         // Development mode: relative to current working directory
         std::env::current_dir().map(|p| p.join("simulation/requirements.txt")).ok(),
-        // Production mode: relative to executable
+        // Production mode: relative to executable (bundled resources)
         std::env::current_exe().map(|exe| {
-            exe.parent().map(|parent| parent.join("../simulation/requirements.txt"))
+            exe.parent().map(|parent| parent.join("simulation/requirements.txt"))
+        }).ok().flatten(),
+        // Alternative production path: resources directory
+        std::env::current_exe().map(|exe| {
+            exe.parent().map(|parent| parent.join("resources/simulation/requirements.txt"))
         }).ok().flatten(),
         // Fallback: try src-tauri relative paths
         std::env::current_dir().map(|p| p.join("src-tauri/../simulation/requirements.txt")).ok(),
+        // Additional fallback: try from project root
+        std::env::current_dir().map(|p| p.join("../simulation/requirements.txt")).ok(),
     ];
 
-    for path in possible_paths {
+    for path in &possible_paths {
         if let Some(p) = path {
+            log::debug!("Checking requirements path: {:?}", p);
             if p.exists() {
-                return Ok(p);
+                log::info!("Found requirements.txt at: {:?}", p);
+                return Ok(p.clone());
             }
+        }
+    }
+
+    // Log all attempted paths for debugging
+    log::error!("Simulation requirements.txt not found. Attempted paths:");
+    for path in &possible_paths {
+        if let Some(path) = path {
+            log::error!("  - {:?} (exists: {})", path, path.exists());
         }
     }
     
@@ -119,31 +151,53 @@ pub fn check_python_package(python_cmd: &str, package: &str) -> bool {
 
 /// Install python dependencies using pip
 pub fn install_python_requirements(python_cmd: &str, requirements_path: &PathBuf) -> Result<(), SimulationEnvError> {
+    log::info!("Installing Python requirements from: {:?}", requirements_path);
     let output = Command::new(python_cmd)
         .args(["-m", "pip", "install", "-r"])
         .arg(requirements_path)
         .output()
         .map_err(|e| SimulationEnvError::PipInstallFailed(e.to_string()))?;
     if output.status.success() {
+        log::info!("Successfully installed Python requirements");
         Ok(())
     } else {
-        Err(SimulationEnvError::PipInstallFailed(String::from_utf8_lossy(&output.stderr).to_string()))
+        let error_msg = String::from_utf8_lossy(&output.stderr).to_string();
+        log::error!("Failed to install Python requirements: {}", error_msg);
+        Err(SimulationEnvError::PipInstallFailed(error_msg))
     }
 }
 
 /// Ensure simulation environment is ready (python, version, dependencies)
 pub fn ensure_simulation_env() -> Result<(String, PathBuf), SimulationEnvError> {
+    log::info!("Ensuring simulation environment is ready...");
+    
+    // Detect Python
     let python_cmd = detect_python_cmd()?;
+    log::info!("Detected Python command: {}", python_cmd);
+    
+    // Check Python version
     check_python_version(&python_cmd)?;
+    log::info!("Python version check passed");
+    
+    // Get simulation main.py path
     let sim_main = get_simulation_main_py()?;
+    log::info!("Simulation main.py found at: {:?}", sim_main);
+    
+    // Get requirements.txt path
     let req_path = get_simulation_requirements()?;
+    log::info!("Requirements.txt found at: {:?}", req_path);
+    
     // Check for a common package (requests)
     if !check_python_package(&python_cmd, "requests") {
+        log::info!("Installing missing Python dependencies...");
         install_python_requirements(&python_cmd, &req_path)?;
         // Re-check
         if !check_python_package(&python_cmd, "requests") {
+            log::error!("Failed to install Python dependencies");
             return Err(SimulationEnvError::DependencyCheckFailed("requests".to_string()));
         }
     }
+    
+    log::info!("Simulation environment is ready");
     Ok((python_cmd, sim_main))
 }

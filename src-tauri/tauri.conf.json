@@ -37,7 +37,16 @@
     "active": true,
     "targets": "all",
     "icon": ["icons/icon.ico"],
-    "resources": ["../simulation"]
+    "resources": [
+      "../simulation",
+      "../simulation/main.py",
+      "../simulation/requirements.txt",
+      "../simulation/config",
+      "../simulation/core",
+      "../simulation/docs",
+      "../simulation/examples",
+      "../simulation/tests"
+    ]
   },
   "plugins": {
     "shell": {
@@ -50,7 +59,7 @@
       "createDir": true,
       "removeDir": true,
       "removeFile": true,
-      "scope": ["$APPDATA/reStrikeVTA/**", "$APPDATA/reStrikeVTA/log/**"]
+      "scope": ["$APPDATA/reStrikeVTA/**", "$APPDATA/reStrikeVTA/log/**", "**/simulation/**"]
     },
     "http": {
       "request": true,
