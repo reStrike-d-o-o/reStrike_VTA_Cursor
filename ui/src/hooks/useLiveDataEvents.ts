@@ -18,12 +18,8 @@ export const useLiveDataEvents = () => {
   }, [isManualModeEnabled]);
 
   useEffect(() => {
-    console.log('🔄 useLiveDataEvents effect - Manual mode state:', isManualModeEnabled);
-    console.log('🔌 Current connection count:', connectionCount);
-    
     // Only connect when manual mode is OFF
     if (isManualModeEnabled) {
-      console.log('🚫 Manual mode enabled - disconnecting WebSocket and clearing events');
       if (globalWebSocket) {
         globalWebSocket.disconnect();
         globalWebSocket = null;
@@ -38,22 +34,15 @@ export const useLiveDataEvents = () => {
 
     // Increment connection count
     connectionCount++;
-    console.log('🔌 Connection count incremented to:', connectionCount);
 
     // Only create WebSocket if it doesn't exist
     if (!globalWebSocket) {
-      console.log('🔌 Creating new WebSocket connection to ws://localhost:3001');
       
       // Create WebSocket connection with inline message handler
       globalWebSocket = new LiveDataWebSocket('ws://localhost:3001', (data: any) => {
-        console.log('📡 Received WebSocket message:', data);
-        console.log('📡 Message type:', data.type);
-        console.log('📡 Message data:', data.data);
-        
         // Handle different message types using direct store access
         if (data.type === 'pss_event' && data.data) {
           const eventData = data.data;
-          console.log('📊 Processing PSS event:', eventData);
           
           // Always use backend event_code for live events
           if (typeof eventData.event_code !== 'string' || !eventData.event_code) {
@@ -84,17 +73,7 @@ export const useLiveDataEvents = () => {
             structuredData: eventData.structured_data,
           };
           
-          // Debug logging for event creation
-          console.log('🔍 Event creation debug:', {
-            receivedAthlete: eventData.athlete,
-            receivedEventCode: eventData.event_code,
-            receivedEventType: eventData.event_type,
-            receivedTime: eventData.time,
-            receivedRound: eventData.round,
-            createdEvent: event
-          });
-          
-          console.log('📊 Adding event to store:', event);
+
           useLiveDataStore.getState().addEvent(event);
           
           // Update round and time if provided
@@ -108,15 +87,12 @@ export const useLiveDataEvents = () => {
           useLiveDataStore.getState().setConnectionStatus(data.connected);
         } else if (data.type === 'error') {
           console.error('WebSocket error:', data.message);
-        } else {
-          // Log other message types for debugging
-          console.log('📡 Other message type:', data.type, data);
+        } else if (data.type === 'error') {
+          console.error('WebSocket error:', data.message);
         }
       });
 
       globalWebSocket.connect();
-    } else {
-      console.log('🔌 Reusing existing WebSocket connection');
     }
 
     wsRef.current = globalWebSocket;
@@ -124,11 +100,9 @@ export const useLiveDataEvents = () => {
     // Cleanup function
     return () => {
       connectionCount--;
-      console.log('🔌 Connection count decremented to:', connectionCount);
       
       // Only disconnect if no more components are using the connection
       if (connectionCount <= 0 && globalWebSocket) {
-        console.log('🔌 No more components using WebSocket - disconnecting');
         globalWebSocket.disconnect();
         globalWebSocket = null;
         connectionCount = 0;
@@ -141,8 +115,6 @@ export const useLiveDataEvents = () => {
     isConnected: useLiveDataStore.getState().isConnected,
     eventCount: useLiveDataStore.getState().events.length,
   };
-  
-  console.log('📊 useLiveDataEvents current state:', currentState);
   
   return currentState;
 }; 
