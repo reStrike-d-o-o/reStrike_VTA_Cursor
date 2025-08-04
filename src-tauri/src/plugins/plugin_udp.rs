@@ -1082,35 +1082,35 @@ impl UdpServer {
                 // Map point types to specific event codes according to PSS protocol
                 match point_type {
                     1 => "P".to_string(),   // Punch
-                    2 => "K".to_string(),  // Body point
+                    2 => "TB".to_string(), // Body point (Technical Body)
                     3 => "H".to_string(),  // Head point
                     4 => "TB".to_string(), // Technical Body
                     5 => "TH".to_string(), // Technical Head
-                    _ => "K".to_string(),  // Default to Kick
+                    _ => "P".to_string(),  // Default to Punch
                 }
             },
-            PssEvent::HitLevel { .. } => "O".to_string(), // Hit Level
+            PssEvent::HitLevel { .. } => "K".to_string(), // Hit Level -> Kick
             PssEvent::Warnings { .. } => "R".to_string(), // Warning/Gam-jeom
             PssEvent::Challenge { .. } => "R".to_string(), // Challenge/IVR
-            PssEvent::Injury { .. } => "O".to_string(), // Injury time
-            PssEvent::Break { .. } => "O".to_string(), // Break
-            PssEvent::WinnerRounds { .. } => "O".to_string(), // Winner rounds
-            PssEvent::Winner { .. } => "O".to_string(), // Winner
+            PssEvent::Injury { .. } => "R".to_string(), // Injury time -> Referee
+            PssEvent::Break { .. } => "R".to_string(), // Break -> Referee
+            PssEvent::WinnerRounds { .. } => "R".to_string(), // Winner rounds -> Referee
+            PssEvent::Winner { .. } => "R".to_string(), // Winner -> Referee
             PssEvent::Athletes { .. } => "O".to_string(), // Athletes info (pre-match)
             PssEvent::MatchConfig { .. } => "O".to_string(), // Match config (pre-match)
-            PssEvent::Scores { .. } => "O".to_string(), // Scores (changed from R to O)
-            PssEvent::CurrentScores { .. } => "O".to_string(), // Current scores (changed from R to O)
+            PssEvent::Scores { .. } => "O".to_string(), // Scores (system event)
+            PssEvent::CurrentScores { .. } => "O".to_string(), // Current scores (system event)
             PssEvent::Clock { .. } => "O".to_string(), // Clock (system event)
             PssEvent::Round { .. } => "O".to_string(), // Round (system event)
             PssEvent::FightLoaded => "O".to_string(), // Fight loaded (pre-match)
             PssEvent::FightReady => "O".to_string(), // Fight ready (pre-match)
-            PssEvent::Supremacy { .. } => "O".to_string(), // Supremacy
+            PssEvent::Supremacy { .. } => "O".to_string(), // Supremacy (system event)
             PssEvent::Raw(raw_msg) => {
                 // Try to extract event code from raw messages for better categorization
                 if raw_msg.starts_with("avt;") {
                     "O".to_string()
                 } else if raw_msg.starts_with("ref;") {
-                    "O".to_string()
+                    "R".to_string() // Referee events
                 } else if raw_msg.starts_with("sup;") {
                     "O".to_string()
                 } else if raw_msg.starts_with("rst;") {
@@ -1118,7 +1118,7 @@ impl UdpServer {
                 } else if raw_msg.starts_with("rsr;") {
                     "O".to_string()
                 } else if raw_msg.starts_with("win;") {
-                    "O".to_string()
+                    "R".to_string() // Winner events -> Referee
                 } else {
                     "O".to_string()
                 }

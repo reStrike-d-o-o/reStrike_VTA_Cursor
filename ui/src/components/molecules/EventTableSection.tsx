@@ -10,11 +10,11 @@ const colorOptions = [
   { color: 'yellow', class: 'bg-yellow-400' },
 ];
 
-// Event type filter buttons (order: H, K, P, TH, TB, R)
+// Event type filter buttons (order: K, P, H, TH, TB, R)
 const eventTypeOptions = [
-  { label: 'HEAD', value: 'H' },
   { label: 'KICK', value: 'K' },
   { label: 'PUNCH', value: 'P' },
+  { label: 'HEAD', value: 'H' },
   { label: 'TECH HEAD', value: 'TH' },
   { label: 'TECH BODY', value: 'TB' },
   { label: 'REFEREE', value: 'R' },
@@ -53,6 +53,8 @@ const EventTableSection: React.FC = () => {
       eventCode: event.eventCode,
       athlete: event.athlete,
       description: event.description,
+      time: event.time,
+      round: event.round,
       isImportant,
       importantEventCodes
     });
