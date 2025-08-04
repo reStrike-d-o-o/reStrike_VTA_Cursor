@@ -106,9 +106,10 @@
         let scoreboardInstance = null;
         let nameManager = null;
         
-        // Global variables for connection status
+        // Global variables for connection status and match config
         let isConnected = false;
         let lastUpdateTime = null;
+        let roundDuration = 120; // Default 2 minutes (120 seconds)
         
         // Debug mode (set to true to show debug panel)
         const DEBUG_MODE = false;
@@ -346,12 +347,19 @@
             }
             
             // Use parsed data if available, otherwise try direct access
-            const data = configData || event;
-            console.log('🏆 Using data source:', configData ? 'raw_data' : 'direct');
+            const data = configData || event.structured_data || event;
+            console.log('🏆 Using data source:', configData ? 'raw_data' : 'structured_data');
             console.log('🏆 weight:', data.weight);
             console.log('🏆 division:', data.division);
             console.log('🏆 category:', data.category);
             console.log('🏆 number:', data.number);
+            console.log('🏆 round_duration:', data.round_duration);
+            
+            // Store round duration for clock resets
+            if (data.round_duration) {
+                roundDuration = data.round_duration;
+                console.log('⏰ Stored round duration:', roundDuration, 'seconds');
+            }
             
             // Use the new combined method to update all match info at once
             if (data.weight || data.division || data.category) {
@@ -491,6 +499,25 @@
         function handleWinnerRoundsEvent(event) {
             console.log('🏆 Winner rounds event:', event);
             
+            // Try to parse raw_data first, then fall back to structured_data
+            let winnerData = null;
+            
+            if (event.raw_data) {
+                try {
+                    winnerData = JSON.parse(event.raw_data);
+                    console.log('🏆 Parsed raw_data:', winnerData);
+                } catch (error) {
+                    console.error('❌ Failed to parse raw_data:', error);
+                }
+            }
+            
+            // Use parsed data if available, otherwise try structured_data
+            const data = winnerData || event.structured_data || event;
+            console.log('🏆 Using data source:', winnerData ? 'raw_data' : 'structured_data');
+            console.log('🏆 round1_winner:', data.round1_winner);
+            console.log('🏆 round2_winner:', data.round2_winner);
+            console.log('🏆 round3_winner:', data.round3_winner);
+            
             // Reset current scores to 0:0 for new round
             scoreboardInstance.updateScore('blue', 0);
             scoreboardInstance.updateScore('red', 0);
@@ -500,17 +527,19 @@
             scoreboardInstance.updatePenalties('red', null, 0);
             
             // Update rounds won - athlete1 (player1/blue) = winner 1, athlete2 (player2/red) = winner 2
-            if (event.round1_winner !== undefined) {
-                const blueWins = (event.round1_winner === 1 ? 1 : 0) + 
-                                (event.round2_winner === 1 ? 1 : 0) + 
-                                (event.round3_winner === 1 ? 1 : 0);
-                const redWins = (event.round1_winner === 2 ? 1 : 0) + 
-                               (event.round2_winner === 2 ? 1 : 0) + 
-                               (event.round3_winner === 2 ? 1 : 0);
+            if (data.round1_winner !== undefined) {
+                const blueWins = (data.round1_winner === 1 ? 1 : 0) + 
+                                (data.round2_winner === 1 ? 1 : 0) + 
+                                (data.round3_winner === 1 ? 1 : 0);
+                const redWins = (data.round1_winner === 2 ? 1 : 0) + 
+                               (data.round2_winner === 2 ? 1 : 0) + 
+                               (data.round3_winner === 2 ? 1 : 0);
                 
                 console.log(`🏆 Updating round wins - Blue: ${blueWins}, Red: ${redWins}`);
                 scoreboardInstance.updateRoundWins('blue', blueWins);
                 scoreboardInstance.updateRoundWins('red', redWins);
+            } else {
+                console.warn('⚠️ No round winners found in event data');
             }
         }
         
@@ -550,13 +579,31 @@
         function handleRoundEvent(event) {
             console.log('🔄 Round event:', event);
             
-            if (event.current_round) {
-                scoreboardInstance.updateRound(event.current_round);
-                console.log(`🔄 Updated to round: ${event.current_round}`);
+            // Try to parse raw_data first, then fall back to structured_data
+            let roundData = null;
+            
+            if (event.raw_data) {
+                try {
+                    roundData = JSON.parse(event.raw_data);
+                    console.log('🔄 Parsed raw_data:', roundData);
+                } catch (error) {
+                    console.error('❌ Failed to parse raw_data:', error);
+                }
+            }
+            
+            // Use parsed data if available, otherwise try structured_data
+            const data = roundData || event.structured_data || event;
+            console.log('🔄 Using data source:', roundData ? 'raw_data' : 'structured_data');
+            
+            if (data.current_round) {
+                scoreboardInstance.updateRound(data.current_round);
+                console.log(`🔄 Updated to round: ${data.current_round}`);
                 
-                // Reset clock to 2:00 when a new round starts
-                scoreboardInstance.updateTimer(2, 0);
-                console.log('⏰ Reset clock to 2:00 for new round');
+                // Reset clock using stored round duration
+                const minutes = Math.floor(roundDuration / 60);
+                const seconds = roundDuration % 60;
+                scoreboardInstance.updateTimer(minutes, seconds);
+                console.log(`⏰ Reset clock to ${minutes}:${seconds.toString().padStart(2, '0')} for new round`);
             }
         }
         
@@ -564,7 +611,7 @@
         function handleSupervisionEvent(event) {
             console.log('👁️ Supervision event:', event);
             
-            // Try to parse raw_data first, then fall back to direct access
+            // Try to parse raw_data first, then fall back to structured_data
             let supervisionData = null;
             
             if (event.raw_data) {
@@ -576,17 +623,17 @@
                 }
             }
             
-            // Use parsed data if available, otherwise try direct access
-            const data = supervisionData || event;
-            console.log('👁️ Using data source:', supervisionData ? 'raw_data' : 'direct');
+            // Use parsed data if available, otherwise try structured_data
+            const data = supervisionData || event.structured_data || event;
+            console.log('👁️ Using data source:', supervisionData ? 'raw_data' : 'structured_data');
             
             // Check for supervision value (0 = reset warnings)
             let supervisionValue = 0;
             
-            if (data.supervision !== undefined) {
-                supervisionValue = data.supervision;
-            } else if (data.value !== undefined) {
+            if (data.value !== undefined) {
                 supervisionValue = data.value;
+            } else if (data.supervision !== undefined) {
+                supervisionValue = data.supervision;
             }
             
             console.log('👁️ Supervision value:', supervisionValue);
