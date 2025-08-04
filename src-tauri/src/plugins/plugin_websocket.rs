@@ -377,16 +377,11 @@ impl WebSocketServer {
         let current_time = self.current_time.lock().unwrap().clone();
         let current_round = *self.current_round.lock().unwrap();
         
+        // Get event code from UDP plugin's get_event_code function
+        let event_code = crate::plugins::plugin_udp::UdpServer::get_event_code(event);
+        
         match event {
             PssEvent::Points { athlete, point_type } => {
-                let event_code = match point_type {
-                    1 => "P".to_string(), // Punch
-                    2 => "TB".to_string(), // Technical Body
-                    3 => "H".to_string(), // Head Kick
-                    4 => "TB".to_string(), // Technical Body
-                    5 => "TH".to_string(), // Technical Head
-                    _ => "K".to_string(), // Default to Kick
-                };
                 
                 let athlete_str = match athlete {
                     1 => "blue".to_string(),
@@ -414,8 +409,8 @@ impl WebSocketServer {
             PssEvent::Warnings { athlete1_warnings, athlete2_warnings } => {
                 WebSocketMessage::PssEvent {
                     event_type: "warnings".to_string(),
-                    event_code: "R".to_string(),
-                    athlete: "referee".to_string(),
+                    event_code: event_code.clone(),
+                    athlete: "yellow".to_string(),
                     round: current_round,
                     time: current_time.clone(),
                     timestamp: Utc::now().to_rfc3339(),
@@ -432,8 +427,8 @@ impl WebSocketServer {
             PssEvent::WinnerRounds { round1_winner, round2_winner, round3_winner } => {
                 WebSocketMessage::PssEvent {
                     event_type: "winner_rounds".to_string(),
-                    event_code: "O".to_string(),
-                    athlete: "referee".to_string(),
+                    event_code: event_code.clone(),
+                    athlete: "yellow".to_string(),
                     round: current_round,
                     time: current_time.clone(),
                     timestamp: Utc::now().to_rfc3339(),
@@ -451,7 +446,7 @@ impl WebSocketServer {
             PssEvent::MatchConfig { number, category, weight, rounds, colors, match_id, division, total_rounds, round_duration, countdown_type, count_up, format } => {
                 WebSocketMessage::PssEvent {
                     event_type: "match_config".to_string(),
-                    event_code: "".to_string(),
+                    event_code: event_code.clone(),
                     athlete: "".to_string(),
                     round: current_round,
                     time: "0:00".to_string(),
@@ -479,7 +474,7 @@ impl WebSocketServer {
             PssEvent::Athletes { athlete1_short, athlete1_long, athlete1_country, athlete2_short, athlete2_long, athlete2_country } => {
                 WebSocketMessage::PssEvent {
                     event_type: "athletes".to_string(),
-                    event_code: "".to_string(),
+                    event_code: event_code.clone(),
                     athlete: "".to_string(),
                     round: current_round,
                     time: "0:00".to_string(),
@@ -503,7 +498,7 @@ impl WebSocketServer {
             PssEvent::CurrentScores { athlete1_score, athlete2_score } => {
                 WebSocketMessage::PssEvent {
                     event_type: "current_scores".to_string(),
-                    event_code: "R".to_string(),
+                    event_code: event_code.clone(),
                     athlete: "".to_string(),
                     round: current_round,
                     time: current_time.clone(),
@@ -521,7 +516,7 @@ impl WebSocketServer {
             PssEvent::Scores { athlete1_r1, athlete2_r1, athlete1_r2, athlete2_r2, athlete1_r3, athlete2_r3 } => {
                 WebSocketMessage::PssEvent {
                     event_type: "scores".to_string(),
-                    event_code: "R".to_string(),
+                    event_code: event_code.clone(),
                     athlete: "".to_string(),
                     round: current_round,
                     time: current_time.clone(),
@@ -533,10 +528,10 @@ impl WebSocketServer {
                     action: None,
                     structured_data: serde_json::json!({
                         "athlete1_r1": *athlete1_r1,
-                        "athlete2_r1": *athlete2_r1,
                         "athlete1_r2": *athlete1_r2,
-                        "athlete2_r2": *athlete2_r2,
                         "athlete1_r3": *athlete1_r3,
+                        "athlete2_r1": *athlete2_r1,
+                        "athlete2_r2": *athlete2_r2,
                         "athlete2_r3": *athlete2_r3
                     }),
                 }
@@ -545,7 +540,7 @@ impl WebSocketServer {
             PssEvent::Clock { time, action } => {
                 WebSocketMessage::PssEvent {
                     event_type: "clock".to_string(),
-                    event_code: "O".to_string(),
+                    event_code: event_code.clone(),
                     athlete: "".to_string(),
                     round: current_round,
                     time: time.clone(),
@@ -563,7 +558,7 @@ impl WebSocketServer {
             PssEvent::Round { current_round } => {
                 WebSocketMessage::PssEvent {
                     event_type: "round".to_string(),
-                    event_code: "O".to_string(),
+                    event_code: event_code.clone(),
                     athlete: "".to_string(),
                     round: *current_round,
                     time: current_time.clone(),
@@ -587,7 +582,7 @@ impl WebSocketServer {
                 
                 WebSocketMessage::PssEvent {
                     event_type: "injury".to_string(),
-                    event_code: "O".to_string(),
+                    event_code: event_code.clone(),
                     athlete: athlete_str.clone(),
                     round: current_round,
                     time: time.clone(),
@@ -613,7 +608,7 @@ impl WebSocketServer {
                 
                 WebSocketMessage::PssEvent {
                     event_type: "challenge".to_string(),
-                    event_code: "".to_string(),
+                    event_code: event_code.clone(),
                     athlete: source_str.clone(),
                     round: current_round,
                     time: current_time.clone(),
@@ -637,7 +632,7 @@ impl WebSocketServer {
             PssEvent::Break { time, action } => {
                 WebSocketMessage::PssEvent {
                     event_type: "break".to_string(),
-                    event_code: "O".to_string(),
+                    event_code: event_code.clone(),
                     athlete: "".to_string(),
                     round: current_round,
                     time: time.clone(),
@@ -655,7 +650,7 @@ impl WebSocketServer {
             PssEvent::Winner { name, classification } => {
                 WebSocketMessage::PssEvent {
                     event_type: "winner".to_string(),
-                    event_code: "O".to_string(),
+                    event_code: event_code.clone(),
                     athlete: "".to_string(),
                     round: current_round,
                     time: current_time.clone(),
@@ -679,7 +674,7 @@ impl WebSocketServer {
                 
                 WebSocketMessage::PssEvent {
                     event_type: "hit_level".to_string(),
-                    event_code: "O".to_string(),
+                    event_code: event_code.clone(),
                     athlete: athlete_str.clone(),
                     round: current_round,
                     time: current_time.clone(),
@@ -697,7 +692,7 @@ impl WebSocketServer {
             PssEvent::FightLoaded => {
                 WebSocketMessage::PssEvent {
                     event_type: "fight_loaded".to_string(),
-                    event_code: "".to_string(),
+                    event_code: event_code.clone(),
                     athlete: "".to_string(),
                     round: current_round,
                     time: current_time.clone(),
@@ -712,7 +707,7 @@ impl WebSocketServer {
             PssEvent::FightReady => {
                 WebSocketMessage::PssEvent {
                     event_type: "fight_ready".to_string(),
-                    event_code: "".to_string(),
+                    event_code: event_code.clone(),
                     athlete: "".to_string(),
                     round: current_round,
                     time: current_time.clone(),
@@ -726,16 +721,16 @@ impl WebSocketServer {
                 }
             }
             
-            PssEvent::Supervision { value } => {
+            PssEvent::Supremacy { value } => {
                 WebSocketMessage::PssEvent {
-                    event_type: "supervision".to_string(),
-                    event_code: "O".to_string(),
+                    event_type: "supremacy".to_string(),
+                    event_code: event_code.clone(),
                     athlete: "".to_string(),
                     round: current_round,
                     time: current_time.clone(),
                     timestamp: Utc::now().to_rfc3339(),
                     raw_data: format!("sup;{}", value),
-                    description: format!("Supervision - Value: {}", value),
+                    description: format!("Supremacy - Value: {}", value),
                     action: None,
                     structured_data: serde_json::json!({
                         "value": value
@@ -746,7 +741,7 @@ impl WebSocketServer {
             PssEvent::Raw(raw_data) => {
                 WebSocketMessage::PssEvent {
                     event_type: "raw".to_string(),
-                    event_code: "".to_string(),
+                    event_code: event_code.clone(),
                     athlete: "".to_string(),
                     round: current_round,
                     time: current_time.clone(),
