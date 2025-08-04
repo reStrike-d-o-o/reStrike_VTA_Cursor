@@ -1034,7 +1034,20 @@
             const data = roundData || event.structured_data || event;
             console.log('🔄 Using data source:', roundData ? 'raw_data' : 'structured_data');
             
-            if (data.current_round) {
+            // Get round number from various possible sources
+            let roundNumber = null;
+            if (data.current_round !== undefined) {
+                roundNumber = data.current_round;
+                console.log('🔄 Found round in current_round field:', roundNumber);
+            } else if (data.round !== undefined) {
+                roundNumber = data.round;
+                console.log('🔄 Found round in round field:', roundNumber);
+            } else if (event.round !== undefined) {
+                roundNumber = event.round;
+                console.log('🔄 Found round in event.round field:', roundNumber);
+            }
+            
+            if (roundNumber !== null) {
                 // ===== MANUAL OVERRIDE DETECTION FOR ROUND CHANGES =====
                 
                 // Check if this is a manual round change
@@ -1043,8 +1056,8 @@
                     handleManualRoundChange(event);
                 } else {
                     // Normal round change - update round and reset clock
-                    scoreboardInstance.updateRound(data.current_round);
-                    console.log(`🔄 Updated to round: ${data.current_round} (normal change)`);
+                    scoreboardInstance.updateRound(roundNumber);
+                    console.log(`🔄 Updated to round: ${roundNumber} (normal change)`);
                     
                     // Reset clock using stored round duration
                     const minutes = Math.floor(roundDuration / 60);
@@ -1053,6 +1066,8 @@
                     scoreboardInstance.updateTimer(minutes, seconds);
                     console.log(`⏰ Reset clock to ${minutes}:${seconds.toString().padStart(2, '0')} for new round`);
                 }
+            } else {
+                console.warn('⚠️ No round number found in round event:', event);
             }
         }
         
