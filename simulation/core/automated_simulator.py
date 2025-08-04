@@ -46,7 +46,14 @@ class AthleteGenerator:
         "Kim", "Lee", "Park", "Choi", "Jung", "Kang", "Yoon", "Jang", "Han", "Shin",
         "John", "Michael", "David", "James", "Robert", "William", "Richard", "Joseph", "Thomas", "Christopher",
         "Maria", "Anna", "Sofia", "Elena", "Irina", "Natalia", "Olga", "Tatiana", "Yulia", "Anastasia",
-        "Ahmed", "Mohammed", "Ali", "Hassan", "Omar", "Yusuf", "Ibrahim", "Khalid", "Rashid", "Tariq"
+        "Ahmed", "Mohammed", "Ali", "Hassan", "Omar", "Yusuf", "Ibrahim", "Khalid", "Rashid", "Tariq",
+        "Carlos", "Miguel", "Jose", "Luis", "Antonio", "Francisco", "Manuel", "Pedro", "Diego", "Fernando",
+        "Giuseppe", "Marco", "Alessandro", "Luca", "Matteo", "Andrea", "Roberto", "Giovanni", "Paolo", "Antonio",
+        "Jean", "Pierre", "Michel", "François", "Philippe", "Nicolas", "Laurent", "David", "Christophe", "Patrick",
+        "Hans", "Klaus", "Wolfgang", "Jürgen", "Manfred", "Dieter", "Helmut", "Werner", "Günther", "Horst",
+        "Ivan", "Sergey", "Dmitry", "Andrey", "Vladimir", "Nikolay", "Mikhail", "Alexey", "Viktor", "Yuri",
+        "Wei", "Li", "Zhang", "Wang", "Liu", "Chen", "Yang", "Huang", "Zhao", "Wu",
+        "Hiroshi", "Takeshi", "Kenji", "Yuki", "Satoshi", "Kazuki", "Ryo", "Daiki", "Yuta", "Kento"
     ]
     
     # Common last names
@@ -54,29 +61,47 @@ class AthleteGenerator:
         "Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis", "Rodriguez", "Martinez",
         "Kim", "Lee", "Park", "Choi", "Jung", "Kang", "Yoon", "Jang", "Han", "Shin",
         "Ivanov", "Petrov", "Sidorov", "Smirnov", "Popov", "Sokolov", "Lebedev", "Kozlov", "Novikov", "Morozov",
-        "Al-Rashid", "Al-Zahra", "Al-Mahmoud", "Al-Sayed", "Al-Nasser", "Al-Qahtani", "Al-Shehri", "Al-Ghamdi"
+        "Al-Rashid", "Al-Zahra", "Al-Mahmoud", "Al-Sayed", "Al-Nasser", "Al-Qahtani", "Al-Shehri", "Al-Ghamdi",
+        "Garcia", "Rodriguez", "Martinez", "Hernandez", "Lopez", "Gonzalez", "Perez", "Sanchez", "Ramirez", "Torres",
+        "Rossi", "Ferrari", "Russo", "Bianchi", "Romano", "Colombo", "Ricci", "Marino", "Greco", "Bruno",
+        "Martin", "Bernard", "Dubois", "Thomas", "Robert", "Richard", "Petit", "Durand", "Leroy", "Moreau",
+        "Müller", "Schmidt", "Schneider", "Fischer", "Weber", "Meyer", "Wagner", "Becker", "Schulz", "Hoffmann",
+        "Wang", "Li", "Zhang", "Liu", "Chen", "Yang", "Huang", "Zhao", "Wu", "Zhou",
+        "Sato", "Suzuki", "Takahashi", "Tanaka", "Watanabe", "Ito", "Yamamoto", "Nakamura", "Kobayashi", "Kato"
     ]
     
-    # IOC country codes
+    # IOC country codes with more diversity
     COUNTRIES = [
         "KOR", "USA", "GBR", "RUS", "CHN", "JPN", "IRN", "TUR", "THA", "ESP",
         "FRA", "ITA", "GER", "BRA", "ARG", "MEX", "CAN", "AUS", "NED", "BEL",
         "POL", "CZE", "HUN", "ROU", "BUL", "SRB", "CRO", "SLO", "SVK", "EST",
-        "LAT", "LTU", "FIN", "SWE", "NOR", "DEN", "ISL", "IRL", "SUI", "AUT"
+        "LAT", "LTU", "FIN", "SWE", "NOR", "DEN", "ISL", "IRL", "SUI", "AUT",
+        "PRT", "GRC", "HRV", "SVN", "LUX", "MLT", "CYP", "LVA", "LTU", "EST",
+        "EGY", "MAR", "TUN", "ALG", "LBY", "SDN", "ETH", "KEN", "UGA", "TZA",
+        "ZAF", "NGA", "GHA", "CIV", "SEN", "MLI", "BFA", "NER", "TCD", "CMR",
+        "IND", "PAK", "BGD", "LKA", "NPL", "BTN", "MMR", "LAO", "KHM", "VNM",
+        "PHL", "MYS", "SGP", "IDN", "BRN", "TLS", "PNG", "FJI", "VUT", "SLB"
     ]
     
     @staticmethod
     def generate_athlete() -> Athlete:
-        """Generate a random athlete"""
+        """Generate a random athlete with enhanced diversity"""
+        # Use current timestamp to ensure different results each time
+        import time
+        random.seed(time.time() + random.randint(1, 1000000))
+        
         first_name = random.choice(AthleteGenerator.FIRST_NAMES)
         last_name = random.choice(AthleteGenerator.LAST_NAMES)
         country = random.choice(AthleteGenerator.COUNTRIES)
+        
+        # Ensure different colors for variety
+        color = random.choice(["blue", "red"])
         
         return Athlete(
             short_name=f"{first_name[0]}. {last_name}",
             long_name=f"{first_name} {last_name}",
             country_code=country,
-            color=random.choice(["blue", "red"])
+            color=color
         )
 
 class MatchConfigGenerator:
@@ -89,18 +114,28 @@ class MatchConfigGenerator:
     
     CATEGORIES = [
         "Round of 16", "Quarter Final", "Semi Final", "Final", "Bronze Medal", "Gold Medal",
-        "Preliminary", "Repechage", "Consolation", "Exhibition"
+        "Preliminary", "Repechage", "Consolation", "Exhibition", "Qualification", "Playoff",
+        "Group Stage", "Elimination", "Championship", "International", "Regional", "National"
     ]
     
-    DIVISIONS = ["Senior", "Junior", "Cadet", "Poomsae", "Para"]
+    DIVISIONS = ["Senior", "Junior", "Cadet", "Poomsae", "Para", "Veteran", "Elite", "Development"]
     
     @staticmethod
     def generate_config() -> MatchConfig:
-        """Generate a random match configuration"""
+        """Generate a random match configuration with enhanced diversity"""
+        # Use current timestamp to ensure different results each time
+        import time
+        random.seed(time.time() + random.randint(1, 1000000))
+        
         match_number = str(random.randint(100, 999))
         category = random.choice(MatchConfigGenerator.CATEGORIES)
         weight = random.choice(MatchConfigGenerator.WEIGHT_CATEGORIES)
         division = random.choice(MatchConfigGenerator.DIVISIONS)
+        
+        # Randomize round duration and other parameters
+        round_duration = random.choice([120, 150, 180, 200, 240])  # 2-4 minutes
+        total_rounds = random.choice([1, 2, 3])
+        count_up = random.randint(0, 60)
         
         return MatchConfig(
             number=match_number,
@@ -110,10 +145,10 @@ class MatchConfigGenerator:
             colors=("#0000ff", "#FFFFFF", "#ff0000", "#FFFFFF"),
             match_id=str(random.randint(10000, 99999)),
             division=division,
-            total_rounds=3,
-            round_duration=random.choice([120, 180, 240]),  # 2, 3, or 4 minutes
+            total_rounds=total_rounds,
+            round_duration=round_duration,
             countdown_type="cntDown",
-            count_up=random.randint(0, 30),
+            count_up=count_up,
             format=1
         )
 
@@ -360,6 +395,18 @@ class AutomatedSimulator:
                 break_probability=0.02,
                 challenge_probability=0.03
             ),
+            "basic": AutomatedScenario(
+                name="Basic Match",
+                description="Standard single match simulation",
+                match_count=1,
+                duration_range=(60, 120),
+                event_frequency=0.8,
+                point_probability=0.35,
+                warning_probability=0.12,
+                injury_probability=0.06,
+                break_probability=0.04,
+                challenge_probability=0.05
+            ),
             "training_session": AutomatedScenario(
                 name="Training Session",
                 description="Multiple matches for training",
@@ -395,6 +442,42 @@ class AutomatedSimulator:
                 injury_probability=0.1,
                 break_probability=0.06,
                 challenge_probability=0.12
+            ),
+            "demo": AutomatedScenario(
+                name="Demo Mode",
+                description="Short demo for testing overlays",
+                match_count=1,
+                duration_range=(30, 90),
+                event_frequency=1.0,
+                point_probability=0.4,
+                warning_probability=0.15,
+                injury_probability=0.08,
+                break_probability=0.05,
+                challenge_probability=0.08
+            ),
+            "intensive": AutomatedScenario(
+                name="Intensive Training",
+                description="High-frequency events for stress testing",
+                match_count=3,
+                duration_range=(90, 150),
+                event_frequency=2.0,
+                point_probability=0.5,
+                warning_probability=0.2,
+                injury_probability=0.1,
+                break_probability=0.08,
+                challenge_probability=0.15
+            ),
+            "olympic": AutomatedScenario(
+                name="Olympic Style",
+                description="Olympic-level competition simulation",
+                match_count=6,
+                duration_range=(240, 420),
+                event_frequency=1.8,
+                point_probability=0.42,
+                warning_probability=0.16,
+                injury_probability=0.09,
+                break_probability=0.07,
+                challenge_probability=0.14
             )
         }
     
