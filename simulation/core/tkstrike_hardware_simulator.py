@@ -509,6 +509,38 @@ class tkStrikeHardwareSimulator:
         # Send round change message
         return self.send_message(self.event_generator.round(round_num))
     
+    def send_hit_level(self, athlete: int, level: int) -> bool:
+        """Send a hit level event for the specified athlete"""
+        if athlete not in [1, 2]:
+            print("❌ Invalid athlete (must be 1 or 2)")
+            return False
+        
+        if level < 1 or level > 100:
+            print("❌ Invalid hit level (must be 1-100)")
+            return False
+        
+        print(f"\n💥 Sending hit level {level} for Athlete {athlete}")
+        return self.send_message(self.event_generator.hit_level(athlete, level))
+    
+    def send_challenge(self, source: int, accepted: Optional[bool] = None, won: Optional[bool] = None) -> bool:
+        """Send a challenge event"""
+        if source not in [0, 1, 2]:
+            print("❌ Invalid challenge source (must be 0, 1, or 2)")
+            return False
+        
+        print(f"\n🎯 Sending challenge from source {source}")
+        
+        # Build challenge message based on parameters
+        if accepted is None:
+            # Just challenge request
+            return self.send_message(self.event_generator.challenge(source))
+        elif won is None:
+            # Challenge accepted/denied
+            return self.send_message(self.event_generator.challenge(source, accepted))
+        else:
+            # Challenge with result
+            return self.send_message(self.event_generator.challenge(source, accepted, won))
+    
     def start_injury_time(self, athlete: int = 0, duration: int = 60) -> bool:
         """Start injury time"""
         print(f"\n🩹 Starting injury time for Athlete {athlete if athlete > 0 else 'Unknown'}")

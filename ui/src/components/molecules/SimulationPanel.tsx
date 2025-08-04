@@ -529,39 +529,283 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
           {/* Manual Event Buttons */}
           <div>
             <Label>Manual Events</Label>
-            <div className="grid grid-cols-2 gap-2 mt-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => sendManualEvent('point', { athlete: 1, point_type: 1 })}
-                disabled={status.isRunning || isLoading}
-              >
-                Blue Punch
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => sendManualEvent('point', { athlete: 2, point_type: 3 })}
-                disabled={status.isRunning || isLoading}
-              >
-                Red Head Kick
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => sendManualEvent('warning', { athlete: 1 })}
-                disabled={status.isRunning || isLoading}
-              >
-                Blue Warning
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => sendManualEvent('injury', { athlete: 1, duration: 60 })}
-                disabled={status.isRunning || isLoading}
-              >
-                Injury Time
-              </Button>
+            
+            {/* Points Section */}
+            <div className="mt-3">
+              <h5 className="text-xs font-medium text-gray-300 mb-2">Points (Blue Athlete)</h5>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => sendManualEvent('point', { athlete: 1, point_type: 1 })}
+                  disabled={status.isRunning || isLoading}
+                >
+                  Punch (1pt)
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => sendManualEvent('point', { athlete: 1, point_type: 2 })}
+                  disabled={status.isRunning || isLoading}
+                >
+                  Body Kick (2pt)
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => sendManualEvent('point', { athlete: 1, point_type: 3 })}
+                  disabled={status.isRunning || isLoading}
+                >
+                  Head Kick (3pt)
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => sendManualEvent('point', { athlete: 1, point_type: 4 })}
+                  disabled={status.isRunning || isLoading}
+                >
+                  Tech Body (4pt)
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => sendManualEvent('point', { athlete: 1, point_type: 5 })}
+                  disabled={status.isRunning || isLoading}
+                >
+                  Tech Head (5pt)
+                </Button>
+              </div>
+            </div>
+
+            <div className="mt-3">
+              <h5 className="text-xs font-medium text-gray-300 mb-2">Points (Red Athlete)</h5>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => sendManualEvent('point', { athlete: 2, point_type: 1 })}
+                  disabled={status.isRunning || isLoading}
+                >
+                  Punch (1pt)
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => sendManualEvent('point', { athlete: 2, point_type: 2 })}
+                  disabled={status.isRunning || isLoading}
+                >
+                  Body Kick (2pt)
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => sendManualEvent('point', { athlete: 2, point_type: 3 })}
+                  disabled={status.isRunning || isLoading}
+                >
+                  Head Kick (3pt)
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => sendManualEvent('point', { athlete: 2, point_type: 4 })}
+                  disabled={status.isRunning || isLoading}
+                >
+                  Tech Body (4pt)
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => sendManualEvent('point', { athlete: 2, point_type: 5 })}
+                  disabled={status.isRunning || isLoading}
+                >
+                  Tech Head (5pt)
+                </Button>
+              </div>
+            </div>
+
+            {/* Hit Levels Section */}
+            <div className="mt-3">
+              <h5 className="text-xs font-medium text-gray-300 mb-2">Hit Levels</h5>
+              <div className="grid grid-cols-3 gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => sendManualEvent('hit_level', { athlete: 1, level: 25 })}
+                  disabled={status.isRunning || isLoading}
+                >
+                  Blue Low (25)
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => sendManualEvent('hit_level', { athlete: 1, level: 75 })}
+                  disabled={status.isRunning || isLoading}
+                >
+                  Blue High (75)
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => sendManualEvent('hit_level', { athlete: 2, level: 25 })}
+                  disabled={status.isRunning || isLoading}
+                >
+                  Red Low (25)
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => sendManualEvent('hit_level', { athlete: 2, level: 75 })}
+                  disabled={status.isRunning || isLoading}
+                >
+                  Red High (75)
+                </Button>
+              </div>
+            </div>
+
+            {/* Warnings Section */}
+            <div className="mt-3">
+              <h5 className="text-xs font-medium text-gray-300 mb-2">Warnings</h5>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => sendManualEvent('warning', { athlete: 1 })}
+                  disabled={status.isRunning || isLoading}
+                >
+                  Blue Warning
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => sendManualEvent('warning', { athlete: 2 })}
+                  disabled={status.isRunning || isLoading}
+                >
+                  Red Warning
+                </Button>
+              </div>
+            </div>
+
+            {/* Injury Time Section */}
+            <div className="mt-3">
+              <h5 className="text-xs font-medium text-gray-300 mb-2">Injury Time</h5>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => sendManualEvent('injury', { athlete: 1, duration: 60 })}
+                  disabled={status.isRunning || isLoading}
+                >
+                  Blue Injury
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => sendManualEvent('injury', { athlete: 2, duration: 60 })}
+                  disabled={status.isRunning || isLoading}
+                >
+                  Red Injury
+                </Button>
+              </div>
+            </div>
+
+            {/* Challenges Section */}
+            <div className="mt-3">
+              <h5 className="text-xs font-medium text-gray-300 mb-2">Challenges</h5>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => sendManualEvent('challenge', { source: 1, accepted: true, won: true })}
+                  disabled={status.isRunning || isLoading}
+                >
+                  Blue Win
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => sendManualEvent('challenge', { source: 2, accepted: true, won: false })}
+                  disabled={status.isRunning || isLoading}
+                >
+                  Red Lose
+                </Button>
+              </div>
+            </div>
+
+            {/* Break Time Section */}
+            <div className="mt-3">
+              <h5 className="text-xs font-medium text-gray-300 mb-2">Break Time</h5>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => sendManualEvent('break', { duration: 60 })}
+                  disabled={status.isRunning || isLoading}
+                >
+                  Start Break
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => sendManualEvent('break_end', {})}
+                  disabled={status.isRunning || isLoading}
+                >
+                  End Break
+                </Button>
+              </div>
+            </div>
+
+            {/* Clock Control Section */}
+            <div className="mt-3">
+              <h5 className="text-xs font-medium text-gray-300 mb-2">Clock Control</h5>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => sendManualEvent('clock_start', {})}
+                  disabled={status.isRunning || isLoading}
+                >
+                  Start Clock
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => sendManualEvent('clock_stop', {})}
+                  disabled={status.isRunning || isLoading}
+                >
+                  Stop Clock
+                </Button>
+              </div>
+            </div>
+
+            {/* Round Control Section */}
+            <div className="mt-3">
+              <h5 className="text-xs font-medium text-gray-300 mb-2">Round Control</h5>
+              <div className="grid grid-cols-3 gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => sendManualEvent('round', { round: 1 })}
+                  disabled={status.isRunning || isLoading}
+                >
+                  Round 1
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => sendManualEvent('round', { round: 2 })}
+                  disabled={status.isRunning || isLoading}
+                >
+                  Round 2
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => sendManualEvent('round', { round: 3 })}
+                  disabled={status.isRunning || isLoading}
+                >
+                  Round 3
+                </Button>
+              </div>
             </div>
           </div>
         </div>

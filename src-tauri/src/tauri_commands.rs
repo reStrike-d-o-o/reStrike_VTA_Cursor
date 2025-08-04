@@ -4310,10 +4310,16 @@ pub async fn simulation_send_event(
         }
     };
     
+    // Convert params to JSON string for command line
+    let params_str = serde_json::to_string(&params).unwrap_or("{}".to_string());
+    
     let result = std::process::Command::new(&python_cmd)
         .args(&[
             sim_main.to_str().unwrap(),
             "--mode", "interactive",
+            "--send-event",
+            "--event-type", &event_type,
+            "--event-params", &params_str,
             "--host", "127.0.0.1",
             "--port", "8888"
         ])
