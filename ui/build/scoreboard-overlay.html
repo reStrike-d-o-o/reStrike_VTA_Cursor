@@ -279,15 +279,13 @@
                 document.getElementById('debug-red').textContent = event.athlete2_long;
             }
             
-            // Update countries - use iocCode if available, otherwise use country code
+            // Update countries - athlete1_country and athlete2_country are already IOC codes
             if (event.athlete1_country) {
-                const countryCode = event.athlete1_iocCode || event.athlete1_country;
-                scoreboardInstance.updateCountry('blue', countryCode);
+                scoreboardInstance.updateCountry('blue', event.athlete1_country);
             }
             
             if (event.athlete2_country) {
-                const countryCode = event.athlete2_iocCode || event.athlete2_country;
-                scoreboardInstance.updateCountry('red', countryCode);
+                scoreboardInstance.updateCountry('red', event.athlete2_country);
             }
         }
         

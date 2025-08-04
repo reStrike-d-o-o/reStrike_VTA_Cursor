@@ -234,17 +234,15 @@
                 document.getElementById('debug-player2').textContent = event.athlete2_long;
             }
             
-            // Update countries - use iocCode if available, otherwise use country code
+            // Update countries - athlete1_country and athlete2_country are already IOC codes
             if (event.athlete1_country) {
-                const countryCode = event.athlete1_iocCode || event.athlete1_country;
-                overlayInstance.updatePlayer1Flag(countryCode);
-                document.getElementById('debug-country1').textContent = countryCode;
+                overlayInstance.updatePlayer1Flag(event.athlete1_country);
+                document.getElementById('debug-country1').textContent = event.athlete1_country;
             }
             
             if (event.athlete2_country) {
-                const countryCode = event.athlete2_iocCode || event.athlete2_country;
-                overlayInstance.updatePlayer2Flag(countryCode);
-                document.getElementById('debug-country2').textContent = countryCode;
+                overlayInstance.updatePlayer2Flag(event.athlete2_country);
+                document.getElementById('debug-country2').textContent = event.athlete2_country;
             }
         }
         
