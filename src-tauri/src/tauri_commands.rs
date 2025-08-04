@@ -4360,12 +4360,15 @@ pub async fn simulation_get_scenarios(_app: State<'_, Arc<App>>) -> Result<serde
     let (python_cmd, sim_main) = match ensure_simulation_env() {
         Ok(v) => v,
         Err(e) => {
+            log::error!("Simulation environment error: {:?}", e);
             return Ok(serde_json::json!({
                 "success": false,
                 "error": format!("Simulation environment error: {:?}", e)
             }))
         }
     };
+    
+    log::info!("Running command: {} {} --list-scenarios", python_cmd, sim_main.to_str().unwrap());
     
     let result = std::process::Command::new(&python_cmd)
         .args(&[
@@ -4383,19 +4386,38 @@ pub async fn simulation_get_scenarios(_app: State<'_, Arc<App>>) -> Result<serde
                 log::warn!("Scenarios stderr: {}", stderr_str);
             }
             
+            if !output.status.success() {
+                log::error!("Command failed with exit code: {}", output.status.code().unwrap_or(-1));
+                return Ok(serde_json::json!({
+                    "success": false,
+                    "error": format!("Failed to get scenarios: Command exited with code {}", output.status.code().unwrap_or(-1))
+                }));
+            }
+            
             // Parse the scenarios from the output
             let scenarios = parse_scenarios_from_output(&output_str);
             log::info!("Parsed {} scenarios: {:?}", scenarios.len(), scenarios);
+            
+            if scenarios.is_empty() {
+                log::warn!("No scenarios were parsed from the output");
+                return Ok(serde_json::json!({
+                    "success": false,
+                    "error": "No scenarios found in the output"
+                }));
+            }
             
             Ok(serde_json::json!({
                 "success": true,
                 "data": scenarios
             }))
         },
-        Err(e) => Ok(serde_json::json!({
-            "success": false,
-            "error": format!("Failed to get scenarios: {}", e)
-        }))
+        Err(e) => {
+            log::error!("Failed to execute simulation command: {}", e);
+            Ok(serde_json::json!({
+                "success": false,
+                "error": format!("Failed to get scenarios: {}", e)
+            }))
+        }
     }
 }
 

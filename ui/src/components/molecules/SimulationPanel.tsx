@@ -118,13 +118,24 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
         // Only set error if it's a simulation environment error
         if (result.error && isSimulationEnvError(result.error)) {
           setError(result.error);
+        } else if (result.error && result.error.includes('Failed to get scenarios')) {
+          // Handle backend connection issues
+          setError('Backend connection failed. Please ensure the application is running properly.');
         }
       }
     } catch (error) {
       console.error('❌ Exception loading automated scenarios:', error);
-      // Only set error if it's a simulation environment error
-      if (error && typeof error === 'string' && isSimulationEnvError(error)) {
-        setError(error);
+      // Handle different types of errors
+      if (error && typeof error === 'string') {
+        if (isSimulationEnvError(error)) {
+          setError(error);
+        } else if (error.includes('Failed to invoke') || error.includes('Connection')) {
+          setError('Cannot connect to backend. Please restart the application.');
+        } else {
+          setError(`Failed to load scenarios: ${error}`);
+        }
+      } else {
+        setError('Unknown error occurred while loading scenarios');
       }
     }
   };
