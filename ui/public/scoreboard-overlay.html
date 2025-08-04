@@ -36,29 +36,6 @@
             100% { transform: scale(1); }
         }
         
-        /* Dramatic countdown styling */
-        .dramatic-countdown {
-            color: #ff4444 !important;
-            font-weight: bold;
-            animation: dramaticPulse 0.5s ease-in-out;
-        }
-        
-        .final-countdown {
-            animation: finalCountdown 0.3s ease-in-out infinite;
-        }
-        
-        @keyframes dramaticPulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.1); }
-            100% { transform: scale(1); }
-        }
-        
-        @keyframes finalCountdown {
-            0% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.2); opacity: 0.8; }
-            100% { transform: scale(1); opacity: 1; }
-        }
-        
         /* Connection status indicator */
         .connection-status {
             position: absolute;
@@ -128,6 +105,8 @@
         // Global variables
         let scoreboardInstance = null;
         let nameManager = null;
+        
+        // Global variables for connection status
         let isConnected = false;
         let lastUpdateTime = null;
         
@@ -256,6 +235,9 @@
                         break;
                     case 'winner_rounds':
                         handleWinnerRoundsEvent(event);
+                        break;
+                    case 'winner':
+                        handleMatchEndEvent(event);
                         break;
                     case 'clock':
                         handleClockEvent(event);
@@ -506,7 +488,11 @@
         function handleWinnerRoundsEvent(event) {
             console.log('🏆 Winner rounds event:', event);
             
-            // athlete1 (player1/blue) = winner 1, athlete2 (player2/red) = winner 2
+            // Reset current scores to 0:0 for new round
+            scoreboardInstance.updateScore('blue', 0);
+            scoreboardInstance.updateScore('red', 0);
+            
+            // Update rounds won - athlete1 (player1/blue) = winner 1, athlete2 (player2/red) = winner 2
             if (event.round1_winner !== undefined) {
                 const blueWins = (event.round1_winner === 1 ? 1 : 0) + 
                                 (event.round2_winner === 1 ? 1 : 0) + 
@@ -515,8 +501,20 @@
                                (event.round2_winner === 2 ? 1 : 0) + 
                                (event.round3_winner === 2 ? 1 : 0);
                 
+                console.log(`🏆 Updating round wins - Blue: ${blueWins}, Red: ${redWins}`);
                 scoreboardInstance.updateRoundWins('blue', blueWins);
                 scoreboardInstance.updateRoundWins('red', redWins);
+            }
+        }
+        
+        // Handle match end event (when winner is announced)
+        function handleMatchEndEvent(event) {
+            console.log('🏁 Match end event:', event);
+            
+            // Update final scores and winner information
+            if (event.winner) {
+                console.log(`🏆 Match winner: ${event.winner}`);
+                // You can add winner announcement logic here
             }
         }
         
@@ -525,73 +523,20 @@
             console.log('⏰ Clock event:', event);
             
             if (event.time) {
-                // Parse time and determine if it's dramatic countdown
-                const timeData = parseTimeWithDramaticEffect(event.time);
+                // Parse time in format "m:ss" or "ss"
+                let minutes = 0;
+                let seconds = 0;
                 
-                if (timeData.isDramatic) {
-                    // Use dramatic countdown format (seconds.deciseconds)
-                    scoreboardInstance.updateTimerDramatic(timeData.seconds, timeData.deciseconds);
+                if (event.time.includes(':')) {
+                    const parts = event.time.split(':');
+                    minutes = parseInt(parts[0]) || 0;
+                    seconds = parseInt(parts[1]) || 0;
                 } else {
-                    // Use normal countdown format (minutes:seconds)
-                    scoreboardInstance.updateTimer(timeData.minutes, timeData.seconds);
+                    seconds = parseInt(event.time) || 0;
                 }
-            }
-        }
-        
-        // Parse time and determine if dramatic countdown should be used
-        function parseTimeWithDramaticEffect(timeString) {
-            console.log('⏰ Parsing time string:', timeString);
-            
-            // Check if it's dramatic format (seconds.deciseconds)
-            if (timeString.includes('.') && !timeString.includes(':')) {
-                const parts = timeString.split('.');
-                const seconds = parseInt(parts[0]) || 0;
-                const deciseconds = parseInt(parts[1]) || 0;
                 
-                console.log('🎭 Detected dramatic format:', { seconds, deciseconds });
-                
-                return {
-                    isDramatic: true,
-                    seconds: seconds,
-                    deciseconds: deciseconds,
-                    totalSeconds: seconds + (deciseconds / 10)
-                };
+                scoreboardInstance.updateTimer(minutes, seconds);
             }
-            
-            // Normal format (minutes:seconds)
-            let minutes = 0;
-            let seconds = 0;
-            
-            if (timeString.includes(':')) {
-                const parts = timeString.split(':');
-                minutes = parseInt(parts[0]) || 0;
-                seconds = parseInt(parts[1]) || 0;
-            } else {
-                seconds = parseInt(timeString) || 0;
-            }
-            
-            const totalSeconds = (minutes * 60) + seconds;
-            
-            console.log('⏰ Normal format parsed:', { minutes, seconds, totalSeconds });
-            
-            // Switch to dramatic mode when total seconds <= 10
-            if (totalSeconds <= 10) {
-                // Convert to dramatic format: seconds with 0 deciseconds
-                console.log('🎭 Converting to dramatic format:', { seconds: totalSeconds, deciseconds: 0 });
-                return {
-                    isDramatic: true,
-                    seconds: totalSeconds,
-                    deciseconds: 0,
-                    totalSeconds: totalSeconds
-                };
-            }
-            
-            return {
-                isDramatic: false,
-                minutes: minutes,
-                seconds: seconds,
-                totalSeconds: totalSeconds
-            };
         }
         
         // Handle round event
@@ -600,6 +545,7 @@
             
             if (event.current_round) {
                 scoreboardInstance.updateRound(event.current_round);
+                console.log(`🔄 Updated to round: ${event.current_round}`);
             }
         }
         
@@ -962,6 +908,12 @@
             if (svgObject.contentDocument) {
                 initializeScoreboard();
             }
+        });
+        
+        // Cleanup when page is unloaded
+        window.addEventListener('beforeunload', () => {
+            console.log('🧹 Cleaning up dramatic countdown...');
+            // No dramatic countdown to clean up
         });
         
         // Export functions for external access
