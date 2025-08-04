@@ -55,28 +55,54 @@ pub fn check_python_version(python_cmd: &str) -> Result<(), SimulationEnvError> 
     Err(SimulationEnvError::PythonVersionTooLow(ver))
 }
 
-/// Resolve the simulation path relative to the executable
+/// Resolve the simulation path relative to the executable or current working directory
 pub fn get_simulation_main_py() -> Result<PathBuf, SimulationEnvError> {
-    let exe = std::env::current_exe().map_err(SimulationEnvError::Io)?;
-    let exe_dir = exe.parent().ok_or(SimulationEnvError::SimulationPathNotFound)?;
-    let sim_path = exe_dir.join("../simulation/main.py");
-    if sim_path.exists() {
-        Ok(sim_path)
-    } else {
-        Err(SimulationEnvError::SimulationPathNotFound)
+    // Try multiple possible paths for both development and production modes
+    let possible_paths = vec![
+        // Development mode: relative to current working directory
+        std::env::current_dir().map(|p| p.join("simulation/main.py")).ok(),
+        // Production mode: relative to executable
+        std::env::current_exe().map(|exe| {
+            exe.parent().map(|parent| parent.join("../simulation/main.py"))
+        }).ok().flatten(),
+        // Fallback: try src-tauri relative paths
+        std::env::current_dir().map(|p| p.join("src-tauri/../simulation/main.py")).ok(),
+    ];
+
+    for path in possible_paths {
+        if let Some(p) = path {
+            if p.exists() {
+                return Ok(p);
+            }
+        }
     }
+    
+    Err(SimulationEnvError::SimulationPathNotFound)
 }
 
 /// Resolve the requirements.txt path
 pub fn get_simulation_requirements() -> Result<PathBuf, SimulationEnvError> {
-    let exe = std::env::current_exe().map_err(SimulationEnvError::Io)?;
-    let exe_dir = exe.parent().ok_or(SimulationEnvError::SimulationPathNotFound)?;
-    let req_path = exe_dir.join("../simulation/requirements.txt");
-    if req_path.exists() {
-        Ok(req_path)
-    } else {
-        Err(SimulationEnvError::SimulationPathNotFound)
+    // Try multiple possible paths for both development and production modes
+    let possible_paths = vec![
+        // Development mode: relative to current working directory
+        std::env::current_dir().map(|p| p.join("simulation/requirements.txt")).ok(),
+        // Production mode: relative to executable
+        std::env::current_exe().map(|exe| {
+            exe.parent().map(|parent| parent.join("../simulation/requirements.txt"))
+        }).ok().flatten(),
+        // Fallback: try src-tauri relative paths
+        std::env::current_dir().map(|p| p.join("src-tauri/../simulation/requirements.txt")).ok(),
+    ];
+
+    for path in possible_paths {
+        if let Some(p) = path {
+            if p.exists() {
+                return Ok(p);
+            }
+        }
     }
+    
+    Err(SimulationEnvError::SimulationPathNotFound)
 }
 
 /// Check if a required python package is installed (e.g. requests)
