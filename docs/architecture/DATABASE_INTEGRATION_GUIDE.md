@@ -880,6 +880,396 @@ pub fn rollback(&self, conn: &Connection, target_version: u32) -> DatabaseResult
 
 ---
 
+## 🎥 OBS Session Management Integration
+
+### **Unified OBS Sessions Table**
+
+The database now includes a comprehensive OBS session management system that handles recording, streaming, and replay buffer sessions in a unified manner:
+
+#### **obs_sessions Table Schema**
+```sql
+CREATE TABLE obs_sessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id INTEGER NOT NULL,                    -- Links to main session
+    session_type TEXT NOT NULL,                     -- 'stream', 'recording', 'replay_buffer'
+    obs_connection TEXT NOT NULL,                   -- 'OBS_REC', 'OBS_STR', 'OBS_BOTH'
+    start_timestamp TEXT NOT NULL,                  -- ISO 8601 timestamp
+    end_timestamp TEXT,                             -- NULL until session ends
+    tournament_id INTEGER,
+    tournament_day_id INTEGER,
+    session_number INTEGER DEFAULT 1,               -- Session number within tournament day (1, 2, 3...)
+    is_active BOOLEAN DEFAULT TRUE,                 -- Whether this session is currently active
+    interruption_reason TEXT,                       -- Reason for session end (restart, crash, manual stop)
+    time_offset_seconds INTEGER DEFAULT 0,          -- Time offset from previous session of same type
+    cumulative_offset_seconds INTEGER DEFAULT 0,    -- Total offset from first session of same type
+    recording_path TEXT,                            -- For recording sessions: base recording path
+    recording_name TEXT,                            -- For recording sessions: current recording name
+    stream_key TEXT,                                -- For stream sessions: stream key/URL
+    replay_buffer_duration INTEGER DEFAULT 20,      -- For replay buffer: duration in seconds
+    replay_buffer_path TEXT,                        -- For replay buffer: save path
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (session_id) REFERENCES sessions(id),
+    FOREIGN KEY (tournament_id) REFERENCES tournaments(id),
+    FOREIGN KEY (tournament_day_id) REFERENCES tournament_days(id)
+);
+```
+
+#### **Performance Indices**
+```sql
+CREATE INDEX idx_obs_sessions_session ON obs_sessions(session_id);
+CREATE INDEX idx_obs_sessions_type ON obs_sessions(session_type);
+CREATE INDEX idx_obs_sessions_tournament_day ON obs_sessions(tournament_day_id, session_type, session_number);
+CREATE INDEX idx_obs_sessions_active ON obs_sessions(is_active, session_type);
+CREATE INDEX idx_obs_sessions_connection ON obs_sessions(obs_connection);
+```
+
+### **Enhanced PSS Events with OBS Integration**
+
+#### **New Fields in pss_events_v2**
+```sql
+-- Add OBS timestamp fields for video replay integration
+ALTER TABLE pss_events_v2 ADD COLUMN rec_timestamp TEXT;
+ALTER TABLE pss_events_v2 ADD COLUMN str_timestamp TEXT;
+ALTER TABLE pss_events_v2 ADD COLUMN ivr_link TEXT;
+
+-- Add indices for performance
+CREATE INDEX IF NOT EXISTS idx_pss_events_v2_rec_timestamp ON pss_events_v2(rec_timestamp);
+CREATE INDEX IF NOT EXISTS idx_pss_events_v2_str_timestamp ON pss_events_v2(str_timestamp);
+```
+
+#### **Automatic Timestamp Calculation Triggers**
+```sql
+-- Enhanced trigger to handle multiple session types and time offsets
+CREATE TRIGGER calculate_str_timestamp_trigger
+AFTER INSERT ON pss_events_v2
+FOR EACH ROW
+WHEN NEW.str_timestamp IS NULL
+BEGIN
+    UPDATE pss_events_v2
+    SET str_timestamp = (
+        SELECT
+            CASE
+                WHEN os.start_timestamp IS NOT NULL
+                THEN strftime('%H:%M:%S',
+                    ((julianday(NEW.timestamp) - julianday(os.start_timestamp)) * 24 * 3600) + os.cumulative_offset_seconds
+                )
+                ELSE NULL
+            END
+        FROM obs_sessions os
+        WHERE os.tournament_day_id = (
+            SELECT tournament_day_id FROM pss_events_v2 WHERE id = NEW.id
+        )
+        AND os.session_type = 'stream'
+        AND os.is_active = TRUE
+        AND os.start_timestamp IS NOT NULL
+        AND NEW.timestamp >= os.start_timestamp
+        AND (os.end_timestamp IS NULL OR NEW.timestamp <= os.end_timestamp)
+        ORDER BY os.session_number DESC, os.created_at DESC
+        LIMIT 1
+    )
+    WHERE id = NEW.id;
+END;
+
+-- Trigger for automatic rec_timestamp calculation
+CREATE TRIGGER calculate_rec_timestamp_trigger
+AFTER INSERT ON pss_events_v2
+FOR EACH ROW
+WHEN NEW.rec_timestamp IS NULL
+BEGIN
+    UPDATE pss_events_v2
+    SET rec_timestamp = (
+        SELECT
+            CASE
+                WHEN os.start_timestamp IS NOT NULL
+                THEN strftime('%H:%M:%S',
+                    ((julianday(NEW.timestamp) - julianday(os.start_timestamp)) * 24 * 3600) + os.cumulative_offset_seconds
+                )
+                ELSE NULL
+            END
+        FROM obs_sessions os
+        WHERE os.tournament_day_id = (
+            SELECT tournament_day_id FROM pss_events_v2 WHERE id = NEW.id
+        )
+        AND os.session_type = 'recording'
+        AND os.is_active = TRUE
+        AND os.start_timestamp IS NOT NULL
+        AND NEW.timestamp >= os.start_timestamp
+        AND (os.end_timestamp IS NULL OR NEW.timestamp <= os.end_timestamp)
+        ORDER BY os.session_number DESC, os.created_at DESC
+        LIMIT 1
+    )
+    WHERE id = NEW.id;
+END;
+```
+
+### **YouTube Chapter Generation**
+
+#### **Database View for YouTube Chapters**
+```sql
+CREATE VIEW youtube_chapters AS
+SELECT
+    session_id,
+    match_number,
+    str_timestamp,
+    event_category,
+    description,
+    str_timestamp || ' ' ||
+    CASE
+        WHEN event_category = 'R' THEN 'Referee Decision'
+        WHEN event_category = 'K' THEN 'Kick Event'
+        WHEN event_category = 'P' THEN 'Punch Point'
+        WHEN event_category = 'H' THEN 'Head Point'
+        WHEN event_category = 'TH' THEN 'Technical Head Point'
+        WHEN event_category = 'TB' THEN 'Technical Body Point'
+        ELSE 'Match Event'
+    END || ' - ' || COALESCE(description, '') as chapter_line
+FROM pss_events_v2
+WHERE str_timestamp IS NOT NULL
+AND event_category IN ('R', 'K', 'P', 'H', 'TH', 'TB')
+AND match_number IS NOT NULL
+ORDER BY session_id, str_timestamp;
+```
+
+### **Stream Interruption Handling**
+
+#### **Session Management Functions**
+```rust
+impl ObsSessionOperations {
+    // End active session and calculate time offset
+    pub fn end_active_session(
+        conn: &Connection,
+        tournament_day_id: i64,
+        session_type: &str,
+        reason: &str
+    ) -> DatabaseResult<i64>
+
+    // Calculate time offset between sessions
+    pub fn calculate_session_time_offset(
+        conn: &Connection,
+        tournament_day_id: i64,
+        session_type: &str,
+        new_start_timestamp: &str
+    ) -> DatabaseResult<i64>
+
+    // Update cumulative offset for all subsequent sessions
+    pub fn update_cumulative_offset(
+        conn: &Connection,
+        tournament_day_id: i64,
+        session_type: &str,
+        offset_seconds: i64
+    ) -> DatabaseResult<()>
+
+    // Get next session number for tournament day
+    pub fn get_next_session_number(
+        conn: &Connection,
+        tournament_day_id: i64,
+        session_type: &str
+    ) -> DatabaseResult<i32>
+
+    // Create new OBS session
+    pub fn create_obs_session(
+        conn: &Connection,
+        session_data: &ObsSession
+    ) -> DatabaseResult<i64>
+
+    // Get last session of specific type
+    pub fn get_last_session(
+        conn: &Connection,
+        tournament_day_id: i64,
+        session_type: &str
+    ) -> DatabaseResult<Option<ObsSession>>
+
+    // Get active session
+    pub fn get_active_obs_session(
+        conn: &Connection,
+        tournament_day_id: i64,
+        session_type: &str
+    ) -> DatabaseResult<Option<ObsSession>>
+
+    // Get all sessions for tournament day
+    pub fn get_sessions(
+        conn: &Connection,
+        tournament_day_id: i64,
+        session_type: Option<&str>
+    ) -> DatabaseResult<Vec<ObsSession>>
+}
+```
+
+### **OBS Integration Benefits**
+
+#### **Unified Session Management**
+- **Single Table**: All OBS session types managed in one place
+- **Session Types**: Support for stream, recording, and replay buffer sessions
+- **Connection Types**: OBS_REC, OBS_STR, OBS_BOTH for flexible configuration
+- **Easy Filtering**: Simple queries by session type and connection
+
+#### **Stream Interruption Resilience**
+- **Multiple Sessions**: Track multiple sessions per tournament day
+- **Time Offsets**: Handle interruptions with cumulative offset calculation
+- **Automatic Detection**: Detect and handle stream restarts automatically
+- **Manual Correction**: Allow manual adjustment of time offsets
+
+#### **Video Replay Integration**
+- **Timestamp Calculation**: Automatic rec_timestamp and str_timestamp calculation
+- **IVR Links**: Path to video replay buffer clips for instant replay
+- **YouTube Chapters**: Automated generation of YouTube chapter files
+- **Scene Management**: Automatic scene changes for IVR and live streaming
+
+---
+
+## ⚡ Performance Optimization Strategy
+
+### **Current Performance Analysis**
+
+#### **Identified Bottlenecks**
+1. **UDP Processing**: High-frequency PSS event processing (100+ events/second)
+2. **Database Operations**: Frequent inserts and real-time queries
+3. **WebSocket Broadcasting**: JSON serialization and synchronous broadcasting
+4. **Frontend Rendering**: Event table updates and real-time UI refresh
+5. **Memory Usage**: Event caching and WebSocket client management
+
+#### **Performance Targets**
+- **Latency**: < 50ms for UDP event processing
+- **Throughput**: 1000+ events/second sustained
+- **Memory Usage**: < 100MB for normal operation
+- **CPU Usage**: < 10% average, < 30% peak
+- **Database**: < 5ms average query time
+
+### **Multi-Phase Optimization Plan**
+
+#### **Phase 1: Backend Critical Path (Priority 1)**
+**UDP Processing Optimization**
+- **Bounded Channels**: Replace unbounded channels with size-limited queues
+- **Batch Processing**: Process events in batches of 10-50 events
+- **Zero-Copy Parsing**: Use `bytes` crate for efficient PSS protocol parsing
+- **Async Processing**: Move heavy processing to dedicated async tasks
+
+**Database Operations**
+- **Connection Pooling**: Implement connection pool with 10-20 connections
+- **Batch Inserts**: Use `INSERT OR REPLACE` with multiple values
+- **Prepared Statements**: Cache prepared statements for repeated queries
+- **Index Optimization**: Add composite indices for common query patterns
+
+**WebSocket Broadcasting**
+- **Binary Serialization**: Switch from JSON to Protocol Buffers
+- **Asynchronous Broadcasting**: Use `tokio::spawn` for non-blocking broadcast
+- **Compression**: Implement gzip compression for large payloads
+- **Backpressure**: Implement bounded channels for client message queues
+
+#### **Phase 2: Frontend Optimization (Priority 2)**
+**React Component Optimization**
+- **Memoization**: Use `React.memo`, `useMemo`, `useCallback` extensively
+- **Virtualization**: Implement `react-window` for large event lists
+- **Selective Updates**: Only re-render changed components
+- **Debouncing**: Debounce rapid state updates
+
+**State Management**
+- **Normalized State**: Use normalized state structure for events
+- **Selective Subscriptions**: Subscribe only to relevant state changes
+- **Batch Updates**: Batch multiple state updates together
+- **Memory Cleanup**: Implement proper cleanup for unmounted components
+
+#### **Phase 3: Memory and Resource Management (Priority 3)**
+**Memory Optimization**
+- **Object Pooling**: Reuse event objects instead of creating new ones
+- **Weak References**: Use weak references for cached data
+- **Garbage Collection**: Implement manual cleanup for long-running operations
+- **Memory Monitoring**: Add memory usage tracking and alerts
+
+**CPU Optimization**
+- **Work Offloading**: Move CPU-intensive tasks to background threads
+- **Throttling**: Implement throttling for high-frequency operations
+- **Caching**: Cache expensive calculations and database queries
+- **Lazy Loading**: Load data only when needed
+
+#### **Phase 4: Network and I/O Optimization (Priority 4)**
+**Network Optimization**
+- **Connection Pooling**: Pool UDP and WebSocket connections
+- **Message Batching**: Batch multiple messages into single network calls
+- **Compression**: Compress large payloads before transmission
+- **Retry Logic**: Implement exponential backoff for failed operations
+
+**File I/O Optimization**
+- **Async I/O**: Use `tokio::fs` for all file operations
+- **Buffered I/O**: Use buffered readers/writers for file operations
+- **Batch Writes**: Batch multiple file writes together
+- **Caching**: Cache frequently accessed files in memory
+
+#### **Phase 5: Monitoring and Profiling (Priority 5)**
+**Performance Monitoring**
+- **Metrics Collection**: Collect detailed performance metrics
+- **Profiling**: Use `tracing` and `tracing-subscriber` for detailed profiling
+- **Alerting**: Set up alerts for performance degradation
+- **Dashboard**: Create performance monitoring dashboard
+
+**Optimization Validation**
+- **Benchmarking**: Create comprehensive benchmarks for all optimizations
+- **Load Testing**: Test with realistic high-load scenarios
+- **Regression Testing**: Ensure optimizations don't break existing functionality
+- **Continuous Monitoring**: Monitor performance in production
+
+### **Implementation Priority**
+
+#### **Immediate (Week 1-2)**
+1. **UDP Bounded Channels**: Implement size-limited event queues
+2. **Database Connection Pooling**: Add connection pool with health checks
+3. **WebSocket Binary Serialization**: Switch to Protocol Buffers
+4. **React Memoization**: Add `React.memo` to event components
+
+#### **Short Term (Week 3-4)**
+1. **Batch Processing**: Implement event batching in UDP plugin
+2. **Database Batch Inserts**: Use batch inserts for PSS events
+3. **Frontend Virtualization**: Add `react-window` to event table
+4. **Memory Monitoring**: Add memory usage tracking
+
+#### **Medium Term (Month 2)**
+1. **Async Processing**: Move heavy processing to background tasks
+2. **Caching Layer**: Implement Redis or in-memory caching
+3. **Compression**: Add gzip compression to WebSocket messages
+4. **Performance Dashboard**: Create monitoring dashboard
+
+#### **Long Term (Month 3+)**
+1. **Advanced Caching**: Implement sophisticated caching strategies
+2. **Load Balancing**: Add load balancing for high-availability
+3. **Database Sharding**: Implement database sharding for large datasets
+4. **Microservices**: Consider microservices architecture for scalability
+
+### **Expected Performance Improvements**
+
+#### **Latency Improvements**
+- **UDP Processing**: 70% reduction (from 150ms to 45ms)
+- **Database Queries**: 80% reduction (from 25ms to 5ms)
+- **WebSocket Broadcasting**: 60% reduction (from 100ms to 40ms)
+- **Frontend Rendering**: 50% reduction (from 200ms to 100ms)
+
+#### **Throughput Improvements**
+- **Event Processing**: 5x increase (from 200 to 1000 events/second)
+- **Database Operations**: 10x increase (from 100 to 1000 operations/second)
+- **WebSocket Messages**: 3x increase (from 500 to 1500 messages/second)
+- **Memory Efficiency**: 40% reduction in memory usage
+
+#### **Resource Usage Targets**
+- **CPU Usage**: < 10% average, < 30% peak
+- **Memory Usage**: < 100MB for normal operation, < 200MB peak
+- **Network Bandwidth**: < 1MB/s for normal operation
+- **Disk I/O**: < 10MB/s for database operations
+
+### **Risk Mitigation**
+
+#### **Backward Compatibility**
+- **Feature Flags**: Use feature flags to enable/disable optimizations
+- **Gradual Rollout**: Roll out optimizations incrementally
+- **Fallback Mechanisms**: Maintain fallback to original implementations
+- **Testing**: Comprehensive testing before deployment
+
+#### **Monitoring and Alerting**
+- **Performance Metrics**: Monitor all performance metrics in real-time
+- **Error Tracking**: Track errors and performance degradation
+- **Resource Monitoring**: Monitor CPU, memory, and network usage
+- **User Experience**: Monitor user-facing performance metrics
+
+---
+
 ## 📞 Support and Maintenance
 
 ### **Troubleshooting**
