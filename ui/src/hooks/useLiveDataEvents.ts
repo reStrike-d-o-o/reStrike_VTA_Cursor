@@ -35,6 +35,8 @@ export const useLiveDataEvents = () => {
     // Create WebSocket connection with inline message handler
     const ws = new LiveDataWebSocket('ws://localhost:3001', (data: any) => {
       console.log('📡 Received WebSocket message:', data);
+      console.log('📡 Message type:', data.type);
+      console.log('📡 Message data:', data.data);
       
       // Handle different message types using direct store access
       if (data.type === 'pss_event' && data.data) {
@@ -43,18 +45,35 @@ export const useLiveDataEvents = () => {
         if (typeof eventData.event_code !== 'string' || !eventData.event_code) {
           console.warn('⚠️ Live event missing event_code from backend:', eventData);
         }
+        // Validate and normalize athlete field
+        let normalizedAthlete: 'blue' | 'red' | 'yellow';
+        if (eventData.athlete === 'blue' || eventData.athlete === 'red' || eventData.athlete === 'yellow') {
+          normalizedAthlete = eventData.athlete;
+        } else {
+          // Default to yellow for unknown values
+          normalizedAthlete = 'yellow';
+        }
+        
         // Create event directly from structured data instead of parsing raw_data
         const event: PssEventData = {
           id: `${eventData.type}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           eventType: eventData.type as any,
           eventCode: eventData.event_code || '', // Always from backend
-          athlete: eventData.athlete as any,
+          athlete: normalizedAthlete,
           round: eventData.round || 1,
           time: eventData.time || '0:00',
           timestamp: eventData.timestamp || new Date().toISOString(),
           rawData: eventData.raw_data || '',
           description: eventData.description || '',
         };
+        
+        // Debug logging for event creation
+        console.log('🔍 Event creation debug:', {
+          receivedAthlete: eventData.athlete,
+          receivedEventCode: eventData.event_code,
+          receivedEventType: eventData.type,
+          createdEvent: event
+        });
         
         console.log('📊 Adding event to store:', event);
         useLiveDataStore.getState().addEvent(event);

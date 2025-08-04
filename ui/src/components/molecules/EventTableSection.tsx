@@ -7,7 +7,7 @@ import { useAppStore } from '../../stores/index';
 const colorOptions = [
   { color: 'red', class: 'bg-red-500' },
   { color: 'blue', class: 'bg-blue-500' },
-  { color: 'referee', class: 'bg-yellow-400' },
+  { color: 'yellow', class: 'bg-yellow-400' },
 ];
 
 // Event type filter buttons (order: H, K, P, TH, TB, R)
@@ -44,18 +44,18 @@ const EventTableSection: React.FC = () => {
   // Filter to only show important events for the event table
   const filteredEvents = allEvents.filter(event => {
     // Only show events with specific event codes that are important for the table
-    const importantEventCodes = ['K', 'P', 'H', 'TH', 'TB', 'R', 'O'];
+    const importantEventCodes = ['K', 'P', 'H', 'TH', 'TB', 'R'];
     const isImportant = importantEventCodes.includes(event.eventCode);
     
-    // Debug logging for filtered events
-    if (!isImportant) {
-      console.log('🚫 Event filtered out:', {
-        eventType: event.eventType,
-        eventCode: event.eventCode,
-        description: event.description,
-        importantEventCodes
-      });
-    }
+    // Debug logging for all events
+    console.log('🔍 Event filtering debug:', {
+      eventType: event.eventType,
+      eventCode: event.eventCode,
+      athlete: event.athlete,
+      description: event.description,
+      isImportant,
+      importantEventCodes
+    });
     
     return isImportant;
   });
@@ -108,7 +108,7 @@ const EventTableSection: React.FC = () => {
     switch (athlete) {
       case 'blue': return 'bg-blue-500';
       case 'red': return 'bg-red-500';
-      case 'referee': return 'bg-yellow-400';
+      case 'yellow': return 'bg-yellow-400';
       default: return 'bg-gray-500';
     }
   };

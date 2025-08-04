@@ -380,6 +380,16 @@ impl WebSocketServer {
         // Get event code from UDP plugin's get_event_code function
         let event_code = crate::plugins::plugin_udp::UdpServer::get_event_code(event);
         
+        // Create timestamp based on PSS time for better accuracy
+        // Use current PSS time to create a more accurate timestamp
+        let pss_timestamp = if !current_time.is_empty() && current_time != "0:00" {
+            // Try to parse PSS time and create a timestamp
+            // For now, use current time but this could be enhanced to use actual PSS timestamp
+            Utc::now().to_rfc3339()
+        } else {
+            Utc::now().to_rfc3339()
+        };
+        
         match event {
             PssEvent::Points { athlete, point_type } => {
                 
@@ -395,7 +405,7 @@ impl WebSocketServer {
                     athlete: athlete_str.clone(),
                     round: current_round,
                     time: current_time.clone(),
-                    timestamp: Utc::now().to_rfc3339(),
+                    timestamp: pss_timestamp.clone(),
                     raw_data: format!("pt{}", point_type),
                     description: format!("{} {}", athlete_str, event_code),
                     action: None,
@@ -413,7 +423,7 @@ impl WebSocketServer {
                     athlete: "yellow".to_string(),
                     round: current_round,
                     time: current_time.clone(),
-                    timestamp: Utc::now().to_rfc3339(),
+                    timestamp: pss_timestamp.clone(),
                     raw_data: format!("wg1;{};wg2;{}", athlete1_warnings, athlete2_warnings),
                     description: format!("Warnings - Blue: {}, Red: {}", athlete1_warnings, athlete2_warnings),
                     action: None,
@@ -431,7 +441,7 @@ impl WebSocketServer {
                     athlete: "yellow".to_string(),
                     round: current_round,
                     time: current_time.clone(),
-                    timestamp: Utc::now().to_rfc3339(),
+                    timestamp: pss_timestamp.clone(),
                     raw_data: format!("wr1;{};wr2;{};wr3;{}", round1_winner, round2_winner, round3_winner),
                     description: format!("Winner Rounds - R1: {}, R2: {}, R3: {}", round1_winner, round2_winner, round3_winner),
                     action: None,
@@ -450,7 +460,7 @@ impl WebSocketServer {
                     athlete: "".to_string(),
                     round: current_round,
                     time: "0:00".to_string(),
-                    timestamp: Utc::now().to_rfc3339(),
+                    timestamp: pss_timestamp.clone(),
                     raw_data: format!("mch;{};{};{}", number, category, weight),
                     description: format!("Match Config - #{} {} {}", number, category, weight),
                     action: None,
@@ -478,7 +488,7 @@ impl WebSocketServer {
                     athlete: "".to_string(),
                     round: current_round,
                     time: "0:00".to_string(),
-                    timestamp: Utc::now().to_rfc3339(),
+                    timestamp: pss_timestamp.clone(),
                     raw_data: format!("ath1;{};{};{};ath2;{};{};{}", 
                         athlete1_short, athlete1_long, athlete1_country,
                         athlete2_short, athlete2_long, athlete2_country),
@@ -502,7 +512,7 @@ impl WebSocketServer {
                     athlete: "".to_string(),
                     round: current_round,
                     time: current_time.clone(),
-                    timestamp: Utc::now().to_rfc3339(),
+                    timestamp: pss_timestamp.clone(),
                     raw_data: format!("sc1;{};sc2;{}", athlete1_score, athlete2_score),
                     description: format!("Current Scores - Blue: {}, Red: {}", athlete1_score, athlete2_score),
                     action: None,
@@ -520,7 +530,7 @@ impl WebSocketServer {
                     athlete: "".to_string(),
                     round: current_round,
                     time: current_time.clone(),
-                    timestamp: Utc::now().to_rfc3339(),
+                    timestamp: pss_timestamp.clone(),
                     raw_data: format!("s11;{};s21;{};s12;{};s22;{};s13;{};s23;{}", 
                         athlete1_r1, athlete2_r1, athlete1_r2, athlete2_r2, athlete1_r3, athlete2_r3),
                     description: format!("Scores - R1: {}-{}, R2: {}-{}, R3: {}-{}", 
@@ -544,7 +554,7 @@ impl WebSocketServer {
                     athlete: "".to_string(),
                     round: current_round,
                     time: time.clone(),
-                    timestamp: Utc::now().to_rfc3339(),
+                    timestamp: pss_timestamp.clone(),
                     raw_data: format!("clk;{}", time),
                     description: format!("Clock - {}", time),
                     action: action.clone(),
@@ -562,7 +572,7 @@ impl WebSocketServer {
                     athlete: "".to_string(),
                     round: *current_round,
                     time: current_time.clone(),
-                    timestamp: Utc::now().to_rfc3339(),
+                    timestamp: pss_timestamp.clone(),
                     raw_data: format!("rnd;{}", current_round),
                     description: format!("Round {}", current_round),
                     action: None,
@@ -586,7 +596,7 @@ impl WebSocketServer {
                     athlete: athlete_str.clone(),
                     round: current_round,
                     time: time.clone(),
-                    timestamp: Utc::now().to_rfc3339(),
+                    timestamp: pss_timestamp.clone(),
                     raw_data: format!("inj;{};{}", athlete, time),
                     description: format!("Injury - {} {}", athlete_str, time),
                     action: action.clone(),
@@ -600,7 +610,7 @@ impl WebSocketServer {
             
             PssEvent::Challenge { source, accepted, won, canceled } => {
                 let source_str = match source {
-                    0 => "referee".to_string(),
+                    0 => "yellow".to_string(),
                     1 => "blue".to_string(),
                     2 => "red".to_string(),
                     _ => "unknown".to_string(),
@@ -612,7 +622,7 @@ impl WebSocketServer {
                     athlete: source_str.clone(),
                     round: current_round,
                     time: current_time.clone(),
-                    timestamp: Utc::now().to_rfc3339(),
+                    timestamp: pss_timestamp.clone(),
                     raw_data: format!("chg;{};{};{};{}", source, 
                         accepted.map(|a| if a { "1" } else { "0" }).unwrap_or(""),
                         won.map(|w| if w { "1" } else { "0" }).unwrap_or(""),
@@ -636,7 +646,7 @@ impl WebSocketServer {
                     athlete: "".to_string(),
                     round: current_round,
                     time: time.clone(),
-                    timestamp: Utc::now().to_rfc3339(),
+                    timestamp: pss_timestamp.clone(),
                     raw_data: format!("brk;{}", time),
                     description: format!("Break - {}", time),
                     action: action.clone(),
@@ -654,7 +664,7 @@ impl WebSocketServer {
                     athlete: "".to_string(),
                     round: current_round,
                     time: current_time.clone(),
-                    timestamp: Utc::now().to_rfc3339(),
+                    timestamp: pss_timestamp.clone(),
                     raw_data: format!("win;{}", name),
                     description: format!("Winner - {}", name),
                     action: None,
@@ -678,7 +688,7 @@ impl WebSocketServer {
                     athlete: athlete_str.clone(),
                     round: current_round,
                     time: current_time.clone(),
-                    timestamp: Utc::now().to_rfc3339(),
+                    timestamp: pss_timestamp.clone(),
                     raw_data: format!("hl;{};{}", athlete, level),
                     description: format!("Hit Level - {} {}", athlete_str, level),
                     action: None,
@@ -696,7 +706,7 @@ impl WebSocketServer {
                     athlete: "".to_string(),
                     round: current_round,
                     time: current_time.clone(),
-                    timestamp: Utc::now().to_rfc3339(),
+                    timestamp: pss_timestamp.clone(),
                     raw_data: "fl".to_string(),
                     description: "Fight Loaded".to_string(),
                     action: None,
@@ -711,7 +721,7 @@ impl WebSocketServer {
                     athlete: "".to_string(),
                     round: current_round,
                     time: current_time.clone(),
-                    timestamp: Utc::now().to_rfc3339(),
+                    timestamp: pss_timestamp.clone(),
                     raw_data: "rdy;FightReady".to_string(),
                     description: "Fight Ready".to_string(),
                     action: None,
@@ -728,7 +738,7 @@ impl WebSocketServer {
                     athlete: "".to_string(),
                     round: current_round,
                     time: current_time.clone(),
-                    timestamp: Utc::now().to_rfc3339(),
+                    timestamp: pss_timestamp.clone(),
                     raw_data: format!("sup;{}", value),
                     description: format!("Supremacy - Value: {}", value),
                     action: None,
@@ -745,7 +755,7 @@ impl WebSocketServer {
                     athlete: "".to_string(),
                     round: current_round,
                     time: current_time.clone(),
-                    timestamp: Utc::now().to_rfc3339(),
+                    timestamp: pss_timestamp.clone(),
                     raw_data: raw_data.clone(),
                     description: format!("Raw data: {}", raw_data),
                     action: None,

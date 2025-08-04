@@ -5,8 +5,8 @@ import { subscribeWithSelector } from 'zustand/middleware';
 export interface PssEventData {
   id: string;
   eventType: string; // All PSS event types from backend
-  eventCode: string; // K, P, H, TH, TB, R
-  athlete: 'blue' | 'red' | 'referee';
+  eventCode: string; // K, P, H, TH, TB, R, O
+  athlete: 'blue' | 'red' | 'yellow';
   round: number;
   time: string; // Clock time from PSS (e.g., "1:45")
   timestamp: string; // When we received the event
@@ -178,7 +178,7 @@ export const parsePssEvent = (rawData: string, timestamp: string): PssEventData 
     case 'ch1':
     case 'ch2': {
       // Challenge events
-      const athlete = eventType === 'ch0' ? 'referee' : 
+      const athlete = eventType === 'ch0' ? 'yellow' : 
                      eventType === 'ch1' ? 'blue' : 'red';
       return {
         id,
@@ -201,7 +201,7 @@ export const parsePssEvent = (rawData: string, timestamp: string): PssEventData 
         id,
         eventType: eventType as any,
         eventCode: 'T', // Time
-        athlete: 'referee',
+        athlete: 'yellow',
         round: 1,
         time,
         timestamp,
@@ -218,7 +218,7 @@ export const parsePssEvent = (rawData: string, timestamp: string): PssEventData 
         id,
         eventType: eventType as any,
         eventCode: 'R', // Round
-        athlete: 'referee',
+        athlete: 'yellow',
         round,
         time: '0:00',
         timestamp,
@@ -271,7 +271,9 @@ export class LiveDataWebSocket {
       
       this.ws.onmessage = (event) => {
         try {
+          console.log('🔌 Raw WebSocket message received:', event.data);
           const data = JSON.parse(event.data);
+          console.log('🔌 Parsed WebSocket message:', data);
           this.onMessage(data);
         } catch (error) {
           console.error('Failed to parse WebSocket message:', error);
