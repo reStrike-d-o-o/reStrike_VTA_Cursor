@@ -263,20 +263,16 @@ export class LiveDataWebSocket {
   
   connect() {
     try {
-      console.log('🔌 Creating WebSocket connection to:', this.url);
       this.ws = new WebSocket(this.url);
       
       this.ws.onopen = () => {
-        console.log('🔗 Live data WebSocket connected successfully');
         useLiveDataStore.getState().setConnectionStatus(true);
         this.reconnectAttempts = 0;
       };
       
       this.ws.onmessage = (event) => {
         try {
-          console.log('🔌 Raw WebSocket message received:', event.data);
           const data = JSON.parse(event.data);
-          console.log('🔌 Parsed WebSocket message:', data);
           this.onMessage(data);
         } catch (error) {
           console.error('Failed to parse WebSocket message:', error);
@@ -284,7 +280,6 @@ export class LiveDataWebSocket {
       };
       
       this.ws.onclose = () => {
-        console.log('🔌 Live data WebSocket disconnected');
         useLiveDataStore.getState().setConnectionStatus(false);
         this.attemptReconnect();
       };
@@ -301,7 +296,6 @@ export class LiveDataWebSocket {
   private attemptReconnect() {
     if (this.reconnectAttempts < this.maxReconnectAttempts) {
       this.reconnectAttempts++;
-      console.log(`🔄 Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
       
       setTimeout(() => {
         this.connect();

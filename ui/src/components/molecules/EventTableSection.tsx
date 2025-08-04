@@ -47,34 +47,21 @@ const EventTableSection: React.FC = () => {
     const importantEventCodes = ['K', 'P', 'H', 'TH', 'TB', 'R'];
     const isImportant = importantEventCodes.includes(event.eventCode);
     
-    // Debug logging for all events
-    console.log('🔍 Event filtering debug:', {
-      eventType: event.eventType,
-      eventCode: event.eventCode,
-      athlete: event.athlete,
-      description: event.description,
-      time: event.time,
-      round: event.round,
-      isImportant,
-      importantEventCodes
-    });
+    // Only log important events
+    if (isImportant) {
+      console.log('🎯 IMPORTANT EVENT:', {
+        eventCode: event.eventCode,
+        athlete: event.athlete,
+        description: event.description,
+        time: event.time,
+        round: event.round
+      });
+    }
     
     return isImportant;
   });
 
-  // Debug logging
-  useEffect(() => {
-    console.log('🔍 EventTableSection Debug:', {
-      eventsCount: events.length,
-      isConnected,
-      isManualModeEnabled,
-      currentRound,
-      currentTime,
-      events: events.slice(0, 3), // Show first 3 events
-      allEventsCount: allEvents.length,
-      filteredEventsCount: filteredEvents.length
-    });
-  }, [events, isConnected, isManualModeEnabled, currentRound, currentTime, allEvents, filteredEvents]);
+
 
   // Auto-scroll to top when new events arrive (since newest are now at top)
   useEffect(() => {
