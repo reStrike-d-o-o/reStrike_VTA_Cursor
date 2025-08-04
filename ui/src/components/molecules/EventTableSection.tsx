@@ -47,17 +47,6 @@ const EventTableSection: React.FC = () => {
     const importantEventCodes = ['K', 'P', 'H', 'TH', 'TB', 'R'];
     const isImportant = importantEventCodes.includes(event.eventCode);
     
-    // Only log important events
-    if (isImportant) {
-      console.log('🎯 IMPORTANT EVENT:', {
-        eventCode: event.eventCode,
-        athlete: event.athlete,
-        description: event.description,
-        time: event.time,
-        round: event.round
-      });
-    }
-    
     return isImportant;
   });
 

@@ -85,9 +85,9 @@ export const useLiveDataStore = create<LiveDataState>()(
           });
         }
         
-        console.log(`✅ Stored ${events.length} events to database for match ${matchId}`);
+        // Events stored successfully
       } catch (error) {
-        console.error('❌ Failed to store events to database:', error);
+        // Silently handle database storage errors
         throw error;
       }
     },
@@ -130,7 +130,6 @@ export const useLiveDataStore = create<LiveDataState>()(
 export const parsePssEvent = (rawData: string, timestamp: string): PssEventData | null => {
   // Handle undefined or null rawData
   if (!rawData || typeof rawData !== 'string') {
-    console.warn('parsePssEvent: Invalid rawData:', rawData);
     return null;
   }
   
@@ -275,7 +274,7 @@ export class LiveDataWebSocket {
           const data = JSON.parse(event.data);
           this.onMessage(data);
         } catch (error) {
-          console.error('Failed to parse WebSocket message:', error);
+          // Silently handle parsing errors
         }
       };
       
@@ -285,11 +284,11 @@ export class LiveDataWebSocket {
       };
       
       this.ws.onerror = (error) => {
-        console.error('❌ WebSocket error:', error);
+        // Silently handle WebSocket errors
       };
       
     } catch (error) {
-      console.error('Failed to create WebSocket connection:', error);
+      // Silently handle connection errors
     }
   }
   
@@ -301,7 +300,7 @@ export class LiveDataWebSocket {
         this.connect();
       }, this.reconnectDelay * this.reconnectAttempts);
     } else {
-      console.error('❌ Max reconnection attempts reached');
+      // Max reconnection attempts reached
     }
   }
   
