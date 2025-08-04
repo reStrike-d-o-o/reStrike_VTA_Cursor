@@ -50,7 +50,12 @@ class ScoreboardOverlay {
   updateScore(player, score) {
     // Map player colors to SVG element IDs
     const elementId = player === 'blue' ? 'player1Score' : 'player2Score';
+    console.log(`🎯 Updating score for ${player} player, element ID: ${elementId}, score: ${score}`);
+    console.log(`🎯 SVG element:`, this.svg);
+    
     const scoreElement = this.svg.getElementById(elementId);
+    console.log(`🎯 Found score element:`, scoreElement);
+    
     if (scoreElement) {
       scoreElement.textContent = score;
       scoreElement.classList.add('score-update');
@@ -58,6 +63,7 @@ class ScoreboardOverlay {
       console.log(`✅ Updated ${player} player score: ${score}`);
     } else {
       console.warn(`⚠️ Could not find ${elementId} element`);
+      console.warn(`⚠️ Available elements with 'Score' in ID:`, Array.from(this.svg.querySelectorAll('[id*="Score"]')).map(el => el.id));
     }
   }
 

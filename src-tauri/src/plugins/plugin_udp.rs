@@ -2289,32 +2289,64 @@ impl UdpServer {
 
             // Scores events (s11, s21, s12, s22, s13, s23)
             "s11" | "s21" | "s12" | "s22" | "s13" | "s23" => {
-                // Parse individual score updates
-                let score = parse_u8(1, "score", 0, 50)?;
-                let (athlete1_r1, athlete2_r1, athlete1_r2, athlete2_r2, athlete1_r3, athlete2_r3) = match *parts.get(0).unwrap_or(&"") {
-                    "s11" => (score, 0, 0, 0, 0, 0),
-                    "s21" => (0, score, 0, 0, 0, 0),
-                    "s12" => (0, 0, score, 0, 0, 0),
-                    "s22" => (0, 0, 0, score, 0, 0),
-                    "s13" => (0, 0, 0, 0, score, 0),
-                    "s23" => (0, 0, 0, 0, 0, score),
-                    _ => (0, 0, 0, 0, 0, 0),
-                };
+                // Handle combined score messages like "s11;0;s21;1;s12;0;s22;0;s13;0;s23;0"
+                let mut athlete1_r1 = 0;
+                let mut athlete2_r1 = 0;
+                let mut athlete1_r2 = 0;
+                let mut athlete2_r2 = 0;
+                let mut athlete1_r3 = 0;
+                let mut athlete2_r3 = 0;
                 
-                log::debug!("✅ Parsed Scores event: {}={}", *parts.get(0).unwrap_or(&""), score);
+                // Parse all score parts in the message
+                for i in 0..parts.len() {
+                    match *parts.get(i).unwrap_or(&"") {
+                        "s11" if i + 1 < parts.len() => {
+                            athlete1_r1 = parse_u8(i + 1, "athlete1 round1 score", 0, 50).unwrap_or(0);
+                        }
+                        "s21" if i + 1 < parts.len() => {
+                            athlete2_r1 = parse_u8(i + 1, "athlete2 round1 score", 0, 50).unwrap_or(0);
+                        }
+                        "s12" if i + 1 < parts.len() => {
+                            athlete1_r2 = parse_u8(i + 1, "athlete1 round2 score", 0, 50).unwrap_or(0);
+                        }
+                        "s22" if i + 1 < parts.len() => {
+                            athlete2_r2 = parse_u8(i + 1, "athlete2 round2 score", 0, 50).unwrap_or(0);
+                        }
+                        "s13" if i + 1 < parts.len() => {
+                            athlete1_r3 = parse_u8(i + 1, "athlete1 round3 score", 0, 50).unwrap_or(0);
+                        }
+                        "s23" if i + 1 < parts.len() => {
+                            athlete2_r3 = parse_u8(i + 1, "athlete2 round3 score", 0, 50).unwrap_or(0);
+                        }
+                        _ => {}
+                    }
+                }
+                
+                log::debug!("✅ Parsed Scores event: r1(a1={},a2={}), r2(a1={},a2={}), r3(a1={},a2={})", 
+                           athlete1_r1, athlete2_r1, athlete1_r2, athlete2_r2, athlete1_r3, athlete2_r3);
                 Ok(PssEvent::Scores { athlete1_r1, athlete2_r1, athlete1_r2, athlete2_r2, athlete1_r3, athlete2_r3 })
             }
 
             // Current scores events (sc1, sc2)
             "sc1" | "sc2" => {
-                let score = parse_u8(1, "current score", 0, 50)?;
-                let (athlete1_score, athlete2_score) = match *parts.get(0).unwrap_or(&"") {
-                    "sc1" => (score, 0),
-                    "sc2" => (0, score),
-                    _ => (0, 0),
-                };
+                // Handle combined score messages like "sc1;0;sc2;1"
+                let mut athlete1_score = 0;
+                let mut athlete2_score = 0;
                 
-                log::debug!("✅ Parsed CurrentScores event: {}={}", *parts.get(0).unwrap_or(&""), score);
+                // Parse all score parts in the message
+                for i in 0..parts.len() {
+                    match *parts.get(i).unwrap_or(&"") {
+                        "sc1" if i + 1 < parts.len() => {
+                            athlete1_score = parse_u8(i + 1, "athlete1 score", 0, 50).unwrap_or(0);
+                        }
+                        "sc2" if i + 1 < parts.len() => {
+                            athlete2_score = parse_u8(i + 1, "athlete2 score", 0, 50).unwrap_or(0);
+                        }
+                        _ => {}
+                    }
+                }
+                
+                log::debug!("✅ Parsed CurrentScores event: a1={}, a2={}", athlete1_score, athlete2_score);
                 Ok(PssEvent::CurrentScores { athlete1_score, athlete2_score })
             }
 

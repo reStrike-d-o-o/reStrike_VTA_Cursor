@@ -36,6 +36,29 @@
             100% { transform: scale(1); }
         }
         
+        /* Dramatic countdown styling */
+        .dramatic-countdown {
+            color: #ff4444 !important;
+            font-weight: bold;
+            animation: dramaticPulse 0.5s ease-in-out;
+        }
+        
+        .final-countdown {
+            animation: finalCountdown 0.3s ease-in-out infinite;
+        }
+        
+        @keyframes dramaticPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        
+        @keyframes finalCountdown {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.8; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
         /* Connection status indicator */
         .connection-status {
             position: absolute;
@@ -502,20 +525,73 @@
             console.log('⏰ Clock event:', event);
             
             if (event.time) {
-                // Parse time in format "m:ss" or "ss"
-                let minutes = 0;
-                let seconds = 0;
+                // Parse time and determine if it's dramatic countdown
+                const timeData = parseTimeWithDramaticEffect(event.time);
                 
-                if (event.time.includes(':')) {
-                    const parts = event.time.split(':');
-                    minutes = parseInt(parts[0]) || 0;
-                    seconds = parseInt(parts[1]) || 0;
+                if (timeData.isDramatic) {
+                    // Use dramatic countdown format (seconds.deciseconds)
+                    scoreboardInstance.updateTimerDramatic(timeData.seconds, timeData.deciseconds);
                 } else {
-                    seconds = parseInt(event.time) || 0;
+                    // Use normal countdown format (minutes:seconds)
+                    scoreboardInstance.updateTimer(timeData.minutes, timeData.seconds);
                 }
-                
-                scoreboardInstance.updateTimer(minutes, seconds);
             }
+        }
+        
+        // Parse time and determine if dramatic countdown should be used
+        function parseTimeWithDramaticEffect(timeString) {
+            console.log('⏰ Parsing time string:', timeString);
+            
+            // Check if it's dramatic format (seconds.deciseconds)
+            if (timeString.includes('.') && !timeString.includes(':')) {
+                const parts = timeString.split('.');
+                const seconds = parseInt(parts[0]) || 0;
+                const deciseconds = parseInt(parts[1]) || 0;
+                
+                console.log('🎭 Detected dramatic format:', { seconds, deciseconds });
+                
+                return {
+                    isDramatic: true,
+                    seconds: seconds,
+                    deciseconds: deciseconds,
+                    totalSeconds: seconds + (deciseconds / 10)
+                };
+            }
+            
+            // Normal format (minutes:seconds)
+            let minutes = 0;
+            let seconds = 0;
+            
+            if (timeString.includes(':')) {
+                const parts = timeString.split(':');
+                minutes = parseInt(parts[0]) || 0;
+                seconds = parseInt(parts[1]) || 0;
+            } else {
+                seconds = parseInt(timeString) || 0;
+            }
+            
+            const totalSeconds = (minutes * 60) + seconds;
+            
+            console.log('⏰ Normal format parsed:', { minutes, seconds, totalSeconds });
+            
+            // Switch to dramatic mode when total seconds <= 10
+            if (totalSeconds <= 10) {
+                // Convert to dramatic format: seconds with 0 deciseconds
+                console.log('🎭 Converting to dramatic format:', { seconds: totalSeconds, deciseconds: 0 });
+                return {
+                    isDramatic: true,
+                    seconds: totalSeconds,
+                    deciseconds: 0,
+                    totalSeconds: totalSeconds
+                };
+            }
+            
+            return {
+                isDramatic: false,
+                minutes: minutes,
+                seconds: seconds,
+                totalSeconds: totalSeconds
+            };
         }
         
         // Handle round event
@@ -709,10 +785,27 @@
                     console.log(`📊 Parsed score message: ${event.message}`);
                     console.log(`📊 Parts:`, parts);
                     console.log(`📊 Scores: blue=${scores.athlete1_score}, red=${scores.athlete2_score}`);
+                    console.log(`📊 Scoreboard instance:`, scoreboardInstance);
                     
                     handleScoresEvent(scores);
                 } catch (error) {
                     console.error('❌ Error parsing raw scores line:', error);
+                }
+            }
+            
+            // Parse structured current_scores events from WebSocket
+            else if (event.type === 'current_scores') {
+                try {
+                    const scores = {
+                        athlete1_score: event.athlete1_score || event.structured_data?.athlete1_score || 0,
+                        athlete2_score: event.athlete2_score || event.structured_data?.athlete2_score || 0,
+                        type: 'current_scores'
+                    };
+                    
+                    console.log(`📊 Parsed structured current_scores: blue=${scores.athlete1_score}, red=${scores.athlete2_score}`);
+                    handleScoresEvent(scores);
+                } catch (error) {
+                    console.error('❌ Error parsing structured current_scores:', error);
                 }
             }
             

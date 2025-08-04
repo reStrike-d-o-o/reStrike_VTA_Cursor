@@ -256,11 +256,37 @@ const handleScoresEvent = (event: any, store: any) => {
  */
 const handleCurrentScoresEvent = (event: any, store: any) => {
   try {
+    // Handle both flat and nested data structures
+    let athlete1_score = 0;
+    let athlete2_score = 0;
+    
+    if (event.athlete1_score !== undefined && event.athlete2_score !== undefined) {
+      // Flat structure (direct access)
+      athlete1_score = event.athlete1_score;
+      athlete2_score = event.athlete2_score;
+    } else if (event.structured_data) {
+      // Nested structure (structured_data)
+      athlete1_score = event.structured_data.athlete1_score || 0;
+      athlete2_score = event.structured_data.athlete2_score || 0;
+    } else if (event.raw_data) {
+      // Raw data format (fallback parsing)
+      try {
+        const parts = event.raw_data.split(';');
+        if (parts.length >= 4) {
+          athlete1_score = parseInt(parts[1]) || 0;
+          athlete2_score = parseInt(parts[3]) || 0;
+        }
+      } catch (error) {
+        console.error('Error parsing raw_data for current scores:', error);
+      }
+    }
+    
     const currentScores: PssCurrentScores = {
-      athlete1_score: event.athlete1_score || 0,
-      athlete2_score: event.athlete2_score || 0,
+      athlete1_score,
+      athlete2_score,
     };
 
+    console.log('📊 Updating current scores:', currentScores);
     store.updateCurrentScores(currentScores);
   } catch (error) {
     console.error('Error handling current scores event:', error);

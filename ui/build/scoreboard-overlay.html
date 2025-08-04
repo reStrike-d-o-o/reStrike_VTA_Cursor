@@ -709,6 +709,7 @@
                     console.log(`📊 Parsed score message: ${event.message}`);
                     console.log(`📊 Parts:`, parts);
                     console.log(`📊 Scores: blue=${scores.athlete1_score}, red=${scores.athlete2_score}`);
+                    console.log(`📊 Scoreboard instance:`, scoreboardInstance);
                     
                     handleScoresEvent(scores);
                 } catch (error) {
