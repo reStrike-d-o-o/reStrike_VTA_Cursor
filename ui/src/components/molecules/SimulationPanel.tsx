@@ -98,24 +98,30 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
   // Load automated scenarios
   const loadAutomatedScenarios = async () => {
     try {
+      console.log('🔄 Loading automated scenarios...');
       const result = await invoke('simulation_get_scenarios');
+      console.log('📋 Simulation scenarios result:', result);
+      
       if (result.success) {
+        console.log('✅ Scenarios loaded successfully:', result.data);
         setAutomatedScenarios(result.data);
         if (result.data.length > 0 && !selectedAutomatedScenario) {
           setSelectedAutomatedScenario(result.data[0].name);
+          console.log('🎯 Set default scenario:', result.data[0].name);
         }
         // Clear any previous errors if successful
         if (error && isSimulationEnvError(error)) {
           setError('');
         }
       } else {
+        console.error('❌ Failed to load scenarios:', result.error);
         // Only set error if it's a simulation environment error
         if (result.error && isSimulationEnvError(result.error)) {
           setError(result.error);
         }
       }
     } catch (error) {
-      console.error('Failed to load automated scenarios:', error);
+      console.error('❌ Exception loading automated scenarios:', error);
       // Only set error if it's a simulation environment error
       if (error && typeof error === 'string' && isSimulationEnvError(error)) {
         setError(error);
@@ -392,11 +398,15 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
               className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-gray-200 focus:border-blue-500 focus:outline-none"
               aria-label="Select automated simulation scenario"
             >
-              {automatedScenarios.map((scenario) => (
-                <option key={scenario.name} value={scenario.name}>
-                  {scenario.display_name} ({scenario.match_count} matches, ~{Math.round(scenario.estimated_duration / 60)}min)
-                </option>
-              ))}
+              {automatedScenarios.length === 0 ? (
+                <option value="">Loading scenarios...</option>
+              ) : (
+                automatedScenarios.map((scenario) => (
+                  <option key={scenario.name} value={scenario.name}>
+                    {scenario.display_name} ({scenario.match_count} matches, ~{Math.round(scenario.estimated_duration / 60)}min)
+                  </option>
+                ))
+              )}
             </select>
             {selectedAutomatedScenario && (
               <p className="text-xs text-gray-400 mt-1">

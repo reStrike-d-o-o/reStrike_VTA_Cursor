@@ -4377,10 +4377,15 @@ pub async fn simulation_get_scenarios(_app: State<'_, Arc<App>>) -> Result<serde
     match result {
         Ok(output) => {
             let output_str = String::from_utf8_lossy(&output.stdout);
+            let stderr_str = String::from_utf8_lossy(&output.stderr);
             log::info!("Scenarios output: {}", output_str);
+            if !stderr_str.is_empty() {
+                log::warn!("Scenarios stderr: {}", stderr_str);
+            }
             
             // Parse the scenarios from the output
             let scenarios = parse_scenarios_from_output(&output_str);
+            log::info!("Parsed {} scenarios: {:?}", scenarios.len(), scenarios);
             
             Ok(serde_json::json!({
                 "success": true,
@@ -4741,8 +4746,12 @@ fn parse_scenarios_from_output(output: &str) -> Vec<serde_json::Value> {
             }
         } else if line.starts_with("  Est. Duration: ") && in_scenario {
             let duration = line[16..].trim();
-            if let Ok(seconds) = duration.parse::<i32>() {
-                current_scenario.insert("estimated_duration".to_string(), serde_json::Value::Number(seconds.into()));
+            // Handle "45.0 seconds" format
+            let duration_parts: Vec<&str> = duration.split_whitespace().collect();
+            if let Some(seconds_str) = duration_parts.first() {
+                if let Ok(seconds) = seconds_str.parse::<f64>() {
+                    current_scenario.insert("estimated_duration".to_string(), serde_json::Value::Number(serde_json::Number::from_f64(seconds).unwrap_or(serde_json::Number::from(0))));
+                }
             }
         }
     }
