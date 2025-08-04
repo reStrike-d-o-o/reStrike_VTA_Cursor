@@ -124,39 +124,7 @@ class ScoreboardOverlay {
     const timerElement = this.svg.getElementById('matchTimer');
     if (timerElement) {
       timerElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-      
-      // Clear dramatic styling when in normal mode
-      timerElement.classList.remove('dramatic-countdown', 'final-countdown');
-      
       console.log(`✅ Updated match timer: ${minutes}:${seconds.toString().padStart(2, '0')}`);
-    } else {
-      console.warn(`⚠️ Could not find matchTimer element`);
-    }
-  }
-
-  // Update timer with dramatic countdown effect (seconds.deciseconds format)
-  updateTimerDramatic(seconds, deciseconds) {
-    const timerElement = this.svg.getElementById('matchTimer');
-    if (timerElement) {
-      // Ensure we have valid numbers for seconds and deciseconds
-      const safeSeconds = Math.max(0, parseInt(seconds) || 0);
-      const safeDeciseconds = Math.max(0, Math.min(99, parseInt(deciseconds) || 0));
-      
-      // Format deciseconds with two digits (e.g., 9.99, 9.98, 9.97...)
-      const timeString = `${safeSeconds}.${safeDeciseconds.toString().padStart(2, '0')}`;
-      timerElement.textContent = timeString;
-      
-      // Add dramatic styling
-      timerElement.classList.add('dramatic-countdown');
-      
-      // Add pulsing effect for last 5 seconds
-      if (safeSeconds <= 5) {
-        timerElement.classList.add('final-countdown');
-      } else {
-        timerElement.classList.remove('final-countdown');
-      }
-      
-      console.log(`🎭 Updated dramatic timer: ${timeString} (from seconds: ${seconds}, deciseconds: ${deciseconds})`);
     } else {
       console.warn(`⚠️ Could not find matchTimer element`);
     }
