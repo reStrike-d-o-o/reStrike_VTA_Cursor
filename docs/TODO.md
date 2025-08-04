@@ -37,6 +37,15 @@
 - [ ] **Confirm injury action show/hide works correctly**
 - [ ] **Test manual mode toggle and new match creation**
 
+#### **4. Manual Override Detection Testing** ⚡ **HIGH PRIORITY**
+- [ ] **Test manual round change detection and handling**
+- [ ] **Test manual score change detection and handling**
+- [ ] **Test manual time change detection and handling**
+- [ ] **Test manual warning change detection and handling**
+- [ ] **Verify data preservation during manual round changes**
+- [ ] **Test extreme edge cases and rapid manual changes**
+- [ ] **Validate panic-free operation under all manual override scenarios**
+
 ### **🔧 System Improvements**
 
 #### **4. Analytics Integration**
@@ -81,6 +90,8 @@
 ### **📊 Completed Tasks** ✅
 
 #### **Recent Achievements (2025-01-29)**
+- ✅ **Manual Override Detection System**: Comprehensive detection and handling of manual changes in PSS software ✨ **NEW**
+- ✅ **Panic Prevention**: Robust error handling and defensive programming in UDP plugin ✨ **NEW**
 - ✅ **Hardware Simulator Integration**: Complete PSS v2.3 protocol simulator with UI integration
 - ✅ **Simulation Tab**: Added to PSS drawer with one-click operation
 - ✅ **Simulation Commands**: Backend Tauri commands for simulation control
