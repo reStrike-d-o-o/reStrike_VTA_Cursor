@@ -298,6 +298,10 @@ impl WebSocketServer {
     fn broadcast_message(&self, message: WebSocketMessage) -> AppResult<()> {
         let mut clients = self.clients.lock()
             .map_err(|e| AppError::ConfigError(format!("Failed to lock clients mutex: {}", e)))?;
+        
+        let client_count = clients.len();
+        log::info!("🔌 Broadcasting message to {} connected clients", client_count);
+        
         let mut disconnected_clients = Vec::new();
         
         // Convert WebSocketMessage to the format expected by overlays
@@ -314,6 +318,9 @@ impl WebSocketServer {
                 action,
                 structured_data 
             } => {
+                // Log time information for debugging
+                log::debug!("⏰ Event time debug - event_type: {}, time: {}, timestamp: {}", event_type, time, timestamp);
+                
                 // Create base JSON with all fields
                 let mut json_data = serde_json::json!({
                     "type": event_type,
@@ -363,6 +370,7 @@ impl WebSocketServer {
         // Collect indices of disconnected clients
         for (index, client) in clients.iter().enumerate() {
             if let Err(_) = client.send_raw_json(overlay_message.clone()) {
+                log::warn!("🔌 Client {} disconnected during broadcast", client.id);
                 disconnected_clients.push(index);
             }
         }
@@ -376,57 +384,32 @@ impl WebSocketServer {
                     clients.remove(index);
                 }
             }
+            log::info!("🔌 Removed {} disconnected clients, {} remaining", disconnected_clients.len(), clients.len());
         }
         
         Ok(())
     }
     
     fn convert_pss_event_to_ws_message(&self, event: &PssEvent) -> WebSocketMessage {
-        // Update current time and round based on Clock and Round events
-        match event {
-            PssEvent::Clock { time, action } => {
-                if let Ok(mut time_guard) = self.current_time.lock() {
-                    *time_guard = time.clone();
-                }
-                // Mark match as started when we see clk;02:00;start
-                if time == "02:00" && action.as_deref() == Some("start") {
-                    if let Ok(mut match_guard) = self.match_started.lock() {
-                        *match_guard = true;
-                    }
-                }
-            }
-            PssEvent::Round { current_round } => {
-                if let Ok(mut round_guard) = self.current_round.lock() {
-                    *round_guard = *current_round;
-                }
-            }
-            PssEvent::FightLoaded => {
-                // Reset match started flag when new fight is loaded
-                if let Ok(mut match_guard) = self.match_started.lock() {
-                    *match_guard = false;
-                }
-            }
-            PssEvent::FightReady => {
-                // Don't mark match as started yet - wait for clk;02:00;start
-                // This is just a preparation event
-            }
-            _ => {}
-        }
-        
-        // Get current time and round for use in events
+        // Get current time and round state
         let current_time = self.current_time.lock()
             .map(|guard| guard.clone())
             .unwrap_or_else(|_| "2:00".to_string());
         let current_round = self.current_round.lock()
             .map(|guard| *guard)
             .unwrap_or_else(|_| 1);
+        
+        log::debug!("⏰ Current state - time: {}, round: {}", current_time, current_round);
+        
+        // Check if match has started
         let match_started = self.match_started.lock()
             .map(|guard| *guard)
             .unwrap_or_else(|_| false);
-        
-        // If match hasn't started yet, don't show any events in the table
+
+        log::debug!("🏁 Match started: {}", match_started);
+
         if !match_started {
-            // Return a dummy event that won't be shown in the table
+            log::debug!("🚫 Pre-match event filtered out");
             return WebSocketMessage::PssEvent {
                 event_type: "pre_match".to_string(),
                 event_code: "O".to_string(), // Won't show in table
@@ -440,13 +423,9 @@ impl WebSocketServer {
                 structured_data: serde_json::json!({}),
             };
         }
-        
-        // Get event code from UDP plugin's get_event_code function
-        let event_code = crate::plugins::plugin_udp::UdpServer::get_event_code(event);
-        
-        // Create timestamp based on PSS time for better accuracy
-        // Use current PSS time to create a more accurate timestamp
-        let pss_timestamp = if !current_time.is_empty() && current_time != "0:00" {
+
+        // Generate timestamp for this event
+        let pss_timestamp = if let Some(_raw_data) = self.extract_raw_data(event) {
             // Try to parse PSS time and create a timestamp
             // For now, use current time but this could be enhanced to use actual PSS timestamp
             Utc::now().to_rfc3339()
@@ -455,7 +434,62 @@ impl WebSocketServer {
         };
         
         match event {
+            PssEvent::Clock { time, action } => {
+                log::debug!("⏰ Clock event - time: {}, action: {:?}", time, action);
+                if let Ok(mut time_guard) = self.current_time.lock() {
+                    *time_guard = time.clone();
+                    log::debug!("⏰ Updated current_time to: {}", time);
+                }
+                // Mark match as started when we see clk;02:00;start
+                if time == "02:00" && action.as_deref() == Some("start") {
+                    if let Ok(mut match_guard) = self.match_started.lock() {
+                        *match_guard = true;
+                        log::info!("🏁 Match started! (clk;02:00;start detected)");
+                    }
+                }
+                
+                WebSocketMessage::PssEvent {
+                    event_type: "clock".to_string(),
+                    event_code: "O".to_string(), // Clock events are system events
+                    athlete: "".to_string(),
+                    round: current_round,
+                    time: time.clone(),
+                    timestamp: pss_timestamp,
+                    raw_data: format!("clk;{};", time),
+                    description: format!("Clock: {}", time),
+                    action: action.clone(),
+                    structured_data: serde_json::json!({
+                        "time": time,
+                        "action": action
+                    }),
+                }
+            }
+            
+            PssEvent::Round { current_round } => {
+                log::debug!("🔄 Round event - current_round: {}", current_round);
+                if let Ok(mut round_guard) = self.current_round.lock() {
+                    *round_guard = *current_round;
+                    log::debug!("🔄 Updated current_round to: {}", current_round);
+                }
+                
+                WebSocketMessage::PssEvent {
+                    event_type: "round".to_string(),
+                    event_code: "O".to_string(), // Round events are system events
+                    athlete: "".to_string(),
+                    round: *current_round,
+                    time: current_time.clone(),
+                    timestamp: pss_timestamp,
+                    raw_data: format!("rnd;{};", current_round),
+                    description: format!("Round {}", current_round),
+                    action: None,
+                    structured_data: serde_json::json!({
+                        "current_round": current_round
+                    }),
+                }
+            }
+            
             PssEvent::Points { athlete, point_type } => {
+                log::debug!("📊 Points event - athlete: {:?}, point_type: {}, current_time: {}", athlete, point_type, current_time);
                 // All points during match are referee-awarded (yellow/R)
                 let athlete_str = "yellow".to_string();
                 let event_code_for_points = "R".to_string();
@@ -479,9 +513,10 @@ impl WebSocketServer {
             }
             
             PssEvent::Warnings { athlete1_warnings, athlete2_warnings } => {
+                log::debug!("⚠️ Warnings event - athlete1: {}, athlete2: {}, current_time: {}", athlete1_warnings, athlete2_warnings, current_time);
                 WebSocketMessage::PssEvent {
                     event_type: "warnings".to_string(),
-                    event_code: event_code.clone(),
+                    event_code: "R".to_string(),
                     athlete: "yellow".to_string(),
                     round: current_round,
                     time: current_time.clone(), // Use current time when warning occurred
@@ -499,7 +534,7 @@ impl WebSocketServer {
             PssEvent::WinnerRounds { round1_winner, round2_winner, round3_winner } => {
                 WebSocketMessage::PssEvent {
                     event_type: "winner_rounds".to_string(),
-                    event_code: event_code.clone(),
+                    event_code: "O".to_string(), // Changed to O so it won't show in Event Table
                     athlete: "".to_string(), // Changed from yellow to empty (less frequent)
                     round: current_round,
                     time: current_time.clone(),
@@ -570,9 +605,10 @@ impl WebSocketServer {
             }
             
             PssEvent::CurrentScores { athlete1_score, athlete2_score } => {
+                log::debug!("📊 CurrentScores event - athlete1: {}, athlete2: {}", athlete1_score, athlete2_score);
                 WebSocketMessage::PssEvent {
                     event_type: "current_scores".to_string(),
-                    event_code: event_code.clone(),
+                    event_code: "O".to_string(),
                     athlete: "".to_string(),
                     round: current_round,
                     time: "0:00".to_string(), // Current scores don't have specific time
@@ -588,9 +624,11 @@ impl WebSocketServer {
             }
             
             PssEvent::Scores { athlete1_r1, athlete2_r1, athlete1_r2, athlete2_r2, athlete1_r3, athlete2_r3 } => {
+                log::debug!("📊 Scores event - R1: {}-{}, R2: {}-{}, R3: {}-{}", 
+                    athlete1_r1, athlete2_r1, athlete1_r2, athlete2_r2, athlete1_r3, athlete2_r3);
                 WebSocketMessage::PssEvent {
                     event_type: "scores".to_string(),
-                    event_code: event_code.clone(),
+                    event_code: "O".to_string(),
                     athlete: "".to_string(),
                     round: current_round,
                     time: "0:00".to_string(), // Scores don't have specific time
@@ -611,38 +649,41 @@ impl WebSocketServer {
                 }
             }
             
-            PssEvent::Clock { time, action } => {
+            PssEvent::FightLoaded => {
+                log::debug!("🏁 FightLoaded event - resetting match_started");
+                if let Ok(mut match_guard) = self.match_started.lock() {
+                    *match_guard = false;
+                }
+                
                 WebSocketMessage::PssEvent {
-                    event_type: "clock".to_string(),
-                    event_code: event_code.clone(),
+                    event_type: "fight_loaded".to_string(),
+                    event_code: "O".to_string(), // Pre-match event
                     athlete: "".to_string(),
                     round: current_round,
-                    time: time.clone(),
+                    time: "0:00".to_string(),
                     timestamp: pss_timestamp.clone(),
-                    raw_data: format!("clk;{}", time),
-                    description: format!("Clock - {}", time),
-                    action: action.clone(),
-                    structured_data: serde_json::json!({
-                        "time": time,
-                        "action": action
-                    }),
+                    raw_data: "fld;".to_string(),
+                    description: "Fight Loaded".to_string(),
+                    action: None,
+                    structured_data: serde_json::json!({}),
                 }
             }
             
-            PssEvent::Round { current_round } => {
+            PssEvent::FightReady => {
+                log::debug!("🏁 FightReady event - preparing for match start");
+                // Don't mark match as started yet - wait for clk;02:00;start
+                
                 WebSocketMessage::PssEvent {
-                    event_type: "round".to_string(),
-                    event_code: event_code.clone(),
+                    event_type: "fight_ready".to_string(),
+                    event_code: "O".to_string(), // Pre-match event
                     athlete: "".to_string(),
-                    round: *current_round,
-                    time: current_time.clone(),
+                    round: current_round,
+                    time: "0:00".to_string(),
                     timestamp: pss_timestamp.clone(),
-                    raw_data: format!("rnd;{}", current_round),
-                    description: format!("Round {}", current_round),
+                    raw_data: "rdy;".to_string(),
+                    description: "Fight Ready".to_string(),
                     action: None,
-                    structured_data: serde_json::json!({
-                        "current_round": *current_round
-                    }),
+                    structured_data: serde_json::json!({}),
                 }
             }
             
@@ -656,7 +697,7 @@ impl WebSocketServer {
                 
                 WebSocketMessage::PssEvent {
                     event_type: "injury".to_string(),
-                    event_code: event_code.clone(),
+                    event_code: "O".to_string(), // Changed to O so it won't show in Event Table
                     athlete: athlete_str.clone(),
                     round: current_round,
                     time: time.clone(),
@@ -682,7 +723,7 @@ impl WebSocketServer {
                 
                 WebSocketMessage::PssEvent {
                     event_type: "challenge".to_string(),
-                    event_code: event_code.clone(),
+                    event_code: "O".to_string(), // Changed to O so it won't show in Event Table
                     athlete: source_str.clone(),
                     round: current_round,
                     time: current_time.clone(),
@@ -706,7 +747,7 @@ impl WebSocketServer {
             PssEvent::Break { time, action } => {
                 WebSocketMessage::PssEvent {
                     event_type: "break".to_string(),
-                    event_code: event_code.clone(),
+                    event_code: "O".to_string(), // Changed to O so it won't show in Event Table
                     athlete: "".to_string(),
                     round: current_round,
                     time: time.clone(),
@@ -724,7 +765,7 @@ impl WebSocketServer {
             PssEvent::Winner { name, classification } => {
                 WebSocketMessage::PssEvent {
                     event_type: "winner".to_string(),
-                    event_code: event_code.clone(),
+                    event_code: "O".to_string(), // Changed to O so it won't show in Event Table
                     athlete: "".to_string(),
                     round: current_round,
                     time: current_time.clone(),
@@ -748,7 +789,7 @@ impl WebSocketServer {
                 
                 WebSocketMessage::PssEvent {
                     event_type: "hit_level".to_string(),
-                    event_code: event_code.clone(),
+                    event_code: "O".to_string(), // Changed to O so it won't show in Event Table
                     athlete: athlete_str.clone(),
                     round: current_round,
                     time: current_time.clone(),
@@ -763,44 +804,12 @@ impl WebSocketServer {
                 }
             }
             
-            PssEvent::FightLoaded => {
-                // Skip pre-match loading events - don't show in Event Table
-                WebSocketMessage::PssEvent {
-                    event_type: "fight_loaded".to_string(),
-                    event_code: "O".to_string(), // Changed to O so it won't show in Event Table
-                    athlete: "".to_string(),
-                    round: current_round,
-                    time: current_time.clone(),
-                    timestamp: pss_timestamp.clone(),
-                    raw_data: "fl".to_string(),
-                    description: "Fight Loaded".to_string(),
-                    action: None,
-                    structured_data: serde_json::json!({}),
-                }
-            }
-            
-            PssEvent::FightReady => {
-                // Skip pre-match ready events - don't show in Event Table
-                WebSocketMessage::PssEvent {
-                    event_type: "fight_ready".to_string(),
-                    event_code: "O".to_string(), // Changed to O so it won't show in Event Table
-                    athlete: "".to_string(),
-                    round: current_round,
-                    time: current_time.clone(),
-                    timestamp: pss_timestamp.clone(),
-                    raw_data: "rdy;FightReady".to_string(),
-                    description: "Fight Ready".to_string(),
-                    action: None,
-                    structured_data: serde_json::json!({
-                        "status": "ready"
-                    }),
-                }
-            }
+
             
             PssEvent::Supremacy { value } => {
                 WebSocketMessage::PssEvent {
                     event_type: "supremacy".to_string(),
-                    event_code: event_code.clone(),
+                    event_code: "O".to_string(), // Changed to O so it won't show in Event Table
                     athlete: "".to_string(),
                     round: current_round,
                     time: current_time.clone(),
@@ -817,7 +826,7 @@ impl WebSocketServer {
             PssEvent::Raw(raw_data) => {
                 WebSocketMessage::PssEvent {
                     event_type: "raw".to_string(),
-                    event_code: event_code.clone(),
+                    event_code: "O".to_string(), // Changed to O so it won't show in Event Table
                     athlete: "".to_string(),
                     round: current_round,
                     time: current_time.clone(),
@@ -830,6 +839,50 @@ impl WebSocketServer {
                     }),
                 }
             }
+        }
+    }
+    
+    /// Extract raw data string from PSS event for timestamp generation
+    fn extract_raw_data(&self, event: &PssEvent) -> Option<String> {
+        match event {
+            PssEvent::Points { point_type, .. } => Some(format!("pt{}", point_type)),
+            PssEvent::Warnings { athlete1_warnings, athlete2_warnings } => {
+                Some(format!("wg1;{};wg2;{}", athlete1_warnings, athlete2_warnings))
+            }
+            PssEvent::WinnerRounds { round1_winner, round2_winner, round3_winner } => {
+                Some(format!("wr1;{};wr2;{};wr3;{}", round1_winner, round2_winner, round3_winner))
+            }
+            PssEvent::MatchConfig { number, category, weight, .. } => {
+                Some(format!("mch;{};{};{}", number, category, weight))
+            }
+            PssEvent::Athletes { athlete1_short, athlete1_long, athlete1_country, athlete2_short, athlete2_long, athlete2_country } => {
+                Some(format!("ath1;{};{};{};ath2;{};{};{}", 
+                    athlete1_short, athlete1_long, athlete1_country,
+                    athlete2_short, athlete2_long, athlete2_country))
+            }
+            PssEvent::CurrentScores { athlete1_score, athlete2_score } => {
+                Some(format!("sc1;{};sc2;{}", athlete1_score, athlete2_score))
+            }
+            PssEvent::Scores { athlete1_r1, athlete2_r1, athlete1_r2, athlete2_r2, athlete1_r3, athlete2_r3 } => {
+                Some(format!("s11;{};s21;{};s12;{};s22;{};s13;{};s23;{}", 
+                    athlete1_r1, athlete2_r1, athlete1_r2, athlete2_r2, athlete1_r3, athlete2_r3))
+            }
+            PssEvent::Clock { time, .. } => Some(format!("clk;{}", time)),
+            PssEvent::Round { current_round } => Some(format!("rnd;{}", current_round)),
+            PssEvent::Injury { athlete, time, .. } => Some(format!("inj;{};{}", athlete, time)),
+            PssEvent::Challenge { source, accepted, won, canceled } => {
+                Some(format!("chg;{};{};{};{}", source, 
+                    accepted.map(|a| if a { "1" } else { "0" }).unwrap_or(""),
+                    won.map(|w| if w { "1" } else { "0" }).unwrap_or(""),
+                    if *canceled { "1" } else { "0" }))
+            }
+            PssEvent::Break { time, .. } => Some(format!("brk;{}", time)),
+            PssEvent::HitLevel { athlete, level } => Some(format!("hl;{};{}", athlete, level)),
+            PssEvent::FightLoaded => Some("fld;".to_string()),
+            PssEvent::FightReady => Some("rdy;".to_string()),
+            PssEvent::Supremacy { value } => Some(format!("sup;{}", value)),
+            PssEvent::Winner { .. } => Some("win;".to_string()),
+            PssEvent::Raw(raw_data) => Some(raw_data.clone()),
         }
     }
     
