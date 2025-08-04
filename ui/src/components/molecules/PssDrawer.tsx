@@ -975,14 +975,14 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
                   <p className="text-sm text-gray-300">Auto-start recording</p>
                   <p className="text-xs text-gray-400">Start video recording when match begins</p>
                 </div>
-                <Toggle id="auto-record" checked={false} onChange={() => {}} />
+                <Toggle id="auto-record" label="" checked={false} onChange={() => {}} />
               </div>
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-300">Auto-stop recording</p>
                   <p className="text-xs text-gray-400">Stop recording when match ends</p>
                 </div>
-                <Toggle id="auto-stop" checked={false} onChange={() => {}} />
+                <Toggle id="auto-stop" label="" checked={false} onChange={() => {}} />
               </div>
             </div>
           </div>
@@ -995,14 +995,14 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
                   <p className="text-sm text-gray-300">Point threshold alerts</p>
                   <p className="text-xs text-gray-400">Notify when score reaches certain points</p>
                 </div>
-                <Toggle id="point-alerts" checked={false} onChange={() => {}} />
+                <Toggle id="point-alerts" label="" checked={false} onChange={() => {}} />
               </div>
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-300">Win condition detection</p>
                   <p className="text-xs text-gray-400">Automatically detect match winners</p>
                 </div>
-                <Toggle id="win-detection" checked={false} onChange={() => {}} />
+                <Toggle id="win-detection" label="" checked={false} onChange={() => {}} />
               </div>
             </div>
           </div>
@@ -1015,14 +1015,14 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
                   <p className="text-sm text-gray-300">Connection monitoring</p>
                   <p className="text-xs text-gray-400">Alert on UDP connection issues</p>
                 </div>
-                <Toggle id="connection-monitor" checked={true} onChange={() => {}} />
+                <Toggle id="connection-monitor" label="" checked={true} onChange={() => {}} />
               </div>
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-300">Performance alerts</p>
                   <p className="text-xs text-gray-400">Notify on high CPU/memory usage</p>
                 </div>
-                <Toggle id="performance-alerts" checked={false} onChange={() => {}} />
+                <Toggle id="performance-alerts" label="" checked={false} onChange={() => {}} />
               </div>
             </div>
           </div>
