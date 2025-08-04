@@ -228,6 +228,62 @@ class SimulationManager:
             print(f"Failed to stop injury time: {e}")
             return False
     
+    def send_event(self, event_type: str, params: Dict[str, Any]) -> bool:
+        """Send a specific event to the simulator"""
+        if not self.simulator or not self.is_running:
+            return False
+        
+        try:
+            if event_type == "point":
+                athlete = params.get("athlete", 1)
+                point_type = params.get("point_type", 1)
+                return self.simulator.add_point(athlete, point_type)
+            
+            elif event_type == "hit_level":
+                athlete = params.get("athlete", 1)
+                level = params.get("level", 50)
+                return self.simulator.send_hit_level(athlete, level)
+            
+            elif event_type == "warning":
+                athlete = params.get("athlete", 1)
+                return self.simulator.add_warning(athlete)
+            
+            elif event_type == "injury":
+                athlete = params.get("athlete", 0)
+                duration = params.get("duration", 60)
+                return self.simulator.start_injury_time(athlete, duration)
+            
+            elif event_type == "challenge":
+                source = params.get("source", 0)
+                accepted = params.get("accepted", None)
+                won = params.get("won", None)
+                return self.simulator.send_challenge(source, accepted, won)
+            
+            elif event_type == "break":
+                duration = params.get("duration", 60)
+                return self.simulator.start_break(duration)
+            
+            elif event_type == "break_end":
+                return self.simulator.end_break()
+            
+            elif event_type == "clock_start":
+                return self.simulator.start_clock()
+            
+            elif event_type == "clock_stop":
+                return self.simulator.stop_clock()
+            
+            elif event_type == "round":
+                round_num = params.get("round", 1)
+                return self.simulator.change_round(round_num)
+            
+            else:
+                print(f"Unknown event type: {event_type}")
+                return False
+                
+        except Exception as e:
+            print(f"Failed to send event {event_type}: {e}")
+            return False
+    
     def get_status(self) -> Dict[str, Any]:
         """Get current simulation status"""
         status = {
@@ -260,6 +316,9 @@ def main():
     parser.add_argument("--self-test", action="store_true", help="Run comprehensive self-test")
     parser.add_argument("--list-test-categories", action="store_true", help="List available self-test categories")
     parser.add_argument("--test-categories", nargs="+", help="Specific test categories to run (space-separated)")
+    parser.add_argument("--send-event", action="store_true", help="Send a specific event")
+    parser.add_argument("--event-type", help="Type of event to send")
+    parser.add_argument("--event-params", help="JSON parameters for the event")
     
     args = parser.parse_args()
     
@@ -322,6 +381,39 @@ def main():
         print(f"\n📄 Detailed report saved to: {report_path}")
         print("\n" + "=" * 50)
         return 0
+    
+    # Handle send-event if requested
+    if args.send_event:
+        if not args.event_type:
+            print("Error: --event-type is required when using --send-event")
+            return 1
+        
+        if not manager.start_simulator():
+            print("Failed to start simulator for event sending")
+            return 1
+        
+        try:
+            # Parse event parameters
+            event_params = {}
+            if args.event_params:
+                event_params = json.loads(args.event_params)
+            
+            # Send the event
+            success = manager.send_event(args.event_type, event_params)
+            if success:
+                print(f"✅ Event '{args.event_type}' sent successfully")
+                return 0
+            else:
+                print(f"❌ Failed to send event '{args.event_type}'")
+                return 1
+        except json.JSONDecodeError as e:
+            print(f"Error parsing event parameters: {e}")
+            return 1
+        except Exception as e:
+            print(f"Error sending event: {e}")
+            return 1
+        finally:
+            manager.stop_simulator()
     
     # Start appropriate simulator
     if args.mode == "automated":
