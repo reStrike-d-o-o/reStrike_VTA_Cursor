@@ -34,13 +34,17 @@ class SimulationManager:
     def start_simulator(self) -> bool:
         """Initialize and start the simulator"""
         try:
+            print(f"🔌 Starting simulator connection to {self.host}:{self.port}...")
             self.simulator = tkStrikeHardwareSimulator(self.host, self.port)
             if self.simulator.connect():
                 self.is_running = True
+                print("✅ Simulator connected successfully")
                 return True
-            return False
+            else:
+                print("❌ Failed to connect simulator")
+                return False
         except Exception as e:
-            print(f"Failed to start simulator: {e}")
+            print(f"❌ Failed to start simulator: {e}")
             return False
     
     def start_automated_simulator(self) -> bool:

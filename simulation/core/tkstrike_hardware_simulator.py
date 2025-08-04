@@ -15,7 +15,7 @@ Usage:
     
 Options:
     --host HOST          Target host (default: 127.0.0.1)
-    --port PORT          Target port (default: 6000)
+    --port PORT          Target port (default: 8888)
     --mode MODE          Mode: interactive, demo, random (default: interactive)
     --match-id ID        Custom match ID (default: auto-generated)
     --scenario SCENARIO  Predefined scenario: basic, championship, training (default: basic)
@@ -69,7 +69,8 @@ class MatchConfig:
 class PssEventGenerator:
     """Generates PSS protocol events according to v2.3 specification"""
     
-    def __init__(self):
+    def __init__(self, port: int = 8888):
+        self.port = port
         self.current_round = 1
         self.current_time = "2:00"
         self.athlete1_score = 0
@@ -82,11 +83,11 @@ class PssEventGenerator:
         
     def connection_start(self) -> str:
         """Generate connection start message"""
-        return "Udp Port 6000 connected;"
+        return f"Udp Port {self.port} connected;"
     
     def connection_end(self) -> str:
         """Generate connection end message"""
-        return "Udp Port 6000 disconnected;"
+        return f"Udp Port {self.port} disconnected;"
     
     def fight_loaded(self) -> str:
         """Generate fight loaded message"""
@@ -250,12 +251,12 @@ class MatchScenarioGenerator:
 class tkStrikeHardwareSimulator:
     """Main hardware simulator class"""
     
-    def __init__(self, host: str = "127.0.0.1", port: int = 6000):
+    def __init__(self, host: str = "127.0.0.1", port: int = 8888):
         self.host = host
         self.port = port
         self.socket = None
         self.connected = False
-        self.event_generator = PssEventGenerator()
+        self.event_generator = PssEventGenerator(port=port)
         self.scenario_generator = MatchScenarioGenerator()
         self.current_match = None
         self.clock_thread = None
@@ -284,13 +285,22 @@ class tkStrikeHardwareSimulator:
     def connect(self) -> bool:
         """Connect to tkStrikeGen3"""
         try:
+            print(f"🔌 Attempting to connect to {self.host}:{self.port}...")
+            
+            # Create UDP socket
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             self.socket.settimeout(5.0)
+            
+            # For UDP, we can't actually "connect" in the traditional sense
+            # We can only verify that we can send data to the target
+            # The actual connection verification happens when we try to send real data
+            print(f"✅ UDP socket created for {self.host}:{self.port}")
+            print(f"💡 Note: UDP connection will be verified when sending data")
             self.connected = True
-            print(f"🔌 Connected to {self.host}:{self.port}")
             return True
+                
         except Exception as e:
-            print(f"❌ Failed to connect: {e}")
+            print(f"❌ Failed to create connection: {e}")
             return False
     
     def disconnect(self):
@@ -304,15 +314,20 @@ class tkStrikeHardwareSimulator:
     def send_message(self, message: str) -> bool:
         """Send a message to tkStrikeGen3"""
         if not self.connected:
-            print("❌ Not connected")
+            print("❌ Not connected to UDP server")
             return False
         
         try:
             self.socket.sendto(message.encode('utf-8'), (self.host, self.port))
             print(f"📤 Sent: {message}")
             return True
-        except Exception as e:
+        except socket.error as e:
             print(f"❌ Failed to send '{message}': {e}")
+            print(f"💡 Connection may have been lost. Try reconnecting.")
+            self.connected = False
+            return False
+        except Exception as e:
+            print(f"❌ Unexpected error sending '{message}': {e}")
             return False
     
     def send_messages(self, messages: List[str]) -> bool:
@@ -808,7 +823,7 @@ class tkStrikeHardwareSimulator:
 def main():
     parser = argparse.ArgumentParser(description="tkStrike Hardware Simulator")
     parser.add_argument("--host", default="127.0.0.1", help="Target host")
-    parser.add_argument("--port", type=int, default=6000, help="Target port")
+    parser.add_argument("--port", type=int, default=8888, help="Target port")
     parser.add_argument("--mode", choices=["interactive", "demo", "random"], default="interactive", help="Simulator mode")
     parser.add_argument("--scenario", choices=["basic", "championship", "training"], default="basic", help="Match scenario")
     parser.add_argument("--duration", type=int, default=60, help="Duration for random mode (seconds)")
@@ -820,11 +835,21 @@ def main():
     print(f"Target: {args.host}:{args.port}")
     print(f"Mode: {args.mode}")
     print(f"Scenario: {args.scenario}")
+    print("=" * 40)
     
     simulator = tkStrikeHardwareSimulator(args.host, args.port)
     
+    print(f"🔌 Initializing connection to UDP server at {args.host}:{args.port}...")
     if not simulator.connect():
+        print("❌ Failed to initialize UDP connection. Please check:")
+        print(f"   1. Network connectivity to {args.host}")
+        print(f"   2. Firewall settings")
+        print(f"   3. System resources")
         return
+    
+    print("✅ UDP connection initialized!")
+    print(f"💡 Connection will be verified when sending data to {args.host}:{args.port}")
+    print("🎯 Starting simulation...")
     
     try:
         if args.mode == "interactive":
@@ -834,8 +859,14 @@ def main():
             simulator.run_demo(scenario)
         elif args.mode == "random":
             simulator.run_random(args.duration)
+    except KeyboardInterrupt:
+        print("\n⏹️  Simulation interrupted by user")
+    except Exception as e:
+        print(f"❌ Simulation error: {e}")
     finally:
+        print("🔌 Closing UDP connection...")
         simulator.disconnect()
+        print("👋 Simulation ended")
 
 if __name__ == "__main__":
     main() 
