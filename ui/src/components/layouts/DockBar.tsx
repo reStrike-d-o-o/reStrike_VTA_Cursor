@@ -81,6 +81,11 @@ const DockBar: React.FC = () => {
     // The toggle was clicked, show confirmation dialog
     setShowManualDialog(true);
   };
+  
+  // Debug manual mode state
+  useEffect(() => {
+    console.log('🔧 DockBar - Manual mode state:', isManualModeEnabled);
+  }, [isManualModeEnabled]);
 
   // Handle Manual mode confirmation
   const handleManualModeConfirm = () => {

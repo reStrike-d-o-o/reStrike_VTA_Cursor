@@ -121,6 +121,8 @@ export const useLiveDataStore = create<LiveDataState>()(
   }))
 );
 
+// IMPORTANT: For live events, always use the event_code from the backend WebSocket message.
+// parsePssEvent is ONLY for manual/legacy mode and must NOT be used for live WebSocket events.
 // Event parsing utilities based on PSS protocol
 export const parsePssEvent = (rawData: string, timestamp: string): PssEventData | null => {
   // Handle undefined or null rawData
@@ -258,10 +260,11 @@ export class LiveDataWebSocket {
   
   connect() {
     try {
+      console.log('🔌 Creating WebSocket connection to:', this.url);
       this.ws = new WebSocket(this.url);
       
       this.ws.onopen = () => {
-        console.log('🔗 Live data WebSocket connected');
+        console.log('🔗 Live data WebSocket connected successfully');
         useLiveDataStore.getState().setConnectionStatus(true);
         this.reconnectAttempts = 0;
       };
@@ -282,7 +285,7 @@ export class LiveDataWebSocket {
       };
       
       this.ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
+        console.error('❌ WebSocket error:', error);
       };
       
     } catch (error) {

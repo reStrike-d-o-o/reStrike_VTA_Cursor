@@ -14,8 +14,11 @@ export const useLiveDataEvents = () => {
   }, [isManualModeEnabled]);
 
   useEffect(() => {
+    console.log('🔄 useLiveDataEvents effect - Manual mode state:', isManualModeEnabled);
+    
     // Only connect when manual mode is OFF
     if (isManualModeEnabled) {
+      console.log('🚫 Manual mode enabled - disconnecting WebSocket and clearing events');
       if (wsRef.current) {
         wsRef.current.disconnect();
         wsRef.current = null;
@@ -27,6 +30,8 @@ export const useLiveDataEvents = () => {
       return;
     }
 
+    console.log('🔌 Attempting to connect to WebSocket at ws://localhost:3001');
+    
     // Create WebSocket connection with inline message handler
     const ws = new LiveDataWebSocket('ws://localhost:3001', (data: any) => {
       console.log('📡 Received WebSocket message:', data);
@@ -34,12 +39,15 @@ export const useLiveDataEvents = () => {
       // Handle different message types using direct store access
       if (data.type === 'pss_event' && data.data) {
         const eventData = data.data;
-        
+        // Always use backend event_code for live events
+        if (typeof eventData.event_code !== 'string' || !eventData.event_code) {
+          console.warn('⚠️ Live event missing event_code from backend:', eventData);
+        }
         // Create event directly from structured data instead of parsing raw_data
         const event: PssEventData = {
           id: `${eventData.type}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           eventType: eventData.type as any,
-          eventCode: eventData.event_code || '',
+          eventCode: eventData.event_code || '', // Always from backend
           athlete: eventData.athlete as any,
           round: eventData.round || 1,
           time: eventData.time || '0:00',
@@ -82,8 +90,12 @@ export const useLiveDataEvents = () => {
     };
   }, [isManualModeEnabled]); // Only depend on isManualModeEnabled
 
-  return {
+  const currentState = {
     isConnected: useLiveDataStore.getState().isConnected,
     eventCount: useLiveDataStore.getState().events.length,
   };
+  
+  console.log('📊 useLiveDataEvents current state:', currentState);
+  
+  return currentState;
 }; 
