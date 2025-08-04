@@ -12,6 +12,9 @@ export interface PssEventData {
   timestamp: string; // When we received the event
   rawData: string;
   description: string;
+  // Additional fields from WebSocket message
+  action?: string;
+  structuredData?: any;
 }
 
 interface LiveDataState {

@@ -53,10 +53,13 @@ export const useLiveDataEvents = () => {
         // Handle different message types using direct store access
         if (data.type === 'pss_event' && data.data) {
           const eventData = data.data;
+          console.log('📊 Processing PSS event:', eventData);
+          
           // Always use backend event_code for live events
           if (typeof eventData.event_code !== 'string' || !eventData.event_code) {
             console.warn('⚠️ Live event missing event_code from backend:', eventData);
           }
+          
           // Validate and normalize athlete field
           let normalizedAthlete: 'blue' | 'red' | 'yellow';
           if (eventData.athlete === 'blue' || eventData.athlete === 'red' || eventData.athlete === 'yellow') {
@@ -68,8 +71,8 @@ export const useLiveDataEvents = () => {
           
           // Create event directly from structured data instead of parsing raw_data
           const event: PssEventData = {
-            id: `${eventData.type}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-            eventType: eventData.type as any,
+            id: `${eventData.event_type}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            eventType: eventData.event_type || '',
             eventCode: eventData.event_code || '', // Always from backend
             athlete: normalizedAthlete,
             round: eventData.round || 1,
@@ -77,14 +80,17 @@ export const useLiveDataEvents = () => {
             timestamp: eventData.timestamp || new Date().toISOString(),
             rawData: eventData.raw_data || '',
             description: eventData.description || '',
+            action: eventData.action,
+            structuredData: eventData.structured_data,
           };
           
           // Debug logging for event creation
           console.log('🔍 Event creation debug:', {
             receivedAthlete: eventData.athlete,
             receivedEventCode: eventData.event_code,
-            receivedEventType: eventData.type,
+            receivedEventType: eventData.event_type,
             receivedTime: eventData.time,
+            receivedRound: eventData.round,
             createdEvent: event
           });
           

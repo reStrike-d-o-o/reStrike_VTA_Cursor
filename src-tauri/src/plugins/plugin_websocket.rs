@@ -451,7 +451,7 @@ impl WebSocketServer {
                 WebSocketMessage::PssEvent {
                     event_type: "clock".to_string(),
                     event_code: "O".to_string(), // Clock events are system events
-                    athlete: "".to_string(),
+                    athlete: "yellow".to_string(), // Clock events are referee-controlled
                     round: current_round,
                     time: time.clone(),
                     timestamp: pss_timestamp,
@@ -475,7 +475,7 @@ impl WebSocketServer {
                 WebSocketMessage::PssEvent {
                     event_type: "round".to_string(),
                     event_code: "O".to_string(), // Round events are system events
-                    athlete: "".to_string(),
+                    athlete: "yellow".to_string(), // Round events are referee-controlled
                     round: *current_round,
                     time: current_time.clone(),
                     timestamp: pss_timestamp,
@@ -490,19 +490,25 @@ impl WebSocketServer {
             
             PssEvent::Points { athlete, point_type } => {
                 log::debug!("📊 Points event - athlete: {:?}, point_type: {}, current_time: {}", athlete, point_type, current_time);
-                // All points during match are referee-awarded (yellow/R)
-                let athlete_str = "yellow".to_string();
-                let event_code_for_points = "R".to_string();
+                // Map athlete number to color string
+                let athlete_str = match athlete {
+                    1 => "blue".to_string(),
+                    2 => "red".to_string(),
+                    _ => "yellow".to_string(), // Default to referee
+                };
+                
+                // Get event code from UDP plugin function
+                let event_code = crate::plugins::plugin_udp::UdpServer::get_event_code(event);
                 
                 WebSocketMessage::PssEvent {
                     event_type: "points".to_string(),
-                    event_code: event_code_for_points.clone(),
+                    event_code: event_code.clone(),
                     athlete: athlete_str.clone(),
                     round: current_round,
                     time: current_time.clone(), // Use current time when point occurred
                     timestamp: pss_timestamp.clone(),
                     raw_data: format!("pt{}", point_type),
-                    description: format!("{} {}", athlete_str, event_code_for_points),
+                    description: format!("{} {} point", athlete_str, event_code),
                     action: None,
                     structured_data: serde_json::json!({
                         "athlete": *athlete,
@@ -517,7 +523,7 @@ impl WebSocketServer {
                 WebSocketMessage::PssEvent {
                     event_type: "warnings".to_string(),
                     event_code: "R".to_string(),
-                    athlete: "yellow".to_string(),
+                    athlete: "yellow".to_string(), // Warnings are referee events
                     round: current_round,
                     time: current_time.clone(), // Use current time when warning occurred
                     timestamp: pss_timestamp.clone(),
@@ -531,11 +537,64 @@ impl WebSocketServer {
                 }
             }
             
+            PssEvent::HitLevel { athlete, level } => {
+                log::debug!("🥊 Hit Level event - athlete: {}, level: {}, current_time: {}", athlete, level, current_time);
+                let athlete_str = match athlete {
+                    1 => "blue".to_string(),
+                    2 => "red".to_string(),
+                    _ => "yellow".to_string(),
+                };
+                
+                WebSocketMessage::PssEvent {
+                    event_type: "hit_level".to_string(),
+                    event_code: "K".to_string(), // Hit Level -> Kick
+                    athlete: athlete_str.clone(),
+                    round: current_round,
+                    time: current_time.clone(),
+                    timestamp: pss_timestamp.clone(),
+                    raw_data: format!("hl{};{};", athlete, level),
+                    description: format!("{} hit level: {}", athlete_str, level),
+                    action: None,
+                    structured_data: serde_json::json!({
+                        "athlete": *athlete,
+                        "level": *level
+                    }),
+                }
+            }
+            
+            PssEvent::Challenge { source, accepted, won, canceled } => {
+                log::debug!("🎯 Challenge event - source: {}, accepted: {:?}, won: {:?}, canceled: {}", source, accepted, won, canceled);
+                let athlete_str = match source {
+                    0 => "yellow".to_string(), // Referee
+                    1 => "blue".to_string(),   // Athlete 1
+                    2 => "red".to_string(),    // Athlete 2
+                    _ => "yellow".to_string(),
+                };
+                
+                WebSocketMessage::PssEvent {
+                    event_type: "challenge".to_string(),
+                    event_code: "R".to_string(), // Challenge -> Referee
+                    athlete: athlete_str.clone(),
+                    round: current_round,
+                    time: current_time.clone(),
+                    timestamp: pss_timestamp.clone(),
+                    raw_data: format!("ch{};", source),
+                    description: format!("{} challenge", athlete_str),
+                    action: None,
+                    structured_data: serde_json::json!({
+                        "source": *source,
+                        "accepted": accepted,
+                        "won": won,
+                        "canceled": *canceled
+                    }),
+                }
+            }
+            
             PssEvent::WinnerRounds { round1_winner, round2_winner, round3_winner } => {
                 WebSocketMessage::PssEvent {
                     event_type: "winner_rounds".to_string(),
-                    event_code: "O".to_string(), // Changed to O so it won't show in Event Table
-                    athlete: "".to_string(), // Changed from yellow to empty (less frequent)
+                    event_code: "R".to_string(), // Winner rounds -> Referee
+                    athlete: "yellow".to_string(), // Winner rounds are referee events
                     round: current_round,
                     time: current_time.clone(),
                     timestamp: pss_timestamp.clone(),
@@ -546,6 +605,24 @@ impl WebSocketServer {
                         "round1_winner": *round1_winner,
                         "round2_winner": *round2_winner,
                         "round3_winner": *round3_winner
+                    }),
+                }
+            }
+            
+            PssEvent::Winner { name, classification } => {
+                WebSocketMessage::PssEvent {
+                    event_type: "winner".to_string(),
+                    event_code: "R".to_string(), // Winner -> Referee
+                    athlete: "yellow".to_string(), // Winner announcement is referee event
+                    round: current_round,
+                    time: current_time.clone(),
+                    timestamp: pss_timestamp.clone(),
+                    raw_data: format!("win;{};", name),
+                    description: format!("Winner: {}", name),
+                    action: None,
+                    structured_data: serde_json::json!({
+                        "name": name,
+                        "classification": classification
                     }),
                 }
             }
@@ -689,15 +766,15 @@ impl WebSocketServer {
             
             PssEvent::Injury { athlete, time, action } => {
                 let athlete_str = match athlete {
-                    0 => "unidentified".to_string(),
+                    0 => "yellow".to_string(), // Unidentified -> referee
                     1 => "blue".to_string(),
                     2 => "red".to_string(),
-                    _ => "unknown".to_string(),
+                    _ => "yellow".to_string(),
                 };
                 
                 WebSocketMessage::PssEvent {
                     event_type: "injury".to_string(),
-                    event_code: "O".to_string(), // Changed to O so it won't show in Event Table
+                    event_code: "R".to_string(), // Injury -> Referee
                     athlete: athlete_str.clone(),
                     round: current_round,
                     time: time.clone(),
@@ -713,42 +790,11 @@ impl WebSocketServer {
                 }
             }
             
-            PssEvent::Challenge { source, accepted, won, canceled } => {
-                let source_str = match source {
-                    0 => "yellow".to_string(),
-                    1 => "blue".to_string(),
-                    2 => "red".to_string(),
-                    _ => "unknown".to_string(),
-                };
-                
-                WebSocketMessage::PssEvent {
-                    event_type: "challenge".to_string(),
-                    event_code: "O".to_string(), // Changed to O so it won't show in Event Table
-                    athlete: source_str.clone(),
-                    round: current_round,
-                    time: current_time.clone(),
-                    timestamp: pss_timestamp.clone(),
-                    raw_data: format!("chg;{};{};{};{}", source, 
-                        accepted.map(|a| if a { "1" } else { "0" }).unwrap_or(""),
-                        won.map(|w| if w { "1" } else { "0" }).unwrap_or(""),
-                        if *canceled { "1" } else { "0" }),
-                    description: format!("Challenge - {} (accepted: {:?}, won: {:?}, canceled: {})", 
-                        source_str, accepted, won, canceled),
-                    action: None,
-                    structured_data: serde_json::json!({
-                        "source": *source,
-                        "accepted": accepted,
-                        "won": won,
-                        "canceled": *canceled
-                    }),
-                }
-            }
-            
             PssEvent::Break { time, action } => {
                 WebSocketMessage::PssEvent {
                     event_type: "break".to_string(),
-                    event_code: "O".to_string(), // Changed to O so it won't show in Event Table
-                    athlete: "".to_string(),
+                    event_code: "R".to_string(), // Break -> Referee
+                    athlete: "yellow".to_string(), // Break is referee-controlled
                     round: current_round,
                     time: time.clone(),
                     timestamp: pss_timestamp.clone(),
@@ -762,80 +808,36 @@ impl WebSocketServer {
                 }
             }
             
-            PssEvent::Winner { name, classification } => {
-                WebSocketMessage::PssEvent {
-                    event_type: "winner".to_string(),
-                    event_code: "O".to_string(), // Changed to O so it won't show in Event Table
-                    athlete: "".to_string(),
-                    round: current_round,
-                    time: current_time.clone(),
-                    timestamp: pss_timestamp.clone(),
-                    raw_data: format!("win;{}", name),
-                    description: format!("Winner - {}", name),
-                    action: None,
-                    structured_data: serde_json::json!({
-                        "name": name,
-                        "classification": classification
-                    }),
-                }
-            }
-            
-            PssEvent::HitLevel { athlete, level } => {
-                let athlete_str = match athlete {
-                    1 => "blue".to_string(),
-                    2 => "red".to_string(),
-                    _ => "unknown".to_string(),
-                };
-                
-                WebSocketMessage::PssEvent {
-                    event_type: "hit_level".to_string(),
-                    event_code: "O".to_string(), // Changed to O so it won't show in Event Table
-                    athlete: athlete_str.clone(),
-                    round: current_round,
-                    time: current_time.clone(),
-                    timestamp: pss_timestamp.clone(),
-                    raw_data: format!("hl;{};{}", athlete, level),
-                    description: format!("Hit Level - {} {}", athlete_str, level),
-                    action: None,
-                    structured_data: serde_json::json!({
-                        "athlete": *athlete,
-                        "level": *level
-                    }),
-                }
-            }
-            
-
-            
             PssEvent::Supremacy { value } => {
                 WebSocketMessage::PssEvent {
                     event_type: "supremacy".to_string(),
-                    event_code: "O".to_string(), // Changed to O so it won't show in Event Table
+                    event_code: "O".to_string(), // Supremacy (system event)
                     athlete: "".to_string(),
                     round: current_round,
                     time: current_time.clone(),
                     timestamp: pss_timestamp.clone(),
                     raw_data: format!("sup;{}", value),
-                    description: format!("Supremacy - Value: {}", value),
+                    description: format!("Supremacy: {}", value),
                     action: None,
                     structured_data: serde_json::json!({
-                        "value": value
+                        "value": *value
                     }),
                 }
             }
             
-            PssEvent::Raw(raw_data) => {
+            PssEvent::Raw(raw_msg) => {
                 WebSocketMessage::PssEvent {
                     event_type: "raw".to_string(),
-                    event_code: "O".to_string(), // Changed to O so it won't show in Event Table
+                    event_code: "O".to_string(), // Raw messages are system events
                     athlete: "".to_string(),
                     round: current_round,
                     time: current_time.clone(),
                     timestamp: pss_timestamp.clone(),
-                    raw_data: raw_data.clone(),
-                    description: format!("Raw data: {}", raw_data),
+                    raw_data: raw_msg.clone(),
+                    description: format!("Raw: {}", raw_msg),
                     action: None,
                     structured_data: serde_json::json!({
-                        "raw_data": raw_data
+                        "raw_message": raw_msg
                     }),
                 }
             }
