@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import MatchDetailsSection from '../molecules/MatchDetailsSection';
 import EventTableSection from '../molecules/EventTableSection';
 import Button from '../atoms/Button';

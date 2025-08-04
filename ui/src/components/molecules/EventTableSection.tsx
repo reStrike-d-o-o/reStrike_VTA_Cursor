@@ -38,6 +38,28 @@ const EventTableSection: React.FC = () => {
   
   const { isManualModeEnabled } = useAppStore();
 
+  // Filtering logic - only show important events when manual mode is OFF
+  const allEvents = isManualModeEnabled ? [] : getFilteredEvents(colorFilter, eventTypeFilter);
+  
+  // Filter to only show important events for the event table
+  const filteredEvents = allEvents.filter(event => {
+    // Only show events with specific event codes that are important for the table
+    const importantEventCodes = ['K', 'P', 'H', 'TH', 'TB', 'R', 'O'];
+    const isImportant = importantEventCodes.includes(event.eventCode);
+    
+    // Debug logging for filtered events
+    if (!isImportant) {
+      console.log('🚫 Event filtered out:', {
+        eventType: event.eventType,
+        eventCode: event.eventCode,
+        description: event.description,
+        importantEventCodes
+      });
+    }
+    
+    return isImportant;
+  });
+
   // Debug logging
   useEffect(() => {
     console.log('🔍 EventTableSection Debug:', {
@@ -66,37 +88,6 @@ const EventTableSection: React.FC = () => {
     setColorFilter(null);
     setEventTypeFilter(null);
   };
-
-  // Filtering logic - only show important events when manual mode is OFF
-  const allEvents = isManualModeEnabled ? [] : getFilteredEvents(colorFilter, eventTypeFilter);
-  
-  // Filter to only show important events for the event table
-  const filteredEvents = allEvents.filter(event => {
-    // Only show events with specific event codes that are important for the table
-    const importantEventCodes = ['K', 'P', 'H', 'TH', 'TB', 'R', 'O'];
-    const isImportant = importantEventCodes.includes(event.eventCode);
-    
-    // Debug logging for filtered events
-    if (!isImportant) {
-      console.log('🚫 Event filtered out:', {
-        eventType: event.eventType,
-        eventCode: event.eventCode,
-        description: event.description,
-        importantEventCodes
-      });
-    }
-    
-    return isImportant;
-  });
-
-  // Debug filtered events
-  useEffect(() => {
-    console.log('🔍 Filtered Events Debug:', {
-      allEventsCount: allEvents.length,
-      filteredEventsCount: filteredEvents.length,
-      filteredEvents: filteredEvents.slice(0, 3) // Show first 3 filtered events
-    });
-  }, [allEvents, filteredEvents]);
 
   // Format time for display (convert from "m:ss" to "mm.ss.000" format)
   const formatTimeForDisplay = (time: string): string => {
