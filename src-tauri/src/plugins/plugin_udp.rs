@@ -673,14 +673,12 @@ impl UdpServer {
         }
 
         // Phase 1 Optimization: Send to batch processor for high-volume processing
-        if let Err(e) = self.batch_tx.send(event.clone()) {
+        // This will handle database storage and WebSocket broadcasting
+        if let Err(e) = self.batch_tx.send(event) {
             log::error!("❌ Failed to send event to batch processor: {}", e);
         }
-
-        // Send to event channel (existing logic)
-        if let Err(e) = self.event_tx.send(event) {
-            log::error!("Failed to send event: {}", e);
-        }
+        
+        // Removed duplicate event_tx.send() to prevent event duplication
     }
 
     pub async fn update_config(&self, port: u16, bind_address: String) {

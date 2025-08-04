@@ -69,7 +69,7 @@ pub struct WebSocketServer {
     server_task: Arc<Mutex<Option<tokio::task::JoinHandle<()>>>>,
     current_time: Arc<Mutex<String>>, // Track current time from Clock events
     current_round: Arc<Mutex<u8>>, // Track current round
-    match_started: Arc<Mutex<bool>>, // Track if match has started (after FightReady)
+    match_started: Arc<Mutex<bool>>, // Track if match has started (after clk;02:00;start)
 }
 
 impl WebSocketServer {
@@ -384,9 +384,15 @@ impl WebSocketServer {
     fn convert_pss_event_to_ws_message(&self, event: &PssEvent) -> WebSocketMessage {
         // Update current time and round based on Clock and Round events
         match event {
-            PssEvent::Clock { time, .. } => {
+            PssEvent::Clock { time, action } => {
                 if let Ok(mut time_guard) = self.current_time.lock() {
                     *time_guard = time.clone();
+                }
+                // Mark match as started when we see clk;02:00;start
+                if time == "02:00" && action.as_deref() == Some("start") {
+                    if let Ok(mut match_guard) = self.match_started.lock() {
+                        *match_guard = true;
+                    }
                 }
             }
             PssEvent::Round { current_round } => {
@@ -401,10 +407,8 @@ impl WebSocketServer {
                 }
             }
             PssEvent::FightReady => {
-                // Mark match as started when FightReady is received
-                if let Ok(mut match_guard) = self.match_started.lock() {
-                    *match_guard = true;
-                }
+                // Don't mark match as started yet - wait for clk;02:00;start
+                // This is just a preparation event
             }
             _ => {}
         }
@@ -419,6 +423,23 @@ impl WebSocketServer {
         let match_started = self.match_started.lock()
             .map(|guard| *guard)
             .unwrap_or_else(|_| false);
+        
+        // If match hasn't started yet, don't show any events in the table
+        if !match_started {
+            // Return a dummy event that won't be shown in the table
+            return WebSocketMessage::PssEvent {
+                event_type: "pre_match".to_string(),
+                event_code: "O".to_string(), // Won't show in table
+                athlete: "".to_string(),
+                round: current_round,
+                time: "0:00".to_string(),
+                timestamp: Utc::now().to_rfc3339(),
+                raw_data: "".to_string(),
+                description: "Pre-match event (hidden)".to_string(),
+                action: None,
+                structured_data: serde_json::json!({}),
+            };
+        }
         
         // Get event code from UDP plugin's get_event_code function
         let event_code = crate::plugins::plugin_udp::UdpServer::get_event_code(event);
@@ -435,26 +456,16 @@ impl WebSocketServer {
         
         match event {
             PssEvent::Points { athlete, point_type } => {
-                // Determine if this is a referee-awarded point (during match) or regular point
-                let (athlete_str, event_code_for_points) = if match_started {
-                    // After match starts, points are referee-awarded (yellow/R)
-                    ("yellow".to_string(), "R".to_string())
-                } else {
-                    // Before match starts, regular points (blue/red/K/P/H)
-                    let athlete_str = match athlete {
-                        1 => "blue".to_string(),
-                        2 => "red".to_string(),
-                        _ => "unknown".to_string(),
-                    };
-                    (athlete_str, event_code.clone())
-                };
+                // All points during match are referee-awarded (yellow/R)
+                let athlete_str = "yellow".to_string();
+                let event_code_for_points = "R".to_string();
                 
                 WebSocketMessage::PssEvent {
                     event_type: "points".to_string(),
                     event_code: event_code_for_points.clone(),
                     athlete: athlete_str.clone(),
                     round: current_round,
-                    time: current_time.clone(),
+                    time: current_time.clone(), // Use current time when point occurred
                     timestamp: pss_timestamp.clone(),
                     raw_data: format!("pt{}", point_type),
                     description: format!("{} {}", athlete_str, event_code_for_points),
@@ -473,7 +484,7 @@ impl WebSocketServer {
                     event_code: event_code.clone(),
                     athlete: "yellow".to_string(),
                     round: current_round,
-                    time: current_time.clone(),
+                    time: current_time.clone(), // Use current time when warning occurred
                     timestamp: pss_timestamp.clone(),
                     raw_data: format!("wg1;{};wg2;{}", athlete1_warnings, athlete2_warnings),
                     description: format!("Warnings - Blue: {}, Red: {}", athlete1_warnings, athlete2_warnings),
