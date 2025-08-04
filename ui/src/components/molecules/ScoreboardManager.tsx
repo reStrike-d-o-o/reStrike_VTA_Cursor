@@ -162,37 +162,88 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
 
 
 
-  // Overlay type options
-  const overlayTypes = [
-    { value: 'scoreboard', label: 'Live Scoreboard', description: 'Real-time match scoreboard' },
-    { value: 'introduction', label: 'Player Introduction', description: 'Player introduction overlay' },
-    { value: 'winner', label: 'Winner Announcement', description: 'Winner announcement overlay' },
-    { value: 'results', label: 'Previous Results', description: 'Player match history' },
-    { value: 'victory', label: 'Victory Ceremony', description: '4-player medal ceremony' },
-  ];
+
 
   return (
     <div className={`space-y-6 ${className}`}>
 
       {/* Overlay Type Selection */}
       <div className="p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
-        <h4 className="text-md font-semibold text-gray-100 mb-4">Overlay Type</h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {overlayTypes.map((type) => (
-            <div
-              key={type.value}
-              className={`p-3 rounded-lg border cursor-pointer transition-all duration-200 ${
-                overlaySettings.type === type.value
-                  ? 'border-blue-500 bg-blue-900/20'
-                  : 'border-gray-600 bg-gray-700/30 hover:bg-gray-700/50'
-              }`}
-              onClick={() => updateOverlaySettings({ type: type.value as any })}
+        <div className="flex items-center justify-between mb-4">
+          <h4 className="text-md font-semibold text-gray-100">Overlay Type</h4>
+          <div className="flex items-center space-x-2">
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={populateOverlayTemplates}
+              disabled={isLoadingTemplates}
             >
-              <div className="font-medium text-gray-200">{type.label}</div>
-              <div className="text-xs text-gray-400">{type.description}</div>
-            </div>
-          ))}
+              {isLoadingTemplates ? 'Loading...' : 'Populate from Files'}
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={loadOverlayTemplates}
+              disabled={isLoadingTemplates}
+            >
+              {isLoadingTemplates ? 'Loading...' : 'Refresh'}
+            </Button>
+          </div>
         </div>
+        
+        {isLoadingTemplates ? (
+          <div className="text-sm text-gray-400">Loading overlay templates...</div>
+        ) : overlayTemplates.length === 0 ? (
+          <div className="text-sm text-gray-400">No overlay templates found</div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {overlayTemplates.map((template) => (
+              <div
+                key={template.id}
+                className={`p-3 rounded-lg border transition-all duration-200 ${
+                  template.is_active
+                    ? 'border-green-500 bg-green-900/20'
+                    : 'border-gray-600 bg-gray-700/30'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm font-medium text-gray-200">
+                        {template.name}
+                      </span>
+                      {template.is_active && (
+                        <span className="px-2 py-1 bg-green-900/30 text-green-300 text-xs rounded border border-green-600/30">
+                          Active
+                        </span>
+                      )}
+                    </div>
+                    {template.description && (
+                      <p className="text-xs text-gray-400 mt-1">{template.description}</p>
+                    )}
+                    <div className="flex items-center space-x-4 mt-2 text-xs text-gray-500">
+                      <span>Theme: {template.theme}</span>
+                      <span>Animation: {template.animation_type}</span>
+                      <span>Duration: {template.duration_ms}ms</span>
+                      {template.url && (
+                        <span className="text-blue-400">URL: {template.url}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Toggle
+                      id={`overlay-${template.id}`}
+                      checked={template.is_active}
+                      onChange={(e) => toggleOverlayActive(template.id!, e.target.checked)}
+                      label="Active"
+                      labelPosition="left"
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
 
@@ -220,6 +271,13 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
                   <Button
                     size="sm"
                     variant="secondary"
+                    onClick={() => window.open(`${window.location.origin}/scoreboard-overlay.html`, '_blank')}
+                  >
+                    Open in Browser
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
                     onClick={() => navigator.clipboard.writeText(`${window.location.origin}/scoreboard-overlay.html`)}
                   >
                     Copy
@@ -235,6 +293,13 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
                     readOnly
                     className="flex-1 text-xs"
                   />
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => window.open(`${window.location.origin}/player-introduction-overlay.html`, '_blank')}
+                  >
+                    Open in Browser
+                  </Button>
                   <Button
                     size="sm"
                     variant="secondary"
@@ -324,84 +389,7 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
         </div>
       </div>
 
-      {/* Overlay Types Section */}
-      <div className="p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
-        <div className="flex items-center justify-between mb-4">
-          <h4 className="text-md font-semibold text-gray-100">Overlay Types</h4>
-          <div className="flex items-center space-x-2">
-            <Button
-              size="sm"
-              variant="primary"
-              onClick={populateOverlayTemplates}
-              disabled={isLoadingTemplates}
-            >
-              {isLoadingTemplates ? 'Loading...' : 'Populate from Files'}
-            </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={loadOverlayTemplates}
-              disabled={isLoadingTemplates}
-            >
-              {isLoadingTemplates ? 'Loading...' : 'Refresh'}
-            </Button>
-          </div>
-        </div>
-        
-        {isLoadingTemplates ? (
-          <div className="text-sm text-gray-400">Loading overlay templates...</div>
-        ) : overlayTemplates.length === 0 ? (
-          <div className="text-sm text-gray-400">No overlay templates found</div>
-        ) : (
-          <div className="space-y-3">
-            {overlayTemplates.map((template) => (
-              <div
-                key={template.id}
-                className={`p-3 rounded-lg border transition-all duration-200 ${
-                  template.is_active
-                    ? 'border-green-500 bg-green-900/20'
-                    : 'border-gray-600 bg-gray-700/30'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-sm font-medium text-gray-200">
-                        {template.name}
-                      </span>
-                      {template.is_active && (
-                        <span className="px-2 py-1 bg-green-900/30 text-green-300 text-xs rounded border border-green-600/30">
-                          Active
-                        </span>
-                      )}
-                    </div>
-                    {template.description && (
-                      <p className="text-xs text-gray-400 mt-1">{template.description}</p>
-                    )}
-                    <div className="flex items-center space-x-4 mt-2 text-xs text-gray-500">
-                      <span>Theme: {template.theme}</span>
-                      <span>Animation: {template.animation_type}</span>
-                      <span>Duration: {template.duration_ms}ms</span>
-                      {template.url && (
-                        <span className="text-blue-400">URL: {template.url}</span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Toggle
-                      id={`overlay-${template.id}`}
-                      checked={template.is_active}
-                      onChange={(e) => toggleOverlayActive(template.id!, e.target.checked)}
-                      label="Active"
-                      labelPosition="left"
-                    />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+
 
 
     </div>
