@@ -70,13 +70,13 @@ pub fn get_simulation_main_py() -> Result<PathBuf, SimulationEnvError> {
     ];
 
     for path in possible_paths {
-        if let Some(p) = path {
-            if p.exists() {
-                return Ok(p);
+        if let Some(path) = path {
+            if path.exists() {
+                return Ok(path);
             }
         }
     }
-    
+
     Err(SimulationEnvError::SimulationPathNotFound)
 }
 
