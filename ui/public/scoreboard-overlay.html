@@ -433,19 +433,35 @@
         function handleWarningsEvent(event) {
             console.log('⚠️ Warnings event:', event);
             
+            // Try to parse raw_data first, then fall back to direct access
+            let warningData = null;
+            
+            if (event.raw_data) {
+                try {
+                    warningData = JSON.parse(event.raw_data);
+                    console.log('⚠️ Parsed raw_data:', warningData);
+                } catch (error) {
+                    console.error('❌ Failed to parse raw_data:', error);
+                }
+            }
+            
+            // Use parsed data if available, otherwise try direct access
+            const data = warningData || event;
+            console.log('⚠️ Using data source:', warningData ? 'raw_data' : 'direct');
+            
             // Check for both possible structures (nested and flat)
             let blueWarnings = 0;
             let redWarnings = 0;
             
-            if (event.athlete1_warnings !== undefined && event.athlete2_warnings !== undefined) {
+            if (data.athlete1_warnings !== undefined && data.athlete2_warnings !== undefined) {
                 // Flat structure (old format)
-                blueWarnings = event.athlete1_warnings;
-                redWarnings = event.athlete2_warnings;
+                blueWarnings = data.athlete1_warnings;
+                redWarnings = data.athlete2_warnings;
                 console.log('⚠️ Using flat structure for warnings');
-            } else if (event.athlete1 && event.athlete1.warnings !== undefined && event.athlete2 && event.athlete2.warnings !== undefined) {
+            } else if (data.athlete1 && data.athlete1.warnings !== undefined && data.athlete2 && data.athlete2.warnings !== undefined) {
                 // Nested structure (new format)
-                blueWarnings = event.athlete1.warnings;
-                redWarnings = event.athlete2.warnings;
+                blueWarnings = data.athlete1.warnings;
+                redWarnings = data.athlete2.warnings;
                 console.log('⚠️ Using nested structure for warnings');
             } else {
                 console.warn('⚠️ No valid warnings structure found in event');
