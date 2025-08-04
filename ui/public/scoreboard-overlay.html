@@ -269,37 +269,53 @@
         // Handle athletes event
         function handleAthletesEvent(event) {
             console.log('👥 Updating athletes:', event);
-            console.log('👥 athlete1:', event.athlete1);
-            console.log('👥 athlete2:', event.athlete2);
+            
+            // Try to parse raw_data first, then fall back to direct access
+            let athleteData = null;
+            
+            if (event.raw_data) {
+                try {
+                    athleteData = JSON.parse(event.raw_data);
+                    console.log('👥 Parsed raw_data:', athleteData);
+                } catch (error) {
+                    console.error('❌ Failed to parse raw_data:', error);
+                }
+            }
+            
+            // Use parsed data if available, otherwise try direct access
+            const data = athleteData || event;
+            console.log('👥 Using data source:', athleteData ? 'raw_data' : 'direct');
+            console.log('👥 athlete1:', data.athlete1);
+            console.log('👥 athlete2:', data.athlete2);
             
             // Update player names - athlete1 maps to player1 (blue), athlete2 maps to player2 (red)
-            if (event.athlete1 && event.athlete1.long) {
-                console.log('✅ Updating blue player name to:', event.athlete1.long);
-                scoreboardInstance.updatePlayerName('blue', event.athlete1.long);
-                document.getElementById('debug-blue').textContent = event.athlete1.long;
+            if (data.athlete1 && data.athlete1.long) {
+                console.log('✅ Updating blue player name to:', data.athlete1.long);
+                scoreboardInstance.updatePlayerName('blue', data.athlete1.long);
+                document.getElementById('debug-blue').textContent = data.athlete1.long;
             } else {
                 console.warn('⚠️ No athlete1.long found in event');
             }
             
-            if (event.athlete2 && event.athlete2.long) {
-                console.log('✅ Updating red player name to:', event.athlete2.long);
-                scoreboardInstance.updatePlayerName('red', event.athlete2.long);
-                document.getElementById('debug-red').textContent = event.athlete2.long;
+            if (data.athlete2 && data.athlete2.long) {
+                console.log('✅ Updating red player name to:', data.athlete2.long);
+                scoreboardInstance.updatePlayerName('red', data.athlete2.long);
+                document.getElementById('debug-red').textContent = data.athlete2.long;
             } else {
                 console.warn('⚠️ No athlete2.long found in event');
             }
             
             // Update countries - athlete1.country and athlete2.country are already IOC codes
-            if (event.athlete1 && event.athlete1.country) {
-                console.log('✅ Updating blue player country to:', event.athlete1.country);
-                scoreboardInstance.updateCountry('blue', event.athlete1.country);
+            if (data.athlete1 && data.athlete1.country) {
+                console.log('✅ Updating blue player country to:', data.athlete1.country);
+                scoreboardInstance.updateCountry('blue', data.athlete1.country);
             } else {
                 console.warn('⚠️ No athlete1.country found in event');
             }
             
-            if (event.athlete2 && event.athlete2.country) {
-                console.log('✅ Updating red player country to:', event.athlete2.country);
-                scoreboardInstance.updateCountry('red', event.athlete2.country);
+            if (data.athlete2 && data.athlete2.country) {
+                console.log('✅ Updating red player country to:', data.athlete2.country);
+                scoreboardInstance.updateCountry('red', data.athlete2.country);
             } else {
                 console.warn('⚠️ No athlete2.country found in event');
             }
@@ -308,25 +324,41 @@
         // Handle match config event
         function handleMatchConfigEvent(event) {
             console.log('🏆 Updating match config:', event);
-            console.log('🏆 weight:', event.weight);
-            console.log('🏆 division:', event.division);
-            console.log('🏆 category:', event.category);
-            console.log('🏆 number:', event.number);
+            
+            // Try to parse raw_data first, then fall back to direct access
+            let configData = null;
+            
+            if (event.raw_data) {
+                try {
+                    configData = JSON.parse(event.raw_data);
+                    console.log('🏆 Parsed raw_data:', configData);
+                } catch (error) {
+                    console.error('❌ Failed to parse raw_data:', error);
+                }
+            }
+            
+            // Use parsed data if available, otherwise try direct access
+            const data = configData || event;
+            console.log('🏆 Using data source:', configData ? 'raw_data' : 'direct');
+            console.log('🏆 weight:', data.weight);
+            console.log('🏆 division:', data.division);
+            console.log('🏆 category:', data.category);
+            console.log('🏆 number:', data.number);
             
             // Use the new combined method to update all match info at once
-            if (event.weight || event.division || event.category) {
-                console.log('✅ Updating match info with:', event.weight, event.division, event.category);
-                scoreboardInstance.updateMatchInfo(event.weight, event.division, event.category);
+            if (data.weight || data.division || data.category) {
+                console.log('✅ Updating match info with:', data.weight, data.division, data.category);
+                scoreboardInstance.updateMatchInfo(data.weight, data.division, data.category);
             } else {
                 console.warn('⚠️ No weight, division, or category found in match config event');
             }
             
-            if (event.number) {
-                console.log('✅ Updating match number to:', event.number);
+            if (data.number) {
+                console.log('✅ Updating match number to:', data.number);
                 // Update match number in SVG
                 const matchNumberElement = scoreboardInstance.svg.getElementById('matchNumber');
                 if (matchNumberElement) {
-                    matchNumberElement.textContent = `#${event.number}`;
+                    matchNumberElement.textContent = `#${data.number}`;
                     console.log('✅ Match number element updated');
                 } else {
                     console.warn('⚠️ Could not find matchNumber element in SVG');
@@ -340,19 +372,35 @@
         function handleScoresEvent(event) {
             console.log('📊 Updating scores:', event);
             
+            // Try to parse raw_data first, then fall back to direct access
+            let scoreData = null;
+            
+            if (event.raw_data) {
+                try {
+                    scoreData = JSON.parse(event.raw_data);
+                    console.log('📊 Parsed raw_data:', scoreData);
+                } catch (error) {
+                    console.error('❌ Failed to parse raw_data:', error);
+                }
+            }
+            
+            // Use parsed data if available, otherwise try direct access
+            const data = scoreData || event;
+            console.log('📊 Using data source:', scoreData ? 'raw_data' : 'direct');
+            
             // Check for both possible structures (nested and flat)
             let blueScore = 0;
             let redScore = 0;
             
-            if (event.athlete1_score !== undefined && event.athlete2_score !== undefined) {
+            if (data.athlete1_score !== undefined && data.athlete2_score !== undefined) {
                 // Flat structure (old format)
-                blueScore = event.athlete1_score;
-                redScore = event.athlete2_score;
+                blueScore = data.athlete1_score;
+                redScore = data.athlete2_score;
                 console.log('📊 Using flat structure for scores');
-            } else if (event.athlete1 && event.athlete1.score !== undefined && event.athlete2 && event.athlete2.score !== undefined) {
+            } else if (data.athlete1 && data.athlete1.score !== undefined && data.athlete2 && data.athlete2.score !== undefined) {
                 // Nested structure (new format)
-                blueScore = event.athlete1.score;
-                redScore = event.athlete2.score;
+                blueScore = data.athlete1.score;
+                redScore = data.athlete2.score;
                 console.log('📊 Using nested structure for scores');
             } else {
                 console.warn('⚠️ No valid score structure found in event');
