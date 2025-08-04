@@ -32,11 +32,25 @@ This simulator provides realistic PSS protocol events for testing reStrikeVTA fu
 
 ## 📋 Requirements
 
-- Python 3.8+
+- Python 3.8+ (automatically detected and verified)
 - Network access to target host/port
 - reStrikeVTA application running (for integration testing)
 
 ## 🛠️ Installation
+
+### Automatic Installation (Recommended)
+
+The reStrikeVTA application now includes **robust dependency management** that automatically:
+
+1. **Detects Python installation** (supports `python3`, `python`, `py` on Windows)
+2. **Verifies Python version** (requires 3.8 or higher)
+3. **Checks required packages** (`requests`, `websocket-client`, `psutil`, etc.)
+4. **Auto-installs missing dependencies** via `pip install -r requirements.txt`
+5. **Provides clear error messages** and retry options in the UI
+
+### Manual Installation (Alternative)
+
+If you prefer manual installation:
 
 1. **Clone or download** the simulation files to your project
 2. **Install dependencies**:
@@ -47,6 +61,15 @@ This simulator provides realistic PSS protocol events for testing reStrikeVTA fu
    ```bash
    python test_automated.py
    ```
+
+### Troubleshooting
+
+If you encounter dependency issues:
+
+1. **Check Python installation**: Ensure Python 3.8+ is installed and in PATH
+2. **Use the UI retry buttons**: Click "Retry" or "Install Dependencies" in the Simulation tab
+3. **Manual pip install**: Run `pip install -r requirements.txt` manually
+4. **Check internet connection**: Required for downloading packages
 
 ## 🎮 Usage
 
@@ -98,6 +121,34 @@ python main.py --mode automated --scenario championship
 The simulator integrates with reStrikeVTA's frontend through the Simulation Panel:
 
 1. **Open PSS Drawer** → **Simulation Tab**
+2. **Enhanced Error Handling**: The UI now provides:
+   - **Clear error messages** for Python/dependency issues
+   - **Retry buttons** to attempt reconnection
+   - **Install Dependencies** button for automatic package installation
+   - **Progress indicators** during dependency installation
+   - **User-friendly messages** instead of technical error codes
+
+### Error Handling & Troubleshooting
+
+The application now provides robust error handling:
+
+#### Common Issues & Solutions
+
+| Issue | Error Message | Solution |
+|-------|---------------|----------|
+| Python not found | "Python is not installed or not found in PATH" | Install Python 3.8+ and add to PATH |
+| Python version too low | "Python version is too low" | Upgrade to Python 3.8+ |
+| Missing packages | "Required Python packages are missing" | Click "Install Dependencies" button |
+| Network issues | "Failed to install Python dependencies" | Check internet connection and retry |
+| Simulation files missing | "Simulation files not found" | Reinstall the application |
+
+#### UI Error Handling Features
+
+- **Automatic Detection**: Environment issues are detected before simulation starts
+- **Actionable Messages**: Clear instructions on how to fix each issue
+- **One-Click Fixes**: Install dependencies with a single button click
+- **Progress Feedback**: Loading indicators during installation
+- **Retry Options**: Easy retry without restarting the application
 2. **Toggle "Automated Simulation"** to enable automated mode
 3. **Select Scenario** from dropdown (Quick Test, Training Session, etc.)
 4. **Click "Start Automated"** to begin simulation

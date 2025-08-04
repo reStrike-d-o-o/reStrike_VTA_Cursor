@@ -58,13 +58,14 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
+  const [isInstallingDeps, setIsInstallingDeps] = useState(false);
   
   // Automated simulation state
-                const [showAutomated, setShowAutomated] = useState(false);
-              const [showSelfTest, setShowSelfTest] = useState(false);
-              const [selectedAutomatedScenario, setSelectedAutomatedScenario] = useState('');
-              const [automatedScenarios, setAutomatedScenarios] = useState<AutomatedScenario[]>([]);
-              const [progress, setProgress] = useState({ current: 0, total: 0 });
+  const [showAutomated, setShowAutomated] = useState(false);
+  const [showSelfTest, setShowSelfTest] = useState(false);
+  const [selectedAutomatedScenario, setSelectedAutomatedScenario] = useState('');
+  const [automatedScenarios, setAutomatedScenarios] = useState<AutomatedScenario[]>([]);
+  const [progress, setProgress] = useState({ current: 0, total: 0 });
 
   // Load simulation status
   const loadStatus = async () => {
@@ -75,9 +76,22 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
         if (result.data.automatedScenarios) {
           setAutomatedScenarios(result.data.automatedScenarios);
         }
+        // Clear any previous errors if successful
+        if (error && isSimulationEnvError(error)) {
+          setError('');
+        }
+      } else {
+        // Only set error if it's a simulation environment error
+        if (result.error && isSimulationEnvError(result.error)) {
+          setError(result.error);
+        }
       }
     } catch (error) {
       console.error('Failed to load simulation status:', error);
+      // Only set error if it's a simulation environment error
+      if (error && typeof error === 'string' && isSimulationEnvError(error)) {
+        setError(error);
+      }
     }
   };
 
@@ -90,9 +104,22 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
         if (result.data.length > 0 && !selectedAutomatedScenario) {
           setSelectedAutomatedScenario(result.data[0].name);
         }
+        // Clear any previous errors if successful
+        if (error && isSimulationEnvError(error)) {
+          setError('');
+        }
+      } else {
+        // Only set error if it's a simulation environment error
+        if (result.error && isSimulationEnvError(result.error)) {
+          setError(result.error);
+        }
       }
     } catch (error) {
       console.error('Failed to load automated scenarios:', error);
+      // Only set error if it's a simulation environment error
+      if (error && typeof error === 'string' && isSimulationEnvError(error)) {
+        setError(error);
+      }
     }
   };
 
@@ -187,6 +214,68 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
     }
   };
 
+  // Helper function to check if error is a simulation environment error
+  const isSimulationEnvError = (errorMsg: string): boolean => {
+    return errorMsg.includes('Simulation environment error') || 
+           errorMsg.includes('PythonNotFound') ||
+           errorMsg.includes('PythonVersionTooLow') ||
+           errorMsg.includes('PipInstallFailed') ||
+           errorMsg.includes('DependencyCheckFailed') ||
+           errorMsg.includes('SimulationPathNotFound');
+  };
+
+  // Helper function to get user-friendly error message
+  const getFriendlyErrorMessage = (errorMsg: string): string => {
+    if (errorMsg.includes('PythonNotFound')) {
+      return 'Python is not installed or not found in PATH. Please install Python 3.8 or higher.';
+    }
+    if (errorMsg.includes('PythonVersionTooLow')) {
+      return 'Python version is too low. Please install Python 3.8 or higher.';
+    }
+    if (errorMsg.includes('PipInstallFailed')) {
+      return 'Failed to install Python dependencies. Please check your internet connection and try again.';
+    }
+    if (errorMsg.includes('DependencyCheckFailed')) {
+      return 'Required Python packages are missing. Click "Install Dependencies" to fix this.';
+    }
+    if (errorMsg.includes('SimulationPathNotFound')) {
+      return 'Simulation files not found. Please reinstall the application.';
+    }
+    return errorMsg;
+  };
+
+  // Retry function that attempts to reload status
+  const retrySimulation = async () => {
+    setError('');
+    setSuccess('');
+    await loadStatus();
+    await loadAutomatedScenarios();
+  };
+
+  // Install dependencies function
+  const installDependencies = async () => {
+    try {
+      setIsInstallingDeps(true);
+      setError('');
+      setSuccess('');
+      
+      // Try to trigger dependency installation by calling a simulation command
+      const result = await invoke('simulation_get_scenarios');
+      
+      if (result.success) {
+        setSuccess('Dependencies installed successfully!');
+        await loadStatus();
+        await loadAutomatedScenarios();
+      } else {
+        setError(result.error || 'Failed to install dependencies');
+      }
+    } catch (error) {
+      setError(`Failed to install dependencies: ${error}`);
+    } finally {
+      setIsInstallingDeps(false);
+    }
+  };
+
   // Load initial data
   useEffect(() => {
     loadStatus();
@@ -235,7 +324,31 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
       {/* Status Messages */}
       {error && (
         <div className="bg-red-900/20 border border-red-500/50 rounded-lg p-3">
-          <p className="text-red-400 text-sm">{error}</p>
+          <p className="text-red-400 text-sm mb-2">
+            {isSimulationEnvError(error) ? getFriendlyErrorMessage(error) : error}
+          </p>
+          {isSimulationEnvError(error) && (
+            <div className="flex space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={retrySimulation}
+                disabled={isLoading || isInstallingDeps}
+              >
+                Retry
+              </Button>
+              {(error.includes('DependencyCheckFailed') || error.includes('PipInstallFailed')) && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={installDependencies}
+                  disabled={isLoading || isInstallingDeps}
+                >
+                  {isInstallingDeps ? 'Installing...' : 'Install Dependencies'}
+                </Button>
+              )}
+            </div>
+          )}
         </div>
       )}
       {success && (

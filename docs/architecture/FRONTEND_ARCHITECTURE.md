@@ -98,7 +98,7 @@ The frontend includes comprehensive simulation support through a dedicated Simul
 #### Simulation Panel Component
 - **File**: `ui/src/components/molecules/SimulationPanel.tsx`
 - **Integration**: PSS drawer tab with robot animation icon
-- **Features**: Real-time status monitoring, scenario selection, manual event control
+- **Features**: Real-time status monitoring, scenario selection, manual event control, enhanced error handling
 
 #### Key Features
 - **Status Monitoring**: Real-time display of simulation status and connection state
@@ -106,6 +106,9 @@ The frontend includes comprehensive simulation support through a dedicated Simul
 - **Mode Selection**: Demo, random events, and interactive modes
 - **Manual Events**: One-click buttons for points, warnings, and injury time
 - **Duration Control**: Configurable simulation duration (10-600 seconds)
+- **Enhanced Error Handling**: User-friendly error messages with actionable solutions
+- **Dependency Management**: Retry and install dependency buttons for Python issues
+- **Progress Indicators**: Loading states during dependency installation
 
 #### Tauri Integration
 ```typescript
@@ -136,12 +139,46 @@ const sendManualEvent = async (eventType: string, params: any) => {
 - **Event Buttons**: Manual event generation (Blue Punch, Red Head Kick, etc.)
 - **Real-time Updates**: 2-second polling for status updates
 - **Error Handling**: Comprehensive error display and success messages
+- **Simulation Environment Errors**: Special handling for Python/dependency issues
+- **Actionable Error Messages**: Clear instructions with retry and install buttons
+- **Loading States**: Progress indicators during dependency installation
 
 #### Integration Points
 - **PSS Drawer**: Simulation tab with robot animation icon
 - **Event Table**: Real-time event display from simulator
 - **Scoreboard Overlay**: Live score updates from simulation events
 - **WebSocket**: Real-time event broadcasting to connected clients
+
+#### Enhanced Error Handling
+The simulation components now include robust error handling for environment issues:
+
+```typescript
+// Error detection and user-friendly messages
+const isSimulationEnvError = (errorMsg: string): boolean => {
+  return errorMsg.includes('Simulation environment error') || 
+         errorMsg.includes('PythonNotFound') ||
+         errorMsg.includes('PythonVersionTooLow') ||
+         errorMsg.includes('PipInstallFailed') ||
+         errorMsg.includes('DependencyCheckFailed') ||
+         errorMsg.includes('SimulationPathNotFound');
+};
+
+// Actionable error messages with retry/install buttons
+const getFriendlyErrorMessage = (errorMsg: string): string => {
+  if (errorMsg.includes('PythonNotFound')) {
+    return 'Python is not installed or not found in PATH. Please install Python 3.8 or higher.';
+  }
+  // ... other error mappings
+};
+```
+
+**Error Handling Features:**
+- **Automatic Detection**: Environment issues detected before simulation starts
+- **User-Friendly Messages**: Clear instructions instead of technical error codes
+- **Retry Buttons**: One-click retry for connection issues
+- **Install Dependencies**: Automatic Python package installation
+- **Progress Feedback**: Loading indicators during installation
+- **Fallback Categories**: Self-test categories available even if backend fails
 
 #### Flag Storage
 - **Directory**: `ui/public/assets/flags/`

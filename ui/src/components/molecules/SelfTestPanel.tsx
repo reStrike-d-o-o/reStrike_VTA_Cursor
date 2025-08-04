@@ -44,6 +44,7 @@ const SelfTestPanel: React.FC<SelfTestPanelProps> = ({ className = '' }) => {
   const [reportContent, setReportContent] = useState<string>('');
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
+  const [isInstallingDeps, setIsInstallingDeps] = useState(false);
   
   // Selective testing state
   const [showSelective, setShowSelective] = useState(false);
@@ -195,6 +196,66 @@ const SelfTestPanel: React.FC<SelfTestPanelProps> = ({ className = '' }) => {
     setSelectedCategories([]);
   };
 
+  // Helper function to check if error is a simulation environment error
+  const isSimulationEnvError = (errorMsg: string): boolean => {
+    return errorMsg.includes('Simulation environment error') || 
+           errorMsg.includes('PythonNotFound') ||
+           errorMsg.includes('PythonVersionTooLow') ||
+           errorMsg.includes('PipInstallFailed') ||
+           errorMsg.includes('DependencyCheckFailed') ||
+           errorMsg.includes('SimulationPathNotFound');
+  };
+
+  // Helper function to get user-friendly error message
+  const getFriendlyErrorMessage = (errorMsg: string): string => {
+    if (errorMsg.includes('PythonNotFound')) {
+      return 'Python is not installed or not found in PATH. Please install Python 3.8 or higher.';
+    }
+    if (errorMsg.includes('PythonVersionTooLow')) {
+      return 'Python version is too low. Please install Python 3.8 or higher.';
+    }
+    if (errorMsg.includes('PipInstallFailed')) {
+      return 'Failed to install Python dependencies. Please check your internet connection and try again.';
+    }
+    if (errorMsg.includes('DependencyCheckFailed')) {
+      return 'Required Python packages are missing. Click "Install Dependencies" to fix this.';
+    }
+    if (errorMsg.includes('SimulationPathNotFound')) {
+      return 'Simulation files not found. Please reinstall the application.';
+    }
+    return errorMsg;
+  };
+
+  // Retry function that attempts to reload categories
+  const retrySelfTest = async () => {
+    setError('');
+    setSuccess('');
+    await loadCategories();
+  };
+
+  // Install dependencies function
+  const installDependencies = async () => {
+    try {
+      setIsInstallingDeps(true);
+      setError('');
+      setSuccess('');
+      
+      // Try to trigger dependency installation by calling a simulation command
+      const result = await invoke('simulation_get_self_test_categories');
+      
+      if (result.success) {
+        setSuccess('Dependencies installed successfully!');
+        await loadCategories();
+      } else {
+        setError(result.error || 'Failed to install dependencies');
+      }
+    } catch (error) {
+      setError(`Failed to install dependencies: ${error}`);
+    } finally {
+      setIsInstallingDeps(false);
+    }
+  };
+
   // Load categories on component mount
   useEffect(() => {
     loadCategories();
@@ -263,9 +324,33 @@ const SelfTestPanel: React.FC<SelfTestPanelProps> = ({ className = '' }) => {
             ? 'bg-yellow-900/20 border border-yellow-500/50' 
             : 'bg-red-900/20 border border-red-500/50'
         }`}>
-          <p className={`text-sm ${
+          <p className={`text-sm mb-2 ${
             error.includes('fallback') ? 'text-yellow-400' : 'text-red-400'
-          }`}>{error}</p>
+          }`}>
+            {isSimulationEnvError(error) ? getFriendlyErrorMessage(error) : error}
+          </p>
+          {isSimulationEnvError(error) && (
+            <div className="flex space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={retrySelfTest}
+                disabled={isRunning || isInstallingDeps}
+              >
+                Retry
+              </Button>
+              {(error.includes('DependencyCheckFailed') || error.includes('PipInstallFailed')) && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={installDependencies}
+                  disabled={isRunning || isInstallingDeps}
+                >
+                  {isInstallingDeps ? 'Installing...' : 'Install Dependencies'}
+                </Button>
+              )}
+            </div>
+          )}
         </div>
       )}
       {success && (

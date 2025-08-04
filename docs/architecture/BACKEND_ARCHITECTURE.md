@@ -147,6 +147,27 @@ pub async fn simulation_send_event(
 - **Real-time Control**: Manual event generation and monitoring
 - **Protocol Compliance**: Full PSS v2.3 protocol implementation
 - **Integration**: Seamless integration with existing UDP and WebSocket systems
+- **Robust Dependency Management**: Cross-platform Python detection and auto-installation
+- **Enhanced Error Handling**: User-friendly error messages with actionable solutions
+
+**Robust Environment Management:**
+```rust
+// utils/simulation_env.rs - Cross-platform environment detection
+pub fn ensure_simulation_env() -> Result<(String, PathBuf), SimulationEnvError> {
+    // 1. Detect Python command (python3, python, py)
+    // 2. Verify Python version (>= 3.8)
+    // 3. Check required packages
+    // 4. Auto-install missing dependencies
+    // 5. Resolve simulation paths relative to executable
+}
+```
+
+**Error Handling:**
+- **PythonNotFound**: Automatic detection of Python installation
+- **PythonVersionTooLow**: Version verification with clear upgrade instructions
+- **DependencyCheckFailed**: Package verification with auto-installation
+- **PipInstallFailed**: Network error handling with retry options
+- **SimulationPathNotFound**: Dynamic path resolution for bundled simulation files
 
 **Usage:**
 ```bash
@@ -154,6 +175,7 @@ pub async fn simulation_send_event(
 python simulation/main.py --mode demo --scenario basic --duration 30
 
 # Or use the integrated UI in PSS drawer > Simulation tab
+# The UI now provides retry and install dependency buttons
 ```
 
 #### Database Plugin
