@@ -706,6 +706,10 @@
                         type: 'current_scores'
                     };
                     
+                    console.log(`📊 Parsed score message: ${event.message}`);
+                    console.log(`📊 Parts:`, parts);
+                    console.log(`📊 Scores: blue=${scores.athlete1_score}, red=${scores.athlete2_score}`);
+                    
                     handleScoresEvent(scores);
                 } catch (error) {
                     console.error('❌ Error parsing raw scores line:', error);
