@@ -46,9 +46,11 @@ const EventTableSection: React.FC = () => {
       isManualModeEnabled,
       currentRound,
       currentTime,
-      events: events.slice(0, 3) // Show first 3 events
+      events: events.slice(0, 3), // Show first 3 events
+      allEventsCount: allEvents.length,
+      filteredEventsCount: filteredEvents.length
     });
-  }, [events, isConnected, isManualModeEnabled, currentRound, currentTime]);
+  }, [events, isConnected, isManualModeEnabled, currentRound, currentTime, allEvents, filteredEvents]);
 
   // Auto-scroll to top when new events arrive (since newest are now at top)
   useEffect(() => {
@@ -71,8 +73,20 @@ const EventTableSection: React.FC = () => {
   // Filter to only show important events for the event table
   const filteredEvents = allEvents.filter(event => {
     // Only show events with specific event codes that are important for the table
-    const importantEventCodes = ['K', 'P', 'H', 'TH', 'TB', 'R'];
-    return importantEventCodes.includes(event.eventCode);
+    const importantEventCodes = ['K', 'P', 'H', 'TH', 'TB', 'R', 'O'];
+    const isImportant = importantEventCodes.includes(event.eventCode);
+    
+    // Debug logging for filtered events
+    if (!isImportant) {
+      console.log('🚫 Event filtered out:', {
+        eventType: event.eventType,
+        eventCode: event.eventCode,
+        description: event.description,
+        importantEventCodes
+      });
+    }
+    
+    return isImportant;
   });
 
   // Debug filtered events

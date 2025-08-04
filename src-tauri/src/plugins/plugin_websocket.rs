@@ -432,7 +432,7 @@ impl WebSocketServer {
             PssEvent::WinnerRounds { round1_winner, round2_winner, round3_winner } => {
                 WebSocketMessage::PssEvent {
                     event_type: "winner_rounds".to_string(),
-                    event_code: "WR".to_string(),
+                    event_code: "O".to_string(),
                     athlete: "referee".to_string(),
                     round: current_round,
                     time: current_time.clone(),
@@ -503,7 +503,7 @@ impl WebSocketServer {
             PssEvent::CurrentScores { athlete1_score, athlete2_score } => {
                 WebSocketMessage::PssEvent {
                     event_type: "current_scores".to_string(),
-                    event_code: "".to_string(),
+                    event_code: "R".to_string(),
                     athlete: "".to_string(),
                     round: current_round,
                     time: current_time.clone(),
@@ -521,7 +521,7 @@ impl WebSocketServer {
             PssEvent::Scores { athlete1_r1, athlete2_r1, athlete1_r2, athlete2_r2, athlete1_r3, athlete2_r3 } => {
                 WebSocketMessage::PssEvent {
                     event_type: "scores".to_string(),
-                    event_code: "".to_string(),
+                    event_code: "R".to_string(),
                     athlete: "".to_string(),
                     round: current_round,
                     time: current_time.clone(),
@@ -545,7 +545,7 @@ impl WebSocketServer {
             PssEvent::Clock { time, action } => {
                 WebSocketMessage::PssEvent {
                     event_type: "clock".to_string(),
-                    event_code: "".to_string(),
+                    event_code: "O".to_string(),
                     athlete: "".to_string(),
                     round: current_round,
                     time: time.clone(),
@@ -563,7 +563,7 @@ impl WebSocketServer {
             PssEvent::Round { current_round } => {
                 WebSocketMessage::PssEvent {
                     event_type: "round".to_string(),
-                    event_code: "".to_string(),
+                    event_code: "O".to_string(),
                     athlete: "".to_string(),
                     round: *current_round,
                     time: current_time.clone(),
@@ -587,7 +587,7 @@ impl WebSocketServer {
                 
                 WebSocketMessage::PssEvent {
                     event_type: "injury".to_string(),
-                    event_code: "".to_string(),
+                    event_code: "O".to_string(),
                     athlete: athlete_str.clone(),
                     round: current_round,
                     time: time.clone(),
@@ -637,7 +637,7 @@ impl WebSocketServer {
             PssEvent::Break { time, action } => {
                 WebSocketMessage::PssEvent {
                     event_type: "break".to_string(),
-                    event_code: "".to_string(),
+                    event_code: "O".to_string(),
                     athlete: "".to_string(),
                     round: current_round,
                     time: time.clone(),
@@ -655,7 +655,7 @@ impl WebSocketServer {
             PssEvent::Winner { name, classification } => {
                 WebSocketMessage::PssEvent {
                     event_type: "winner".to_string(),
-                    event_code: "".to_string(),
+                    event_code: "O".to_string(),
                     athlete: "".to_string(),
                     round: current_round,
                     time: current_time.clone(),
@@ -679,7 +679,7 @@ impl WebSocketServer {
                 
                 WebSocketMessage::PssEvent {
                     event_type: "hit_level".to_string(),
-                    event_code: "".to_string(),
+                    event_code: "O".to_string(),
                     athlete: athlete_str.clone(),
                     round: current_round,
                     time: current_time.clone(),
@@ -729,7 +729,7 @@ impl WebSocketServer {
             PssEvent::Supervision { value } => {
                 WebSocketMessage::PssEvent {
                     event_type: "supervision".to_string(),
-                    event_code: "".to_string(),
+                    event_code: "O".to_string(),
                     athlete: "".to_string(),
                     round: current_round,
                     time: current_time.clone(),
