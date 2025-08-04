@@ -4209,9 +4209,17 @@ pub async fn simulation_start(
     mode: String,
     scenario: String,
     duration: u32,
-    _app: State<'_, Arc<App>>,
+    app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Starting simulation: mode={}, scenario={}, duration={}", mode, scenario, duration);
+    
+    // Get the actual UDP settings from the app configuration
+    let udp_settings = app.config_manager().get_udp_settings().await;
+    let host = udp_settings.listener.bind_address.clone();
+    let port = udp_settings.listener.port;
+    
+    log::info!("Using UDP settings: host={}, port={}", host, port);
+    
     let (python_cmd, sim_main) = match ensure_simulation_env() {
         Ok(v) => v,
         Err(e) => {
@@ -4227,14 +4235,14 @@ pub async fn simulation_start(
             "--mode", &mode,
             "--scenario", &scenario,
             "--duration", &duration.to_string(),
-            "--host", "127.0.0.1",
-            "--port", "8888"
+            "--host", &host,
+            "--port", &port.to_string()
         ])
         .spawn();
     match result {
         Ok(_) => Ok(serde_json::json!({
             "success": true,
-            "message": "Simulation started successfully"
+            "message": format!("Simulation started successfully on {}:{}", host, port)
         })),
         Err(e) => Ok(serde_json::json!({
             "success": false,
@@ -4296,9 +4304,16 @@ pub async fn simulation_get_status(_app: State<'_, Arc<App>>) -> Result<serde_js
 pub async fn simulation_send_event(
     event_type: String,
     params: serde_json::Value,
-    _app: State<'_, Arc<App>>,
+    app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Sending simulation event: type={}, params={:?}", event_type, params);
+    
+    // Get the actual UDP settings from the app configuration
+    let udp_settings = app.config_manager().get_udp_settings().await;
+    let host = udp_settings.listener.bind_address.clone();
+    let port = udp_settings.listener.port;
+    
+    log::info!("Using UDP settings: host={}, port={}", host, port);
     
     let (python_cmd, sim_main) = match ensure_simulation_env() {
         Ok(v) => v,
@@ -4320,15 +4335,15 @@ pub async fn simulation_send_event(
             "--send-event",
             "--event-type", &event_type,
             "--event-params", &params_str,
-            "--host", "127.0.0.1",
-            "--port", "8888"
+            "--host", &host,
+            "--port", &port.to_string()
         ])
         .spawn();
     
     match result {
         Ok(_) => Ok(serde_json::json!({
             "success": true,
-            "message": format!("{} event sent successfully", event_type)
+            "message": format!("{} event sent successfully to {}:{}", event_type, host, port)
         })),
         Err(e) => Ok(serde_json::json!({
             "success": false,
@@ -4383,9 +4398,16 @@ pub async fn simulation_get_scenarios(_app: State<'_, Arc<App>>) -> Result<serde
 pub async fn simulation_run_automated(
     scenario_name: String,
     custom_config: Option<serde_json::Value>,
-    _app: State<'_, Arc<App>>,
+    app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Running automated simulation: scenario={}", scenario_name);
+    
+    // Get the actual UDP settings from the app configuration
+    let udp_settings = app.config_manager().get_udp_settings().await;
+    let host = udp_settings.listener.bind_address.clone();
+    let port = udp_settings.listener.port;
+    
+    log::info!("Using UDP settings: host={}, port={}", host, port);
     
     let (python_cmd, sim_main) = match ensure_simulation_env() {
         Ok(v) => v,
@@ -4404,9 +4426,9 @@ pub async fn simulation_run_automated(
         "--scenario".to_string(),
         scenario_name.clone(),
         "--host".to_string(),
-        "127.0.0.1".to_string(),
+        host.clone(),
         "--port".to_string(),
-        "8888".to_string(),
+        port.to_string(),
     ];
     
     // Add custom config if provided
@@ -4423,7 +4445,7 @@ pub async fn simulation_run_automated(
     match result {
         Ok(_) => Ok(serde_json::json!({
             "success": true,
-            "message": format!("Automated {} simulation started successfully", scenario_name)
+            "message": format!("Automated {} simulation started successfully on {}:{}", scenario_name, host, port)
         })),
         Err(e) => Ok(serde_json::json!({
             "success": false,
