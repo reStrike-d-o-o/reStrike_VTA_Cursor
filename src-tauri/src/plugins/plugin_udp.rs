@@ -145,9 +145,9 @@ pub enum PssEvent {
     FightLoaded,
     FightReady,
     
-    // Supervision events (warnings reset)
-    Supervision {
-        value: u8, // 0 = reset warnings
+    // Supremacy events
+    Supremacy {
+        value: u8, // Supremacy value
     },
     
     // Raw message for unrecognized patterns
@@ -1074,51 +1074,51 @@ impl UdpServer {
     }
 
     /// Get event code for validation
-    fn get_event_code(event: &PssEvent) -> String {
+    pub fn get_event_code(event: &PssEvent) -> String {
         match event {
             PssEvent::Points { point_type, .. } => {
                 // Map point types to specific event codes according to PSS protocol
                 match point_type {
                     1 => "P".to_string(),   // Punch
-                    2 => "TB".to_string(), // Technical Body
-                    3 => "H".to_string(),  // Head Kick
+                    2 => "K".to_string(),  // Body point
+                    3 => "H".to_string(),  // Head point
                     4 => "TB".to_string(), // Technical Body
                     5 => "TH".to_string(), // Technical Head
                     _ => "K".to_string(),  // Default to Kick
                 }
             },
-            PssEvent::HitLevel { .. } => "H".to_string(), // Hit Level
+            PssEvent::HitLevel { .. } => "O".to_string(), // Hit Level
             PssEvent::Warnings { .. } => "R".to_string(), // Warning/Gam-jeom
             PssEvent::Challenge { .. } => "R".to_string(), // Challenge/IVR
-            PssEvent::Injury { .. } => "R".to_string(), // Injury time
-            PssEvent::Break { .. } => "R".to_string(), // Break
-            PssEvent::WinnerRounds { .. } => "R".to_string(), // Winner rounds
-            PssEvent::Winner { .. } => "R".to_string(), // Winner
-            PssEvent::Athletes { .. } => "R".to_string(), // Athletes info
-            PssEvent::MatchConfig { .. } => "R".to_string(), // Match config
+            PssEvent::Injury { .. } => "O".to_string(), // Injury time
+            PssEvent::Break { .. } => "O".to_string(), // Break
+            PssEvent::WinnerRounds { .. } => "O".to_string(), // Winner rounds
+            PssEvent::Winner { .. } => "O".to_string(), // Winner
+            PssEvent::Athletes { .. } => "O".to_string(), // Athletes info
+            PssEvent::MatchConfig { .. } => "O".to_string(), // Match config
             PssEvent::Scores { .. } => "R".to_string(), // Scores
             PssEvent::CurrentScores { .. } => "R".to_string(), // Current scores
-            PssEvent::Clock { .. } => "R".to_string(), // Clock
-            PssEvent::Round { .. } => "R".to_string(), // Round
-            PssEvent::FightLoaded => "R".to_string(), // Fight loaded
-            PssEvent::FightReady => "R".to_string(), // Fight ready
-            PssEvent::Supervision { .. } => "R".to_string(), // Supervision
+            PssEvent::Clock { .. } => "O".to_string(), // Clock
+            PssEvent::Round { .. } => "O".to_string(), // Round
+            PssEvent::FightLoaded => "O".to_string(), // Fight loaded
+            PssEvent::FightReady => "O".to_string(), // Fight ready
+            PssEvent::Supremacy { .. } => "O".to_string(), // Supremacy
             PssEvent::Raw(raw_msg) => {
                 // Try to extract event code from raw messages for better categorization
                 if raw_msg.starts_with("avt;") {
-                    "R".to_string()
+                    "O".to_string()
                 } else if raw_msg.starts_with("ref;") {
-                    "R".to_string()
+                    "O".to_string()
                 } else if raw_msg.starts_with("sup;") {
-                    "R".to_string()
+                    "O".to_string()
                 } else if raw_msg.starts_with("rst;") {
-                    "R".to_string()
+                    "O".to_string()
                 } else if raw_msg.starts_with("rsr;") {
-                    "R".to_string()
+                    "O".to_string()
                 } else if raw_msg.starts_with("win;") {
-                    "R".to_string()
+                    "O".to_string()
                 } else {
-                    "R".to_string()
+                    "O".to_string()
                 }
             },
         }
@@ -1383,11 +1383,11 @@ impl UdpServer {
                     "timestamp": chrono::Utc::now().timestamp_millis()
                 })
             }
-            PssEvent::Supervision { value } => {
+            PssEvent::Supremacy { value } => {
                 serde_json::json!({
-                    "type": "supervision",
+                    "type": "supremacy",
                     "value": value,
-                    "description": format!("Supervision - Value: {}", value),
+                    "description": format!("Supremacy - Value: {}", value),
                     "timestamp": chrono::Utc::now().timestamp_millis()
                 })
             }
@@ -1528,7 +1528,7 @@ impl UdpServer {
             PssEvent::Round { current_round } => Some(vec![
                 ("current_round".to_string(), Some(current_round.to_string()), "u8".to_string()),
             ]),
-            PssEvent::Supervision { value } => Some(vec![
+            PssEvent::Supremacy { value } => Some(vec![
                 ("value".to_string(), Some(value.to_string()), "u8".to_string()),
             ]),
             PssEvent::Raw(message) => Some(vec![
@@ -2451,11 +2451,11 @@ impl UdpServer {
                 }
             }
 
-            // Supervision events (sup)
+            // Supremacy events (sup)
             "sup" => {
-                let value = parse_u8(1, "supervision value", 0, 255)?;
-                log::debug!("✅ Parsed Supervision event: value={}", value);
-                Ok(PssEvent::Supervision { value })
+                let value = parse_u8(1, "supremacy value", 0, 255)?;
+                log::debug!("✅ Parsed Supremacy event: value={}", value);
+                Ok(PssEvent::Supremacy { value })
             }
 
             // Winner events (win)
