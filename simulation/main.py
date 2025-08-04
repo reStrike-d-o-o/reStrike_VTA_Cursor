@@ -314,7 +314,7 @@ def main():
     parser.add_argument("--host", default="127.0.0.1", help="Target host")
     parser.add_argument("--port", type=int, default=8888, help="Target port")
     parser.add_argument("--mode", choices=["demo", "random", "interactive", "automated", "self-test"], default="demo", help="Simulation mode")
-    parser.add_argument("--scenario", choices=["basic", "championship", "training", "quick_test", "training_session", "tournament_day", "championship"], default="basic", help="Match scenario")
+    parser.add_argument("--scenario", choices=["basic", "championship", "training", "quick_test", "training_session", "tournament_day", "championship", "demo", "intensive", "olympic"], default="basic", help="Match scenario")
     parser.add_argument("--duration", type=int, default=30, help="Duration for demo/random mode")
     parser.add_argument("--list-scenarios", action="store_true", help="List available automated scenarios")
     parser.add_argument("--self-test", action="store_true", help="Run comprehensive self-test")

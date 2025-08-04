@@ -504,11 +504,14 @@ class SelfTestSystem:
                 sys.executable, "main.py", "--list-scenarios"
             ], capture_output=True, text=True, timeout=10, cwd=".")
             
-            scenarios = ["Quick Test", "Training Session", "Tournament Day", "Championship"]
+            # Updated scenario names to match the new scenarios
+            scenarios = ["Quick Test", "Basic Match", "Training Session", "Tournament Day", "Championship", "Demo Mode", "Intensive Training", "Olympic Style"]
             found_scenarios = [s for s in scenarios if s in result.stdout]
             
-            if len(found_scenarios) >= 3:
+            if len(found_scenarios) >= 6:
                 return TestStatus.PASSED, "Automated scenarios are available", f"Found {len(found_scenarios)} scenarios", None
+            elif len(found_scenarios) >= 4:
+                return TestStatus.WARNING, "Most automated scenarios available", f"Found {len(found_scenarios)} scenarios", None
             elif len(found_scenarios) > 0:
                 return TestStatus.WARNING, "Some automated scenarios available", f"Found {len(found_scenarios)} scenarios", None
             else:
