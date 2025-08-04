@@ -1212,21 +1212,39 @@ impl UdpServer {
 
     fn convert_pss_event_to_json(event: &PssEvent) -> serde_json::Value {
         // Add defensive programming to handle any potential issues
+        let event_code = Self::get_event_code(event);
+        
         match event {
             PssEvent::Points { athlete, point_type } => {
+                let athlete_str = match athlete {
+                    1 => "blue",
+                    2 => "red",
+                    _ => "unknown"
+                };
                 serde_json::json!({
                     "type": "points",
-                    "athlete": athlete,
+                    "event_code": event_code,
+                    "athlete": athlete_str,
                     "point_type": point_type,
+                    "round": 1, // Will be updated by WebSocket plugin
+                    "time": "2:00", // Will be updated by WebSocket plugin
                     "description": format!("Athlete {} scored {} points", athlete, point_type),
                     "timestamp": chrono::Utc::now().timestamp_millis()
                 })
             }
             PssEvent::HitLevel { athlete, level } => {
+                let athlete_str = match athlete {
+                    1 => "blue",
+                    2 => "red",
+                    _ => "unknown"
+                };
                 serde_json::json!({
                     "type": "hit_level",
-                    "athlete": athlete,
+                    "event_code": event_code,
+                    "athlete": athlete_str,
                     "level": level,
+                    "round": 1, // Will be updated by WebSocket plugin
+                    "time": "2:00", // Will be updated by WebSocket plugin
                     "description": format!("Athlete {} hit level {}", athlete, level),
                     "timestamp": chrono::Utc::now().timestamp_millis()
                 })
@@ -1234,29 +1252,51 @@ impl UdpServer {
             PssEvent::Warnings { athlete1_warnings, athlete2_warnings } => {
                 serde_json::json!({
                     "type": "warnings",
+                    "event_code": event_code,
+                    "athlete": "yellow",
                     "athlete1_warnings": athlete1_warnings,
                     "athlete2_warnings": athlete2_warnings,
+                    "round": 1, // Will be updated by WebSocket plugin
+                    "time": "2:00", // Will be updated by WebSocket plugin
                     "description": format!("Warnings - Athlete1: {}, Athlete2: {}", athlete1_warnings, athlete2_warnings),
                     "timestamp": chrono::Utc::now().timestamp_millis()
                 })
             }
             PssEvent::Injury { athlete, time, action } => {
+                let athlete_str = match athlete {
+                    0 => "unknown",
+                    1 => "blue",
+                    2 => "red",
+                    _ => "unknown"
+                };
                 serde_json::json!({
                     "type": "injury",
-                    "athlete": athlete,
+                    "event_code": event_code,
+                    "athlete": athlete_str,
                     "time": time,
                     "action": action,
+                    "round": 1, // Will be updated by WebSocket plugin
                     "description": format!("Injury - Athlete: {}, Time: {}, Action: {:?}", athlete, time, action),
                     "timestamp": chrono::Utc::now().timestamp_millis()
                 })
             }
             PssEvent::Challenge { source, accepted, won, canceled } => {
+                let athlete_str = match source {
+                    0 => "yellow",
+                    1 => "blue",
+                    2 => "red",
+                    _ => "unknown"
+                };
                 serde_json::json!({
                     "type": "challenge",
+                    "event_code": event_code,
+                    "athlete": athlete_str,
                     "source": source,
                     "accepted": accepted,
                     "won": won,
                     "canceled": canceled,
+                    "round": 1, // Will be updated by WebSocket plugin
+                    "time": "2:00", // Will be updated by WebSocket plugin
                     "description": format!("Challenge - Source: {}, Accepted: {:?}, Won: {:?}, Canceled: {}", source, accepted, won, canceled),
                     "timestamp": chrono::Utc::now().timestamp_millis()
                 })
@@ -1264,8 +1304,11 @@ impl UdpServer {
             PssEvent::Break { time, action } => {
                 serde_json::json!({
                     "type": "break",
+                    "event_code": event_code,
+                    "athlete": "",
                     "time": time,
                     "action": action,
+                    "round": 1, // Will be updated by WebSocket plugin
                     "description": format!("Break - Time: {}, Action: {:?}", time, action),
                     "timestamp": chrono::Utc::now().timestamp_millis()
                 })
@@ -1273,9 +1316,13 @@ impl UdpServer {
             PssEvent::WinnerRounds { round1_winner, round2_winner, round3_winner } => {
                 serde_json::json!({
                     "type": "winner_rounds",
+                    "event_code": event_code,
+                    "athlete": "yellow",
                     "round1_winner": round1_winner,
                     "round2_winner": round2_winner,
                     "round3_winner": round3_winner,
+                    "round": 1, // Will be updated by WebSocket plugin
+                    "time": "2:00", // Will be updated by WebSocket plugin
                     "description": format!("Winner Rounds - R1: {}, R2: {}, R3: {}", round1_winner, round2_winner, round3_winner),
                     "timestamp": chrono::Utc::now().timestamp_millis()
                 })
@@ -1283,8 +1330,12 @@ impl UdpServer {
             PssEvent::Winner { name, classification } => {
                 serde_json::json!({
                     "type": "winner",
+                    "event_code": event_code,
+                    "athlete": "",
                     "name": name,
                     "classification": classification,
+                    "round": 1, // Will be updated by WebSocket plugin
+                    "time": "2:00", // Will be updated by WebSocket plugin
                     "description": format!("Winner: {} ({:?})", name, classification),
                     "timestamp": chrono::Utc::now().timestamp_millis()
                 })
@@ -1292,6 +1343,8 @@ impl UdpServer {
             PssEvent::Athletes { athlete1_short, athlete1_long, athlete1_country, athlete2_short, athlete2_long, athlete2_country } => {
                 serde_json::json!({
                     "type": "athletes",
+                    "event_code": event_code,
+                    "athlete": "yellow",
                     "athlete1": {
                         "short": athlete1_short,
                         "long": athlete1_long,
@@ -1302,6 +1355,8 @@ impl UdpServer {
                         "long": athlete2_long,
                         "country": athlete2_country
                     },
+                    "round": 1, // Will be updated by WebSocket plugin
+                    "time": "2:00", // Will be updated by WebSocket plugin
                     "description": format!("Athletes - {} vs {}", athlete1_short, athlete2_short),
                     "timestamp": chrono::Utc::now().timestamp_millis()
                 })
@@ -1309,6 +1364,8 @@ impl UdpServer {
             PssEvent::MatchConfig { number, category, weight, rounds, colors: _, match_id, division, total_rounds, round_duration, countdown_type, count_up, format } => {
                 serde_json::json!({
                     "type": "match_config",
+                    "event_code": event_code,
+                    "athlete": "yellow",
                     "number": number,
                     "category": category,
                     "weight": weight,
@@ -1320,6 +1377,8 @@ impl UdpServer {
                     "countdown_type": countdown_type,
                     "count_up": count_up,
                     "format": format,
+                    "round": 1, // Will be updated by WebSocket plugin
+                    "time": "2:00", // Will be updated by WebSocket plugin
                     "description": format!("Match Config - #{} {} {} ({} rounds)", number, category, weight, total_rounds),
                     "timestamp": chrono::Utc::now().timestamp_millis()
                 })
@@ -1327,12 +1386,16 @@ impl UdpServer {
             PssEvent::Scores { athlete1_r1, athlete2_r1, athlete1_r2, athlete2_r2, athlete1_r3, athlete2_r3 } => {
                 serde_json::json!({
                     "type": "scores",
+                    "event_code": event_code,
+                    "athlete": "yellow",
                     "athlete1_r1": athlete1_r1,
                     "athlete2_r1": athlete2_r1,
                     "athlete1_r2": athlete1_r2,
                     "athlete2_r2": athlete2_r2,
                     "athlete1_r3": athlete1_r3,
                     "athlete2_r3": athlete2_r3,
+                    "round": 1, // Will be updated by WebSocket plugin
+                    "time": "2:00", // Will be updated by WebSocket plugin
                     "description": format!("Scores - A1: R1={}, R2={}, R3={} | A2: R1={}, R2={}, R3={}", 
                         athlete1_r1, athlete1_r2, athlete1_r3, athlete2_r1, athlete2_r2, athlete2_r3),
                     "timestamp": chrono::Utc::now().timestamp_millis()
@@ -1341,8 +1404,12 @@ impl UdpServer {
             PssEvent::CurrentScores { athlete1_score, athlete2_score } => {
                 serde_json::json!({
                     "type": "current_scores",
+                    "event_code": event_code,
+                    "athlete": "yellow",
                     "athlete1_score": athlete1_score,
                     "athlete2_score": athlete2_score,
+                    "round": 1, // Will be updated by WebSocket plugin
+                    "time": "2:00", // Will be updated by WebSocket plugin
                     "description": format!("Current Scores - A1: {}, A2: {}", athlete1_score, athlete2_score),
                     "timestamp": chrono::Utc::now().timestamp_millis()
                 })
@@ -1355,8 +1422,11 @@ impl UdpServer {
                 
                 serde_json::json!({
                     "type": "clock",
+                    "event_code": event_code,
+                    "athlete": "",
                     "time": safe_time,
                     "action": safe_action,
+                    "round": 1, // Will be updated by WebSocket plugin
                     "description": description,
                     "timestamp": chrono::Utc::now().timestamp_millis()
                 })
@@ -1364,7 +1434,11 @@ impl UdpServer {
             PssEvent::Round { current_round } => {
                 serde_json::json!({
                     "type": "round",
+                    "event_code": event_code,
+                    "athlete": "",
                     "current_round": current_round,
+                    "round": current_round,
+                    "time": "2:00", // Will be updated by WebSocket plugin
                     "description": format!("Round {}", current_round),
                     "timestamp": chrono::Utc::now().timestamp_millis()
                 })
@@ -1372,6 +1446,10 @@ impl UdpServer {
             PssEvent::FightLoaded => {
                 serde_json::json!({
                     "type": "fight_loaded",
+                    "event_code": event_code,
+                    "athlete": "",
+                    "round": 1, // Will be updated by WebSocket plugin
+                    "time": "2:00", // Will be updated by WebSocket plugin
                     "description": "Fight loaded",
                     "timestamp": chrono::Utc::now().timestamp_millis()
                 })
@@ -1379,6 +1457,10 @@ impl UdpServer {
             PssEvent::FightReady => {
                 serde_json::json!({
                     "type": "fight_ready",
+                    "event_code": event_code,
+                    "athlete": "",
+                    "round": 1, // Will be updated by WebSocket plugin
+                    "time": "2:00", // Will be updated by WebSocket plugin
                     "description": "Fight ready",
                     "timestamp": chrono::Utc::now().timestamp_millis()
                 })
@@ -1386,7 +1468,11 @@ impl UdpServer {
             PssEvent::Supremacy { value } => {
                 serde_json::json!({
                     "type": "supremacy",
+                    "event_code": event_code,
+                    "athlete": "",
                     "value": value,
+                    "round": 1, // Will be updated by WebSocket plugin
+                    "time": "2:00", // Will be updated by WebSocket plugin
                     "description": format!("Supremacy - Value: {}", value),
                     "timestamp": chrono::Utc::now().timestamp_millis()
                 })
@@ -1398,7 +1484,11 @@ impl UdpServer {
                 
                 serde_json::json!({
                     "type": "raw",
+                    "event_code": event_code,
+                    "athlete": "",
                     "message": safe_message,
+                    "round": 1, // Will be updated by WebSocket plugin
+                    "time": "2:00", // Will be updated by WebSocket plugin
                     "description": description,
                     "timestamp": chrono::Utc::now().timestamp_millis()
                 })
