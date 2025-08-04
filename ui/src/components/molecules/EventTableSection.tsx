@@ -38,6 +38,18 @@ const EventTableSection: React.FC = () => {
   
   const { isManualModeEnabled } = useAppStore();
 
+  // Debug logging
+  useEffect(() => {
+    console.log('🔍 EventTableSection Debug:', {
+      eventsCount: events.length,
+      isConnected,
+      isManualModeEnabled,
+      currentRound,
+      currentTime,
+      events: events.slice(0, 3) // Show first 3 events
+    });
+  }, [events, isConnected, isManualModeEnabled, currentRound, currentTime]);
+
   // Auto-scroll to top when new events arrive (since newest are now at top)
   useEffect(() => {
     if (tableRef.current) {
@@ -62,6 +74,15 @@ const EventTableSection: React.FC = () => {
     const importantEventCodes = ['K', 'P', 'H', 'TH', 'TB', 'R'];
     return importantEventCodes.includes(event.eventCode);
   });
+
+  // Debug filtered events
+  useEffect(() => {
+    console.log('🔍 Filtered Events Debug:', {
+      allEventsCount: allEvents.length,
+      filteredEventsCount: filteredEvents.length,
+      filteredEvents: filteredEvents.slice(0, 3) // Show first 3 filtered events
+    });
+  }, [allEvents, filteredEvents]);
 
   // Format time for display (convert from "m:ss" to "mm.ss.000" format)
   const formatTimeForDisplay = (time: string): string => {

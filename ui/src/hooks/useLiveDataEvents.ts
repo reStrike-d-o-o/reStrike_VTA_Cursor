@@ -48,6 +48,7 @@ export const useLiveDataEvents = () => {
           description: eventData.description || '',
         };
         
+        console.log('📊 Adding event to store:', event);
         useLiveDataStore.getState().addEvent(event);
         
         // Update round and time if provided
@@ -61,6 +62,9 @@ export const useLiveDataEvents = () => {
         useLiveDataStore.getState().setConnectionStatus(data.connected);
       } else if (data.type === 'error') {
         console.error('WebSocket error:', data.message);
+      } else {
+        // Log other message types for debugging
+        console.log('📡 Other message type:', data.type, data);
       }
     });
 
