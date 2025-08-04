@@ -201,6 +201,8 @@
         // Handle PSS events from Tauri
         function handlePssEvent(event) {
             console.log('📡 Received PSS event:', event);
+            console.log('📡 Event type:', event.type);
+            console.log('📡 Full event structure:', JSON.stringify(event, null, 2));
             lastUpdateTime = new Date();
             
             if (!scoreboardInstance) {
@@ -267,43 +269,70 @@
         // Handle athletes event
         function handleAthletesEvent(event) {
             console.log('👥 Updating athletes:', event);
+            console.log('👥 athlete1:', event.athlete1);
+            console.log('👥 athlete2:', event.athlete2);
             
             // Update player names - athlete1 maps to player1 (blue), athlete2 maps to player2 (red)
-            if (event.athlete1_long) {
-                scoreboardInstance.updatePlayerName('blue', event.athlete1_long);
-                document.getElementById('debug-blue').textContent = event.athlete1_long;
+            if (event.athlete1 && event.athlete1.long) {
+                console.log('✅ Updating blue player name to:', event.athlete1.long);
+                scoreboardInstance.updatePlayerName('blue', event.athlete1.long);
+                document.getElementById('debug-blue').textContent = event.athlete1.long;
+            } else {
+                console.warn('⚠️ No athlete1.long found in event');
             }
             
-            if (event.athlete2_long) {
-                scoreboardInstance.updatePlayerName('red', event.athlete2_long);
-                document.getElementById('debug-red').textContent = event.athlete2_long;
+            if (event.athlete2 && event.athlete2.long) {
+                console.log('✅ Updating red player name to:', event.athlete2.long);
+                scoreboardInstance.updatePlayerName('red', event.athlete2.long);
+                document.getElementById('debug-red').textContent = event.athlete2.long;
+            } else {
+                console.warn('⚠️ No athlete2.long found in event');
             }
             
-            // Update countries - athlete1_country and athlete2_country are already IOC codes
-            if (event.athlete1_country) {
-                scoreboardInstance.updateCountry('blue', event.athlete1_country);
+            // Update countries - athlete1.country and athlete2.country are already IOC codes
+            if (event.athlete1 && event.athlete1.country) {
+                console.log('✅ Updating blue player country to:', event.athlete1.country);
+                scoreboardInstance.updateCountry('blue', event.athlete1.country);
+            } else {
+                console.warn('⚠️ No athlete1.country found in event');
             }
             
-            if (event.athlete2_country) {
-                scoreboardInstance.updateCountry('red', event.athlete2_country);
+            if (event.athlete2 && event.athlete2.country) {
+                console.log('✅ Updating red player country to:', event.athlete2.country);
+                scoreboardInstance.updateCountry('red', event.athlete2.country);
+            } else {
+                console.warn('⚠️ No athlete2.country found in event');
             }
         }
         
         // Handle match config event
         function handleMatchConfigEvent(event) {
             console.log('🏆 Updating match config:', event);
+            console.log('🏆 weight:', event.weight);
+            console.log('🏆 division:', event.division);
+            console.log('🏆 category:', event.category);
+            console.log('🏆 number:', event.number);
             
             // Use the new combined method to update all match info at once
             if (event.weight || event.division || event.category) {
+                console.log('✅ Updating match info with:', event.weight, event.division, event.category);
                 scoreboardInstance.updateMatchInfo(event.weight, event.division, event.category);
+            } else {
+                console.warn('⚠️ No weight, division, or category found in match config event');
             }
             
             if (event.number) {
+                console.log('✅ Updating match number to:', event.number);
                 // Update match number in SVG
                 const matchNumberElement = scoreboardInstance.svg.getElementById('matchNumber');
                 if (matchNumberElement) {
                     matchNumberElement.textContent = `#${event.number}`;
+                    console.log('✅ Match number element updated');
+                } else {
+                    console.warn('⚠️ Could not find matchNumber element in SVG');
                 }
+            } else {
+                console.warn('⚠️ No match number found in match config event');
             }
         }
         
@@ -311,9 +340,25 @@
         function handleScoresEvent(event) {
             console.log('📊 Updating scores:', event);
             
-            // athlete1 maps to blue (player1), athlete2 maps to red (player2)
-            const blueScore = event.athlete1_score || 0;
-            const redScore = event.athlete2_score || 0;
+            // Check for both possible structures (nested and flat)
+            let blueScore = 0;
+            let redScore = 0;
+            
+            if (event.athlete1_score !== undefined && event.athlete2_score !== undefined) {
+                // Flat structure (old format)
+                blueScore = event.athlete1_score;
+                redScore = event.athlete2_score;
+                console.log('📊 Using flat structure for scores');
+            } else if (event.athlete1 && event.athlete1.score !== undefined && event.athlete2 && event.athlete2.score !== undefined) {
+                // Nested structure (new format)
+                blueScore = event.athlete1.score;
+                redScore = event.athlete2.score;
+                console.log('📊 Using nested structure for scores');
+            } else {
+                console.warn('⚠️ No valid score structure found in event');
+            }
+            
+            console.log('📊 Blue score:', blueScore, 'Red score:', redScore);
             
             scoreboardInstance.updateScore('blue', blueScore);
             scoreboardInstance.updateScore('red', redScore);
@@ -340,13 +385,33 @@
         function handleWarningsEvent(event) {
             console.log('⚠️ Warnings event:', event);
             
-            // athlete1 maps to blue (player1), athlete2 maps to red (player2)
-            if (event.athlete1_warnings !== undefined) {
-                scoreboardInstance.updatePenalties('blue', null, event.athlete1_warnings);
+            // Check for both possible structures (nested and flat)
+            let blueWarnings = 0;
+            let redWarnings = 0;
+            
+            if (event.athlete1_warnings !== undefined && event.athlete2_warnings !== undefined) {
+                // Flat structure (old format)
+                blueWarnings = event.athlete1_warnings;
+                redWarnings = event.athlete2_warnings;
+                console.log('⚠️ Using flat structure for warnings');
+            } else if (event.athlete1 && event.athlete1.warnings !== undefined && event.athlete2 && event.athlete2.warnings !== undefined) {
+                // Nested structure (new format)
+                blueWarnings = event.athlete1.warnings;
+                redWarnings = event.athlete2.warnings;
+                console.log('⚠️ Using nested structure for warnings');
+            } else {
+                console.warn('⚠️ No valid warnings structure found in event');
             }
             
-            if (event.athlete2_warnings !== undefined) {
-                scoreboardInstance.updatePenalties('red', null, event.athlete2_warnings);
+            console.log('⚠️ Blue warnings:', blueWarnings, 'Red warnings:', redWarnings);
+            
+            // athlete1 maps to blue (player1), athlete2 maps to red (player2)
+            if (blueWarnings !== undefined) {
+                scoreboardInstance.updatePenalties('blue', null, blueWarnings);
+            }
+            
+            if (redWarnings !== undefined) {
+                scoreboardInstance.updatePenalties('red', null, redWarnings);
             }
         }
         
@@ -641,15 +706,20 @@
                     try {
                         const data = JSON.parse(event.data);
                         console.log('📡 WebSocket message received:', data);
+                        console.log('📡 Raw WebSocket data:', event.data);
                         
                         if (data.type === 'pss_event') {
                             console.log('🎯 PSS event received via WebSocket:', data.data.type);
+                            console.log('🎯 PSS event data:', data.data);
                             handlePssEvent(data.data);
                         } else if (data.type === 'connection') {
                             console.log('🔗 Connection confirmed:', data.message);
+                        } else {
+                            console.log('📡 Other WebSocket message type:', data.type);
                         }
                     } catch (error) {
                         console.error('❌ Error parsing WebSocket message:', error);
+                        console.error('❌ Raw message was:', event.data);
                     }
                 };
                 
