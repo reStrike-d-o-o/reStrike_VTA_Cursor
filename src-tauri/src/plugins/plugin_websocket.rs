@@ -439,6 +439,7 @@ impl WebSocketServer {
                          PssEvent::Clock { time, action } => {
                  if let Ok(mut time_guard) = self.current_time.lock() {
                      *time_guard = time.clone();
+                     log::info!("🕐 Updated current_time to: {}", time);
                  }
                  // Mark match as started when we see clk;02:00;start
                  if time == "02:00" && action.as_deref() == Some("start") {
@@ -499,7 +500,7 @@ impl WebSocketServer {
                  
                  // Log important events with raw message
                  if ["K", "P", "H", "TH", "TB", "R"].contains(&event_code.as_str()) {
-                     log::info!("🎯 IMPORTANT EVENT - {}: athlete={}, point_type={}, raw=pt{}", event_code, athlete, point_type, point_type);
+                     log::info!("🎯 IMPORTANT EVENT - {}: athlete={}, point_type={}, raw=pt{}, time={}", event_code, athlete, point_type, point_type, current_time);
                  }
                 
                 WebSocketMessage::PssEvent {
@@ -522,7 +523,7 @@ impl WebSocketServer {
             
                          PssEvent::Warnings { athlete1_warnings, athlete2_warnings } => {
                  // Log important events with raw message
-                 log::info!("🎯 IMPORTANT EVENT - R: athlete1_warnings={}, athlete2_warnings={}, raw=wg1;{};wg2;{}", athlete1_warnings, athlete2_warnings, athlete1_warnings, athlete2_warnings);
+                 log::info!("🎯 IMPORTANT EVENT - R: athlete1_warnings={}, athlete2_warnings={}, raw=wg1;{};wg2;{}, time={}", athlete1_warnings, athlete2_warnings, athlete1_warnings, athlete2_warnings, current_time);
                  
                  WebSocketMessage::PssEvent {
                     event_type: "warnings".to_string(),
@@ -602,7 +603,7 @@ impl WebSocketServer {
                  WebSocketMessage::PssEvent {
                      event_type: "winner_rounds".to_string(),
                      event_code: "O".to_string(), // Winner rounds -> Other
-                     athlete: "yellow".to_string(), // Winner rounds are referee events
+                     athlete: "".to_string(), // Changed from yellow to empty (less frequent)
                      round: current_round,
                      time: current_time.clone(),
                      timestamp: pss_timestamp.clone(),
@@ -621,7 +622,7 @@ impl WebSocketServer {
                  WebSocketMessage::PssEvent {
                      event_type: "winner".to_string(),
                      event_code: "O".to_string(), // Winner -> Other
-                     athlete: "yellow".to_string(), // Winner announcement is referee event
+                     athlete: "".to_string(), // Changed from yellow to empty (less frequent)
                      round: current_round,
                      time: current_time.clone(),
                      timestamp: pss_timestamp.clone(),
@@ -797,7 +798,7 @@ impl WebSocketServer {
                  WebSocketMessage::PssEvent {
                      event_type: "break".to_string(),
                      event_code: "O".to_string(), // Break -> Other
-                     athlete: "yellow".to_string(), // Break is referee-controlled
+                     athlete: "".to_string(), // Changed from yellow to empty (less frequent)
                      round: current_round,
                      time: time.clone(),
                      timestamp: pss_timestamp.clone(),

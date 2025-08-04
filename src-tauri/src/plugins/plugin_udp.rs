@@ -1092,10 +1092,10 @@ impl UdpServer {
             PssEvent::HitLevel { .. } => "K".to_string(), // Hit Level -> Kick
             PssEvent::Warnings { .. } => "R".to_string(), // Warning/Gam-jeom
             PssEvent::Challenge { .. } => "R".to_string(), // Challenge/IVR
-            PssEvent::Injury { .. } => "R".to_string(), // Injury time -> Referee
-            PssEvent::Break { .. } => "R".to_string(), // Break -> Referee
-            PssEvent::WinnerRounds { .. } => "R".to_string(), // Winner rounds -> Referee
-            PssEvent::Winner { .. } => "R".to_string(), // Winner -> Referee
+            PssEvent::Injury { .. } => "O".to_string(), // Injury time -> Other
+            PssEvent::Break { .. } => "O".to_string(), // Break -> Other
+            PssEvent::WinnerRounds { .. } => "O".to_string(), // Winner rounds -> Other
+            PssEvent::Winner { .. } => "O".to_string(), // Winner -> Other
             PssEvent::Athletes { .. } => "O".to_string(), // Athletes info (pre-match)
             PssEvent::MatchConfig { .. } => "O".to_string(), // Match config (pre-match)
             PssEvent::Scores { .. } => "O".to_string(), // Scores (system event)
@@ -1110,7 +1110,7 @@ impl UdpServer {
                 if raw_msg.starts_with("avt;") {
                     "O".to_string()
                 } else if raw_msg.starts_with("ref;") {
-                    "R".to_string() // Referee events
+                    "O".to_string() // Referee events -> Other (as per user request)
                 } else if raw_msg.starts_with("sup;") {
                     "O".to_string()
                 } else if raw_msg.starts_with("rst;") {
@@ -1118,7 +1118,7 @@ impl UdpServer {
                 } else if raw_msg.starts_with("rsr;") {
                     "O".to_string()
                 } else if raw_msg.starts_with("win;") {
-                    "R".to_string() // Winner events -> Referee
+                    "O".to_string() // Winner events -> Other (as per user request)
                 } else {
                     "O".to_string()
                 }

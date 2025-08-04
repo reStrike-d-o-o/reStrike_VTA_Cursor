@@ -46,7 +46,7 @@ export const useLiveDataEvents = () => {
           
           // Always use backend event_code for live events
           if (typeof eventData.event_code !== 'string' || !eventData.event_code) {
-            console.warn('⚠️ Live event missing event_code from backend:', eventData);
+            // Silently handle missing event_code
           }
           
           // Validate and normalize athlete field
@@ -86,9 +86,7 @@ export const useLiveDataEvents = () => {
         } else if (data.type === 'connection') {
           useLiveDataStore.getState().setConnectionStatus(data.connected);
         } else if (data.type === 'error') {
-          console.error('WebSocket error:', data.message);
-        } else if (data.type === 'error') {
-          console.error('WebSocket error:', data.message);
+          // Silently handle WebSocket errors
         }
       });
 
