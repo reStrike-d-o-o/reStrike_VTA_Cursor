@@ -4,6 +4,7 @@ use tauri::{State, Emitter, Error as TauriError};
 use crate::core::app::App;
 use crate::logging::archival::{AutoArchiveConfig, ArchiveSchedule};
 use dirs;
+use crate::utils::simulation_env::ensure_simulation_env;
 
 
 
@@ -4211,10 +4212,18 @@ pub async fn simulation_start(
     _app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Starting simulation: mode={}, scenario={}, duration={}", mode, scenario, duration);
-    
-    let result = std::process::Command::new("python")
+    let (python_cmd, sim_main) = match ensure_simulation_env() {
+        Ok(v) => v,
+        Err(e) => {
+            return Ok(serde_json::json!({
+                "success": false,
+                "error": format!("Simulation environment error: {:?}", e)
+            }))
+        }
+    };
+    let result = std::process::Command::new(&python_cmd)
         .args(&[
-            "../simulation/main.py",
+            sim_main.to_str().unwrap(),
             "--mode", &mode,
             "--scenario", &scenario,
             "--duration", &duration.to_string(),
@@ -4222,7 +4231,6 @@ pub async fn simulation_start(
             "--port", "8888"
         ])
         .spawn();
-    
     match result {
         Ok(_) => Ok(serde_json::json!({
             "success": true,
@@ -4292,9 +4300,19 @@ pub async fn simulation_send_event(
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Sending simulation event: type={}, params={:?}", event_type, params);
     
-    let result = std::process::Command::new("python")
+    let (python_cmd, sim_main) = match ensure_simulation_env() {
+        Ok(v) => v,
+        Err(e) => {
+            return Ok(serde_json::json!({
+                "success": false,
+                "error": format!("Simulation environment error: {:?}", e)
+            }))
+        }
+    };
+    
+    let result = std::process::Command::new(&python_cmd)
         .args(&[
-            "../simulation/main.py",
+            sim_main.to_str().unwrap(),
             "--mode", "interactive",
             "--host", "127.0.0.1",
             "--port", "8888"
@@ -4318,9 +4336,19 @@ pub async fn simulation_send_event(
 pub async fn simulation_get_scenarios(_app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting available automated scenarios");
     
-    let result = std::process::Command::new("python")
+    let (python_cmd, sim_main) = match ensure_simulation_env() {
+        Ok(v) => v,
+        Err(e) => {
+            return Ok(serde_json::json!({
+                "success": false,
+                "error": format!("Simulation environment error: {:?}", e)
+            }))
+        }
+    };
+    
+    let result = std::process::Command::new(&python_cmd)
         .args(&[
-            "../simulation/main.py",
+            sim_main.to_str().unwrap(),
             "--list-scenarios"
         ])
         .output();
@@ -4353,8 +4381,18 @@ pub async fn simulation_run_automated(
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Running automated simulation: scenario={}", scenario_name);
     
+    let (python_cmd, sim_main) = match ensure_simulation_env() {
+        Ok(v) => v,
+        Err(e) => {
+            return Ok(serde_json::json!({
+                "success": false,
+                "error": format!("Simulation environment error: {:?}", e)
+            }))
+        }
+    };
+    
     let mut args = vec![
-        "../simulation/main.py".to_string(),
+        sim_main.to_str().unwrap().to_string(),
         "--mode".to_string(),
         "automated".to_string(),
         "--scenario".to_string(),
@@ -4372,7 +4410,7 @@ pub async fn simulation_run_automated(
         }
     }
     
-    let result = std::process::Command::new("python")
+    let result = std::process::Command::new(&python_cmd)
         .args(&args)
         .spawn();
     
@@ -4406,14 +4444,19 @@ pub async fn simulation_run_automated(
                 };
                 
                 // Always try to get scenarios
-                let scenarios_result = std::process::Command::new("python")
-                    .args(&["../simulation/main.py", "--list-scenarios"])
-                    .output();
-                
-                let scenarios = match scenarios_result {
-                    Ok(output) => {
-                        let output_str = String::from_utf8_lossy(&output.stdout);
-                        parse_scenarios_from_output(&output_str)
+                let scenarios = match ensure_simulation_env() {
+                    Ok((python_cmd, sim_main)) => {
+                        let scenarios_result = std::process::Command::new(&python_cmd)
+                            .args(&[sim_main.to_str().unwrap(), "--list-scenarios"])
+                            .output();
+                        
+                        match scenarios_result {
+                            Ok(output) => {
+                                let output_str = String::from_utf8_lossy(&output.stdout);
+                                parse_scenarios_from_output(&output_str)
+                            },
+                            Err(_) => vec![]
+                        }
                     },
                     Err(_) => vec![]
                 };
@@ -4436,9 +4479,19 @@ pub async fn simulation_run_automated(
             pub async fn simulation_run_self_test(_app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
                 log::info!("Running comprehensive self-test");
                 
-                let result = std::process::Command::new("python")
+                let (python_cmd, sim_main) = match ensure_simulation_env() {
+                    Ok(v) => v,
+                    Err(e) => {
+                        return Ok(serde_json::json!({
+                            "success": false,
+                            "error": format!("Simulation environment error: {:?}", e)
+                        }))
+                    }
+                };
+                
+                let result = std::process::Command::new(&python_cmd)
                     .args(&[
-                        "../simulation/main.py",
+                        sim_main.to_str().unwrap(),
                         "--self-test"
                     ])
                     .output();
@@ -4480,15 +4533,27 @@ pub async fn simulation_run_automated(
             pub async fn simulation_get_self_test_report(_app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
                 log::info!("Getting self-test report");
                 
-                let report_path = "../simulation/self_test_report.md";
-                let result = std::fs::read_to_string(report_path);
+                let report_path = match crate::utils::simulation_env::get_simulation_main_py() {
+                    Ok(sim_main) => {
+                        let sim_dir = sim_main.parent().unwrap();
+                        sim_dir.join("self_test_report.md")
+                    },
+                    Err(e) => {
+                        return Ok(serde_json::json!({
+                            "success": false,
+                            "error": format!("Failed to resolve simulation path: {:?}", e)
+                        }))
+                    }
+                };
+                
+                let result = std::fs::read_to_string(&report_path);
                 
                 match result {
                     Ok(content) => Ok(serde_json::json!({
                         "success": true,
                         "data": {
                             "report": content,
-                            "path": report_path
+                            "path": report_path.to_str().unwrap_or("unknown")
                         }
                     })),
                     Err(e) => Ok(serde_json::json!({
@@ -4502,9 +4567,19 @@ pub async fn simulation_run_automated(
             pub async fn simulation_get_self_test_categories(_app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
                 log::info!("Getting self-test categories");
                 
-                let result = std::process::Command::new("python")
+                let (python_cmd, sim_main) = match ensure_simulation_env() {
+                    Ok(v) => v,
+                    Err(e) => {
+                        return Ok(serde_json::json!({
+                            "success": false,
+                            "error": format!("Simulation environment error: {:?}", e)
+                        }))
+                    }
+                };
+                
+                let result = std::process::Command::new(&python_cmd)
                     .args(&[
-                        "../simulation/main.py",
+                        sim_main.to_str().unwrap(),
                         "--list-test-categories"
                     ])
                     .output();
@@ -4555,10 +4630,20 @@ pub async fn simulation_run_automated(
             ) -> Result<serde_json::Value, TauriError> {
                 log::info!("Running selective self-test for categories: {:?}", selected_categories);
                 
-                let mut args = vec!["simulation/main.py", "--self-test"];
+                let (python_cmd, sim_main) = match ensure_simulation_env() {
+                    Ok(v) => v,
+                    Err(e) => {
+                        return Ok(serde_json::json!({
+                            "success": false,
+                            "error": format!("Simulation environment error: {:?}", e)
+                        }))
+                    }
+                };
+                
+                let mut args = vec![sim_main.to_str().unwrap(), "--self-test"];
                 args.extend(selected_categories.iter().map(|s| s.as_str()));
                 
-                let result = std::process::Command::new("python")
+                let result = std::process::Command::new(&python_cmd)
                     .args(&args)
                     .output();
                 
