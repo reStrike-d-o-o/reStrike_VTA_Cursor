@@ -145,6 +145,11 @@ pub enum PssEvent {
     FightLoaded,
     FightReady,
     
+    // Supervision events (warnings reset)
+    Supervision {
+        value: u8, // 0 = reset warnings
+    },
+    
     // Raw message for unrecognized patterns
     Raw(String),
 }
@@ -1371,6 +1376,14 @@ impl UdpServer {
                     "timestamp": chrono::Utc::now().timestamp_millis()
                 })
             }
+            PssEvent::Supervision { value } => {
+                serde_json::json!({
+                    "type": "supervision",
+                    "value": value,
+                    "description": format!("Supervision - Value: {}", value),
+                    "timestamp": chrono::Utc::now().timestamp_millis()
+                })
+            }
             PssEvent::Raw(message) => {
                 serde_json::json!({
                     "type": "raw",
@@ -1503,6 +1516,9 @@ impl UdpServer {
             ]),
             PssEvent::Round { current_round } => Some(vec![
                 ("current_round".to_string(), Some(current_round.to_string()), "u8".to_string()),
+            ]),
+            PssEvent::Supervision { value } => Some(vec![
+                ("value".to_string(), Some(value.to_string()), "u8".to_string()),
             ]),
             PssEvent::Raw(message) => Some(vec![
                 ("message".to_string(), Some(message.clone()), "String".to_string()),
@@ -2409,6 +2425,13 @@ impl UdpServer {
                 }
             }
 
+            // Supervision events (sup)
+            "sup" => {
+                let value = parse_u8(1, "supervision value", 0, 255)?;
+                log::debug!("✅ Parsed Supervision event: value={}", value);
+                Ok(PssEvent::Supervision { value })
+            }
+
             // Winner events (win)
             "win" => {
                 if parts.len() > 1 {
@@ -2437,11 +2460,6 @@ impl UdpServer {
             "ref" => {
                 // Referee/judge event - handle as raw for now
                 log::debug!("📋 Referee event: {}", message);
-                Ok(PssEvent::Raw(message.to_string()))
-            }
-            "sup" => {
-                // Supervision event - handle as raw for now
-                log::debug!("📋 Supervision event: {}", message);
                 Ok(PssEvent::Raw(message.to_string()))
             }
             "rst" => {

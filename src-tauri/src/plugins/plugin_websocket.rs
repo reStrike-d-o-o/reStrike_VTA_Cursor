@@ -717,10 +717,29 @@ impl WebSocketServer {
                     round: current_round,
                     time: current_time.clone(),
                     timestamp: Utc::now().to_rfc3339(),
-                    raw_data: "fr".to_string(),
+                    raw_data: "rdy;FightReady".to_string(),
                     description: "Fight Ready".to_string(),
                     action: None,
-                    structured_data: serde_json::json!({}),
+                    structured_data: serde_json::json!({
+                        "status": "ready"
+                    }),
+                }
+            }
+            
+            PssEvent::Supervision { value } => {
+                WebSocketMessage::PssEvent {
+                    event_type: "supervision".to_string(),
+                    event_code: "".to_string(),
+                    athlete: "".to_string(),
+                    round: current_round,
+                    time: current_time.clone(),
+                    timestamp: Utc::now().to_rfc3339(),
+                    raw_data: format!("sup;{}", value),
+                    description: format!("Supervision - Value: {}", value),
+                    action: None,
+                    structured_data: serde_json::json!({
+                        "value": value
+                    }),
                 }
             }
             

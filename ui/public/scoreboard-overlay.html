@@ -245,6 +245,9 @@
                     case 'round':
                         handleRoundEvent(event);
                         break;
+                    case 'supervision':
+                        handleSupervisionEvent(event);
+                        break;
                     case 'fight_ready':
                         handleFightReadyEvent(event);
                         break;
@@ -492,6 +495,10 @@
             scoreboardInstance.updateScore('blue', 0);
             scoreboardInstance.updateScore('red', 0);
             
+            // Reset warnings to 0:0 for new round
+            scoreboardInstance.updatePenalties('blue', null, 0);
+            scoreboardInstance.updatePenalties('red', null, 0);
+            
             // Update rounds won - athlete1 (player1/blue) = winner 1, athlete2 (player2/red) = winner 2
             if (event.round1_winner !== undefined) {
                 const blueWins = (event.round1_winner === 1 ? 1 : 0) + 
@@ -546,6 +553,49 @@
             if (event.current_round) {
                 scoreboardInstance.updateRound(event.current_round);
                 console.log(`🔄 Updated to round: ${event.current_round}`);
+                
+                // Reset clock to 2:00 when a new round starts
+                scoreboardInstance.updateTimer(2, 0);
+                console.log('⏰ Reset clock to 2:00 for new round');
+            }
+        }
+        
+        // Handle supervision event (warnings reset)
+        function handleSupervisionEvent(event) {
+            console.log('👁️ Supervision event:', event);
+            
+            // Try to parse raw_data first, then fall back to direct access
+            let supervisionData = null;
+            
+            if (event.raw_data) {
+                try {
+                    supervisionData = JSON.parse(event.raw_data);
+                    console.log('👁️ Parsed raw_data:', supervisionData);
+                } catch (error) {
+                    console.error('❌ Failed to parse raw_data:', error);
+                }
+            }
+            
+            // Use parsed data if available, otherwise try direct access
+            const data = supervisionData || event;
+            console.log('👁️ Using data source:', supervisionData ? 'raw_data' : 'direct');
+            
+            // Check for supervision value (0 = reset warnings)
+            let supervisionValue = 0;
+            
+            if (data.supervision !== undefined) {
+                supervisionValue = data.supervision;
+            } else if (data.value !== undefined) {
+                supervisionValue = data.value;
+            }
+            
+            console.log('👁️ Supervision value:', supervisionValue);
+            
+            // If supervision is 0, reset warnings
+            if (supervisionValue === 0) {
+                console.log('🔄 Resetting warnings due to supervision event');
+                scoreboardInstance.updatePenalties('blue', null, 0);
+                scoreboardInstance.updatePenalties('red', null, 0);
             }
         }
         
@@ -752,6 +802,21 @@
                     handleScoresEvent(scores);
                 } catch (error) {
                     console.error('❌ Error parsing structured current_scores:', error);
+                }
+            }
+            
+            // Parse supervision (sv;) lines
+            else if (event.message.startsWith('sv;')) {
+                try {
+                    const parts = event.message.split(';');
+                    const supervision = {
+                        value: parseInt(parts[1]) || 0,
+                        type: 'supervision'
+                    };
+                    
+                    handleSupervisionEvent(supervision);
+                } catch (error) {
+                    console.error('❌ Error parsing raw supervision line:', error);
                 }
             }
             
