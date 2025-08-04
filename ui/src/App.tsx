@@ -4,6 +4,7 @@ import AdvancedPanel from './components/layouts/AdvancedPanel';
 import { useAppStore } from './stores';
 import { useEnvironment } from './hooks/useEnvironment';
 import { usePssEvents } from './hooks/usePssEvents';
+import { useLiveDataEvents } from './hooks/useLiveDataEvents';
 import { invoke } from '@tauri-apps/api/core';
 
 import { useTriggersStore } from './stores/triggersStore';
@@ -20,6 +21,9 @@ const App: React.FC = () => {
   // Initialize PSS event listener for real-time events
   const { setupEventListener, fetchPendingEvents } = usePssEvents();
   
+  // Initialize live data events for Event Table
+  const { isConnected: liveDataConnected, eventCount } = useLiveDataEvents();
+  
   // Debug environment detection
   React.useEffect(() => {
     // console.log('🌍 App Environment Detection:');
@@ -28,6 +32,14 @@ const App: React.FC = () => {
     // console.log('  - Is Loading:', isLoading);
     // console.log('  - Window Tauri:', typeof window !== 'undefined' ? window.__TAURI__ : 'N/A');
   }, [tauriAvailable, environment, isLoading]);
+
+  // Debug live data connection
+  React.useEffect(() => {
+    console.log('📡 Live Data Events Status:', { 
+      isConnected: liveDataConnected, 
+      eventCount 
+    });
+  }, [liveDataConnected, eventCount]);
 
   // Load window settings and set startup position
   React.useEffect(() => {
