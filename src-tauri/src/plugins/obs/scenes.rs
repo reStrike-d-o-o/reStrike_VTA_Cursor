@@ -2,7 +2,7 @@
 // Handles scene management, switching, and source manipulation
 // Extracted from the original plugin_obs.rs
 
-use crate::types::{AppError, AppResult};
+use crate::types::{AppResult, AppError};
 use super::types::*;
 
 /// OBS Scenes Plugin for scene management
@@ -72,32 +72,119 @@ impl ObsScenesPlugin {
         Ok(Vec::new())
     }
 
-    /// Send a scene-related request to OBS
+    /// Send a scene-related request to OBS using the core plugin
     async fn send_scene_request(
         &self,
         connection_name: &str,
         request_type: &str,
-        _request_data: Option<serde_json::Value>,
+        request_data: Option<serde_json::Value>,
     ) -> AppResult<serde_json::Value> {
-        // This will be implemented when we integrate with the core plugin
-        // For now, this is a placeholder that will be replaced with actual implementation
-        log::debug!("[OBS_SCENES] Sending request '{}' to '{}'", request_type, connection_name);
+        log::debug!("[OBS_SCENES] send_scene_request: {} for '{}'", request_type, connection_name);
         
-        // TODO: Integrate with core plugin's send_request method
-        // This is a placeholder response
-        match request_type {
-            "GetCurrentProgramScene" => Ok(serde_json::json!({
-                "currentProgramSceneName": "Default Scene"
-            })),
-            "GetSceneList" => Ok(serde_json::json!({
-                "scenes": [
-                    {"sceneName": "Default Scene"},
-                    {"sceneName": "Scene 2"},
-                    {"sceneName": "Scene 3"}
-                ]
-            })),
-            _ => Ok(serde_json::json!({}))
+        // Use the core plugin's send_request method instead of handling WebSocket directly
+        let request_data = request_data.unwrap_or_else(|| serde_json::json!({}));
+        
+        // Get the core plugin from the context
+        if let Some(core_plugin) = self.context.core_plugin.as_ref() {
+            core_plugin.send_request(connection_name, request_type, Some(request_data)).await
+        } else {
+            Err(AppError::ConfigError("Core plugin not available".to_string()))
         }
+    }
+
+    /// Get studio mode status
+    pub async fn get_studio_mode(&self, connection_name: &str) -> AppResult<bool> {
+        log::debug!("[OBS_SCENES] get_studio_mode called for '{}'", connection_name);
+        
+        let response = self.send_scene_request(connection_name, "GetStudioModeEnabled", None).await?;
+        
+        if let Some(enabled) = response.get("studioModeEnabled").and_then(|v| v.as_bool()) {
+            log::debug!("[OBS_SCENES] Studio mode for '{}': {}", connection_name, enabled);
+            return Ok(enabled);
+        }
+        
+        Err(AppError::ConfigError("Failed to get studio mode status".to_string()))
+    }
+
+    /// Set studio mode
+    pub async fn set_studio_mode(&self, connection_name: &str, enabled: bool) -> AppResult<()> {
+        log::info!("[OBS_SCENES] set_studio_mode called for '{}' to '{}'", connection_name, enabled);
+        
+        let request_data = serde_json::json!({
+            "studioModeEnabled": enabled
+        });
+        
+        let _response = self.send_scene_request(connection_name, "SetStudioModeEnabled", Some(request_data)).await?;
+        
+        log::info!("[OBS_SCENES] Studio mode changed for '{}' to '{}'", connection_name, enabled);
+        Ok(())
+    }
+
+    /// Get sources in a scene
+    pub async fn get_sources(&self, connection_name: &str, scene_name: &str) -> AppResult<Vec<String>> {
+        log::debug!("[OBS_SCENES] get_sources called for '{}' in scene '{}'", connection_name, scene_name);
+        
+        let request_data = serde_json::json!({
+            "sceneName": scene_name
+        });
+        
+        let response = self.send_scene_request(connection_name, "GetSceneItemList", Some(request_data)).await?;
+        
+        if let Some(scene_items) = response.get("sceneItems") {
+            if let Some(items_array) = scene_items.as_array() {
+                let source_names: Vec<String> = items_array
+                    .iter()
+                    .filter_map(|item| {
+                        item.get("sourceName")?.as_str().map(|s| s.to_string())
+                    })
+                    .collect();
+                
+                log::debug!("[OBS_SCENES] Found {} sources in scene '{}' for '{}'", source_names.len(), scene_name, connection_name);
+                return Ok(source_names);
+            }
+        }
+        
+        log::warn!("[OBS_SCENES] Failed to parse sources response");
+        Ok(Vec::new())
+    }
+
+    /// Set source visibility
+    pub async fn set_source_visibility(&self, connection_name: &str, scene_name: &str, source_name: &str, visible: bool) -> AppResult<()> {
+        log::info!("[OBS_SCENES] set_source_visibility called for '{}' in scene '{}', source '{}' to '{}'", 
+            connection_name, scene_name, source_name, visible);
+        
+        let request_data = serde_json::json!({
+            "sceneName": scene_name,
+            "sourceName": source_name,
+            "sceneItemEnabled": visible
+        });
+        
+        let _response = self.send_scene_request(connection_name, "SetSceneItemEnabled", Some(request_data)).await?;
+        
+        log::info!("[OBS_SCENES] Source visibility changed for '{}' in scene '{}', source '{}' to '{}'", 
+            connection_name, scene_name, source_name, visible);
+        Ok(())
+    }
+
+    /// Get source visibility
+    pub async fn get_source_visibility(&self, connection_name: &str, scene_name: &str, source_name: &str) -> AppResult<bool> {
+        log::debug!("[OBS_SCENES] get_source_visibility called for '{}' in scene '{}', source '{}'", 
+            connection_name, scene_name, source_name);
+        
+        let request_data = serde_json::json!({
+            "sceneName": scene_name,
+            "sourceName": source_name
+        });
+        
+        let response = self.send_scene_request(connection_name, "GetSceneItemEnabled", Some(request_data)).await?;
+        
+        if let Some(enabled) = response.get("sceneItemEnabled").and_then(|v| v.as_bool()) {
+            log::debug!("[OBS_SCENES] Source visibility for '{}' in scene '{}', source '{}': {}", 
+                connection_name, scene_name, source_name, enabled);
+            return Ok(enabled);
+        }
+        
+        Err(AppError::ConfigError("Failed to get source visibility".to_string()))
     }
 
     /// Handle scene change events

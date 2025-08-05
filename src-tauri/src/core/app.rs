@@ -1,7 +1,7 @@
 //! Main application class and lifecycle management
 
 use crate::types::{AppResult, AppState, AppView};
-use crate::plugins::{PlaybackPlugin, UdpPlugin, StorePlugin, LicensePlugin, CpuMonitorPlugin, ProtocolManager, DatabasePlugin, WebSocketPlugin, TournamentPlugin, EventCache, EventStreamProcessor, EventDistributor, AdvancedAnalytics};
+use crate::plugins::{PlaybackPlugin, UdpPlugin, StorePlugin, LicensePlugin, CpuMonitorPlugin, ProtocolManager, DatabasePlugin, WebSocketPlugin, TournamentPlugin, EventCache, EventStreamProcessor, EventDistributor, AdvancedAnalytics, YouTubeApiPlugin};
 use crate::plugins::obs::ObsPluginManager; // Use new modular OBS plugin system
 use crate::logging::LogManager;
 use crate::config::ConfigManager;
@@ -21,6 +21,7 @@ pub struct App {
     state: Arc<RwLock<AppState>>,
     config_manager: ConfigManager,
     obs_plugin_manager: Arc<ObsPluginManager>, // Use new modular OBS plugin manager
+    youtube_api_plugin: Arc<Mutex<YouTubeApiPlugin>>, // YouTube API integration
     playback_plugin: PlaybackPlugin,
     udp_plugin: UdpPlugin,
     store_plugin: StorePlugin,
@@ -74,6 +75,9 @@ impl App {
         let obs_plugin_manager = Arc::new(ObsPluginManager::new()
             .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to create OBS plugin manager: {}", e)))?);
         log::info!("✅ OBS plugin manager initialized");
+        
+        let youtube_api_plugin = Arc::new(Mutex::new(YouTubeApiPlugin::new()));
+        log::info!("✅ YouTube API plugin initialized");
         
         let playback_plugin = PlaybackPlugin::new(crate::plugins::plugin_playback::PlaybackConfig::default(), playback_event_tx);
         log::info!("✅ Playback plugin initialized");
@@ -147,6 +151,7 @@ impl App {
             state,
             config_manager,
             obs_plugin_manager,
+            youtube_api_plugin,
             playback_plugin,
             udp_plugin,
             store_plugin,
@@ -252,6 +257,10 @@ impl App {
         &self.obs_plugin_manager
     }
     
+    pub fn youtube_api_plugin(&self) -> &Arc<Mutex<YouTubeApiPlugin>> {
+        &self.youtube_api_plugin
+    }
+    
     /// Get playback plugin reference
     pub fn playback_plugin(&self) -> &PlaybackPlugin {
         &self.playback_plugin
@@ -322,6 +331,20 @@ impl App {
     
     pub fn advanced_analytics(&self) -> &Arc<AdvancedAnalytics> {
         &self.advanced_analytics
+    }
+
+    /// Get the default connection name for OBS operations
+    pub async fn get_default_connection_name(&self) -> AppResult<String> {
+        // Try to get the first available connection name
+        let connection_names = self.obs_plugin().get_connection_names().await;
+        
+        if connection_names.is_empty() {
+            // If no connections exist, return a default name
+            Ok("OBS_REC".to_string())
+        } else {
+            // Return the first available connection
+            Ok(connection_names[0].clone())
+        }
     }
     
     /// Set the Tauri app handle for real-time frontend emission

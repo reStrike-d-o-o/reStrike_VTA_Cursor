@@ -51,6 +51,9 @@ dirs = "5"
 urlencoding = "2.1"
 winapi = { version = "0.3", features = ["winsock2"] }
 
+# YouTube API Integration (using existing oauth2 and reqwest)
+google-apis-common = "8.0.0"
+
 [dev-dependencies]
 tempfile = "3.8"
 

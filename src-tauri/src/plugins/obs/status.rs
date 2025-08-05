@@ -7,12 +7,15 @@ use super::types::*;
 use super::recording::ObsRecordingPlugin;
 use super::streaming::ObsStreamingPlugin;
 use std::sync::Arc;
+use std::time::{Instant, Duration};
 
 /// Status plugin for OBS operations
 pub struct ObsStatusPlugin {
     context: ObsPluginContext,
     recording_plugin: Arc<ObsRecordingPlugin>,
     streaming_plugin: Arc<ObsStreamingPlugin>,
+    last_cpu_check: Arc<tokio::sync::Mutex<Instant>>,
+    cached_cpu_usage: Arc<tokio::sync::Mutex<f64>>,
 }
 
 impl ObsStatusPlugin {
@@ -26,6 +29,8 @@ impl ObsStatusPlugin {
             context,
             recording_plugin,
             streaming_plugin,
+            last_cpu_check: Arc::new(tokio::sync::Mutex::new(Instant::now())),
+            cached_cpu_usage: Arc::new(tokio::sync::Mutex::new(0.0)),
         }
     }
 
@@ -49,6 +54,7 @@ impl ObsStatusPlugin {
                     Ok(is_recording) => {
                         if is_recording {
                             status_info.is_recording = true;
+                            status_info.recording_connection = Some(connection_name.clone());
                         }
                     }
                     Err(e) => {
@@ -61,6 +67,7 @@ impl ObsStatusPlugin {
                     Ok(is_streaming) => {
                         if is_streaming {
                             status_info.is_streaming = true;
+                            status_info.streaming_connection = Some(connection_name.clone());
                         }
                     }
                     Err(e) => {
@@ -77,16 +84,65 @@ impl ObsStatusPlugin {
             }
         }
 
-        // Get CPU usage (placeholder for now)
+        // Get CPU usage with caching
         status_info.cpu_usage = self.get_cpu_usage().await;
 
         Ok(status_info)
     }
 
-    /// Get CPU usage (placeholder implementation)
+    /// Get CPU usage with caching to avoid excessive system calls
     async fn get_cpu_usage(&self) -> f64 {
-        // This would integrate with system monitoring
-        // For now, return a placeholder value
+        let mut last_check = self.last_cpu_check.lock().await;
+        let mut cached_usage = self.cached_cpu_usage.lock().await;
+        
+        // Only update CPU usage every 2 seconds to avoid excessive system calls
+        if last_check.elapsed() > Duration::from_secs(2) {
+            *cached_usage = self.get_real_cpu_usage().await;
+            *last_check = Instant::now();
+        }
+        
+        *cached_usage
+    }
+
+    /// Get real CPU usage from system
+    async fn get_real_cpu_usage(&self) -> f64 {
+        // Try to get CPU usage from system monitoring
+        // This is a simplified implementation - in a real system, you'd want to use
+        // a proper system monitoring library like sysinfo
+        
+        #[cfg(target_os = "windows")]
+        {
+            // Windows-specific CPU monitoring
+            if let Ok(output) = std::process::Command::new("wmic")
+                .args(&["cpu", "get", "loadpercentage", "/format:value"])
+                .output() {
+                if let Ok(output_str) = String::from_utf8(output.stdout) {
+                    for line in output_str.lines() {
+                        if line.starts_with("LoadPercentage=") {
+                            if let Ok(usage) = line.split('=').nth(1).unwrap_or("0").parse::<f64>() {
+                                return usage / 100.0; // Convert percentage to decimal
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        #[cfg(not(target_os = "windows"))]
+        {
+            // Unix-like systems
+            if let Ok(contents) = tokio::fs::read_to_string("/proc/loadavg").await {
+                if let Some(first) = contents.split_whitespace().next() {
+                    if let Ok(load) = first.parse::<f64>() {
+                        // Convert load average to approximate CPU usage
+                        // This is a rough approximation
+                        return (load / num_cpus::get() as f64).min(1.0);
+                    }
+                }
+            }
+        }
+        
+        // Fallback: return a reasonable default
         0.0
     }
 
@@ -99,6 +155,37 @@ impl ObsStatusPlugin {
         } else {
             Err(crate::types::AppError::ConfigError(format!("Connection '{}' not found", connection_name)))
         }
+    }
+
+    /// Get memory usage for OBS processes
+    pub async fn get_memory_usage(&self) -> AppResult<f64> {
+        // Try to find OBS processes and get their memory usage
+        #[cfg(target_os = "windows")]
+        {
+            if let Ok(output) = std::process::Command::new("tasklist")
+                .args(&["/FI", "IMAGENAME eq obs64.exe", "/FO", "CSV"])
+                .output() {
+                if let Ok(output_str) = String::from_utf8(output.stdout) {
+                    for line in output_str.lines().skip(1) { // Skip header
+                        let parts: Vec<&str> = line.split(',').collect();
+                        if parts.len() >= 5 {
+                            if let Ok(memory_kb) = parts[4].trim_matches('"').replace(",", "").parse::<u64>() {
+                                return Ok(memory_kb as f64 / 1024.0 / 1024.0); // Convert to GB
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        Ok(0.0)
+    }
+
+    /// Get FPS for OBS (if available)
+    pub async fn get_fps(&self) -> AppResult<f64> {
+        // This would require OBS WebSocket API calls to get current FPS
+        // For now, return a placeholder
+        Ok(30.0)
     }
 
     /// Handle status update events
@@ -115,6 +202,199 @@ impl ObsStatusPlugin {
         if let Err(e) = self.context.event_tx.send(event) {
             log::error!("[OBS_STATUS] Failed to emit status update event: {}", e);
         }
+    }
+
+    /// Get detailed system information
+    pub async fn get_system_info(&self) -> AppResult<SystemInfo> {
+        let cpu_usage = self.get_cpu_usage().await;
+        let memory_usage = self.get_memory_usage().await?;
+        let fps = self.get_fps().await?;
+        
+        Ok(SystemInfo {
+            cpu_usage,
+            memory_usage,
+            fps,
+            timestamp: chrono::Utc::now(),
+        })
+    }
+
+    /// Get detailed performance metrics
+    pub async fn get_performance_metrics(&self) -> AppResult<serde_json::Value> {
+        let cpu_usage = self.get_cpu_usage().await;
+        let memory_usage = self.get_memory_usage().await?;
+        let fps = self.get_fps().await?;
+        let disk_usage = self.get_disk_usage().await?;
+        let network_stats = self.get_network_stats().await?;
+        
+        Ok(serde_json::json!({
+            "cpu": {
+                "usage_percent": cpu_usage * 100.0,
+                "cores": num_cpus::get(),
+                "frequency_mhz": self.get_cpu_frequency().await?
+            },
+            "memory": {
+                "usage_gb": memory_usage,
+                "total_gb": self.get_total_memory().await?,
+                "available_gb": self.get_available_memory().await?
+            },
+            "disk": {
+                "usage_percent": disk_usage,
+                "free_gb": self.get_free_disk_space().await?
+            },
+            "network": network_stats,
+            "obs": {
+                "fps": fps,
+                "dropped_frames": self.get_dropped_frames().await?,
+                "lagged_frames": self.get_lagged_frames().await?
+            },
+            "timestamp": chrono::Utc::now().to_rfc3339()
+        }))
+    }
+
+    /// Get disk usage percentage
+    async fn get_disk_usage(&self) -> AppResult<f64> {
+        #[cfg(target_os = "windows")]
+        {
+            if let Ok(output) = std::process::Command::new("wmic")
+                .args(&["logicaldisk", "where", "DeviceID='C:'", "get", "Size,FreeSpace", "/format:value"])
+                .output() {
+                if let Ok(output_str) = String::from_utf8(output.stdout) {
+                    let mut total = 0u64;
+                    let mut free = 0u64;
+                    
+                    for line in output_str.lines() {
+                        if line.starts_with("Size=") {
+                            if let Ok(size) = line.split('=').nth(1).unwrap_or("0").parse::<u64>() {
+                                total = size;
+                            }
+                        } else if line.starts_with("FreeSpace=") {
+                            if let Ok(free_space) = line.split('=').nth(1).unwrap_or("0").parse::<u64>() {
+                                free = free_space;
+                            }
+                        }
+                    }
+                    
+                    if total > 0 {
+                        return Ok((total - free) as f64 / total as f64);
+                    }
+                }
+            }
+        }
+        
+        Ok(0.0)
+    }
+
+    /// Get network statistics
+    async fn get_network_stats(&self) -> AppResult<serde_json::Value> {
+        // This would require more complex network monitoring
+        // For now, return placeholder data
+        Ok(serde_json::json!({
+            "bytes_sent": 0,
+            "bytes_received": 0,
+            "packets_sent": 0,
+            "packets_received": 0,
+            "connection_count": 0
+        }))
+    }
+
+    /// Get CPU frequency
+    async fn get_cpu_frequency(&self) -> AppResult<f64> {
+        #[cfg(target_os = "windows")]
+        {
+            if let Ok(output) = std::process::Command::new("wmic")
+                .args(&["cpu", "get", "MaxClockSpeed", "/format:value"])
+                .output() {
+                if let Ok(output_str) = String::from_utf8(output.stdout) {
+                    for line in output_str.lines() {
+                        if line.starts_with("MaxClockSpeed=") {
+                            if let Ok(freq) = line.split('=').nth(1).unwrap_or("0").parse::<f64>() {
+                                return Ok(freq);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        Ok(0.0)
+    }
+
+    /// Get total memory
+    async fn get_total_memory(&self) -> AppResult<f64> {
+        #[cfg(target_os = "windows")]
+        {
+            if let Ok(output) = std::process::Command::new("wmic")
+                .args(&["computersystem", "get", "TotalPhysicalMemory", "/format:value"])
+                .output() {
+                if let Ok(output_str) = String::from_utf8(output.stdout) {
+                    for line in output_str.lines() {
+                        if line.starts_with("TotalPhysicalMemory=") {
+                            if let Ok(memory) = line.split('=').nth(1).unwrap_or("0").parse::<u64>() {
+                                return Ok(memory as f64 / 1024.0 / 1024.0 / 1024.0); // Convert to GB
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        Ok(0.0)
+    }
+
+    /// Get available memory
+    async fn get_available_memory(&self) -> AppResult<f64> {
+        #[cfg(target_os = "windows")]
+        {
+            if let Ok(output) = std::process::Command::new("wmic")
+                .args(&["os", "get", "FreePhysicalMemory", "/format:value"])
+                .output() {
+                if let Ok(output_str) = String::from_utf8(output.stdout) {
+                    for line in output_str.lines() {
+                        if line.starts_with("FreePhysicalMemory=") {
+                            if let Ok(memory) = line.split('=').nth(1).unwrap_or("0").parse::<u64>() {
+                                return Ok(memory as f64 / 1024.0 / 1024.0); // Convert to GB
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        Ok(0.0)
+    }
+
+    /// Get free disk space
+    async fn get_free_disk_space(&self) -> AppResult<f64> {
+        #[cfg(target_os = "windows")]
+        {
+            if let Ok(output) = std::process::Command::new("wmic")
+                .args(&["logicaldisk", "where", "DeviceID='C:'", "get", "FreeSpace", "/format:value"])
+                .output() {
+                if let Ok(output_str) = String::from_utf8(output.stdout) {
+                    for line in output_str.lines() {
+                        if line.starts_with("FreeSpace=") {
+                            if let Ok(free_space) = line.split('=').nth(1).unwrap_or("0").parse::<u64>() {
+                                return Ok(free_space as f64 / 1024.0 / 1024.0 / 1024.0); // Convert to GB
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        Ok(0.0)
+    }
+
+    /// Get dropped frames (placeholder)
+    async fn get_dropped_frames(&self) -> AppResult<u64> {
+        // This would require OBS WebSocket API calls to get actual dropped frames
+        Ok(0)
+    }
+
+    /// Get lagged frames (placeholder)
+    async fn get_lagged_frames(&self) -> AppResult<u64> {
+        // This would require OBS WebSocket API calls to get actual lagged frames
+        Ok(0)
     }
 }
 

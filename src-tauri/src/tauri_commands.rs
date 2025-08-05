@@ -352,6 +352,912 @@ pub async fn obs_stop_recording(app: State<'_, Arc<App>>) -> Result<serde_json::
     }
 }
 
+// Streaming Commands
+#[tauri::command]
+pub async fn obs_start_streaming(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    log::info!("OBS start streaming called");
+    // For now, use the default connection name
+    let connection_name = "OBS_STR";
+    
+    match app.obs_plugin().start_streaming(connection_name).await {
+        Ok(_) => Ok(serde_json::json!({
+            "success": true,
+            "message": "OBS streaming started"
+        })),
+        Err(e) => {
+            log::error!("Failed to start streaming: {}", e);
+            Err(TauriError::from(anyhow::anyhow!("Failed to start streaming: {}", e)))
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn obs_stop_streaming(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    log::info!("OBS stop streaming called");
+    // For now, use the default connection name
+    let connection_name = "OBS_STR";
+    
+    match app.obs_plugin().stop_streaming(connection_name).await {
+        Ok(_) => Ok(serde_json::json!({
+            "success": true,
+            "message": "OBS streaming stopped"
+        })),
+        Err(e) => {
+            log::error!("Failed to stop streaming: {}", e);
+            Err(TauriError::from(anyhow::anyhow!("Failed to stop streaming: {}", e)))
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn obs_get_streaming_status(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    log::info!("OBS get streaming status called");
+    // For now, use the default connection name
+    let connection_name = "OBS_STR";
+    
+    match app.obs_plugin().get_streaming_status(connection_name).await {
+        Ok(is_streaming) => Ok(serde_json::json!({
+            "success": true,
+            "is_streaming": is_streaming,
+            "connection_name": connection_name
+        })),
+        Err(e) => {
+            log::error!("Failed to get streaming status: {}", e);
+            Err(TauriError::from(anyhow::anyhow!("Failed to get streaming status: {}", e)))
+        }
+    }
+}
+
+// Scene Management Commands
+#[tauri::command]
+pub async fn obs_get_current_scene(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    log::info!("OBS get current scene called");
+    // For now, use the default connection name
+    let connection_name = "OBS_REC";
+    
+    match app.obs_plugin().scenes().get_current_scene(connection_name).await {
+        Ok(scene_name) => Ok(serde_json::json!({
+            "success": true,
+            "scene_name": scene_name,
+            "connection_name": connection_name
+        })),
+        Err(e) => {
+            log::error!("Failed to get current scene: {}", e);
+            Err(TauriError::from(anyhow::anyhow!("Failed to get current scene: {}", e)))
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn obs_set_current_scene(scene_name: String, app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    log::info!("OBS set current scene called with scene: {}", scene_name);
+    // For now, use the default connection name
+    let connection_name = "OBS_REC";
+    
+    match app.obs_plugin().scenes().set_current_scene(connection_name, &scene_name).await {
+        Ok(_) => Ok(serde_json::json!({
+            "success": true,
+            "message": format!("Scene changed to: {}", scene_name),
+            "scene_name": scene_name,
+            "connection_name": connection_name
+        })),
+        Err(e) => {
+            log::error!("Failed to set current scene: {}", e);
+            Err(TauriError::from(anyhow::anyhow!("Failed to set current scene: {}", e)))
+        }
+    }
+}
+
+// Settings Commands
+#[tauri::command]
+pub async fn obs_get_obs_version(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    log::info!("OBS get version called");
+    // For now, use the default connection name
+    let connection_name = "OBS_REC";
+    
+    match app.obs_plugin().settings().get_obs_version(connection_name).await {
+        Ok(version) => Ok(serde_json::json!({
+            "success": true,
+            "version": version,
+            "connection_name": connection_name
+        })),
+        Err(e) => {
+            log::error!("Failed to get OBS version: {}", e);
+            Err(TauriError::from(anyhow::anyhow!("Failed to get OBS version: {}", e)))
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn obs_get_profiles(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    log::info!("OBS get profiles called");
+    // For now, use the default connection name
+    let connection_name = "OBS_REC";
+    
+    match app.obs_plugin().settings().get_profiles(connection_name).await {
+        Ok(profiles) => Ok(serde_json::json!({
+            "success": true,
+            "profiles": profiles,
+            "connection_name": connection_name
+        })),
+        Err(e) => {
+            log::error!("Failed to get profiles: {}", e);
+            Err(TauriError::from(anyhow::anyhow!("Failed to get profiles: {}", e)))
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn obs_get_current_profile(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    log::info!("OBS get current profile called");
+    // For now, use the default connection name
+    let connection_name = "OBS_REC";
+    
+    match app.obs_plugin().settings().get_current_profile(connection_name).await {
+        Ok(profile) => Ok(serde_json::json!({
+            "success": true,
+            "profile": profile,
+            "connection_name": connection_name
+        })),
+        Err(e) => {
+            log::error!("Failed to get current profile: {}", e);
+            Err(TauriError::from(anyhow::anyhow!("Failed to get current profile: {}", e)))
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn obs_set_current_profile(profile_name: String, app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    log::info!("OBS set current profile called with profile: {}", profile_name);
+    // For now, use the default connection name
+    let connection_name = "OBS_REC";
+    
+    match app.obs_plugin().settings().set_current_profile(connection_name, &profile_name).await {
+        Ok(_) => Ok(serde_json::json!({
+            "success": true,
+            "message": format!("Profile changed to: {}", profile_name),
+            "profile_name": profile_name,
+            "connection_name": connection_name
+        })),
+        Err(e) => {
+            log::error!("Failed to set current profile: {}", e);
+            Err(TauriError::from(anyhow::anyhow!("Failed to set current profile: {}", e)))
+        }
+    }
+}
+
+// Advanced Commands
+#[tauri::command]
+pub async fn obs_get_replay_buffer_status(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    log::info!("OBS get replay buffer status called");
+    // For now, use the default connection name
+    let connection_name = "OBS_REC";
+    
+    match app.obs_plugin().recording().get_replay_buffer_status(connection_name).await {
+        Ok(is_active) => Ok(serde_json::json!({
+            "success": true,
+            "is_active": is_active,
+            "connection_name": connection_name
+        })),
+        Err(e) => {
+            log::error!("Failed to get replay buffer status: {}", e);
+            Err(TauriError::from(anyhow::anyhow!("Failed to get replay buffer status: {}", e)))
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn obs_start_replay_buffer(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    log::info!("OBS start replay buffer called");
+    // For now, use the default connection name
+    let connection_name = "OBS_REC";
+    
+    match app.obs_plugin().recording().start_replay_buffer(connection_name).await {
+        Ok(_) => Ok(serde_json::json!({
+            "success": true,
+            "message": "Replay buffer started",
+            "connection_name": connection_name
+        })),
+        Err(e) => {
+            log::error!("Failed to start replay buffer: {}", e);
+            Err(TauriError::from(anyhow::anyhow!("Failed to start replay buffer: {}", e)))
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn obs_stop_replay_buffer(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    log::info!("OBS stop replay buffer called");
+    // For now, use the default connection name
+    let connection_name = "OBS_REC";
+    
+    match app.obs_plugin().recording().stop_replay_buffer(connection_name).await {
+        Ok(_) => Ok(serde_json::json!({
+            "success": true,
+            "message": "Replay buffer stopped",
+            "connection_name": connection_name
+        })),
+        Err(e) => {
+            log::error!("Failed to stop replay buffer: {}", e);
+            Err(TauriError::from(anyhow::anyhow!("Failed to stop replay buffer: {}", e)))
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn obs_save_replay_buffer(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    log::info!("OBS save replay buffer called");
+    // For now, use the default connection name
+    let connection_name = "OBS_REC";
+    
+    match app.obs_plugin().recording().save_replay_buffer(connection_name).await {
+        Ok(_) => Ok(serde_json::json!({
+            "success": true,
+            "message": "Replay buffer saved",
+            "connection_name": connection_name
+        })),
+        Err(e) => {
+            log::error!("Failed to save replay buffer: {}", e);
+            Err(TauriError::from(anyhow::anyhow!("Failed to save replay buffer: {}", e)))
+        }
+    }
+}
+
+// Studio Mode Commands
+#[tauri::command]
+pub async fn obs_get_studio_mode(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    log::info!("OBS get studio mode called");
+    let connection_name = "OBS_REC";
+    
+    match app.obs_plugin().scenes().get_studio_mode(connection_name).await {
+        Ok(enabled) => Ok(serde_json::json!({
+            "success": true,
+            "studio_mode": enabled,
+            "connection_name": connection_name
+        })),
+        Err(e) => {
+            log::error!("Failed to get studio mode: {}", e);
+            Err(TauriError::from(anyhow::anyhow!("Failed to get studio mode: {}", e)))
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn obs_set_studio_mode(app: State<'_, Arc<App>>, enabled: bool) -> Result<serde_json::Value, TauriError> {
+    log::info!("OBS set studio mode called: {}", enabled);
+    let connection_name = "OBS_REC";
+    
+    match app.obs_plugin().scenes().set_studio_mode(connection_name, enabled).await {
+        Ok(_) => Ok(serde_json::json!({
+            "success": true,
+            "message": if enabled { "Studio mode enabled" } else { "Studio mode disabled" },
+            "connection_name": connection_name
+        })),
+        Err(e) => {
+            log::error!("Failed to set studio mode: {}", e);
+            Err(TauriError::from(anyhow::anyhow!("Failed to set studio mode: {}", e)))
+        }
+    }
+}
+
+// Source Management Commands
+#[tauri::command]
+pub async fn obs_get_sources(app: State<'_, Arc<App>>, scene_name: String) -> Result<serde_json::Value, TauriError> {
+    log::info!("OBS get sources called for scene: {}", scene_name);
+    let connection_name = "OBS_REC";
+    
+    match app.obs_plugin().scenes().get_sources(connection_name, &scene_name).await {
+        Ok(sources) => Ok(serde_json::json!({
+            "success": true,
+            "sources": sources,
+            "scene_name": scene_name,
+            "connection_name": connection_name
+        })),
+        Err(e) => {
+            log::error!("Failed to get sources: {}", e);
+            Err(TauriError::from(anyhow::anyhow!("Failed to get sources: {}", e)))
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn obs_set_source_visibility(
+    app: State<'_, Arc<App>>, 
+    scene_name: String, 
+    source_name: String, 
+    visible: bool
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("OBS set source visibility called: scene={}, source={}, visible={}", scene_name, source_name, visible);
+    let connection_name = "OBS_REC";
+    
+    match app.obs_plugin().scenes().set_source_visibility(connection_name, &scene_name, &source_name, visible).await {
+        Ok(_) => Ok(serde_json::json!({
+            "success": true,
+            "message": if visible { "Source made visible" } else { "Source hidden" },
+            "scene_name": scene_name,
+            "source_name": source_name,
+            "connection_name": connection_name
+        })),
+        Err(e) => {
+            log::error!("Failed to set source visibility: {}", e);
+            Err(TauriError::from(anyhow::anyhow!("Failed to set source visibility: {}", e)))
+        }
+    }
+}
+
+// Recording Settings Commands
+#[tauri::command]
+pub async fn obs_get_recording_settings(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().settings().get_recording_settings(&connection_name).await {
+        Ok(settings) => Ok(settings),
+        Err(e) => Err(TauriError::from(e)),
+    }
+}
+
+#[tauri::command]
+pub async fn obs_set_recording_settings(app: State<'_, Arc<App>>, settings: serde_json::Value) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().settings().set_recording_settings(&connection_name, settings).await {
+        Ok(_) => Ok(serde_json::json!({ "success": true })),
+        Err(e) => Err(TauriError::from(e)),
+    }
+}
+
+// Recording Path and Filename Commands
+#[tauri::command]
+pub async fn obs_get_recording_path_settings(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().settings().get_recording_path_settings(&connection_name).await {
+        Ok(settings) => Ok(settings),
+        Err(e) => Err(TauriError::from(e)),
+    }
+}
+
+#[tauri::command]
+pub async fn obs_set_recording_path(app: State<'_, Arc<App>>, path: String) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().settings().set_recording_path(&connection_name, &path).await {
+        Ok(_) => Ok(serde_json::json!({ "success": true })),
+        Err(e) => Err(TauriError::from(e)),
+    }
+}
+
+#[tauri::command]
+pub async fn obs_set_recording_filename(app: State<'_, Arc<App>>, filename_format: String) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().settings().set_recording_filename(&connection_name, &filename_format).await {
+        Ok(_) => Ok(serde_json::json!({ "success": true })),
+        Err(e) => Err(TauriError::from(e)),
+    }
+}
+
+#[tauri::command]
+pub async fn obs_set_recording_format(app: State<'_, Arc<App>>, format: String) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().settings().set_recording_format(&connection_name, &format).await {
+        Ok(_) => Ok(serde_json::json!({ "success": true })),
+        Err(e) => Err(TauriError::from(e)),
+    }
+}
+
+// Recording Settings Templates and Options
+#[tauri::command]
+pub async fn obs_get_available_recording_formats(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().settings().get_available_recording_formats(&connection_name).await {
+        Ok(formats) => Ok(serde_json::json!(formats)),
+        Err(e) => Err(TauriError::from(e)),
+    }
+}
+
+#[tauri::command]
+pub async fn obs_get_filename_format_variables(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    match app.obs_plugin().settings().get_filename_format_variables().await {
+        Ok(variables) => Ok(variables),
+        Err(e) => Err(TauriError::from(e)),
+    }
+}
+
+#[tauri::command]
+pub async fn obs_get_default_recording_settings(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    match app.obs_plugin().settings().get_default_recording_settings().await {
+        Ok(settings) => Ok(settings),
+        Err(e) => Err(TauriError::from(e)),
+    }
+}
+
+// Replay Buffer Settings Commands
+#[tauri::command]
+pub async fn obs_get_replay_buffer_settings(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().settings().get_replay_buffer_settings(&connection_name).await {
+        Ok(settings) => Ok(settings),
+        Err(e) => Err(TauriError::from(e)),
+    }
+}
+
+#[tauri::command]
+pub async fn obs_set_replay_buffer_settings(app: State<'_, Arc<App>>, settings: serde_json::Value) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().settings().set_replay_buffer_settings(&connection_name, settings).await {
+        Ok(_) => Ok(serde_json::json!({ "success": true })),
+        Err(e) => Err(TauriError::from(e)),
+    }
+}
+
+#[tauri::command]
+pub async fn obs_set_replay_buffer_duration(app: State<'_, Arc<App>>, duration_seconds: i32) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().settings().set_replay_buffer_duration(&connection_name, duration_seconds).await {
+        Ok(_) => Ok(serde_json::json!({ "success": true })),
+        Err(e) => Err(TauriError::from(e)),
+    }
+}
+
+#[tauri::command]
+pub async fn obs_set_replay_buffer_path(app: State<'_, Arc<App>>, path: String) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().settings().set_replay_buffer_path(&connection_name, &path).await {
+        Ok(_) => Ok(serde_json::json!({ "success": true })),
+        Err(e) => Err(TauriError::from(e)),
+    }
+}
+
+#[tauri::command]
+pub async fn obs_set_replay_buffer_filename(app: State<'_, Arc<App>>, filename_format: String) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().settings().set_replay_buffer_filename(&connection_name, &filename_format).await {
+        Ok(_) => Ok(serde_json::json!({ "success": true })),
+        Err(e) => Err(TauriError::from(e)),
+    }
+}
+
+#[tauri::command]
+pub async fn obs_get_default_replay_buffer_settings(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    match app.obs_plugin().settings().get_default_replay_buffer_settings().await {
+        Ok(settings) => Ok(settings),
+        Err(e) => Err(TauriError::from(e)),
+    }
+}
+
+// Advanced Replay Buffer Commands
+#[tauri::command]
+pub async fn obs_get_detailed_replay_buffer_status(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().recording().get_detailed_replay_buffer_status(&connection_name).await {
+        Ok(status) => Ok(status),
+        Err(e) => Err(TauriError::from(e)),
+    }
+}
+
+#[tauri::command]
+pub async fn obs_get_replay_buffer_duration(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().recording().get_replay_buffer_duration(&connection_name).await {
+        Ok(duration) => Ok(serde_json::json!({ "duration": duration })),
+        Err(e) => Err(TauriError::from(e)),
+    }
+}
+
+#[tauri::command]
+pub async fn obs_set_replay_buffer_duration_advanced(app: State<'_, Arc<App>>, duration_seconds: i32) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().recording().set_replay_buffer_duration(&connection_name, duration_seconds).await {
+        Ok(_) => Ok(serde_json::json!({ "success": true })),
+        Err(e) => Err(TauriError::from(e)),
+    }
+}
+
+#[tauri::command]
+pub async fn obs_get_replay_buffer_path_advanced(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().recording().get_replay_buffer_path(&connection_name).await {
+        Ok(path) => Ok(serde_json::json!({ "path": path })),
+        Err(e) => Err(TauriError::from(e)),
+    }
+}
+
+#[tauri::command]
+pub async fn obs_set_replay_buffer_path_advanced(app: State<'_, Arc<App>>, path: String) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().recording().set_replay_buffer_path(&connection_name, &path).await {
+        Ok(_) => Ok(serde_json::json!({ "success": true })),
+        Err(e) => Err(TauriError::from(e)),
+    }
+}
+
+#[tauri::command]
+pub async fn obs_get_replay_buffer_filename_advanced(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().recording().get_replay_buffer_filename(&connection_name).await {
+        Ok(filename) => Ok(serde_json::json!({ "filename": filename })),
+        Err(e) => Err(TauriError::from(e)),
+    }
+}
+
+#[tauri::command]
+pub async fn obs_set_replay_buffer_filename_advanced(app: State<'_, Arc<App>>, filename_format: String) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().recording().set_replay_buffer_filename(&connection_name, &filename_format).await {
+        Ok(_) => Ok(serde_json::json!({ "success": true })),
+        Err(e) => Err(TauriError::from(e)),
+    }
+}
+
+#[tauri::command]
+pub async fn obs_get_replay_buffer_format(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().recording().get_replay_buffer_format(&connection_name).await {
+        Ok(format) => Ok(serde_json::json!({ "format": format })),
+        Err(e) => Err(TauriError::from(e)),
+    }
+}
+
+#[tauri::command]
+pub async fn obs_set_replay_buffer_format(app: State<'_, Arc<App>>, format: String) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().recording().set_replay_buffer_format(&connection_name, &format).await {
+        Ok(_) => Ok(serde_json::json!({ "success": true })),
+        Err(e) => Err(TauriError::from(e)),
+    }
+}
+
+#[tauri::command]
+pub async fn obs_get_replay_buffer_quality(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().recording().get_replay_buffer_quality(&connection_name).await {
+        Ok(quality) => Ok(serde_json::json!({ "quality": quality })),
+        Err(e) => Err(TauriError::from(e)),
+    }
+}
+
+#[tauri::command]
+pub async fn obs_set_replay_buffer_quality(app: State<'_, Arc<App>>, quality: String) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().recording().set_replay_buffer_quality(&connection_name, &quality).await {
+        Ok(_) => Ok(serde_json::json!({ "success": true })),
+        Err(e) => Err(TauriError::from(e)),
+    }
+}
+
+#[tauri::command]
+pub async fn obs_get_replay_buffer_bitrate(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().recording().get_replay_buffer_bitrate(&connection_name).await {
+        Ok(bitrate) => Ok(serde_json::json!({ "bitrate": bitrate })),
+        Err(e) => Err(TauriError::from(e)),
+    }
+}
+
+#[tauri::command]
+pub async fn obs_set_replay_buffer_bitrate(app: State<'_, Arc<App>>, bitrate: i32) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().recording().set_replay_buffer_bitrate(&connection_name, bitrate).await {
+        Ok(_) => Ok(serde_json::json!({ "success": true })),
+        Err(e) => Err(TauriError::from(e)),
+    }
+}
+
+#[tauri::command]
+pub async fn obs_get_replay_buffer_keyframe_interval(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().recording().get_replay_buffer_keyframe_interval(&connection_name).await {
+        Ok(interval) => Ok(serde_json::json!({ "keyframe_interval": interval })),
+        Err(e) => Err(TauriError::from(e)),
+    }
+}
+
+#[tauri::command]
+pub async fn obs_set_replay_buffer_keyframe_interval(app: State<'_, Arc<App>>, interval: i32) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().recording().set_replay_buffer_keyframe_interval(&connection_name, interval).await {
+        Ok(_) => Ok(serde_json::json!({ "success": true })),
+        Err(e) => Err(TauriError::from(e)),
+    }
+}
+
+#[tauri::command]
+pub async fn obs_get_replay_buffer_rate_control(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().recording().get_replay_buffer_rate_control(&connection_name).await {
+        Ok(rate_control) => Ok(serde_json::json!({ "rate_control": rate_control })),
+        Err(e) => Err(TauriError::from(e)),
+    }
+}
+
+#[tauri::command]
+pub async fn obs_set_replay_buffer_rate_control(app: State<'_, Arc<App>>, rate_control: String) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().recording().set_replay_buffer_rate_control(&connection_name, &rate_control).await {
+        Ok(_) => Ok(serde_json::json!({ "success": true })),
+        Err(e) => Err(TauriError::from(e)),
+    }
+}
+
+#[tauri::command]
+pub async fn obs_get_replay_buffer_preset(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().recording().get_replay_buffer_preset(&connection_name).await {
+        Ok(preset) => Ok(serde_json::json!({ "preset": preset })),
+        Err(e) => Err(TauriError::from(e)),
+    }
+}
+
+#[tauri::command]
+pub async fn obs_set_replay_buffer_preset(app: State<'_, Arc<App>>, preset: String) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().recording().set_replay_buffer_preset(&connection_name, &preset).await {
+        Ok(_) => Ok(serde_json::json!({ "success": true })),
+        Err(e) => Err(TauriError::from(e)),
+    }
+}
+
+#[tauri::command]
+pub async fn obs_get_replay_buffer_profile(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().recording().get_replay_buffer_profile(&connection_name).await {
+        Ok(profile) => Ok(serde_json::json!({ "profile": profile })),
+        Err(e) => Err(TauriError::from(e)),
+    }
+}
+
+#[tauri::command]
+pub async fn obs_set_replay_buffer_profile(app: State<'_, Arc<App>>, profile: String) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().recording().set_replay_buffer_profile(&connection_name, &profile).await {
+        Ok(_) => Ok(serde_json::json!({ "success": true })),
+        Err(e) => Err(TauriError::from(e)),
+    }
+}
+
+#[tauri::command]
+pub async fn obs_get_replay_buffer_tune(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().recording().get_replay_buffer_tune(&connection_name).await {
+        Ok(tune) => Ok(serde_json::json!({ "tune": tune })),
+        Err(e) => Err(TauriError::from(e)),
+    }
+}
+
+#[tauri::command]
+pub async fn obs_set_replay_buffer_tune(app: State<'_, Arc<App>>, tune: String) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().recording().set_replay_buffer_tune(&connection_name, &tune).await {
+        Ok(_) => Ok(serde_json::json!({ "success": true })),
+        Err(e) => Err(TauriError::from(e)),
+    }
+}
+
+#[tauri::command]
+pub async fn obs_get_all_replay_buffer_settings(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().recording().get_all_replay_buffer_settings(&connection_name).await {
+        Ok(settings) => Ok(settings),
+        Err(e) => Err(TauriError::from(e)),
+    }
+}
+
+#[tauri::command]
+pub async fn obs_set_all_replay_buffer_settings(app: State<'_, Arc<App>>, settings: serde_json::Value) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().recording().set_all_replay_buffer_settings(&connection_name, settings).await {
+        Ok(_) => Ok(serde_json::json!({ "success": true })),
+        Err(e) => Err(TauriError::from(e)),
+    }
+}
+
+// Replay Buffer Options Commands
+#[tauri::command]
+pub async fn obs_get_available_replay_buffer_formats(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    match app.obs_plugin().recording().get_available_replay_buffer_formats().await {
+        Ok(formats) => Ok(serde_json::json!(formats)),
+        Err(e) => Err(TauriError::from(e)),
+    }
+}
+
+#[tauri::command]
+pub async fn obs_get_available_replay_buffer_qualities(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    match app.obs_plugin().recording().get_available_replay_buffer_qualities().await {
+        Ok(qualities) => Ok(serde_json::json!(qualities)),
+        Err(e) => Err(TauriError::from(e)),
+    }
+}
+
+#[tauri::command]
+pub async fn obs_get_available_replay_buffer_rate_controls(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    match app.obs_plugin().recording().get_available_replay_buffer_rate_controls().await {
+        Ok(rate_controls) => Ok(serde_json::json!(rate_controls)),
+        Err(e) => Err(TauriError::from(e)),
+    }
+}
+
+#[tauri::command]
+pub async fn obs_get_available_replay_buffer_presets(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    match app.obs_plugin().recording().get_available_replay_buffer_presets().await {
+        Ok(presets) => Ok(serde_json::json!(presets)),
+        Err(e) => Err(TauriError::from(e)),
+    }
+}
+
+#[tauri::command]
+pub async fn obs_get_available_replay_buffer_profiles(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    match app.obs_plugin().recording().get_available_replay_buffer_profiles().await {
+        Ok(profiles) => Ok(serde_json::json!(profiles)),
+        Err(e) => Err(TauriError::from(e)),
+    }
+}
+
+#[tauri::command]
+pub async fn obs_get_available_replay_buffer_tunes(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    match app.obs_plugin().recording().get_available_replay_buffer_tunes().await {
+        Ok(tunes) => Ok(serde_json::json!(tunes)),
+        Err(e) => Err(TauriError::from(e)),
+    }
+}
+
+// Streaming Settings Commands
+#[tauri::command]
+pub async fn obs_get_streaming_settings(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    log::info!("OBS get streaming settings called");
+    let connection_name = "OBS_REC";
+    
+    match app.obs_plugin().settings().get_streaming_settings(connection_name).await {
+        Ok(settings) => Ok(serde_json::json!({
+            "success": true,
+            "settings": settings,
+            "connection_name": connection_name
+        })),
+        Err(e) => {
+            log::error!("Failed to get streaming settings: {}", e);
+            Err(TauriError::from(anyhow::anyhow!("Failed to get streaming settings: {}", e)))
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn obs_set_streaming_settings(app: State<'_, Arc<App>>, settings: serde_json::Value) -> Result<serde_json::Value, TauriError> {
+    log::info!("OBS set streaming settings called");
+    let connection_name = "OBS_REC";
+    
+    match app.obs_plugin().settings().set_streaming_settings(connection_name, settings).await {
+        Ok(_) => Ok(serde_json::json!({
+            "success": true,
+            "message": "Streaming settings updated",
+            "connection_name": connection_name
+        })),
+        Err(e) => {
+            log::error!("Failed to set streaming settings: {}", e);
+            Err(TauriError::from(anyhow::anyhow!("Failed to set streaming settings: {}", e)))
+        }
+    }
+}
+
+// Performance Monitoring Commands
+#[tauri::command]
+pub async fn obs_get_performance_metrics(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    log::info!("OBS get performance metrics called");
+    
+    match app.obs_plugin().status().get_performance_metrics().await {
+        Ok(metrics) => Ok(serde_json::json!({
+            "success": true,
+            "metrics": metrics
+        })),
+        Err(e) => {
+            log::error!("Failed to get performance metrics: {}", e);
+            Err(TauriError::from(anyhow::anyhow!("Failed to get performance metrics: {}", e)))
+        }
+    }
+}
+
+// Event Filtering and Routing Commands
+#[tauri::command]
+pub async fn obs_add_event_filter(app: State<'_, Arc<App>>, filter: serde_json::Value) -> Result<serde_json::Value, TauriError> {
+    log::info!("OBS add event filter called");
+    
+    match serde_json::from_value::<crate::plugins::obs::types::EventFilter>(filter) {
+        Ok(event_filter) => {
+            match app.obs_plugin().events().add_event_filter(event_filter).await {
+                Ok(_) => Ok(serde_json::json!({
+                    "success": true,
+                    "message": "Event filter added"
+                })),
+                Err(e) => {
+                    log::error!("Failed to add event filter: {}", e);
+                    Err(TauriError::from(anyhow::anyhow!("Failed to add event filter: {}", e)))
+                }
+            }
+        },
+        Err(e) => {
+            log::error!("Failed to parse event filter: {}", e);
+            Err(TauriError::from(anyhow::anyhow!("Failed to parse event filter: {}", e)))
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn obs_get_event_filters(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    log::info!("OBS get event filters called");
+    
+    let filters = app.obs_plugin().events().get_event_filters().await;
+    Ok(serde_json::json!({
+        "success": true,
+        "filters": filters
+    }))
+}
+
+#[tauri::command]
+pub async fn obs_add_event_route(app: State<'_, Arc<App>>, route: serde_json::Value) -> Result<serde_json::Value, TauriError> {
+    log::info!("OBS add event route called");
+    
+    match serde_json::from_value::<crate::plugins::obs::types::EventRoute>(route) {
+        Ok(event_route) => {
+            match app.obs_plugin().events().add_event_route(event_route).await {
+                Ok(_) => Ok(serde_json::json!({
+                    "success": true,
+                    "message": "Event route added"
+                })),
+                Err(e) => {
+                    log::error!("Failed to add event route: {}", e);
+                    Err(TauriError::from(anyhow::anyhow!("Failed to add event route: {}", e)))
+                }
+            }
+        },
+        Err(e) => {
+            log::error!("Failed to parse event route: {}", e);
+            Err(TauriError::from(anyhow::anyhow!("Failed to parse event route: {}", e)))
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn obs_get_event_routes(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    log::info!("OBS get event routes called");
+    
+    let routes = app.obs_plugin().events().get_event_routes().await;
+    Ok(serde_json::json!({
+        "success": true,
+        "routes": routes
+    }))
+}
+
 #[tauri::command]
 pub async fn obs_command(_action: String, _params: serde_json::Value, _app: State<'_, Arc<App>>) -> Result<(), TauriError> {
     Ok(())
@@ -4936,4 +5842,565 @@ fn parse_scenarios_from_output(output: &str) -> Vec<serde_json::Value> {
     scenarios
 }
 
+#[tauri::command]
+pub async fn obs_get_streaming_accounts(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().settings().get_streaming_accounts(&connection_name).await {
+        Ok(accounts) => Ok(serde_json::json!({
+            "success": true,
+            "accounts": accounts
+        })),
+        Err(e) => Err(TauriError::from(e)),
+    }
+}
 
+#[tauri::command]
+pub async fn obs_get_streaming_channels(app: State<'_, Arc<App>>, service_name: String) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().settings().get_streaming_channels(&connection_name, &service_name).await {
+        Ok(channels) => Ok(serde_json::json!({
+            "success": true,
+            "channels": channels
+        })),
+        Err(e) => Err(TauriError::from(e)),
+    }
+}
+
+#[tauri::command]
+pub async fn obs_set_streaming_account(app: State<'_, Arc<App>>, service_name: String, settings: serde_json::Value) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().settings().set_streaming_account(&connection_name, &service_name, settings).await {
+        Ok(_) => Ok(serde_json::json!({
+            "success": true,
+            "message": "Streaming account updated"
+        })),
+        Err(e) => Err(TauriError::from(e)),
+    }
+}
+
+#[tauri::command]
+pub async fn obs_get_streaming_events(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().settings().get_streaming_events(&connection_name).await {
+        Ok(events) => Ok(serde_json::json!({
+            "success": true,
+            "data": events
+        })),
+        Err(e) => {
+            log::error!("Failed to get streaming events: {}", e);
+            Err(TauriError::from(e))
+        }
+    }
+}
+
+// ===== YOUTUBE STREAMING MANAGEMENT COMMANDS =====
+
+#[tauri::command]
+pub async fn obs_get_youtube_accounts(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().settings().get_youtube_accounts(&connection_name).await {
+        Ok(accounts) => Ok(serde_json::json!({
+            "success": true,
+            "data": accounts
+        })),
+        Err(e) => {
+            log::error!("Failed to get YouTube accounts: {}", e);
+            Err(TauriError::from(e))
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn obs_get_youtube_channels(app: State<'_, Arc<App>>, account_id: String) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().settings().get_youtube_channels(&connection_name, &account_id).await {
+        Ok(channels) => Ok(serde_json::json!({
+            "success": true,
+            "data": channels
+        })),
+        Err(e) => {
+            log::error!("Failed to get YouTube channels: {}", e);
+            Err(TauriError::from(e))
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn obs_get_youtube_stream_key(app: State<'_, Arc<App>>, channel_id: String) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().settings().get_youtube_stream_key(&connection_name, &channel_id).await {
+        Ok(stream_key_info) => Ok(serde_json::json!({
+            "success": true,
+            "data": stream_key_info
+        })),
+        Err(e) => {
+            log::error!("Failed to get YouTube stream key: {}", e);
+            Err(TauriError::from(e))
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn obs_set_youtube_streaming_config(app: State<'_, Arc<App>>, channel_id: String, config: serde_json::Value) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().settings().set_youtube_streaming_config(&connection_name, &channel_id, config).await {
+        Ok(_) => Ok(serde_json::json!({
+            "success": true,
+            "message": "YouTube streaming configuration updated successfully"
+        })),
+        Err(e) => {
+            log::error!("Failed to set YouTube streaming config: {}", e);
+            Err(TauriError::from(e))
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn obs_get_youtube_categories(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    match app.obs_plugin().settings().get_youtube_categories().await {
+        Ok(categories) => Ok(serde_json::json!({
+            "success": true,
+            "data": categories
+        })),
+        Err(e) => {
+            log::error!("Failed to get YouTube categories: {}", e);
+            Err(TauriError::from(e))
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn obs_get_youtube_privacy_options(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    match app.obs_plugin().settings().get_youtube_privacy_options().await {
+        Ok(privacy_options) => Ok(serde_json::json!({
+            "success": true,
+            "data": privacy_options
+        })),
+        Err(e) => {
+            log::error!("Failed to get YouTube privacy options: {}", e);
+            Err(TauriError::from(e))
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn obs_get_youtube_latency_options(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    match app.obs_plugin().settings().get_youtube_latency_options().await {
+        Ok(latency_options) => Ok(serde_json::json!({
+            "success": true,
+            "data": latency_options
+        })),
+        Err(e) => {
+            log::error!("Failed to get YouTube latency options: {}", e);
+            Err(TauriError::from(e))
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn obs_get_youtube_server_urls(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    match app.obs_plugin().settings().get_youtube_server_urls().await {
+        Ok(server_urls) => Ok(serde_json::json!({
+            "success": true,
+            "data": server_urls
+        })),
+        Err(e) => {
+            log::error!("Failed to get YouTube server URLs: {}", e);
+            Err(TauriError::from(e))
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn obs_regenerate_youtube_stream_key(app: State<'_, Arc<App>>, channel_id: String) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().settings().regenerate_youtube_stream_key(&connection_name, &channel_id).await {
+        Ok(new_stream_key_info) => Ok(serde_json::json!({
+            "success": true,
+            "data": new_stream_key_info
+        })),
+        Err(e) => {
+            log::error!("Failed to regenerate YouTube stream key: {}", e);
+            Err(TauriError::from(e))
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn obs_get_youtube_streaming_analytics(app: State<'_, Arc<App>>, channel_id: String) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().settings().get_youtube_streaming_analytics(&connection_name, &channel_id).await {
+        Ok(analytics) => Ok(serde_json::json!({
+            "success": true,
+            "data": analytics
+        })),
+        Err(e) => {
+            log::error!("Failed to get YouTube streaming analytics: {}", e);
+            Err(TauriError::from(e))
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn obs_get_youtube_streaming_schedule(app: State<'_, Arc<App>>, channel_id: String) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().settings().get_youtube_streaming_schedule(&connection_name, &channel_id).await {
+        Ok(schedule) => Ok(serde_json::json!({
+            "success": true,
+            "data": schedule
+        })),
+        Err(e) => {
+            log::error!("Failed to get YouTube streaming schedule: {}", e);
+            Err(TauriError::from(e))
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn obs_create_youtube_streaming_schedule(app: State<'_, Arc<App>>, channel_id: String, schedule_data: serde_json::Value) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().settings().create_youtube_streaming_schedule(&connection_name, &channel_id, schedule_data).await {
+        Ok(created_schedule) => Ok(serde_json::json!({
+            "success": true,
+            "data": created_schedule
+        })),
+        Err(e) => {
+            log::error!("Failed to create YouTube streaming schedule: {}", e);
+            Err(TauriError::from(e))
+        }
+    }
+}
+
+// ===== OTHER STREAMING DESTINATIONS COMMANDS =====
+
+#[tauri::command]
+pub async fn obs_get_available_streaming_services(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    match app.obs_plugin().settings().get_available_streaming_services().await {
+        Ok(services) => Ok(serde_json::json!({
+            "success": true,
+            "data": services
+        })),
+        Err(e) => {
+            log::error!("Failed to get available streaming services: {}", e);
+            Err(TauriError::from(e))
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn obs_get_twitch_config(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().settings().get_twitch_config(&connection_name).await {
+        Ok(twitch_config) => Ok(serde_json::json!({
+            "success": true,
+            "data": twitch_config
+        })),
+        Err(e) => {
+            log::error!("Failed to get Twitch config: {}", e);
+            Err(TauriError::from(e))
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn obs_get_facebook_config(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().settings().get_facebook_config(&connection_name).await {
+        Ok(facebook_config) => Ok(serde_json::json!({
+            "success": true,
+            "data": facebook_config
+        })),
+        Err(e) => {
+            log::error!("Failed to get Facebook config: {}", e);
+            Err(TauriError::from(e))
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn obs_get_custom_rtmp_config(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().settings().get_custom_rtmp_config(&connection_name).await {
+        Ok(rtmp_config) => Ok(serde_json::json!({
+            "success": true,
+            "data": rtmp_config
+        })),
+        Err(e) => {
+            log::error!("Failed to get custom RTMP config: {}", e);
+            Err(TauriError::from(e))
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn obs_set_custom_rtmp_config(app: State<'_, Arc<App>>, server_url: String, stream_key: String) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().settings().set_custom_rtmp_config(&connection_name, &server_url, &stream_key).await {
+        Ok(_) => Ok(serde_json::json!({
+            "success": true,
+            "message": "Custom RTMP configuration updated successfully"
+        })),
+        Err(e) => {
+            log::error!("Failed to set custom RTMP config: {}", e);
+            Err(TauriError::from(e))
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn obs_get_streaming_auth_status(app: State<'_, Arc<App>>, service_id: String) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().settings().get_streaming_auth_status(&connection_name, &service_id).await {
+        Ok(auth_status) => Ok(serde_json::json!({
+            "success": true,
+            "data": auth_status
+        })),
+        Err(e) => {
+            log::error!("Failed to get streaming auth status: {}", e);
+            Err(TauriError::from(e))
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn obs_authenticate_streaming_service(app: State<'_, Arc<App>>, service_id: String) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().settings().authenticate_streaming_service(&connection_name, &service_id).await {
+        Ok(auth_result) => Ok(serde_json::json!({
+            "success": true,
+            "data": auth_result
+        })),
+        Err(e) => {
+            log::error!("Failed to authenticate streaming service: {}", e);
+            Err(TauriError::from(e))
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn obs_refresh_streaming_auth(app: State<'_, Arc<App>>, service_id: String) -> Result<serde_json::Value, TauriError> {
+    let connection_name = app.get_default_connection_name().await?;
+    
+    match app.obs_plugin().settings().refresh_streaming_auth(&connection_name, &service_id).await {
+        Ok(refresh_result) => Ok(serde_json::json!({
+            "success": true,
+            "data": refresh_result
+        })),
+        Err(e) => {
+            log::error!("Failed to refresh streaming auth: {}", e);
+            Err(TauriError::from(e))
+        }
+    }
+}
+
+// YouTube API Commands
+
+/// Get YouTube OAuth authorization URL
+#[tauri::command]
+pub async fn youtube_get_auth_url(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    let plugin = app.youtube_api_plugin().lock().await;
+    match plugin.get_auth_url().await {
+        Ok(auth_url) => Ok(serde_json::json!({"success": true, "auth_url": auth_url})),
+        Err(e) => { log::error!("Failed to get YouTube auth URL: {}", e); Err(TauriError::from(e)) }
+    }
+}
+
+/// Authenticate with YouTube using authorization code
+#[tauri::command]
+pub async fn youtube_authenticate(app: State<'_, Arc<App>>, code: String) -> Result<serde_json::Value, TauriError> {
+    let plugin = app.youtube_api_plugin().lock().await;
+    match plugin.authenticate(&code).await {
+        Ok(()) => Ok(serde_json::json!({"success": true, "message": "YouTube authentication successful"})),
+        Err(e) => { log::error!("Failed to authenticate with YouTube: {}", e); Err(TauriError::from(e)) }
+    }
+}
+
+/// Create a new YouTube playlist
+#[tauri::command]
+pub async fn youtube_create_playlist(
+    app: State<'_, Arc<App>>, 
+    title: String, 
+    description: Option<String>, 
+    privacy: String
+) -> Result<serde_json::Value, TauriError> {
+    let plugin = app.youtube_api_plugin().lock().await;
+    match plugin.create_playlist(&title, description.as_deref(), &privacy).await {
+        Ok(playlist) => Ok(serde_json::json!({"success": true, "playlist": playlist})),
+        Err(e) => { log::error!("Failed to create YouTube playlist: {}", e); Err(TauriError::from(e)) }
+    }
+}
+
+/// Get user's YouTube playlists
+#[tauri::command]
+pub async fn youtube_get_playlists(app: State<'_, Arc<App>>, max_results: Option<u32>) -> Result<serde_json::Value, TauriError> {
+    let plugin = app.youtube_api_plugin().lock().await;
+    match plugin.get_playlists(max_results).await {
+        Ok(playlists) => Ok(serde_json::json!({"success": true, "playlists": playlists})),
+        Err(e) => { log::error!("Failed to get YouTube playlists: {}", e); Err(TauriError::from(e)) }
+    }
+}
+
+#[tauri::command]
+pub async fn youtube_add_video_to_playlist(
+    app: State<'_, Arc<App>>, 
+    playlist_id: String, 
+    video_id: String
+) -> Result<serde_json::Value, TauriError> {
+    let plugin = app.youtube_api_plugin().lock().await;
+    match plugin.add_video_to_playlist(&playlist_id, &video_id).await {
+        Ok(()) => Ok(serde_json::json!({"success": true, "message": "Video added to playlist"})),
+        Err(e) => { log::error!("Failed to add video to playlist: {}", e); Err(TauriError::from(e)) }
+    }
+}
+
+#[tauri::command]
+pub async fn youtube_get_playlist_videos(
+    app: State<'_, Arc<App>>, 
+    playlist_id: String, 
+    max_results: Option<u32>
+) -> Result<serde_json::Value, TauriError> {
+    let plugin = app.youtube_api_plugin().lock().await;
+    match plugin.get_playlist_videos(&playlist_id, max_results).await {
+        Ok(videos) => Ok(serde_json::json!({"success": true, "videos": videos})),
+        Err(e) => { log::error!("Failed to get playlist videos: {}", e); Err(TauriError::from(e)) }
+    }
+}
+
+#[tauri::command]
+pub async fn youtube_update_playlist(
+    app: State<'_, Arc<App>>, 
+    playlist_id: String, 
+    title: Option<String>, 
+    description: Option<String>, 
+    privacy: Option<String>
+) -> Result<serde_json::Value, TauriError> {
+    let plugin = app.youtube_api_plugin().lock().await;
+    match plugin.update_playlist(&playlist_id, title.as_deref(), description.as_deref(), privacy.as_deref()).await {
+        Ok(playlist) => Ok(serde_json::json!({"success": true, "playlist": playlist})),
+        Err(e) => { log::error!("Failed to update playlist: {}", e); Err(TauriError::from(e)) }
+    }
+}
+
+#[tauri::command]
+pub async fn youtube_delete_playlist(app: State<'_, Arc<App>>, playlist_id: String) -> Result<serde_json::Value, TauriError> {
+    let plugin = app.youtube_api_plugin().lock().await;
+    match plugin.delete_playlist(&playlist_id).await {
+        Ok(()) => Ok(serde_json::json!({"success": true, "message": "Playlist deleted"})),
+        Err(e) => { log::error!("Failed to delete playlist: {}", e); Err(TauriError::from(e)) }
+    }
+}
+
+/// Create a new scheduled YouTube stream
+#[tauri::command]
+pub async fn youtube_create_scheduled_stream(
+    app: State<'_, Arc<App>>, 
+    title: String, 
+    description: Option<String>, 
+    scheduled_time: String
+) -> Result<serde_json::Value, TauriError> {
+    let plugin = app.youtube_api_plugin().lock().await;
+    match plugin.create_scheduled_stream(&title, description.as_deref(), &scheduled_time).await {
+        Ok(stream) => Ok(serde_json::json!({"success": true, "stream": stream})),
+        Err(e) => { log::error!("Failed to create scheduled stream: {}", e); Err(TauriError::from(e)) }
+    }
+}
+
+/// Get live YouTube streams
+#[tauri::command]
+pub async fn youtube_get_live_streams(app: State<'_, Arc<App>>, max_results: Option<u32>) -> Result<serde_json::Value, TauriError> {
+    let plugin = app.youtube_api_plugin().lock().await;
+    match plugin.get_live_streams(max_results).await {
+        Ok(streams) => Ok(serde_json::json!({"success": true, "streams": streams})),
+        Err(e) => { log::error!("Failed to get live streams: {}", e); Err(TauriError::from(e)) }
+    }
+}
+
+/// Get scheduled YouTube streams
+#[tauri::command]
+pub async fn youtube_get_scheduled_streams(app: State<'_, Arc<App>>, max_results: Option<u32>) -> Result<serde_json::Value, TauriError> {
+    let plugin = app.youtube_api_plugin().lock().await;
+    match plugin.get_scheduled_streams(max_results).await {
+        Ok(streams) => Ok(serde_json::json!({"success": true, "streams": streams})),
+        Err(e) => { log::error!("Failed to get scheduled streams: {}", e); Err(TauriError::from(e)) }
+    }
+}
+
+/// Get completed YouTube streams
+#[tauri::command]
+pub async fn youtube_get_completed_streams(app: State<'_, Arc<App>>, max_results: Option<u32>) -> Result<serde_json::Value, TauriError> {
+    let plugin = app.youtube_api_plugin().lock().await;
+    match plugin.get_completed_streams(max_results).await {
+        Ok(streams) => Ok(serde_json::json!({"success": true, "streams": streams})),
+        Err(e) => { log::error!("Failed to get completed streams: {}", e); Err(TauriError::from(e)) }
+    }
+}
+
+/// End a live YouTube stream
+#[tauri::command]
+pub async fn youtube_end_stream(app: State<'_, Arc<App>>, stream_id: String) -> Result<serde_json::Value, TauriError> {
+    let plugin = app.youtube_api_plugin().lock().await;
+    match plugin.end_stream(&stream_id).await {
+        Ok(()) => Ok(serde_json::json!({"success": true, "message": "Stream ended"})),
+        Err(e) => { log::error!("Failed to end stream: {}", e); Err(TauriError::from(e)) }
+    }
+}
+
+/// Get YouTube channel information
+#[tauri::command]
+pub async fn youtube_get_channel_info(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    let plugin = app.youtube_api_plugin().lock().await;
+    match plugin.get_channel_info().await {
+        Ok(channel_info) => Ok(serde_json::json!({"success": true, "channel_info": channel_info})),
+        Err(e) => { log::error!("Failed to get channel info: {}", e); Err(TauriError::from(e)) }
+    }
+}
+
+/// Get YouTube video analytics
+#[tauri::command]
+pub async fn youtube_get_video_analytics(app: State<'_, Arc<App>>, video_id: String) -> Result<serde_json::Value, TauriError> {
+    let plugin = app.youtube_api_plugin().lock().await;
+    match plugin.get_video_analytics(&video_id).await {
+        Ok(analytics) => Ok(serde_json::json!({"success": true, "analytics": analytics})),
+        Err(e) => { log::error!("Failed to get video analytics: {}", e); Err(TauriError::from(e)) }
+    }
+}
+
+/// Initialize YouTube API plugin with configuration
+#[tauri::command]
+pub async fn youtube_initialize(
+    app: State<'_, Arc<App>>, 
+    client_id: String, 
+    client_secret: String, 
+    redirect_url: String, 
+    api_key: Option<String>
+) -> Result<serde_json::Value, TauriError> {
+    let mut plugin = app.youtube_api_plugin().lock().await;
+    let config = crate::plugins::YouTubeApiConfig {
+        client_id,
+        client_secret,
+        redirect_url,
+        api_key,
+    };
+    match plugin.initialize(config) {
+        Ok(()) => Ok(serde_json::json!({"success": true, "message": "YouTube API plugin initialized"})),
+        Err(e) => { log::error!("Failed to initialize YouTube API plugin: {}", e); Err(TauriError::from(e)) }
+    }
+}
