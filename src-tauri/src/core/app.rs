@@ -133,8 +133,15 @@ impl App {
         
         // Load OBS connections from config manager
         let config_connections = config_manager.get_obs_connections().await;
-        // Note: OBS connections will be loaded when needed by the modular plugin system
-        log::info!("✅ OBS connections configuration loaded");
+        
+        // Load connections into the modular OBS plugin system
+        if let Err(e) = obs_plugin_manager.load_connections_from_config(config_connections.clone()).await {
+            log::warn!("⚠️ Failed to load OBS connections into plugin system: {}", e);
+        } else {
+            log::info!("✅ OBS connections loaded into modular plugin system");
+        }
+        
+        log::info!("✅ OBS connections configuration loaded ({} connections)", config_connections.len());
         
         Ok(Self {
             state,
