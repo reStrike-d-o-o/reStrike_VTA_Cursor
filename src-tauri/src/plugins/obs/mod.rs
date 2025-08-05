@@ -24,27 +24,30 @@ pub use events::ObsEventsPlugin;
 pub use status::ObsStatusPlugin;
 
 // Global instance of the OBS Plugin Manager
-static mut OBS_PLUGIN_MANAGER: Option<ObsPluginManager> = None;
+use std::sync::OnceLock;
+static OBS_PLUGIN_MANAGER: OnceLock<ObsPluginManager> = OnceLock::new();
 
 // Initialize the modular OBS plugin system
 pub fn init() -> Result<(), Box<dyn std::error::Error>> {
     log::info!("🔧 Initializing modular OBS plugin system...");
     
-    unsafe {
-        // Create the plugin manager
-        let manager = ObsPluginManager::new()?;
-        
-        // Store the manager globally
-        OBS_PLUGIN_MANAGER = Some(manager);
-        
-        // Initialize the manager (this will initialize all plugins)
-        if let Some(manager) = &OBS_PLUGIN_MANAGER {
-            tokio::spawn(async move {
-                if let Err(e) = manager.init().await {
-                    log::error!("Failed to initialize OBS Plugin Manager: {}", e);
-                }
-            });
-        }
+    // Create the plugin manager
+    let manager = ObsPluginManager::new()?;
+    
+    // Store the manager globally
+    if let Err(_) = OBS_PLUGIN_MANAGER.set(manager) {
+        log::warn!("OBS Plugin Manager already initialized");
+        return Ok(());
+    }
+    
+    // Initialize the manager (this will initialize all plugins)
+    if let Some(manager) = OBS_PLUGIN_MANAGER.get() {
+        let manager_clone = manager.clone();
+        tokio::spawn(async move {
+            if let Err(e) = manager_clone.init().await {
+                log::error!("Failed to initialize OBS Plugin Manager: {}", e);
+            }
+        });
     }
     
     log::info!("✅ Modular OBS plugin system initialized");
@@ -55,11 +58,8 @@ pub fn init() -> Result<(), Box<dyn std::error::Error>> {
 pub async fn shutdown() -> Result<(), Box<dyn std::error::Error>> {
     log::info!("🔧 Shutting down modular OBS plugin system...");
     
-    unsafe {
-        if let Some(manager) = &OBS_PLUGIN_MANAGER {
-            manager.shutdown().await?;
-        }
-        OBS_PLUGIN_MANAGER = None;
+    if let Some(manager) = OBS_PLUGIN_MANAGER.get() {
+        manager.shutdown().await?;
     }
     
     log::info!("✅ Modular OBS plugin system shut down");
@@ -68,7 +68,5 @@ pub async fn shutdown() -> Result<(), Box<dyn std::error::Error>> {
 
 // Get a reference to the OBS Plugin Manager
 pub fn get_obs_plugin_manager() -> Option<&'static ObsPluginManager> {
-    unsafe {
-        OBS_PLUGIN_MANAGER.as_ref()
-    }
+    OBS_PLUGIN_MANAGER.get()
 } 

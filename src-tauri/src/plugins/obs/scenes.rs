@@ -41,7 +41,7 @@ impl ObsScenesPlugin {
             "sceneName": scene_name
         });
         
-        let response = self.send_scene_request(connection_name, "SetCurrentProgramScene", Some(request_data)).await?;
+        let _response = self.send_scene_request(connection_name, "SetCurrentProgramScene", Some(request_data)).await?;
         
         log::info!("[OBS_SCENES] Scene changed for '{}' to '{}'", connection_name, scene_name);
         Ok(())
@@ -77,7 +77,7 @@ impl ObsScenesPlugin {
         &self,
         connection_name: &str,
         request_type: &str,
-        request_data: Option<serde_json::Value>,
+        _request_data: Option<serde_json::Value>,
     ) -> AppResult<serde_json::Value> {
         // This will be implemented when we integrate with the core plugin
         // For now, this is a placeholder that will be replaced with actual implementation

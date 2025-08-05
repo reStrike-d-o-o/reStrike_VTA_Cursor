@@ -7,13 +7,13 @@ use super::types::*;
 
 /// OBS Settings Plugin for settings management
 pub struct ObsSettingsPlugin {
-    context: ObsPluginContext,
+    _context: ObsPluginContext,
 }
 
 impl ObsSettingsPlugin {
     /// Create a new OBS Settings Plugin
     pub fn new(context: ObsPluginContext) -> Self {
-        Self { context }
+        Self { _context: context }
     }
 
     /// Get OBS Studio version
@@ -58,7 +58,7 @@ impl ObsSettingsPlugin {
             "profileName": profile_name
         });
         
-        let response = self.send_settings_request(connection_name, "SetCurrentProfile", Some(request_data)).await?;
+        let _response = self.send_settings_request(connection_name, "SetCurrentProfile", Some(request_data)).await?;
         
         log::info!("[OBS_SETTINGS] Profile changed for '{}' to '{}'", connection_name, profile_name);
         Ok(())
@@ -94,7 +94,7 @@ impl ObsSettingsPlugin {
         &self,
         connection_name: &str,
         request_type: &str,
-        request_data: Option<serde_json::Value>,
+        _request_data: Option<serde_json::Value>,
     ) -> AppResult<serde_json::Value> {
         // This will be implemented when we integrate with the core plugin
         // For now, this is a placeholder that will be replaced with actual implementation

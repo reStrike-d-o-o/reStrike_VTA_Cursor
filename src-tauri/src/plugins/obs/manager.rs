@@ -14,6 +14,7 @@ use super::status::ObsStatusPlugin;
 use std::sync::Arc;
 
 /// Manager for all OBS plugins
+#[derive(Clone)]
 pub struct ObsPluginManager {
     context: ObsPluginContext,
     core_plugin: Arc<ObsCorePlugin>,
@@ -149,23 +150,23 @@ impl ObsPluginManager {
     }
 
     // Settings plugin methods
-    pub async fn get_obs_settings(&self, connection_name: &str) -> AppResult<serde_json::Value> {
+    pub async fn get_obs_settings(&self, _connection_name: &str) -> AppResult<serde_json::Value> {
         // TODO: Implement this when the settings plugin is complete
         Ok(serde_json::json!({}))
     }
 
-    pub async fn set_obs_settings(&self, connection_name: &str, settings: serde_json::Value) -> AppResult<()> {
+    pub async fn set_obs_settings(&self, _connection_name: &str, _settings: serde_json::Value) -> AppResult<()> {
         // TODO: Implement this when the settings plugin is complete
         Ok(())
     }
 
     // Scenes plugin methods
-    pub async fn get_scenes(&self, connection_name: &str) -> AppResult<Vec<String>> {
+    pub async fn get_scenes(&self, _connection_name: &str) -> AppResult<Vec<String>> {
         // TODO: Implement this when the scenes plugin is complete
         Ok(Vec::new())
     }
 
-    pub async fn set_current_scene(&self, connection_name: &str, scene_name: &str) -> AppResult<()> {
+    pub async fn set_current_scene(&self, _connection_name: &str, _scene_name: &str) -> AppResult<()> {
         // TODO: Implement this when the scenes plugin is complete
         Ok(())
     }
@@ -189,7 +190,7 @@ impl ObsPluginManager {
         self.core_plugin.remove_connection(connection_name).await
     }
 
-    pub async fn get_latest_events(&self, connection_name: &str) -> AppResult<Vec<RecentEvent>> {
+    pub async fn get_latest_events(&self, _connection_name: &str) -> AppResult<Vec<RecentEvent>> {
         // TODO: Implement latest events
         Ok(Vec::new())
     }

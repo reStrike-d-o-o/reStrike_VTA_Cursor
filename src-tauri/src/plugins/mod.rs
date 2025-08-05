@@ -21,7 +21,6 @@ pub mod obs; // Add modular OBS plugins
 pub mod performance_monitor {
     // Placeholder module for performance monitoring
     use serde::{Deserialize, Serialize};
-    use std::sync::Arc;
     
     #[derive(Debug, Clone, Serialize, Deserialize)]
     pub struct PerformanceMonitor;
@@ -62,7 +61,6 @@ pub mod performance_monitor {
 pub mod event_cache {
     // Placeholder module for event caching
     use serde::{Deserialize, Serialize};
-    use std::sync::Arc;
     use std::time::SystemTime;
     
     #[derive(Debug, Clone, Serialize, Deserialize)]

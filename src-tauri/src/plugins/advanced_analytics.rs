@@ -443,7 +443,7 @@ impl AdvancedAnalytics {
         let mut analytics = performance_analytics.write().await;
         
         // Get cache statistics
-        let cache_stats = cache.get_cache_stats().await;
+        let _cache_stats = cache.get_cache_stats().await;
         
         // Update cache performance
         analytics.cache_performance = CachePerformance {
