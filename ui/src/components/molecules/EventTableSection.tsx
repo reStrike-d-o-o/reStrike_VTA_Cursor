@@ -32,8 +32,7 @@ const EventTableSection: React.FC = () => {
     currentRound, 
     currentRoundTime, 
     isConnected, 
-    getFilteredEvents,
-    clearEvents 
+    getFilteredEvents
   } = useLiveDataStore();
   
   const { isManualModeEnabled } = useAppStore();
@@ -215,12 +214,6 @@ const EventTableSection: React.FC = () => {
         <div className="flex items-center space-x-2">
           <span>Total: {events.length}</span>
           <span>Table: {filteredEvents.length}</span>
-          <button 
-            onClick={() => clearEvents()}
-            className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
-          >
-            Clear Events
-          </button>
         </div>
       </div>
     </div>

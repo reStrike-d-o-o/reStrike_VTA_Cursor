@@ -41,6 +41,160 @@ The reStrike VTA data flow architecture provides comprehensive real-time event p
 └─────────────────────────────────────────────────────────────┘
 ```
 
+## Event Table Data Flow
+
+### Overview
+The Event Table data flow handles real-time PSS event display with intelligent time and round tracking, manual override detection, and automatic event management.
+
+### Recent Improvements (2025-01-29)
+
+#### **Event Table Time & Round Display Fixes**
+- **Backend Hardcoded Values**: Removed hardcoded "2:00" and round "1" values from JSON event creation
+- **WebSocket-Only Processing**: Ensured all events go through WebSocket plugin for proper state management
+- **Time Accuracy**: Event Table now displays actual PSS event times instead of fallback values
+- **Round Display**: Added 'RND' to importantEventCodes array to display round events
+
+#### **Event Table Management**
+- **Automatic Clearing**: Event Table clears automatically on `rdy;FightReady` events
+- **Counter Behavior**: Verified correct behavior (Round/Time preserved, Total/Table reset)
+- **Clean UI**: Removed manual clear buttons, keeping only automatic clearing
+
+#### **Manual Override Detection System**
+- **Event Sequence Tracking**: Replaced time-based threshold with event sequence analysis
+- **Break Event Exception**: Round changes after `brk;0:00;stopEnd` are NOT manual override
+- **Normal Pattern**: `brk;0:00;stopEnd` → `rnd;3` → `clk;02:00;start`
+
+### Event Table Data Flow
+
+#### **Complete Event Processing Flow**
+```
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│   PSS       │───▶│  WebSocket  │───▶│  Live Data  │───▶│  Event      │
+│  Events     │    │   Plugin    │    │   Store     │    │   Table     │
+└─────────────┘    └─────────────┘    └─────────────┘    └─────────────┘
+       │                   │                   │                   │
+       ▼                   ▼                   ▼                   ▼
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│ UDP Server  │    │ State       │    │ Event       │    │ Real-time   │
+│ Parsing     │    │ Management  │    │ Filtering   │    │ Display     │
+└─────────────┘    └─────────────┘    └─────────────┘    └─────────────┘
+```
+
+#### **Step-by-Step Event Table Process**
+
+1. **PSS Event Reception**
+   ```rust
+   // UDP server receives and parses PSS events
+   let event = PssEvent::from_bytes(&buffer[..len])?;
+   
+   // Convert to WebSocket message (no hardcoded values)
+   let ws_message = convert_pss_event_to_ws_message(&event);
+   ```
+
+2. **WebSocket Broadcasting**
+   ```rust
+   // Broadcast to all connected clients
+   websocket_plugin.broadcast_message(ws_message)?;
+   ```
+
+3. **Frontend Event Processing**
+   ```typescript
+   // WebSocket event received
+   if (data.type === 'pss_event' && data.data) {
+     const eventData = data.data;
+     
+     // Handle fight_ready event - clear Event Table
+     if (eventData.event_type === 'fight_ready') {
+       useLiveDataStore.getState().clearEvents();
+       return;
+     }
+     
+     // Create and add event to store
+     const event: PssEventData = {
+       // ... event creation with current store time/round
+     };
+     useLiveDataStore.getState().addEvent(event);
+   }
+   ```
+
+4. **Event Table Display**
+   ```typescript
+   // Filter important events for display
+   const filteredEvents = allEvents.filter(event => {
+     const importantEventCodes = ['K', 'P', 'H', 'TH', 'TB', 'R', 'RND'];
+     return importantEventCodes.includes(event.eventCode);
+   });
+   ```
+
+### Manual Override Detection Flow
+
+#### **Scoreboard Overlay Manual Override Detection**
+```
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│   Clock     │───▶│  Manual     │───▶│  Event      │───▶│  Override   │
+│  Events     │    │  Override   │    │  Sequence   │    │  Detection  │
+│             │    │  State      │    │  Tracking   │    │             │
+└─────────────┘    └─────────────┘    └─────────────┘    └─────────────┘
+       │                   │                   │                   │
+       ▼                   ▼                   ▼                   ▼
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│ clk;{};stop │    │ manualOver- │    │ eventsAfter │    │ Normal vs   │
+│ clk;{};start│    │ rideActive  │    │ BreakStopEnd│    │ Manual      │
+└─────────────┘    └─────────────┘    └─────────────┘    └─────────────┘
+```
+
+#### **Manual Override Detection Logic**
+```javascript
+// Check if we're in manual override mode
+function isInManualOverrideMode() {
+  return manualOverrideState.clockState === 'stopped' && 
+         manualOverrideState.manualOverrideActive;
+}
+
+// Check for break event exception
+function isRoundChangeAfterBreakStopEnd() {
+  if (!manualOverrideState.lastBreakStopEnd) return false;
+  
+  // Check if there are no other events between brk;0:00;stopEnd and rnd
+  const hasOnlyRoundEvent = manualOverrideState.eventsAfterBreakStopEnd.length === 0;
+  return hasOnlyRoundEvent;
+}
+
+// Manual round change detection
+function isManualRoundChange(event) {
+  if (!event || event.type !== 'round') return false;
+  if (!isInManualOverrideMode()) return false;
+  
+  // Exception: Round changes after break stopEnd are NOT manual override
+  if (isRoundChangeAfterBreakStopEnd()) return false;
+  
+  return true; // Manual override detected
+}
+```
+
+### Data Flow Integration
+
+#### **Event Table Integration Points**
+- **WebSocket Plugin**: Primary event source for real-time display
+- **Live Data Store**: Central state management for events and counters
+- **Event Table Component**: Real-time display with filtering and auto-scroll
+- **Scoreboard Overlay**: Manual override detection and exception handling
+
+#### **State Management Flow**
+```
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│  PSS        │───▶│  WebSocket  │───▶│  Live Data  │
+│  Events     │    │   Plugin    │    │   Store     │
+└─────────────┘    └─────────────┘    └─────────────┘
+                           │                   │
+                           ▼                   ▼
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│  Scoreboard │◀───│  Manual     │◀───│  Event      │
+│  Overlay    │    │  Override   │    │  Table      │
+│             │    │  Detection  │    │  Component  │
+└─────────────┘    └─────────────┘    └─────────────┘
+```
+
 ## Detailed Data Flow
 
 ### PSS Event Processing Flow
