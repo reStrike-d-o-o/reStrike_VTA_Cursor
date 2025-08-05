@@ -1082,14 +1082,14 @@ impl UdpServer {
                 // Map point types to specific event codes according to PSS protocol
                 match point_type {
                     1 => "P".to_string(),   // Punch
-                    2 => "TB".to_string(), // Body point (Technical Body)
+                    2 => "K".to_string(),  // Body point (Kick) - CHANGED from TB to K
                     3 => "H".to_string(),  // Head point
                     4 => "TB".to_string(), // Technical Body
                     5 => "TH".to_string(), // Technical Head
                     _ => "P".to_string(),  // Default to Punch
                 }
             },
-            PssEvent::HitLevel { .. } => "K".to_string(), // Hit Level -> Kick
+            PssEvent::HitLevel { .. } => "O".to_string(), // Hit Level -> Other (CHANGED from K to O)
             PssEvent::Warnings { .. } => "R".to_string(), // Warning/Gam-jeom
             PssEvent::Challenge { .. } => "R".to_string(), // Challenge/IVR
             PssEvent::Injury { .. } => "O".to_string(), // Injury time -> Other
@@ -1100,8 +1100,8 @@ impl UdpServer {
             PssEvent::MatchConfig { .. } => "O".to_string(), // Match config (pre-match)
             PssEvent::Scores { .. } => "O".to_string(), // Scores (system event)
             PssEvent::CurrentScores { .. } => "O".to_string(), // Current scores (system event)
-            PssEvent::Clock { .. } => "O".to_string(), // Clock (system event)
-            PssEvent::Round { .. } => "O".to_string(), // Round (system event)
+            PssEvent::Clock { .. } => "CLK".to_string(), // Clock (system event) - CHANGED from O to CLK
+            PssEvent::Round { .. } => "RND".to_string(), // Round (system event) - CHANGED from O to RND
             PssEvent::FightLoaded => "O".to_string(), // Fight loaded (pre-match)
             PssEvent::FightReady => "O".to_string(), // Fight ready (pre-match)
             PssEvent::Supremacy { .. } => "O".to_string(), // Supremacy (system event)
@@ -1853,7 +1853,11 @@ impl UdpServer {
                                             // Keep only the last 10 hit levels per athlete (to avoid memory bloat)
                                             if athlete_hit_levels.len() > 10 {
                                                 // Remove the oldest entries (first elements) to keep only the last 10
-                                                athlete_hit_levels.drain(0..athlete_hit_levels.len() - 10);
+                                                // Use a safer approach to avoid panic with invalid ranges
+                                                let to_remove = athlete_hit_levels.len() - 10;
+                                                if to_remove > 0 && to_remove <= athlete_hit_levels.len() {
+                                                    athlete_hit_levels.drain(0..to_remove);
+                                                }
                                             }
                                             
                                             log::debug!("🎯 Tracked hit level for athlete {}: level {}", athlete, level);

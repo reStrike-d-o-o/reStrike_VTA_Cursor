@@ -505,7 +505,7 @@ impl WebSocketServer {
                 
                 WebSocketMessage::PssEvent {
                     event_type: "clock".to_string(),
-                    event_code: "O".to_string(), // Clock events are system events
+                    event_code: "CLK".to_string(), // Clock events are system events - CHANGED from O to CLK
                     athlete: "yellow".to_string(), // Clock events are referee-controlled
                     round: get_event_round(None), // Use last known round
                     time: time.clone(), // Clock events always have their own time
@@ -527,7 +527,7 @@ impl WebSocketServer {
                 
                 WebSocketMessage::PssEvent {
                     event_type: "round".to_string(),
-                    event_code: "O".to_string(), // Round events are system events
+                    event_code: "RND".to_string(), // Round events are system events - CHANGED from O to RND
                     athlete: "yellow".to_string(), // Round events are referee-controlled
                     round: *current_round, // Round events always have their own round
                     time: get_event_time(None), // Use last known time
@@ -557,6 +557,16 @@ impl WebSocketServer {
                     log::info!("🎯 IMPORTANT EVENT - {}: athlete={}, point_type={}, raw=pt{}, time={}", event_code, athlete, point_type, point_type, get_event_time(None));
                 }
                 
+                // Create appropriate description based on point type
+                let description = match point_type {
+                    1 => format!("{} punch point", athlete_str),
+                    2 => format!("{} body kick", athlete_str), // CHANGED: body point -> body kick
+                    3 => format!("{} head point", athlete_str),
+                    4 => format!("{} technical body", athlete_str),
+                    5 => format!("{} technical head", athlete_str),
+                    _ => format!("{} point", athlete_str),
+                };
+                
                 WebSocketMessage::PssEvent {
                     event_type: "points".to_string(),
                     event_code: event_code.clone(),
@@ -565,7 +575,7 @@ impl WebSocketServer {
                     time: get_event_time(None), // Use last known time
                     timestamp: pss_timestamp.clone(),
                     raw_data: format!("pt{}", point_type),
-                    description: format!("{} {} point", athlete_str, event_code),
+                    description: description,
                     action: None,
                     structured_data: serde_json::json!({
                         "athlete": *athlete,
@@ -604,11 +614,11 @@ impl WebSocketServer {
                 };
                 
                 // Log important events with raw message
-                log::info!("🎯 IMPORTANT EVENT - K: athlete={}, level={}, raw=hl{};{};", athlete, level, athlete, level);
+                log::info!("🎯 IMPORTANT EVENT - O: athlete={}, level={}, raw=hl{};{};", athlete, level, athlete, level);
                 
                 WebSocketMessage::PssEvent {
                     event_type: "hit_level".to_string(),
-                    event_code: "K".to_string(), // Hit Level -> Kick
+                    event_code: "O".to_string(), // Hit Level -> Other (CHANGED from K to O)
                     athlete: athlete_str.clone(),
                     round: get_event_round(None), // Use last known round
                     time: get_event_time(None), // Use last known time
