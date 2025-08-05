@@ -119,7 +119,20 @@ impl ObsCorePlugin {
         log::info!("[OBS_CORE] WebSocket connection established for '{}'", connection_name);
 
         // Authenticate if needed
-        let authenticated_stream = self.authenticate_v5(connection_name, ws_stream).await?;
+        let authenticated_stream = match self.authenticate_v5(connection_name, ws_stream).await {
+            Ok(stream) => stream,
+            Err(e) => {
+                // Set connection status to error and mark as disconnected
+                {
+                    let mut connections = self.context.connections.lock().await;
+                    if let Some(connection) = connections.get_mut(connection_name) {
+                        connection.status = ObsConnectionStatus::Error(e.to_string());
+                        connection.is_connected = false;
+                    }
+                }
+                return Err(e);
+            }
+        };
 
         // Store the authenticated WebSocket stream
         {
