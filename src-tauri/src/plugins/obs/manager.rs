@@ -172,20 +172,21 @@ impl ObsPluginManager {
 
     // Additional methods for Tauri commands compatibility
     pub async fn add_connection(&self, config: ObsConnectionConfig) -> AppResult<()> {
-        // TODO: Implement connection management
-        log::info!("Adding OBS connection: {}", config.name);
-        Ok(())
+        self.core_plugin.add_connection(config).await
     }
 
     pub async fn get_connection_names(&self) -> Vec<String> {
-        // TODO: Implement connection list
-        vec!["OBS_REC".to_string()]
+        self.core_plugin.get_connection_names().await
+    }
+
+    /// Load connections from config manager
+    pub async fn load_connections_from_config(&self, config_connections: Vec<crate::config::ObsConnectionConfig>) -> AppResult<()> {
+        log::info!("[OBS_MANAGER] Loading {} connections from config", config_connections.len());
+        self.core_plugin.load_connections_from_config(config_connections).await
     }
 
     pub async fn remove_connection(&self, connection_name: &str) -> AppResult<()> {
-        // TODO: Implement connection removal
-        log::info!("Removing OBS connection: {}", connection_name);
-        Ok(())
+        self.core_plugin.remove_connection(connection_name).await
     }
 
     pub async fn get_latest_events(&self, connection_name: &str) -> AppResult<Vec<RecentEvent>> {
