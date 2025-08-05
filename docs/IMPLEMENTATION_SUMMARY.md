@@ -2,6 +2,52 @@
 
 ## 🎯 **Latest Implementations (2025-01-29)**
 
+### **10. OBS Plugin Modularization Plan** 🔄 **IN PROGRESS**
+
+#### **Current State Analysis**
+- **Monolithic Plugin**: 1366-line `plugin_obs.rs` file with multiple responsibilities
+- **Complexity**: ~50+ methods covering connection, recording, streaming, scenes, settings, events
+- **Maintainability**: Difficult to maintain and extend due to size and complexity
+
+#### **Proposed Modular Structure**
+- **Core Infrastructure**: `obs/types.rs`, `obs/manager.rs`, `obs/core.rs` (~600 lines total)
+- **Feature Plugins**: `obs/recording.rs`, `obs/streaming.rs`, `obs/scenes.rs` (~550 lines total)
+- **Support Plugins**: `obs/settings.rs`, `obs/events.rs`, `obs/status.rs` (~450 lines total)
+- **Benefits**: ~200 lines per file vs 1366, single responsibility, easier testing
+
+#### **Safe Migration Strategy**
+- **Phase 1**: Create new structure, copy functions (don't move), test thoroughly
+- **Phase 2**: Gradual integration, update imports, comprehensive testing
+- **Phase 3**: Verify all functionality works, then deprecate old file
+- **Phase 4**: Remove old file only after 100% confidence
+
+#### **Zero Breaking Changes Guarantee**
+- Keep original file until new structure is proven
+- Copy functions without removing original code
+- Comprehensive testing before any removal
+- Easy rollback capability at any point
+
+### **9. Advanced Manual Override Detection** ✅ **COMPLETED**
+
+#### **Event Sequence-Based Detection**
+- **Replaced**: Time-based threshold (5 seconds) with event sequence tracking
+- **New Logic**: Checks for no intervening events between `brk;0:00;stopEnd` and `rnd;3`
+- **Exception Handling**: Round changes after break stopEnd are NOT manual override
+- **Implementation**: Added `eventsAfterBreakStopEnd` array to track event sequence
+
+#### **Break Event Exception System**
+- **Normal Pattern**: `brk;0:00;stopEnd` → `rnd;3` → `clk;02:00;start`
+- **Detection**: If no other events between break stopEnd and round, it's normal inter-round change
+- **Manual Override**: Only detected when other events occur between break stopEnd and round
+- **Files Modified**:
+  - `ui/public/scoreboard-overlay.html` - Enhanced manual override detection
+  - Added break event tracking and exception logic
+
+#### **Enhanced Debug Logging**
+- **Event Tracking**: Comprehensive logging for break events and manual override detection
+- **Exception Logging**: Clear console messages when break exception is applied
+- **State Tracking**: Detailed logging of manual override state changes
+
 ### **8. Event Table Time & Round Display Fixes** ✅ **COMPLETED**
 
 #### **Persistent "2:00:00" Issue Resolution**
@@ -26,27 +72,6 @@
   - `ui/src/components/molecules/LiveDataPanel.tsx` - Removed clear button
   - `ui/src/hooks/useLiveDataEvents.ts` - Added fight_ready event handling
   - `ui/src/utils/pssEventHandler.ts` - Added fight_ready event handling
-
-### **9. Advanced Manual Override Detection** ✅ **COMPLETED**
-
-#### **Event Sequence-Based Detection**
-- **Replaced**: Time-based threshold (5 seconds) with event sequence tracking
-- **New Logic**: Checks for no intervening events between `brk;0:00;stopEnd` and `rnd;3`
-- **Exception Handling**: Round changes after break stopEnd are NOT manual override
-- **Implementation**: Added `eventsAfterBreakStopEnd` array to track event sequence
-
-#### **Break Event Exception System**
-- **Normal Pattern**: `brk;0:00;stopEnd` → `rnd;3` → `clk;02:00;start`
-- **Detection**: If no other events between break stopEnd and round, it's normal inter-round change
-- **Manual Override**: Only detected when other events occur between break stopEnd and round
-- **Files Modified**:
-  - `ui/public/scoreboard-overlay.html` - Enhanced manual override detection
-  - Added break event tracking and exception logic
-
-#### **Enhanced Debug Logging**
-- **Event Tracking**: Comprehensive logging for break events and manual override detection
-- **Exception Logging**: Clear console messages when break exception is applied
-- **State Tracking**: Detailed logging of manual override state changes
 
 ## 🎯 **Completed Implementations (2025-01-29)**
 

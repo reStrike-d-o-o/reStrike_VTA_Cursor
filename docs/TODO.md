@@ -28,7 +28,21 @@
 
 ### **📋 Immediate Priorities (This Week)**
 
-#### **1. OBS Integration Implementation** ⚡ **HIGH PRIORITY**
+#### **1. OBS Plugin Modularization** ⚡ **HIGH PRIORITY**
+- [ ] **Create New OBS Plugin Structure**: Break down 1366-line `plugin_obs.rs` into focused modules
+- [ ] **Core Infrastructure**: Create `obs/types.rs`, `obs/manager.rs`, `obs/core.rs` for connection management
+- [ ] **Feature Plugins**: Create `obs/recording.rs`, `obs/streaming.rs`, `obs/scenes.rs` for specific functionality
+- [ ] **Support Plugins**: Create `obs/settings.rs`, `obs/events.rs`, `obs/status.rs` for auxiliary features
+- [ ] **Safe Migration**: Copy functions without removing original code, test thoroughly before cleanup
+- [ ] **Integration Testing**: Verify all OBS functionality works with new modular structure
+
+#### **2. REC/STR Status Indicators** ⚡ **HIGH PRIORITY**
+- [ ] **WebSocket Status Broadcasting**: Extend WebSocket plugin to broadcast OBS status updates
+- [ ] **OBS Status Store**: Create lightweight frontend store for REC/STR status
+- [ ] **StatusbarDock Integration**: Update status indicators to use real-time OBS status
+- [ ] **Event-Driven Updates**: Implement lightweight status updates without polling
+
+#### **3. OBS Integration Implementation** ⚡ **HIGH PRIORITY**
 - [ ] **Database Schema Migration**: Add `rec_timestamp`, `str_timestamp`, `ivr_link` fields to `pss_events_v2`
 - [ ] **Create Unified OBS Sessions Table**: Implement `obs_sessions` table with session types
 - [ ] **Database Triggers**: Implement automatic timestamp calculation triggers
@@ -37,7 +51,7 @@
 - [ ] **IVR Trigger System**: Implement challenge/IVR triggering rules
 - [ ] **Stream Interruption Handling**: Implement automatic detection and time offset management
 
-#### **2. Performance Optimization Implementation** ⚡ **HIGH PRIORITY**
+#### **4. Performance Optimization Implementation** ⚡ **HIGH PRIORITY**
 - [ ] **UDP Processing Optimization**: Implement bounded channels and batch processing
 - [ ] **Database Connection Pooling**: Add connection pool with health checks
 - [ ] **WebSocket Binary Serialization**: Switch from JSON to Protocol Buffers
@@ -45,21 +59,21 @@
 - [ ] **Event Table Virtualization**: Add react-window for large event lists
 - [ ] **Memory Management**: Implement object pooling and cleanup strategies
 
-#### **3. Backend Implementation Tasks** ⚡ **HIGH PRIORITY**
+#### **5. Backend Implementation Tasks** ⚡ **HIGH PRIORITY**
 - [ ] **Update PSS Event Processing**: Add OBS timestamp calculation logic
 - [ ] **Implement OBS Session Management**: Add unified session management functions
 - [ ] **Add Stream Interruption Functions**: Implement detection and handling logic
 - [ ] **Create YouTube Chapter Generation**: Implement chapter file creation
 - [ ] **Update Tauri Commands**: Add new OBS and performance-related commands
 
-#### **4. Frontend Implementation Tasks** ⚡ **HIGH PRIORITY**
+#### **6. Frontend Implementation Tasks** ⚡ **HIGH PRIORITY**
 - [ ] **Update Event Table**: Add OBS timestamp fields display
 - [ ] **Implement OBS UI Components**: Add connection status and session controls
 - [ ] **Add IVR Integration**: Implement IVR trigger button and status display
 - [ ] **Create Performance Monitoring**: Add frontend performance metrics
 - [ ] **Implement Virtualized Lists**: Add react-window for event tables
 
-#### **5. Master/Slave Architecture Implementation** ⚡ **HIGH PRIORITY**
+#### **7. Master/Slave Architecture Implementation** ⚡ **HIGH PRIORITY**
 - [ ] **Master Node Setup**: Create central database and management system
 - [ ] **Slave Auto-Discovery**: Implement network discovery and registration
 - [ ] **Remote Control System**: Create master control interface for all slaves
