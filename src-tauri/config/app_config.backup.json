@@ -1,7 +1,7 @@
 {
   "app": {
     "version": "0.1.0",
-    "last_save": "2025-08-03T14:06:28.309106700+00:00",
+    "last_save": "2025-08-05T12:46:23.184613100+00:00",
     "startup": {
       "auto_start_udp": false,
       "auto_connect_obs": false,
@@ -64,7 +64,7 @@
   "udp": {
     "listener": {
       "port": 8888,
-      "bind_address": "192.168.0.109",
+      "bind_address": "192.168.8.140",
       "enabled": true,
       "buffer_size": 8192,
       "timeout_seconds": 30,

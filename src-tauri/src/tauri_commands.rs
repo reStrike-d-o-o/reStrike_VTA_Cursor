@@ -1839,15 +1839,17 @@ pub async fn pss_setup_event_listener(_window: tauri::Window) -> Result<(), Taur
 
 #[tauri::command]
 pub async fn obs_setup_status_listener(window: tauri::Window, app: State<'_, Arc<App>>) -> Result<(), TauriError> {
-    log::info!("Setting up OBS status listener for frontend");
+    log::info!("🔧 Setting up OBS status listener for frontend - COMMAND CALLED");
 
     let window_clone = window.clone();
     let app_arc = app.inner().clone();
     // Spawn background task (using cloned Arc<App>)
     tokio::spawn(async move {
+        log::info!("🔧 OBS status listener background task started");
         let mut last_payload = serde_json::Value::Null;
         loop {
             // Fetch current status
+            log::debug!("🔧 Fetching OBS status...");
             let status_result = app_arc.obs_plugin().get_obs_status().await;
             if let Ok(status) = status_result {
                 let payload = serde_json::json!({
@@ -1859,6 +1861,7 @@ pub async fn obs_setup_status_listener(window: tauri::Window, app: State<'_, Arc
                 });
                 // Emit only if changed
                 if payload != last_payload {
+                    log::info!("🔧 Emitting OBS status update: {:?}", payload);
                     if let Err(e) = window_clone.emit("obs_status", payload.clone()) {
                         log::error!("Failed to emit obs_status: {}", e);
                     }

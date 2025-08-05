@@ -84,13 +84,22 @@ export const useEnvironmentObs = () => {
 
   // Setup status listener for real-time updates
   const setupStatusListener = useCallback(async (): Promise<ApiResponse> => {
+    console.log('🔧 Setting up OBS status listener...');
+    console.log('  - isWindows:', isWindows);
+    console.log('  - tauriAvailable:', tauriAvailable);
+    
     if (isWindows && tauriAvailable) {
       try {
-        return await obsCommands.setupStatusListener();
+        console.log('  - Calling obsCommands.setupStatusListener()...');
+        const result = await obsCommands.setupStatusListener();
+        console.log('  - Result:', result);
+        return result;
       } catch (error) {
+        console.error('  - Error calling setupStatusListener:', error);
         return { success: false, error: String(error) };
       }
     } else {
+      console.log('  - Starting polling instead (web mode)');
       // For web, start polling instead
       startStatusPolling();
       return { success: true };

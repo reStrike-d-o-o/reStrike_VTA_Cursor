@@ -115,16 +115,20 @@ const ObsWebSocketManager: React.FC = () => {
   useEffect(() => {
     if (!isTauriAvailable()) return;
 
+    console.log('🔧 ObsWebSocketManager: Setting up OBS status listener...');
     // Start backend listener once
     obsCommands.setupStatusListener().catch((e) => console.error('obs status listener setup failed', e));
 
     let unlistenPromise: Promise<() => void> = Promise.resolve(() => {});
     if (window.__TAURI__?.event) {
+      console.log('🔧 ObsWebSocketManager: Listening for obs_status events...');
       unlistenPromise = window.__TAURI__.event.listen('obs_status', (event: any) => {
-      if (event && event.payload) {
-        updateObsStatus(event.payload);
-      }
-    });
+        console.log('🔧 ObsWebSocketManager: Received obs_status event:', event);
+        if (event && event.payload) {
+          console.log('🔧 ObsWebSocketManager: Updating OBS status with payload:', event.payload);
+          updateObsStatus(event.payload);
+        }
+      });
     }
 
     return () => {
