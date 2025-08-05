@@ -16,6 +16,7 @@ pub mod plugin_protocol_manager;
 pub mod load_balancer;
 pub mod advanced_analytics;
 pub mod obs; // Add modular OBS plugins
+pub mod youtube_api; // Add YouTube API integration
 
 // Add placeholder modules for missing imports
 pub mod performance_monitor {
@@ -147,6 +148,8 @@ pub use load_balancer::{EventDistributor, LoadBalancer, LoadBalancerConfig, Load
 pub use advanced_analytics::{AdvancedAnalytics, AnalyticsConfig, TournamentAnalytics, PerformanceAnalytics, AthleteAnalytics, MatchAnalytics, AnalyticsSnapshot, AthletePerformance, SystemPerformance, EventProcessingPerformance, DatabasePerformance, CachePerformance, NetworkPerformance, MatchPerformance, PerformancePoint, MatchPerformancePoint};
 // Re-export modular OBS plugins
 pub use obs::{ObsPluginManager, ObsCorePlugin, ObsRecordingPlugin, ObsStreamingPlugin, ObsScenesPlugin, ObsSettingsPlugin, ObsEventsPlugin, ObsStatusPlugin};
+// Re-export YouTube API plugin
+pub use youtube_api::{YouTubeApiPlugin, YouTubeApiClient, YouTubeApiConfig, YouTubePlaylist, YouTubeStream, YouTubeVideo};
 
 // Re-export drive plugin function
 pub use plugin_drive::drive_plugin;
@@ -174,6 +177,7 @@ pub async fn init() -> Result<(), Box<dyn std::error::Error>> {
     plugin_protocol_manager::init()?; // Protocol management
     // Old OBS plugin removed - using modular system
     obs::init()?;                  // Initialize modular OBS plugin system
+    // YouTube API plugin will be initialized when needed (requires OAuth setup)
     
     println!("✅ All plugins initialized successfully");
     Ok(())

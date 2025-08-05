@@ -5,16 +5,24 @@
 use chrono::Utc;
 use crate::types::AppResult;
 use super::types::*;
+use std::sync::Arc;
+use tokio::sync::Mutex;
 
 /// OBS Events Plugin for event handling
 pub struct ObsEventsPlugin {
     context: ObsPluginContext,
+    event_filters: Arc<Mutex<Vec<EventFilter>>>,
+    event_routes: Arc<Mutex<Vec<EventRoute>>>,
 }
 
 impl ObsEventsPlugin {
     /// Create a new OBS Events Plugin
     pub fn new(context: ObsPluginContext) -> Self {
-        Self { context }
+        Self { 
+            context,
+            event_filters: Arc::new(Mutex::new(Vec::new())),
+            event_routes: Arc::new(Mutex::new(Vec::new())),
+        }
     }
 
     /// Get latest events for a connection
@@ -210,6 +218,188 @@ impl ObsEventsPlugin {
         *show_flag = enabled;
         
         log::info!("[OBS_EVENTS] Show full events: {}", enabled);
+    }
+
+    /// Add event filter
+    pub async fn add_event_filter(&self, filter: EventFilter) -> AppResult<()> {
+        log::info!("[OBS_EVENTS] Adding event filter: {:?}", filter);
+        let mut filters = self.event_filters.lock().await;
+        filters.push(filter);
+        Ok(())
+    }
+
+    /// Remove event filter
+    pub async fn remove_event_filter(&self, filter_id: &str) -> AppResult<()> {
+        log::info!("[OBS_EVENTS] Removing event filter: {}", filter_id);
+        let mut filters = self.event_filters.lock().await;
+        filters.retain(|f| f.id != filter_id);
+        Ok(())
+    }
+
+    /// Get all event filters
+    pub async fn get_event_filters(&self) -> Vec<EventFilter> {
+        let filters = self.event_filters.lock().await;
+        filters.clone()
+    }
+
+    /// Clear all event filters
+    pub async fn clear_event_filters(&self) {
+        log::info!("[OBS_EVENTS] Clearing all event filters");
+        let mut filters = self.event_filters.lock().await;
+        filters.clear();
+    }
+
+    /// Add event route
+    pub async fn add_event_route(&self, route: EventRoute) -> AppResult<()> {
+        log::info!("[OBS_EVENTS] Adding event route: {:?}", route);
+        let mut routes = self.event_routes.lock().await;
+        routes.push(route);
+        Ok(())
+    }
+
+    /// Remove event route
+    pub async fn remove_event_route(&self, route_id: &str) -> AppResult<()> {
+        log::info!("[OBS_EVENTS] Removing event route: {}", route_id);
+        let mut routes = self.event_routes.lock().await;
+        routes.retain(|r| r.id != route_id);
+        Ok(())
+    }
+
+    /// Get all event routes
+    pub async fn get_event_routes(&self) -> Vec<EventRoute> {
+        let routes = self.event_routes.lock().await;
+        routes.clone()
+    }
+
+    /// Clear all event routes
+    pub async fn clear_event_routes(&self) {
+        log::info!("[OBS_EVENTS] Clearing all event routes");
+        let mut routes = self.event_routes.lock().await;
+        routes.clear();
+    }
+
+    /// Process event with filters and routes
+    async fn process_event(&self, event: ObsEvent) -> AppResult<()> {
+        // Apply filters
+        let filters = self.event_filters.lock().await;
+        let should_process = filters.iter().all(|filter| {
+            match filter.condition {
+                FilterCondition::AllowAll => true,
+                FilterCondition::BlockEventType(ref event_type) => {
+                    !matches!(event, ObsEvent::Raw { .. } if event_type == "raw")
+                },
+                FilterCondition::AllowEventType(ref event_type) => {
+                    matches!(event, ObsEvent::Raw { .. } if event_type == "raw")
+                },
+                FilterCondition::BlockConnection(ref conn_name) => {
+                    !matches!(event, ObsEvent::Raw { ref connection_name, .. } if connection_name == conn_name)
+                },
+                FilterCondition::AllowConnection(ref conn_name) => {
+                    matches!(event, ObsEvent::Raw { ref connection_name, .. } if connection_name == conn_name)
+                },
+            }
+        });
+
+        if !should_process {
+            log::debug!("[OBS_EVENTS] Event filtered out: {:?}", event);
+            return Ok(());
+        }
+
+        // Apply routes
+        let routes = self.event_routes.lock().await;
+        for route in routes.iter() {
+            if self.matches_route(&event, route).await {
+                log::debug!("[OBS_EVENTS] Routing event to: {}", route.destination);
+                // Here you would implement the actual routing logic
+                // For now, we just log it
+                match route.destination.as_str() {
+                    "frontend" => {
+                        // Route to frontend
+                        self.route_to_frontend(&event).await?;
+                    },
+                    "log" => {
+                        // Route to log
+                        self.route_to_log(&event).await?;
+                    },
+                    "database" => {
+                        // Route to database
+                        self.route_to_database(&event).await?;
+                    },
+                    _ => {
+                        log::warn!("[OBS_EVENTS] Unknown route destination: {}", route.destination);
+                    }
+                }
+            }
+        }
+
+        // Store in recent events buffer
+        self.store_recent_event(event).await;
+        Ok(())
+    }
+
+    /// Check if event matches a route
+    async fn matches_route(&self, event: &ObsEvent, route: &EventRoute) -> bool {
+        match route.condition {
+            RouteCondition::AllEvents => true,
+            RouteCondition::EventType(ref event_type) => {
+                matches!(event, ObsEvent::Raw { .. } if event_type == "raw")
+            },
+            RouteCondition::Connection(ref conn_name) => {
+                matches!(event, ObsEvent::Raw { ref connection_name, .. } if connection_name == conn_name)
+            },
+            RouteCondition::Custom(ref _predicate) => {
+                // Custom predicate logic would go here
+                true
+            }
+        }
+    }
+
+    /// Route event to frontend
+    async fn route_to_frontend(&self, event: &ObsEvent) -> AppResult<()> {
+        // This would emit the event to the frontend via WebSocket or Tauri events
+        log::debug!("[OBS_EVENTS] Routing to frontend: {:?}", event);
+        Ok(())
+    }
+
+    /// Route event to log
+    async fn route_to_log(&self, event: &ObsEvent) -> AppResult<()> {
+        log::info!("[OBS_EVENTS] Logged event: {:?}", event);
+        Ok(())
+    }
+
+    /// Route event to database
+    async fn route_to_database(&self, event: &ObsEvent) -> AppResult<()> {
+        // This would store the event in the database
+        log::debug!("[OBS_EVENTS] Routing to database: {:?}", event);
+        Ok(())
+    }
+
+    /// Store event in recent events buffer
+    async fn store_recent_event(&self, event: ObsEvent) {
+        match event {
+            ObsEvent::Raw { connection_name, data } => {
+                self.add_recent_event(&connection_name, "raw", data).await;
+            },
+            ObsEvent::SceneChanged { connection_name, scene_name } => {
+                let data = serde_json::json!({ "sceneName": scene_name });
+                self.add_recent_event(&connection_name, "SceneChanged", data).await;
+            },
+            ObsEvent::RecordingStateChanged { connection_name, is_recording } => {
+                let data = serde_json::json!({ "isRecording": is_recording });
+                self.add_recent_event(&connection_name, "RecordingStateChanged", data).await;
+            },
+            ObsEvent::StreamStateChanged { connection_name, is_streaming } => {
+                let data = serde_json::json!({ "isStreaming": is_streaming });
+                self.add_recent_event(&connection_name, "StreamStateChanged", data).await;
+            },
+            ObsEvent::ReplayBufferStateChanged { connection_name, is_active } => {
+                let data = serde_json::json!({ "isActive": is_active });
+                self.add_recent_event(&connection_name, "ReplayBufferStateChanged", data).await;
+            },
+            _ => {
+                log::debug!("[OBS_EVENTS] Unhandled event type for storage: {:?}", event);
+            }
+        }
     }
 }
 

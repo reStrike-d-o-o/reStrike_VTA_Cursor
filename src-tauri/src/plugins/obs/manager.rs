@@ -32,10 +32,13 @@ impl ObsPluginManager {
         log::info!("🔧 Creating OBS Plugin Manager...");
         
         // Create shared context
-        let context = ObsPluginContext::new()?;
+        let mut context = ObsPluginContext::new()?;
         
         // Create core plugin first (others depend on it)
         let core_plugin = Arc::new(ObsCorePlugin::new(context.clone()));
+        
+        // Set the core plugin in the context for other plugins to use
+        context.core_plugin = Some(core_plugin.clone());
         
         // Create other plugins with dependencies
         let recording_plugin = Arc::new(ObsRecordingPlugin::new(context.clone(), core_plugin.clone()));
@@ -150,25 +153,56 @@ impl ObsPluginManager {
     }
 
     // Settings plugin methods
-    pub async fn get_obs_settings(&self, _connection_name: &str) -> AppResult<serde_json::Value> {
-        // TODO: Implement this when the settings plugin is complete
-        Ok(serde_json::json!({}))
+    pub async fn get_obs_settings(&self, connection_name: &str) -> AppResult<serde_json::Value> {
+        // Get OBS version and current profile
+        let version = self.settings_plugin.get_obs_version(connection_name).await?;
+        let profile = self.settings_plugin.get_current_profile(connection_name).await?;
+        let profiles = self.settings_plugin.get_profiles(connection_name).await?;
+        
+        Ok(serde_json::json!({
+            "version": version,
+            "current_profile": profile,
+            "profiles": profiles
+        }))
     }
 
-    pub async fn set_obs_settings(&self, _connection_name: &str, _settings: serde_json::Value) -> AppResult<()> {
-        // TODO: Implement this when the settings plugin is complete
+    pub async fn set_obs_settings(&self, connection_name: &str, settings: serde_json::Value) -> AppResult<()> {
+        // Handle different setting types
+        if let Some(profile_name) = settings.get("profile_name").and_then(|v| v.as_str()) {
+            self.settings_plugin.set_current_profile(connection_name, profile_name).await?;
+        }
+        
         Ok(())
+    }
+
+    // Settings plugin methods
+    pub async fn get_obs_version(&self, connection_name: &str) -> AppResult<String> {
+        self.settings_plugin.get_obs_version(connection_name).await
+    }
+
+    pub async fn get_current_profile(&self, connection_name: &str) -> AppResult<String> {
+        self.settings_plugin.get_current_profile(connection_name).await
+    }
+
+    pub async fn set_current_profile(&self, connection_name: &str, profile_name: &str) -> AppResult<()> {
+        self.settings_plugin.set_current_profile(connection_name, profile_name).await
+    }
+
+    pub async fn get_profiles(&self, connection_name: &str) -> AppResult<Vec<String>> {
+        self.settings_plugin.get_profiles(connection_name).await
     }
 
     // Scenes plugin methods
-    pub async fn get_scenes(&self, _connection_name: &str) -> AppResult<Vec<String>> {
-        // TODO: Implement this when the scenes plugin is complete
-        Ok(Vec::new())
+    pub async fn get_scenes(&self, connection_name: &str) -> AppResult<Vec<String>> {
+        self.scenes_plugin.get_scenes(connection_name).await
     }
 
-    pub async fn set_current_scene(&self, _connection_name: &str, _scene_name: &str) -> AppResult<()> {
-        // TODO: Implement this when the scenes plugin is complete
-        Ok(())
+    pub async fn set_current_scene(&self, connection_name: &str, scene_name: &str) -> AppResult<()> {
+        self.scenes_plugin.set_current_scene(connection_name, scene_name).await
+    }
+
+    pub async fn get_current_scene(&self, connection_name: &str) -> AppResult<String> {
+        self.scenes_plugin.get_current_scene(connection_name).await
     }
 
     // Additional methods for Tauri commands compatibility

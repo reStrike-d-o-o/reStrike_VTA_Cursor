@@ -45,6 +45,15 @@ pub struct ObsConnectionInfo {
     pub last_heartbeat: Option<DateTime<Utc>>,
 }
 
+/// System Information
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SystemInfo {
+    pub cpu_usage: f64,
+    pub memory_usage: f64,
+    pub fps: f64,
+    pub timestamp: DateTime<Utc>,
+}
+
 /// OBS Connection Status
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum ObsConnectionStatus {
@@ -128,7 +137,8 @@ pub enum ObsEvent {
     },
 }
 
-// Shared plugin context for cross-plugin communication
+/// Shared context for all OBS plugins
+#[derive(Clone)]
 pub struct ObsPluginContext {
     pub connections: Arc<Mutex<HashMap<String, ObsConnection>>>,
     pub event_tx: mpsc::UnboundedSender<ObsEvent>,
@@ -136,22 +146,25 @@ pub struct ObsPluginContext {
     pub show_full_events: Arc<Mutex<bool>>,
     pub recent_events: Arc<Mutex<Vec<RecentEvent>>>,
     pub log_manager: Arc<Mutex<LogManager>>,
+    pub core_plugin: Option<Arc<super::core::ObsCorePlugin>>,
 }
 
 impl ObsPluginContext {
     /// Create a new OBS Plugin Context
     pub fn new() -> AppResult<Self> {
-        let (event_tx, _event_rx) = tokio::sync::mpsc::unbounded_channel();
-        let log_config = crate::logging::LogConfig::default();
-        let log_manager = Arc::new(Mutex::new(LogManager::new(log_config)?));
+        let (event_tx, _event_rx) = mpsc::unbounded_channel();
+        
+        let log_manager = Arc::new(Mutex::new(LogManager::new(crate::logging::LogConfig::default())
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to initialize logging: {}", e)))?));
         
         Ok(Self {
             connections: Arc::new(Mutex::new(HashMap::new())),
             event_tx,
-            debug_ws_messages: Arc::new(Mutex::new(true)),
+            debug_ws_messages: Arc::new(Mutex::new(false)),
             show_full_events: Arc::new(Mutex::new(false)),
             recent_events: Arc::new(Mutex::new(Vec::new())),
             log_manager,
+            core_plugin: None,
         })
     }
 
@@ -179,17 +192,39 @@ impl ObsPluginContext {
     }
 }
 
-impl Clone for ObsPluginContext {
-    fn clone(&self) -> Self {
-        Self {
-            connections: self.connections.clone(),
-            event_tx: self.event_tx.clone(),
-            debug_ws_messages: self.debug_ws_messages.clone(),
-            show_full_events: self.show_full_events.clone(),
-            recent_events: self.recent_events.clone(),
-            log_manager: self.log_manager.clone(),
-        }
-    }
+// Event filtering and routing types
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EventFilter {
+    pub id: String,
+    pub name: String,
+    pub condition: FilterCondition,
+    pub enabled: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum FilterCondition {
+    AllowAll,
+    BlockEventType(String),
+    AllowEventType(String),
+    BlockConnection(String),
+    AllowConnection(String),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EventRoute {
+    pub id: String,
+    pub name: String,
+    pub condition: RouteCondition,
+    pub destination: String,
+    pub enabled: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum RouteCondition {
+    AllEvents,
+    EventType(String),
+    Connection(String),
+    Custom(String), // JSON predicate
 }
 
 // Plugin trait for common plugin functionality
