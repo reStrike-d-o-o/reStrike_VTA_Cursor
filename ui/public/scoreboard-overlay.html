@@ -122,6 +122,7 @@
             clockState: 'stopped', // 'running', 'stopped'
             lastClockTime: null,
             lastClockAction: null,
+            manualOverrideActive: false, // true when between clk;{};stop and clk;{};start
             
             // Recent events tracking (last 10 events for pattern detection)
             recentEvents: [],
@@ -185,6 +186,16 @@
                 return manualOverrideState.clockState === 'stopped';
             } catch (error) {
                 console.warn('⚠️ Error checking clock state:', error);
+                return false;
+            }
+        }
+        
+        // Check if we're in manual override mode (between clk;{};stop and clk;{};start)
+        function isInManualOverrideMode() {
+            try {
+                return manualOverrideState.clockState === 'stopped' && manualOverrideState.manualOverrideActive;
+            } catch (error) {
+                console.warn('⚠️ Error checking manual override mode:', error);
                 return false;
             }
         }
@@ -255,32 +266,16 @@
                     return false;
                 }
                 
-                // Check if this is a round change during stopped clock
-                if (isClockStopped()) {
-                    console.log('🔍 Manual round change detected: round change during stopped clock');
-                    return true;
+                // Manual override can only happen between clk;{};stop and clk;{};start events
+                // Check if we're in manual override mode (clock stopped but not yet started)
+                if (!isInManualOverrideMode()) {
+                    return false;
                 }
                 
-                // Check for rapid round changes (multiple within 5 seconds)
-                const recentRoundEvents = manualOverrideState.recentEvents.filter(item => {
-                    return item.event && item.event.type === 'round';
-                });
+                // If we're in manual override mode, check for round changes
+                console.log('🔍 Manual round change detected: round change during manual override mode');
+                return true;
                 
-                if (recentRoundEvents.length >= 2) {
-                    const timeWindow = 5000; // 5 seconds
-                    const now = getCurrentTimestamp();
-                    
-                    const recentRounds = recentRoundEvents.filter(item => {
-                        return (now - item.timestamp) < timeWindow;
-                    });
-                    
-                    if (recentRounds.length >= 2) {
-                        console.log('🔍 Manual round change detected: rapid round changes');
-                        return true;
-                    }
-                }
-                
-                return false;
             } catch (error) {
                 console.warn('⚠️ Error detecting manual round change:', error);
                 return false;
@@ -294,28 +289,15 @@
                     return false;
                 }
                 
-                // 1. Score change during stopped clock
-                if (isClockStopped() && event.type === 'points') {
-                    console.log('🔍 Manual score change detected: score change during stopped clock');
-                    return true;
+                // Manual override can only happen between clk;{};stop and clk;{};start events
+                // Check if we're in manual override mode (clock stopped but not yet started)
+                if (!isInManualOverrideMode()) {
+                    return false;
                 }
                 
-                // 2. Score change during time correction
-                if (hasRecentTimeCorrection() && event.type === 'points') {
-                    console.log('🔍 Manual score change detected: score change during time correction');
-                    return true;
-                }
-                
-                // 3. Large score jump (3 or more points)
-                const scoreJump = calculateScoreJump(newBlueScore, newRedScore);
-                if (scoreJump >= 3) {
-                    console.log('🔍 Manual score change detected: large score jump of', scoreJump, 'points');
-                    return true;
-                }
-                
-                // 4. Rapid point messages
-                if (hasRapidPointMessages()) {
-                    console.log('🔍 Manual score change detected: rapid point messages');
+                // If we're in manual override mode, check for score changes
+                if (event.type === 'points' || event.type === 'current_scores') {
+                    console.log('🔍 Manual score change detected: score change during manual override mode');
                     return true;
                 }
                 
@@ -422,7 +404,8 @@
                 
                 // Update scores immediately
                 if (scoreboardInstance) {
-                    scoreboardInstance.updateScores(newBlueScore, newRedScore);
+                    scoreboardInstance.updateScore('blue', newBlueScore);
+                    scoreboardInstance.updateScore('red', newRedScore);
                     console.log('✅ Updated scores to:', newBlueScore, ':', newRedScore, '(manual change)');
                 }
                 
@@ -591,8 +574,12 @@
                 if (event.type === 'clock') {
                     if (event.action === 'start') {
                         manualOverrideState.clockState = 'running';
+                        manualOverrideState.manualOverrideActive = false; // Exit manual override mode
+                        console.log('🏁 Exited manual override mode: clock started');
                     } else if (event.action === 'stop' || event.action === 'stopEnd') {
                         manualOverrideState.clockState = 'stopped';
+                        manualOverrideState.manualOverrideActive = true; // Enter manual override mode
+                        console.log('⏸️ Entered manual override mode: clock stopped');
                     }
                     manualOverrideState.lastClockTime = event.time;
                     manualOverrideState.lastClockAction = event.action;
