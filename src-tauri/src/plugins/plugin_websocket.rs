@@ -772,16 +772,18 @@ impl WebSocketServer {
                 WebSocketMessage::PssEvent {
                     event_type: "current_scores".to_string(),
                     event_code: "O".to_string(),
-                    athlete: "".to_string(),
+                    athlete: "yellow".to_string(), // Current scores are system events
                     round: get_event_round(None), // Use last known round
-                    time: get_event_time(None), // Use last known time
+                    time: current_time.clone().unwrap_or_else(|| "2:00".to_string()), // Use last known time or default to 2:00
                     timestamp: pss_timestamp.clone(),
                     raw_data: format!("sc1;{};sc2;{}", athlete1_score, athlete2_score),
-                    description: format!("Current Scores - Blue: {}, Red: {}", athlete1_score, athlete2_score),
+                    description: format!("Current Scores - A1: {}, A2: {}", athlete1_score, athlete2_score),
                     action: None,
                     structured_data: serde_json::json!({
                         "athlete1_score": *athlete1_score,
-                        "athlete2_score": *athlete2_score
+                        "athlete2_score": *athlete2_score,
+                        "current_round": current_round.unwrap_or(1),
+                        "current_time": current_time.clone().unwrap_or_else(|| "2:00".to_string())
                     }),
                 }
             }

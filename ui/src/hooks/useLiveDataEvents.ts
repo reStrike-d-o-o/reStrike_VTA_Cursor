@@ -58,14 +58,26 @@ export const useLiveDataEvents = () => {
             normalizedAthlete = 'yellow';
           }
           
+          // Update round and time FIRST if provided, so the event gets the current values
+          if (eventData.round) {
+            useLiveDataStore.getState().setCurrentRound(eventData.round);
+          }
+          // Only update time if it's a valid time (not "0:00" or empty)
+          if (eventData.time && eventData.time !== '0:00') {
+            useLiveDataStore.getState().setCurrentRoundTime(eventData.time);
+          }
+          
+          // Get current time and round from store for this event (AFTER updating)
+          const currentStore = useLiveDataStore.getState();
+          
           // Create event directly from structured data instead of parsing raw_data
           const event: PssEventData = {
             id: `${eventData.event_type}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
             eventType: eventData.event_type || '',
             eventCode: eventData.event_code || '', // Always from backend
             athlete: normalizedAthlete,
-            round: eventData.round || 1,
-            time: eventData.time || '0:00',
+            round: eventData.round || currentStore.currentRound,
+            time: currentStore.currentRoundTime, // ALWAYS use current store time
             timestamp: eventData.timestamp || new Date().toISOString(),
             rawData: eventData.raw_data || '',
             description: eventData.description || '',
@@ -74,15 +86,9 @@ export const useLiveDataEvents = () => {
           };
           
 
-          useLiveDataStore.getState().addEvent(event);
           
-          // Update round and time if provided
-          if (eventData.round) {
-            useLiveDataStore.getState().setCurrentRound(eventData.round);
-          }
-          if (eventData.time) {
-            useLiveDataStore.getState().setCurrentTime(eventData.time);
-          }
+
+          useLiveDataStore.getState().addEvent(event);
         } else if (data.type === 'connection') {
           useLiveDataStore.getState().setConnectionStatus(data.connected);
         } else if (data.type === 'error') {

@@ -11,6 +11,8 @@ interface PssMatchStore {
   updateScores: (scores: PssScores) => void;
   updateCurrentScores: (scores: PssCurrentScores) => void;
   updateWinnerRounds: (winnerRounds: PssWinnerRounds) => void;
+  updateCurrentRound: (round: number) => void;
+  updateCurrentRoundTime: (time: string) => void;
   setMatchLoaded: (loaded: boolean) => void;
   resetMatchData: () => void;
   
@@ -94,6 +96,36 @@ export const usePssMatchStore = create<PssMatchStore>((set, get) => ({
     }));
   },
   
+  updateCurrentRound: (round: number) => {
+    console.log('🎯 updateCurrentRound called with:', round);
+    set((state) => {
+      const newState = {
+        matchData: {
+          ...state.matchData,
+          currentRound: round,
+          lastUpdated: new Date().toISOString(),
+        },
+      };
+      console.log('🎯 New store state after updateCurrentRound:', newState);
+      return newState;
+    });
+  },
+
+  updateCurrentRoundTime: (time: string) => {
+    console.log('🎯 updateCurrentRoundTime called with:', time);
+    set((state) => {
+      const newState = {
+        matchData: {
+          ...state.matchData,
+          currentRoundTime: time,
+          lastUpdated: new Date().toISOString(),
+        },
+      };
+      console.log('🎯 New store state after updateCurrentRoundTime:', newState);
+      return newState;
+    });
+  },
+  
   setMatchLoaded: (loaded: boolean) => {
     set((state) => ({
       matchData: {
@@ -105,7 +137,12 @@ export const usePssMatchStore = create<PssMatchStore>((set, get) => ({
   },
   
   resetMatchData: () => {
-    set({ matchData: initialMatchData });
+    set({
+      matchData: {
+        isLoaded: false,
+        lastUpdated: new Date().toISOString(),
+      },
+    });
   },
   
   // Computed values
