@@ -1,8 +1,16 @@
 # TODO.md - reStrike VTA Project
 
-## Current Status: OBS Events Plugin & Status Plugin Enhancement Complete
+## Current Status: DockBar Status Indicators Fixed
 
 ### Recently Completed (2025-01-29)
+
+#### DockBar Status Indicators Fix ✅
+- **Root Cause Identified**: Found that WebSocketManager and StatusbarDock were using different stores
+- **Store Unification**: Unified both components to use `useAppStore` for consistent data flow
+- **Removed Constant Polling**: Eliminated 3-second interval that was making unnecessary `obs_get_connection_status` requests
+- **Real-time Status Updates**: Status indicators now immediately reflect connection state changes
+- **Efficient Event-driven System**: Replaced polling with reactive store updates
+- **Proper Status Mapping**: Fixed case sensitivity issues with connection status values
 
 #### OBS Events Plugin Completion ✅
 - **Real Event Processing**: Integrated events plugin with core plugin WebSocket handling

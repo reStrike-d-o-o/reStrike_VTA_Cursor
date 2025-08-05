@@ -2334,3 +2334,20 @@ YouTube API Tauri command surface is fully functional and successfully compiled.
 
 ### Compilation Status ✅ **COMPLETED**
 YouTube API Tauri commands compile successfully with no errors (exit code 0). Only expected warnings for unused event processing methods remain.
+
+### Frontend Status Indicators ✅ **COMPLETED**
+DockBar status indicators for OBS_REC and OBS_STR connections have been fixed and are now working properly. The system now uses unified store management with `useAppStore` for consistent data flow between WebSocketManager and StatusbarDock components.
+
+**Key Improvements**:
+- **Store Unification**: Both WebSocketManager and StatusbarDock now use `useAppStore` for consistent data flow
+- **Eliminated Constant Polling**: Removed 3-second interval that was making unnecessary `obs_get_connection_status` requests
+- **Real-time Updates**: Status indicators immediately reflect connection state changes
+- **Efficient System**: Replaced polling with reactive store updates
+- **Proper Status Mapping**: Fixed case sensitivity issues with connection status values
+
+**Technical Details**:
+- StatusbarDock now reads from `useAppStore.obsConnections` instead of `useObsStore.connections`
+- Removed constant polling interval in WebSocketManager
+- Updated status mapping to use proper case (`'Connected'` vs `'connected'`)
+- Implemented reactive store updates instead of polling
+- Fixed connection status synchronization between components
