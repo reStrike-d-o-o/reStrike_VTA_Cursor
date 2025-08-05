@@ -196,14 +196,25 @@ impl ObsPluginManager {
     }
 
     pub async fn toggle_full_events(&self, enabled: bool) -> AppResult<()> {
-        // TODO: Implement full events toggle
-        log::info!("Toggling full events: {}", enabled);
+        log::info!("[OBS_MANAGER] Toggling full events: {}", enabled);
+        
+        // Delegate to events plugin to handle full events toggle
+        self.events_plugin.set_show_full_events(enabled).await;
+        
+        // Also update the context setting for persistence
+        {
+            let mut context = self.context.show_full_events.lock().await;
+            *context = enabled;
+        }
+        
+        log::info!("[OBS_MANAGER] Full events toggle completed: {}", enabled);
         Ok(())
     }
 
     pub async fn get_full_events_setting(&self) -> AppResult<bool> {
-        // TODO: Implement full events setting
-        Ok(false)
+        // Get the current setting from context
+        let setting = self.context.show_full_events.lock().await;
+        Ok(*setting)
     }
 
     // Context access

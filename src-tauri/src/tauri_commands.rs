@@ -1150,7 +1150,7 @@ pub async fn obs_get_debug_info(connection_name: String, app: State<'_, Arc<App>
 pub async fn obs_toggle_full_events(enabled: bool, app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Toggling OBS full events display: {}", enabled);
     
-    let _ = app.obs_plugin().toggle_full_events(enabled).await;
+    app.obs_plugin().toggle_full_events(enabled).await.map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
     
     Ok(serde_json::json!({
         "success": true,
