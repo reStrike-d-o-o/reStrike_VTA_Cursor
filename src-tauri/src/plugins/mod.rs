@@ -12,7 +12,7 @@ pub mod plugin_drive;
 pub mod plugin_license;
 pub mod plugin_cpu_monitor;
 pub mod plugin_protocol_manager;
-pub mod plugin_obs; // Keep old plugin for now during transition
+// Old plugin_obs removed - using modular obs system
 pub mod load_balancer;
 pub mod advanced_analytics;
 pub mod obs; // Add modular OBS plugins
@@ -142,7 +142,7 @@ pub use plugin_drive::DrivePlugin;
 pub use plugin_license::LicensePlugin;
 pub use plugin_cpu_monitor::{CpuMonitorPlugin, CpuMonitorConfig}; // Added CpuMonitorConfig
 pub use plugin_protocol_manager::ProtocolManager; // Fixed: was ProtocolManagerPlugin
-pub use plugin_obs::ObsPlugin; // Keep old plugin for now
+// Old ObsPlugin removed - using ObsPluginManager
 pub use load_balancer::{EventDistributor, LoadBalancer, LoadBalancerConfig, LoadDistributionStrategy, ServerHealth, ServerStatistics, DistributorStatistics, UdpServerInstance};
 pub use advanced_analytics::{AdvancedAnalytics, AnalyticsConfig, TournamentAnalytics, PerformanceAnalytics, AthleteAnalytics, MatchAnalytics, AnalyticsSnapshot, AthletePerformance, SystemPerformance, EventProcessingPerformance, DatabasePerformance, CachePerformance, NetworkPerformance, MatchPerformance, PerformancePoint, MatchPerformancePoint};
 // Re-export modular OBS plugins
@@ -172,7 +172,7 @@ pub async fn init() -> Result<(), Box<dyn std::error::Error>> {
     plugin_license::init()?;       // License management
     plugin_cpu_monitor::init()?;   // CPU monitoring
     plugin_protocol_manager::init()?; // Protocol management
-    plugin_obs::init()?;           // Initialize old OBS plugin (for transition)
+    // Old OBS plugin removed - using modular system
     obs::init()?;                  // Initialize modular OBS plugin system
     
     println!("✅ All plugins initialized successfully");

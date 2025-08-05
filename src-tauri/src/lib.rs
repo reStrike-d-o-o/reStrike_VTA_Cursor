@@ -20,7 +20,7 @@ pub mod ui_settings;
 
 // Re-export commonly used items
 pub use core::app::App;
-pub use plugins::plugin_obs::ObsPlugin;
+// Old ObsPlugin removed - using modular ObsPluginManager
 pub use plugins::plugin_playback::PlaybackPlugin;
 pub use plugins::plugin_udp::UdpPlugin;
 pub use types::*;

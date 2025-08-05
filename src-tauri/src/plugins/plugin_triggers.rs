@@ -1,6 +1,6 @@
 use crate::database::{DatabaseConnection, models::{OverlayTemplate, EventTrigger}};
 use once_cell::sync::OnceCell;
-use crate::plugins::plugin_obs::ObsPlugin;
+use crate::plugins::obs::ObsPluginManager;
 use crate::types::AppResult;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -12,7 +12,7 @@ pub static TRIGGER_PLUGIN_GLOBAL: OnceCell<std::sync::Arc<TriggerPlugin>> = Once
 
 pub struct TriggerPlugin {
     db: Arc<DatabaseConnection>,
-    obs_plugin: Arc<ObsPlugin>,
+    obs_plugin_manager: Arc<ObsPluginManager>,
     enabled_triggers: Arc<RwLock<HashMap<String, Vec<EventTrigger>>>>,
     current_tournament_id: Arc<RwLock<Option<i64>>>,
     current_tournament_day_id: Arc<RwLock<Option<i64>>>,
@@ -149,10 +149,10 @@ impl Clone for TriggerPlugin {
 
 impl TriggerPlugin {
     /// Create a new trigger plugin
-    pub fn new(db: Arc<DatabaseConnection>, obs_plugin: Arc<ObsPlugin>) -> Self {
+    pub fn new(db: Arc<DatabaseConnection>, obs_plugin_manager: Arc<ObsPluginManager>) -> Self {
         Self {
             db,
-            obs_plugin,
+            obs_plugin_manager,
             enabled_triggers: Arc::new(RwLock::new(HashMap::new())),
             current_tournament_id: Arc::new(RwLock::new(None)),
             current_tournament_day_id: Arc::new(RwLock::new(None)),
@@ -546,7 +546,7 @@ impl TriggerPlugin {
         }
         
         // Execute scene change via OBS plugin (using default connection)
-        self.obs_plugin.set_current_scene("default", &scene.scene_name).await?;
+        self.obs_plugin_manager.set_current_scene("default", &scene.scene_name).await?;
         
         log::info!("🎬 Changed OBS scene to: {}", scene.scene_name);
         Ok(())
