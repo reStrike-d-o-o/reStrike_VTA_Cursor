@@ -349,6 +349,12 @@ const handleFightReadyEvent = (event: any, store: any) => {
   try {
     if (lastFightReadyEmitted) return;
     lastFightReadyEmitted = true;
+    
+    // Clear Event Table events when fight is ready
+    // This prevents events from before the match started from appearing
+    console.log('🎯 Fight ready event - clearing Event Table events');
+    store.clearEvents();
+    
   } catch (error) {
     console.error('Error handling fight ready event:', error);
   }

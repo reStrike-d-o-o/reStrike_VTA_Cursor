@@ -2,6 +2,30 @@
 
 ## 🎯 **Current Status: OBS Integration & Performance Optimization Implementation**
 
+### **✅ Recently Completed (Latest Updates)**
+
+#### **Event Table Time & Round Display Fixes** ✅ **COMPLETED**
+- [x] **Fixed Event Table Time Display**: Resolved persistent "2:00:00" issue by removing hardcoded values from backend
+- [x] **Fixed Event Table Round Display**: Added 'RND' to importantEventCodes array to display round events
+- [x] **Manual Override Detection**: Implemented comprehensive manual override detection in scoreboard overlay
+- [x] **Break Event Exception**: Added exception for round changes after `brk;0:00;stopEnd` events (normal inter-round changes)
+- [x] **Event Table Clearing**: Implemented automatic Event Table clearing on `rdy;FightReady` events
+- [x] **Removed Manual Clear Buttons**: Removed Clear Events buttons from EventTableSection and LiveDataPanel
+- [x] **Event Sequence Tracking**: Replaced time-based threshold with event sequence tracking for manual override detection
+
+#### **Manual Override Detection System** ✅ **COMPLETED**
+- [x] **Scoreboard Overlay Manual Override**: Implemented comprehensive manual override detection
+- [x] **Clock State Tracking**: Added tracking for clock start/stop states
+- [x] **Event Sequence Analysis**: Implemented tracking of events between break stopEnd and round events
+- [x] **Exception Handling**: Added exception for normal inter-round changes after break events
+- [x] **Debug Logging**: Added comprehensive logging for manual override detection
+
+#### **Event Table Management** ✅ **COMPLETED**
+- [x] **Automatic Clearing**: Event Table now clears automatically on `rdy;FightReady` events
+- [x] **Counter Behavior**: Verified correct counter behavior (Round/Time preserved, Total/Table reset)
+- [x] **UI Cleanup**: Removed manual clear buttons, keeping only automatic clearing
+- [x] **WebSocket Integration**: Added fight_ready event handling in both Tauri and WebSocket paths
+
 ### **📋 Immediate Priorities (This Week)**
 
 #### **1. OBS Integration Implementation** ⚡ **HIGH PRIORITY**

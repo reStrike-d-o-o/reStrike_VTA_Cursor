@@ -34,6 +34,67 @@ A cross-platform Instant Video Replay Manager designed for taekwondo referees, e
 - **As a technical assistant**, I want to configure protocol formats and logging
 - **As an organizer**, I want the license to be secure and tied to the machine
 
+## Event Table System
+
+### Overview
+The Event Table system provides real-time display of PSS events with intelligent time and round tracking, manual override detection, and automatic event management.
+
+### Recent Improvements (2025-01-29)
+
+#### **Event Table Time & Round Display Fixes**
+- **Persistent "2:00:00" Issue**: Resolved by removing hardcoded values from backend JSON event creation
+- **Round Display**: Added 'RND' to importantEventCodes array to display round events
+- **Time Accuracy**: Event Table now displays actual PSS event times instead of fallback values
+- **Files Modified**:
+  - `ui/src/components/molecules/EventTableSection.tsx` - Enhanced event filtering
+  - `ui/src/hooks/useLiveDataEvents.ts` - Improved event processing
+  - `ui/src/utils/pssEventHandler.ts` - Added fight_ready event handling
+
+#### **Event Table Management**
+- **Automatic Clearing**: Event Table clears automatically on `rdy;FightReady` events
+- **Manual Button Removal**: Removed Clear Events buttons from UI components
+- **Counter Behavior**: Verified correct behavior (Round/Time preserved, Total/Table reset)
+- **Clean UI**: Simplified interface with automatic event management
+
+#### **Manual Override Detection System**
+- **Event Sequence Tracking**: Replaced time-based threshold with event sequence analysis
+- **Break Event Exception**: Round changes after `brk;0:00;stopEnd` are NOT manual override
+- **Normal Pattern**: `brk;0:00;stopEnd` → `rnd;3` → `clk;02:00;start`
+- **Detection Logic**: Manual override only when other events occur between break stopEnd and round
+
+### Technical Implementation
+
+#### **Event Table Component**
+- **File**: `ui/src/components/molecules/EventTableSection.tsx`
+- **Features**: Real-time event display, filtering, auto-scroll
+- **Counters**: Round, Time, Total, Table counters with proper state management
+- **Filtering**: Color and event type filtering with important event codes
+
+#### **Live Data Store**
+- **File**: `ui/src/stores/liveDataStore.ts`
+- **State Management**: Events array, current round/time, connection status
+- **Actions**: addEvent, clearEvents, setCurrentRound, setCurrentRoundTime
+- **Computed**: getFilteredEvents, getEventsByRound
+
+#### **WebSocket Integration**
+- **File**: `ui/src/hooks/useLiveDataEvents.ts`
+- **Connection**: Singleton WebSocket connection to backend
+- **Event Processing**: Real-time PSS event processing and store updates
+- **Manual Mode**: Automatic disconnection when manual mode is enabled
+
+### Scoreboard Overlay Integration
+
+#### **Manual Override Detection**
+- **File**: `ui/public/scoreboard-overlay.html`
+- **State Tracking**: Clock state, manual override mode, event sequence
+- **Exception Handling**: Break event exception for normal inter-round changes
+- **Debug Logging**: Comprehensive logging for manual override detection
+
+#### **Event Processing**
+- **Clock Events**: Proper state management for start/stop actions
+- **Round Events**: Enhanced round change detection with exception handling
+- **Break Events**: Tracking of break stopEnd events for manual override exception
+
 ## Flag Management System
 
 ### Overview

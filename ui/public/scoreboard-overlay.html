@@ -124,6 +124,10 @@
             lastClockAction: null,
             manualOverrideActive: false, // true when between clk;{};stop and clk;{};start
             
+            // Break event tracking for manual override exception
+            lastBreakStopEnd: null, // Timestamp of last brk;0:00;stopEnd event
+            eventsAfterBreakStopEnd: [], // Track events between brk;0:00;stopEnd and rnd
+            
             // Recent events tracking (last 10 events for pattern detection)
             recentEvents: [],
             maxRecentEvents: 10,
@@ -200,6 +204,29 @@
             }
         }
         
+        // Check if a round change follows a break stopEnd event (normal inter-round change)
+        function isRoundChangeAfterBreakStopEnd() {
+            try {
+                if (!manualOverrideState.lastBreakStopEnd) {
+                    return false;
+                }
+                
+                // Check if there are no other events between brk;0:00;stopEnd and rnd
+                // If eventsAfterBreakStopEnd is empty, it means only the round event occurred
+                const hasOnlyRoundEvent = manualOverrideState.eventsAfterBreakStopEnd.length === 0;
+                
+                if (hasOnlyRoundEvent) {
+                    console.log('🔍 Round change after break stopEnd with no intervening events - normal inter-round change');
+                    return true;
+                }
+                
+                return false;
+            } catch (error) {
+                console.warn('⚠️ Error checking round change after break stopEnd:', error);
+                return false;
+            }
+        }
+        
         // Safely check if there was a recent time correction
         function hasRecentTimeCorrection() {
             try {
@@ -269,6 +296,13 @@
                 // Manual override can only happen between clk;{};stop and clk;{};start events
                 // Check if we're in manual override mode (clock stopped but not yet started)
                 if (!isInManualOverrideMode()) {
+                    return false;
+                }
+                
+                // EXCEPTION: If a round change happens after a break stopEnd event, it's NOT manual override
+                // This is a normal round change after an inter-round break
+                if (isRoundChangeAfterBreakStopEnd()) {
+                    console.log('🔍 Round change after break stopEnd detected - NOT manual override (normal inter-round change)');
                     return false;
                 }
                 
@@ -585,6 +619,18 @@
                     manualOverrideState.lastClockAction = event.action;
                 }
                 
+                // Track events after break stopEnd (for manual override exception)
+                if (manualOverrideState.lastBreakStopEnd && event.type !== 'round') {
+                    // If we have a break stopEnd timestamp and this is not a round event,
+                    // track this event as occurring between break stopEnd and round
+                    manualOverrideState.eventsAfterBreakStopEnd.push({
+                        type: event.type,
+                        timestamp: getCurrentTimestamp(),
+                        event: event
+                    });
+                    console.log('📝 Event tracked after break stopEnd:', event.type);
+                }
+                
                 // Check for manual overrides BEFORE normal processing
                 let isManualOverride = false;
                 
@@ -643,6 +689,9 @@
                         break;
                     case 'injury':
                         handleInjuryEvent(event);
+                        break;
+                    case 'break':
+                        handleBreakEvent(event);
                         break;
                     case 'raw':
                         handleRawEvent(event);
@@ -1005,6 +1054,13 @@
             console.log('🔄 Round event:', event);
             console.log('🔄 Current roundDuration variable:', roundDuration);
             
+            // Clear break stopEnd tracking when round event occurs
+            if (manualOverrideState.lastBreakStopEnd) {
+                console.log('🔄 Round event occurred, clearing break stopEnd tracking');
+                manualOverrideState.lastBreakStopEnd = null;
+                manualOverrideState.eventsAfterBreakStopEnd = [];
+            }
+            
             // Try to parse raw_data first, then fall back to structured_data
             let roundData = null;
             
@@ -1042,6 +1098,11 @@
                     console.log('🔄 Manual round change detected, preserving all data...');
                     handleManualRoundChange(event);
                 } else {
+                    // Check if this is a round change after break stopEnd (normal inter-round change)
+                    if (isRoundChangeAfterBreakStopEnd()) {
+                        console.log('🔄 Normal round change after break stopEnd detected - treating as normal round change');
+                    }
+                    
                     // Normal round change - update round and reset clock
                     scoreboardInstance.updateRound(roundNumber);
                     console.log(`🔄 Updated to round: ${roundNumber} (normal change)`);
@@ -1156,6 +1217,17 @@
                 } else if (event.action === 'reset') {
                     scoreboardInstance.resetInjuryTime();
                 }
+            }
+        }
+        
+        // Handle break event
+        function handleBreakEvent(event) {
+            console.log('⏸️ Break event:', event);
+            
+            if (event.action === 'stopEnd') {
+                manualOverrideState.lastBreakStopEnd = getCurrentTimestamp();
+                manualOverrideState.eventsAfterBreakStopEnd = []; // Reset tracking
+                console.log('⏸️ Break stopEnd event detected. Starting event tracking...');
             }
         }
         

@@ -70,6 +70,13 @@ export const useLiveDataEvents = () => {
           // Get current time and round from store for this event (AFTER updating)
           const currentStore = useLiveDataStore.getState();
           
+          // Handle fight_ready event - clear Event Table events
+          if (eventData.event_type === 'fight_ready') {
+            console.log('🎯 Fight ready event received via WebSocket - clearing Event Table events');
+            useLiveDataStore.getState().clearEvents();
+            return; // Don't add fight_ready events to the Event Table
+          }
+          
           // Create event directly from structured data instead of parsing raw_data
           const event: PssEventData = {
             id: `${eventData.event_type}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,

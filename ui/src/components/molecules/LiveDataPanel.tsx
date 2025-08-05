@@ -21,13 +21,12 @@ const invoke = async (command: string, args?: any) => {
 
 const LiveDataPanel: React.FC = () => {
   const { tauriAvailable, environment, isWindows, isWeb } = useEnvironment();
-  const {
-    events,
-    currentRound,
-    currentRoundTime,
-    isConnected,
-    lastUpdate,
-    clearEvents,
+  const { 
+    events, 
+    currentRound, 
+    currentRoundTime, 
+    isConnected, 
+    eventCount: events.length 
   } = useLiveDataStore();
   
   // Use the new live data events hook
@@ -279,13 +278,6 @@ const LiveDataPanel: React.FC = () => {
             title="Toggle auto-scroll"
           >
             🔄
-          </button>
-          <button
-            onClick={clearEvents}
-            className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs"
-            title="Clear all events"
-          >
-            🗑️
           </button>
         </div>
       )}

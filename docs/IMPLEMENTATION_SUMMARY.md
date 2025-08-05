@@ -1,5 +1,53 @@
 # reStrike VTA - Implementation Summary
 
+## 🎯 **Latest Implementations (2025-01-29)**
+
+### **8. Event Table Time & Round Display Fixes** ✅ **COMPLETED**
+
+#### **Persistent "2:00:00" Issue Resolution**
+- **Root Cause**: Hardcoded "2:00" values in backend JSON event creation
+- **Solution**: Removed all hardcoded time and round values from `plugin_udp.rs` and `core/app.rs`
+- **Impact**: Event Table now displays actual PSS event times instead of fallback values
+- **Files Modified**: 
+  - `src-tauri/src/plugins/plugin_udp.rs` - Removed hardcoded values from JSON creation
+  - `src-tauri/src/core/app.rs` - Commented out direct event emission to ensure WebSocket-only processing
+
+#### **Round Display Fix**
+- **Problem**: Round events not displaying in Event Table
+- **Solution**: Added 'RND' to `importantEventCodes` array in `EventTableSection.tsx`
+- **Result**: Round events now properly display in Event Table
+
+#### **Event Table Management Improvements**
+- **Automatic Clearing**: Event Table clears automatically on `rdy;FightReady` events
+- **Manual Button Removal**: Removed Clear Events buttons from UI components
+- **Counter Behavior**: Verified correct behavior (Round/Time preserved, Total/Table reset)
+- **Files Modified**:
+  - `ui/src/components/molecules/EventTableSection.tsx` - Removed clear button
+  - `ui/src/components/molecules/LiveDataPanel.tsx` - Removed clear button
+  - `ui/src/hooks/useLiveDataEvents.ts` - Added fight_ready event handling
+  - `ui/src/utils/pssEventHandler.ts` - Added fight_ready event handling
+
+### **9. Advanced Manual Override Detection** ✅ **COMPLETED**
+
+#### **Event Sequence-Based Detection**
+- **Replaced**: Time-based threshold (5 seconds) with event sequence tracking
+- **New Logic**: Checks for no intervening events between `brk;0:00;stopEnd` and `rnd;3`
+- **Exception Handling**: Round changes after break stopEnd are NOT manual override
+- **Implementation**: Added `eventsAfterBreakStopEnd` array to track event sequence
+
+#### **Break Event Exception System**
+- **Normal Pattern**: `brk;0:00;stopEnd` → `rnd;3` → `clk;02:00;start`
+- **Detection**: If no other events between break stopEnd and round, it's normal inter-round change
+- **Manual Override**: Only detected when other events occur between break stopEnd and round
+- **Files Modified**:
+  - `ui/public/scoreboard-overlay.html` - Enhanced manual override detection
+  - Added break event tracking and exception logic
+
+#### **Enhanced Debug Logging**
+- **Event Tracking**: Comprehensive logging for break events and manual override detection
+- **Exception Logging**: Clear console messages when break exception is applied
+- **State Tracking**: Detailed logging of manual override state changes
+
 ## 🎯 **Completed Implementations (2025-01-29)**
 
 ### **1. Event Code Mapping System** ✅ **COMPLETED**
