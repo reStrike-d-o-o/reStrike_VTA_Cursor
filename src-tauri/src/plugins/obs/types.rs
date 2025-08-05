@@ -26,19 +26,37 @@ pub struct ObsConnectionConfig {
     pub enabled: bool,
 }
 
-// OBS Connection Status
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub enum ObsConnectionStatus {
-    Disconnected,
-    Connecting,
-    Connected,
-    Authenticating,
-    Authenticated,
-    Error(String),
+/// OBS Status Information
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ObsStatusInfo {
+    pub is_recording: bool,
+    pub is_streaming: bool,
+    pub cpu_usage: f64,
+    pub recording_connection: Option<String>,
+    pub streaming_connection: Option<String>,
+    pub connections: Vec<ObsConnectionInfo>,
 }
 
-// OBS Connection State
-#[derive(Debug)]
+/// OBS Connection Information
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ObsConnectionInfo {
+    pub name: String,
+    pub is_connected: bool,
+    pub last_heartbeat: Option<DateTime<Utc>>,
+}
+
+/// OBS Connection Status
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ObsConnectionStatus {
+    pub name: String,
+    pub is_connected: bool,
+    pub is_recording: bool,
+    pub is_streaming: bool,
+    pub last_heartbeat: Option<DateTime<Utc>>,
+}
+
+/// OBS Connection
+#[derive(Debug, Clone)]
 pub struct ObsConnection {
     pub config: ObsConnectionConfig,
     pub status: ObsConnectionStatus,
@@ -46,6 +64,8 @@ pub struct ObsConnection {
     pub request_id_counter: u64,
     pub pending_requests: HashMap<String, tokio::sync::oneshot::Sender<serde_json::Value>>,
     pub heartbeat_data: Option<serde_json::Value>,
+    pub is_connected: bool,
+    pub last_heartbeat: Option<DateTime<Utc>>,
 }
 
 // Recent events buffer for frontend polling
@@ -57,48 +77,33 @@ pub struct RecentEvent {
     pub timestamp: DateTime<Utc>,
 }
 
-// OBS Events
+/// OBS Events
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ObsEvent {
-    ConnectionStatusChanged {
-        connection_name: String,
-        status: ObsConnectionStatus,
-    },
-    SceneChanged {
-        connection_name: String,
-        scene_name: String,
-    },
     RecordingStateChanged {
         connection_name: String,
         is_recording: bool,
-    },
-    StreamStateChanged {
-        connection_name: String,
-        is_streaming: bool,
     },
     ReplayBufferStateChanged {
         connection_name: String,
         is_active: bool,
     },
-    Error {
+    StreamingStateChanged {
         connection_name: String,
-        error: String,
+        is_streaming: bool,
     },
-    Raw {
+    StatusUpdate {
         connection_name: String,
-        event_type: String,
+        status: ObsConnectionStatus,
+    },
+    ConnectionStateChanged {
+        connection_name: String,
+        status: ObsConnectionStatus,
+    },
+    Heartbeat {
+        connection_name: String,
         data: serde_json::Value,
     },
-}
-
-// OBS Status Information
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ObsStatusInfo {
-    pub is_recording: bool,
-    pub is_streaming: bool,
-    pub cpu_usage: f64,
-    pub recording_connection: Option<String>,
-    pub streaming_connection: Option<String>,
 }
 
 // Shared plugin context for cross-plugin communication
@@ -112,6 +117,22 @@ pub struct ObsPluginContext {
 }
 
 impl ObsPluginContext {
+    /// Create a new OBS Plugin Context
+    pub fn new() -> AppResult<Self> {
+        let (event_tx, _event_rx) = tokio::sync::mpsc::unbounded_channel();
+        let log_config = crate::logging::LogConfig::default();
+        let log_manager = Arc::new(Mutex::new(LogManager::new(log_config)?));
+        
+        Ok(Self {
+            connections: Arc::new(Mutex::new(HashMap::new())),
+            event_tx,
+            debug_ws_messages: Arc::new(Mutex::new(true)),
+            show_full_events: Arc::new(Mutex::new(false)),
+            recent_events: Arc::new(Mutex::new(Vec::new())),
+            log_manager,
+        })
+    }
+
     /// Log a message to file using the log manager
     pub async fn log_to_file(&self, level: &str, message: &str) {
         let log_manager = self.log_manager.lock().await;

@@ -1,160 +1,240 @@
 // OBS Plugin Manager
-// Coordinates all individual OBS plugins and provides unified interface
+// Manages all modular OBS plugins and provides unified API
+// Extracted from the original plugin_obs.rs
 
-use std::collections::HashMap;
-use std::sync::Arc;
-use tokio::sync::{mpsc, Mutex};
-use crate::types::{AppError, AppResult};
-use crate::logging::LogManager;
+use crate::types::AppResult;
 use super::types::*;
+use super::core::ObsCorePlugin;
+use super::recording::ObsRecordingPlugin;
+use super::streaming::ObsStreamingPlugin;
+use super::scenes::ObsScenesPlugin;
+use super::settings::ObsSettingsPlugin;
+use super::events::ObsEventsPlugin;
+use super::status::ObsStatusPlugin;
+use std::sync::Arc;
 
-// Individual plugin imports (will be created next)
-// use super::core::ObsCorePlugin;
-// use super::recording::ObsRecordingPlugin;
-// use super::streaming::ObsStreamingPlugin;
-// use super::scenes::ObsScenesPlugin;
-// use super::settings::ObsSettingsPlugin;
-// use super::events::ObsEventsPlugin;
-// use super::status::ObsStatusPlugin;
-
-/// Main OBS Plugin Manager that coordinates all individual plugins
+/// Manager for all OBS plugins
 pub struct ObsPluginManager {
     context: ObsPluginContext,
-    plugins: HashMap<String, Box<dyn ObsPlugin>>,
-    // Individual plugins will be added here
-    // core_plugin: ObsCorePlugin,
-    // recording_plugin: ObsRecordingPlugin,
-    // streaming_plugin: ObsStreamingPlugin,
-    // scenes_plugin: ObsScenesPlugin,
-    // settings_plugin: ObsSettingsPlugin,
-    // events_plugin: ObsEventsPlugin,
-    // status_plugin: ObsStatusPlugin,
+    core_plugin: Arc<ObsCorePlugin>,
+    recording_plugin: Arc<ObsRecordingPlugin>,
+    streaming_plugin: Arc<ObsStreamingPlugin>,
+    scenes_plugin: Arc<ObsScenesPlugin>,
+    settings_plugin: Arc<ObsSettingsPlugin>,
+    events_plugin: Arc<ObsEventsPlugin>,
+    status_plugin: Arc<ObsStatusPlugin>,
 }
 
 impl ObsPluginManager {
     /// Create a new OBS Plugin Manager
-    pub fn new(event_tx: mpsc::UnboundedSender<ObsEvent>, log_manager: Arc<Mutex<LogManager>>) -> Self {
-        let context = ObsPluginContext {
-            connections: Arc::new(Mutex::new(HashMap::new())),
-            event_tx,
-            debug_ws_messages: Arc::new(Mutex::new(true)),
-            show_full_events: Arc::new(Mutex::new(false)),
-            recent_events: Arc::new(Mutex::new(Vec::new())),
-            log_manager,
-        };
+    pub fn new() -> AppResult<Self> {
+        log::info!("🔧 Creating OBS Plugin Manager...");
+        
+        // Create shared context
+        let context = ObsPluginContext::new()?;
+        
+        // Create core plugin first (others depend on it)
+        let core_plugin = Arc::new(ObsCorePlugin::new(context.clone()));
+        
+        // Create other plugins with dependencies
+        let recording_plugin = Arc::new(ObsRecordingPlugin::new(context.clone(), core_plugin.clone()));
+        let streaming_plugin = Arc::new(ObsStreamingPlugin::new(context.clone(), core_plugin.clone()));
+        let scenes_plugin = Arc::new(ObsScenesPlugin::new(context.clone()));
+        let settings_plugin = Arc::new(ObsSettingsPlugin::new(context.clone()));
+        let events_plugin = Arc::new(ObsEventsPlugin::new(context.clone()));
+        let status_plugin = Arc::new(ObsStatusPlugin::new(
+            context.clone(), 
+            recording_plugin.clone(), 
+            streaming_plugin.clone()
+        ));
 
-        Self {
+        Ok(Self {
             context,
-            plugins: HashMap::new(),
-        }
+            core_plugin,
+            recording_plugin,
+            streaming_plugin,
+            scenes_plugin,
+            settings_plugin,
+            events_plugin,
+            status_plugin,
+        })
     }
 
-    /// Initialize all OBS plugins
-    pub async fn init_plugins(&mut self) -> AppResult<()> {
+    /// Initialize all plugins
+    pub async fn init(&self) -> AppResult<()> {
         log::info!("🔧 Initializing OBS Plugin Manager...");
-
-        // Initialize individual plugins (will be implemented as we create them)
-        // self.core_plugin = ObsCorePlugin::new(self.context.clone());
-        // self.recording_plugin = ObsRecordingPlugin::new(self.context.clone());
-        // self.streaming_plugin = ObsStreamingPlugin::new(self.context.clone());
-        // self.scenes_plugin = ObsScenesPlugin::new(self.context.clone());
-        // self.settings_plugin = ObsSettingsPlugin::new(self.context.clone());
-        // self.events_plugin = ObsEventsPlugin::new(self.context.clone());
-        // self.status_plugin = ObsStatusPlugin::new(self.context.clone());
-
+        
+        // Initialize all plugins
+        self.core_plugin.init()?;
+        self.recording_plugin.init()?;
+        self.streaming_plugin.init()?;
+        self.scenes_plugin.init()?;
+        self.settings_plugin.init()?;
+        self.events_plugin.init()?;
+        self.status_plugin.init()?;
+        
         log::info!("✅ OBS Plugin Manager initialized successfully");
         Ok(())
     }
 
-    /// Shutdown all OBS plugins
-    pub async fn shutdown_plugins(&mut self) -> AppResult<()> {
+    /// Shutdown all plugins
+    pub async fn shutdown(&self) -> AppResult<()> {
         log::info!("🔧 Shutting down OBS Plugin Manager...");
-
-        // Shutdown individual plugins
-        for (name, plugin) in &mut self.plugins {
-            if let Err(e) = plugin.shutdown() {
-                log::warn!("⚠️ Failed to shutdown plugin '{}': {}", name, e);
-            }
-        }
-
-        log::info!("✅ OBS Plugin Manager shutdown complete");
+        
+        // Shutdown all plugins in reverse order
+        self.status_plugin.shutdown()?;
+        self.events_plugin.shutdown()?;
+        self.settings_plugin.shutdown()?;
+        self.scenes_plugin.shutdown()?;
+        self.streaming_plugin.shutdown()?;
+        self.recording_plugin.shutdown()?;
+        self.core_plugin.shutdown()?;
+        
+        log::info!("✅ OBS Plugin Manager shut down successfully");
         Ok(())
     }
 
-    /// Get the shared plugin context
-    pub fn context(&self) -> &ObsPluginContext {
+    // Core plugin methods
+    pub async fn connect_obs(&self, connection_name: &str) -> AppResult<()> {
+        self.core_plugin.connect_obs(connection_name).await
+    }
+
+    pub async fn disconnect_obs(&self, connection_name: &str) -> AppResult<()> {
+        self.core_plugin.disconnect_obs(connection_name).await
+    }
+
+    pub async fn send_request(&self, connection_name: &str, request_type: &str, request_data: serde_json::Value) -> AppResult<serde_json::Value> {
+        self.core_plugin.send_request(connection_name, request_type, Some(request_data)).await
+    }
+
+    // Recording plugin methods
+    pub async fn start_recording(&self, connection_name: &str) -> AppResult<()> {
+        self.recording_plugin.start_recording(connection_name).await
+    }
+
+    pub async fn stop_recording(&self, connection_name: &str) -> AppResult<()> {
+        self.recording_plugin.stop_recording(connection_name).await
+    }
+
+    pub async fn get_recording_status(&self, connection_name: &str) -> AppResult<bool> {
+        self.recording_plugin.get_recording_status(connection_name).await
+    }
+
+    // Streaming plugin methods
+    pub async fn start_streaming(&self, connection_name: &str) -> AppResult<()> {
+        self.streaming_plugin.start_streaming(connection_name).await
+    }
+
+    pub async fn stop_streaming(&self, connection_name: &str) -> AppResult<()> {
+        self.streaming_plugin.stop_streaming(connection_name).await
+    }
+
+    pub async fn get_streaming_status(&self, connection_name: &str) -> AppResult<bool> {
+        self.streaming_plugin.get_streaming_status(connection_name).await
+    }
+
+    // Status plugin methods
+    pub async fn get_obs_status(&self) -> AppResult<ObsStatusInfo> {
+        self.status_plugin.get_obs_status().await
+    }
+
+    pub async fn get_connection_status(&self, connection_name: &str) -> AppResult<ObsConnectionStatus> {
+        self.status_plugin.get_connection_status(connection_name).await
+    }
+
+    // Events plugin methods
+    pub async fn get_recent_events(&self) -> AppResult<Vec<RecentEvent>> {
+        // TODO: Implement this when the events plugin is complete
+        Ok(Vec::new())
+    }
+
+    // Settings plugin methods
+    pub async fn get_obs_settings(&self, connection_name: &str) -> AppResult<serde_json::Value> {
+        // TODO: Implement this when the settings plugin is complete
+        Ok(serde_json::json!({}))
+    }
+
+    pub async fn set_obs_settings(&self, connection_name: &str, settings: serde_json::Value) -> AppResult<()> {
+        // TODO: Implement this when the settings plugin is complete
+        Ok(())
+    }
+
+    // Scenes plugin methods
+    pub async fn get_scenes(&self, connection_name: &str) -> AppResult<Vec<String>> {
+        // TODO: Implement this when the scenes plugin is complete
+        Ok(Vec::new())
+    }
+
+    pub async fn set_current_scene(&self, connection_name: &str, scene_name: &str) -> AppResult<()> {
+        // TODO: Implement this when the scenes plugin is complete
+        Ok(())
+    }
+
+    // Additional methods for Tauri commands compatibility
+    pub async fn add_connection(&self, config: ObsConnectionConfig) -> AppResult<()> {
+        // TODO: Implement connection management
+        log::info!("Adding OBS connection: {}", config.name);
+        Ok(())
+    }
+
+    pub async fn get_connection_names(&self) -> Vec<String> {
+        // TODO: Implement connection list
+        vec!["OBS_REC".to_string()]
+    }
+
+    pub async fn remove_connection(&self, connection_name: &str) -> AppResult<()> {
+        // TODO: Implement connection removal
+        log::info!("Removing OBS connection: {}", connection_name);
+        Ok(())
+    }
+
+    pub async fn get_latest_events(&self, connection_name: &str) -> AppResult<Vec<RecentEvent>> {
+        // TODO: Implement latest events
+        Ok(Vec::new())
+    }
+
+    pub async fn toggle_full_events(&self, enabled: bool) -> AppResult<()> {
+        // TODO: Implement full events toggle
+        log::info!("Toggling full events: {}", enabled);
+        Ok(())
+    }
+
+    pub async fn get_full_events_setting(&self) -> AppResult<bool> {
+        // TODO: Implement full events setting
+        Ok(false)
+    }
+
+    // Context access
+    pub fn get_context(&self) -> &ObsPluginContext {
         &self.context
     }
 
-    /// Get mutable access to the shared plugin context
-    pub fn context_mut(&mut self) -> &mut ObsPluginContext {
-        &mut self.context
+    // Individual plugin access
+    pub fn core(&self) -> &Arc<ObsCorePlugin> {
+        &self.core_plugin
     }
 
-    /// Add a plugin to the manager
-    pub fn add_plugin(&mut self, name: String, plugin: Box<dyn ObsPlugin>) -> AppResult<()> {
-        if self.plugins.contains_key(&name) {
-            return Err(AppError::ConfigError(format!("Plugin '{}' already exists", name)));
-        }
-
-        if let Err(e) = plugin.init() {
-            return Err(AppError::ConfigError(format!("Failed to initialize plugin '{}': {}", name, e)));
-        }
-
-        self.plugins.insert(name.clone(), plugin);
-        log::info!("✅ Added plugin '{}' to OBS Plugin Manager", name);
-        Ok(())
+    pub fn recording(&self) -> &Arc<ObsRecordingPlugin> {
+        &self.recording_plugin
     }
 
-    /// Remove a plugin from the manager
-    pub fn remove_plugin(&mut self, name: &str) -> AppResult<()> {
-        if let Some(mut plugin) = self.plugins.remove(name) {
-            if let Err(e) = plugin.shutdown() {
-                log::warn!("⚠️ Failed to shutdown plugin '{}': {}", name, e);
-            }
-            log::info!("✅ Removed plugin '{}' from OBS Plugin Manager", name);
-        }
-        Ok(())
+    pub fn streaming(&self) -> &Arc<ObsStreamingPlugin> {
+        &self.streaming_plugin
     }
 
-    /// Get a list of all registered plugins
-    pub fn get_plugin_names(&self) -> Vec<String> {
-        self.plugins.keys().cloned().collect()
+    pub fn status(&self) -> &Arc<ObsStatusPlugin> {
+        &self.status_plugin
     }
 
-    /// Check if a plugin is registered
-    pub fn has_plugin(&self, name: &str) -> bool {
-        self.plugins.contains_key(name)
+    pub fn events(&self) -> &Arc<ObsEventsPlugin> {
+        &self.events_plugin
     }
 
-    /// Get the number of registered plugins
-    pub fn plugin_count(&self) -> usize {
-        self.plugins.len()
-    }
-}
-
-impl Clone for ObsPluginManager {
-    fn clone(&self) -> Self {
-        Self {
-            context: self.context.clone(),
-            plugins: HashMap::new(), // Plugins are not cloned, they need to be re-added
-        }
-    }
-}
-
-// Implement ObsPlugin trait for the manager itself
-impl ObsPlugin for ObsPluginManager {
-    fn name(&self) -> &str {
-        "obs_plugin_manager"
+    pub fn settings(&self) -> &Arc<ObsSettingsPlugin> {
+        &self.settings_plugin
     }
 
-    fn init(&self) -> AppResult<()> {
-        log::info!("🔧 Initializing OBS Plugin Manager");
-        Ok(())
-    }
-
-    fn shutdown(&self) -> AppResult<()> {
-        log::info!("🔧 Shutting down OBS Plugin Manager");
-        Ok(())
+    pub fn scenes(&self) -> &Arc<ObsScenesPlugin> {
+        &self.scenes_plugin
     }
 } 

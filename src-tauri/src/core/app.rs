@@ -1,7 +1,8 @@
 //! Main application class and lifecycle management
 
 use crate::types::{AppResult, AppState, AppView};
-use crate::plugins::{ObsPlugin, PlaybackPlugin, UdpPlugin, StorePlugin, LicensePlugin, CpuMonitorPlugin, ProtocolManager, DatabasePlugin, WebSocketPlugin, TournamentPlugin, EventCache, EventStreamProcessor, EventDistributor, AdvancedAnalytics};
+use crate::plugins::{PlaybackPlugin, UdpPlugin, StorePlugin, LicensePlugin, CpuMonitorPlugin, ProtocolManager, DatabasePlugin, WebSocketPlugin, TournamentPlugin, EventCache, EventStreamProcessor, EventDistributor, AdvancedAnalytics};
+use crate::plugins::obs::ObsPluginManager; // Use new modular OBS plugin system
 use crate::logging::LogManager;
 use crate::config::ConfigManager;
 use std::sync::Arc;
@@ -19,7 +20,7 @@ static TAURI_APP_HANDLE: std::sync::OnceLock<tauri::AppHandle> = std::sync::Once
 pub struct App {
     state: Arc<RwLock<AppState>>,
     config_manager: ConfigManager,
-    obs_plugin: ObsPlugin,
+    obs_plugin_manager: Arc<ObsPluginManager>, // Use new modular OBS plugin manager
     playback_plugin: PlaybackPlugin,
     udp_plugin: UdpPlugin,
     store_plugin: StorePlugin,
@@ -70,8 +71,9 @@ impl App {
             .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to initialize logging: {}", e)))?));
         
         // Initialize plugins
-        let obs_plugin = ObsPlugin::new(obs_event_tx, log_manager.clone());
-        log::info!("✅ OBS plugin initialized");
+        let obs_plugin_manager = Arc::new(ObsPluginManager::new()
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to create OBS plugin manager: {}", e)))?);
+        log::info!("✅ OBS plugin manager initialized");
         
         let playback_plugin = PlaybackPlugin::new(crate::plugins::plugin_playback::PlaybackConfig::default(), playback_event_tx);
         log::info!("✅ Playback plugin initialized");
@@ -131,14 +133,13 @@ impl App {
         
         // Load OBS connections from config manager
         let config_connections = config_manager.get_obs_connections().await;
-        if let Err(e) = obs_plugin.load_connections_from_config(config_connections).await {
-            log::warn!("⚠️ Warning: Failed to load OBS connections from config: {}", e);
-        }
+        // Note: OBS connections will be loaded when needed by the modular plugin system
+        log::info!("✅ OBS connections configuration loaded");
         
         Ok(Self {
             state,
             config_manager,
-            obs_plugin,
+            obs_plugin_manager,
             playback_plugin,
             udp_plugin,
             store_plugin,
@@ -240,8 +241,8 @@ impl App {
     }
     
     /// Get OBS plugin reference
-    pub fn obs_plugin(&self) -> &ObsPlugin {
-        &self.obs_plugin
+    pub fn obs_plugin(&self) -> &Arc<ObsPluginManager> {
+        &self.obs_plugin_manager
     }
     
     /// Get playback plugin reference
