@@ -25,8 +25,7 @@ const LiveDataPanel: React.FC = () => {
     events, 
     currentRound, 
     currentRoundTime, 
-    isConnected, 
-    eventCount: events.length 
+    isConnected
   } = useLiveDataStore();
   
   // Use the new live data events hook

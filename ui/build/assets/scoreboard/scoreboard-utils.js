@@ -197,8 +197,8 @@ class ScoreboardOverlay {
   }
 
   // Apply new match effect (typewriter animation for new matches)
-  applyNewMatchEffect() {
-    console.log('🎬 Applying new match effect');
+  applyNewMatchEffect(roundDuration = 120, currentRound = 1) {
+    console.log('🎬 Applying new match effect with round duration:', roundDuration, 'and current round:', currentRound);
     
     // Add a subtle animation to indicate new match data
     const elements = [
@@ -227,8 +227,13 @@ class ScoreboardOverlay {
     // Reset scores and timer to initial state
     this.updateScore('blue', 0);
     this.updateScore('red', 0);
-    this.updateRound(1);
-    this.updateTimer(2, 0); // Default 2:00 timer
+    this.updateRound(currentRound);
+    
+    // Use provided round duration instead of hardcoded 2:00
+    const minutes = Math.floor(roundDuration / 60);
+    const seconds = roundDuration % 60;
+    this.updateTimer(minutes, seconds);
+    
     this.updatePenalties('blue', null, 0);
     this.updatePenalties('red', null, 0);
     this.updateRoundWins('blue', 0);

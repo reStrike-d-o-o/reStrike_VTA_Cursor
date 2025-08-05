@@ -105,11 +105,396 @@
         // Global variables
         let scoreboardInstance = null;
         let nameManager = null;
+        
+        // Global variables for connection status and match config
         let isConnected = false;
         let lastUpdateTime = null;
+        let roundDuration = 120; // Default 2 minutes (120 seconds)
         
         // Debug mode (set to true to show debug panel)
         const DEBUG_MODE = false;
+        
+        // ===== ROBUST MANUAL OVERRIDE DETECTION SYSTEM =====
+        
+        // Manual override detection state
+        const manualOverrideState = {
+            // Clock state tracking
+            clockState: 'stopped', // 'running', 'stopped'
+            lastClockTime: null,
+            lastClockAction: null,
+            manualOverrideActive: false, // true when between clk;{};stop and clk;{};start
+            
+            // Break event tracking for manual override exception
+            lastBreakStopEnd: null, // Timestamp of last brk;0:00;stopEnd event
+            eventsAfterBreakStopEnd: [], // Track events between brk;0:00;stopEnd and rnd
+            
+            // Recent events tracking (last 10 events for pattern detection)
+            recentEvents: [],
+            maxRecentEvents: 10,
+            
+            // Manual change detection
+            lastManualRoundChange: null,
+            lastManualScoreChange: null,
+            lastManualTimeChange: null,
+            
+            // Score tracking for jump detection
+            lastBlueScore: 0,
+            lastRedScore: 0,
+            
+            // Warning tracking
+            lastBlueWarnings: 0,
+            lastRedWarnings: 0,
+            
+            // Time correction tracking
+            hasRecentTimeCorrection: false,
+            timeCorrectionThreshold: 5000, // 5 seconds
+            lastTimeCorrection: null
+        };
+        
+        // ===== SAFE UTILITY FUNCTIONS =====
+        
+        // Safely get current timestamp
+        function getCurrentTimestamp() {
+            try {
+                return Date.now();
+            } catch (error) {
+                console.warn('⚠️ Error getting timestamp:', error);
+                return 0;
+            }
+        }
+        
+        // Safely add event to recent events
+        function addToRecentEvents(event) {
+            try {
+                if (!manualOverrideState.recentEvents) {
+                    manualOverrideState.recentEvents = [];
+                }
+                
+                manualOverrideState.recentEvents.push({
+                    event: event,
+                    timestamp: getCurrentTimestamp()
+                });
+                
+                // Keep only the last N events
+                if (manualOverrideState.recentEvents.length > manualOverrideState.maxRecentEvents) {
+                    manualOverrideState.recentEvents.shift();
+                }
+            } catch (error) {
+                console.warn('⚠️ Error adding to recent events:', error);
+            }
+        }
+        
+        // Safely check if clock is stopped
+        function isClockStopped() {
+            try {
+                return manualOverrideState.clockState === 'stopped';
+            } catch (error) {
+                console.warn('⚠️ Error checking clock state:', error);
+                return false;
+            }
+        }
+        
+        // Check if we're in manual override mode (between clk;{};stop and clk;{};start)
+        function isInManualOverrideMode() {
+            try {
+                return manualOverrideState.clockState === 'stopped' && manualOverrideState.manualOverrideActive;
+            } catch (error) {
+                console.warn('⚠️ Error checking manual override mode:', error);
+                return false;
+            }
+        }
+        
+        // Check if a round change follows a break stopEnd event (normal inter-round change)
+        function isRoundChangeAfterBreakStopEnd() {
+            try {
+                if (!manualOverrideState.lastBreakStopEnd) {
+                    return false;
+                }
+                
+                // Check if there are no other events between brk;0:00;stopEnd and rnd
+                // If eventsAfterBreakStopEnd is empty, it means only the round event occurred
+                const hasOnlyRoundEvent = manualOverrideState.eventsAfterBreakStopEnd.length === 0;
+                
+                if (hasOnlyRoundEvent) {
+                    console.log('🔍 Round change after break stopEnd with no intervening events - normal inter-round change');
+                    return true;
+                }
+                
+                return false;
+            } catch (error) {
+                console.warn('⚠️ Error checking round change after break stopEnd:', error);
+                return false;
+            }
+        }
+        
+        // Safely check if there was a recent time correction
+        function hasRecentTimeCorrection() {
+            try {
+                if (!manualOverrideState.lastTimeCorrection) {
+                    return false;
+                }
+                
+                const timeSinceCorrection = getCurrentTimestamp() - manualOverrideState.lastTimeCorrection;
+                return timeSinceCorrection < manualOverrideState.timeCorrectionThreshold;
+            } catch (error) {
+                console.warn('⚠️ Error checking time correction:', error);
+                return false;
+            }
+        }
+        
+        // Safely calculate score jump
+        function calculateScoreJump(newBlueScore, newRedScore) {
+            try {
+                const blueJump = Math.abs(newBlueScore - manualOverrideState.lastBlueScore);
+                const redJump = Math.abs(newRedScore - manualOverrideState.lastRedScore);
+                return Math.max(blueJump, redJump);
+            } catch (error) {
+                console.warn('⚠️ Error calculating score jump:', error);
+                return 0;
+            }
+        }
+        
+        // Safely check for rapid point messages
+        function hasRapidPointMessages() {
+            try {
+                if (!manualOverrideState.recentEvents || manualOverrideState.recentEvents.length < 2) {
+                    return false;
+                }
+                
+                const recentPointEvents = manualOverrideState.recentEvents.filter(item => {
+                    return item.event && item.event.type === 'points';
+                });
+                
+                if (recentPointEvents.length < 2) {
+                    return false;
+                }
+                
+                // Check if we have multiple point events within 2 seconds
+                const timeWindow = 2000; // 2 seconds
+                const now = getCurrentTimestamp();
+                
+                const recentPoints = recentPointEvents.filter(item => {
+                    return (now - item.timestamp) < timeWindow;
+                });
+                
+                return recentPoints.length >= 2;
+            } catch (error) {
+                console.warn('⚠️ Error checking rapid point messages:', error);
+                return false;
+            }
+        }
+        
+        // ===== MANUAL OVERRIDE DETECTION FUNCTIONS =====
+        
+        // Detect manual round changes
+        function isManualRoundChange(event) {
+            try {
+                if (!event || event.type !== 'round') {
+                    return false;
+                }
+                
+                // Manual override can only happen between clk;{};stop and clk;{};start events
+                // Check if we're in manual override mode (clock stopped but not yet started)
+                if (!isInManualOverrideMode()) {
+                    return false;
+                }
+                
+                // EXCEPTION: If a round change happens after a break stopEnd event, it's NOT manual override
+                // This is a normal round change after an inter-round break
+                if (isRoundChangeAfterBreakStopEnd()) {
+                    console.log('🔍 Round change after break stopEnd detected - NOT manual override (normal inter-round change)');
+                    return false;
+                }
+                
+                // If we're in manual override mode, check for round changes
+                console.log('🔍 Manual round change detected: round change during manual override mode');
+                return true;
+                
+            } catch (error) {
+                console.warn('⚠️ Error detecting manual round change:', error);
+                return false;
+            }
+        }
+        
+        // Detect manual score changes
+        function isManualScoreChange(event, newBlueScore, newRedScore) {
+            try {
+                if (!event) {
+                    return false;
+                }
+                
+                // Manual override can only happen between clk;{};stop and clk;{};start events
+                // Check if we're in manual override mode (clock stopped but not yet started)
+                if (!isInManualOverrideMode()) {
+                    return false;
+                }
+                
+                // If we're in manual override mode, check for score changes
+                if (event.type === 'points' || event.type === 'current_scores') {
+                    console.log('🔍 Manual score change detected: score change during manual override mode');
+                    return true;
+                }
+                
+                return false;
+            } catch (error) {
+                console.warn('⚠️ Error detecting manual score change:', error);
+                return false;
+            }
+        }
+        
+        // Detect manual time changes
+        function isManualTimeChange(event) {
+            try {
+                if (!event || event.type !== 'clock') {
+                    return false;
+                }
+                
+                // Check for time correction action
+                if (event.action === 'corr') {
+                    console.log('🔍 Manual time change detected: time correction action');
+                    manualOverrideState.lastTimeCorrection = getCurrentTimestamp();
+                    return true;
+                }
+                
+                return false;
+            } catch (error) {
+                console.warn('⚠️ Error detecting manual time change:', error);
+                return false;
+            }
+        }
+        
+        // Detect manual warning changes
+        function isManualWarningChange(event, newBlueWarnings, newRedWarnings) {
+            try {
+                if (!event || event.type !== 'warnings') {
+                    return false;
+                }
+                
+                // Warning change during stopped clock
+                if (isClockStopped()) {
+                    console.log('🔍 Manual warning change detected: warning change during stopped clock');
+                    return true;
+                }
+                
+                // Warning change during time correction
+                if (hasRecentTimeCorrection()) {
+                    console.log('🔍 Manual warning change detected: warning change during time correction');
+                    return true;
+                }
+                
+                // Unusual warning pattern (multiple warnings in quick succession)
+                const recentWarningEvents = manualOverrideState.recentEvents.filter(item => {
+                    return item.event && item.event.type === 'warnings';
+                });
+                
+                if (recentWarningEvents.length >= 2) {
+                    const timeWindow = 3000; // 3 seconds
+                    const now = getCurrentTimestamp();
+                    
+                    const recentWarnings = recentWarningEvents.filter(item => {
+                        return (now - item.timestamp) < timeWindow;
+                    });
+                    
+                    if (recentWarnings.length >= 2) {
+                        console.log('🔍 Manual warning change detected: rapid warning changes');
+                        return true;
+                    }
+                }
+                
+                return false;
+            } catch (error) {
+                console.warn('⚠️ Error detecting manual warning change:', error);
+                return false;
+            }
+        }
+        
+        // ===== MANUAL OVERRIDE HANDLING =====
+        
+        // Handle manual round change (preserve all data)
+        function handleManualRoundChange(event) {
+            try {
+                console.log('🔄 Handling manual round change:', event);
+                
+                // Update round number but preserve all other data
+                if (scoreboardInstance && event.current_round) {
+                    scoreboardInstance.updateRound(event.current_round);
+                    console.log('✅ Updated round to:', event.current_round, '(manual change)');
+                }
+                
+                // DO NOT reset scores, warnings, or other data
+                // This is the key difference from normal round changes
+                
+                manualOverrideState.lastManualRoundChange = getCurrentTimestamp();
+                
+            } catch (error) {
+                console.error('❌ Error handling manual round change:', error);
+            }
+        }
+        
+        // Handle manual score change (accept immediately)
+        function handleManualScoreChange(event, newBlueScore, newRedScore) {
+            try {
+                console.log('🔄 Handling manual score change:', event);
+                
+                // Update scores immediately
+                if (scoreboardInstance) {
+                    scoreboardInstance.updateScore('blue', newBlueScore);
+                    scoreboardInstance.updateScore('red', newRedScore);
+                    console.log('✅ Updated scores to:', newBlueScore, ':', newRedScore, '(manual change)');
+                }
+                
+                // Update tracking state
+                manualOverrideState.lastBlueScore = newBlueScore;
+                manualOverrideState.lastRedScore = newRedScore;
+                manualOverrideState.lastManualScoreChange = getCurrentTimestamp();
+                
+            } catch (error) {
+                console.error('❌ Error handling manual score change:', error);
+            }
+        }
+        
+        // Handle manual time change (accept immediately)
+        function handleManualTimeChange(event) {
+            try {
+                console.log('🔄 Handling manual time change:', event);
+                
+                // Update time immediately
+                if (scoreboardInstance && event.time) {
+                    const timeParts = event.time.split(':');
+                    if (timeParts.length === 2) {
+                        const minutes = parseInt(timeParts[0]) || 0;
+                        const seconds = parseInt(timeParts[1]) || 0;
+                        scoreboardInstance.updateTimer(minutes, seconds);
+                        console.log('✅ Updated time to:', event.time, '(manual change)');
+                    }
+                }
+                
+                manualOverrideState.lastManualTimeChange = getCurrentTimestamp();
+                
+            } catch (error) {
+                console.error('❌ Error handling manual time change:', error);
+            }
+        }
+        
+        // Handle manual warning change (accept immediately)
+        function handleManualWarningChange(event, newBlueWarnings, newRedWarnings) {
+            try {
+                console.log('🔄 Handling manual warning change:', event);
+                
+                // Update warnings immediately
+                if (scoreboardInstance) {
+                    scoreboardInstance.updatePenalties(newBlueWarnings, newRedWarnings);
+                    console.log('✅ Updated warnings to:', newBlueWarnings, ':', newRedWarnings, '(manual change)');
+                }
+                
+                // Update tracking state
+                manualOverrideState.lastBlueWarnings = newBlueWarnings;
+                manualOverrideState.lastRedWarnings = newRedWarnings;
+                
+            } catch (error) {
+                console.error('❌ Error handling manual warning change:', error);
+            }
+        }
         
         // Initialize the scoreboard when SVG loads
         function initializeScoreboard() {
@@ -214,6 +599,56 @@
                 // Update connection status
                 updateConnectionStatus(true);
                 
+                // ===== MANUAL OVERRIDE DETECTION INTEGRATION =====
+                
+                // Add event to recent events for pattern detection
+                addToRecentEvents(event);
+                
+                // Update clock state tracking
+                if (event.type === 'clock') {
+                    if (event.action === 'start') {
+                        manualOverrideState.clockState = 'running';
+                        manualOverrideState.manualOverrideActive = false; // Exit manual override mode
+                        console.log('🏁 Exited manual override mode: clock started');
+                    } else if (event.action === 'stop' || event.action === 'stopEnd') {
+                        manualOverrideState.clockState = 'stopped';
+                        manualOverrideState.manualOverrideActive = true; // Enter manual override mode
+                        console.log('⏸️ Entered manual override mode: clock stopped');
+                    }
+                    manualOverrideState.lastClockTime = event.time;
+                    manualOverrideState.lastClockAction = event.action;
+                }
+                
+                // Track events after break stopEnd (for manual override exception)
+                if (manualOverrideState.lastBreakStopEnd && event.type !== 'round') {
+                    // If we have a break stopEnd timestamp and this is not a round event,
+                    // track this event as occurring between break stopEnd and round
+                    manualOverrideState.eventsAfterBreakStopEnd.push({
+                        type: event.type,
+                        timestamp: getCurrentTimestamp(),
+                        event: event
+                    });
+                    console.log('📝 Event tracked after break stopEnd:', event.type);
+                }
+                
+                // Check for manual overrides BEFORE normal processing
+                let isManualOverride = false;
+                
+                // Check for manual time change
+                if (isManualTimeChange(event)) {
+                    handleManualTimeChange(event);
+                    isManualOverride = true;
+                }
+                
+                // Check for manual round change
+                if (isManualRoundChange(event)) {
+                    handleManualRoundChange(event);
+                    isManualOverride = true;
+                }
+                
+                // Check for manual score change (will be checked in individual handlers)
+                // Check for manual warning change (will be checked in individual handlers)
+                
                 // Handle different event types
                 switch (event.type) {
                     case 'athletes':
@@ -234,17 +669,29 @@
                     case 'winner_rounds':
                         handleWinnerRoundsEvent(event);
                         break;
+                    case 'winner':
+                        handleMatchEndEvent(event);
+                        break;
                     case 'clock':
                         handleClockEvent(event);
                         break;
                     case 'round':
                         handleRoundEvent(event);
                         break;
+                    case 'supervision':
+                        handleSupervisionEvent(event);
+                        break;
+                    case 'points':
+                        handlePointsEvent(event);
+                        break;
                     case 'fight_ready':
                         handleFightReadyEvent(event);
                         break;
                     case 'injury':
                         handleInjuryEvent(event);
+                        break;
+                    case 'break':
+                        handleBreakEvent(event);
                         break;
                     case 'raw':
                         handleRawEvent(event);
@@ -324,8 +771,10 @@
         // Handle match config event
         function handleMatchConfigEvent(event) {
             console.log('🏆 Updating match config:', event);
+            console.log('🏆 Event type:', event.type);
+            console.log('🏆 Raw event:', JSON.stringify(event, null, 2));
             
-            // Try to parse raw_data first, then fall back to direct access
+            // Try to parse raw_data first, then fall back to structured_data
             let configData = null;
             
             if (event.raw_data) {
@@ -337,13 +786,26 @@
                 }
             }
             
-            // Use parsed data if available, otherwise try direct access
-            const data = configData || event;
-            console.log('🏆 Using data source:', configData ? 'raw_data' : 'direct');
+            // Use parsed data if available, otherwise try structured_data
+            const data = configData || event.structured_data || event;
+            console.log('🏆 Using data source:', configData ? 'raw_data' : 'structured_data');
+            console.log('🏆 Full data object:', JSON.stringify(data, null, 2));
             console.log('🏆 weight:', data.weight);
             console.log('🏆 division:', data.division);
             console.log('🏆 category:', data.category);
             console.log('🏆 number:', data.number);
+            console.log('🏆 round_duration:', data.round_duration);
+            console.log('🏆 round_duration type:', typeof data.round_duration);
+            
+            // Store round duration for clock resets
+            if (data.round_duration !== undefined && data.round_duration !== null) {
+                roundDuration = parseInt(data.round_duration);
+                console.log('⏰ Stored round duration:', roundDuration, 'seconds');
+                console.log('⏰ This should display as:', Math.floor(roundDuration / 60) + ':' + (roundDuration % 60).toString().padStart(2, '0'));
+            } else {
+                console.warn('⚠️ No round_duration found in match config event');
+                console.warn('⚠️ Available keys:', Object.keys(data));
+            }
             
             // Use the new combined method to update all match info at once
             if (data.weight || data.division || data.category) {
@@ -408,8 +870,21 @@
             
             console.log('📊 Blue score:', blueScore, 'Red score:', redScore);
             
-            scoreboardInstance.updateScore('blue', blueScore);
-            scoreboardInstance.updateScore('red', redScore);
+            // ===== MANUAL OVERRIDE DETECTION FOR SCORES =====
+            
+            // Check for manual score change
+            if (isManualScoreChange(event, blueScore, redScore)) {
+                console.log('🔄 Manual score change detected, handling specially...');
+                handleManualScoreChange(event, blueScore, redScore);
+            } else {
+                // Normal score update
+                scoreboardInstance.updateScore('blue', blueScore);
+                scoreboardInstance.updateScore('red', redScore);
+            }
+            
+            // Update tracking state
+            manualOverrideState.lastBlueScore = blueScore;
+            manualOverrideState.lastRedScore = redScore;
             
             // Update debug info
             document.getElementById('debug-blue-score').textContent = blueScore;
@@ -421,10 +896,12 @@
             console.log('🥊 Fight loaded event:', event);
             updateConnectionStatus(true);
             
-            // Apply typewriter effect for new match
+            // Apply typewriter effect for new match with correct round duration and current round
             if (scoreboardInstance) {
                 setTimeout(() => {
-                    scoreboardInstance.applyNewMatchEffect();
+                    // Get current round from event or default to 1
+                    const currentRound = event.round || 1;
+                    scoreboardInstance.applyNewMatchEffect(roundDuration, currentRound);
                 }, 500); // Small delay to ensure all data is loaded
             }
         }
@@ -469,31 +946,85 @@
             
             console.log('⚠️ Blue warnings:', blueWarnings, 'Red warnings:', redWarnings);
             
-            // athlete1 maps to blue (player1), athlete2 maps to red (player2)
-            if (blueWarnings !== undefined) {
-                scoreboardInstance.updatePenalties('blue', null, blueWarnings);
+            // ===== MANUAL OVERRIDE DETECTION FOR WARNINGS =====
+            
+            // Check for manual warning change
+            if (isManualWarningChange(event, blueWarnings, redWarnings)) {
+                console.log('🔄 Manual warning change detected, handling specially...');
+                handleManualWarningChange(event, blueWarnings, redWarnings);
+            } else {
+                // Normal warning update
+                // athlete1 maps to blue (player1), athlete2 maps to red (player2)
+                if (blueWarnings !== undefined) {
+                    scoreboardInstance.updatePenalties('blue', null, blueWarnings);
+                }
+                
+                if (redWarnings !== undefined) {
+                    scoreboardInstance.updatePenalties('red', null, redWarnings);
+                }
             }
             
-            if (redWarnings !== undefined) {
-                scoreboardInstance.updatePenalties('red', null, redWarnings);
-            }
+            // Update tracking state
+            manualOverrideState.lastBlueWarnings = blueWarnings;
+            manualOverrideState.lastRedWarnings = redWarnings;
         }
         
         // Handle winner rounds event
         function handleWinnerRoundsEvent(event) {
             console.log('🏆 Winner rounds event:', event);
             
-            // athlete1 (player1/blue) = winner 1, athlete2 (player2/red) = winner 2
-            if (event.round1_winner !== undefined) {
-                const blueWins = (event.round1_winner === 1 ? 1 : 0) + 
-                                (event.round2_winner === 1 ? 1 : 0) + 
-                                (event.round3_winner === 1 ? 1 : 0);
-                const redWins = (event.round1_winner === 2 ? 1 : 0) + 
-                               (event.round2_winner === 2 ? 1 : 0) + 
-                               (event.round3_winner === 2 ? 1 : 0);
+            // Try to parse raw_data first, then fall back to structured_data
+            let winnerData = null;
+            
+            if (event.raw_data) {
+                try {
+                    winnerData = JSON.parse(event.raw_data);
+                    console.log('🏆 Parsed raw_data:', winnerData);
+                } catch (error) {
+                    console.error('❌ Failed to parse raw_data:', error);
+                }
+            }
+            
+            // Use parsed data if available, otherwise try structured_data
+            const data = winnerData || event.structured_data || event;
+            console.log('🏆 Using data source:', winnerData ? 'raw_data' : 'structured_data');
+            console.log('🏆 round1_winner:', data.round1_winner);
+            console.log('🏆 round2_winner:', data.round2_winner);
+            console.log('🏆 round3_winner:', data.round3_winner);
+            
+            // Reset current scores to 0:0 for new round
+            scoreboardInstance.updateScore('blue', 0);
+            scoreboardInstance.updateScore('red', 0);
+            
+            // Reset warnings to 0:0 for new round
+            scoreboardInstance.updatePenalties('blue', null, 0);
+            scoreboardInstance.updatePenalties('red', null, 0);
+            
+            // Update rounds won - athlete1 (player1/blue) = winner 1, athlete2 (player2/red) = winner 2
+            if (data.round1_winner !== undefined) {
+                const blueWins = (data.round1_winner === 1 ? 1 : 0) + 
+                                (data.round2_winner === 1 ? 1 : 0) + 
+                                (data.round3_winner === 1 ? 1 : 0);
+                const redWins = (data.round1_winner === 2 ? 1 : 0) + 
+                               (data.round2_winner === 2 ? 1 : 0) + 
+                               (data.round3_winner === 2 ? 1 : 0);
                 
+                console.log(`🏆 Updating round wins - Blue: ${blueWins}, Red: ${redWins}`);
                 scoreboardInstance.updateRoundWins('blue', blueWins);
                 scoreboardInstance.updateRoundWins('red', redWins);
+            } else {
+                console.warn('⚠️ No round winners found in event data');
+            }
+        }
+        
+        // Handle match end event (when winner is announced)
+        function handleMatchEndEvent(event) {
+            console.log('🏁 Match end event:', event);
+            
+            // Update final scores and winner information
+            if (event.winner) {
+                console.log(`🏆 Match winner: ${event.winner}`);
+                // You can add winner announcement logic here
             }
         }
         
@@ -521,9 +1052,137 @@
         // Handle round event
         function handleRoundEvent(event) {
             console.log('🔄 Round event:', event);
+            console.log('🔄 Current roundDuration variable:', roundDuration);
             
-            if (event.current_round) {
-                scoreboardInstance.updateRound(event.current_round);
+            // Clear break stopEnd tracking when round event occurs
+            if (manualOverrideState.lastBreakStopEnd) {
+                console.log('🔄 Round event occurred, clearing break stopEnd tracking');
+                manualOverrideState.lastBreakStopEnd = null;
+                manualOverrideState.eventsAfterBreakStopEnd = [];
+            }
+            
+            // Try to parse raw_data first, then fall back to structured_data
+            let roundData = null;
+            
+            if (event.raw_data) {
+                try {
+                    roundData = JSON.parse(event.raw_data);
+                    console.log('🔄 Parsed raw_data:', roundData);
+                } catch (error) {
+                    console.error('❌ Failed to parse raw_data:', error);
+                }
+            }
+            
+            // Use parsed data if available, otherwise try structured_data
+            const data = roundData || event.structured_data || event;
+            console.log('🔄 Using data source:', roundData ? 'raw_data' : 'structured_data');
+            
+            // Get round number from various possible sources
+            let roundNumber = null;
+            if (data.current_round !== undefined) {
+                roundNumber = data.current_round;
+                console.log('🔄 Found round in current_round field:', roundNumber);
+            } else if (data.round !== undefined) {
+                roundNumber = data.round;
+                console.log('🔄 Found round in round field:', roundNumber);
+            } else if (event.round !== undefined) {
+                roundNumber = event.round;
+                console.log('🔄 Found round in event.round field:', roundNumber);
+            }
+            
+            if (roundNumber !== null) {
+                // ===== MANUAL OVERRIDE DETECTION FOR ROUND CHANGES =====
+                
+                // Check if this is a manual round change
+                if (isManualRoundChange(event)) {
+                    console.log('🔄 Manual round change detected, preserving all data...');
+                    handleManualRoundChange(event);
+                } else {
+                    // Check if this is a round change after break stopEnd (normal inter-round change)
+                    if (isRoundChangeAfterBreakStopEnd()) {
+                        console.log('🔄 Normal round change after break stopEnd detected - treating as normal round change');
+                    }
+                    
+                    // Normal round change - update round and reset clock
+                    scoreboardInstance.updateRound(roundNumber);
+                    console.log(`🔄 Updated to round: ${roundNumber} (normal change)`);
+                    
+                    // Reset clock using stored round duration
+                    const minutes = Math.floor(roundDuration / 60);
+                    const seconds = roundDuration % 60;
+                    console.log(`⏰ Resetting clock with roundDuration=${roundDuration}s -> ${minutes}:${seconds.toString().padStart(2, '0')}`);
+                    scoreboardInstance.updateTimer(minutes, seconds);
+                    console.log(`⏰ Reset clock to ${minutes}:${seconds.toString().padStart(2, '0')} for new round`);
+                }
+            } else {
+                console.warn('⚠️ No round number found in round event:', event);
+            }
+        }
+        
+        // Handle points event
+        function handlePointsEvent(event) {
+            console.log('🎯 Points event:', event);
+            
+            // Try to parse raw_data first, then fall back to structured_data
+            let pointsData = null;
+            
+            if (event.raw_data) {
+                try {
+                    pointsData = JSON.parse(event.raw_data);
+                    console.log('🎯 Parsed raw_data:', pointsData);
+                } catch (error) {
+                    console.error('❌ Failed to parse raw_data:', error);
+                }
+            }
+            
+            // Use parsed data if available, otherwise try structured_data
+            const data = pointsData || event.structured_data || event;
+            console.log('🎯 Using data source:', pointsData ? 'raw_data' : 'structured_data');
+            
+            // Check for manual score change
+            if (isManualScoreChange(event, manualOverrideState.lastBlueScore, manualOverrideState.lastRedScore)) {
+                console.log('🔄 Manual points change detected, handling specially...');
+                // The actual score update will be handled by the scores event
+                // This is just for detection and logging
+            }
+        }
+        
+        // Handle supervision event (warnings reset)
+        function handleSupervisionEvent(event) {
+            console.log('👁️ Supervision event:', event);
+            
+            // Try to parse raw_data first, then fall back to structured_data
+            let supervisionData = null;
+            
+            if (event.raw_data) {
+                try {
+                    supervisionData = JSON.parse(event.raw_data);
+                    console.log('👁️ Parsed raw_data:', supervisionData);
+                } catch (error) {
+                    console.error('❌ Failed to parse raw_data:', error);
+                }
+            }
+            
+            // Use parsed data if available, otherwise try structured_data
+            const data = supervisionData || event.structured_data || event;
+            console.log('👁️ Using data source:', supervisionData ? 'raw_data' : 'structured_data');
+            
+            // Check for supervision value (0 = reset warnings)
+            let supervisionValue = 0;
+            
+            if (data.value !== undefined) {
+                supervisionValue = data.value;
+            } else if (data.supervision !== undefined) {
+                supervisionValue = data.supervision;
+            }
+            
+            console.log('👁️ Supervision value:', supervisionValue);
+            
+            // If supervision is 0, reset warnings
+            if (supervisionValue === 0) {
+                console.log('🔄 Resetting warnings due to supervision event');
+                scoreboardInstance.updatePenalties('blue', null, 0);
+                scoreboardInstance.updatePenalties('red', null, 0);
             }
         }
         
@@ -531,6 +1190,15 @@
         function handleFightReadyEvent(event) {
             console.log('🥊 Fight ready event:', event);
             updateConnectionStatus(true);
+            
+            // Apply typewriter effect for new match with correct round duration and current round
+            if (scoreboardInstance) {
+                setTimeout(() => {
+                    // Get current round from event or default to 1
+                    const currentRound = event.round || 1;
+                    scoreboardInstance.applyNewMatchEffect(roundDuration, currentRound);
+                }, 500); // Small delay to ensure all data is loaded
+            }
         }
         
         // Handle injury event (for properly typed events)
@@ -549,6 +1217,17 @@
                 } else if (event.action === 'reset') {
                     scoreboardInstance.resetInjuryTime();
                 }
+            }
+        }
+        
+        // Handle break event
+        function handleBreakEvent(event) {
+            console.log('⏸️ Break event:', event);
+            
+            if (event.action === 'stopEnd') {
+                manualOverrideState.lastBreakStopEnd = getCurrentTimestamp();
+                manualOverrideState.eventsAfterBreakStopEnd = []; // Reset tracking
+                console.log('⏸️ Break stopEnd event detected. Starting event tracking...');
             }
         }
         
@@ -717,6 +1396,37 @@
                 }
             }
             
+            // Parse structured current_scores events from WebSocket
+            else if (event.type === 'current_scores') {
+                try {
+                    const scores = {
+                        athlete1_score: event.athlete1_score || event.structured_data?.athlete1_score || 0,
+                        athlete2_score: event.athlete2_score || event.structured_data?.athlete2_score || 0,
+                        type: 'current_scores'
+                    };
+                    
+                    console.log(`📊 Parsed structured current_scores: blue=${scores.athlete1_score}, red=${scores.athlete2_score}`);
+                    handleScoresEvent(scores);
+                } catch (error) {
+                    console.error('❌ Error parsing structured current_scores:', error);
+                }
+            }
+            
+            // Parse supervision (sv;) lines
+            else if (event.message.startsWith('sv;')) {
+                try {
+                    const parts = event.message.split(';');
+                    const supervision = {
+                        value: parseInt(parts[1]) || 0,
+                        type: 'supervision'
+                    };
+                    
+                    handleSupervisionEvent(supervision);
+                } catch (error) {
+                    console.error('❌ Error parsing raw supervision line:', error);
+                }
+            }
+            
             // Parse injury time (ij1;, ij2;, ij0;) lines
             else if (event.message.startsWith('ij1;') || event.message.startsWith('ij2;') || event.message.startsWith('ij0;')) {
                 try {
@@ -870,6 +1580,12 @@
             if (svgObject.contentDocument) {
                 initializeScoreboard();
             }
+        });
+        
+        // Cleanup when page is unloaded
+        window.addEventListener('beforeunload', () => {
+            console.log('🧹 Cleaning up dramatic countdown...');
+            // No dramatic countdown to clean up
         });
         
         // Export functions for external access
