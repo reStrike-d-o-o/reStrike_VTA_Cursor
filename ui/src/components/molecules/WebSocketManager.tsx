@@ -57,14 +57,14 @@ const WebSocketManager: React.FC = () => {
     loadReconnectionSettings();
   }, []);
 
-  // Periodically refresh connection statuses to keep UI in sync
-  useEffect(() => {
-    const interval = setInterval(() => {
-      refreshConnectionStatuses();
-    }, 3000); // Refresh every 3 seconds
-
-    return () => clearInterval(interval);
-  }, [obsConnections]);
+  // Remove the constant polling - we'll rely on event-driven updates instead
+  // useEffect(() => {
+  //   const interval = setInterval(() => {
+  //     refreshConnectionStatuses();
+  //   }, 3000); // Refresh every 3 seconds
+  //
+  //   return () => clearInterval(interval);
+  // }, [obsConnections]);
 
   // Load reconnection settings from configuration
   const loadReconnectionSettings = async () => {
