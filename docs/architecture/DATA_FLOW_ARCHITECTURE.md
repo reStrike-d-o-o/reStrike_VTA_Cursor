@@ -577,30 +577,18 @@ The system supports both OBS WebSocket v4 and v5 protocols simultaneously:
 #### Dual-Protocol Implementation
 
 ```rust
-// Protocol-agnostic OBS operations
-impl ObsPlugin {
-    pub async fn get_current_scene(&self, name: &str) -> AppResult<String> {
-        let connection = self.get_connection(name)?;
-        match connection.protocol_version {
-            ObsWebSocketVersion::V4 => self.get_current_scene_v4(connection).await,
-            ObsWebSocketVersion::V5 => self.get_current_scene_v5(connection).await,
-        }
+// Protocol-agnostic OBS operations (Modular Implementation)
+impl ObsPluginManager {
+    pub async fn get_current_scene(&self, connection_name: &str) -> AppResult<String> {
+        self.scenes_plugin.get_current_scene(connection_name).await
     }
 
-    pub async fn set_current_scene(&self, name: &str, scene: &str) -> AppResult<()> {
-        let connection = self.get_connection(name)?;
-        match connection.protocol_version {
-            ObsWebSocketVersion::V4 => self.set_current_scene_v4(connection, scene).await,
-            ObsWebSocketVersion::V5 => self.set_current_scene_v5(connection, scene).await,
-        }
+    pub async fn set_current_scene(&self, connection_name: &str, scene: &str) -> AppResult<()> {
+        self.scenes_plugin.set_current_scene(connection_name, scene).await
     }
 
-    pub async fn start_recording(&self, name: &str) -> AppResult<()> {
-        let connection = self.get_connection(name)?;
-        match connection.protocol_version {
-            ObsWebSocketVersion::V4 => self.start_recording_v4(connection).await,
-            ObsWebSocketVersion::V5 => self.start_recording_v5(connection).await,
-        }
+    pub async fn start_recording(&self, connection_name: &str) -> AppResult<()> {
+        self.recording_plugin.start_recording(connection_name).await
     }
 }
 ```
@@ -608,31 +596,25 @@ impl ObsPlugin {
 #### Multiple OBS Instance Support
 
 ```rust
-// Support for multiple OBS instances
-pub struct ObsPlugin {
-    connections: Arc<Mutex<HashMap<String, ObsConnection>>>,
-    event_tx: UnboundedSender<ObsEvent>,
+// Support for multiple OBS instances (Modular Implementation)
+pub struct ObsPluginManager {
+    core_plugin: ObsCorePlugin,
+    recording_plugin: ObsRecordingPlugin,
+    streaming_plugin: ObsStreamingPlugin,
+    scenes_plugin: ObsScenesPlugin,
+    settings_plugin: ObsSettingsPlugin,
+    events_plugin: ObsEventsPlugin,
+    status_plugin: ObsStatusPlugin,
+    context: ObsPluginContext,
 }
 
-impl ObsPlugin {
+impl ObsPluginManager {
     pub async fn add_connection(&mut self, config: ObsConnectionConfig) -> AppResult<()> {
-        let connection = ObsConnection::new(config).await?;
-        self.connections.lock().unwrap().insert(
-            connection.name.clone(), 
-            connection
-        );
-        Ok(())
+        self.core_plugin.add_connection(config).await
     }
 
-    pub async fn connect_obs(&mut self, name: &str) -> AppResult<()> {
-        if let Some(connection) = self.connections.lock().unwrap().get_mut(name) {
-            connection.connect().await?;
-            self.emit_event(ObsEvent::ConnectionStatusChanged {
-                connection_name: name.to_string(),
-                status: ObsConnectionStatus::Connected,
-            })?;
-        }
-        Ok(())
+    pub async fn connect_obs(&mut self, connection_name: &str) -> AppResult<()> {
+        self.core_plugin.connect_obs(connection_name).await
     }
 }
 ```
@@ -640,8 +622,8 @@ impl ObsPlugin {
 #### OBS Event Handling
 
 ```rust
-// Handle events from both protocol versions
-async fn handle_obs_events(plugin: &ObsPlugin) {
+// Handle events from modular OBS system
+async fn handle_obs_events(plugin_manager: &ObsPluginManager) {
     while let Some(event) = event_rx.recv().await {
         match event {
             ObsEvent::ConnectionStatusChanged { connection_name, status } => {
