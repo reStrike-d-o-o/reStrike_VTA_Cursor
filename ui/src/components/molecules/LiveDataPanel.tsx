@@ -102,6 +102,13 @@ const LiveDataPanel: React.FC = () => {
     setShowFullEvents(newValue);
     
     try {
+      // Call the backend Tauri command to toggle full events
+      if (tauriAvailable) {
+        await invoke('obs_toggle_full_events', { enabled: newValue });
+        console.log('Full events toggle command sent to backend');
+      }
+      
+      // Also save to config for persistence
       const result = await configCommands.getSettings();
       if (result.success) {
         const updatedSettings = {
@@ -116,6 +123,8 @@ const LiveDataPanel: React.FC = () => {
       }
     } catch (error) {
       console.error('Failed to save full events setting:', error);
+      // Revert the toggle if it failed
+      setShowFullEvents(!newValue);
     }
   };
 
@@ -146,13 +155,41 @@ const LiveDataPanel: React.FC = () => {
   // Polling removed – no longer required
 
   const handleToggle = async () => {
-    // Live data is now automatically managed by the PSS event system
-    console.log('Live data toggle - now managed automatically');
+    try {
+      if (tauriAvailable) {
+        // Toggle live data streaming for the selected subsystem
+        const currentType = document.querySelector('select[aria-label="Select live data type"]') as HTMLSelectElement;
+        const subsystem = currentType?.value || 'pss';
+        
+        // For now, we'll enable/disable based on current connection status
+        const shouldEnable = !wsConnected;
+        
+        await invoke('set_live_data_streaming', { 
+          subsystem: subsystem, 
+          enabled: shouldEnable 
+        });
+        
+        console.log(`Live data streaming ${shouldEnable ? 'enabled' : 'disabled'} for ${subsystem}`);
+      }
+    } catch (error) {
+      console.error('Failed to toggle live data streaming:', error);
+    }
   };
 
-  const handleTypeChange = (newType: string) => {
-    // Type selection is now handled by the PSS event system
-    console.log('Live data type change - now managed automatically');
+  const handleTypeChange = async (newType: string) => {
+    try {
+      if (tauriAvailable) {
+        // Stop current streaming and start new one for the selected type
+        await invoke('set_live_data_streaming', { 
+          subsystem: newType, 
+          enabled: true 
+        });
+        
+        console.log(`Live data streaming switched to ${newType}`);
+      }
+    } catch (error) {
+      console.error('Failed to change live data type:', error);
+    }
   };
 
   const scrollToTop = () => {
@@ -184,7 +221,7 @@ const LiveDataPanel: React.FC = () => {
       
       <div className="flex items-center gap-3 mb-3">
         <Toggle
-          checked={true} 
+          checked={wsConnected} 
           onChange={handleToggle} 
           label="Enable"
           labelPosition="right"
