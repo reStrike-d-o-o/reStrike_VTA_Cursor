@@ -1160,10 +1160,15 @@ pub async fn obs_toggle_full_events(enabled: bool, app: State<'_, Arc<App>>) -> 
 
 #[tauri::command]
 pub async fn obs_get_full_events_setting(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
-    let setting = app.obs_plugin().get_full_events_setting().await;
-    Ok(serde_json::json!({
-        "enabled": setting
-    }))
+    match app.obs_plugin().get_full_events_setting().await {
+        Ok(setting) => Ok(serde_json::json!({
+            "enabled": setting
+        })),
+        Err(e) => Ok(serde_json::json!({
+            "enabled": false,
+            "error": e.to_string()
+        }))
+    }
 }
 
 #[tauri::command]
@@ -4170,20 +4175,20 @@ pub async fn get_cache_statistics(app: tauri::State<'_, crate::core::app::App>) 
 
 #[tauri::command]
 pub async fn clear_cache(app: tauri::State<'_, crate::core::app::App>) -> Result<(), tauri::Error> {
-    app.event_cache().clear_all().await
-        .map_err(|e| tauri::Error::from(anyhow::anyhow!("Failed to clear cache: {}", e)))
+    app.event_cache().clear_all().await;
+    Ok(())
 }
 
 #[tauri::command]
 pub async fn invalidate_tournament_cache(app: tauri::State<'_, crate::core::app::App>, tournament_id: i64) -> Result<(), tauri::Error> {
-    app.event_cache().invalidate_tournament(tournament_id).await
-        .map_err(|e| tauri::Error::from(anyhow::anyhow!("Failed to invalidate tournament cache: {}", e)))
+    app.event_cache().invalidate_tournament(tournament_id).await;
+    Ok(())
 }
 
 #[tauri::command]
 pub async fn invalidate_match_cache(app: tauri::State<'_, crate::core::app::App>, match_id: i64) -> Result<(), tauri::Error> {
-    app.event_cache().invalidate_match(match_id).await
-        .map_err(|e| tauri::Error::from(anyhow::anyhow!("Failed to invalidate match cache: {}", e)))
+    app.event_cache().invalidate_match(match_id).await;
+    Ok(())
 }
 
 // Phase 3: Event Stream Commands
@@ -4196,8 +4201,8 @@ pub async fn get_stream_statistics(app: tauri::State<'_, crate::core::app::App>)
 
 #[tauri::command]
 pub async fn send_event_to_stream(app: tauri::State<'_, crate::core::app::App>, event: crate::database::models::PssEventV2) -> Result<(), tauri::Error> {
-    app.event_stream_processor().send_event(event).await
-        .map_err(|e| tauri::Error::from(anyhow::anyhow!("Failed to send event to stream: {}", e)))
+    app.event_stream_processor().send_event(event).await;
+    Ok(())
 }
 
 // Phase 3: Load Balancer Commands
