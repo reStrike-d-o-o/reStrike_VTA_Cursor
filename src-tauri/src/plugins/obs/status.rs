@@ -2,7 +2,7 @@
 // Handles status aggregation and reporting
 // Extracted from the original plugin_obs.rs
 
-use crate::types::AppResult;
+use crate::types::{AppResult, AppError};
 use super::types::*;
 use super::recording::ObsRecordingPlugin;
 use super::streaming::ObsStreamingPlugin;
@@ -209,7 +209,7 @@ impl ObsStatusPlugin {
                 if let Ok(output_str) = String::from_utf8(output.stdout) {
                     for line in output_str.lines() {
                         if line.starts_with("ProcessId=") {
-                            if let Ok(pid) = line.split('=').nth(1).unwrap_or("0").parse::<u32>() {
+                            if let Ok(_pid) = line.split('=').nth(1).unwrap_or("0").parse::<u32>() {
                                 // For now, return a reasonable default based on typical OBS settings
                                 return Ok(30.0);
                             }
@@ -482,7 +482,7 @@ impl ObsStatusPlugin {
                 let status = Self::get_monitoring_status(&context, &recording_plugin, &streaming_plugin).await;
                 
                 // Emit status update event
-                if let Ok(status_info) = status {
+                if let Ok(_status_info) = status {
                     let event = ObsEvent::StatusUpdate {
                         connection_name: "system".to_string(),
                         status: ObsConnectionStatus::Connected,
