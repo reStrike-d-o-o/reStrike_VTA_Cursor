@@ -37,6 +37,8 @@ impl ObsCorePlugin {
                 request_id_counter: 0,
                 pending_requests: HashMap::new(),
                 heartbeat_data: None,
+                is_connected: false,
+                last_heartbeat: None,
             };
             connections.insert(config.name.clone(), connection);
         } // lock is dropped here
@@ -352,7 +354,6 @@ impl ObsCorePlugin {
                                                 if *show_full {
                                                     let _ = event_tx.send(ObsEvent::Raw {
                                                         connection_name: connection_name.clone(),
-                                                        event_type: event_type.to_string(),
                                                         data: event_data.clone(),
                                                     });
                                                     
@@ -460,7 +461,6 @@ impl ObsCorePlugin {
                                                 _other => {
                                                     let _ = event_tx.send(ObsEvent::Raw {
                                                         connection_name: connection_name.clone(),
-                                                        event_type: event_type.to_string(),
                                                         data: event_data.clone(),
                                                     });
                                                 }

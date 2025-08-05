@@ -46,17 +46,18 @@ pub struct ObsConnectionInfo {
 }
 
 /// OBS Connection Status
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ObsConnectionStatus {
-    pub name: String,
-    pub is_connected: bool,
-    pub is_recording: bool,
-    pub is_streaming: bool,
-    pub last_heartbeat: Option<DateTime<Utc>>,
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum ObsConnectionStatus {
+    Disconnected,
+    Connecting,
+    Connected,
+    Authenticating,
+    Authenticated,
+    Error(String),
 }
 
 /// OBS Connection
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct ObsConnection {
     pub config: ObsConnectionConfig,
     pub status: ObsConnectionStatus,
@@ -69,7 +70,7 @@ pub struct ObsConnection {
 }
 
 // Recent events buffer for frontend polling
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RecentEvent {
     pub connection_name: String,
     pub event_type: String,
@@ -103,6 +104,27 @@ pub enum ObsEvent {
     Heartbeat {
         connection_name: String,
         data: serde_json::Value,
+    },
+    // Add missing variants that are used in the code
+    Raw {
+        connection_name: String,
+        data: serde_json::Value,
+    },
+    SceneChanged {
+        connection_name: String,
+        scene_name: String,
+    },
+    StreamStateChanged {
+        connection_name: String,
+        is_streaming: bool,
+    },
+    ConnectionStatusChanged {
+        connection_name: String,
+        status: ObsConnectionStatus,
+    },
+    Error {
+        connection_name: String,
+        error: String,
     },
 }
 

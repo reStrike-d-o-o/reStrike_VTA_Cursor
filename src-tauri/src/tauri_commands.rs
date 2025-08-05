@@ -85,12 +85,12 @@ pub async fn obs_connect(url: String, app: State<'_, Arc<App>>) -> Result<serde_
     log::info!("OBS connect called with URL: {}", url);
     
     // Parse the URL to extract connection details
-    let config = crate::plugins::plugin_obs::ObsConnectionConfig {
+    let config = crate::plugins::obs::types::ObsConnectionConfig {
         name: "default".to_string(),
         host: url.replace("ws://", "").replace("wss://", "").split(':').next().unwrap_or("localhost").to_string(),
         port: 4455, // Default OBS port
         password: None,
-        protocol_version: crate::plugins::plugin_obs::ObsWebSocketVersion::V5,
+        protocol_version: crate::plugins::obs::types::ObsWebSocketVersion::V5,
         enabled: true,
     };
     
@@ -118,14 +118,14 @@ pub async fn obs_add_connection(
     log::info!("OBS add connection called: {}@{}:{}", name, host, port);
     
     // Always use v5 protocol
-    let version = crate::plugins::plugin_obs::ObsWebSocketVersion::V5;
+    let version = crate::plugins::obs::types::ObsWebSocketVersion::V5;
     
     // Clone values before moving them
     let name_clone = name.clone();
     let host_clone = host.clone();
     let password_clone = password.clone();
     
-    let config = crate::plugins::plugin_obs::ObsConnectionConfig {
+    let config = crate::plugins::obs::types::ObsConnectionConfig {
         name,
         host,
         port,
@@ -199,17 +199,20 @@ pub async fn obs_get_connection_status(
     
     match app.obs_plugin().get_connection_status(&connection_name).await {
         Ok(status) => {
-            let status_str = if status.is_connected {
-                "Connected"
-            } else {
-                "Disconnected"
+            let (status_str, is_recording, is_streaming) = match status {
+                crate::plugins::obs::types::ObsConnectionStatus::Connected => ("Connected", false, false),
+                crate::plugins::obs::types::ObsConnectionStatus::Authenticated => ("Authenticated", false, false),
+                crate::plugins::obs::types::ObsConnectionStatus::Connecting => ("Connecting", false, false),
+                crate::plugins::obs::types::ObsConnectionStatus::Authenticating => ("Authenticating", false, false),
+                crate::plugins::obs::types::ObsConnectionStatus::Disconnected => ("Disconnected", false, false),
+                crate::plugins::obs::types::ObsConnectionStatus::Error(_) => ("Error", false, false),
             };
             
             Ok(serde_json::json!({
                 "success": true,
                 "status": status_str,
-                "is_recording": status.is_recording,
-                "is_streaming": status.is_streaming
+                "is_recording": is_recording,
+                "is_streaming": is_streaming
             }))
         },
         Err(e) => Ok(serde_json::json!({
@@ -229,10 +232,13 @@ pub async fn obs_get_connections(app: State<'_, Arc<App>>) -> Result<serde_json:
     for conn in connections {
         // Get actual status from OBS plugin if available
         let status_str = if let Ok(status) = app.obs_plugin().get_connection_status(&conn.name).await {
-            if status.is_connected {
-                "Connected"
-            } else {
-                "Disconnected"
+            match status {
+                crate::plugins::obs::types::ObsConnectionStatus::Connected => "Connected",
+                crate::plugins::obs::types::ObsConnectionStatus::Authenticated => "Authenticated",
+                crate::plugins::obs::types::ObsConnectionStatus::Connecting => "Connecting",
+                crate::plugins::obs::types::ObsConnectionStatus::Authenticating => "Authenticating",
+                crate::plugins::obs::types::ObsConnectionStatus::Disconnected => "Disconnected",
+                crate::plugins::obs::types::ObsConnectionStatus::Error(_) => "Error",
             }
         } else {
             "Disconnected"
@@ -4273,7 +4279,10 @@ pub async fn obs_list_scenes(app: State<'_, Arc<App>>) -> Result<serde_json::Val
     
     for (connection_name, status) in &connection_statuses {
         // Check if connection is connected/authenticated
-        let is_connected = matches!(status, Some(s) if matches!(s, crate::plugins::plugin_obs::ObsConnectionStatus::Connected | crate::plugins::plugin_obs::ObsConnectionStatus::Authenticated));
+        let is_connected = match status {
+            Ok(s) => matches!(s, crate::plugins::obs::types::ObsConnectionStatus::Connected | crate::plugins::obs::types::ObsConnectionStatus::Authenticated),
+            Err(_) => false,
+        };
         
         if is_connected {
             match app.obs_plugin().get_scenes(connection_name).await {
@@ -4298,7 +4307,10 @@ pub async fn obs_list_scenes(app: State<'_, Arc<App>>) -> Result<serde_json::Val
     }
     
     let connected_count = connection_statuses.iter()
-        .filter(|(_, status)| matches!(status, Some(s) if matches!(s, crate::plugins::plugin_obs::ObsConnectionStatus::Connected | crate::plugins::plugin_obs::ObsConnectionStatus::Authenticated)))
+        .filter(|(_, status)| match status {
+            Ok(s) => matches!(s, crate::plugins::obs::types::ObsConnectionStatus::Connected | crate::plugins::obs::types::ObsConnectionStatus::Authenticated),
+            Err(_) => false,
+        })
         .count();
     
     Ok(serde_json::json!({
