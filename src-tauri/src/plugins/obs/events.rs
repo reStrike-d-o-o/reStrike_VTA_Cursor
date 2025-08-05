@@ -102,36 +102,75 @@ impl ObsEventsPlugin {
     pub async fn handle_obs_event(&self, connection_name: &str, event_type: &str, event_data: serde_json::Value) {
         log::debug!("[OBS_EVENTS] Handling event '{}' for '{}'", event_type, connection_name);
         
-        // Add to recent events buffer
-        self.add_recent_event(connection_name, event_type, event_data.clone()).await;
-        
-        // Route event to appropriate handler based on event type
-        match event_type {
+        // Create ObsEvent for processing
+        let obs_event = match event_type {
             "SceneChanged" => {
                 if let Some(scene_name) = event_data.get("sceneName").and_then(|s| s.as_str()) {
-                    self.handle_scene_changed(connection_name, scene_name).await;
+                    ObsEvent::SceneChanged {
+                        connection_name: connection_name.to_string(),
+                        scene_name: scene_name.to_string(),
+                    }
+                } else {
+                    ObsEvent::Raw {
+                        connection_name: connection_name.to_string(),
+                        data: event_data.clone(),
+                    }
                 }
             },
             "RecordStateChanged" => {
                 if let Some(is_recording) = event_data.get("outputActive").and_then(|b| b.as_bool()) {
-                    self.handle_recording_state_changed(connection_name, is_recording).await;
+                    ObsEvent::RecordingStateChanged {
+                        connection_name: connection_name.to_string(),
+                        is_recording,
+                    }
+                } else {
+                    ObsEvent::Raw {
+                        connection_name: connection_name.to_string(),
+                        data: event_data.clone(),
+                    }
                 }
             },
             "StreamStateChanged" => {
                 if let Some(is_streaming) = event_data.get("outputActive").and_then(|b| b.as_bool()) {
-                    self.handle_streaming_state_changed(connection_name, is_streaming).await;
+                    ObsEvent::StreamStateChanged {
+                        connection_name: connection_name.to_string(),
+                        is_streaming,
+                    }
+                } else {
+                    ObsEvent::Raw {
+                        connection_name: connection_name.to_string(),
+                        data: event_data.clone(),
+                    }
                 }
             },
             "ReplayBufferStateChanged" => {
                 if let Some(is_active) = event_data.get("outputActive").and_then(|b| b.as_bool()) {
-                    self.handle_replay_buffer_state_changed(connection_name, is_active).await;
+                    ObsEvent::ReplayBufferStateChanged {
+                        connection_name: connection_name.to_string(),
+                        is_active,
+                    }
+                } else {
+                    ObsEvent::Raw {
+                        connection_name: connection_name.to_string(),
+                        data: event_data.clone(),
+                    }
                 }
             },
             _ => {
-                // Handle as raw event
-                self.handle_raw_event(connection_name, event_type, event_data).await;
+                ObsEvent::Raw {
+                    connection_name: connection_name.to_string(),
+                    data: event_data.clone(),
+                }
             }
+        };
+        
+        // Process event through filtering and routing system
+        if let Err(e) = self.process_event(obs_event).await {
+            log::error!("[OBS_EVENTS] Failed to process event: {}", e);
         }
+        
+        // Also add to recent events buffer for backward compatibility
+        self.add_recent_event(connection_name, event_type, event_data).await;
     }
 
     /// Handle scene changed events
@@ -286,16 +325,16 @@ impl ObsEventsPlugin {
             match filter.condition {
                 FilterCondition::AllowAll => true,
                 FilterCondition::BlockEventType(ref event_type) => {
-                    !matches!(event, ObsEvent::Raw { .. } if event_type == "raw")
+                    !self.event_matches_type(&event, event_type)
                 },
                 FilterCondition::AllowEventType(ref event_type) => {
-                    matches!(event, ObsEvent::Raw { .. } if event_type == "raw")
+                    self.event_matches_type(&event, event_type)
                 },
                 FilterCondition::BlockConnection(ref conn_name) => {
-                    !matches!(event, ObsEvent::Raw { ref connection_name, .. } if connection_name == conn_name)
+                    !self.event_matches_connection(&event, conn_name)
                 },
                 FilterCondition::AllowConnection(ref conn_name) => {
-                    matches!(event, ObsEvent::Raw { ref connection_name, .. } if connection_name == conn_name)
+                    self.event_matches_connection(&event, conn_name)
                 },
             }
         });
@@ -310,19 +349,14 @@ impl ObsEventsPlugin {
         for route in routes.iter() {
             if self.matches_route(&event, route).await {
                 log::debug!("[OBS_EVENTS] Routing event to: {}", route.destination);
-                // Here you would implement the actual routing logic
-                // For now, we just log it
                 match route.destination.as_str() {
                     "frontend" => {
-                        // Route to frontend
                         self.route_to_frontend(&event).await?;
                     },
                     "log" => {
-                        // Route to log
                         self.route_to_log(&event).await?;
                     },
                     "database" => {
-                        // Route to database
                         self.route_to_database(&event).await?;
                     },
                     _ => {
@@ -330,6 +364,11 @@ impl ObsEventsPlugin {
                     }
                 }
             }
+        }
+
+        // Always emit to main event channel for backward compatibility
+        if let Err(e) = self.context.event_tx.send(event.clone()) {
+            log::error!("[OBS_EVENTS] Failed to emit event to main channel: {}", e);
         }
 
         // Store in recent events buffer
@@ -342,10 +381,10 @@ impl ObsEventsPlugin {
         match route.condition {
             RouteCondition::AllEvents => true,
             RouteCondition::EventType(ref event_type) => {
-                matches!(event, ObsEvent::Raw { .. } if event_type == "raw")
+                self.event_matches_type(event, event_type)
             },
             RouteCondition::Connection(ref conn_name) => {
-                matches!(event, ObsEvent::Raw { ref connection_name, .. } if connection_name == conn_name)
+                self.event_matches_connection(event, conn_name)
             },
             RouteCondition::Custom(ref _predicate) => {
                 // Custom predicate logic would go here
@@ -354,10 +393,88 @@ impl ObsEventsPlugin {
         }
     }
 
+    /// Check if event matches a specific event type
+    fn event_matches_type(&self, event: &ObsEvent, event_type: &str) -> bool {
+        match event {
+            ObsEvent::SceneChanged { .. } => event_type == "SceneChanged",
+            ObsEvent::RecordingStateChanged { .. } => event_type == "RecordStateChanged",
+            ObsEvent::StreamStateChanged { .. } => event_type == "StreamStateChanged",
+            ObsEvent::ReplayBufferStateChanged { .. } => event_type == "ReplayBufferStateChanged",
+            ObsEvent::Raw { .. } => event_type == "raw",
+            _ => false,
+        }
+    }
+
+    /// Check if event matches a specific connection
+    fn event_matches_connection(&self, event: &ObsEvent, conn_name: &str) -> bool {
+        match event {
+            ObsEvent::SceneChanged { connection_name, .. } => connection_name == conn_name,
+            ObsEvent::RecordingStateChanged { connection_name, .. } => connection_name == conn_name,
+            ObsEvent::StreamStateChanged { connection_name, .. } => connection_name == conn_name,
+            ObsEvent::ReplayBufferStateChanged { connection_name, .. } => connection_name == conn_name,
+            ObsEvent::Raw { connection_name, .. } => connection_name == conn_name,
+            _ => false,
+        }
+    }
+
     /// Route event to frontend
     async fn route_to_frontend(&self, event: &ObsEvent) -> AppResult<()> {
-        // This would emit the event to the frontend via WebSocket or Tauri events
-        log::debug!("[OBS_EVENTS] Routing to frontend: {:?}", event);
+        // Convert event to JSON for frontend
+        let event_json = match event {
+            ObsEvent::SceneChanged { connection_name, scene_name } => {
+                serde_json::json!({
+                    "type": "SceneChanged",
+                    "connection_name": connection_name,
+                    "scene_name": scene_name,
+                    "timestamp": chrono::Utc::now().to_rfc3339()
+                })
+            },
+            ObsEvent::RecordingStateChanged { connection_name, is_recording } => {
+                serde_json::json!({
+                    "type": "RecordStateChanged",
+                    "connection_name": connection_name,
+                    "is_recording": is_recording,
+                    "timestamp": chrono::Utc::now().to_rfc3339()
+                })
+            },
+            ObsEvent::StreamStateChanged { connection_name, is_streaming } => {
+                serde_json::json!({
+                    "type": "StreamStateChanged",
+                    "connection_name": connection_name,
+                    "is_streaming": is_streaming,
+                    "timestamp": chrono::Utc::now().to_rfc3339()
+                })
+            },
+            ObsEvent::ReplayBufferStateChanged { connection_name, is_active } => {
+                serde_json::json!({
+                    "type": "ReplayBufferStateChanged",
+                    "connection_name": connection_name,
+                    "is_active": is_active,
+                    "timestamp": chrono::Utc::now().to_rfc3339()
+                })
+            },
+            ObsEvent::Raw { connection_name, data } => {
+                serde_json::json!({
+                    "type": "Raw",
+                    "connection_name": connection_name,
+                    "data": data,
+                    "timestamp": chrono::Utc::now().to_rfc3339()
+                })
+            },
+            _ => {
+                serde_json::json!({
+                    "type": "Unknown",
+                    "timestamp": chrono::Utc::now().to_rfc3339()
+                })
+            }
+        };
+
+        // Emit to frontend via the main event channel
+        if let Err(e) = self.context.event_tx.send(event.clone()) {
+            log::error!("[OBS_EVENTS] Failed to emit event to frontend: {}", e);
+        }
+
+        log::debug!("[OBS_EVENTS] Routed to frontend: {:?}", event_json);
         Ok(())
     }
 
