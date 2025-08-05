@@ -2,10 +2,8 @@
 // Handles event handling, routing, filtering, and frontend broadcasting
 // Extracted from the original plugin_obs.rs
 
-use std::sync::Arc;
-use tokio::sync::Mutex;
 use chrono::Utc;
-use crate::types::{AppError, AppResult};
+use crate::types::AppResult;
 use super::types::*;
 
 /// OBS Events Plugin for event handling
