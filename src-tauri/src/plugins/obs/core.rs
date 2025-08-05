@@ -144,6 +144,7 @@ impl ObsCorePlugin {
             let mut connections = self.context.connections.lock().await;
             if let Some(connection) = connections.get_mut(connection_name) {
                 connection.status = ObsConnectionStatus::Disconnected;
+                connection.is_connected = false;
                 connection.websocket = None;
                 connection.pending_requests.clear();
                 connection.heartbeat_data = None;
@@ -612,11 +613,12 @@ impl ObsCorePlugin {
         }
         // 5. Reunite the stream and return it
         let ws_stream = ws_write.reunite(ws_read).map_err(|_| AppError::ConfigError("Failed to reunite ws stream".to_string()))?;
-        // Set status to Authenticated
+        // Set status to Authenticated and mark as connected
         {
             let mut connections = self.context.connections.lock().await;
             let connection = connections.get_mut(connection_name).unwrap();
             connection.status = ObsConnectionStatus::Authenticated;
+            connection.is_connected = true;
         }
         log::info!("[OBS] Authentication successful for connection '{}'", connection_name);
         // Send status change event
