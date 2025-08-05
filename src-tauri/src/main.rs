@@ -133,6 +133,8 @@ async fn main() -> AppResult<()> {
             tauri_commands::obs_refresh_streaming_auth,
             
             tauri_commands::obs_get_performance_metrics,
+        tauri_commands::obs_start_monitoring,
+        tauri_commands::obs_stop_monitoring,
             tauri_commands::obs_add_event_filter,
             tauri_commands::obs_get_event_filters,
             tauri_commands::obs_add_event_route,

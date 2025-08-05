@@ -14,12 +14,21 @@ use super::types::*;
 /// Core OBS Plugin for connection management
 pub struct ObsCorePlugin {
     context: ObsPluginContext,
+    events_plugin: Option<Arc<super::events::ObsEventsPlugin>>,
 }
 
 impl ObsCorePlugin {
     /// Create a new OBS Core Plugin
     pub fn new(context: ObsPluginContext) -> Self {
-        Self { context }
+        Self { 
+            context,
+            events_plugin: None,
+        }
+    }
+
+    /// Set the events plugin reference for event processing
+    pub fn set_events_plugin(&mut self, events_plugin: Arc<super::events::ObsEventsPlugin>) {
+        self.events_plugin = Some(events_plugin);
     }
 
     /// Add a new OBS connection
@@ -353,6 +362,11 @@ impl ObsCorePlugin {
                                             // Event messages
                                             let event_type = json.pointer("/d/eventType").and_then(|v| v.as_str()).unwrap_or("");
                                             let event_data = &json["d"]["eventData"];
+                                            
+                                            // Process event through events plugin for filtering and routing
+                                            if let Some(events_plugin) = &self.events_plugin {
+                                                events_plugin.handle_obs_event(&connection_name, event_type, event_data.clone()).await;
+                                            }
                                             
                                             // Check if we should show all events or only recording/streaming
                                             let show_full = show_full_events.lock().await;

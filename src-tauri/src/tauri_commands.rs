@@ -1187,6 +1187,40 @@ pub async fn obs_get_performance_metrics(app: State<'_, Arc<App>>) -> Result<ser
     }
 }
 
+/// Start real-time monitoring
+#[tauri::command]
+pub async fn obs_start_monitoring(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    log::info!("OBS start monitoring called");
+    
+    match app.obs_plugin().status().start_monitoring().await {
+        Ok(()) => Ok(serde_json::json!({
+            "success": true,
+            "message": "Monitoring started"
+        })),
+        Err(e) => {
+            log::error!("Failed to start monitoring: {}", e);
+            Err(TauriError::from(anyhow::anyhow!("Failed to start monitoring: {}", e)))
+        }
+    }
+}
+
+/// Stop real-time monitoring
+#[tauri::command]
+pub async fn obs_stop_monitoring(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    log::info!("OBS stop monitoring called");
+    
+    match app.obs_plugin().status().stop_monitoring().await {
+        Ok(()) => Ok(serde_json::json!({
+            "success": true,
+            "message": "Monitoring stopped"
+        })),
+        Err(e) => {
+            log::error!("Failed to stop monitoring: {}", e);
+            Err(TauriError::from(anyhow::anyhow!("Failed to stop monitoring: {}", e)))
+        }
+    }
+}
+
 // Event Filtering and Routing Commands
 #[tauri::command]
 pub async fn obs_add_event_filter(app: State<'_, Arc<App>>, filter: serde_json::Value) -> Result<serde_json::Value, TauriError> {

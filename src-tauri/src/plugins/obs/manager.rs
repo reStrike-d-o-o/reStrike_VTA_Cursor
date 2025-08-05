@@ -35,7 +35,16 @@ impl ObsPluginManager {
         let mut context = ObsPluginContext::new()?;
         
         // Create core plugin first (others depend on it)
-        let core_plugin = Arc::new(ObsCorePlugin::new(context.clone()));
+        let mut core_plugin = ObsCorePlugin::new(context.clone());
+        
+        // Create events plugin first so we can set it in core plugin
+        let events_plugin = Arc::new(ObsEventsPlugin::new(context.clone()));
+        
+        // Set the events plugin in the core plugin for event processing
+        core_plugin.set_events_plugin(events_plugin.clone());
+        
+        // Wrap core plugin in Arc
+        let core_plugin = Arc::new(core_plugin);
         
         // Set the core plugin in the context for other plugins to use
         context.core_plugin = Some(core_plugin.clone());
@@ -45,7 +54,6 @@ impl ObsPluginManager {
         let streaming_plugin = Arc::new(ObsStreamingPlugin::new(context.clone(), core_plugin.clone()));
         let scenes_plugin = Arc::new(ObsScenesPlugin::new(context.clone()));
         let settings_plugin = Arc::new(ObsSettingsPlugin::new(context.clone()));
-        let events_plugin = Arc::new(ObsEventsPlugin::new(context.clone()));
         let status_plugin = Arc::new(ObsStatusPlugin::new(
             context.clone(), 
             recording_plugin.clone(), 
