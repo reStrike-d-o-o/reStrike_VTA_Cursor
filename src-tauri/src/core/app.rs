@@ -58,7 +58,7 @@ impl App {
         log::info!("✅ Configuration manager initialized");
         
         // Create event channels for plugins
-        let (obs_event_tx, _obs_event_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (obs_event_tx, _obs_event_rx) = tokio::sync::mpsc::unbounded_channel::<crate::plugins::obs::types::ObsEvent>();
         let (playback_event_tx, _playback_event_rx) = tokio::sync::mpsc::unbounded_channel();
         let (udp_event_tx, udp_event_rx) = tokio::sync::mpsc::unbounded_channel();
         

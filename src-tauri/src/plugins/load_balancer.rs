@@ -348,19 +348,19 @@ impl EventDistributor {
             
             // Cache the distributed event for quick access
             if let Some(match_id) = event.match_id {
-                let _ = self.cache.set_match_stats(match_id, crate::plugins::event_cache::MatchStatistics {
-                    match_id,
+                let _ = self.cache.set_match_stats(match_id.to_string(), crate::plugins::event_cache::MatchStatistics {
+                    match_id: match_id.to_string(),
                     event_count: 1,
                     duration_seconds: 0,
                     athlete1_score: 0,
                     athlete2_score: 0,
                     last_updated: std::time::SystemTime::now(),
-                }).await;
+                });
             }
             
             // Cache match events for quick access
             if let Some(match_id) = event.match_id {
-                let _ = self.cache.set_match_events(match_id, vec![event.clone()]).await;
+                let _ = self.cache.set_match_events(match_id.to_string(), vec![serde_json::to_value(event.clone()).unwrap_or_default()]).await;
             }
         }
         

@@ -451,7 +451,7 @@ impl AdvancedAnalytics {
             miss_rate: 0.0,
             eviction_rate: 0.0,
             memory_usage_mb: 0,
-            total_entries: cache_stats.total_entries,
+            total_entries: 0, // Placeholder value since cache_stats is a placeholder
         };
         
         analytics.last_updated = std::time::SystemTime::now();

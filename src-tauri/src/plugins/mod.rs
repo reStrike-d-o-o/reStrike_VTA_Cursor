@@ -21,9 +21,36 @@ pub mod obs; // Add modular OBS plugins
 pub mod performance_monitor {
     // Placeholder module for performance monitoring
     use serde::{Deserialize, Serialize};
+    use std::sync::Arc;
     
     #[derive(Debug, Clone, Serialize, Deserialize)]
     pub struct PerformanceMonitor;
+    
+    impl PerformanceMonitor {
+        pub fn new() -> Self {
+            Self
+        }
+        
+        pub fn update_memory_usage(&self) {
+            // Placeholder implementation
+        }
+        
+        pub fn record_event_arrival(&self) {
+            // Placeholder implementation
+        }
+        
+        pub fn record_event_processed(&self, _processing_time: u64) {
+            // Placeholder implementation
+        }
+        
+        pub fn get_performance_metrics(&self) -> PerformanceMetrics {
+            PerformanceMetrics
+        }
+        
+        pub fn get_memory_stats(&self) -> MemoryUsageStats {
+            MemoryUsageStats
+        }
+    }
     
     #[derive(Debug, Clone, Serialize, Deserialize)]
     pub struct PerformanceMetrics;
@@ -35,20 +62,74 @@ pub mod performance_monitor {
 pub mod event_cache {
     // Placeholder module for event caching
     use serde::{Deserialize, Serialize};
+    use std::sync::Arc;
+    use std::time::SystemTime;
     
     #[derive(Debug, Clone, Serialize, Deserialize)]
     pub struct EventCache;
     
+    impl EventCache {
+        pub fn new() -> Self {
+            Self
+        }
+        
+        pub fn set_match_stats(&self, _match_id: String, _stats: MatchStatistics) {
+            // Placeholder implementation
+        }
+        
+        pub async fn set_match_events(&self, _match_id: String, _events: Vec<serde_json::Value>) {
+            // Placeholder implementation
+        }
+        
+        pub async fn get_cache_stats(&self) -> serde_json::Value {
+            serde_json::json!({})
+        }
+        
+        pub async fn clear_all(&self) {
+            // Placeholder implementation
+        }
+        
+        pub async fn invalidate_tournament(&self, _tournament_id: i64) {
+            // Placeholder implementation
+        }
+        
+        pub async fn invalidate_match(&self, _match_id: i64) {
+            // Placeholder implementation
+        }
+    }
+    
     #[derive(Debug, Clone, Serialize, Deserialize)]
-    pub struct MatchStatistics;
+    pub struct MatchStatistics {
+        pub match_id: String,
+        pub event_count: i32,
+        pub duration_seconds: i32,
+        pub athlete1_score: i32,
+        pub athlete2_score: i32,
+        pub last_updated: SystemTime,
+    }
 }
 
 pub mod event_stream {
     // Placeholder module for event streaming
     use serde::{Deserialize, Serialize};
+    use std::sync::Arc;
     
     #[derive(Debug, Clone, Serialize, Deserialize)]
     pub struct EventStreamProcessor;
+    
+    impl EventStreamProcessor {
+        pub fn new(_cache: Arc<super::event_cache::EventCache>) -> Self {
+            Self
+        }
+        
+        pub async fn get_statistics(&self) -> serde_json::Value {
+            serde_json::json!({})
+        }
+        
+        pub async fn send_event(&self, _event: crate::database::models::PssEventV2) {
+            // Placeholder implementation
+        }
+    }
 }
 
 // Re-export main plugin types
