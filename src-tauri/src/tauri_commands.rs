@@ -198,24 +198,23 @@ pub async fn obs_get_connection_status(
     log::info!("OBS get connection status called: {}", connection_name);
     
     match app.obs_plugin().get_connection_status(&connection_name).await {
-        Some(status) => {
-            let status_str = match status {
-                crate::plugins::plugin_obs::ObsConnectionStatus::Disconnected => "Disconnected",
-                crate::plugins::plugin_obs::ObsConnectionStatus::Connecting => "Connecting",
-                crate::plugins::plugin_obs::ObsConnectionStatus::Connected => "Connected",
-                crate::plugins::plugin_obs::ObsConnectionStatus::Authenticating => "Authenticating",
-                crate::plugins::plugin_obs::ObsConnectionStatus::Authenticated => "Authenticated",
-                crate::plugins::plugin_obs::ObsConnectionStatus::Error(_) => "Error",
+        Ok(status) => {
+            let status_str = if status.is_connected {
+                "Connected"
+            } else {
+                "Disconnected"
             };
             
             Ok(serde_json::json!({
                 "success": true,
-                "status": status_str
+                "status": status_str,
+                "is_recording": status.is_recording,
+                "is_streaming": status.is_streaming
             }))
         },
-        None => Ok(serde_json::json!({
+        Err(e) => Ok(serde_json::json!({
             "success": false,
-            "error": "Connection not found"
+            "error": format!("Failed to get connection status: {}", e)
         }))
     }
 }
@@ -229,14 +228,11 @@ pub async fn obs_get_connections(app: State<'_, Arc<App>>) -> Result<serde_json:
     
     for conn in connections {
         // Get actual status from OBS plugin if available
-        let status_str = if let Some(status) = app.obs_plugin().get_connection_status(&conn.name).await {
-            match status {
-                crate::plugins::plugin_obs::ObsConnectionStatus::Disconnected => "Disconnected",
-                crate::plugins::plugin_obs::ObsConnectionStatus::Connecting => "Connecting",
-                crate::plugins::plugin_obs::ObsConnectionStatus::Connected => "Connected",
-                crate::plugins::plugin_obs::ObsConnectionStatus::Authenticating => "Authenticating",
-                crate::plugins::plugin_obs::ObsConnectionStatus::Authenticated => "Authenticated",
-                crate::plugins::plugin_obs::ObsConnectionStatus::Error(_) => "Error",
+        let status_str = if let Ok(status) = app.obs_plugin().get_connection_status(&conn.name).await {
+            if status.is_connected {
+                "Connected"
+            } else {
+                "Disconnected"
             }
         } else {
             "Disconnected"
@@ -292,64 +288,61 @@ pub async fn obs_remove_connection(connection_name: String, app: State<'_, Arc<A
 
 #[tauri::command]
 pub async fn obs_get_status(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
-    log::info!("OBS get status called");
+    log::info!("OBS get status");
+    
     match app.obs_plugin().get_obs_status().await {
-        Ok(status) => Ok(serde_json::json!({
-            "success": true,
-            "status": status
-        })),
-        Err(e) => Ok(serde_json::json!({
-            "success": false,
-            "error": e.to_string()
-        }))
+        Ok(status) => {
+            let status_json = serde_json::json!({
+                "success": true,
+                "data": {
+                    "is_recording": status.is_recording,
+                    "is_streaming": status.is_streaming,
+                    "cpu_usage": status.cpu_usage,
+                    "connections": status.connections
+                }
+            });
+            Ok(status_json)
+        }
+        Err(e) => {
+            log::error!("Failed to get OBS status: {}", e);
+            Err(TauriError::from(anyhow::anyhow!("Failed to get OBS status: {}", e)))
+        }
     }
 }
 
 #[tauri::command]
 pub async fn obs_start_recording(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("OBS start recording called");
-    // Get the first available connection
-    let connections = app.obs_plugin().get_connection_names().await;
-    if let Some(connection_name) = connections.first() {
-        match app.obs_plugin().start_recording(connection_name).await {
-            Ok(_) => Ok(serde_json::json!({
-                "success": true,
-                "message": "OBS recording started"
-            })),
-            Err(e) => Ok(serde_json::json!({
-                "success": false,
-                "error": e.to_string()
-            }))
+    // For now, use the default connection name
+    let connection_name = "OBS_REC";
+    
+    match app.obs_plugin().start_recording(connection_name).await {
+        Ok(_) => Ok(serde_json::json!({
+            "success": true,
+            "message": "OBS recording started"
+        })),
+        Err(e) => {
+            log::error!("Failed to start recording: {}", e);
+            Err(TauriError::from(anyhow::anyhow!("Failed to start recording: {}", e)))
         }
-    } else {
-        Ok(serde_json::json!({
-            "success": false,
-            "error": "No OBS connections available"
-        }))
     }
 }
 
 #[tauri::command]
 pub async fn obs_stop_recording(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("OBS stop recording called");
-    // Get the first available connection
-    let connections = app.obs_plugin().get_connection_names().await;
-    if let Some(connection_name) = connections.first() {
-        match app.obs_plugin().stop_recording(connection_name).await {
-            Ok(_) => Ok(serde_json::json!({
-                "success": true,
-                "message": "OBS recording stopped"
-            })),
-            Err(e) => Ok(serde_json::json!({
-                "success": false,
-                "error": e.to_string()
-            }))
+    // For now, use the default connection name
+    let connection_name = "OBS_REC";
+    
+    match app.obs_plugin().stop_recording(connection_name).await {
+        Ok(_) => Ok(serde_json::json!({
+            "success": true,
+            "message": "OBS recording stopped"
+        })),
+        Err(e) => {
+            log::error!("Failed to stop recording: {}", e);
+            Err(TauriError::from(anyhow::anyhow!("Failed to stop recording: {}", e)))
         }
-    } else {
-        Ok(serde_json::json!({
-            "success": false,
-            "error": "No OBS connections available"
-        }))
     }
 }
 
@@ -1188,14 +1181,17 @@ pub async fn obs_get_recent_events(app: State<'_, Arc<App>>) -> Result<serde_jso
     let events = app.obs_plugin().get_recent_events().await;
     
     // Convert RecentEvent structs to JSON
-    let event_json: Vec<serde_json::Value> = events.into_iter().map(|event| {
-        serde_json::json!({
-            "connection_name": event.connection_name,
-            "event_type": event.event_type,
-            "data": event.data,
-            "timestamp": event.timestamp.to_rfc3339()
-        })
-    }).collect();
+    let event_json: Vec<serde_json::Value> = match events {
+        Ok(events) => events.into_iter().map(|event| {
+            serde_json::json!({
+                "connection_name": event.connection_name,
+                "event_type": event.event_type,
+                "data": event.data,
+                "timestamp": event.timestamp.to_rfc3339()
+            })
+        }).collect(),
+        Err(_) => Vec::new(),
+    };
     
     Ok(serde_json::json!({
         "success": true,

@@ -4,16 +4,22 @@
 
 use crate::types::AppResult;
 use super::types::*;
+use super::core::ObsCorePlugin;
+use std::sync::Arc;
 
 /// Recording plugin for OBS operations
 pub struct ObsRecordingPlugin {
     context: ObsPluginContext,
+    core_plugin: Arc<ObsCorePlugin>,
 }
 
 impl ObsRecordingPlugin {
     /// Create a new OBS Recording Plugin
-    pub fn new(context: ObsPluginContext) -> Self {
-        Self { context }
+    pub fn new(context: ObsPluginContext, core_plugin: Arc<ObsCorePlugin>) -> Self {
+        Self { 
+            context,
+            core_plugin,
+        }
     }
 
     /// Start recording
@@ -73,14 +79,11 @@ impl ObsRecordingPlugin {
         &self,
         connection_name: &str,
         request_type: &str,
-        _request_data: Option<serde_json::Value>,
+        request_data: Option<serde_json::Value>,
     ) -> AppResult<serde_json::Value> {
-        // This would delegate to the core plugin's send_request method
-        // For now, return a placeholder response
-        Ok(serde_json::json!({
-            "outputActive": false,
-            "outputTimecode": "00:00:00.000"
-        }))
+        // Delegate to core plugin for actual WebSocket communication
+        let data = request_data.unwrap_or_else(|| serde_json::json!({}));
+        self.core_plugin.send_request(connection_name, request_type, Some(data)).await
     }
 
     /// Handle recording state change events

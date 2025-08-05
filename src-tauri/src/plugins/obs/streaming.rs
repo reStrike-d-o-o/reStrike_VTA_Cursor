@@ -4,16 +4,22 @@
 
 use crate::types::AppResult;
 use super::types::*;
+use super::core::ObsCorePlugin;
+use std::sync::Arc;
 
 /// Streaming plugin for OBS operations
 pub struct ObsStreamingPlugin {
     context: ObsPluginContext,
+    core_plugin: Arc<ObsCorePlugin>,
 }
 
 impl ObsStreamingPlugin {
     /// Create a new OBS Streaming Plugin
-    pub fn new(context: ObsPluginContext) -> Self {
-        Self { context }
+    pub fn new(context: ObsPluginContext, core_plugin: Arc<ObsCorePlugin>) -> Self {
+        Self { 
+            context,
+            core_plugin,
+        }
     }
 
     /// Start streaming
@@ -44,14 +50,26 @@ impl ObsStreamingPlugin {
         &self,
         connection_name: &str,
         request_type: &str,
-        _request_data: Option<serde_json::Value>,
+        request_data: Option<serde_json::Value>,
     ) -> AppResult<serde_json::Value> {
-        // This would delegate to the core plugin's send_request method
-        // For now, return a placeholder response
-        Ok(serde_json::json!({
-            "outputActive": false,
-            "outputTimecode": "00:00:00.000"
-        }))
+        // Delegate to core plugin for actual WebSocket communication
+        let data = request_data.unwrap_or_else(|| serde_json::json!({}));
+        self.core_plugin.send_request(connection_name, request_type, Some(data)).await
+    }
+
+    /// Handle streaming state change events
+    pub async fn handle_streaming_state_change(&self, connection_name: &str, is_streaming: bool) {
+        log::info!("[OBS_STREAMING] Streaming state changed for '{}': {}", connection_name, is_streaming);
+        
+        // Emit streaming state change event
+        let event = ObsEvent::StreamingStateChanged {
+            connection_name: connection_name.to_string(),
+            is_streaming,
+        };
+        
+        if let Err(e) = self.context.event_tx.send(event) {
+            log::error!("[OBS_STREAMING] Failed to emit streaming state change event: {}", e);
+        }
     }
 }
 
