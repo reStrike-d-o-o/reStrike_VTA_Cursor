@@ -136,7 +136,7 @@ impl Clone for TriggerPlugin {
     fn clone(&self) -> Self {
         Self {
             db: self.db.clone(),
-            obs_plugin: self.obs_plugin.clone(),
+            obs_plugin_manager: self.obs_plugin_manager.clone(),
             enabled_triggers: self.enabled_triggers.clone(),
             current_tournament_id: self.current_tournament_id.clone(),
             current_tournament_day_id: self.current_tournament_day_id.clone(),
