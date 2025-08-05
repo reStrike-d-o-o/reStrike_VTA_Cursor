@@ -66,10 +66,12 @@ export const handlePssEvent = (event: any) => {
     case 'clock':
       // Handle clock events (for future features)
       console.log('🎯 Clock event:', event);
+      handleClockEvent(event, store);
       break;
     case 'round':
       // Handle round events (for future features)
       console.log('🎯 Round event:', event);
+      handleRoundEvent(event, store);
       break;
     case 'injury':
       // Handle injury events (for future features)
@@ -288,6 +290,18 @@ const handleCurrentScoresEvent = (event: any, store: any) => {
 
     console.log('📊 Updating current scores:', currentScores);
     store.updateCurrentScores(currentScores);
+    
+    // Also update current round and time if available in structured data
+    if (event.structured_data) {
+      if (event.structured_data.current_round !== undefined) {
+        store.updateCurrentRound(event.structured_data.current_round);
+        console.log('📊 Updated current round from current scores event:', event.structured_data.current_round);
+      }
+      if (event.structured_data.current_time !== undefined) {
+        store.updateCurrentRoundTime(event.structured_data.current_time);
+        console.log('📊 Updated current time from current scores event:', event.structured_data.current_time);
+      }
+    }
   } catch (error) {
     console.error('Error handling current scores event:', error);
   }
@@ -337,6 +351,44 @@ const handleFightReadyEvent = (event: any, store: any) => {
     lastFightReadyEmitted = true;
   } catch (error) {
     console.error('Error handling fight ready event:', error);
+  }
+};
+
+/**
+ * Handle Clock event from PSS
+ * Updates the current round and time in the store
+ */
+const handleClockEvent = (event: any, store: any) => {
+  try {
+    // Extract round and time from the event
+    const currentRound = event.round || event.current_round || 1;
+    const currentTime = event.time || '0:00';
+    
+    // Update store with current round and time
+    store.updateCurrentRound(currentRound);
+    store.updateCurrentRoundTime(currentTime);
+    
+    console.log('📊 Updated current round and time from clock event:', { currentRound, currentTime });
+  } catch (error) {
+    console.error('Error handling clock event:', error);
+  }
+};
+
+/**
+ * Handle Round event from PSS
+ * Updates the current round in the store
+ */
+const handleRoundEvent = (event: any, store: any) => {
+  try {
+    // Extract round from the event
+    const currentRound = event.round || event.current_round || 1;
+    
+    // Update store with current round
+    store.updateCurrentRound(currentRound);
+    
+    console.log('📊 Updated current round from round event:', currentRound);
+  } catch (error) {
+    console.error('Error handling round event:', error);
   }
 };
 

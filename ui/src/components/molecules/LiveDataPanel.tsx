@@ -24,7 +24,7 @@ const LiveDataPanel: React.FC = () => {
   const {
     events,
     currentRound,
-    currentTime,
+    currentRoundTime,
     isConnected,
     lastUpdate,
     clearEvents,
@@ -223,7 +223,7 @@ const LiveDataPanel: React.FC = () => {
           {wsConnected ? 'Connected' : 'Disconnected'} | 
           Events: {eventCount} | 
           Round: {currentRound} | 
-          Time: {currentTime}
+                      Time: {currentRoundTime}
         </span>
       </div>
 

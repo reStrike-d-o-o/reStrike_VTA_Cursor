@@ -30,7 +30,7 @@ const EventTableSection: React.FC = () => {
   const { 
     events, 
     currentRound, 
-    currentTime, 
+    currentRoundTime, 
     isConnected, 
     getFilteredEvents,
     clearEvents 
@@ -69,16 +69,19 @@ const EventTableSection: React.FC = () => {
 
   // Format time for display (convert from "m:ss" to "mm.ss.000" format)
   const formatTimeForDisplay = (time: string): string => {
-    if (!time || time === '0:00') return '00.00.000';
+    // Use the event's time (which is the current store time when event was created)
+    const displayTime = time;
     
-    const parts = time.split(':');
+    if (!displayTime || displayTime === '0:00') return '00.00.000';
+    
+    const parts = displayTime.split(':');
     if (parts.length === 2) {
       const minutes = parts[0].padStart(2, '0');
       const seconds = parts[1].padStart(2, '0');
       return `${minutes}.${seconds}.000`;
     }
     
-    return time;
+    return displayTime;
   };
 
   // Get athlete color for display
@@ -152,12 +155,12 @@ const EventTableSection: React.FC = () => {
                     }`}
                     onClick={() => setSelectedIdx(idx)}
                   >
-                    <div className="w-16 text-gray-300 font-bold mr-2 ml-8">
-                      R{event.round}
-                    </div>
-                    <div className="w-24 text-gray-300 mr-2">
-                      {formatTimeForDisplay(event.time)}
-                    </div>
+                            <div className="w-16 text-gray-300 font-bold mr-2 ml-8">
+          R{event.round}
+        </div>
+        <div className="w-24 text-gray-300 mr-2">
+          {formatTimeForDisplay(event.time)}
+        </div>
                     <div className="w-32 flex items-center space-x-2 pl-10">
                       <StatusDot color={getAthleteColor(event.athlete)} size="w-4 h-4" />
                       <span className="text-white font-medium">{event.eventCode}</span>
@@ -207,11 +210,17 @@ const EventTableSection: React.FC = () => {
       <div className="flex-shrink-0 flex items-center justify-between text-xs text-gray-400 border-t border-gray-600 pt-2">
         <div className="flex items-center space-x-4">
           <span>Round: {currentRound}</span>
-          <span>Time: {currentTime}</span>
+          <span>Time: {currentRoundTime}</span>
         </div>
         <div className="flex items-center space-x-2">
           <span>Total: {events.length}</span>
           <span>Table: {filteredEvents.length}</span>
+          <button 
+            onClick={() => clearEvents()}
+            className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+          >
+            Clear Events
+          </button>
         </div>
       </div>
     </div>

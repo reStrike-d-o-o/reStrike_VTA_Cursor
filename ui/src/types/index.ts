@@ -136,6 +136,8 @@ export interface PssMatchData {
   scores?: PssScores;
   currentScores?: PssCurrentScores;
   winnerRounds?: PssWinnerRounds;
+  currentRound?: number;
+  currentRoundTime?: string; // Format: "mm:ss" or "m:ss"
   isLoaded: boolean;
   lastUpdated: string;
 }

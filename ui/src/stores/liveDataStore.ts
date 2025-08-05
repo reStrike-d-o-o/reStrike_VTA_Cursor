@@ -20,16 +20,15 @@ export interface PssEventData {
 interface LiveDataState {
   events: PssEventData[];
   currentRound: number;
-  currentTime: string;
+  currentRoundTime: string;
   isConnected: boolean;
   lastUpdate: string;
-  
   // Actions
   addEvent: (event: PssEventData) => void;
   clearEvents: () => void;
   storeEventsToDatabase: (matchId: string) => Promise<void>;
   setCurrentRound: (round: number) => void;
-  setCurrentTime: (time: string) => void;
+  setCurrentRoundTime: (time: string) => void;
   setConnectionStatus: (connected: boolean) => void;
   updateLastUpdate: () => void;
   
@@ -42,7 +41,7 @@ export const useLiveDataStore = create<LiveDataState>()(
   subscribeWithSelector((set, get) => ({
     events: [],
     currentRound: 1,
-    currentTime: '2:00',
+    currentRoundTime: '0:00',
     isConnected: false,
     lastUpdate: new Date().toISOString(),
     
@@ -96,8 +95,8 @@ export const useLiveDataStore = create<LiveDataState>()(
       set({ currentRound: round });
     },
     
-    setCurrentTime: (time: string) => {
-      set({ currentTime: time });
+    setCurrentRoundTime: (time: string) => {
+      set({ currentRoundTime: time });
     },
     
     setConnectionStatus: (connected: boolean) => {
