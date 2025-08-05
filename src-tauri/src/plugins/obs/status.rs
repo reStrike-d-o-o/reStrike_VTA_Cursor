@@ -35,6 +35,8 @@ impl ObsStatusPlugin {
             is_recording: false,
             is_streaming: false,
             cpu_usage: 0.0,
+            recording_connection: None,
+            streaming_connection: None,
             connections: Vec::new(),
         };
 
@@ -93,16 +95,7 @@ impl ObsStatusPlugin {
         let connections = self.context.connections.lock().await;
         
         if let Some(connection) = connections.get(connection_name) {
-            let is_recording = self.recording_plugin.get_recording_status(connection_name).await.unwrap_or(false);
-            let is_streaming = self.streaming_plugin.get_streaming_status(connection_name).await.unwrap_or(false);
-
-            Ok(ObsConnectionStatus {
-                name: connection_name.to_string(),
-                is_connected: connection.is_connected,
-                is_recording,
-                is_streaming,
-                last_heartbeat: connection.last_heartbeat,
-            })
+            Ok(connection.status.clone())
         } else {
             Err(crate::types::AppError::ConfigError(format!("Connection '{}' not found", connection_name)))
         }
@@ -110,8 +103,8 @@ impl ObsStatusPlugin {
 
     /// Handle status update events
     pub async fn handle_status_update(&self, connection_name: &str, status: ObsConnectionStatus) {
-        log::info!("[OBS_STATUS] Status update for '{}': recording={}, streaming={}", 
-            connection_name, status.is_recording, status.is_streaming);
+        log::info!("[OBS_STATUS] Status update for '{}': {:?}", 
+            connection_name, status);
         
         // Emit status update event
         let event = ObsEvent::StatusUpdate {

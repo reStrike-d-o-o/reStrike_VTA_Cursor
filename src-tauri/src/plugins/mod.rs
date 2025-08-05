@@ -17,23 +17,65 @@ pub mod load_balancer;
 pub mod advanced_analytics;
 pub mod obs; // Add modular OBS plugins
 
+// Add placeholder modules for missing imports
+pub mod performance_monitor {
+    // Placeholder module for performance monitoring
+    use serde::{Deserialize, Serialize};
+    
+    #[derive(Debug, Clone, Serialize, Deserialize)]
+    pub struct PerformanceMonitor;
+    
+    #[derive(Debug, Clone, Serialize, Deserialize)]
+    pub struct PerformanceMetrics;
+    
+    #[derive(Debug, Clone, Serialize, Deserialize)]
+    pub struct MemoryUsageStats;
+}
+
+pub mod event_cache {
+    // Placeholder module for event caching
+    use serde::{Deserialize, Serialize};
+    
+    #[derive(Debug, Clone, Serialize, Deserialize)]
+    pub struct EventCache;
+    
+    #[derive(Debug, Clone, Serialize, Deserialize)]
+    pub struct MatchStatistics;
+}
+
+pub mod event_stream {
+    // Placeholder module for event streaming
+    use serde::{Deserialize, Serialize};
+    
+    #[derive(Debug, Clone, Serialize, Deserialize)]
+    pub struct EventStreamProcessor;
+}
+
 // Re-export main plugin types
 pub use plugin_udp::UdpPlugin;
 pub use plugin_store::StorePlugin;
 pub use plugin_playback::PlaybackPlugin;
 pub use plugin_tournament::TournamentPlugin;
-pub use plugin_triggers::TriggersPlugin;
+pub use plugin_triggers::TriggerPlugin; // Fixed: was TriggersPlugin
 pub use plugin_websocket::WebSocketPlugin;
 pub use plugin_database::DatabasePlugin;
 pub use plugin_drive::DrivePlugin;
 pub use plugin_license::LicensePlugin;
-pub use plugin_cpu_monitor::CpuMonitorPlugin;
-pub use plugin_protocol_manager::ProtocolManagerPlugin;
+pub use plugin_cpu_monitor::{CpuMonitorPlugin, CpuMonitorConfig}; // Added CpuMonitorConfig
+pub use plugin_protocol_manager::ProtocolManager; // Fixed: was ProtocolManagerPlugin
 pub use plugin_obs::ObsPlugin; // Keep old plugin for now
 pub use load_balancer::{EventDistributor, LoadBalancer, LoadBalancerConfig, LoadDistributionStrategy, ServerHealth, ServerStatistics, DistributorStatistics, UdpServerInstance};
 pub use advanced_analytics::{AdvancedAnalytics, AnalyticsConfig, TournamentAnalytics, PerformanceAnalytics, AthleteAnalytics, MatchAnalytics, AnalyticsSnapshot, AthletePerformance, SystemPerformance, EventProcessingPerformance, DatabasePerformance, CachePerformance, NetworkPerformance, MatchPerformance, PerformancePoint, MatchPerformancePoint};
 // Re-export modular OBS plugins
 pub use obs::{ObsPluginManager, ObsCorePlugin, ObsRecordingPlugin, ObsStreamingPlugin, ObsScenesPlugin, ObsSettingsPlugin, ObsEventsPlugin, ObsStatusPlugin};
+
+// Re-export drive plugin function
+pub use plugin_drive::drive_plugin;
+
+// Re-export placeholder types
+pub use performance_monitor::{PerformanceMonitor, PerformanceMetrics, MemoryUsageStats};
+pub use event_cache::{EventCache, MatchStatistics};
+pub use event_stream::EventStreamProcessor;
 
 /// Initialize all plugins
 pub async fn init() -> Result<(), Box<dyn std::error::Error>> {

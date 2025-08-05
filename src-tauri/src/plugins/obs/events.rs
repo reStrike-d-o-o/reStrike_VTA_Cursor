@@ -190,7 +190,6 @@ impl ObsEventsPlugin {
         
         let event = ObsEvent::Raw {
             connection_name: connection_name.to_string(),
-            event_type: event_type.to_string(),
             data: event_data,
         };
         
