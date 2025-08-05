@@ -308,6 +308,7 @@ impl ObsCorePlugin {
         let debug_ws_messages = self.context.debug_ws_messages.clone();
         let show_full_events = self.context.show_full_events.clone();
         let plugin = self.context.clone();
+        let events_plugin_clone = self.events_plugin.clone();
         
         tokio::spawn(async move {
             loop {
@@ -364,7 +365,7 @@ impl ObsCorePlugin {
                                             let event_data = &json["d"]["eventData"];
                                             
                                             // Process event through events plugin for filtering and routing
-                                            if let Some(events_plugin) = &self.events_plugin {
+                                            if let Some(events_plugin) = &events_plugin_clone {
                                                 events_plugin.handle_obs_event(&connection_name, event_type, event_data.clone()).await;
                                             }
                                             
