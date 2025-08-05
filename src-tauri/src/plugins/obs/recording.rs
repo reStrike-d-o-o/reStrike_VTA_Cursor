@@ -1,11 +1,11 @@
 // OBS Recording Plugin
-// Handles recording start/stop, replay buffer, and recording status
+// Handles recording operations (start, stop, replay buffer)
 // Extracted from the original plugin_obs.rs
 
-use crate::types::{AppError, AppResult};
+use crate::types::AppResult;
 use super::types::*;
 
-/// OBS Recording Plugin for recording management
+/// Recording plugin for OBS operations
 pub struct ObsRecordingPlugin {
     context: ObsPluginContext,
 }
@@ -18,106 +18,68 @@ impl ObsRecordingPlugin {
 
     /// Start recording
     pub async fn start_recording(&self, connection_name: &str) -> AppResult<()> {
-        log::info!("[OBS_RECORDING] start_recording called for '{}'", connection_name);
-        
-        // Use the core plugin's send_request method
-        let response = self.send_recording_request(connection_name, "StartRecord", None).await?;
-        
-        log::info!("[OBS_RECORDING] Recording started for '{}'", connection_name);
+        let _response = self.send_recording_request(connection_name, "StartRecord", None).await?;
         Ok(())
     }
 
     /// Stop recording
     pub async fn stop_recording(&self, connection_name: &str) -> AppResult<()> {
-        log::info!("[OBS_RECORDING] stop_recording called for '{}'", connection_name);
-        
-        let response = self.send_recording_request(connection_name, "StopRecord", None).await?;
-        
-        log::info!("[OBS_RECORDING] Recording stopped for '{}'", connection_name);
+        let _response = self.send_recording_request(connection_name, "StopRecord", None).await?;
         Ok(())
     }
 
     /// Start replay buffer
     pub async fn start_replay_buffer(&self, connection_name: &str) -> AppResult<()> {
-        log::info!("[OBS_RECORDING] start_replay_buffer called for '{}'", connection_name);
-        
-        let response = self.send_recording_request(connection_name, "StartReplayBuffer", None).await?;
-        
-        log::info!("[OBS_RECORDING] Replay buffer started for '{}'", connection_name);
+        let _response = self.send_recording_request(connection_name, "StartReplayBuffer", None).await?;
         Ok(())
     }
 
     /// Stop replay buffer
     pub async fn stop_replay_buffer(&self, connection_name: &str) -> AppResult<()> {
-        log::info!("[OBS_RECORDING] stop_replay_buffer called for '{}'", connection_name);
-        
-        let response = self.send_recording_request(connection_name, "StopReplayBuffer", None).await?;
-        
-        log::info!("[OBS_RECORDING] Replay buffer stopped for '{}'", connection_name);
+        let _response = self.send_recording_request(connection_name, "StopReplayBuffer", None).await?;
         Ok(())
     }
 
     /// Save replay buffer
     pub async fn save_replay_buffer(&self, connection_name: &str) -> AppResult<()> {
-        log::info!("[OBS_RECORDING] save_replay_buffer called for '{}'", connection_name);
-        
-        let response = self.send_recording_request(connection_name, "SaveReplayBuffer", None).await?;
-        
-        log::info!("[OBS_RECORDING] Replay buffer saved for '{}'", connection_name);
+        let _response = self.send_recording_request(connection_name, "SaveReplayBuffer", None).await?;
         Ok(())
     }
 
     /// Get recording status
     pub async fn get_recording_status(&self, connection_name: &str) -> AppResult<bool> {
-        log::debug!("[OBS_RECORDING] get_recording_status called for '{}'", connection_name);
-        
         let response = self.send_recording_request(connection_name, "GetRecordStatus", None).await?;
         
-        // Parse the response to get recording status
-        if let Some(output_path) = response.get("outputPath") {
-            let is_recording = !output_path.is_null() && output_path.as_str().unwrap_or("").len() > 0;
-            log::debug!("[OBS_RECORDING] Recording status for '{}': {}", connection_name, is_recording);
-            Ok(is_recording)
+        if let Some(output_active) = response["outputActive"].as_bool() {
+            Ok(output_active)
         } else {
-            log::warn!("[OBS_RECORDING] Unexpected response format for recording status");
             Ok(false)
         }
     }
 
     /// Get replay buffer status
     pub async fn get_replay_buffer_status(&self, connection_name: &str) -> AppResult<bool> {
-        log::debug!("[OBS_RECORDING] get_replay_buffer_status called for '{}'", connection_name);
-        
         let response = self.send_recording_request(connection_name, "GetReplayBufferStatus", None).await?;
         
-        // Parse the response to get replay buffer status
-        if let Some(output_path) = response.get("outputPath") {
-            let is_active = !output_path.is_null() && output_path.as_str().unwrap_or("").len() > 0;
-            log::debug!("[OBS_RECORDING] Replay buffer status for '{}': {}", connection_name, is_active);
-            Ok(is_active)
+        if let Some(output_active) = response["outputActive"].as_bool() {
+            Ok(output_active)
         } else {
-            log::warn!("[OBS_RECORDING] Unexpected response format for replay buffer status");
             Ok(false)
         }
     }
 
-    /// Send a recording-related request to OBS
+    /// Send a recording request to OBS
     async fn send_recording_request(
         &self,
         connection_name: &str,
         request_type: &str,
-        request_data: Option<serde_json::Value>,
+        _request_data: Option<serde_json::Value>,
     ) -> AppResult<serde_json::Value> {
-        // This will be implemented when we integrate with the core plugin
-        // For now, this is a placeholder that will be replaced with actual implementation
-        log::debug!("[OBS_RECORDING] Sending request '{}' to '{}'", request_type, connection_name);
-        
-        // TODO: Integrate with core plugin's send_request method
-        // This is a placeholder response
+        // This would delegate to the core plugin's send_request method
+        // For now, return a placeholder response
         Ok(serde_json::json!({
-            "outputPath": "",
-            "outputTimecode": "",
-            "recordingTime": 0
+            "outputActive": false,
+            "outputTimecode": "00:00:00.000"
         }))
     }
 

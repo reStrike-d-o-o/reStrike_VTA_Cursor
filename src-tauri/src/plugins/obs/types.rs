@@ -6,7 +6,7 @@ use std::sync::Arc;
 use tokio::sync::{mpsc, Mutex};
 use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
-use crate::types::{AppError, AppResult};
+use crate::types::AppResult;
 use crate::logging::LogManager;
 
 // OBS WebSocket Protocol Versions
@@ -102,7 +102,6 @@ pub struct ObsStatusInfo {
 }
 
 // Shared plugin context for cross-plugin communication
-#[derive(Debug)]
 pub struct ObsPluginContext {
     pub connections: Arc<Mutex<HashMap<String, ObsConnection>>>,
     pub event_tx: mpsc::UnboundedSender<ObsEvent>,
@@ -110,6 +109,31 @@ pub struct ObsPluginContext {
     pub show_full_events: Arc<Mutex<bool>>,
     pub recent_events: Arc<Mutex<Vec<RecentEvent>>>,
     pub log_manager: Arc<Mutex<LogManager>>,
+}
+
+impl ObsPluginContext {
+    /// Log a message to file using the log manager
+    pub async fn log_to_file(&self, level: &str, message: &str) {
+        let log_manager = self.log_manager.lock().await;
+        let _ = log_manager.log("obs", level, message);
+    }
+
+    /// Store a recent event for frontend polling
+    pub async fn store_recent_event(&self, connection_name: String, event_type: String, data: serde_json::Value) {
+        let event = RecentEvent {
+            connection_name,
+            event_type,
+            data,
+            timestamp: Utc::now(),
+        };
+
+        let mut events = self.recent_events.lock().await;
+        events.insert(0, event);
+        // Keep only the last 50 events
+        if events.len() > 50 {
+            events.truncate(50);
+        }
+    }
 }
 
 impl Clone for ObsPluginContext {

@@ -16,6 +16,7 @@ pub mod event_cache;
 pub mod event_stream;
 pub mod load_balancer;
 pub mod advanced_analytics;
+pub mod obs; // Add modular OBS plugins
 
 pub use plugin_udp::UdpPlugin;
 pub use plugin_websocket::WebSocketPlugin;
@@ -34,6 +35,8 @@ pub use event_cache::{EventCache, CacheConfig, CacheStatistics, AthleteStatistic
 pub use event_stream::{EventStreamProcessor, EventStreamConfig, StreamStatistics, RealTimeAnalytics, EventStreamSubscriber};
 pub use load_balancer::{EventDistributor, LoadBalancer, LoadBalancerConfig, LoadDistributionStrategy, ServerHealth, ServerStatistics, DistributorStatistics, UdpServerInstance};
 pub use advanced_analytics::{AdvancedAnalytics, AnalyticsConfig, TournamentAnalytics, PerformanceAnalytics, AthleteAnalytics, MatchAnalytics, AnalyticsSnapshot, AthletePerformance, SystemPerformance, EventProcessingPerformance, DatabasePerformance, CachePerformance, NetworkPerformance, MatchPerformance, PerformancePoint, MatchPerformancePoint};
+// Re-export modular OBS plugins
+pub use obs::{ObsPluginManager, ObsCorePlugin, ObsRecordingPlugin, ObsStreamingPlugin, ObsScenesPlugin, ObsSettingsPlugin, ObsEventsPlugin, ObsStatusPlugin};
 
 /// Initialize all plugins
 pub async fn init() -> Result<(), Box<dyn std::error::Error>> {
@@ -52,6 +55,7 @@ pub async fn init() -> Result<(), Box<dyn std::error::Error>> {
     plugin_websocket::init()?;  // WebSocket server for HTML overlays
     plugin_tournament::init()?; // Tournament management system
     plugin_triggers::init()?;   // Trigger system for PSS events
+    obs::init()?; // Initialize modular OBS plugin system
     
     println!("✅ All plugins initialized successfully");
     Ok(())

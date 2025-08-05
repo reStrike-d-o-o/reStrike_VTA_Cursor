@@ -1,15 +1,18 @@
 // Environment-aware OBS hook for reStrike VTA
 
-import { useCallback } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useEnvironment } from './useEnvironment';
 import { obsCommands } from '../utils/tauriCommands';
 import { ApiResponse, ObsConnection } from '../types';
+import { useObsStore } from '../stores/obsStore';
 
 /**
  * Hook for environment-aware OBS operations
  */
 export const useEnvironmentObs = () => {
   const { isWindows, tauriAvailable } = useEnvironment();
+  const { updateObsStatus } = useObsStore();
+  const statusIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const connectToObs = useCallback(async (
     connection: ObsConnection
@@ -53,10 +56,61 @@ export const useEnvironmentObs = () => {
     }
   }, [isWindows, tauriAvailable]);
 
+  // Start real-time status polling
+  const startStatusPolling = useCallback(() => {
+    if (statusIntervalRef.current) {
+      clearInterval(statusIntervalRef.current);
+    }
+
+    statusIntervalRef.current = setInterval(async () => {
+      try {
+        const response = await getObsStatus();
+        if (response.success && response.data) {
+          updateObsStatus(response.data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch OBS status:', error);
+      }
+    }, 1000); // Poll every second
+  }, [getObsStatus, updateObsStatus]);
+
+  // Stop real-time status polling
+  const stopStatusPolling = useCallback(() => {
+    if (statusIntervalRef.current) {
+      clearInterval(statusIntervalRef.current);
+      statusIntervalRef.current = null;
+    }
+  }, []);
+
+  // Setup status listener for real-time updates
+  const setupStatusListener = useCallback(async (): Promise<ApiResponse> => {
+    if (isWindows && tauriAvailable) {
+      try {
+        return await obsCommands.setupStatusListener();
+      } catch (error) {
+        return { success: false, error: String(error) };
+      }
+    } else {
+      // For web, start polling instead
+      startStatusPolling();
+      return { success: true };
+    }
+  }, [isWindows, tauriAvailable, startStatusPolling]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      stopStatusPolling();
+    };
+  }, [stopStatusPolling]);
+
   return {
     connectToObs,
     disconnectFromObs,
     getObsStatus,
+    setupStatusListener,
+    startStatusPolling,
+    stopStatusPolling,
     isWindows,
     tauriAvailable,
   };

@@ -5,6 +5,7 @@ import { useAppStore } from './stores';
 import { useEnvironment } from './hooks/useEnvironment';
 import { usePssEvents } from './hooks/usePssEvents';
 import { useLiveDataEvents } from './hooks/useLiveDataEvents';
+import { useEnvironmentObs } from './hooks/useEnvironmentObs';
 import { invoke } from '@tauri-apps/api/core';
 
 import { useTriggersStore } from './stores/triggersStore';
@@ -23,6 +24,9 @@ const App: React.FC = () => {
   
   // Initialize live data events for Event Table
   const { isConnected: liveDataConnected, eventCount } = useLiveDataEvents();
+  
+  // Initialize OBS status listener for real-time status updates
+  const { setupStatusListener } = useEnvironmentObs();
   
   // Debug environment detection
   React.useEffect(() => {
@@ -53,7 +57,7 @@ const App: React.FC = () => {
     }
   }, [tauriAvailable, isLoading, loadWindowSettings]);
 
-  // Set up PSS event listener when Tauri is available (run once)
+  // Set up PSS event listener and OBS status listener when Tauri is available (run once)
   const hasInitRef = React.useRef(false);
   React.useEffect(() => {
     if (hasInitRef.current) return;
@@ -62,9 +66,15 @@ const App: React.FC = () => {
       // console.log('🚀 Setting up PSS event system...');
       setupEventListener();
       fetchPendingEvents();
+      
+      // Setup OBS status listener for real-time status updates
+      setupStatusListener().catch((error) => {
+        console.error('Failed to setup OBS status listener:', error);
+      });
+      
       hasInitRef.current = true;
     }
-  }, [tauriAvailable, isLoading, setupEventListener, fetchPendingEvents]);
+  }, [tauriAvailable, isLoading, setupEventListener, fetchPendingEvents, setupStatusListener]);
   
   return (
     <div className="h-screen flex flex-col bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white overflow-hidden">
