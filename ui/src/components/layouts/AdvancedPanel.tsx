@@ -4,6 +4,7 @@ import LogDownloadList from '../molecules/LogDownloadList';
 import LogArchiveManager from '../molecules/LogArchiveManager';
 import LiveDataPanel from '../molecules/LiveDataPanel';
 import WebSocketManager from '../molecules/WebSocketManager';
+import ControlRoom from '../molecules/ControlRoom';
 import { CpuMonitoringSection } from '../molecules/CpuMonitoringSection';
 import PssDrawer from '../molecules/PssDrawer';
 import AppSettingsSection from '../molecules/AppSettingsSection';
@@ -195,6 +196,12 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
                 label: 'WebSocket',
                 icon: <LottieIcon animationData={noConnectionAnimation} size={32} />,
                 content: <WebSocketManager />
+              },
+              {
+                id: 'control-room',
+                label: 'Control Room',
+                icon: <LottieIcon animationData={businessAnimation} size={32} />,
+                content: <ControlRoom />
               },
                                 {
                     id: 'integration',

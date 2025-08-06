@@ -8,6 +8,7 @@
 //! - User preferences and session data
 
 pub mod connection;
+pub mod async_connection;
 pub mod maintenance;
 pub mod migrations;
 pub mod operations;
@@ -15,6 +16,7 @@ pub mod migration_strategy;
 pub mod models;
 
 pub use connection::DatabaseConnection;
+pub use async_connection::AsyncDatabaseConnection;
 pub use maintenance::{DatabaseMaintenance, MaintenanceConfig, MaintenanceStatistics, MaintenanceResult, MaintenanceNeeded, DatabaseInfo};
 pub use operations::UiSettingsOperations;
 pub use migration_strategy::{MigrationStrategy, MigrationResult, HybridSettingsProvider};
@@ -24,6 +26,8 @@ pub use migration_strategy::{MigrationStrategy, MigrationResult, HybridSettingsP
 pub enum DatabaseError {
     #[error("SQLite error: {0}")]
     Sqlite(#[from] rusqlite::Error),
+    #[error("Async SQLite error: {0}")]
+    AsyncSqlite(#[from] sqlx::Error),
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
     #[error("Configuration error: {0}")]

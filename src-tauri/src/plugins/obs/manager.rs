@@ -11,7 +11,7 @@ use super::scenes::ObsScenesPlugin;
 use super::settings::ObsSettingsPlugin;
 use super::events::ObsEventsPlugin;
 use super::status::ObsStatusPlugin;
-use super::control_room::ControlRoomManager;
+use super::control_room_async::AsyncControlRoomManager;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
@@ -26,7 +26,7 @@ pub struct ObsPluginManager {
     settings_plugin: Arc<ObsSettingsPlugin>,
     events_plugin: Arc<ObsEventsPlugin>,
     status_plugin: Arc<ObsStatusPlugin>,
-    control_room_manager: Arc<Mutex<Option<ControlRoomManager>>>,
+    control_room_manager: Arc<Mutex<Option<AsyncControlRoomManager>>>,
 }
 
 impl ObsPluginManager {
@@ -275,8 +275,8 @@ impl ObsPluginManager {
 
     // Control Room methods - uses dedicated Control Room Manager
     /// Initialize Control Room with authentication
-    pub async fn control_room_initialize(&self, master_password: String, database: Arc<crate::database::DatabaseConnection>) -> AppResult<()> {
-        let control_room = ControlRoomManager::new(master_password, database, self.core_plugin.clone()).await?;
+    pub async fn control_room_initialize(&self, master_password: String, database: Arc<crate::database::AsyncDatabaseConnection>) -> AppResult<()> {
+        let control_room = AsyncControlRoomManager::new(master_password, database, self.core_plugin.clone()).await?;
         let mut manager = self.control_room_manager.lock().await;
         *manager = Some(control_room);
         log::info!("[OBS_MANAGER] Control Room initialized successfully");
@@ -290,7 +290,7 @@ impl ObsPluginManager {
     }
     
     /// Add Control Room STR connection
-    pub async fn control_room_add_connection(&self, config: super::control_room::ControlRoomConnection) -> AppResult<()> {
+    pub async fn control_room_add_connection(&self, config: super::control_room_async::ControlRoomConnection) -> AppResult<()> {
         let manager = self.control_room_manager.lock().await;
         if let Some(control_room) = manager.as_ref() {
             control_room.add_connection(config).await
@@ -313,7 +313,7 @@ impl ObsPluginManager {
     pub async fn control_room_get_str_connections(&self) -> AppResult<Vec<String>> {
         let manager = self.control_room_manager.lock().await;
         if let Some(control_room) = manager.as_ref() {
-            control_room.get_connection_names().await
+            Ok(control_room.get_connection_names().await)
         } else {
             Err(crate::types::AppError::ConfigError("Control Room not initialized".to_string()))
         }
@@ -343,12 +343,9 @@ impl ObsPluginManager {
     pub async fn control_room_mute_audio(&self, str_name: &str, source_name: &str) -> AppResult<()> {
         let manager = self.control_room_manager.lock().await;
         if let Some(control_room) = manager.as_ref() {
-            if let Some(obs_name) = control_room.get_obs_connection_name(str_name).await? {
-                drop(manager); // Release lock before calling streaming plugin
-                self.streaming_plugin.mute_audio_source(&obs_name, source_name).await
-            } else {
-                Err(crate::types::AppError::ConfigError(format!("STR '{}' is not connected", str_name)))
-            }
+            let obs_name = control_room.get_obs_connection_name(str_name).await?;
+            drop(manager); // Release lock before calling streaming plugin
+            self.streaming_plugin.mute_audio_source(&obs_name, source_name).await
         } else {
             Err(crate::types::AppError::ConfigError("Control Room not initialized".to_string()))
         }
@@ -358,12 +355,9 @@ impl ObsPluginManager {
     pub async fn control_room_unmute_audio(&self, str_name: &str, source_name: &str) -> AppResult<()> {
         let manager = self.control_room_manager.lock().await;
         if let Some(control_room) = manager.as_ref() {
-            if let Some(obs_name) = control_room.get_obs_connection_name(str_name).await? {
-                drop(manager); // Release lock before calling streaming plugin
-                self.streaming_plugin.unmute_audio_source(&obs_name, source_name).await
-            } else {
-                Err(crate::types::AppError::ConfigError(format!("STR '{}' is not connected", str_name)))
-            }
+            let obs_name = control_room.get_obs_connection_name(str_name).await?;
+            drop(manager); // Release lock before calling streaming plugin
+            self.streaming_plugin.unmute_audio_source(&obs_name, source_name).await
         } else {
             Err(crate::types::AppError::ConfigError("Control Room not initialized".to_string()))
         }
@@ -373,12 +367,9 @@ impl ObsPluginManager {
     pub async fn control_room_get_audio_sources(&self, str_name: &str) -> AppResult<Vec<String>> {
         let manager = self.control_room_manager.lock().await;
         if let Some(control_room) = manager.as_ref() {
-            if let Some(obs_name) = control_room.get_obs_connection_name(str_name).await? {
-                drop(manager); // Release lock before calling streaming plugin
-                self.streaming_plugin.get_audio_sources(&obs_name).await
-            } else {
-                Err(crate::types::AppError::ConfigError(format!("STR '{}' is not connected", str_name)))
-            }
+            let obs_name = control_room.get_obs_connection_name(str_name).await?;
+            drop(manager); // Release lock before calling streaming plugin
+            self.streaming_plugin.get_audio_sources(&obs_name).await
         } else {
             Err(crate::types::AppError::ConfigError("Control Room not initialized".to_string()))
         }
@@ -420,7 +411,7 @@ impl ObsPluginManager {
         for str_name in str_connections {
             let manager = self.control_room_manager.lock().await;
             if let Some(control_room) = manager.as_ref() {
-                if let Ok(Some(obs_name)) = control_room.get_obs_connection_name(&str_name).await {
+                if let Ok(obs_name) = control_room.get_obs_connection_name(&str_name).await {
                     drop(manager); // Release lock before calling scenes plugin
                     let result = self.set_current_scene(&obs_name, scene_name).await;
                     results.push((str_name, result));
@@ -444,7 +435,7 @@ impl ObsPluginManager {
         for str_name in str_connections {
             let manager = self.control_room_manager.lock().await;
             if let Some(control_room) = manager.as_ref() {
-                if let Ok(Some(obs_name)) = control_room.get_obs_connection_name(&str_name).await {
+                if let Ok(obs_name) = control_room.get_obs_connection_name(&str_name).await {
                     drop(manager); // Release lock before calling streaming plugin
                     let result = self.start_streaming(&obs_name).await;
                     results.push((str_name, result));
@@ -468,7 +459,7 @@ impl ObsPluginManager {
         for str_name in str_connections {
             let manager = self.control_room_manager.lock().await;
             if let Some(control_room) = manager.as_ref() {
-                if let Ok(Some(obs_name)) = control_room.get_obs_connection_name(&str_name).await {
+                if let Ok(obs_name) = control_room.get_obs_connection_name(&str_name).await {
                     drop(manager); // Release lock before calling streaming plugin
                     let result = self.stop_streaming(&obs_name).await;
                     results.push((str_name, result));

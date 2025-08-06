@@ -6443,53 +6443,39 @@ pub async fn youtube_initialize(
 // Control Room Commands
 // ============================================================================
 
-/// Control Room Authentication
+/// Control Room Authentication (Async version)
 #[tauri::command]
-pub async fn control_room_authenticate(
+pub async fn control_room_authenticate_async(
     password: String,
     app: State<'_, Arc<App>>
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!("Control Room authentication attempt");
+    log::info!("Control Room async authentication attempt");
     
-    // Initialize Control Room with authentication
-    let database = app.database_plugin().get_database_connection();
+    // Create async database connection
+    let app_data_dir = match dirs::data_dir() {
+        Some(data_dir) => data_dir.join("reStrikeVTA"),
+        None => std::env::current_dir().unwrap_or_default().join("data")
+    };
+    let async_db = match crate::database::AsyncDatabaseConnection::new(&app_data_dir).await {
+        Ok(db) => Arc::new(db),
+        Err(e) => {
+            log::error!("Failed to create async database connection: {}", e);
+            return Ok(serde_json::json!({
+                "success": false,
+                "error": "Database connection failed"
+            }));
+        }
+    };
     
-    match app.obs_plugin().control_room_initialize(password.clone(), database.clone()).await {
+    // Initialize Control Room with async authentication
+    match app.obs_plugin().control_room_initialize(password.clone(), async_db).await {
         Ok(_) => {
-            // Create session using security system
-            match crate::security::SecureConfigManager::new(password, database.clone()).await {
-                Ok(config_manager) => {
-                    match config_manager.create_session(
-                        "control_room_user".to_string(),
-                        crate::security::AccessLevel::Administrator,
-                        None,
-                        Some("Control Room".to_string()),
-                    ).await {
-                        Ok(session) => {
-                            log::info!("Control Room authentication and initialization successful");
-                            Ok(serde_json::json!({
-                                "success": true,
-                                "session_id": session.session_id,
-                                "expires_at": session.expires_at
-                            }))
-                        }
-                        Err(e) => {
-                            log::warn!("Control Room session creation failed: {}", e);
-                            Ok(serde_json::json!({
-                                "success": false,
-                                "error": "Session creation failed"
-                            }))
-                        }
-                    }
-                }
-                Err(_) => {
-                    log::warn!("Control Room authentication failed");
-                    Ok(serde_json::json!({
-                        "success": false,
-                        "error": "Invalid password"
-                    }))
-                }
-            }
+            log::info!("Control Room async authentication and initialization successful");
+            Ok(serde_json::json!({
+                "success": true,
+                "session_id": "async_session",
+                "message": "Control Room initialized successfully"
+            }))
         }
         Err(e) => {
             log::error!("Control Room initialization failed: {}", e);
@@ -6695,14 +6681,11 @@ pub async fn control_room_add_str_connection(
     // TODO: Validate session
     
     // Use Control Room connection management
-    let config = crate::plugins::obs::control_room::ControlRoomConnection {
+    let config = crate::plugins::obs::control_room_async::ControlRoomConnection {
         name: name.clone(),
         host,
         port,
         password,
-        enabled: true,
-        created_at: chrono::Utc::now().to_rfc3339(),
-        last_used: None,
         notes,
     };
     
