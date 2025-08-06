@@ -17,7 +17,7 @@ The reStrike VTA backend is built with Rust and Tauri v2, providing a native Win
 - **Language**: Rust (latest stable)
 - **Framework**: Tauri v2 for native Windows integration
 - **Async Runtime**: Tokio for asynchronous operations
-- **Database**: SQLite with rusqlite
+- **Database**: SQLite with rusqlite + sqlx (hybrid approach for thread safety)
 - **WebSocket**: tokio-tungstenite for OBS integration
 - **Serialization**: Serde for JSON handling
 - **Logging**: Structured logging with file rotation
@@ -55,7 +55,9 @@ src-tauri/
 │   │   │   ├── scenes.rs    # Scene management
 │   │   │   ├── settings.rs  # Settings management
 │   │   │   ├── events.rs    # Event processing
-│   │   │   └── status.rs    # Status aggregation
+│   │   │   ├── status.rs    # Status aggregation
+│   │   │   ├── control_room.rs      # Legacy Control Room (rusqlite)
+│   │   │   └── control_room_async.rs # Async Control Room (sqlx)
 │   │   ├── plugin_udp.rs    # UDP protocol handling
 │   │   ├── plugin_database.rs # Database operations
 │   │   ├── plugin_cpu_monitor.rs # System monitoring
@@ -68,7 +70,8 @@ src-tauri/
 │   │   ├── key_manager.rs   # Encryption key lifecycle management
 │   │   └── migration.rs     # Configuration migration tools
 │   ├── database/            # Database system
-│   │   ├── connection.rs    # Database connection management
+│   │   ├── connection.rs    # Database connection management (rusqlite)
+│   │   ├── async_connection.rs # Async database layer (sqlx)
 │   │   ├── migrations.rs    # Database migrations
 │   │   ├── models.rs        # Data models
 │   │   ├── operations.rs    # Database operations
@@ -216,6 +219,51 @@ The OBS plugin system has been successfully modularized to improve maintainabili
 - **Authentication Flow**: Standardized authentication process for all services
 - **Error Handling**: Platform-specific error handling and recovery
 - **Service Switching**: Seamless switching between different streaming platforms
+
+### Control Room Implementation ✅ **PHASE 1 COMPLETED**
+
+#### **Thread-Safe Architecture**
+- **SQLite Thread Safety Issue**: Resolved rusqlite::Connection not being Send+Sync for async Tauri commands
+- **Hybrid Database Approach**: Maintained existing rusqlite for compatibility while adding sqlx for async operations
+- **AsyncDatabaseConnection**: New thread-safe database layer using sqlx::SqlitePool for Tauri commands
+- **Connection Pooling**: Built-in connection pooling eliminates connection overhead and ensures thread safety
+
+#### **Control Room Manager** 
+- **AsyncControlRoomManager**: Complete async-compatible STR connection management system
+- **Separate Connection Management**: Dedicated Control Room connections independent of existing OBS WebSocket connections
+- **Password Authentication**: Secure authentication system with session-based access control
+- **Database Storage**: Encrypted storage of Control Room configurations using existing security infrastructure
+
+#### **STR Connection Management**
+- **User-Defined Names**: STR connection names are input by users, not auto-generated
+- **Connection Lifecycle**: Full connect/disconnect management for STR instances
+- **Status Tracking**: Real-time connection status monitoring (Disconnected, Connecting, Connected, Error)
+- **Configuration Persistence**: Secure database storage of connection configurations
+
+#### **Audio Control Integration**
+- **Mute/Unmute Functionality**: Audio source control for STR instances via existing OBS API
+- **Source Discovery**: Audio source enumeration for connected STR instances
+- **Bulk Operations**: Multi-STR audio control operations
+- **API Reuse**: Leverages existing OBS streaming plugin audio control methods
+
+#### **Bulk Operations**
+- **Multi-STR Scene Changes**: Change scenes across all connected STR instances
+- **Streaming Control**: Start/stop streaming on all connected STR instances
+- **Audio Management**: Bulk mute/unmute operations across multiple STR connections
+- **Result Aggregation**: Comprehensive result reporting for bulk operations
+
+#### **Tauri Commands Integration**
+- **Async Commands**: Thread-safe Tauri commands for Control Room operations
+- **Authentication**: `control_room_authenticate_async` for secure access
+- **Connection Management**: Commands for adding/removing STR connections
+- **Bulk Controls**: Commands for multi-STR operations
+- **Error Handling**: Comprehensive error handling and logging
+
+#### **Database Integration**
+- **File Structure**: Control Room connection table in async database
+- **Configuration Storage**: Encrypted storage using existing security infrastructure
+- **Migration Ready**: Seamless integration with existing database migration system
+- **Connection Pooling**: Efficient database connection management
 
 ### Key Improvements Achieved
 - **Password Authentication**: Fixed authentication flow with proper `is_connected` field management
