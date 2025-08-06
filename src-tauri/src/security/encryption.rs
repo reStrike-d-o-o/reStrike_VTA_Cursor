@@ -40,6 +40,9 @@ pub enum SecurityError {
     
     #[error("Serialization error: {0}")]
     Serialization(#[from] serde_json::Error),
+    
+    #[error("Key not found: {0}")]
+    KeyNotFound(String),
 }
 
 /// Encrypted data container

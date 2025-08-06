@@ -395,17 +395,98 @@ impl KeyManager {
     }
     
     /// Update key metadata
-    async fn update_key_metadata(&self, _metadata: &KeyMetadata) -> SecurityResult<()> {
-        // This would update the stored metadata in the database
-        // Implementation would decrypt, update, and re-encrypt the entry
-        Ok(())
+    async fn update_key_metadata(&self, metadata: &KeyMetadata) -> SecurityResult<()> {
+        let conn = self.database.get_connection().await?;
+        
+        // Find the config key for this metadata
+        let config_key = format!("{}_{}", metadata.algorithm, metadata.key_id);
+        
+        // Get existing encrypted entry
+        let result = conn.query_row(
+            "SELECT encrypted_value FROM secure_config WHERE config_key = ?",
+            [&config_key],
+            |row| {
+                let encrypted_value: Vec<u8> = row.get(0)?;
+                Ok(encrypted_value)
+            },
+        );
+        
+        match result {
+            Ok(encrypted_value_bytes) => {
+                let encrypted_json = String::from_utf8(encrypted_value_bytes)
+                    .map_err(|e| SecurityError::Decryption(format!("Invalid UTF-8 in key data: {}", e)))?;
+                
+                let mut entry: EncryptedKeyEntry = serde_json::from_str(&encrypted_json)?;
+                
+                // Update metadata
+                entry.metadata = metadata.clone();
+                
+                // Re-encrypt and store
+                let updated_json = serde_json::to_string(&entry)?;
+                
+                conn.execute(
+                    "UPDATE secure_config SET encrypted_value = ?, updated_at = ? WHERE config_key = ?",
+                    params![updated_json.as_bytes(), Utc::now().to_rfc3339(), config_key],
+                )?;
+                
+                log::debug!("Updated metadata for key: {}", metadata.key_id);
+                Ok(())
+            }
+            Err(rusqlite::Error::QueryReturnedNoRows) => {
+                Err(SecurityError::KeyNotFound(format!("Key not found: {}", metadata.key_id)))
+            }
+            Err(e) => Err(SecurityError::Database(e)),
+        }
     }
     
     /// Update key usage statistics
-    async fn update_key_usage(&self, _key_id: &str) -> SecurityResult<()> {
-        // This would increment usage count and update last_used timestamp
-        // Implementation would decrypt, update, and re-encrypt the entry
-        Ok(())
+    async fn update_key_usage(&self, key_id: &str) -> SecurityResult<()> {
+        let conn = self.database.get_connection().await?;
+        
+        // Find the config key for this key_id
+        let result = conn.query_row(
+            "SELECT config_key, encrypted_value FROM secure_config 
+             WHERE category = 'encryption_keys' AND config_key LIKE ?",
+            [&format!("%_{}", key_id)],
+            |row| {
+                let config_key: String = row.get(0)?;
+                let encrypted_value: Vec<u8> = row.get(1)?;
+                Ok((config_key, encrypted_value))
+            },
+        );
+        
+        match result {
+            Ok((config_key, encrypted_value_bytes)) => {
+                let encrypted_json = String::from_utf8(encrypted_value_bytes)
+                    .map_err(|e| SecurityError::Decryption(format!("Invalid UTF-8 in key data: {}", e)))?;
+                
+                let mut entry: EncryptedKeyEntry = serde_json::from_str(&encrypted_json)?;
+                
+                // Update usage statistics
+                entry.metadata.usage_count += 1;
+                entry.metadata.last_used = Utc::now();
+                
+                // Re-encrypt and store
+                let updated_json = serde_json::to_string(&entry)?;
+                
+                conn.execute(
+                    "UPDATE secure_config SET encrypted_value = ?, updated_at = ?, access_count = ? WHERE config_key = ?",
+                    params![
+                        updated_json.as_bytes(), 
+                        Utc::now().to_rfc3339(), 
+                        entry.metadata.usage_count as i64,
+                        config_key
+                    ],
+                )?;
+                
+                log::trace!("Updated usage statistics for key: {}", key_id);
+                Ok(())
+            }
+            Err(rusqlite::Error::QueryReturnedNoRows) => {
+                Err(SecurityError::KeyNotFound(format!("Key not found: {}", key_id)))
+            }
+            Err(e) => Err(SecurityError::Database(e)),
+        }
     }
     
     /// Clean up old encryption keys
