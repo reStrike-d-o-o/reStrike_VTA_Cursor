@@ -264,7 +264,7 @@ The OBS plugin system has been successfully modularized to improve maintainabili
 - **Bulk Controls**: Commands for multi-STR operations (framework ready for expansion)
 - **Error Handling**: Comprehensive error handling and logging
 - **Compilation Success**: All 9 Tauri commands fully functional with zero compilation errors
-- **Security Features**: ✅ Production bcrypt authentication, 30-minute session timeouts, audit logging, and password change API
+- **Security Features**: ✅ Production bcrypt authentication, 12-hour session timeouts, audit logging, and password change API
 
 #### **Control Room Security Architecture**
 
@@ -275,7 +275,7 @@ The OBS plugin system has been successfully modularized to improve maintainabili
 - **Salt Security**: Individual salts per password hash for maximum security
 
 ##### **Session Management** 
-- **30-Minute Timeout**: Configurable session timeouts with automatic expiration
+- **12-Hour Timeout**: Tournament-day length session timeouts with automatic expiration
 - **Session Tracking**: Real-time session start time and elapsed time monitoring
 - **Auto-Expiration**: Automatic logout when sessions exceed timeout threshold
 - **Session Refresh**: Manual session extension capability for active users
