@@ -231,11 +231,11 @@ The OBS plugin system has been successfully modularized to improve maintainabili
 #### **Control Room Manager** 
 - **AsyncControlRoomManager**: Complete async-compatible STR connection management system
 - **Separate Connection Management**: Dedicated Control Room connections independent of existing OBS WebSocket connections
-- **Master Password Authentication**: Development authentication system (any non-empty password accepted)
+- **Master Password Authentication**: Production bcrypt password hashing with first-time setup and password change capabilities
 - **Database Storage**: Encrypted storage of Control Room configurations using existing security infrastructure
 - **Access Control**: Basic authentication gate protecting STR management operations
 - **Session Management**: Secure session tracking with logout functionality
-- **Security Status**: ⚠️ Simplified authentication for development - production security enhancement pending
+- **Security Status**: ✅ Production-grade bcrypt authentication with session management and audit logging
 
 #### **STR Connection Management**
 - **User-Defined Names**: STR connection names are input by users, not auto-generated
@@ -263,8 +263,40 @@ The OBS plugin system has been successfully modularized to improve maintainabili
 - **Status Retrieval**: `control_room_get_str_connections` for real-time connection listing
 - **Bulk Controls**: Commands for multi-STR operations (framework ready for expansion)
 - **Error Handling**: Comprehensive error handling and logging
-- **Compilation Success**: All 6 Tauri commands fully functional with zero compilation errors
-- **Security Note**: ⚠️ Current authentication accepts any non-empty password (development implementation)
+- **Compilation Success**: All 9 Tauri commands fully functional with zero compilation errors
+- **Security Features**: ✅ Production bcrypt authentication, 30-minute session timeouts, audit logging, and password change API
+
+#### **Control Room Security Architecture**
+
+##### **Password Management**
+- **bcrypt Hashing**: Secure password storage using bcrypt with DEFAULT_COST (12 rounds)
+- **First-time Setup**: Automatic master password configuration on initial authentication
+- **Password Change**: Secure password change API with current password verification
+- **Salt Security**: Individual salts per password hash for maximum security
+
+##### **Session Management** 
+- **30-Minute Timeout**: Configurable session timeouts with automatic expiration
+- **Session Tracking**: Real-time session start time and elapsed time monitoring
+- **Auto-Expiration**: Automatic logout when sessions exceed timeout threshold
+- **Session Refresh**: Manual session extension capability for active users
+- **Manual Logout**: Explicit logout functionality with immediate session termination
+
+##### **Audit & Logging**
+- **Authentication Attempts**: Comprehensive logging of all login attempts (success/failure)
+- **Audit Database**: Dedicated `control_room_audit` table with timestamps and attempt types
+- **Security Events**: Detailed logging of password changes, session timeouts, and security violations
+- **IP Tracking**: IP address logging for security monitoring (localhost in current implementation)
+
+##### **Database Tables**
+- **`control_room_config`**: Master password hash storage with creation/update timestamps
+- **`control_room_connections`**: STR connection configurations with metadata
+- **`control_room_audit`**: Security audit log with comprehensive event tracking
+
+##### **Tauri Command Security**
+- **Authentication Checks**: All Control Room operations require valid authentication
+- **Session Validation**: Automatic session timeout verification before operations
+- **Error Handling**: Secure error messages without sensitive information exposure
+- **Access Control**: Granular permission checking for administrative operations
 
 #### **Database Integration**
 - **File Structure**: Control Room connection table in async database

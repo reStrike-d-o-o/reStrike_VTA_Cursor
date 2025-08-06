@@ -475,6 +475,60 @@ impl ObsPluginManager {
         Ok(results)
     }
 
+    /// Control Room: Change master password
+    pub async fn control_room_change_password(&self, _session_id: &str, current_password: &str, new_password: &str) -> AppResult<()> {
+        let manager = self.control_room_manager.lock().await;
+        if let Some(control_room) = manager.as_ref() {
+            control_room.change_master_password(current_password, new_password).await
+        } else {
+            Err(crate::types::AppError::ConfigError("Control Room not initialized".to_string()))
+        }
+    }
+
+    /// Control Room: Get audit log
+    pub async fn control_room_get_audit_log(&self, _session_id: &str) -> AppResult<Vec<serde_json::Value>> {
+        let manager = self.control_room_manager.lock().await;
+        if let Some(control_room) = manager.as_ref() {
+            control_room.get_audit_log().await
+        } else {
+            Err(crate::types::AppError::ConfigError("Control Room not initialized".to_string()))
+        }
+    }
+
+    /// Control Room: Get session info
+    pub async fn control_room_get_session_info(&self) -> AppResult<serde_json::Value> {
+        let manager = self.control_room_manager.lock().await;
+        if let Some(control_room) = manager.as_ref() {
+            Ok(control_room.get_session_info().await)
+        } else {
+            Ok(serde_json::json!({
+                "authenticated": false,
+                "error": "Control Room not initialized"
+            }))
+        }
+    }
+
+    /// Control Room: Refresh session
+    pub async fn control_room_refresh_session(&self) -> AppResult<()> {
+        let manager = self.control_room_manager.lock().await;
+        if let Some(control_room) = manager.as_ref() {
+            control_room.refresh_session().await
+        } else {
+            Err(crate::types::AppError::ConfigError("Control Room not initialized".to_string()))
+        }
+    }
+
+    /// Control Room: Logout
+    pub async fn control_room_logout(&self) -> AppResult<()> {
+        let manager = self.control_room_manager.lock().await;
+        if let Some(control_room) = manager.as_ref() {
+            control_room.logout().await;
+            Ok(())
+        } else {
+            Err(crate::types::AppError::ConfigError("Control Room not initialized".to_string()))
+        }
+    }
+
     pub fn recording(&self) -> &Arc<ObsRecordingPlugin> {
         &self.recording_plugin
     }
