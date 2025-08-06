@@ -33,8 +33,7 @@ impl AsyncDatabaseConnection {
             .busy_timeout(Duration::from_secs(30))
             .pragma("cache_size", "-65536") // 64MB cache
             .pragma("temp_store", "memory")
-            .pragma("recursive_triggers", "on")
-            .pragma("optimize", "");
+            .pragma("recursive_triggers", "on");
 
         // Create connection pool
         let pool = SqlitePool::connect_with(connection_options)

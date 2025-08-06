@@ -122,11 +122,7 @@ impl AsyncControlRoomManager {
     async fn load_connections(&self) -> AppResult<()> {
         // Ensure table exists
         self.db.execute(
-            "CREATE TABLE IF NOT EXISTS control_room_connections (
-                name TEXT PRIMARY KEY,
-                config TEXT NOT NULL,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )"
+            "CREATE TABLE IF NOT EXISTS control_room_connections (name TEXT PRIMARY KEY, config TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)"
         ).await?;
 
         // Load configurations
