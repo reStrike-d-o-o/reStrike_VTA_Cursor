@@ -231,8 +231,10 @@ The OBS plugin system has been successfully modularized to improve maintainabili
 #### **Control Room Manager** 
 - **AsyncControlRoomManager**: Complete async-compatible STR connection management system
 - **Separate Connection Management**: Dedicated Control Room connections independent of existing OBS WebSocket connections
-- **Password Authentication**: Secure authentication system with session-based access control
+- **Master Password Authentication**: Secure authentication system with session-based access control
 - **Database Storage**: Encrypted storage of Control Room configurations using existing security infrastructure
+- **Access Control**: Master password acts as admin gate protecting STR management operations
+- **Session Management**: Secure session tracking with logout functionality
 
 #### **STR Connection Management**
 - **User-Defined Names**: STR connection names are input by users, not auto-generated
