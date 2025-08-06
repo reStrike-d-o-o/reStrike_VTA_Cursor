@@ -291,6 +291,8 @@ ui/
 │   │   │   ├── FlagManagementPanel.tsx # Flag management interface
 │   │   │   ├── PasswordDialog.tsx # Authentication dialog
 │   │   │   ├── ManualModeDialog.tsx # Manual mode dialog
+│   │   │   ├── WebSocketManager.tsx # OBS WebSocket connection management
+│   │   │   ├── ControlRoom.tsx # Control Room STR management interface
 │   │   │   ├── PssDrawer.tsx # PSS drawer with tabs
 │   │   │   └── ObsDrawer.tsx # OBS drawer with tabs
 │   │   ├── organisms/       # Complex components
@@ -2058,6 +2060,257 @@ const StreamInterruptionManager: React.FC = () => {
   );
 };
 ```
+
+---
+
+## 🎛️ Control Room Implementation ✅ **NEW**
+
+### **Control Room Architecture**
+
+The Control Room provides centralized management of multiple STR (streaming) OBS instances with secure authentication and real-time status monitoring.
+
+#### **Control Room Tab Integration**
+```typescript
+// OBS Drawer Tab Structure
+const obsDrawerTabs = [
+  {
+    id: 'websocket',
+    label: 'WebSocket',
+    content: <WebSocketManager />
+  },
+  {
+    id: 'control-room',
+    label: 'Control Room',
+    content: <ControlRoom />
+  },
+  {
+    id: 'integration',
+    label: 'Integration',
+    content: <ObsIntegrationSettings />
+  }
+];
+```
+
+### **Control Room Component Structure**
+
+#### **ControlRoom.tsx - Main Interface**
+```typescript
+interface ControlRoomState {
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  sessionId: string | null;
+  password: string;
+  connections: StrConnection[];
+  showAddConnection: boolean;
+  newConnection: {
+    name: string;
+    host: string;
+    port: string;
+    password: string;
+    notes: string;
+  };
+}
+
+interface StrConnection {
+  name: string;
+  host: string;
+  port: number;
+  status: 'Disconnected' | 'Connecting' | 'Connected' | 'Error';
+  notes?: string;
+}
+```
+
+#### **Authentication Section**
+```typescript
+const AuthenticationSection: React.FC = () => {
+  return (
+    <div className="p-6 bg-gradient-to-br from-indigo-900/80 to-purple-900/90">
+      <h3 className="text-lg font-semibold mb-4 text-gray-100">
+        🔐 Control Room Access
+      </h3>
+      <Input
+        type="password"
+        placeholder="Enter Control Room password"
+        value={password}
+        onChange={handlePasswordChange}
+      />
+      <Button
+        onClick={handleAuthenticate}
+        disabled={isLoading || !password.trim()}
+      >
+        Enter Control Room
+      </Button>
+    </div>
+  );
+};
+```
+
+#### **STR Connection Management**
+```typescript
+const ConnectionManagement: React.FC = () => {
+  return (
+    <div className="p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold text-gray-100">STR Connections</h3>
+        <Button onClick={toggleAddConnection}>
+          Add STR Connection
+        </Button>
+      </div>
+      
+      {/* Connection List */}
+      {connections.map((connection) => (
+        <div key={connection.name} className="connection-item">
+          <StatusDot color={getStatusColor(connection.status)} />
+          <div className="connection-info">
+            <h4>{connection.name}</h4>
+            <p>{connection.host}:{connection.port}</p>
+            <p>{getStatusText(connection.status)}</p>
+          </div>
+          <div className="connection-actions">
+            <Button onClick={() => handleConnect(connection.name)}>
+              {connection.status === 'Connected' ? 'Disconnect' : 'Connect'}
+            </Button>
+            <Button onClick={() => handleRemove(connection.name)}>
+              Remove
+            </Button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+```
+
+#### **Bulk Operations Interface**
+```typescript
+const BulkOperations: React.FC = () => {
+  return (
+    <div className="p-6 bg-gradient-to-br from-orange-900/80 to-red-900/90">
+      <h3 className="text-lg font-semibold mb-4 text-gray-100">
+        Bulk Operations
+      </h3>
+      <div className="grid grid-cols-2 gap-4">
+        <Button 
+          onClick={handleMuteAllAudio}
+          disabled={connectedConnections.length === 0}
+        >
+          🔇 Mute All STR Audio
+        </Button>
+        <Button 
+          onClick={handleUnmuteAllAudio}
+          disabled={connectedConnections.length === 0}
+        >
+          🔊 Unmute All STR Audio
+        </Button>
+        <Button 
+          onClick={handleChangeAllScenes}
+          disabled={connectedConnections.length === 0}
+        >
+          🎬 Change All Scenes
+        </Button>
+        <Button 
+          onClick={handleStartAllStreaming}
+          disabled={connectedConnections.length === 0}
+        >
+          📺 Start All Streaming
+        </Button>
+        <Button 
+          onClick={handleStopAllStreaming}
+          disabled={connectedConnections.length === 0}
+        >
+          ⏹️ Stop All Streaming
+        </Button>
+      </div>
+    </div>
+  );
+};
+```
+
+### **Control Room Backend Integration**
+
+#### **Tauri Commands**
+```typescript
+// Authentication
+await invoke('control_room_authenticate_async', { password });
+
+// Connection Management
+await invoke('control_room_add_str_connection', {
+  sessionId,
+  name,
+  host,
+  port,
+  password,
+  notes
+});
+
+await invoke('control_room_connect_str', { sessionId, strName });
+await invoke('control_room_disconnect_str', { sessionId, strName });
+await invoke('control_room_remove_str_connection', { sessionId, strName });
+
+// Get Connections
+await invoke('control_room_get_str_connections', { sessionId });
+```
+
+#### **Real-time Status Updates**
+```typescript
+const updateConnectionStatus = (name: string, status: StrConnection['status']) => {
+  setState(prev => ({
+    ...prev,
+    connections: prev.connections.map(conn =>
+      conn.name === name ? { ...conn, status } : conn
+    )
+  }));
+};
+
+// Connection status flow: Disconnected → Connecting → Connected/Error
+```
+
+### **Control Room Features**
+
+#### **🔐 Security Features**
+- **Password Authentication**: Master password required for access
+- **Session Management**: Secure session-based authentication
+- **Encrypted Storage**: All configurations stored securely in database
+- **Access Control**: Only authenticated users can manage STR connections
+
+#### **🔗 Connection Management**
+- **Separate Management**: Independent from regular OBS WebSocket connections
+- **User-defined Names**: Custom names for STR connections
+- **Real-time Status**: Live connection status monitoring with color indicators
+- **Configuration Persistence**: Host, port, credentials, and notes stored securely
+
+#### **⚡ Real-time Operations**
+- **Connect/Disconnect**: Individual STR connection management
+- **Status Monitoring**: Live status updates (Disconnected, Connecting, Connected, Error)
+- **Error Handling**: Comprehensive error messages and user feedback
+- **Loading States**: Visual feedback during operations
+
+#### **🎛️ Bulk Operations Framework**
+- **Multi-STR Control**: Operate on all connected STR instances simultaneously
+- **Audio Management**: Bulk mute/unmute functionality
+- **Scene Control**: Change scenes across all STR instances
+- **Streaming Control**: Start/stop streaming on all connections
+- **Result Aggregation**: Comprehensive feedback for bulk operations
+
+### **Technical Implementation**
+
+#### **State Management**
+- **Local Component State**: React useState for UI state management
+- **Real-time Updates**: Immediate UI feedback for user actions
+- **Error Boundaries**: Comprehensive error handling and user feedback
+- **Loading States**: Visual indicators for all async operations
+
+#### **UI/UX Design**
+- **Consistent Styling**: Follows existing design patterns and color schemes
+- **Responsive Layout**: Grid-based layout with proper spacing
+- **Visual Feedback**: Color-coded status indicators and success/error messages
+- **Accessibility**: Proper ARIA labels and keyboard navigation support
+
+#### **Integration Points**
+- **OBS Drawer**: Seamlessly integrated as third tab in OBS drawer
+- **Existing APIs**: Reuses established OBS WebSocket infrastructure
+- **Security Layer**: Integrates with existing security and database systems
+- **Error Handling**: Consistent with application-wide error handling patterns
 
 ---
 
