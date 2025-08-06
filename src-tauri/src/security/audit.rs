@@ -245,7 +245,7 @@ impl SecurityAudit {
     pub async fn log_entry(&self, entry: &AuditEntry) -> SecurityResult<i64> {
         let conn = self.database.get_connection().await?;
         
-        let row_id = conn.execute(
+        let _row_id = conn.execute(
             "INSERT INTO config_audit 
             (config_key, action, user_context, source_ip, timestamp, details, success, error_message)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
