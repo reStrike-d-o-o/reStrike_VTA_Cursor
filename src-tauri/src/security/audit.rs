@@ -502,13 +502,12 @@ pub struct AuditStatistics {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::tempdir;
+
     use crate::database::DatabaseConnection;
     
     async fn create_test_audit() -> SecurityAudit {
-        let temp_dir = tempdir().unwrap();
-        let db_path = temp_dir.path().join("test.db");
-        let database = Arc::new(DatabaseConnection::new(db_path.to_str().unwrap()).await.unwrap());
+        // Use default database connection for testing
+        let database = Arc::new(DatabaseConnection::new().unwrap());
         
         SecurityAudit::new(database).unwrap()
     }

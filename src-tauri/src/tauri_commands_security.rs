@@ -34,6 +34,7 @@ impl From<SecurityError> for TauriSecurityError {
                 SecurityError::Serialization(_) => "serialization",
                 SecurityError::KeyDerivation(_) => "key_derivation",
                 SecurityError::RandomGeneration(_) => "random_generation",
+                SecurityError::KeyNotFound(_) => "key_not_found",
             }.to_string(),
         }
     }

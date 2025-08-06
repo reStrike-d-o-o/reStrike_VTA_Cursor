@@ -6,6 +6,7 @@
 use std::sync::Arc;
 
 use serde::{Serialize, Deserialize};
+use rusqlite::params;
 use chrono::{DateTime, Utc};
 use ring::rand::{SecureRandom, SystemRandom};
 use base64::{Engine as _, engine::general_purpose};
@@ -328,7 +329,7 @@ impl KeyManager {
     ) -> SecurityResult<()> {
         // Derive a master key from system entropy and algorithm name
         let master_key_source = format!("key_storage_{}_{}", metadata.algorithm, metadata.key_id);
-        let temp_config = SecureConfig::new(master_key_source)?;
+        let temp_config = SecureConfig::new(master_key_source.clone())?;
         
         // Generate a proper salt for this key
         let mut salt = vec![0u8; 32];
@@ -592,13 +593,12 @@ pub struct KeyStatistics {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::tempdir;
+
     use crate::database::DatabaseConnection;
     
     async fn create_test_key_manager() -> KeyManager {
-        let temp_dir = tempdir().unwrap();
-        let db_path = temp_dir.path().join("test.db");
-        let database = Arc::new(DatabaseConnection::new(db_path.to_str().unwrap()).await.unwrap());
+        // Use default database connection for testing
+        let database = Arc::new(DatabaseConnection::new().unwrap());
         
         KeyManager::new(database, None).await.unwrap()
     }
