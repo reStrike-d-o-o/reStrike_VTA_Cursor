@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Button } from '../atoms/Button';
-import { Input } from '../atoms/Input';
+import Button from '../atoms/Button';
+import Input from '../atoms/Input';
 import { StatusDot } from '../atoms/StatusDot';
 import { invoke } from '@tauri-apps/api/core';
 
@@ -339,8 +339,8 @@ const ControlRoom: React.FC = () => {
               type="password"
               placeholder="Enter Control Room password"
               value={state.password}
-              onChange={(e) => setState(prev => ({ ...prev, password: e.target.value }))}
-              onKeyPress={(e) => e.key === 'Enter' && handleAuthenticate()}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setState(prev => ({ ...prev, password: e.target.value }))}
+              onKeyPress={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && handleAuthenticate()}
               disabled={state.isLoading}
             />
             
@@ -417,7 +417,7 @@ const ControlRoom: React.FC = () => {
               <Input
                 placeholder="Connection Name"
                 value={state.newConnection.name}
-                onChange={(e) => setState(prev => ({
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setState(prev => ({
                   ...prev,
                   newConnection: { ...prev.newConnection, name: e.target.value }
                 }))}
@@ -425,7 +425,7 @@ const ControlRoom: React.FC = () => {
               <Input
                 placeholder="Host (e.g., 192.168.1.100)"
                 value={state.newConnection.host}
-                onChange={(e) => setState(prev => ({
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setState(prev => ({
                   ...prev,
                   newConnection: { ...prev.newConnection, host: e.target.value }
                 }))}
@@ -434,7 +434,7 @@ const ControlRoom: React.FC = () => {
                 placeholder="Port"
                 type="number"
                 value={state.newConnection.port}
-                onChange={(e) => setState(prev => ({
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setState(prev => ({
                   ...prev,
                   newConnection: { ...prev.newConnection, port: e.target.value }
                 }))}
@@ -443,7 +443,7 @@ const ControlRoom: React.FC = () => {
                 placeholder="OBS Password (optional)"
                 type="password"
                 value={state.newConnection.password}
-                onChange={(e) => setState(prev => ({
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setState(prev => ({
                   ...prev,
                   newConnection: { ...prev.newConnection, password: e.target.value }
                 }))}
@@ -453,7 +453,7 @@ const ControlRoom: React.FC = () => {
               <Input
                 placeholder="Notes (optional)"
                 value={state.newConnection.notes}
-                onChange={(e) => setState(prev => ({
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setState(prev => ({
                   ...prev,
                   newConnection: { ...prev.newConnection, notes: e.target.value }
                 }))}
