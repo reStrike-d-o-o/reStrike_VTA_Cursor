@@ -31,6 +31,8 @@ impl ObsCorePlugin {
         self.events_plugin = Some(events_plugin);
     }
 
+
+
     /// Add a new OBS connection
     pub async fn add_connection(&self, config: ObsConnectionConfig) -> AppResult<()> {
         log::info!("[OBS_CORE] add_connection called for '{}', enabled={}", config.name, config.enabled);

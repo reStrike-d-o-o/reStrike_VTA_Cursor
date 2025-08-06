@@ -179,6 +179,9 @@ pub enum AppError {
     
     #[error("Serialization error: {0}")]
     SerializationError(#[from] serde_json::Error),
+    
+    #[error("Security error: {0}")]
+    SecurityError(String),
 }
 
 impl From<Box<dyn std::error::Error>> for AppError {
@@ -190,6 +193,12 @@ impl From<Box<dyn std::error::Error>> for AppError {
 impl From<crate::database::DatabaseError> for AppError {
     fn from(error: crate::database::DatabaseError) -> Self {
         AppError::ConfigError(error.to_string())
+    }
+}
+
+impl From<crate::security::SecurityError> for AppError {
+    fn from(error: crate::security::SecurityError) -> Self {
+        AppError::SecurityError(error.to_string())
     }
 }
 
