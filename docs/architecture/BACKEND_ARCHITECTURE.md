@@ -256,10 +256,13 @@ The OBS plugin system has been successfully modularized to improve maintainabili
 
 #### **Tauri Commands Integration**
 - **Async Commands**: Thread-safe Tauri commands for Control Room operations
-- **Authentication**: `control_room_authenticate_async` for secure access
-- **Connection Management**: Commands for adding/removing STR connections
-- **Bulk Controls**: Commands for multi-STR operations
+- **Master Password Authentication**: `control_room_authenticate_async` for secure access
+- **Connection Management**: Commands for adding/removing STR connections (`control_room_add_str_connection`, `control_room_remove_str_connection`)
+- **Connection Control**: Commands for connecting/disconnecting STR instances (`control_room_connect_str`, `control_room_disconnect_str`)
+- **Status Retrieval**: `control_room_get_str_connections` for real-time connection listing
+- **Bulk Controls**: Commands for multi-STR operations (framework ready for expansion)
 - **Error Handling**: Comprehensive error handling and logging
+- **Compilation Success**: All 6 Tauri commands fully functional with zero compilation errors
 
 #### **Database Integration**
 - **File Structure**: Control Room connection table in async database
