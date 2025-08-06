@@ -2108,6 +2108,7 @@ impl MigrationManager {
         migrations.push(Box::new(Migration12)); // Add status and error columns to obs_connections
         migrations.push(Box::new(Migration13)); // Add creation_mode field to pss_matches
         migrations.push(Box::new(Migration14)); // Change match_number from INTEGER to TEXT
+        migrations.push(Box::new(Migration15)); // Secure configuration storage with SHA256 encryption
         
         Self { migrations }
     }
@@ -2227,5 +2228,167 @@ impl MigrationManager {
         }
         
         Ok(history)
+    }
+}
+
+/// Migration 15: Secure Configuration Storage
+pub struct Migration15;
+
+impl Migration for Migration15 {
+    fn version(&self) -> u32 {
+        15
+    }
+    
+    fn description(&self) -> &str {
+        "Add secure configuration storage with SHA256 encryption and audit logging"
+    }
+    
+    fn up(&self, conn: &Connection) -> SqliteResult<()> {
+        // Create secure_config table for encrypted configuration storage
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS secure_config (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                config_key TEXT NOT NULL UNIQUE,
+                encrypted_value BLOB NOT NULL,
+                category TEXT NOT NULL,
+                is_sensitive BOOLEAN NOT NULL DEFAULT 1,
+                salt BLOB NOT NULL,
+                algorithm TEXT NOT NULL DEFAULT 'AES-256-GCM',
+                kdf_params TEXT NOT NULL, -- JSON with KDF parameters
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                last_accessed TEXT,
+                access_count INTEGER DEFAULT 0,
+                description TEXT
+            )",
+            [],
+        )?;
+        
+        // Create index on config_key for fast lookups
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_secure_config_key ON secure_config(config_key)",
+            [],
+        )?;
+        
+        // Create index on category for grouped queries
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_secure_config_category ON secure_config(category)",
+            [],
+        )?;
+        
+        // Create index on is_sensitive for filtering
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_secure_config_sensitive ON secure_config(is_sensitive)",
+            [],
+        )?;
+        
+        // Create config_audit table for security audit logging
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS config_audit (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                config_key TEXT NOT NULL,
+                action TEXT NOT NULL, -- 'create', 'read', 'update', 'delete'
+                user_context TEXT, -- User or system context
+                source_ip TEXT, -- IP address if applicable
+                timestamp TEXT NOT NULL,
+                details TEXT, -- Additional audit details as JSON
+                success BOOLEAN NOT NULL DEFAULT 1,
+                error_message TEXT
+            )",
+            [],
+        )?;
+        
+        // Create index on config_key for audit queries
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_config_audit_key ON config_audit(config_key)",
+            [],
+        )?;
+        
+        // Create index on action for audit filtering
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_config_audit_action ON config_audit(action)",
+            [],
+        )?;
+        
+        // Create index on timestamp for time-based queries
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_config_audit_timestamp ON config_audit(timestamp)",
+            [],
+        )?;
+        
+        // Create security_sessions table for session management
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS security_sessions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id TEXT NOT NULL UNIQUE,
+                user_context TEXT NOT NULL,
+                access_level TEXT NOT NULL, -- 'read_only', 'configuration', 'administrator'
+                created_at TEXT NOT NULL,
+                last_accessed TEXT NOT NULL,
+                expires_at TEXT NOT NULL,
+                is_active BOOLEAN NOT NULL DEFAULT 1,
+                source_ip TEXT,
+                user_agent TEXT
+            )",
+            [],
+        )?;
+        
+        // Create index on session_id for session lookups
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_security_sessions_id ON security_sessions(session_id)",
+            [],
+        )?;
+        
+        // Create index on expires_at for cleanup
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_security_sessions_expires ON security_sessions(expires_at)",
+            [],
+        )?;
+        
+        // Create config_categories table for configuration organization
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS config_categories (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                category_name TEXT NOT NULL UNIQUE,
+                display_name TEXT NOT NULL,
+                description TEXT,
+                access_level TEXT NOT NULL DEFAULT 'configuration', -- Required access level
+                is_system BOOLEAN NOT NULL DEFAULT 0, -- System vs user category
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )",
+            [],
+        )?;
+        
+        // Insert default configuration categories
+        let categories = [
+            ("obs_credentials", "OBS Credentials", "OBS WebSocket passwords and authentication", "configuration", true),
+            ("api_keys", "API Keys", "Third-party service API keys and tokens", "administrator", true),
+            ("database_config", "Database Configuration", "Database connection and settings", "administrator", true),
+            ("network_secrets", "Network Secrets", "Network authentication and certificates", "administrator", true),
+            ("license_info", "License Information", "License keys and activation data", "administrator", true),
+            ("user_preferences", "User Preferences", "User-specific configuration settings", "read_only", false),
+            ("system_config", "System Configuration", "System-level configuration settings", "administrator", true),
+            ("encryption_keys", "Encryption Keys", "Encryption and security keys", "administrator", true),
+        ];
+        
+        for (name, display, desc, access, is_system) in categories {
+            conn.execute(
+                "INSERT OR IGNORE INTO config_categories 
+                (category_name, display_name, description, access_level, is_system, created_at, updated_at) 
+                VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))",
+                [name, display, desc, access, if is_system { "1" } else { "0" }],
+            )?;
+        }
+        
+        Ok(())
+    }
+    
+    fn down(&self, conn: &Connection) -> SqliteResult<()> {
+        conn.execute("DROP TABLE IF EXISTS config_categories", [])?;
+        conn.execute("DROP TABLE IF EXISTS security_sessions", [])?;
+        conn.execute("DROP TABLE IF EXISTS config_audit", [])?;
+        conn.execute("DROP TABLE IF EXISTS secure_config", [])?;
+        Ok(())
     }
 } 
