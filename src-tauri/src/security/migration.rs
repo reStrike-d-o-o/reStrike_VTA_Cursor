@@ -559,14 +559,11 @@ Date: {}
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::tempdir;
-    use std::fs::File;
-    use std::io::Write;
+
     
     async fn create_test_migration_tool() -> ConfigMigrationTool {
-        let temp_dir = tempdir().unwrap();
-        let db_path = temp_dir.path().join("test.db");
-        let database = Arc::new(DatabaseConnection::new(db_path.to_str().unwrap()).await.unwrap());
+        // Use default database connection for testing
+        let database = Arc::new(DatabaseConnection::new().unwrap());
         
         let config = MigrationConfig {
             master_password: "test_password".to_string(),
