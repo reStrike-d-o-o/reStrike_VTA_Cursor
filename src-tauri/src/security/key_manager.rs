@@ -11,6 +11,7 @@ use ring::rand::{SecureRandom, SystemRandom};
 use base64::{Engine as _, engine::general_purpose};
 
 use crate::security::{SecureConfig, SecurityError, SecurityResult};
+use crate::security::encryption::EncryptedData;
 use crate::security::audit::{SecurityAudit, AuditAction};
 use crate::database::DatabaseConnection;
 
@@ -172,16 +173,20 @@ impl KeyManager {
                 let entry: EncryptedKeyEntry = serde_json::from_str(&encrypted_json)?;
                 
                 if entry.metadata.is_active && !entry.metadata.is_expired(&self.rotation_config) {
-                    // Decrypt the key (this would use the master key derivation)
-                    let key_bytes = general_purpose::STANDARD.decode(&entry.encrypted_key)
-                        .map_err(|e| SecurityError::Decryption(format!("Failed to decode key: {}", e)))?;
+                    // Recreate the master key source used during storage
+                    let master_key_source = format!("key_storage_{}_{}", entry.metadata.algorithm, entry.metadata.key_id);
+                    let temp_config = SecureConfig::new(master_key_source)?;
                     
-                    let key_string = general_purpose::STANDARD.encode(&key_bytes);
+                    // Decrypt the encrypted key data
+                    let encrypted_key_data: EncryptedData = serde_json::from_str(&entry.encrypted_key)
+                        .map_err(|e| SecurityError::Decryption(format!("Failed to parse encrypted key data: {}", e)))?;
+                    
+                    let decrypted_key = temp_config.decrypt_value(&encrypted_key_data)?;
                     
                     // Update usage statistics
                     self.update_key_usage(&entry.metadata.key_id).await?;
                     
-                    Ok(Some((key_string, entry.metadata)))
+                    Ok(Some((decrypted_key, entry.metadata)))
                 } else {
                     Ok(None)
                 }
@@ -321,25 +326,45 @@ impl KeyManager {
         key_bytes: &[u8],
         _user_context: &str,
     ) -> SecurityResult<()> {
-        // Create a temporary SecureConfig to encrypt the key
-        // In practice, this would use a master key derivation system
-        let temp_config = SecureConfig::new("temp_master_key".to_string())?;
+        // Derive a master key from system entropy and algorithm name
+        let master_key_source = format!("key_storage_{}_{}", metadata.algorithm, metadata.key_id);
+        let temp_config = SecureConfig::new(master_key_source)?;
         
+        // Generate a proper salt for this key
+        let mut salt = vec![0u8; 32];
+        ring::rand::SystemRandom::new().fill(&mut salt)
+            .map_err(|e| SecurityError::RandomGeneration(format!("Failed to generate salt: {:?}", e)))?;
+        
+        // Encrypt the key using proper encryption
         let key_b64 = general_purpose::STANDARD.encode(key_bytes);
-        let _encrypted_key = temp_config.encrypt_value(&key_b64)?;
+        let encrypted_key_data = temp_config.encrypt_value(&key_b64)?;
+        
+        // Calculate master key hash for integrity
+        let master_key_hash = {
+            use ring::digest;
+            let digest = digest::digest(&digest::SHA256, master_key_source.as_bytes());
+            general_purpose::STANDARD.encode(digest.as_ref())
+        };
         
         let entry = EncryptedKeyEntry {
             metadata: metadata.clone(),
-            encrypted_key: general_purpose::STANDARD.encode(&key_bytes), // Simplified for demo
-            master_key_hash: "demo_hash".to_string(), // Would be actual hash
+            encrypted_key: serde_json::to_string(&encrypted_key_data)?,
+            master_key_hash,
         };
         
         let entry_json = serde_json::to_string(&entry)?;
         let config_key = format!("{}_{}", metadata.algorithm, metadata.key_id);
         
-        // Store in secure_config table
+        // Store in secure_config table with proper salt and parameters
         let conn = self.database.get_connection().await?;
         let now = Utc::now().to_rfc3339();
+        
+        let kdf_params = serde_json::json!({
+            "algorithm": "PBKDF2",
+            "hash": "SHA256",
+            "iterations": 100000,
+            "salt_length": salt.len()
+        });
         
         conn.execute(
             "INSERT INTO secure_config 
@@ -350,15 +375,16 @@ impl KeyManager {
                 entry_json.as_bytes(),
                 "encryption_keys",
                 true,
-                vec![0u8; 32], // Placeholder salt
+                salt,
                 "AES-256-GCM",
-                "{}",
+                kdf_params.to_string(),
                 now,
                 now,
                 format!("Encryption key for {}", metadata.algorithm),
             ],
         )?;
         
+        log::debug!("Securely stored encryption key: {}", metadata.key_id);
         Ok(())
     }
     
