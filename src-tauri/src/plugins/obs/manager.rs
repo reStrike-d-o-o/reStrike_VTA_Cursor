@@ -11,7 +11,9 @@ use super::scenes::ObsScenesPlugin;
 use super::settings::ObsSettingsPlugin;
 use super::events::ObsEventsPlugin;
 use super::status::ObsStatusPlugin;
+use super::control_room::ControlRoomManager;
 use std::sync::Arc;
+use tokio::sync::Mutex;
 
 /// Manager for all OBS plugins
 #[derive(Clone)]
@@ -24,6 +26,7 @@ pub struct ObsPluginManager {
     settings_plugin: Arc<ObsSettingsPlugin>,
     events_plugin: Arc<ObsEventsPlugin>,
     status_plugin: Arc<ObsStatusPlugin>,
+    control_room_manager: Arc<Mutex<Option<ControlRoomManager>>>,
 }
 
 impl ObsPluginManager {
@@ -69,6 +72,7 @@ impl ObsPluginManager {
             settings_plugin,
             events_plugin,
             status_plugin,
+            control_room_manager: Arc::new(Mutex::new(None)),
         })
     }
 
@@ -267,6 +271,217 @@ impl ObsPluginManager {
     // Individual plugin access
     pub fn core(&self) -> &Arc<ObsCorePlugin> {
         &self.core_plugin
+    }
+
+    // Control Room methods - uses dedicated Control Room Manager
+    /// Initialize Control Room with authentication
+    pub async fn control_room_initialize(&self, master_password: String, database: Arc<crate::database::DatabaseConnection>) -> AppResult<()> {
+        let control_room = ControlRoomManager::new(master_password, database, self.core_plugin.clone()).await?;
+        let mut manager = self.control_room_manager.lock().await;
+        *manager = Some(control_room);
+        log::info!("[OBS_MANAGER] Control Room initialized successfully");
+        Ok(())
+    }
+    
+    /// Check if Control Room is initialized
+    pub async fn control_room_is_initialized(&self) -> bool {
+        let manager = self.control_room_manager.lock().await;
+        manager.is_some()
+    }
+    
+    /// Add Control Room STR connection
+    pub async fn control_room_add_connection(&self, config: super::control_room::ControlRoomConnection) -> AppResult<()> {
+        let manager = self.control_room_manager.lock().await;
+        if let Some(control_room) = manager.as_ref() {
+            control_room.add_connection(config).await
+        } else {
+            Err(crate::types::AppError::ConfigError("Control Room not initialized".to_string()))
+        }
+    }
+    
+    /// Remove Control Room STR connection
+    pub async fn control_room_remove_connection(&self, name: &str) -> AppResult<()> {
+        let manager = self.control_room_manager.lock().await;
+        if let Some(control_room) = manager.as_ref() {
+            control_room.remove_connection(name).await
+        } else {
+            Err(crate::types::AppError::ConfigError("Control Room not initialized".to_string()))
+        }
+    }
+    
+    /// Get all Control Room STR connections
+    pub async fn control_room_get_str_connections(&self) -> AppResult<Vec<String>> {
+        let manager = self.control_room_manager.lock().await;
+        if let Some(control_room) = manager.as_ref() {
+            control_room.get_connection_names().await
+        } else {
+            Err(crate::types::AppError::ConfigError("Control Room not initialized".to_string()))
+        }
+    }
+    
+    /// Connect to Control Room STR instance
+    pub async fn control_room_connect_str(&self, name: &str) -> AppResult<()> {
+        let manager = self.control_room_manager.lock().await;
+        if let Some(control_room) = manager.as_ref() {
+            control_room.connect_str(name).await
+        } else {
+            Err(crate::types::AppError::ConfigError("Control Room not initialized".to_string()))
+        }
+    }
+    
+    /// Disconnect from Control Room STR instance  
+    pub async fn control_room_disconnect_str(&self, name: &str) -> AppResult<()> {
+        let manager = self.control_room_manager.lock().await;
+        if let Some(control_room) = manager.as_ref() {
+            control_room.disconnect_str(name).await
+        } else {
+            Err(crate::types::AppError::ConfigError("Control Room not initialized".to_string()))
+        }
+    }
+    
+    /// Control Room: Mute audio for STR connection
+    pub async fn control_room_mute_audio(&self, str_name: &str, source_name: &str) -> AppResult<()> {
+        let manager = self.control_room_manager.lock().await;
+        if let Some(control_room) = manager.as_ref() {
+            if let Some(obs_name) = control_room.get_obs_connection_name(str_name).await? {
+                drop(manager); // Release lock before calling streaming plugin
+                self.streaming_plugin.mute_audio_source(&obs_name, source_name).await
+            } else {
+                Err(crate::types::AppError::ConfigError(format!("STR '{}' is not connected", str_name)))
+            }
+        } else {
+            Err(crate::types::AppError::ConfigError("Control Room not initialized".to_string()))
+        }
+    }
+    
+    /// Control Room: Unmute audio for STR connection
+    pub async fn control_room_unmute_audio(&self, str_name: &str, source_name: &str) -> AppResult<()> {
+        let manager = self.control_room_manager.lock().await;
+        if let Some(control_room) = manager.as_ref() {
+            if let Some(obs_name) = control_room.get_obs_connection_name(str_name).await? {
+                drop(manager); // Release lock before calling streaming plugin
+                self.streaming_plugin.unmute_audio_source(&obs_name, source_name).await
+            } else {
+                Err(crate::types::AppError::ConfigError(format!("STR '{}' is not connected", str_name)))
+            }
+        } else {
+            Err(crate::types::AppError::ConfigError("Control Room not initialized".to_string()))
+        }
+    }
+    
+    /// Control Room: Get audio sources for STR connection
+    pub async fn control_room_get_audio_sources(&self, str_name: &str) -> AppResult<Vec<String>> {
+        let manager = self.control_room_manager.lock().await;
+        if let Some(control_room) = manager.as_ref() {
+            if let Some(obs_name) = control_room.get_obs_connection_name(str_name).await? {
+                drop(manager); // Release lock before calling streaming plugin
+                self.streaming_plugin.get_audio_sources(&obs_name).await
+            } else {
+                Err(crate::types::AppError::ConfigError(format!("STR '{}' is not connected", str_name)))
+            }
+        } else {
+            Err(crate::types::AppError::ConfigError("Control Room not initialized".to_string()))
+        }
+    }
+    
+    /// Control Room: Bulk mute all STR connections
+    pub async fn control_room_mute_all_str(&self, source_name: &str) -> AppResult<Vec<(String, AppResult<()>)>> {
+        let str_connections = self.control_room_get_str_connections().await?;
+        let mut results = Vec::new();
+        
+        for str_name in str_connections {
+            let result = self.control_room_mute_audio(&str_name, source_name).await;
+            results.push((str_name, result));
+        }
+        
+        log::info!("[OBS_MANAGER] Control Room: Bulk mute operation completed for {} connections", results.len());
+        Ok(results)
+    }
+    
+    /// Control Room: Bulk unmute all STR connections
+    pub async fn control_room_unmute_all_str(&self, source_name: &str) -> AppResult<Vec<(String, AppResult<()>)>> {
+        let str_connections = self.control_room_get_str_connections().await?;
+        let mut results = Vec::new();
+        
+        for str_name in str_connections {
+            let result = self.control_room_unmute_audio(&str_name, source_name).await;
+            results.push((str_name, result));
+        }
+        
+        log::info!("[OBS_MANAGER] Control Room: Bulk unmute operation completed for {} connections", results.len());
+        Ok(results)
+    }
+    
+    /// Control Room: Bulk scene change for all STR connections
+    pub async fn control_room_change_all_scenes(&self, scene_name: &str) -> AppResult<Vec<(String, AppResult<()>)>> {
+        let str_connections = self.control_room_get_str_connections().await?;
+        let mut results = Vec::new();
+        
+        for str_name in str_connections {
+            let manager = self.control_room_manager.lock().await;
+            if let Some(control_room) = manager.as_ref() {
+                if let Ok(Some(obs_name)) = control_room.get_obs_connection_name(&str_name).await {
+                    drop(manager); // Release lock before calling scenes plugin
+                    let result = self.set_current_scene(&obs_name, scene_name).await;
+                    results.push((str_name, result));
+                } else {
+                    results.push((str_name.clone(), Err(crate::types::AppError::ConfigError(format!("STR '{}' is not connected", str_name)))));
+                }
+            } else {
+                results.push((str_name.clone(), Err(crate::types::AppError::ConfigError("Control Room not initialized".to_string()))));
+            }
+        }
+        
+        log::info!("[OBS_MANAGER] Control Room: Bulk scene change to '{}' completed for {} connections", scene_name, results.len());
+        Ok(results)
+    }
+    
+    /// Control Room: Bulk start streaming for all STR connections
+    pub async fn control_room_start_all_str(&self) -> AppResult<Vec<(String, AppResult<()>)>> {
+        let str_connections = self.control_room_get_str_connections().await?;
+        let mut results = Vec::new();
+        
+        for str_name in str_connections {
+            let manager = self.control_room_manager.lock().await;
+            if let Some(control_room) = manager.as_ref() {
+                if let Ok(Some(obs_name)) = control_room.get_obs_connection_name(&str_name).await {
+                    drop(manager); // Release lock before calling streaming plugin
+                    let result = self.start_streaming(&obs_name).await;
+                    results.push((str_name, result));
+                } else {
+                    results.push((str_name.clone(), Err(crate::types::AppError::ConfigError(format!("STR '{}' is not connected", str_name)))));
+                }
+            } else {
+                results.push((str_name.clone(), Err(crate::types::AppError::ConfigError("Control Room not initialized".to_string()))));
+            }
+        }
+        
+        log::info!("[OBS_MANAGER] Control Room: Bulk start streaming completed for {} connections", results.len());
+        Ok(results)
+    }
+    
+    /// Control Room: Bulk stop streaming for all STR connections
+    pub async fn control_room_stop_all_str(&self) -> AppResult<Vec<(String, AppResult<()>)>> {
+        let str_connections = self.control_room_get_str_connections().await?;
+        let mut results = Vec::new();
+        
+        for str_name in str_connections {
+            let manager = self.control_room_manager.lock().await;
+            if let Some(control_room) = manager.as_ref() {
+                if let Ok(Some(obs_name)) = control_room.get_obs_connection_name(&str_name).await {
+                    drop(manager); // Release lock before calling streaming plugin
+                    let result = self.stop_streaming(&obs_name).await;
+                    results.push((str_name, result));
+                } else {
+                    results.push((str_name.clone(), Err(crate::types::AppError::ConfigError(format!("STR '{}' is not connected", str_name)))));
+                }
+            } else {
+                results.push((str_name.clone(), Err(crate::types::AppError::ConfigError("Control Room not initialized".to_string()))));
+            }
+        }
+        
+        log::info!("[OBS_MANAGER] Control Room: Bulk stop streaming completed for {} connections", results.len());
+        Ok(results)
     }
 
     pub fn recording(&self) -> &Arc<ObsRecordingPlugin> {

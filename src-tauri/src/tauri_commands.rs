@@ -6438,3 +6438,382 @@ pub async fn youtube_initialize(
         Err(e) => { log::error!("Failed to initialize YouTube API plugin: {}", e); Err(TauriError::from(e)) }
     }
 }
+
+// ============================================================================
+// Control Room Commands
+// ============================================================================
+
+/// Control Room Authentication
+#[tauri::command]
+pub async fn control_room_authenticate(
+    password: String,
+    app: State<'_, Arc<App>>
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("Control Room authentication attempt");
+    
+    // Initialize Control Room with authentication
+    let database = app.database_plugin().get_database_connection();
+    
+    match app.obs_plugin().control_room_initialize(password.clone(), database.clone()).await {
+        Ok(_) => {
+            // Create session using security system
+            match crate::security::SecureConfigManager::new(password, database.clone()).await {
+                Ok(config_manager) => {
+                    match config_manager.create_session(
+                        "control_room_user".to_string(),
+                        crate::security::AccessLevel::Administrator,
+                        None,
+                        Some("Control Room".to_string()),
+                    ).await {
+                        Ok(session) => {
+                            log::info!("Control Room authentication and initialization successful");
+                            Ok(serde_json::json!({
+                                "success": true,
+                                "session_id": session.session_id,
+                                "expires_at": session.expires_at
+                            }))
+                        }
+                        Err(e) => {
+                            log::warn!("Control Room session creation failed: {}", e);
+                            Ok(serde_json::json!({
+                                "success": false,
+                                "error": "Session creation failed"
+                            }))
+                        }
+                    }
+                }
+                Err(_) => {
+                    log::warn!("Control Room authentication failed");
+                    Ok(serde_json::json!({
+                        "success": false,
+                        "error": "Invalid password"
+                    }))
+                }
+            }
+        }
+        Err(e) => {
+            log::error!("Control Room initialization failed: {}", e);
+            Ok(serde_json::json!({
+                "success": false,
+                "error": "Control Room initialization failed"
+            }))
+        }
+    }
+}
+
+/// Get STR connections for Control Room
+#[tauri::command]
+pub async fn control_room_get_str_connections(
+    session_id: String,
+    app: State<'_, Arc<App>>
+) -> Result<serde_json::Value, TauriError> {
+    log::debug!("Control Room: Getting STR connections for session {}", session_id);
+    // TODO: Validate session
+    
+    match app.obs_plugin().control_room_get_str_connections().await {
+        Ok(connections) => Ok(serde_json::json!({
+            "success": true,
+            "connections": connections
+        })),
+        Err(e) => {
+            log::error!("Failed to get STR connections: {}", e);
+            Err(TauriError::from(anyhow::anyhow!("Failed to get STR connections: {}", e)))
+        }
+    }
+}
+
+/// Bulk mute all STR streams
+#[tauri::command]
+pub async fn control_room_mute_all_str(
+    session_id: String,
+    source_name: String,
+    app: State<'_, Arc<App>>
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("Control Room: Bulk mute all STR with source '{}' for session {}", source_name, session_id);
+    // TODO: Validate session
+    
+    match app.obs_plugin().control_room_mute_all_str(&source_name).await {
+        Ok(results) => {
+            let formatted_results: Vec<serde_json::Value> = results.into_iter()
+                .map(|(conn, result)| serde_json::json!({
+                    "connection": conn,
+                    "success": result.is_ok(),
+                    "error": result.err().map(|e| e.to_string())
+                }))
+                .collect();
+            
+            Ok(serde_json::json!({
+                "success": true,
+                "results": formatted_results
+            }))
+        }
+        Err(e) => {
+            log::error!("Bulk mute failed: {}", e);
+            Err(TauriError::from(anyhow::anyhow!("Bulk mute failed: {}", e)))
+        }
+    }
+}
+
+/// Bulk unmute all STR streams
+#[tauri::command]
+pub async fn control_room_unmute_all_str(
+    session_id: String,
+    source_name: String,
+    app: State<'_, Arc<App>>
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("Control Room: Bulk unmute all STR with source '{}' for session {}", source_name, session_id);
+    // TODO: Validate session
+    
+    match app.obs_plugin().control_room_unmute_all_str(&source_name).await {
+        Ok(results) => {
+            let formatted_results: Vec<serde_json::Value> = results.into_iter()
+                .map(|(conn, result)| serde_json::json!({
+                    "connection": conn,
+                    "success": result.is_ok(),
+                    "error": result.err().map(|e| e.to_string())
+                }))
+                .collect();
+            
+            Ok(serde_json::json!({
+                "success": true,
+                "results": formatted_results
+            }))
+        }
+        Err(e) => {
+            log::error!("Bulk unmute failed: {}", e);
+            Err(TauriError::from(anyhow::anyhow!("Bulk unmute failed: {}", e)))
+        }
+    }
+}
+
+/// Change all STR scenes
+#[tauri::command]
+pub async fn control_room_change_all_scenes(
+    session_id: String,
+    scene_name: String,
+    app: State<'_, Arc<App>>
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("Control Room: Change all STR scenes to '{}' for session {}", scene_name, session_id);
+    // TODO: Validate session
+    
+    match app.obs_plugin().control_room_change_all_scenes(&scene_name).await {
+        Ok(results) => {
+            let formatted_results: Vec<serde_json::Value> = results.into_iter()
+                .map(|(conn, result)| serde_json::json!({
+                    "connection": conn,
+                    "success": result.is_ok(),
+                    "error": result.err().map(|e| e.to_string())
+                }))
+                .collect();
+            
+            Ok(serde_json::json!({
+                "success": true,
+                "results": formatted_results
+            }))
+        }
+        Err(e) => {
+            log::error!("Bulk scene change failed: {}", e);
+            Err(TauriError::from(anyhow::anyhow!("Bulk scene change failed: {}", e)))
+        }
+    }
+}
+
+/// Start all STR streams
+#[tauri::command]
+pub async fn control_room_start_all_str(
+    session_id: String,
+    app: State<'_, Arc<App>>
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("Control Room: Start all STR streams for session {}", session_id);
+    // TODO: Validate session
+    
+    match app.obs_plugin().control_room_start_all_str().await {
+        Ok(results) => {
+            let formatted_results: Vec<serde_json::Value> = results.into_iter()
+                .map(|(conn, result)| serde_json::json!({
+                    "connection": conn,
+                    "success": result.is_ok(),
+                    "error": result.err().map(|e| e.to_string())
+                }))
+                .collect();
+            
+            Ok(serde_json::json!({
+                "success": true,
+                "results": formatted_results
+            }))
+        }
+        Err(e) => {
+            log::error!("Bulk start streaming failed: {}", e);
+            Err(TauriError::from(anyhow::anyhow!("Bulk start streaming failed: {}", e)))
+        }
+    }
+}
+
+/// Stop all STR streams
+#[tauri::command]
+pub async fn control_room_stop_all_str(
+    session_id: String,
+    app: State<'_, Arc<App>>
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("Control Room: Stop all STR streams for session {}", session_id);
+    // TODO: Validate session
+    
+    match app.obs_plugin().control_room_stop_all_str().await {
+        Ok(results) => {
+            let formatted_results: Vec<serde_json::Value> = results.into_iter()
+                .map(|(conn, result)| serde_json::json!({
+                    "connection": conn,
+                    "success": result.is_ok(),
+                    "error": result.err().map(|e| e.to_string())
+                }))
+                .collect();
+            
+            Ok(serde_json::json!({
+                "success": true,
+                "results": formatted_results
+            }))
+        }
+        Err(e) => {
+            log::error!("Bulk stop streaming failed: {}", e);
+            Err(TauriError::from(anyhow::anyhow!("Bulk stop streaming failed: {}", e)))
+        }
+    }
+}
+
+/// Add STR connection
+#[tauri::command]
+pub async fn control_room_add_str_connection(
+    session_id: String,
+    name: String,
+    host: String,
+    port: u16,
+    password: Option<String>,
+    notes: Option<String>,
+    app: State<'_, Arc<App>>
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("Control Room: Adding STR connection '{}' at {}:{} for session {}", name, host, port, session_id);
+    // TODO: Validate session
+    
+    // Use Control Room connection management
+    let config = crate::plugins::obs::control_room::ControlRoomConnection {
+        name: name.clone(),
+        host,
+        port,
+        password,
+        enabled: true,
+        created_at: chrono::Utc::now().to_rfc3339(),
+        last_used: None,
+        notes,
+    };
+    
+    match app.obs_plugin().control_room_add_connection(config).await {
+        Ok(_) => {
+            log::info!("Control Room: Successfully added STR connection '{}'", name);
+            Ok(serde_json::json!({
+                "success": true,
+                "message": format!("STR connection '{}' added successfully", name)
+            }))
+        }
+        Err(e) => {
+            log::error!("Failed to add STR connection '{}': {}", name, e);
+            Err(TauriError::from(anyhow::anyhow!("Failed to add STR connection: {}", e)))
+        }
+    }
+}
+
+/// Connect to STR instance
+#[tauri::command]
+pub async fn control_room_connect_str(
+    session_id: String,
+    str_name: String,
+    app: State<'_, Arc<App>>
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("Control Room: Connecting to STR '{}' for session {}", str_name, session_id);
+    // TODO: Validate session
+    
+    match app.obs_plugin().control_room_connect_str(&str_name).await {
+        Ok(_) => {
+            log::info!("Control Room: Successfully connected to STR '{}'", str_name);
+            Ok(serde_json::json!({
+                "success": true,
+                "message": format!("Connected to STR '{}'", str_name)
+            }))
+        }
+        Err(e) => {
+            log::error!("Failed to connect to STR '{}': {}", str_name, e);
+            Err(TauriError::from(anyhow::anyhow!("Failed to connect to STR: {}", e)))
+        }
+    }
+}
+
+/// Disconnect from STR instance
+#[tauri::command]
+pub async fn control_room_disconnect_str(
+    session_id: String,
+    str_name: String,
+    app: State<'_, Arc<App>>
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("Control Room: Disconnecting from STR '{}' for session {}", str_name, session_id);
+    // TODO: Validate session
+    
+    match app.obs_plugin().control_room_disconnect_str(&str_name).await {
+        Ok(_) => {
+            log::info!("Control Room: Successfully disconnected from STR '{}'", str_name);
+            Ok(serde_json::json!({
+                "success": true,
+                "message": format!("Disconnected from STR '{}'", str_name)
+            }))
+        }
+        Err(e) => {
+            log::error!("Failed to disconnect from STR '{}': {}", str_name, e);
+            Err(TauriError::from(anyhow::anyhow!("Failed to disconnect from STR: {}", e)))
+        }
+    }
+}
+
+/// Remove STR connection
+#[tauri::command]
+pub async fn control_room_remove_str_connection(
+    session_id: String,
+    str_name: String,
+    app: State<'_, Arc<App>>
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("Control Room: Removing STR connection '{}' for session {}", str_name, session_id);
+    // TODO: Validate session
+    
+    match app.obs_plugin().control_room_remove_connection(&str_name).await {
+        Ok(_) => {
+            log::info!("Control Room: Successfully removed STR connection '{}'", str_name);
+            Ok(serde_json::json!({
+                "success": true,
+                "message": format!("STR connection '{}' removed successfully", str_name)
+            }))
+        }
+        Err(e) => {
+            log::error!("Failed to remove STR connection '{}': {}", str_name, e);
+            Err(TauriError::from(anyhow::anyhow!("Failed to remove STR connection: {}", e)))
+        }
+    }
+}
+
+/// Get audio sources for a STR connection
+#[tauri::command]
+pub async fn control_room_get_audio_sources(
+    session_id: String,
+    str_name: String,
+    app: State<'_, Arc<App>>
+) -> Result<serde_json::Value, TauriError> {
+    log::debug!("Control Room: Getting audio sources for STR '{}' session {}", str_name, session_id);
+    // TODO: Validate session
+    
+    match app.obs_plugin().control_room_get_audio_sources(&str_name).await {
+        Ok(sources) => Ok(serde_json::json!({
+            "success": true,
+            "sources": sources
+        })),
+        Err(e) => {
+            log::error!("Failed to get audio sources for STR '{}': {}", str_name, e);
+            Err(TauriError::from(anyhow::anyhow!("Failed to get audio sources: {}", e)))
+        }
+    }
+}

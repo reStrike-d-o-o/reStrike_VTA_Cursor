@@ -108,6 +108,20 @@ async fn main() -> AppResult<()> {
             tauri_commands::obs_set_streaming_account,
             tauri_commands::obs_get_streaming_events,
             
+            // Control Room Commands
+            tauri_commands::control_room_authenticate,
+            tauri_commands::control_room_get_str_connections,
+            tauri_commands::control_room_add_str_connection,
+            tauri_commands::control_room_connect_str,
+            tauri_commands::control_room_disconnect_str,
+            tauri_commands::control_room_remove_str_connection,
+            tauri_commands::control_room_mute_all_str,
+            tauri_commands::control_room_unmute_all_str,
+            tauri_commands::control_room_change_all_scenes,
+            tauri_commands::control_room_start_all_str,
+            tauri_commands::control_room_stop_all_str,
+            tauri_commands::control_room_get_audio_sources,
+            
             // YouTube Streaming Management Commands
             tauri_commands::obs_get_youtube_accounts,
             tauri_commands::obs_get_youtube_channels,

@@ -11,6 +11,7 @@ pub mod scenes;
 pub mod settings;
 pub mod events;
 pub mod status;
+pub mod control_room;
 
 // Re-export main types for easy access
 pub use types::*;
@@ -22,6 +23,7 @@ pub use scenes::ObsScenesPlugin;
 pub use settings::ObsSettingsPlugin;
 pub use events::ObsEventsPlugin;
 pub use status::ObsStatusPlugin;
+pub use control_room::ControlRoomManager;
 
 // Global instance of the OBS Plugin Manager
 use std::sync::OnceLock;

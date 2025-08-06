@@ -28,6 +28,7 @@ pub enum ConfigCategory {
     UserPreferences,
     SystemConfig,
     EncryptionKeys,
+    ControlRoom,
 }
 
 impl ConfigCategory {
@@ -41,6 +42,7 @@ impl ConfigCategory {
             Self::UserPreferences => "user_preferences",
             Self::SystemConfig => "system_config",
             Self::EncryptionKeys => "encryption_keys",
+            Self::ControlRoom => "control_room",
         }
     }
     
@@ -54,6 +56,7 @@ impl ConfigCategory {
             "user_preferences" => Some(Self::UserPreferences),
             "system_config" => Some(Self::SystemConfig),
             "encryption_keys" => Some(Self::EncryptionKeys),
+            "control_room" => Some(Self::ControlRoom),
             _ => None,
         }
     }
@@ -68,6 +71,7 @@ impl ConfigCategory {
             Self::UserPreferences => "User Preferences",
             Self::SystemConfig => "System Configuration",
             Self::EncryptionKeys => "Encryption Keys",
+            Self::ControlRoom => "Control Room",
         }
     }
     
@@ -81,6 +85,7 @@ impl ConfigCategory {
             Self::UserPreferences => AccessLevel::ReadOnly,
             Self::SystemConfig => AccessLevel::Administrator,
             Self::EncryptionKeys => AccessLevel::Administrator,
+            Self::ControlRoom => AccessLevel::Administrator,
         }
     }
 }
