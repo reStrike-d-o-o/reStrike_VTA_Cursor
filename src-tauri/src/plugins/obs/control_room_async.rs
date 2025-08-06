@@ -85,7 +85,7 @@ impl AsyncControlRoomManager {
             obs_core,
             authenticated: Arc::new(Mutex::new(is_authenticated)),
             session_start: Arc::new(Mutex::new(if is_authenticated { Some(chrono::Utc::now()) } else { None })),
-            session_timeout_minutes: 30, // 30 minute session timeout
+            session_timeout_minutes: 720, // 12 hour session timeout (tournament day length)
         };
         
         if is_authenticated {
