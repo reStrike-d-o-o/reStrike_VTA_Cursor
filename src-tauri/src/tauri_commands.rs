@@ -6800,3 +6800,119 @@ pub async fn control_room_get_audio_sources(
         }
     }
 }
+
+// Control Room Security Enhancement Commands
+#[tauri::command]
+pub async fn control_room_change_password(
+    session_id: String,
+    current_password: String,
+    new_password: String,
+    app: State<'_, Arc<App>>
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("Control Room password change attempt");
+    
+    let result = app.obs_plugin().control_room_change_password(&session_id, &current_password, &new_password).await;
+    
+    match result {
+        Ok(_) => {
+            log::info!("Control Room password changed successfully");
+            Ok(serde_json::json!({
+                "success": true,
+                "message": "Master password changed successfully"
+            }))
+        }
+        Err(e) => {
+            log::error!("Control Room password change failed: {}", e);
+            Ok(serde_json::json!({
+                "success": false,
+                "error": format!("Failed to change password: {}", e)
+            }))
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn control_room_get_audit_log(
+    session_id: String,
+    app: State<'_, Arc<App>>
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("Control Room audit log request");
+    
+    let result = app.obs_plugin().control_room_get_audit_log(&session_id).await;
+    
+    match result {
+        Ok(audit_entries) => {
+            Ok(serde_json::json!({
+                "success": true,
+                "audit_entries": audit_entries
+            }))
+        }
+        Err(e) => {
+            log::error!("Failed to get audit log: {}", e);
+            Ok(serde_json::json!({
+                "success": false,
+                "error": format!("Failed to get audit log: {}", e)
+            }))
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn control_room_get_session_info(
+    app: State<'_, Arc<App>>
+) -> Result<serde_json::Value, TauriError> {
+    match app.obs_plugin().control_room_get_session_info().await {
+        Ok(session_info) => Ok(session_info),
+        Err(e) => {
+            log::error!("Failed to get session info: {}", e);
+            Ok(serde_json::json!({
+                "authenticated": false,
+                "error": format!("Failed to get session info: {}", e)
+            }))
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn control_room_refresh_session(
+    app: State<'_, Arc<App>>
+) -> Result<serde_json::Value, TauriError> {
+    match app.obs_plugin().control_room_refresh_session().await {
+        Ok(_) => {
+            log::info!("Control Room session refreshed");
+            Ok(serde_json::json!({
+                "success": true,
+                "message": "Session refreshed successfully"
+            }))
+        }
+        Err(e) => {
+            log::error!("Failed to refresh session: {}", e);
+            Ok(serde_json::json!({
+                "success": false,
+                "error": format!("Failed to refresh session: {}", e)
+            }))
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn control_room_logout(
+    app: State<'_, Arc<App>>
+) -> Result<serde_json::Value, TauriError> {
+    match app.obs_plugin().control_room_logout().await {
+        Ok(_) => {
+            log::info!("Control Room logout successful");
+            Ok(serde_json::json!({
+                "success": true,
+                "message": "Logged out successfully"
+            }))
+        }
+        Err(e) => {
+            log::error!("Failed to logout: {}", e);
+            Ok(serde_json::json!({
+                "success": false,
+                "error": format!("Failed to logout: {}", e)
+            }))
+        }
+    }
+}
