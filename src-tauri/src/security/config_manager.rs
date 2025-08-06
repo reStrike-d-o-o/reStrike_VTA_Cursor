@@ -10,7 +10,7 @@ use tokio::sync::Mutex;
 use serde::{Serialize, Deserialize};
 use chrono::{DateTime, Utc};
 use rusqlite::params;
-use base64::{Engine as _, engine::general_purpose};
+use base64::Engine as _;
 
 use crate::security::{SecureConfig, SecurityError, SecurityResult};
 use crate::security::encryption::EncryptedData;

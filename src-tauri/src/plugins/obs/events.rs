@@ -174,6 +174,7 @@ impl ObsEventsPlugin {
     }
 
     /// Handle scene changed events
+    #[allow(dead_code)]
     async fn handle_scene_changed(&self, connection_name: &str, scene_name: &str) {
         log::info!("[OBS_EVENTS] Scene changed for '{}' to '{}'", connection_name, scene_name);
         
@@ -188,6 +189,7 @@ impl ObsEventsPlugin {
     }
 
     /// Handle recording state changed events
+    #[allow(dead_code)]
     async fn handle_recording_state_changed(&self, connection_name: &str, is_recording: bool) {
         log::info!("[OBS_EVENTS] Recording state changed for '{}': {}", connection_name, is_recording);
         
@@ -202,6 +204,7 @@ impl ObsEventsPlugin {
     }
 
     /// Handle streaming state changed events
+    #[allow(dead_code)]
     async fn handle_streaming_state_changed(&self, connection_name: &str, is_streaming: bool) {
         log::info!("[OBS_EVENTS] Streaming state changed for '{}': {}", connection_name, is_streaming);
         
@@ -216,6 +219,7 @@ impl ObsEventsPlugin {
     }
 
     /// Handle replay buffer state changed events
+    #[allow(dead_code)]
     async fn handle_replay_buffer_state_changed(&self, connection_name: &str, is_active: bool) {
         log::info!("[OBS_EVENTS] Replay buffer state changed for '{}': {}", connection_name, is_active);
         
@@ -230,6 +234,7 @@ impl ObsEventsPlugin {
     }
 
     /// Handle raw events
+    #[allow(dead_code)]
     async fn handle_raw_event(&self, connection_name: &str, event_type: &str, event_data: serde_json::Value) {
         log::debug!("[OBS_EVENTS] Raw event '{}' for '{}'", event_type, connection_name);
         

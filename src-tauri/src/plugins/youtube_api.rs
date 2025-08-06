@@ -23,6 +23,7 @@ pub struct YouTubeApiConfig {
 
 /// YouTube API client
 pub struct YouTubeApiClient {
+    #[allow(dead_code)]
     config: YouTubeApiConfig,
     oauth_client: BasicClient,
     http_client: Client,

@@ -165,7 +165,7 @@ impl KeyManager {
         );
         
         match result {
-            Ok((config_key, encrypted_value)) => {
+            Ok((_config_key, encrypted_value)) => {
                 let encrypted_json = String::from_utf8(encrypted_value)
                     .map_err(|e| SecurityError::Decryption(format!("Invalid UTF-8 in key data: {}", e)))?;
                 
@@ -243,7 +243,7 @@ impl KeyManager {
         
         let mut count = 0;
         for row in rows {
-            let (config_key, encrypted_value) = row?;
+            let (_config_key, encrypted_value) = row?;
             let encrypted_json = String::from_utf8(encrypted_value)
                 .map_err(|e| SecurityError::Decryption(format!("Invalid UTF-8 in key data: {}", e)))?;
             
@@ -319,14 +319,14 @@ impl KeyManager {
         &self,
         metadata: &KeyMetadata,
         key_bytes: &[u8],
-        user_context: &str,
+        _user_context: &str,
     ) -> SecurityResult<()> {
         // Create a temporary SecureConfig to encrypt the key
         // In practice, this would use a master key derivation system
         let temp_config = SecureConfig::new("temp_master_key".to_string())?;
         
         let key_b64 = general_purpose::STANDARD.encode(key_bytes);
-        let encrypted_key = temp_config.encrypt_value(&key_b64)?;
+        let _encrypted_key = temp_config.encrypt_value(&key_b64)?;
         
         let entry = EncryptedKeyEntry {
             metadata: metadata.clone(),
@@ -380,7 +380,7 @@ impl KeyManager {
         let mut keys_to_rotate = Vec::new();
         
         for row in rows {
-            let (config_key, encrypted_value) = row?;
+            let (_config_key, encrypted_value) = row?;
             let encrypted_json = String::from_utf8(encrypted_value)
                 .map_err(|e| SecurityError::Decryption(format!("Invalid UTF-8 in key data: {}", e)))?;
             
