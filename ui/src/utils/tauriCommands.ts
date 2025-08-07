@@ -147,14 +147,14 @@ export const obsCommands = {
    * Connect to a specific OBS connection
    */
   async connectToConnection(connectionName: string) {
-    return executeTauriCommand('obs_connect_to_connection', { connectionName });
+    return executeTauriCommand('obs_connect_to_connection', { connection_name: connectionName });
   },
 
   /**
    * Get status of a specific OBS connection
    */
   async getConnectionStatus(connectionName: string) {
-    return executeTauriCommand('obs_get_connection_status', { connectionName });
+    return executeTauriCommand('obs_get_connection_status', { connection_name: connectionName });
   },
 
   /**
@@ -168,14 +168,14 @@ export const obsCommands = {
    * Disconnect from OBS
    */
   async disconnect(connectionName: string) {
-    return executeTauriCommand('obs_disconnect', { connectionName });
+    return executeTauriCommand('obs_disconnect', { connection_name: connectionName });
   },
 
   /**
    * Remove OBS connection configuration
    */
   async removeConnection(connectionName: string) {
-    return executeTauriCommand('obs_remove_connection', { connectionName });
+    return executeTauriCommand('obs_remove_connection', { connection_name: connectionName });
   },
 
   /**
