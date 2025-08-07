@@ -20,7 +20,7 @@ import TabIcons from '../atoms/TabIcons';
 import LottieIcon from '../atoms/LottieIcon';
 import { useAppStore } from '../../stores';
 import { configCommands } from '../../utils/tauriCommands';
-import { flowChartAnimation, spyAnimation, plansAnimation, watcherAnimation, taekwondoAnimation, liveStreamingAnimation, settingsAnimation, robotAnimation, noConnectionAnimation, businessAnimation, tournamentAnimation } from '../../assets/icons/json';
+import { flowChartAnimation, spyAnimation, plansAnimation, watcherAnimation, taekwondoAnimation, liveStreamingAnimation, settingsAnimation, robotAnimation, noConnectionAnimation, businessAnimation, tournamentAnimation, mixerAnimation } from '../../assets/icons/json';
 
 type AdvancedPanelProps = React.ComponentProps<'div'>;
 
@@ -200,7 +200,7 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
               {
                 id: 'control-room',
                 label: 'Control Room',
-                icon: <LottieIcon animationData={businessAnimation} size={32} />,
+                icon: <LottieIcon animationData={mixerAnimation} size={32} />,
                 content: <ControlRoom />
               },
                                 {
