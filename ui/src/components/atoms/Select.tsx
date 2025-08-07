@@ -8,7 +8,6 @@ interface SelectProps {
   className?: string;
 }
 
-
 interface SelectTriggerProps {
   children: React.ReactNode;
   className?: string;
@@ -20,6 +19,7 @@ interface SelectTriggerProps {
 interface SelectValueProps {
   placeholder?: string;
   className?: string;
+  value?: string;
 }
 
 interface SelectContentProps {
@@ -45,6 +45,11 @@ const Select: React.FC<SelectProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [selectedValue, setSelectedValue] = useState(value || '');
   const selectRef = useRef<HTMLDivElement>(null);
+
+  // Update selectedValue when value prop changes
+  useEffect(() => {
+    setSelectedValue(value || '');
+  }, [value]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -72,6 +77,11 @@ const Select: React.FC<SelectProps> = ({
               onClick: () => setIsOpen(!isOpen),
               isOpen,
               selectedValue,
+            });
+          }
+          if (child.type === SelectValue) {
+            return React.cloneElement(child as React.ReactElement<SelectValueProps>, {
+              value: selectedValue,
             });
           }
           if (child.type === SelectContent && isOpen) {
@@ -115,10 +125,11 @@ const SelectTrigger: React.FC<SelectTriggerProps> = ({
   );
 };
 
-const SelectValue: React.FC<SelectValueProps> = ({ placeholder, className = '' }) => {
+const SelectValue: React.FC<SelectValueProps> = ({ placeholder, className = '', value }) => {
+  const displayText = value || placeholder;
   return (
     <span className={`text-gray-300 ${className}`}>
-      {placeholder}
+      {displayText}
     </span>
   );
 };
