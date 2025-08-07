@@ -14,6 +14,7 @@ use manager::ObsManager;
 
 // Re-export main types for easier access
 pub use client::ObsClient;
+pub use manager::ObsManager;
 pub use types::*;
 
 /// Global OBS manager instance
