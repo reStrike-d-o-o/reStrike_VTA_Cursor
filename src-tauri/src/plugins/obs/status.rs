@@ -47,43 +47,49 @@ impl ObsStatusPlugin {
             connections: Vec::new(),
         };
 
-        // Get all active connections
-        let connections = self.context.connections.lock().await;
-        for (connection_name, connection) in connections.iter() {
-            if connection.is_connected {
-                // Get recording status for this connection
-                match self.recording_plugin.get_recording_status(connection_name).await {
-                    Ok(is_recording) => {
-                        if is_recording {
-                            status_info.is_recording = true;
-                            status_info.recording_connection = Some(connection_name.clone());
-                        }
-                    }
-                    Err(e) => {
-                        log::warn!("[OBS_STATUS] Failed to get recording status for '{}': {}", connection_name, e);
+        // Get all active connections (minimal lock time)
+        let active_connections = {
+            let connections = self.context.connections.lock().await;
+            connections.iter()
+                .filter(|(_, connection)| connection.is_connected)
+                .map(|(name, connection)| (name.clone(), connection.last_heartbeat))
+                .collect::<Vec<_>>()
+        }; // Lock is released here
+
+        // Process connections without holding the lock
+        for (connection_name, last_heartbeat) in active_connections {
+            // Get recording status for this connection
+            match self.recording_plugin.get_recording_status(&connection_name).await {
+                Ok(is_recording) => {
+                    if is_recording {
+                        status_info.is_recording = true;
+                        status_info.recording_connection = Some(connection_name.clone());
                     }
                 }
-
-                // Get streaming status for this connection
-                match self.streaming_plugin.get_streaming_status(connection_name).await {
-                    Ok(is_streaming) => {
-                        if is_streaming {
-                            status_info.is_streaming = true;
-                            status_info.streaming_connection = Some(connection_name.clone());
-                        }
-                    }
-                    Err(e) => {
-                        log::warn!("[OBS_STATUS] Failed to get streaming status for '{}': {}", connection_name, e);
-                    }
+                Err(e) => {
+                    log::warn!("[OBS_STATUS] Failed to get recording status for '{}': {}", connection_name, e);
                 }
-
-                // Add connection info
-                status_info.connections.push(ObsConnectionInfo {
-                    name: connection_name.clone(),
-                    is_connected: connection.is_connected,
-                    last_heartbeat: connection.last_heartbeat,
-                });
             }
+
+            // Get streaming status for this connection
+            match self.streaming_plugin.get_streaming_status(&connection_name).await {
+                Ok(is_streaming) => {
+                    if is_streaming {
+                        status_info.is_streaming = true;
+                        status_info.streaming_connection = Some(connection_name.clone());
+                    }
+                }
+                Err(e) => {
+                    log::warn!("[OBS_STATUS] Failed to get streaming status for '{}': {}", connection_name, e);
+                }
+            }
+
+            // Add connection info
+            status_info.connections.push(ObsConnectionInfo {
+                name: connection_name,
+                is_connected: true,
+                last_heartbeat,
+            });
         }
 
         // Get CPU usage with caching
@@ -150,13 +156,17 @@ impl ObsStatusPlugin {
 
     /// Get status for a specific connection
     pub async fn get_connection_status(&self, connection_name: &str) -> AppResult<ObsConnectionStatus> {
-        let connections = self.context.connections.lock().await;
+        let status = {
+            let connections = self.context.connections.lock().await;
+            
+            if let Some(connection) = connections.get(connection_name) {
+                connection.status.clone()
+            } else {
+                return Err(crate::types::AppError::ConfigError(format!("Connection '{}' not found", connection_name)));
+            }
+        }; // Lock is released here
         
-        if let Some(connection) = connections.get(connection_name) {
-            Ok(connection.status.clone())
-        } else {
-            Err(crate::types::AppError::ConfigError(format!("Connection '{}' not found", connection_name)))
-        }
+        Ok(status)
     }
 
     /// Get memory usage for OBS processes

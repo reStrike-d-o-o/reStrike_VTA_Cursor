@@ -182,39 +182,59 @@ impl ObsCorePlugin {
     pub async fn disconnect_obs(&self, connection_name: &str) -> AppResult<()> {
         log::info!("🔍 [OBS_CORE] disconnect_obs called for '{}'", connection_name);
         
-        // Get the connection and properly close the WebSocket
-        {
+        // First, try to send a proper WebSocket close frame to OBS
+        let ws_stream_opt = {
             let mut connections = self.context.connections.lock().await;
             if let Some(connection) = connections.get_mut(connection_name) {
-                log::info!("🔍 [OBS_CORE] Found connection '{}', closing WebSocket...", connection_name);
-                
                 // Update status to disconnecting
                 connection.status = ObsConnectionStatus::Disconnected;
                 connection.is_connected = false;
-                
-                // Send status change event to frontend
-                let _ = self.context.event_tx.send(ObsEvent::ConnectionStatusChanged {
-                    connection_name: connection_name.to_string(),
-                    status: ObsConnectionStatus::Disconnected,
-                });
                 
                 // Clear pending requests
                 connection.pending_requests.clear();
                 connection.heartbeat_data = None;
                 
-                // Close the WebSocket if it exists
-                if let Some(ws_stream) = connection.websocket.take() {
-                    log::info!("🔍 [OBS_CORE] Dropping WebSocket stream for '{}'", connection_name);
-                    // Simply drop the WebSocket stream - this will close the connection
-                    drop(ws_stream);
-                    log::info!("🔍 [OBS_CORE] WebSocket stream dropped for '{}'", connection_name);
-                }
-                
-                log::info!("🔍 [OBS_CORE] Successfully cleared connection '{}' state", connection_name);
+                // Take the WebSocket stream for proper closing
+                connection.websocket.take()
             } else {
                 log::warn!("🔍 [OBS_CORE] Connection '{}' not found in connections map", connection_name);
+                None
             }
-        } // lock is dropped here
+        }; // lock is dropped here
+        
+        // Send proper WebSocket close frame to OBS
+        if let Some(ws_stream) = ws_stream_opt {
+            log::info!("🔍 [OBS_CORE] Sending WebSocket close frame to OBS for '{}'", connection_name);
+            
+            // Split the stream to send close frame
+            let (mut ws_write, _ws_read) = ws_stream.split();
+            
+            // Send a proper WebSocket close frame to OBS with timeout
+            match tokio::time::timeout(
+                std::time::Duration::from_millis(1000), // 1 second timeout
+                ws_write.send(Message::Close(None))
+            ).await {
+                Ok(Ok(_)) => {
+                    log::info!("🔍 [OBS_CORE] Successfully sent close frame to OBS for '{}'", connection_name);
+                }
+                Ok(Err(e)) => {
+                    log::warn!("🔍 [OBS_CORE] Failed to send close frame to OBS for '{}': {}", connection_name, e);
+                }
+                Err(_) => {
+                    log::warn!("🔍 [OBS_CORE] Timeout sending close frame to OBS for '{}'", connection_name);
+                }
+            }
+            
+            // Drop the write stream to properly close the connection
+            drop(ws_write);
+            log::info!("🔍 [OBS_CORE] WebSocket connection properly closed for '{}'", connection_name);
+        }
+        
+        // Send status change event to frontend
+        let _ = self.context.event_tx.send(ObsEvent::ConnectionStatusChanged {
+            connection_name: connection_name.to_string(),
+            status: ObsConnectionStatus::Disconnected,
+        });
         
         log::info!("🔍 [OBS_CORE] Disconnected from OBS '{}' successfully", connection_name);
         Ok(())
@@ -563,7 +583,18 @@ impl ObsCorePlugin {
                                 }
                             }
                             Ok(Message::Close(_)) => {
-                                log::info!("🔍 [WS_TASK] Received Close message for '{}'", connection_name);
+                                log::info!("🔍 [WS_TASK] Received Close message from OBS for '{}'", connection_name);
+                                
+                                // Update connection status immediately
+                                {
+                                    let mut conns = connections.lock().await;
+                                    if let Some(conn) = conns.get_mut(&connection_name) {
+                                        conn.status = ObsConnectionStatus::Disconnected;
+                                        conn.is_connected = false;
+                                        log::info!("🔍 [WS_TASK] Updated connection status to Disconnected for '{}'", connection_name);
+                                    }
+                                }
+                                
                                 let _ = event_tx.send(ObsEvent::ConnectionStatusChanged {
                                     connection_name: connection_name.clone(),
                                     status: ObsConnectionStatus::Disconnected,
@@ -572,6 +603,17 @@ impl ObsCorePlugin {
                             }
                             Err(e) => {
                                 log::error!("🔍 [WS_TASK] WebSocket error for '{}': {}", connection_name, e);
+                                
+                                // Update connection status immediately
+                                {
+                                    let mut conns = connections.lock().await;
+                                    if let Some(conn) = conns.get_mut(&connection_name) {
+                                        conn.status = ObsConnectionStatus::Disconnected;
+                                        conn.is_connected = false;
+                                        log::info!("🔍 [WS_TASK] Updated connection status to Disconnected due to error for '{}'", connection_name);
+                                    }
+                                }
+                                
                                 let _ = event_tx.send(ObsEvent::Error {
                                     connection_name: connection_name.clone(),
                                     error: format!("WebSocket error: {}", e),
