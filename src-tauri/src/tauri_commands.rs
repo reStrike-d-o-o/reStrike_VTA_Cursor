@@ -7048,7 +7048,17 @@ pub async fn control_room_get_audio_sources(
     log::debug!("Control Room: Getting audio sources for OBS '{}' session {}", obs_name, session_id);
     // TODO: Validate session
     
-    match app.obs_plugin().streaming().get_audio_sources(&obs_name).await {
+    // Get the OBS connection name from Control Room
+    let obs_connection_name = match app.obs_plugin().control_room_get_obs_connection_name(&obs_name).await {
+        Ok(name) => name,
+        Err(e) => {
+            log::error!("Failed to get OBS connection name for '{}': {}", obs_name, e);
+            return Err(TauriError::from(anyhow::anyhow!("Failed to get OBS connection name: {}", e)));
+        }
+    };
+    
+    // Use the existing OBS streaming plugin to get audio sources
+    match app.obs_plugin().streaming().get_audio_sources(&obs_connection_name).await {
         Ok(sources) => Ok(serde_json::json!({
             "success": true,
             "sources": sources
@@ -7070,7 +7080,17 @@ pub async fn control_room_get_scenes(
     log::debug!("Control Room: Getting scenes for OBS '{}' session {}", obs_name, session_id);
     // TODO: Validate session
     
-    match app.obs_plugin().scenes().get_scenes(&obs_name).await {
+    // Get the OBS connection name from Control Room
+    let obs_connection_name = match app.obs_plugin().control_room_get_obs_connection_name(&obs_name).await {
+        Ok(name) => name,
+        Err(e) => {
+            log::error!("Failed to get OBS connection name for '{}': {}", obs_name, e);
+            return Err(TauriError::from(anyhow::anyhow!("Failed to get OBS connection name: {}", e)));
+        }
+    };
+    
+    // Use the existing OBS scenes plugin to get scenes
+    match app.obs_plugin().scenes().get_scenes(&obs_connection_name).await {
         Ok(scenes) => Ok(serde_json::json!({
             "success": true,
             "scenes": scenes
