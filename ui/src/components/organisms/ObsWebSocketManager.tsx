@@ -4,7 +4,7 @@ import { invoke as tauriInvoke } from '@tauri-apps/api/core';
 import Button from '../atoms/Button';
 import { StatusDot } from '../atoms/StatusDot';
 import { useObsStore, ObsConnection } from '../../stores/obsStore';
-import { obsCommands } from '../../utils/tauriCommands';
+import { obsObwsCommands } from '../../utils/tauriCommandsObws';
 
 // Use the proper Tauri v2 invoke function with fallback
 const invoke = async (command: string, args?: any) => {
@@ -19,8 +19,6 @@ const invoke = async (command: string, args?: any) => {
     throw new Error('Tauri v2 core module not available - ensure app is running in desktop mode');
   }
 };
-
-
 
 /**
  * Check if Tauri is available (same logic as environment detection)
@@ -54,7 +52,7 @@ const ObsWebSocketManager: React.FC = () => {
       if (isTauriAvailable()) {
         try {
           setLoading(true);
-          const result = await obsCommands.getConnections();
+          const result = await obsObwsCommands.getConnections();
           
           if (result && result.success && result.data && Array.isArray(result.data.connections)) {
             console.log('Database connections:', result.data.connections);
@@ -116,8 +114,6 @@ const ObsWebSocketManager: React.FC = () => {
     if (!isTauriAvailable()) return;
 
     console.log('🔧 ObsWebSocketManager: Setting up OBS status listener...');
-    // Start backend listener once
-    obsCommands.setupStatusListener().catch((e) => console.error('obs status listener setup failed', e));
 
     let unlistenPromise: Promise<() => void> = Promise.resolve(() => {});
     if (window.__TAURI__?.event) {
@@ -197,9 +193,9 @@ const ObsWebSocketManager: React.FC = () => {
     updateConnectionStatus(connectionName, 'connecting');
     
     try {
-      // Use Tauri command for OBS connection
+      // Use obws Tauri command for OBS connection
       if (isTauriAvailable()) {
-        const result = await obsCommands.connectToConnection(connectionName);
+        const result = await obsObwsCommands.connect(connectionName);
         
         if (result && typeof result === 'object' && 'success' in result && result.success) {
           console.log(`✅ Successfully connected to OBS: ${connectionName}`);
@@ -208,7 +204,7 @@ const ObsWebSocketManager: React.FC = () => {
           // Refresh connection status from backend
           setTimeout(async () => {
             try {
-              const statusResult = await obsCommands.getConnectionStatus(connectionName);
+              const statusResult = await obsObwsCommands.getConnectionStatus(connectionName);
               if (statusResult && statusResult.success && statusResult.data) {
                 const status = statusResult.data.status;
                 if (status === 'Connected' || status === 'Authenticated') {
@@ -243,9 +239,9 @@ const ObsWebSocketManager: React.FC = () => {
     console.log(`Disconnecting from OBS: ${connectionName}`);
     
     try {
-      // Use Tauri command for OBS disconnection
+      // Use obws Tauri command for OBS disconnection
       if (isTauriAvailable()) {
-        const result = await obsCommands.disconnect(connectionName);
+        const result = await obsObwsCommands.disconnect(connectionName);
         
         if (result && typeof result === 'object' && 'success' in result && result.success) {
           console.log(`✅ Successfully disconnected from OBS: ${connectionName}`);
@@ -254,7 +250,7 @@ const ObsWebSocketManager: React.FC = () => {
           // Refresh connection status from backend
           setTimeout(async () => {
             try {
-              const statusResult = await obsCommands.getConnectionStatus(connectionName);
+              const statusResult = await obsObwsCommands.getConnectionStatus(connectionName);
               if (statusResult && statusResult.success && statusResult.data) {
                 const status = statusResult.data.status;
                 if (status === 'Disconnected') {
@@ -281,10 +277,6 @@ const ObsWebSocketManager: React.FC = () => {
     }
   };
 
-
-
-
-
   const addConnection = () => {
     const newConnection: ObsConnection = {
       name: `OBS Studio ${connections.length + 1}`,
@@ -301,7 +293,7 @@ const ObsWebSocketManager: React.FC = () => {
     if (isTauriAvailable()) {
       try {
         setLoading(true);
-        const result = await obsCommands.getConnections();
+        const result = await obsObwsCommands.getConnections();
         
         if (result && result.success && result.data && Array.isArray(result.data.connections)) {
           console.log('Refreshed database connections:', result.data.connections);
@@ -340,18 +332,7 @@ const ObsWebSocketManager: React.FC = () => {
   const saveConnection = async (connection: ObsConnection) => {
     if (isTauriAvailable()) {
       try {
-        const payload = {
-          id: undefined,
-          name: connection.name,
-          host: connection.host,
-          port: connection.port,
-          password: undefined,
-          is_active: connection.enabled,
-          status: connection.status,
-          error: connection.error
-        };
-        
-        await obsCommands.addConnection({
+        await obsObwsCommands.addConnection({
           name: connection.name,
           host: connection.host,
           port: connection.port,
@@ -368,7 +349,7 @@ const ObsWebSocketManager: React.FC = () => {
   const deleteConnection = async (name: string) => {
     if (isTauriAvailable()) {
       try {
-        await obsCommands.removeConnection(name);
+        await obsObwsCommands.removeConnection(name);
         await refreshConnections();
       } catch (error) {
         console.error('Failed to delete OBS connection:', error);
@@ -420,11 +401,14 @@ const ObsWebSocketManager: React.FC = () => {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold text-white">OBS WebSocket Manager</h2>
-            <p className="text-gray-400 mt-1">Manage OBS Studio connections for Windows desktop application</p>
+            <p className="text-gray-400 mt-1">Manage OBS Studio connections using obws implementation</p>
           </div>
           <div className="flex items-center space-x-4">
             <span className="px-3 py-1 bg-blue-600 text-white text-sm rounded-full">
               Windows Native
+            </span>
+            <span className="px-3 py-1 bg-purple-600 text-white text-sm rounded-full">
+              obws Implementation
             </span>
             <span className="px-3 py-1 bg-green-600 text-white text-sm rounded-full">
               {connections.filter(c => c.status === 'connected').length}/{connections.length} Connected
@@ -460,7 +444,7 @@ const ObsWebSocketManager: React.FC = () => {
                 await refreshConnections();
                 // Also check OBS status
                 try {
-                  const status = await obsCommands.getStatus();
+                  const status = await obsObwsCommands.getStatus();
                   console.log('Manual OBS status check:', status);
                 } catch (error) {
                   console.error('Failed to get OBS status:', error);
@@ -470,6 +454,22 @@ const ObsWebSocketManager: React.FC = () => {
               size="sm"
             >
               Force Refresh
+            </Button>
+            <Button 
+              onClick={async () => {
+                try {
+                  const result = await obsObwsCommands.testConnection();
+                  console.log('OBS obws test result:', result);
+                  alert(result.success ? 'Test passed!' : `Test failed: ${result.error}`);
+                } catch (error) {
+                  console.error('Failed to test obws connection:', error);
+                  alert('Test failed: ' + error);
+                }
+              }} 
+              variant="secondary" 
+              size="sm"
+            >
+              Test obws
             </Button>
             <Button onClick={addConnection} variant="primary" size="sm">
               Add Connection
@@ -618,7 +618,7 @@ const ObsWebSocketManager: React.FC = () => {
           <Button 
             onClick={async () => {
               try {
-                const result = await obsCommands.getConnections();
+                const result = await obsObwsCommands.getConnections();
                 console.log('Raw backend response:', result);
                 alert('Check console for raw backend response');
               } catch (error) {
@@ -633,7 +633,7 @@ const ObsWebSocketManager: React.FC = () => {
           <Button 
             onClick={async () => {
               try {
-                const result = await obsCommands.getStatus();
+                const result = await obsObwsCommands.getStatus();
                 console.log('OBS Status:', result);
                 alert('Check console for OBS status');
               } catch (error) {
@@ -647,8 +647,6 @@ const ObsWebSocketManager: React.FC = () => {
           </Button>
         </div>
       </div>
-
-
     </div>
   );
 };
