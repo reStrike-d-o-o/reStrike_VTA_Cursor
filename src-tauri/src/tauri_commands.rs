@@ -6779,6 +6779,68 @@ pub async fn control_room_remove_obs_connection(
     }
 }
 
+/// Get OBS connection configuration
+#[tauri::command]
+pub async fn control_room_get_obs_connection(
+    session_id: String,
+    obs_name: String,
+    app: State<'_, Arc<App>>
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("Control Room: Getting OBS connection '{}' for session {}", obs_name, session_id);
+    // TODO: Validate session
+    
+    match app.obs_plugin().control_room_get_connection(&obs_name).await {
+        Ok(connection) => {
+            log::info!("Control Room: Successfully retrieved OBS connection '{}'", obs_name);
+            Ok(serde_json::json!({
+                "success": true,
+                "connection": connection
+            }))
+        }
+        Err(e) => {
+            log::error!("Failed to get OBS connection '{}': {}", obs_name, e);
+            Err(TauriError::from(anyhow::anyhow!("Failed to get OBS connection: {}", e)))
+        }
+    }
+}
+
+/// Update OBS connection configuration
+#[tauri::command]
+pub async fn control_room_update_obs_connection(
+    session_id: String,
+    obs_name: String,
+    host: String,
+    port: u16,
+    password: Option<String>,
+    notes: Option<String>,
+    app: State<'_, Arc<App>>
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("Control Room: Updating OBS connection '{}' for session {}", obs_name, session_id);
+    // TODO: Validate session
+    
+    let config = crate::plugins::obs::control_room_async::ControlRoomConnection {
+        name: obs_name.clone(),
+        host,
+        port,
+        password,
+        notes,
+    };
+    
+    match app.obs_plugin().control_room_update_connection(&obs_name, config).await {
+        Ok(_) => {
+            log::info!("Control Room: Successfully updated OBS connection '{}'", obs_name);
+            Ok(serde_json::json!({
+                "success": true,
+                "message": format!("OBS connection '{}' updated successfully", obs_name)
+            }))
+        }
+        Err(e) => {
+            log::error!("Failed to update OBS connection '{}': {}", obs_name, e);
+            Err(TauriError::from(anyhow::anyhow!("Failed to update OBS connection: {}", e)))
+        }
+    }
+}
+
 /// Get audio sources for a STR connection
 #[tauri::command]
 pub async fn control_room_get_audio_sources(

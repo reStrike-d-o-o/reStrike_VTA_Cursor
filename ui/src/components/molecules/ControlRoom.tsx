@@ -19,7 +19,16 @@ interface ControlRoomState {
   password: string;
   connections: ObsConnection[];
   showAddConnection: boolean;
+  showEditConnection: boolean;
+  editingConnection: string | null;
   newConnection: {
+    name: string;
+    host: string;
+    port: string;
+    password: string;
+    notes: string;
+  };
+  editConnection: {
     name: string;
     host: string;
     port: string;
@@ -36,7 +45,16 @@ const ControlRoom: React.FC = () => {
     password: '',
     connections: [],
     showAddConnection: false,
+    showEditConnection: false,
+    editingConnection: null,
     newConnection: {
+      name: '',
+      host: '',
+      port: '4455',
+      password: '',
+      notes: ''
+    },
+    editConnection: {
       name: '',
       host: '',
       port: '4455',
@@ -292,16 +310,16 @@ const ControlRoom: React.FC = () => {
     }
   };
 
-  const handleRemove = async (connectionName: string) => {
+    const handleRemove = async (connectionName: string) => {
     if (!confirm(`Are you sure you want to remove the OBS connection "${connectionName}"?`)) {
       return;
     }
 
     try {
-                      const result = await invoke('control_room_remove_obs_connection', {
-          sessionId: state.sessionId,
-          obsName: connectionName
-        });
+      const result = await invoke('control_room_remove_obs_connection', {
+        sessionId: state.sessionId,
+        obsName: connectionName
+      });
 
       if (result && typeof result === 'object' && 'success' in result) {
         const response = result as { success: boolean; message?: string; error?: string };
@@ -319,6 +337,106 @@ const ControlRoom: React.FC = () => {
     } catch (err) {
       console.error('Remove error:', err);
       setError(`Failed to remove OBS connection "${connectionName}"`);
+    }
+  };
+
+  const handleEdit = async (connectionName: string) => {
+    try {
+      const result = await invoke('control_room_get_obs_connection', {
+        sessionId: state.sessionId,
+        obsName: connectionName
+      });
+
+      if (result && typeof result === 'object' && 'success' in result) {
+        const response = result as { success: boolean; connection?: any; error?: string };
+        
+        if (response.success && response.connection) {
+          const connection = response.connection;
+          setState(prev => ({
+            ...prev,
+            showEditConnection: true,
+            editingConnection: connectionName,
+            editConnection: {
+              name: connection.name,
+              host: connection.host,
+              port: connection.port.toString(),
+              password: connection.password || '',
+              notes: connection.notes || ''
+            }
+          }));
+        } else {
+          setError(response.error || `Failed to get OBS connection "${connectionName}"`);
+        }
+      }
+    } catch (err) {
+      console.error('Edit error:', err);
+      setError(`Failed to get OBS connection "${connectionName}"`);
+    }
+  };
+
+  const handleUpdateConnection = async () => {
+    if (!state.editConnection.name.trim() || !state.editConnection.host.trim()) {
+      setError('Please enter connection name and host');
+      return;
+    }
+
+    const port = parseInt(state.editConnection.port);
+    if (isNaN(port) || port < 1 || port > 65535) {
+      setError('Please enter a valid port number (1-65535)');
+      return;
+    }
+
+    setState(prev => ({ ...prev, isLoading: true }));
+
+    try {
+      const result = await invoke('control_room_update_obs_connection', {
+        sessionId: state.sessionId,
+        obsName: state.editingConnection,
+        host: state.editConnection.host.trim(),
+        port: port,
+        password: state.editConnection.password || null,
+        notes: state.editConnection.notes.trim() || null
+      });
+
+      if (result && typeof result === 'object' && 'success' in result) {
+        const response = result as { success: boolean; message?: string; error?: string };
+        
+        if (response.success) {
+          // Update the connection in the list locally
+          setState(prev => ({
+            ...prev,
+            connections: prev.connections.map(conn =>
+              conn.name === state.editingConnection
+                ? {
+                    ...conn,
+                    host: state.editConnection.host.trim(),
+                    port: port,
+                    notes: state.editConnection.notes.trim() || undefined
+                  }
+                : conn
+            ),
+            showEditConnection: false,
+            editingConnection: null,
+            editConnection: {
+              name: '',
+              host: '',
+              port: '4455',
+              password: '',
+              notes: ''
+            },
+            isLoading: false
+          }));
+
+          setSuccess(response.message || `OBS connection "${state.editConnection.name}" updated successfully`);
+        } else {
+          setError(response.error || 'Failed to update OBS connection');
+          setState(prev => ({ ...prev, isLoading: false }));
+        }
+      }
+    } catch (err) {
+      console.error('Failed to update connection:', err);
+      setError('Failed to update OBS connection');
+      setState(prev => ({ ...prev, isLoading: false }));
     }
   };
 
@@ -476,9 +594,86 @@ const ControlRoom: React.FC = () => {
               </Button>
             </div>
           </div>
-        )}
+                 )}
 
-        {/* Connection List */}
+         {/* Edit Connection Form */}
+         {state.showEditConnection && (
+           <div className="mb-6 p-4 bg-gray-700/50 rounded-lg border border-gray-600/30">
+             <h4 className="font-medium text-gray-200 mb-3">Edit OBS Connection: {state.editingConnection}</h4>
+             <div className="grid grid-cols-2 gap-4">
+               <Input
+                 placeholder="Connection Name"
+                 value={state.editConnection.name}
+                 disabled={true} // Name cannot be changed
+               />
+               <Input
+                 placeholder="Host (e.g., 192.168.1.100)"
+                 value={state.editConnection.host}
+                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setState(prev => ({
+                   ...prev,
+                   editConnection: { ...prev.editConnection, host: e.target.value }
+                 }))}
+               />
+               <Input
+                 placeholder="Port"
+                 type="number"
+                 value={state.editConnection.port}
+                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setState(prev => ({
+                   ...prev,
+                   editConnection: { ...prev.editConnection, port: e.target.value }
+                 }))}
+               />
+               <Input
+                 placeholder="OBS Password (optional)"
+                 type="password"
+                 value={state.editConnection.password}
+                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setState(prev => ({
+                   ...prev,
+                   editConnection: { ...prev.editConnection, password: e.target.value }
+                 }))}
+               />
+             </div>
+             <div className="mt-3">
+               <Input
+                 placeholder="Notes (optional)"
+                 value={state.editConnection.notes}
+                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setState(prev => ({
+                   ...prev,
+                   editConnection: { ...prev.editConnection, notes: e.target.value }
+                 }))}
+               />
+             </div>
+             <div className="flex justify-end space-x-2 mt-4">
+               <Button
+                 onClick={() => setState(prev => ({ 
+                   ...prev, 
+                   showEditConnection: false,
+                   editingConnection: null,
+                   editConnection: {
+                     name: '',
+                     host: '',
+                     port: '4455',
+                     password: '',
+                     notes: ''
+                   }
+                 }))}
+                 variant="outline"
+                 size="sm"
+               >
+                 Cancel
+               </Button>
+               <Button
+                 onClick={handleUpdateConnection}
+                 disabled={state.isLoading}
+                 size="sm"
+               >
+                 {state.isLoading ? 'Updating...' : 'Update Connection'}
+               </Button>
+             </div>
+           </div>
+         )}
+
+         {/* Connection List */}
         {state.connections.length === 0 ? (
           <div className="text-center py-8">
                          <p className="text-gray-400">No OBS connections configured</p>
@@ -501,25 +696,33 @@ const ControlRoom: React.FC = () => {
                       )}
                     </div>
                   </div>
-                  <div className="flex space-x-2">
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      onClick={() => connection.status === 'Connected' ? handleDisconnect(connection.name) : handleConnect(connection.name)}
-                      disabled={connection.status === 'Connecting' || state.isLoading}
-                    >
-                      {connection.status === 'Connected' ? 'Disconnect' : 'Connect'}
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      className="text-red-400 hover:text-red-300"
-                      onClick={() => handleRemove(connection.name)}
-                      disabled={state.isLoading}
-                    >
-                      Remove
-                    </Button>
-                  </div>
+                                     <div className="flex space-x-2">
+                     <Button 
+                       size="sm" 
+                       variant="outline"
+                       onClick={() => connection.status === 'Connected' ? handleDisconnect(connection.name) : handleConnect(connection.name)}
+                       disabled={connection.status === 'Connecting' || state.isLoading}
+                     >
+                       {connection.status === 'Connected' ? 'Disconnect' : 'Connect'}
+                     </Button>
+                     <Button 
+                       size="sm" 
+                       variant="outline"
+                       onClick={() => handleEdit(connection.name)}
+                       disabled={state.isLoading}
+                     >
+                       Edit
+                     </Button>
+                     <Button 
+                       size="sm" 
+                       variant="outline" 
+                       className="text-red-400 hover:text-red-300"
+                       onClick={() => handleRemove(connection.name)}
+                       disabled={state.isLoading}
+                     >
+                       Remove
+                     </Button>
+                   </div>
                 </div>
               </div>
             ))}
