@@ -386,13 +386,25 @@ impl AsyncControlRoomManager {
                 protocol_version: crate::plugins::obs::types::ObsWebSocketVersion::V5,
                 enabled: true,
             };
-            let connection_result = self.obs_core.add_connection(obs_config).await;
-
-            match connection_result {
+            
+            // First add the connection configuration
+            let add_result = self.obs_core.add_connection(obs_config).await;
+            
+            match add_result {
                 Ok(_) => {
-                    instance.status = ControlRoomStatus::Connected;
-                    instance.obs_connection_name = Some(obs_connection_name);
-                    instance.last_connected = Some(chrono::Utc::now());
+                    // Then establish the actual WebSocket connection
+                    let connect_result = self.obs_core.connect_obs(&obs_connection_name).await;
+                    
+                    match connect_result {
+                        Ok(_) => {
+                            instance.status = ControlRoomStatus::Connected;
+                            instance.obs_connection_name = Some(obs_connection_name);
+                            instance.last_connected = Some(chrono::Utc::now());
+                        }
+                        Err(e) => {
+                            instance.status = ControlRoomStatus::Error(e.to_string());
+                        }
+                    }
                 }
                 Err(e) => {
                     instance.status = ControlRoomStatus::Error(e.to_string());
@@ -415,7 +427,9 @@ impl AsyncControlRoomManager {
         
         if let Some(instance) = connections.get_mut(name) {
             if let Some(obs_connection_name) = &instance.obs_connection_name {
-                // Remove the OBS connection
+                // First disconnect the WebSocket
+                let _ = self.obs_core.disconnect_obs(obs_connection_name).await;
+                // Then remove the connection configuration
                 self.obs_core.remove_connection(obs_connection_name).await?;
             }
             
@@ -459,5 +473,51 @@ impl AsyncControlRoomManager {
         Ok(connections.iter()
             .map(|(name, instance)| (name.clone(), instance.status.clone()))
             .collect())
+    }
+
+    /// Get a specific connection configuration
+    pub async fn get_connection(&self, name: &str) -> AppResult<ControlRoomConnection> {
+        if !self.is_authenticated().await {
+            return Err(crate::types::AppError::SecurityError("Not authenticated".to_string()));
+        }
+
+        let connections = self.connections.lock().await;
+        if let Some(instance) = connections.get(name) {
+            Ok(instance.config.clone())
+        } else {
+            Err(crate::types::AppError::ConfigError(format!("OBS connection '{}' not found", name)))
+        }
+    }
+
+    /// Update an existing OBS connection configuration
+    pub async fn update_connection(&self, name: &str, config: ControlRoomConnection) -> AppResult<()> {
+        if !self.is_authenticated().await {
+            return Err(crate::types::AppError::SecurityError("Not authenticated".to_string()));
+        }
+
+        // Check if the connection exists
+        {
+            let connections = self.connections.lock().await;
+            if !connections.contains_key(name) {
+                return Err(crate::types::AppError::ConfigError(format!("OBS connection '{}' not found", name)));
+            }
+        }
+
+        // Store updated config in database
+        let config_json = serde_json::to_string(&config)
+            .map_err(|e| crate::types::AppError::ConfigError(e.to_string()))?;
+        
+        self.db.execute_with_string_params(
+            "UPDATE control_room_connections SET config = ? WHERE name = ?",
+            vec![config_json, name.to_string()]
+        ).await?;
+
+        // Update in memory
+        let mut connections = self.connections.lock().await;
+        if let Some(instance) = connections.get_mut(name) {
+            instance.config = config;
+        }
+
+        Ok(())
     }
 }

@@ -115,6 +115,8 @@ async fn main() -> AppResult<()> {
         tauri_commands::control_room_connect_obs,
         tauri_commands::control_room_disconnect_obs,
         tauri_commands::control_room_remove_obs_connection,
+        tauri_commands::control_room_get_obs_connection,
+        tauri_commands::control_room_update_obs_connection,
             tauri_commands::control_room_change_password,
             tauri_commands::control_room_get_audit_log,
             tauri_commands::control_room_get_session_info,
