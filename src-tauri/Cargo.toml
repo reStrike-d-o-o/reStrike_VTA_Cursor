@@ -65,4 +65,4 @@ tempfile = "3.8"
 custom-protocol = ["tauri/custom-protocol"]
 obs-legacy = []  # Legacy OBS WebSocket implementation (current)
 obs-obws = ["obws"]  # New obws-based OBS WebSocket implementation
-default = ["obs-legacy"]  # Default to legacy implementation during migration 
+default = ["obs-legacy", "obs-obws"]  # Enable both during migration for testing 
