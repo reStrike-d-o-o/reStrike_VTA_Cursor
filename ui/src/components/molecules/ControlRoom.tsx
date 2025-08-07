@@ -117,20 +117,20 @@ const ControlRoom: React.FC = () => {
 
   const loadConnections = async (sessionId: string) => {
     try {
-              const result = await invoke('control_room_get_obs_connections', {
+      const result = await invoke('control_room_get_obs_connections_with_details', {
         sessionId: sessionId
       });
 
       if (result && typeof result === 'object' && 'success' in result) {
-        const response = result as { success: boolean; connections?: string[]; error?: string };
+        const response = result as { success: boolean; connections?: Array<{name: string; host: string; port: number; status: string; notes?: string}>; error?: string };
         if (response.success && response.connections) {
-          // Convert connection names to connection objects
-                     const connections: ObsConnection[] = response.connections.map(name => ({
-            name,
-            host: 'Unknown', // We'll need to get this from the backend later
-            port: 4455, // Default port
-            status: 'Disconnected' as const,
-            notes: undefined
+          // Convert connection data to connection objects with real status and details
+          const connections: ObsConnection[] = response.connections.map(conn => ({
+            name: conn.name,
+            host: conn.host,
+            port: conn.port,
+            status: conn.status as ObsConnection['status'],
+            notes: conn.notes
           }));
           setState(prev => ({ ...prev, connections }));
         } else {
