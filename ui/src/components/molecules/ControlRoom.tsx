@@ -99,7 +99,7 @@ const ControlRoom: React.FC = () => {
 
   const loadConnections = async (sessionId: string) => {
     try {
-      const result = await invoke('control_room_get_str_connections', {
+              const result = await invoke('control_room_get_obs_connections', {
         sessionId: sessionId
       });
 
@@ -152,7 +152,7 @@ const ControlRoom: React.FC = () => {
     setState(prev => ({ ...prev, isLoading: true }));
 
     try {
-      const result = await invoke('control_room_add_str_connection', {
+              const result = await invoke('control_room_add_obs_connection', {
         sessionId: state.sessionId,
         name: state.newConnection.name.trim(),
         host: state.newConnection.host.trim(),
@@ -228,10 +228,10 @@ const ControlRoom: React.FC = () => {
     }));
 
     try {
-      const result = await invoke('control_room_connect_str', {
-        sessionId: state.sessionId,
-        strName: connectionName
-      });
+                      const result = await invoke('control_room_connect_obs', {
+          sessionId: state.sessionId,
+          obsName: connectionName
+        });
 
       if (result && typeof result === 'object' && 'success' in result) {
         const response = result as { success: boolean; message?: string; error?: string };
@@ -265,10 +265,10 @@ const ControlRoom: React.FC = () => {
 
   const handleDisconnect = async (connectionName: string) => {
     try {
-      const result = await invoke('control_room_disconnect_str', {
-        sessionId: state.sessionId,
-        strName: connectionName
-      });
+                      const result = await invoke('control_room_disconnect_obs', {
+          sessionId: state.sessionId,
+          obsName: connectionName
+        });
 
       if (result && typeof result === 'object' && 'success' in result) {
         const response = result as { success: boolean; message?: string; error?: string };
@@ -298,10 +298,10 @@ const ControlRoom: React.FC = () => {
     }
 
     try {
-      const result = await invoke('control_room_remove_str_connection', {
-        sessionId: state.sessionId,
-        strName: connectionName
-      });
+                      const result = await invoke('control_room_remove_obs_connection', {
+          sessionId: state.sessionId,
+          obsName: connectionName
+        });
 
       if (result && typeof result === 'object' && 'success' in result) {
         const response = result as { success: boolean; message?: string; error?: string };
