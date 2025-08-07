@@ -208,7 +208,7 @@ const ObsWebSocketManager: React.FC = () => {
           // Refresh connection status from backend
           setTimeout(async () => {
             try {
-              const statusResult = await invoke('obs_get_connection_status', { connectionName: connectionName });
+              const statusResult = await invoke('obs_get_connection_status', { connectionName });
               if (statusResult && typeof statusResult === 'object' && 'success' in statusResult && statusResult.success) {
                 const status = statusResult.status;
                 if (status === 'Connected' || status === 'Authenticated') {
@@ -246,7 +246,7 @@ const ObsWebSocketManager: React.FC = () => {
       // Use Tauri command for OBS disconnection
       if (isTauriAvailable()) {
         const result = await invoke('obs_disconnect', {
-          connectionName: connectionName
+          connectionName
         });
         
         if (result && typeof result === 'object' && 'success' in result && result.success) {
@@ -256,7 +256,7 @@ const ObsWebSocketManager: React.FC = () => {
           // Refresh connection status from backend
           setTimeout(async () => {
             try {
-              const statusResult = await invoke('obs_get_connection_status', { connectionName: connectionName });
+              const statusResult = await invoke('obs_get_connection_status', { connectionName });
               if (statusResult && typeof statusResult === 'object' && 'success' in statusResult && statusResult.success) {
                 const status = statusResult.status;
                 if (status === 'Disconnected') {
