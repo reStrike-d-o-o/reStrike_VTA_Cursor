@@ -111,6 +111,8 @@ async fn main() -> AppResult<()> {
             // Control Room Commands - Using new async implementation
             tauri_commands::control_room_authenticate_async,
                     tauri_commands::control_room_get_obs_connections,
+                tauri_commands::control_room_get_obs_connections_with_status,
+                tauri_commands::control_room_get_obs_connections_with_details,
         tauri_commands::control_room_add_obs_connection,
         tauri_commands::control_room_connect_obs,
         tauri_commands::control_room_disconnect_obs,

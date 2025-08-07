@@ -6508,6 +6508,101 @@ pub async fn control_room_get_obs_connections(
     }
 }
 
+/// Get all Control Room OBS connections with their status
+#[tauri::command]
+pub async fn control_room_get_obs_connections_with_status(
+    session_id: String,
+    app: State<'_, Arc<App>>
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("Control Room: Getting OBS connections with status for session {}", session_id);
+    // TODO: Validate session
+    
+    match app.obs_plugin().control_room_get_obs_connections_with_status().await {
+        Ok(connections_with_status) => {
+            log::info!("Control Room: Retrieved {} OBS connections with status", connections_with_status.len());
+            
+            // Convert the status enum to a string representation for the frontend
+            let connections_data: Vec<serde_json::Value> = connections_with_status
+                .into_iter()
+                .map(|(name, status)| {
+                    let status_str = match status {
+                        crate::plugins::obs::control_room_async::ControlRoomStatus::Disconnected => "Disconnected",
+                        crate::plugins::obs::control_room_async::ControlRoomStatus::Connecting => "Connecting",
+                        crate::plugins::obs::control_room_async::ControlRoomStatus::Connected => "Connected",
+                        crate::plugins::obs::control_room_async::ControlRoomStatus::Error(error_msg) => {
+                            log::warn!("Control Room connection '{}' has error status: {}", name, error_msg);
+                            "Error"
+                        }
+                    };
+                    
+                    serde_json::json!({
+                        "name": name,
+                        "status": status_str
+                    })
+                })
+                .collect();
+            
+            Ok(serde_json::json!({
+                "success": true,
+                "connections": connections_data
+            }))
+        }
+        Err(e) => {
+            log::error!("Failed to get OBS connections with status: {}", e);
+            Err(TauriError::from(anyhow::anyhow!("Failed to get OBS connections with status: {}", e)))
+        }
+    }
+}
+
+/// Get all Control Room OBS connections with their full details and status
+#[tauri::command]
+pub async fn control_room_get_obs_connections_with_details(
+    session_id: String,
+    app: State<'_, Arc<App>>
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("Control Room: Getting OBS connections with full details for session {}", session_id);
+    // TODO: Validate session
+    
+    match app.obs_plugin().control_room_get_obs_connections_with_details().await {
+        Ok(connections_with_details) => {
+            log::info!("Control Room: Retrieved {} OBS connections with full details", connections_with_details.len());
+            
+            // Convert the data to a format suitable for the frontend
+            let connections_data: Vec<serde_json::Value> = connections_with_details
+                .into_iter()
+                .map(|(name, config, status)| {
+                    let status_str = match status {
+                        crate::plugins::obs::control_room_async::ControlRoomStatus::Disconnected => "Disconnected",
+                        crate::plugins::obs::control_room_async::ControlRoomStatus::Connecting => "Connecting",
+                        crate::plugins::obs::control_room_async::ControlRoomStatus::Connected => "Connected",
+                        crate::plugins::obs::control_room_async::ControlRoomStatus::Error(error_msg) => {
+                            log::warn!("Control Room connection '{}' has error status: {}", name, error_msg);
+                            "Error"
+                        }
+                    };
+                    
+                    serde_json::json!({
+                        "name": name,
+                        "host": config.host,
+                        "port": config.port,
+                        "status": status_str,
+                        "notes": config.notes
+                    })
+                })
+                .collect();
+            
+            Ok(serde_json::json!({
+                "success": true,
+                "connections": connections_data
+            }))
+        }
+        Err(e) => {
+            log::error!("Failed to get OBS connections with details: {}", e);
+            Err(TauriError::from(anyhow::anyhow!("Failed to get OBS connections with details: {}", e)))
+        }
+    }
+}
+
 /// Bulk mute all OBS streams
 #[tauri::command]
 pub async fn control_room_mute_all_obs(

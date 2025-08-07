@@ -475,6 +475,18 @@ impl AsyncControlRoomManager {
             .collect())
     }
 
+    /// Get all connections with their full details and status
+    pub async fn get_all_connections_with_details(&self) -> AppResult<Vec<(String, ControlRoomConnection, ControlRoomStatus)>> {
+        if !self.is_authenticated().await {
+            return Err(crate::types::AppError::SecurityError("Not authenticated".to_string()));
+        }
+
+        let connections = self.connections.lock().await;
+        Ok(connections.iter()
+            .map(|(name, instance)| (name.clone(), instance.config.clone(), instance.status.clone()))
+            .collect())
+    }
+
     /// Get a specific connection configuration
     pub async fn get_connection(&self, name: &str) -> AppResult<ControlRoomConnection> {
         if !self.is_authenticated().await {
