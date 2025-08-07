@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Button from '../atoms/Button';
 import Input from '../atoms/Input';
 import { StatusDot } from '../atoms/StatusDot';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../atoms/Select';
 import { invoke } from '@tauri-apps/api/core';
 
 interface ObsConnection {
@@ -10,6 +11,12 @@ interface ObsConnection {
   port: number;
   status: 'Disconnected' | 'Connecting' | 'Connected' | 'Error';
   notes?: string;
+}
+
+interface ConnectionSelections {
+  audioSource: string;
+  mainScene: string;
+  breakScene: string;
 }
 
 interface ControlRoomState {
@@ -35,6 +42,10 @@ interface ControlRoomState {
     password: string;
     notes: string;
   };
+  // New state for dropdowns
+  connectionSelections: Record<string, ConnectionSelections>;
+  audioSources: Record<string, string[]>; // connection name -> audio sources
+  scenes: Record<string, string[]>; // connection name -> scenes
 }
 
 const ControlRoom: React.FC = () => {
@@ -60,7 +71,11 @@ const ControlRoom: React.FC = () => {
       port: '4455',
       password: '',
       notes: ''
-    }
+    },
+    // Initialize new state
+    connectionSelections: {},
+    audioSources: {},
+    scenes: {}
   });
 
   const [error, setError] = useState<string | null>(null);
@@ -76,6 +91,29 @@ const ControlRoom: React.FC = () => {
       return () => clearTimeout(timer);
     }
   }, [error, success]);
+
+  // Initialize selections when connections change
+  useEffect(() => {
+    const newSelections: Record<string, ConnectionSelections> = {};
+    state.connections.forEach(connection => {
+      if (!state.connectionSelections[connection.name]) {
+        newSelections[connection.name] = {
+          audioSource: '',
+          mainScene: '',
+          breakScene: ''
+        };
+      } else {
+        newSelections[connection.name] = state.connectionSelections[connection.name];
+      }
+    });
+    
+    if (Object.keys(newSelections).length > 0) {
+      setState(prev => ({
+        ...prev,
+        connectionSelections: newSelections
+      }));
+    }
+  }, [state.connections]);
 
   const handleAuthenticate = async () => {
     if (!state.password.trim()) {
@@ -98,11 +136,13 @@ const ControlRoom: React.FC = () => {
           setState(prev => ({
             ...prev,
             isAuthenticated: true,
-            sessionId: response.session_id || 'authenticated',
+            sessionId: response.session_id || null,
             isLoading: false
           }));
-          setSuccess('Successfully authenticated to Control Room');
-          await loadConnections(response.session_id || 'authenticated');
+          
+          if (response.session_id) {
+            await loadConnections(response.session_id);
+          }
         } else {
           setError(response.error || 'Authentication failed');
           setState(prev => ({ ...prev, isLoading: false }));
@@ -110,7 +150,7 @@ const ControlRoom: React.FC = () => {
       }
     } catch (err) {
       console.error('Authentication error:', err);
-      setError('Authentication failed. Please check your password.');
+      setError('Authentication failed');
       setState(prev => ({ ...prev, isLoading: false }));
     }
   };
@@ -139,7 +179,6 @@ const ControlRoom: React.FC = () => {
       }
     } catch (err) {
       console.error('Failed to load connections:', err);
-      // Start with empty list on error
       setState(prev => ({ ...prev, connections: [] }));
     }
   };
@@ -150,51 +189,39 @@ const ControlRoom: React.FC = () => {
       isAuthenticated: false,
       sessionId: null,
       password: '',
-      connections: []
+      connections: [],
+      connectionSelections: {},
+      audioSources: {},
+      scenes: {}
     }));
-    setSuccess('Logged out of Control Room');
   };
 
   const handleAddConnection = async () => {
     if (!state.newConnection.name.trim() || !state.newConnection.host.trim()) {
-      setError('Please enter connection name and host');
-      return;
-    }
-
-    const port = parseInt(state.newConnection.port);
-    if (isNaN(port) || port < 1 || port > 65535) {
-      setError('Please enter a valid port number (1-65535)');
+      setError('Please fill in all required fields');
       return;
     }
 
     setState(prev => ({ ...prev, isLoading: true }));
+    setError(null);
 
     try {
-              const result = await invoke('control_room_add_obs_connection', {
+      const result = await invoke('control_room_add_obs_connection', {
         sessionId: state.sessionId,
-        name: state.newConnection.name.trim(),
-        host: state.newConnection.host.trim(),
-        port: port,
-        password: state.newConnection.password || null,
-        notes: state.newConnection.notes.trim() || null
+        name: state.newConnection.name,
+        host: state.newConnection.host,
+        port: parseInt(state.newConnection.port),
+        password: state.newConnection.password,
+        notes: state.newConnection.notes
       });
 
       if (result && typeof result === 'object' && 'success' in result) {
         const response = result as { success: boolean; message?: string; error?: string };
         
         if (response.success) {
-          // Add the connection to the list locally
-                     const newConnection: ObsConnection = {
-            name: state.newConnection.name.trim(),
-            host: state.newConnection.host.trim(),
-            port: port,
-            status: 'Disconnected',
-            notes: state.newConnection.notes.trim() || undefined
-          };
-
+          setSuccess(response.message || 'OBS connection added successfully');
           setState(prev => ({
             ...prev,
-            connections: [...prev.connections, newConnection],
             showAddConnection: false,
             newConnection: {
               name: '',
@@ -202,19 +229,20 @@ const ControlRoom: React.FC = () => {
               port: '4455',
               password: '',
               notes: ''
-            },
-            isLoading: false
+            }
           }));
-
-          setSuccess(response.message || `OBS connection "${newConnection.name}" added successfully`);
+          
+          if (state.sessionId) {
+            await loadConnections(state.sessionId);
+          }
         } else {
           setError(response.error || 'Failed to add OBS connection');
-          setState(prev => ({ ...prev, isLoading: false }));
         }
       }
     } catch (err) {
       console.error('Failed to add connection:', err);
       setError('Failed to add OBS connection');
+    } finally {
       setState(prev => ({ ...prev, isLoading: false }));
     }
   };
@@ -238,82 +266,70 @@ const ControlRoom: React.FC = () => {
   };
 
   const handleConnect = async (connectionName: string) => {
-    setState(prev => ({
-      ...prev,
-      connections: prev.connections.map(conn =>
-        conn.name === connectionName ? { ...conn, status: 'Connecting' } : conn
-      )
-    }));
+    if (!state.sessionId) return;
+
+    setState(prev => ({ ...prev, isLoading: true }));
+    setError(null);
 
     try {
-                      const result = await invoke('control_room_connect_obs', {
-          sessionId: state.sessionId,
-          obsName: connectionName
-        });
+      const result = await invoke('control_room_connect_obs', {
+        sessionId: state.sessionId,
+        obsName: connectionName
+      });
 
       if (result && typeof result === 'object' && 'success' in result) {
         const response = result as { success: boolean; message?: string; error?: string };
         
-        setState(prev => ({
-          ...prev,
-          connections: prev.connections.map(conn =>
-            conn.name === connectionName 
-              ? { ...conn, status: response.success ? 'Connected' : 'Error' }
-              : conn
-          )
-        }));
-
         if (response.success) {
-          setSuccess(response.message || `Connected to ${connectionName}`);
+          setSuccess(response.message || 'Successfully connected to OBS');
+          await loadConnections(state.sessionId);
         } else {
-          setError(response.error || `Failed to connect to ${connectionName}`);
+          setError(response.error || 'Failed to connect to OBS');
         }
       }
     } catch (err) {
-      console.error('Connection error:', err);
-      setState(prev => ({
-        ...prev,
-        connections: prev.connections.map(conn =>
-          conn.name === connectionName ? { ...conn, status: 'Error' } : conn
-        )
-      }));
-      setError(`Failed to connect to ${connectionName}`);
+      console.error('Failed to connect:', err);
+      setError('Failed to connect to OBS');
+    } finally {
+      setState(prev => ({ ...prev, isLoading: false }));
     }
   };
 
   const handleDisconnect = async (connectionName: string) => {
+    if (!state.sessionId) return;
+
+    setState(prev => ({ ...prev, isLoading: true }));
+    setError(null);
+
     try {
-                      const result = await invoke('control_room_disconnect_obs', {
-          sessionId: state.sessionId,
-          obsName: connectionName
-        });
+      const result = await invoke('control_room_disconnect_obs', {
+        sessionId: state.sessionId,
+        obsName: connectionName
+      });
 
       if (result && typeof result === 'object' && 'success' in result) {
         const response = result as { success: boolean; message?: string; error?: string };
         
-        setState(prev => ({
-          ...prev,
-          connections: prev.connections.map(conn =>
-            conn.name === connectionName ? { ...conn, status: 'Disconnected' } : conn
-          )
-        }));
-
         if (response.success) {
-          setSuccess(response.message || `Disconnected from ${connectionName}`);
+          setSuccess(response.message || 'Successfully disconnected from OBS');
+          await loadConnections(state.sessionId);
         } else {
-          setError(response.error || `Failed to disconnect from ${connectionName}`);
+          setError(response.error || 'Failed to disconnect from OBS');
         }
       }
     } catch (err) {
-      console.error('Disconnection error:', err);
-      setError(`Failed to disconnect from ${connectionName}`);
+      console.error('Failed to disconnect:', err);
+      setError('Failed to disconnect from OBS');
+    } finally {
+      setState(prev => ({ ...prev, isLoading: false }));
     }
   };
 
-    const handleRemove = async (connectionName: string) => {
-    if (!confirm(`Are you sure you want to remove the OBS connection "${connectionName}"?`)) {
-      return;
-    }
+  const handleRemove = async (connectionName: string) => {
+    if (!state.sessionId) return;
+
+    setState(prev => ({ ...prev, isLoading: true }));
+    setError(null);
 
     try {
       const result = await invoke('control_room_remove_obs_connection', {
@@ -325,22 +341,26 @@ const ControlRoom: React.FC = () => {
         const response = result as { success: boolean; message?: string; error?: string };
         
         if (response.success) {
-          setState(prev => ({
-            ...prev,
-            connections: prev.connections.filter(conn => conn.name !== connectionName)
-          }));
-          setSuccess(response.message || `OBS connection "${connectionName}" removed`);
+          setSuccess(response.message || 'OBS connection removed successfully');
+          await loadConnections(state.sessionId);
         } else {
-          setError(response.error || `Failed to remove OBS connection "${connectionName}"`);
+          setError(response.error || 'Failed to remove OBS connection');
         }
       }
     } catch (err) {
-      console.error('Remove error:', err);
-      setError(`Failed to remove OBS connection "${connectionName}"`);
+      console.error('Failed to remove connection:', err);
+      setError('Failed to remove OBS connection');
+    } finally {
+      setState(prev => ({ ...prev, isLoading: false }));
     }
   };
 
   const handleEdit = async (connectionName: string) => {
+    if (!state.sessionId) return;
+
+    setState(prev => ({ ...prev, isLoading: true }));
+    setError(null);
+
     try {
       const result = await invoke('control_room_get_obs_connection', {
         sessionId: state.sessionId,
@@ -351,70 +371,53 @@ const ControlRoom: React.FC = () => {
         const response = result as { success: boolean; connection?: any; error?: string };
         
         if (response.success && response.connection) {
-          const connection = response.connection;
           setState(prev => ({
             ...prev,
             showEditConnection: true,
             editingConnection: connectionName,
             editConnection: {
-              name: connection.name,
-              host: connection.host,
-              port: connection.port.toString(),
-              password: connection.password || '',
-              notes: connection.notes || ''
+              name: response.connection.name,
+              host: response.connection.host,
+              port: response.connection.port.toString(),
+              password: response.connection.password || '',
+              notes: response.connection.notes || ''
             }
           }));
         } else {
-          setError(response.error || `Failed to get OBS connection "${connectionName}"`);
+          setError(response.error || 'Failed to get connection details');
         }
       }
     } catch (err) {
-      console.error('Edit error:', err);
-      setError(`Failed to get OBS connection "${connectionName}"`);
+      console.error('Failed to get connection details:', err);
+      setError('Failed to get connection details');
+    } finally {
+      setState(prev => ({ ...prev, isLoading: false }));
     }
   };
 
   const handleUpdateConnection = async () => {
-    if (!state.editConnection.name.trim() || !state.editConnection.host.trim()) {
-      setError('Please enter connection name and host');
-      return;
-    }
-
-    const port = parseInt(state.editConnection.port);
-    if (isNaN(port) || port < 1 || port > 65535) {
-      setError('Please enter a valid port number (1-65535)');
-      return;
-    }
+    if (!state.sessionId || !state.editingConnection) return;
 
     setState(prev => ({ ...prev, isLoading: true }));
+    setError(null);
 
     try {
       const result = await invoke('control_room_update_obs_connection', {
         sessionId: state.sessionId,
         obsName: state.editingConnection,
-        host: state.editConnection.host.trim(),
-        port: port,
-        password: state.editConnection.password || null,
-        notes: state.editConnection.notes.trim() || null
+        host: state.editConnection.host,
+        port: parseInt(state.editConnection.port),
+        password: state.editConnection.password,
+        notes: state.editConnection.notes
       });
 
       if (result && typeof result === 'object' && 'success' in result) {
         const response = result as { success: boolean; message?: string; error?: string };
         
         if (response.success) {
-          // Update the connection in the list locally
+          setSuccess(response.message || 'OBS connection updated successfully');
           setState(prev => ({
             ...prev,
-            connections: prev.connections.map(conn =>
-              conn.name === state.editingConnection
-                ? {
-                    ...conn,
-                    host: state.editConnection.host.trim(),
-                    port: port,
-                    notes: state.editConnection.notes.trim() || undefined
-                  }
-                : conn
-            ),
             showEditConnection: false,
             editingConnection: null,
             editConnection: {
@@ -423,28 +426,24 @@ const ControlRoom: React.FC = () => {
               port: '4455',
               password: '',
               notes: ''
-            },
-            isLoading: false
+            }
           }));
-
-          setSuccess(response.message || `OBS connection "${state.editConnection.name}" updated successfully`);
+          
+          await loadConnections(state.sessionId);
         } else {
           setError(response.error || 'Failed to update OBS connection');
-          setState(prev => ({ ...prev, isLoading: false }));
         }
       }
     } catch (err) {
       console.error('Failed to update connection:', err);
       setError('Failed to update OBS connection');
+    } finally {
       setState(prev => ({ ...prev, isLoading: false }));
     }
   };
 
   const handleConnectAll = async () => {
-    if (!state.sessionId) {
-      setError('No active session');
-      return;
-    }
+    if (!state.sessionId) return;
 
     setState(prev => ({ ...prev, isLoading: true }));
     setError(null);
@@ -481,10 +480,7 @@ const ControlRoom: React.FC = () => {
   };
 
   const handleDisconnectAll = async () => {
-    if (!state.sessionId) {
-      setError('No active session');
-      return;
-    }
+    if (!state.sessionId) return;
 
     setState(prev => ({ ...prev, isLoading: true }));
     setError(null);
@@ -518,6 +514,29 @@ const ControlRoom: React.FC = () => {
     } finally {
       setState(prev => ({ ...prev, isLoading: false }));
     }
+  };
+
+  // Handle dropdown selections
+  const handleSelectionChange = (connectionName: string, field: keyof ConnectionSelections, value: string) => {
+    setState(prev => ({
+      ...prev,
+      connectionSelections: {
+        ...prev.connectionSelections,
+        [connectionName]: {
+          ...prev.connectionSelections[connectionName],
+          [field]: value
+        }
+      }
+    }));
+  };
+
+  // Mock data for audio sources and scenes (will be replaced with real OBS API calls)
+  const getMockAudioSources = (connectionName: string): string[] => {
+    return ['Desktop Audio', 'Microphone', 'System Audio', 'Game Audio'];
+  };
+
+  const getMockScenes = (connectionName: string): string[] => {
+    return ['Main Scene', 'Break Scene', 'Intro Scene', 'Outro Scene', 'Game Scene'];
   };
 
   if (!state.isAuthenticated) {
@@ -562,9 +581,9 @@ const ControlRoom: React.FC = () => {
         <div className="p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
           <h3 className="text-lg font-semibold mb-3 text-gray-100">About Control Room</h3>
           <div className="space-y-2 text-sm text-gray-300">
-                    <p>• <strong>Centralized OBS Management:</strong> Control multiple OBS instances from one interface</p>
-        <p>• <strong>Bulk Operations:</strong> Mute all audio, change scenes, start/stop streaming across all OBS connections</p>
-        <p>• <strong>Separate Connection Management:</strong> Dedicated OBS connections independent of regular OBS WebSocket connections</p>
+            <p>• <strong>Centralized OBS Management:</strong> Control multiple OBS instances from one interface</p>
+            <p>• <strong>Bulk Operations:</strong> Mute all audio, change scenes, start/stop streaming across all OBS connections</p>
+            <p>• <strong>Separate Connection Management:</strong> Dedicated OBS connections independent of regular OBS WebSocket connections</p>
             <p>• <strong>Secure Access:</strong> Password-protected access with session management</p>
           </div>
         </div>
@@ -628,7 +647,7 @@ const ControlRoom: React.FC = () => {
         {/* Add Connection Form */}
         {state.showAddConnection && (
           <div className="mb-6 p-4 bg-gray-700/50 rounded-lg border border-gray-600/30">
-                         <h4 className="font-medium text-gray-200 mb-3">Add New OBS Connection</h4>
+            <h4 className="font-medium text-gray-200 mb-3">Add New OBS Connection</h4>
             <div className="grid grid-cols-2 gap-4">
               <Input
                 placeholder="Connection Name"
@@ -692,135 +711,139 @@ const ControlRoom: React.FC = () => {
               </Button>
             </div>
           </div>
-                 )}
+        )}
 
-         {/* Edit Connection Form */}
-         {state.showEditConnection && (
-           <div className="mb-6 p-4 bg-gray-700/50 rounded-lg border border-gray-600/30">
-             <h4 className="font-medium text-gray-200 mb-3">Edit OBS Connection: {state.editingConnection}</h4>
-             <div className="grid grid-cols-2 gap-4">
-               <Input
-                 placeholder="Connection Name"
-                 value={state.editConnection.name}
-                 disabled={true} // Name cannot be changed
-               />
-               <Input
-                 placeholder="Host (e.g., 192.168.1.100)"
-                 value={state.editConnection.host}
-                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setState(prev => ({
-                   ...prev,
-                   editConnection: { ...prev.editConnection, host: e.target.value }
-                 }))}
-               />
-               <Input
-                 placeholder="Port"
-                 type="number"
-                 value={state.editConnection.port}
-                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setState(prev => ({
-                   ...prev,
-                   editConnection: { ...prev.editConnection, port: e.target.value }
-                 }))}
-               />
-               <Input
-                 placeholder="OBS Password (optional)"
-                 type="password"
-                 value={state.editConnection.password}
-                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setState(prev => ({
-                   ...prev,
-                   editConnection: { ...prev.editConnection, password: e.target.value }
-                 }))}
-               />
-             </div>
-             <div className="mt-3">
-               <Input
-                 placeholder="Notes (optional)"
-                 value={state.editConnection.notes}
-                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setState(prev => ({
-                   ...prev,
-                   editConnection: { ...prev.editConnection, notes: e.target.value }
-                 }))}
-               />
-             </div>
-             <div className="flex justify-end space-x-2 mt-4">
-               <Button
-                 onClick={() => setState(prev => ({ 
-                   ...prev, 
-                   showEditConnection: false,
-                   editingConnection: null,
-                   editConnection: {
-                     name: '',
-                     host: '',
-                     port: '4455',
-                     password: '',
-                     notes: ''
-                   }
-                 }))}
-                 variant="outline"
-                 size="sm"
-               >
-                 Cancel
-               </Button>
-               <Button
-                 onClick={handleUpdateConnection}
-                 disabled={state.isLoading}
-                 size="sm"
-               >
-                 {state.isLoading ? 'Updating...' : 'Update Connection'}
-               </Button>
-             </div>
-           </div>
-         )}
+        {/* Edit Connection Form */}
+        {state.showEditConnection && (
+          <div className="mb-6 p-4 bg-gray-700/50 rounded-lg border border-gray-600/30">
+            <h4 className="font-medium text-gray-200 mb-3">Edit OBS Connection: {state.editingConnection}</h4>
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                placeholder="Connection Name"
+                value={state.editConnection.name}
+                disabled={true} // Name cannot be changed
+              />
+              <Input
+                placeholder="Host (e.g., 192.168.1.100)"
+                value={state.editConnection.host}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setState(prev => ({
+                  ...prev,
+                  editConnection: { ...prev.editConnection, host: e.target.value }
+                }))}
+              />
+              <Input
+                placeholder="Port"
+                type="number"
+                value={state.editConnection.port}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setState(prev => ({
+                  ...prev,
+                  editConnection: { ...prev.editConnection, port: e.target.value }
+                }))}
+              />
+              <Input
+                placeholder="OBS Password (optional)"
+                type="password"
+                value={state.editConnection.password}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setState(prev => ({
+                  ...prev,
+                  editConnection: { ...prev.editConnection, password: e.target.value }
+                }))}
+              />
+            </div>
+            <div className="mt-3">
+              <Input
+                placeholder="Notes (optional)"
+                value={state.editConnection.notes}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setState(prev => ({
+                  ...prev,
+                  editConnection: { ...prev.editConnection, notes: e.target.value }
+                }))}
+              />
+            </div>
+            <div className="flex justify-end space-x-2 mt-4">
+              <Button
+                onClick={() => setState(prev => ({ 
+                  ...prev, 
+                  showEditConnection: false,
+                  editingConnection: null,
+                  editConnection: {
+                    name: '',
+                    host: '',
+                    port: '4455',
+                    password: '',
+                    notes: ''
+                  }
+                }))}
+                variant="outline"
+                size="sm"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleUpdateConnection}
+                disabled={state.isLoading}
+                size="sm"
+              >
+                {state.isLoading ? 'Updating...' : 'Update Connection'}
+              </Button>
+            </div>
+          </div>
+        )}
 
-         {/* Connection List */}
+        {/* Connection List - Two Column Layout */}
         {state.connections.length === 0 ? (
           <div className="text-center py-8">
-                         <p className="text-gray-400">No OBS connections configured</p>
-             <p className="text-sm text-gray-500 mt-1">Click "Add OBS Connection" to get started</p>
+            <p className="text-gray-400">No OBS connections configured</p>
+            <p className="text-sm text-gray-500 mt-1">Click "Add OBS Connection" to get started</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-4">
             {state.connections.map((connection, index) => (
               <div key={index} className="p-4 bg-gray-700/30 rounded-lg border border-gray-600/20">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center space-x-2">
                     <StatusDot color={getStatusColor(connection.status)} />
                     <div>
-                      <h4 className="font-medium text-gray-200">{connection.name}</h4>
-                      <p className="text-sm text-gray-400">
+                      <h4 className="font-medium text-gray-200 text-sm">{connection.name}</h4>
+                      <p className="text-xs text-gray-400">
                         {connection.host}:{connection.port} • {getStatusText(connection.status)}
                       </p>
-                      {connection.notes && (
-                        <p className="text-xs text-gray-500 mt-1">{connection.notes}</p>
-                      )}
                     </div>
                   </div>
-                                     <div className="flex space-x-2">
-                     <Button 
-                       size="sm" 
-                       variant="outline"
-                       onClick={() => connection.status === 'Connected' ? handleDisconnect(connection.name) : handleConnect(connection.name)}
-                       disabled={connection.status === 'Connecting' || state.isLoading}
-                     >
-                       {connection.status === 'Connected' ? 'Disconnect' : 'Connect'}
-                     </Button>
-                     <Button 
-                       size="sm" 
-                       variant="outline"
-                       onClick={() => handleEdit(connection.name)}
-                       disabled={state.isLoading}
-                     >
-                       Edit
-                     </Button>
-                     <Button 
-                       size="sm" 
-                       variant="outline" 
-                       className="text-red-400 hover:text-red-300"
-                       onClick={() => handleRemove(connection.name)}
-                       disabled={state.isLoading}
-                     >
-                       Remove
-                     </Button>
-                   </div>
+                </div>
+                
+                {connection.notes && (
+                  <p className="text-xs text-gray-500 mb-3">{connection.notes}</p>
+                )}
+                
+                <div className="flex space-x-1">
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={() => connection.status === 'Connected' ? handleDisconnect(connection.name) : handleConnect(connection.name)}
+                    disabled={connection.status === 'Connecting' || state.isLoading}
+                    className="text-xs px-2 py-1"
+                  >
+                    {connection.status === 'Connected' ? 'Disconnect' : 'Connect'}
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={() => handleEdit(connection.name)}
+                    disabled={state.isLoading}
+                    className="text-xs px-2 py-1"
+                  >
+                    Edit
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="text-red-400 hover:text-red-300 text-xs px-2 py-1"
+                    onClick={() => handleRemove(connection.name)}
+                    disabled={state.isLoading}
+                  >
+                    Remove
+                  </Button>
                 </div>
               </div>
             ))}
@@ -828,31 +851,144 @@ const ControlRoom: React.FC = () => {
         )}
       </div>
 
-      {/* Bulk Operations */}
+      {/* Bulk Operations - Two Column Layout */}
       <div className="p-6 bg-gradient-to-br from-orange-900/80 to-red-900/90 backdrop-blur-sm rounded-lg border border-orange-600/30 shadow-lg">
         <h3 className="text-lg font-semibold mb-4 text-gray-100">Bulk Operations</h3>
-        <div className="grid grid-cols-2 gap-4">
-                     <Button disabled={state.connections.length === 0} variant="outline">
-             🔇 Mute All OBS Audio
-           </Button>
-           <Button disabled={state.connections.length === 0} variant="outline">
-             🔊 Unmute All OBS Audio
-          </Button>
-          <Button disabled={state.connections.length === 0} variant="outline">
-            🎬 Change All Scenes
-          </Button>
-                     <Button disabled={state.connections.length === 0} variant="outline">
-             📺 Start All OBS Streaming
-           </Button>
-           <Button disabled={state.connections.length === 0} variant="outline">
-             ⏹️ Stop All OBS Streaming
-          </Button>
+        
+        <div className="grid grid-cols-2 gap-6">
+          {/* Column 1: Dropdowns */}
+          <div className="space-y-4">
+            <h4 className="font-medium text-gray-200 text-sm">Connection Settings</h4>
+            
+            {state.connections.length > 0 ? (
+              <div className="space-y-3">
+                {state.connections.map((connection) => (
+                  <div key={connection.name} className="p-3 bg-gray-700/30 rounded border border-gray-600/20">
+                    <h5 className="font-medium text-gray-200 text-sm mb-2">{connection.name}</h5>
+                    
+                    <div className="space-y-2">
+                      {/* Audio Source Dropdown */}
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">Audio Source</label>
+                        <Select 
+                          value={state.connectionSelections[connection.name]?.audioSource || ''}
+                          onValueChange={(value) => handleSelectionChange(connection.name, 'audioSource', value)}
+                        >
+                          <SelectTrigger className="text-xs">
+                            <SelectValue placeholder="Select audio source" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="">No audio source</SelectItem>
+                            {getMockAudioSources(connection.name).map((source) => (
+                              <SelectItem key={source} value={source}>
+                                {source}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      {/* Main Scene Dropdown */}
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">Main Scene</label>
+                        <Select 
+                          value={state.connectionSelections[connection.name]?.mainScene || ''}
+                          onValueChange={(value) => handleSelectionChange(connection.name, 'mainScene', value)}
+                        >
+                          <SelectTrigger className="text-xs">
+                            <SelectValue placeholder="Select main scene" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="">No scene selected</SelectItem>
+                            {getMockScenes(connection.name).map((scene) => (
+                              <SelectItem key={scene} value={scene}>
+                                {scene}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      {/* Break Scene Dropdown */}
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">Break Scene</label>
+                        <Select 
+                          value={state.connectionSelections[connection.name]?.breakScene || ''}
+                          onValueChange={(value) => handleSelectionChange(connection.name, 'breakScene', value)}
+                        >
+                          <SelectTrigger className="text-xs">
+                            <SelectValue placeholder="Select break scene" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="">No scene selected</SelectItem>
+                            {getMockScenes(connection.name).map((scene) => (
+                              <SelectItem key={scene} value={scene}>
+                                {scene}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-400 text-center py-4">
+                Add and connect OBS connections to configure bulk operations
+              </p>
+            )}
+          </div>
+          
+          {/* Column 2: Bulk Operation Buttons */}
+          <div className="space-y-4">
+            <h4 className="font-medium text-gray-200 text-sm">Bulk Actions</h4>
+            
+            <div className="space-y-3">
+              <Button 
+                disabled={state.connections.length === 0} 
+                variant="outline"
+                className="w-full justify-start"
+              >
+                🔇 Mute All OBS Audio
+              </Button>
+              <Button 
+                disabled={state.connections.length === 0} 
+                variant="outline"
+                className="w-full justify-start"
+              >
+                🔊 Unmute All OBS Audio
+              </Button>
+              <Button 
+                disabled={state.connections.length === 0} 
+                variant="outline"
+                className="w-full justify-start"
+              >
+                🎬 Change All Scenes
+              </Button>
+              <Button 
+                disabled={state.connections.length === 0} 
+                variant="outline"
+                className="w-full justify-start"
+              >
+                📺 Start All OBS Streaming
+              </Button>
+              <Button 
+                disabled={state.connections.length === 0} 
+                variant="outline"
+                className="w-full justify-start"
+              >
+                ⏹️ Stop All OBS Streaming
+              </Button>
+            </div>
+            
+            {state.connections.length === 0 && (
+              <p className="text-sm text-gray-400 text-center py-4">
+                Add and connect OBS connections to enable bulk operations
+              </p>
+            )}
+          </div>
         </div>
-        {state.connections.length === 0 && (
-          <p className="text-sm text-gray-400 mt-3 text-center">
-                         Add and connect OBS connections to enable bulk operations
-          </p>
-        )}
       </div>
 
       {/* Messages */}
