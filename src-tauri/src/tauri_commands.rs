@@ -224,12 +224,16 @@ pub async fn obs_get_connection_status(
 
 #[tauri::command]
 pub async fn obs_get_connections(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
-    log::info!("OBS get connections called");
+    log::info!("🔍 OBS get connections called");
     
     let connections = app.config_manager().get_obs_connections().await;
+    log::info!("🔍 Found {} connections in config", connections.len());
+    
     let mut connection_details = Vec::new();
     
     for conn in connections {
+        log::info!("🔍 Processing connection: name='{}', host='{}', port={}", conn.name, conn.host, conn.port);
+        
         // Get actual status from OBS plugin if available
         let status_str = if let Ok(status) = app.obs_plugin().get_connection_status(&conn.name).await {
             match status {
@@ -244,7 +248,7 @@ pub async fn obs_get_connections(app: State<'_, Arc<App>>) -> Result<serde_json:
             "Disconnected"
         };
         
-        connection_details.push(serde_json::json!({
+        let connection_json = serde_json::json!({
             "name": conn.name,
             "host": conn.host,
             "port": conn.port,
@@ -252,7 +256,10 @@ pub async fn obs_get_connections(app: State<'_, Arc<App>>) -> Result<serde_json:
             "protocol_version": conn.protocol_version,
             "enabled": conn.enabled,
             "status": status_str
-        }));
+        });
+        
+        log::info!("🔍 Adding connection to response: {}", serde_json::to_string(&connection_json).unwrap_or_default());
+        connection_details.push(connection_json);
     }
     
     Ok(serde_json::json!({
@@ -263,7 +270,15 @@ pub async fn obs_get_connections(app: State<'_, Arc<App>>) -> Result<serde_json:
 
 #[tauri::command]
 pub async fn obs_disconnect(connection_name: String, app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
-    log::info!("OBS disconnect called for connection: {}", connection_name);
+    log::info!("🔍 OBS disconnect called for connection: '{}'", connection_name);
+    log::info!("🔍 Connection name length: {}", connection_name.len());
+    log::info!("🔍 Connection name is empty: {}", connection_name.is_empty());
+    
+    if connection_name.is_empty() {
+        log::error!("🔍 ERROR: Connection name is empty!");
+        return Err(TauriError::from(anyhow::anyhow!("Connection name cannot be empty")));
+    }
+    
     app.obs_plugin().disconnect_obs(&connection_name).await.map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
     Ok(serde_json::json!({
         "success": true,
