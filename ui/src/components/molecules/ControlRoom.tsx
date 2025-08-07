@@ -45,6 +45,7 @@ interface ControlRoomState {
   connectionSelections: Record<string, ConnectionSelections>;
   audioSources: Record<string, string[]>; // connection name -> audio sources
   scenes: Record<string, string[]>; // connection name -> scenes
+  loadingData: Record<string, boolean>; // connection name -> loading state
 }
 
 const ControlRoom: React.FC = () => {
@@ -74,7 +75,8 @@ const ControlRoom: React.FC = () => {
     // Initialize new state
     connectionSelections: {},
     audioSources: {},
-    scenes: {}
+    scenes: {},
+    loadingData: {}
   });
 
   const [error, setError] = useState<string | null>(null);
@@ -529,14 +531,115 @@ const ControlRoom: React.FC = () => {
     }));
   };
 
-  // Mock data for audio sources and scenes (will be replaced with real OBS API calls)
-  const getMockAudioSources = (connectionName: string): string[] => {
-    return ['Desktop Audio', 'Microphone', 'System Audio', 'Game Audio'];
+  // Fetch real audio sources from OBS connection
+  const getAudioSources = async (connectionName: string): Promise<string[]> => {
+    if (!state.sessionId) return [];
+    
+    try {
+      const result = await invoke('control_room_get_audio_sources', {
+        sessionId: state.sessionId,
+        obsName: connectionName
+      });
+
+      if (result && typeof result === 'object' && 'success' in result) {
+        const response = result as { success: boolean; sources?: string[]; error?: string };
+        if (response.success && response.sources) {
+          return response.sources;
+        }
+      }
+    } catch (err) {
+      console.error('Failed to get audio sources for', connectionName, ':', err);
+    }
+    
+    return [];
   };
 
-  const getMockScenes = (connectionName: string): string[] => {
-    return ['Main Scene', 'Break Scene', 'Intro Scene', 'Outro Scene', 'Game Scene'];
+  // Fetch real scenes from OBS connection
+  const getScenes = async (connectionName: string): Promise<string[]> => {
+    if (!state.sessionId) return [];
+    
+    try {
+      const result = await invoke('control_room_get_scenes', {
+        sessionId: state.sessionId,
+        obsName: connectionName
+      });
+
+      if (result && typeof result === 'object' && 'success' in result) {
+        const response = result as { success: boolean; scenes?: string[]; error?: string };
+        if (response.success && response.scenes) {
+          return response.scenes;
+        }
+      }
+    } catch (err) {
+      console.error('Failed to get scenes for', connectionName, ':', err);
+    }
+    
+    return [];
   };
+
+  // Load audio sources and scenes for a connection
+  const loadConnectionData = async (connectionName: string) => {
+    if (!state.sessionId) return;
+    
+    // Set loading state
+    setState(prev => ({
+      ...prev,
+      loadingData: {
+        ...prev.loadingData,
+        [connectionName]: true
+      }
+    }));
+    
+    try {
+      const [audioSources, scenes] = await Promise.all([
+        getAudioSources(connectionName),
+        getScenes(connectionName)
+      ]);
+      
+      setState(prev => ({
+        ...prev,
+        audioSources: {
+          ...prev.audioSources,
+          [connectionName]: audioSources
+        },
+        scenes: {
+          ...prev.scenes,
+          [connectionName]: scenes
+        },
+        loadingData: {
+          ...prev.loadingData,
+          [connectionName]: false
+        }
+      }));
+    } catch (err) {
+      console.error('Failed to load connection data for', connectionName, ':', err);
+      setState(prev => ({
+        ...prev,
+        loadingData: {
+          ...prev.loadingData,
+          [connectionName]: false
+        }
+      }));
+    }
+  };
+
+  // Load data for all connected OBS instances
+  const loadAllConnectionData = async () => {
+    if (!state.sessionId) return;
+    
+    const connectedConnections = state.connections.filter(conn => conn.status === 'Connected');
+    
+    for (const connection of connectedConnections) {
+      await loadConnectionData(connection.name);
+    }
+  };
+
+  // Load connection data when connections change
+  useEffect(() => {
+    if (state.sessionId && state.connections.length > 0) {
+      loadAllConnectionData();
+    }
+  }, [state.sessionId, state.connections]);
 
   if (!state.isAuthenticated) {
     return (
@@ -856,68 +959,99 @@ const ControlRoom: React.FC = () => {
         
         <div className="grid grid-cols-2 gap-6">
           {/* Column 1: Dropdowns */}
-          <div className="space-y-4">
-            <h4 className="font-medium text-gray-200 text-sm">Connection Settings</h4>
+                     <div className="space-y-4">
+             <div className="flex items-center justify-between">
+               <h4 className="font-medium text-gray-200 text-sm">Connection Settings</h4>
+               <Button
+                 size="sm"
+                 variant="outline"
+                 onClick={loadAllConnectionData}
+                 disabled={state.isLoading}
+                 className="text-xs px-2 py-1"
+               >
+                 🔄 Refresh All
+               </Button>
+             </div>
             
             {state.connections.length > 0 ? (
               <div className="space-y-3">
                 {state.connections.map((connection) => (
                   <div key={connection.name} className="p-3 bg-gray-700/30 rounded border border-gray-600/20">
-                    <h5 className="font-medium text-gray-200 text-sm mb-2">{connection.name}</h5>
+                                         <div className="flex items-center justify-between mb-2">
+                       <h5 className="font-medium text-gray-200 text-sm">{connection.name}</h5>
+                       <Button
+                         size="sm"
+                         variant="outline"
+                         onClick={() => loadConnectionData(connection.name)}
+                         disabled={state.loadingData[connection.name] || state.isLoading}
+                         className="text-xs px-2 py-1"
+                       >
+                         {state.loadingData[connection.name] ? 'Loading...' : '🔄'}
+                       </Button>
+                     </div>
                     
                                          <div className="grid grid-cols-3 gap-2">
                        {/* Audio Source Dropdown */}
                        <div>
                          <label htmlFor={`audio-source-${connection.name}`} className="block text-xs text-gray-400 mb-1">Audio</label>
-                         <select 
-                           id={`audio-source-${connection.name}`}
-                           value={state.connectionSelections[connection.name]?.audioSource || ''}
-                           onChange={(e) => handleSelectionChange(connection.name, 'audioSource', e.target.value)}
-                           className="w-full px-2 py-1 text-xs bg-gray-700 border border-gray-600 rounded-md text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                         >
-                           <option value="">None</option>
-                           {getMockAudioSources(connection.name).map((source) => (
-                             <option key={source} value={source}>
-                               {source}
-                             </option>
-                           ))}
-                         </select>
+                                                   <select 
+                            id={`audio-source-${connection.name}`}
+                            value={state.connectionSelections[connection.name]?.audioSource || ''}
+                            onChange={(e) => handleSelectionChange(connection.name, 'audioSource', e.target.value)}
+                            disabled={state.loadingData[connection.name]}
+                            className="w-full px-2 py-1 text-xs bg-gray-700 border border-gray-600 rounded-md text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+                          >
+                            <option value="">
+                              {state.loadingData[connection.name] ? 'Loading...' : 'None'}
+                            </option>
+                            {(state.audioSources[connection.name] || []).map((source) => (
+                              <option key={source} value={source}>
+                                {source}
+                              </option>
+                            ))}
+                          </select>
                        </div>
                        
                        {/* Main Scene Dropdown */}
                        <div>
                          <label htmlFor={`main-scene-${connection.name}`} className="block text-xs text-gray-400 mb-1">Main</label>
-                         <select 
-                           id={`main-scene-${connection.name}`}
-                           value={state.connectionSelections[connection.name]?.mainScene || ''}
-                           onChange={(e) => handleSelectionChange(connection.name, 'mainScene', e.target.value)}
-                           className="w-full px-2 py-1 text-xs bg-gray-700 border border-gray-600 rounded-md text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                         >
-                           <option value="">None</option>
-                           {getMockScenes(connection.name).map((scene) => (
-                             <option key={scene} value={scene}>
-                               {scene}
-                             </option>
-                           ))}
-                         </select>
+                                                   <select 
+                            id={`main-scene-${connection.name}`}
+                            value={state.connectionSelections[connection.name]?.mainScene || ''}
+                            onChange={(e) => handleSelectionChange(connection.name, 'mainScene', e.target.value)}
+                            disabled={state.loadingData[connection.name]}
+                            className="w-full px-2 py-1 text-xs bg-gray-700 border border-gray-600 rounded-md text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+                          >
+                            <option value="">
+                              {state.loadingData[connection.name] ? 'Loading...' : 'None'}
+                            </option>
+                            {(state.scenes[connection.name] || []).map((scene) => (
+                              <option key={scene} value={scene}>
+                                {scene}
+                              </option>
+                            ))}
+                          </select>
                        </div>
                        
                        {/* Break Scene Dropdown */}
                        <div>
                          <label htmlFor={`break-scene-${connection.name}`} className="block text-xs text-gray-400 mb-1">Break</label>
-                         <select 
-                           id={`break-scene-${connection.name}`}
-                           value={state.connectionSelections[connection.name]?.breakScene || ''}
-                           onChange={(e) => handleSelectionChange(connection.name, 'breakScene', e.target.value)}
-                           className="w-full px-2 py-1 text-xs bg-gray-700 border border-gray-600 rounded-md text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                         >
-                           <option value="">None</option>
-                           {getMockScenes(connection.name).map((scene) => (
-                             <option key={scene} value={scene}>
-                               {scene}
-                             </option>
-                           ))}
-                         </select>
+                                                   <select 
+                            id={`break-scene-${connection.name}`}
+                            value={state.connectionSelections[connection.name]?.breakScene || ''}
+                            onChange={(e) => handleSelectionChange(connection.name, 'breakScene', e.target.value)}
+                            disabled={state.loadingData[connection.name]}
+                            className="w-full px-2 py-1 text-xs bg-gray-700 border border-gray-600 rounded-md text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+                          >
+                            <option value="">
+                              {state.loadingData[connection.name] ? 'Loading...' : 'None'}
+                            </option>
+                            {(state.scenes[connection.name] || []).map((scene) => (
+                              <option key={scene} value={scene}>
+                                {scene}
+                              </option>
+                            ))}
+                          </select>
                        </div>
                      </div>
                   </div>

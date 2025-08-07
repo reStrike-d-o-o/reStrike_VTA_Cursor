@@ -7038,24 +7038,46 @@ pub async fn control_room_disconnect_all_obs(
     }
 }
 
-/// Get audio sources for a STR connection
+/// Get audio sources for a Control Room OBS connection
 #[tauri::command]
 pub async fn control_room_get_audio_sources(
     session_id: String,
-    str_name: String,
+    obs_name: String,
     app: State<'_, Arc<App>>
 ) -> Result<serde_json::Value, TauriError> {
-    log::debug!("Control Room: Getting audio sources for STR '{}' session {}", str_name, session_id);
+    log::debug!("Control Room: Getting audio sources for OBS '{}' session {}", obs_name, session_id);
     // TODO: Validate session
     
-    match app.obs_plugin().control_room_get_audio_sources(&str_name).await {
+    match app.obs_plugin().streaming().get_audio_sources(&obs_name).await {
         Ok(sources) => Ok(serde_json::json!({
             "success": true,
             "sources": sources
         })),
         Err(e) => {
-            log::error!("Failed to get audio sources for STR '{}': {}", str_name, e);
+            log::error!("Failed to get audio sources for OBS '{}': {}", obs_name, e);
             Err(TauriError::from(anyhow::anyhow!("Failed to get audio sources: {}", e)))
+        }
+    }
+}
+
+/// Get scenes for a Control Room OBS connection
+#[tauri::command]
+pub async fn control_room_get_scenes(
+    session_id: String,
+    obs_name: String,
+    app: State<'_, Arc<App>>
+) -> Result<serde_json::Value, TauriError> {
+    log::debug!("Control Room: Getting scenes for OBS '{}' session {}", obs_name, session_id);
+    // TODO: Validate session
+    
+    match app.obs_plugin().scenes().get_scenes(&obs_name).await {
+        Ok(scenes) => Ok(serde_json::json!({
+            "success": true,
+            "scenes": scenes
+        })),
+        Err(e) => {
+            log::error!("Failed to get scenes for OBS '{}': {}", obs_name, e);
+            Err(TauriError::from(anyhow::anyhow!("Failed to get scenes: {}", e)))
         }
     }
 }

@@ -131,7 +131,8 @@ async fn main() -> AppResult<()> {
             // tauri_commands::control_room_change_all_obs_scenes,
             // tauri_commands::control_room_start_all_obs,
             // tauri_commands::control_room_stop_all_obs,
-            // tauri_commands::control_room_get_audio_sources,
+            tauri_commands::control_room_get_audio_sources,
+            tauri_commands::control_room_get_scenes,
             
             // YouTube Streaming Management Commands
             tauri_commands::obs_get_youtube_accounts,
