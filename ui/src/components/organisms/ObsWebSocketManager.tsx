@@ -59,13 +59,13 @@ const ObsWebSocketManager: React.FC = () => {
           if (result && result.success && result.data && Array.isArray(result.data.connections)) {
             console.log('Database connections:', result.data.connections);
             const formattedConnections: ObsConnection[] = result.data.connections.map((conn: any) => {
-              // Map database status to frontend status
+              // Map database status to frontend status (backend returns capitalized status)
               let frontendStatus: ObsConnection['status'] = 'disconnected';
-              if (conn.status === 'connected' || conn.status === 'authenticated') {
+              if (conn.status === 'Connected' || conn.status === 'Authenticated') {
                 frontendStatus = 'connected';
-              } else if (conn.status === 'connecting' || conn.status === 'authenticating') {
+              } else if (conn.status === 'Connecting' || conn.status === 'Authenticating') {
                 frontendStatus = 'connecting';
-              } else if (conn.status === 'error') {
+              } else if (conn.status === 'Error') {
                 frontendStatus = 'error';
               } else {
                 frontendStatus = 'disconnected';
@@ -306,13 +306,13 @@ const ObsWebSocketManager: React.FC = () => {
         if (result && result.success && result.data && Array.isArray(result.data.connections)) {
           console.log('Refreshed database connections:', result.data.connections);
           const formattedConnections: ObsConnection[] = result.data.connections.map((conn: any) => {
-            // Map database status to frontend status
+            // Map database status to frontend status (backend returns capitalized status)
             let frontendStatus: ObsConnection['status'] = 'disconnected';
-            if (conn.status === 'connected' || conn.status === 'authenticated') {
+            if (conn.status === 'Connected' || conn.status === 'Authenticated') {
               frontendStatus = 'connected';
-            } else if (conn.status === 'connecting' || conn.status === 'authenticating') {
+            } else if (conn.status === 'Connecting' || conn.status === 'Authenticating') {
               frontendStatus = 'connecting';
-            } else if (conn.status === 'error') {
+            } else if (conn.status === 'Error') {
               frontendStatus = 'error';
             } else {
               frontendStatus = 'disconnected';
