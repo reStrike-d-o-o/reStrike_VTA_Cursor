@@ -167,6 +167,46 @@ async fn main() -> AppResult<()> {
             tauri_commands::obs_get_event_routes,
             tauri_commands::obs_command,
             tauri_commands::obs_add_connection,
+            
+            // OBS obws commands - New obws-based implementation
+            #[cfg(feature = "obs-obws")]
+            tauri_commands_obws::obs_obws_add_connection,
+            #[cfg(feature = "obs-obws")]
+            tauri_commands_obws::obs_obws_connect,
+            #[cfg(feature = "obs-obws")]
+            tauri_commands_obws::obs_obws_disconnect,
+            #[cfg(feature = "obs-obws")]
+            tauri_commands_obws::obs_obws_get_connection_status,
+            #[cfg(feature = "obs-obws")]
+            tauri_commands_obws::obs_obws_get_connections,
+            #[cfg(feature = "obs-obws")]
+            tauri_commands_obws::obs_obws_remove_connection,
+            #[cfg(feature = "obs-obws")]
+            tauri_commands_obws::obs_obws_get_status,
+            #[cfg(feature = "obs-obws")]
+            tauri_commands_obws::obs_obws_start_recording,
+            #[cfg(feature = "obs-obws")]
+            tauri_commands_obws::obs_obws_stop_recording,
+            #[cfg(feature = "obs-obws")]
+            tauri_commands_obws::obs_obws_get_recording_status,
+            #[cfg(feature = "obs-obws")]
+            tauri_commands_obws::obs_obws_start_streaming,
+            #[cfg(feature = "obs-obws")]
+            tauri_commands_obws::obs_obws_stop_streaming,
+            #[cfg(feature = "obs-obws")]
+            tauri_commands_obws::obs_obws_get_streaming_status,
+            #[cfg(feature = "obs-obws")]
+            tauri_commands_obws::obs_obws_get_current_scene,
+            #[cfg(feature = "obs-obws")]
+            tauri_commands_obws::obs_obws_set_current_scene,
+            #[cfg(feature = "obs-obws")]
+            tauri_commands_obws::obs_obws_get_scenes,
+            #[cfg(feature = "obs-obws")]
+            tauri_commands_obws::obs_obws_get_version,
+            #[cfg(feature = "obs-obws")]
+            tauri_commands_obws::obs_obws_get_stats,
+            #[cfg(feature = "obs-obws")]
+            tauri_commands_obws::obs_obws_test_connection,
             tauri_commands::obs_connect_to_connection,
             tauri_commands::obs_get_connection_status,
             tauri_commands::obs_get_connections,
