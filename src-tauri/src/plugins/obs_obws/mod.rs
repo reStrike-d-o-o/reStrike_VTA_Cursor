@@ -10,11 +10,10 @@ pub mod operations;
 pub mod test_implementation;
 
 use crate::types::AppResult;
-use manager::ObsManager;
 
 // Re-export main types for easier access
 pub use client::ObsClient;
-pub use manager::ObsManager;
+pub use manager::ObsManager;  // Re-export ObsManager for external use
 pub use types::*;
 
 /// Global OBS manager instance
