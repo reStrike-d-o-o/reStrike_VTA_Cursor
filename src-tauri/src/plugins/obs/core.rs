@@ -205,8 +205,18 @@ impl ObsCorePlugin {
                 // Close the WebSocket if it exists
                 if let Some(ws_stream) = connection.websocket.take() {
                     log::info!("🔍 [OBS_CORE] Closing WebSocket stream for '{}'", connection_name);
-                    // Explicitly close the WebSocket by dropping the stream
-                    drop(ws_stream);
+                    // Split the stream to send close frame
+                    let (mut ws_write, _ws_read) = ws_stream.split();
+                    
+                    // Send a proper WebSocket close frame to OBS
+                    if let Err(e) = ws_write.send(Message::Close(None)).await {
+                        log::warn!("🔍 [OBS_CORE] Failed to send close frame for '{}': {}", connection_name, e);
+                    } else {
+                        log::info!("🔍 [OBS_CORE] Successfully sent close frame for '{}'", connection_name);
+                    }
+                    
+                    // The WebSocket will be properly closed when the write stream is dropped
+                    drop(ws_write);
                 }
                 
                 log::info!("🔍 [OBS_CORE] Successfully cleared connection '{}' state", connection_name);
@@ -215,8 +225,8 @@ impl ObsCorePlugin {
             }
         } // lock is dropped here
         
-        // Give the WebSocket task a moment to terminate
-        tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+        // Give the WebSocket task a moment to terminate, but don't wait too long
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
         
         log::info!("🔍 [OBS_CORE] Disconnected from OBS '{}' successfully", connection_name);
         Ok(())
@@ -388,6 +398,20 @@ impl ObsCorePlugin {
                     
                     // Handle incoming messages
                     while let Some(msg_result) = ws_read.next().await {
+                        // Check if connection is still supposed to be connected (check more frequently)
+                        {
+                            let conns = connections.lock().await;
+                            if let Some(conn) = conns.get(&connection_name) {
+                                if conn.status == ObsConnectionStatus::Disconnected {
+                                    log::info!("🔍 [WS_TASK] Connection '{}' is marked as disconnected during message loop, terminating task", connection_name);
+                                    break;
+                                }
+                            } else {
+                                log::info!("🔍 [WS_TASK] Connection '{}' not found during message loop, terminating task", connection_name);
+                                break;
+                            }
+                        }
+                        
                         // Log all incoming messages if debug_ws_messages is enabled
                         let flag = debug_ws_messages.lock().await;
                         if *flag {
