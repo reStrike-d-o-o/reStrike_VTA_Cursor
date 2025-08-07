@@ -6,7 +6,7 @@ use crate::database::AsyncDatabaseConnection;
 use crate::types::AppResult;
 use crate::plugins::obs::core::ObsCorePlugin;
 
-/// Connection configuration for a Control Room STR instance
+/// Connection configuration for a Control Room OBS instance
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ControlRoomConnection {
     pub name: String,
@@ -363,8 +363,8 @@ impl AsyncControlRoomManager {
         Ok(())
     }
 
-    /// Connect to a STR instance
-    pub async fn connect_str(&self, name: &str) -> AppResult<()> {
+    /// Connect to an OBS instance
+    pub async fn connect_obs(&self, name: &str) -> AppResult<()> {
         if !self.is_authenticated().await {
             return Err(crate::types::AppError::SecurityError("Not authenticated".to_string()));
         }
@@ -401,12 +401,12 @@ impl AsyncControlRoomManager {
             
             Ok(())
         } else {
-            Err(crate::types::AppError::ConfigError(format!("STR connection '{}' not found", name)))
+            Err(crate::types::AppError::ConfigError(format!("OBS connection '{}' not found", name)))
         }
     }
 
-    /// Disconnect from a STR instance
-    pub async fn disconnect_str(&self, name: &str) -> AppResult<()> {
+    /// Disconnect from an OBS instance
+    pub async fn disconnect_obs(&self, name: &str) -> AppResult<()> {
         if !self.is_authenticated().await {
             return Err(crate::types::AppError::SecurityError("Not authenticated".to_string()));
         }
@@ -424,22 +424,22 @@ impl AsyncControlRoomManager {
             
             Ok(())
         } else {
-            Err(crate::types::AppError::ConfigError(format!("STR connection '{}' not found", name)))
+            Err(crate::types::AppError::ConfigError(format!("OBS connection '{}' not found", name)))
         }
     }
 
-    /// Get the OBS connection name for a STR instance
-    pub async fn get_obs_connection_name(&self, str_name: &str) -> AppResult<String> {
+    /// Get the OBS connection name for an OBS instance
+    pub async fn get_obs_connection_name(&self, obs_name: &str) -> AppResult<String> {
         let connections = self.connections.lock().await;
         
-        if let Some(instance) = connections.get(str_name) {
+        if let Some(instance) = connections.get(obs_name) {
             if let Some(obs_name) = &instance.obs_connection_name {
                 Ok(obs_name.clone())
             } else {
-                Err(crate::types::AppError::ConfigError(format!("STR '{}' is not connected", str_name)))
+                Err(crate::types::AppError::ConfigError(format!("OBS '{}' is not connected", obs_name)))
             }
         } else {
-            Err(crate::types::AppError::ConfigError(format!("STR connection '{}' not found", str_name)))
+            Err(crate::types::AppError::ConfigError(format!("OBS connection '{}' not found", obs_name)))
         }
     }
 
