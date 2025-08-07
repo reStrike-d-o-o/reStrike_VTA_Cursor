@@ -173,7 +173,7 @@ pub async fn obs_add_connection(
 
 #[tauri::command]
 pub async fn obs_connect_to_connection(
-    connection_name: String,
+    #[serde(rename = "connectionName")] connection_name: String,
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("OBS connect to connection called: {}", connection_name);
@@ -192,7 +192,7 @@ pub async fn obs_connect_to_connection(
 
 #[tauri::command]
 pub async fn obs_get_connection_status(
-    connection_name: String,
+    #[serde(rename = "connectionName")] connection_name: String,
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("OBS get connection status called: {}", connection_name);
@@ -262,7 +262,7 @@ pub async fn obs_get_connections(app: State<'_, Arc<App>>) -> Result<serde_json:
 }
 
 #[tauri::command]
-pub async fn obs_disconnect(connection_name: String, app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn obs_disconnect(#[serde(rename = "connectionName")] connection_name: String, app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("OBS disconnect called for connection: {}", connection_name);
     app.obs_plugin().disconnect_obs(&connection_name).await.map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
     Ok(serde_json::json!({
@@ -272,7 +272,7 @@ pub async fn obs_disconnect(connection_name: String, app: State<'_, Arc<App>>) -
 }
 
 #[tauri::command]
-pub async fn obs_remove_connection(connection_name: String, app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn obs_remove_connection(#[serde(rename = "connectionName")] connection_name: String, app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("OBS remove connection called for connection: {}", connection_name);
     
     // Remove from OBS plugin
@@ -2071,7 +2071,7 @@ pub async fn get_live_data(subsystem: String, app: State<'_, Arc<App>>) -> Resul
 }
 
 #[tauri::command]
-pub async fn obs_get_debug_info(connection_name: String, app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn obs_get_debug_info(#[serde(rename = "connectionName")] connection_name: String, app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting OBS debug info for connection: {}", connection_name);
     
     match app.obs_plugin().get_latest_events(&connection_name).await {
