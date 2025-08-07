@@ -109,6 +109,7 @@ impl ObsCorePlugin {
             let mut connections = self.context.connections.lock().await;
             if let Some(connection) = connections.get_mut(connection_name) {
                 connection.status = ObsConnectionStatus::Connecting;
+                connection.is_connected = false;
             }
         }
 
@@ -123,15 +124,30 @@ impl ObsCorePlugin {
         log::info!("[OBS_CORE] Connecting to OBS WebSocket at {}", ws_url);
 
         // Connect to WebSocket
-        let (ws_stream, _) = tokio_tungstenite::connect_async(&ws_url)
-            .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to connect to OBS WebSocket: {}", e)))?;
-
-        log::info!("[OBS_CORE] WebSocket connection established for '{}'", connection_name);
+        let (ws_stream, _response) = match tokio_tungstenite::connect_async(&ws_url).await {
+            Ok((stream, response)) => {
+                log::info!("[OBS_CORE] WebSocket connection established for '{}'", connection_name);
+                (stream, response)
+            }
+            Err(e) => {
+                // Update status to error
+                {
+                    let mut connections = self.context.connections.lock().await;
+                    if let Some(connection) = connections.get_mut(connection_name) {
+                        connection.status = ObsConnectionStatus::Error(e.to_string());
+                        connection.is_connected = false;
+                    }
+                }
+                return Err(AppError::ConfigError(format!("Failed to connect to OBS WebSocket: {}", e)));
+            }
+        };
 
         // Authenticate if needed
         let authenticated_stream = match self.authenticate_v5(connection_name, ws_stream).await {
-            Ok(stream) => stream,
+            Ok(stream) => {
+                log::info!("[OBS_CORE] Authentication successful for '{}'", connection_name);
+                stream
+            }
             Err(e) => {
                 // Set connection status to error and mark as disconnected
                 {
@@ -145,11 +161,13 @@ impl ObsCorePlugin {
             }
         };
 
-        // Store the authenticated WebSocket stream
+        // Store the authenticated WebSocket stream and update status
         {
             let mut connections = self.context.connections.lock().await;
             if let Some(connection) = connections.get_mut(connection_name) {
                 connection.websocket = Some(authenticated_stream);
+                connection.status = ObsConnectionStatus::Authenticated;
+                connection.is_connected = true;
             }
         }
 
@@ -164,19 +182,33 @@ impl ObsCorePlugin {
     pub async fn disconnect_obs(&self, connection_name: &str) -> AppResult<()> {
         log::info!("🔍 [OBS_CORE] disconnect_obs called for '{}'", connection_name);
         
-        // Simple approach: just clear the connection state without trying to close the WebSocket
-        // The WebSocket task will naturally terminate when it can't get the stream
+        // Get the connection and properly close the WebSocket
         {
             let mut connections = self.context.connections.lock().await;
             if let Some(connection) = connections.get_mut(connection_name) {
-                log::info!("🔍 [OBS_CORE] Found connection '{}', clearing WebSocket...", connection_name);
+                log::info!("🔍 [OBS_CORE] Found connection '{}', closing WebSocket...", connection_name);
                 
-                // Clear the WebSocket to terminate the task
-                connection.websocket = None;
-                connection.pending_requests.clear();
-                connection.heartbeat_data = None;
+                // Update status to disconnecting
                 connection.status = ObsConnectionStatus::Disconnected;
                 connection.is_connected = false;
+                
+                // Send status change event to frontend
+                let _ = self.context.event_tx.send(ObsEvent::ConnectionStatusChanged {
+                    connection_name: connection_name.to_string(),
+                    status: ObsConnectionStatus::Disconnected,
+                });
+                
+                // Clear pending requests
+                connection.pending_requests.clear();
+                connection.heartbeat_data = None;
+                
+                // Close the WebSocket if it exists
+                if let Some(ws_stream) = connection.websocket.take() {
+                    log::info!("🔍 [OBS_CORE] Closing WebSocket stream for '{}'", connection_name);
+                    // Explicitly close the WebSocket by dropping the stream
+                    drop(ws_stream);
+                }
+                
                 log::info!("🔍 [OBS_CORE] Successfully cleared connection '{}' state", connection_name);
             } else {
                 log::warn!("🔍 [OBS_CORE] Connection '{}' not found in connections map", connection_name);
@@ -184,7 +216,7 @@ impl ObsCorePlugin {
         } // lock is dropped here
         
         // Give the WebSocket task a moment to terminate
-        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        tokio::time::sleep(std::time::Duration::from_millis(200)).await;
         
         log::info!("🔍 [OBS_CORE] Disconnected from OBS '{}' successfully", connection_name);
         Ok(())
@@ -316,13 +348,7 @@ impl ObsCorePlugin {
         }
     }
 
-    /// Take pending request sender from an already-acquired connection (deadlock-safe)
-    fn take_pending_request_sender_from_connection(
-        connection: &mut ObsConnection,
-        request_id: &str,
-    ) -> Option<tokio::sync::oneshot::Sender<serde_json::Value>> {
-        connection.pending_requests.remove(request_id)
-    }
+
 
     /// Spawn WebSocket task for a connection
     async fn spawn_ws_task(&self, connection_name: String) {
@@ -337,6 +363,20 @@ impl ObsCorePlugin {
             log::info!("🔍 [WS_TASK] Starting WebSocket task for '{}'", connection_name);
             
             loop {
+                // Check if connection is still supposed to be connected
+                {
+                    let conns = connections.lock().await;
+                    if let Some(conn) = conns.get(&connection_name) {
+                        if conn.status == ObsConnectionStatus::Disconnected {
+                            log::info!("🔍 [WS_TASK] Connection '{}' is marked as disconnected, terminating task", connection_name);
+                            break;
+                        }
+                    } else {
+                        log::info!("🔍 [WS_TASK] Connection '{}' not found, terminating task", connection_name);
+                        break;
+                    }
+                }
+                
                 let ws_stream_opt = {
                     let mut conns = connections.lock().await;
                     conns.get_mut(&connection_name)
@@ -400,30 +440,12 @@ impl ObsCorePlugin {
                                             let should_show_event = *show_full || 
                                                 event_type == "RecordStateChanged" || 
                                                 event_type == "StreamStateChanged" ||
-                                                event_type == "ReplayBufferStateChanged";
+                                                event_type == "CurrentProgramSceneChanged" ||
+                                                event_type == "ReplayBufferStateChanged" ||
+                                                event_type == "Heartbeat";
                                             
                                             if should_show_event {
-                                                plugin.log_to_file("INFO", &format!("[OBS-EVENT][{}] Event: {} - Data: {}", connection_name, event_type, serde_json::to_string(event_data).unwrap_or_default())).await;
-                                                
-                                                // Emit event to frontend if full events are enabled
-                                                if *show_full {
-                                                    let _ = event_tx.send(ObsEvent::Raw {
-                                                        connection_name: connection_name.clone(),
-                                                        data: event_data.clone(),
-                                                    });
-                                                    
-                                                    // Store event for frontend polling
-                                                    let plugin_clone = plugin.clone();
-                                                    let conn_name = connection_name.clone();
-                                                    let event_type_clone = event_type.to_string();
-                                                    let event_data_clone = event_data.clone();
-                                                    tokio::spawn(async move {
-                                                        plugin_clone.store_recent_event(conn_name, event_type_clone, event_data_clone).await;
-                                                    });
-                                                    
-                                                    // Also log the event for frontend polling
-                                                    plugin.log_to_file("INFO", &format!("[OBS-FRONTEND-EVENT] {}: {}", event_type, serde_json::to_string(&event_data).unwrap_or_default())).await;
-                                                }
+                                                plugin.log_to_file("INFO", &format!("[OBS-FRONTEND-EVENT] {}: {}", event_type, serde_json::to_string(&event_data).unwrap_or_default())).await;
                                             }
                                             match event_type {
                                                 "CurrentProgramSceneChanged" => {
@@ -525,6 +547,7 @@ impl ObsCorePlugin {
                                 }
                             }
                             Ok(Message::Close(_)) => {
+                                log::info!("🔍 [WS_TASK] Received Close message for '{}'", connection_name);
                                 let _ = event_tx.send(ObsEvent::ConnectionStatusChanged {
                                     connection_name: connection_name.clone(),
                                     status: ObsConnectionStatus::Disconnected,
@@ -532,6 +555,7 @@ impl ObsCorePlugin {
                                 break;
                             }
                             Err(e) => {
+                                log::error!("🔍 [WS_TASK] WebSocket error for '{}': {}", connection_name, e);
                                 let _ = event_tx.send(ObsEvent::Error {
                                     connection_name: connection_name.clone(),
                                     error: format!("WebSocket error: {}", e),
@@ -542,8 +566,22 @@ impl ObsCorePlugin {
                         }
                     }
                 } else {
-                    log::info!("🔍 [WS_TASK] No WebSocket stream available for '{}', terminating task", connection_name);
-                    break;
+                    log::info!("🔍 [WS_TASK] No WebSocket stream available for '{}', waiting...", connection_name);
+                    // Small delay to prevent spinning
+                    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+                    continue;
+                }
+            }
+            
+            // Update connection status when task terminates
+            {
+                let mut conns = connections.lock().await;
+                if let Some(conn) = conns.get_mut(&connection_name) {
+                    if conn.status != ObsConnectionStatus::Disconnected {
+                        log::info!("🔍 [WS_TASK] Updating connection status to Disconnected for '{}'", connection_name);
+                        conn.status = ObsConnectionStatus::Disconnected;
+                        conn.is_connected = false;
+                    }
                 }
             }
             
