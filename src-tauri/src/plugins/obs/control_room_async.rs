@@ -520,4 +520,54 @@ impl AsyncControlRoomManager {
 
         Ok(())
     }
+
+    /// Connect all disconnected OBS connections
+    pub async fn connect_all_obs(&self) -> AppResult<Vec<(String, AppResult<()>)>> {
+        if !self.is_authenticated().await {
+            return Err(crate::types::AppError::SecurityError("Not authenticated".to_string()));
+        }
+
+        let mut results = Vec::new();
+        let connections = self.connections.lock().await;
+        let connection_names: Vec<String> = connections
+            .iter()
+            .filter(|(_, instance)| {
+                matches!(instance.status, ControlRoomStatus::Disconnected | ControlRoomStatus::Error(_))
+            })
+            .map(|(name, _)| name.clone())
+            .collect();
+        drop(connections); // Release lock before async operations
+
+        for name in connection_names {
+            let result = self.connect_obs(&name).await;
+            results.push((name, result));
+        }
+
+        Ok(results)
+    }
+
+    /// Disconnect all connected OBS connections
+    pub async fn disconnect_all_obs(&self) -> AppResult<Vec<(String, AppResult<()>)>> {
+        if !self.is_authenticated().await {
+            return Err(crate::types::AppError::SecurityError("Not authenticated".to_string()));
+        }
+
+        let mut results = Vec::new();
+        let connections = self.connections.lock().await;
+        let connection_names: Vec<String> = connections
+            .iter()
+            .filter(|(_, instance)| {
+                matches!(instance.status, ControlRoomStatus::Connected)
+            })
+            .map(|(name, _)| name.clone())
+            .collect();
+        drop(connections); // Release lock before async operations
+
+        for name in connection_names {
+            let result = self.disconnect_obs(&name).await;
+            results.push((name, result));
+        }
+
+        Ok(results)
+    }
 }

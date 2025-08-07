@@ -328,6 +328,26 @@ impl ObsPluginManager {
             Err(crate::types::AppError::ConfigError("Control Room not initialized".to_string()))
         }
     }
+
+    /// Connect all disconnected Control Room OBS connections
+    pub async fn control_room_connect_all_obs(&self) -> AppResult<Vec<(String, AppResult<()>)>> {
+        let manager = self.control_room_manager.lock().await;
+        if let Some(control_room) = manager.as_ref() {
+            control_room.connect_all_obs().await
+        } else {
+            Err(crate::types::AppError::ConfigError("Control Room not initialized".to_string()))
+        }
+    }
+
+    /// Disconnect all connected Control Room OBS connections
+    pub async fn control_room_disconnect_all_obs(&self) -> AppResult<Vec<(String, AppResult<()>)>> {
+        let manager = self.control_room_manager.lock().await;
+        if let Some(control_room) = manager.as_ref() {
+            control_room.disconnect_all_obs().await
+        } else {
+            Err(crate::types::AppError::ConfigError("Control Room not initialized".to_string()))
+        }
+    }
     
     /// Get all Control Room STR connections
     pub async fn control_room_get_obs_connections(&self) -> AppResult<Vec<String>> {
