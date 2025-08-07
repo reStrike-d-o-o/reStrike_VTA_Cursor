@@ -16,6 +16,8 @@ pub mod plugin_protocol_manager;
 pub mod load_balancer;
 pub mod advanced_analytics;
 pub mod obs; // Add modular OBS plugins
+#[cfg(feature = "obs-obws")]
+pub mod obs_obws; // Add new obws-based OBS plugin
 pub mod youtube_api; // Add YouTube API integration
 
 // Add placeholder modules for missing imports

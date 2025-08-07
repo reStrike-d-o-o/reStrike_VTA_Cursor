@@ -3,6 +3,8 @@
 use crate::types::{AppResult, AppState, AppView};
 use crate::plugins::{PlaybackPlugin, UdpPlugin, StorePlugin, LicensePlugin, CpuMonitorPlugin, ProtocolManager, DatabasePlugin, WebSocketPlugin, TournamentPlugin, EventCache, EventStreamProcessor, EventDistributor, AdvancedAnalytics, YouTubeApiPlugin};
 use crate::plugins::obs::ObsPluginManager; // Use new modular OBS plugin system
+#[cfg(feature = "obs-obws")]
+use crate::plugins::obs_obws::manager::ObsManager as ObsObwsManager; // Use new obws-based OBS manager
 use crate::logging::LogManager;
 use crate::config::ConfigManager;
 use std::sync::Arc;
@@ -21,6 +23,8 @@ pub struct App {
     state: Arc<RwLock<AppState>>,
     config_manager: ConfigManager,
     obs_plugin_manager: Arc<ObsPluginManager>, // Use new modular OBS plugin manager
+    #[cfg(feature = "obs-obws")]
+    obs_obws_manager: Arc<ObsObwsManager>, // Use new obws-based OBS manager
     youtube_api_plugin: Arc<Mutex<YouTubeApiPlugin>>, // YouTube API integration
     playback_plugin: PlaybackPlugin,
     udp_plugin: UdpPlugin,
@@ -75,6 +79,11 @@ impl App {
         let obs_plugin_manager = Arc::new(ObsPluginManager::new()
             .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to create OBS plugin manager: {}", e)))?);
         log::info!("✅ OBS plugin manager initialized");
+        
+        #[cfg(feature = "obs-obws")]
+        let obs_obws_manager = Arc::new(ObsObwsManager::new());
+        #[cfg(feature = "obs-obws")]
+        log::info!("✅ OBS obws manager initialized");
         
         let youtube_api_plugin = Arc::new(Mutex::new(YouTubeApiPlugin::new()));
         log::info!("✅ YouTube API plugin initialized");
@@ -151,6 +160,8 @@ impl App {
             state,
             config_manager,
             obs_plugin_manager,
+            #[cfg(feature = "obs-obws")]
+            obs_obws_manager,
             youtube_api_plugin,
             playback_plugin,
             udp_plugin,
@@ -255,6 +266,11 @@ impl App {
     /// Get OBS plugin reference
     pub fn obs_plugin(&self) -> &Arc<ObsPluginManager> {
         &self.obs_plugin_manager
+    }
+    
+    #[cfg(feature = "obs-obws")]
+    pub fn obs_obws_plugin(&self) -> &Arc<ObsObwsManager> {
+        &self.obs_obws_manager
     }
     
     pub fn youtube_api_plugin(&self) -> &Arc<Mutex<YouTubeApiPlugin>> {

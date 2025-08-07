@@ -27,6 +27,7 @@ tokio = { version = "1.0", features = ["full"] }
 tokio-tungstenite = { version = "0.20", features = ["native-tls"] }
 futures-util = "0.3"
 futures = "0.3"
+obws = { version = "0.14.0", features = ["events"], optional = true }
 sqlx = { version = "0.7", features = ["runtime-tokio", "sqlite", "migrate", "chrono", "uuid"] }
 rusqlite = { version = "0.30.0", features = ["bundled"] }
 log = "0.4"
@@ -61,4 +62,7 @@ google-apis-common = "8.0.0"
 tempfile = "3.8"
 
 [features]
-custom-protocol = ["tauri/custom-protocol"] 
+custom-protocol = ["tauri/custom-protocol"]
+obs-legacy = []  # Legacy OBS WebSocket implementation (current)
+obs-obws = ["obws"]  # New obws-based OBS WebSocket implementation
+default = ["obs-legacy"]  # Default to legacy implementation during migration 
