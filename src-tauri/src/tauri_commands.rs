@@ -6487,38 +6487,38 @@ pub async fn control_room_authenticate_async(
     }
 }
 
-/// Get STR connections for Control Room
+/// Get OBS connections for Control Room
 #[tauri::command]
-pub async fn control_room_get_str_connections(
+pub async fn control_room_get_obs_connections(
     session_id: String,
     app: State<'_, Arc<App>>
 ) -> Result<serde_json::Value, TauriError> {
-    log::debug!("Control Room: Getting STR connections for session {}", session_id);
+    log::debug!("Control Room: Getting OBS connections for session {}", session_id);
     // TODO: Validate session
     
-    match app.obs_plugin().control_room_get_str_connections().await {
+    match app.obs_plugin().control_room_get_obs_connections().await {
         Ok(connections) => Ok(serde_json::json!({
             "success": true,
             "connections": connections
         })),
         Err(e) => {
-            log::error!("Failed to get STR connections: {}", e);
-            Err(TauriError::from(anyhow::anyhow!("Failed to get STR connections: {}", e)))
+            log::error!("Failed to get OBS connections: {}", e);
+            Err(TauriError::from(anyhow::anyhow!("Failed to get OBS connections: {}", e)))
         }
     }
 }
 
-/// Bulk mute all STR streams
+/// Bulk mute all OBS streams
 #[tauri::command]
-pub async fn control_room_mute_all_str(
+pub async fn control_room_mute_all_obs(
     session_id: String,
     source_name: String,
     app: State<'_, Arc<App>>
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!("Control Room: Bulk mute all STR with source '{}' for session {}", source_name, session_id);
+    log::info!("Control Room: Bulk mute all OBS with source '{}' for session {}", source_name, session_id);
     // TODO: Validate session
     
-    match app.obs_plugin().control_room_mute_all_str(&source_name).await {
+    match app.obs_plugin().control_room_mute_all_obs(&source_name).await {
         Ok(results) => {
             let formatted_results: Vec<serde_json::Value> = results.into_iter()
                 .map(|(conn, result)| serde_json::json!({
@@ -6540,17 +6540,17 @@ pub async fn control_room_mute_all_str(
     }
 }
 
-/// Bulk unmute all STR streams
+/// Bulk unmute all OBS streams
 #[tauri::command]
-pub async fn control_room_unmute_all_str(
+pub async fn control_room_unmute_all_obs(
     session_id: String,
     source_name: String,
     app: State<'_, Arc<App>>
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!("Control Room: Bulk unmute all STR with source '{}' for session {}", source_name, session_id);
+    log::info!("Control Room: Bulk unmute all OBS with source '{}' for session {}", source_name, session_id);
     // TODO: Validate session
     
-    match app.obs_plugin().control_room_unmute_all_str(&source_name).await {
+    match app.obs_plugin().control_room_unmute_all_obs(&source_name).await {
         Ok(results) => {
             let formatted_results: Vec<serde_json::Value> = results.into_iter()
                 .map(|(conn, result)| serde_json::json!({
@@ -6572,17 +6572,17 @@ pub async fn control_room_unmute_all_str(
     }
 }
 
-/// Change all STR scenes
+/// Change all OBS scenes
 #[tauri::command]
-pub async fn control_room_change_all_scenes(
+pub async fn control_room_change_all_obs_scenes(
     session_id: String,
     scene_name: String,
     app: State<'_, Arc<App>>
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!("Control Room: Change all STR scenes to '{}' for session {}", scene_name, session_id);
+    log::info!("Control Room: Change all OBS scenes to '{}' for session {}", scene_name, session_id);
     // TODO: Validate session
     
-    match app.obs_plugin().control_room_change_all_scenes(&scene_name).await {
+    match app.obs_plugin().control_room_change_all_obs_scenes(&scene_name).await {
         Ok(results) => {
             let formatted_results: Vec<serde_json::Value> = results.into_iter()
                 .map(|(conn, result)| serde_json::json!({
@@ -6604,16 +6604,16 @@ pub async fn control_room_change_all_scenes(
     }
 }
 
-/// Start all STR streams
+/// Start all OBS streams
 #[tauri::command]
-pub async fn control_room_start_all_str(
+pub async fn control_room_start_all_obs(
     session_id: String,
     app: State<'_, Arc<App>>
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!("Control Room: Start all STR streams for session {}", session_id);
+    log::info!("Control Room: Start all OBS streams for session {}", session_id);
     // TODO: Validate session
     
-    match app.obs_plugin().control_room_start_all_str().await {
+    match app.obs_plugin().control_room_start_all_obs().await {
         Ok(results) => {
             let formatted_results: Vec<serde_json::Value> = results.into_iter()
                 .map(|(conn, result)| serde_json::json!({
@@ -6635,16 +6635,16 @@ pub async fn control_room_start_all_str(
     }
 }
 
-/// Stop all STR streams
+/// Stop all OBS streams
 #[tauri::command]
-pub async fn control_room_stop_all_str(
+pub async fn control_room_stop_all_obs(
     session_id: String,
     app: State<'_, Arc<App>>
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!("Control Room: Stop all STR streams for session {}", session_id);
+    log::info!("Control Room: Stop all OBS streams for session {}", session_id);
     // TODO: Validate session
     
-    match app.obs_plugin().control_room_stop_all_str().await {
+    match app.obs_plugin().control_room_stop_all_obs().await {
         Ok(results) => {
             let formatted_results: Vec<serde_json::Value> = results.into_iter()
                 .map(|(conn, result)| serde_json::json!({
@@ -6668,7 +6668,7 @@ pub async fn control_room_stop_all_str(
 
 /// Add STR connection
 #[tauri::command]
-pub async fn control_room_add_str_connection(
+pub async fn control_room_add_obs_connection(
     session_id: String,
     name: String,
     host: String,
@@ -6677,7 +6677,7 @@ pub async fn control_room_add_str_connection(
     notes: Option<String>,
     app: State<'_, Arc<App>>
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!("Control Room: Adding STR connection '{}' at {}:{} for session {}", name, host, port, session_id);
+    log::info!("Control Room: Adding OBS connection '{}' at {}:{} for session {}", name, host, port, session_id);
     // TODO: Validate session
     
     // Use Control Room connection management
@@ -6691,90 +6691,90 @@ pub async fn control_room_add_str_connection(
     
     match app.obs_plugin().control_room_add_connection(config).await {
         Ok(_) => {
-            log::info!("Control Room: Successfully added STR connection '{}'", name);
+            log::info!("Control Room: Successfully added OBS connection '{}'", name);
             Ok(serde_json::json!({
                 "success": true,
-                "message": format!("STR connection '{}' added successfully", name)
+                "message": format!("OBS connection '{}' added successfully", name)
             }))
         }
         Err(e) => {
-            log::error!("Failed to add STR connection '{}': {}", name, e);
-            Err(TauriError::from(anyhow::anyhow!("Failed to add STR connection: {}", e)))
+            log::error!("Failed to add OBS connection '{}': {}", name, e);
+            Err(TauriError::from(anyhow::anyhow!("Failed to add OBS connection: {}", e)))
         }
     }
 }
 
-/// Connect to STR instance
+/// Connect to OBS instance
 #[tauri::command]
-pub async fn control_room_connect_str(
+pub async fn control_room_connect_obs(
     session_id: String,
-    str_name: String,
+    obs_name: String,
     app: State<'_, Arc<App>>
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!("Control Room: Connecting to STR '{}' for session {}", str_name, session_id);
+    log::info!("Control Room: Connecting to OBS '{}' for session {}", obs_name, session_id);
     // TODO: Validate session
     
-    match app.obs_plugin().control_room_connect_str(&str_name).await {
+    match app.obs_plugin().control_room_connect_obs(&obs_name).await {
         Ok(_) => {
-            log::info!("Control Room: Successfully connected to STR '{}'", str_name);
+            log::info!("Control Room: Successfully connected to OBS '{}'", obs_name);
             Ok(serde_json::json!({
                 "success": true,
-                "message": format!("Connected to STR '{}'", str_name)
+                "message": format!("Connected to OBS '{}'", obs_name)
             }))
         }
         Err(e) => {
-            log::error!("Failed to connect to STR '{}': {}", str_name, e);
-            Err(TauriError::from(anyhow::anyhow!("Failed to connect to STR: {}", e)))
+            log::error!("Failed to connect to OBS '{}': {}", obs_name, e);
+            Err(TauriError::from(anyhow::anyhow!("Failed to connect to OBS: {}", e)))
         }
     }
 }
 
-/// Disconnect from STR instance
+/// Disconnect from OBS instance
 #[tauri::command]
-pub async fn control_room_disconnect_str(
+pub async fn control_room_disconnect_obs(
     session_id: String,
-    str_name: String,
+    obs_name: String,
     app: State<'_, Arc<App>>
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!("Control Room: Disconnecting from STR '{}' for session {}", str_name, session_id);
+    log::info!("Control Room: Disconnecting from OBS '{}' for session {}", obs_name, session_id);
     // TODO: Validate session
     
-    match app.obs_plugin().control_room_disconnect_str(&str_name).await {
+    match app.obs_plugin().control_room_disconnect_obs(&obs_name).await {
         Ok(_) => {
-            log::info!("Control Room: Successfully disconnected from STR '{}'", str_name);
+            log::info!("Control Room: Successfully disconnected from OBS '{}'", obs_name);
             Ok(serde_json::json!({
                 "success": true,
-                "message": format!("Disconnected from STR '{}'", str_name)
+                "message": format!("Disconnected from OBS '{}'", obs_name)
             }))
         }
         Err(e) => {
-            log::error!("Failed to disconnect from STR '{}': {}", str_name, e);
-            Err(TauriError::from(anyhow::anyhow!("Failed to disconnect from STR: {}", e)))
+            log::error!("Failed to disconnect from OBS '{}': {}", obs_name, e);
+            Err(TauriError::from(anyhow::anyhow!("Failed to disconnect from OBS: {}", e)))
         }
     }
 }
 
-/// Remove STR connection
+/// Remove OBS connection
 #[tauri::command]
-pub async fn control_room_remove_str_connection(
+pub async fn control_room_remove_obs_connection(
     session_id: String,
-    str_name: String,
+    obs_name: String,
     app: State<'_, Arc<App>>
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!("Control Room: Removing STR connection '{}' for session {}", str_name, session_id);
+    log::info!("Control Room: Removing OBS connection '{}' for session {}", obs_name, session_id);
     // TODO: Validate session
     
-    match app.obs_plugin().control_room_remove_connection(&str_name).await {
+    match app.obs_plugin().control_room_remove_connection(&obs_name).await {
         Ok(_) => {
-            log::info!("Control Room: Successfully removed STR connection '{}'", str_name);
+            log::info!("Control Room: Successfully removed OBS connection '{}'", obs_name);
             Ok(serde_json::json!({
                 "success": true,
-                "message": format!("STR connection '{}' removed successfully", str_name)
+                "message": format!("OBS connection '{}' removed successfully", obs_name)
             }))
         }
         Err(e) => {
-            log::error!("Failed to remove STR connection '{}': {}", str_name, e);
-            Err(TauriError::from(anyhow::anyhow!("Failed to remove STR connection: {}", e)))
+            log::error!("Failed to remove OBS connection '{}': {}", obs_name, e);
+            Err(TauriError::from(anyhow::anyhow!("Failed to remove OBS connection: {}", e)))
         }
     }
 }
