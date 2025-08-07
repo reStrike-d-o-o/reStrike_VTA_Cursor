@@ -209,6 +209,8 @@ async fn main() -> AppResult<()> {
             tauri_commands_obws::obs_obws_get_stats,
             #[cfg(feature = "obs-obws")]
             tauri_commands_obws::obs_obws_test_connection,
+            #[cfg(feature = "obs-obws")]
+            tauri_commands_obws::obs_obws_setup_status_listener,
             tauri_commands::obs_connect_to_connection,
             tauri_commands::obs_get_connection_status,
             tauri_commands::obs_get_connections,

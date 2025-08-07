@@ -340,6 +340,18 @@ impl ObsManager {
         let clients = self.clients.lock().await;
         clients.keys().cloned().collect()
     }
+
+    /// Set up status listener for all connections
+    pub async fn setup_status_listener(&self) -> AppResult<()> {
+        let clients = self.clients.lock().await;
+        for (name, client_arc) in clients.iter() {
+            let client = client_arc.lock().await;
+            if let Err(e) = client.setup_status_listener().await {
+                log::warn!("Warning: Failed to set up status listener for '{}': {}", name, e);
+            }
+        }
+        Ok(())
+    }
 }
 
 impl Default for ObsManager {

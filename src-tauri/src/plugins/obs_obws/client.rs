@@ -11,6 +11,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::time::{timeout, Duration};
 use std::collections::HashMap;
+use futures_util::StreamExt;
 
 /// OBS Client using the obws crate
 pub struct ObsClient {
@@ -370,6 +371,29 @@ impl ObsClient {
         let _handlers = self.event_handlers.lock().await;
         // TODO: Implement event triggering based on event type
         log::debug!("Event triggered: {:?}", event);
+        Ok(())
+    }
+
+    /// Set up status listener
+    pub async fn setup_status_listener(&self) -> AppResult<()> {
+        let client = self.get_client()?;
+        
+        // Set up event handler for all events
+        let events = client.events().map_err(|e| {
+            AppError::ConfigError(format!("Failed to set up event handler: {}", e))
+        })?;
+        
+        // Pin the stream and set up event handler
+        let mut events = Box::pin(events);
+        
+        // Set up event handler
+        tokio::spawn(async move {
+            while let Some(event) = events.next().await {
+                log::debug!("OBS event: {:?}", event);
+            }
+        });
+        
+        log::info!("✅ Status listener set up successfully");
         Ok(())
     }
 }

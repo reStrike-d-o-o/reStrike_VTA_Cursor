@@ -487,3 +487,26 @@ pub async fn obs_obws_test_connection(
         }),
     }
 }
+
+/// Set up status listener using obws
+#[tauri::command]
+pub async fn obs_obws_setup_status_listener(
+    app: State<'_, Arc<App>>,
+) -> Result<ObsObwsConnectionResponse, TauriError> {
+    log::info!("OBS obws setup status listener called");
+    
+    match app.obs_obws_plugin().setup_status_listener().await {
+        Ok(_) => Ok(ObsObwsConnectionResponse {
+            success: true,
+            data: Some(serde_json::json!({
+                "message": "Status listener set up successfully"
+            })),
+            error: None,
+        }),
+        Err(e) => Ok(ObsObwsConnectionResponse {
+            success: false,
+            data: None,
+            error: Some(e.to_string()),
+        }),
+    }
+}

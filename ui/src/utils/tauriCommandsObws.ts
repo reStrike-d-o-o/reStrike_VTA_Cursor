@@ -313,4 +313,18 @@ export const obsObwsCommands = {
       return { success: false, error: String(error) };
     }
   },
+
+  /**
+   * Set up status listener using obws
+   */
+  async setupStatusListener(): Promise<TauriCommandResponse> {
+    try {
+      if (isTauriAvailable()) {
+        return await safeInvoke('obs_obws_setup_status_listener');
+      }
+      return { success: false, error: 'Tauri not available' };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  },
 };
