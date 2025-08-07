@@ -6841,6 +6841,108 @@ pub async fn control_room_update_obs_connection(
     }
 }
 
+/// Connect all disconnected OBS connections
+#[tauri::command]
+pub async fn control_room_connect_all_obs(
+    session_id: String,
+    app: State<'_, Arc<App>>
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("Control Room: Connecting all OBS connections for session {}", session_id);
+    // TODO: Validate session
+    
+    match app.obs_plugin().control_room_connect_all_obs().await {
+        Ok(results) => {
+            let success_count = results.iter().filter(|(_, result)| result.is_ok()).count();
+            let total_count = results.len();
+            
+            let failed_connections: Vec<String> = results
+                .iter()
+                .filter_map(|(name, result)| {
+                    if let Err(e) = result {
+                        Some(format!("{}: {}", name, e))
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            
+            log::info!("Control Room: Connected {} of {} OBS connections", success_count, total_count);
+            
+            if failed_connections.is_empty() {
+                Ok(serde_json::json!({
+                    "success": true,
+                    "message": format!("Successfully connected {} OBS connections", success_count),
+                    "connected_count": success_count,
+                    "total_count": total_count
+                }))
+            } else {
+                Ok(serde_json::json!({
+                    "success": true,
+                    "message": format!("Connected {} of {} OBS connections. Some failed: {}", success_count, total_count, failed_connections.join(", ")),
+                    "connected_count": success_count,
+                    "total_count": total_count,
+                    "failed_connections": failed_connections
+                }))
+            }
+        }
+        Err(e) => {
+            log::error!("Failed to connect all OBS connections: {}", e);
+            Err(TauriError::from(anyhow::anyhow!("Failed to connect all OBS connections: {}", e)))
+        }
+    }
+}
+
+/// Disconnect all connected OBS connections
+#[tauri::command]
+pub async fn control_room_disconnect_all_obs(
+    session_id: String,
+    app: State<'_, Arc<App>>
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("Control Room: Disconnecting all OBS connections for session {}", session_id);
+    // TODO: Validate session
+    
+    match app.obs_plugin().control_room_disconnect_all_obs().await {
+        Ok(results) => {
+            let success_count = results.iter().filter(|(_, result)| result.is_ok()).count();
+            let total_count = results.len();
+            
+            let failed_connections: Vec<String> = results
+                .iter()
+                .filter_map(|(name, result)| {
+                    if let Err(e) = result {
+                        Some(format!("{}: {}", name, e))
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            
+            log::info!("Control Room: Disconnected {} of {} OBS connections", success_count, total_count);
+            
+            if failed_connections.is_empty() {
+                Ok(serde_json::json!({
+                    "success": true,
+                    "message": format!("Successfully disconnected {} OBS connections", success_count),
+                    "disconnected_count": success_count,
+                    "total_count": total_count
+                }))
+            } else {
+                Ok(serde_json::json!({
+                    "success": true,
+                    "message": format!("Disconnected {} of {} OBS connections. Some failed: {}", success_count, total_count, failed_connections.join(", ")),
+                    "disconnected_count": success_count,
+                    "total_count": total_count,
+                    "failed_connections": failed_connections
+                }))
+            }
+        }
+        Err(e) => {
+            log::error!("Failed to disconnect all OBS connections: {}", e);
+            Err(TauriError::from(anyhow::anyhow!("Failed to disconnect all OBS connections: {}", e)))
+        }
+    }
+}
+
 /// Get audio sources for a STR connection
 #[tauri::command]
 pub async fn control_room_get_audio_sources(

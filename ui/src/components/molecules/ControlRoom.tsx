@@ -440,6 +440,86 @@ const ControlRoom: React.FC = () => {
     }
   };
 
+  const handleConnectAll = async () => {
+    if (!state.sessionId) {
+      setError('No active session');
+      return;
+    }
+
+    setState(prev => ({ ...prev, isLoading: true }));
+    setError(null);
+
+    try {
+      const result = await invoke('control_room_connect_all_obs', {
+        sessionId: state.sessionId
+      });
+
+      if (result && typeof result === 'object' && 'success' in result) {
+        const response = result as { 
+          success: boolean; 
+          message?: string; 
+          error?: string;
+          connected_count?: number;
+          total_count?: number;
+          failed_connections?: string[];
+        };
+        
+        if (response.success) {
+          // Reload connections to get updated status
+          await loadConnections(state.sessionId);
+          setSuccess(response.message || 'Successfully connected all OBS connections');
+        } else {
+          setError(response.error || 'Failed to connect all OBS connections');
+        }
+      }
+    } catch (err) {
+      console.error('Failed to connect all connections:', err);
+      setError('Failed to connect all OBS connections');
+    } finally {
+      setState(prev => ({ ...prev, isLoading: false }));
+    }
+  };
+
+  const handleDisconnectAll = async () => {
+    if (!state.sessionId) {
+      setError('No active session');
+      return;
+    }
+
+    setState(prev => ({ ...prev, isLoading: true }));
+    setError(null);
+
+    try {
+      const result = await invoke('control_room_disconnect_all_obs', {
+        sessionId: state.sessionId
+      });
+
+      if (result && typeof result === 'object' && 'success' in result) {
+        const response = result as { 
+          success: boolean; 
+          message?: string; 
+          error?: string;
+          disconnected_count?: number;
+          total_count?: number;
+          failed_connections?: string[];
+        };
+        
+        if (response.success) {
+          // Reload connections to get updated status
+          await loadConnections(state.sessionId);
+          setSuccess(response.message || 'Successfully disconnected all OBS connections');
+        } else {
+          setError(response.error || 'Failed to disconnect all OBS connections');
+        }
+      }
+    } catch (err) {
+      console.error('Failed to disconnect all connections:', err);
+      setError('Failed to disconnect all OBS connections');
+    } finally {
+      setState(prev => ({ ...prev, isLoading: false }));
+    }
+  };
+
   if (!state.isAuthenticated) {
     return (
       <div className="space-y-6">
@@ -519,12 +599,30 @@ const ControlRoom: React.FC = () => {
       <div className="p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-100">OBS Connections</h3>
-          <Button
-            onClick={() => setState(prev => ({ ...prev, showAddConnection: !prev.showAddConnection }))}
-            size="sm"
-          >
-            {state.showAddConnection ? 'Cancel' : 'Add OBS Connection'}
-          </Button>
+          <div className="flex space-x-2">
+            <Button
+              onClick={handleConnectAll}
+              disabled={state.isLoading || state.connections.length === 0}
+              variant="outline"
+              size="sm"
+            >
+              {state.isLoading ? 'Connecting...' : 'Connect All'}
+            </Button>
+            <Button
+              onClick={handleDisconnectAll}
+              disabled={state.isLoading || state.connections.length === 0}
+              variant="outline"
+              size="sm"
+            >
+              {state.isLoading ? 'Disconnecting...' : 'Disconnect All'}
+            </Button>
+            <Button
+              onClick={() => setState(prev => ({ ...prev, showAddConnection: !prev.showAddConnection }))}
+              size="sm"
+            >
+              {state.showAddConnection ? 'Cancel' : 'Add OBS Connection'}
+            </Button>
+          </div>
         </div>
 
         {/* Add Connection Form */}
