@@ -59,12 +59,12 @@ pub async fn obs_obws_add_connection(
 /// Connect to an OBS instance using obws
 #[tauri::command]
 pub async fn obs_obws_connect(
-    connection_name: String,
+    connectionName: String,
     app: State<'_, Arc<App>>,
 ) -> Result<ObsObwsConnectionResponse, TauriError> {
-    log::info!("OBS obws connect called: {}", connection_name);
+    log::info!("OBS obws connect called: {}", connectionName);
     
-    match app.obs_obws_plugin().connect(&connection_name).await {
+    match app.obs_obws_plugin().connect(&connectionName).await {
         Ok(_) => Ok(ObsObwsConnectionResponse {
             success: true,
             data: Some(serde_json::json!({

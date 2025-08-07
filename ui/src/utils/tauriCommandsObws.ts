@@ -65,7 +65,7 @@ export const obsObwsCommands = {
   async connect(connectionName: string): Promise<TauriCommandResponse> {
     try {
       if (isTauriAvailable()) {
-        return await safeInvoke('obs_obws_connect', { connection_name: connectionName });
+        return await safeInvoke('obs_obws_connect', { connectionName });
       }
       return { success: false, error: 'Tauri not available' };
     } catch (error) {
