@@ -2,7 +2,7 @@
 
 use crate::core::app::App;
 // AppError and AppResult are used in the ObsManager implementation
-use crate::plugins::obs_obws::manager::ObsManager;
+
 use crate::plugins::obs_obws::ObsConnectionConfig;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -59,12 +59,12 @@ pub async fn obs_obws_add_connection(
 /// Connect to an OBS instance using obws
 #[tauri::command]
 pub async fn obs_obws_connect(
-    connectionName: String,
+    connection_name: String,
     app: State<'_, Arc<App>>,
 ) -> Result<ObsObwsConnectionResponse, TauriError> {
-    log::info!("OBS obws connect called: {}", connectionName);
+    log::info!("OBS obws connect called: {}", connection_name);
     
-    match app.obs_obws_plugin().connect(&connectionName).await {
+    match app.obs_obws_plugin().connect(&connection_name).await {
         Ok(_) => Ok(ObsObwsConnectionResponse {
             success: true,
             data: Some(serde_json::json!({
