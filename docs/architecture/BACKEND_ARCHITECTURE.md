@@ -18,7 +18,8 @@ The reStrike VTA backend is built with Rust and Tauri v2, providing a native Win
 - **Framework**: Tauri v2 for native Windows integration
 - **Async Runtime**: Tokio for asynchronous operations
 - **Database**: SQLite with rusqlite + sqlx (hybrid approach for thread safety)
-- **WebSocket**: tokio-tungstenite for OBS integration
+- **OBS Integration**: obws crate for OBS WebSocket v5 (migration in progress)
+- **WebSocket**: tokio-tungstenite for custom WebSocket needs
 - **Serialization**: Serde for JSON handling
 - **Logging**: Structured logging with file rotation
 
@@ -45,7 +46,7 @@ src-tauri/
 │   │   └── mod.rs           # Logging module
 │   ├── plugins/             # Plugin modules
 │   │   ├── mod.rs           # Plugin module registration
-│   │   ├── obs/             # Modular OBS WebSocket integration
+│   │   ├── obs/             # Legacy OBS WebSocket integration (custom implementation)
 │   │   │   ├── mod.rs       # OBS module registration
 │   │   │   ├── types.rs     # Shared types and data structures
 │   │   │   ├── manager.rs   # Plugin coordination
@@ -58,6 +59,12 @@ src-tauri/
 │   │   │   ├── status.rs    # Status aggregation
 │   │   │   ├── control_room.rs      # Legacy Control Room (rusqlite)
 │   │   │   └── control_room_async.rs # Async Control Room (sqlx)
+│   │   ├── obs_obws/        # NEW: OBS WebSocket integration using obws crate
+│   │   │   ├── mod.rs       # OBS obws module registration
+│   │   │   ├── types.rs     # OBS obws types and data structures
+│   │   │   ├── client.rs    # OBS obws client implementation
+│   │   │   ├── manager.rs   # OBS obws manager implementation
+│   │   │   └── operations.rs # OBS obws operations
 │   │   ├── plugin_udp.rs    # UDP protocol handling
 │   │   ├── plugin_database.rs # Database operations
 │   │   ├── plugin_cpu_monitor.rs # System monitoring
@@ -291,6 +298,65 @@ The OBS plugin system has been successfully modularized to improve maintainabili
 - **`control_room_config`**: Master password hash storage with creation/update timestamps
 - **`control_room_connections`**: STR connection configurations with metadata
 - **`control_room_audit`**: Security audit log with comprehensive event tracking
+
+### OBS WebSocket Integration Migration 🔄 **IN PROGRESS**
+
+#### **Current Implementation (Legacy)**
+- **Custom WebSocket Implementation**: 800+ lines of custom WebSocket code using `tokio-tungstenite`
+- **Manual JSON Handling**: Custom JSON serialization/deserialization for OBS WebSocket v5
+- **Complex Connection Management**: Manual WebSocket lifecycle management with potential race conditions
+- **Authentication Complexity**: Manual OBS WebSocket v5 authentication implementation
+- **Error Handling**: Inconsistent error propagation and handling
+
+#### **Target Implementation (obws Crate)**
+- **Professional Library**: Migration to `obws` crate (v0.14.0) - mature, well-maintained Rust library
+- **Type-Safe API**: Strongly typed requests and responses with compile-time guarantees
+- **Built-in Features**: Automatic authentication, connection pooling, and error handling
+- **Performance**: Optimized WebSocket handling and connection management
+- **Maintenance**: Active development and community support
+
+#### **Migration Benefits**
+- **Reduced Complexity**: Eliminate 800+ lines of custom WebSocket code
+- **Better Reliability**: Battle-tested library with proper error handling
+- **Type Safety**: Compile-time guarantees reducing runtime errors
+- **Future-Proof**: Ongoing community support and updates
+- **Performance**: Optimized WebSocket handling and connection pooling
+
+#### **Migration Strategy**
+- **Phase 1**: Add obws dependency and create new plugin structure
+- **Phase 2**: Implement core client and manager with obws
+- **Phase 3**: Update Tauri commands to use new API
+- **Phase 4**: Gradual replacement with feature flags
+- **Phase 5**: Remove old implementation and cleanup
+
+#### **New Plugin Structure**
+```
+src-tauri/src/plugins/obs_obws/
+├── mod.rs       # OBS obws module registration
+├── types.rs     # OBS obws types and data structures
+├── client.rs    # OBS obws client implementation
+├── manager.rs   # OBS obws manager implementation
+└── operations.rs # OBS obws operations
+```
+
+#### **API Mapping**
+| Current Method | obws Equivalent |
+|----------------|-----------------|
+| `send_request("StartRecording")` | `client.recording().start()` |
+| `send_request("StopRecording")` | `client.recording().stop()` |
+| `send_request("StartStreaming")` | `client.streaming().start()` |
+| `send_request("StopStreaming")` | `client.streaming().stop()` |
+| `send_request("GetCurrentScene")` | `client.scenes().current()` |
+| `send_request("SetCurrentScene")` | `client.scenes().set_current()` |
+| `send_request("GetVersion")` | `client.general().version()` |
+
+#### **Migration Status**
+- **Planning**: ✅ Complete migration plan and implementation steps
+- **Foundation**: 🔄 Add obws dependency and create new plugin structure
+- **Core Implementation**: ⏳ Implement client and manager with obws
+- **Integration**: ⏳ Update Tauri commands and app structure
+- **Testing**: ⏳ Comprehensive testing with OBS Studio
+- **Cleanup**: ⏳ Remove old implementation and update documentation
 
 ##### **Tauri Command Security**
 - **Authentication Checks**: All Control Room operations require valid authentication
