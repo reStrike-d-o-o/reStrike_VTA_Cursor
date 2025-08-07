@@ -68,29 +68,47 @@ const Select: React.FC<SelectProps> = ({
     setIsOpen(false);
   };
 
+  const handleToggle = () => {
+    if (!disabled) {
+      setIsOpen(!isOpen);
+    }
+  };
+
+  // Process children to find our components
+  const childrenArray = React.Children.toArray(children);
+  
+  // Find trigger (should be the first SelectTrigger)
+  const triggerIndex = childrenArray.findIndex(child => 
+    React.isValidElement(child) && child.type === SelectTrigger
+  );
+  const trigger = triggerIndex >= 0 ? childrenArray[triggerIndex] as React.ReactElement : null;
+  
+  // Find value (should be inside trigger)
+  const valueComponent = trigger ? React.Children.toArray(trigger.props.children).find(child => 
+    React.isValidElement(child) && child.type === SelectValue
+  ) as React.ReactElement | undefined : null;
+  
+  // Find content (should be after trigger)
+  const contentIndex = childrenArray.findIndex(child => 
+    React.isValidElement(child) && child.type === SelectContent
+  );
+  const content = contentIndex >= 0 ? childrenArray[contentIndex] as React.ReactElement : null;
+
   return (
     <div ref={selectRef} className={`relative ${disabled ? 'opacity-50 pointer-events-none' : ''} ${className}`}>
-      {React.Children.map(children, (child) => {
-        if (React.isValidElement(child)) {
-          if (child.type === SelectTrigger) {
-            return React.cloneElement(child as React.ReactElement<SelectTriggerProps>, {
-              onClick: () => setIsOpen(!isOpen),
-              isOpen,
-              selectedValue,
-            });
-          }
-          if (child.type === SelectValue) {
-            return React.cloneElement(child as React.ReactElement<SelectValueProps>, {
-              value: selectedValue,
-            });
-          }
-          if (child.type === SelectContent && isOpen) {
-            return React.cloneElement(child as React.ReactElement<SelectContentProps>, {
-              onSelect: handleSelect,
-            });
-          }
-        }
-        return child;
+      {/* Render trigger with updated props */}
+      {trigger && React.cloneElement(trigger, {
+        onClick: handleToggle,
+        isOpen,
+        selectedValue,
+        children: valueComponent ? React.cloneElement(valueComponent, {
+          value: selectedValue,
+        }) : trigger.props.children
+      })}
+      
+      {/* Render content only when open */}
+      {isOpen && content && React.cloneElement(content, {
+        onSelect: handleSelect,
       })}
     </div>
   );

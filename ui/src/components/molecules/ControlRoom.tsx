@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import Button from '../atoms/Button';
 import Input from '../atoms/Input';
 import { StatusDot } from '../atoms/StatusDot';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../atoms/Select';
 import { invoke } from '@tauri-apps/api/core';
 
 interface ObsConnection {
@@ -869,65 +868,56 @@ const ControlRoom: React.FC = () => {
                     <div className="space-y-2">
                       {/* Audio Source Dropdown */}
                       <div>
-                        <label className="block text-xs text-gray-400 mb-1">Audio Source</label>
-                        <Select 
+                        <label htmlFor={`audio-source-${connection.name}`} className="block text-xs text-gray-400 mb-1">Audio Source</label>
+                        <select 
+                          id={`audio-source-${connection.name}`}
                           value={state.connectionSelections[connection.name]?.audioSource || ''}
-                          onValueChange={(value) => handleSelectionChange(connection.name, 'audioSource', value)}
+                          onChange={(e) => handleSelectionChange(connection.name, 'audioSource', e.target.value)}
+                          className="w-full px-3 py-2 text-sm bg-gray-700 border border-gray-600 rounded-md text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
-                          <SelectTrigger className="text-xs">
-                            <SelectValue placeholder="Select audio source" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="">No audio source</SelectItem>
-                            {getMockAudioSources(connection.name).map((source) => (
-                              <SelectItem key={source} value={source}>
-                                {source}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                          <option value="">No audio source</option>
+                          {getMockAudioSources(connection.name).map((source) => (
+                            <option key={source} value={source}>
+                              {source}
+                            </option>
+                          ))}
+                        </select>
                       </div>
                       
                       {/* Main Scene Dropdown */}
                       <div>
-                        <label className="block text-xs text-gray-400 mb-1">Main Scene</label>
-                        <Select 
+                        <label htmlFor={`main-scene-${connection.name}`} className="block text-xs text-gray-400 mb-1">Main Scene</label>
+                        <select 
+                          id={`main-scene-${connection.name}`}
                           value={state.connectionSelections[connection.name]?.mainScene || ''}
-                          onValueChange={(value) => handleSelectionChange(connection.name, 'mainScene', value)}
+                          onChange={(e) => handleSelectionChange(connection.name, 'mainScene', e.target.value)}
+                          className="w-full px-3 py-2 text-sm bg-gray-700 border border-gray-600 rounded-md text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
-                          <SelectTrigger className="text-xs">
-                            <SelectValue placeholder="Select main scene" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="">No scene selected</SelectItem>
-                            {getMockScenes(connection.name).map((scene) => (
-                              <SelectItem key={scene} value={scene}>
-                                {scene}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                          <option value="">No scene selected</option>
+                          {getMockScenes(connection.name).map((scene) => (
+                            <option key={scene} value={scene}>
+                              {scene}
+                            </option>
+                          ))}
+                        </select>
                       </div>
                       
                       {/* Break Scene Dropdown */}
                       <div>
-                        <label className="block text-xs text-gray-400 mb-1">Break Scene</label>
-                        <Select 
+                        <label htmlFor={`break-scene-${connection.name}`} className="block text-xs text-gray-400 mb-1">Break Scene</label>
+                        <select 
+                          id={`break-scene-${connection.name}`}
                           value={state.connectionSelections[connection.name]?.breakScene || ''}
-                          onValueChange={(value) => handleSelectionChange(connection.name, 'breakScene', value)}
+                          onChange={(e) => handleSelectionChange(connection.name, 'breakScene', e.target.value)}
+                          className="w-full px-3 py-2 text-sm bg-gray-700 border border-gray-600 rounded-md text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
-                          <SelectTrigger className="text-xs">
-                            <SelectValue placeholder="Select break scene" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="">No scene selected</SelectItem>
-                            {getMockScenes(connection.name).map((scene) => (
-                              <SelectItem key={scene} value={scene}>
-                                {scene}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                          <option value="">No scene selected</option>
+                          {getMockScenes(connection.name).map((scene) => (
+                            <option key={scene} value={scene}>
+                              {scene}
+                            </option>
+                          ))}
+                        </select>
                       </div>
                     </div>
                   </div>
