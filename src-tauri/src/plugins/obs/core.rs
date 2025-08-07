@@ -162,22 +162,35 @@ impl ObsCorePlugin {
 
     /// Disconnect from OBS WebSocket
     pub async fn disconnect_obs(&self, connection_name: &str) -> AppResult<()> {
-        log::info!("[OBS_CORE] disconnect_obs called for '{}'", connection_name);
+        log::info!("🔍 [OBS_CORE] disconnect_obs called for '{}'", connection_name);
         
+        // Simple approach: just clear the connection state without trying to close the WebSocket
+        // The WebSocket task will naturally terminate when it can't get the stream
         {
             let mut connections = self.context.connections.lock().await;
             if let Some(connection) = connections.get_mut(connection_name) {
-                connection.status = ObsConnectionStatus::Disconnected;
-                connection.is_connected = false;
+                log::info!("🔍 [OBS_CORE] Found connection '{}', clearing WebSocket...", connection_name);
+                
+                // Clear the WebSocket to terminate the task
                 connection.websocket = None;
                 connection.pending_requests.clear();
                 connection.heartbeat_data = None;
+                connection.status = ObsConnectionStatus::Disconnected;
+                connection.is_connected = false;
+                log::info!("🔍 [OBS_CORE] Successfully cleared connection '{}' state", connection_name);
+            } else {
+                log::warn!("🔍 [OBS_CORE] Connection '{}' not found in connections map", connection_name);
             }
-        }
-
-        log::info!("[OBS_CORE] Disconnected from OBS '{}'", connection_name);
+        } // lock is dropped here
+        
+        // Give the WebSocket task a moment to terminate
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        
+        log::info!("🔍 [OBS_CORE] Disconnected from OBS '{}' successfully", connection_name);
         Ok(())
     }
+    
+
 
     /// Remove a connection
     pub async fn remove_connection(&self, connection_name: &str) -> AppResult<()> {
@@ -303,6 +316,14 @@ impl ObsCorePlugin {
         }
     }
 
+    /// Take pending request sender from an already-acquired connection (deadlock-safe)
+    fn take_pending_request_sender_from_connection(
+        connection: &mut ObsConnection,
+        request_id: &str,
+    ) -> Option<tokio::sync::oneshot::Sender<serde_json::Value>> {
+        connection.pending_requests.remove(request_id)
+    }
+
     /// Spawn WebSocket task for a connection
     async fn spawn_ws_task(&self, connection_name: String) {
         let connections = self.context.connections.clone();
@@ -313,6 +334,8 @@ impl ObsCorePlugin {
         let events_plugin_clone = self.events_plugin.clone();
         
         tokio::spawn(async move {
+            log::info!("🔍 [WS_TASK] Starting WebSocket task for '{}'", connection_name);
+            
             loop {
                 let ws_stream_opt = {
                     let mut conns = connections.lock().await;
@@ -320,6 +343,7 @@ impl ObsCorePlugin {
                         .and_then(|conn| conn.websocket.take())
                 };
                 if let Some(ws_stream) = ws_stream_opt {
+                    log::info!("🔍 [WS_TASK] Got WebSocket stream for '{}'", connection_name);
                     let (_, mut ws_read) = ws_stream.split();
                     
                     // Handle incoming messages
@@ -518,9 +542,12 @@ impl ObsCorePlugin {
                         }
                     }
                 } else {
+                    log::info!("🔍 [WS_TASK] No WebSocket stream available for '{}', terminating task", connection_name);
                     break;
                 }
             }
+            
+            log::info!("🔍 [WS_TASK] WebSocket task terminated for '{}'", connection_name);
         });
     }
 

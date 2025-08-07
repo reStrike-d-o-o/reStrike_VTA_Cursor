@@ -5,15 +5,21 @@ import { TauriCommandResponse, ObsConnection, VideoClip, PssEvent } from '../typ
 // Tauri v2 invoke function that uses the core module
 const safeInvoke = async (command: string, args?: any) => {
   try {
+    console.log('🔍 safeInvoke called with:', { command, args });
+    
     // Check if the global Tauri object is available
     if (typeof window !== 'undefined' && window.__TAURI__ && window.__TAURI__.core) {
+      console.log('🔍 Tauri v2 core module found, calling invoke');
       // In Tauri v2, invoke is available through the core module
-      return await window.__TAURI__.core.invoke(command, args);
+      const result = await window.__TAURI__.core.invoke(command, args);
+      console.log('🔍 Tauri invoke result:', result);
+      return result;
     }
     
+    console.log('🔍 Tauri v2 core module not available');
     throw new Error('Tauri v2 core module not available - ensure app is running in desktop mode');
   } catch (error) {
-    console.error('Tauri invoke failed:', error);
+    console.error('🔍 Tauri invoke failed:', error);
     throw error;
   }
 };
@@ -168,7 +174,11 @@ export const obsCommands = {
    * Disconnect from OBS
    */
   async disconnect(connectionName: string) {
-    return executeTauriCommand('obs_disconnect', { connectionName });
+    console.log('🔍 obsCommands.disconnect called with:', connectionName);
+    console.log('🔍 Arguments being sent to Tauri:', { connectionName });
+    const result = await executeTauriCommand('obs_disconnect', { connectionName });
+    console.log('🔍 Result from obs_disconnect:', result);
+    return result;
   },
 
   /**
@@ -666,12 +676,17 @@ export const executeTauriCommand = async <T = any>(
   timeout: number = 10000
 ): Promise<TauriCommandResponse<T>> => {
   try {
+    console.log('🔍 executeTauriCommand called with:', { command, args });
+    
     if (!isTauriAvailable()) {
+      console.log('🔍 Tauri not available');
       return { success: false, error: 'Tauri not available - running in web mode' };
     }
 
     // Use the proper Tauri v2 invoke function
+    console.log('🔍 Calling safeInvoke with:', { command, args });
     const result = await safeInvoke(command, args);
+    console.log('🔍 safeInvoke result:', result);
     
     // Check if the result is already in TauriCommandResponse format
     if (result && typeof result === 'object' && 'success' in result) {
