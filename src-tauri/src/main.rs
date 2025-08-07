@@ -439,17 +439,7 @@ async fn main() -> AppResult<()> {
             re_strike_vta::tauri_commands_manual_mode::manual_create_match,
             re_strike_vta::tauri_commands_manual_mode::manual_restore_data,
             re_strike_vta::tauri_commands_manual_mode::manual_get_statistics,
-            // OBS Commands
-            tauri_commands::obs_connect,
-            tauri_commands::obs_add_connection,
-            tauri_commands::obs_connect_to_connection,
-            tauri_commands::obs_get_connection_status,
-            tauri_commands::obs_get_connections,
-            tauri_commands::obs_disconnect,
-            tauri_commands::obs_remove_connection,
-            tauri_commands::obs_get_status,
-            tauri_commands::obs_start_recording,
-            tauri_commands::obs_stop_recording,
+            // OBS Commands (duplicates removed - already registered above)
             tauri_commands::obs_list_scenes,
             // Phase 3: Load Balancer Commands
             tauri_commands::get_distributor_statistics,

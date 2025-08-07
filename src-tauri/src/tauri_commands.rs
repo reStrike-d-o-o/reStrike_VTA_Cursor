@@ -279,11 +279,30 @@ pub async fn obs_disconnect(connection_name: String, app: State<'_, Arc<App>>) -
         return Err(TauriError::from(anyhow::anyhow!("Connection name cannot be empty")));
     }
     
-    app.obs_plugin().disconnect_obs(&connection_name).await.map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
-    Ok(serde_json::json!({
-        "success": true,
-        "message": "OBS disconnection initiated"
-    }))
+    // Test 1: Try to access app state
+    log::info!("🔍 Test 1: About to access app state...");
+    
+    // Test 2: Try to access obs_plugin
+    log::info!("🔍 Test 2: About to access obs_plugin...");
+    let obs_plugin = app.obs_plugin();
+    log::info!("🔍 Test 2: Successfully got obs_plugin reference");
+    
+    // Test 3: Try to call disconnect_obs
+    log::info!("🔍 Test 3: About to call disconnect_obs for '{}'", connection_name);
+    
+    match obs_plugin.disconnect_obs(&connection_name).await {
+        Ok(_) => {
+            log::info!("🔍 disconnect_obs completed successfully for '{}'", connection_name);
+            Ok(serde_json::json!({
+                "success": true,
+                "message": "OBS disconnection initiated"
+            }))
+        }
+        Err(e) => {
+            log::error!("🔍 disconnect_obs failed for '{}': {}", connection_name, e);
+            Err(TauriError::from(anyhow::anyhow!("{}", e)))
+        }
+    }
 }
 
 #[tauri::command]
