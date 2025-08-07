@@ -379,6 +379,16 @@ impl ObsPluginManager {
         }
     }
     
+    /// Control Room: Get OBS connection name for a Control Room connection
+    pub async fn control_room_get_obs_connection_name(&self, obs_name: &str) -> AppResult<String> {
+        let manager = self.control_room_manager.lock().await;
+        if let Some(control_room) = manager.as_ref() {
+            control_room.get_obs_connection_name(obs_name).await
+        } else {
+            Err(crate::types::AppError::ConfigError("Control Room not initialized".to_string()))
+        }
+    }
+    
     /// Connect to Control Room OBS instance
     pub async fn control_room_connect_obs(&self, name: &str) -> AppResult<()> {
         let manager = self.control_room_manager.lock().await;
