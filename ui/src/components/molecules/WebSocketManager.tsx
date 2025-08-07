@@ -6,7 +6,8 @@ import { StatusDot } from '../atoms/StatusDot';
 import { Icon } from '../atoms/Icon';
 import Toggle from '../atoms/Toggle';
 import { useAppStore, ObsConnection } from '../../stores';
-import { obsCommands, configCommands } from '../../utils/tauriCommands';
+import { configCommands } from '../../utils/tauriCommands';
+import { obsObwsCommands } from '../../utils/tauriCommandsObws';
 
 // Reconnection settings interface
 interface ReconnectionSettings {
@@ -142,7 +143,7 @@ const WebSocketManager: React.FC = () => {
         // Ensure all config connections are registered with the OBS plugin
         for (const conn of configConnections) {
           try {
-            await obsCommands.addConnection({
+            await obsObwsCommands.addConnection({
               name: conn.name,
               host: conn.host,
               port: conn.port,
@@ -155,7 +156,7 @@ const WebSocketManager: React.FC = () => {
         }
       } else {
         // Fallback to direct OBS plugin query
-        const result = await obsCommands.getConnections();
+        const result = await obsObwsCommands.getConnections();
         if (result.success && result.data) {
           // Update store with connections from backend
           const backendConnections = result.data.map((conn: any) => ({
@@ -186,7 +187,7 @@ const WebSocketManager: React.FC = () => {
       // Get current status for each connection
       for (const connection of obsConnections) {
         try {
-          const result = await obsCommands.getConnectionStatus(connection.name);
+          const result = await obsObwsCommands.getConnectionStatus(connection.name);
           if (result.success) {
             // The backend returns { success: true, status: "Connected" }
             const status = (result as any).status || 'Disconnected';
@@ -223,7 +224,7 @@ const WebSocketManager: React.FC = () => {
     }
 
     try {
-      const result = await obsCommands.addConnection({
+      const result = await obsObwsCommands.addConnection({
         name: formData.name,
         host: formData.host,
         port: formData.port,
@@ -291,7 +292,7 @@ const WebSocketManager: React.FC = () => {
       // First, remove the old connection from backend
       if (editingConnection) {
       try {
-        await obsCommands.removeConnection(editingConnection);
+        await obsObwsCommands.removeConnection(editingConnection);
       } catch (error) {
         // Ignore errors if connection wasn't found
         console.log('Remove connection error (expected if not found):', error);
@@ -299,7 +300,7 @@ const WebSocketManager: React.FC = () => {
       }
 
       // Add the updated connection to backend (this only saves settings, doesn't connect)
-      const result = await obsCommands.addConnection({
+      const result = await obsObwsCommands.addConnection({
         name: formData.name,
         host: formData.host,
         port: formData.port,
@@ -339,7 +340,7 @@ const WebSocketManager: React.FC = () => {
     updateObsConnectionStatus(connection.name, 'Connecting');
     
     try {
-      const result = await obsCommands.connectToConnection(connection.name);
+      const result = await obsObwsCommands.connect(connection.name);
       
       if (result.success) {
         updateObsConnectionStatus(connection.name, 'Connected');
@@ -351,7 +352,7 @@ const WebSocketManager: React.FC = () => {
         // Poll for status updates
         setTimeout(async () => {
           try {
-            const statusResult = await obsCommands.getConnectionStatus(connection.name);
+            const statusResult = await obsObwsCommands.getConnectionStatus(connection.name);
             if (statusResult.success && statusResult.data) {
               const status = statusResult.data.status as ObsConnection['status'];
               updateObsConnectionStatus(connection.name, status);
@@ -397,7 +398,7 @@ const WebSocketManager: React.FC = () => {
 
   const handleDisconnect = async (connection: ObsConnection) => {
     try {
-      const result = await obsCommands.disconnect(connection.name);
+      const result = await obsObwsCommands.disconnect(connection.name);
       
       if (result.success) {
         updateObsConnectionStatus(connection.name, 'Disconnected');
@@ -439,7 +440,7 @@ const WebSocketManager: React.FC = () => {
   const startHealthMonitoring = (connectionName: string) => {
     const interval = setInterval(async () => {
       try {
-        const status = await obsCommands.getConnectionStatus(connectionName);
+        const status = await obsObwsCommands.getConnectionStatus(connectionName);
         if (status.success && status.data?.status === 'Error') {
           console.warn(`Connection ${connectionName} health check failed`);
           // Could trigger reconnection logic here in the future

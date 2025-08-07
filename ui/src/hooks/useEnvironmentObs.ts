@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef } from 'react';
 import { useEnvironment } from './useEnvironment';
-import { obsCommands } from '../utils/tauriCommands';
+import { obsObwsCommands } from '../utils/tauriCommandsObws';
 import { ApiResponse, ObsConnection } from '../types';
 import { useObsStore } from '../stores/obsStore';
 
@@ -20,7 +20,7 @@ export const useEnvironmentObs = () => {
     if (isWindows && tauriAvailable) {
       // Use Tauri OBS commands
       const url = `ws://${connection.host}:${connection.port}`;
-      return await obsCommands.connect(url);
+      return await obsObwsCommands.connect(url);
     } else {
       // Use web WebSocket
       try {
@@ -40,7 +40,7 @@ export const useEnvironmentObs = () => {
     connectionName: string
   ): Promise<ApiResponse> => {
     if (isWindows && tauriAvailable) {
-      return await obsCommands.disconnect(connectionName);
+      return await obsObwsCommands.disconnect(connectionName);
     } else {
       // Web implementation would close WebSocket
       return { success: true };
@@ -49,7 +49,7 @@ export const useEnvironmentObs = () => {
 
   const getObsStatus = useCallback(async (): Promise<ApiResponse> => {
     if (isWindows && tauriAvailable) {
-      return await obsCommands.getStatus();
+      return await obsObwsCommands.getStatus();
     } else {
       // Web implementation would query WebSocket
       return { success: true, data: { is_recording: false, is_streaming: false, cpu_usage: 0 } };
@@ -90,8 +90,8 @@ export const useEnvironmentObs = () => {
     
     if (isWindows && tauriAvailable) {
       try {
-        console.log('  - Calling obsCommands.setupStatusListener()...');
-        const result = await obsCommands.setupStatusListener();
+        console.log('  - Calling obsObwsCommands.setupStatusListener()...');
+        const result = await obsObwsCommands.setupStatusListener();
         console.log('  - Result:', result);
         return result;
       } catch (error) {
