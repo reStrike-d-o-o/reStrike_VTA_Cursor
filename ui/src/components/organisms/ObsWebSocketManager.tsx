@@ -5,6 +5,7 @@ import Button from '../atoms/Button';
 import { StatusDot } from '../atoms/StatusDot';
 import { useObsStore, ObsConnection } from '../../stores/obsStore';
 import { obsObwsCommands } from '../../utils/tauriCommandsObws';
+import { configCommands } from '../../utils/tauriCommands';
 
 // Use the proper Tauri v2 invoke function with fallback
 const invoke = async (command: string, args?: any) => {
@@ -32,7 +33,11 @@ const isTauriAvailable = (): boolean => {
   return isTauriContext;
 };
 
-const ObsWebSocketManager: React.FC = () => {
+interface ObsWebSocketManagerProps {
+  mode: 'local' | 'remote';
+}
+
+const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
   const {
     connections,
     events,
@@ -46,60 +51,102 @@ const ObsWebSocketManager: React.FC = () => {
     updateObsStatus,
   } = useObsStore();
 
-  // Load existing connections from backend on component mount
+  // Load existing connections from configuration on component mount
   useEffect(() => {
     const loadConnections = async () => {
       if (isTauriAvailable()) {
         try {
           setLoading(true);
-          const result = await obsObwsCommands.getConnections();
           
-          if (result && result.success && result.data && Array.isArray(result.data.connections)) {
-            console.log('Database connections:', result.data.connections);
-            const formattedConnections: ObsConnection[] = result.data.connections.map((conn: any) => {
-              // Map database status to frontend status (backend returns capitalized status)
-              let frontendStatus: ObsConnection['status'] = 'disconnected';
-              if (conn.status === 'Connected' || conn.status === 'Authenticated') {
-                frontendStatus = 'connected';
-              } else if (conn.status === 'Connecting' || conn.status === 'Authenticating') {
-                frontendStatus = 'connecting';
-              } else if (conn.status === 'Error') {
-                frontendStatus = 'error';
-              } else {
-                frontendStatus = 'disconnected';
-              }
-              
-              return {
+          // Load connections from configuration system
+          const configResult = await configCommands.getSettings();
+          if (configResult.success && configResult.data?.obs?.connections) {
+            console.log('Configuration connections:', configResult.data.obs.connections);
+            
+            // Filter connections based on mode
+            const configConnections = configResult.data.obs.connections
+              .filter((conn: any) => {
+                if (mode === 'local') {
+                  // Local mode: only OBS_REC and OBS_STR
+                  return conn.name === 'OBS_REC' || conn.name === 'OBS_STR';
+                } else {
+                  // Remote mode: exclude OBS_REC and OBS_STR
+                  return conn.name !== 'OBS_REC' && conn.name !== 'OBS_STR';
+                }
+              })
+              .map((conn: any) => ({
                 name: conn.name,
                 host: conn.host,
                 port: conn.port,
-                enabled: conn.is_active ?? true,
-                status: frontendStatus,
-                error: conn.error
-              };
-            });
-            console.log('Formatted connections:', formattedConnections);
-            setConnections(formattedConnections);
+                enabled: conn.enabled ?? true,
+                status: 'disconnected' as const,
+                error: undefined
+              }));
+            
+            console.log(`Filtered ${mode} connections:`, configConnections);
+            setConnections(configConnections);
+            
+            // Ensure all config connections are registered with the obws plugin
+            for (const conn of configConnections) {
+              try {
+                await obsObwsCommands.addConnection({
+                  name: conn.name,
+                  host: conn.host,
+                  port: conn.port,
+                  password: undefined, // Will be loaded from config
+                  enabled: conn.enabled,
+                });
+              } catch (error) {
+                // Connection already exists, which is expected
+                console.log(`Connection ${conn.name} already exists in obws plugin`);
+              }
+            }
           } else {
-            // If no connections found, create a default one
-            setConnections([{
-              name: 'OBS Studio 1',
-              host: 'localhost',
-              port: 4455,
-              enabled: true,
-              status: 'disconnected'
-            }]);
+            // If no connections found in config, create default ones based on mode
+            if (mode === 'local') {
+              setConnections([
+                {
+                  name: 'OBS_REC',
+                  host: 'localhost',
+                  port: 4455,
+                  enabled: true,
+                  status: 'disconnected'
+                },
+                {
+                  name: 'OBS_STR',
+                  host: 'localhost',
+                  port: 4466,
+                  enabled: true,
+                  status: 'disconnected'
+                }
+              ]);
+            } else {
+              setConnections([]);
+            }
           }
         } catch (error) {
           console.error('Failed to load OBS connections:', error);
-          // Set default connection on error
-          setConnections([{
-            name: 'OBS Studio 1',
-            host: 'localhost',
-            port: 4455,
-            enabled: true,
-            status: 'disconnected'
-          }]);
+          // Set default connections on error based on mode
+          if (mode === 'local') {
+            setConnections([
+              {
+                name: 'OBS_REC',
+                host: 'localhost',
+                port: 4455,
+                enabled: true,
+                status: 'disconnected'
+              },
+              {
+                name: 'OBS_STR',
+                host: 'localhost',
+                port: 4466,
+                enabled: true,
+                status: 'disconnected'
+              }
+            ]);
+          } else {
+            setConnections([]);
+          }
         } finally {
           setLoading(false);
         }
@@ -107,7 +154,7 @@ const ObsWebSocketManager: React.FC = () => {
     };
 
     loadConnections();
-  }, []);
+  }, [mode]);
 
   // Setup OBS status listener (push-based)
   useEffect(() => {
@@ -279,9 +326,9 @@ const ObsWebSocketManager: React.FC = () => {
 
   const addConnection = () => {
     const newConnection: ObsConnection = {
-      name: `OBS Studio ${connections.length + 1}`,
-      host: 'localhost',
-      port: 4455,
+      name: mode === 'local' ? `OBS_${connections.length + 1}` : `Remote_OBS_${connections.length + 1}`,
+      host: mode === 'local' ? 'localhost' : '192.168.1.100',
+      port: mode === 'local' ? (connections.length === 0 ? 4455 : 4466) : 4455,
       enabled: true,
       status: 'disconnected'
     };
@@ -293,33 +340,29 @@ const ObsWebSocketManager: React.FC = () => {
     if (isTauriAvailable()) {
       try {
         setLoading(true);
-        const result = await obsObwsCommands.getConnections();
         
-        if (result && result.success && result.data && Array.isArray(result.data.connections)) {
-          console.log('Refreshed database connections:', result.data.connections);
-          const formattedConnections: ObsConnection[] = result.data.connections.map((conn: any) => {
-            // Map database status to frontend status (backend returns capitalized status)
-            let frontendStatus: ObsConnection['status'] = 'disconnected';
-            if (conn.status === 'Connected' || conn.status === 'Authenticated') {
-              frontendStatus = 'connected';
-            } else if (conn.status === 'Connecting' || conn.status === 'Authenticating') {
-              frontendStatus = 'connecting';
-            } else if (conn.status === 'Error') {
-              frontendStatus = 'error';
-            } else {
-              frontendStatus = 'disconnected';
-            }
-            
-            return {
+        // Load connections from configuration system
+        const configResult = await configCommands.getSettings();
+        if (configResult.success && configResult.data?.obs?.connections) {
+          // Filter connections based on mode
+          const configConnections = configResult.data.obs.connections
+            .filter((conn: any) => {
+              if (mode === 'local') {
+                return conn.name === 'OBS_REC' || conn.name === 'OBS_STR';
+              } else {
+                return conn.name !== 'OBS_REC' && conn.name !== 'OBS_STR';
+              }
+            })
+            .map((conn: any) => ({
               name: conn.name,
               host: conn.host,
               port: conn.port,
-              enabled: conn.is_active ?? true,
-              status: frontendStatus,
-              error: conn.error
-            };
-          });
-          setConnections(formattedConnections);
+              enabled: conn.enabled ?? true,
+              status: 'disconnected' as const,
+              error: undefined
+            }));
+          
+          setConnections(configConnections);
         }
       } catch (error) {
         console.error('Failed to refresh OBS connections:', error);
@@ -361,8 +404,6 @@ const ObsWebSocketManager: React.FC = () => {
     if (isTauriAvailable()) {
       try {
         setLoading(true);
-        // This command is not implemented in the backend yet
-        console.warn('Sync from config not implemented yet');
         await refreshConnections();
       } catch (error) {
         console.error('Failed to sync connections from config:', error);
@@ -400,8 +441,15 @@ const ObsWebSocketManager: React.FC = () => {
       <div className="bg-gray-800 rounded-lg p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-white">OBS WebSocket Manager</h2>
-            <p className="text-gray-400 mt-1">Manage OBS Studio connections using obws implementation</p>
+            <h2 className="text-2xl font-bold text-white">
+              {mode === 'local' ? 'Local OBS WebSocket Manager' : 'Remote OBS Control Room'}
+            </h2>
+            <p className="text-gray-400 mt-1">
+              {mode === 'local' 
+                ? 'Manage local OBS Studio connections (OBS_REC, OBS_STR) using obws implementation'
+                : 'Control remote OBS instances on the network using obws implementation'
+              }
+            </p>
           </div>
           <div className="flex items-center space-x-4">
             <span className="px-3 py-1 bg-blue-600 text-white text-sm rounded-full">
@@ -409,6 +457,11 @@ const ObsWebSocketManager: React.FC = () => {
             </span>
             <span className="px-3 py-1 bg-purple-600 text-white text-sm rounded-full">
               obws Implementation
+            </span>
+            <span className={`px-3 py-1 text-white text-sm rounded-full ${
+              mode === 'local' ? 'bg-green-600' : 'bg-orange-600'
+            }`}>
+              {mode === 'local' ? 'Local Mode' : 'Remote Mode'}
             </span>
             <span className="px-3 py-1 bg-green-600 text-white text-sm rounded-full">
               {connections.filter(c => c.status === 'connected').length}/{connections.length} Connected
@@ -420,7 +473,9 @@ const ObsWebSocketManager: React.FC = () => {
       {/* Connection Management */}
       <div className="bg-gray-800 rounded-lg p-6">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-semibold text-white">OBS Connections</h3>
+          <h3 className="text-lg font-semibold text-white">
+            {mode === 'local' ? 'Local OBS Connections' : 'Remote OBS Connections'}
+          </h3>
           <div className="flex items-center space-x-2">
             <Button 
               onClick={refreshConnections} 
@@ -482,7 +537,12 @@ const ObsWebSocketManager: React.FC = () => {
           {loading ? (
             <p className="text-gray-400">Loading OBS connections...</p>
           ) : connections.length === 0 ? (
-            <p className="text-gray-400">No OBS connections found. Add one to get started!</p>
+            <p className="text-gray-400">
+              {mode === 'local' 
+                ? 'No local OBS connections found. Add OBS_REC and OBS_STR to get started!'
+                : 'No remote OBS connections found. Add remote instances to control them.'
+              }
+            </p>
           ) : (
             connections.map((connection) => (
             <motion.div
@@ -605,6 +665,7 @@ const ObsWebSocketManager: React.FC = () => {
             const counts = getConnectionCount();
             return (
               <>
+                <div>Mode: {mode}</div>
                 <div>Total Connections: {counts.total}</div>
                 <div>Connected: {counts.connected}</div>
                 <div>Connecting: {counts.connecting}</div>

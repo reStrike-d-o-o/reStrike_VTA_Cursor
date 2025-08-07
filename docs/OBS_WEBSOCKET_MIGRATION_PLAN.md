@@ -81,8 +81,9 @@ This document outlines the comprehensive plan for migrating from our current cus
 
 ### Phase 3: UI Integration ✅ COMPLETED
 - [x] Update OBS drawer to use obws implementation
-- [x] Update WebSocket tab to work with obws connections
-- [x] Update connection management UI
+- [x] Update WebSocket tab to work with obws connections (local mode: OBS_REC, OBS_STR)
+- [x] Update Control Room tab to work with obws connections (remote mode: network instances)
+- [x] Update connection management UI with mode-based filtering
 - [x] Update status indicators to use obws data
 - [x] Test UI integration with real OBS Studio
 
@@ -288,8 +289,9 @@ cargo build --features obs-legacy,obs-obws
 1. ✅ Complete basic implementation (DONE)
 2. ✅ Test with real OBS Studio (DONE)
 3. ✅ Update OBS drawer to use obws implementation (DONE)
-4. ✅ Update WebSocket tab and connection management (DONE)
-5. ✅ Update status indicators (DONE)
+4. ✅ Update WebSocket tab for local instances (OBS_REC, OBS_STR) (DONE)
+5. ✅ Update Control Room tab for remote instances (DONE)
+6. ✅ Update status indicators (DONE)
 
 ### Short Term (Week 2-3) - Feature Migration
 1. 📋 Implement advanced source operations
