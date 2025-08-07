@@ -166,7 +166,7 @@ const ControlRoom: React.FC = () => {
         
         if (response.success) {
           // Add the connection to the list locally
-          const newConnection: StrConnection = {
+                     const newConnection: ObsConnection = {
             name: state.newConnection.name.trim(),
             host: state.newConnection.host.trim(),
             port: port,
@@ -412,7 +412,7 @@ const ControlRoom: React.FC = () => {
         {/* Add Connection Form */}
         {state.showAddConnection && (
           <div className="mb-6 p-4 bg-gray-700/50 rounded-lg border border-gray-600/30">
-            <h4 className="font-medium text-gray-200 mb-3">Add New STR Connection</h4>
+                         <h4 className="font-medium text-gray-200 mb-3">Add New OBS Connection</h4>
             <div className="grid grid-cols-2 gap-4">
               <Input
                 placeholder="Connection Name"
