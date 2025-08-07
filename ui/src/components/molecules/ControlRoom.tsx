@@ -4,7 +4,7 @@ import Input from '../atoms/Input';
 import { StatusDot } from '../atoms/StatusDot';
 import { invoke } from '@tauri-apps/api/core';
 
-interface StrConnection {
+interface ObsConnection {
   name: string;
   host: string;
   port: number;
@@ -17,7 +17,7 @@ interface ControlRoomState {
   isLoading: boolean;
   sessionId: string | null;
   password: string;
-  connections: StrConnection[];
+  connections: ObsConnection[];
   showAddConnection: boolean;
   newConnection: {
     name: string;
@@ -107,7 +107,7 @@ const ControlRoom: React.FC = () => {
         const response = result as { success: boolean; connections?: string[]; error?: string };
         if (response.success && response.connections) {
           // Convert connection names to connection objects
-          const connections: StrConnection[] = response.connections.map(name => ({
+                     const connections: ObsConnection[] = response.connections.map(name => ({
             name,
             host: 'Unknown', // We'll need to get this from the backend later
             port: 4455, // Default port
@@ -188,20 +188,20 @@ const ControlRoom: React.FC = () => {
             isLoading: false
           }));
 
-          setSuccess(response.message || `STR connection "${newConnection.name}" added successfully`);
+          setSuccess(response.message || `OBS connection "${newConnection.name}" added successfully`);
         } else {
-          setError(response.error || 'Failed to add STR connection');
+          setError(response.error || 'Failed to add OBS connection');
           setState(prev => ({ ...prev, isLoading: false }));
         }
       }
     } catch (err) {
       console.error('Failed to add connection:', err);
-      setError('Failed to add STR connection');
+      setError('Failed to add OBS connection');
       setState(prev => ({ ...prev, isLoading: false }));
     }
   };
 
-  const getStatusColor = (status: StrConnection['status']) => {
+  const getStatusColor = (status: ObsConnection['status']) => {
     switch (status) {
       case 'Connected': return 'green';
       case 'Connecting': return 'yellow';
@@ -210,7 +210,7 @@ const ControlRoom: React.FC = () => {
     }
   };
 
-  const getStatusText = (status: StrConnection['status']) => {
+  const getStatusText = (status: ObsConnection['status']) => {
     switch (status) {
       case 'Connected': return 'Connected';
       case 'Connecting': return 'Connecting...';
@@ -293,7 +293,7 @@ const ControlRoom: React.FC = () => {
   };
 
   const handleRemove = async (connectionName: string) => {
-    if (!confirm(`Are you sure you want to remove the STR connection "${connectionName}"?`)) {
+    if (!confirm(`Are you sure you want to remove the OBS connection "${connectionName}"?`)) {
       return;
     }
 
@@ -311,14 +311,14 @@ const ControlRoom: React.FC = () => {
             ...prev,
             connections: prev.connections.filter(conn => conn.name !== connectionName)
           }));
-          setSuccess(response.message || `STR connection "${connectionName}" removed`);
+          setSuccess(response.message || `OBS connection "${connectionName}" removed`);
         } else {
-          setError(response.error || `Failed to remove STR connection "${connectionName}"`);
+          setError(response.error || `Failed to remove OBS connection "${connectionName}"`);
         }
       }
     } catch (err) {
       console.error('Remove error:', err);
-      setError(`Failed to remove STR connection "${connectionName}"`);
+      setError(`Failed to remove OBS connection "${connectionName}"`);
     }
   };
 
@@ -331,7 +331,7 @@ const ControlRoom: React.FC = () => {
             🔐 Control Room Access
           </h3>
           <p className="text-sm text-gray-300 mb-4">
-            Enter your master password to access the Control Room for managing STR connections.
+            Enter your master password to access the Control Room for managing OBS connections.
           </p>
           
           <div className="space-y-4">
@@ -364,9 +364,9 @@ const ControlRoom: React.FC = () => {
         <div className="p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
           <h3 className="text-lg font-semibold mb-3 text-gray-100">About Control Room</h3>
           <div className="space-y-2 text-sm text-gray-300">
-            <p>• <strong>Centralized STR Management:</strong> Control multiple STR OBS instances from one interface</p>
-            <p>• <strong>Bulk Operations:</strong> Mute all audio, change scenes, start/stop streaming across all STR connections</p>
-            <p>• <strong>Separate Connection Management:</strong> Dedicated STR connections independent of regular OBS WebSocket connections</p>
+                    <p>• <strong>Centralized OBS Management:</strong> Control multiple OBS instances from one interface</p>
+        <p>• <strong>Bulk Operations:</strong> Mute all audio, change scenes, start/stop streaming across all OBS connections</p>
+        <p>• <strong>Separate Connection Management:</strong> Dedicated OBS connections independent of regular OBS WebSocket connections</p>
             <p>• <strong>Secure Access:</strong> Password-protected access with session management</p>
           </div>
         </div>
@@ -384,7 +384,7 @@ const ControlRoom: React.FC = () => {
               🎛️ Control Room - Authenticated
             </h3>
             <p className="text-sm text-gray-300 mt-1">
-              Session ID: {state.sessionId} • {state.connections.length} STR connections configured
+              Session ID: {state.sessionId} • {state.connections.length} OBS connections configured
             </p>
           </div>
           <Button
@@ -400,12 +400,12 @@ const ControlRoom: React.FC = () => {
       {/* Connection Management */}
       <div className="p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-100">STR Connections</h3>
+          <h3 className="text-lg font-semibold text-gray-100">OBS Connections</h3>
           <Button
             onClick={() => setState(prev => ({ ...prev, showAddConnection: !prev.showAddConnection }))}
             size="sm"
           >
-            {state.showAddConnection ? 'Cancel' : 'Add STR Connection'}
+            {state.showAddConnection ? 'Cancel' : 'Add OBS Connection'}
           </Button>
         </div>
 
