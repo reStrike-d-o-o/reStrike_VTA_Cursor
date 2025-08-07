@@ -3,6 +3,8 @@
 
 use re_strike_vta::core::app::App;
 use re_strike_vta::tauri_commands;
+#[cfg(feature = "obs-obws")]
+use re_strike_vta::tauri_commands_obws;
 use re_strike_vta::types::AppResult;
 use std::sync::Arc;
 

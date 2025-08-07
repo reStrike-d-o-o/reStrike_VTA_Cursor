@@ -1,8 +1,9 @@
 //! Tauri commands for OBS WebSocket integration using obws crate
 
 use crate::core::app::App;
-use crate::types::{AppError, AppResult};
-use crate::plugins::obs_obws::{ObsConnectionConfig, ObsManager};
+// AppError and AppResult are used in the ObsManager implementation
+use crate::plugins::obs_obws::manager::ObsManager;
+use crate::plugins::obs_obws::ObsConnectionConfig;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tauri::{State, Error as TauriError};
@@ -466,7 +467,7 @@ pub async fn obs_obws_get_stats(
 /// Test obws connection
 #[tauri::command]
 pub async fn obs_obws_test_connection(
-    app: State<'_, Arc<App>>,
+    _app: State<'_, Arc<App>>,  // Prefix with _ since we don't use it yet
 ) -> Result<ObsObwsConnectionResponse, TauriError> {
     log::info!("OBS obws test connection called");
     
