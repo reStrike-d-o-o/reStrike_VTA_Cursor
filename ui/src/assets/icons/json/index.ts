@@ -20,4 +20,5 @@ export { default as usbAnimation } from './usb.json';
 export { default as floppyDiscAnimation } from './floppy-disc.json';
 export { default as downloadAnimation } from './download.json';
 export { default as brainAnimation } from './brain.json';
-export { default as crossbowAnimation } from './crossbow.json'; 
+export { default as crossbowAnimation } from './crossbow.json';
+export { default as mixerAnimation } from './mixer.json'; 

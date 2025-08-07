@@ -851,7 +851,7 @@ const ControlRoom: React.FC = () => {
       </div>
 
       {/* Bulk Operations - Two Column Layout */}
-      <div className="p-6 bg-gradient-to-br from-orange-900/80 to-red-900/90 backdrop-blur-sm rounded-lg border border-orange-600/30 shadow-lg">
+      <div className="p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
         <h3 className="text-lg font-semibold mb-4 text-gray-100">Bulk Operations</h3>
         
         <div className="grid grid-cols-2 gap-6">
@@ -865,61 +865,61 @@ const ControlRoom: React.FC = () => {
                   <div key={connection.name} className="p-3 bg-gray-700/30 rounded border border-gray-600/20">
                     <h5 className="font-medium text-gray-200 text-sm mb-2">{connection.name}</h5>
                     
-                    <div className="space-y-2">
-                      {/* Audio Source Dropdown */}
-                      <div>
-                        <label htmlFor={`audio-source-${connection.name}`} className="block text-xs text-gray-400 mb-1">Audio Source</label>
-                        <select 
-                          id={`audio-source-${connection.name}`}
-                          value={state.connectionSelections[connection.name]?.audioSource || ''}
-                          onChange={(e) => handleSelectionChange(connection.name, 'audioSource', e.target.value)}
-                          className="w-full px-3 py-2 text-sm bg-gray-700 border border-gray-600 rounded-md text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                          <option value="">No audio source</option>
-                          {getMockAudioSources(connection.name).map((source) => (
-                            <option key={source} value={source}>
-                              {source}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      
-                      {/* Main Scene Dropdown */}
-                      <div>
-                        <label htmlFor={`main-scene-${connection.name}`} className="block text-xs text-gray-400 mb-1">Main Scene</label>
-                        <select 
-                          id={`main-scene-${connection.name}`}
-                          value={state.connectionSelections[connection.name]?.mainScene || ''}
-                          onChange={(e) => handleSelectionChange(connection.name, 'mainScene', e.target.value)}
-                          className="w-full px-3 py-2 text-sm bg-gray-700 border border-gray-600 rounded-md text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                          <option value="">No scene selected</option>
-                          {getMockScenes(connection.name).map((scene) => (
-                            <option key={scene} value={scene}>
-                              {scene}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      
-                      {/* Break Scene Dropdown */}
-                      <div>
-                        <label htmlFor={`break-scene-${connection.name}`} className="block text-xs text-gray-400 mb-1">Break Scene</label>
-                        <select 
-                          id={`break-scene-${connection.name}`}
-                          value={state.connectionSelections[connection.name]?.breakScene || ''}
-                          onChange={(e) => handleSelectionChange(connection.name, 'breakScene', e.target.value)}
-                          className="w-full px-3 py-2 text-sm bg-gray-700 border border-gray-600 rounded-md text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                          <option value="">No scene selected</option>
-                          {getMockScenes(connection.name).map((scene) => (
-                            <option key={scene} value={scene}>
-                              {scene}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
+                                         <div className="grid grid-cols-3 gap-2">
+                       {/* Audio Source Dropdown */}
+                       <div>
+                         <label htmlFor={`audio-source-${connection.name}`} className="block text-xs text-gray-400 mb-1">Audio</label>
+                         <select 
+                           id={`audio-source-${connection.name}`}
+                           value={state.connectionSelections[connection.name]?.audioSource || ''}
+                           onChange={(e) => handleSelectionChange(connection.name, 'audioSource', e.target.value)}
+                           className="w-full px-2 py-1 text-xs bg-gray-700 border border-gray-600 rounded-md text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                         >
+                           <option value="">None</option>
+                           {getMockAudioSources(connection.name).map((source) => (
+                             <option key={source} value={source}>
+                               {source}
+                             </option>
+                           ))}
+                         </select>
+                       </div>
+                       
+                       {/* Main Scene Dropdown */}
+                       <div>
+                         <label htmlFor={`main-scene-${connection.name}`} className="block text-xs text-gray-400 mb-1">Main</label>
+                         <select 
+                           id={`main-scene-${connection.name}`}
+                           value={state.connectionSelections[connection.name]?.mainScene || ''}
+                           onChange={(e) => handleSelectionChange(connection.name, 'mainScene', e.target.value)}
+                           className="w-full px-2 py-1 text-xs bg-gray-700 border border-gray-600 rounded-md text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                         >
+                           <option value="">None</option>
+                           {getMockScenes(connection.name).map((scene) => (
+                             <option key={scene} value={scene}>
+                               {scene}
+                             </option>
+                           ))}
+                         </select>
+                       </div>
+                       
+                       {/* Break Scene Dropdown */}
+                       <div>
+                         <label htmlFor={`break-scene-${connection.name}`} className="block text-xs text-gray-400 mb-1">Break</label>
+                         <select 
+                           id={`break-scene-${connection.name}`}
+                           value={state.connectionSelections[connection.name]?.breakScene || ''}
+                           onChange={(e) => handleSelectionChange(connection.name, 'breakScene', e.target.value)}
+                           className="w-full px-2 py-1 text-xs bg-gray-700 border border-gray-600 rounded-md text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                         >
+                           <option value="">None</option>
+                           {getMockScenes(connection.name).map((scene) => (
+                             <option key={scene} value={scene}>
+                               {scene}
+                             </option>
+                           ))}
+                         </select>
+                       </div>
+                     </div>
                   </div>
                 ))}
               </div>
