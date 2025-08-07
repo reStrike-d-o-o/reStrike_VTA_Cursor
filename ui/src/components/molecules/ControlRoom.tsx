@@ -481,8 +481,8 @@ const ControlRoom: React.FC = () => {
         {/* Connection List */}
         {state.connections.length === 0 ? (
           <div className="text-center py-8">
-            <p className="text-gray-400">No STR connections configured</p>
-            <p className="text-sm text-gray-500 mt-1">Click "Add STR Connection" to get started</p>
+                         <p className="text-gray-400">No OBS connections configured</p>
+             <p className="text-sm text-gray-500 mt-1">Click "Add OBS Connection" to get started</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -531,25 +531,25 @@ const ControlRoom: React.FC = () => {
       <div className="p-6 bg-gradient-to-br from-orange-900/80 to-red-900/90 backdrop-blur-sm rounded-lg border border-orange-600/30 shadow-lg">
         <h3 className="text-lg font-semibold mb-4 text-gray-100">Bulk Operations</h3>
         <div className="grid grid-cols-2 gap-4">
-          <Button disabled={state.connections.length === 0} variant="outline">
-            🔇 Mute All STR Audio
-          </Button>
-          <Button disabled={state.connections.length === 0} variant="outline">
-            🔊 Unmute All STR Audio
+                     <Button disabled={state.connections.length === 0} variant="outline">
+             🔇 Mute All OBS Audio
+           </Button>
+           <Button disabled={state.connections.length === 0} variant="outline">
+             🔊 Unmute All OBS Audio
           </Button>
           <Button disabled={state.connections.length === 0} variant="outline">
             🎬 Change All Scenes
           </Button>
-          <Button disabled={state.connections.length === 0} variant="outline">
-            📺 Start All Streaming
-          </Button>
-          <Button disabled={state.connections.length === 0} variant="outline">
-            ⏹️ Stop All Streaming
+                     <Button disabled={state.connections.length === 0} variant="outline">
+             📺 Start All OBS Streaming
+           </Button>
+           <Button disabled={state.connections.length === 0} variant="outline">
+             ⏹️ Stop All OBS Streaming
           </Button>
         </div>
         {state.connections.length === 0 && (
           <p className="text-sm text-gray-400 mt-3 text-center">
-            Add and connect STR connections to enable bulk operations
+                         Add and connect OBS connections to enable bulk operations
           </p>
         )}
       </div>

@@ -278,7 +278,7 @@ impl AsyncControlRoomManager {
         log::info!("Control Room manual logout");
     }
 
-    /// Add a new STR connection configuration
+    /// Add a new OBS connection configuration
     pub async fn add_connection(&self, config: ControlRoomConnection) -> AppResult<()> {
         if !self.is_authenticated().await {
             return Err(crate::types::AppError::SecurityError("Not authenticated".to_string()));
@@ -305,7 +305,7 @@ impl AsyncControlRoomManager {
         Ok(())
     }
 
-    /// Remove a STR connection
+    /// Remove an OBS connection
     pub async fn remove_connection(&self, name: &str) -> AppResult<()> {
         if !self.is_authenticated().await {
             return Err(crate::types::AppError::SecurityError("Not authenticated".to_string()));
@@ -443,7 +443,7 @@ impl AsyncControlRoomManager {
         }
     }
 
-    /// Get list of STR connection names
+    /// Get list of OBS connection names
     pub async fn get_connection_names(&self) -> Vec<String> {
         let connections = self.connections.lock().await;
         connections.keys().cloned().collect()
