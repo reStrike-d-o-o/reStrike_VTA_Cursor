@@ -50,7 +50,7 @@ export const obsObwsCommands = {
   }): Promise<TauriCommandResponse<any>> => {
     try {
       const result = await safeInvoke('obs_obws_update_connection', {
-        old_name: oldName,
+        oldName: oldName,
         connection: params
       });
       
@@ -95,7 +95,7 @@ export const obsObwsCommands = {
   async connect(connectionName: string): Promise<TauriCommandResponse> {
     try {
       if (isTauriAvailable()) {
-        return await safeInvoke('obs_obws_connect', { connection_name: connectionName });
+        return await safeInvoke('obs_obws_connect', { connectionName: connectionName });
       }
       return { success: false, error: 'Tauri not available' };
     } catch (error) {
@@ -109,7 +109,7 @@ export const obsObwsCommands = {
   async disconnect(connectionName: string): Promise<TauriCommandResponse> {
     try {
       if (isTauriAvailable()) {
-        return await safeInvoke('obs_obws_disconnect', { connection_name: connectionName });
+        return await safeInvoke('obs_obws_disconnect', { connectionName: connectionName });
       }
       return { success: false, error: 'Tauri not available' };
     } catch (error) {
@@ -123,7 +123,7 @@ export const obsObwsCommands = {
   async getConnectionStatus(connectionName: string): Promise<TauriCommandResponse> {
     try {
       if (isTauriAvailable()) {
-        return await safeInvoke('obs_obws_get_connection_status', { connection_name: connectionName });
+        return await safeInvoke('obs_obws_get_connection_status', { connectionName: connectionName });
       }
       return { success: false, error: 'Tauri not available' };
     } catch (error) {
@@ -151,7 +151,7 @@ export const obsObwsCommands = {
   async removeConnection(connectionName: string): Promise<TauriCommandResponse> {
     try {
       if (isTauriAvailable()) {
-        return await safeInvoke('obs_obws_remove_connection', { connection_name: connectionName });
+        return await safeInvoke('obs_obws_remove_connection', { connectionName: connectionName });
       }
       return { success: false, error: 'Tauri not available' };
     } catch (error) {
@@ -165,7 +165,7 @@ export const obsObwsCommands = {
   async getStatus(connectionName?: string): Promise<TauriCommandResponse> {
     try {
       if (isTauriAvailable()) {
-        return await safeInvoke('obs_obws_get_status', { connection_name: connectionName });
+        return await safeInvoke('obs_obws_get_status', { connectionName: connectionName });
       }
       return { success: false, error: 'Tauri not available' };
     } catch (error) {
@@ -179,7 +179,7 @@ export const obsObwsCommands = {
   async startRecording(connectionName?: string): Promise<TauriCommandResponse> {
     try {
       if (isTauriAvailable()) {
-        return await safeInvoke('obs_obws_start_recording', { connection_name: connectionName });
+        return await safeInvoke('obs_obws_start_recording', { connectionName: connectionName });
       }
       return { success: false, error: 'Tauri not available' };
     } catch (error) {
@@ -193,7 +193,7 @@ export const obsObwsCommands = {
   async stopRecording(connectionName?: string): Promise<TauriCommandResponse> {
     try {
       if (isTauriAvailable()) {
-        return await safeInvoke('obs_obws_stop_recording', { connection_name: connectionName });
+        return await safeInvoke('obs_obws_stop_recording', { connectionName: connectionName });
       }
       return { success: false, error: 'Tauri not available' };
     } catch (error) {
@@ -207,7 +207,7 @@ export const obsObwsCommands = {
   async getRecordingStatus(connectionName?: string): Promise<TauriCommandResponse> {
     try {
       if (isTauriAvailable()) {
-        return await safeInvoke('obs_obws_get_recording_status', { connection_name: connectionName });
+        return await safeInvoke('obs_obws_get_recording_status', { connectionName: connectionName });
       }
       return { success: false, error: 'Tauri not available' };
     } catch (error) {
@@ -221,7 +221,7 @@ export const obsObwsCommands = {
   async startStreaming(connectionName?: string): Promise<TauriCommandResponse> {
     try {
       if (isTauriAvailable()) {
-        return await safeInvoke('obs_obws_start_streaming', { connection_name: connectionName });
+        return await safeInvoke('obs_obws_start_streaming', { connectionName: connectionName });
       }
       return { success: false, error: 'Tauri not available' };
     } catch (error) {
@@ -235,7 +235,7 @@ export const obsObwsCommands = {
   async stopStreaming(connectionName?: string): Promise<TauriCommandResponse> {
     try {
       if (isTauriAvailable()) {
-        return await safeInvoke('obs_obws_stop_streaming', { connection_name: connectionName });
+        return await safeInvoke('obs_obws_stop_streaming', { connectionName: connectionName });
       }
       return { success: false, error: 'Tauri not available' };
     } catch (error) {
@@ -249,7 +249,7 @@ export const obsObwsCommands = {
   async getStreamingStatus(connectionName?: string): Promise<TauriCommandResponse> {
     try {
       if (isTauriAvailable()) {
-        return await safeInvoke('obs_obws_get_streaming_status', { connection_name: connectionName });
+        return await safeInvoke('obs_obws_get_streaming_status', { connectionName: connectionName });
       }
       return { success: false, error: 'Tauri not available' };
     } catch (error) {
@@ -263,7 +263,7 @@ export const obsObwsCommands = {
   async getCurrentScene(connectionName?: string): Promise<TauriCommandResponse> {
     try {
       if (isTauriAvailable()) {
-        return await safeInvoke('obs_obws_get_current_scene', { connection_name: connectionName });
+        return await safeInvoke('obs_obws_get_current_scene', { connectionName: connectionName });
       }
       return { success: false, error: 'Tauri not available' };
     } catch (error) {
@@ -271,15 +271,15 @@ export const obsObwsCommands = {
     }
   },
 
-  /**
+    /**
    * Set current scene using obws
    */
   async setCurrentScene(sceneName: string, connectionName?: string): Promise<TauriCommandResponse> {
     try {
       if (isTauriAvailable()) {
-        return await safeInvoke('obs_obws_set_current_scene', { 
-          scene_name: sceneName, 
-          connection_name: connectionName 
+        return await safeInvoke('obs_obws_set_current_scene', {
+          sceneName: sceneName,
+          connectionName: connectionName
         });
       }
       return { success: false, error: 'Tauri not available' };
@@ -294,7 +294,7 @@ export const obsObwsCommands = {
   async getScenes(connectionName?: string): Promise<TauriCommandResponse> {
     try {
       if (isTauriAvailable()) {
-        return await safeInvoke('obs_obws_get_scenes', { connection_name: connectionName });
+        return await safeInvoke('obs_obws_get_scenes', { connectionName: connectionName });
       }
       return { success: false, error: 'Tauri not available' };
     } catch (error) {
@@ -308,7 +308,7 @@ export const obsObwsCommands = {
   async getVersion(connectionName?: string): Promise<TauriCommandResponse> {
     try {
       if (isTauriAvailable()) {
-        return await safeInvoke('obs_obws_get_version', { connection_name: connectionName });
+        return await safeInvoke('obs_obws_get_version', { connectionName: connectionName });
       }
       return { success: false, error: 'Tauri not available' };
     } catch (error) {
@@ -322,7 +322,7 @@ export const obsObwsCommands = {
   async getStats(connectionName?: string): Promise<TauriCommandResponse> {
     try {
       if (isTauriAvailable()) {
-        return await safeInvoke('obs_obws_get_stats', { connection_name: connectionName });
+        return await safeInvoke('obs_obws_get_stats', { connectionName: connectionName });
       }
       return { success: false, error: 'Tauri not available' };
     } catch (error) {

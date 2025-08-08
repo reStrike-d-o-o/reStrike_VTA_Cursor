@@ -2389,6 +2389,7 @@ The OBS integration system provides WebSocket-based control of OBS Studio instan
 3. **✅ Enhance ObsWebSocketManager**: Add edit functionality from WebSocketManager
 4. **✅ Fix Backend Issues**: Resolve command registration and type mismatches
 5. **✅ Fix Tauri IPC Arguments**: Correct argument passing for `obs_obws_add_connection` command
+6. **✅ Fix Parameter Naming**: Fixed Tauri IPC parameter naming conventions for all OBS WebSocket commands
 
 #### **Current Status** ✅ READY FOR TESTING
 - **Frontend**: All TypeScript errors resolved, build successful
