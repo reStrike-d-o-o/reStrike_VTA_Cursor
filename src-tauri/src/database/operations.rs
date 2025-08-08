@@ -1115,6 +1115,27 @@ impl PssUdpOperations {
         Ok(match_athlete_id as i64)
     }
 
+    /// Get athletes for a specific match with their details
+    pub fn get_pss_match_athletes(conn: &Connection, match_id: i64) -> DatabaseResult<Vec<(PssMatchAthlete, PssAthlete)>> {
+        let mut stmt = conn.prepare(
+            "SELECT ma.id, ma.match_id, ma.athlete_id, ma.athlete_position, ma.bg_color, ma.fg_color, ma.created_at,
+                    a.id, a.athlete_code, a.short_name, a.long_name, a.country_code, a.flag_id, a.created_at, a.updated_at
+             FROM pss_match_athletes ma
+             JOIN pss_athletes a ON ma.athlete_id = a.id
+             WHERE ma.match_id = ?
+             ORDER BY ma.athlete_position"
+        )?;
+        
+        let match_athletes = stmt.query_map([match_id], |row| {
+            let match_athlete = PssMatchAthlete::from_row(row)?;
+            let athlete = PssAthlete::from_row(row)?;
+            Ok((match_athlete, athlete))
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+        
+        Ok(match_athletes)
+    }
+
     pub fn get_all_settings(conn: &Connection) -> DatabaseResult<serde_json::Value> {
         // Get all settings from the normalized settings system
         let mut stmt = conn.prepare(

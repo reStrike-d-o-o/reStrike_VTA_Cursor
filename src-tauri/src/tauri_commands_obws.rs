@@ -858,3 +858,177 @@ pub async fn obs_obws_update_recording_session_status(
         }),
     }
 }
+
+/// Generate recording path for a match
+#[tauri::command]
+pub async fn obs_obws_generate_recording_path(
+    match_id: String,
+    app: State<'_, Arc<App>>,
+) -> Result<ObsObwsConnectionResponse, TauriError> {
+    log::info!("OBS obws generate recording path called: match_id={}", match_id);
+
+    // Get database connection
+    let conn = app.database_plugin().get_connection().await
+        .map_err(|e| TauriError::from(std::io::Error::new(std::io::ErrorKind::Other, format!("Database connection error: {}", e))))?;
+
+    // Get active tournament and tournament day
+    let tournament = crate::database::operations::TournamentOperations::get_active_tournament(&*conn)
+        .map_err(|e| TauriError::from(std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to get active tournament: {}", e))))?;
+    
+    let tournament_day = if let Some(ref tournament) = tournament {
+        crate::database::operations::TournamentOperations::get_active_tournament_day(&*conn, tournament.id.unwrap())
+            .map_err(|e| TauriError::from(std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to get active tournament day: {}", e))))?
+    } else {
+        None
+    };
+
+    // Get match details
+    let matches = crate::database::operations::PssUdpOperations::get_pss_matches(&*conn, Some(100))
+        .map_err(|e| TauriError::from(std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to get matches: {}", e))))?;
+    
+    let match_info = matches.into_iter()
+        .find(|m| m.match_id == match_id)
+        .ok_or_else(|| TauriError::from(std::io::Error::new(std::io::ErrorKind::NotFound, format!("Match not found: {}", match_id))))?;
+
+    // Get match athletes
+    let match_athletes = crate::database::operations::PssUdpOperations::get_pss_match_athletes(&*conn, match_info.id.unwrap())
+        .map_err(|e| TauriError::from(std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to get match athletes: {}", e))))?;
+
+    // Extract player information
+    let mut player1_name = None;
+    let mut player1_flag = None;
+    let mut player2_name = None;
+    let mut player2_flag = None;
+
+    for (match_athlete, athlete) in match_athletes {
+        match match_athlete.athlete_position {
+            1 => {
+                player1_name = Some(athlete.short_name);
+                player1_flag = athlete.country_code;
+            },
+            2 => {
+                player2_name = Some(athlete.short_name);
+                player2_flag = athlete.country_code;
+            },
+            _ => {}
+        }
+    }
+
+    let path_generator = crate::plugins::obs_obws::ObsPathGenerator::new(None);
+
+    match path_generator.generate_recording_path(
+        &match_id,
+        tournament.map(|t| t.name),
+        tournament_day.map(|td| format!("Day {}", td.day_number)),
+        match_info.match_number,
+        player1_name.clone(),
+        player1_flag.clone(),
+        player2_name.clone(),
+        player2_flag.clone()
+    ) {
+        Ok(generated_path) => {
+            if let Err(e) = path_generator.ensure_directory_exists(&generated_path.directory) {
+                return Ok(ObsObwsConnectionResponse {
+                    success: false,
+                    data: None,
+                    error: Some(format!("Failed to create directory: {}", e)),
+                });
+            }
+
+            Ok(ObsObwsConnectionResponse {
+                success: true,
+                data: Some(serde_json::json!({
+                    "full_path": generated_path.full_path.to_string_lossy(),
+                    "directory": generated_path.directory.to_string_lossy(),
+                    "filename": generated_path.filename,
+                    "tournament_name": generated_path.tournament_name,
+                    "tournament_day": generated_path.tournament_day,
+                    "match_number": generated_path.match_number,
+                    "player1_name": player1_name,
+                    "player1_flag": player1_flag,
+                    "player2_name": player2_name,
+                    "player2_flag": player2_flag,
+                })),
+                error: None,
+            })
+        },
+        Err(e) => Ok(ObsObwsConnectionResponse {
+            success: false,
+            data: None,
+            error: Some(e.to_string()),
+        }),
+    }
+}
+
+/// Get Windows Videos folder path
+#[tauri::command]
+pub async fn obs_obws_get_windows_videos_folder(
+    _app: State<'_, Arc<App>>,
+) -> Result<ObsObwsConnectionResponse, TauriError> {
+    log::info!("OBS obws get Windows Videos folder called");
+    
+    let videos_path = crate::plugins::obs_obws::PathGeneratorConfig::detect_windows_videos_folder();
+    
+    Ok(ObsObwsConnectionResponse {
+        success: true,
+        data: Some(serde_json::json!({
+            "videos_path": videos_path.to_string_lossy(),
+            "exists": videos_path.exists(),
+        })),
+        error: None,
+    })
+}
+
+/// Test path generation with sample data
+#[tauri::command]
+pub async fn obs_obws_test_path_generation(
+    match_id: String,
+    tournament_name: Option<String>,
+    tournament_day: Option<String>,
+    match_number: Option<String>,
+    player1_name: Option<String>,
+    player1_flag: Option<String>,
+    player2_name: Option<String>,
+    player2_flag: Option<String>,
+    _app: State<'_, Arc<App>>,
+) -> Result<ObsObwsConnectionResponse, TauriError> {
+    log::info!("OBS obws test path generation called");
+    
+    let config = crate::plugins::obs_obws::PathGeneratorConfig {
+        videos_root: crate::plugins::obs_obws::PathGeneratorConfig::detect_windows_videos_folder(),
+        default_format: "mp4".to_string(),
+        include_minutes_seconds: true,
+    };
+    
+    let path_generator = crate::plugins::obs_obws::ObsPathGenerator::new(Some(config));
+    
+    // Create a test directory path
+    let directory = path_generator.generate_directory_path(&tournament_name, &tournament_day, &match_number);
+    
+    // Create test match info
+    let test_match_info = crate::plugins::obs_obws::path_generator::MatchInfo {
+        match_id: match_id.clone(),
+        match_number: match_number.clone(),
+        player1_name,
+        player1_flag,
+        player2_name,
+        player2_flag,
+    };
+    
+    // Generate test filename
+    let filename = path_generator.generate_filename(&test_match_info, &tournament_name, &tournament_day);
+    let full_path = directory.join(&filename);
+    
+    Ok(ObsObwsConnectionResponse {
+        success: true,
+        data: Some(serde_json::json!({
+            "full_path": full_path.to_string_lossy(),
+            "directory": directory.to_string_lossy(),
+            "filename": filename,
+            "tournament_name": tournament_name,
+            "tournament_day": tournament_day,
+            "match_number": match_number,
+        })),
+        error: None,
+    })
+}

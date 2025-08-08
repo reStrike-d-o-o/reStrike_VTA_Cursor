@@ -243,6 +243,12 @@ async fn main() -> AppResult<()> {
             tauri_commands_obws::obs_obws_create_recording_session,
             #[cfg(feature = "obs-obws")]
             tauri_commands_obws::obs_obws_update_recording_session_status,
+            #[cfg(feature = "obs-obws")]
+            tauri_commands_obws::obs_obws_generate_recording_path,
+            #[cfg(feature = "obs-obws")]
+            tauri_commands_obws::obs_obws_get_windows_videos_folder,
+            #[cfg(feature = "obs-obws")]
+            tauri_commands_obws::obs_obws_test_path_generation,
             tauri_commands::obs_connect_to_connection,
             tauri_commands::obs_get_connection_status,
             tauri_commands::obs_get_connections,

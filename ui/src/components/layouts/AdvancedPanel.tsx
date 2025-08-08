@@ -14,6 +14,7 @@ import DatabaseMigrationPanel from '../molecules/DatabaseMigrationPanel';
 import FlagManagementPanel from '../molecules/FlagManagementPanel';
 import TournamentManagementPanel from '../molecules/TournamentManagementPanel';
 import ObsWebSocketManager from '../organisms/ObsWebSocketManager';
+import ObsIntegrationPanel from '../molecules/ObsIntegrationPanel';
 import Toggle from '../atoms/Toggle';
 import TabGroup from '../molecules/TabGroup';
 import TabIcons from '../atoms/TabIcons';
@@ -24,13 +25,7 @@ import { flowChartAnimation, spyAnimation, plansAnimation, watcherAnimation, tae
 
 type AdvancedPanelProps = React.ComponentProps<'div'>;
 
-// OBS Integration Settings interface
-interface ObsIntegrationSettings {
-  autoConnectOnStartup: boolean;
-  showStatusInOverlay: boolean;
-  autoRecordOnClipPlay: boolean;
-  saveReplayBufferOnClipCreation: boolean;
-}
+
 
 const DRAWERS = [
   {
@@ -81,79 +76,7 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
   // OVR horizontal drawer state
   const [ovrTab, setOvrTab] = useState('integration');
   
-  // OBS Integration Settings state
-  const [obsIntegrationSettings, setObsIntegrationSettings] = useState<ObsIntegrationSettings>({
-    autoConnectOnStartup: true,
-    showStatusInOverlay: true,
-    autoRecordOnClipPlay: false,
-    saveReplayBufferOnClipCreation: true,
-  });
-  
-  const [isLoadingSettings, setIsLoadingSettings] = useState(false);
-  
   const drawer = DRAWERS.find(d => d.key === activeDrawer);
-
-  // Load OBS Integration settings from configuration
-  const loadObsIntegrationSettings = async () => {
-    try {
-      setIsLoadingSettings(true);
-      const result = await configCommands.getSettings();
-      if (result.success && result.data?.obs?.integration) {
-        setObsIntegrationSettings({
-          autoConnectOnStartup: result.data.obs.integration.auto_connect_on_startup ?? true,
-          showStatusInOverlay: result.data.obs.integration.show_status_in_overlay ?? true,
-          autoRecordOnClipPlay: result.data.obs.integration.auto_record_on_clip_play ?? false,
-          saveReplayBufferOnClipCreation: result.data.obs.integration.save_replay_buffer_on_clip_creation ?? true,
-        });
-      }
-    } catch (error) {
-      console.error('Failed to load OBS integration settings:', error);
-    } finally {
-      setIsLoadingSettings(false);
-    }
-  };
-
-  // Save OBS Integration settings to configuration
-  const saveObsIntegrationSettings = async (newSettings: ObsIntegrationSettings) => {
-    try {
-      const result = await configCommands.getSettings();
-      if (result.success) {
-        const updatedSettings = {
-          ...result.data,
-          obs: {
-            ...result.data.obs,
-            integration: {
-              auto_connect_on_startup: newSettings.autoConnectOnStartup,
-              show_status_in_overlay: newSettings.showStatusInOverlay,
-              auto_record_on_clip_play: newSettings.autoRecordOnClipPlay,
-              save_replay_buffer_on_clip_creation: newSettings.saveReplayBufferOnClipCreation,
-            },
-          },
-        };
-        await configCommands.updateSettings(updatedSettings);
-        console.log('OBS integration settings saved successfully');
-      }
-    } catch (error) {
-      console.error('Failed to save OBS integration settings:', error);
-    }
-  };
-
-  // Handle checkbox change
-  const handleObsSettingChange = async (setting: keyof ObsIntegrationSettings, value: boolean) => {
-    const newSettings = {
-      ...obsIntegrationSettings,
-      [setting]: value,
-    };
-    setObsIntegrationSettings(newSettings);
-    await saveObsIntegrationSettings(newSettings);
-  };
-
-  // Load settings when OBS tab is opened
-  useEffect(() => {
-    if (activeDrawer === 'obs' && obsTab === 'integration') {
-      loadObsIntegrationSettings();
-    }
-  }, [activeDrawer, obsTab]);
 
   return (
     <div className={`flex h-full min-h-0 min-w-[320px] max-w-[100%] bg-gradient-to-br from-gray-900/95 to-gray-800/90 backdrop-blur-sm shadow-xl overflow-hidden z-20 ${className}`} {...rest}>
@@ -203,51 +126,11 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
                 icon: <LottieIcon animationData={mixerAnimation} size={32} />,
                 content: <ObsWebSocketManager mode="remote" />
               },
-                                {
-                    id: 'integration',
-                    label: 'Integration',
-                    icon: <LottieIcon animationData={businessAnimation} size={32} />,
-                content: (
-                  <div className="space-y-6">
-                    <div className="p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
-                      <h3 className="text-lg font-semibold mb-4 text-gray-100">OBS Integration Settings</h3>
-                      {isLoadingSettings ? (
-                        <div className="text-sm text-gray-400">Loading settings...</div>
-                      ) : (
-                        <div className="space-y-4">
-                          <Toggle
-                            id="obs-auto-connect"
-                            checked={obsIntegrationSettings.autoConnectOnStartup}
-                            onChange={(e) => handleObsSettingChange('autoConnectOnStartup', e.target.checked)}
-                            label="Auto-connect to OBS on startup"
-                            labelPosition="right"
-                          />
-                          <Toggle
-                            id="obs-show-status"
-                            checked={obsIntegrationSettings.showStatusInOverlay}
-                            onChange={(e) => handleObsSettingChange('showStatusInOverlay', e.target.checked)}
-                            label="Show OBS status in overlay"
-                            labelPosition="right"
-                          />
-                          <Toggle
-                            id="obs-auto-record"
-                            checked={obsIntegrationSettings.autoRecordOnClipPlay}
-                            onChange={(e) => handleObsSettingChange('autoRecordOnClipPlay', e.target.checked)}
-                            label="Auto-record when playing clips"
-                            labelPosition="right"
-                          />
-                          <Toggle
-                            id="obs-save-replay"
-                            checked={obsIntegrationSettings.saveReplayBufferOnClipCreation}
-                            onChange={(e) => handleObsSettingChange('saveReplayBufferOnClipCreation', e.target.checked)}
-                            label="Save replay buffer on clip creation"
-                            labelPosition="right"
-                          />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )
+                                              {
+                id: 'integration',
+                label: 'Integration',
+                icon: <LottieIcon animationData={businessAnimation} size={32} />,
+                content: <ObsIntegrationPanel />
               }
             ]}
             activeTab={obsTab}

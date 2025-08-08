@@ -8,6 +8,7 @@ pub mod manager;
 pub mod types;
 pub mod operations;
 pub mod test_implementation;
+pub mod path_generator;
 
 use crate::types::AppResult;
 use std::sync::{Arc, Mutex, Once};
@@ -16,6 +17,7 @@ use std::sync::{Arc, Mutex, Once};
 pub use client::ObsClient;
 pub use manager::ObsManager;  // Re-export ObsManager for external use
 pub use types::*;
+pub use path_generator::{ObsPathGenerator, PathGeneratorConfig, GeneratedPath};
 
 /// Global OBS manager instance using thread-safe singleton pattern
 static INSTANCE: Once = Once::new();
