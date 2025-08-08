@@ -213,6 +213,36 @@ async fn main() -> AppResult<()> {
             tauri_commands_obws::obs_obws_test_connection,
             #[cfg(feature = "obs-obws")]
             tauri_commands_obws::obs_obws_setup_status_listener,
+            
+            // OBS obws Replay Buffer Commands
+            #[cfg(feature = "obs-obws")]
+            tauri_commands_obws::obs_obws_start_replay_buffer,
+            #[cfg(feature = "obs-obws")]
+            tauri_commands_obws::obs_obws_stop_replay_buffer,
+            #[cfg(feature = "obs-obws")]
+            tauri_commands_obws::obs_obws_save_replay_buffer,
+            #[cfg(feature = "obs-obws")]
+            tauri_commands_obws::obs_obws_get_replay_buffer_status,
+            
+            // OBS obws Path Configuration Commands
+            #[cfg(feature = "obs-obws")]
+            tauri_commands_obws::obs_obws_get_recording_path_settings,
+            #[cfg(feature = "obs-obws")]
+            tauri_commands_obws::obs_obws_set_recording_path,
+            #[cfg(feature = "obs-obws")]
+            tauri_commands_obws::obs_obws_get_replay_buffer_path_settings,
+            #[cfg(feature = "obs-obws")]
+            tauri_commands_obws::obs_obws_set_replay_buffer_path,
+            
+            // OBS obws Recording Configuration Commands
+            #[cfg(feature = "obs-obws")]
+            tauri_commands_obws::obs_obws_get_recording_config,
+            #[cfg(feature = "obs-obws")]
+            tauri_commands_obws::obs_obws_save_recording_config,
+            #[cfg(feature = "obs-obws")]
+            tauri_commands_obws::obs_obws_create_recording_session,
+            #[cfg(feature = "obs-obws")]
+            tauri_commands_obws::obs_obws_update_recording_session_status,
             tauri_commands::obs_connect_to_connection,
             tauri_commands::obs_get_connection_status,
             tauri_commands::obs_get_connections,
