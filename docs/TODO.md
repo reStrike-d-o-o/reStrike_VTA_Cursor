@@ -90,6 +90,11 @@
   - Fixed all other parameter naming mismatches (snake_case to camelCase conversion)
   - Updated all 15+ Tauri command calls to use correct parameter names
   - Resolved "missing required key" errors for connection management operations
+- **✅ Step 8**: Fixed missing `enabled` field in `updateConnection` function
+  - Added `enabled: boolean` parameter to `updateConnection` function signature
+  - Updated both `WebSocketManager.tsx` and `ObsWebSocketManager.tsx` to pass `enabled` field
+  - Resolved "missing field enabled" error when saving edited connections
+  - All connection update operations now work correctly
 - **✅ Frontend Build**: All TypeScript errors resolved, build successful
 - **✅ Backend Build**: All Rust compilation errors fixed, warnings only (non-critical)
 - **✅ Database Integration**: OBS connections properly saved to SQLite database
