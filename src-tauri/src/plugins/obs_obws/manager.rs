@@ -44,6 +44,65 @@ impl ObsManager {
         Ok(())
     }
 
+    /// Update an existing OBS connection configuration
+    pub async fn update_connection(&self, old_name: &str, new_config: ObsConnectionConfig) -> AppResult<()> {
+        let mut clients = self.clients.lock().await;
+        
+        // Check if the old connection exists
+        if !clients.contains_key(old_name) {
+            return Err(AppError::ConfigError(format!("Connection '{}' not found", old_name)));
+        }
+        
+        // If the name is being changed, check if the new name already exists
+        if old_name != new_config.name && clients.contains_key(&new_config.name) {
+            return Err(AppError::ConfigError(format!("Connection '{}' already exists", new_config.name)));
+        }
+        
+        // Get the existing client to preserve its state
+        let existing_client_arc = clients.remove(old_name).unwrap();
+        let existing_client = existing_client_arc.lock().await;
+        let was_connected = existing_client.get_connection_status() == ObsConnectionStatus::Connected;
+        
+        // Drop the lock to avoid deadlock
+        drop(existing_client);
+        drop(existing_client_arc);
+        
+        // Create new client with updated configuration
+        let new_client = ObsClient::new(new_config.clone());
+        let new_client_arc = Arc::new(Mutex::new(new_client));
+        
+        // Clone the Arc for later use
+        let new_client_arc_clone = new_client_arc.clone();
+        
+        // Insert the new client
+        if old_name == new_config.name {
+            // Same name, just update the configuration
+            clients.insert(new_config.name.clone(), new_client_arc);
+        } else {
+            // Different name, insert with new name
+            clients.insert(new_config.name.clone(), new_client_arc);
+            
+            // Update default connection if this was the default
+            let mut default = self.default_connection.lock().await;
+            if let Some(ref default_name) = *default {
+                if default_name == old_name {
+                    *default = Some(new_config.name.clone());
+                }
+            }
+        }
+        
+        // If the connection was connected, try to reconnect with new settings
+        if was_connected {
+            let mut new_client = new_client_arc_clone.lock().await;
+            if let Err(e) = new_client.connect().await {
+                log::warn!("Warning: Failed to reconnect after update: {}", e);
+            }
+        }
+        
+        log::info!("✅ Updated OBS connection: {} -> {}", old_name, new_config.name);
+        Ok(())
+    }
+
     /// Remove an OBS connection
     pub async fn remove_connection(&self, name: &str) -> AppResult<()> {
         let mut clients = self.clients.lock().await;

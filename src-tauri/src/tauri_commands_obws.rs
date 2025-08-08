@@ -56,6 +56,39 @@ pub async fn obs_obws_add_connection(
     }
 }
 
+/// Update an existing OBS connection using obws
+#[tauri::command]
+pub async fn obs_obws_update_connection(
+    old_name: String,
+    connection: ObsObwsConnectionRequest,
+    app: State<'_, Arc<App>>,
+) -> Result<ObsObwsConnectionResponse, TauriError> {
+    log::info!("OBS obws update connection called: {} -> {}@{}:{}", old_name, connection.name, connection.host, connection.port);
+    
+    let config = ObsConnectionConfig {
+        name: connection.name,
+        host: connection.host,
+        port: connection.port,
+        password: connection.password,
+        timeout_seconds: 30,
+    };
+    
+    match app.obs_obws_plugin().update_connection(&old_name, config).await {
+        Ok(_) => Ok(ObsObwsConnectionResponse {
+            success: true,
+            data: Some(serde_json::json!({
+                "message": "OBS connection updated successfully"
+            })),
+            error: None,
+        }),
+        Err(e) => Ok(ObsObwsConnectionResponse {
+            success: false,
+            data: None,
+            error: Some(e.to_string()),
+        }),
+    }
+}
+
 /// Connect to an OBS instance using obws
 #[tauri::command]
 pub async fn obs_obws_connect(
