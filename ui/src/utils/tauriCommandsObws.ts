@@ -547,4 +547,59 @@ export const obsObwsCommands = {
       return { success: false, error: String(error) };
     }
   },
+
+  // ============================================================================
+  // Path Generation Commands
+  // ============================================================================
+
+  /**
+   * Generate recording path for a match
+   */
+  async generateRecordingPath(matchId: string): Promise<TauriCommandResponse> {
+    try {
+      if (isTauriAvailable()) {
+        return await safeInvoke('obs_obws_generate_recording_path', { matchId });
+      }
+      return { success: false, error: 'Tauri not available' };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  },
+
+  /**
+   * Get Windows Videos folder path
+   */
+  async getWindowsVideosFolder(): Promise<TauriCommandResponse> {
+    try {
+      if (isTauriAvailable()) {
+        return await safeInvoke('obs_obws_get_windows_videos_folder');
+      }
+      return { success: false, error: 'Tauri not available' };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  },
+
+  /**
+   * Test path generation with sample data
+   */
+  async testPathGeneration(params: {
+    matchId: string;
+    tournamentName?: string;
+    tournamentDay?: string;
+    matchNumber?: string;
+    player1Name?: string;
+    player1Flag?: string;
+    player2Name?: string;
+    player2Flag?: string;
+  }): Promise<TauriCommandResponse> {
+    try {
+      if (isTauriAvailable()) {
+        return await safeInvoke('obs_obws_test_path_generation', params);
+      }
+      return { success: false, error: 'Tauri not available' };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  },
 };
