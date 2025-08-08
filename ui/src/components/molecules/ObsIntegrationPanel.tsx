@@ -39,29 +39,32 @@ const ObsIntegrationPanel: React.FC = () => {
 
   // Load OBS connections on component mount
   useEffect(() => {
-    const loadConnections = async () => {
-      try {
-        // Use the control room command to get OBS connections from WebSocket tab
-        const result = await obsObwsCommands.getControlRoomConnectionsWithDetails();
-        if (result.success && result.data) {
-          const obsConnections = result.data.map((connData: any) => {
-            const [name, connection, status] = connData;
+      const loadConnections = async () => {
+    try {
+      // Get all configured OBS connections (like WebSocketManager does)
+      const result = await obsObwsCommands.getConnections();
+      if (result.success && result.data) {
+        const connectionsWithStatus = await Promise.all(
+          result.data.map(async (conn: any) => {
+            // Get status for each connection
+            const statusResult = await obsObwsCommands.getConnectionStatus(conn.name);
             return {
-              name: name,
-              host: connection?.host || 'localhost',
-              port: connection?.port || 4455,
-              password: connection?.password,
-              enabled: connection?.enabled || true,
-              status: status?.status || 'disconnected',
-              error: status?.error
+              name: conn.name,
+              host: conn.host || 'localhost',
+              port: conn.port || 4455,
+              password: conn.password,
+              enabled: conn.enabled || true,
+              status: statusResult.success ? statusResult.data?.status || 'disconnected' : 'disconnected',
+              error: statusResult.success ? statusResult.data?.error : null
             };
-          });
-          setConnections(obsConnections);
-        }
-      } catch (error) {
-        console.error('Failed to load OBS connections:', error);
+          })
+        );
+        setConnections(connectionsWithStatus);
       }
-    };
+    } catch (error) {
+      console.error('Failed to load OBS connections:', error);
+    }
+  };
 
     loadConnections();
   }, [setConnections]);
