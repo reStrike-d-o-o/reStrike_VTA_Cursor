@@ -13,6 +13,7 @@ interface RecordingConfig {
   recordingPath: string;
   recordingFormat: string;
   filenamePattern: string;
+  folderPattern?: string;
   autoStartRecording: boolean;
   autoStartReplayBuffer: boolean;
   saveReplayBufferOnMatchEnd: boolean;
@@ -25,10 +26,13 @@ const ObsIntegrationPanel: React.FC = () => {
     recordingPath: 'C:/Users/Damjan/Videos',
     recordingFormat: 'mp4',
     filenamePattern: '{matchNumber}_{player1}_{player2}_{date}_{time}',
+    folderPattern: '{tournament}/{tournamentDay}',
     autoStartRecording: true,
     autoStartReplayBuffer: true,
     saveReplayBufferOnMatchEnd: true,
   });
+  // Folder pattern for future customization of directory layout
+  const [folderPattern, setFolderPattern] = useState<string>('{tournament}/{tournamentDay}');
 
   const [isLoadingConfig, setIsLoadingConfig] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -86,6 +90,7 @@ const ObsIntegrationPanel: React.FC = () => {
           recordingPath: config.recording_path || prev.recordingPath,
           recordingFormat: config.recording_format || prev.recordingFormat,
           filenamePattern: config.filename_pattern || prev.filenamePattern,
+          folderPattern: config.folder_pattern || prev.folderPattern,
           autoStartRecording: config.auto_start_recording ?? prev.autoStartRecording,
           autoStartReplayBuffer: config.auto_start_replay_buffer ?? prev.autoStartReplayBuffer,
           saveReplayBufferOnMatchEnd: config.save_replay_buffer_on_match_end ?? prev.saveReplayBufferOnMatchEnd,
@@ -394,6 +399,7 @@ const ObsIntegrationPanel: React.FC = () => {
           auto_start_recording: recordingConfig.autoStartRecording,
           auto_start_replay_buffer: recordingConfig.autoStartReplayBuffer,
           filename_template: recordingConfig.filenamePattern,
+          folder_pattern: recordingConfig.folderPattern || '{tournament}/{tournamentDay}',
           is_active: true,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
@@ -519,6 +525,24 @@ const ObsIntegrationPanel: React.FC = () => {
           />
           <p className="text-xs text-gray-400 mt-1">
             Available variables: {'{matchNumber}'}, {'{player1}'}, {'{player2}'}, {'{date}'}, {'{time}'}, {'{tournament}'}, {'{tournamentDay}'}
+          </p>
+        </div>
+
+        {/* Folder Pattern (directory layout) */}
+        <div className="mb-4">
+          <Label htmlFor="folder-pattern" className="block text-sm font-medium text-gray-300 mb-2">
+            Folder Pattern
+          </Label>
+          <Input
+            id="folder-pattern"
+            type="text"
+            value={recordingConfig.folderPattern || ''}
+            onChange={(e) => setRecordingConfig(prev => ({ ...prev, folderPattern: e.target.value }))}
+            placeholder="{tournament}/{tournamentDay}"
+            className="w-full"
+          />
+          <p className="text-xs text-gray-400 mt-1">
+            The app currently sends the Recording Path directly. This pattern will be used by path generation to build the directory path.
           </p>
         </div>
 

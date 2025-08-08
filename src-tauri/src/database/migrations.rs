@@ -2422,12 +2422,28 @@ impl Migration for Migration16 {
                 auto_start_recording BOOLEAN NOT NULL DEFAULT 1,
                 auto_start_replay_buffer BOOLEAN NOT NULL DEFAULT 1,
                 filename_template TEXT NOT NULL DEFAULT '{matchNumber}_{player1}_{player2}_{date}',
+                folder_pattern TEXT NOT NULL DEFAULT '{tournament}/{tournamentDay}',
                 is_active BOOLEAN NOT NULL DEFAULT 1,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
             )",
             [],
         )?;
+
+        // Add folder_pattern column if it doesn't exist (for existing installs)
+        let mut stmt = conn.prepare("PRAGMA table_info('obs_recording_config')")?;
+        let mut has_folder_pattern = false;
+        let mut rows = stmt.query([])?;
+        while let Some(row) = rows.next()? {
+            let col_name: String = row.get(1)?;
+            if col_name == "folder_pattern" { has_folder_pattern = true; break; }
+        }
+        if !has_folder_pattern {
+            let _ = conn.execute(
+                "ALTER TABLE obs_recording_config ADD COLUMN folder_pattern TEXT NOT NULL DEFAULT '{tournament}/{tournamentDay}'",
+                [],
+            );
+        }
         
         // Create obs_recording_sessions table
         conn.execute(

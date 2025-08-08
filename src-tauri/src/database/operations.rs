@@ -2837,9 +2837,9 @@ impl ObsRecordingOperations {
             "INSERT OR REPLACE INTO obs_recording_config (
                 obs_connection_name, recording_root_path, recording_format, recording_quality,
                 recording_bitrate, recording_resolution, replay_buffer_enabled, replay_buffer_duration,
-                auto_start_recording, auto_start_replay_buffer, filename_template, is_active,
+                auto_start_recording, auto_start_replay_buffer, filename_template, folder_pattern, is_active,
                 created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             [
                 &config.obs_connection_name,
                 &config.recording_root_path,
@@ -2852,6 +2852,7 @@ impl ObsRecordingOperations {
                 &config.auto_start_recording.to_string(),
                 &config.auto_start_replay_buffer.to_string(),
                 &config.filename_template,
+                &config.folder_pattern,
                 &config.is_active.to_string(),
                 &config.created_at.to_rfc3339(),
                 &Utc::now().to_rfc3339(),

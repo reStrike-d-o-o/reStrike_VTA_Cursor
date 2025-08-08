@@ -914,7 +914,25 @@ pub async fn obs_obws_generate_recording_path(
         }
     }
 
-    let path_generator = crate::plugins::obs_obws::ObsPathGenerator::new(None);
+    // Load recording config to supply folder_pattern
+    let config_for_pattern = {
+        let conn = app.database_plugin().get_connection().await;
+        if let Ok(conn) = conn {
+            crate::database::operations::ObsRecordingOperations::get_recording_config(&*conn, "OBS_REC").ok().flatten()
+        } else { None }
+    };
+
+    let path_generator = if let Some(cfg) = config_for_pattern {
+        let gen_cfg = crate::plugins::obs_obws::PathGeneratorConfig {
+            videos_root: std::path::PathBuf::from(cfg.recording_root_path),
+            default_format: cfg.recording_format,
+            include_minutes_seconds: true,
+            folder_pattern: Some(cfg.folder_pattern),
+        };
+        crate::plugins::obs_obws::ObsPathGenerator::new(Some(gen_cfg))
+    } else {
+        crate::plugins::obs_obws::ObsPathGenerator::new(None)
+    };
 
     match path_generator.generate_recording_path(
         &match_id,
@@ -998,6 +1016,7 @@ pub async fn obs_obws_test_path_generation(
         videos_root: crate::plugins::obs_obws::PathGeneratorConfig::detect_windows_videos_folder(),
         default_format: "mp4".to_string(),
         include_minutes_seconds: true,
+        folder_pattern: Some("{tournament}/{tournamentDay}".to_string()),
     };
     
     let path_generator = crate::plugins::obs_obws::ObsPathGenerator::new(Some(config));
@@ -1086,6 +1105,7 @@ pub async fn obs_obws_create_test_folders(
         videos_root: crate::plugins::obs_obws::PathGeneratorConfig::detect_windows_videos_folder(),
         default_format: "mp4".to_string(),
         include_minutes_seconds: true,
+        folder_pattern: Some("{tournament}/{tournamentDay}".to_string()),
     };
     
     let path_generator = crate::plugins::obs_obws::ObsPathGenerator::new(Some(config));
@@ -1143,19 +1163,30 @@ pub async fn obs_obws_send_config_to_obs(
     _app: State<'_, Arc<App>>,
 ) -> Result<ObsObwsConnectionResponse, TauriError> {
     log::info!("OBS obws send config to OBS called for connection: {}", connection_name);
+    // Route through obws manager to set recording directory and filename formatting
+    let result = async {
+        let manager = _app.obs_obws_plugin();
+        manager.set_record_directory(&recording_path, Some(&connection_name)).await?;
+        manager.set_filename_formatting(&filename_template, Some(&connection_name)).await?;
+        crate::types::AppResult::<()>::Ok(())
+    }.await;
 
-    // Note: In this build we avoid legacy API and do not set replay buffer path/filename via obws.
-    log::info!("Replay buffer path/filename setting skipped (not supported via obws in this build)");
-
-    Ok(ObsObwsConnectionResponse {
-        success: true,
-        data: Some(serde_json::json!({
-            "message": format!("Configuration prepared for OBS connection '{}' (skipped unsupported settings)", connection_name),
-            "replay_buffer_path_requested": recording_path,
-            "replay_buffer_filename_template_requested": filename_template
-        })),
-        error: None,
-    })
+    match result {
+        Ok(()) => Ok(ObsObwsConnectionResponse {
+            success: true,
+            data: Some(serde_json::json!({
+                "message": format!("Configuration applied to OBS connection '{}' successfully", connection_name),
+                "recording_path": recording_path,
+                "filename_template": filename_template
+            })),
+            error: None,
+        }),
+        Err(e) => Ok(ObsObwsConnectionResponse {
+            success: false,
+            data: None,
+            error: Some(e.to_string()),
+        })
+    }
 }
 
 /// Get automatic recording configuration

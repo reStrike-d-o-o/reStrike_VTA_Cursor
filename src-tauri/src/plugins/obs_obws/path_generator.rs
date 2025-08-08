@@ -8,6 +8,7 @@ pub struct PathGeneratorConfig {
     pub videos_root: PathBuf,
     pub default_format: String,
     pub include_minutes_seconds: bool,
+    pub folder_pattern: Option<String>,
 }
 
 impl Default for PathGeneratorConfig {
@@ -16,6 +17,7 @@ impl Default for PathGeneratorConfig {
             videos_root: Self::detect_windows_videos_folder(),
             default_format: "mp4".to_string(),
             include_minutes_seconds: true,
+            folder_pattern: Some("{tournament}/{tournamentDay}".to_string()),
         }
     }
 }
@@ -109,30 +111,28 @@ impl ObsPathGenerator {
         _match_number: &Option<String>,
     ) -> PathBuf {
         let mut path = self.config.videos_root.clone();
-        
-        // Add tournament folder
-        if let Some(tournament) = tournament_name {
-            path.push(self.sanitize_filename(tournament));
-        } else {
-            // Use default tournament name with date
+        let pattern = self
+            .config
+            .folder_pattern
+            .clone()
+            .unwrap_or_else(|| "{tournament}/{tournamentDay}".to_string());
+        let t_name = tournament_name.clone().unwrap_or_else(|| {
             let now = Local::now();
-            let default_tournament = format!("Tournament_{}", now.format("%Y-%m-%d"));
-            path.push(self.sanitize_filename(&default_tournament));
-        }
-        
-        // Add tournament day folder
-        if let Some(day) = tournament_day {
-            path.push(self.sanitize_filename(day));
-        } else {
-            // Use default day name with date
+            format!("Tournament_{}", now.format("%Y-%m-%d"))
+        });
+        let t_day = tournament_day.clone().unwrap_or_else(|| {
             let now = Local::now();
-            let default_day = format!("Day_{}", now.format("%Y-%m-%d"));
-            path.push(self.sanitize_filename(&default_day));
+            format!("Day_{}", now.format("%Y-%m-%d"))
+        });
+        for seg in pattern.split('/') {
+            let seg_value = match seg {
+                "{tournament}" => &t_name,
+                "{tournamentDay}" => &t_day,
+                other => other,
+            };
+            if seg_value.is_empty() { continue; }
+            path.push(self.sanitize_filename(seg_value));
         }
-        
-        // Intentionally exclude match number as a subfolder to keep structure simpler
-        // Previous structure included the match number directory here
-        
         path
     }
     
