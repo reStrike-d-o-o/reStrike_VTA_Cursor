@@ -1041,12 +1041,8 @@ pub async fn obs_obws_test_recording(
 ) -> Result<ObsObwsConnectionResponse, TauriError> {
     log::info!("OBS obws test recording called for connection: {}", connection_name);
 
-    // Get the OBS plugin from the app state
-    let obs_plugin = app.obs_plugin();
-
-    // Test start recording
-    let record_result = obs_plugin.recording().start_recording(&connection_name).await;
-    if let Err(e) = record_result {
+    // Use the obws plugin for recording controls to avoid legacy API
+    if let Err(e) = app.obs_obws_plugin().start_recording(Some(&connection_name)).await {
         return Ok(ObsObwsConnectionResponse {
             success: false,
             data: None,
@@ -1054,9 +1050,7 @@ pub async fn obs_obws_test_recording(
         });
     }
 
-    // Test start replay buffer
-    let replay_result = obs_plugin.recording().start_replay_buffer(&connection_name).await;
-    if let Err(e) = replay_result {
+    if let Err(e) = app.obs_obws_plugin().start_replay_buffer(Some(&connection_name)).await {
         return Ok(ObsObwsConnectionResponse {
             success: false,
             data: None,
@@ -1146,44 +1140,19 @@ pub async fn obs_obws_send_config_to_obs(
     connection_name: String,
     recording_path: String,
     filename_template: String,
-    app: State<'_, Arc<App>>,
+    _app: State<'_, Arc<App>>,
 ) -> Result<ObsObwsConnectionResponse, TauriError> {
     log::info!("OBS obws send config to OBS called for connection: {}", connection_name);
 
-    // Get the OBS plugin from the app state
-    let obs_plugin = app.obs_plugin();
-
-    // Set replay buffer path (this is supported)
-    let path_result = obs_plugin.recording().set_replay_buffer_path(&connection_name, &recording_path).await;
-    if let Err(e) = path_result {
-        return Ok(ObsObwsConnectionResponse {
-            success: false,
-            data: None,
-            error: Some(format!("Failed to set replay buffer path: {}", e)),
-        });
-    }
-
-    // Set replay buffer filename format (this is supported)
-    let filename_result = obs_plugin.recording().set_replay_buffer_filename(&connection_name, &filename_template).await;
-    if let Err(e) = filename_result {
-        return Ok(ObsObwsConnectionResponse {
-            success: false,
-            data: None,
-            error: Some(format!("Failed to set replay buffer filename format: {}", e)),
-        });
-    }
-
-    // Note: OBS WebSocket API doesn't directly support setting recording path
-    // This would need to be handled by the recording event handler or OBS settings
-    log::info!("Configuration sent to OBS. Note: Recording path must be set manually in OBS settings.");
+    // Note: In this build we avoid legacy API and do not set replay buffer path/filename via obws.
+    log::info!("Replay buffer path/filename setting skipped (not supported via obws in this build)");
 
     Ok(ObsObwsConnectionResponse {
         success: true,
         data: Some(serde_json::json!({
-            "message": format!("Configuration sent to OBS connection '{}' successfully!", connection_name),
-            "replay_buffer_path": recording_path,
-            "replay_buffer_filename_template": filename_template,
-            "note": "Recording path must be set manually in OBS settings. Replay buffer settings have been applied."
+            "message": format!("Configuration prepared for OBS connection '{}' (skipped unsupported settings)", connection_name),
+            "replay_buffer_path_requested": recording_path,
+            "replay_buffer_filename_template_requested": filename_template
         })),
         error: None,
     })
@@ -1384,17 +1353,10 @@ pub async fn obs_obws_manual_start_recording(
     recording_handler.update_session_state(crate::plugins::obs_obws::RecordingState::Recording).await
         .map_err(|e| TauriError::from(std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to update session state: {}", e))))?;
 
-    // Send start recording event
-    if let Err(e) = recording_handler.event_tx.send(crate::plugins::obs_obws::RecordingEvent::StartRecording {
-        match_id,
-        obs_connection_name,
-    }) {
-        log::error!("Failed to send start recording event: {}", e);
-        return Ok(ObsObwsConnectionResponse {
-            success: false,
-            data: None,
-            error: Some(format!("Failed to send start recording event: {}", e)),
-        });
+    // Start recording immediately via obws (authoritative) to avoid depending on event consumers
+    if let Err(e) = app.obs_obws_plugin().start_recording(Some(&obs_connection_name)).await {
+        log::error!("Failed to start recording via obws: {}", e);
+        return Ok(ObsObwsConnectionResponse { success: false, data: None, error: Some(e.to_string()) });
     }
 
     Ok(ObsObwsConnectionResponse {
@@ -1421,21 +1383,10 @@ pub async fn obs_obws_manual_stop_recording(
     recording_handler.update_session_state(crate::plugins::obs_obws::RecordingState::Stopping).await
         .map_err(|e| TauriError::from(std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to update session state: {}", e))))?;
 
-    // Send stop recording event
-    if let Some(session_id) = recording_handler.get_current_session_id().await
-        .map_err(|e| TauriError::from(std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to get session ID: {}", e))))? {
-        
-        if let Err(e) = recording_handler.event_tx.send(crate::plugins::obs_obws::RecordingEvent::StopRecording {
-            session_id,
-            obs_connection_name: obs_connection_name.clone(),
-        }) {
-            log::error!("Failed to send stop recording event: {}", e);
-            return Ok(ObsObwsConnectionResponse {
-                success: false,
-                data: None,
-                error: Some(format!("Failed to send stop recording event: {}", e)),
-            });
-        }
+    // Stop recording immediately via obws
+    if let Err(e) = app.obs_obws_plugin().stop_recording(Some(&obs_connection_name)).await {
+        log::error!("Failed to stop recording via obws: {}", e);
+        return Ok(ObsObwsConnectionResponse { success: false, data: None, error: Some(e.to_string()) });
     }
 
     Ok(ObsObwsConnectionResponse {

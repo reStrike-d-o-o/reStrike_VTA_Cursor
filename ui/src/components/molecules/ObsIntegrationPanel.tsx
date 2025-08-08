@@ -145,17 +145,15 @@ const ObsIntegrationPanel: React.FC = () => {
       setTestResult('Please select a connection first');
       return;
     }
-    
     try {
-      const result = await obsObwsCommands.testRecording(recordingConfig.connectionName);
-      
+      const result = await obsObwsCommands.startRecording(recordingConfig.connectionName);
       if (result.success) {
-        setTestResult('Recording test successful!');
+        setTestResult('Start recording command sent successfully.');
       } else {
-        setTestResult(`Recording test failed: ${result.error}`);
+        setTestResult(`Failed to send start recording: ${result.error}`);
       }
     } catch (error) {
-      setTestResult(`Recording test failed: ${error}`);
+      setTestResult(`Failed to send start recording: ${error}`);
     }
   };
 
@@ -342,13 +340,19 @@ const ObsIntegrationPanel: React.FC = () => {
   const [manualMatchId, setManualMatchId] = useState('101');
   const [manualConnectionName, setManualConnectionName] = useState('');
 
+  // Keep manualConnectionName in sync with selected connection to avoid mismatch
+  useEffect(() => {
+    if (recordingConfig.connectionName) {
+      setManualConnectionName(recordingConfig.connectionName);
+    }
+  }, [recordingConfig.connectionName]);
+
   const startManualRecording = async () => {
     try {
-      const result = await obsObwsCommands.manualStartRecording(manualMatchId, manualConnectionName);
-
+      const result = await obsObwsCommands.startRecording(manualConnectionName);
       if (result.success) {
         console.log('Manual recording started');
-        loadCurrentSession(); // Refresh session info
+        loadCurrentSession();
       } else {
         console.error('Failed to start manual recording:', result.error);
       }
@@ -359,11 +363,10 @@ const ObsIntegrationPanel: React.FC = () => {
 
   const stopManualRecording = async () => {
     try {
-      const result = await obsObwsCommands.manualStopRecording(manualConnectionName);
-
+      const result = await obsObwsCommands.stopRecording(manualConnectionName);
       if (result.success) {
         console.log('Manual recording stopped');
-        loadCurrentSession(); // Refresh session info
+        loadCurrentSession();
       } else {
         console.error('Failed to stop manual recording:', result.error);
       }

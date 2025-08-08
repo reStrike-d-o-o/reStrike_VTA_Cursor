@@ -46,21 +46,8 @@ async fn main() -> AppResult<()> {
     app.start().await?;
     
     // Start OBS event listener to forward events to frontend
-    let app_clone = app.clone();
-    tokio::spawn(async move {
-        // For now, we'll use a simpler approach - periodic status checks
-        // In a full implementation, we'd listen to the OBS event channel
-        loop {
-            tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
-            
-            // Check OBS connection status and emit updates
-            if let Ok(status) = app_clone.obs_plugin().get_obs_status().await {
-                // Log status for debugging
-                log::debug!("OBS Status: recording={}, streaming={}, cpu={}%", 
-                    status.is_recording, status.is_streaming, status.cpu_usage);
-            }
-        }
-    });
+    let _app_clone = app.clone();
+    // Optional: legacy status poller removed to avoid mixing APIs
     
     // Create Tauri app builder
     tauri::Builder::default()

@@ -106,7 +106,7 @@ impl ObsPathGenerator {
         &self,
         tournament_name: &Option<String>,
         tournament_day: &Option<String>,
-        match_number: &Option<String>,
+        _match_number: &Option<String>,
     ) -> PathBuf {
         let mut path = self.config.videos_root.clone();
         
@@ -130,10 +130,8 @@ impl ObsPathGenerator {
             path.push(self.sanitize_filename(&default_day));
         }
         
-        // Add match number folder
-        if let Some(match_num) = match_number {
-            path.push(self.sanitize_filename(match_num));
-        }
+        // Intentionally exclude match number as a subfolder to keep structure simpler
+        // Previous structure included the match number directory here
         
         path
     }

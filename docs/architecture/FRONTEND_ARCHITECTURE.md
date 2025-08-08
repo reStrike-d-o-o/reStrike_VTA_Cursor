@@ -1678,7 +1678,7 @@ The OBS integration system provides WebSocket-based control of OBS Studio instan
 - **UI Components**: Both WebSocket tab (local) and Control Room tab (remote) have full CRUD functionality
 - **API**: All `obws` commands properly registered and functional
 - **Database**: Connection persistence working correctly
-- **Tauri IPC**: Fixed argument passing for all OBS WebSocket commands
+- **Tauri IPC**: Fixed argument passing for all OBS WebSocket commands; Integration & WebSocket tabs now use `obs_obws_*` exclusively (legacy API removed from these flows)
 - **Database Schema**: OBS recording configuration and session tables created and ready
 - **Backend Commands**: Replay buffer and path configuration commands implemented and registered
 - **Frontend Integration**: Enhanced Integration tab with recording configuration and connection selection

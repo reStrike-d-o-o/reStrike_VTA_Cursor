@@ -15,6 +15,12 @@
 
 ### Recently Completed (2025-01-29)
 
+#### OBS Integration & WebSocket Tabs obws-only ✅ **COMPLETED**
+- **✅ Unified API**: Integration and WebSocket tabs now use only `obs_obws_*` commands for start/stop/test recording and related operations
+- **✅ Legacy Removal (Scoped)**: Removed legacy OBS API usage from these flows to prevent connection state conflicts
+- **✅ UX Consistency**: Integration tab auto-syncs manual connection name with selected dropdown; avoids mismatched targets
+- **Next**: Gradually de-register unused legacy Tauri commands after confirming no other UI depends on them
+
 #### Documentation Reorganization ✅ **LATEST COMPLETION**
 - **✅ Complete Documentation Reorganization**: Reorganized all documentation files for better structure and clarity
 - **✅ Content Separation**: Moved backend content from FRONTEND_ARCHITECTURE.md to BACKEND_ARCHITECTURE.md
