@@ -610,6 +610,20 @@ export const obsObwsCommands = {
   // ============================================================================
 
   /**
+   * Test recording functionality
+   */
+  async testRecording(connectionName: string): Promise<TauriCommandResponse> {
+    try {
+      if (isTauriAvailable()) {
+        return await safeInvoke('obs_obws_test_recording', { connectionName });
+      }
+      return { success: false, error: 'Tauri not available' };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  },
+
+  /**
    * Get automatic recording configuration
    */
   async getAutomaticRecordingConfig(): Promise<TauriCommandResponse> {
@@ -628,7 +642,7 @@ export const obsObwsCommands = {
    */
   async updateAutomaticRecordingConfig(params: {
     enabled: boolean;
-    obsConnectionName?: string;
+    obs_connection_name?: string;
     autoStopOnMatchEnd: boolean;
     autoStopOnWinner: boolean;
     stopDelaySeconds: number;

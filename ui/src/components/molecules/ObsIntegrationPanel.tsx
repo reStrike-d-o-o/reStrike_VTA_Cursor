@@ -101,10 +101,10 @@ const ObsIntegrationPanel: React.FC = () => {
   // Save recording configuration
   const saveRecordingConfig = async () => {
     if (!recordingConfig.connectionName) {
-      setTestResult('Please select a connection first');
+      console.error('No connection selected');
       return;
     }
-
+    
     try {
       setIsSaving(true);
       const result = await obsObwsCommands.saveRecordingConfig({
@@ -116,46 +116,39 @@ const ObsIntegrationPanel: React.FC = () => {
         auto_start_replay_buffer: recordingConfig.autoStartReplayBuffer,
         save_replay_buffer_on_match_end: recordingConfig.saveReplayBufferOnMatchEnd,
       });
-
+      
       if (result.success) {
-        setTestResult('Recording configuration saved successfully!');
+        console.log('Recording config saved successfully');
+        setTestResult('Configuration saved successfully!');
       } else {
+        console.error('Failed to save recording config:', result.error);
         setTestResult(`Failed to save configuration: ${result.error}`);
       }
     } catch (error) {
-      setTestResult(`Error saving configuration: ${error}`);
+      console.error('Failed to save recording config:', error);
+      setTestResult(`Failed to save configuration: ${error}`);
     } finally {
       setIsSaving(false);
     }
   };
 
-  // Test recording functionality
+  // Test recording
   const testRecording = async () => {
     if (!recordingConfig.connectionName) {
       setTestResult('Please select a connection first');
       return;
     }
-
+    
     try {
-      setTestResult('Testing recording functionality...');
+      const result = await obsObwsCommands.testRecording(recordingConfig.connectionName);
       
-      // Test start recording
-      const recordResult = await obsObwsCommands.startRecording(recordingConfig.connectionName);
-      if (!recordResult.success) {
-        setTestResult(`Recording test failed: ${recordResult.error}`);
-        return;
+      if (result.success) {
+        setTestResult('Recording test successful!');
+      } else {
+        setTestResult(`Recording test failed: ${result.error}`);
       }
-
-      // Test start replay buffer
-      const replayResult = await obsObwsCommands.startReplayBuffer(recordingConfig.connectionName);
-      if (!replayResult.success) {
-        setTestResult(`Replay buffer test failed: ${replayResult.error}`);
-        return;
-      }
-
-      setTestResult('Recording test successful! Recording and replay buffer started.');
     } catch (error) {
-      setTestResult(`Test failed: ${error}`);
+      setTestResult(`Recording test failed: ${error}`);
     }
   };
 
@@ -170,32 +163,22 @@ const ObsIntegrationPanel: React.FC = () => {
     player2Name: 'M. THIBAULT',
     player2Flag: 'SUI',
   });
-  const [pathTestResult, setPathTestResult] = useState<string>('');
   const [isTestingPath, setIsTestingPath] = useState(false);
+  const [pathTestResult, setPathTestResult] = useState<string>('');
 
-  // Test path generation with sample data
+  // Test path generation
   const testPathGeneration = async () => {
     try {
       setIsTestingPath(true);
-      setPathTestResult('Testing path generation...');
-      
       const result = await obsObwsCommands.testPathGeneration(pathTestData);
       
       if (result.success && result.data) {
-        const data = result.data;
-        setPathTestResult(`Path generation successful!
-          
-Full Path: ${data.full_path}
-Directory: ${data.directory}
-Filename: ${data.filename}
-Tournament: ${data.tournament_name || 'None'}
-Tournament Day: ${data.tournament_day || 'None'}
-Match Number: ${data.match_number || 'None'}`);
+        setPathTestResult(result.data.path || 'Path generated successfully');
       } else {
         setPathTestResult(`Path generation failed: ${result.error}`);
       }
     } catch (error) {
-      setPathTestResult(`Test failed: ${error}`);
+      setPathTestResult(`Path generation failed: ${error}`);
     } finally {
       setIsTestingPath(false);
     }
@@ -205,48 +188,33 @@ Match Number: ${data.match_number || 'None'}`);
   const generateRecordingPathFromDb = async () => {
     try {
       setIsTestingPath(true);
-      setPathTestResult('Generating recording path from database...');
-      
       const result = await obsObwsCommands.generateRecordingPath(pathTestData.matchId);
       
       if (result.success && result.data) {
-        const data = result.data;
-        setPathTestResult(`Database-driven path generation successful!
-          
-Full Path: ${data.full_path}
-Directory: ${data.directory}
-Filename: ${data.filename}
-Tournament: ${data.tournament_name || 'None'}
-Tournament Day: ${data.tournament_day || 'None'}
-Match Number: ${data.match_number || 'None'}
-Player 1: ${data.player1_name || 'None'} (${data.player1_flag || 'None'})
-Player 2: ${data.player2_name || 'None'} (${data.player2_flag || 'None'})`);
+        setPathTestResult(result.data.path || 'Path generated from database successfully');
       } else {
-        setPathTestResult(`Database-driven path generation failed: ${result.error}`);
+        setPathTestResult(`Database path generation failed: ${result.error}`);
       }
     } catch (error) {
-      setPathTestResult(`Database generation failed: ${error}`);
+      setPathTestResult(`Database path generation failed: ${error}`);
     } finally {
       setIsTestingPath(false);
     }
   };
 
-  // Get Windows Videos folder
+  // Get Windows videos folder
   const getWindowsVideosFolder = async () => {
     try {
       const result = await obsObwsCommands.getWindowsVideosFolder();
       
-      if (result.success && result.data) {
-        const data = result.data;
-        setPathTestResult(`Windows Videos folder detected:
-          
-Path: ${data.videos_path}
-Exists: ${data.exists ? 'Yes' : 'No'}`);
+      if (result.success && result.data?.path) {
+        setRecordingConfig(prev => ({ ...prev, recordingPath: result.data.path }));
+        setPathTestResult(`Detected videos folder: ${result.data.path}`);
       } else {
-        setPathTestResult(`Failed to detect Videos folder: ${result.error}`);
+        setPathTestResult(`Failed to detect videos folder: ${result.error}`);
       }
     } catch (error) {
-      setPathTestResult(`Error: ${error}`);
+      setPathTestResult(`Failed to detect videos folder: ${error}`);
     }
   };
 
@@ -288,7 +256,7 @@ Exists: ${data.exists ? 'Yes' : 'No'}`);
       setIsLoadingConfig(true);
       const result = await obsObwsCommands.updateAutomaticRecordingConfig({
         enabled: autoRecordingConfig.enabled,
-        obsConnectionName: recordingConfig.connectionName || undefined,
+        obs_connection_name: recordingConfig.connectionName || undefined,
         autoStopOnMatchEnd: autoRecordingConfig.autoStopOnMatchEnd,
         autoStopOnWinner: autoRecordingConfig.autoStopOnWinner,
         stopDelaySeconds: autoRecordingConfig.stopDelaySeconds,
@@ -370,6 +338,51 @@ Exists: ${data.exists ? 'Yes' : 'No'}`);
     }
   };
 
+  // Consolidated save function that saves both configurations
+  const saveAllConfigurations = async () => {
+    try {
+      setIsSaving(true);
+      
+      // Save recording configuration first
+      if (recordingConfig.connectionName) {
+        const recordingResult = await obsObwsCommands.saveRecordingConfig({
+          connection_name: recordingConfig.connectionName,
+          recording_path: recordingConfig.recordingPath,
+          recording_format: recordingConfig.recordingFormat,
+          filename_pattern: recordingConfig.filenamePattern,
+          auto_start_recording: recordingConfig.autoStartRecording,
+          auto_start_replay_buffer: recordingConfig.autoStartReplayBuffer,
+          save_replay_buffer_on_match_end: recordingConfig.saveReplayBufferOnMatchEnd,
+        });
+        
+        if (!recordingResult.success) {
+          setTestResult(`Failed to save recording configuration: ${recordingResult.error}`);
+          return;
+        }
+      }
+      
+      // Save automatic recording configuration
+      const autoResult = await obsObwsCommands.updateAutomaticRecordingConfig({
+        enabled: autoRecordingConfig.enabled,
+        obs_connection_name: recordingConfig.connectionName || undefined,
+        autoStopOnMatchEnd: autoRecordingConfig.autoStopOnMatchEnd,
+        autoStopOnWinner: autoRecordingConfig.autoStopOnWinner,
+        stopDelaySeconds: autoRecordingConfig.stopDelaySeconds,
+        includeReplayBuffer: autoRecordingConfig.includeReplayBuffer,
+      });
+
+      if (autoResult.success) {
+        setTestResult('All configurations saved successfully!');
+      } else {
+        setTestResult(`Failed to save automatic recording configuration: ${autoResult.error}`);
+      }
+    } catch (error) {
+      setTestResult(`Failed to save configurations: ${error}`);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   // Load config and session on component mount
   useEffect(() => {
     loadAutoRecordingConfig();
@@ -384,13 +397,13 @@ Exists: ${data.exists ? 'Yes' : 'No'}`);
   }, [recordingConfig.connectionName]);
 
   return (
-    <div className="space-y-6">
-      {/* OBS Recording Automatisation */}
-      <div className="bg-gray-800 rounded-lg p-4 mb-4">
-        <h3 className="text-lg font-semibold text-white mb-4">🎬 OBS Recording Automatisation</h3>
+    <div className="space-y-4">
+      {/* OBS Recording Automatisation Section */}
+      <div className="p-6 bg-gradient-to-br from-gray-900/20 to-gray-800/30 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
+        <h3 className="text-lg font-semibold mb-4 text-gray-100">🎬 OBS Recording Automatisation</h3>
         
-        {/* Connection and Basic Settings Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+        {/* Connection Selection, Recording Path, and Recording Format in 3 columns */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           {/* Connection Selection */}
           <div>
             <Label htmlFor="connection-select" className="block text-sm font-medium text-gray-300 mb-2">
@@ -469,24 +482,6 @@ Exists: ${data.exists ? 'Yes' : 'No'}`);
         <div className="border-t border-gray-600/30 pt-4 mb-4">
           <div className="flex items-center justify-between mb-3">
             <h4 className="text-md font-semibold text-gray-100">Automatic Recording Settings</h4>
-            <div className="flex gap-2">
-              <Button
-                onClick={saveAutoRecordingConfig}
-                disabled={isLoadingConfig}
-                size="sm"
-                className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-xs px-2 py-1"
-              >
-                {isLoadingConfig ? 'Saving...' : 'Save'}
-              </Button>
-              <Button
-                onClick={loadAutoRecordingConfig}
-                disabled={isLoadingConfig}
-                size="sm"
-                className="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-xs px-2 py-1"
-              >
-                {isLoadingConfig ? 'Loading...' : 'Load'}
-              </Button>
-            </div>
           </div>
           
           {/* Toggles in 3 columns */}
@@ -548,14 +543,62 @@ Exists: ${data.exists ? 'Yes' : 'No'}`);
           </div>
         </div>
 
-        {/* Action Buttons */}
+        {/* Manual Recording Controls Section (Red Color) */}
+        <div className="border-t border-red-600/30 pt-4 mb-4">
+          <h4 className="text-md font-semibold text-red-300 mb-3">🎬 Manual Recording Controls</h4>
+          
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Match ID</label>
+              <Input
+                value={manualMatchId}
+                onChange={(e) => setManualMatchId(e.target.value)}
+                placeholder="101"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">OBS Connection Name</label>
+              <Input
+                value={manualConnectionName}
+                onChange={(e) => setManualConnectionName(e.target.value)}
+                placeholder="OBS_REC"
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-3 mb-4">
+            <Button
+              onClick={startManualRecording}
+              disabled={!manualMatchId || !manualConnectionName}
+              className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed"
+            >
+              Start Manual Recording
+            </Button>
+            <Button
+              onClick={stopManualRecording}
+              disabled={!manualConnectionName}
+              className="bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed"
+            >
+              Stop Manual Recording
+            </Button>
+          </div>
+        </div>
+
+        {/* Consolidated Action Buttons */}
         <div className="flex flex-wrap gap-3">
           <Button
-            onClick={saveRecordingConfig}
-            disabled={isSaving || !recordingConfig.connectionName}
+            onClick={saveAllConfigurations}
+            disabled={isSaving}
             className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed"
           >
             {isSaving ? 'Saving...' : 'Save Configuration'}
+          </Button>
+          <Button
+            onClick={loadAutoRecordingConfig}
+            disabled={isLoadingConfig}
+            className="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-600 disabled:cursor-not-allowed"
+          >
+            {isLoadingConfig ? 'Loading...' : 'Load Configuration'}
           </Button>
           <Button
             onClick={testRecording}
@@ -794,47 +837,6 @@ Exists: ${data.exists ? 'Yes' : 'No'}`);
             className="bg-red-600 hover:bg-red-700"
           >
             Clear Session
-          </Button>
-        </div>
-      </div>
-
-      {/* Manual Recording Controls Section */}
-      <div className="bg-gray-800 rounded-lg p-4 mb-4">
-        <h3 className="text-lg font-semibold text-white mb-4">🎬 Manual Recording Controls</h3>
-        
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Match ID</label>
-            <Input
-              value={manualMatchId}
-              onChange={(e) => setManualMatchId(e.target.value)}
-              placeholder="101"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">OBS Connection Name</label>
-            <Input
-              value={manualConnectionName}
-              onChange={(e) => setManualConnectionName(e.target.value)}
-              placeholder="OBS_REC"
-            />
-          </div>
-        </div>
-
-        <div className="flex gap-3">
-          <Button
-            onClick={startManualRecording}
-            disabled={!manualMatchId || !manualConnectionName}
-            className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed"
-          >
-            Start Manual Recording
-          </Button>
-          <Button
-            onClick={stopManualRecording}
-            disabled={!manualConnectionName}
-            className="bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed"
-          >
-            Stop Manual Recording
           </Button>
         </div>
       </div>

@@ -1033,6 +1033,46 @@ pub async fn obs_obws_test_path_generation(
     })
 }
 
+/// Test recording functionality
+#[tauri::command]
+pub async fn obs_obws_test_recording(
+    connection_name: String,
+    app: State<'_, Arc<App>>,
+) -> Result<ObsObwsConnectionResponse, TauriError> {
+    log::info!("OBS obws test recording called for connection: {}", connection_name);
+
+    // Get the OBS plugin from the app state
+    let obs_plugin = app.obs_plugin();
+
+    // Test start recording
+    let record_result = obs_plugin.recording().start_recording(&connection_name).await;
+    if let Err(e) = record_result {
+        return Ok(ObsObwsConnectionResponse {
+            success: false,
+            data: None,
+            error: Some(format!("Failed to start recording: {}", e)),
+        });
+    }
+
+    // Test start replay buffer
+    let replay_result = obs_plugin.recording().start_replay_buffer(&connection_name).await;
+    if let Err(e) = replay_result {
+        return Ok(ObsObwsConnectionResponse {
+            success: false,
+            data: None,
+            error: Some(format!("Failed to start replay buffer: {}", e)),
+        });
+    }
+
+    Ok(ObsObwsConnectionResponse {
+        success: true,
+        data: Some(serde_json::json!({
+            "message": "Recording test successful! Recording and replay buffer started."
+        })),
+        error: None,
+    })
+}
+
 /// Get automatic recording configuration
 #[tauri::command]
 pub async fn obs_obws_get_automatic_recording_config(
