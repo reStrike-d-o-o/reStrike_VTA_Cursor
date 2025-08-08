@@ -2109,6 +2109,7 @@ impl MigrationManager {
         migrations.push(Box::new(Migration13)); // Add creation_mode field to pss_matches
         migrations.push(Box::new(Migration14)); // Change match_number from INTEGER to TEXT
         migrations.push(Box::new(Migration15)); // Secure configuration storage with SHA256 encryption
+        migrations.push(Box::new(Migration16)); // OBS recording configuration and session management
         
         Self { migrations }
     }
@@ -2389,6 +2390,121 @@ impl Migration for Migration15 {
         conn.execute("DROP TABLE IF EXISTS security_sessions", [])?;
         conn.execute("DROP TABLE IF EXISTS config_audit", [])?;
         conn.execute("DROP TABLE IF EXISTS secure_config", [])?;
+        Ok(())
+    }
+}
+
+/// Migration 16: OBS Recording Configuration and Sessions
+pub struct Migration16;
+
+impl Migration for Migration16 {
+    fn version(&self) -> u32 {
+        16
+    }
+    
+    fn description(&self) -> &str {
+        "Add OBS recording configuration and session management tables"
+    }
+    
+    fn up(&self, conn: &Connection) -> SqliteResult<()> {
+        // Create obs_recording_config table
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS obs_recording_config (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                obs_connection_name TEXT NOT NULL UNIQUE,
+                recording_root_path TEXT NOT NULL,
+                recording_format TEXT NOT NULL DEFAULT 'mp4',
+                recording_quality TEXT NOT NULL DEFAULT 'high',
+                recording_bitrate INTEGER,
+                recording_resolution TEXT,
+                replay_buffer_enabled BOOLEAN NOT NULL DEFAULT 1,
+                replay_buffer_duration INTEGER DEFAULT 30,
+                auto_start_recording BOOLEAN NOT NULL DEFAULT 1,
+                auto_start_replay_buffer BOOLEAN NOT NULL DEFAULT 1,
+                filename_template TEXT NOT NULL DEFAULT '{matchNumber}_{player1}_{player2}_{date}',
+                is_active BOOLEAN NOT NULL DEFAULT 1,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )",
+            [],
+        )?;
+        
+        // Create obs_recording_sessions table
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS obs_recording_sessions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                obs_connection_name TEXT NOT NULL,
+                tournament_id INTEGER,
+                tournament_day_id INTEGER,
+                match_id TEXT,
+                match_number TEXT,
+                player1_name TEXT,
+                player1_flag TEXT,
+                player2_name TEXT,
+                player2_flag TEXT,
+                recording_path TEXT NOT NULL,
+                recording_filename TEXT NOT NULL,
+                recording_start_time TEXT,
+                recording_end_time TEXT,
+                recording_duration INTEGER,
+                recording_size_bytes INTEGER,
+                replay_buffer_start_time TEXT,
+                replay_buffer_end_time TEXT,
+                replay_buffer_saved BOOLEAN NOT NULL DEFAULT 0,
+                replay_buffer_filename TEXT,
+                status TEXT NOT NULL DEFAULT 'pending',
+                error_message TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY (tournament_id) REFERENCES tournaments(id) ON DELETE SET NULL,
+                FOREIGN KEY (tournament_day_id) REFERENCES tournament_days(id) ON DELETE SET NULL
+            )",
+            [],
+        )?;
+        
+        // Create indexes for efficient querying
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_obs_recording_config_connection ON obs_recording_config(obs_connection_name)",
+            [],
+        )?;
+        
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_obs_recording_config_active ON obs_recording_config(is_active)",
+            [],
+        )?;
+        
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_obs_recording_sessions_connection ON obs_recording_sessions(obs_connection_name)",
+            [],
+        )?;
+        
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_obs_recording_sessions_status ON obs_recording_sessions(status)",
+            [],
+        )?;
+        
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_obs_recording_sessions_tournament ON obs_recording_sessions(tournament_id, tournament_day_id)",
+            [],
+        )?;
+        
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_obs_recording_sessions_match ON obs_recording_sessions(match_id)",
+            [],
+        )?;
+        
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_obs_recording_sessions_created ON obs_recording_sessions(created_at)",
+            [],
+        )?;
+        
+        Ok(())
+    }
+    
+    fn down(&self, conn: &Connection) -> SqliteResult<()> {
+        // Drop the tables
+        conn.execute("DROP TABLE IF EXISTS obs_recording_sessions", [])?;
+        conn.execute("DROP TABLE IF EXISTS obs_recording_config", [])?;
         Ok(())
     }
 } 

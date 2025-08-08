@@ -2,6 +2,175 @@ use rusqlite::Row;
 use serde::{Serialize, Deserialize};
 use chrono::{DateTime, Utc};
 
+/// OBS Recording Configuration model
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ObsRecordingConfig {
+    pub id: Option<i64>,
+    pub obs_connection_name: String,
+    pub recording_root_path: String,
+    pub recording_format: String, // 'mp4', 'mkv', 'mov', etc.
+    pub recording_quality: String, // 'high', 'medium', 'low'
+    pub recording_bitrate: Option<i32>, // kbps
+    pub recording_resolution: Option<String>, // '1920x1080', '1280x720', etc.
+    pub replay_buffer_enabled: bool,
+    pub replay_buffer_duration: Option<i32>, // seconds
+    pub auto_start_recording: bool,
+    pub auto_start_replay_buffer: bool,
+    pub filename_template: String, // Template for recording filenames
+    pub is_active: bool,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+impl ObsRecordingConfig {
+    /// Create a new OBS recording configuration
+    pub fn new(
+        obs_connection_name: String,
+        recording_root_path: String,
+        recording_format: String,
+        recording_quality: String,
+        filename_template: String,
+    ) -> Self {
+        Self {
+            id: None,
+            obs_connection_name,
+            recording_root_path,
+            recording_format,
+            recording_quality,
+            recording_bitrate: None,
+            recording_resolution: None,
+            replay_buffer_enabled: true,
+            replay_buffer_duration: Some(30), // Default 30 seconds
+            auto_start_recording: true,
+            auto_start_replay_buffer: true,
+            filename_template,
+            is_active: true,
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        }
+    }
+    
+    /// Create from database row
+    pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
+        Ok(Self {
+            id: row.get("id")?,
+            obs_connection_name: row.get("obs_connection_name")?,
+            recording_root_path: row.get("recording_root_path")?,
+            recording_format: row.get("recording_format")?,
+            recording_quality: row.get("recording_quality")?,
+            recording_bitrate: row.get("recording_bitrate")?,
+            recording_resolution: row.get("recording_resolution")?,
+            replay_buffer_enabled: row.get("replay_buffer_enabled")?,
+            replay_buffer_duration: row.get("replay_buffer_duration")?,
+            auto_start_recording: row.get("auto_start_recording")?,
+            auto_start_replay_buffer: row.get("auto_start_replay_buffer")?,
+            filename_template: row.get("filename_template")?,
+            is_active: row.get("is_active")?,
+            created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
+            updated_at: parse_datetime_from_db(&row.get::<_, String>("updated_at")?, "updated_at")?,
+        })
+    }
+}
+
+/// OBS Recording Session model
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ObsRecordingSession {
+    pub id: Option<i64>,
+    pub obs_connection_name: String,
+    pub tournament_id: Option<i64>,
+    pub tournament_day_id: Option<i64>,
+    pub match_id: Option<String>,
+    pub match_number: Option<String>,
+    pub player1_name: Option<String>,
+    pub player1_flag: Option<String>,
+    pub player2_name: Option<String>,
+    pub player2_flag: Option<String>,
+    pub recording_path: String,
+    pub recording_filename: String,
+    pub recording_start_time: Option<DateTime<Utc>>,
+    pub recording_end_time: Option<DateTime<Utc>>,
+    pub recording_duration: Option<i32>, // seconds
+    pub recording_size_bytes: Option<i64>,
+    pub replay_buffer_start_time: Option<DateTime<Utc>>,
+    pub replay_buffer_end_time: Option<DateTime<Utc>>,
+    pub replay_buffer_saved: bool,
+    pub replay_buffer_filename: Option<String>,
+    pub status: String, // 'pending', 'recording', 'completed', 'error', 'cancelled'
+    pub error_message: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+impl ObsRecordingSession {
+    /// Create a new OBS recording session
+    pub fn new(
+        obs_connection_name: String,
+        recording_path: String,
+        recording_filename: String,
+    ) -> Self {
+        Self {
+            id: None,
+            obs_connection_name,
+            tournament_id: None,
+            tournament_day_id: None,
+            match_id: None,
+            match_number: None,
+            player1_name: None,
+            player1_flag: None,
+            player2_name: None,
+            player2_flag: None,
+            recording_path,
+            recording_filename,
+            recording_start_time: None,
+            recording_end_time: None,
+            recording_duration: None,
+            recording_size_bytes: None,
+            replay_buffer_start_time: None,
+            replay_buffer_end_time: None,
+            replay_buffer_saved: false,
+            replay_buffer_filename: None,
+            status: "pending".to_string(),
+            error_message: None,
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        }
+    }
+    
+    /// Create from database row
+    pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
+        Ok(Self {
+            id: row.get("id")?,
+            obs_connection_name: row.get("obs_connection_name")?,
+            tournament_id: row.get("tournament_id")?,
+            tournament_day_id: row.get("tournament_day_id")?,
+            match_id: row.get("match_id")?,
+            match_number: row.get("match_number")?,
+            player1_name: row.get("player1_name")?,
+            player1_flag: row.get("player1_flag")?,
+            player2_name: row.get("player2_name")?,
+            player2_flag: row.get("player2_flag")?,
+            recording_path: row.get("recording_path")?,
+            recording_filename: row.get("recording_filename")?,
+            recording_start_time: row.get::<_, Option<String>>("recording_start_time")?
+                .and_then(|s| parse_datetime_from_db(&s, "recording_start_time").ok()),
+            recording_end_time: row.get::<_, Option<String>>("recording_end_time")?
+                .and_then(|s| parse_datetime_from_db(&s, "recording_end_time").ok()),
+            recording_duration: row.get("recording_duration")?,
+            recording_size_bytes: row.get("recording_size_bytes")?,
+            replay_buffer_start_time: row.get::<_, Option<String>>("replay_buffer_start_time")?
+                .and_then(|s| parse_datetime_from_db(&s, "replay_buffer_start_time").ok()),
+            replay_buffer_end_time: row.get::<_, Option<String>>("replay_buffer_end_time")?
+                .and_then(|s| parse_datetime_from_db(&s, "replay_buffer_end_time").ok()),
+            replay_buffer_saved: row.get("replay_buffer_saved")?,
+            replay_buffer_filename: row.get("replay_buffer_filename")?,
+            status: row.get("status")?,
+            error_message: row.get("error_message")?,
+            created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
+            updated_at: parse_datetime_from_db(&row.get::<_, String>("updated_at")?, "updated_at")?,
+        })
+    }
+}
+
 /// Helper function to parse DateTime from database string with fallback formats
 fn parse_datetime_from_db(date_str: &str, field_name: &str) -> rusqlite::Result<DateTime<Utc>> {
     // Try to parse as RFC3339 first, then fallback to other formats

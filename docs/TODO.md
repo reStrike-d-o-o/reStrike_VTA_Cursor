@@ -112,9 +112,26 @@
 - **✅ Development Server**: Tauri development server running successfully
 - **✅ Ready for Testing**: Complete OBS WebSocket management system ready for user testing
 
+### OBS Recording Integration - Phase 1 ✅ **COMPLETED**
+- **✅ Database Schema**: Created `obs_recording_config` table for recording settings
+- **✅ Database Schema**: Created `obs_recording_sessions` table for session tracking
+- **✅ Database Models**: Added `ObsRecordingConfig` and `ObsRecordingSession` structs
+- **✅ Database Operations**: Implemented full CRUD operations for recording configuration and sessions
+- **✅ Migration**: Added Migration16 with proper indexes and foreign key constraints
+- **✅ Schema Version**: Updated to version 16 with proper migration management
+- **✅ Compilation**: All Rust compilation errors fixed, ready for Phase 2
+
 ### Immediate Priorities
 
-#### 1. Control Room Phase 1: Real OBS Integration 🔄 **CURRENT TASK**
+#### 1. OBS Recording Integration 🔄 **CURRENT TASK**
+- **✅ Phase 1**: Database Schema & Models - Create recording configuration tables
+- **🔄 Phase 2**: Backend OBS Commands - Add replay buffer and path configuration commands
+- **🔄 Phase 3**: Frontend Integration Tab - Add Integration tab to OBS drawer with recording configuration
+- **🔄 Phase 4**: Path Generation Logic - Implement Windows Videos folder detection and tournament path logic
+- **🔄 Phase 5**: PSS Event Integration - Integrate with UDP/PSS event system for automatic recording
+- **🔄 OBS Connection Selection**: Add option to select which OBS WebSocket connection to use for recording control
+
+#### 2. Control Room Phase 1: Real OBS Integration 🔄 **NEXT TASK**
 - **🔄 Audio Sources API**: Replace mock data with real OBS audio source enumeration
 - **🔄 Scenes API**: Replace mock data with real OBS scene enumeration
 - **🔄 Backend Methods**: Add Tauri commands to fetch audio sources and scenes from each connection
@@ -143,7 +160,32 @@
 - **Export Capabilities**: Analytics data export in multiple formats
 - **Dashboard Integration**: Real-time analytics dashboard
 
-### Week 1: Control Room Phase 1 - Real OBS Integration
+### Week 1: OBS Recording Integration - Phase 1-3
+- [x] Phase 1: Database Schema & Models
+  - [x] Create obs_recording_config table
+  - [x] Create obs_recording_session table
+  - [x] Add database models and operations
+  - [x] Update schema version
+- [ ] Phase 2: Backend OBS Commands
+  - [ ] Add replay buffer commands to existing obws plugin
+  - [ ] Add path configuration commands
+  - [ ] Extend existing Tauri commands
+- [ ] Phase 3: Frontend Integration Tab
+  - [ ] Add Integration tab to OBS drawer
+  - [ ] Create recording configuration UI
+  - [ ] Add OBS connection selection
+
+### Week 2: OBS Recording Integration - Phase 4-5
+- [ ] Phase 4: Path Generation Logic
+  - [ ] Implement Windows Videos folder detection
+  - [ ] Create tournament/day/match path logic
+  - [ ] Add filename generation with player/flag support
+- [ ] Phase 5: PSS Event Integration
+  - [ ] Integrate with UDP/PSS event system
+  - [ ] Add automatic recording triggers
+  - [ ] Implement safety checks and error handling
+
+### Week 3: Control Room Phase 1 - Real OBS Integration
 - [x] Visual improvements completed (completed)
 - [x] Dropdown functionality fixed (completed)
 - [ ] Audio sources API implementation
@@ -152,21 +194,21 @@
 - [ ] Frontend integration with real OBS data
 - [ ] Error handling for OBS connection failures
 
-### Week 2: Control Room Phase 2 - Bulk Operations
+### Week 4: Control Room Phase 2 - Bulk Operations
 - [ ] Bulk mute/unmute implementation
 - [ ] Bulk scene change implementation
 - [ ] Smart filtering logic
 - [ ] Comprehensive error handling
 - [ ] User feedback and reporting
 
-### Week 3: Performance Optimization
+### Week 5: Performance Optimization
 - [ ] UDP processing optimization with bounded channels
 - [ ] Database connection pooling implementation
 - [ ] Frontend React optimization with memoization
 - [ ] WebSocket binary serialization
 - [ ] Memory management improvements
 
-### Week 4: Integration and Testing
+### Week 6: Integration and Testing
 - [ ] End-to-end testing of all systems
 - [ ] Performance benchmarking
 - [ ] User acceptance testing
