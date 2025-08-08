@@ -84,6 +84,12 @@
   - Added `updateConnection` method to frontend Tauri commands utility
   - Updated both `WebSocketManager.tsx` and `ObsWebSocketManager.tsx` to use new update method instead of remove-then-add approach
   - Fixed race conditions and connection state preservation during updates
+- **✅ Step 7**: Fixed Tauri IPC parameter naming conventions for all OBS WebSocket commands
+  - Fixed `oldName` parameter for `obs_obws_update_connection` command
+  - Fixed `connectionName` parameter for `obs_obws_connect` command
+  - Fixed all other parameter naming mismatches (snake_case to camelCase conversion)
+  - Updated all 15+ Tauri command calls to use correct parameter names
+  - Resolved "missing required key" errors for connection management operations
 - **✅ Frontend Build**: All TypeScript errors resolved, build successful
 - **✅ Backend Build**: All Rust compilation errors fixed, warnings only (non-critical)
 - **✅ Database Integration**: OBS connections properly saved to SQLite database
