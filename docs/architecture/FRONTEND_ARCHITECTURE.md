@@ -2335,6 +2335,66 @@ const updateConnectionStatus = (name: string, status: StrConnection['status']) =
   - **Session Architecture**: Comprehensive session tracking with refresh and logout
   - **Audit Logging**: Full authentication attempt tracking and security event logging
 
+## OBS Integration System
+
+### Overview
+The OBS integration system provides WebSocket-based control of OBS Studio instances, enabling recording, streaming, scene management, and real-time status monitoring.
+
+### Components
+
+#### **WebSocketManager (Molecules)**
+- **File**: `ui/src/components/molecules/WebSocketManager.tsx`
+- **Purpose**: General OBS WebSocket connection management
+- **Features**: Full CRUD operations (Create, Read, Update, Delete), reconnection settings, mode-based filtering
+- **Store**: Uses `useAppStore` (main application store)
+- **API**: Uses `obsObwsCommands` for backend communication
+- **Props**: `mode?: 'local' | 'remote'` for connection filtering
+- **Status**: ✅ Complete implementation with edit functionality and mode support
+
+#### **ObsWebSocketManager (Organisms)**
+- **File**: `ui/src/components/organisms/ObsWebSocketManager.tsx`
+- **Purpose**: Specialized OBS management for Control Room scenarios
+- **Features**: Mode-based filtering (local/remote), event handling, status monitoring, full CRUD operations
+- **Store**: Uses `useObsStore` (dedicated OBS store)
+- **API**: Uses `obsObwsCommands` for backend communication
+- **Status**: ✅ Complete implementation with edit functionality and mode support
+
+### Current Architecture Issues
+
+#### **OBS Drawer Tab Configuration**
+- **WebSocket Tab**: ✅ Now uses `WebSocketManager` (has full edit functionality)
+- **Control Room Tab**: Uses `ObsWebSocketManager` (missing edit functionality)
+- **Integration Tab**: Settings panel for OBS integration preferences
+
+#### **Edit Functionality Status**
+- **ObsWebSocketManager**: ✅ Now has complete CRUD functionality including Edit
+- **WebSocketManager**: ✅ Has complete CRUD functionality including Edit
+- **Status**: Both managers now support full connection management
+
+#### **Store Inconsistencies**
+- **WebSocketManager**: Uses `useAppStore` with `obsConnections` array
+- **ObsWebSocketManager**: Uses `useObsStore` with `connections` array
+- **Type Differences**: Different ObsConnection interfaces between stores
+
+### Planned Architecture Improvements
+
+#### **Option 1: Separate Managers with Shared API (RECOMMENDED)**
+- **WebSocket Tab**: Use `WebSocketManager` with local mode filtering
+- **Control Room Tab**: Use `ObsWebSocketManager` with enhanced edit functionality
+- **Benefits**: Immediate edit functionality, code reuse, separation of concerns
+
+#### **Implementation Plan**
+1. **✅ Add Mode Support**: Add mode prop to WebSocketManager for local filtering
+2. **✅ Update AdvancedPanel.tsx**: Switch WebSocket tab to use WebSocketManager
+3. **✅ Enhance ObsWebSocketManager**: Add edit functionality from WebSocketManager
+4. **Fix Backend Issues**: Resolve command registration and type mismatches
+
+#### **Backend Integration**
+- **Shared API**: Both managers use `obsObwsCommands` for backend communication
+- **Database Integration**: Connections saved to SQLite database via obws plugin
+- **Command Registration**: Fix missing obws commands in main.rs
+- **Type Consistency**: Align frontend and backend type definitions
+
 ---
 
 ## Future Enhancements

@@ -18,7 +18,11 @@ interface ReconnectionSettings {
   statusInterval: number;
 }
 
-const WebSocketManager: React.FC = () => {
+interface WebSocketManagerProps {
+  mode?: 'local' | 'remote';
+}
+
+const WebSocketManager: React.FC<WebSocketManagerProps> = ({ mode = 'local' }) => {
   const { obsConnections, addObsConnection, removeObsConnection, updateObsConnectionStatus, setActiveObsConnection, activeObsConnection } = useAppStore();
   
   const [isAdding, setIsAdding] = useState(false);
@@ -126,15 +130,25 @@ const WebSocketManager: React.FC = () => {
       // First try to get connections from configuration system
       const configResult = await configCommands.getSettings();
       if (configResult.success && configResult.data?.obs?.connections) {
-        const configConnections = configResult.data.obs.connections.map((conn: any) => ({
-          name: conn.name,
-          host: conn.host,
-          port: conn.port,
-          password: conn.password,
-          enabled: conn.enabled,
-          status: 'Disconnected' as const, // Will be updated by status check
-          error: undefined,
-        }));
+        const configConnections = configResult.data.obs.connections
+          .filter((conn: any) => {
+            if (mode === 'local') {
+              // Local mode: only OBS_REC and OBS_STR
+              return conn.name === 'OBS_REC' || conn.name === 'OBS_STR';
+            } else {
+              // Remote mode: exclude OBS_REC and OBS_STR
+              return conn.name !== 'OBS_REC' && conn.name !== 'OBS_STR';
+            }
+          })
+          .map((conn: any) => ({
+            name: conn.name,
+            host: conn.host,
+            port: conn.port,
+            password: conn.password,
+            enabled: conn.enabled,
+            status: 'Disconnected' as const, // Will be updated by status check
+            error: undefined,
+          }));
         
         // Update frontend store with configuration connections
         obsConnections.forEach(conn => removeObsConnection(conn.name));
@@ -159,15 +173,25 @@ const WebSocketManager: React.FC = () => {
         const result = await obsObwsCommands.getConnections();
         if (result.success && result.data) {
           // Update store with connections from backend
-          const backendConnections = result.data.map((conn: any) => ({
-            name: conn.name,
-            host: conn.host,
-            port: conn.port,
-            password: conn.password,
-            enabled: conn.enabled,
-            status: conn.status || 'Disconnected',
-            error: undefined,
-          }));
+          const backendConnections = result.data
+            .filter((conn: any) => {
+              if (mode === 'local') {
+                // Local mode: only OBS_REC and OBS_STR
+                return conn.name === 'OBS_REC' || conn.name === 'OBS_STR';
+              } else {
+                // Remote mode: exclude OBS_REC and OBS_STR
+                return conn.name !== 'OBS_REC' && conn.name !== 'OBS_STR';
+              }
+            })
+            .map((conn: any) => ({
+              name: conn.name,
+              host: conn.host,
+              port: conn.port,
+              password: conn.password,
+              enabled: conn.enabled,
+              status: conn.status || 'Disconnected',
+              error: undefined,
+            }));
           
           // Update frontend store
           obsConnections.forEach(conn => removeObsConnection(conn.name));
@@ -472,7 +496,9 @@ const WebSocketManager: React.FC = () => {
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">WebSocket Connections</h3>
+        <h3 className="text-lg font-semibold">
+          {mode === 'local' ? 'Local OBS WebSocket Connections' : 'Remote OBS WebSocket Connections'}
+        </h3>
         <Button
           onClick={() => {
             setIsAdding(true);

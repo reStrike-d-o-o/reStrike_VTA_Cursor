@@ -195,7 +195,7 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
                 id: 'websocket',
                 label: 'WebSocket',
                 icon: <LottieIcon animationData={noConnectionAnimation} size={32} />,
-                content: <ObsWebSocketManager mode="local" />
+                content: <WebSocketManager mode="local" />
               },
               {
                 id: 'control-room',
