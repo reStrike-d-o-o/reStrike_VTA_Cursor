@@ -108,13 +108,20 @@ const ObsIntegrationPanel: React.FC = () => {
     try {
       setIsSaving(true);
       const result = await obsObwsCommands.saveRecordingConfig({
-        connection_name: recordingConfig.connectionName,
-        recording_path: recordingConfig.recordingPath,
+        obs_connection_name: recordingConfig.connectionName,
+        recording_root_path: recordingConfig.recordingPath,
         recording_format: recordingConfig.recordingFormat,
-        filename_pattern: recordingConfig.filenamePattern,
+        recording_quality: 'high', // Default quality
+        recording_bitrate: null,
+        recording_resolution: null,
+        replay_buffer_enabled: recordingConfig.autoStartReplayBuffer,
+        replay_buffer_duration: 30, // Default 30 seconds
         auto_start_recording: recordingConfig.autoStartRecording,
         auto_start_replay_buffer: recordingConfig.autoStartReplayBuffer,
-        save_replay_buffer_on_match_end: recordingConfig.saveReplayBufferOnMatchEnd,
+        filename_template: recordingConfig.filenamePattern,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       });
       
       if (result.success) {
@@ -173,7 +180,7 @@ const ObsIntegrationPanel: React.FC = () => {
       const result = await obsObwsCommands.testPathGeneration(pathTestData);
       
       if (result.success && result.data) {
-        setPathTestResult(result.data.path || 'Path generated successfully');
+        setPathTestResult(result.data.full_path || 'Path generated successfully');
       } else {
         setPathTestResult(`Path generation failed: ${result.error}`);
       }
@@ -191,7 +198,7 @@ const ObsIntegrationPanel: React.FC = () => {
       const result = await obsObwsCommands.generateRecordingPath(pathTestData.matchId);
       
       if (result.success && result.data) {
-        setPathTestResult(result.data.path || 'Path generated from database successfully');
+        setPathTestResult(result.data.full_path || 'Path generated from database successfully');
       } else {
         setPathTestResult(`Database path generation failed: ${result.error}`);
       }
@@ -207,9 +214,9 @@ const ObsIntegrationPanel: React.FC = () => {
     try {
       const result = await obsObwsCommands.getWindowsVideosFolder();
       
-      if (result.success && result.data?.path) {
-        setRecordingConfig(prev => ({ ...prev, recordingPath: result.data.path }));
-        setPathTestResult(`Detected videos folder: ${result.data.path}`);
+      if (result.success && result.data?.videos_path) {
+        setRecordingConfig(prev => ({ ...prev, recordingPath: result.data.videos_path }));
+        setPathTestResult(`Detected videos folder: ${result.data.videos_path}`);
       } else {
         setPathTestResult(`Failed to detect videos folder: ${result.error}`);
       }
@@ -346,13 +353,20 @@ const ObsIntegrationPanel: React.FC = () => {
       // Save recording configuration first
       if (recordingConfig.connectionName) {
         const recordingResult = await obsObwsCommands.saveRecordingConfig({
-          connection_name: recordingConfig.connectionName,
-          recording_path: recordingConfig.recordingPath,
+          obs_connection_name: recordingConfig.connectionName,
+          recording_root_path: recordingConfig.recordingPath,
           recording_format: recordingConfig.recordingFormat,
-          filename_pattern: recordingConfig.filenamePattern,
+          recording_quality: 'high', // Default quality
+          recording_bitrate: null,
+          recording_resolution: null,
+          replay_buffer_enabled: recordingConfig.autoStartReplayBuffer,
+          replay_buffer_duration: 30, // Default 30 seconds
           auto_start_recording: recordingConfig.autoStartRecording,
           auto_start_replay_buffer: recordingConfig.autoStartReplayBuffer,
-          save_replay_buffer_on_match_end: recordingConfig.saveReplayBufferOnMatchEnd,
+          filename_template: recordingConfig.filenamePattern,
+          is_active: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         });
         
         if (!recordingResult.success) {
