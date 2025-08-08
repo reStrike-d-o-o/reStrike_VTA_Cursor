@@ -352,11 +352,11 @@ src-tauri/src/plugins/obs_obws/
 
 #### **Migration Status**
 - **Planning**: ✅ Complete migration plan and implementation steps
-- **Foundation**: 🔄 Add obws dependency and create new plugin structure
-- **Core Implementation**: ⏳ Implement client and manager with obws
-- **Integration**: ⏳ Update Tauri commands and app structure
-- **Testing**: ⏳ Comprehensive testing with OBS Studio
-- **Cleanup**: ⏳ Remove old implementation and update documentation
+- **Foundation**: ✅ obws dependency added and plugin structure in place
+- **Core Implementation**: 🔄 Ongoing per feature module
+- **Integration**: 🔄 Tauri commands updated progressively to `obs_obws_*`
+- **Testing**: 🔄 Integration tests continue as features migrate
+- **Cleanup**: 🔄 Legacy OBS API removed from Integration/WebSocket tabs and related Tauri paths; remaining legacy endpoints will be retired in later phases
 
 ##### **Tauri Command Security**
 - **Authentication Checks**: All Control Room operations require valid authentication
