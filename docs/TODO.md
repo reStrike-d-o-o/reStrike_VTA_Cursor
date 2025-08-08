@@ -6,8 +6,21 @@
 - **✅ Phase 3 COMPLETED**: Frontend Integration Tab - Enhanced Integration tab with recording configuration and connection selection
 - **✅ Phase 4 COMPLETED**: Path Generation Logic - Windows Videos folder detection and tournament path logic fully implemented with database integration
 - **✅ Phase 5 COMPLETED**: PSS Event Integration - UDP/PSS event system integration for automatic recording fully implemented
+- **✅ OBS Integration Settings Removal COMPLETED**: Completely removed OBS Integration Settings section and consolidated recording configuration
 
 ### Recently Completed (2025-01-29)
+
+#### OBS Integration Settings Removal ✅ **LATEST COMPLETION**
+- **✅ Complete Removal**: Completely removed OBS Integration Settings section and all related functionality
+- **✅ Settings Removed**: 
+  - Auto-connect to OBS on startup
+  - Show OBS status in overlay  
+  - Auto-record when playing clips
+  - Save replay buffer on clip creation
+- **✅ Configuration Cleanup**: Removed `ObsIntegrationSettings` struct from Rust types and configuration files
+- **✅ UI Consolidation**: Consolidated Recording Configuration and Automatic Recording Configuration into single "OBS Recording Automatisation" section
+- **✅ Zero Compilation Errors**: Both backend and frontend compile successfully after removal
+
 - **✅ OBS Recording Integration - Phase 5**: PSS Event Integration
   - [x] Create recording event handler module
   - [x] Implement automatic recording configuration

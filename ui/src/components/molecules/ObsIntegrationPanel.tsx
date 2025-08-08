@@ -7,14 +7,6 @@ import StatusDot from '../atoms/StatusDot';
 import { useObsStore } from '../../stores/obsStore';
 import { obsObwsCommands } from '../../utils/tauriCommandsObws';
 
-// OBS Integration Settings interface
-interface ObsIntegrationSettings {
-  autoConnectOnStartup: boolean;
-  showStatusInOverlay: boolean;
-  autoRecordOnClipPlay: boolean;
-  saveReplayBufferOnClipCreation: boolean;
-}
-
 // Recording Configuration interface
 interface RecordingConfig {
   connectionName: string;
@@ -27,14 +19,6 @@ interface RecordingConfig {
 }
 
 const ObsIntegrationPanel: React.FC = () => {
-  // OBS Integration Settings state
-  const [obsIntegrationSettings, setObsIntegrationSettings] = useState<ObsIntegrationSettings>({
-    autoConnectOnStartup: true,
-    showStatusInOverlay: true,
-    autoRecordOnClipPlay: false,
-    saveReplayBufferOnClipCreation: true,
-  });
-
   // Recording Configuration state
   const [recordingConfig, setRecordingConfig] = useState<RecordingConfig>({
     connectionName: '',
@@ -46,46 +30,12 @@ const ObsIntegrationPanel: React.FC = () => {
     saveReplayBufferOnMatchEnd: true,
   });
 
-  const [isLoadingSettings, setIsLoadingSettings] = useState(false);
   const [isLoadingConfig, setIsLoadingConfig] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [testResult, setTestResult] = useState<string>('');
 
   // Get OBS connections from store
   const { connections } = useObsStore();
-
-  // Load OBS Integration settings
-  const loadObsIntegrationSettings = async () => {
-    try {
-      setIsLoadingSettings(true);
-      // TODO: Load from configuration system
-      console.log('Loading OBS integration settings...');
-    } catch (error) {
-      console.error('Failed to load OBS integration settings:', error);
-    } finally {
-      setIsLoadingSettings(false);
-    }
-  };
-
-  // Save OBS Integration settings
-  const saveObsIntegrationSettings = async (newSettings: ObsIntegrationSettings) => {
-    try {
-      setIsLoadingSettings(true);
-      // TODO: Save to configuration system
-      console.log('Saving OBS integration settings:', newSettings);
-      setObsIntegrationSettings(newSettings);
-    } catch (error) {
-      console.error('Failed to save OBS integration settings:', error);
-    } finally {
-      setIsLoadingSettings(false);
-    }
-  };
-
-  // Handle OBS setting change
-  const handleObsSettingChange = async (setting: keyof ObsIntegrationSettings, value: boolean) => {
-    const newSettings = { ...obsIntegrationSettings, [setting]: value };
-    await saveObsIntegrationSettings(newSettings);
-  };
 
   // Load recording configuration
   const loadRecordingConfig = async () => {
@@ -390,7 +340,6 @@ Exists: ${data.exists ? 'Yes' : 'No'}`);
 
   // Load config and session on component mount
   useEffect(() => {
-    loadObsIntegrationSettings();
     loadAutoRecordingConfig();
     loadCurrentSession();
   }, []);
@@ -404,48 +353,9 @@ Exists: ${data.exists ? 'Yes' : 'No'}`);
 
   return (
     <div className="space-y-6">
-      {/* OBS Integration Settings */}
-      <div className="p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
-        <h3 className="text-lg font-semibold mb-4 text-gray-100">OBS Integration Settings</h3>
-        {isLoadingSettings ? (
-          <div className="text-sm text-gray-400">Loading settings...</div>
-        ) : (
-          <div className="space-y-4">
-            <Toggle
-              id="obs-auto-connect"
-              checked={obsIntegrationSettings.autoConnectOnStartup}
-              onChange={(e) => handleObsSettingChange('autoConnectOnStartup', e.target.checked)}
-              label="Auto-connect to OBS on startup"
-              labelPosition="right"
-            />
-            <Toggle
-              id="obs-show-status"
-              checked={obsIntegrationSettings.showStatusInOverlay}
-              onChange={(e) => handleObsSettingChange('showStatusInOverlay', e.target.checked)}
-              label="Show OBS status in overlay"
-              labelPosition="right"
-            />
-            <Toggle
-              id="obs-auto-record"
-              checked={obsIntegrationSettings.autoRecordOnClipPlay}
-              onChange={(e) => handleObsSettingChange('autoRecordOnClipPlay', e.target.checked)}
-              label="Auto-record when playing clips"
-              labelPosition="right"
-            />
-            <Toggle
-              id="obs-save-replay"
-              checked={obsIntegrationSettings.saveReplayBufferOnClipCreation}
-              onChange={(e) => handleObsSettingChange('saveReplayBufferOnClipCreation', e.target.checked)}
-              label="Save replay buffer on clip creation"
-              labelPosition="right"
-            />
-          </div>
-        )}
-      </div>
-
-      {/* Recording Configuration */}
+      {/* OBS Recording Automatisation */}
       <div className="p-6 bg-gradient-to-br from-blue-900/20 to-blue-800/30 backdrop-blur-sm rounded-lg border border-blue-600/30 shadow-lg">
-        <h3 className="text-lg font-semibold mb-4 text-gray-100">Recording Configuration</h3>
+        <h3 className="text-lg font-semibold mb-4 text-gray-100">🎬 OBS Recording Automatisation</h3>
         
         {/* Connection Selection */}
         <div className="mb-6">
@@ -543,6 +453,81 @@ Exists: ${data.exists ? 'Yes' : 'No'}`);
             label="Save replay buffer on match end"
             labelPosition="right"
           />
+        </div>
+
+        {/* Automatic Recording Configuration */}
+        <div className="border-t border-gray-600/30 pt-6 mb-6">
+          <h4 className="text-md font-semibold mb-4 text-gray-100">Automatic Recording Settings</h4>
+          
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div className="col-span-2">
+              <Toggle
+                label="Enable Automatic Recording"
+                checked={autoRecordingConfig.enabled}
+                onChange={(e) => setAutoRecordingConfig({ ...autoRecordingConfig, enabled: e.target.checked })}
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">OBS Connection Name</label>
+              <Input
+                value={autoRecordingConfig.obsConnectionName}
+                onChange={(e) => setAutoRecordingConfig({ ...autoRecordingConfig, obsConnectionName: e.target.value })}
+                placeholder="OBS_REC"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Stop Delay (seconds)</label>
+              <Input
+                type="number"
+                value={autoRecordingConfig.stopDelaySeconds}
+                onChange={(e) => setAutoRecordingConfig({ ...autoRecordingConfig, stopDelaySeconds: parseInt(e.target.value) || 30 })}
+                placeholder="30"
+              />
+            </div>
+            
+            <div className="col-span-2">
+              <Toggle
+                label="Auto Stop on Match End"
+                checked={autoRecordingConfig.autoStopOnMatchEnd}
+                onChange={(e) => setAutoRecordingConfig({ ...autoRecordingConfig, autoStopOnMatchEnd: e.target.checked })}
+              />
+            </div>
+            
+            <div className="col-span-2">
+              <Toggle
+                label="Auto Stop on Winner"
+                checked={autoRecordingConfig.autoStopOnWinner}
+                onChange={(e) => setAutoRecordingConfig({ ...autoRecordingConfig, autoStopOnWinner: e.target.checked })}
+              />
+            </div>
+            
+            <div className="col-span-2">
+              <Toggle
+                label="Include Replay Buffer"
+                checked={autoRecordingConfig.includeReplayBuffer}
+                onChange={(e) => setAutoRecordingConfig({ ...autoRecordingConfig, includeReplayBuffer: e.target.checked })}
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-3 mb-4">
+            <Button
+              onClick={saveAutoRecordingConfig}
+              disabled={isLoadingConfig}
+              className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed"
+            >
+              {isLoadingConfig ? 'Saving...' : 'Save Auto Config'}
+            </Button>
+            <Button
+              onClick={loadAutoRecordingConfig}
+              disabled={isLoadingConfig}
+              className="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-600 disabled:cursor-not-allowed"
+            >
+              {isLoadingConfig ? 'Loading...' : 'Reload Auto Config'}
+            </Button>
+          </div>
         </div>
 
         {/* Action Buttons */}
@@ -722,81 +707,6 @@ Exists: ${data.exists ? 'Yes' : 'No'}`);
             <p className="text-sm text-gray-300 whitespace-pre-line">{pathTestResult}</p>
           </div>
         )}
-      </div>
-
-      {/* Automatic Recording Configuration Section */}
-      <div className="bg-gray-800 rounded-lg p-4 mb-4">
-        <h3 className="text-lg font-semibold text-white mb-4">🎬 Automatic Recording Configuration</h3>
-        
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <div className="col-span-2">
-            <Toggle
-              label="Enable Automatic Recording"
-              checked={autoRecordingConfig.enabled}
-              onChange={(e) => setAutoRecordingConfig({ ...autoRecordingConfig, enabled: e.target.checked })}
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">OBS Connection Name</label>
-            <Input
-              value={autoRecordingConfig.obsConnectionName}
-              onChange={(e) => setAutoRecordingConfig({ ...autoRecordingConfig, obsConnectionName: e.target.value })}
-              placeholder="OBS_REC"
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Stop Delay (seconds)</label>
-            <Input
-              type="number"
-              value={autoRecordingConfig.stopDelaySeconds}
-              onChange={(e) => setAutoRecordingConfig({ ...autoRecordingConfig, stopDelaySeconds: parseInt(e.target.value) || 30 })}
-              placeholder="30"
-            />
-          </div>
-          
-          <div className="col-span-2">
-            <Toggle
-              label="Auto Stop on Match End"
-              checked={autoRecordingConfig.autoStopOnMatchEnd}
-              onChange={(e) => setAutoRecordingConfig({ ...autoRecordingConfig, autoStopOnMatchEnd: e.target.checked })}
-            />
-          </div>
-          
-          <div className="col-span-2">
-            <Toggle
-              label="Auto Stop on Winner"
-              checked={autoRecordingConfig.autoStopOnWinner}
-              onChange={(e) => setAutoRecordingConfig({ ...autoRecordingConfig, autoStopOnWinner: e.target.checked })}
-            />
-          </div>
-          
-          <div className="col-span-2">
-            <Toggle
-              label="Include Replay Buffer"
-              checked={autoRecordingConfig.includeReplayBuffer}
-              onChange={(e) => setAutoRecordingConfig({ ...autoRecordingConfig, includeReplayBuffer: e.target.checked })}
-            />
-          </div>
-        </div>
-
-        <div className="flex gap-3 mb-4">
-          <Button
-            onClick={saveAutoRecordingConfig}
-            disabled={isLoadingConfig}
-            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed"
-          >
-            {isLoadingConfig ? 'Saving...' : 'Save Configuration'}
-          </Button>
-          <Button
-            onClick={loadAutoRecordingConfig}
-            disabled={isLoadingConfig}
-            className="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-600 disabled:cursor-not-allowed"
-          >
-            {isLoadingConfig ? 'Loading...' : 'Reload Configuration'}
-          </Button>
-        </div>
       </div>
 
       {/* Current Recording Session Section */}

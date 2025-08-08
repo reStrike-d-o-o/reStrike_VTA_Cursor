@@ -1,7 +1,7 @@
 {
   "app": {
     "version": "0.1.0",
-    "last_save": "2025-08-07T20:51:51.764538+00:00",
+    "last_save": "2025-08-07T20:51:51.780205+00:00",
     "startup": {
       "auto_start_udp": false,
       "auto_connect_obs": false,
@@ -53,13 +53,7 @@
       "max_attempts": 5,
       "status_monitoring": true,
       "status_interval": 5
-    },
-    "integration": {
-      "auto_connect_on_startup": false,
-      "show_status_in_overlay": false,
-      "auto_record_on_clip_play": false,
-      "save_replay_buffer_on_clip_creation": false
-    }
+
   },
   "udp": {
     "listener": {
