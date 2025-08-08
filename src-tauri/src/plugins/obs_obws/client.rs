@@ -323,6 +323,52 @@ impl ObsClient {
         })
     }
 
+    /// Set recording directory (Output -> Recording -> Recording path)
+    pub async fn set_record_directory(&self, directory: &str) -> AppResult<()> {
+        let client = self.get_client()?;
+        // Fallback to profile parameter because obws general API does not expose SetRecordDirectory
+        // The parameter name in OBS is typically: "Output", section "Recording", key "RecFilePath"
+        // For broad compatibility, use profile.set_parameter(category, parameter, value)
+        client
+            .profiles()
+            .set_parameter(obws::requests::profiles::SetParameter {
+                category: "Output",
+                name: "RecFilePath",
+                value: Some(directory),
+            })
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to set record directory: {}", e)))?;
+        log::info!("📁 Recording directory set to: {}", directory);
+        Ok(())
+    }
+
+    /// Set filename formatting (Advanced -> Recording -> Filename formatting)
+    pub async fn set_filename_formatting(&self, formatting: &str) -> AppResult<()> {
+        let client = self.get_client()?;
+        // Use profile.set_parameter for filename formatting. Key commonly "FilenameFormatting" under "Output" or "AdvOut".
+        // We set both likely keys to improve compatibility; ignore errors on the second set.
+        client
+            .profiles()
+            .set_parameter(obws::requests::profiles::SetParameter {
+                category: "Output",
+                name: "FilenameFormatting",
+                value: Some(formatting),
+            })
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to set filename formatting: {}", e)))?;
+        // Try alternative advanced key without failing whole call if it errors
+        let _ = client
+            .profiles()
+            .set_parameter(obws::requests::profiles::SetParameter {
+                category: "AdvOut",
+                name: "FilenameFormatting",
+                value: Some(formatting),
+            })
+            .await;
+        log::info!("🧾 Filename formatting set to: {}", formatting);
+        Ok(())
+    }
+
     /// Get comprehensive OBS status
     pub async fn get_status(&self) -> AppResult<ObsStatus> {
         let recording_status = self.get_recording_status().await.unwrap_or(ObsRecordingStatus::Error("Failed to get recording status".to_string()));

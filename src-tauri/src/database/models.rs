@@ -17,6 +17,7 @@ pub struct ObsRecordingConfig {
     pub auto_start_recording: bool,
     pub auto_start_replay_buffer: bool,
     pub filename_template: String, // Template for recording filenames
+    pub folder_pattern: String, // Pattern for folder structure
     pub is_active: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -44,6 +45,7 @@ impl ObsRecordingConfig {
             auto_start_recording: true,
             auto_start_replay_buffer: true,
             filename_template,
+            folder_pattern: "{tournament}/{tournamentDay}".to_string(),
             is_active: true,
             created_at: Utc::now(),
             updated_at: Utc::now(),
@@ -65,6 +67,7 @@ impl ObsRecordingConfig {
             auto_start_recording: row.get("auto_start_recording")?,
             auto_start_replay_buffer: row.get("auto_start_replay_buffer")?,
             filename_template: row.get("filename_template")?,
+            folder_pattern: row.get("folder_pattern")?,
             is_active: row.get("is_active")?,
             created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
             updated_at: parse_datetime_from_db(&row.get::<_, String>("updated_at")?, "updated_at")?,

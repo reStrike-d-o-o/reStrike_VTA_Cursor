@@ -342,6 +342,19 @@ impl ObsManager {
         client.get_stats().await
     }
 
+    // Configuration operations
+    pub async fn set_record_directory(&self, directory: &str, connection_name: Option<&str>) -> AppResult<()> {
+        let client_arc = self.get_client_ref(connection_name).await?;
+        let client = client_arc.lock().await;
+        client.set_record_directory(directory).await
+    }
+
+    pub async fn set_filename_formatting(&self, formatting: &str, connection_name: Option<&str>) -> AppResult<()> {
+        let client_arc = self.get_client_ref(connection_name).await?;
+        let client = client_arc.lock().await;
+        client.set_filename_formatting(formatting).await
+    }
+
     // Event handling
     pub async fn add_event_handler<F>(&self, event_type: String, handler: F, connection_name: Option<&str>) -> AppResult<()>
     where
