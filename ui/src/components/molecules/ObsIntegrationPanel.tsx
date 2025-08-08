@@ -41,17 +41,21 @@ const ObsIntegrationPanel: React.FC = () => {
   useEffect(() => {
     const loadConnections = async () => {
       try {
-        const result = await obsObwsCommands.getConnections();
+        // Use the control room command to get OBS connections from WebSocket tab
+        const result = await obsObwsCommands.getControlRoomConnectionsWithDetails();
         if (result.success && result.data) {
-          const obsConnections = result.data.map((conn: any) => ({
-            name: conn.name,
-            host: conn.host,
-            port: conn.port,
-            password: conn.password,
-            enabled: conn.enabled,
-            status: conn.status || 'disconnected',
-            error: conn.error
-          }));
+          const obsConnections = result.data.map((connData: any) => {
+            const [name, connection, status] = connData;
+            return {
+              name: name,
+              host: connection?.host || 'localhost',
+              port: connection?.port || 4455,
+              password: connection?.password,
+              enabled: connection?.enabled || true,
+              status: status?.status || 'disconnected',
+              error: status?.error
+            };
+          });
           setConnections(obsConnections);
         }
       } catch (error) {
@@ -380,29 +384,30 @@ Exists: ${data.exists ? 'Yes' : 'No'}`);
       <div className="bg-gray-800 rounded-lg p-4 mb-4">
         <h3 className="text-lg font-semibold text-white mb-4">🎬 OBS Recording Automatisation</h3>
         
-        {/* Connection Selection */}
-        <div className="mb-6">
-          <Label htmlFor="connection-select" className="block text-sm font-medium text-gray-300 mb-2">
-            OBS WebSocket Connection
-          </Label>
-          <select
-            id="connection-select"
-            value={recordingConfig.connectionName}
-            onChange={(e) => setRecordingConfig(prev => ({ ...prev, connectionName: e.target.value }))}
-            className="w-full px-3 py-2 bg-gray-800/50 border border-gray-600/30 rounded-md text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            aria-label="Select OBS WebSocket connection"
-          >
-            <option value="">Select a connection...</option>
-            {connections.map((conn) => (
-              <option key={conn.name} value={conn.name}>
-                {conn.name} {conn.status === 'connected' ? ' (Connected)' : ''}
-              </option>
-            ))}
-          </select>
-        </div>
+        {/* Connection and Basic Settings Row */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+          {/* Connection Selection */}
+          <div>
+            <Label htmlFor="connection-select" className="block text-sm font-medium text-gray-300 mb-2">
+              OBS WebSocket Connection
+            </Label>
+            <select
+              id="connection-select"
+              value={recordingConfig.connectionName}
+              onChange={(e) => setRecordingConfig(prev => ({ ...prev, connectionName: e.target.value }))}
+              className="w-full px-3 py-2 bg-gray-800/50 border border-gray-600/30 rounded-md text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              aria-label="Select OBS WebSocket connection"
+            >
+              <option value="">Select a connection...</option>
+              {connections.map((conn) => (
+                <option key={conn.name} value={conn.name}>
+                  {conn.name} {conn.status === 'connected' ? ' (Connected)' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
 
-        {/* Recording Path Settings */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          {/* Recording Path */}
           <div>
             <Label htmlFor="recording-path" className="block text-sm font-medium text-gray-300 mb-2">
               Recording Path
@@ -416,6 +421,8 @@ Exists: ${data.exists ? 'Yes' : 'No'}`);
               className="w-full"
             />
           </div>
+
+          {/* Recording Format */}
           <div>
             <Label htmlFor="recording-format" className="block text-sm font-medium text-gray-300 mb-2">
               Recording Format
@@ -436,7 +443,7 @@ Exists: ${data.exists ? 'Yes' : 'No'}`);
         </div>
 
         {/* Filename Pattern */}
-        <div className="mb-6">
+        <div className="mb-4">
           <Label htmlFor="filename-pattern" className="block text-sm font-medium text-gray-300 mb-2">
             Filename Pattern
           </Label>
@@ -454,10 +461,31 @@ Exists: ${data.exists ? 'Yes' : 'No'}`);
         </div>
 
         {/* Automatic Recording Settings */}
-        <div className="border-t border-gray-600/30 pt-6 mb-6">
-          <h4 className="text-md font-semibold mb-4 text-gray-100">Automatic Recording Settings</h4>
+        <div className="border-t border-gray-600/30 pt-4 mb-4">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-md font-semibold text-gray-100">Automatic Recording Settings</h4>
+            <div className="flex gap-2">
+              <Button
+                onClick={saveAutoRecordingConfig}
+                disabled={isLoadingConfig}
+                size="sm"
+                className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-xs px-2 py-1"
+              >
+                {isLoadingConfig ? 'Saving...' : 'Save'}
+              </Button>
+              <Button
+                onClick={loadAutoRecordingConfig}
+                disabled={isLoadingConfig}
+                size="sm"
+                className="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-xs px-2 py-1"
+              >
+                {isLoadingConfig ? 'Loading...' : 'Load'}
+              </Button>
+            </div>
+          </div>
           
-          <div className="space-y-4 mb-4">
+          {/* Toggles in 3 columns */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
             <Toggle
               label="Enable Automatic Recording"
               checked={autoRecordingConfig.enabled}
@@ -501,31 +529,17 @@ Exists: ${data.exists ? 'Yes' : 'No'}`);
             />
           </div>
 
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-300 mb-2">Stop Delay (seconds)</label>
+          {/* Stop Delay */}
+          <div className="flex items-center gap-3">
+            <label className="text-sm font-medium text-gray-300">Stop Delay:</label>
             <Input
               type="number"
               value={autoRecordingConfig.stopDelaySeconds}
               onChange={(e) => setAutoRecordingConfig({ ...autoRecordingConfig, stopDelaySeconds: parseInt(e.target.value) || 30 })}
               placeholder="30"
+              className="w-20"
             />
-          </div>
-
-          <div className="flex gap-3 mb-4">
-            <Button
-              onClick={saveAutoRecordingConfig}
-              disabled={isLoadingConfig}
-              className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed"
-            >
-              {isLoadingConfig ? 'Saving...' : 'Save Auto Config'}
-            </Button>
-            <Button
-              onClick={loadAutoRecordingConfig}
-              disabled={isLoadingConfig}
-              className="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-600 disabled:cursor-not-allowed"
-            >
-              {isLoadingConfig ? 'Loading...' : 'Reload Auto Config'}
-            </Button>
+            <span className="text-sm text-gray-400">seconds</span>
           </div>
         </div>
 

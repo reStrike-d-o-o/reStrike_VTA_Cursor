@@ -147,6 +147,48 @@ export const obsObwsCommands = {
   },
 
   /**
+   * Get OBS connections from control room (WebSocket tab)
+   */
+  async getControlRoomConnections(): Promise<TauriCommandResponse> {
+    try {
+      if (isTauriAvailable()) {
+        return await safeInvoke('control_room_get_obs_connections');
+      }
+      return { success: false, error: 'Tauri not available' };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  },
+
+  /**
+   * Get OBS connections with status from control room
+   */
+  async getControlRoomConnectionsWithStatus(): Promise<TauriCommandResponse> {
+    try {
+      if (isTauriAvailable()) {
+        return await safeInvoke('control_room_get_obs_connections_with_status');
+      }
+      return { success: false, error: 'Tauri not available' };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  },
+
+  /**
+   * Get OBS connections with details from control room
+   */
+  async getControlRoomConnectionsWithDetails(): Promise<TauriCommandResponse> {
+    try {
+      if (isTauriAvailable()) {
+        return await safeInvoke('control_room_get_obs_connections_with_details');
+      }
+      return { success: false, error: 'Tauri not available' };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  },
+
+  /**
    * Remove a connection using obws
    */
   async removeConnection(connectionName: string): Promise<TauriCommandResponse> {
