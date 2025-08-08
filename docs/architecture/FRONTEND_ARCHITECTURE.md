@@ -2393,7 +2393,14 @@ The OBS integration system provides WebSocket-based control of OBS Studio instan
 7. **✅ Fix Missing Enabled Field**: Fixed missing `enabled` field in `updateConnection` function to resolve "missing field enabled" error
 8. **✅ Add Test Recording Button**: Added test button to WebSocketManager for testing OBS start recording command
 
-#### **Current Status** ✅ READY FOR TESTING
+#### **OBS Recording Integration Plan** 🔄 **CURRENT TASK**
+9. **✅ Phase 1**: Database Schema & Models - Create recording configuration tables
+10. **🔄 Phase 2**: Backend OBS Commands - Add replay buffer and path configuration commands
+11. **🔄 Phase 3**: Frontend Integration Tab - Add Integration tab to OBS drawer with recording configuration
+12. **🔄 Phase 4**: Path Generation Logic - Implement Windows Videos folder detection and tournament path logic
+13. **🔄 Phase 5**: PSS Event Integration - Integrate with UDP/PSS event system for automatic recording
+
+#### **Current Status** ✅ PHASE 1 COMPLETED - READY FOR PHASE 2
 - **Frontend**: All TypeScript errors resolved, build successful
 - **Backend**: All Rust compilation errors fixed, warnings only (non-critical)
 - **Integration**: OBS WebSocket management fully functional with database persistence
@@ -2401,7 +2408,8 @@ The OBS integration system provides WebSocket-based control of OBS Studio instan
 - **API**: All `obws` commands properly registered and functional
 - **Database**: Connection persistence working correctly
 - **Tauri IPC**: Fixed argument passing for all OBS WebSocket commands
-- **Testing**: Development environment ready for user testing
+- **Database Schema**: OBS recording configuration and session tables created and ready
+- **Testing**: Development environment ready for Phase 2 - Backend OBS Commands
 
 #### **Backend Integration**
 - **Shared API**: Both managers use `obsObwsCommands` for backend communication
@@ -2454,3 +2462,4 @@ The OBS integration system provides WebSocket-based control of OBS Studio instan
 - **✅ Control Room**: Separate component for remote OBS instance management
 - **✅ Status Monitoring**: Real-time connection status updates
 - **✅ Error Handling**: Comprehensive error handling and user feedback
+- **🔄 OBS Recording Integration**: Phase 1 completed - Database Schema & Models ready

@@ -8,7 +8,7 @@ use crate::database::{
         UdpClientConnection, PssEventType, PssMatch, PssAthlete, PssMatchAthlete, PssEventV2, PssEventDetail, 
         PssScore, PssWarning, PssUnknownEvent, PssEventValidationRule, PssEventValidationResult, 
         PssEventStatistics, PssEventRecognitionHistory, ObsScene, OverlayTemplate, EventTrigger,
-        ObsConnection
+        ObsConnection, ObsRecordingConfig, ObsRecordingSession
     },
 };
 
@@ -2779,5 +2779,229 @@ impl DatabaseConnection {
         conn.execute("DELETE FROM obs_connections", [])?;
         
         Ok(())
+    }
+}
+
+/// OBS Recording Operations for managing recording configuration and sessions
+pub struct ObsRecordingOperations;
+
+impl ObsRecordingOperations {
+    /// Get all OBS recording configurations
+    pub fn get_recording_configs(conn: &Connection) -> DatabaseResult<Vec<ObsRecordingConfig>> {
+        let mut stmt = conn.prepare(
+            "SELECT * FROM obs_recording_config ORDER BY obs_connection_name"
+        )?;
+        
+        let configs = stmt.query_map([], |row| ObsRecordingConfig::from_row(row))?
+            .collect::<Result<Vec<_>, _>>()?;
+        
+        Ok(configs)
+    }
+    
+    /// Get recording configuration for a specific OBS connection
+    pub fn get_recording_config(conn: &Connection, obs_connection_name: &str) -> DatabaseResult<Option<ObsRecordingConfig>> {
+        let mut stmt = conn.prepare(
+            "SELECT * FROM obs_recording_config WHERE obs_connection_name = ?"
+        )?;
+        
+        let config = stmt.query_row([obs_connection_name], |row| ObsRecordingConfig::from_row(row))
+            .optional()?;
+        
+        Ok(config)
+    }
+    
+    /// Create or update recording configuration
+    pub fn upsert_recording_config(conn: &mut Connection, config: &ObsRecordingConfig) -> DatabaseResult<i64> {
+        let config_id = conn.execute(
+            "INSERT OR REPLACE INTO obs_recording_config (
+                obs_connection_name, recording_root_path, recording_format, recording_quality,
+                recording_bitrate, recording_resolution, replay_buffer_enabled, replay_buffer_duration,
+                auto_start_recording, auto_start_replay_buffer, filename_template, is_active,
+                created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            [
+                &config.obs_connection_name,
+                &config.recording_root_path,
+                &config.recording_format,
+                &config.recording_quality,
+                &config.recording_bitrate.map(|b| b.to_string()).unwrap_or_default(),
+                &config.recording_resolution.as_deref().unwrap_or("").to_string(),
+                &config.replay_buffer_enabled.to_string(),
+                &config.replay_buffer_duration.map(|d| d.to_string()).unwrap_or_default(),
+                &config.auto_start_recording.to_string(),
+                &config.auto_start_replay_buffer.to_string(),
+                &config.filename_template,
+                &config.is_active.to_string(),
+                &config.created_at.to_rfc3339(),
+                &Utc::now().to_rfc3339(),
+            ],
+        )?;
+        
+        Ok(config_id as i64)
+    }
+    
+    /// Delete recording configuration
+    pub fn delete_recording_config(conn: &mut Connection, obs_connection_name: &str) -> DatabaseResult<()> {
+        conn.execute(
+            "DELETE FROM obs_recording_config WHERE obs_connection_name = ?",
+            [obs_connection_name],
+        )?;
+        Ok(())
+    }
+    
+    /// Get active recording sessions
+    pub fn get_active_recording_sessions(conn: &Connection) -> DatabaseResult<Vec<ObsRecordingSession>> {
+        let mut stmt = conn.prepare(
+            "SELECT * FROM obs_recording_sessions WHERE status IN ('pending', 'recording') ORDER BY created_at DESC"
+        )?;
+        
+        let sessions = stmt.query_map([], |row| ObsRecordingSession::from_row(row))?
+            .collect::<Result<Vec<_>, _>>()?;
+        
+        Ok(sessions)
+    }
+    
+    /// Get recording sessions for a specific OBS connection
+    pub fn get_recording_sessions_for_connection(conn: &Connection, obs_connection_name: &str) -> DatabaseResult<Vec<ObsRecordingSession>> {
+        let mut stmt = conn.prepare(
+            "SELECT * FROM obs_recording_sessions WHERE obs_connection_name = ? ORDER BY created_at DESC"
+        )?;
+        
+        let sessions = stmt.query_map([obs_connection_name], |row| ObsRecordingSession::from_row(row))?
+            .collect::<Result<Vec<_>, _>>()?;
+        
+        Ok(sessions)
+    }
+    
+    /// Get recording sessions for a specific match
+    pub fn get_recording_sessions_for_match(conn: &Connection, match_id: &str) -> DatabaseResult<Vec<ObsRecordingSession>> {
+        let mut stmt = conn.prepare(
+            "SELECT * FROM obs_recording_sessions WHERE match_id = ? ORDER BY created_at DESC"
+        )?;
+        
+        let sessions = stmt.query_map([match_id], |row| ObsRecordingSession::from_row(row))?
+            .collect::<Result<Vec<_>, _>>()?;
+        
+        Ok(sessions)
+    }
+    
+    /// Create new recording session
+    pub fn create_recording_session(conn: &mut Connection, session: &ObsRecordingSession) -> DatabaseResult<i64> {
+        let session_id = conn.execute(
+            "INSERT INTO obs_recording_sessions (
+                obs_connection_name, tournament_id, tournament_day_id, match_id, match_number,
+                player1_name, player1_flag, player2_name, player2_flag, recording_path,
+                recording_filename, recording_start_time, recording_end_time, recording_duration,
+                recording_size_bytes, replay_buffer_start_time, replay_buffer_end_time,
+                replay_buffer_saved, replay_buffer_filename, status, error_message,
+                created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            [
+                &session.obs_connection_name,
+                &session.tournament_id.map(|id| id.to_string()).unwrap_or_default(),
+                &session.tournament_day_id.map(|id| id.to_string()).unwrap_or_default(),
+                &session.match_id.as_deref().unwrap_or("").to_string(),
+                &session.match_number.as_deref().unwrap_or("").to_string(),
+                &session.player1_name.as_deref().unwrap_or("").to_string(),
+                &session.player1_flag.as_deref().unwrap_or("").to_string(),
+                &session.player2_name.as_deref().unwrap_or("").to_string(),
+                &session.player2_flag.as_deref().unwrap_or("").to_string(),
+                &session.recording_path,
+                &session.recording_filename,
+                &session.recording_start_time.map(|dt| dt.to_rfc3339()).unwrap_or_default(),
+                &session.recording_end_time.map(|dt| dt.to_rfc3339()).unwrap_or_default(),
+                &session.recording_duration.map(|d| d.to_string()).unwrap_or_default(),
+                &session.recording_size_bytes.map(|s| s.to_string()).unwrap_or_default(),
+                &session.replay_buffer_start_time.map(|dt| dt.to_rfc3339()).unwrap_or_default(),
+                &session.replay_buffer_end_time.map(|dt| dt.to_rfc3339()).unwrap_or_default(),
+                &session.replay_buffer_saved.to_string(),
+                &session.replay_buffer_filename.as_deref().unwrap_or("").to_string(),
+                &session.status,
+                &session.error_message.as_deref().unwrap_or("").to_string(),
+                &session.created_at.to_rfc3339(),
+                &Utc::now().to_rfc3339(),
+            ],
+        )?;
+        
+        Ok(session_id as i64)
+    }
+    
+    /// Update recording session
+    pub fn update_recording_session(conn: &mut Connection, session_id: i64, session: &ObsRecordingSession) -> DatabaseResult<()> {
+        conn.execute(
+            "UPDATE obs_recording_sessions SET
+                obs_connection_name = ?, tournament_id = ?, tournament_day_id = ?, match_id = ?, match_number = ?,
+                player1_name = ?, player1_flag = ?, player2_name = ?, player2_flag = ?, recording_path = ?,
+                recording_filename = ?, recording_start_time = ?, recording_end_time = ?, recording_duration = ?,
+                recording_size_bytes = ?, replay_buffer_start_time = ?, replay_buffer_end_time = ?,
+                replay_buffer_saved = ?, replay_buffer_filename = ?, status = ?, error_message = ?, updated_at = ?
+            WHERE id = ?",
+            [
+                &session.obs_connection_name,
+                &session.tournament_id.map(|id| id.to_string()).unwrap_or_default(),
+                &session.tournament_day_id.map(|id| id.to_string()).unwrap_or_default(),
+                &session.match_id.as_deref().unwrap_or("").to_string(),
+                &session.match_number.as_deref().unwrap_or("").to_string(),
+                &session.player1_name.as_deref().unwrap_or("").to_string(),
+                &session.player1_flag.as_deref().unwrap_or("").to_string(),
+                &session.player2_name.as_deref().unwrap_or("").to_string(),
+                &session.player2_flag.as_deref().unwrap_or("").to_string(),
+                &session.recording_path,
+                &session.recording_filename,
+                &session.recording_start_time.map(|dt| dt.to_rfc3339()).unwrap_or_default(),
+                &session.recording_end_time.map(|dt| dt.to_rfc3339()).unwrap_or_default(),
+                &session.recording_duration.map(|d| d.to_string()).unwrap_or_default(),
+                &session.recording_size_bytes.map(|s| s.to_string()).unwrap_or_default(),
+                &session.replay_buffer_start_time.map(|dt| dt.to_rfc3339()).unwrap_or_default(),
+                &session.replay_buffer_end_time.map(|dt| dt.to_rfc3339()).unwrap_or_default(),
+                &session.replay_buffer_saved.to_string(),
+                &session.replay_buffer_filename.as_deref().unwrap_or("").to_string(),
+                &session.status,
+                &session.error_message.as_deref().unwrap_or("").to_string(),
+                &Utc::now().to_rfc3339(),
+                &session_id.to_string(),
+            ],
+        )?;
+        
+        Ok(())
+    }
+    
+    /// Get recording session by ID
+    pub fn get_recording_session(conn: &Connection, session_id: i64) -> DatabaseResult<Option<ObsRecordingSession>> {
+        let mut stmt = conn.prepare(
+            "SELECT * FROM obs_recording_sessions WHERE id = ?"
+        )?;
+        
+        let session = stmt.query_row([session_id], |row| ObsRecordingSession::from_row(row))
+            .optional()?;
+        
+        Ok(session)
+    }
+    
+    /// Update recording session status
+    pub fn update_recording_session_status(conn: &mut Connection, session_id: i64, status: &str, error_message: Option<&str>) -> DatabaseResult<()> {
+        conn.execute(
+            "UPDATE obs_recording_sessions SET status = ?, error_message = ?, updated_at = ? WHERE id = ?",
+            [
+                status,
+                &error_message.unwrap_or(""),
+                &Utc::now().to_rfc3339(),
+                &session_id.to_string(),
+            ],
+        )?;
+        
+        Ok(())
+    }
+    
+    /// Get recent recording sessions
+    pub fn get_recent_recording_sessions(conn: &Connection, limit: i64) -> DatabaseResult<Vec<ObsRecordingSession>> {
+        let mut stmt = conn.prepare(
+            "SELECT * FROM obs_recording_sessions ORDER BY created_at DESC LIMIT ?"
+        )?;
+        
+        let sessions = stmt.query_map([limit], |row| ObsRecordingSession::from_row(row))?
+            .collect::<Result<Vec<_>, _>>()?;
+        
+        Ok(sessions)
     }
 } 
