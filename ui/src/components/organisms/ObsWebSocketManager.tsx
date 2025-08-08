@@ -692,7 +692,6 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="e.g., OBS_REC, OBS_STR"
-                  disabled={editingConnection !== null}
                 />
               </div>
 
