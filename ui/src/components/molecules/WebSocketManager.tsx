@@ -312,30 +312,18 @@ const WebSocketManager: React.FC<WebSocketManagerProps> = ({ mode = 'local' }) =
         }
       }
 
-      // Only update the configuration, don't connect
-      // First, remove the old connection from backend
-      if (editingConnection) {
-      try {
-        await obsObwsCommands.removeConnection(editingConnection);
-      } catch (error) {
-        // Ignore errors if connection wasn't found
-        console.log('Remove connection error (expected if not found):', error);
-        }
-      }
-
-      // Add the updated connection to backend (this only saves settings, doesn't connect)
-      const result = await obsObwsCommands.addConnection({
+      // Update the connection using the new update method
+      const result = await obsObwsCommands.updateConnection(editingConnection, {
         name: formData.name,
         host: formData.host,
         port: formData.port,
         password: finalPassword || undefined,
-        enabled: formData.enabled,
       });
 
       if (result.success) {
         // Remove old connection from frontend store
         if (editingConnection) {
-        removeObsConnection(editingConnection);
+          removeObsConnection(editingConnection);
         }
         
         // Add updated connection to frontend store (status will be set to Disconnected by default)

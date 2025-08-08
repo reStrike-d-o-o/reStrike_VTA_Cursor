@@ -174,6 +174,8 @@ async fn main() -> AppResult<()> {
             #[cfg(feature = "obs-obws")]
             tauri_commands_obws::obs_obws_add_connection,
             #[cfg(feature = "obs-obws")]
+            tauri_commands_obws::obs_obws_update_connection,
+            #[cfg(feature = "obs-obws")]
             tauri_commands_obws::obs_obws_connect,
             #[cfg(feature = "obs-obws")]
             tauri_commands_obws::obs_obws_disconnect,

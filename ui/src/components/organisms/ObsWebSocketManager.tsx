@@ -420,26 +420,42 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
       return;
     }
 
+    // Ensure editingConnection is not null
+    if (!editingConnection) {
+      setFormError('No connection being edited');
+      return;
+    }
+
     try {
       setFormError(null);
       
-      // First remove the old connection
-      if (editingConnection) {
-        await deleteConnection(editingConnection);
-      }
-      
-      // Then add the updated connection
-      const updatedConnection: ObsConnection = {
+      // Update the connection using the new update method
+      const result = await obsObwsCommands.updateConnection(editingConnection, {
         name: formData.name,
         host: formData.host,
         port: formData.port,
-        enabled: formData.enabled,
-        status: 'disconnected'
-      };
-      
-      await saveConnection(updatedConnection);
-      setEditingConnection(null);
-      resetForm();
+        password: undefined, // Will be loaded from config
+      });
+
+      if (result.success) {
+        // Update the connection in the local state
+        const updatedConnection: ObsConnection = {
+          name: formData.name,
+          host: formData.host,
+          port: formData.port,
+          enabled: formData.enabled,
+          status: 'disconnected'
+        };
+        
+        // Remove old connection and add updated one
+        setConnections(prev => prev.filter(c => c.name !== editingConnection));
+        setConnections(prev => [...prev, updatedConnection]);
+        
+        setEditingConnection(null);
+        resetForm();
+      } else {
+        setFormError(result.error || 'Failed to update connection');
+      }
     } catch (error) {
       console.error('Failed to update connection:', error);
       setFormError('Failed to update connection: ' + (error as Error)?.message || String(error));

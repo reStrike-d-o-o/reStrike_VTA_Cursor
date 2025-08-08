@@ -40,7 +40,37 @@ const isTauriAvailable = (): boolean => {
 
 export const obsObwsCommands = {
   /**
-   * Add a new OBS connection using obws
+   * Update an existing OBS WebSocket connection
+   */
+  updateConnection: async (oldName: string, params: {
+    name: string;
+    host: string;
+    port: number;
+    password?: string;
+  }): Promise<TauriCommandResponse<any>> => {
+    try {
+      const result = await safeInvoke('obs_obws_update_connection', {
+        old_name: oldName,
+        connection: params
+      });
+      
+      return {
+        success: result.success || false,
+        data: result.data || null,
+        error: result.error || null,
+      };
+    } catch (error) {
+      console.error('Failed to update OBS connection:', error);
+      return {
+        success: false,
+        data: null,
+        error: String(error),
+      };
+    }
+  },
+
+  /**
+   * Add a new OBS WebSocket connection
    */
   async addConnection(params: {
     name: string;
