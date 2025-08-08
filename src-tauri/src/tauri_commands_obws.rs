@@ -1032,3 +1032,261 @@ pub async fn obs_obws_test_path_generation(
         error: None,
     })
 }
+
+/// Get automatic recording configuration
+#[tauri::command]
+pub async fn obs_obws_get_automatic_recording_config(
+    app: State<'_, Arc<App>>,
+) -> Result<ObsObwsConnectionResponse, TauriError> {
+    log::info!("OBS obws get automatic recording config called");
+
+    // Get the recording event handler from the app state
+    let recording_handler = app.recording_event_handler();
+
+    let config = recording_handler.get_config();
+
+    Ok(ObsObwsConnectionResponse {
+        success: true,
+        data: Some(serde_json::json!({
+            "enabled": config.enabled,
+            "obs_connection_name": config.obs_connection_name,
+            "auto_stop_on_match_end": config.auto_stop_on_match_end,
+            "auto_stop_on_winner": config.auto_stop_on_winner,
+            "stop_delay_seconds": config.stop_delay_seconds,
+            "include_replay_buffer": config.include_replay_buffer,
+        })),
+        error: None,
+    })
+}
+
+/// Update automatic recording configuration
+#[tauri::command]
+pub async fn obs_obws_update_automatic_recording_config(
+    enabled: bool,
+    obs_connection_name: Option<String>,
+    auto_stop_on_match_end: bool,
+    auto_stop_on_winner: bool,
+    stop_delay_seconds: u32,
+    include_replay_buffer: bool,
+    app: State<'_, Arc<App>>,
+) -> Result<ObsObwsConnectionResponse, TauriError> {
+    log::info!("OBS obws update automatic recording config called");
+
+    // Get the recording event handler from the app state
+    let recording_handler = app.recording_event_handler();
+
+    let config = crate::plugins::obs_obws::AutomaticRecordingConfig {
+        enabled,
+        obs_connection_name,
+        auto_stop_on_match_end,
+        auto_stop_on_winner,
+        stop_delay_seconds,
+        include_replay_buffer,
+    };
+
+    recording_handler.update_config(config)
+        .map_err(|e| TauriError::from(std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to update config: {}", e))))?;
+
+    Ok(ObsObwsConnectionResponse {
+        success: true,
+        data: Some(serde_json::json!({
+            "message": "Automatic recording configuration updated successfully"
+        })),
+        error: None,
+    })
+}
+
+/// Get current recording session
+#[tauri::command]
+pub async fn obs_obws_get_current_recording_session(
+    app: State<'_, Arc<App>>,
+) -> Result<ObsObwsConnectionResponse, TauriError> {
+    log::info!("OBS obws get current recording session called");
+
+    // Get the recording event handler from the app state
+    let recording_handler = app.recording_event_handler();
+
+    let session = recording_handler.get_current_session();
+
+    match session {
+        Some(session) => {
+            let state_str = match session.state {
+                crate::plugins::obs_obws::RecordingState::Idle => "idle",
+                crate::plugins::obs_obws::RecordingState::Preparing => "preparing",
+                crate::plugins::obs_obws::RecordingState::Recording => "recording",
+                crate::plugins::obs_obws::RecordingState::Stopping => "stopping",
+                crate::plugins::obs_obws::RecordingState::Error(ref _msg) => "error",
+            };
+
+            Ok(ObsObwsConnectionResponse {
+                success: true,
+                data: Some(serde_json::json!({
+                    "id": session.id,
+                    "match_id": session.match_id,
+                    "tournament_name": session.tournament_name,
+                    "tournament_day": session.tournament_day,
+                    "match_number": session.match_number,
+                    "player1_name": session.player1_name,
+                    "player1_flag": session.player1_flag,
+                    "player2_name": session.player2_name,
+                    "player2_flag": session.player2_flag,
+                    "recording_path": session.recording_path,
+                    "recording_filename": session.recording_filename,
+                    "state": state_str,
+                    "start_time": session.start_time.map(|t| t.timestamp()),
+                    "end_time": session.end_time.map(|t| t.timestamp()),
+                    "obs_connection_name": session.obs_connection_name,
+                    "created_at": session.created_at.timestamp(),
+                    "updated_at": session.updated_at.timestamp(),
+                })),
+                error: None,
+            })
+        }
+        None => Ok(ObsObwsConnectionResponse {
+            success: true,
+            data: None,
+            error: None,
+        }),
+    }
+}
+
+/// Clear current recording session
+#[tauri::command]
+pub async fn obs_obws_clear_recording_session(
+    app: State<'_, Arc<App>>,
+) -> Result<ObsObwsConnectionResponse, TauriError> {
+    log::info!("OBS obws clear recording session called");
+
+    // Get the recording event handler from the app state
+    let recording_handler = app.recording_event_handler();
+
+    recording_handler.clear_session()
+        .map_err(|e| TauriError::from(std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to clear session: {}", e))))?;
+
+    Ok(ObsObwsConnectionResponse {
+        success: true,
+        data: Some(serde_json::json!({
+            "message": "Recording session cleared successfully"
+        })),
+        error: None,
+    })
+}
+
+/// Manually start recording for a match
+#[tauri::command]
+pub async fn obs_obws_manual_start_recording(
+    match_id: String,
+    obs_connection_name: String,
+    app: State<'_, Arc<App>>,
+) -> Result<ObsObwsConnectionResponse, TauriError> {
+    log::info!("OBS obws manual start recording called: match_id={}, connection={}", match_id, obs_connection_name);
+
+    // Get the recording event handler from the app state
+    let recording_handler = app.recording_event_handler();
+
+    // Create a manual recording session
+    let session = crate::plugins::obs_obws::RecordingSession {
+        id: None,
+        match_id: match_id.clone(),
+        tournament_name: None,
+        tournament_day: None,
+        match_number: None,
+        player1_name: None,
+        player1_flag: None,
+        player2_name: None,
+        player2_flag: None,
+        recording_path: None,
+        recording_filename: None,
+        state: crate::plugins::obs_obws::RecordingState::Preparing,
+        start_time: None,
+        end_time: None,
+        obs_connection_name: Some(obs_connection_name.clone()),
+        created_at: chrono::Utc::now(),
+        updated_at: chrono::Utc::now(),
+    };
+
+    // Update current session
+    {
+        let mut session_guard = recording_handler.current_session.lock().unwrap();
+        *session_guard = Some(session);
+    }
+
+    // Generate recording path
+    if let Err(e) = recording_handler.generate_recording_path(&match_id).await {
+        log::error!("Failed to generate recording path: {}", e);
+        recording_handler.update_session_state(crate::plugins::obs_obws::RecordingState::Error(e.to_string())).await
+            .map_err(|e| TauriError::from(std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to update session state: {}", e))))?;
+        
+        return Ok(ObsObwsConnectionResponse {
+            success: false,
+            data: None,
+            error: Some(format!("Failed to generate recording path: {}", e)),
+        });
+    }
+
+    // Start recording
+    recording_handler.update_session_state(crate::plugins::obs_obws::RecordingState::Recording).await
+        .map_err(|e| TauriError::from(std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to update session state: {}", e))))?;
+
+    // Send start recording event
+    if let Err(e) = recording_handler.event_tx.send(crate::plugins::obs_obws::RecordingEvent::StartRecording {
+        match_id,
+        obs_connection_name,
+    }) {
+        log::error!("Failed to send start recording event: {}", e);
+        return Ok(ObsObwsConnectionResponse {
+            success: false,
+            data: None,
+            error: Some(format!("Failed to send start recording event: {}", e)),
+        });
+    }
+
+    Ok(ObsObwsConnectionResponse {
+        success: true,
+        data: Some(serde_json::json!({
+            "message": "Manual recording started successfully"
+        })),
+        error: None,
+    })
+}
+
+/// Manually stop recording
+#[tauri::command]
+pub async fn obs_obws_manual_stop_recording(
+    obs_connection_name: String,
+    app: State<'_, Arc<App>>,
+) -> Result<ObsObwsConnectionResponse, TauriError> {
+    log::info!("OBS obws manual stop recording called: connection={}", obs_connection_name);
+
+    // Get the recording event handler from the app state
+    let recording_handler = app.recording_event_handler();
+
+    // Update session state to stopping
+    recording_handler.update_session_state(crate::plugins::obs_obws::RecordingState::Stopping).await
+        .map_err(|e| TauriError::from(std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to update session state: {}", e))))?;
+
+    // Send stop recording event
+    if let Some(session_id) = recording_handler.get_current_session_id().await
+        .map_err(|e| TauriError::from(std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to get session ID: {}", e))))? {
+        
+        if let Err(e) = recording_handler.event_tx.send(crate::plugins::obs_obws::RecordingEvent::StopRecording {
+            session_id,
+            obs_connection_name: obs_connection_name.clone(),
+        }) {
+            log::error!("Failed to send stop recording event: {}", e);
+            return Ok(ObsObwsConnectionResponse {
+                success: false,
+                data: None,
+                error: Some(format!("Failed to send stop recording event: {}", e)),
+            });
+        }
+    }
+
+    Ok(ObsObwsConnectionResponse {
+        success: true,
+        data: Some(serde_json::json!({
+            "message": "Manual recording stopped successfully"
+        })),
+        error: None,
+    })
+}

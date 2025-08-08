@@ -5,12 +5,14 @@ use crate::plugins::{PlaybackPlugin, UdpPlugin, StorePlugin, LicensePlugin, CpuM
 use crate::plugins::obs::ObsPluginManager; // Use new modular OBS plugin system
 #[cfg(feature = "obs-obws")]
 use crate::plugins::obs_obws::manager::ObsManager as ObsObwsManager; // Use new obws-based OBS manager
+#[cfg(feature = "obs-obws")]
+use crate::plugins::obs_obws::ObsRecordingEventHandler; // Use new recording event handler
 use crate::logging::LogManager;
 use crate::config::ConfigManager;
 use std::sync::Arc;
 use std::path::PathBuf;
 use tokio::sync::{RwLock, Mutex, broadcast};
-use tauri::Emitter;
+use tauri::{Emitter, Manager};
 
 // Global PSS event broadcaster for real-time event emission to WebSocket overlays
 static PSS_EVENT_BROADCASTER: std::sync::OnceLock<broadcast::Sender<serde_json::Value>> = std::sync::OnceLock::new();
@@ -25,6 +27,8 @@ pub struct App {
     obs_plugin_manager: Arc<ObsPluginManager>, // Use new modular OBS plugin manager
     #[cfg(feature = "obs-obws")]
     obs_obws_manager: Arc<ObsObwsManager>, // Use new obws-based OBS manager
+    #[cfg(feature = "obs-obws")]
+    recording_event_handler: Arc<ObsRecordingEventHandler>, // Recording event handler for PSS integration
     youtube_api_plugin: Arc<Mutex<YouTubeApiPlugin>>, // YouTube API integration
     playback_plugin: PlaybackPlugin,
     udp_plugin: UdpPlugin,
@@ -85,6 +89,10 @@ impl App {
         #[cfg(feature = "obs-obws")]
         log::info!("✅ OBS obws manager initialized");
         
+        // Create recording event channel
+        #[cfg(feature = "obs-obws")]
+        let (recording_event_tx, _recording_event_rx) = tokio::sync::mpsc::unbounded_channel::<crate::plugins::obs_obws::RecordingEvent>();
+        
         let youtube_api_plugin = Arc::new(Mutex::new(YouTubeApiPlugin::new()));
         log::info!("✅ YouTube API plugin initialized");
         
@@ -110,6 +118,16 @@ impl App {
         let database_plugin = DatabasePlugin::new().await
             .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to initialize database plugin: {}", e)))?;
         log::info!("✅ Database plugin initialized");
+        
+        // Initialize recording event handler (after database plugin)
+        #[cfg(feature = "obs-obws")]
+        let recording_event_handler = Arc::new(ObsRecordingEventHandler::new(
+            crate::plugins::obs_obws::AutomaticRecordingConfig::default(),
+            recording_event_tx,
+            Arc::new(database_plugin.clone()),
+        ));
+        #[cfg(feature = "obs-obws")]
+        log::info!("✅ Recording event handler initialized");
         
         let protocol_manager_arc = Arc::new(protocol_manager.clone());
         let database_plugin_arc = Arc::new(database_plugin.clone());
@@ -162,6 +180,8 @@ impl App {
             obs_plugin_manager,
             #[cfg(feature = "obs-obws")]
             obs_obws_manager,
+            #[cfg(feature = "obs-obws")]
+            recording_event_handler,
             youtube_api_plugin,
             playback_plugin,
             udp_plugin,
@@ -271,6 +291,11 @@ impl App {
     #[cfg(feature = "obs-obws")]
     pub fn obs_obws_plugin(&self) -> &Arc<ObsObwsManager> {
         &self.obs_obws_manager
+    }
+    
+    #[cfg(feature = "obs-obws")]
+    pub fn recording_event_handler(&self) -> &Arc<ObsRecordingEventHandler> {
+        &self.recording_event_handler
     }
     
     pub fn youtube_api_plugin(&self) -> &Arc<Mutex<YouTubeApiPlugin>> {
@@ -458,299 +483,39 @@ impl App {
         mut event_rx: tokio::sync::mpsc::UnboundedReceiver<crate::plugins::plugin_udp::PssEvent>,
         log_manager: Arc<Mutex<LogManager>>,
     ) {
-        log::info!("🎯 UDP event handler started");
+        log::info!("🎯 Starting UDP event handler for real-time processing");
         
         while let Some(event) = event_rx.recv().await {
-            // Convert PSS event to JSON for real-time emission
-            let event_json = match &event {
-                crate::plugins::plugin_udp::PssEvent::Points { athlete, point_type } => {
-                    let event_code = crate::plugins::plugin_udp::UdpServer::get_event_code(&event);
-                    let athlete_str = match athlete {
-                        1 => "blue",
-                        2 => "red",
-                        _ => "unknown"
-                    };
-                    serde_json::json!({
-                        "type": "points",
-                        "event_code": event_code,
-                        "athlete": athlete_str,
-                        "point_type": point_type,
-                        "round": 1, // Will be updated by WebSocket plugin
-                        "time": "2:00", // Will be updated by WebSocket plugin
-                        "description": format!("Athlete {} scored {} points", athlete, point_type)
-                    })
-                }
-                crate::plugins::plugin_udp::PssEvent::HitLevel { athlete, level } => {
-                    let event_code = crate::plugins::plugin_udp::UdpServer::get_event_code(&event);
-                    let athlete_str = match athlete {
-                        1 => "blue",
-                        2 => "red",
-                        _ => "unknown"
-                    };
-                    serde_json::json!({
-                        "type": "hit_level",
-                        "event_code": event_code,
-                        "athlete": athlete_str,
-                        "level": level,
-                        "round": 1, // Will be updated by WebSocket plugin
-                        "time": "2:00", // Will be updated by WebSocket plugin
-                        "description": format!("Athlete {} hit level {}", athlete, level)
-                    })
-                }
-                crate::plugins::plugin_udp::PssEvent::Warnings { athlete1_warnings, athlete2_warnings } => {
-                    let event_code = crate::plugins::plugin_udp::UdpServer::get_event_code(&event);
-                    serde_json::json!({
-                        "type": "warnings",
-                        "event_code": event_code,
-                        "athlete": "yellow",
-                        "athlete1_warnings": athlete1_warnings,
-                        "athlete2_warnings": athlete2_warnings,
-                        "round": 1, // Will be updated by WebSocket plugin
-                        "time": "2:00", // Will be updated by WebSocket plugin
-                        "description": format!("Warnings - Athlete1: {}, Athlete2: {}", athlete1_warnings, athlete2_warnings)
-                    })
-                }
-                crate::plugins::plugin_udp::PssEvent::Clock { time, action } => {
-                    let event_code = crate::plugins::plugin_udp::UdpServer::get_event_code(&event);
-                    serde_json::json!({
-                        "type": "clock",
-                        "event_code": event_code,
-                        "athlete": "",
-                        "time": time,
-                        "action": action,
-                        "round": 1, // Will be updated by WebSocket plugin
-                        "description": format!("Clock: {} {:?}", time, action.clone().unwrap_or_default())
-                    })
-                }
-                crate::plugins::plugin_udp::PssEvent::Round { current_round } => {
-                    let event_code = crate::plugins::plugin_udp::UdpServer::get_event_code(&event);
-                    serde_json::json!({
-                        "type": "round",
-                        "event_code": event_code,
-                        "athlete": "",
-                        "current_round": current_round,
-                        "round": current_round,
-                        "time": "2:00", // Will be updated by WebSocket plugin
-                        "description": format!("Round {}", current_round)
-                    })
-                }
-                crate::plugins::plugin_udp::PssEvent::WinnerRounds { round1_winner, round2_winner, round3_winner } => {
-                    let event_code = crate::plugins::plugin_udp::UdpServer::get_event_code(&event);
-                    serde_json::json!({
-                        "type": "winner_rounds",
-                        "event_code": event_code,
-                        "athlete": "yellow",
-                        "round1_winner": round1_winner,
-                        "round2_winner": round2_winner,
-                        "round3_winner": round3_winner,
-                        "round": 1, // Will be updated by WebSocket plugin
-                        "time": "2:00", // Will be updated by WebSocket plugin
-                        "description": format!("Winner Rounds - R1: {}, R2: {}, R3: {}", round1_winner, round2_winner, round3_winner)
-                    })
-                }
-                crate::plugins::plugin_udp::PssEvent::Scores { athlete1_r1, athlete2_r1, athlete1_r2, athlete2_r2, athlete1_r3, athlete2_r3 } => {
-                    let event_code = crate::plugins::plugin_udp::UdpServer::get_event_code(&event);
-                    serde_json::json!({
-                        "type": "scores",
-                        "event_code": event_code,
-                        "athlete": "yellow",
-                        "athlete1_r1": athlete1_r1,
-                        "athlete2_r1": athlete2_r1,
-                        "athlete1_r2": athlete1_r2,
-                        "athlete2_r2": athlete2_r2,
-                        "athlete1_r3": athlete1_r3,
-                        "athlete2_r3": athlete2_r3,
-                        "round": 1, // Will be updated by WebSocket plugin
-                        "time": "2:00", // Will be updated by WebSocket plugin
-                        "description": format!("Scores - A1: R1={}, R2={}, R3={} | A2: R1={}, R2={}, R3={}", 
-                            athlete1_r1, athlete1_r2, athlete1_r3, athlete2_r1, athlete2_r2, athlete2_r3)
-                    })
-                }
-                crate::plugins::plugin_udp::PssEvent::CurrentScores { athlete1_score, athlete2_score } => {
-                    let event_code = crate::plugins::plugin_udp::UdpServer::get_event_code(&event);
-                    serde_json::json!({
-                        "type": "current_scores",
-                        "event_code": event_code,
-                        "athlete": "yellow",
-                        "athlete1_score": athlete1_score,
-                        "athlete2_score": athlete2_score,
-                        "round": 1, // Will be updated by WebSocket plugin
-                        "time": "2:00", // Will be updated by WebSocket plugin
-                        "description": format!("Current Scores - A1: {}, A2: {}", athlete1_score, athlete2_score)
-                    })
-                }
-                crate::plugins::plugin_udp::PssEvent::Athletes { athlete1_short, athlete1_long, athlete1_country, athlete2_short, athlete2_long, athlete2_country } => {
-                    let event_code = crate::plugins::plugin_udp::UdpServer::get_event_code(&event);
-                    serde_json::json!({
-                        "type": "athletes",
-                        "event_code": event_code,
-                        "athlete": "",
-                        "athlete1_short": athlete1_short,
-                        "athlete1_long": athlete1_long,
-                        "athlete1_country": athlete1_country,
-                        "athlete2_short": athlete2_short,
-                        "athlete2_long": athlete2_long,
-                        "athlete2_country": athlete2_country,
-                        "round": 1, // Will be updated by WebSocket plugin
-                        "time": "2:00", // Will be updated by WebSocket plugin
-                        "description": format!("Athletes - {} ({}) vs {} ({})", athlete1_short, athlete1_country, athlete2_short, athlete2_country)
-                    })
-                }
-                crate::plugins::plugin_udp::PssEvent::MatchConfig { number, category, weight, rounds, colors, match_id, division, total_rounds, round_duration, countdown_type, count_up, format } => {
-                    let event_code = crate::plugins::plugin_udp::UdpServer::get_event_code(&event);
-                    serde_json::json!({
-                        "type": "match_config",
-                        "event_code": event_code,
-                        "athlete": "",
-                        "number": number,
-                        "category": category,
-                        "weight": weight,
-                        "rounds": rounds,
-                        "colors": colors,
-                        "match_id": match_id,
-                        "division": division,
-                        "total_rounds": total_rounds,
-                        "round_duration": round_duration,
-                        "countdown_type": countdown_type,
-                        "count_up": count_up,
-                        "format": format,
-                        "round": 1, // Will be updated by WebSocket plugin
-                        "time": "2:00", // Will be updated by WebSocket plugin
-                        "description": format!("Match Config - #{} {} {} ({})", number, category, weight, division)
-                    })
-                }
-                crate::plugins::plugin_udp::PssEvent::FightLoaded => {
-                    let event_code = crate::plugins::plugin_udp::UdpServer::get_event_code(&event);
-                    serde_json::json!({
-                        "type": "fight_loaded",
-                        "event_code": event_code,
-                        "athlete": "",
-                        "event": "FightLoaded",
-                        "round": 1, // Will be updated by WebSocket plugin
-                        "time": "2:00", // Will be updated by WebSocket plugin
-                        "description": "Fight Loaded"
-                    })
-                }
-                crate::plugins::plugin_udp::PssEvent::FightReady => {
-                    let event_code = crate::plugins::plugin_udp::UdpServer::get_event_code(&event);
-                    serde_json::json!({
-                        "type": "fight_ready",
-                        "event_code": event_code,
-                        "athlete": "",
-                        "event": "FightReady",
-                        "round": 1, // Will be updated by WebSocket plugin
-                        "time": "2:00", // Will be updated by WebSocket plugin
-                        "description": "Fight Ready"
-                    })
-                }
-                crate::plugins::plugin_udp::PssEvent::Raw(message) => {
-                    let event_code = crate::plugins::plugin_udp::UdpServer::get_event_code(&event);
-                    serde_json::json!({
-                        "type": "raw",
-                        "event_code": event_code,
-                        "athlete": "",
-                        "message": message,
-                        "round": 1, // Will be updated by WebSocket plugin
-                        "time": "2:00", // Will be updated by WebSocket plugin
-                        "description": format!("Raw message: {}", message)
-                    })
-                }
-                _ => {
-                    let event_code = crate::plugins::plugin_udp::UdpServer::get_event_code(&event);
-                    serde_json::json!({
-                        "type": "other",
-                        "event_code": event_code,
-                        "athlete": "",
-                        "event": format!("{:?}", event),
-                        "round": 1, // Will be updated by WebSocket plugin
-                        "time": "2:00", // Will be updated by WebSocket plugin
-                        "description": format!("Event: {:?}", event)
-                    })
-                }
-            };
-
-            // HYBRID APPROACH: Real-time emission to WebSocket overlays
-            // Broadcast to WebSocket overlays (HTML overlays) - Real-time
-            Self::emit_pss_event(event_json.clone());
-
-            // TODO: Add Tauri frontend emission when app handle is available
-            // TODO: Add database storage for persistence
-
-            // Process different event types for logging
-            match event {
-                crate::plugins::plugin_udp::PssEvent::Raw(message) => {
-                    // Log raw UDP datagram content to both subsystems
-                    let raw_str = message.clone();
-                    // Store full datagram in udp log for easier debugging
-                    if let Err(e) = log_manager.lock().await.log("udp", "INFO", &raw_str) {
-                        log::error!("Failed to log raw UDP message: {}", e);
+            // Log the event
+            let event_log = format!("📡 UDP Event: {:?}", event);
+            log::info!("{}", event_log);
+            
+            // Emit to frontend via Tauri events
+            let event_json = crate::plugins::plugin_udp::UdpServer::convert_pss_event_to_json(&event);
+            Self::emit_pss_event(event_json);
+            
+            // Forward to recording event handler for automatic recording control
+            #[cfg(feature = "obs-obws")]
+            {
+                if let Some(app_handle) = TAURI_APP_HANDLE.get() {
+                    if let Some(app) = app_handle.try_state::<Arc<App>>() {
+                        let recording_handler = app.recording_event_handler();
+                        // Handle PSS event for automatic recording
+                        if let Err(e) = recording_handler.handle_pss_event(&event).await {
+                            log::warn!("⚠️ Failed to handle PSS event for recording: {}", e);
+                        }
                     }
-
-                    // Also keep the previously‐existing PSS raw log for protocol analysis
-                    let pss_str = format!("📡 Raw PSS message: {}", message);
-                    if let Err(e) = log_manager.lock().await.log("pss", "INFO", &pss_str) {
-                        log::error!("Failed to log PSS raw message: {}", e);
-                    }
-                    log::debug!("🎯 Raw UDP datagram: {}", message);
                 }
-                _ => {
-                    // Log parsed events to UDP subsystem (they are UDP server events)
-                    let event_str = match event {
-                        crate::plugins::plugin_udp::PssEvent::Points { athlete, point_type } => {
-                            format!("🥊 UDP-EVENT: Athlete {} scored {} points", athlete, point_type)
-                        }
-                        crate::plugins::plugin_udp::PssEvent::HitLevel { athlete, level } => {
-                            format!("💥 UDP-EVENT: Athlete {} hit level {}", athlete, level)
-                        }
-                        crate::plugins::plugin_udp::PssEvent::Warnings { athlete1_warnings, athlete2_warnings } => {
-                            format!("⚠️ UDP-EVENT: Warnings - Athlete1: {}, Athlete2: {}", athlete1_warnings, athlete2_warnings)
-                        }
-                        crate::plugins::plugin_udp::PssEvent::Clock { time, action } => {
-                            format!("⏰ UDP-EVENT: Clock {} {:?}", time, action.unwrap_or_default())
-                        }
-                        crate::plugins::plugin_udp::PssEvent::Break { time, action } => {
-                            format!("⏸️ UDP-EVENT: Break {} {:?}", time, action.unwrap_or_default())
-                        }
-                        crate::plugins::plugin_udp::PssEvent::WinnerRounds { round1_winner, round2_winner, round3_winner } => {
-                            format!("🏆 UDP-EVENT: WinnerRounds - R1:{}, R2:{}, R3:{}", round1_winner, round2_winner, round3_winner)
-                        }
-                        crate::plugins::plugin_udp::PssEvent::Scores { athlete1_r1, athlete2_r1, athlete1_r2, athlete2_r2, athlete1_r3, athlete2_r3 } => {
-                            format!("📊 UDP-EVENT: Scores - A1(R1:{},R2:{},R3:{}), A2(R1:{},R2:{},R3:{})", 
-                                athlete1_r1, athlete1_r2, athlete1_r3, athlete2_r1, athlete2_r2, athlete2_r3)
-                        }
-                        crate::plugins::plugin_udp::PssEvent::CurrentScores { athlete1_score, athlete2_score } => {
-                            format!("🎯 UDP-EVENT: Current Scores - A1:{}, A2:{}", athlete1_score, athlete2_score)
-                        }
-                        crate::plugins::plugin_udp::PssEvent::Round { current_round } => {
-                            format!("🔄 UDP-EVENT: Round {}", current_round)
-                        }
-                        crate::plugins::plugin_udp::PssEvent::FightLoaded => {
-                            "🎬 UDP-EVENT: Fight Loaded".to_string()
-                        }
-                        crate::plugins::plugin_udp::PssEvent::FightReady => {
-                            "✅ UDP-EVENT: Fight Ready".to_string()
-                        }
-                        _ => {
-                            format!("📋 UDP-EVENT: {:?}", event)
-                        }
-                    };
-                    
-                    if let Err(e) = log_manager.lock().await.log("udp", "INFO", &event_str) {
-                        log::error!("Failed to log UDP event: {}", e);
-                    }
-
-                    // Also log parsed representation to PSS subsystem for easier protocol debugging
-                    let pss_event_str = format!("PSS Event: {}", event_str);
-                    if let Err(e) = log_manager.lock().await.log("pss", "INFO", &pss_event_str) {
-                        log::error!("Failed to log PSS parsed event: {}", e);
-                    }
-                    
-                    log::info!("🎯 UDP event: {}", event_str);
-                }
+            }
+            
+            // Log to file
+            let log_manager_guard = log_manager.lock().await;
+            if let Err(e) = log_manager_guard.log("udp", "INFO", &event_log) {
+                log::warn!("⚠️ Failed to log UDP event: {}", e);
             }
         }
         
-        log::info!("🎯 UDP event handler stopped");
+        log::info!("🛑 UDP event handler stopped");
     }
 }
 

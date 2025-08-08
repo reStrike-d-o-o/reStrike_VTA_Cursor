@@ -1212,7 +1212,7 @@ impl UdpServer {
         Ok(db_event)
     }
 
-    fn convert_pss_event_to_json(event: &PssEvent) -> serde_json::Value {
+    pub fn convert_pss_event_to_json(event: &PssEvent) -> serde_json::Value {
         // Add defensive programming to handle any potential issues
         let event_code = Self::get_event_code(event);
         
