@@ -78,6 +78,12 @@
 - **✅ Step 3**: Enhanced ObsWebSocketManager with complete edit functionality
 - **✅ Step 4**: Fixed all backend compilation errors and TypeScript issues
 - **✅ Step 5**: Fixed Tauri IPC argument mismatch for `obs_obws_add_connection` command
+- **✅ Step 6**: Implemented proper connection update functionality to fix "Connection already exists" error when editing existing connections
+  - Added `update_connection` method to `ObsManager` in backend
+  - Added `obs_obws_update_connection` Tauri command
+  - Added `updateConnection` method to frontend Tauri commands utility
+  - Updated both `WebSocketManager.tsx` and `ObsWebSocketManager.tsx` to use new update method instead of remove-then-add approach
+  - Fixed race conditions and connection state preservation during updates
 - **✅ Frontend Build**: All TypeScript errors resolved, build successful
 - **✅ Backend Build**: All Rust compilation errors fixed, warnings only (non-critical)
 - **✅ Database Integration**: OBS connections properly saved to SQLite database
