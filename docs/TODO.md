@@ -77,6 +77,7 @@
 - **✅ Step 2**: Updated AdvancedPanel.tsx to use WebSocketManager for WebSocket tab
 - **✅ Step 3**: Enhanced ObsWebSocketManager with complete edit functionality
 - **✅ Step 4**: Fixed all backend compilation errors and TypeScript issues
+- **✅ Step 5**: Fixed Tauri IPC argument mismatch for `obs_obws_add_connection` command
 - **✅ Frontend Build**: All TypeScript errors resolved, build successful
 - **✅ Backend Build**: All Rust compilation errors fixed, warnings only (non-critical)
 - **✅ Database Integration**: OBS connections properly saved to SQLite database
