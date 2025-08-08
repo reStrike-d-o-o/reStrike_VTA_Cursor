@@ -1073,15 +1073,131 @@ pub async fn obs_obws_test_recording(
     })
 }
 
+/// Create test folders in Windows (actually creates the directory structure)
+#[tauri::command]
+pub async fn obs_obws_create_test_folders(
+    match_id: String,
+    tournament_name: Option<String>,
+    tournament_day: Option<String>,
+    match_number: Option<String>,
+    player1_name: Option<String>,
+    player1_flag: Option<String>,
+    player2_name: Option<String>,
+    player2_flag: Option<String>,
+    _app: State<'_, Arc<App>>,
+) -> Result<ObsObwsConnectionResponse, TauriError> {
+    log::info!("OBS obws create test folders called");
+    
+    let config = crate::plugins::obs_obws::PathGeneratorConfig {
+        videos_root: crate::plugins::obs_obws::PathGeneratorConfig::detect_windows_videos_folder(),
+        default_format: "mp4".to_string(),
+        include_minutes_seconds: true,
+    };
+    
+    let path_generator = crate::plugins::obs_obws::ObsPathGenerator::new(Some(config));
+    
+    // Create a test directory path
+    let directory = path_generator.generate_directory_path(&tournament_name, &tournament_day, &match_number);
+    
+    // Actually create the directory
+    match path_generator.ensure_directory_exists(&directory) {
+        Ok(_) => {
+            // Create test match info
+            let test_match_info = crate::plugins::obs_obws::path_generator::MatchInfo {
+                match_id: match_id.clone(),
+                match_number: match_number.clone(),
+                player1_name,
+                player1_flag,
+                player2_name,
+                player2_flag,
+            };
+            
+            // Generate test filename
+            let filename = path_generator.generate_filename(&test_match_info, &tournament_name, &tournament_day);
+            let full_path = directory.join(&filename);
+            
+            Ok(ObsObwsConnectionResponse {
+                success: true,
+                data: Some(serde_json::json!({
+                    "full_path": full_path.to_string_lossy(),
+                    "directory": directory.to_string_lossy(),
+                    "filename": filename,
+                    "tournament_name": tournament_name,
+                    "tournament_day": tournament_day,
+                    "match_number": match_number,
+                    "message": "Folders created successfully!"
+                })),
+                error: None,
+            })
+        },
+        Err(e) => {
+            Ok(ObsObwsConnectionResponse {
+                success: false,
+                data: None,
+                error: Some(format!("Failed to create folders: {}", e)),
+            })
+        }
+    }
+}
+
+/// Send recording configuration to OBS
+#[tauri::command]
+pub async fn obs_obws_send_config_to_obs(
+    connection_name: String,
+    recording_path: String,
+    filename_template: String,
+    app: State<'_, Arc<App>>,
+) -> Result<ObsObwsConnectionResponse, TauriError> {
+    log::info!("OBS obws send config to OBS called for connection: {}", connection_name);
+
+    // Get the OBS plugin from the app state
+    let obs_plugin = app.obs_plugin();
+
+    // Set replay buffer path (this is supported)
+    let path_result = obs_plugin.recording().set_replay_buffer_path(&connection_name, &recording_path).await;
+    if let Err(e) = path_result {
+        return Ok(ObsObwsConnectionResponse {
+            success: false,
+            data: None,
+            error: Some(format!("Failed to set replay buffer path: {}", e)),
+        });
+    }
+
+    // Set replay buffer filename format (this is supported)
+    let filename_result = obs_plugin.recording().set_replay_buffer_filename(&connection_name, &filename_template).await;
+    if let Err(e) = filename_result {
+        return Ok(ObsObwsConnectionResponse {
+            success: false,
+            data: None,
+            error: Some(format!("Failed to set replay buffer filename format: {}", e)),
+        });
+    }
+
+    // Note: OBS WebSocket API doesn't directly support setting recording path
+    // This would need to be handled by the recording event handler or OBS settings
+    log::info!("Configuration sent to OBS. Note: Recording path must be set manually in OBS settings.");
+
+    Ok(ObsObwsConnectionResponse {
+        success: true,
+        data: Some(serde_json::json!({
+            "message": format!("Configuration sent to OBS connection '{}' successfully!", connection_name),
+            "replay_buffer_path": recording_path,
+            "replay_buffer_filename_template": filename_template,
+            "note": "Recording path must be set manually in OBS settings. Replay buffer settings have been applied."
+        })),
+        error: None,
+    })
+}
+
 /// Get automatic recording configuration
 #[tauri::command]
 pub async fn obs_obws_get_automatic_recording_config(
-    app: State<'_, Arc<App>>,
+    _app: State<'_, Arc<App>>,
 ) -> Result<ObsObwsConnectionResponse, TauriError> {
     log::info!("OBS obws get automatic recording config called");
 
     // Get the recording event handler from the app state
-    let recording_handler = app.recording_event_handler();
+    let recording_handler = _app.recording_event_handler();
 
     let config = recording_handler.get_config();
 

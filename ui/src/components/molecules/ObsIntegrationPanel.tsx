@@ -177,17 +177,44 @@ const ObsIntegrationPanel: React.FC = () => {
   const testPathGeneration = async () => {
     try {
       setIsTestingPath(true);
-      const result = await obsObwsCommands.testPathGeneration(pathTestData);
+      const result = await obsObwsCommands.createTestFolders(pathTestData);
       
       if (result.success && result.data) {
-        setPathTestResult(result.data.full_path || 'Path generated successfully');
+        setPathTestResult(`✅ Folders created successfully!\n\n📁 Directory: ${result.data.directory}\n📄 Filename: ${result.data.filename}\n📍 Full Path: ${result.data.full_path}`);
       } else {
-        setPathTestResult(`Path generation failed: ${result.error}`);
+        setPathTestResult(`❌ Failed to create folders: ${result.error}`);
       }
     } catch (error) {
-      setPathTestResult(`Path generation failed: ${error}`);
+      setPathTestResult(`❌ Failed to create folders: ${error}`);
     } finally {
       setIsTestingPath(false);
+    }
+  };
+
+  // Send configuration to OBS
+  const sendConfigToObs = async () => {
+    if (!recordingConfig.connectionName) {
+      setTestResult('Please select a connection first');
+      return;
+    }
+    
+    try {
+      setIsSaving(true);
+      const result = await obsObwsCommands.sendConfigToObs(
+        recordingConfig.connectionName,
+        recordingConfig.recordingPath,
+        recordingConfig.filenamePattern
+      );
+      
+      if (result.success) {
+        setTestResult(`✅ Configuration sent to OBS successfully!\n\n📁 Recording Path: ${result.data?.recording_path}\n📄 Filename Template: ${result.data?.filename_template}`);
+      } else {
+        setTestResult(`❌ Failed to send configuration to OBS: ${result.error}`);
+      }
+    } catch (error) {
+      setTestResult(`❌ Failed to send configuration to OBS: ${error}`);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -621,6 +648,13 @@ const ObsIntegrationPanel: React.FC = () => {
           >
             Test Recording
           </Button>
+          <Button
+            onClick={sendConfigToObs}
+            disabled={!recordingConfig.connectionName || isSaving}
+            className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed"
+          >
+            {isSaving ? 'Sending...' : 'Send Config to OBS'}
+          </Button>
         </div>
 
         {/* Test Result */}
@@ -759,7 +793,7 @@ const ObsIntegrationPanel: React.FC = () => {
             disabled={isTestingPath}
             className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed"
           >
-            {isTestingPath ? 'Testing...' : 'Test Path Generation'}
+            {isTestingPath ? 'Creating...' : 'Create Test Folders'}
           </Button>
           <Button
             onClick={generateRecordingPathFromDb}
