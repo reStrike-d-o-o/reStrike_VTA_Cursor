@@ -74,22 +74,9 @@ pub struct ObsSettings {
     pub defaults: ObsDefaultSettings,
     /// Connection behavior settings
     pub behavior: ObsBehaviorSettings,
-    /// Integration settings
-    pub integration: ObsIntegrationSettings,
 }
 
-/// OBS Integration settings
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ObsIntegrationSettings {
-    /// Auto-connect to OBS on startup
-    pub auto_connect_on_startup: bool,
-    /// Show OBS status in overlay
-    pub show_status_in_overlay: bool,
-    /// Auto-record when playing clips
-    pub auto_record_on_clip_play: bool,
-    /// Save replay buffer on clip creation
-    pub save_replay_buffer_on_clip_creation: bool,
-}
+
 
 /// Individual OBS connection configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -722,12 +709,6 @@ impl Default for AppConfig {
                     max_attempts: 5,
                     status_monitoring: true,
                     status_interval: 10,
-                },
-                integration: ObsIntegrationSettings {
-                    auto_connect_on_startup: false,
-                    show_status_in_overlay: false,
-                    auto_record_on_clip_play: false,
-                    save_replay_buffer_on_clip_creation: false,
                 },
             },
             udp: UdpSettings {

@@ -53,13 +53,7 @@
       "max_attempts": 5,
       "status_monitoring": true,
       "status_interval": 5
-    },
-    "integration": {
-      "auto_connect_on_startup": false,
-      "show_status_in_overlay": false,
-      "auto_record_on_clip_play": false,
-      "save_replay_buffer_on_clip_creation": false
-    }
+
   },
   "udp": {
     "listener": {
