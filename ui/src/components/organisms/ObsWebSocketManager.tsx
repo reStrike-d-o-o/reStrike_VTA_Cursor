@@ -609,8 +609,13 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
                 await refreshConnections();
                 // Also check OBS status
                 try {
-                  const status = await obsObwsCommands.getStatus();
-                  console.log('Manual OBS status check:', status);
+                  // Get the first connection name for status check
+                  const connections = await obsObwsCommands.getConnections();
+                  if (connections.success && connections.data && connections.data.length > 0) {
+                    const firstConnection = connections.data[0];
+                    const status = await obsObwsCommands.getStatus(firstConnection.name);
+                    console.log('Manual OBS status check:', status);
+                  }
                 } catch (error) {
                   console.error('Failed to get OBS status:', error);
                 }
@@ -929,9 +934,16 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
           <Button 
             onClick={async () => {
               try {
-                const result = await obsObwsCommands.getStatus();
-                console.log('OBS Status:', result);
-                alert('Check console for OBS status');
+                // Get the first connection name for status check
+                const connections = await obsObwsCommands.getConnections();
+                if (connections.success && connections.data && connections.data.length > 0) {
+                  const firstConnection = connections.data[0];
+                  const result = await obsObwsCommands.getStatus(firstConnection.name);
+                  console.log('OBS Status:', result);
+                  alert('Check console for OBS status');
+                } else {
+                  alert('No connections available for status check');
+                }
               } catch (error) {
                 console.error('Failed to get OBS status:', error);
               }
