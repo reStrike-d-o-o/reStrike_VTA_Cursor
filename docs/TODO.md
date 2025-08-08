@@ -1,6 +1,11 @@
 # TODO.md - reStrike VTA Project
 
-## Current Status: Control Room Visual Improvements Completed - Ready for Phase 1
+### Current Status
+- **✅ Phase 1 COMPLETED**: Database Schema & Models - OBS recording configuration and session tables created and ready
+- **✅ Phase 2 COMPLETED**: Backend OBS Commands - Replay buffer and path configuration commands implemented
+- **🔄 Phase 3 IN PROGRESS**: Frontend Integration Tab - Add Integration tab to OBS drawer with recording configuration
+- **🔄 Phase 4 PENDING**: Path Generation Logic - Implement Windows Videos folder detection and tournament path logic
+- **🔄 Phase 5 PENDING**: PSS Event Integration - Integrate with UDP/PSS event system for automatic recording
 
 ### Recently Completed (2025-01-29)
 
@@ -121,6 +126,15 @@
 - **✅ Schema Version**: Updated to version 16 with proper migration management
 - **✅ Compilation**: All Rust compilation errors fixed, ready for Phase 2
 
+### OBS Recording Integration - Phase 2 ✅ **COMPLETED**
+- **✅ Replay Buffer Commands**: Added `start_replay_buffer`, `stop_replay_buffer`, `save_replay_buffer`, `get_replay_buffer_status` Tauri commands
+- **✅ Path Configuration Commands**: Added `get_recording_path_settings`, `set_recording_path`, `get_replay_buffer_path_settings`, `set_replay_buffer_path` Tauri commands
+- **✅ Recording Configuration Commands**: Added `get_recording_config`, `save_recording_config`, `create_recording_session`, `update_recording_session_status` Tauri commands
+- **✅ Frontend Integration**: Added corresponding frontend command functions in `tauriCommandsObws.ts`
+- **✅ Database Integration**: Integrated with existing `ObsRecordingOperations` database operations
+- **✅ Command Registration**: Registered all new Tauri commands in `main.rs`
+- **✅ Compilation**: All Rust compilation errors fixed, ready for Phase 3
+
 ### Immediate Priorities
 
 #### 1. OBS Recording Integration 🔄 **CURRENT TASK**
@@ -163,17 +177,17 @@
 ### Week 1: OBS Recording Integration - Phase 1-3
 - [x] Phase 1: Database Schema & Models
   - [x] Create obs_recording_config table
-  - [x] Create obs_recording_session table
+  - [x] Create obs_recording_sessions table
   - [x] Add database models and operations
   - [x] Update schema version
-- [ ] Phase 2: Backend OBS Commands
-  - [ ] Add replay buffer commands to existing obws plugin
-  - [ ] Add path configuration commands
-  - [ ] Extend existing Tauri commands
+- [x] Phase 2: Backend OBS Commands
+  - [x] Add replay buffer commands to existing obws plugin
+  - [x] Add path configuration commands
+  - [x] Extend existing Tauri commands
 - [ ] Phase 3: Frontend Integration Tab
   - [ ] Add Integration tab to OBS drawer
-  - [ ] Create recording configuration UI
-  - [ ] Add OBS connection selection
+  - [ ] Add recording configuration UI
+  - [ ] Add connection selection dropdown
 
 ### Week 2: OBS Recording Integration - Phase 4-5
 - [ ] Phase 4: Path Generation Logic

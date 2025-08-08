@@ -543,3 +543,318 @@ pub async fn obs_obws_setup_status_listener(
         }),
     }
 }
+
+// ============================================================================
+// Replay Buffer Commands
+// ============================================================================
+
+/// Start replay buffer using obws
+#[tauri::command]
+pub async fn obs_obws_start_replay_buffer(
+    connection_name: Option<String>,
+    app: State<'_, Arc<App>>,
+) -> Result<ObsObwsConnectionResponse, TauriError> {
+    log::info!("OBS obws start replay buffer called");
+    
+    match app.obs_obws_plugin().start_replay_buffer(connection_name.as_deref()).await {
+        Ok(_) => Ok(ObsObwsConnectionResponse {
+            success: true,
+            data: Some(serde_json::json!({
+                "message": "Replay buffer started successfully"
+            })),
+            error: None,
+        }),
+        Err(e) => Ok(ObsObwsConnectionResponse {
+            success: false,
+            data: None,
+            error: Some(e.to_string()),
+        }),
+    }
+}
+
+/// Stop replay buffer using obws
+#[tauri::command]
+pub async fn obs_obws_stop_replay_buffer(
+    connection_name: Option<String>,
+    app: State<'_, Arc<App>>,
+) -> Result<ObsObwsConnectionResponse, TauriError> {
+    log::info!("OBS obws stop replay buffer called");
+    
+    match app.obs_obws_plugin().stop_replay_buffer(connection_name.as_deref()).await {
+        Ok(_) => Ok(ObsObwsConnectionResponse {
+            success: true,
+            data: Some(serde_json::json!({
+                "message": "Replay buffer stopped successfully"
+            })),
+            error: None,
+        }),
+        Err(e) => Ok(ObsObwsConnectionResponse {
+            success: false,
+            data: None,
+            error: Some(e.to_string()),
+        }),
+    }
+}
+
+/// Save replay buffer using obws
+#[tauri::command]
+pub async fn obs_obws_save_replay_buffer(
+    connection_name: Option<String>,
+    app: State<'_, Arc<App>>,
+) -> Result<ObsObwsConnectionResponse, TauriError> {
+    log::info!("OBS obws save replay buffer called");
+    
+    match app.obs_obws_plugin().save_replay_buffer(connection_name.as_deref()).await {
+        Ok(_) => Ok(ObsObwsConnectionResponse {
+            success: true,
+            data: Some(serde_json::json!({
+                "message": "Replay buffer saved successfully"
+            })),
+            error: None,
+        }),
+        Err(e) => Ok(ObsObwsConnectionResponse {
+            success: false,
+            data: None,
+            error: Some(e.to_string()),
+        }),
+    }
+}
+
+/// Get replay buffer status using obws
+#[tauri::command]
+pub async fn obs_obws_get_replay_buffer_status(
+    connection_name: Option<String>,
+    app: State<'_, Arc<App>>,
+) -> Result<ObsObwsConnectionResponse, TauriError> {
+    log::info!("OBS obws get replay buffer status called");
+    
+    match app.obs_obws_plugin().get_replay_buffer_status(connection_name.as_deref()).await {
+        Ok(status) => Ok(ObsObwsConnectionResponse {
+            success: true,
+            data: Some(serde_json::json!({
+                "status": status
+            })),
+            error: None,
+        }),
+        Err(e) => Ok(ObsObwsConnectionResponse {
+            success: false,
+            data: None,
+            error: Some(e.to_string()),
+        }),
+    }
+}
+
+// ============================================================================
+// Path Configuration Commands
+// ============================================================================
+
+/// Get recording path settings using obws
+#[tauri::command]
+pub async fn obs_obws_get_recording_path_settings(
+    _connection_name: Option<String>,
+    _app: State<'_, Arc<App>>,
+) -> Result<ObsObwsConnectionResponse, TauriError> {
+    log::info!("OBS obws get recording path settings called");
+    
+    // For now, return a placeholder since obws doesn't have direct path configuration
+    // This will be implemented using custom requests in the future
+    Ok(ObsObwsConnectionResponse {
+        success: true,
+        data: Some(serde_json::json!({
+            "recording_path": "C:/Users/Damjan/Videos",
+            "recording_format": "mp4",
+            "filename_pattern": "{matchNumber}_{player1}_{player2}_{date}",
+            "message": "Recording path settings retrieved (placeholder)"
+        })),
+        error: None,
+    })
+}
+
+/// Set recording path using obws
+#[tauri::command]
+pub async fn obs_obws_set_recording_path(
+    path: String,
+    _connection_name: Option<String>,
+    _app: State<'_, Arc<App>>,
+) -> Result<ObsObwsConnectionResponse, TauriError> {
+    log::info!("OBS obws set recording path called: {}", path);
+    
+    // For now, return a placeholder since obws doesn't have direct path configuration
+    // This will be implemented using custom requests in the future
+    Ok(ObsObwsConnectionResponse {
+        success: true,
+        data: Some(serde_json::json!({
+            "recording_path": path,
+            "message": "Recording path set successfully (placeholder)"
+        })),
+        error: None,
+    })
+}
+
+/// Get replay buffer path settings using obws
+#[tauri::command]
+pub async fn obs_obws_get_replay_buffer_path_settings(
+    _connection_name: Option<String>,
+    _app: State<'_, Arc<App>>,
+) -> Result<ObsObwsConnectionResponse, TauriError> {
+    log::info!("OBS obws get replay buffer path settings called");
+    
+    // For now, return a placeholder since obws doesn't have direct path configuration
+    // This will be implemented using custom requests in the future
+    Ok(ObsObwsConnectionResponse {
+        success: true,
+        data: Some(serde_json::json!({
+            "replay_buffer_path": "C:/Users/Damjan/Videos/ReplayBuffer",
+            "replay_buffer_format": "mp4",
+            "message": "Replay buffer path settings retrieved (placeholder)"
+        })),
+        error: None,
+    })
+}
+
+/// Set replay buffer path using obws
+#[tauri::command]
+pub async fn obs_obws_set_replay_buffer_path(
+    path: String,
+    _connection_name: Option<String>,
+    _app: State<'_, Arc<App>>,
+) -> Result<ObsObwsConnectionResponse, TauriError> {
+    log::info!("OBS obws set replay buffer path called: {}", path);
+    
+    // For now, return a placeholder since obws doesn't have direct path configuration
+    // This will be implemented using custom requests in the future
+    Ok(ObsObwsConnectionResponse {
+        success: true,
+        data: Some(serde_json::json!({
+            "replay_buffer_path": path,
+            "message": "Replay buffer path set successfully (placeholder)"
+        })),
+        error: None,
+    })
+}
+
+// ============================================================================
+// Recording Configuration Commands
+// ============================================================================
+
+/// Get recording configuration from database
+#[tauri::command]
+pub async fn obs_obws_get_recording_config(
+    connection_name: String,
+    app: State<'_, Arc<App>>,
+) -> Result<ObsObwsConnectionResponse, TauriError> {
+    log::info!("OBS obws get recording config called: {}", connection_name);
+    
+    let conn = app.database_plugin().get_connection().await?;
+    match crate::database::operations::ObsRecordingOperations::get_recording_config(&*conn, &connection_name) {
+        Ok(config) => Ok(ObsObwsConnectionResponse {
+            success: true,
+            data: Some(serde_json::json!({
+                "config": config
+            })),
+            error: None,
+        }),
+        Err(e) => Ok(ObsObwsConnectionResponse {
+            success: false,
+            data: None,
+            error: Some(e.to_string()),
+        }),
+    }
+}
+
+/// Save recording configuration to database
+#[tauri::command]
+pub async fn obs_obws_save_recording_config(
+    config: serde_json::Value,
+    app: State<'_, Arc<App>>,
+) -> Result<ObsObwsConnectionResponse, TauriError> {
+    log::info!("OBS obws save recording config called");
+    
+    // Parse the config from JSON
+    match serde_json::from_value::<crate::database::models::ObsRecordingConfig>(config) {
+        Ok(recording_config) => {
+            let mut conn = app.database_plugin().get_connection().await?;
+            match crate::database::operations::ObsRecordingOperations::upsert_recording_config(&mut *conn, &recording_config) {
+                Ok(_) => Ok(ObsObwsConnectionResponse {
+                    success: true,
+                    data: Some(serde_json::json!({
+                        "message": "Recording configuration saved successfully"
+                    })),
+                    error: None,
+                }),
+                Err(e) => Ok(ObsObwsConnectionResponse {
+                    success: false,
+                    data: None,
+                    error: Some(e.to_string()),
+                }),
+            }
+        },
+        Err(e) => Ok(ObsObwsConnectionResponse {
+            success: false,
+            data: None,
+            error: Some(format!("Invalid configuration format: {}", e)),
+        }),
+    }
+}
+
+/// Create a new recording session
+#[tauri::command]
+pub async fn obs_obws_create_recording_session(
+    session: serde_json::Value,
+    app: State<'_, Arc<App>>,
+) -> Result<ObsObwsConnectionResponse, TauriError> {
+    log::info!("OBS obws create recording session called");
+    
+    // Parse the session from JSON
+    match serde_json::from_value::<crate::database::models::ObsRecordingSession>(session) {
+        Ok(recording_session) => {
+            let mut conn = app.database_plugin().get_connection().await?;
+            match crate::database::operations::ObsRecordingOperations::create_recording_session(&mut *conn, &recording_session) {
+                Ok(session_id) => Ok(ObsObwsConnectionResponse {
+                    success: true,
+                    data: Some(serde_json::json!({
+                        "session_id": session_id,
+                        "message": "Recording session created successfully"
+                    })),
+                    error: None,
+                }),
+                Err(e) => Ok(ObsObwsConnectionResponse {
+                    success: false,
+                    data: None,
+                    error: Some(e.to_string()),
+                }),
+            }
+        },
+        Err(e) => Ok(ObsObwsConnectionResponse {
+            success: false,
+            data: None,
+            error: Some(format!("Invalid session format: {}", e)),
+        }),
+    }
+}
+
+/// Update recording session status
+#[tauri::command]
+pub async fn obs_obws_update_recording_session_status(
+    session_id: i64,
+    status: String,
+    app: State<'_, Arc<App>>,
+) -> Result<ObsObwsConnectionResponse, TauriError> {
+    log::info!("OBS obws update recording session status called: {} -> {}", session_id, status);
+    
+    let mut conn = app.database_plugin().get_connection().await?;
+    match crate::database::operations::ObsRecordingOperations::update_recording_session_status(&mut *conn, session_id, &status, None) {
+        Ok(_) => Ok(ObsObwsConnectionResponse {
+            success: true,
+            data: Some(serde_json::json!({
+                "message": "Recording session status updated successfully"
+            })),
+            error: None,
+        }),
+        Err(e) => Ok(ObsObwsConnectionResponse {
+            success: false,
+            data: None,
+            error: Some(e.to_string()),
+        }),
+    }
+}

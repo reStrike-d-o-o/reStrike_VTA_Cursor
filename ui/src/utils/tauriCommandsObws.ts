@@ -358,4 +358,193 @@ export const obsObwsCommands = {
       return { success: false, error: String(error) };
     }
   },
+
+  // ============================================================================
+  // Replay Buffer Commands
+  // ============================================================================
+
+  /**
+   * Start replay buffer using obws
+   */
+  async startReplayBuffer(connectionName?: string): Promise<TauriCommandResponse> {
+    try {
+      if (isTauriAvailable()) {
+        return await safeInvoke('obs_obws_start_replay_buffer', { connectionName: connectionName });
+      }
+      return { success: false, error: 'Tauri not available' };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  },
+
+  /**
+   * Stop replay buffer using obws
+   */
+  async stopReplayBuffer(connectionName?: string): Promise<TauriCommandResponse> {
+    try {
+      if (isTauriAvailable()) {
+        return await safeInvoke('obs_obws_stop_replay_buffer', { connectionName: connectionName });
+      }
+      return { success: false, error: 'Tauri not available' };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  },
+
+  /**
+   * Save replay buffer using obws
+   */
+  async saveReplayBuffer(connectionName?: string): Promise<TauriCommandResponse> {
+    try {
+      if (isTauriAvailable()) {
+        return await safeInvoke('obs_obws_save_replay_buffer', { connectionName: connectionName });
+      }
+      return { success: false, error: 'Tauri not available' };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  },
+
+  /**
+   * Get replay buffer status using obws
+   */
+  async getReplayBufferStatus(connectionName?: string): Promise<TauriCommandResponse> {
+    try {
+      if (isTauriAvailable()) {
+        return await safeInvoke('obs_obws_get_replay_buffer_status', { connectionName: connectionName });
+      }
+      return { success: false, error: 'Tauri not available' };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  },
+
+  // ============================================================================
+  // Path Configuration Commands
+  // ============================================================================
+
+  /**
+   * Get recording path settings using obws
+   */
+  async getRecordingPathSettings(connectionName?: string): Promise<TauriCommandResponse> {
+    try {
+      if (isTauriAvailable()) {
+        return await safeInvoke('obs_obws_get_recording_path_settings', { connectionName: connectionName });
+      }
+      return { success: false, error: 'Tauri not available' };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  },
+
+  /**
+   * Set recording path using obws
+   */
+  async setRecordingPath(path: string, connectionName?: string): Promise<TauriCommandResponse> {
+    try {
+      if (isTauriAvailable()) {
+        return await safeInvoke('obs_obws_set_recording_path', { 
+          path: path,
+          connectionName: connectionName 
+        });
+      }
+      return { success: false, error: 'Tauri not available' };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  },
+
+  /**
+   * Get replay buffer path settings using obws
+   */
+  async getReplayBufferPathSettings(connectionName?: string): Promise<TauriCommandResponse> {
+    try {
+      if (isTauriAvailable()) {
+        return await safeInvoke('obs_obws_get_replay_buffer_path_settings', { connectionName: connectionName });
+      }
+      return { success: false, error: 'Tauri not available' };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  },
+
+  /**
+   * Set replay buffer path using obws
+   */
+  async setReplayBufferPath(path: string, connectionName?: string): Promise<TauriCommandResponse> {
+    try {
+      if (isTauriAvailable()) {
+        return await safeInvoke('obs_obws_set_replay_buffer_path', { 
+          path: path,
+          connectionName: connectionName 
+        });
+      }
+      return { success: false, error: 'Tauri not available' };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  },
+
+  // ============================================================================
+  // Recording Configuration Commands
+  // ============================================================================
+
+  /**
+   * Get recording configuration from database
+   */
+  async getRecordingConfig(connectionName: string): Promise<TauriCommandResponse> {
+    try {
+      if (isTauriAvailable()) {
+        return await safeInvoke('obs_obws_get_recording_config', { connectionName: connectionName });
+      }
+      return { success: false, error: 'Tauri not available' };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  },
+
+  /**
+   * Save recording configuration to database
+   */
+  async saveRecordingConfig(config: any): Promise<TauriCommandResponse> {
+    try {
+      if (isTauriAvailable()) {
+        return await safeInvoke('obs_obws_save_recording_config', { config: config });
+      }
+      return { success: false, error: 'Tauri not available' };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  },
+
+  /**
+   * Create a new recording session
+   */
+  async createRecordingSession(session: any): Promise<TauriCommandResponse> {
+    try {
+      if (isTauriAvailable()) {
+        return await safeInvoke('obs_obws_create_recording_session', { session: session });
+      }
+      return { success: false, error: 'Tauri not available' };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  },
+
+  /**
+   * Update recording session status
+   */
+  async updateRecordingSessionStatus(sessionId: number, status: string): Promise<TauriCommandResponse> {
+    try {
+      if (isTauriAvailable()) {
+        return await safeInvoke('obs_obws_update_recording_session_status', { 
+          sessionId: sessionId,
+          status: status 
+        });
+      }
+      return { success: false, error: 'Tauri not available' };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  },
 };

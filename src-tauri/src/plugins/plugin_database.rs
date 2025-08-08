@@ -623,6 +623,11 @@ impl DatabasePlugin {
             .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to optimize archive tables: {}", e)))
     }
 
+    /// Get OBS recording operations
+    pub fn obs_recording_operations(&self) -> &crate::database::operations::ObsRecordingOperations {
+        &crate::database::operations::ObsRecordingOperations
+    }
+
     /// Internal method to run database migrations
     async fn run_migrations_internal(connection: Arc<DatabaseConnection>) -> AppResult<()> {
         let mut conn = connection.get_connection().await
