@@ -35,7 +35,32 @@ const ObsIntegrationPanel: React.FC = () => {
   const [testResult, setTestResult] = useState<string>('');
 
   // Get OBS connections from store
-  const { connections } = useObsStore();
+  const { connections, setConnections } = useObsStore();
+
+  // Load OBS connections on component mount
+  useEffect(() => {
+    const loadConnections = async () => {
+      try {
+        const result = await obsObwsCommands.getConnections();
+        if (result.success && result.data) {
+          const obsConnections = result.data.map((conn: any) => ({
+            name: conn.name,
+            host: conn.host,
+            port: conn.port,
+            password: conn.password,
+            enabled: conn.enabled,
+            status: conn.status || 'disconnected',
+            error: conn.error
+          }));
+          setConnections(obsConnections);
+        }
+      } catch (error) {
+        console.error('Failed to load OBS connections:', error);
+      }
+    };
+
+    loadConnections();
+  }, [setConnections]);
 
   // Load recording configuration
   const loadRecordingConfig = async () => {
@@ -219,7 +244,6 @@ Exists: ${data.exists ? 'Yes' : 'No'}`);
   // Automatic recording configuration state
   const [autoRecordingConfig, setAutoRecordingConfig] = useState({
     enabled: false,
-    obsConnectionName: '',
     autoStopOnMatchEnd: true,
     autoStopOnWinner: true,
     stopDelaySeconds: 30,
@@ -236,7 +260,6 @@ Exists: ${data.exists ? 'Yes' : 'No'}`);
       if (result.success && result.data) {
         setAutoRecordingConfig({
           enabled: result.data.enabled || false,
-          obsConnectionName: result.data.obs_connection_name || '',
           autoStopOnMatchEnd: result.data.auto_stop_on_match_end !== false,
           autoStopOnWinner: result.data.auto_stop_on_winner !== false,
           stopDelaySeconds: result.data.stop_delay_seconds || 30,
@@ -256,7 +279,7 @@ Exists: ${data.exists ? 'Yes' : 'No'}`);
       setIsLoadingConfig(true);
       const result = await obsObwsCommands.updateAutomaticRecordingConfig({
         enabled: autoRecordingConfig.enabled,
-        obsConnectionName: autoRecordingConfig.obsConnectionName || undefined,
+        obsConnectionName: recordingConfig.connectionName || undefined,
         autoStopOnMatchEnd: autoRecordingConfig.autoStopOnMatchEnd,
         autoStopOnWinner: autoRecordingConfig.autoStopOnWinner,
         stopDelaySeconds: autoRecordingConfig.stopDelaySeconds,
@@ -354,8 +377,8 @@ Exists: ${data.exists ? 'Yes' : 'No'}`);
   return (
     <div className="space-y-6">
       {/* OBS Recording Automatisation */}
-      <div className="p-6 bg-gradient-to-br from-blue-900/20 to-blue-800/30 backdrop-blur-sm rounded-lg border border-blue-600/30 shadow-lg">
-        <h3 className="text-lg font-semibold mb-4 text-gray-100">🎬 OBS Recording Automatisation</h3>
+      <div className="bg-gray-800 rounded-lg p-4 mb-4">
+        <h3 className="text-lg font-semibold text-white mb-4">🎬 OBS Recording Automatisation</h3>
         
         {/* Connection Selection */}
         <div className="mb-6">
@@ -430,86 +453,62 @@ Exists: ${data.exists ? 'Yes' : 'No'}`);
           </p>
         </div>
 
-        {/* Recording Options */}
-        <div className="space-y-4 mb-6">
-          <Toggle
-            id="auto-start-recording"
-            checked={recordingConfig.autoStartRecording}
-            onChange={(e) => setRecordingConfig(prev => ({ ...prev, autoStartRecording: e.target.checked }))}
-            label="Auto-start recording on match begin"
-            labelPosition="right"
-          />
-          <Toggle
-            id="auto-start-replay-buffer"
-            checked={recordingConfig.autoStartReplayBuffer}
-            onChange={(e) => setRecordingConfig(prev => ({ ...prev, autoStartReplayBuffer: e.target.checked }))}
-            label="Auto-start replay buffer on match begin"
-            labelPosition="right"
-          />
-          <Toggle
-            id="save-replay-buffer-on-match-end"
-            checked={recordingConfig.saveReplayBufferOnMatchEnd}
-            onChange={(e) => setRecordingConfig(prev => ({ ...prev, saveReplayBufferOnMatchEnd: e.target.checked }))}
-            label="Save replay buffer on match end"
-            labelPosition="right"
-          />
-        </div>
-
-        {/* Automatic Recording Configuration */}
+        {/* Automatic Recording Settings */}
         <div className="border-t border-gray-600/30 pt-6 mb-6">
           <h4 className="text-md font-semibold mb-4 text-gray-100">Automatic Recording Settings</h4>
           
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            <div className="col-span-2">
-              <Toggle
-                label="Enable Automatic Recording"
-                checked={autoRecordingConfig.enabled}
-                onChange={(e) => setAutoRecordingConfig({ ...autoRecordingConfig, enabled: e.target.checked })}
-              />
-            </div>
+          <div className="space-y-4 mb-4">
+            <Toggle
+              label="Enable Automatic Recording"
+              checked={autoRecordingConfig.enabled}
+              onChange={(e) => setAutoRecordingConfig({ ...autoRecordingConfig, enabled: e.target.checked })}
+            />
             
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">OBS Connection Name</label>
-              <Input
-                value={autoRecordingConfig.obsConnectionName}
-                onChange={(e) => setAutoRecordingConfig({ ...autoRecordingConfig, obsConnectionName: e.target.value })}
-                placeholder="OBS_REC"
-              />
-            </div>
+            <Toggle
+              label="Auto-start recording on match begin"
+              checked={recordingConfig.autoStartRecording}
+              onChange={(e) => setRecordingConfig(prev => ({ ...prev, autoStartRecording: e.target.checked }))}
+            />
             
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Stop Delay (seconds)</label>
-              <Input
-                type="number"
-                value={autoRecordingConfig.stopDelaySeconds}
-                onChange={(e) => setAutoRecordingConfig({ ...autoRecordingConfig, stopDelaySeconds: parseInt(e.target.value) || 30 })}
-                placeholder="30"
-              />
-            </div>
+            <Toggle
+              label="Auto-start replay buffer on match begin"
+              checked={recordingConfig.autoStartReplayBuffer}
+              onChange={(e) => setRecordingConfig(prev => ({ ...prev, autoStartReplayBuffer: e.target.checked }))}
+            />
             
-            <div className="col-span-2">
-              <Toggle
-                label="Auto Stop on Match End"
-                checked={autoRecordingConfig.autoStopOnMatchEnd}
-                onChange={(e) => setAutoRecordingConfig({ ...autoRecordingConfig, autoStopOnMatchEnd: e.target.checked })}
-              />
-            </div>
+            <Toggle
+              label="Auto Stop on Match End"
+              checked={autoRecordingConfig.autoStopOnMatchEnd}
+              onChange={(e) => setAutoRecordingConfig({ ...autoRecordingConfig, autoStopOnMatchEnd: e.target.checked })}
+            />
             
-            <div className="col-span-2">
-              <Toggle
-                label="Auto Stop on Winner"
-                checked={autoRecordingConfig.autoStopOnWinner}
-                onChange={(e) => setAutoRecordingConfig({ ...autoRecordingConfig, autoStopOnWinner: e.target.checked })}
-              />
-            </div>
+            <Toggle
+              label="Auto Stop on Winner"
+              checked={autoRecordingConfig.autoStopOnWinner}
+              onChange={(e) => setAutoRecordingConfig({ ...autoRecordingConfig, autoStopOnWinner: e.target.checked })}
+            />
             
-            <div className="col-span-2">
-              <Toggle
-                label="Include Replay Buffer"
-                checked={autoRecordingConfig.includeReplayBuffer}
-                onChange={(e) => setAutoRecordingConfig({ ...autoRecordingConfig, includeReplayBuffer: e.target.checked })}
-              />
-            </div>
+            <Toggle
+              label="Save replay buffer on match end"
+              checked={recordingConfig.saveReplayBufferOnMatchEnd}
+              onChange={(e) => setRecordingConfig(prev => ({ ...prev, saveReplayBufferOnMatchEnd: e.target.checked }))}
+            />
+            
+            <Toggle
+              label="Include Replay Buffer"
+              checked={autoRecordingConfig.includeReplayBuffer}
+              onChange={(e) => setAutoRecordingConfig({ ...autoRecordingConfig, includeReplayBuffer: e.target.checked })}
+            />
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-300 mb-2">Stop Delay (seconds)</label>
+            <Input
+              type="number"
+              value={autoRecordingConfig.stopDelaySeconds}
+              onChange={(e) => setAutoRecordingConfig({ ...autoRecordingConfig, stopDelaySeconds: parseInt(e.target.value) || 30 })}
+              placeholder="30"
+            />
           </div>
 
           <div className="flex gap-3 mb-4">
