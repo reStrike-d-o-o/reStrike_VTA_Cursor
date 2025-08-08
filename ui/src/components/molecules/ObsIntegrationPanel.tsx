@@ -44,8 +44,10 @@ const ObsIntegrationPanel: React.FC = () => {
       // Get all configured OBS connections (like WebSocketManager does)
       const result = await obsObwsCommands.getConnections();
       if (result.success && result.data) {
+        // The backend returns { "connections": [...] }, so we need to access result.data.connections
+        const connectionsArray = result.data.connections || [];
         const connectionsWithStatus = await Promise.all(
-          result.data.map(async (conn: any) => {
+          connectionsArray.map(async (conn: any) => {
             // Get status for each connection
             const statusResult = await obsObwsCommands.getConnectionStatus(conn.name);
             return {

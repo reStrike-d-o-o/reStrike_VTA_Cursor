@@ -172,8 +172,10 @@ const WebSocketManager: React.FC<WebSocketManagerProps> = ({ mode = 'local' }) =
         // Fallback to direct OBS plugin query
         const result = await obsObwsCommands.getConnections();
         if (result.success && result.data) {
+          // The backend returns { "connections": [...] }, so we need to access result.data.connections
+          const connectionsArray = result.data.connections || [];
           // Update store with connections from backend
-          const backendConnections = result.data
+          const backendConnections = connectionsArray
             .filter((conn: any) => {
               if (mode === 'local') {
                 // Local mode: only OBS_REC and OBS_STR

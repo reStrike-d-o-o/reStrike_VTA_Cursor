@@ -628,8 +628,8 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
                 try {
                   // Get the first connection name for status check
                   const connections = await obsObwsCommands.getConnections();
-                  if (connections.success && connections.data && connections.data.length > 0) {
-                    const firstConnection = connections.data[0];
+                  if (connections.success && connections.data && connections.data.connections && connections.data.connections.length > 0) {
+                    const firstConnection = connections.data.connections[0];
                     const status = await obsObwsCommands.getStatus(firstConnection.name);
                     console.log('Manual OBS status check:', status);
                   }
@@ -952,8 +952,8 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
               try {
                 // Get the first connection name for status check
                 const connections = await obsObwsCommands.getConnections();
-                if (connections.success && connections.data && connections.data.length > 0) {
-                  const firstConnection = connections.data[0];
+                if (connections.success && connections.data && connections.data.connections && connections.data.connections.length > 0) {
+                  const firstConnection = connections.data.connections[0];
                   const result = await obsObwsCommands.getStatus(firstConnection.name);
                   console.log('OBS Status:', result);
                   alert('Check console for OBS status');
