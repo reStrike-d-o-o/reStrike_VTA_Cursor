@@ -53,7 +53,7 @@
       "max_attempts": 5,
       "status_monitoring": true,
       "status_interval": 5
-
+    }
   },
   "udp": {
     "listener": {
