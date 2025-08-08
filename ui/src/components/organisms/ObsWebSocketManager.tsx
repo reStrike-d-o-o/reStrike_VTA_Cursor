@@ -1,7 +1,10 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { invoke as tauriInvoke } from '@tauri-apps/api/core';
 import Button from '../atoms/Button';
+import Input from '../atoms/Input';
+import Label from '../atoms/Label';
+import Toggle from '../atoms/Toggle';
 import { StatusDot } from '../atoms/StatusDot';
 import { useObsStore, ObsConnection } from '../../stores/obsStore';
 import { obsObwsCommands } from '../../utils/tauriCommandsObws';
@@ -50,6 +53,29 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
     getConnectionCount,
     updateObsStatus,
   } = useObsStore();
+
+  // Add state for edit functionality
+  const [isAdding, setIsAdding] = useState(false);
+  const [editingConnection, setEditingConnection] = useState<string | null>(null);
+  const [formData, setFormData] = useState({
+    name: '',
+    host: 'localhost',
+    port: 4455,
+    password: '',
+    enabled: true,
+  });
+  const [formError, setFormError] = useState<string | null>(null);
+
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      host: 'localhost',
+      port: 4455,
+      password: '',
+      enabled: true,
+    });
+    setFormError(null);
+  };
 
   // Load existing connections from configuration on component mount
   useEffect(() => {
@@ -325,15 +351,99 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
   };
 
   const addConnection = () => {
-    const newConnection: ObsConnection = {
-      name: mode === 'local' ? `OBS_${connections.length + 1}` : `Remote_OBS_${connections.length + 1}`,
-      host: mode === 'local' ? 'localhost' : '192.168.1.100',
-      port: mode === 'local' ? (connections.length === 0 ? 4455 : 4466) : 4455,
-      enabled: true,
-      status: 'disconnected'
-    };
-    
-    saveConnection(newConnection);
+    setIsAdding(true);
+    setEditingConnection(null);
+    resetForm();
+  };
+
+  const handleAddConnection = async () => {
+    if (!formData.name.trim()) {
+      setFormError('Connection name is required');
+      return;
+    }
+
+    if (!formData.host.trim()) {
+      setFormError('Host is required');
+      return;
+    }
+
+    if (formData.port < 1 || formData.port > 65535) {
+      setFormError('Port must be between 1 and 65535');
+      return;
+    }
+
+    try {
+      setFormError(null);
+      
+      const newConnection: ObsConnection = {
+        name: formData.name,
+        host: formData.host,
+        port: formData.port,
+        enabled: formData.enabled,
+        status: 'disconnected'
+      };
+      
+      await saveConnection(newConnection);
+      setIsAdding(false);
+      resetForm();
+    } catch (error) {
+      console.error('Failed to add connection:', error);
+      setFormError('Failed to add connection: ' + (error as Error)?.message || String(error));
+    }
+  };
+
+  const handleEditConnection = (connection: ObsConnection) => {
+    setEditingConnection(connection.name);
+    setFormData({
+      name: connection.name,
+      host: connection.host,
+      port: connection.port,
+      password: '', // Don't populate password for security
+      enabled: connection.enabled,
+    });
+    setFormError(null);
+  };
+
+  const handleUpdateConnection = async () => {
+    if (!formData.name.trim()) {
+      setFormError('Connection name is required');
+      return;
+    }
+
+    if (!formData.host.trim()) {
+      setFormError('Host is required');
+      return;
+    }
+
+    if (formData.port < 1 || formData.port > 65535) {
+      setFormError('Port must be between 1 and 65535');
+      return;
+    }
+
+    try {
+      setFormError(null);
+      
+      // First remove the old connection
+      if (editingConnection) {
+        await deleteConnection(editingConnection);
+      }
+      
+      // Then add the updated connection
+      const updatedConnection: ObsConnection = {
+        name: formData.name,
+        host: formData.host,
+        port: formData.port,
+        enabled: formData.enabled,
+        status: 'disconnected'
+      };
+      
+      await saveConnection(updatedConnection);
+      setEditingConnection(null);
+      resetForm();
+    } catch (error) {
+      console.error('Failed to update connection:', error);
+      setFormError('Failed to update connection: ' + (error as Error)?.message || String(error));
+    }
   };
 
   const refreshConnections = async () => {
@@ -526,11 +636,122 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
             >
               Test obws
             </Button>
-            <Button onClick={addConnection} variant="primary" size="sm">
+            <Button 
+              onClick={addConnection} 
+              variant="primary" 
+              size="sm"
+              disabled={isAdding || editingConnection !== null}
+            >
+              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="mr-2">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
               Add Connection
             </Button>
           </div>
         </div>
+
+        {/* Add/Edit Form */}
+        {(isAdding || editingConnection) && (
+          <div className="p-4 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg mb-4">
+            <h4 className="text-md font-medium mb-3">
+              {editingConnection ? 'Edit Connection' : 'Add New Connection'}
+            </h4>
+            
+            {formError && (
+              <div className="mb-3 p-2 bg-red-900/20 border border-red-700 rounded text-red-400 text-sm">
+                {formError}
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="connection-name">Connection Name *</Label>
+                <Input
+                  id="connection-name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="e.g., OBS_REC, OBS_STR"
+                  disabled={editingConnection !== null}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="connection-host">Host</Label>
+                <Input
+                  id="connection-host"
+                  value={formData.host}
+                  onChange={(e) => setFormData({ ...formData, host: e.target.value })}
+                  placeholder="localhost"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="connection-port">Port</Label>
+                <Input
+                  id="connection-port"
+                  type="number"
+                  value={formData.port}
+                  onChange={(e) => setFormData({ ...formData, port: parseInt(e.target.value) || 4455 })}
+                  placeholder="4455"
+                  min="1"
+                  max="65535"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="connection-password">Password (optional)</Label>
+                <Input
+                  id="connection-password"
+                  type="password"
+                  autoComplete="new-password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  placeholder={editingConnection && connections.find(c => c.name === editingConnection)?.password 
+                    ? "Password is set (click to change)" 
+                    : "Leave empty if no password"}
+                />
+                {/* Hidden username field for accessibility */}
+                <input 
+                  type="text" 
+                  autoComplete="username" 
+                  style={{ display: 'none' }} 
+                  aria-hidden="true"
+                  tabIndex={-1}
+                />
+              </div>
+
+              <div className="flex items-center">
+                <Toggle
+                  checked={formData.enabled}
+                  onChange={(e) => setFormData({ ...formData, enabled: e.target.checked })}
+                  label="Enabled"
+                  labelPosition="right"
+                />
+              </div>
+            </div>
+
+            <div className="flex space-x-2 mt-4">
+              <Button
+                onClick={editingConnection ? handleUpdateConnection : handleAddConnection}
+                variant="primary"
+                size="sm"
+              >
+                {editingConnection ? 'Save Connection Settings' : 'Add'} Connection
+              </Button>
+              <Button
+                onClick={() => {
+                  setIsAdding(false);
+                  setEditingConnection(null);
+                  resetForm();
+                }}
+                variant="secondary"
+                size="sm"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Connection List */}
         <div className="space-y-4">
@@ -603,10 +824,24 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
                       Connecting...
                     </Button>
                   )}
+                  
+                  <Button
+                    onClick={() => handleEditConnection(connection)}
+                    variant="secondary"
+                    size="sm"
+                    disabled={editingConnection !== null}
+                  >
+                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="mr-2">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                    Edit
+                  </Button>
+                  
                   <Button
                     onClick={() => removeConnection(connection.name)}
                     variant="danger"
                     size="sm"
+                    disabled={editingConnection !== null}
                   >
                     Remove
                   </Button>
