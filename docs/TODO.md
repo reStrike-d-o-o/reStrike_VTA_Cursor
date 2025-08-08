@@ -1,13 +1,26 @@
 # TODO.md - reStrike VTA Project
 
-### Current Status
+### Current Status (2025-01-29)
 - **✅ Phase 1 COMPLETED**: Database Schema & Models - OBS recording configuration and session tables created and ready
 - **✅ Phase 2 COMPLETED**: Backend OBS Commands - Replay buffer and path configuration commands implemented
 - **✅ Phase 3 COMPLETED**: Frontend Integration Tab - Enhanced Integration tab with recording configuration and connection selection
 - **✅ Phase 4 COMPLETED**: Path Generation Logic - Windows Videos folder detection and tournament path logic fully implemented with database integration
-- **🔄 Phase 5 PENDING**: PSS Event Integration - Integrate with UDP/PSS event system for automatic recording
+- **✅ Phase 5 COMPLETED**: PSS Event Integration - UDP/PSS event system integration for automatic recording fully implemented
 
 ### Recently Completed (2025-01-29)
+- **✅ OBS Recording Integration - Phase 5**: PSS Event Integration
+  - [x] Create recording event handler module
+  - [x] Implement automatic recording configuration
+  - [x] Add recording session management
+  - [x] Create Tauri commands for automatic recording
+  - [x] Integrate with UDP event system
+  - [x] Add frontend UI for automatic recording configuration
+  - [x] Add manual recording controls
+  - [x] Add current session display
+  - [x] Complete event handling for FightLoaded, FightReady, Clock, Winner events
+  - [x] Add recording state management (Idle, Preparing, Recording, Stopping, Error)
+  - [x] Implement automatic path generation and OBS command execution
+  - [x] Add configuration persistence and session tracking
 
 #### Control Room Dropdown Fix ✅ **LATEST COMPLETION**
 - **✅ Select Component Fix**: Fixed SelectValue component to display actual selected values instead of just placeholders
@@ -210,10 +223,19 @@
   - [x] Add frontend UI for database-driven testing
   - [x] Fix all compilation errors and warnings
   - [x] Complete integration testing
-- [ ] Phase 5: PSS Event Integration
-  - [ ] Integrate with UDP/PSS event system
-  - [ ] Add automatic recording triggers
-  - [ ] Implement safety checks and error handling
+- [x] Phase 5: PSS Event Integration ✅ **COMPLETED**
+  - [x] Create recording event handler module
+  - [x] Implement automatic recording configuration
+  - [x] Add recording session management
+  - [x] Create Tauri commands for automatic recording
+  - [x] Integrate with UDP event system
+  - [x] Add frontend UI for automatic recording configuration
+  - [x] Add manual recording controls
+  - [x] Add current session display
+  - [x] Complete event handling for FightLoaded, FightReady, Clock, Winner events
+  - [x] Add recording state management (Idle, Preparing, Recording, Stopping, Error)
+  - [x] Implement automatic path generation and OBS command execution
+  - [x] Add configuration persistence and session tracking
 
 ### Week 3: Control Room Phase 1 - Real OBS Integration
 - [x] Visual improvements completed (completed)

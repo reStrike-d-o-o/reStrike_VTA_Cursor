@@ -602,4 +602,99 @@ export const obsObwsCommands = {
       return { success: false, error: String(error) };
     }
   },
+
+  // ============================================================================
+  // Automatic Recording Commands
+  // ============================================================================
+
+  /**
+   * Get automatic recording configuration
+   */
+  async getAutomaticRecordingConfig(): Promise<TauriCommandResponse> {
+    try {
+      if (isTauriAvailable()) {
+        return await safeInvoke('obs_obws_get_automatic_recording_config');
+      }
+      return { success: false, error: 'Tauri not available' };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  },
+
+  /**
+   * Update automatic recording configuration
+   */
+  async updateAutomaticRecordingConfig(params: {
+    enabled: boolean;
+    obsConnectionName?: string;
+    autoStopOnMatchEnd: boolean;
+    autoStopOnWinner: boolean;
+    stopDelaySeconds: number;
+    includeReplayBuffer: boolean;
+  }): Promise<TauriCommandResponse> {
+    try {
+      if (isTauriAvailable()) {
+        return await safeInvoke('obs_obws_update_automatic_recording_config', params);
+      }
+      return { success: false, error: 'Tauri not available' };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  },
+
+  /**
+   * Get current recording session
+   */
+  async getCurrentRecordingSession(): Promise<TauriCommandResponse> {
+    try {
+      if (isTauriAvailable()) {
+        return await safeInvoke('obs_obws_get_current_recording_session');
+      }
+      return { success: false, error: 'Tauri not available' };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  },
+
+  /**
+   * Clear current recording session
+   */
+  async clearRecordingSession(): Promise<TauriCommandResponse> {
+    try {
+      if (isTauriAvailable()) {
+        return await safeInvoke('obs_obws_clear_recording_session');
+      }
+      return { success: false, error: 'Tauri not available' };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  },
+
+  /**
+   * Manually start recording for a match
+   */
+  async manualStartRecording(matchId: string, obsConnectionName: string): Promise<TauriCommandResponse> {
+    try {
+      if (isTauriAvailable()) {
+        return await safeInvoke('obs_obws_manual_start_recording', { matchId, obsConnectionName });
+      }
+      return { success: false, error: 'Tauri not available' };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  },
+
+  /**
+   * Manually stop recording
+   */
+  async manualStopRecording(obsConnectionName: string): Promise<TauriCommandResponse> {
+    try {
+      if (isTauriAvailable()) {
+        return await safeInvoke('obs_obws_manual_stop_recording', { obsConnectionName });
+      }
+      return { success: false, error: 'Tauri not available' };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  },
 };

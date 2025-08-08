@@ -266,9 +266,133 @@ Exists: ${data.exists ? 'Yes' : 'No'}`);
     }
   };
 
-  // Load settings on component mount
+  // Automatic recording configuration state
+  const [autoRecordingConfig, setAutoRecordingConfig] = useState({
+    enabled: false,
+    obsConnectionName: '',
+    autoStopOnMatchEnd: true,
+    autoStopOnWinner: true,
+    stopDelaySeconds: 30,
+    includeReplayBuffer: true,
+  });
+  const [currentSession, setCurrentSession] = useState<any>(null);
+
+  // Load automatic recording configuration
+  const loadAutoRecordingConfig = async () => {
+    try {
+      setIsLoadingConfig(true);
+      const result = await obsObwsCommands.getAutomaticRecordingConfig();
+
+      if (result.success && result.data) {
+        setAutoRecordingConfig({
+          enabled: result.data.enabled || false,
+          obsConnectionName: result.data.obs_connection_name || '',
+          autoStopOnMatchEnd: result.data.auto_stop_on_match_end !== false,
+          autoStopOnWinner: result.data.auto_stop_on_winner !== false,
+          stopDelaySeconds: result.data.stop_delay_seconds || 30,
+          includeReplayBuffer: result.data.include_replay_buffer !== false,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to load auto recording config:', error);
+    } finally {
+      setIsLoadingConfig(false);
+    }
+  };
+
+  // Save automatic recording configuration
+  const saveAutoRecordingConfig = async () => {
+    try {
+      setIsLoadingConfig(true);
+      const result = await obsObwsCommands.updateAutomaticRecordingConfig({
+        enabled: autoRecordingConfig.enabled,
+        obsConnectionName: autoRecordingConfig.obsConnectionName || undefined,
+        autoStopOnMatchEnd: autoRecordingConfig.autoStopOnMatchEnd,
+        autoStopOnWinner: autoRecordingConfig.autoStopOnWinner,
+        stopDelaySeconds: autoRecordingConfig.stopDelaySeconds,
+        includeReplayBuffer: autoRecordingConfig.includeReplayBuffer,
+      });
+
+      if (result.success) {
+        console.log('Auto recording config saved successfully');
+      } else {
+        console.error('Failed to save auto recording config:', result.error);
+      }
+    } catch (error) {
+      console.error('Failed to save auto recording config:', error);
+    } finally {
+      setIsLoadingConfig(false);
+    }
+  };
+
+  // Load current recording session
+  const loadCurrentSession = async () => {
+    try {
+      const result = await obsObwsCommands.getCurrentRecordingSession();
+
+      if (result.success) {
+        setCurrentSession(result.data);
+      }
+    } catch (error) {
+      console.error('Failed to load current session:', error);
+    }
+  };
+
+  // Clear recording session
+  const clearSession = async () => {
+    try {
+      const result = await obsObwsCommands.clearRecordingSession();
+
+      if (result.success) {
+        setCurrentSession(null);
+        console.log('Recording session cleared');
+      } else {
+        console.error('Failed to clear session:', result.error);
+      }
+    } catch (error) {
+      console.error('Failed to clear session:', error);
+    }
+  };
+
+  // Manual recording controls
+  const [manualMatchId, setManualMatchId] = useState('101');
+  const [manualConnectionName, setManualConnectionName] = useState('');
+
+  const startManualRecording = async () => {
+    try {
+      const result = await obsObwsCommands.manualStartRecording(manualMatchId, manualConnectionName);
+
+      if (result.success) {
+        console.log('Manual recording started');
+        loadCurrentSession(); // Refresh session info
+      } else {
+        console.error('Failed to start manual recording:', result.error);
+      }
+    } catch (error) {
+      console.error('Failed to start manual recording:', error);
+    }
+  };
+
+  const stopManualRecording = async () => {
+    try {
+      const result = await obsObwsCommands.manualStopRecording(manualConnectionName);
+
+      if (result.success) {
+        console.log('Manual recording stopped');
+        loadCurrentSession(); // Refresh session info
+      } else {
+        console.error('Failed to stop manual recording:', result.error);
+      }
+    } catch (error) {
+      console.error('Failed to stop manual recording:', error);
+    }
+  };
+
+  // Load config and session on component mount
   useEffect(() => {
     loadObsIntegrationSettings();
+    loadAutoRecordingConfig();
+    loadCurrentSession();
   }, []);
 
   // Load recording config when connection changes
@@ -598,6 +722,193 @@ Exists: ${data.exists ? 'Yes' : 'No'}`);
             <p className="text-sm text-gray-300 whitespace-pre-line">{pathTestResult}</p>
           </div>
         )}
+      </div>
+
+      {/* Automatic Recording Configuration Section */}
+      <div className="bg-gray-800 rounded-lg p-4 mb-4">
+        <h3 className="text-lg font-semibold text-white mb-4">🎬 Automatic Recording Configuration</h3>
+        
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <div className="col-span-2">
+            <Toggle
+              label="Enable Automatic Recording"
+              checked={autoRecordingConfig.enabled}
+              onChange={(e) => setAutoRecordingConfig({ ...autoRecordingConfig, enabled: e.target.checked })}
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">OBS Connection Name</label>
+            <Input
+              value={autoRecordingConfig.obsConnectionName}
+              onChange={(e) => setAutoRecordingConfig({ ...autoRecordingConfig, obsConnectionName: e.target.value })}
+              placeholder="OBS_REC"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Stop Delay (seconds)</label>
+            <Input
+              type="number"
+              value={autoRecordingConfig.stopDelaySeconds}
+              onChange={(e) => setAutoRecordingConfig({ ...autoRecordingConfig, stopDelaySeconds: parseInt(e.target.value) || 30 })}
+              placeholder="30"
+            />
+          </div>
+          
+          <div className="col-span-2">
+            <Toggle
+              label="Auto Stop on Match End"
+              checked={autoRecordingConfig.autoStopOnMatchEnd}
+              onChange={(e) => setAutoRecordingConfig({ ...autoRecordingConfig, autoStopOnMatchEnd: e.target.checked })}
+            />
+          </div>
+          
+          <div className="col-span-2">
+            <Toggle
+              label="Auto Stop on Winner"
+              checked={autoRecordingConfig.autoStopOnWinner}
+              onChange={(e) => setAutoRecordingConfig({ ...autoRecordingConfig, autoStopOnWinner: e.target.checked })}
+            />
+          </div>
+          
+          <div className="col-span-2">
+            <Toggle
+              label="Include Replay Buffer"
+              checked={autoRecordingConfig.includeReplayBuffer}
+              onChange={(e) => setAutoRecordingConfig({ ...autoRecordingConfig, includeReplayBuffer: e.target.checked })}
+            />
+          </div>
+        </div>
+
+        <div className="flex gap-3 mb-4">
+          <Button
+            onClick={saveAutoRecordingConfig}
+            disabled={isLoadingConfig}
+            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed"
+          >
+            {isLoadingConfig ? 'Saving...' : 'Save Configuration'}
+          </Button>
+          <Button
+            onClick={loadAutoRecordingConfig}
+            disabled={isLoadingConfig}
+            className="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-600 disabled:cursor-not-allowed"
+          >
+            {isLoadingConfig ? 'Loading...' : 'Reload Configuration'}
+          </Button>
+        </div>
+      </div>
+
+      {/* Current Recording Session Section */}
+      <div className="bg-gray-800 rounded-lg p-4 mb-4">
+        <h3 className="text-lg font-semibold text-white mb-4">🎬 Current Recording Session</h3>
+        
+        {currentSession ? (
+          <div className="bg-gray-900 rounded p-3 mb-4">
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-gray-400">Match ID:</span>
+                <span className="text-white ml-2">{currentSession.match_id}</span>
+              </div>
+              <div>
+                <span className="text-gray-400">State:</span>
+                <span className="text-white ml-2">{currentSession.state}</span>
+              </div>
+              <div>
+                <span className="text-gray-400">Tournament:</span>
+                <span className="text-white ml-2">{currentSession.tournament_name || 'None'}</span>
+              </div>
+              <div>
+                <span className="text-gray-400">Tournament Day:</span>
+                <span className="text-white ml-2">{currentSession.tournament_day || 'None'}</span>
+              </div>
+              <div>
+                <span className="text-gray-400">Match Number:</span>
+                <span className="text-white ml-2">{currentSession.match_number || 'None'}</span>
+              </div>
+              <div>
+                <span className="text-gray-400">OBS Connection:</span>
+                <span className="text-white ml-2">{currentSession.obs_connection_name || 'None'}</span>
+              </div>
+              <div>
+                <span className="text-gray-400">Player 1:</span>
+                <span className="text-white ml-2">{currentSession.player1_name || 'None'} ({currentSession.player1_flag || 'None'})</span>
+              </div>
+              <div>
+                <span className="text-gray-400">Player 2:</span>
+                <span className="text-white ml-2">{currentSession.player2_name || 'None'} ({currentSession.player2_flag || 'None'})</span>
+              </div>
+              <div className="col-span-2">
+                <span className="text-gray-400">Recording Path:</span>
+                <span className="text-white ml-2">{currentSession.recording_path || 'None'}</span>
+              </div>
+              <div className="col-span-2">
+                <span className="text-gray-400">Filename:</span>
+                <span className="text-white ml-2">{currentSession.recording_filename || 'None'}</span>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-gray-900 rounded p-3 mb-4 text-gray-400">
+            No active recording session
+          </div>
+        )}
+
+        <div className="flex gap-3">
+          <Button
+            onClick={loadCurrentSession}
+            className="bg-blue-600 hover:bg-blue-700"
+          >
+            Refresh Session
+          </Button>
+          <Button
+            onClick={clearSession}
+            className="bg-red-600 hover:bg-red-700"
+          >
+            Clear Session
+          </Button>
+        </div>
+      </div>
+
+      {/* Manual Recording Controls Section */}
+      <div className="bg-gray-800 rounded-lg p-4 mb-4">
+        <h3 className="text-lg font-semibold text-white mb-4">🎬 Manual Recording Controls</h3>
+        
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Match ID</label>
+            <Input
+              value={manualMatchId}
+              onChange={(e) => setManualMatchId(e.target.value)}
+              placeholder="101"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">OBS Connection Name</label>
+            <Input
+              value={manualConnectionName}
+              onChange={(e) => setManualConnectionName(e.target.value)}
+              placeholder="OBS_REC"
+            />
+          </div>
+        </div>
+
+        <div className="flex gap-3">
+          <Button
+            onClick={startManualRecording}
+            disabled={!manualMatchId || !manualConnectionName}
+            className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed"
+          >
+            Start Manual Recording
+          </Button>
+          <Button
+            onClick={stopManualRecording}
+            disabled={!manualConnectionName}
+            className="bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed"
+          >
+            Stop Manual Recording
+          </Button>
+        </div>
       </div>
     </div>
   );
