@@ -448,8 +448,8 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
         };
         
         // Remove old connection and add updated one
-        setConnections(prev => prev.filter(c => c.name !== editingConnection));
-        setConnections(prev => [...prev, updatedConnection]);
+        const currentConnections = connections.filter(c => c.name !== editingConnection);
+        setConnections([...currentConnections, updatedConnection]);
         
         setEditingConnection(null);
         resetForm();
