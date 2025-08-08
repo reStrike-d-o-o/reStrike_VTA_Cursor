@@ -47,6 +47,7 @@ export const obsObwsCommands = {
     host: string;
     port: number;
     password?: string;
+    enabled: boolean;
   }): Promise<TauriCommandResponse<any>> => {
     try {
       const result = await safeInvoke('obs_obws_update_connection', {

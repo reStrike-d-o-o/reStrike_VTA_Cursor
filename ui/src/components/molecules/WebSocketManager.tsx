@@ -318,6 +318,7 @@ const WebSocketManager: React.FC<WebSocketManagerProps> = ({ mode = 'local' }) =
         host: formData.host,
         port: formData.port,
         password: finalPassword || undefined,
+        enabled: formData.enabled,
       });
 
       if (result.success) {

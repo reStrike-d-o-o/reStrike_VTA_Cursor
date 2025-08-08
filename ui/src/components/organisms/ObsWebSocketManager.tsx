@@ -435,6 +435,7 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
         host: formData.host,
         port: formData.port,
         password: undefined, // Will be loaded from config
+        enabled: formData.enabled,
       });
 
       if (result.success) {
