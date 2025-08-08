@@ -481,6 +481,26 @@ const WebSocketManager: React.FC<WebSocketManagerProps> = ({ mode = 'local' }) =
     }
   };
 
+  // Test OBS recording command
+  const handleTestRecording = async (connection: ObsConnection) => {
+    try {
+      console.log(`Testing start recording command for connection: ${connection.name}`);
+      
+      const result = await obsObwsCommands.startRecording(connection.name);
+      
+      if (result.success) {
+        console.log('✅ Start recording command sent successfully:', result.data);
+        alert(`✅ Start recording command sent successfully to ${connection.name}!`);
+      } else {
+        console.error('❌ Failed to send start recording command:', result.error);
+        alert(`❌ Failed to send start recording command: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('❌ Error sending start recording command:', error);
+      alert(`❌ Error sending start recording command: ${error}`);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -678,6 +698,20 @@ const WebSocketManager: React.FC<WebSocketManagerProps> = ({ mode = 'local' }) =
                     </svg>
                     Edit
                   </Button>
+                  
+                  {(connection.status === 'Connected' || connection.status === 'Authenticated') && (
+                    <Button
+                      onClick={() => handleTestRecording(connection)}
+                      variant="primary"
+                      size="sm"
+                      title="Test OBS start recording command"
+                    >
+                      <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="mr-2">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Test Recording
+                    </Button>
+                  )}
                   
                   <Button
                     onClick={() => handleDeleteConnection(connection.name)}
