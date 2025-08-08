@@ -237,6 +237,10 @@ async fn main() -> AppResult<()> {
             #[cfg(feature = "obs-obws")]
             tauri_commands_obws::obs_obws_test_path_generation,
             #[cfg(feature = "obs-obws")]
+            tauri_commands_obws::obs_obws_create_test_folders,
+            #[cfg(feature = "obs-obws")]
+            tauri_commands_obws::obs_obws_send_config_to_obs,
+            #[cfg(feature = "obs-obws")]
             tauri_commands_obws::obs_obws_test_recording,
             #[cfg(feature = "obs-obws")]
             tauri_commands_obws::obs_obws_get_automatic_recording_config,

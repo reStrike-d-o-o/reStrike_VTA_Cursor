@@ -605,6 +605,47 @@ export const obsObwsCommands = {
     }
   },
 
+  /**
+   * Create test folders in Windows (actually creates the directory structure)
+   */
+  async createTestFolders(params: {
+    matchId: string;
+    tournamentName?: string;
+    tournamentDay?: string;
+    matchNumber?: string;
+    player1Name?: string;
+    player1Flag?: string;
+    player2Name?: string;
+    player2Flag?: string;
+  }): Promise<TauriCommandResponse> {
+    try {
+      if (isTauriAvailable()) {
+        return await safeInvoke('obs_obws_create_test_folders', params);
+      }
+      return { success: false, error: 'Tauri not available' };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  },
+
+  /**
+   * Send recording configuration to OBS
+   */
+  async sendConfigToObs(connectionName: string, recordingPath: string, filenameTemplate: string): Promise<TauriCommandResponse> {
+    try {
+      if (isTauriAvailable()) {
+        return await safeInvoke('obs_obws_send_config_to_obs', { 
+          connectionName, 
+          recordingPath, 
+          filenameTemplate 
+        });
+      }
+      return { success: false, error: 'Tauri not available' };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  },
+
   // ============================================================================
   // Automatic Recording Commands
   // ============================================================================
