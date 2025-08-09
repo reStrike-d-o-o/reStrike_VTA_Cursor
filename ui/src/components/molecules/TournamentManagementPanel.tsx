@@ -60,6 +60,7 @@ const TournamentManagementPanel: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingOverview, setIsLoadingOverview] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'active' | 'ended'>('all');
   
   // Form states
   const [showAddForm, setShowAddForm] = useState(false);
@@ -539,13 +540,29 @@ const TournamentManagementPanel: React.FC = () => {
           </Button>
         </div>
 
+        {/* Filters */}
+        <div className="flex gap-2 mb-4">
+          {(['all','pending','active','ended'] as const).map((s) => (
+            <Button
+              key={s}
+              size="sm"
+              className={`${statusFilter === s ? 'bg-blue-600' : 'bg-gray-600 hover:bg-gray-700'}`}
+              onClick={() => setStatusFilter(s)}
+            >
+              {s[0].toUpperCase()+s.slice(1)}
+            </Button>
+          ))}
+        </div>
+
         {isLoading ? (
           <div className="text-center py-8 text-gray-400">Loading tournaments...</div>
         ) : tournaments.length === 0 ? (
           <div className="text-center py-8 text-gray-400">No tournaments found. Create your first tournament to get started.</div>
         ) : (
           <div className="space-y-3">
-            {tournaments.map((tournament) => (
+            {tournaments
+              .filter(t => statusFilter === 'all' ? true : t.status === statusFilter)
+              .map((tournament) => (
               <div
                 key={tournament.id}
                 className={`p-4 rounded-lg border transition-colors cursor-pointer ${

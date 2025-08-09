@@ -56,6 +56,34 @@
 - **Backend Commands**: 20+ Tauri commands for OBS recording control and configuration
 - **Frontend UI**: Comprehensive recording configuration interface with connection selection
 - Added read-only OBS profile values (Recording Directory, Filename Formatting) in `ui/src/components/molecules/ObsIntegrationPanel.tsx` using backend read-back commands, a Refresh button, and a mismatch hint when OBS formatting differs from the app template.
+
+### App Logging & Noise Reduction ✅
+**Status**: COMPLETED
+
+**Details**:
+- Introduced frontend `logger` with levels (silent/error/warn/info/debug) in `ui/src/utils/logger.ts`.
+- Added “Log verbosity” toggle in `AppSettingsSection` to control log level globally.
+- Replaced hot-path `console.log` in `pssEventHandler` with `logger.debug` to reduce noise.
+
+### Flags Management – Database Source Only ✅
+**Status**: COMPLETED
+
+**Details**:
+- `FlagManagementPanel` now always loads from DB in Tauri; removed the “Use Database for Flags” toggle. Web mode uses static assets fallback only.
+- Ensures consistent, single source of truth; added safeguards to avoid data loss.
+
+### Tournament Management – Filters & Uniqueness Policy ✅
+**Status**: COMPLETED
+
+**Details**:
+- Added quick status filters (All/Pending/Active/Ended) in `TournamentManagementPanel`.
+- Relaxed uniqueness enforcement: same tournament name can be reused on different days; we only block exact duplicates of (name, start_date).
+
+### Tauri Dialog for mpv Browse ✅
+**Status**: COMPLETED
+
+**Details**:
+- Added `tauri-plugin-dialog` and wired `IvrReplaySettings` to use it; web fallback uses a hidden file input. Resolves “File dialog not available in this context.”
 - **Path Generation**: Dynamic path generation with Windows Videos folder detection
 - **PSS Event Integration**: Automatic recording triggered by taekwondo match events
 - **Real Folder Creation**: Test path generation creates actual Windows directories

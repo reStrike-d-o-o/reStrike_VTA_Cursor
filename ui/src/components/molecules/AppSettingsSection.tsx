@@ -4,6 +4,7 @@ import Input from '../atoms/Input';
 import { useAppStore } from '../../stores';
 import { windowCommands } from '../../utils/tauriCommands';
 import { useEnvironment } from '../../hooks/useEnvironment';
+import { logger, setLogLevel, LogLevel } from '../../utils/logger';
 
 const AppSettingsSection: React.FC = () => {
   const { tauriAvailable } = useEnvironment();
@@ -14,6 +15,7 @@ const AppSettingsSection: React.FC = () => {
 
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [logLevel, setLevel] = useState<LogLevel>('info');
 
   const handleApplySettings = async () => {
     if (!tauriAvailable) {
@@ -41,6 +43,12 @@ const AppSettingsSection: React.FC = () => {
   const handleReset = () => {
     resetWindowSettings();
     setMessage('Settings reset to defaults');
+  };
+
+  const applyLogLevel = (lvl: LogLevel) => {
+    setLevel(lvl);
+    setLogLevel(lvl);
+    logger.info('Log level set to', lvl);
   };
 
   return (
@@ -157,6 +165,24 @@ const AppSettingsSection: React.FC = () => {
             1920x1080 (Full)
           </Button>
         </div>
+      </div>
+
+      {/* Log verbosity */}
+      <div className="space-y-3">
+        <h4 className="text-md font-medium text-white">Log verbosity</h4>
+        <div className="flex flex-wrap gap-2">
+          {(['silent','error','warn','info','debug'] as LogLevel[]).map((lvl) => (
+            <Button
+              key={lvl}
+              size="sm"
+              className={`${logLevel===lvl ? 'bg-blue-600' : 'bg-gray-600 hover:bg-gray-700'}`}
+              onClick={() => applyLogLevel(lvl)}
+            >
+              {lvl}
+            </Button>
+          ))}
+        </div>
+        <p className="text-xs text-gray-400">Lower levels reduce console noise in production.</p>
       </div>
 
       {/* Actions */}

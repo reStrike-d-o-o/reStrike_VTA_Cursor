@@ -76,6 +76,18 @@
 - **✅ Real Folder Creation**: "Test Path Generation" button now creates actual Windows folders
 - **✅ OBS Configuration**: Added "Send Config to OBS" button for real OBS configuration
 
+#### App Logging & Noise Reduction ✅ **COMPLETED**
+- **✅ Logger**: Added `ui/src/utils/logger.ts` with levels and global toggle in App Settings
+- **✅ Noise Reduction**: Replaced hot-path console logs in PSS handlers with logger
+
+#### Flags Management ✅ **COMPLETED**
+- **✅ DB-only Source**: Removed “Use Database for Flags” toggle; always load via `get_flags_data` in Tauri
+- **✅ Fallback**: Web mode falls back to static assets list
+
+#### Tournament Management Enhancements ✅ **COMPLETED**
+- **✅ Filters**: Added All/Pending/Active/Ended quick filters in `TournamentManagementPanel`
+- **✅ Uniqueness Policy**: Allow same tournament name on different days; block only exact (name, start_date)
+
 #### Command Registration Cleanup ✅ **COMPLETED**
 - **✅ Duplicate Removal**: Removed all duplicate old `obs_` commands from `main.rs`
 - **✅ Clean Registration**: Ensured only new `obs_obws_` commands are registered
