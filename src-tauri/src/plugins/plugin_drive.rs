@@ -72,6 +72,29 @@ impl DrivePlugin {
         }
     }
 
+    pub async fn get_quota(&self) -> AppResult<(u64,u64,u64)> {
+        // Use the 'about' endpoint to retrieve quota information
+        let token = self.get_access_token().await?;
+        let url = "https://www.googleapis.com/drive/v3/about?fields=storageQuota";
+        let response = self.http_client
+            .get(url)
+            .header("Authorization", format!("Bearer {}", token))
+            .send()
+            .await
+            .map_err(|e| AppError::NetworkError(e.to_string()))?;
+        if !response.status().is_success() {
+            let status = response.status();
+            let text = response.text().await.unwrap_or_default();
+            return Err(AppError::NetworkError(format!("Drive about failed: {} - {}", status, text)));
+        }
+        let v: serde_json::Value = response.json().await.map_err(|e| AppError::NetworkError(e.to_string()))?;
+        let quota = &v["storageQuota"];
+        let limit = quota["limit"].as_str().and_then(|s| s.parse::<u64>().ok()).unwrap_or(0);
+        let usage = quota["usage"].as_str().and_then(|s| s.parse::<u64>().ok()).unwrap_or(0);
+        let usage_in_drive = quota["usageInDrive"].as_str().and_then(|s| s.parse::<u64>().ok()).unwrap_or(0);
+        Ok((limit, usage, usage_in_drive))
+    }
+
     // Enhanced error logging with crash detection
     fn log_error_comprehensively(&self, context: &str, error: &str, details: Option<&str>) {
         let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
