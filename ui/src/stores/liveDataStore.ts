@@ -72,15 +72,13 @@ export const useLiveDataStore = create<LiveDataState>()(
           await invoke('store_pss_event', {
             eventData: {
               match_id: matchId,
-              event_type: event.eventType,
               event_code: event.eventCode,
               athlete: event.athlete,
               round: event.round,
               time: event.time,
               timestamp: event.timestamp,
               raw_data: event.rawData,
-              description: event.description
-            }
+            },
           });
         }
         
