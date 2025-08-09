@@ -3645,6 +3645,27 @@ pub async fn drive_get_connection_status() -> Result<serde_json::Value, TauriErr
 }
 
 #[tauri::command]
+pub async fn drive_get_quota() -> Result<serde_json::Value, TauriError> {
+    log::info!("Getting Google Drive quota");
+    // Best-effort: if plugin has quota method, call it; else derive from listing/chunks
+    // Here we try list_all_files to estimate usage is too heavy; so check plugin API
+    match crate::plugins::drive_plugin().get_quota().await {
+        Ok((limit, usage, usage_in_drive)) => Ok(serde_json::json!({
+            "success": true,
+            "quota": {
+                "limit": limit,
+                "usage": usage,
+                "usageInDrive": usage_in_drive,
+            }
+        })),
+        Err(e) => Ok(serde_json::json!({
+            "success": false,
+            "error": e.to_string()
+        }))
+    }
+}
+
+#[tauri::command]
 pub async fn drive_restore_from_archive(file_id: String) -> Result<serde_json::Value, TauriError> {
     log::info!("Restoring from Google Drive archive: {}", file_id);
     

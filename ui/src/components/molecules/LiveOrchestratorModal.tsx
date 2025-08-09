@@ -290,6 +290,8 @@ const LiveOrchestratorModal: React.FC<LiveOrchestratorModalProps> = ({ isOpen, o
             <div className="text-gray-200">Google Drive Connectivity</div>
             <StatusDot color={colorFor(driveStatus)} />
           </div>
+          {/* Quota row populated after connection */}
+          <DriveQuotaRow />
         </div>
 
         {message && <div className="mt-4 text-sm text-gray-300">{message}</div>}
@@ -309,5 +311,34 @@ const LiveOrchestratorModal: React.FC<LiveOrchestratorModalProps> = ({ isOpen, o
 };
 
 export default LiveOrchestratorModal;
+
+// Sub-component to show Drive quota if available
+const DriveQuotaRow: React.FC = () => {
+  const [text, setText] = React.useState<string>('');
+  React.useEffect(() => {
+    (async () => {
+      try {
+        const res = await invoke<any>('drive_get_quota');
+        if (res?.success && res.quota) {
+          const limit = res.quota.limit as number;
+          const usage = res.quota.usage as number;
+          if (limit > 0) {
+            const pct = ((usage / limit) * 100).toFixed(1);
+            const gb = (n: number) => (n / (1024 * 1024 * 1024)).toFixed(2);
+            setText(`${gb(usage)} GB / ${gb(limit)} GB (${pct}%)`);
+          }
+        }
+      } catch {}
+    })();
+  }, []);
+
+  if (!text) return null;
+  return (
+    <div className="flex items-center justify-between p-3 rounded bg-gray-800/50 border border-gray-700">
+      <div className="text-gray-200">Drive Quota</div>
+      <div className="text-sm text-gray-300">{text}</div>
+    </div>
+  );
+};
 
 

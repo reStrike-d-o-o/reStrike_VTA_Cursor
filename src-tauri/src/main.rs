@@ -539,6 +539,7 @@ async fn main() -> AppResult<()> {
             tauri_commands::drive_restore_from_archive,
             tauri_commands::drive_delete_backup_archive,
             tauri_commands::drive_get_connection_status,
+            tauri_commands::drive_get_quota,
             
             // Phase 3: Advanced Caching Commands
             tauri_commands::get_cache_statistics,
