@@ -53,6 +53,7 @@ async fn main() -> AppResult<()> {
     tauri::Builder::default()
         .manage(app)
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             // Core app commands
             tauri_commands::get_app_status,
