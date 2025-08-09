@@ -23,6 +23,56 @@ pub struct ObsObwsConnectionResponse {
     pub data: Option<serde_json::Value>,
     pub error: Option<String>,
 }
+// ============================================================================
+// IVR Replay Settings and Actions
+// ============================================================================
+
+#[tauri::command]
+pub async fn ivr_get_replay_settings(app: State<'_, Arc<App>>) -> Result<ObsObwsConnectionResponse, TauriError> {
+    let conn = app.database_plugin().get_connection().await?;
+    use crate::database::operations::UiSettingsOperations as UIOps;
+    let mpv_path = UIOps::get_ui_setting(&*conn, "ivr.replay.mpv_path").ok().flatten();
+    let seconds_from_end = UIOps::get_ui_setting(&*conn, "ivr.replay.seconds_from_end").ok().flatten().and_then(|s| s.parse::<u32>().ok()).unwrap_or(10);
+    let max_wait_ms = UIOps::get_ui_setting(&*conn, "ivr.replay.max_wait_ms").ok().flatten().and_then(|s| s.parse::<u32>().ok()).unwrap_or(500);
+    let auto_on_challenge = UIOps::get_ui_setting(&*conn, "ivr.replay.auto_on_challenge").ok().flatten().map(|s| s == "true").unwrap_or(false);
+    Ok(ObsObwsConnectionResponse{ success: true, data: Some(serde_json::json!({
+      "mpv_path": mpv_path,
+      "seconds_from_end": seconds_from_end,
+      "max_wait_ms": max_wait_ms,
+      "auto_on_challenge": auto_on_challenge
+    })), error: None })
+}
+
+#[tauri::command]
+pub async fn ivr_save_replay_settings(
+    mpv_path: Option<String>,
+    seconds_from_end: u32,
+    max_wait_ms: u32,
+    auto_on_challenge: bool,
+    app: State<'_, Arc<App>>,
+) -> Result<ObsObwsConnectionResponse, TauriError> {
+    let mut conn = app.database_plugin().get_connection().await?;
+    use crate::database::operations::UiSettingsOperations as UIOps;
+    let secs = seconds_from_end.min(20);
+    let wait = max_wait_ms.clamp(50, 500);
+    if let Some(path) = mpv_path { let _ = UIOps::set_ui_setting(&mut *conn, "ivr.replay.mpv_path", &path, "user", Some("update mpv path")); }
+    let _ = UIOps::set_ui_setting(&mut *conn, "ivr.replay.seconds_from_end", &secs.to_string(), "user", Some("update ivr seconds"));
+    let _ = UIOps::set_ui_setting(&mut *conn, "ivr.replay.max_wait_ms", &wait.to_string(), "user", Some("update ivr wait"));
+    let _ = UIOps::set_ui_setting(&mut *conn, "ivr.replay.auto_on_challenge", if auto_on_challenge {"true"} else {"false"}, "user", Some("update ivr auto"));
+    Ok(ObsObwsConnectionResponse{ success: true, data: Some(serde_json::json!({"message":"IVR replay settings saved"})), error: None })
+}
+
+#[tauri::command]
+pub async fn ivr_round_replay_now(
+    connection_name: Option<String>,
+    app: State<'_, Arc<App>>,
+) -> Result<ObsObwsConnectionResponse, TauriError> {
+    let conn_name = connection_name.unwrap_or_else(|| "OBS_REC".to_string());
+    match app.replay_round_now(Some(&conn_name)).await {
+        Ok(()) => Ok(ObsObwsConnectionResponse{ success:true, data: Some(serde_json::json!({"launched":true})), error: None }),
+        Err(e) => Ok(ObsObwsConnectionResponse{ success:false, data: None, error: Some(e.to_string()) })
+    }
+}
 
 /// Add a new OBS connection using obws
 #[tauri::command]

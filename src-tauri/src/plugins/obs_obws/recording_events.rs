@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use crate::types::{AppError, AppResult};
 use crate::plugins::plugin_udp::PssEvent;
 use crate::plugins::obs_obws::ObsPathGenerator;
+use crate::plugins::obs_obws::manager::ObsManager;
 use crate::database::operations::{TournamentOperations, PssUdpOperations};
 use chrono::Utc;
 
@@ -91,6 +92,8 @@ pub struct ObsRecordingEventHandler {
     pub event_tx: mpsc::UnboundedSender<RecordingEvent>,
     path_generator: ObsPathGenerator,
     database: Arc<crate::plugins::plugin_database::DatabasePlugin>,
+    obs_manager: Arc<ObsManager>,
+    last_applied_directory_day: Arc<Mutex<Option<String>>>,
 }
 
 impl ObsRecordingEventHandler {
@@ -98,6 +101,7 @@ impl ObsRecordingEventHandler {
         config: AutomaticRecordingConfig,
         event_tx: mpsc::UnboundedSender<RecordingEvent>,
         database: Arc<crate::plugins::plugin_database::DatabasePlugin>,
+        obs_manager: Arc<ObsManager>,
     ) -> Self {
         let path_generator = ObsPathGenerator::new(None);
         
@@ -107,6 +111,8 @@ impl ObsRecordingEventHandler {
             event_tx,
             path_generator,
             database,
+            obs_manager,
+            last_applied_directory_day: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -212,6 +218,28 @@ impl ObsRecordingEventHandler {
                 self.update_session_state(RecordingState::Error(e.to_string())).await?;
             }
 
+            // Apply directory at the start of tournament day if changed
+            if let Some(session) = self.get_current_session() {
+                let day_key = session.tournament_day.clone().unwrap_or_default();
+                let should_apply = {
+                    let last = self.last_applied_directory_day.lock().unwrap();
+                    last.as_deref() != Some(&day_key)
+                };
+                if should_apply {
+                    if let (Some(dir), Some(conn_name)) = (session.recording_path.clone(), session.obs_connection_name.clone()) {
+                        // Release the mutex before awaiting
+                        match self.obs_manager.set_record_directory(&dir, Some(&conn_name)).await {
+                            Ok(()) => {
+                                let mut last = self.last_applied_directory_day.lock().unwrap();
+                                *last = Some(day_key);
+                                log::info!("📁 Applied recording directory to OBS: {}", dir);
+                            }
+                            Err(e) => log::warn!("Failed to set record directory in OBS: {}", e),
+                        }
+                    }
+                }
+            }
+
             log::info!("🎬 Recording session prepared for match: {}", match_id);
         }
 
@@ -226,6 +254,18 @@ impl ObsRecordingEventHandler {
         };
 
         if let Some(connection_name) = config.obs_connection_name {
+            // Update filename formatting per match before starting recording
+            if let Some(session) = self.get_current_session() {
+                if let Some(template) = self.get_active_filename_template().await? {
+                    let formatting = self.build_filename_formatting(&template, &session);
+                    if let Err(e) = self.obs_manager.set_filename_formatting(&formatting, Some(&connection_name)).await {
+                        log::warn!("Failed to set filename formatting: {}", e);
+                    } else {
+                        log::info!("🧾 Applied filename formatting to OBS: {}", formatting);
+                    }
+                }
+            }
+
             // Update session state to recording
             self.update_session_state(RecordingState::Recording).await?;
 
@@ -387,6 +427,28 @@ impl ObsRecordingEventHandler {
 
         log::info!("🎬 Generated recording path: {}", generated_path.full_path.to_string_lossy());
         Ok(())
+    }
+
+    async fn get_active_filename_template(&self) -> AppResult<Option<String>> {
+        let conn = self.database.get_connection().await?;
+        // Default to OBS_REC if unspecified
+        let config_name = {
+            let cfg = self.config.lock().unwrap();
+            cfg.obs_connection_name.clone().unwrap_or_else(|| "OBS_REC".to_string())
+        };
+        let config = crate::database::operations::ObsRecordingOperations::get_recording_config(&*conn, &config_name).ok().flatten();
+        Ok(config.map(|c| c.filename_template))
+    }
+
+    fn build_filename_formatting(&self, template: &str, session: &RecordingSession) -> String {
+        let mut fmt = template.to_string();
+        if let Some(ref n) = session.match_number { fmt = fmt.replace("{matchNumber}", n); }
+        if let Some(ref p1) = session.player1_name { fmt = fmt.replace("{player1}", p1); }
+        if let Some(ref p2) = session.player2_name { fmt = fmt.replace("{player2}", p2); }
+        if let Some(ref f1) = session.player1_flag { fmt = fmt.replace("{player1Flag}", f1); }
+        if let Some(ref f2) = session.player2_flag { fmt = fmt.replace("{player2Flag}", f2); }
+        // Keep {date} and {time} placeholders intact for OBS to resolve
+        fmt
     }
 
     /// Get current match ID from UDP context

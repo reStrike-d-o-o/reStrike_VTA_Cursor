@@ -196,6 +196,15 @@ impl ObsClient {
         Ok(())
     }
 
+    /// Get last replay buffer filename (without directory)
+    pub async fn get_last_replay_filename(&self) -> AppResult<String> {
+        let client = self.get_client()?;
+        let name = client.replay_buffer().last_replay().await.map_err(|e| {
+            AppError::ConfigError(format!("Failed to get last replay filename: {}", e))
+        })?;
+        Ok(name)
+    }
+
     /// Get replay buffer status
     pub async fn get_replay_buffer_status(&self) -> AppResult<ObsReplayBufferStatus> {
         let client = self.get_client()?;

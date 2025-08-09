@@ -15,6 +15,16 @@
 
 ### Recently Completed (2025-01-29)
 
+#### IVR Replay Feature ✅ **COMPLETED (2025-08-09)**
+- **Backend**: `ivr_get_replay_settings`, `ivr_save_replay_settings`, `ivr_round_replay_now`, `App::replay_round_now`
+- **Frontend**: `IvrReplaySettings` UI (mpv path, seconds, max wait, auto on challenge), DockBar `REPLAY` wired
+- **DB Settings**: `ivr.replay.mpv_path`, `ivr.replay.seconds_from_end`, `ivr.replay.max_wait_ms`, `ivr.replay.auto_on_challenge`
+- **Notes**: Bounded wait (50–500 ms) to resolve last replay; uses obws ReplayBuffer API
+
+#### OBS Recording Auto-Push Updates ✅ **COMPLETED (2025-08-09)**
+- Directory pushed once per tournament day (supports `folder_pattern`)
+- Filename formatting pushed per match prior to recording
+
 #### OBS Integration & WebSocket Tabs obws-only ✅ **COMPLETED**
 - **✅ Unified API**: Integration and WebSocket tabs now use only `obs_obws_*` commands for start/stop/test recording and related operations
 - **✅ Legacy Removal (Scoped)**: Removed legacy OBS API usage from these flows to prevent connection state conflicts

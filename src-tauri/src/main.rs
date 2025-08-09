@@ -241,6 +241,9 @@ async fn main() -> AppResult<()> {
             tauri_commands_obws::obs_obws_manual_start_recording,
             #[cfg(feature = "obs-obws")]
             tauri_commands_obws::obs_obws_manual_stop_recording,
+            tauri_commands_obws::ivr_get_replay_settings,
+            tauri_commands_obws::ivr_save_replay_settings,
+            tauri_commands_obws::ivr_round_replay_now,
             tauri_commands::control_room_get_obs_connection,
             tauri_commands::control_room_update_obs_connection,
             tauri_commands::control_room_connect_all_obs,

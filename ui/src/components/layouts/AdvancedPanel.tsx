@@ -15,6 +15,7 @@ import FlagManagementPanel from '../molecules/FlagManagementPanel';
 import TournamentManagementPanel from '../molecules/TournamentManagementPanel';
 import ObsWebSocketManager from '../organisms/ObsWebSocketManager';
 import ObsIntegrationPanel from '../molecules/ObsIntegrationPanel';
+import IvrReplaySettings from '../molecules/IvrReplaySettings';
 import Toggle from '../atoms/Toggle';
 import TabGroup from '../molecules/TabGroup';
 import TabIcons from '../atoms/TabIcons';
@@ -162,7 +163,9 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
           />
         )}
         {drawer?.key === 'ivr' && (
-          <div className="bg-gradient-to-br from-green-900/20 to-green-800/30 backdrop-blur-sm rounded-lg p-6 text-gray-200 border border-green-600/30 shadow-lg">[Instant Video Replay integration and controls will be implemented here]</div>
+          <div className="bg-gradient-to-br from-green-900/20 to-green-800/30 backdrop-blur-sm rounded-lg p-6 text-gray-200 border border-green-600/30 shadow-lg">
+            <IvrReplaySettings />
+          </div>
         )}
         {drawer?.key === 'ai' && (
           <div className="bg-gradient-to-br from-purple-900/20 to-purple-800/30 backdrop-blur-sm rounded-lg p-6 text-gray-200 border border-purple-600/30 shadow-lg">[AI report creation and data analyzer will be implemented here]</div>
