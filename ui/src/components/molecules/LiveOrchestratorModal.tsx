@@ -18,6 +18,7 @@ const LiveOrchestratorModal: React.FC<LiveOrchestratorModalProps> = ({ isOpen, o
   const [tournamentStatus, setTournamentStatus] = useState<CheckStatus>('unknown');
   const [recordingPathStatus, setRecordingPathStatus] = useState<CheckStatus>('unknown');
   const [obsStatus, setObsStatus] = useState<CheckStatus>('unknown');
+  const [driveStatus, setDriveStatus] = useState<CheckStatus>('unknown');
   const [message, setMessage] = useState<string>('');
 
   const colorFor = (s: CheckStatus) => {
@@ -110,6 +111,14 @@ const LiveOrchestratorModal: React.FC<LiveOrchestratorModalProps> = ({ isOpen, o
           if (disk === 'warn') setRecordingPathStatus('warn');
         }
       } catch {}
+
+      // Google Drive connectivity
+      try {
+        const drive = await invoke<any>('drive_get_connection_status');
+        setDriveStatus(drive?.success && drive.data?.connected ? 'ok' : 'warn');
+      } catch {
+        setDriveStatus('warn');
+      }
 
       setMessage('Checks completed.');
     } finally {
@@ -276,6 +285,10 @@ const LiveOrchestratorModal: React.FC<LiveOrchestratorModalProps> = ({ isOpen, o
           <div className="flex items-center justify-between p-3 rounded bg-gray-800/50 border border-gray-700">
             <div className="text-gray-200">OBS WebSocket</div>
             <StatusDot color={colorFor(obsStatus)} />
+          </div>
+          <div className="flex items-center justify-between p-3 rounded bg-gray-800/50 border border-gray-700">
+            <div className="text-gray-200">Google Drive Connectivity</div>
+            <StatusDot color={colorFor(driveStatus)} />
           </div>
         </div>
 

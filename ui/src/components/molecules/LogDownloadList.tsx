@@ -199,7 +199,7 @@ const LogDownloadList: React.FC = () => {
                   <td className="px-3 py-2 whitespace-nowrap">
                     {selectedType === 'arc' ? 'Archive' : `${(log.size / 1024).toFixed(1)} KB`}
                   </td>
-                  <td className="px-3 py-2 whitespace-nowrap">{log.modified ? (()=>{const d=new Date(log.modified);const dd=String(d.getDate()).padStart(2,'0');const mm=String(d.getMonth()+1).padStart(2,'0');const yyyy=d.getFullYear();const hh=String(d.getHours()).padStart(2,'0');const mi=String(d.getMinutes()).padStart(2,'0');return `${dd}.${mm}.${yyyy} ${hh}:${mi}`;})() : ''}</td>
+                  <td className="px-3 py-2 whitespace-nowrap">{log.modified ? require('../../utils/format').formatDateTime(log.modified) : ''}</td>
                 </tr>
               )) : (
                 <tr>
