@@ -168,7 +168,7 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
     <div className={`space-y-6 ${className}`}>
 
       {/* Overlay Type Selection */}
-      <div className="p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
+      <div className="p-6 theme-card shadow-lg">
         <div className="flex items-center justify-between mb-4">
           <h4 className="text-md font-semibold text-gray-100">Overlay Type</h4>
           <div className="flex items-center space-x-2">
@@ -253,7 +253,7 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
 
 
       {/* OBS Integration */}
-      <div className="p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
+      <div className="p-6 theme-card shadow-lg">
         <h4 className="text-md font-semibold text-gray-100 mb-4">OBS Integration</h4>
         <div className="space-y-4">
           {/* HTML Overlay URLs */}
@@ -340,7 +340,7 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
 
 
       {/* PSS Data Status */}
-      <div className="p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
+      <div className="p-6 theme-card shadow-lg">
         <h4 className="text-md font-semibold text-gray-100 mb-4">PSS Data Status</h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>

@@ -64,7 +64,7 @@ export const DatabaseSettingsPanel: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
+  <div className="space-y-6 p-6 theme-card shadow-lg">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
@@ -83,7 +83,7 @@ export const DatabaseSettingsPanel: React.FC = () => {
       </div>
 
       {/* Database Status */}
-      <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg p-4 border border-gray-600/30 shadow-lg">
+    <div className="theme-surface-2 rounded-lg p-4 shadow-lg">
         <h3 className="text-lg font-semibold text-blue-300 mb-3">Database Status</h3>
         <div className="space-y-3">
           <div className="flex items-center justify-between">
@@ -120,7 +120,7 @@ export const DatabaseSettingsPanel: React.FC = () => {
       </div>
 
       {/* Settings Counts */}
-      <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg p-4 border border-gray-600/30 shadow-lg">
+    <div className="theme-surface-2 rounded-lg p-4 shadow-lg">
         <h3 className="text-lg font-semibold text-blue-300 mb-3">Settings Counts</h3>
         <div className="grid grid-cols-2 gap-4">
           <div className="text-center p-3 bg-gray-700/30 rounded border border-gray-600/20">
@@ -135,7 +135,7 @@ export const DatabaseSettingsPanel: React.FC = () => {
       </div>
 
       {/* Actions */}
-      <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg p-4 border border-gray-600/30 shadow-lg">
+    <div className="theme-surface-2 rounded-lg p-4 shadow-lg">
         <h3 className="text-lg font-semibold text-blue-300 mb-3">Database Actions</h3>
         <div className="space-y-3">
           <Button
@@ -188,7 +188,7 @@ export const DatabaseSettingsPanel: React.FC = () => {
       )}
 
       {/* Add New Setting */}
-      <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg p-4 border border-gray-600/30 shadow-lg">
+    <div className="theme-surface-2 rounded-lg p-4 shadow-lg">
         <h3 className="text-lg font-medium text-blue-300 mb-4">Add New Setting</h3>
         <div className="grid grid-cols-2 gap-4">
           <div>
