@@ -66,7 +66,27 @@ const IvrReplaySettings: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <Label htmlFor="mpv-path" className="block text-sm font-medium text-gray-300 mb-2">Path to mpv.exe</Label>
-          <Input id="mpv-path" type="text" value={mpvPath} onChange={(e) => setMpvPath(e.target.value)} placeholder="C:/Program Files/mpv/mpv.exe" />
+          <div className="flex gap-2">
+            <Input id="mpv-path" type="text" value={mpvPath} onChange={(e) => setMpvPath(e.target.value)} placeholder="C:/Program Files/mpv/mpv.exe" className="flex-1" />
+            <Button
+              onClick={async () => {
+                try {
+                  const tauri = (window as any).__TAURI__;
+                  if (tauri?.dialog?.open) {
+                    const selected = await tauri.dialog.open({ multiple: false, filters: [{ name: 'Executable', extensions: ['exe'] }] });
+                    if (selected && typeof selected === 'string') setMpvPath(selected);
+                  } else {
+                    setMessage('File dialog not available in this context.');
+                  }
+                } catch (e) {
+                  setMessage('Failed to open file dialog');
+                }
+              }}
+              className="bg-gray-600 hover:bg-gray-700"
+            >
+              Browse
+            </Button>
+          </div>
         </div>
 
         <div>

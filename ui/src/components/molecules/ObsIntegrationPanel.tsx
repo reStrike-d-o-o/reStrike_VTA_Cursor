@@ -37,6 +37,12 @@ const ObsIntegrationPanel: React.FC = () => {
   const [isLoadingConfig, setIsLoadingConfig] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [testResult, setTestResult] = useState<string>('');
+  const [obsRecordDir, setObsRecordDir] = useState<string>('');
+  const [obsFilenameFmt, setObsFilenameFmt] = useState<string>('');
+  const filenameMismatch = React.useMemo(() => {
+    if (!obsFilenameFmt || !recordingConfig.filenamePattern) return false;
+    return obsFilenameFmt.trim() !== recordingConfig.filenamePattern.trim();
+  }, [obsFilenameFmt, recordingConfig.filenamePattern]);
 
   // Get OBS connections from store
   const { connections, setConnections } = useObsStore();
@@ -443,8 +449,33 @@ const ObsIntegrationPanel: React.FC = () => {
   useEffect(() => {
     if (recordingConfig.connectionName) {
       loadRecordingConfig();
+      // read-only OBS profile values
+      (async () => {
+        try {
+          const d = await obsObwsCommands.getObsRecordDirectory(recordingConfig.connectionName);
+          if (d.success && d.data?.directory) setObsRecordDir(d.data.directory);
+          const f = await obsObwsCommands.getObsFilenameFormatting(recordingConfig.connectionName);
+          if (f.success && f.data?.formatting) setObsFilenameFmt(f.data.formatting);
+        } catch (e) {
+          console.warn('Failed to read OBS profile values', e);
+        }
+      })();
     }
   }, [recordingConfig.connectionName]);
+
+  const refreshObsProfileValues = async () => {
+    if (!recordingConfig.connectionName) return;
+    try {
+      const [d, f] = await Promise.all([
+        obsObwsCommands.getObsRecordDirectory(recordingConfig.connectionName),
+        obsObwsCommands.getObsFilenameFormatting(recordingConfig.connectionName),
+      ]);
+      if (d.success && d.data?.directory) setObsRecordDir(d.data.directory);
+      if (f.success && f.data?.formatting) setObsFilenameFmt(f.data.formatting);
+    } catch (e) {
+      console.warn('Failed to refresh OBS profile values', e);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -547,6 +578,28 @@ const ObsIntegrationPanel: React.FC = () => {
         </div>
 
         {/* Automatic Recording Settings */}
+        {/* OBS Profile (read-only) */}
+        <div className="border-t border-gray-600/30 pt-4 mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="text-md font-semibold text-gray-100">OBS Profile (Read-only)</h4>
+            <Button onClick={refreshObsProfileValues} className="bg-gray-600 hover:bg-gray-700">Refresh</Button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <Label className="block text-sm font-medium text-gray-300 mb-1">Recording Directory (OBS)</Label>
+              <div className="px-3 py-2 bg-gray-800/50 border border-gray-600/30 rounded-md text-gray-200 break-all">{obsRecordDir || 'N/A'}</div>
+            </div>
+            <div>
+              <Label className="block text-sm font-medium text-gray-300 mb-1">Filename Formatting (OBS)</Label>
+              <div className="px-3 py-2 bg-gray-800/50 border border-gray-600/30 rounded-md text-gray-200 break-all">{obsFilenameFmt || 'N/A'}</div>
+              {filenameMismatch && (
+                <div className="mt-1 text-xs text-amber-400">
+                  OBS formatting differs from app template. Send config to OBS to sync or adjust manually.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
         <div className="border-t border-gray-600/30 pt-4 mb-4">
           <div className="flex items-center justify-between mb-3">
             <h4 className="text-md font-semibold text-gray-100">Automatic Recording Settings</h4>

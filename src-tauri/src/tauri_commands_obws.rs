@@ -86,6 +86,34 @@ pub async fn ivr_validate_mpv_path(mpv_path: String) -> Result<ObsObwsConnection
     }
 }
 
+// ============================================================================
+// OBS Profile Read-backs
+// ============================================================================
+
+#[tauri::command]
+pub async fn obs_obws_get_record_directory(
+    connection_name: Option<String>,
+    app: State<'_, Arc<App>>,
+) -> Result<ObsObwsConnectionResponse, TauriError> {
+    let res = app.obs_obws_plugin().get_record_directory(connection_name.as_deref()).await;
+    match res {
+        Ok(dir) => Ok(ObsObwsConnectionResponse{ success: true, data: Some(serde_json::json!({"directory": dir})), error: None }),
+        Err(e) => Ok(ObsObwsConnectionResponse{ success: false, data: None, error: Some(e.to_string()) })
+    }
+}
+
+#[tauri::command]
+pub async fn obs_obws_get_filename_formatting(
+    connection_name: Option<String>,
+    app: State<'_, Arc<App>>,
+) -> Result<ObsObwsConnectionResponse, TauriError> {
+    let res = app.obs_obws_plugin().get_filename_formatting(connection_name.as_deref()).await;
+    match res {
+        Ok(fmt) => Ok(ObsObwsConnectionResponse{ success: true, data: Some(serde_json::json!({"formatting": fmt})), error: None }),
+        Err(e) => Ok(ObsObwsConnectionResponse{ success: false, data: None, error: Some(e.to_string()) })
+    }
+}
+
 /// Add a new OBS connection using obws
 #[tauri::command]
 pub async fn obs_obws_add_connection(
