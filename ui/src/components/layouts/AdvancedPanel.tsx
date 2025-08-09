@@ -163,12 +163,12 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
           />
         )}
         {drawer?.key === 'ivr' && (
-          <div className="bg-gradient-to-br from-green-900/20 to-green-800/30 backdrop-blur-sm rounded-lg p-6 text-gray-200 border border-green-600/30 shadow-lg">
+          <div className="theme-card p-6 text-gray-200 shadow-lg">
             <IvrReplaySettings />
           </div>
         )}
         {drawer?.key === 'ai' && (
-          <div className="bg-gradient-to-br from-purple-900/20 to-purple-800/30 backdrop-blur-sm rounded-lg p-6 text-gray-200 border border-purple-600/30 shadow-lg">[AI report creation and data analyzer will be implemented here]</div>
+          <div className="theme-card p-6 text-gray-200 shadow-lg">[AI report creation and data analyzer will be implemented here]</div>
         )}
         {drawer?.key === 'settings' && (
           <>
@@ -190,7 +190,7 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
               </div>
             )}
             {settingsTab === 'app-settings' && (
-              <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg p-6 border border-gray-600/30 shadow-lg">
+              <div className="theme-card p-6 shadow-lg">
                 <AppSettingsSection />
               </div>
             )}
@@ -206,7 +206,7 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
               </div>
             )}
             {settingsTab === 'flag-management' && (
-              <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg p-6 border border-gray-600/30 shadow-lg">
+              <div className="theme-card p-6 shadow-lg">
                 <FlagManagementPanel />
               </div>
             )}
