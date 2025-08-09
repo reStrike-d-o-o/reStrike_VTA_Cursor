@@ -2,6 +2,30 @@
 
 ## Latest Implementations (2025-01-29)
 
+### IVR Replay Feature (Replay Buffer + mpv) ✅ LATEST COMPLETION
+**Status**: COMPLETED
+
+**Backend**:
+- Tauri commands: `ivr_get_replay_settings`, `ivr_save_replay_settings`, `ivr_round_replay_now`
+- `App::replay_round_now`: save replay buffer → bounded wait (50–500 ms, default 500) → fetch last replay filename via obws → launch mpv with `--start=-{seconds_from_end}`
+- Auto-trigger on PSS `Challenge` when enabled in DB
+- obws reference: [ReplayBuffer](https://docs.rs/obws/latest/obws/client/struct.ReplayBuffer.html)
+
+**Frontend**:
+- IVR drawer `IvrReplaySettings` with DB-backed settings
+- DockBar `REPLAY` wired to backend action
+
+**Config**:
+- DB keys: `ivr.replay.mpv_path`, `ivr.replay.seconds_from_end`, `ivr.replay.max_wait_ms`, `ivr.replay.auto_on_challenge`
+
+### OBS Recording Auto-Push Updates ✅
+**Status**: COMPLETED
+
+**Details**:
+- Fight loaded: set OBS recording directory once per tournament day using `folder_pattern`
+- Fight ready: set filename formatting per match from template
+- `folder_pattern` added to DB and used by generator
+
 ### Documentation Reorganization ✅ **LATEST COMPLETION**
 **Status**: COMPLETED  
 **Files**: All documentation files reorganized for better structure and clarity

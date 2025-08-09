@@ -1907,11 +1907,11 @@ impl ObsIntegration {
 }
 ```
 
-#### **Challenge/IVR or Replay Button Trigger**
+#### **Challenge/IVR or Replay Button Trigger (obws + mpv)**
 ```rust
 impl ObsIntegration {
     pub async fn handle_challenge_ivr_trigger(&self, event_data: &PssEventData) -> AppResult<()> {
-        // Save video replay buffer
+        // Save video replay buffer (obws ReplayBuffer.save())
         let replay_clip_path = self.obs_rec_connection.save_replay_buffer().await?;
 
         // Calculate rec_timestamp for all events in last 20s
@@ -1923,7 +1923,9 @@ impl ObsIntegration {
             }
         }
 
-        // Open last saved video replay buffer clip in .mvp player
+        // Resolve last saved replay filename via obws ReplayBuffer.last_replay() with bounded wait (50–500 ms)
+        // Then open last saved clip in mpv (`--start=-{seconds_from_end}`)
+        // Reference: https://docs.rs/obws/latest/obws/client/struct.ReplayBuffer.html
         self.open_replay_clip_in_mvp_player(&replay_clip_path).await?;
 
         // Add IVR link to all events in last 20 seconds

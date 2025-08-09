@@ -355,6 +355,13 @@ impl ObsManager {
         client.set_filename_formatting(formatting).await
     }
 
+    // Replay helpers
+    pub async fn get_last_replay_filename(&self, connection_name: Option<&str>) -> AppResult<String> {
+        let client_arc = self.get_client_ref(connection_name).await?;
+        let client = client_arc.lock().await;
+        client.get_last_replay_filename().await
+    }
+
     // Event handling
     pub async fn add_event_handler<F>(&self, event_type: String, handler: F, connection_name: Option<&str>) -> AppResult<()>
     where

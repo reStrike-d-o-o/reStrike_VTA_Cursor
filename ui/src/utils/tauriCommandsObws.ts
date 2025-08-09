@@ -754,4 +754,51 @@ export const obsObwsCommands = {
       return { success: false, error: String(error) };
     }
   },
+
+  // ============================================================================
+  // IVR Replay Settings & Actions
+  // ============================================================================
+
+  async ivrGetReplaySettings(): Promise<TauriCommandResponse> {
+    try {
+      if (isTauriAvailable()) {
+        return await safeInvoke('ivr_get_replay_settings');
+      }
+      return { success: false, error: 'Tauri not available' };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  },
+
+  async ivrSaveReplaySettings(params: {
+    mpvPath?: string;
+    secondsFromEnd: number;
+    maxWaitMs: number;
+    autoOnChallenge: boolean;
+  }): Promise<TauriCommandResponse> {
+    try {
+      if (isTauriAvailable()) {
+        return await safeInvoke('ivr_save_replay_settings', {
+          mpvPath: params.mpvPath,
+          secondsFromEnd: params.secondsFromEnd,
+          maxWaitMs: params.maxWaitMs,
+          autoOnChallenge: params.autoOnChallenge,
+        });
+      }
+      return { success: false, error: 'Tauri not available' };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  },
+
+  async ivrRoundReplayNow(connectionName?: string): Promise<TauriCommandResponse> {
+    try {
+      if (isTauriAvailable()) {
+        return await safeInvoke('ivr_round_replay_now', { connectionName });
+      }
+      return { success: false, error: 'Tauri not available' };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  },
 };

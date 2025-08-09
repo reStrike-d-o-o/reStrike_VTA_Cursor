@@ -219,7 +219,15 @@ const DockBar: React.FC = () => {
                 <div className="flex flex-col items-center space-y-2">
                   <div className="relative group">
                     <div className="absolute inset-0 bg-blue-500/20 rounded-full blur-sm group-hover:bg-blue-500/30 transition-all duration-300"></div>
-                    <ReplayButton onClick={() => { /* TODO: Implement Replay action */ }}>
+                    <ReplayButton onClick={async () => {
+                      try {
+                        // Use default/selected connection from Integration; fall back to OBS_REC
+                        await (window as any).__TAURI__?.core?.invoke('ivr_round_replay_now', { connectionName: 'OBS_REC' });
+                      } catch (e) {
+                        console.error('Failed to trigger round replay:', e);
+                        alert('Failed to trigger replay. Check IVR settings and OBS connection.');
+                      }
+                    }}>
                       REPLAY
                     </ReplayButton>
                   </div>

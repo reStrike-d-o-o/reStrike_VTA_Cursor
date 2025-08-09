@@ -1607,6 +1607,21 @@ const updateConnectionStatus = (name: string, status: StrConnection['status']) =
   - **Audit Logging**: Full authentication attempt tracking and security event logging
 
 ## OBS Integration System
+### IVR Drawer
+The IVR drawer provides Instant Video Replay settings and controls.
+
+- Component: `ui/src/components/molecules/IvrReplaySettings.tsx`
+- Features:
+  - mpv.exe path selection
+  - Seconds from end (0–20)
+  - Max wait (ms) (50–500, default 500)
+  - Auto on PSS Challenge toggle
+  - Load/Save settings via Tauri commands:
+    - `ivr_get_replay_settings`
+    - `ivr_save_replay_settings`
+
+### DockBar Replay Button
+- The DockBar `REPLAY` button invokes `ivr_round_replay_now`, which saves the replay buffer, waits up to the configured max wait, resolves the last replay filename, and launches mpv at the requested offset.
 
 ### Overview
 The OBS integration system provides WebSocket-based control of OBS Studio instances, enabling recording, streaming, scene management, and real-time status monitoring.

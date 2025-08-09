@@ -125,6 +125,7 @@ impl App {
             crate::plugins::obs_obws::AutomaticRecordingConfig::default(),
             recording_event_tx,
             Arc::new(database_plugin.clone()),
+            obs_obws_manager.clone(),
         ));
         #[cfg(feature = "obs-obws")]
         log::info!("✅ Recording event handler initialized");
@@ -374,6 +375,53 @@ impl App {
         &self.advanced_analytics
     }
 
+    /// Trigger instant round replay: save replay buffer, resolve last file within configured wait, launch mpv
+    pub async fn replay_round_now(&self, connection_name: Option<&str>) -> AppResult<()> {
+        // Read IVR settings
+        use crate::database::operations::UiSettingsOperations as UIOps;
+        let conn = self.database_plugin().get_connection().await?;
+        let mpv_path = UIOps::get_ui_setting(&*conn, "ivr.replay.mpv_path").ok().flatten()
+            .unwrap_or_else(|| "C:/Program Files/mpv/mpv.exe".to_string());
+        let seconds_from_end: u32 = UIOps::get_ui_setting(&*conn, "ivr.replay.seconds_from_end").ok().flatten()
+            .and_then(|s| s.parse::<u32>().ok()).unwrap_or(10).min(20);
+        let max_wait_ms: u32 = UIOps::get_ui_setting(&*conn, "ivr.replay.max_wait_ms").ok().flatten()
+            .and_then(|s| s.parse::<u32>().ok()).unwrap_or(500).clamp(50, 500);
+
+        // Save replay buffer via obws
+        self.obs_obws_plugin().save_replay_buffer(connection_name).await?;
+
+        // Try to get last replay filename within bounded wait
+        let mut filename: Option<String> = None;
+        let mut elapsed: u32 = 0;
+        let step: u32 = 150;
+        while elapsed <= max_wait_ms {
+            match self.obs_obws_plugin().get_last_replay_filename(connection_name).await {
+                Ok(name) if !name.is_empty() => { filename = Some(name); break; }
+                _ => {}
+            }
+            if elapsed == max_wait_ms { break; }
+            let sleep_ms = std::cmp::min(step, max_wait_ms - elapsed);
+            tokio::time::sleep(std::time::Duration::from_millis(sleep_ms as u64)).await;
+            elapsed += sleep_ms;
+        }
+
+        // Build full path using Videos root as fallback directory
+        let directory = crate::plugins::obs_obws::PathGeneratorConfig::detect_windows_videos_folder();
+        let file_path = if let Some(name) = filename { directory.join(name) } else { directory };
+
+        // Launch mpv
+        if !file_path.is_file() {
+            return Err(crate::types::AppError::ConfigError("Replay file not found within time window".to_string()));
+        }
+        std::process::Command::new(mpv_path)
+            .arg(format!("--start=-{}", seconds_from_end))
+            .arg(file_path.to_string_lossy().to_string())
+            .spawn()
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to launch mpv: {}", e)))?;
+
+        Ok(())
+    }
+
     /// Get the default connection name for OBS operations
     pub async fn get_default_connection_name(&self) -> AppResult<String> {
         // Try to get the first available connection name
@@ -503,6 +551,25 @@ impl App {
                         // Handle PSS event for automatic recording
                         if let Err(e) = recording_handler.handle_pss_event(&event).await {
                             log::warn!("⚠️ Failed to handle PSS event for recording: {}", e);
+                        }
+
+                        // IVR: Auto round replay on challenge if enabled
+                        if let crate::plugins::plugin_udp::PssEvent::Challenge { .. } = event {
+                            use crate::database::operations::UiSettingsOperations as UIOps;
+                            match app.database_plugin().get_connection().await {
+                                Ok(conn) => {
+                                    let enabled = UIOps::get_ui_setting(&*conn, "ivr.replay.auto_on_challenge")
+                                        .ok().flatten().map(|s| s == "true").unwrap_or(false);
+                                    if enabled {
+                                        if let Err(e) = app.replay_round_now(Some("OBS_REC")).await {
+                                            log::warn!("⚠️ Auto IVR replay failed: {}", e);
+                                        } else {
+                                            log::info!("🎞️ Auto IVR replay triggered by challenge event");
+                                        }
+                                    }
+                                }
+                                Err(e) => log::warn!("⚠️ Failed to read IVR settings: {}", e),
+                            }
                         }
                     }
                 }
