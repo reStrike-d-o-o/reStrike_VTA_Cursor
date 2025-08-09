@@ -41,6 +41,8 @@ export const CpuMonitoringSection: React.FC<CpuMonitoringSectionProps> = ({ clas
   const [processData, setProcessData] = useState<CpuProcessData[]>([]);
   const [systemData, setSystemData] = useState<SystemCpuData | null>(null);
   const [isMonitoring, setIsMonitoring] = useState<boolean>(false); // Start disabled
+  const [refreshMs, setRefreshMs] = useState<number>(2000);
+  const [topN, setTopN] = useState<number>(20);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
 
   // Check monitoring status on mount
@@ -105,22 +107,20 @@ export const CpuMonitoringSection: React.FC<CpuMonitoringSectionProps> = ({ clas
     }
   };
 
-  // Update data every 1 second when monitoring is active (matching backend interval)
+  // Update data when monitoring is active, with configurable interval
   useEffect(() => {
     if (!isMonitoring) {
       return;
     }
 
-    // Use different intervals for development vs production
-    const updateInterval = process.env.NODE_ENV === 'production' ? 2000 : 1000; // 2s prod, 1s dev
-    
+    const updateInterval = refreshMs; // configurable
     fetchCpuData(); // Initial fetch
     const interval = setInterval(fetchCpuData, updateInterval);
 
     return () => {
       clearInterval(interval);
     };
-  }, [isMonitoring]);
+  }, [isMonitoring, refreshMs]);
 
   // Get CPU usage color based on percentage
   const getCpuColor = (percentage: number): string => {
@@ -168,6 +168,23 @@ export const CpuMonitoringSection: React.FC<CpuMonitoringSectionProps> = ({ clas
         </div>
       </div>
 
+      {/* Controls */}
+      <div className="flex items-center gap-3 mb-4">
+        <span className="text-sm text-gray-300">Refresh</span>
+        <select className="theme-surface-2 px-2 py-1" value={refreshMs} onChange={(e)=>setRefreshMs(parseInt(e.target.value)||2000)}>
+          <option value={2000}>2s</option>
+          <option value={5000}>5s</option>
+          <option value={10000}>10s</option>
+        </select>
+        <span className="text-sm text-gray-300 ml-4">Top</span>
+        <select className="theme-surface-2 px-2 py-1" value={topN} onChange={(e)=>setTopN(parseInt(e.target.value)||20)}>
+          <option value={5}>5</option>
+          <option value={10}>10</option>
+          <option value={20}>20</option>
+          <option value={50}>50</option>
+        </select>
+      </div>
+
       {/* System CPU Overview */}
       {systemData && (
         <div className="mb-6 p-3 bg-gray-700 rounded-lg">
@@ -207,7 +224,7 @@ export const CpuMonitoringSection: React.FC<CpuMonitoringSectionProps> = ({ clas
           <div className="space-y-2 max-h-64 overflow-y-auto">
             {processData
               .sort((a, b) => (b.cpu_percent || 0) - (a.cpu_percent || 0)) // Sort by CPU usage (highest first)
-              .slice(0, 20) // Show top 20 processes
+              .slice(0, topN)
               .map((process, index) => (
               <div key={index} className="flex items-center justify-between p-2 bg-gray-700 rounded">
                 <div className="flex items-center space-x-3">
