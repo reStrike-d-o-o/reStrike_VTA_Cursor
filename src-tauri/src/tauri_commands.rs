@@ -3118,6 +3118,14 @@ pub async fn migrate_json_to_database(app: State<'_, Arc<App>>) -> Result<serde_
 }
 
 #[tauri::command]
+pub async fn db_run_migrations(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    match app.database_plugin().run_migrations().await {
+        Ok(_) => Ok(serde_json::json!({ "success": true, "message": "Database migrations ran successfully" })),
+        Err(e) => Ok(serde_json::json!({ "success": false, "error": e.to_string() })),
+    }
+}
+
+#[tauri::command]
 pub async fn create_json_backup(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Creating JSON settings backup");
     

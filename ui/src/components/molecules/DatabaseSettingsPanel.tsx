@@ -147,6 +147,21 @@ export const DatabaseSettingsPanel: React.FC = () => {
             {loading ? 'Updating...' : `Toggle Database Mode (Currently: ${settings?.database_enabled === 'true' ? 'Enabled' : 'Disabled'})`}
           </Button>
           <Button
+            onClick={async ()=>{
+              try {
+                setLoading(true);
+                const res = await (await import('@tauri-apps/api/core')).invoke<any>('db_run_migrations');
+                await handleRefreshSettings();
+                setError(!res?.success ? (res?.error || 'Migration failed') : '');
+              } catch(e:any){ setError(String(e)); } finally { setLoading(false); }
+            }}
+            disabled={loading}
+            variant="secondary"
+            className="w-full"
+          >
+            Run Database Migrations
+          </Button>
+          <Button
             onClick={handleRefreshSettings}
             disabled={loading}
             variant="secondary"

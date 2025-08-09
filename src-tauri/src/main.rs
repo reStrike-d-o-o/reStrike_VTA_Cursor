@@ -468,6 +468,7 @@ async fn main() -> AppResult<()> {
             tauri_commands::db_get_all_ui_settings,
             tauri_commands::db_get_database_info,
             tauri_commands::migrate_json_to_database,
+            tauri_commands::db_run_migrations,
             tauri_commands::create_json_backup,
             tauri_commands::restore_from_json_backup,
             tauri_commands::restore_from_backup,
