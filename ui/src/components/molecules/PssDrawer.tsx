@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { formatDateTime } from '../../utils/format';
 import Button from '../atoms/Button';
 import Toggle from '../atoms/Toggle';
 import Input from '../atoms/Input';
@@ -479,19 +480,7 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const formatDate = (dateString: string): string => {
-    try {
-      const d = new Date(dateString);
-      const dd = String(d.getDate()).padStart(2, '0');
-      const mm = String(d.getMonth() + 1).padStart(2, '0');
-      const yyyy = d.getFullYear();
-      const hh = String(d.getHours()).padStart(2, '0');
-      const mi = String(d.getMinutes()).padStart(2, '0');
-      return `${dd}.${mm}.${yyyy} ${hh}:${mi}`;
-    } catch {
-      return dateString;
-    }
-  };
+  const formatDate = (dateString: string): string => formatDateTime(dateString);
 
   // UDP Server & Protocol Content
   const UdpServerContent = () => (
