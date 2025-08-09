@@ -735,7 +735,7 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
                 <input 
                   type="text" 
                   autoComplete="username" 
-                  style={{ display: 'none' }} 
+                  className="hidden" 
                   aria-hidden="true"
                   tabIndex={-1}
                 />

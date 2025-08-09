@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Button from '../atoms/Button';
 import Input from '../atoms/Input';
 import { useAppStore } from '../../stores';
+import { useSettingsStore } from '../../stores/settingsStore';
 import { windowCommands } from '../../utils/tauriCommands';
 import { useEnvironment } from '../../hooks/useEnvironment';
 import { logger, setLogLevel, LogLevel } from '../../utils/logger';
@@ -16,6 +17,8 @@ const AppSettingsSection: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [logLevel, setLevel] = useState<LogLevel>('info');
+  const theme = useSettingsStore((s) => s.theme);
+  const setTheme = useSettingsStore((s) => s.setTheme);
 
   const handleApplySettings = async () => {
     if (!tauriAvailable) {
@@ -167,9 +170,15 @@ const AppSettingsSection: React.FC = () => {
         </div>
       </div>
 
-      {/* Log verbosity */}
+      {/* Theme & Log verbosity */}
       <div className="space-y-3">
-        <h4 className="text-md font-medium text-white">Log verbosity</h4>
+        <h4 className="text-md font-medium text-white">Appearance</h4>
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-sm text-gray-300">Theme</span>
+          <Button size="sm" variant={theme==='dark' ? 'primary' : 'secondary'} onClick={() => setTheme('dark')}>Dark</Button>
+          <Button size="sm" variant={theme==='light' ? 'primary' : 'secondary'} onClick={() => setTheme('light')}>Light</Button>
+        </div>
+        <h4 className="text-md font-medium text-white mt-4">Log verbosity</h4>
         <div className="flex flex-wrap gap-2">
           {(['silent','error','warn','info','debug'] as LogLevel[]).map((lvl) => (
             <Button

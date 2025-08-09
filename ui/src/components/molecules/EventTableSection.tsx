@@ -201,7 +201,7 @@ const EventTableSection: React.FC = () => {
 
             
             {/* Event Type Filter Buttons - positioned to align with table bottom */}
-            <div className="absolute bottom-0 flex flex-col space-y-2" style={{ transform: 'translateY(50px)' }}>
+            <div className="absolute bottom-0 flex flex-col space-y-2 translate-y-[50px]">
               {eventTypeOptions.map(type => (
                 <Button
                   key={type.value}

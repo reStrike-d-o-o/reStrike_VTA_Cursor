@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Button from '../atoms/Button';
 import StatusDot from '../atoms/StatusDot';
+import StatusRow from '../atoms/StatusRow';
 import { invoke } from '@tauri-apps/api/core';
 import { obsObwsCommands } from '../../utils/tauriCommandsObws';
 
@@ -270,27 +271,11 @@ const LiveOrchestratorModal: React.FC<LiveOrchestratorModalProps> = ({ isOpen, o
         </div>
 
         <div className="space-y-3">
-          <div className="flex items-center justify-between p-3 rounded bg-gray-800/50 border border-gray-700">
-            <div className="text-gray-200">UDP Server</div>
-            <StatusDot color={colorFor(udpStatus)} />
-          </div>
-          <div className="flex items-center justify-between p-3 rounded bg-gray-800/50 border border-gray-700">
-            <div className="text-gray-200">Tournament / Day Active</div>
-            <StatusDot color={colorFor(tournamentStatus)} />
-          </div>
-          <div className="flex items-center justify-between p-3 rounded bg-gray-800/50 border border-gray-700">
-            <div className="text-gray-200">Recording Path Configured</div>
-            <StatusDot color={colorFor(recordingPathStatus)} />
-          </div>
-          <div className="flex items-center justify-between p-3 rounded bg-gray-800/50 border border-gray-700">
-            <div className="text-gray-200">OBS WebSocket</div>
-            <StatusDot color={colorFor(obsStatus)} />
-          </div>
-          <div className="flex items-center justify-between p-3 rounded bg-gray-800/50 border border-gray-700">
-            <div className="text-gray-200">Google Drive Connectivity</div>
-            <StatusDot color={colorFor(driveStatus)} />
-          </div>
-          {/* Quota row populated after connection */}
+          <StatusRow label="UDP Server" status={udpStatus} />
+          <StatusRow label="Tournament / Day Active" status={tournamentStatus} />
+          <StatusRow label="Recording Path Configured" status={recordingPathStatus} />
+          <StatusRow label="OBS WebSocket" status={obsStatus} />
+          <StatusRow label="Google Drive Connectivity" status={driveStatus} />
           <DriveQuotaRow />
         </div>
 
@@ -334,10 +319,7 @@ const DriveQuotaRow: React.FC = () => {
 
   if (!text) return null;
   return (
-    <div className="flex items-center justify-between p-3 rounded bg-gray-800/50 border border-gray-700">
-      <div className="text-gray-200">Drive Quota</div>
-      <div className="text-sm text-gray-300">{text}</div>
-    </div>
+    <StatusRow label="Drive Quota" right={text} />
   );
 };
 
