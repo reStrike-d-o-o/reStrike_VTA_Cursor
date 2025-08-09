@@ -1181,25 +1181,29 @@ impl PssUdpOperations {
 pub struct TournamentOperations;
 
 impl TournamentOperations {
-    /// Check if tournament name already exists
-    pub fn tournament_name_exists(conn: &Connection, name: &str) -> DatabaseResult<bool> {
-        let count: i64 = conn.query_row(
-            "SELECT COUNT(*) FROM tournaments WHERE name = ?",
-            params![name],
-            |row| row.get(0)
-        )?;
-        
-        Ok(count > 0)
+    /// Check if tournament with same name and start_date exists (if start_date provided)
+    pub fn tournament_duplicate_exists(conn: &Connection, name: &str, start_date: &Option<String>) -> DatabaseResult<bool> {
+        if let Some(sd) = start_date {
+            let count: i64 = conn.query_row(
+                "SELECT COUNT(*) FROM tournaments WHERE name = ? AND start_date = ?",
+                params![name, sd],
+                |row| row.get(0)
+            )?;
+            Ok(count > 0)
+        } else {
+            Ok(false)
+        }
     }
 
     /// Create a new tournament
     pub fn create_tournament(conn: &mut Connection, tournament: &Tournament) -> DatabaseResult<i64> {
-        // Check if tournament name already exists
-        if Self::tournament_name_exists(conn, &tournament.name)? {
+        // Allow duplicate names on different days; only block exact (name, start_date)
+        let start_date_str = tournament.start_date.map(|d| d.to_rfc3339());
+        if Self::tournament_duplicate_exists(conn, &tournament.name, &start_date_str)? {
             return Err(crate::database::DatabaseError::Sqlite(
                 rusqlite::Error::SqliteFailure(
                     rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_CONSTRAINT_UNIQUE),
-                    Some("Tournament name already exists".to_string())
+                    Some("Tournament with same name and start date already exists".to_string())
                 )
             ));
         }

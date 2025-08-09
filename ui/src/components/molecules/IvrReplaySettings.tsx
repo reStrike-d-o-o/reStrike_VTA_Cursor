@@ -71,13 +71,22 @@ const IvrReplaySettings: React.FC = () => {
             <Button
               onClick={async () => {
                 try {
-                  const tauri = (window as any).__TAURI__;
-                  if (tauri?.dialog?.open) {
-                    const selected = await tauri.dialog.open({ multiple: false, filters: [{ name: 'Executable', extensions: ['exe'] }] });
+                  // Prefer Tauri dialog plugin when available
+                  if (typeof window !== 'undefined' && (window as any).__TAURI__) {
+                    const { open } = await import('@tauri-apps/plugin-dialog');
+                    const selected = await open({ multiple: false, filters: [{ name: 'Executable', extensions: ['exe'] }] });
                     if (selected && typeof selected === 'string') setMpvPath(selected);
-                  } else {
-                    setMessage('File dialog not available in this context.');
+                    return;
                   }
+                  // Fallback: hidden file input in web
+                  const input = document.createElement('input');
+                  input.type = 'file';
+                  input.accept = '.exe';
+                  input.onchange = () => {
+                    const file = (input.files && input.files[0]) || null;
+                    if (file) setMpvPath(file.name);
+                  };
+                  input.click();
                 } catch (e) {
                   setMessage('Failed to open file dialog');
                 }

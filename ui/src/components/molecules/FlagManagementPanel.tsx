@@ -41,7 +41,7 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
   const [statistics, setStatistics] = useState<FlagStatistics>({ total: 0, recognized: 0, pending: 0, failed: 0 });
-  const [useDatabase, setUseDatabase] = useState(true);
+  // Always use database in Tauri; fallback to assets in web
   const [flagMappingsCount, setFlagMappingsCount] = useState(0);
   const [pssCodeInput, setPssCodeInput] = useState('');
 
@@ -49,7 +49,7 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
   useEffect(() => {
     loadFlags();
     loadFlagMappings();
-  }, [useDatabase]);
+  }, []);
 
   // Filter flags based on search term
   useEffect(() => {
@@ -73,7 +73,7 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
   }, [selectedFlag]);
 
   const loadFlagMappings = async () => {
-    if (!useDatabase || !window.__TAURI__) return;
+    if (!window.__TAURI__) return;
 
     try {
       const result = await window.__TAURI__.core.invoke('get_flag_mappings_data');
@@ -90,7 +90,7 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
     setError('');
     
     try {
-      if (useDatabase && window.__TAURI__) {
+      if (window.__TAURI__) {
         // Load flags from database
         const result = await window.__TAURI__.core.invoke('get_flags_data');
         
@@ -117,19 +117,17 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
           throw new Error(result.error || 'Failed to load flags from database');
         }
       } else {
-        // Load flags from the available assets in /assets/flags/
-        // This creates a comprehensive list based on the flagUtils configuration
+        // In web mode, show static assets as fallback
         const flagList: FlagInfo[] = Object.keys(FLAG_CONFIGS).map(iocCode => {
           const config = FLAG_CONFIGS[iocCode];
           return {
             iocCode,
             countryName: config.altText.replace(' Flag', ''),
             flagPath: `/assets/flags/svg/${iocCode}.svg`,
-            hasCustomMapping: true, // All flags have PSS mapping (same as IOC code)
-            pssCode: iocCode // PSS code is the same as IOC code
+            hasCustomMapping: true,
+            pssCode: iocCode
           };
         });
-
         setFlags(flagList);
         setFilteredFlags(flagList);
         setStatistics({ total: flagList.length, recognized: flagList.length, pending: 0, failed: 0 });
@@ -281,29 +279,7 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
       )}
 
       {/* Database Settings */}
-      <div className="p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
-        <h3 className="text-lg font-semibold mb-4 text-gray-100">Database Settings</h3>
-        <div className="space-y-4">
-          <div className="flex items-center space-x-3">
-            <input
-              type="checkbox"
-              id="use-database"
-              checked={useDatabase}
-              onChange={(e) => setUseDatabase(e.target.checked)}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              aria-label="Use Database for Flags"
-              title="Toggle database mode for flag management"
-            />
-            <Label htmlFor="use-database" className="text-xs text-gray-400">
-              Use Database for Flags
-            </Label>
-          </div>
-          <p className="text-xs text-gray-400">
-            Check this box to load flags from the database instead of the local assets.
-            This is useful for managing flags that have been uploaded or scanned.
-          </p>
-        </div>
-      </div>
+      {/* Database Settings removed: always use database for flags */}
 
       {/* Flag Upload Section */}
       <div className="p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">

@@ -1,4 +1,5 @@
 import { usePssMatchStore } from '../stores';
+import { logger } from './logger';
 import { PssAthleteInfo, PssMatchConfig, PssScores, PssCurrentScores, PssWinnerRounds } from '../types';
 import { getBestFlagCode } from './countryCodeMapping';
 
@@ -8,12 +9,11 @@ import { getBestFlagCode } from './countryCodeMapping';
  * Handles both match setup data and scoring data (for future use)
  */
 export const handlePssEvent = (event: any) => {
-  console.log('🎯 handlePssEvent called with event:', event);
-  console.log('🎯 Event type:', event.type);
-  console.log('🎯 Event structure:', JSON.stringify(event, null, 2));
+  logger.debug('🎯 handlePssEvent', event);
+  logger.debug('🎯 Event type', event.type);
   
   const store = usePssMatchStore.getState();
-  console.log('🎯 Current store state:', store.matchData);
+  logger.debug('🎯 Current store state', store.matchData);
   
   // Emit browser event for scoreboard overlays
   emitBrowserEvent(event);
@@ -24,62 +24,62 @@ export const handlePssEvent = (event: any) => {
   // Handle different event types based on the event structure
   switch (event.type) {
     case 'athletes':
-      console.log('🎯 Handling athletes event');
+      logger.debug('🎯 Handling athletes event');
       handleAthletesEvent(event, store);
       break;
     case 'match_config':
-      console.log('🎯 Handling match_config event');
+      logger.debug('🎯 Handling match_config event');
       handleMatchConfigEvent(event, store);
       break;
     case 'scores':
-      console.log('🎯 Handling scores event');
+      logger.debug('🎯 Handling scores event');
       handleScoresEvent(event, store);
       break;
     case 'current_scores':
-      console.log('🎯 Handling current_scores event');
+      logger.debug('🎯 Handling current_scores event');
       handleCurrentScoresEvent(event, store);
       break;
     case 'winner_rounds':
-      console.log('🎯 Handling winner_rounds event');
+      logger.debug('🎯 Handling winner_rounds event');
       handleWinnerRoundsEvent(event, store);
       break;
     case 'fight_loaded':
-      console.log('🎯 Handling fight_loaded event');
+      logger.debug('🎯 Handling fight_loaded event');
       handleFightLoadedEvent(event, store);
       break;
     case 'fight_ready':
-      console.log('🎯 Handling fight_ready event');
+      logger.debug('🎯 Handling fight_ready event');
       handleFightReadyEvent(event, store);
       break;
     case 'points':
       // Handle points events (for future scoring features)
-      console.log('🎯 Points event:', event);
+      logger.debug('🎯 Points event', event);
       break;
     case 'hit_level':
       // Handle hit level events (for future features)
-      console.log('🎯 Hit level event:', event);
+      logger.debug('🎯 Hit level event', event);
       break;
     case 'warnings':
       // Handle warnings events (for future features)
-      console.log('🎯 Warnings event:', event);
+      logger.debug('🎯 Warnings event', event);
       break;
     case 'clock':
       // Handle clock events (for future features)
-      console.log('🎯 Clock event:', event);
+      logger.debug('🎯 Clock event', event);
       handleClockEvent(event, store);
       break;
     case 'round':
       // Handle round events (for future features)
-      console.log('🎯 Round event:', event);
+      logger.debug('🎯 Round event', event);
       handleRoundEvent(event, store);
       break;
     case 'injury':
       // Handle injury events (for future features)
-      console.log('🎯 Injury event:', event);
+      logger.debug('🎯 Injury event', event);
       break;
     case 'challenge':
       // Handle challenge events (for future features)
-      console.log('🎯 Challenge event:', event);
+      logger.debug('🎯 Challenge event', event);
       // Toast for auto replay feedback
       try {
         if (typeof window !== 'undefined' && 'Notification' in window) {
@@ -90,14 +90,14 @@ export const handlePssEvent = (event: any) => {
       break;
     case 'break':
       // Handle break events (for future features)
-      console.log('🎯 Break event:', event);
+      logger.debug('🎯 Break event', event);
       break;
     case 'winner':
       // Handle winner events (for future features)
-      console.log('🎯 Winner event:', event);
+      logger.debug('🎯 Winner event', event);
       break;
     default:
-      console.log('🎯 Unknown event type:', event.type);
+      logger.debug('🎯 Unknown event type', event.type);
       // Handle raw events or unknown types
       if (event.event === 'FightLoaded') {
         handleFightLoadedEvent(event, store);
@@ -109,12 +109,12 @@ export const handlePssEvent = (event: any) => {
 
       // Parse raw match config (mch;) lines to update match config
       if (event.message && event.message.startsWith('mch;')) {
-        console.log('🎯 Parsing raw match config message:', event.message);
+        logger.debug('🎯 Parsing raw match config message', event.message);
         // TODO: Parse raw match config message
       }
   }
   
-  console.log('🎯 handlePssEvent completed');
+  logger.debug('🎯 handlePssEvent completed');
 };
 
 /**
@@ -127,7 +127,7 @@ const broadcastPssEventViaWebSocket = async (event: any) => {
     if (typeof window !== 'undefined' && window.__TAURI__) {
       const { invoke } = await import('@tauri-apps/api/core');
       await invoke('websocket_broadcast_pss_event', { eventData: event });
-      console.log('📡 Broadcasted PSS event via WebSocket:', event.type);
+      logger.debug('📡 Broadcasted PSS event via WebSocket', event.type);
     }
   } catch (error) {
     console.warn('Failed to broadcast PSS event via WebSocket:', error);
@@ -151,7 +151,7 @@ const emitBrowserEvent = (event: any) => {
       
       // Dispatch the event
       window.dispatchEvent(browserEvent);
-      console.log('📡 Emitted browser PSS event:', event.type);
+      logger.debug('📡 Emitted browser PSS event', event.type);
     }
   } catch (error) {
     console.error('❌ Error emitting browser event:', error);
@@ -164,14 +164,14 @@ const emitBrowserEvent = (event: any) => {
  */
 const handleAthletesEvent = (event: any, store: any) => {
   try {
-    console.log('🎯 handleAthletesEvent called with:', event);
+    logger.debug('🎯 handleAthletesEvent called with', event);
     
     let athlete1: PssAthleteInfo;
     let athlete2: PssAthleteInfo;
 
     // Handle new JSON structure from UDP server
     if (event.athlete1 && event.athlete2) {
-      console.log('🎯 Using new JSON structure');
+      logger.debug('🎯 Using new JSON structure');
       athlete1 = {
         short: event.athlete1.short || '',
         long: event.athlete1.long || '',
@@ -186,7 +186,7 @@ const handleAthletesEvent = (event: any, store: any) => {
         iocCode: getBestFlagCode(event.athlete2.country || ''),
       };
     } else {
-      console.log('🎯 Using legacy structure');
+      logger.debug('🎯 Using legacy structure');
       // Handle legacy structure
       athlete1 = {
         short: event.athlete1_short || '',
@@ -203,9 +203,9 @@ const handleAthletesEvent = (event: any, store: any) => {
       };
     }
 
-    console.log('🎯 Processed athletes:', { athlete1, athlete2 });
+    logger.debug('🎯 Processed athletes', { athlete1, athlete2 });
     store.updateAthletes(athlete1, athlete2);
-    console.log('✅ Updated athletes in store');
+    logger.debug('✅ Updated athletes in store');
   } catch (error) {
     console.error('Error handling athletes event:', error);
   }
@@ -217,7 +217,7 @@ const handleAthletesEvent = (event: any, store: any) => {
  */
 const handleMatchConfigEvent = (event: any, store: any) => {
   try {
-    console.log('🎯 handleMatchConfigEvent called with:', event);
+    logger.debug('🎯 handleMatchConfigEvent called with', event);
     
     const matchConfig: PssMatchConfig = {
       number: event.number || 0,
@@ -230,7 +230,7 @@ const handleMatchConfigEvent = (event: any, store: any) => {
       format: event.format || 1,
     };
 
-    console.log('🎯 Processed match config:', matchConfig);
+    logger.debug('🎯 Processed match config', matchConfig);
     store.updateMatchConfig(matchConfig);
     console.log('✅ Updated match config in store');
   } catch (error) {
@@ -295,18 +295,18 @@ const handleCurrentScoresEvent = (event: any, store: any) => {
       athlete2_score,
     };
 
-    console.log('📊 Updating current scores:', currentScores);
+    logger.debug('📊 Updating current scores', currentScores);
     store.updateCurrentScores(currentScores);
     
     // Also update current round and time if available in structured data
     if (event.structured_data) {
       if (event.structured_data.current_round !== undefined) {
         store.updateCurrentRound(event.structured_data.current_round);
-        console.log('📊 Updated current round from current scores event:', event.structured_data.current_round);
+        logger.debug('📊 Updated current round from current scores event', event.structured_data.current_round);
       }
       if (event.structured_data.current_time !== undefined) {
         store.updateCurrentRoundTime(event.structured_data.current_time);
-        console.log('📊 Updated current time from current scores event:', event.structured_data.current_time);
+        logger.debug('📊 Updated current time from current scores event', event.structured_data.current_time);
       }
     }
   } catch (error) {
@@ -359,7 +359,7 @@ const handleFightReadyEvent = (event: any, store: any) => {
     
     // Clear Event Table events when fight is ready
     // This prevents events from before the match started from appearing
-    console.log('🎯 Fight ready event - clearing Event Table events');
+    logger.debug('🎯 Fight ready event - clearing Event Table events');
     store.clearEvents();
     
   } catch (error) {
@@ -381,7 +381,7 @@ const handleClockEvent = (event: any, store: any) => {
     store.updateCurrentRound(currentRound);
     store.updateCurrentRoundTime(currentTime);
     
-    console.log('📊 Updated current round and time from clock event:', { currentRound, currentTime });
+    logger.debug('📊 Updated current round and time from clock event', { currentRound, currentTime });
   } catch (error) {
     console.error('Error handling clock event:', error);
   }
@@ -399,7 +399,7 @@ const handleRoundEvent = (event: any, store: any) => {
     // Update store with current round
     store.updateCurrentRound(currentRound);
     
-    console.log('📊 Updated current round from round event:', currentRound);
+    logger.debug('📊 Updated current round from round event', currentRound);
   } catch (error) {
     console.error('Error handling round event:', error);
   }
