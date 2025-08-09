@@ -299,7 +299,7 @@ const DockBar: React.FC = () => {
                 <div className="text-xs text-gray-400">Inspired by:</div>
               </div>
               <div className="flex items-center justify-between w-full">
-                <div className="relative z-10" style={{ minHeight: '32px', minWidth: '32px' }}>
+                <div className="relative z-10 min-h-[32px] min-w-[32px]">
                   <img 
                     src="/assets/img/logo.png" 
                     alt="reStrike VTA Logo" 
@@ -313,7 +313,7 @@ const DockBar: React.FC = () => {
                     }}
                   />
                 </div>
-                <div className="text-lg font-mono text-gray-300" style={{ fontSize: '32px', lineHeight: '32px', marginTop: '3px' }}>
+                <div className="text-lg font-mono text-gray-300 text-[32px] leading-[32px] mt-[3px]">
                   E7 88 B1
                 </div>
               </div>

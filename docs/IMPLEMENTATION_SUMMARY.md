@@ -55,6 +55,7 @@
 - **Database Integration**: Complete database schema for recording configuration and sessions
 - **Backend Commands**: 20+ Tauri commands for OBS recording control and configuration
 - **Frontend UI**: Comprehensive recording configuration interface with connection selection
+- Added read-only OBS profile values (Recording Directory, Filename Formatting) in `ui/src/components/molecules/ObsIntegrationPanel.tsx` using backend read-back commands, a Refresh button, and a mismatch hint when OBS formatting differs from the app template.
 - **Path Generation**: Dynamic path generation with Windows Videos folder detection
 - **PSS Event Integration**: Automatic recording triggered by taekwondo match events
 - **Real Folder Creation**: Test path generation creates actual Windows directories

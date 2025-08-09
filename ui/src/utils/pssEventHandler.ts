@@ -80,6 +80,13 @@ export const handlePssEvent = (event: any) => {
     case 'challenge':
       // Handle challenge events (for future features)
       console.log('🎯 Challenge event:', event);
+      // Toast for auto replay feedback
+      try {
+        if (typeof window !== 'undefined' && 'Notification' in window) {
+          if (Notification.permission === 'granted') new Notification('Auto Replay triggered');
+          else Notification.requestPermission();
+        }
+      } catch {}
       break;
     case 'break':
       // Handle break events (for future features)

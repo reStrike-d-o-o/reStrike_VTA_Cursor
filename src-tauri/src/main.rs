@@ -245,6 +245,8 @@ async fn main() -> AppResult<()> {
             tauri_commands_obws::ivr_save_replay_settings,
             tauri_commands_obws::ivr_round_replay_now,
             tauri_commands_obws::ivr_validate_mpv_path,
+            tauri_commands_obws::obs_obws_get_record_directory,
+            tauri_commands_obws::obs_obws_get_filename_formatting,
             tauri_commands::control_room_get_obs_connection,
             tauri_commands::control_room_update_obs_connection,
             tauri_commands::control_room_connect_all_obs,

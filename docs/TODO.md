@@ -46,6 +46,7 @@
 - **✅ Database Integration**: Complete database schema for recording configuration and sessions
 - **✅ Backend Commands**: 20+ Tauri commands for OBS recording control and configuration
 - **✅ Frontend UI**: Comprehensive recording configuration interface with connection selection
+  - Added read-only OBS profile (Recording Directory, Filename Formatting) with Refresh and mismatch hint in Integration panel
 - **✅ Path Generation**: Dynamic path generation with Windows Videos folder detection
 - **✅ PSS Event Integration**: Automatic recording triggered by taekwondo match events
 - **✅ Real Folder Creation**: Test path generation creates actual Windows directories

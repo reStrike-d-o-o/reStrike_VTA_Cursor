@@ -812,4 +812,26 @@ export const obsObwsCommands = {
       return { success: false, error: String(error) };
     }
   },
+
+  async getObsRecordDirectory(connectionName?: string): Promise<TauriCommandResponse> {
+    try {
+      if (isTauriAvailable()) {
+        return await safeInvoke('obs_obws_get_record_directory', { connectionName });
+      }
+      return { success: false, error: 'Tauri not available' };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  },
+
+  async getObsFilenameFormatting(connectionName?: string): Promise<TauriCommandResponse> {
+    try {
+      if (isTauriAvailable()) {
+        return await safeInvoke('obs_obws_get_filename_formatting', { connectionName });
+      }
+      return { success: false, error: 'Tauri not available' };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  },
 };
