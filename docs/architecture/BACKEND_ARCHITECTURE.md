@@ -1924,6 +1924,7 @@ impl ObsIntegration {
         }
 
         // Resolve last saved replay filename via obws ReplayBuffer.last_replay() with bounded wait (50–500 ms)
+        // Read back recording directory via Profiles::parameter("Output","RecFilePath") and join with filename
         // Then open last saved clip in mpv (`--start=-{seconds_from_end}`)
         // Reference: https://docs.rs/obws/latest/obws/client/struct.ReplayBuffer.html
         self.open_replay_clip_in_mvp_player(&replay_clip_path).await?;

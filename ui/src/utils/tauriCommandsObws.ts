@@ -801,4 +801,15 @@ export const obsObwsCommands = {
       return { success: false, error: String(error) };
     }
   },
+
+  async ivrValidateMpvPath(mpvPath: string): Promise<TauriCommandResponse> {
+    try {
+      if (isTauriAvailable()) {
+        return await safeInvoke('ivr_validate_mpv_path', { mpvPath });
+      }
+      return { success: false, error: 'Tauri not available' };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  },
 };

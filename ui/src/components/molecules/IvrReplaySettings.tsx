@@ -35,6 +35,14 @@ const IvrReplaySettings: React.FC = () => {
   const save = async () => {
     try {
       setSaving(true);
+      if (mpvPath) {
+        const valid = await obsObwsCommands.ivrValidateMpvPath(mpvPath);
+        if (!valid.success) {
+          setMessage('Invalid mpv path.');
+          setSaving(false);
+          return;
+        }
+      }
       const res = await obsObwsCommands.ivrSaveReplaySettings({
         mpvPath: mpvPath || undefined,
         secondsFromEnd: Math.max(0, Math.min(20, Number(secondsFromEnd) || 10)),

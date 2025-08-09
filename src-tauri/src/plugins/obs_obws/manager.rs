@@ -362,6 +362,19 @@ impl ObsManager {
         client.get_last_replay_filename().await
     }
 
+    // Profile getters
+    pub async fn get_record_directory(&self, connection_name: Option<&str>) -> AppResult<String> {
+        let client_arc = self.get_client_ref(connection_name).await?;
+        let client = client_arc.lock().await;
+        client.get_record_directory().await
+    }
+
+    pub async fn get_filename_formatting(&self, connection_name: Option<&str>) -> AppResult<String> {
+        let client_arc = self.get_client_ref(connection_name).await?;
+        let client = client_arc.lock().await;
+        client.get_filename_formatting().await
+    }
+
     // Event handling
     pub async fn add_event_handler<F>(&self, event_type: String, handler: F, connection_name: Option<&str>) -> AppResult<()>
     where

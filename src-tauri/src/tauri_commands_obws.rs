@@ -74,6 +74,18 @@ pub async fn ivr_round_replay_now(
     }
 }
 
+/// Validate mpv.exe path exists and is a file
+#[tauri::command]
+pub async fn ivr_validate_mpv_path(mpv_path: String) -> Result<ObsObwsConnectionResponse, TauriError> {
+    use std::path::Path;
+    let p = Path::new(&mpv_path);
+    if p.exists() && p.is_file() {
+        Ok(ObsObwsConnectionResponse { success: true, data: Some(serde_json::json!({"valid": true})), error: None })
+    } else {
+        Ok(ObsObwsConnectionResponse { success: false, data: Some(serde_json::json!({"valid": false})), error: Some("Path does not exist or is not a file".to_string()) })
+    }
+}
+
 /// Add a new OBS connection using obws
 #[tauri::command]
 pub async fn obs_obws_add_connection(
