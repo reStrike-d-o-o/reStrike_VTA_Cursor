@@ -4300,7 +4300,7 @@ pub async fn store_pss_event(
         }));
     }
 
-    let conn = app.database_plugin().get_connection().await
+    let _conn = app.database_plugin().get_connection().await
         .map_err(|e| TauriError::from(anyhow::anyhow!("Database connection error: {}", e)))?;
 
     // Resolve DB ids
@@ -4350,7 +4350,7 @@ pub async fn store_pss_event(
     match app.database_plugin().store_pss_event(&event_model).await {
         Ok(event_id) => {
             // Store a few details for convenience
-            let mut details = vec![
+            let details = vec![
                 ("round".to_string(), Some(round_num.to_string()), "i32".to_string()),
                 ("time".to_string(), Some(time_str.to_string()), "String".to_string()),
                 ("athlete".to_string(), Some(athlete.to_string()), "String".to_string()),
