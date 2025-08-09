@@ -62,3 +62,22 @@ body {
   box-shadow: 0 0 30px rgba(220, 38, 38, 0.4), 0 0 60px rgba(220, 38, 38, 0.2), 0 0 0 4px rgba(34, 34, 34, 0.8);
   background: radial-gradient(circle at 30% 30%, rgba(239, 68, 68, 0.9), rgba(220, 38, 38, 0.8));
 }
+
+/* Optional: enforce sharp corners across common controls when enabled */
+[data-sharp='true'] button,
+[data-sharp='true'] input,
+[data-sharp='true'] select,
+[data-sharp='true'] .theme-card,
+[data-sharp='true'] .theme-card-header,
+[data-sharp='true'] .theme-surface-2 {
+  border-radius: 0 !important;
+}
+
+/* Keep Replay button rounded even in sharp mode */
+[data-sharp='true'] .replay-button {
+  border-radius: 9999px !important;
+}
+
+/* Subtle accent borders for IVR and AI drawers */
+.accent-ivr { border-left: 4px solid #10b981; /* emerald-500 */ }
+.accent-ai { border-left: 4px solid #a855f7; /* purple-500 */ }

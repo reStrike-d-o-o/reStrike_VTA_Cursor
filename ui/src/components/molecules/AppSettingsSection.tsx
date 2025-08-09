@@ -19,6 +19,8 @@ const AppSettingsSection: React.FC = () => {
   const [logLevel, setLevel] = useState<LogLevel>('info');
   const theme = useSettingsStore((s) => s.theme);
   const setTheme = useSettingsStore((s) => s.setTheme);
+  const sharp = useSettingsStore((s)=> (s as any).sharp);
+  const setSharp = useSettingsStore((s)=> (s as any).setSharp);
 
   const handleApplySettings = async () => {
     if (!tauriAvailable) {
@@ -177,6 +179,9 @@ const AppSettingsSection: React.FC = () => {
           <span className="text-sm text-gray-300">Theme</span>
           <Button size="sm" variant={theme==='dark' ? 'primary' : 'secondary'} onClick={() => setTheme('dark')}>Dark</Button>
           <Button size="sm" variant={theme==='light' ? 'primary' : 'secondary'} onClick={() => setTheme('light')}>Light</Button>
+          <span className="text-sm text-gray-300 ml-4">Corners</span>
+          <Button size="sm" variant={sharp ? 'primary' : 'secondary'} onClick={() => setSharp(true)}>Square</Button>
+          <Button size="sm" variant={!sharp ? 'primary' : 'secondary'} onClick={() => setSharp(false)}>Rounded</Button>
         </div>
         <h4 className="text-md font-medium text-white mt-4">Log verbosity</h4>
         <div className="flex flex-wrap gap-2">

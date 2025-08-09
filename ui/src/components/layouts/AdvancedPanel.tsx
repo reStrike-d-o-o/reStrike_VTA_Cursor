@@ -163,12 +163,12 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
           />
         )}
         {drawer?.key === 'ivr' && (
-          <div className="theme-card p-6 text-gray-200 shadow-lg">
+          <div className="theme-card p-6 text-gray-200 shadow-lg accent-ivr">
             <IvrReplaySettings />
           </div>
         )}
         {drawer?.key === 'ai' && (
-          <div className="theme-card p-6 text-gray-200 shadow-lg">[AI report creation and data analyzer will be implemented here]</div>
+          <div className="theme-card p-6 text-gray-200 shadow-lg accent-ai">[AI report creation and data analyzer will be implemented here]</div>
         )}
         {drawer?.key === 'settings' && (
           <>
