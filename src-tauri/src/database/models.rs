@@ -1633,21 +1633,13 @@ impl Tournament {
             logo_path: row.get("logo_path")?,
             status: row.get("status")?,
             start_date: row.get::<_, Option<String>>("start_date")?
-                .map(|s| DateTime::parse_from_rfc3339(&s)
-                    .map_err(|_| rusqlite::Error::InvalidColumnType(0, "start_date".to_string(), rusqlite::types::Type::Text))
-                    .map(|dt| dt.with_timezone(&Utc)))
+                .map(|s| parse_datetime_from_db(&s, "start_date"))
                 .transpose()?,
             end_date: row.get::<_, Option<String>>("end_date")?
-                .map(|s| DateTime::parse_from_rfc3339(&s)
-                    .map_err(|_| rusqlite::Error::InvalidColumnType(0, "end_date".to_string(), rusqlite::types::Type::Text))
-                    .map(|dt| dt.with_timezone(&Utc)))
+                .map(|s| parse_datetime_from_db(&s, "end_date"))
                 .transpose()?,
-            created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
-                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "created_at".to_string(), rusqlite::types::Type::Text))?
-                .with_timezone(&Utc),
-            updated_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("updated_at")?)
-                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "updated_at".to_string(), rusqlite::types::Type::Text))?
-                .with_timezone(&Utc),
+            created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
+            updated_at: parse_datetime_from_db(&row.get::<_, String>("updated_at")?, "updated_at")?,
         })
     }
 }
@@ -1689,26 +1681,16 @@ impl TournamentDay {
             id: row.get("id")?,
             tournament_id: row.get("tournament_id")?,
             day_number: row.get("day_number")?,
-            date: DateTime::parse_from_rfc3339(&row.get::<_, String>("date")?)
-                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "date".to_string(), rusqlite::types::Type::Text))?
-                .with_timezone(&Utc),
+            date: parse_datetime_from_db(&row.get::<_, String>("date")?, "date")?,
             status: row.get("status")?,
             start_time: row.get::<_, Option<String>>("start_time")?
-                .map(|s| DateTime::parse_from_rfc3339(&s)
-                    .map_err(|_| rusqlite::Error::InvalidColumnType(0, "start_time".to_string(), rusqlite::types::Type::Text))
-                    .map(|dt| dt.with_timezone(&Utc)))
+                .map(|s| parse_datetime_from_db(&s, "start_time"))
                 .transpose()?,
             end_time: row.get::<_, Option<String>>("end_time")?
-                .map(|s| DateTime::parse_from_rfc3339(&s)
-                    .map_err(|_| rusqlite::Error::InvalidColumnType(0, "end_time".to_string(), rusqlite::types::Type::Text))
-                    .map(|dt| dt.with_timezone(&Utc)))
+                .map(|s| parse_datetime_from_db(&s, "end_time"))
                 .transpose()?,
-            created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
-                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "created_at".to_string(), rusqlite::types::Type::Text))?
-                .with_timezone(&Utc),
-            updated_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("updated_at")?)
-                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "updated_at".to_string(), rusqlite::types::Type::Text))?
-                .with_timezone(&Utc),
+            created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
+            updated_at: parse_datetime_from_db(&row.get::<_, String>("updated_at")?, "updated_at")?,
         })
     }
 } 
