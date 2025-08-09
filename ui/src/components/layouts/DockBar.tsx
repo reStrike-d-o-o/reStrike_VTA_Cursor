@@ -16,6 +16,7 @@ import { usePssMatchStore } from '../../stores/pssMatchStore';
 import { useLiveDataStore } from '../../stores/liveDataStore';
 import { PssAthleteInfo, PssMatchConfig } from '../../types';
 import { useLiveDataEvents } from '../../hooks/useLiveDataEvents';
+import LiveOrchestratorModal from '../molecules/LiveOrchestratorModal';
 
 const DockBar: React.FC = () => {
   const { tauriAvailable } = useEnvironment();
@@ -40,6 +41,17 @@ const DockBar: React.FC = () => {
   const [showManualDialog, setShowManualDialog] = useState(false);
   const [showNewMatchDialog, setShowNewMatchDialog] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
+  const [liveToggle, setLiveToggle] = useState<'off'|'checking'|'on'>('off');
+  const [showLiveModal, setShowLiveModal] = useState(false);
+
+  useEffect(() => {
+    const handler = () => {
+      setLiveToggle('checking');
+      setShowLiveModal(true);
+    };
+    window.addEventListener('open-live-orchestrator', handler as EventListener);
+    return () => window.removeEventListener('open-live-orchestrator', handler as EventListener);
+  }, []);
 
   // Handle Advanced button click
   const handleAdvancedClick = async () => {
@@ -352,6 +364,13 @@ const DockBar: React.FC = () => {
         isOpen={showNewMatchDialog}
         onClose={() => setShowNewMatchDialog(false)}
         onStartMatch={handleNewMatchCreate}
+      />
+
+      {/* Live Orchestrator Modal */}
+      <LiveOrchestratorModal
+        isOpen={showLiveModal}
+        onClose={() => { setShowLiveModal(false); if (liveToggle==='checking') setLiveToggle('off'); }}
+        onStarted={() => { setShowLiveModal(false); setLiveToggle('on'); alert('All systems ready. Waiting for first match load.'); }}
       />
     </>
   );
