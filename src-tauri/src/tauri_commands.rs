@@ -3793,13 +3793,13 @@ pub async fn scan_and_populate_flags(app: State<'_, Arc<App>>) -> Result<serde_j
         }))
     };
     
-    // Path to the flags directory (relative to project root)
-    let flags_dir = std::path::Path::new("../ui/public/assets/flags");
+    // Path to the SVG flags directory (relative to project root)
+    let flags_dir = std::path::Path::new("../ui/public/assets/flags/svg");
     
     if !flags_dir.exists() {
         return Ok(serde_json::json!({
             "success": false,
-            "error": "Flags directory does not exist: ../ui/public/assets/flags"
+            "error": "Flags directory does not exist: ../ui/public/assets/flags/svg"
         }));
     }
     
@@ -3829,8 +3829,8 @@ pub async fn scan_and_populate_flags(app: State<'_, Arc<App>>) -> Result<serde_j
         
         let path = entry.path();
         
-        // Only process PNG files
-        if !path.is_file() || path.extension().and_then(|s| s.to_str()) != Some("png") {
+        // Only process SVG files
+        if !path.is_file() || path.extension().and_then(|s| s.to_str()) != Some("svg") {
             continue;
         }
         

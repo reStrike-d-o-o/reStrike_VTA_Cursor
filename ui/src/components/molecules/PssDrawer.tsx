@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Button from '../atoms/Button';
 import Toggle from '../atoms/Toggle';
 import Input from '../atoms/Input';
@@ -947,10 +947,7 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
     </div>
   );
 
-  // Flag Management Content
-  const FlagManagementContent = () => (
-    <FlagManagementPanel />
-  );
+  const flagPanel = useMemo(() => <FlagManagementPanel />, []);
 
   // Scoreboard Content
   const ScoreboardContent = () => (
@@ -1045,7 +1042,7 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
             id: 'flags',
             label: 'Flag Management',
             icon: <LottieIcon animationData={locationAnimation} size={32} />,
-            content: <FlagManagementContent />
+            content: flagPanel
           },
           {
             id: 'scoreboard',

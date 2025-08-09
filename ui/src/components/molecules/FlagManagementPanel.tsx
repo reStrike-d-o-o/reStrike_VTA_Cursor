@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Button from '../atoms/Button';
 import Input from '../atoms/Input';
 import Label from '../atoms/Label';
@@ -44,25 +44,36 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
   // Always use database in Tauri; fallback to assets in web
   const [flagMappingsCount, setFlagMappingsCount] = useState(0);
   const [pssCodeInput, setPssCodeInput] = useState('');
+  const loadingRef = useRef(false);
+  const initializedRef = useRef(false);
 
-  // Load flags on component mount
+  // Load once on mount
   useEffect(() => {
-    loadFlags();
-    loadFlagMappings();
+    let isMounted = true;
+    (async () => {
+      await loadFlags();
+      if (!isMounted) return;
+      await loadFlagMappings();
+    })();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Filter flags based on search term
   useEffect(() => {
-    if (!searchTerm.trim()) {
+    const term = searchTerm.trim().toLowerCase();
+    if (!term) {
       setFilteredFlags(flags);
-    } else {
-      const filtered = flags.filter(flag => 
-        flag.iocCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        flag.countryName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (flag.pssCode && flag.pssCode.toLowerCase().includes(searchTerm.toLowerCase()))
-      );
-      setFilteredFlags(filtered);
+      return;
     }
+    const filtered = flags.filter(flag => {
+      const ioc = flag.iocCode?.toLowerCase() || '';
+      const name = flag.countryName?.toLowerCase() || '';
+      const pss = flag.pssCode?.toLowerCase() || '';
+      return ioc.includes(term) || name.includes(term) || pss.includes(term);
+    });
+    setFilteredFlags(filtered);
   }, [searchTerm, flags]);
 
   // Update PSS code input when selected flag changes
@@ -86,33 +97,81 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
   };
 
   const loadFlags = async () => {
+    if (loadingRef.current) return;
+    loadingRef.current = true;
     setIsLoading(true);
     setError('');
     
     try {
       if (window.__TAURI__) {
         // Load flags from database
-        const result = await window.__TAURI__.core.invoke('get_flags_data');
-        
-        if (result.success) {
-          // Convert database flags to FlagInfo format
-                  const dbFlags: FlagInfo[] = result.flags.map((flag: any) => ({
-          iocCode: flag.ioc_code || flag.filename?.replace('.svg', '') || '',
-          countryName: flag.country_name || '',
-          flagPath: `/assets/flags/svg/${flag.filename}`,
-          hasCustomMapping: !!flag.ioc_code,
-          pssCode: flag.ioc_code,
-          id: flag.id,
-          filename: flag.filename,
-          recognition_status: flag.recognition_status,
-          recognition_confidence: flag.recognition_confidence,
-          upload_date: flag.upload_date,
-          file_size: flag.file_size
-        }));
-          
+        const result = await window.__TAURI__.core.invoke('get_flags_data') as any;
+
+        const handleResultToState = (res: any) => {
+          const dbFlags: FlagInfo[] = (res.flags || []).map((flag: any) => ({
+            iocCode: flag.ioc_code || flag.filename?.replace('.svg', '') || '',
+            countryName: flag.country_name || '',
+            flagPath: `/assets/flags/svg/${flag.filename}`,
+            hasCustomMapping: !!flag.ioc_code,
+            pssCode: flag.ioc_code,
+            id: flag.id,
+            filename: flag.filename,
+            recognition_status: flag.recognition_status,
+            recognition_confidence: flag.recognition_confidence,
+            upload_date: flag.upload_date,
+            file_size: flag.file_size
+          }));
           setFlags(dbFlags);
           setFilteredFlags(dbFlags);
-          setStatistics(result.statistics || { total: 0, recognized: 0, pending: 0, failed: 0 });
+          setStatistics(res.statistics || { total: dbFlags.length, recognized: 0, pending: 0, failed: 0 });
+          return dbFlags.length;
+        };
+
+        if (result.success) {
+          const initialCount = handleResultToState(result);
+          if (initialCount === 0) {
+            // Try to auto-populate from assets and retry
+            try {
+              const scan = await window.__TAURI__.core.invoke('scan_and_populate_flags') as any;
+              if (scan && scan.success) {
+                const afterScan = await window.__TAURI__.core.invoke('get_flags_data') as any;
+                if (afterScan.success) {
+                  const finalCount = handleResultToState(afterScan);
+                  if (finalCount === 0) {
+                    // Fallback to assets if still empty
+                    const flagList: FlagInfo[] = Object.keys(FLAG_CONFIGS).map(iocCode => {
+                      const config = FLAG_CONFIGS[iocCode];
+                      return {
+                        iocCode,
+                        countryName: config.altText.replace(' Flag', ''),
+                        flagPath: `/assets/flags/svg/${iocCode}.svg`,
+                        hasCustomMapping: true,
+                        pssCode: iocCode
+                      };
+                    });
+                    setFlags(flagList);
+                    setFilteredFlags(flagList);
+                    setStatistics({ total: flagList.length, recognized: flagList.length, pending: 0, failed: 0 });
+                  }
+                }
+              }
+            } catch (scanErr) {
+              // On scan error, fallback to assets
+              const flagList: FlagInfo[] = Object.keys(FLAG_CONFIGS).map(iocCode => {
+                const config = FLAG_CONFIGS[iocCode];
+                return {
+                  iocCode,
+                  countryName: config.altText.replace(' Flag', ''),
+                  flagPath: `/assets/flags/svg/${iocCode}.svg`,
+                  hasCustomMapping: true,
+                  pssCode: iocCode
+                };
+              });
+              setFlags(flagList);
+              setFilteredFlags(flagList);
+              setStatistics({ total: flagList.length, recognized: flagList.length, pending: 0, failed: 0 });
+            }
+          }
         } else {
           throw new Error(result.error || 'Failed to load flags from database');
         }
@@ -137,8 +196,17 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
       setStatistics({ total: 0, recognized: 0, pending: 0, failed: 0 });
     } finally {
       setIsLoading(false);
+      loadingRef.current = false;
     }
   };
+  
+  // Load once on mount
+  useEffect(() => {
+    if (initializedRef.current) return;
+    initializedRef.current = true;
+    loadFlags();
+    loadFlagMappings();
+  }, []);
 
   const scanAndPopulateFlags = async () => {
     if (!window.__TAURI__) {
@@ -349,11 +417,11 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
         </div>
 
         {/* Flag Grid */}
-        {isLoading ? (
-          <div className="text-sm text-gray-400">Loading flags...</div>
-        ) : filteredFlags.length === 0 ? (
+            {isLoading ? (
+            <div className="text-sm text-gray-400">Loading flags...</div>
+          ) : filteredFlags.length === 0 ? (
           <div className="text-sm text-gray-400">No flags found</div>
-        ) : (
+          ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto">
             {filteredFlags.map((flag) => (
               <div
@@ -563,4 +631,4 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
   );
 };
 
-export default FlagManagementPanel; 
+export default React.memo(FlagManagementPanel);
