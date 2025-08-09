@@ -103,18 +103,17 @@ const EventTableSection: React.FC = () => {
           <select aria-label="Select match" className="text-xs bg-gray-800 border border-gray-600 rounded px-2 py-1 text-gray-200">
             <option value="">Current</option>
           </select>
-          {/* Live toggle placed here per layout */}
+        </div>
+        <div className="flex items-center space-x-2">
           <button
             aria-label="Live toggle"
-            className={`px-2 py-1 text-xs rounded border ${'bg-red-700 border-red-600'} text-white`}
+            className={`px-2 py-1 text-xs rounded border bg-red-700 border-red-600 text-white`}
             onClick={(e)=>{
               e.preventDefault();
               const evt = new CustomEvent('open-live-orchestrator');
               window.dispatchEvent(evt);
             }}
           >LIVE</button>
-        </div>
-        <div className="flex items-center space-x-2">
           {isManualModeEnabled && (
             <span className="text-xs text-yellow-400 bg-yellow-900/20 px-2 py-1 rounded">
               Manual Mode
