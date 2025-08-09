@@ -12,7 +12,8 @@ pub mod path_generator;
 pub mod recording_events;
 
 use crate::types::AppResult;
-use std::sync::{Arc, Mutex, Once};
+use std::sync::{Arc, Mutex};
+use std::sync::OnceLock;
 
 // Re-export main types for easier access
 pub use client::ObsClient;
@@ -24,30 +25,22 @@ pub use recording_events::{
     AutomaticRecordingConfig, RecordingEvent
 };
 
-/// Global OBS manager instance using thread-safe singleton pattern
-static INSTANCE: Once = Once::new();
-static mut MANAGER: Option<Arc<Mutex<ObsManager>>> = None;
+/// Global OBS manager instance using thread-safe singleton pattern without unsafe
+static MANAGER: OnceLock<Arc<Mutex<ObsManager>>> = OnceLock::new();
 
 /// Initialize the OBS WebSocket plugin
 pub fn init() -> AppResult<()> {
-    INSTANCE.call_once(|| {
-        unsafe {
-            MANAGER = Some(Arc::new(Mutex::new(ObsManager::new())));
-        }
-    });
+    MANAGER.get_or_init(|| Arc::new(Mutex::new(ObsManager::new())));
     log::info!("✅ OBS WebSocket plugin initialized");
     Ok(())
 }
 
 /// Shutdown the OBS WebSocket plugin
 pub async fn shutdown() -> AppResult<()> {
-    if let Some(manager) = unsafe { MANAGER.as_ref() } {
+    if let Some(manager) = MANAGER.get() {
         if let Ok(manager) = manager.lock() {
             manager.shutdown().await?;
         }
-    }
-    unsafe {
-        MANAGER = None;
     }
     log::info!("✅ OBS WebSocket plugin shutdown");
     Ok(())
@@ -55,7 +48,5 @@ pub async fn shutdown() -> AppResult<()> {
 
 /// Get a reference to the OBS manager
 pub fn get_manager() -> Option<Arc<Mutex<ObsManager>>> {
-    unsafe {
-        MANAGER.as_ref().map(Arc::clone)
-    }
+    MANAGER.get().map(Arc::clone)
 }

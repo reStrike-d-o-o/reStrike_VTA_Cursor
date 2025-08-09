@@ -377,6 +377,17 @@ impl App {
 
     /// Trigger instant round replay: save replay buffer, resolve last file within configured wait, launch mpv
     pub async fn replay_round_now(&self, connection_name: Option<&str>) -> AppResult<()> {
+        // Simple debounce to avoid repeated triggers
+        static LAST_REPLAY_MS: std::sync::OnceLock<std::sync::Mutex<i64>> = std::sync::OnceLock::new();
+        let now_ms = chrono::Utc::now().timestamp_millis();
+        let m = LAST_REPLAY_MS.get_or_init(|| std::sync::Mutex::new(0));
+        {
+            let mut last = m.lock().unwrap();
+            if now_ms - *last < 2000 { // 2s
+                return Ok(());
+            }
+            *last = now_ms;
+        }
         // Read IVR settings
         use crate::database::operations::UiSettingsOperations as UIOps;
         let conn = self.database_plugin().get_connection().await?;
@@ -405,8 +416,11 @@ impl App {
             elapsed += sleep_ms;
         }
 
-        // Build full path using Videos root as fallback directory
-        let directory = crate::plugins::obs_obws::PathGeneratorConfig::detect_windows_videos_folder();
+        // Build full path using OBS recording directory if available, else Videos root
+        let directory = match self.obs_obws_plugin().get_record_directory(connection_name).await {
+            Ok(dir) if !dir.is_empty() => std::path::PathBuf::from(dir),
+            _ => crate::plugins::obs_obws::PathGeneratorConfig::detect_windows_videos_folder(),
+        };
         let file_path = if let Some(name) = filename { directory.join(name) } else { directory };
 
         // Launch mpv
@@ -561,7 +575,7 @@ impl App {
                                     let enabled = UIOps::get_ui_setting(&*conn, "ivr.replay.auto_on_challenge")
                                         .ok().flatten().map(|s| s == "true").unwrap_or(false);
                                     if enabled {
-                                        if let Err(e) = app.replay_round_now(Some("OBS_REC")).await {
+                        if let Err(e) = app.replay_round_now(Some("OBS_REC")).await {
                                             log::warn!("⚠️ Auto IVR replay failed: {}", e);
                                         } else {
                                             log::info!("🎞️ Auto IVR replay triggered by challenge event");

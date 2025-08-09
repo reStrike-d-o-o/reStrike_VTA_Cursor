@@ -378,6 +378,28 @@ impl ObsClient {
         Ok(())
     }
 
+    /// Get recording directory from OBS profile
+    pub async fn get_record_directory(&self) -> AppResult<String> {
+        let client = self.get_client()?;
+        let param = client
+            .profiles()
+            .parameter("Output", "RecFilePath")
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to get record directory: {}", e)))?;
+        Ok(param.value.unwrap_or_default())
+    }
+
+    /// Get filename formatting from OBS profile
+    pub async fn get_filename_formatting(&self) -> AppResult<String> {
+        let client = self.get_client()?;
+        let param = client
+            .profiles()
+            .parameter("Output", "FilenameFormatting")
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to get filename formatting: {}", e)))?;
+        Ok(param.value.unwrap_or_default())
+    }
+
     /// Get comprehensive OBS status
     pub async fn get_status(&self) -> AppResult<ObsStatus> {
         let recording_status = self.get_recording_status().await.unwrap_or(ObsRecordingStatus::Error("Failed to get recording status".to_string()));
