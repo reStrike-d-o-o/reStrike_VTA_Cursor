@@ -11,12 +11,12 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 
 const baseStyles = 'rounded-lg transition-all duration-300 font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 relative group';
 const variantStyles: Record<ButtonVariant, string> = {
-  primary: 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30',
-  secondary: 'bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white shadow-lg shadow-gray-500/25 hover:shadow-xl hover:shadow-gray-500/30',
-  danger: 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg shadow-red-500/25 hover:shadow-xl hover:shadow-red-500/30',
-  success: 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white shadow-lg shadow-green-500/25 hover:shadow-xl hover:shadow-green-500/30',
-  ghost: 'bg-transparent hover:bg-gray-700/50 text-gray-300 hover:text-white border border-gray-600/30 hover:border-gray-500/50',
-  outline: 'bg-transparent border border-gray-500/50 hover:bg-gray-700/30 text-gray-300 hover:text-white',
+  primary: 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md shadow-blue-500/15 hover:shadow-lg hover:shadow-blue-500/20',
+  secondary: 'bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white shadow-md shadow-gray-500/15 hover:shadow-lg hover:shadow-gray-500/20',
+  danger: 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-md shadow-red-500/15 hover:shadow-lg hover:shadow-red-500/20',
+  success: 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white shadow-md shadow-green-500/15 hover:shadow-lg hover:shadow-green-500/20',
+  ghost: 'bg-transparent hover:bg-gray-700/30 text-gray-300 hover:text-white border border-gray-600/30 hover:border-gray-500/40 shadow-none',
+  outline: 'bg-transparent border border-gray-500/40 hover:bg-gray-700/20 text-gray-300 hover:text-white shadow-none',
 };
 const sizeStyles: Record<ButtonSize, string> = {
   sm: 'px-3 py-1.5 text-sm',

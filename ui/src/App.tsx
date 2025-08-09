@@ -21,6 +21,7 @@ const App: React.FC = () => {
   
   const paused = useTriggersStore((s) => s.paused);
   const theme = useSettingsStore((s)=>s.theme);
+  const sharp = useSettingsStore((s)=>s.sharp);
   // Initialize PSS event listener for real-time events
   const { setupEventListener, fetchPendingEvents } = usePssEvents();
   
@@ -63,6 +64,10 @@ const App: React.FC = () => {
   React.useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
+
+  React.useEffect(() => {
+    document.documentElement.setAttribute('data-sharp', sharp ? 'true' : 'false');
+  }, [sharp]);
 
   // Apply dock width CSS variable (avoid inline width styling on elements)
   React.useEffect(() => {
