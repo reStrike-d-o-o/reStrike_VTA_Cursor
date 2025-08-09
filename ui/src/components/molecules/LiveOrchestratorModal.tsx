@@ -29,6 +29,18 @@ const LiveOrchestratorModal: React.FC<LiveOrchestratorModalProps> = ({ isOpen, o
     }
   };
 
+  const checkDiskSpace = async (dir: string) => {
+    try {
+      const res = await invoke<any>('fs_get_disk_free_space', { directory: dir });
+      // Expect res = { success, freeBytes, totalBytes }
+      if (res?.success && typeof res.freeBytes === 'number' && typeof res.totalBytes === 'number') {
+        const pct = (res.freeBytes / res.totalBytes) * 100;
+        return pct > 10 ? 'ok' : 'warn';
+      }
+    } catch {}
+    return 'warn';
+  };
+
   const runChecks = async () => {
     setRunningChecks(true);
     setMessage('Running system checks...');
@@ -70,8 +82,10 @@ const LiveOrchestratorModal: React.FC<LiveOrchestratorModalProps> = ({ isOpen, o
 
       // Recording path configured (basic check via settings)
       try {
-        const settings = await invoke<any>('get_settings');
-        const path = settings?.video?.recording?.folder || settings?.recording?.path;
+        const autoCfg = await obsObwsCommands.getAutomaticRecordingConfig();
+        const connectionName = (autoCfg as any)?.data?.obs_connection_name || undefined;
+        const recCfg = connectionName ? await obsObwsCommands.getRecordingConfig(connectionName) : null;
+        const path = (recCfg as any)?.data?.recording_root_path;
         setRecordingPathStatus(path ? 'ok' : 'warn');
       } catch {
         setRecordingPathStatus('warn');
@@ -84,6 +98,18 @@ const LiveOrchestratorModal: React.FC<LiveOrchestratorModalProps> = ({ isOpen, o
       } catch {
         setObsStatus('warn');
       }
+
+      // Disk space (best effort) on integration recording root
+      try {
+        const autoCfg = await obsObwsCommands.getAutomaticRecordingConfig();
+        const connectionName = (autoCfg as any)?.data?.obs_connection_name || undefined;
+        const recCfg = connectionName ? await obsObwsCommands.getRecordingConfig(connectionName) : null;
+        const path = (recCfg as any)?.data?.recording_root_path as string | undefined;
+        if (path) {
+          const disk = await checkDiskSpace(path);
+          if (disk === 'warn') setRecordingPathStatus('warn');
+        }
+      } catch {}
 
       setMessage('Checks completed.');
     } finally {
@@ -138,9 +164,91 @@ const LiveOrchestratorModal: React.FC<LiveOrchestratorModalProps> = ({ isOpen, o
   const startAll = async () => {
     setMessage('Starting systems...');
     await activateAll();
+
+    try {
+      // Read integration settings (recording config) - Integration tab is authoritative
+      const autoCfg = await obsObwsCommands.getAutomaticRecordingConfig();
+      const connectionName = (autoCfg as any)?.data?.obs_connection_name || 'OBS_REC';
+      const recCfg = await obsObwsCommands.getRecordingConfig(connectionName);
+      const root = (recCfg as any)?.data?.recording_root_path || 'C:/Users/Public/Videos';
+      const folderPattern = (recCfg as any)?.data?.folder_pattern || '{tournament}/{tournamentDay}';
+      const filenameTemplate = (recCfg as any)?.data?.filename_template || '{matchNumber} - {player1} {player1Flag} vs {player2} {player2Flag}';
+
+      // Resolve tournament/day for today
+      let tournamentName = 'Tournament';
+      let tournamentDay = 'Day 1';
+      try {
+        const active = await invoke<any>('tournament_get_active');
+        if (active?.success && active.tournament) {
+          tournamentName = active.tournament.name || tournamentName;
+          const daysRes = await invoke<any>('tournament_get_days', { tournamentId: active.tournament.id });
+          if (daysRes?.success) {
+            const today = new Date();
+            const matchDay = (daysRes.days as any[]).find(d => {
+              const dDate = new Date(d.date);
+              return dDate.getFullYear() === today.getFullYear() && dDate.getMonth() === today.getMonth() && dDate.getDate() === today.getDate();
+            });
+            if (matchDay) tournamentDay = `Day ${matchDay.day_number}`;
+          }
+        }
+      } catch {}
+
+      // Expand normalized placeholders (for folder only tournament/tournamentDay here)
+      const expandedDir = `${root.replace(/\\/g,'/')}/${folderPattern
+        .replace('{tournament}', tournamentName)
+        .replace('{tournamentDay}', tournamentDay)}`.replace(/\/+/g,'/');
+
+      // Ensure directory exists on disk
+      await invoke('obs_obws_create_recording_folders', {
+        recordingPath: expandedDir,
+        filenameTemplate,
+        tournamentName,
+        tournamentDay,
+        matchNumber: '',
+      });
+
+      // Push directory and filename template to OBS (overwrite OBS profile)
+      await obsObwsCommands.sendConfigToObs(connectionName, expandedDir, filenameTemplate);
+    } catch (e) {
+      console.warn('OBS path/template push failed:', e);
+    }
+
     setMessage('All systems ready.');
     onStarted();
   };
+
+  // End (green -> click) flow
+  const endDayAndShutdown = async () => {
+    if (!confirm('Do you really want to end the active day and shutdown subsystems?')) return;
+    setMessage('Ending day and shutting down subsystems...');
+    try {
+      // End active day (if present)
+      try {
+        const active = await invoke<any>('tournament_get_active');
+        if (active?.success && active.tournament) {
+          const daysRes = await invoke<any>('tournament_get_days', { tournamentId: active.tournament.id });
+          if (daysRes?.success) {
+            const running = (daysRes.days as any[]).find((d:any) => d.status === 'active');
+            if (running) await invoke('tournament_end_day', { tournamentDayId: running.id });
+          }
+        }
+      } catch (e) { console.warn('End day skipped:', e); }
+
+      // Stop UDP server
+      try { await invoke('stop_udp_server'); } catch {}
+
+      // Stop OBS recording and streaming (if streaming connection later provided)
+      try { await obsObwsCommands.stopRecording(); } catch {}
+      try { await obsObwsCommands.stopStreaming(); } catch {}
+
+      setMessage('Day ended. Systems stopped. Ready for next day setup.');
+    } finally {
+      // Keep modal open to allow next steps; external toggle handler will change UI state
+    }
+  };
+
+  // End day flow when LIVE is green: called externally by toggle handler if needed
+  // We keep implementation hooks ready for future wiring (stop UDP/OBS, end day)
 
   if (!isOpen) return null;
 
@@ -173,10 +281,14 @@ const LiveOrchestratorModal: React.FC<LiveOrchestratorModalProps> = ({ isOpen, o
 
         {message && <div className="mt-4 text-sm text-gray-300">{message}</div>}
 
-        <div className="flex items-center justify-end gap-2 mt-6">
-          <Button size="sm" className="bg-gray-600 hover:bg-gray-700" onClick={runChecks} disabled={runningChecks}>Re-check</Button>
-          <Button size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={activateAll} disabled={runningChecks}>Activate All</Button>
-          <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={startAll} disabled={runningChecks}>Start</Button>
+        <div className="flex items-center justify-between gap-2 mt-6">
+          <div className="text-sm text-gray-400">Use Integration tab patterns for path and filename. Folders will be created automatically.</div>
+          <div className="flex items-center gap-2">
+            <Button size="sm" className="bg-gray-600 hover:bg-gray-700" onClick={runChecks} disabled={runningChecks}>Re-check</Button>
+            <Button size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={activateAll} disabled={runningChecks}>Activate All</Button>
+            <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={startAll} disabled={runningChecks}>Start</Button>
+            <Button size="sm" className="bg-red-600 hover:bg-red-700" onClick={endDayAndShutdown} disabled={runningChecks}>End Day</Button>
+          </div>
         </div>
       </div>
     </div>
