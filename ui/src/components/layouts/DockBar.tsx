@@ -233,38 +233,7 @@ const DockBar: React.FC = () => {
                   </div>
                 </div>
                 
-                {/* Manual Mode Buttons - Only show when manual mode is enabled */}
-                {isManualModeEnabled && (
-                  <div className="flex flex-col items-center space-y-2">
-                    {/* New Match Button */}
-                    <div className="relative group">
-                      <div className="absolute inset-0 bg-green-500/20 rounded-lg blur-sm group-hover:bg-green-500/30 transition-all duration-300"></div>
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={handleNewMatchClick}
-                        className="w-32 relative z-10 bg-green-600 hover:bg-green-700"
-                      >
-                        New Match
-                      </Button>
-                    </div>
-                    
-                    {/* Restore Button */}
-                    <div className="relative group">
-                      <div className="absolute inset-0 bg-red-500/20 rounded-lg blur-sm group-hover:bg-red-500/30 transition-all duration-300"></div>
-                      <Button
-                        variant="danger"
-                        size="sm"
-                        onClick={handleRestoreClick}
-                        className="w-32 relative z-10"
-                        disabled={isRestoring}
-                      >
-                        {isRestoring ? 'Restoring...' : 'Restore'}
-                      </Button>
-                    </div>
-                  </div>
-                )}
-                
+                {/* Manual Mode Toggle and Advanced Button Stack */}
                 {/* Manual Mode Toggle and Advanced Button Stack */}
                 <div className="flex flex-col items-center space-y-2">
                   {/* Manual Mode Toggle */}
@@ -290,6 +259,40 @@ const DockBar: React.FC = () => {
                   </div>
                 </div>
               </div>
+
+              {/* Visual separation and Manual Mode action row */}
+              {isManualModeEnabled && (
+                <>
+                  <div className="flex-shrink-0 border-t border-gray-600/50 bg-gradient-to-r from-transparent via-gray-600/30 to-transparent h-px" />
+                  <div className="flex-shrink-0 flex flex-row items-center justify-center gap-4 p-2">
+                    {/* New Match Button */}
+                    <div className="relative group">
+                      <div className="absolute inset-0 bg-green-500/20 rounded-lg blur-sm group-hover:bg-green-500/30 transition-all duration-300"></div>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={handleNewMatchClick}
+                        className="w-32 relative z-10 bg-green-600 hover:bg-green-700"
+                      >
+                        New Match
+                      </Button>
+                    </div>
+                    {/* Restore Button */}
+                    <div className="relative group">
+                      <div className="absolute inset-0 bg-red-500/20 rounded-lg blur-sm group-hover:bg-red-500/30 transition-all duration-300"></div>
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        onClick={handleRestoreClick}
+                        className="w-32 relative z-10"
+                        disabled={isRestoring}
+                      >
+                        {isRestoring ? 'Restoring...' : 'Restore'}
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
             
             {/* Copyright Section with Logo */}
