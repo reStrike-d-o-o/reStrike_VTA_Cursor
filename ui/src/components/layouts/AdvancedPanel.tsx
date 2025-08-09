@@ -87,7 +87,7 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
           {DRAWERS.map(d => (
             <button
               key={d.key}
-              className={`flex flex-col items-center justify-center w-20 h-20 transition-all duration-300 rounded-lg group relative ${
+              className={`flex flex-col items-center justify-center w-20 h-20 transition-all duration-300 group relative ${
                 activeDrawer === d.key 
                   ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/25' 
                   : 'text-gray-400 hover:bg-gray-700/50 hover:text-blue-300 hover:shadow-md'
@@ -95,7 +95,7 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
               onClick={() => setActiveDrawer(d.key)}
               aria-label={d.label}
             >
-              <div className={`absolute inset-0 rounded-lg transition-all duration-300 ${
+              <div className={`absolute inset-0 transition-all duration-300 ${
                 activeDrawer === d.key 
                   ? 'bg-blue-500/20 blur-sm' 
                   : 'bg-transparent group-hover:bg-blue-500/10 blur-sm'

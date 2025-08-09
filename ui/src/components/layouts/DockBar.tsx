@@ -229,8 +229,7 @@ const DockBar: React.FC = () => {
               <div className="flex-shrink-0 flex flex-row items-center justify-center space-x-4 p-2">
                 {/* Replay Button */}
                 <div className="flex flex-col items-center space-y-2">
-                  <div className="relative group">
-                    <div className="absolute inset-0 bg-blue-500/20 rounded-full blur-sm group-hover:bg-blue-500/30 transition-all duration-300"></div>
+                  <div className="relative">
                     <ReplayButton onClick={async () => {
                       try {
                         const res = await (await import('../../utils/tauriCommandsObws')).obsObwsCommands.ivrRoundReplayNow('OBS_REC');

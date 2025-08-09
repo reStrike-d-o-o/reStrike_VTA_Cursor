@@ -59,9 +59,13 @@ body {
 
 /* Replay button styles to keep its special glow without inline styles */
 .replay-button {
-  box-shadow: 0 0 30px rgba(220, 38, 38, 0.4), 0 0 60px rgba(220, 38, 38, 0.2), 0 0 0 4px rgba(34, 34, 34, 0.8);
+  /* Remove external glow/shadow; keep subtle gradient */
+  box-shadow: none;
   background: radial-gradient(circle at 30% 30%, rgba(239, 68, 68, 0.9), rgba(220, 38, 38, 0.8));
 }
+
+/* Square variants */
+.square { border-radius: 0 !important; }
 
 /* Optional: enforce sharp corners across common controls when enabled */
 [data-sharp='true'] button,
@@ -81,3 +85,16 @@ body {
 /* Subtle accent borders for IVR and AI drawers */
 .accent-ivr { border-left: 4px solid #10b981; /* emerald-500 */ }
 .accent-ai { border-left: 4px solid #a855f7; /* purple-500 */ }
+
+/* Force square corners app-wide when sharp mode is enabled */
+[data-sharp='true'] * {
+  border-radius: 0 !important;
+}
+
+/* Keep Replay button rounded even in sharp mode (strongest rule, last) */
+[data-sharp='true'] button.replay-button,
+[data-sharp='true'] button.replay-button *,
+[data-sharp='true'] .replay-button,
+[data-sharp='true'] .replay-button * {
+  border-radius: 9999px !important;
+}

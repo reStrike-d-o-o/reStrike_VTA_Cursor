@@ -8,7 +8,7 @@ const ReplayButton: React.FC<ReplayButtonProps> = ({ className = '', children, .
   return (
     <button
       type="button"
-      className={`w-32 h-32 rounded-full bg-gradient-to-br from-red-600 to-red-700 flex items-center justify-center text-xl font-bold text-white border-4 border-red-500/50 mb-4 shadow-2xl hover:shadow-red-500/40 hover:scale-105 focus:outline-none transition-all duration-300 animate-pulse relative group replay-button ${className}`}
+      className={`w-32 h-32 rounded-full bg-gradient-to-br from-red-600 to-red-700 flex items-center justify-center text-xl font-bold text-white border-4 border-red-500/50 mb-4 hover:scale-105 focus:outline-none transition-all duration-300 animate-pulse relative group replay-button ${className}`}
       {...props}
     >
       {/* Inner glow effect */}

@@ -1901,86 +1901,53 @@ pub async fn set_live_data_streaming(
     
     if enabled {
         log::info!("Live data streaming enabled for subsystem: {}", subsystem);
-        
-        // Start streaming by emitting a test event
-        // In a real implementation, this would start a background task that continuously emits events
-        if let Err(e) = app_handle.emit("live_data", serde_json::json!({
+        // Emit initial message
+        let _ = app_handle.emit("live_data", serde_json::json!({
             "subsystem": subsystem,
             "data": format!("[{}] Live data streaming started for {}", chrono::Utc::now().format("%H:%M:%S"), subsystem),
             "timestamp": chrono::Utc::now().to_rfc3339()
-        })) {
-            log::error!("Failed to emit live data event: {}", e);
-        }
-        
-        // For OBS subsystem, we can start monitoring OBS events
+        }));
+
+        // Real routing per subsystem
         if subsystem == "obs" {
-            // Start monitoring OBS events and forward them to frontend
-            let app_handle_clone = app_handle.clone();
-            let subsystem_clone = subsystem.clone();
-            let log_manager = app.log_manager().clone();
-            
-            // Spawn a background task to monitor OBS events
+            // Forward OBS recent events periodically
+            let app_arc = app.inner().clone();
+            let window = app_handle.clone();
             tokio::spawn(async move {
                 loop {
-                    // Simulate OBS events for now
-                    // In a real implementation, this would listen to actual OBS WebSocket events
+                    match app_arc.obs_plugin().get_recent_events().await {
+                        Ok(events) => {
+                            for ev in events {
+                                let _ = window.emit("live_data", serde_json::json!({
+                                    "subsystem": "obs",
+                                    "data": format!("OBS {}: {}", ev.event_type, ev.data),
+                                    "timestamp": ev.timestamp.to_rfc3339()
+                                }));
+                            }
+                        }
+                        Err(_) => {}
+                    }
                     tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
-                    
-                    let event_data = format!("[{}] OBS Event: Scene changed to 'Main Scene'", chrono::Utc::now().format("%H:%M:%S"));
-                    
-                    // Log to OBS subsystem file
-                    {
-                        let log_manager_guard = log_manager.lock().await;
-                        if let Err(e) = log_manager_guard.log(&subsystem_clone, "INFO", &event_data) {
-                            log::error!("Failed to log OBS event: {}", e);
-                        }
-                    }
-                    
-                    if let Err(e) = app_handle_clone.emit("live_data", serde_json::json!({
-                        "subsystem": subsystem_clone,
-                        "data": event_data,
-                        "timestamp": chrono::Utc::now().to_rfc3339()
-                    })) {
-                        log::error!("Failed to emit OBS live data event: {}", e);
-                        break;
-                    }
                 }
             });
-        }
-        
-        // For PSS subsystem, we can start monitoring PSS events
-        if subsystem == "pss" {
-            let app_handle_clone = app_handle.clone();
-            let subsystem_clone = subsystem.clone();
-            let log_manager = app.log_manager().clone();
-            
+        } else if subsystem == "pss" || subsystem == "udp" {
+            // Forward UDP recent events periodically (covers PSS over UDP)
+            let app_arc = app.inner().clone();
+            let window = app_handle.clone();
             tokio::spawn(async move {
                 loop {
-                    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-                    
-                    let event_data = format!("[{}] PSS Event: Match data received", chrono::Utc::now().format("%H:%M:%S"));
-                    
-                    // Log to PSS subsystem file
-                    {
-                        let log_manager_guard = log_manager.lock().await;
-                        if let Err(e) = log_manager_guard.log(&subsystem_clone, "INFO", &event_data) {
-                            log::error!("Failed to log PSS event: {}", e);
-                        }
+                    let events = app_arc.udp_plugin().get_recent_events();
+                    for ev in events {
+                        let _ = window.emit("live_data", serde_json::json!({
+                            "subsystem": "pss",
+                            "data": ev, // assuming string, adjust if structured
+                            "timestamp": chrono::Utc::now().to_rfc3339()
+                        }));
                     }
-                    
-                    if let Err(e) = app_handle_clone.emit("live_data", serde_json::json!({
-                        "subsystem": subsystem_clone,
-                        "data": event_data,
-                        "timestamp": chrono::Utc::now().to_rfc3339()
-                    })) {
-                        log::error!("Failed to emit PSS live data event: {}", e);
-                        break;
-                    }
+                    tokio::time::sleep(tokio::time::Duration::from_millis(800)).await;
                 }
             });
         }
-        
-        // For UDP subsystem we rely on real-time push from core::App handle_udp_events; no simulated loop here.
         
     } else {
         log::info!("Live data streaming disabled for subsystem: {}", subsystem);
