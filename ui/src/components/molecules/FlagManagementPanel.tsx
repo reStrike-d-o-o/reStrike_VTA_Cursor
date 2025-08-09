@@ -426,7 +426,7 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
             </div>
 
             {/* Database Information */}
-            {useDatabase && selectedFlag.id && (
+            {selectedFlag.id && (
               <div className="border-t border-gray-600/30 pt-4">
                 <h4 className="text-sm font-medium text-gray-300 mb-3">Database Information</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
