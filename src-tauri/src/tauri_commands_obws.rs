@@ -860,6 +860,8 @@ pub async fn obs_obws_save_recording_config(
 ) -> Result<ObsObwsConnectionResponse, TauriError> {
     log::info!("OBS obws save recording config called");
     
+    // Assumes migrations were run via Database → Run Database Migrations
+
     // Parse the config from JSON
     match serde_json::from_value::<crate::database::models::ObsRecordingConfig>(config) {
         Ok(recording_config) => {
