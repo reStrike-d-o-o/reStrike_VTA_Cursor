@@ -122,7 +122,7 @@ export const GoogleDriveBackupRestore: React.FC = () => {
             content: (
               <div className="space-y-4">
                 {/* Local Backup Controls */}
-                <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg p-6 border border-gray-600/30 shadow-lg">
+                <div className="theme-card p-6 shadow-lg">
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="text-lg font-semibold text-blue-300">Local Backup</h3>
                     <Button
@@ -150,7 +150,7 @@ export const GoogleDriveBackupRestore: React.FC = () => {
                   {/* Backup Files List */}
                   <div className="max-h-64 overflow-y-auto border border-gray-700 rounded">
                     <table className="min-w-full text-left text-sm text-gray-200">
-                      <thead className="bg-[#101820] sticky top-0 z-10">
+                      <thead className="theme-surface-2 sticky top-0 z-10">
                         <tr>
                           <th className="px-3 py-2 font-semibold">File Name</th>
                           <th className="px-3 py-2 font-semibold">Size</th>

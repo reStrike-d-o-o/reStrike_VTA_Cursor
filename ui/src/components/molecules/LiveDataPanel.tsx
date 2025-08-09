@@ -206,7 +206,7 @@ const LiveDataPanel: React.FC = () => {
 
   if (isLoadingSettings) {
     return (
-      <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg p-4 border border-gray-600/30 shadow-lg">
+      <div className="theme-card p-4 shadow-lg">
         <h3 className="text-lg font-semibold mb-2 text-blue-300">LIVE DATA</h3>
         <div className="text-sm text-gray-400">Loading settings...</div>
       </div>
@@ -214,7 +214,7 @@ const LiveDataPanel: React.FC = () => {
   }
 
   return (
-    <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg p-4 border border-gray-600/30 shadow-lg">
+    <div className="theme-card p-4 shadow-lg">
       <h3 className="text-lg font-semibold mb-2 text-blue-300">LIVE DATA</h3>
       
 
@@ -229,7 +229,7 @@ const LiveDataPanel: React.FC = () => {
         />
         <span className="text-gray-200 font-medium" id="live-type-label">Type:</span>
         <select
-          className="bg-[#101820] border border-gray-700 rounded px-2 py-1 text-gray-100"
+        className="theme-surface-2 rounded px-2 py-1"
           value="pss"
           onChange={e => handleTypeChange(e.target.value)}
           aria-labelledby="live-type-label"
@@ -265,11 +265,7 @@ const LiveDataPanel: React.FC = () => {
       {/* Live Data Display */}
       <div 
         ref={liveDataRef}
-        className="flex-1 bg-[#0a0f14] border border-gray-700 rounded p-3 overflow-y-auto text-sm font-mono"
-        style={{ 
-          maxHeight: '400px',
-          minHeight: '200px'
-        }}
+        className="flex-1 theme-surface-2 rounded p-3 overflow-y-auto text-sm font-mono max-h-[400px] min-h-[200px]"
       >
         {events.length === 0 ? (
           <div className="text-gray-500 text-center py-8">

@@ -175,7 +175,7 @@ const LogArchiveManager: React.FC = () => {
   };
 
   return (
-    <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg p-6 border border-gray-600/30 shadow-lg">
+  <div className="theme-card p-6 shadow-lg">
       <h3 className="text-lg font-semibold mb-4 text-gray-100 flex items-center">
         <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />

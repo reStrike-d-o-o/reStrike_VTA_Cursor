@@ -138,13 +138,13 @@ const LogDownloadList: React.FC = () => {
   };
 
   return (
-    <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg p-4 border border-gray-600/30 shadow-lg">
+  <div className="theme-card p-4 shadow-lg">
       <h3 className="text-lg font-semibold mb-2 text-blue-300">Download Logs</h3>
       <div className="flex flex-row items-start gap-6">
         <div className="flex flex-col min-w-[120px]">
           <span className="text-gray-200 font-medium mb-1" id="log-type-label">Type:</span>
           <select
-            className="bg-[#101820] border border-gray-700 rounded px-2 py-1 text-gray-100"
+            className="theme-surface-2 rounded px-2 py-1"
             value={selectedType}
             onChange={e => setSelectedType(e.target.value as LogType)}
             aria-labelledby="log-type-label"
@@ -171,7 +171,7 @@ const LogDownloadList: React.FC = () => {
           )}
           <div className="max-h-64 overflow-y-auto border border-gray-700 rounded">
             <table className="min-w-full text-left text-sm text-gray-200">
-            <thead className="bg-[#101820] sticky top-0 z-10">
+            <thead className="theme-surface-2 sticky top-0 z-10">
               <tr>
                 <th className="px-3 py-2 font-semibold">File Name</th>
                 <th className="px-3 py-2 font-semibold">Size</th>
