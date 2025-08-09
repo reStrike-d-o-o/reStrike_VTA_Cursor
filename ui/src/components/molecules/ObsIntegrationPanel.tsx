@@ -480,7 +480,7 @@ const ObsIntegrationPanel: React.FC = () => {
   return (
     <div className="space-y-4">
       {/* OBS Recording Automatisation Section */}
-      <div className="p-6 bg-gradient-to-br from-gray-900/20 to-gray-800/30 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
+      <div className="p-6 theme-card shadow-lg">
         <h3 className="text-lg font-semibold mb-4 text-gray-100">🎬 OBS Recording Automatisation</h3>
         
         {/* Connection Selection, Recording Path, and Recording Format in 3 columns */}
@@ -746,7 +746,7 @@ const ObsIntegrationPanel: React.FC = () => {
       </div>
 
       {/* Path Generation Test */}
-      <div className="p-6 bg-gradient-to-br from-green-900/20 to-green-800/30 backdrop-blur-sm rounded-lg border border-green-600/30 shadow-lg">
+      <div className="p-6 theme-card shadow-lg">
         <h3 className="text-lg font-semibold mb-4 text-gray-100">Path Generation Test</h3>
         
         {/* Test Data Input */}

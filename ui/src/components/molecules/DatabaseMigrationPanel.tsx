@@ -193,7 +193,7 @@ const DatabaseMigrationPanel: React.FC = () => {
 
       {/* Migration Tab */}
       {activeTab === 'migration' && (
-        <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg p-4 border border-gray-600/30 shadow-lg">
+        <div className="theme-card rounded-lg p-4 shadow-lg">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold text-blue-300">Migration Status</h3>
             <Button
@@ -264,7 +264,7 @@ const DatabaseMigrationPanel: React.FC = () => {
 
       {/* Status Tab */}
       {activeTab === 'status' && (
-        <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg p-4 border border-gray-600/30 shadow-lg">
+        <div className="theme-card rounded-lg p-4 shadow-lg">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold text-blue-300">Database Status</h3>
             <Button
@@ -302,7 +302,7 @@ const DatabaseMigrationPanel: React.FC = () => {
 
       {/* Preview Tab */}
       {activeTab === 'preview' && (
-        <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg p-4 border border-gray-600/30 shadow-lg">
+        <div className="theme-card rounded-lg p-4 shadow-lg">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold text-blue-300">Data Preview</h3>
             <div className="flex gap-2">

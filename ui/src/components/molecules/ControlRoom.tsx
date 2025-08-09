@@ -645,7 +645,7 @@ const ControlRoom: React.FC = () => {
     return (
       <div className="space-y-6">
         {/* Authentication Section */}
-        <div className="p-6 bg-gradient-to-br from-indigo-900/80 to-purple-900/90 backdrop-blur-sm rounded-lg border border-indigo-600/30 shadow-lg">
+        <div className="p-6 theme-card shadow-lg">
           <h3 className="text-lg font-semibold mb-4 text-gray-100 flex items-center">
             🔐 Control Room Access
           </h3>
@@ -680,7 +680,7 @@ const ControlRoom: React.FC = () => {
         </div>
 
         {/* Information Section */}
-        <div className="p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
+        <div className="p-6 theme-card shadow-lg">
           <h3 className="text-lg font-semibold mb-3 text-gray-100">About Control Room</h3>
           <div className="space-y-2 text-sm text-gray-300">
             <p>• <strong>Centralized OBS Management:</strong> Control multiple OBS instances from one interface</p>
@@ -696,7 +696,7 @@ const ControlRoom: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header Section */}
-      <div className="p-6 bg-gradient-to-br from-indigo-900/80 to-purple-900/90 backdrop-blur-sm rounded-lg border border-indigo-600/30 shadow-lg">
+      <div className="p-6 theme-card shadow-lg">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-lg font-semibold text-gray-100 flex items-center">
@@ -717,7 +717,7 @@ const ControlRoom: React.FC = () => {
       </div>
 
       {/* Connection Management */}
-      <div className="p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
+      <div className="p-6 theme-card shadow-lg">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-100">OBS Connections</h3>
           <div className="flex space-x-2">
@@ -748,7 +748,7 @@ const ControlRoom: React.FC = () => {
 
         {/* Add Connection Form */}
         {state.showAddConnection && (
-          <div className="mb-6 p-4 bg-gray-700/50 rounded-lg border border-gray-600/30">
+          <div className="mb-6 p-4 theme-surface-2 rounded-lg">
             <h4 className="font-medium text-gray-200 mb-3">Add New OBS Connection</h4>
             <div className="grid grid-cols-2 gap-4">
               <Input
@@ -817,7 +817,7 @@ const ControlRoom: React.FC = () => {
 
         {/* Edit Connection Form */}
         {state.showEditConnection && (
-          <div className="mb-6 p-4 bg-gray-700/50 rounded-lg border border-gray-600/30">
+          <div className="mb-6 p-4 theme-surface-2 rounded-lg">
             <h4 className="font-medium text-gray-200 mb-3">Edit OBS Connection: {state.editingConnection}</h4>
             <div className="grid grid-cols-2 gap-4">
               <Input
@@ -954,7 +954,7 @@ const ControlRoom: React.FC = () => {
       </div>
 
       {/* Bulk Operations - Two Column Layout */}
-      <div className="p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
+      <div className="p-6 theme-card shadow-lg">
         <h3 className="text-lg font-semibold mb-4 text-gray-100">Bulk Operations</h3>
         
         <div className="grid grid-cols-2 gap-6">

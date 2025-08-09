@@ -550,7 +550,7 @@ const TournamentManagementPanel: React.FC = () => {
       )}
 
       {/* Tournament List */}
-      <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg p-6">
+      <div className="theme-card p-6">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold text-gray-100">Tournaments</h3>
           <Button
@@ -656,7 +656,7 @@ const TournamentManagementPanel: React.FC = () => {
 
       {/* Tournament Days */}
       {selectedTournament && (
-        <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg p-6">
+        <div className="theme-card p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-gray-100">Tournament Days - {selectedTournament.name}</h3>
             <div className="flex gap-2">
@@ -750,7 +750,7 @@ const TournamentManagementPanel: React.FC = () => {
       {/* Tournament Overview Modal */}
       {showOverview && tournamentOverview && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-gradient-to-br from-gray-800/90 to-gray-900/95 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+          <div className="theme-card shadow-xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xl font-semibold text-gray-100">Tournament Overview</h3>
               <Button
@@ -762,7 +762,7 @@ const TournamentManagementPanel: React.FC = () => {
             </div>
             
             {/* Tournament Header */}
-            <div className="bg-gradient-to-br from-gray-700/50 to-gray-800/50 rounded-lg p-6 mb-6 border border-gray-600/30">
+            <div className="theme-surface-2 rounded-lg p-6 mb-6">
               <div className="flex items-center space-x-4 mb-4">
                 {tournamentOverview.tournament.logo_path && (
                   <img
@@ -805,7 +805,7 @@ const TournamentManagementPanel: React.FC = () => {
             </div>
             
             {/* Tournament Days Overview */}
-            <div className="bg-gradient-to-br from-gray-700/50 to-gray-800/50 rounded-lg p-6 mb-6 border border-gray-600/30">
+            <div className="theme-surface-2 rounded-lg p-6 mb-6">
               <h5 className="text-lg font-semibold text-gray-100 mb-4">Tournament Days Progress</h5>
               <div className="grid grid-cols-3 gap-4 mb-4">
                 <div className="text-center">
@@ -850,7 +850,7 @@ const TournamentManagementPanel: React.FC = () => {
             </div>
             
             {/* Tournament Timeline */}
-            <div className="bg-gradient-to-br from-gray-700/50 to-gray-800/50 rounded-lg p-6 border border-gray-600/30">
+            <div className="theme-surface-2 rounded-lg p-6">
               <h5 className="text-lg font-semibold text-gray-100 mb-4">Tournament Timeline</h5>
               <div className="space-y-3">
                 <div className="flex items-center space-x-3">
@@ -893,7 +893,7 @@ const TournamentManagementPanel: React.FC = () => {
       {/* Add Tournament Form */}
       {showAddForm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-gradient-to-br from-gray-800/90 to-gray-900/95 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-xl p-6 w-full max-w-md">
+          <div className="theme-card shadow-xl p-6 w-full max-w-md">
             <h3 className="text-lg font-semibold text-gray-100 mb-4">Add New Tournament</h3>
             
             <div className="space-y-4">
@@ -1005,7 +1005,7 @@ const TournamentManagementPanel: React.FC = () => {
       {/* Edit Tournament Form */}
       {showEditForm && selectedTournament && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-gradient-to-br from-gray-800/90 to-gray-900/95 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-xl p-6 w-full max-w-md">
+          <div className="theme-card shadow-xl p-6 w-full max-w-md">
             <h3 className="text-lg font-semibold text-gray-100 mb-4">Edit Tournament</h3>
             
             <div className="space-y-4">
@@ -1127,7 +1127,7 @@ const TournamentManagementPanel: React.FC = () => {
       {/* Start Day Confirmation Modal */}
       {showStartDayModal && selectedDay && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-gradient-to-br from-gray-800/90 to-gray-900/95 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-xl p-6 w-full max-w-md">
+          <div className="theme-card shadow-xl p-6 w-full max-w-md">
             <h3 className="text-lg font-semibold text-gray-100 mb-4">Start Tournament Day</h3>
             <p className="text-gray-300 mb-6">
               Are you sure you want to start Day {selectedDay.day_number}? 
@@ -1155,7 +1155,7 @@ const TournamentManagementPanel: React.FC = () => {
       {/* End Day Confirmation Modal */}
       {showEndDayModal && selectedDay && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-gradient-to-br from-gray-800/90 to-gray-900/95 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-xl p-6 w-full max-w-md">
+          <div className="theme-card shadow-xl p-6 w-full max-w-md">
             <h3 className="text-lg font-semibold text-gray-100 mb-4">End Tournament Day</h3>
             <p className="text-gray-300 mb-6">
               Are you sure you want to end Day {selectedDay.day_number}? 
