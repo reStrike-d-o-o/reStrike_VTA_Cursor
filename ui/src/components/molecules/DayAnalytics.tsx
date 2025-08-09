@@ -307,12 +307,7 @@ export const DayAnalytics: React.FC<DayAnalyticsProps> = ({
     <Card className="w-full">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <span>📅 {new Date(stats.date).toLocaleDateString('en-US', { 
-            weekday: 'long', 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric' 
-          })}</span>
+          <span>📅 {(() => { const d=new Date(stats.date); const dd=String(d.getDate()).padStart(2,'0'); const mm=String(d.getMonth()+1).padStart(2,'0'); const yyyy=d.getFullYear(); const hh=String(d.getHours()).padStart(2,'0'); const mi=String(d.getMinutes()).padStart(2,'0'); return `${dd}.${mm}.${yyyy} ${hh}:${mi}`; })()}</span>
           <Badge variant="secondary">Day Analytics</Badge>
         </CardTitle>
       </CardHeader>

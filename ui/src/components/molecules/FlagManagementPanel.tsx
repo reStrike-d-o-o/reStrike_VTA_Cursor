@@ -527,7 +527,7 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
                       <div className="flex justify-between">
                         <span className="text-xs text-gray-400">Uploaded:</span>
                         <span className="text-xs text-gray-300">
-                          {new Date(selectedFlag.upload_date).toLocaleDateString()}
+                          {(() => { const d=new Date(selectedFlag.upload_date); const dd=String(d.getDate()).padStart(2,'0'); const mm=String(d.getMonth()+1).padStart(2,'0'); const yyyy=d.getFullYear(); return `${dd}.${mm}.${yyyy}`; })()}
                         </span>
                       </div>
                     )}

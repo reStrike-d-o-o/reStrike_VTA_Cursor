@@ -461,13 +461,13 @@ export const MatchAnalytics: React.FC<MatchAnalyticsProps> = ({
                   <div className="flex justify-between">
                     <span className="text-sm">Start Time:</span>
                     <span className="text-sm font-medium">
-                      {stats.duration > 0 ? new Date(Date.now() - stats.duration * 1000).toLocaleTimeString() : 'N/A'}
+                      {stats.duration > 0 ? (()=>{ const d=new Date(Date.now() - stats.duration*1000); const hh=String(d.getHours()).padStart(2,'0'); const mi=String(d.getMinutes()).padStart(2,'0'); const ss=String(d.getSeconds()).padStart(2,'0'); return `${hh}:${mi}:${ss}`; })() : 'N/A'}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm">End Time:</span>
                     <span className="text-sm font-medium">
-                      {stats.duration > 0 ? new Date().toLocaleTimeString() : 'N/A'}
+                      {stats.duration > 0 ? (()=>{ const d=new Date(); const hh=String(d.getHours()).padStart(2,'0'); const mi=String(d.getMinutes()).padStart(2,'0'); const ss=String(d.getSeconds()).padStart(2,'0'); return `${hh}:${mi}:${ss}`; })() : 'N/A'}
                     </span>
                   </div>
                   <div className="flex justify-between">

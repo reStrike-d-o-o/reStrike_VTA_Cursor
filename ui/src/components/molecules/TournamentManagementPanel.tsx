@@ -475,6 +475,27 @@ const TournamentManagementPanel: React.FC = () => {
     }
   };
 
+  // Date formatting helpers
+  const formatDate = (iso?: string) => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    return `${dd}.${mm}.${yyyy}`;
+  };
+  const formatTime = (iso?: string) => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mi = String(d.getMinutes()).padStart(2, '0');
+    return `${hh}:${mi}`;
+  };
+  const formatDateTime = (iso?: string) => {
+    if (!iso) return '';
+    return `${formatDate(iso)} ${formatTime(iso)}`;
+  };
+
   const getStatusText = (status: string) => {
     switch (status) {
       case 'pending': return 'Pending';
@@ -635,9 +656,41 @@ const TournamentManagementPanel: React.FC = () => {
       {/* Tournament Days */}
       {selectedTournament && (
         <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg p-6">
-          <h3 className="text-lg font-semibold text-gray-100 mb-4">
-            Tournament Days - {selectedTournament.name}
-          </h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-100">Tournament Days - {selectedTournament.name}</h3>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                className="bg-green-600 hover:bg-green-700 text-white"
+                onClick={async () => {
+                  // Start tournament: find first pending day
+                  const firstPending = tournamentDays.find(d => d.status === 'pending');
+                  if (firstPending) {
+                    setSelectedDay(firstPending);
+                    setShowStartDayModal(true);
+                  }
+                }}
+              >
+                Start Tournament
+              </Button>
+              <Button
+                size="sm"
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+                onClick={async () => {
+                  // End tournament: find last active day, else last pending
+                  const active = [...tournamentDays].reverse().find(d => d.status === 'active');
+                  const lastPending = [...tournamentDays].reverse().find(d => d.status === 'pending');
+                  const target = active || lastPending;
+                  if (target) {
+                    setSelectedDay(target);
+                    setShowEndDayModal(true);
+                  }
+                }}
+              >
+                End Tournament
+              </Button>
+            </div>
+          </div>
           
           {tournamentDays.length === 0 ? (
             <div className="text-center py-8 text-gray-400">No tournament days found.</div>
@@ -652,9 +705,9 @@ const TournamentManagementPanel: React.FC = () => {
                     <div>
                       <h4 className="font-medium text-gray-100">Day {day.day_number}</h4>
                       <p className="text-sm text-gray-400">
-                        {new Date(day.date).toLocaleDateString()}
-                        {day.start_time && ` • Started: ${new Date(day.start_time).toLocaleTimeString()}`}
-                        {day.end_time && ` • Ended: ${new Date(day.end_time).toLocaleTimeString()}`}
+                        {formatDate(day.date)}
+                        {day.start_time && ` • Started: ${formatDateTime(day.start_time)}`}
+                        {day.end_time && ` • Ended: ${formatDateTime(day.end_time)}`}
                       </p>
                     </div>
                     <div className="flex items-center space-x-2">
@@ -804,7 +857,7 @@ const TournamentManagementPanel: React.FC = () => {
                   <div>
                     <div className="text-gray-100">Created</div>
                     <div className="text-sm text-gray-400">
-                      {new Date(tournamentOverview.tournament.created_at).toLocaleString()}
+                      {formatDateTime(tournamentOverview.tournament.created_at)}
                     </div>
                   </div>
                 </div>
@@ -814,7 +867,7 @@ const TournamentManagementPanel: React.FC = () => {
                     <div>
                       <div className="text-gray-100">Started</div>
                       <div className="text-sm text-gray-400">
-                        {new Date(tournamentOverview.tournament.start_date).toLocaleString()}
+                        {formatDateTime(tournamentOverview.tournament.start_date)}
                       </div>
                     </div>
                   </div>
@@ -825,7 +878,7 @@ const TournamentManagementPanel: React.FC = () => {
                     <div>
                       <div className="text-gray-100">Ended</div>
                       <div className="text-sm text-gray-400">
-                        {new Date(tournamentOverview.tournament.end_date).toLocaleString()}
+                        {formatDateTime(tournamentOverview.tournament.end_date)}
                       </div>
                     </div>
                   </div>

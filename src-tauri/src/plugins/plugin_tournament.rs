@@ -85,8 +85,45 @@ impl TournamentPlugin {
         let mut conn = self.database.get_connection().await
             .map_err(|e| AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
         
+        // Fetch existing tournament to detect changes
+        let existing = TournamentOperations::get_tournament(&*conn, tournament_id)
+            .map_err(|e| AppError::ConfigError(format!("Failed to get tournament: {}", e)))?;
+
         TournamentOperations::update_tournament(&mut *conn, tournament_id, &tournament)
-            .map_err(|e| AppError::ConfigError(format!("Failed to update tournament: {}", e)))
+            .map_err(|e| AppError::ConfigError(format!("Failed to update tournament: {}", e)))?;
+
+        // If start_date or duration_days changed, regenerate tournament days
+        if let Some(old) = existing {
+            let old_start = old.start_date;
+            let old_duration = old.duration_days;
+            let new_start = tournament.start_date;
+            let new_duration = tournament.duration_days;
+
+            if old_start != new_start || old_duration != new_duration {
+                // Remove existing days and recreate
+                conn.execute("DELETE FROM tournament_days WHERE tournament_id = ?", params![tournament_id])
+                    .map_err(|e| AppError::ConfigError(format!("Failed clearing tournament days: {}", e)))?;
+
+                let start_for_days = new_start.unwrap_or_else(|| Utc::now());
+                TournamentOperations::create_tournament_days(&mut *conn, tournament_id, start_for_days, new_duration)
+                    .map_err(|e| AppError::ConfigError(format!("Failed to recreate tournament days: {}", e)))?;
+            } else {
+                // Ensure days exist for older tournaments created before day generation logic
+                let existing_count: i64 = conn.query_row(
+                    "SELECT COUNT(*) FROM tournament_days WHERE tournament_id = ?",
+                    params![tournament_id],
+                    |row| row.get(0),
+                ).unwrap_or(0);
+
+                if existing_count == 0 {
+                    let start_for_days = new_start.unwrap_or_else(|| Utc::now());
+                    TournamentOperations::create_tournament_days(&mut *conn, tournament_id, start_for_days, new_duration)
+                        .map_err(|e| AppError::ConfigError(format!("Failed to create missing tournament days: {}", e)))?;
+                }
+            }
+        }
+
+        Ok(())
     }
     
     /// Delete tournament

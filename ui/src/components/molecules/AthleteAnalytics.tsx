@@ -273,7 +273,7 @@ export const AthleteAnalytics: React.FC<AthleteAnalyticsProps> = ({
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm">Date:</span>
-                      <span className="text-sm">{new Date(stats.bestPerformance.date).toLocaleDateString()}</span>
+                      <span className="text-sm">{(() => { const d=new Date(stats.bestPerformance.date); const dd=String(d.getDate()).padStart(2,'0'); const mm=String(d.getMonth()+1).padStart(2,'0'); const yyyy=d.getFullYear(); const hh=String(d.getHours()).padStart(2,'0'); const mi=String(d.getMinutes()).padStart(2,'0'); return `${dd}.${mm}.${yyyy} ${hh}:${mi}`; })()}</span>
                     </div>
                   </div>
                 ) : (
