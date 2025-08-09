@@ -322,14 +322,28 @@ export function FlagImage({ countryCode, className = "w-8 h-6 object-cover round
   countryCode: string;
   className?: string;
 }): JSX.Element {
+  const [hadError, setHadError] = React.useState(false);
   const config = getFlagConfig(countryCode);
-  
+
+  // Reset error state whenever the code changes so we can retry loading
+  React.useEffect(() => {
+    setHadError(false);
+  }, [countryCode]);
+
+  if (hadError) {
+    return (
+      <span aria-label={config.altText} className={className.replace('object-cover', '')}>
+        {config.fallbackEmoji}
+      </span>
+    );
+  }
+
   return (
-    <img 
+    <img
       src={getFlagUrl(countryCode)}
       alt={config.altText}
       className={className}
-      onError={(e) => handleFlagError(e, countryCode)}
+      onError={() => setHadError(true)}
     />
   );
-} 
+}
