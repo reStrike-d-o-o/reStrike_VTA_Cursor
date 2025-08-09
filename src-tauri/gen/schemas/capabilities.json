@@ -1,1 +1,1 @@
-{"main-event-capability":{"identifier":"main-event-capability","description":"Allow event listen/emit for main window","remote":{"urls":["http://localhost:3000"]},"local":true,"windows":["main"],"permissions":["core:event:default","shell:allow-open"]}}
+{"main-event-capability":{"identifier":"main-event-capability","description":"Allow event listen/emit for main window","remote":{"urls":["http://localhost:3000"]},"local":true,"windows":["main"],"permissions":["core:event:default","shell:allow-open","dialog:allow-message","dialog:allow-confirm"]}}
