@@ -488,18 +488,18 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
     <div className="space-y-6">
       {/* Error and Success Messages */}
       {error && (
-        <div className="p-4 bg-red-900/20 border border-red-600/30 rounded-lg text-red-300">
+        <div className="p-4 bg-red-900/20 border border-red-600/30 text-red-300">
           {error}
         </div>
       )}
       {success && (
-        <div className="p-4 bg-green-900/20 border border-green-600/30 rounded-lg text-green-300">
+        <div className="p-4 bg-green-900/20 border border-green-600/30 text-green-300">
           {success}
         </div>
       )}
 
       {/* UDP Server Section */}
-      <div className="p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
+      <div className="p-6 theme-card shadow-lg">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-100">UDP Server</h3>
           <Button
@@ -740,7 +740,7 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
                 {networkInterfaces.map((iface) => (
                   <div
                     key={iface.name}
-                    className={`p-3 rounded-lg border text-xs ${
+                  className={`p-3 border text-xs ${
                       bestInterface?.name === iface.name
                         ? 'border-green-500 bg-green-900/20'
                         : 'border-gray-600 bg-gray-700/30'
@@ -813,12 +813,12 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
       </div>
 
       {/* Protocol Management Section */}
-      <div className="p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
+      <div className="p-6 theme-card shadow-lg">
         <h3 className="text-lg font-semibold mb-4 text-gray-100">Protocol Management</h3>
         
         {/* Current Protocol */}
         {currentProtocol && (
-          <div className="mb-6 p-4 bg-blue-900/20 border border-blue-600/30 rounded-lg">
+          <div className="mb-6 p-4 bg-blue-900/20 border border-blue-600/30">
             <h4 className="text-sm font-medium text-blue-300 mb-2">Current Protocol</h4>
             <div className="text-sm text-gray-300">
               <p><span className="text-gray-400">Version:</span> {currentProtocol.version}</p>
@@ -840,7 +840,7 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
               {protocolVersions.map((version) => (
                 <div
                   key={version.version}
-                  className={`p-3 rounded-lg border transition-all duration-200 ${
+                  className={`p-3 border transition-all duration-200 ${
                     version.is_active
                       ? 'bg-blue-900/30 border-blue-600/50'
                       : 'bg-gray-700/30 border-gray-600/50 hover:bg-gray-700/50'
@@ -853,7 +853,7 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
                           Version {version.version}
                         </span>
                         {version.is_active && (
-                          <span className="px-2 py-1 bg-green-900/30 text-green-300 text-xs rounded border border-green-600/30">
+                          <span className="px-2 py-1 bg-green-900/30 text-green-300 text-xs border border-green-600/30">
                             Active
                           </span>
                         )}
@@ -948,14 +948,14 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
   // Triggers Content
   const TriggersContent = () => (
     <div className="space-y-6">
-      <div className="bg-gray-800/50 rounded-lg p-6">
+      <div className="bg-gray-800/50 p-6">
         <h3 className="text-lg font-semibold text-gray-100 mb-4">Event Triggers</h3>
         <p className="text-sm text-gray-300 mb-4">
           Configure automatic triggers and actions based on PSS events and match conditions.
         </p>
         
         <div className="space-y-4">
-          <div className="bg-gray-700/50 rounded-lg p-4">
+          <div className="bg-gray-700/50 p-4">
             <h4 className="text-md font-medium text-gray-200 mb-3">Match Triggers</h4>
             <div className="space-y-3">
               <div className="flex items-center justify-between">
@@ -975,7 +975,7 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
             </div>
           </div>
 
-          <div className="bg-gray-700/50 rounded-lg p-4">
+          <div className="bg-gray-700/50 p-4">
             <h4 className="text-md font-medium text-gray-200 mb-3">Score Triggers</h4>
             <div className="space-y-3">
               <div className="flex items-center justify-between">
@@ -995,7 +995,7 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
             </div>
           </div>
 
-          <div className="bg-gray-700/50 rounded-lg p-4">
+          <div className="bg-gray-700/50 p-4">
             <h4 className="text-md font-medium text-gray-200 mb-3">System Triggers</h4>
             <div className="space-y-3">
               <div className="flex items-center justify-between">

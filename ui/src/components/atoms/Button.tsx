@@ -9,7 +9,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   className?: string;
 }
 
-const baseStyles = 'rounded-lg transition-all duration-300 font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 relative group';
+const baseStyles = 'transition-all duration-300 font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 relative group';
 const variantStyles: Record<ButtonVariant, string> = {
   primary: 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md shadow-blue-500/15 hover:shadow-lg hover:shadow-blue-500/20',
   secondary: 'bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white shadow-md shadow-gray-500/15 hover:shadow-lg hover:shadow-gray-500/20',
@@ -38,7 +38,7 @@ const Button: React.FC<ButtonProps> = ({
     >
       {/* Subtle glow effect for primary buttons */}
       {variant === 'primary' && (
-        <div className="absolute inset-0 rounded-lg bg-blue-500/20 blur-sm group-hover:bg-blue-500/30 transition-all duration-300"></div>
+        <div className="absolute inset-0 bg-blue-500/20 blur-sm group-hover:bg-blue-500/30 transition-all duration-300"></div>
       )}
       <span className="relative z-10 flex items-center justify-center">{children}</span>
     </button>
