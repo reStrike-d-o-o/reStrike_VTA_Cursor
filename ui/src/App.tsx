@@ -11,6 +11,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { useTriggersStore } from './stores/triggersStore';
 import PausedOverlay from './components/molecules/PausedOverlay';
 import DestructiveConfirmModal from './components/molecules/DestructiveConfirmModal';
+import { useSettingsStore } from './stores/settingsStore';
 
 const App: React.FC = () => {
   const isAdvancedPanelOpen = useAppStore((state) => state.isAdvancedPanelOpen);
@@ -19,6 +20,7 @@ const App: React.FC = () => {
   const { tauriAvailable, environment, isLoading } = useEnvironment();
   
   const paused = useTriggersStore((s) => s.paused);
+  const theme = useSettingsStore((s)=>s.theme);
   // Initialize PSS event listener for real-time events
   const { setupEventListener, fetchPendingEvents } = usePssEvents();
   
@@ -57,6 +59,16 @@ const App: React.FC = () => {
     }
   }, [tauriAvailable, isLoading, loadWindowSettings]);
 
+  // Apply theme attribute
+  React.useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
+
+  // Apply dock width CSS variable (avoid inline width styling on elements)
+  React.useEffect(() => {
+    document.documentElement.style.setProperty('--dock-width', `${windowSettings.compactWidth}px`);
+  }, [windowSettings.compactWidth]);
+
   // Set up PSS event listener and OBS status listener when Tauri is available (run once)
   const hasInitRef = React.useRef(false);
   React.useEffect(() => {
@@ -88,11 +100,10 @@ const App: React.FC = () => {
       <div className="flex flex-1 min-h-0 relative z-10">
         {/* DockBar (left) - dynamic width from settings, full height with enhanced styling */}
         <div 
-          className="flex-shrink-0 relative z-20"
-          style={{ width: `${windowSettings.compactWidth}px` }}
+          className="flex-shrink-0 relative z-20 w-[var(--dock-width)]"
         >
-          <div className="absolute inset-0 bg-gradient-to-r from-gray-900/95 to-gray-800/90 backdrop-blur-sm border-r border-gray-700/50 shadow-2xl"></div>
-          <div className="relative z-10 h-full">
+          <div className="absolute inset-0 w-[var(--dock-width)] bg-gradient-to-r from-gray-900/95 to-gray-800/90 backdrop-blur-sm border-r border-gray-700/50 shadow-2xl"></div>
+          <div className="relative z-10 h-full w-[var(--dock-width)]">
             <DockBar />
           </div>
         </div>

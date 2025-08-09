@@ -16,6 +16,7 @@ import SimulationPanel from './SimulationPanel';
 import { invoke as tauriInvoke } from '@tauri-apps/api/core';
 import { algorithmAnimation, locationAnimation, scoreboardAnimation, crossbowAnimation, robotAnimation } from '../../assets/icons/json';
 import { TriggersTable } from './TriggersTable';
+import { Progress } from '../atoms/Progress';
 
 // Use the proper Tauri v2 invoke function with fallback
 const invoke = async (command: string, args?: any) => {
@@ -924,12 +925,7 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
             </div>
             
             {uploadProgress > 0 && (
-              <div className="w-full bg-gray-700 rounded-full h-2">
-                <div
-                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${uploadProgress}%` }}
-                ></div>
-              </div>
+              <Progress value={uploadProgress} />
             )}
             
             <p className="text-xs text-gray-400">

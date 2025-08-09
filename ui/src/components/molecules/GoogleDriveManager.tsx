@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import Button from '../atoms/Button';
 import { StatusDot } from '../atoms/StatusDot';
+import StatusRow from '../atoms/StatusRow';
+import { Card, CardContent, CardHeader, CardTitle } from '../atoms/Card';
 
 interface DriveFile {
   id: string;
@@ -327,191 +329,208 @@ export const GoogleDriveManager: React.FC = () => {
   );
 
   return (
-    <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg p-6 border border-gray-600/30 shadow-lg">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left Column - Connection, Upload, Debug */}
-        <div className="space-y-4">
-          {/* Connection Status, Title, Subtitle, Connect Button */}
-          <div className="bg-[#101820] rounded-lg p-4 border border-gray-700 mb-2">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center space-x-3">
-                <StatusDot color={driveStatus.connected ? 'green' : 'red'} />
-                <div>
-                  <h3 className="text-lg font-semibold text-blue-300">Google Drive Integration</h3>
-                  <p className="text-sm text-gray-400">Backup and restore using Google Drive</p>
+    <Card>
+      <CardContent>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Left Column - Connection, Upload, Debug */}
+          <div className="space-y-4">
+            {/* Connection Status, Title, Subtitle, Connect Button */}
+            <Card className="theme-surface-2">
+              <CardContent>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center space-x-3">
+                    <StatusDot color={driveStatus.connected ? 'bg-emerald-500' : 'bg-red-500'} />
+                    <div>
+                      <h3 className="text-lg font-semibold theme-text">Google Drive Integration</h3>
+                      <p className="text-sm theme-text-muted">Backup and restore using Google Drive</p>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={listFiles}
+                    disabled={!driveStatus.connected || driveStatus.loading}
+                    size="sm"
+                    variant="secondary"
+                  >
+                    {driveStatus.connected ? (driveStatus.loading ? 'Loading...' : 'Refresh') : 'Connect Google Drive'}
+                  </Button>
                 </div>
-              </div>
-              <Button
-                onClick={listFiles}
-                disabled={!driveStatus.connected || driveStatus.loading}
-                size="sm"
-                variant="secondary"
-              >
-                {driveStatus.connected ? (driveStatus.loading ? 'Loading...' : 'Refresh') : 'Connect Google Drive'}
-              </Button>
-            </div>
-            <p className="text-xs text-gray-400">
-              {driveStatus.connected ? 'Connected' : 'Not connected'}
-            </p>
+                <p className="text-xs theme-text-muted">
+                  {driveStatus.connected ? 'Connected' : 'Not connected'}
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Upload Section */}
+            <Card className="theme-surface-2">
+              <CardHeader>
+                <CardTitle>Create & Upload Backup</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center space-x-2">
+                  <Button
+                    onClick={uploadBackupArchive}
+                    disabled={!driveStatus.connected || operationStatus.loading}
+                    size="sm"
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    {operationStatus.type === 'upload' && operationStatus.loading ? 'Uploading...' : 'Upload Archive'}
+                  </Button>
+                  {operationStatus.type === 'upload' && (
+                    <span className="text-xs theme-text-muted">
+                      {operationStatus.message}
+                    </span>
+                  )}
+                </div>
+                {operationStatus.type === 'upload' && operationStatus.error && (
+                  <p className="text-xs text-red-400 mt-2">{operationStatus.error}</p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Debug Section */}
+            <Card className="theme-surface-2">
+              <CardHeader>
+                <CardTitle>Debug & Testing</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    onClick={testConnection}
+                    disabled={!driveStatus.connected || operationStatus.loading}
+                    size="sm"
+                    variant="secondary"
+                  >
+                    {operationStatus.type === 'test' && operationStatus.loading ? 'Testing...' : 'Test Connection'}
+                  </Button>
+                  <Button
+                    onClick={listAllFiles}
+                    disabled={!driveStatus.connected || operationStatus.loading}
+                    size="sm"
+                    variant="secondary"
+                  >
+                    {operationStatus.type === 'list_all' && operationStatus.loading ? 'Listing...' : 'List All Files'}
+                  </Button>
+                </div>
+                {(operationStatus.type === 'test' || operationStatus.type === 'list_all') && (
+                  <span className="text-xs theme-text-muted mt-2 block">
+                    {operationStatus.message}
+                  </span>
+                )}
+                {(operationStatus.type === 'test' || operationStatus.type === 'list_all') && operationStatus.error && (
+                  <p className="text-xs text-red-400 mt-2">{operationStatus.error}</p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Operation Status */}
+            {(operationStatus.type === 'download' || operationStatus.type === 'restore') && (
+              <Card className="theme-surface-2">
+                <CardHeader>
+                  <CardTitle>Operation Status</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-xs theme-text-muted">{operationStatus.message}</p>
+                  {operationStatus.error && (
+                    <p className="text-xs text-red-400 mt-2">{operationStatus.error}</p>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </div>
 
-          {/* Upload Section */}
-          <div className="bg-[#101820] rounded-lg p-4 border border-gray-700">
-            <h4 className="text-md font-semibold text-blue-300 mb-3">Create & Upload Backup</h4>
-            <div className="flex items-center space-x-2">
-              <Button
-                onClick={uploadBackupArchive}
-                disabled={!driveStatus.connected || operationStatus.loading}
-                size="sm"
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                {operationStatus.type === 'upload' && operationStatus.loading ? 'Uploading...' : 'Upload Archive'}
-              </Button>
-              {operationStatus.type === 'upload' && (
-                <span className="text-xs text-gray-400">
-                  {operationStatus.message}
-                </span>
+          {/* Right Column - Backup Archives */}
+          <Card className="theme-surface-2">
+            <CardHeader>
+              <CardTitle>Backup Archives ({backupFiles.length})</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {driveStatus.error && (
+                <p className="text-xs text-red-400 mb-3">{driveStatus.error}</p>
               )}
-            </div>
-            {operationStatus.type === 'upload' && operationStatus.error && (
-              <p className="text-xs text-red-400 mt-2">{operationStatus.error}</p>
-            )}
-          </div>
 
-          {/* Debug Section */}
-          <div className="bg-[#101820] rounded-lg p-4 border border-gray-700">
-            <h4 className="text-md font-semibold text-blue-300 mb-3">Debug & Testing</h4>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                onClick={testConnection}
-                disabled={!driveStatus.connected || operationStatus.loading}
-                size="sm"
-                variant="secondary"
-              >
-                {operationStatus.type === 'test' && operationStatus.loading ? 'Testing...' : 'Test Connection'}
-              </Button>
-              <Button
-                onClick={listAllFiles}
-                disabled={!driveStatus.connected || operationStatus.loading}
-                size="sm"
-                variant="secondary"
-              >
-                {operationStatus.type === 'list_all' && operationStatus.loading ? 'Listing...' : 'List All Files'}
-              </Button>
-            </div>
-            {(operationStatus.type === 'test' || operationStatus.type === 'list_all') && (
-              <span className="text-xs text-gray-400 mt-2 block">
-                {operationStatus.message}
-              </span>
-            )}
-            {(operationStatus.type === 'test' || operationStatus.type === 'list_all') && operationStatus.error && (
-              <p className="text-xs text-red-400 mt-2">{operationStatus.error}</p>
-            )}
-          </div>
-
-          {/* Operation Status */}
-          {(operationStatus.type === 'download' || operationStatus.type === 'restore') && (
-            <div className="bg-[#101820] rounded-lg p-4 border border-gray-700">
-              <h4 className="text-md font-semibold text-blue-300 mb-2">Operation Status</h4>
-              <p className="text-xs text-gray-400">{operationStatus.message}</p>
-              {operationStatus.error && (
-                <p className="text-xs text-red-400 mt-2">{operationStatus.error}</p>
+              {backupFiles.length === 0 ? (
+                <p className="text-xs theme-text-muted">No backup archives found</p>
+              ) : (
+                <div className="max-h-64 overflow-y-auto border border-gray-700 rounded">
+                  <table className="min-w-full text-left text-xs theme-text">
+                    <thead className="sticky top-0 z-10 theme-surface-2">
+                      <tr>
+                        <th className="px-2 py-2 font-semibold">File Name</th>
+                        <th className="px-2 py-2 font-semibold">Size</th>
+                        <th className="px-2 py-2 font-semibold">Created</th>
+                        <th className="px-2 py-2 font-semibold">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {backupFiles.map((file) => (
+                        <tr
+                          key={file.id}
+                          className={`hover:bg-blue-900 transition-colors cursor-pointer ${
+                            selectedFile === file.id ? 'bg-blue-900/20' : ''
+                          }`}
+                          onClick={() => setSelectedFile(file.id)}
+                        >
+                          <td className="px-2 py-2 whitespace-nowrap max-w-32 truncate">
+                            {file.name}
+                          </td>
+                          <td className="px-2 py-2 whitespace-nowrap">
+                            {file.size ? formatFileSize(parseInt(file.size)) : 'Unknown'}
+                          </td>
+                          <td className="px-2 py-2 whitespace-nowrap text-xs">
+                            {formatDate(file.createdTime)}
+                          </td>
+                          <td className="px-2 py-2 whitespace-nowrap">
+                            <div className="flex items-center space-x-1">
+                              <Button
+                                onClick={(e: React.MouseEvent) => {
+                                  e.stopPropagation();
+                                  downloadBackupArchive(file.id);
+                                }}
+                                disabled={operationStatus.loading}
+                                variant="ghost"
+                                size="sm"
+                                className="text-green-400 hover:text-green-300 text-xs px-1 py-1"
+                              >
+                                {operationStatus.type === 'download' && operationStatus.loading ? 'DL...' : 'DL'}
+                              </Button>
+                              
+                              <Button
+                                onClick={(e: React.MouseEvent) => {
+                                  e.stopPropagation();
+                                  restoreFromArchive(file.id);
+                                }}
+                                disabled={operationStatus.loading}
+                                variant="ghost"
+                                size="sm"
+                                className="text-blue-400 hover:text-blue-300 text-xs px-1 py-1"
+                              >
+                                {operationStatus.type === 'restore' && operationStatus.loading ? 'RS...' : 'RS'}
+                              </Button>
+                              
+                              <Button
+                                onClick={(e: React.MouseEvent) => {
+                                  e.stopPropagation();
+                                  deleteBackupArchive(file.id);
+                                }}
+                                disabled={operationStatus.loading}
+                                variant="ghost"
+                                size="sm"
+                                className="text-red-400 hover:text-red-300 text-xs px-1 py-1"
+                              >
+                                DEL
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
-            </div>
-          )}
+            </CardContent>
+          </Card>
         </div>
-
-        {/* Right Column - Backup Archives */}
-        <div className="bg-[#101820] rounded-lg p-4 border border-gray-700">
-          <h4 className="text-md font-semibold text-blue-300 mb-3">
-            Backup Archives ({backupFiles.length})
-          </h4>
-          
-          {driveStatus.error && (
-            <p className="text-xs text-red-400 mb-3">{driveStatus.error}</p>
-          )}
-
-          {backupFiles.length === 0 ? (
-            <p className="text-xs text-gray-400">No backup archives found</p>
-          ) : (
-            <div className="max-h-64 overflow-y-auto border border-gray-700 rounded">
-              <table className="min-w-full text-left text-xs text-gray-200">
-                <thead className="bg-[#0a0f14] sticky top-0 z-10">
-                  <tr>
-                    <th className="px-2 py-2 font-semibold">File Name</th>
-                    <th className="px-2 py-2 font-semibold">Size</th>
-                    <th className="px-2 py-2 font-semibold">Created</th>
-                    <th className="px-2 py-2 font-semibold">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {backupFiles.map((file) => (
-                    <tr
-                      key={file.id}
-                      className={`hover:bg-blue-900 transition-colors cursor-pointer ${
-                        selectedFile === file.id ? 'bg-blue-900/20' : ''
-                      }`}
-                      onClick={() => setSelectedFile(file.id)}
-                    >
-                      <td className="px-2 py-2 whitespace-nowrap max-w-32 truncate">
-                        {file.name}
-                      </td>
-                      <td className="px-2 py-2 whitespace-nowrap">
-                        {file.size ? formatFileSize(parseInt(file.size)) : 'Unknown'}
-                      </td>
-                      <td className="px-2 py-2 whitespace-nowrap text-xs">
-                        {formatDate(file.createdTime)}
-                      </td>
-                      <td className="px-2 py-2 whitespace-nowrap">
-                        <div className="flex items-center space-x-1">
-                          <Button
-                            onClick={(e: React.MouseEvent) => {
-                              e.stopPropagation();
-                              downloadBackupArchive(file.id);
-                            }}
-                            disabled={operationStatus.loading}
-                            variant="ghost"
-                            size="sm"
-                            className="text-green-400 hover:text-green-300 text-xs px-1 py-1"
-                          >
-                            {operationStatus.type === 'download' && operationStatus.loading ? 'DL...' : 'DL'}
-                          </Button>
-                          
-                          <Button
-                            onClick={(e: React.MouseEvent) => {
-                              e.stopPropagation();
-                              restoreFromArchive(file.id);
-                            }}
-                            disabled={operationStatus.loading}
-                            variant="ghost"
-                            size="sm"
-                            className="text-blue-400 hover:text-blue-300 text-xs px-1 py-1"
-                          >
-                            {operationStatus.type === 'restore' && operationStatus.loading ? 'RS...' : 'RS'}
-                          </Button>
-                          
-                          <Button
-                            onClick={(e: React.MouseEvent) => {
-                              e.stopPropagation();
-                              deleteBackupArchive(file.id);
-                            }}
-                            disabled={operationStatus.loading}
-                            variant="ghost"
-                            size="sm"
-                            className="text-red-400 hover:text-red-300 text-xs px-1 py-1"
-                          >
-                            DEL
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }; 

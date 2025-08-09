@@ -4,3 +4,53 @@
 html, body, #root {
   height: 100%;
 } 
+
+/* Theme tokens */
+:root {
+  --bg: #0b0b0d;
+  --bg-elevated: #121216;
+  --surface: #1f2937; /* gray-800 */
+  --surface-2: #111827; /* gray-900 */
+  --border: #374151; /* gray-700 */
+  --text: #e5e7eb; /* gray-200 */
+  --text-muted: #9ca3af; /* gray-400 */
+  --accent: #2563eb; /* blue-600 */
+  --accent-contrast: #ffffff;
+  --success: #10b981; /* emerald-500 */
+  --warning: #f59e0b; /* amber-500 */
+  --error: #ef4444; /* red-500 */
+}
+
+[data-theme='light'] {
+  --bg: #f7f7f9;
+  --bg-elevated: #ffffff;
+  --surface: #ffffff;
+  --surface-2: #f3f4f6; /* gray-100 */
+  --border: #e5e7eb; /* gray-200 */
+  --text: #0b0b0d;
+  --text-muted: #4b5563; /* gray-600 */
+  --accent: #2563eb;
+  --accent-contrast: #ffffff;
+  --success: #059669;
+  --warning: #d97706;
+  --error: #dc2626;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* Theme utility classes to avoid inline styles */
+.theme-card {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+}
+.theme-card-header { border-bottom: 1px solid var(--border); }
+.theme-card-title { color: var(--text); }
+.theme-surface-2 {
+  background-color: var(--surface-2);
+  border: 1px solid var(--border);
+}
+.theme-text { color: var(--text); }
+.theme-text-muted { color: var(--text-muted); }

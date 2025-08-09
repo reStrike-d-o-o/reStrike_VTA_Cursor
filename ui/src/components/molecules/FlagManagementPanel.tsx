@@ -3,6 +3,7 @@ import Button from '../atoms/Button';
 import Input from '../atoms/Input';
 import Label from '../atoms/Label';
 import StatusDot from '../atoms/StatusDot';
+import { Progress } from '../atoms/Progress';
 import { getFlagConfig, getFlagUrl, handleFlagError, FLAG_CONFIGS } from '../../utils/flagUtils';
 
 interface FlagInfo {
@@ -376,12 +377,7 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
           </div>
           
           {uploadProgress > 0 && (
-            <div className="w-full bg-gray-700 rounded-full h-2">
-              <div
-                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${uploadProgress}%` }}
-              ></div>
-            </div>
+            <Progress value={uploadProgress} />
           )}
           
           <p className="text-xs text-gray-400">
