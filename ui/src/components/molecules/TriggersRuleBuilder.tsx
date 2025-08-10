@@ -110,17 +110,57 @@ const TriggersRuleBuilder: React.FC<{ tournamentId?: number; dayId?: number }> =
 
   const testRule = async (idx: number) => {
     try {
-      // lightweight ping: just append a synthetic log entry to the panel
       const r = rows[idx] as EventTriggerRow;
+      const trigger = {
+        id: r.id ?? null,
+        tournament_id: null,
+        tournament_day_id: null,
+        event_type: r.event_type || '',
+        action: r.action || 'show',
+        target_type: r.target_type || 'scene',
+        obs_scene_id: r.obs_scene_id ?? null,
+        overlay_template_id: r.overlay_template_id ?? null,
+        delay_ms: (r as any).delay_ms ?? 0,
+        is_enabled: r.is_enabled ?? true,
+        priority: idx,
+        action_kind: r.action_kind ?? 'scene',
+        obs_connection_name: r.obs_connection_name ?? null,
+        condition_round: r.condition_round ?? null,
+        condition_once_per: r.condition_once_per ?? null,
+        debounce_ms: r.debounce_ms ?? null,
+        cooldown_ms: r.cooldown_ms ?? null,
+      };
+      const { invoke } = await import('@tauri-apps/api/core');
+      const res = await invoke<any>('triggers_preview_evaluate', { trigger, considerLimits: true });
+      const canFire = !!res?.can_fire;
       setLogs((prev) => [
         {
           ts: new Date().toISOString(),
-          results: [{ trigger_id: r.id || -1, event_type: r.event_type || '(test)', success: true, ms: 0 }],
+          results: [{ trigger_id: r.id || -1, event_type: r.event_type || '(test)', success: canFire, ms: 0 }],
         },
         ...prev,
       ].slice(0, 50));
       selectRow(idx);
-    } catch {}
+    } catch (e) {
+      console.warn('Test rule failed', e);
+    }
+  };
+
+  const handleSaveReplay = async () => {
+    try {
+      const selected = selectedIndex != null ? (rows[selectedIndex] as EventTriggerRow) : null;
+      const conn = selected?.obs_connection_name || undefined;
+      const res = await obsObwsCommands.saveReplayBuffer(conn);
+      setLogs((prev) => [
+        {
+          ts: new Date().toISOString(),
+          results: [{ trigger_id: selected?.id || -1, event_type: 'replay_save', success: !!res?.success, ms: 0 }],
+        },
+        ...prev,
+      ].slice(0, 50));
+    } catch (e) {
+      console.warn('Save replay failed', e);
+    }
   };
 
   const renderConnectionCell = (row: EventTriggerRow, idx: number) => (
@@ -238,6 +278,7 @@ const TriggersRuleBuilder: React.FC<{ tournamentId?: number; dayId?: number }> =
           </div>
           <Button variant="primary" onClick={saveChanges} disabled={!dirty}>Save</Button>
           <Button variant="secondary" onClick={refreshLogs} disabled={logsLoading}>Logs</Button>
+          <Button variant="secondary" onClick={handleSaveReplay}>Save Replay</Button>
         </div>
       </div>
 
