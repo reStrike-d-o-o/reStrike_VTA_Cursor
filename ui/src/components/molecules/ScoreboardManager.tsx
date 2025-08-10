@@ -309,6 +309,49 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
                   </Button>
                 </div>
               </div>
+
+              {/* Arcade Series (Tekken/Street-Fighter style) */}
+              <div className="pt-2">
+                <Label className="text-xs text-purple-300">Arcade Scoreboard (New)</Label>
+                <div className="flex items-center space-x-2">
+                  <Input value={`${window.location.origin}/overlays/arcade/scoreboard.html`} readOnly className="flex-1 text-xs" />
+                  <Button size="sm" variant="secondary" onClick={() => window.open(`${window.location.origin}/overlays/arcade/scoreboard.html`, '_blank`')}>Open</Button>
+                  <Button size="sm" variant="secondary" onClick={() => navigator.clipboard.writeText(`${window.location.origin}/overlays/arcade/scoreboard.html`)}>Copy</Button>
+                </div>
+              </div>
+              {/* Placeholders for upcoming arcade overlays */}
+              <div>
+                <Label className="text-xs text-purple-300">Arcade Intro (Coming Next)</Label>
+                <div className="flex items-center space-x-2">
+                  <Input value={`${window.location.origin}/overlays/arcade/intro.html`} readOnly className="flex-1 text-xs" />
+                  <Button size="sm" variant="secondary" onClick={() => window.open(`${window.location.origin}/overlays/arcade/intro.html`, '_blank')}>Open</Button>
+                  <Button size="sm" variant="secondary" onClick={() => navigator.clipboard.writeText(`${window.location.origin}/overlays/arcade/intro.html`)}>Copy</Button>
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs text-purple-300">Arcade Intermission Stats (Coming Next)</Label>
+                <div className="flex items-center space-x-2">
+                  <Input value={`${window.location.origin}/overlays/arcade/intermission.html`} readOnly className="flex-1 text-xs" />
+                  <Button size="sm" variant="secondary" onClick={() => window.open(`${window.location.origin}/overlays/arcade/intermission.html`, '_blank')}>Open</Button>
+                  <Button size="sm" variant="secondary" onClick={() => navigator.clipboard.writeText(`${window.location.origin}/overlays/arcade/intermission.html`)}>Copy</Button>
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs text-purple-300">Arcade Winner (Coming Next)</Label>
+                <div className="flex items-center space-x-2">
+                  <Input value={`${window.location.origin}/overlays/arcade/winner.html`} readOnly className="flex-1 text-xs" />
+                  <Button size="sm" variant="secondary" onClick={() => window.open(`${window.location.origin}/overlays/arcade/winner.html`, '_blank')}>Open</Button>
+                  <Button size="sm" variant="secondary" onClick={() => navigator.clipboard.writeText(`${window.location.origin}/overlays/arcade/winner.html`)}>Copy</Button>
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs text-purple-300">Arcade Specials (Coming Next)</Label>
+                <div className="flex items-center space-x-2">
+                  <Input value={`${window.location.origin}/overlays/arcade/specials.html`} readOnly className="flex-1 text-xs" />
+                  <Button size="sm" variant="secondary" onClick={() => window.open(`${window.location.origin}/overlays/arcade/specials.html`, '_blank')}>Open</Button>
+                  <Button size="sm" variant="secondary" onClick={() => navigator.clipboard.writeText(`${window.location.origin}/overlays/arcade/specials.html`)}>Copy</Button>
+                </div>
+              </div>
             </div>
             <p className="text-xs text-blue-400 mt-2">
               ✨ These HTML overlays support real-time PSS data updates via WebSocket events
