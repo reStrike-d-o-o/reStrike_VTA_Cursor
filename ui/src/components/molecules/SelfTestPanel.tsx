@@ -487,28 +487,28 @@ const SelfTestPanel: React.FC<SelfTestPanelProps> = ({ className = '' }) => {
         <h4 className="text-md font-semibold text-gray-200 mb-3">Test Categories</h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
           <div className="flex items-center space-x-2">
-            <Icon name="🖥️" className="w-4 h-4 text-blue-400" />
-            <span className="text-gray-300">Backend Services</span>
+            <Icon name="🖥️" size="text-sm" className="text-blue-400" />
+            <span className="text-gray-300 leading-none">Backend Services</span>
           </div>
           <div className="flex items-center space-x-2">
-            <Icon name="🖥️" className="w-4 h-4 text-green-400" />
-            <span className="text-gray-300">Frontend Integration</span>
+            <Icon name="🖥️" size="text-sm" className="text-green-400" />
+            <span className="text-gray-300 leading-none">Frontend Integration</span>
           </div>
           <div className="flex items-center space-x-2">
-            <Icon name="🤖" className="w-4 h-4 text-purple-400" />
-            <span className="text-gray-300">Simulation System</span>
+            <Icon name="🤖" size="text-sm" className="text-purple-400" />
+            <span className="text-gray-300 leading-none">Simulation System</span>
           </div>
           <div className="flex items-center space-x-2">
-            <Icon name="🗄️" className="w-4 h-4 text-yellow-400" />
-            <span className="text-gray-300">Data Flow</span>
+            <Icon name="🗄️" size="text-sm" className="text-yellow-400" />
+            <span className="text-gray-300 leading-none">Data Flow</span>
           </div>
           <div className="flex items-center space-x-2">
-            <Icon name="📱" className="w-4 h-4 text-pink-400" />
-            <span className="text-gray-300">UI Components</span>
+            <Icon name="📱" size="text-sm" className="text-pink-400" />
+            <span className="text-gray-300 leading-none">UI Components</span>
           </div>
           <div className="flex items-center space-x-2">
-            <Icon name="📊" className="w-4 h-4 text-orange-400" />
-            <span className="text-gray-300">Performance</span>
+            <Icon name="📊" size="text-sm" className="text-orange-400" />
+            <span className="text-gray-300 leading-none">Performance</span>
           </div>
         </div>
       </div>
