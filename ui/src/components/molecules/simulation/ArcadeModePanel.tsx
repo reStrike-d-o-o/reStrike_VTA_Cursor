@@ -21,6 +21,7 @@ const ArcadeModePanel: React.FC = () => {
   const { sendManualEvent } = useSimulationStore();
   const [running, setRunning] = useState(true);
   const [mute, setMute] = useState(false);
+  const [music, setMusic] = useState(true);
 
   const [b, setB] = useState<Fighter>({ x: 120, y: 180, dir: 1, color: 'blue' });
   const [r, setR] = useState<Fighter>({ x: 600, y: 180, dir: -1, color: 'red' });
@@ -409,7 +410,7 @@ const ArcadeModePanel: React.FC = () => {
         // animate + spark
         if (athlete === 1) { animRef.current.blue = { t: 250, pose: point_type >= 3 ? 'kick' : 'punch' }; sparksRef.current.push({ x: (b.x + r.x)/2, y: b.y - 26, t: performance.now(), color: '#60a5fa' }); }
         else { animRef.current.red = { t: 250, pose: point_type >= 3 ? 'kick' : 'punch' }; sparksRef.current.push({ x: (b.x + r.x)/2, y: r.y - 26, t: performance.now(), color: '#f87171' }); }
-        if (!mute) retroSound.playHit(athlete === 1 ? 'blue' : 'red');
+        if (!mute) retroSound.playAttack(point_type, athlete === 1 ? 'blue' : 'red');
         // floater
         const fx = (b.x + r.x) / 2; const fy = ((b.y + r.y) / 2) - 24;
         floatersRef.current.push({ x: fx, y: fy, t: performance.now(), text: `+${point_type}` , color: athlete === 1 ? '#93c5fd' : '#fca5a5' });
@@ -505,18 +506,18 @@ const ArcadeModePanel: React.FC = () => {
         const press = (name: string, index: number) => edge(name, isButtonPressed(gp, index));
         const inRange = (attacker: Fighter, defender: Fighter) => Math.abs(attacker.x - defender.x) < 70;
         const tryHit = (pt: number) => {
-          if (player === 1) {
+            if (player === 1) {
             if (cooldown.blue > 0) return;
             if (!inRange(b, r)) return;
             sendManualEvent('point', { athlete: 1, point_type: pt });
             animRef.current.blue = { t: 250, pose: pt >= 3 ? 'kick' : 'punch' };
-            if (!mute) retroSound.playHit('blue');
+            if (!mute) retroSound.playAttack(pt, 'blue');
           } else {
             if (cooldown.red > 0) return;
             if (!inRange(r, b)) return;
             sendManualEvent('point', { athlete: 2, point_type: pt });
             animRef.current.red = { t: 250, pose: pt >= 3 ? 'kick' : 'punch' };
-            if (!mute) retroSound.playHit('red');
+            if (!mute) retroSound.playAttack(pt, 'red');
           }
         };
         if (press(`p${player}-punch`, map.punch.index)) tryHit(1);
@@ -551,6 +552,10 @@ const ArcadeModePanel: React.FC = () => {
         <label className="text-xs text-gray-400 flex items-center space-x-1">
           <input type="checkbox" checked={mute} onChange={(e) => { setMute(e.target.checked); retroSound.setMuted(e.target.checked); }} />
           <span>Mute SFX</span>
+        </label>
+        <label className="text-xs text-gray-400 flex items-center space-x-1">
+          <input type="checkbox" checked={music} onChange={async (e) => { setMusic(e.target.checked); await retroSound.setMusicOn(e.target.checked); }} />
+          <span>Music</span>
         </label>
       </div>
       <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} className="border border-gray-700 bg-[#0d131a]" />
