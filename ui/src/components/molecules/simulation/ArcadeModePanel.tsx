@@ -31,6 +31,15 @@ const ArcadeModePanel: React.FC = () => {
   const animRef = useRef<{ blue: number; red: number }>({ blue: 0, red: 0 });
   type Spark = { x: number; y: number; t: number; color: string };
   const sparksRef = useRef<Spark[]>([]);
+  const skylineRef = useRef<Array<{ x: number; w: number; h: number }>>([]);
+  type Floater = { x: number; y: number; t: number; text: string; color: string };
+  const floatersRef = useRef<Floater[]>([]);
+  const emitLocal = (evt: any) => {
+    try {
+      const ev = new CustomEvent('pss-event', { detail: evt, bubbles: true, cancelable: true });
+      window.dispatchEvent(ev);
+    } catch {}
+  };
 
   // Draw loop
   useEffect(() => {
@@ -38,6 +47,18 @@ const ArcadeModePanel: React.FC = () => {
     if (!ctx) return;
     let raf = 0;
     let last = performance.now();
+
+    // prepare skyline once
+    if (skylineRef.current.length === 0) {
+      const arr: Array<{ x: number; w: number; h: number }> = [];
+      for (let i = 0; i < 18; i++) {
+        const w = 20 + Math.random() * 30;
+        const h = 40 + Math.random() * 60;
+        const x = (i * 40) % WIDTH;
+        arr.push({ x, w, h });
+      }
+      skylineRef.current = arr;
+    }
 
     const drawBackground = () => {
       // sky gradient
@@ -48,12 +69,7 @@ const ArcadeModePanel: React.FC = () => {
       ctx.fillRect(0, 0, WIDTH, HEIGHT);
       // skyline
       ctx.fillStyle = 'rgba(255,255,255,0.05)';
-      for (let i = 0; i < 18; i++) {
-        const w = 20 + Math.random() * 30;
-        const h = 40 + Math.random() * 60;
-        const x = ((i * 40) % WIDTH);
-        ctx.fillRect(x, 120 - h, w, h);
-      }
+      skylineRef.current.forEach(b => ctx.fillRect(b.x, 120 - b.h, b.w, b.h));
       // sun
       ctx.beginPath();
       ctx.arc(WIDTH * 0.75, 60, 18, 0, Math.PI * 2);
@@ -172,6 +188,17 @@ const ArcadeModePanel: React.FC = () => {
         ctx.lineTo(s.x + 6 + p * 10, s.y - 8 + p * 4);
         ctx.stroke();
       }
+      // score floaters
+      const flife = 900;
+      floatersRef.current = floatersRef.current.filter(f => now - f.t < flife);
+      for (const f of floatersRef.current) {
+        const p = (now - f.t) / flife;
+        ctx.globalAlpha = 1 - p;
+        ctx.fillStyle = f.color;
+        ctx.font = 'bold 14px monospace';
+        ctx.fillText(f.text, f.x - 8, f.y - p * 40);
+        ctx.globalAlpha = 1;
+      }
       // scanlines
       ctx.fillStyle = 'rgba(255,255,255,0.03)';
       for (let y = 0; y < HEIGHT; y += 3) ctx.fillRect(0, y, WIDTH, 1);
@@ -206,8 +233,18 @@ const ArcadeModePanel: React.FC = () => {
       // cooldown text
       ctx.fillStyle = '#e5e7eb';
       ctx.font = '11px monospace';
-      if (cooldown.blue > 0) ctx.fillText(`CD ${cooldown.blue}`, 10, 46);
-      if (cooldown.red > 0) ctx.fillText(`CD ${cooldown.red}`, WIDTH - 70, 46);
+      if (cooldown.blue > 0) ctx.fillText(`CD ${(cooldown.blue/1000).toFixed(1)}s`, 10, 46);
+      if (cooldown.red > 0) ctx.fillText(`CD ${(cooldown.red/1000).toFixed(1)}s`, WIDTH - 90, 46);
+
+      // show reach indicator
+      ctx.fillStyle = 'rgba(255,255,255,0.03)';
+      const reach = 70;
+      ctx.fillRect(b.x - reach, b.y - 40, reach, 34);
+      ctx.fillRect(r.x, r.y - 40, reach, 34);
+      // help text
+      ctx.fillStyle = 'rgba(203,213,225,0.8)';
+      ctx.font = '11px monospace';
+      ctx.fillText('Blue: A/D move, J/K/L/U/I attack  •  Red: ←/→ move, 1..5 attack  •  Move into yellow reach boxes', 12, HEIGHT - 10);
 
       drawOverlays(performance.now());
       raf = requestAnimationFrame(draw);
@@ -244,11 +281,15 @@ const ArcadeModePanel: React.FC = () => {
         if (athlete === 1 && !inRange(b, r)) return;
         if (athlete === 2 && !inRange(r, b)) return;
         sendManualEvent('point', { athlete, point_type });
+        emitLocal({ type: 'points', athlete: athlete === 1 ? 'athlete1' : 'athlete2', description: `+${point_type}` });
         if (athlete === 1) { setScore(s => ({ ...s, blue: s.blue + point_type })); setCooldown(c => ({ ...c, blue: 1200 })); }
         else { setScore(s => ({ ...s, red: s.red + point_type })); setCooldown(c => ({ ...c, red: 1200 })); }
         // animate + spark
         if (athlete === 1) { animRef.current.blue = 250; sparksRef.current.push({ x: (b.x + r.x)/2, y: b.y - 26, t: performance.now(), color: '#60a5fa' }); }
         else { animRef.current.red = 250; sparksRef.current.push({ x: (b.x + r.x)/2, y: r.y - 26, t: performance.now(), color: '#f87171' }); }
+        // floater
+        const fx = (b.x + r.x) / 2; const fy = ((b.y + r.y) / 2) - 24;
+        floatersRef.current.push({ x: fx, y: fy, t: performance.now(), text: `+${point_type}` , color: athlete === 1 ? '#93c5fd' : '#fca5a5' });
       };
       switch (e.code) {
         // Blue movement
@@ -277,18 +318,20 @@ const ArcadeModePanel: React.FC = () => {
         case 'Digit5':
         case 'Numpad5': hit(2, 5); break;
 
-        // Extras
-        case 'KeyQ': sendManualEvent('warning', { athlete: 1 }); break;
-        case 'Slash': sendManualEvent('warning', { athlete: 2 }); break;
-        case 'KeyZ': sendManualEvent('hit_level', { athlete: 1, level: 25 }); break;
-        case 'Period': sendManualEvent('hit_level', { athlete: 2, level: 25 }); break;
+        // Extras & fallbacks
+        case 'KeyQ': sendManualEvent('warning', { athlete: 1 }); emitLocal({ type: 'warnings', athlete: 'athlete1', description: 'Warning' }); break;
+        case 'Slash': sendManualEvent('warning', { athlete: 2 }); emitLocal({ type: 'warnings', athlete: 'athlete2', description: 'Warning' }); break;
+        case 'KeyZ': sendManualEvent('hit_level', { athlete: 1, level: 25 }); emitLocal({ type: 'hit_level', athlete: 1, level: 25 }); break;
+        case 'Period': sendManualEvent('hit_level', { athlete: 2, level: 25 }); emitLocal({ type: 'hit_level', athlete: 2, level: 25 }); break;
+        case 'Space': hit(1, 1); break; // fallback punch blue
+        case 'Numpad0': hit(2, 1); break; // fallback punch red
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [running, sendManualEvent]);
+  }, [running, sendManualEvent, b, r, cooldown]);
 
-  // Listen to browser PSS events for HUD flashes
+  // Listen to browser PSS events for HUD flashes; ensure we also mirror current_scores updates visually
   useEffect(() => {
     const onPss = (ev: any) => {
       const e = ev.detail;
@@ -303,7 +346,10 @@ const ArcadeModePanel: React.FC = () => {
         if (e.athlete === 1 || e.athlete === 'blue') setFlash(f => ({ ...f, blueHit: Date.now() }));
         else setFlash(f => ({ ...f, redHit: Date.now() }));
       } else if (e.type === 'current_scores') {
-        // optional: update local score fallback from store handled via getTotalScore
+        // update local fallback so HUD shows something even without store
+        if (typeof e.athlete1_score === 'number' && typeof e.athlete2_score === 'number') {
+          setScore({ blue: e.athlete1_score, red: e.athlete2_score });
+        }
       }
     };
     window.addEventListener('pss-event', onPss as EventListener);
