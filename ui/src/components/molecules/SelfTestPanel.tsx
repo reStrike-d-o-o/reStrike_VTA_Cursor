@@ -307,13 +307,8 @@ const SelfTestPanel: React.FC<SelfTestPanelProps> = ({ className = '' }) => {
           <h3 className="text-lg font-semibold text-gray-200">System Self-Test</h3>
         </div>
         <div className="flex items-center space-x-2">
-          <StatusDot
-            color={isRunning ? 'bg-yellow-500' : testResult ? 'bg-green-500' : 'bg-gray-500'}
-            size="w-3 h-3"
-          />
-          <span className="text-xs text-gray-400">
-            {isRunning ? 'Testing...' : testResult ? 'Ready' : 'Not Tested'}
-          </span>
+          <StatusDot color={isRunning ? 'bg-yellow-500' : testResult ? 'bg-green-500' : 'bg-gray-500'} size="w-3 h-3" />
+          <span className="text-xs text-gray-400 leading-none">{isRunning ? 'Testing...' : testResult ? 'Ready' : 'Not Tested'}</span>
         </div>
       </div>
 
@@ -403,12 +398,8 @@ const SelfTestPanel: React.FC<SelfTestPanelProps> = ({ className = '' }) => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {availableCategories.map((category) => (
                 <div key={category} className="flex items-center space-x-3">
-                  <Toggle
-                    checked={selectedCategories.includes(category)}
-                    onChange={() => toggleCategory(category)}
-                    disabled={isRunning}
-                  />
-                  <span className="text-sm text-gray-300">{category}</span>
+                  <Toggle checked={selectedCategories.includes(category)} onChange={() => toggleCategory(category)} disabled={isRunning} />
+                  <span className="text-sm text-gray-300 leading-none">{category}</span>
                 </div>
               ))}
             </div>
@@ -468,26 +459,10 @@ const SelfTestPanel: React.FC<SelfTestPanelProps> = ({ className = '' }) => {
         </div>
       )}
 
-      {/* Control Buttons */}
-      <div className="flex space-x-2">
-        <Button
-          variant="primary"
-          size="sm"
-          onClick={runSelfTest}
-          disabled={isRunning || (showSelective && selectedCategories.length === 0)}
-          className="flex-1"
-        >
-          {isRunning ? (
-            <div className="flex items-center space-x-2">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-              <span>Running Tests...</span>
-            </div>
-          ) : (
-            <div className="flex items-center space-x-2">
-              <Icon name="▶️" className="w-4 h-4" />
-              <span>{showSelective ? 'Run Selective Test' : 'Run Self-Test'}</span>
-            </div>
-          )}
+      {/* Control Button (no icon) */}
+      <div className="flex">
+        <Button variant="primary" size="sm" onClick={runSelfTest} disabled={isRunning || (showSelective && selectedCategories.length === 0)} className="flex-1">
+          {isRunning ? 'Running Tests...' : (showSelective ? 'Run Selective Test' : 'Run Self-Test')}
         </Button>
       </div>
 
