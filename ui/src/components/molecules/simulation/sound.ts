@@ -185,10 +185,10 @@ class RetroSound {
   private async startMusic() {
     await this.resume(); if (!this.ctx) return;
     const ctx = this.ctx;
-    if (!this.musicGain) { this.musicGain = ctx.createGain(); this.musicGain.gain.value = 0.08; this.musicGain.connect(ctx.destination); }
+    if (!this.musicGain) { this.musicGain = ctx.createGain(); this.musicGain.gain.value = 0.12; this.musicGain.connect(ctx.destination); }
     // Bassline
     const bass = ctx.createOscillator(); bass.type = 'square';
-    const bassGain = ctx.createGain(); bassGain.gain.value = 0.12;
+    const bassGain = ctx.createGain(); bassGain.gain.value = 0.18;
     bass.connect(bassGain); bassGain.connect(this.musicGain);
     const t0 = ctx.currentTime;
     const seq = [55, 55, 82.41, 55, 65.41, 55, 82.41, 55]; // G1.. patterns
@@ -201,9 +201,9 @@ class RetroSound {
     this.musicNodes.bass = bass;
     // Arp
     const arp = ctx.createOscillator(); arp.type = 'triangle';
-    const arpGain = ctx.createGain(); arpGain.gain.value = 0.05;
+    const arpGain = ctx.createGain(); arpGain.gain.value = 0.08;
     arp.connect(arpGain); arpGain.connect(this.musicGain);
-    const notes = [440, 554.37, 659.25, 880]; // A major-ish
+    const notes = [440, 554.37, 659.25, 739.99, 880, 659.25, 554.37, 440]; // more action
     for (let i = 0; i < 16; i++) {
       const t = t0 + i * 0.125;
       arp.frequency.setValueAtTime(notes[i % notes.length], t);
@@ -213,12 +213,12 @@ class RetroSound {
     this.musicNodes.arp = arp;
     // Hats via short noise bursts
     const kickInt = window.setInterval(() => {
-      const n = this.createNoise(30); if (!n || !this.musicGain) return;
-      const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 4000;
-      const g = ctx.createGain(); g.gain.value = 0.05;
+      const n = this.createNoise(22); if (!n || !this.musicGain) return;
+      const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 6000;
+      const g = ctx.createGain(); g.gain.value = 0.09;
       n.connect(hp); hp.connect(g); g.connect(this.musicGain);
-      n.start(); n.stop(ctx.currentTime + 0.03);
-    }, 125);
+      n.start(); n.stop(ctx.currentTime + 0.025);
+    }, 110);
     this.musicNodes.kickInt = kickInt;
     // Auto-loop every 2 seconds
     window.setTimeout(() => { if (this.musicOn) this.startMusic(); }, 2000);
