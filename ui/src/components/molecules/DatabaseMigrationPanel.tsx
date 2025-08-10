@@ -94,6 +94,26 @@ const DatabaseMigrationPanel: React.FC = () => {
     }
   };
 
+  const runMigrations = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      setSuccess(null);
+      const res = await invoke<{ success: boolean; message?: string; error?: string }>('db_run_migrations');
+      if (res.success) {
+        setSuccess(res.message || 'Database migrations ran successfully.');
+        // Refresh status and tables after successful migration
+        await Promise.all([loadMigrationStatus(), loadDatabaseTables()]);
+      } else {
+        setError(res.error || 'Failed to run database migrations');
+      }
+    } catch (e: any) {
+      setError(typeof e === 'string' ? e : (e?.message || 'Failed to run database migrations'));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const loadTableData = async (tableName: string) => {
     try {
       const result = await invoke<{
@@ -196,13 +216,24 @@ const DatabaseMigrationPanel: React.FC = () => {
         <div className="theme-card rounded-lg p-4 shadow-lg">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold text-blue-300">Migration Status</h3>
-            <Button
-              onClick={loadMigrationStatus}
-              variant="secondary"
-              size="sm"
-            >
-              Refresh
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={runMigrations}
+                variant="primary"
+                size="sm"
+                disabled={isLoading}
+              >
+                {isLoading ? 'Running…' : 'Run Database Migrations'}
+              </Button>
+              <Button
+                onClick={loadMigrationStatus}
+                variant="secondary"
+                size="sm"
+                disabled={isLoading}
+              >
+                Refresh
+              </Button>
+            </div>
           </div>
 
           <div className="space-y-4">
