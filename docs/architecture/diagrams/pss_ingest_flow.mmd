@@ -1,0 +1,10 @@
+flowchart LR
+  P1[PSS device emits UDP packet] --> P2[UDP listener binds to port]
+  P2 --> P3[Parse WT_UDP v2.3]
+  P3 --> P4[Filter/normalize in event_stream]
+  P4 --> P5[Persist to DB (pss_events_v2 + relations)]
+  P5 --> P6[Emit live event to UI]
+  P6 --> P7[Event Table renders/update]
+  P4 --> P8[Triggers plugin evaluates rules]
+  P8 -->|if match| P9[Trigger OBS scene/overlay/action]
+

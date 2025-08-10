@@ -1,0 +1,73 @@
+graph LR
+  %% System-wide Data Flow (UI → Tauri → Rust Core → DB/Plugins → External)
+
+  subgraph UI[UI React Tauri]
+    UI_Settings[Settings Drawer]
+    UI_OBS[OBS Integration]
+    UI_EventTable[Event Table]
+    UI_Orchestrator[LIVE Orchestrator]
+  end
+
+  subgraph Bridge[Tauri IPC]
+    IPC_Invoke[invoke]
+    IPC_Emit[emit]
+  end
+
+  subgraph Core[Rust Core]
+    Core_App[core app state]
+    Core_Cmds[tauri commands]
+    subgraph DB[database]
+      DB_Migrations[migrations]
+      DB_Ops[operations + models]
+      DB_File[SQLite file]
+    end
+    subgraph Plugins[plugins]
+      PSS_UDP[pss udp listener]
+      EV_Stream[event stream]
+      OBS_OBWS[obs obws client]
+      OBS_Path[path generator]
+      Triggers[triggers]
+      Playback[playback]
+      WebSock[websocket plugin]
+      Drive[drive plugin]
+    end
+    Log[logging]
+    Sec[security]
+  end
+
+  subgraph External[External Systems]
+    EXT_PSS[PSS UDP]
+    EXT_OBS[OBS WebSocket]
+    EXT_FS[Filesystem Videos]
+    EXT_GDrive[Google Drive]
+  end
+
+  %% UI to Core
+  UI_Settings --> IPC_Invoke
+  UI_OBS --> IPC_Invoke
+  UI_Orchestrator --> IPC_Invoke
+  IPC_Emit --> UI_EventTable
+
+  IPC_Invoke --> Core_Cmds
+  Core_Cmds --> Core_App
+  Core_Cmds --> DB_Ops
+  Core_Cmds --> Plugins
+
+  %% DB
+  DB_Ops <--> DB_File
+  DB_Migrations --> DB_File
+
+  %% OBS config + push
+  DB_Ops --> OBS_Path
+  OBS_Path --> OBS_OBWS
+  OBS_OBWS --> EXT_OBS
+  OBS_Path -. create dirs .- EXT_FS
+
+  %% Live events
+  EXT_PSS --> PSS_UDP --> EV_Stream --> DB_Ops
+  EV_Stream --> IPC_Emit
+
+  %% Misc
+  Log --> Core_App
+  Sec --> Core_App
+

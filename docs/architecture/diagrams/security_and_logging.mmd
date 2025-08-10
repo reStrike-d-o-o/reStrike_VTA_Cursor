@@ -1,0 +1,13 @@
+graph TD
+  A[Config set/update] --> B[security/config_manager]
+  B --> C[encryption (key_manager)]
+  C --> D[secure_config table]
+
+  subgraph Logging
+    L1[logger]
+    L2[rotation]
+    L3[archival]
+  end
+
+  E[Subsystems emit logs] --> L1 --> L2 --> L3
+
