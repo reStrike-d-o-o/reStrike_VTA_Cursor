@@ -4,6 +4,7 @@ import { usePssMatchStore } from '../../../stores/pssMatchStore';
 import Button from '../../atoms/Button';
 import ArcadeBindingsPanel from './ArcadeBindingsPanel';
 import { loadMapping, listConnectedGamepads, isButtonPressed, axisValue } from './gamepad';
+import retroSound from './sound';
 
 type Fighter = {
   x: number;
@@ -19,6 +20,7 @@ const ArcadeModePanel: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const { sendManualEvent } = useSimulationStore();
   const [running, setRunning] = useState(true);
+  const [mute, setMute] = useState(false);
 
   const [b, setB] = useState<Fighter>({ x: 120, y: 180, dir: 1, color: 'blue' });
   const [r, setR] = useState<Fighter>({ x: 600, y: 180, dir: -1, color: 'red' });
@@ -287,6 +289,7 @@ const ArcadeModePanel: React.FC = () => {
         // animate + spark
         if (athlete === 1) { animRef.current.blue = 250; sparksRef.current.push({ x: (b.x + r.x)/2, y: b.y - 26, t: performance.now(), color: '#60a5fa' }); }
         else { animRef.current.red = 250; sparksRef.current.push({ x: (b.x + r.x)/2, y: r.y - 26, t: performance.now(), color: '#f87171' }); }
+        if (!mute) retroSound.playHit(athlete === 1 ? 'blue' : 'red');
         // floater
         const fx = (b.x + r.x) / 2; const fy = ((b.y + r.y) / 2) - 24;
         floatersRef.current.push({ x: fx, y: fy, t: performance.now(), text: `+${point_type}` , color: athlete === 1 ? '#93c5fd' : '#fca5a5' });
@@ -319,10 +322,10 @@ const ArcadeModePanel: React.FC = () => {
         case 'Numpad5': hit(2, 5); break;
 
         // Extras & fallbacks
-        case 'KeyQ': sendManualEvent('warning', { athlete: 1 }); emitLocal({ type: 'warnings', athlete: 'athlete1', description: 'Warning' }); break;
-        case 'Slash': sendManualEvent('warning', { athlete: 2 }); emitLocal({ type: 'warnings', athlete: 'athlete2', description: 'Warning' }); break;
-        case 'KeyZ': sendManualEvent('hit_level', { athlete: 1, level: 25 }); emitLocal({ type: 'hit_level', athlete: 1, level: 25 }); break;
-        case 'Period': sendManualEvent('hit_level', { athlete: 2, level: 25 }); emitLocal({ type: 'hit_level', athlete: 2, level: 25 }); break;
+        case 'KeyQ': sendManualEvent('warning', { athlete: 1 }); emitLocal({ type: 'warnings', athlete: 'athlete1', description: 'Warning' }); if (!mute) retroSound.playWarning(); break;
+        case 'Slash': sendManualEvent('warning', { athlete: 2 }); emitLocal({ type: 'warnings', athlete: 'athlete2', description: 'Warning' }); if (!mute) retroSound.playWarning(); break;
+        case 'KeyZ': sendManualEvent('hit_level', { athlete: 1, level: 25 }); emitLocal({ type: 'hit_level', athlete: 1, level: 25 }); if (!mute) retroSound.playHitLevel(25); break;
+        case 'Period': sendManualEvent('hit_level', { athlete: 2, level: 25 }); emitLocal({ type: 'hit_level', athlete: 2, level: 25 }); if (!mute) retroSound.playHitLevel(25); break;
         case 'Space': hit(1, 1); break; // fallback punch blue
         case 'Numpad0': hit(2, 1); break; // fallback punch red
       }
@@ -397,8 +400,8 @@ const ArcadeModePanel: React.FC = () => {
         if (press(`p${player}-head`, map.head.index)) tryHit(3);
         if (press(`p${player}-tb`, map.tech_body.index)) tryHit(4);
         if (press(`p${player}-th`, map.tech_head.index)) tryHit(5);
-        if (press(`p${player}-warn`, map.warning.index)) sendManualEvent('warning', { athlete: player });
-        if (press(`p${player}-hl`, map.hit_level.index)) sendManualEvent('hit_level', { athlete: player, level: cfg.hitLevelValue });
+        if (press(`p${player}-warn`, map.warning.index)) { sendManualEvent('warning', { athlete: player }); emitLocal({ type: 'warnings', athlete: player === 1 ? 'athlete1' : 'athlete2' }); if (!mute) retroSound.playWarning(); }
+        if (press(`p${player}-hl`, map.hit_level.index)) { sendManualEvent('hit_level', { athlete: player, level: cfg.hitLevelValue }); emitLocal({ type: 'hit_level', athlete: player, level: cfg.hitLevelValue }); if (!mute) retroSound.playHitLevel(cfg.hitLevelValue); }
       };
 
       handlePlayer(1, b, setB);
@@ -419,6 +422,12 @@ const ArcadeModePanel: React.FC = () => {
         <Button size="sm" variant={running ? 'secondary' : 'primary'} onClick={() => setRunning(v => !v)}>
           {running ? 'Pause' : 'Resume'}
         </Button>
+      </div>
+      <div className="flex items-center justify-end space-x-2">
+        <label className="text-xs text-gray-400 flex items-center space-x-1">
+          <input type="checkbox" checked={mute} onChange={(e) => { setMute(e.target.checked); retroSound.setMuted(e.target.checked); }} />
+          <span>Mute SFX</span>
+        </label>
       </div>
       <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} className="border border-gray-700 bg-[#0d131a]" />
       <ArcadeBindingsPanel />
