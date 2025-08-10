@@ -124,23 +124,62 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
       const result = await invoke<any>('simulation_get_scenarios');
       if (result?.success) {
         const scenarios: AutomatedScenario[] = result.data || [];
-        set({ scenarios });
-        if (!get().selectedAutomatedScenario && scenarios.length) {
-          set({ selectedAutomatedScenario: scenarios[0].name });
+        if (scenarios.length > 0) {
+          set({ scenarios });
+          if (!get().selectedAutomatedScenario) {
+            set({ selectedAutomatedScenario: scenarios[0].name });
+          }
+          if (isSimulationEnvError(get().error)) set({ error: '' });
+        } else {
+          // Fallback defaults when parsing yields empty array
+          const fallback: AutomatedScenario[] = [
+            { name: 'basic', display_name: 'Basic Match', description: 'Standard single match simulation', match_count: 1, estimated_duration: 90 },
+            { name: 'quick_test', display_name: 'Quick Test', description: 'Fast single match for testing', match_count: 1, estimated_duration: 45 },
+            { name: 'training_session', display_name: 'Training Session', description: 'Multiple matches for training', match_count: 5, estimated_duration: 600 },
+            { name: 'tournament_day', display_name: 'Tournament Day', description: 'Full tournament simulation', match_count: 20, estimated_duration: 3600 },
+            { name: 'championship', display_name: 'Championship', description: 'High-intensity championship matches', match_count: 8, estimated_duration: 1800 },
+            { name: 'demo', display_name: 'Demo Mode', description: 'Short demo for testing overlays', match_count: 1, estimated_duration: 60 },
+            { name: 'intensive', display_name: 'Intensive Training', description: 'High-frequency events for stress testing', match_count: 3, estimated_duration: 300 },
+            { name: 'olympic', display_name: 'Olympic Style', description: 'Olympic-level competition simulation', match_count: 6, estimated_duration: 2400 },
+          ];
+          set({ scenarios: fallback, selectedAutomatedScenario: fallback[0].name });
         }
-        if (isSimulationEnvError(get().error)) set({ error: '' });
       } else if (result?.error) {
         if (isSimulationEnvError(result.error)) {
           set({ error: result.error });
         } else if (String(result.error).includes('Failed to get scenarios')) {
           set({ error: 'Backend connection failed. Please ensure the application is running properly.' });
         }
+        // Use fallback scenarios on error too
+        const fallback: AutomatedScenario[] = [
+          { name: 'basic', display_name: 'Basic Match', description: 'Standard single match simulation', match_count: 1, estimated_duration: 90 },
+          { name: 'quick_test', display_name: 'Quick Test', description: 'Fast single match for testing', match_count: 1, estimated_duration: 45 },
+          { name: 'training_session', display_name: 'Training Session', description: 'Multiple matches for training', match_count: 5, estimated_duration: 600 },
+          { name: 'tournament_day', display_name: 'Tournament Day', description: 'Full tournament simulation', match_count: 20, estimated_duration: 3600 },
+          { name: 'championship', display_name: 'Championship', description: 'High-intensity championship matches', match_count: 8, estimated_duration: 1800 },
+          { name: 'demo', display_name: 'Demo Mode', description: 'Short demo for testing overlays', match_count: 1, estimated_duration: 60 },
+          { name: 'intensive', display_name: 'Intensive Training', description: 'High-frequency events for stress testing', match_count: 3, estimated_duration: 300 },
+          { name: 'olympic', display_name: 'Olympic Style', description: 'Olympic-level competition simulation', match_count: 6, estimated_duration: 2400 },
+        ];
+        set({ scenarios: fallback, selectedAutomatedScenario: fallback[0].name });
       }
     } catch (e: any) {
       if (typeof e === 'string') {
         if (isSimulationEnvError(e)) set({ error: e });
         else if (e.includes('Failed to invoke') || e.includes('Connection')) set({ error: 'Cannot connect to backend. Please restart the application.' });
       }
+      // Ensure UI remains usable with fallback scenarios
+      const fallback: AutomatedScenario[] = [
+        { name: 'basic', display_name: 'Basic Match', description: 'Standard single match simulation', match_count: 1, estimated_duration: 90 },
+        { name: 'quick_test', display_name: 'Quick Test', description: 'Fast single match for testing', match_count: 1, estimated_duration: 45 },
+        { name: 'training_session', display_name: 'Training Session', description: 'Multiple matches for training', match_count: 5, estimated_duration: 600 },
+        { name: 'tournament_day', display_name: 'Tournament Day', description: 'Full tournament simulation', match_count: 20, estimated_duration: 3600 },
+        { name: 'championship', display_name: 'Championship', description: 'High-intensity championship matches', match_count: 8, estimated_duration: 1800 },
+        { name: 'demo', display_name: 'Demo Mode', description: 'Short demo for testing overlays', match_count: 1, estimated_duration: 60 },
+        { name: 'intensive', display_name: 'Intensive Training', description: 'High-frequency events for stress testing', match_count: 3, estimated_duration: 300 },
+        { name: 'olympic', display_name: 'Olympic Style', description: 'Olympic-level competition simulation', match_count: 6, estimated_duration: 2400 },
+      ];
+      set({ scenarios: fallback, selectedAutomatedScenario: fallback[0].name });
     }
   },
 
