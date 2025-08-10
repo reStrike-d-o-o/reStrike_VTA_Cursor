@@ -51,74 +51,105 @@ const ArcadeModePanel: React.FC = () => {
 
   // --- Retro pixel sprites (idle/punch) ---
   const PIX = 4; // pixel scale
-  const SPR_W = 16;
-  const SPR_H = 16;
+  const SPR_W = 24;
+  const SPR_H = 24;
+  // Taekwondo fighter sprites (idle/punch/kick), 24x24 pixels. Legend:
+  // W/w: white dobok (light/shadow), C/c: chest protector (blue/red variant),
+  // S: skin, H/h: headgear light/shadow, K: belt, B: outline, G: glove/foot pad
   const idleSprite: string[] = [
-    '      HHHH     ',
-    '     HSSSSH    ',
-    '     SSSSSS    ',
-    '      SSSS     ',
-    '     FFFFFF    ',
-    '   FFFFFFFF    ',
-    '  FFFDDDDFF    ',
-    '  FFFDDDDFF    ',
-    '  FFFBBBBFF    ',
-    '   FFDDDDFF    ',
-    '   FFDDDDFF    ',
-    '  GGG    GGG   ',
-    '  GGG    GGG   ',
-    '  FFF    FFF   ',
-    '  F F    F F   ',
-    '               ',
+    '           HHHHHH           ',
+    '          HSSSSSH          ',
+    '          SSSSSSS          ',
+    '           SSSSS           ',
+    '         WWWWWWWW          ',
+    '        WWWWWWWWWW         ',
+    '       WWCCCCCCWW          ',
+    '       WwCccccCWw          ',
+    '       WwCccccCWw          ',
+    '       WWCCCCCCWW          ',
+    '        WWWKKWWWW          ',
+    '        WWWWWWWWW          ',
+    '      WwWW    WWwW         ',
+    '     WwWW      WWwW        ',
+    '     WwW        WwW        ',
+    '     GGG        GGG        ',
+    '     G G        G G        ',
+    '                          ',
+    '                          ',
+    '                          ',
+    '                          ',
+    '                          ',
+    '                          ',
+    '                          ',
   ];
   const punchSprite: string[] = [
-    '      HHHH     ',
-    '     HSSSSH    ',
-    '     SSSSSS    ',
-    '      SSSS     ',
-    '     FFFFFF    ',
-    '   FFFFFFFF    ',
-    '  FFFDDDDFF    ',
-    '  FFFDDDDFFGGG ',
-    '  FFFBBBBFFGGG ',
-    '   FFDDDDFF    ',
-    '   FFDDDDFF    ',
-    '      FFF      ',
-    '      FFF      ',
-    '     F   F     ',
-    '     F   F     ',
-    '               ',
+    '           HHHHHH           ',
+    '          HSSSSSH          ',
+    '          SSSSSSS          ',
+    '           SSSSS           ',
+    '         WWWWWWWW          ',
+    '        WWWWWWWWWW         ',
+    '       WWCCCCCCWW   GGG    ',
+    '       WwCccccCWw   GGG    ',
+    '       WwCccccCWw          ',
+    '       WWCCCCCCWW          ',
+    '        WWWKKWWWW          ',
+    '        WWWWWWWWW          ',
+    '      WwWW      WWwW       ',
+    '     WwWW        WWwW      ',
+    '     WwW          WwW      ',
+    '     GGG          GGG      ',
+    '     G G          G G      ',
+    '                          ',
+    '                          ',
+    '                          ',
+    '                          ',
+    '                          ',
+    '                          ',
+    '                          ',
   ];
   const kickSprite: string[] = [
-    '      HHHH     ',
-    '     HSSSSH    ',
-    '     SSSSSS    ',
-    '      SSSS     ',
-    '     FFFFFF    ',
-    '   FFFFFFFF    ',
-    '  FFFDDDDFF    ',
-    '  FFFDDDDFF    ',
-    '  FFFBBBBFF    ',
-    '   FFDDDDFF    ',
-    '   FFDDDDFF    ',
-    'GGG  GGG       ',
-    'GGG            ',
-    'F F            ',
-    'F F            ',
-    '               ',
+    '           HHHHHH           ',
+    '          HSSSSSH          ',
+    '          SSSSSSS          ',
+    '           SSSSS           ',
+    '         WWWWWWWW          ',
+    '        WWWWWWWWWW         ',
+    '       WWCCCCCCWW          ',
+    '       WwCccccCWw          ',
+    '       WwCccccCWw          ',
+    '       WWCCCCCCWW          ',
+    '        WWWKKWWWW   GGGGG  ',
+    '        WWWWWWWWW   GGGGG  ',
+    '      WwWW                ',
+    '     WwWW                 ',
+    '     WwW                  ',
+    '     GGG                  ',
+    '     G G                  ',
+    '                          ',
+    '                          ',
+    '                          ',
+    '                          ',
+    '                          ',
+    '                          ',
+    '                          ',
   ];
 
   const basePalette = {
     ' ': 'transparent',
-    H: '#2b2a33',
-    S: '#e8d5c4',
-    B: '#0b0b0b',
+    H: '#e5e7eb',
+    h: '#cbd5e1',
+    S: '#f5d0a6',
+    B: '#111827',
+    W: '#f3f4f6',
+    w: '#d1d5db',
+    K: '#1f2937',
+    G: '#9ca3af',
   } as const;
   const variantPalette = (color: 'blue' | 'red') => ({
     ...basePalette,
-    F: color === 'blue' ? '#3b82f6' : '#ef4444', // gi
-    D: color === 'blue' ? '#1e40af' : '#7f1d1d', // gi dark
-    G: color === 'blue' ? '#60a5fa' : '#f87171', // gloves
+    C: color === 'blue' ? '#2563eb' : '#dc2626',
+    c: color === 'blue' ? '#1e40af' : '#7f1d1d',
   });
 
   const drawPixelSprite = (
@@ -186,7 +217,7 @@ const ArcadeModePanel: React.FC = () => {
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, WIDTH, HEIGHT);
       // skyline parallax
-      ctx.fillStyle = 'rgba(255,255,255,0.05)';
+      ctx.fillStyle = 'rgba(255,255,255,0.04)';
       const t = performance.now() * 0.0005;
       skylineRef.current.forEach((b, i) => {
         const px = (b.x + (i % 3) * (t * 20)) % WIDTH;
@@ -210,8 +241,11 @@ const ArcadeModePanel: React.FC = () => {
       for (let i = 0; i < 12; i++) {
         const cx = (i * 60 + (Math.sin(t + i) * 10)) % WIDTH;
         ctx.beginPath();
-        ctx.arc(cx, 110 + Math.sin(t * 2 + i) * 2, 8 + (i % 3), 0, Math.PI * 2);
+        const radius = 8 + (i % 3);
+        ctx.arc(cx, 110 + Math.sin(t * 2 + i) * 2, radius, 0, Math.PI * 2);
         ctx.fill();
+        // shoulders
+        ctx.fillRect(cx - radius - 4, 110 + radius, (radius + 4) * 2, 4);
       }
     };
 
@@ -293,12 +327,14 @@ const ArcadeModePanel: React.FC = () => {
         ctx.globalAlpha = 1;
       }
       // scanlines
-      ctx.fillStyle = 'rgba(255,255,255,0.03)';
-      for (let y = 0; y < HEIGHT; y += 3) ctx.fillRect(0, y, WIDTH, 1);
+      ctx.fillStyle = 'rgba(255,255,255,0.035)';
+      for (let y = 0; y < HEIGHT; y += 3) {
+        ctx.fillRect(0, y, WIDTH, 1);
+      }
       // vignette
       const rad = ctx.createRadialGradient(WIDTH/2, HEIGHT/2, Math.min(WIDTH, HEIGHT)/3, WIDTH/2, HEIGHT/2, Math.max(WIDTH, HEIGHT)/1.1);
       rad.addColorStop(0, 'rgba(0,0,0,0)');
-      rad.addColorStop(1, 'rgba(0,0,0,0.35)');
+      rad.addColorStop(1, 'rgba(0,0,0,0.4)');
       ctx.fillStyle = rad;
       ctx.fillRect(0, 0, WIDTH, HEIGHT);
     };
@@ -364,8 +400,12 @@ const ArcadeModePanel: React.FC = () => {
       for (const d of dustRef.current) {
         const p = (performance.now() - d.t) / dlife;
         ctx.globalAlpha = 1 - p;
-        ctx.fillStyle = dcol;
-        ctx.fillRect(d.x - 6 + p * 10, d.y - 2 - p * 6, 6, 2);
+        const grad = ctx.createLinearGradient(d.x - 6, d.y, d.x + 6, d.y);
+        grad.addColorStop(0, 'rgba(255,255,255,0)');
+        grad.addColorStop(0.5, dcol);
+        grad.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(d.x - 6 + p * 10, d.y - 2 - p * 6, 12, 2);
         ctx.globalAlpha = 1;
       }
 
