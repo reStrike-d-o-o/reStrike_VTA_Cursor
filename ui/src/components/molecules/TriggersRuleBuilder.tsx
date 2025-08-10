@@ -65,8 +65,8 @@ const TriggersRuleBuilder: React.FC<{ tournamentId?: number; dayId?: number }> =
 
   const eventOptions = useMemo(() => eventsCatalog || [], [eventsCatalog]);
 
-  const handleRowChange = (idx: number, partial: Partial<EventTriggerRow & DelayTriggerRow>) => {
-    updateRow(idx, partial as Partial<TriggerRow>);
+  const handleRowChange = (idx: number, partial: Partial<TriggerRow>) => {
+    updateRow(idx, partial);
   };
 
   const renderEventCell = (row: EventTriggerRow, idx: number) => (
