@@ -1,0 +1,75 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Arcade Intro Overlay</title>
+  <style>
+    html, body { margin:0; padding:0; width:1920px; height:1080px; background:transparent; overflow:hidden; font-family: Arial, sans-serif; }
+    #root { position:relative; width:1920px; height:1080px; }
+    .bg { position:absolute; inset:0; background: radial-gradient(circle at 50% 40%, rgba(255,255,255,0.08), rgba(0,0,0,0)); }
+    .panel { position:absolute; top: 300px; left: 50%; transform: translateX(-50%); width: 1600px; height: 320px; border-radius: 14px; overflow:hidden; box-shadow: 0 12px 36px rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; justify-content:space-between; padding: 16px 24px; }
+    .blue { background: linear-gradient(135deg, #0b3a8b, #2770ff); color:#e5e7eb; }
+    .red { background: linear-gradient(135deg, #8b0b1a, #ff2740); color:#fee2e2; }
+    .col { display:flex; align-items:center; gap: 18px; }
+    .flag { width:120px; height:80px; object-fit:contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4)); }
+    .name { font-size:72px; font-weight:900; text-shadow: 0 4px 12px rgba(0,0,0,0.6); letter-spacing:2px; }
+    .meta { position:absolute; top:180px; left:50%; transform:translateX(-50%); color:#e5e7eb; font-size:32px; letter-spacing:3px; text-shadow:0 3px 10px rgba(0,0,0,0.5); }
+    .vs { position:absolute; top: 560px; left:50%; transform: translateX(-50%); font-size:140px; font-weight:900; color:#ffffff; text-shadow: 0 6px 20px rgba(0,0,0,0.7); }
+    .vs::after { content:''; position:absolute; left:-80px; right:-80px; top:50%; height:6px; background: linear-gradient(90deg, rgba(59,130,246,0.4), rgba(255,255,255,0.8), rgba(239,68,68,0.4)); filter: blur(1px); }
+    .badge { position:absolute; top: 40px; left: 50%; transform: translateX(-50%); color:#cbd5e1; font-size:20px; letter-spacing:2px; }
+  </style>
+</head>
+<body>
+  <div id="root">
+    <div class="bg"></div>
+    <div class="badge" id="badge">TAEKWONDO CHAMPIONSHIP</div>
+    <div class="meta" id="meta">MEN'S -58KG • GOLD MEDAL CONTEST</div>
+    <div class="panel blue" style="left:80px; width:860px; transform:none;">
+      <div class="col">
+        <img class="flag" id="flagBlue" alt="" />
+        <div class="name" id="nameBlue">BLUE FIGHTER</div>
+      </div>
+    </div>
+    <div class="panel red" style="right:80px; width:860px; left:auto; transform:none;">
+      <div class="col" style="justify-content:flex-end; width:100%">
+        <div class="name" id="nameRed">RED FIGHTER</div>
+        <img class="flag" id="flagRed" alt="" />
+      </div>
+    </div>
+    <div class="vs">VS</div>
+  </div>
+  <script src="./shared.js"></script>
+  <script>
+    const { OverlayBus, mapEvent } = window.__ARCADE_OVERLAY__;
+    const el = {
+      nameBlue: document.getElementById('nameBlue'),
+      nameRed: document.getElementById('nameRed'),
+      flagBlue: document.getElementById('flagBlue'),
+      flagRed: document.getElementById('flagRed'),
+      meta: document.getElementById('meta'),
+      badge: document.getElementById('badge'),
+    };
+    function setFlag(img, code) {
+      if (!code) return;
+      img.src = `../../assets/flags/svg/${code.toUpperCase()}.svg`;
+    }
+    OverlayBus.subscribe((raw) => {
+      const e = mapEvent(raw);
+      switch (e.kind) {
+        case 'athletes':
+          if (e.blue) { el.nameBlue.textContent = (e.blue.long || e.blue.short || 'BLUE').toUpperCase(); setFlag(el.flagBlue, e.blue.country || e.blue.iocCode); }
+          if (e.red) { el.nameRed.textContent = (e.red.long || e.red.short || 'RED').toUpperCase(); setFlag(el.flagRed, e.red.country || e.red.iocCode); }
+          break;
+        case 'round':
+          el.badge.textContent = 'MATCH READY';
+          break;
+        case 'clock':
+          // could animate countdown to start
+          break;
+      }
+    });
+  </script>
+</body>
+</html>
+
+

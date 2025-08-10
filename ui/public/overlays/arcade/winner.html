@@ -1,0 +1,42 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Arcade Winner Overlay</title>
+  <style>
+    html, body { margin:0; padding:0; width:1920px; height:1080px; background:transparent; overflow:hidden; font-family: Arial, sans-serif; }
+    #root { position:relative; width:1920px; height:1080px; }
+    .center { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; }
+    .winner { font-size:120px; font-weight:900; color:#ffffff; text-shadow: 0 8px 26px rgba(0,0,0,0.6); letter-spacing:3px; }
+    .badge { margin-top:12px; font-size:28px; color:#e5e7eb; letter-spacing:2px; }
+    .burst { position:absolute; width:1200px; height:1200px; left:50%; top:50%; transform: translate(-50%,-50%); border-radius:50%; background: radial-gradient(circle, rgba(255,255,255,0.15), rgba(255,255,255,0)); filter: blur(3px); animation: burst 1200ms ease-out both; pointer-events:none; }
+    @keyframes burst { 0% { transform: translate(-50%,-50%) scale(0.6); opacity: 0;} 50% { opacity: 1; } 100% { transform: translate(-50%,-50%) scale(1.4); opacity: 0; } }
+  </style>
+</head>
+<body>
+  <div id="root">
+    <div class="burst" id="burst"></div>
+    <div class="center">
+      <div class="winner" id="winner">WINNER</div>
+      <div class="badge" id="badge">BY POINTS</div>
+    </div>
+  </div>
+  <script src="./shared.js"></script>
+  <script>
+    const { OverlayBus, mapEvent } = window.__ARCADE_OVERLAY__;
+    const el = { winner: document.getElementById('winner'), badge: document.getElementById('badge'), burst: document.getElementById('burst') };
+    function pulse() { el.burst.classList.remove('run'); void el.burst.offsetWidth; el.burst.classList.add('run'); }
+    OverlayBus.subscribe((raw) => {
+      const e = mapEvent(raw);
+      if (e.kind === 'winner') {
+        const name = e.athlete === 1 || e.athlete === 'blue' ? 'BLUE' : 'RED';
+        el.winner.textContent = `${name} WINS`;
+        el.badge.textContent = (e.method || 'VICTORY').toUpperCase();
+        el.burst.style.animation = 'none'; void el.burst.offsetWidth; el.burst.style.animation = '';
+      }
+    });
+  </script>
+</body>
+</html>
+
+

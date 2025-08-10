@@ -315,13 +315,13 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
                 <Label className="text-xs text-purple-300">Arcade Scoreboard (New)</Label>
                 <div className="flex items-center space-x-2">
                   <Input value={`${window.location.origin}/overlays/arcade/scoreboard.html`} readOnly className="flex-1 text-xs" />
-                  <Button size="sm" variant="secondary" onClick={() => window.open(`${window.location.origin}/overlays/arcade/scoreboard.html`, '_blank`')}>Open</Button>
+                  <Button size="sm" variant="secondary" onClick={() => window.open(`${window.location.origin}/overlays/arcade/scoreboard.html`, '_blank')}>Open</Button>
                   <Button size="sm" variant="secondary" onClick={() => navigator.clipboard.writeText(`${window.location.origin}/overlays/arcade/scoreboard.html`)}>Copy</Button>
                 </div>
               </div>
               {/* Placeholders for upcoming arcade overlays */}
               <div>
-                <Label className="text-xs text-purple-300">Arcade Intro (Coming Next)</Label>
+                <Label className="text-xs text-purple-300">Arcade Intro</Label>
                 <div className="flex items-center space-x-2">
                   <Input value={`${window.location.origin}/overlays/arcade/intro.html`} readOnly className="flex-1 text-xs" />
                   <Button size="sm" variant="secondary" onClick={() => window.open(`${window.location.origin}/overlays/arcade/intro.html`, '_blank')}>Open</Button>
@@ -329,7 +329,7 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
                 </div>
               </div>
               <div>
-                <Label className="text-xs text-purple-300">Arcade Intermission Stats (Coming Next)</Label>
+                <Label className="text-xs text-purple-300">Arcade Intermission Stats</Label>
                 <div className="flex items-center space-x-2">
                   <Input value={`${window.location.origin}/overlays/arcade/intermission.html`} readOnly className="flex-1 text-xs" />
                   <Button size="sm" variant="secondary" onClick={() => window.open(`${window.location.origin}/overlays/arcade/intermission.html`, '_blank')}>Open</Button>
@@ -337,7 +337,7 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
                 </div>
               </div>
               <div>
-                <Label className="text-xs text-purple-300">Arcade Winner (Coming Next)</Label>
+                <Label className="text-xs text-purple-300">Arcade Winner</Label>
                 <div className="flex items-center space-x-2">
                   <Input value={`${window.location.origin}/overlays/arcade/winner.html`} readOnly className="flex-1 text-xs" />
                   <Button size="sm" variant="secondary" onClick={() => window.open(`${window.location.origin}/overlays/arcade/winner.html`, '_blank')}>Open</Button>
@@ -345,7 +345,7 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
                 </div>
               </div>
               <div>
-                <Label className="text-xs text-purple-300">Arcade Specials (Coming Next)</Label>
+                <Label className="text-xs text-purple-300">Arcade Specials</Label>
                 <div className="flex items-center space-x-2">
                   <Input value={`${window.location.origin}/overlays/arcade/specials.html`} readOnly className="flex-1 text-xs" />
                   <Button size="sm" variant="secondary" onClick={() => window.open(`${window.location.origin}/overlays/arcade/specials.html`, '_blank')}>Open</Button>
