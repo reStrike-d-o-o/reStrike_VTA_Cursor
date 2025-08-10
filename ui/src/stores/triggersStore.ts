@@ -25,6 +25,13 @@ export interface EventTriggerRow extends TriggerRowBase {
   target_type: 'scene' | 'overlay';
   obs_scene_id?: number;
   overlay_template_id?: number;
+  // v2 additions
+  action_kind?: 'scene' | 'overlay' | 'record_start' | 'record_stop' | 'replay_save' | 'hotkey' | 'stinger';
+  obs_connection_name?: string;
+  condition_round?: number | null;
+  condition_once_per?: 'round' | 'match' | null;
+  debounce_ms?: number | null;
+  cooldown_ms?: number | null;
   is_enabled: boolean;
 }
 
@@ -157,6 +164,12 @@ export const useTriggersStore = create<TriggersStore>((set, get) => ({
             target_type: t.target_type ?? 'scene',
             obs_scene_id: t.obs_scene_id,
             overlay_template_id: t.overlay_template_id,
+            action_kind: t.action_kind ?? undefined,
+            obs_connection_name: t.obs_connection_name ?? undefined,
+            condition_round: t.condition_round ?? null,
+            condition_once_per: t.condition_once_per ?? null,
+            debounce_ms: t.debounce_ms ?? null,
+            cooldown_ms: t.cooldown_ms ?? null,
             is_enabled: t.is_enabled ?? true,
             delay_ms: t.delay_ms ?? 300,
           }))
@@ -264,6 +277,12 @@ export const useTriggersStore = create<TriggersStore>((set, get) => ({
         target_type: evRow.target_type,
         obs_scene_id: evRow.obs_scene_id,
         overlay_template_id: evRow.overlay_template_id,
+        action_kind: evRow.action_kind,
+        obs_connection_name: evRow.obs_connection_name,
+        condition_round: evRow.condition_round ?? undefined,
+        condition_once_per: evRow.condition_once_per ?? undefined,
+        debounce_ms: evRow.debounce_ms ?? undefined,
+        cooldown_ms: evRow.cooldown_ms ?? undefined,
         priority: idx,
         is_enabled: evRow.is_enabled,
       };
