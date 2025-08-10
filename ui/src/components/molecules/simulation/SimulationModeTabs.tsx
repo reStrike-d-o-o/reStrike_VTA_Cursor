@@ -31,9 +31,13 @@ const SimulationModeTabs: React.FC = () => {
             setShowArcade(on);
             try {
               const { default: retroSound } = await import('./sound');
-              await retroSound.setMusicOn(on);
-              if (!on) retroSound.setMuted(true);
-              else retroSound.setMuted(false);
+              if (on) {
+                retroSound.setMuted(false);
+                await retroSound.setMusicOn(true);
+              } else {
+                await retroSound.setMusicOn(false);
+                retroSound.setMuted(false);
+              }
             } catch {}
           }}
           disabled={isRunning}
