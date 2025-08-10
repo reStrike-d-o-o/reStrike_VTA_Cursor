@@ -14,7 +14,9 @@ export const DatabaseSettingsPanel: React.FC = () => {
     error,
     initialized,
     initializeSettings,
-    getDatabaseInfo
+    getDatabaseInfo,
+    setLoading,
+    setError
   } = useDatabaseSettings();
 
   const [newKey, setNewKey] = useState('');

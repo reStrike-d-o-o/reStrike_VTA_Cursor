@@ -46,6 +46,8 @@ export interface DatabaseSettingsActions {
   getDatabasePreview: () => Promise<any>;
   getDatabaseTables: () => Promise<any>;
   getTableData: (tableName: string) => Promise<any>;
+  setLoading: (loading: boolean) => void;
+  setError: (error: string | null) => void;
 }
 
 export interface BackupFileInfo {
@@ -401,5 +403,7 @@ export function useDatabaseSettings(): DatabaseSettingsState & DatabaseSettingsA
     getDatabasePreview,
     getDatabaseTables,
     getTableData,
+    setLoading,
+    setError,
   };
 } 
