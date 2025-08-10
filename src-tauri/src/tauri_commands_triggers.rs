@@ -126,3 +126,45 @@ pub async fn triggers_recent_logs(app: State<'_, Arc<App>>, max: Option<usize>) 
         "logs": logs,
     }))
 }
+
+// ---------------- PREVIEW EVALUATION ----------------
+#[tauri::command]
+pub async fn triggers_preview_evaluate(
+    app: State<'_, Arc<App>>,
+    trigger: EventTriggerPayload,
+    consider_limits: Option<bool>,
+) -> Result<serde_json::Value, TauriError> {
+    // Build EventTrigger from payload
+    let now = Utc::now();
+    let row = EventTrigger {
+        action: trigger.action.clone(),
+        target_type: trigger.target_type.clone(),
+        delay_ms: trigger.delay_ms.unwrap_or(0),
+        id: trigger.id,
+        tournament_id: trigger.tournament_id,
+        tournament_day_id: trigger.tournament_day_id,
+        event_type: trigger.event_type.clone(),
+        trigger_type: trigger.target_type.clone(),
+        obs_scene_id: trigger.obs_scene_id,
+        overlay_template_id: trigger.overlay_template_id,
+        action_kind: trigger.action_kind.clone(),
+        obs_connection_name: trigger.obs_connection_name.clone(),
+        condition_round: trigger.condition_round,
+        condition_once_per: trigger.condition_once_per.clone(),
+        debounce_ms: trigger.debounce_ms,
+        cooldown_ms: trigger.cooldown_ms,
+        is_enabled: trigger.is_enabled,
+        priority: trigger.priority,
+        created_at: now,
+        updated_at: now,
+    };
+
+    let plugin = if let Some(p) = crate::plugins::plugin_triggers::TRIGGER_PLUGIN_GLOBAL.get() {
+        p.clone()
+    } else {
+        return Ok(serde_json::json!({ "success": false, "error": "Trigger plugin not initialized" }));
+    };
+
+    let ok = plugin.should_fire_preview(&row, consider_limits.unwrap_or(false)).await;
+    Ok(serde_json::json!({ "success": true, "can_fire": ok }))
+}

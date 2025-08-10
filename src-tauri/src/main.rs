@@ -559,6 +559,7 @@ async fn main() -> AppResult<()> {
             re_strike_vta::tauri_commands_triggers::triggers_get,
             re_strike_vta::tauri_commands_triggers::triggers_save,
             re_strike_vta::tauri_commands_triggers::triggers_recent_logs,
+            re_strike_vta::tauri_commands_triggers::triggers_preview_evaluate,
             re_strike_vta::tauri_commands_overlays::overlays_sync_templates,
             re_strike_vta::tauri_commands_overlays::overlays_populate_from_files,
             re_strike_vta::tauri_commands_obs_connections::obs_connections_get_all,
