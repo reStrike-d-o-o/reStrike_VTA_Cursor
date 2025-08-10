@@ -631,13 +631,13 @@ const ArcadeModePanel: React.FC = () => {
             if (cooldown.blue > 0) return;
             if (!inRange(b, r)) return;
             sendManualEvent('point', { athlete: 1, point_type: pt });
-            animRef.current.blue = { t: 250, pose: pt >= 3 ? 'kick' : 'punch' };
+            animRef.current.blue = { t: 250, pose: pt === 1 ? 'punch' : pt === 2 ? 'kick_body' : pt === 3 ? 'kick_head' : 'spin' };
             if (!mute) retroSound.playAttack(pt, 'blue');
           } else {
             if (cooldown.red > 0) return;
             if (!inRange(r, b)) return;
             sendManualEvent('point', { athlete: 2, point_type: pt });
-            animRef.current.red = { t: 250, pose: pt >= 3 ? 'kick' : 'punch' };
+            animRef.current.red = { t: 250, pose: pt === 1 ? 'punch' : pt === 2 ? 'kick_body' : pt === 3 ? 'kick_head' : 'spin' };
             if (!mute) retroSound.playAttack(pt, 'red');
           }
         };
