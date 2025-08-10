@@ -113,3 +113,16 @@ pub async fn triggers_save(app: State<'_, Arc<App>>, payload: Vec<EventTriggerPa
     }
     Ok(())
 }
+
+// ---------------- RECENT EXECUTION LOGS ----------------
+#[tauri::command]
+pub async fn triggers_recent_logs(app: State<'_, Arc<App>>, max: Option<usize>) -> Result<serde_json::Value, TauriError> {
+    // SAFETY: keep interface stable; pull from global if available
+    let logs = if let Some(p) = crate::plugins::plugin_triggers::TRIGGER_PLUGIN_GLOBAL.get() {
+        p.get_recent_execution_logs(max.unwrap_or(50)).await
+    } else { vec![] };
+    Ok(serde_json::json!({
+        "success": true,
+        "logs": logs,
+    }))
+}
