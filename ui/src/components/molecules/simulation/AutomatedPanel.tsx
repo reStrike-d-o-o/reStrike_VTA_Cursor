@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import Button from '../../atoms/Button';
 import Label from '../../atoms/Label';
 import { Progress } from '../../atoms/Progress';
@@ -15,6 +15,22 @@ const AutomatedPanel: React.FC = () => {
     loading,
     progress,
   } = useSimulationStore();
+  const showAutomated = useSimulationStore((s) => s.showAutomated);
+
+  // Ensure scenarios are loaded when Automated mode is shown
+  const loadScenarios = useSimulationStore((s) => s.loadScenarios);
+  useEffect(() => {
+    if (showAutomated && (!scenarios || scenarios.length === 0)) {
+      loadScenarios();
+    }
+  }, [showAutomated]);
+
+  // Ensure selection exists when scenarios arrive
+  useEffect(() => {
+    if ((!selectedAutomatedScenario || selectedAutomatedScenario === '') && scenarios && scenarios.length > 0) {
+      setSelectedAutomatedScenario(scenarios[0].name);
+    }
+  }, [scenarios, selectedAutomatedScenario, setSelectedAutomatedScenario]);
 
   const selected = scenarios.find(s => s.name === selectedAutomatedScenario);
 
@@ -29,15 +45,17 @@ const AutomatedPanel: React.FC = () => {
           disabled={status.isRunning || loading}
           className="w-full bg-gray-800 border border-gray-600 square px-3 py-2 text-gray-200 focus:border-blue-500 focus:outline-none"
         >
-          {scenarios.length === 0 ? (
-            <option value="">Loading scenarios...</option>
-          ) : (
-            scenarios.map((s) => (
-              <option key={s.name} value={s.name}>
-                {s.display_name} ({s.match_count} matches, ~{Math.round(s.estimated_duration / 60)}min)
-              </option>
-            ))
-          )}
+          {(scenarios && scenarios.length > 0
+            ? scenarios
+            : [
+                { name: 'basic', display_name: 'Basic Match', match_count: 1, estimated_duration: 90 },
+                { name: 'quick_test', display_name: 'Quick Test', match_count: 1, estimated_duration: 45 },
+              ] as any
+          ).map((s: any) => (
+            <option key={s.name} value={s.name}>
+              {s.display_name} ({s.match_count} matches, ~{Math.round((s.estimated_duration || 60) / 60)}min)
+            </option>
+          ))}
         </select>
         {selected && (
           <p className="text-xs text-gray-400 mt-1">{selected.description}</p>
