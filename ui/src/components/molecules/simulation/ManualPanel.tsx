@@ -67,103 +67,109 @@ const ManualPanel: React.FC = () => {
         <Button variant="secondary" size="sm" onClick={stop} disabled={!status.isRunning || loading}>Stop</Button>
       </div>
 
-      {/* Event Palette */}
+      {/* Event Palette - Two columns: Blue (left), Red (right). Global controls below. */}
       <div className="grid md:grid-cols-2 gap-4">
-        {/* Points Blue */}
-        <div className="bg-blue-900/10 border border-blue-800/30 p-2">
-          <h5 className="text-xs font-medium text-blue-300 mb-2">Points (Blue Athlete)</h5>
-          <div className="grid grid-cols-2 gap-1.5">
-            <Button className="px-2 text-xs border-blue-600/40 text-blue-200 hover:bg-blue-900/20 w-auto" variant="outline" size="sm" onClick={() => sendManualEvent('point', { athlete: 1, point_type: 1 })} disabled={disabled}>Punch (1pt)</Button>
-            <Button className="px-2 text-xs border-blue-600/40 text-blue-200 hover:bg-blue-900/20 w-auto" variant="outline" size="sm" onClick={() => sendManualEvent('point', { athlete: 1, point_type: 2 })} disabled={disabled}>Body Kick (2pt)</Button>
-            <Button className="px-2 text-xs border-blue-600/40 text-blue-200 hover:bg-blue-900/20 w-auto" variant="outline" size="sm" onClick={() => sendManualEvent('point', { athlete: 1, point_type: 3 })} disabled={disabled}>Head Kick (3pt)</Button>
-            <Button className="px-2 text-xs border-blue-600/40 text-blue-200 hover:bg-blue-900/20 w-auto" variant="outline" size="sm" onClick={() => sendManualEvent('point', { athlete: 1, point_type: 4 })} disabled={disabled}>Tech Body (4pt)</Button>
-            <Button className="px-2 text-xs border-blue-600/40 text-blue-200 hover:bg-blue-900/20 w-auto" variant="outline" size="sm" onClick={() => sendManualEvent('point', { athlete: 1, point_type: 5 })} disabled={disabled}>Tech Head (5pt)</Button>
-          </div>
-        </div>
-
-        {/* Points Red */}
-        <div className="bg-red-900/10 border border-red-800/30 p-2">
-          <h5 className="text-xs font-medium text-red-300 mb-2">Points (Red Athlete)</h5>
-          <div className="grid grid-cols-2 gap-1.5">
-            <Button className="px-2 text-xs border-red-600/40 text-red-200 hover:bg-red-900/20 w-auto" variant="outline" size="sm" onClick={() => sendManualEvent('point', { athlete: 2, point_type: 1 })} disabled={disabled}>Punch (1pt)</Button>
-            <Button className="px-2 text-xs border-red-600/40 text-red-200 hover:bg-red-900/20 w-auto" variant="outline" size="sm" onClick={() => sendManualEvent('point', { athlete: 2, point_type: 2 })} disabled={disabled}>Body Kick (2pt)</Button>
-            <Button className="px-2 text-xs border-red-600/40 text-red-200 hover:bg-red-900/20 w-auto" variant="outline" size="sm" onClick={() => sendManualEvent('point', { athlete: 2, point_type: 3 })} disabled={disabled}>Head Kick (3pt)</Button>
-            <Button className="px-2 text-xs border-red-600/40 text-red-200 hover:bg-red-900/20 w-auto" variant="outline" size="sm" onClick={() => sendManualEvent('point', { athlete: 2, point_type: 4 })} disabled={disabled}>Tech Body (4pt)</Button>
-            <Button className="px-2 text-xs border-red-600/40 text-red-200 hover:bg-red-900/20 w-auto" variant="outline" size="sm" onClick={() => sendManualEvent('point', { athlete: 2, point_type: 5 })} disabled={disabled}>Tech Head (5pt)</Button>
-          </div>
-        </div>
-
-        {/* Hit Levels */}
-        <div>
-          <h5 className="text-xs font-medium text-gray-300 mb-2">Hit Levels</h5>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-blue-900/10 border border-blue-800/30 p-2">
-              <div className="grid grid-cols-2 gap-1.5">
-                <Button className="px-2 text-xs border-blue-600/40 text-blue-200 hover:bg-blue-900/20 w-auto" variant="outline" size="sm" onClick={() => sendManualEvent('hit_level', { athlete: 1, level: 25 })} disabled={disabled}>Blue Low (25)</Button>
-                <Button className="px-2 text-xs border-blue-600/40 text-blue-200 hover:bg-blue-900/20 w-auto" variant="outline" size="sm" onClick={() => sendManualEvent('hit_level', { athlete: 1, level: 75 })} disabled={disabled}>Blue High (75)</Button>
-              </div>
+        {/* LEFT: BLUE */}
+        <div className="space-y-3">
+          <div className="bg-blue-900/10 border border-blue-800/30 p-2">
+            <h5 className="text-xs font-medium text-blue-300 mb-2">Blue – Points</h5>
+            <div className="grid grid-cols-2 gap-1.5">
+              <Button className="px-2 text-xs border-blue-600/40 text-blue-200 hover:bg-blue-900/20 w-auto" variant="outline" size="sm" onClick={() => sendManualEvent('point', { athlete: 1, point_type: 1 })} disabled={disabled}>Punch (1pt)</Button>
+              <Button className="px-2 text-xs border-blue-600/40 text-blue-200 hover:bg-blue-900/20 w-auto" variant="outline" size="sm" onClick={() => sendManualEvent('point', { athlete: 1, point_type: 2 })} disabled={disabled}>Body Kick (2pt)</Button>
+              <Button className="px-2 text-xs border-blue-600/40 text-blue-200 hover:bg-blue-900/20 w-auto" variant="outline" size="sm" onClick={() => sendManualEvent('point', { athlete: 1, point_type: 3 })} disabled={disabled}>Head Kick (3pt)</Button>
+              <Button className="px-2 text-xs border-blue-600/40 text-blue-200 hover:bg-blue-900/20 w-auto" variant="outline" size="sm" onClick={() => sendManualEvent('point', { athlete: 1, point_type: 4 })} disabled={disabled}>Tech Body (4pt)</Button>
+              <Button className="px-2 text-xs border-blue-600/40 text-blue-200 hover:bg-blue-900/20 w-auto" variant="outline" size="sm" onClick={() => sendManualEvent('point', { athlete: 1, point_type: 5 })} disabled={disabled}>Tech Head (5pt)</Button>
             </div>
-            <div className="bg-red-900/10 border border-red-800/30 p-2">
-              <div className="grid grid-cols-2 gap-1.5">
-                <Button className="px-2 text-xs border-red-600/40 text-red-200 hover:bg-red-900/20 w-auto" variant="outline" size="sm" onClick={() => sendManualEvent('hit_level', { athlete: 2, level: 25 })} disabled={disabled}>Red Low (25)</Button>
-                <Button className="px-2 text-xs border-red-600/40 text-red-200 hover:bg-red-900/20 w-auto" variant="outline" size="sm" onClick={() => sendManualEvent('hit_level', { athlete: 2, level: 75 })} disabled={disabled}>Red High (75)</Button>
-              </div>
+          </div>
+          <div className="bg-blue-900/10 border border-blue-800/30 p-2">
+            <h5 className="text-xs font-medium text-blue-300 mb-2">Blue – Hit Levels</h5>
+            <div className="grid grid-cols-2 gap-1.5">
+              <Button className="px-2 text-xs border-blue-600/40 text-blue-200 hover:bg-blue-900/20 w-auto" variant="outline" size="sm" onClick={() => sendManualEvent('hit_level', { athlete: 1, level: 25 })} disabled={disabled}>Low (25)</Button>
+              <Button className="px-2 text-xs border-blue-600/40 text-blue-200 hover:bg-blue-900/20 w-auto" variant="outline" size="sm" onClick={() => sendManualEvent('hit_level', { athlete: 1, level: 75 })} disabled={disabled}>High (75)</Button>
+            </div>
+          </div>
+          <div className="bg-blue-900/10 border border-blue-800/30 p-2">
+            <h5 className="text-xs font-medium text-blue-300 mb-2">Blue – Warnings</h5>
+            <div className="grid grid-cols-2 gap-1.5">
+              <Button className="px-2 text-xs border-blue-600/40 text-blue-200 hover:bg-blue-900/20 w-auto" variant="outline" size="sm" onClick={() => sendManualEvent('warning', { athlete: 1 })} disabled={disabled}>Warning</Button>
+            </div>
+          </div>
+          <div className="bg-blue-900/10 border border-blue-800/30 p-2">
+            <h5 className="text-xs font-medium text-blue-300 mb-2">Blue – Injury</h5>
+            <div className="grid grid-cols-2 gap-1.5">
+              <Button className="px-2 text-xs border-blue-600/40 text-blue-200 hover:bg-blue-900/20 w-auto" variant="outline" size="sm" onClick={() => sendManualEvent('injury', { athlete: 1, duration: 60 })} disabled={disabled}>Injury (60s)</Button>
+            </div>
+          </div>
+          <div className="bg-blue-900/10 border border-blue-800/30 p-2">
+            <h5 className="text-xs font-medium text-blue-300 mb-2">Blue – Challenge</h5>
+            <div className="grid grid-cols-2 gap-1.5">
+              <Button className="px-2 text-xs border-blue-600/40 text-blue-200 hover:bg-blue-900/20 w-auto" variant="outline" size="sm" onClick={() => sendManualEvent('challenge', { source: 1, accepted: true, won: true })} disabled={disabled}>Coach Win</Button>
             </div>
           </div>
         </div>
 
-        {/* Warnings */}
-        <div className="bg-blue-900/10 border border-blue-800/30 p-2">
-          <h5 className="text-xs font-medium text-gray-300 mb-2">Warnings</h5>
-          <div className="grid grid-cols-2 gap-1.5">
-            <Button className="px-2 text-xs border-blue-600/40 text-blue-200 hover:bg-blue-900/20 w-auto" variant="outline" size="sm" onClick={() => sendManualEvent('warning', { athlete: 1 })} disabled={disabled}>Blue Warning</Button>
-            <Button className="px-2 text-xs border-red-600/40 text-red-200 hover:bg-red-900/20 w-auto" variant="outline" size="sm" onClick={() => sendManualEvent('warning', { athlete: 2 })} disabled={disabled}>Red Warning</Button>
+        {/* RIGHT: RED */}
+        <div className="space-y-3">
+          <div className="bg-red-900/10 border border-red-800/30 p-2">
+            <h5 className="text-xs font-medium text-red-300 mb-2">Red – Points</h5>
+            <div className="grid grid-cols-2 gap-1.5">
+              <Button className="px-2 text-xs border-red-600/40 text-red-200 hover:bg-red-900/20 w-auto" variant="outline" size="sm" onClick={() => sendManualEvent('point', { athlete: 2, point_type: 1 })} disabled={disabled}>Punch (1pt)</Button>
+              <Button className="px-2 text-xs border-red-600/40 text-red-200 hover:bg-red-900/20 w-auto" variant="outline" size="sm" onClick={() => sendManualEvent('point', { athlete: 2, point_type: 2 })} disabled={disabled}>Body Kick (2pt)</Button>
+              <Button className="px-2 text-xs border-red-600/40 text-red-200 hover:bg-red-900/20 w-auto" variant="outline" size="sm" onClick={() => sendManualEvent('point', { athlete: 2, point_type: 3 })} disabled={disabled}>Head Kick (3pt)</Button>
+              <Button className="px-2 text-xs border-red-600/40 text-red-200 hover:bg-red-900/20 w-auto" variant="outline" size="sm" onClick={() => sendManualEvent('point', { athlete: 2, point_type: 4 })} disabled={disabled}>Tech Body (4pt)</Button>
+              <Button className="px-2 text-xs border-red-600/40 text-red-200 hover:bg-red-900/20 w-auto" variant="outline" size="sm" onClick={() => sendManualEvent('point', { athlete: 2, point_type: 5 })} disabled={disabled}>Tech Head (5pt)</Button>
+            </div>
+          </div>
+          <div className="bg-red-900/10 border border-red-800/30 p-2">
+            <h5 className="text-xs font-medium text-red-300 mb-2">Red – Hit Levels</h5>
+            <div className="grid grid-cols-2 gap-1.5">
+              <Button className="px-2 text-xs border-red-600/40 text-red-200 hover:bg-red-900/20 w-auto" variant="outline" size="sm" onClick={() => sendManualEvent('hit_level', { athlete: 2, level: 25 })} disabled={disabled}>Low (25)</Button>
+              <Button className="px-2 text-xs border-red-600/40 text-red-200 hover:bg-red-900/20 w-auto" variant="outline" size="sm" onClick={() => sendManualEvent('hit_level', { athlete: 2, level: 75 })} disabled={disabled}>High (75)</Button>
+            </div>
+          </div>
+          <div className="bg-red-900/10 border border-red-800/30 p-2">
+            <h5 className="text-xs font-medium text-red-300 mb-2">Red – Warnings</h5>
+            <div className="grid grid-cols-2 gap-1.5">
+              <Button className="px-2 text-xs border-red-600/40 text-red-200 hover:bg-red-900/20 w-auto" variant="outline" size="sm" onClick={() => sendManualEvent('warning', { athlete: 2 })} disabled={disabled}>Warning</Button>
+            </div>
+          </div>
+          <div className="bg-red-900/10 border border-red-800/30 p-2">
+            <h5 className="text-xs font-medium text-red-300 mb-2">Red – Injury</h5>
+            <div className="grid grid-cols-2 gap-1.5">
+              <Button className="px-2 text-xs border-red-600/40 text-red-200 hover:bg-red-900/20 w-auto" variant="outline" size="sm" onClick={() => sendManualEvent('injury', { athlete: 2, duration: 60 })} disabled={disabled}>Injury (60s)</Button>
+            </div>
+          </div>
+          <div className="bg-red-900/10 border border-red-800/30 p-2">
+            <h5 className="text-xs font-medium text-red-300 mb-2">Red – Challenge</h5>
+            <div className="grid grid-cols-2 gap-1.5">
+              <Button className="px-2 text-xs border-red-600/40 text-red-200 hover:bg-red-900/20 w-auto" variant="outline" size="sm" onClick={() => sendManualEvent('challenge', { source: 2, accepted: true, won: false })} disabled={disabled}>Coach Lose</Button>
+            </div>
           </div>
         </div>
+      </div>
 
-        {/* Injury */}
-        <div className="bg-blue-900/10 border border-blue-800/30 p-2">
-          <h5 className="text-xs font-medium text-gray-300 mb-2">Injury Time</h5>
-          <div className="grid grid-cols-2 gap-1.5">
-            <Button className="px-2 text-xs border-blue-600/40 text-blue-200 hover:bg-blue-900/20 w-auto" variant="outline" size="sm" onClick={() => sendManualEvent('injury', { athlete: 1, duration: 60 })} disabled={disabled}>Blue Injury</Button>
-            <Button className="px-2 text-xs border-red-600/40 text-red-200 hover:bg-red-900/20 w-auto" variant="outline" size="sm" onClick={() => sendManualEvent('injury', { athlete: 2, duration: 60 })} disabled={disabled}>Red Injury</Button>
-          </div>
-        </div>
-
-        {/* Challenges */}
-        <div className="bg-blue-900/10 border border-blue-800/30 p-2">
-          <h5 className="text-xs font-medium text-gray-300 mb-2">Challenges</h5>
-          <div className="grid grid-cols-2 gap-1.5">
-            <Button className="px-2 text-xs border-blue-600/40 text-blue-200 hover:bg-blue-900/20 w-auto" variant="outline" size="sm" onClick={() => sendManualEvent('challenge', { source: 1, accepted: true, won: true })} disabled={disabled}>Blue Win</Button>
-            <Button className="px-2 text-xs border-red-600/40 text-red-200 hover:bg-red-900/20 w-auto" variant="outline" size="sm" onClick={() => sendManualEvent('challenge', { source: 2, accepted: true, won: false })} disabled={disabled}>Red Lose</Button>
-          </div>
-        </div>
-
-        {/* Break */}
-        <div>
+      {/* Global controls */}
+      <div className="grid md:grid-cols-3 gap-4">
+        <div className="p-2 border border-gray-700">
           <h5 className="text-xs font-medium text-gray-300 mb-2">Break Time</h5>
-          <div className="grid grid-cols-2 gap-2">
-            <Button variant="outline" size="sm" onClick={() => sendManualEvent('break', { duration: 60 })} disabled={disabled}>Start Break</Button>
-            <Button variant="outline" size="sm" onClick={() => sendManualEvent('break_end', {})} disabled={disabled}>End Break</Button>
+          <div className="grid grid-cols-2 gap-1.5">
+            <Button variant="outline" size="sm" className="px-2 text-xs w-auto" onClick={() => sendManualEvent('break', { duration: 60 })} disabled={disabled}>Start Break</Button>
+            <Button variant="outline" size="sm" className="px-2 text-xs w-auto" onClick={() => sendManualEvent('break_end', {})} disabled={disabled}>End Break</Button>
           </div>
         </div>
-
-        {/* Clock */}
-        <div>
+        <div className="p-2 border border-gray-700">
           <h5 className="text-xs font-medium text-gray-300 mb-2">Clock Control</h5>
-          <div className="grid grid-cols-2 gap-2">
-            <Button variant="outline" size="sm" onClick={() => sendManualEvent('clock_start', {})} disabled={disabled}>Start Clock</Button>
-            <Button variant="outline" size="sm" onClick={() => sendManualEvent('clock_stop', {})} disabled={disabled}>Stop Clock</Button>
+          <div className="grid grid-cols-2 gap-1.5">
+            <Button variant="outline" size="sm" className="px-2 text-xs w-auto" onClick={() => sendManualEvent('clock_start', {})} disabled={disabled}>Start Clock</Button>
+            <Button variant="outline" size="sm" className="px-2 text-xs w-auto" onClick={() => sendManualEvent('clock_stop', {})} disabled={disabled}>Stop Clock</Button>
           </div>
         </div>
-
-        {/* Rounds */}
-        <div>
+        <div className="p-2 border border-gray-700">
           <h5 className="text-xs font-medium text-gray-300 mb-2">Round Control</h5>
-          <div className="grid grid-cols-3 gap-2">
-            <Button variant="outline" size="sm" onClick={() => sendManualEvent('round', { round: 1 })} disabled={disabled}>Round 1</Button>
-            <Button variant="outline" size="sm" onClick={() => sendManualEvent('round', { round: 2 })} disabled={disabled}>Round 2</Button>
-            <Button variant="outline" size="sm" onClick={() => sendManualEvent('round', { round: 3 })} disabled={disabled}>Round 3</Button>
+          <div className="grid grid-cols-3 gap-1.5">
+            <Button variant="outline" size="sm" className="px-2 text-xs w-auto" onClick={() => sendManualEvent('round', { round: 1 })} disabled={disabled}>Round 1</Button>
+            <Button variant="outline" size="sm" className="px-2 text-xs w-auto" onClick={() => sendManualEvent('round', { round: 2 })} disabled={disabled}>Round 2</Button>
+            <Button variant="outline" size="sm" className="px-2 text-xs w-auto" onClick={() => sendManualEvent('round', { round: 3 })} disabled={disabled}>Round 3</Button>
           </div>
         </div>
       </div>
