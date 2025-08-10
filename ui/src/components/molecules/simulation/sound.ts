@@ -4,7 +4,8 @@ class RetroSound {
   private muted = false;
   private musicOn = false;
   private musicGain: GainNode | null = null;
-  private musicNodes: { bass?: OscillatorNode; arp?: OscillatorNode; noise?: AudioBufferSourceNode; kickInt?: number } = {};
+  private musicNodes: { bass?: OscillatorNode; arp?: OscillatorNode } = {};
+  private timers: number[] = [];
 
   static getInstance(): RetroSound {
     if (!RetroSound.instance) RetroSound.instance = new RetroSound();
@@ -181,54 +182,86 @@ class RetroSound {
     osc.start(now); osc.stop(now + 0.19);
   }
 
-  // Lightweight background music loop (bass + arp + noise hats)
+  // New action background music: 132 BPM, layered kick/snare/hats + bass + arp
   private async startMusic() {
     await this.resume(); if (!this.ctx) return;
     const ctx = this.ctx;
-    if (!this.musicGain) { this.musicGain = ctx.createGain(); this.musicGain.gain.value = 0.12; this.musicGain.connect(ctx.destination); }
-    // Bassline
-    const bass = ctx.createOscillator(); bass.type = 'square';
-    const bassGain = ctx.createGain(); bassGain.gain.value = 0.18;
-    bass.connect(bassGain); bassGain.connect(this.musicGain);
-    const t0 = ctx.currentTime;
-    const seq = [55, 55, 82.41, 55, 65.41, 55, 82.41, 55]; // G1.. patterns
-    for (let i = 0; i < seq.length; i++) {
-      const t = t0 + i * 0.25;
-      bass.frequency.setValueAtTime(seq[i], t);
-    }
-    bass.start(t0);
-    bass.stop(t0 + 2.1);
-    this.musicNodes.bass = bass;
-    // Arp
-    const arp = ctx.createOscillator(); arp.type = 'triangle';
-    const arpGain = ctx.createGain(); arpGain.gain.value = 0.08;
-    arp.connect(arpGain); arpGain.connect(this.musicGain);
-    const notes = [440, 554.37, 659.25, 739.99, 880, 659.25, 554.37, 440]; // more action
-    for (let i = 0; i < 16; i++) {
-      const t = t0 + i * 0.125;
-      arp.frequency.setValueAtTime(notes[i % notes.length], t);
-    }
-    arp.start(t0);
-    arp.stop(t0 + 2.0);
-    this.musicNodes.arp = arp;
-    // Hats via short noise bursts
-    const kickInt = window.setInterval(() => {
-      const n = this.createNoise(22); if (!n || !this.musicGain) return;
-      const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 6000;
-      const g = ctx.createGain(); g.gain.value = 0.09;
-      n.connect(hp); hp.connect(g); g.connect(this.musicGain);
-      n.start(); n.stop(ctx.currentTime + 0.025);
-    }, 110);
-    this.musicNodes.kickInt = kickInt;
-    // Auto-loop every 2 seconds
-    window.setTimeout(() => { if (this.musicOn) this.startMusic(); }, 2000);
+    if (!this.musicGain) { this.musicGain = ctx.createGain(); this.musicGain.gain.value = 0.18; this.musicGain.connect(ctx.destination); }
+
+    const bpm = 132;
+    const stepDur = 60 / bpm / 4; // 16th note
+    let step = 0;
+
+    const scale = [49, 55, 58.27, 65.41, 73.42, 82.41]; // G2, A2, Bb2, C3, D3, E3
+    const bassSeq = [0, 0, 3, 0, 4, 0, 5, 0];
+    const arpNotes = [392, 494, 587, 659, 784, 659, 587, 494]; // G4-B4-D5-E5-G5-...
+
+    const playKick = (t: number) => {
+      const o = ctx.createOscillator(); o.type = 'sine';
+      const g = ctx.createGain();
+      o.frequency.setValueAtTime(120, t);
+      o.frequency.exponentialRampToValueAtTime(55, t + 0.12);
+      g.gain.setValueAtTime(0.6, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.13);
+      o.connect(g); g.connect(this.musicGain!);
+      o.start(t); o.stop(t + 0.14);
+    };
+
+    const playSnare = (t: number) => {
+      const n = this.createNoise(120); if (!n) return;
+      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1800; bp.Q.value = 0.6;
+      const g = ctx.createGain(); g.gain.setValueAtTime(0.22, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+      n.connect(bp); bp.connect(g); g.connect(this.musicGain!);
+      n.start(t); n.stop(t + 0.12);
+    };
+
+    const playHat = (t: number) => {
+      const n = this.createNoise(40); if (!n) return;
+      const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 7000;
+      const g = ctx.createGain(); g.gain.setValueAtTime(0.08, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+      n.connect(hp); hp.connect(g); g.connect(this.musicGain!);
+      n.start(t); n.stop(t + 0.04);
+    };
+
+    const playBass = (t: number, noteIdx: number) => {
+      const freq = scale[noteIdx % scale.length];
+      const o = ctx.createOscillator(); o.type = 'square';
+      const g = ctx.createGain(); g.gain.value = 0.12;
+      o.frequency.setValueAtTime(freq, t);
+      o.connect(g); g.connect(this.musicGain!);
+      o.start(t); o.stop(t + stepDur * 3);
+    };
+
+    const playArp = (t: number, idx: number) => {
+      const o = ctx.createOscillator(); o.type = 'triangle';
+      const g = ctx.createGain(); g.gain.value = 0.07;
+      o.frequency.setValueAtTime(arpNotes[idx % arpNotes.length], t);
+      o.connect(g); g.connect(this.musicGain!);
+      o.start(t); o.stop(t + stepDur * 2);
+    };
+
+    const interval = window.setInterval(() => {
+      if (!this.ctx || !this.musicOn) return;
+      const now = this.ctx.currentTime + 0.01;
+      // Drums
+      if (step % 4 === 0) playKick(now); // beats 1 and 3
+      if (step % 8 === 4) playSnare(now); // beats 2 and 4
+      playHat(now);
+      // Bassline on quarter notes
+      if (step % 4 === 0) playBass(now, bassSeq[(step / 4) % bassSeq.length]);
+      // Arp on 8th notes
+      if (step % 2 === 0) playArp(now, step / 2);
+      step = (step + 1) % 16;
+    }, stepDur * 1000);
+    this.timers.push(interval);
   }
 
   private stopMusic() {
     try { if (this.musicNodes.bass) this.musicNodes.bass.stop(); } catch {}
     try { if (this.musicNodes.arp) this.musicNodes.arp.stop(); } catch {}
-    if (this.musicNodes.kickInt) window.clearInterval(this.musicNodes.kickInt);
     this.musicNodes = {};
+    this.timers.forEach((id) => window.clearInterval(id));
+    this.timers = [];
   }
 }
 

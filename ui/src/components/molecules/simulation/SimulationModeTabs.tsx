@@ -23,7 +23,21 @@ const SimulationModeTabs: React.FC = () => {
       </div>
       <div className="flex items-center justify-between">
         <Label>Arcade Mode (Keyboard)</Label>
-        <Toggle label="" checked={showArcade} onChange={(e) => setShowArcade(e.target.checked)} disabled={isRunning} />
+        <Toggle
+          label=""
+          checked={showArcade}
+          onChange={async (e) => {
+            const on = e.target.checked;
+            setShowArcade(on);
+            try {
+              const { default: retroSound } = await import('./sound');
+              await retroSound.setMusicOn(on);
+              if (!on) retroSound.setMuted(true);
+              else retroSound.setMuted(false);
+            } catch {}
+          }}
+          disabled={isRunning}
+        />
       </div>
     </div>
   );

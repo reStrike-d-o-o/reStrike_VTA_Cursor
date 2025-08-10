@@ -482,7 +482,12 @@ const ArcadeModePanel: React.FC = () => {
     };
 
     raf = requestAnimationFrame(draw);
-    return () => cancelAnimationFrame(raf);
+    return () => {
+      cancelAnimationFrame(raf);
+      // Stop music and reset SFX on unmount
+      retroSound.setMusicOn(false);
+      retroSound.setMuted(true);
+    };
   }, [b, r, running, cooldown, flash, matchStore]);
 
   // Cooldown timer
