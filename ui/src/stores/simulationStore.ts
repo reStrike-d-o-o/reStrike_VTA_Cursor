@@ -47,6 +47,7 @@ interface SimulationStore {
   success: string;
   showAutomated: boolean;
   showSelfTest: boolean;
+  showArcade: boolean;
 
   // actions
   loadStatus: () => Promise<void>;
@@ -65,6 +66,7 @@ interface SimulationStore {
   setSelectedAutomatedScenario: (name: string) => void;
   setShowAutomated: (v: boolean) => void;
   setShowSelfTest: (v: boolean) => void;
+  setShowArcade: (v: boolean) => void;
 }
 
 const isSimulationEnvError = (errorMsg: string): boolean => {
@@ -99,6 +101,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
   success: '',
   showAutomated: false,
   showSelfTest: false,
+  showArcade: false,
 
   async loadStatus() {
     try {
@@ -266,6 +269,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
   setSelectedAutomatedScenario(name: string) { set({ selectedAutomatedScenario: name }); },
   setShowAutomated(v: boolean) { set({ showAutomated: v }); },
   setShowSelfTest(v: boolean) { set({ showSelfTest: v }); },
+  setShowArcade(v: boolean) { set({ showArcade: v }); },
 }));
 
 
