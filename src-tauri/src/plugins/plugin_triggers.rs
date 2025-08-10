@@ -573,6 +573,41 @@ impl TriggerPlugin {
         true
     }
 
+    /// Preview evaluation without mutating runtime state.
+    pub async fn should_fire_preview(&self, trigger: &EventTrigger, consider_limits: bool) -> bool {
+        // Round check
+        if let Some(req_round) = trigger.condition_round {
+            let cr = *self.current_round.read().await;
+            if cr != Some(req_round) { return false; }
+        }
+        if consider_limits {
+            // Once-per and rate limits similar to live path, but do not mutate
+            if let Some(scope) = trigger.condition_once_per.as_deref() {
+                if let Some(id) = trigger.id {
+                    match scope {
+                        "match" => {
+                            if self.executed_once_match.read().await.contains(&id) { return false; }
+                        }
+                        "round" => {
+                            if let (Some(cr), Some(last_r)) = (*self.current_round.read().await, self.last_fired_round.read().await.get(&id).cloned()) {
+                                if last_r == cr { return false; }
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            if let Some(id) = trigger.id {
+                if let Some(prev) = self.last_fired_at.read().await.get(&id).cloned() {
+                    let elapsed_ms = std::time::Instant::now().duration_since(prev).as_millis() as i64;
+                    let need_gap = trigger.cooldown_ms.unwrap_or(0).max(trigger.debounce_ms.unwrap_or(0));
+                    if need_gap > 0 && elapsed_ms < need_gap { return false; }
+                }
+            }
+        }
+        true
+    }
+
     /// Mark trigger as fired for rate limits
     async fn mark_fired(&self, id: i64) {
         self.last_fired_at.write().await.insert(id, std::time::Instant::now());
