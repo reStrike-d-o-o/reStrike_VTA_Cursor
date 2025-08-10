@@ -18,10 +18,6 @@ const HEIGHT = 260;
 
 const ArcadeModePanel: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const widthRef = useRef<number>(WIDTH);
-  const heightRef = useRef<number>(HEIGHT * 2);
-  const dprRef = useRef<number>(Math.max(1, window.devicePixelRatio || 1));
   const { sendManualEvent } = useSimulationStore();
   const [running, setRunning] = useState(true);
   const [mute, setMute] = useState(false);
@@ -266,7 +262,7 @@ const ArcadeModePanel: React.FC = () => {
     }
 
     const drawBackground = () => {
-      const W = widthRef.current; const H = heightRef.current;
+      const W = WIDTH; const H = HEIGHT;
       // sky gradient
       const g = ctx.createLinearGradient(0, 0, 0, H);
       g.addColorStop(0, '#0b1220');
@@ -324,7 +320,7 @@ const ArcadeModePanel: React.FC = () => {
     };
 
     const drawHealthBars = () => {
-      const W = widthRef.current;
+      const W = WIDTH;
       const s = matchStore.getTotalScore?.();
       const blueScore = s ? s.athlete1 : score.blue;
       const redScore = s ? s.athlete2 : score.red;
@@ -353,7 +349,7 @@ const ArcadeModePanel: React.FC = () => {
     };
 
     const drawOverlays = (now: number) => {
-      const W = widthRef.current; const H = heightRef.current;
+      const W = WIDTH; const H = HEIGHT;
       // HUD flashes
       const flashAlpha = (t?: number) => (t && now - t < 600 ? 1 - (now - t) / 600 : 0);
       const fb = flashAlpha(flash.blueHit);
@@ -408,22 +404,15 @@ const ArcadeModePanel: React.FC = () => {
       const dt = Math.min(32, now - last);
       last = now;
 
-      // responsive sizing
-      const parentW = containerRef.current?.clientWidth || WIDTH;
-      const W = parentW;
-      const H = Math.max(HEIGHT * 2, Math.round((parentW / WIDTH) * HEIGHT * 2));
-      widthRef.current = W; heightRef.current = H;
-      const dpr = dprRef.current;
+      const W = WIDTH; const H = HEIGHT;
       if (canvasRef.current) {
         const c = canvasRef.current;
-        if (c.width !== Math.floor(W * dpr) || c.height !== Math.floor(H * dpr)) {
-          c.width = Math.floor(W * dpr);
-          c.height = Math.floor(H * dpr);
+        if (c.width !== W || c.height !== H) {
+          c.width = W;
+          c.height = H;
         }
-        c.style.width = '100%';
-        c.style.height = `${H}px`;
       }
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, W, H);
       ctx.imageSmoothingEnabled = false;
       drawBackground();
@@ -510,7 +499,7 @@ const ArcadeModePanel: React.FC = () => {
       if (!running) return;
       // Movement
       const move = (f: Fighter, dx: number) => {
-        const nx = Math.max(40, Math.min(widthRef.current - 40, f.x + dx));
+        const nx = Math.max(40, Math.min(WIDTH - 40, f.x + dx));
         f.dir = dx > 0 ? 1 : -1;
         return { ...f, x: nx };
       };
@@ -617,7 +606,7 @@ const ArcadeModePanel: React.FC = () => {
         // movement
         const ax = axisValue(gp, map.moveX.index);
         const dz = map.moveX.deadzone ?? 0.25;
-        if (Math.abs(ax) > dz) setP(prev => ({ ...prev, x: Math.max(40, Math.min(widthRef.current - 40, prev.x + Math.sign(ax) * 6)), dir: ax > 0 ? 1 : -1 }));
+        if (Math.abs(ax) > dz) setP(prev => ({ ...prev, x: Math.max(40, Math.min(WIDTH - 40, prev.x + Math.sign(ax) * 6)), dir: ax > 0 ? 1 : -1 }));
         // helper for button edge
         const edge = (key: string, pressed: boolean) => {
           const was = lastPress[key] || false;
@@ -662,7 +651,7 @@ const ArcadeModePanel: React.FC = () => {
   }, [running, b, r, cooldown, sendManualEvent]);
 
   return (
-    <div className="space-y-3" ref={containerRef}>
+    <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div className="text-sm text-gray-300">Arcade Mode – Blue: A/D J K L U I | Red: ←/→ 1..5</div>
         <Button size="sm" variant={running ? 'secondary' : 'primary'} onClick={() => setRunning(v => !v)}>
@@ -679,7 +668,7 @@ const ArcadeModePanel: React.FC = () => {
           <span>Music</span>
         </label>
       </div>
-      <canvas ref={canvasRef} className="w-full border border-gray-700 bg-[#0d131a]" />
+      <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} className="border border-gray-700 bg-[#0d131a]" />
       <ArcadeBindingsPanel />
     </div>
   );
