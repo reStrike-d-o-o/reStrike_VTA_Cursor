@@ -4,7 +4,7 @@ export type InputProps = React.InputHTMLAttributes<HTMLInputElement> & {
   className?: string;
 };
 
-const baseStyles = 'w-full px-3 py-2 bg-gray-700 border border-gray-600 focus:outline-none focus:border-blue-500 transition-colors';
+const baseStyles = 'w-full px-3 py-2 bg-gray-700 border border-gray-600 focus:outline-none focus:border-blue-500 transition-colors square';
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ className = '', ...props }, ref) => (

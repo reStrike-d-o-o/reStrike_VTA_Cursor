@@ -23,7 +23,7 @@ const colorFor = (s: StatusRowProps['status']): string => {
 
 const StatusRow: React.FC<StatusRowProps> = ({ label, status = 'unknown', right, className = '' }) => {
   return (
-    <div className={`flex items-center justify-between p-3 rounded theme-surface-2 ${className}`}>
+    <div className={`flex items-center justify-between p-3 theme-surface-2 ${className}`}>
       <div className="flex items-center gap-2 min-w-0">
         <StatusDot color={colorFor(status)} />
         <div className="text-sm theme-text">{label}</div>

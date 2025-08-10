@@ -125,7 +125,7 @@ const SelectTrigger: React.FC<SelectTriggerProps> = ({
     <button
       onClick={onClick}
       className={`
-        flex items-center justify-between w-full px-3 py-2 text-sm bg-gray-700 border border-gray-600
+        flex items-center justify-between w-full px-3 py-2 text-sm bg-gray-700 border border-gray-600 square
         hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500
         ${className}
       `}
@@ -159,7 +159,7 @@ const SelectContent: React.FC<SelectContentProps> = ({
 }) => {
   return (
     <div className={`
-      absolute top-full left-0 right-0 z-50 mt-1 bg-gray-700 border border-gray-600 shadow-lg
+      absolute top-full left-0 right-0 z-50 mt-1 bg-gray-700 border border-gray-600 shadow-lg square
       max-h-60 overflow-auto
       ${className}
     `}>
@@ -184,7 +184,7 @@ const SelectItem: React.FC<SelectItemProps> = ({
     <button
       onClick={onClick}
       className={`
-        w-full px-3 py-2 text-sm text-left text-gray-300 hover:bg-gray-600 focus:bg-gray-600 focus:outline-none
+        w-full px-3 py-2 text-sm text-left text-gray-300 hover:bg-gray-600 focus:bg-gray-600 focus:outline-none square
         ${className}
       `}
     >
