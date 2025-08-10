@@ -30,17 +30,132 @@ const ArcadeModePanel: React.FC = () => {
   const matchStore = usePssMatchStore();
   const mappingRef = useRef(loadMapping());
   // Retro FX/animation
-  const animRef = useRef<{ blue: number; red: number }>({ blue: 0, red: 0 });
+  type AnimState = { t: number; pose: 'idle' | 'punch' | 'kick' };
+  const animRef = useRef<{ blue: AnimState; red: AnimState }>({ blue: { t: 0, pose: 'idle' }, red: { t: 0, pose: 'idle' } });
   type Spark = { x: number; y: number; t: number; color: string };
   const sparksRef = useRef<Spark[]>([]);
   const skylineRef = useRef<Array<{ x: number; w: number; h: number }>>([]);
   type Floater = { x: number; y: number; t: number; text: string; color: string };
   const floatersRef = useRef<Floater[]>([]);
+  type Dust = { x: number; y: number; t: number };
+  const dustRef = useRef<Dust[]>([]);
+  const lastPosRef = useRef<{ bx: number; rx: number }>({ bx: 0, rx: 0 });
+  const shakeRef = useRef<{ ax: number; ay: number }>({ ax: 0, ay: 0 });
   const emitLocal = (evt: any) => {
     try {
       const ev = new CustomEvent('pss-event', { detail: evt, bubbles: true, cancelable: true });
       window.dispatchEvent(ev);
     } catch {}
+  };
+
+  // --- Retro pixel sprites (idle/punch) ---
+  const PIX = 4; // pixel scale
+  const SPR_W = 16;
+  const SPR_H = 16;
+  const idleSprite: string[] = [
+    '      HHHH     ',
+    '     HSSSSH    ',
+    '     SSSSSS    ',
+    '      SSSS     ',
+    '     FFFFFF    ',
+    '   FFFFFFFF    ',
+    '  FFFDDDDFF    ',
+    '  FFFDDDDFF    ',
+    '  FFFBBBBFF    ',
+    '   FFDDDDFF    ',
+    '   FFDDDDFF    ',
+    '  GGG    GGG   ',
+    '  GGG    GGG   ',
+    '  FFF    FFF   ',
+    '  F F    F F   ',
+    '               ',
+  ];
+  const punchSprite: string[] = [
+    '      HHHH     ',
+    '     HSSSSH    ',
+    '     SSSSSS    ',
+    '      SSSS     ',
+    '     FFFFFF    ',
+    '   FFFFFFFF    ',
+    '  FFFDDDDFF    ',
+    '  FFFDDDDFFGGG ',
+    '  FFFBBBBFFGGG ',
+    '   FFDDDDFF    ',
+    '   FFDDDDFF    ',
+    '      FFF      ',
+    '      FFF      ',
+    '     F   F     ',
+    '     F   F     ',
+    '               ',
+  ];
+  const kickSprite: string[] = [
+    '      HHHH     ',
+    '     HSSSSH    ',
+    '     SSSSSS    ',
+    '      SSSS     ',
+    '     FFFFFF    ',
+    '   FFFFFFFF    ',
+    '  FFFDDDDFF    ',
+    '  FFFDDDDFF    ',
+    '  FFFBBBBFF    ',
+    '   FFDDDDFF    ',
+    '   FFDDDDFF    ',
+    'GGG  GGG       ',
+    'GGG            ',
+    'F F            ',
+    'F F            ',
+    '               ',
+  ];
+
+  const basePalette = {
+    ' ': 'transparent',
+    H: '#2b2a33',
+    S: '#e8d5c4',
+    B: '#0b0b0b',
+  } as const;
+  const variantPalette = (color: 'blue' | 'red') => ({
+    ...basePalette,
+    F: color === 'blue' ? '#3b82f6' : '#ef4444', // gi
+    D: color === 'blue' ? '#1e40af' : '#7f1d1d', // gi dark
+    G: color === 'blue' ? '#60a5fa' : '#f87171', // gloves
+  });
+
+  const drawPixelSprite = (
+    ctx: CanvasRenderingContext2D,
+    grid: string[],
+    palette: Record<string, string>,
+    x: number,
+    y: number,
+    dir: 1 | -1
+  ) => {
+    const anchorX = (SPR_W * PIX) / 2;
+    for (let row = 0; row < SPR_H; row++) {
+      const line = grid[row] || '';
+      for (let col = 0; col < SPR_W; col++) {
+        const ch = line[col] || ' ';
+        if (ch === ' ') continue;
+        const fill = palette[ch] || 'transparent';
+        if (fill === 'transparent') continue;
+        ctx.fillStyle = fill;
+        const drawCol = dir === 1 ? col : SPR_W - 1 - col;
+        const dx = x - anchorX + drawCol * PIX;
+        const dy = y - SPR_H * PIX + row * PIX;
+        ctx.fillRect(dx, dy, PIX, PIX);
+      }
+    }
+    // simple outline pass
+    ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+    for (let row = 0; row < SPR_H; row++) {
+      const line = grid[row] || '';
+      for (let col = 0; col < SPR_W; col++) {
+        const ch = line[col] || ' ';
+        if (ch === ' ') continue;
+        const drawCol = dir === 1 ? col : SPR_W - 1 - col;
+        const dx = x - anchorX + drawCol * PIX;
+        const dy = y - SPR_H * PIX + row * PIX;
+        ctx.strokeRect(dx + 0.5, dy + 0.5, PIX, PIX);
+      }
+    }
   };
 
   // Draw loop
@@ -69,13 +184,18 @@ const ArcadeModePanel: React.FC = () => {
       g.addColorStop(1, '#0e1621');
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, WIDTH, HEIGHT);
-      // skyline
+      // skyline parallax
       ctx.fillStyle = 'rgba(255,255,255,0.05)';
-      skylineRef.current.forEach(b => ctx.fillRect(b.x, 120 - b.h, b.w, b.h));
+      const t = performance.now() * 0.0005;
+      skylineRef.current.forEach((b, i) => {
+        const px = (b.x + (i % 3) * (t * 20)) % WIDTH;
+        ctx.fillRect(px, 120 - b.h, b.w, b.h);
+      });
       // sun
       ctx.beginPath();
       ctx.arc(WIDTH * 0.75, 60, 18, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(255, 200, 60, 0.2)';
+      const sunPhase = (Math.sin(performance.now() * 0.002) * 0.5 + 0.5) * 0.3 + 0.2;
+      ctx.fillStyle = `rgba(255, 200, 60, ${sunPhase.toFixed(2)})`;
       ctx.fill();
       // floor: checker
       for (let y = 220; y < HEIGHT; y += 10) {
@@ -83,6 +203,14 @@ const ArcadeModePanel: React.FC = () => {
           ctx.fillStyle = ((x / 20 + y / 10) % 2 === 0) ? '#132034' : '#0f1a2a';
           ctx.fillRect(x, y, 20, 10);
         }
+      }
+      // crowd silhouettes
+      ctx.fillStyle = 'rgba(20,30,50,0.8)';
+      for (let i = 0; i < 12; i++) {
+        const cx = (i * 60 + (Math.sin(t + i) * 10)) % WIDTH;
+        ctx.beginPath();
+        ctx.arc(cx, 110 + Math.sin(t * 2 + i) * 2, 8 + (i % 3), 0, Math.PI * 2);
+        ctx.fill();
       }
     };
 
@@ -93,48 +221,10 @@ const ArcadeModePanel: React.FC = () => {
       ctx.fill();
     };
 
-    const drawFighter = (f: Fighter, punchAmt: number) => {
-      const isBlue = f.color === 'blue';
-      const base = isBlue ? '#3b82f6' : '#ef4444';
-      const dark = isBlue ? '#1e40af' : '#7f1d1d';
-      // torso
-      ctx.fillStyle = base;
-      ctx.fillRect(f.x - 16, f.y - 36, 32, 30);
-      // belt
-      ctx.fillStyle = dark;
-      ctx.fillRect(f.x - 16, f.y - 14, 32, 4);
-      // head
-      ctx.fillStyle = '#e8e6e3';
-      ctx.beginPath();
-      ctx.arc(f.x, f.y - 45, 10, 0, Math.PI * 2);
-      ctx.fill();
-      // face stripe
-      ctx.strokeStyle = '#0a0a0a';
-      ctx.beginPath();
-      ctx.moveTo(f.x, f.y - 45);
-      ctx.lineTo(f.x + (f.dir === 1 ? 6 : -6), f.y - 45);
-      ctx.stroke();
-      // legs
-      ctx.strokeStyle = base;
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(f.x - 8, f.y - 6);
-      ctx.lineTo(f.x - 10, f.y + 4);
-      ctx.moveTo(f.x + 8, f.y - 6);
-      ctx.lineTo(f.x + 10, f.y + 4);
-      ctx.stroke();
-      // arms
-      ctx.strokeStyle = base;
-      ctx.lineWidth = 4;
-      ctx.beginPath();
-      // rear arm
-      ctx.moveTo(f.x - f.dir * 6, f.y - 26);
-      ctx.lineTo(f.x - f.dir * (14 + punchAmt * 2), f.y - 18);
-      // lead arm
-      ctx.moveTo(f.x + f.dir * 6, f.y - 26);
-      ctx.lineTo(f.x + f.dir * (18 + punchAmt * 10), f.y - (20 - punchAmt * 3));
-      ctx.stroke();
-      ctx.lineWidth = 1;
+    const drawFighter = (f: Fighter, anim: AnimState) => {
+      // Choose sprite based on current pose
+      const grid = anim.pose === 'punch' ? punchSprite : anim.pose === 'kick' ? kickSprite : idleSprite;
+      drawPixelSprite(ctx, grid, variantPalette(f.color), f.x, f.y, f.dir);
     };
 
     const drawHealthBars = () => {
@@ -219,18 +309,26 @@ const ArcadeModePanel: React.FC = () => {
       last = now;
 
       ctx.clearRect(0, 0, WIDTH, HEIGHT);
+      ctx.imageSmoothingEnabled = false;
       drawBackground();
       drawHealthBars();
 
       // shadows + fighters with simple punch animation
+      // screen shake decay
+      shakeRef.current.ax *= 0.9; shakeRef.current.ay *= 0.9;
+      ctx.save();
+      ctx.translate(shakeRef.current.ax, shakeRef.current.ay);
+
       drawShadow(b.x);
       drawShadow(r.x);
-      animRef.current.blue = Math.max(0, animRef.current.blue - dt);
-      animRef.current.red = Math.max(0, animRef.current.red - dt);
-      const punchB = animRef.current.blue > 0 ? 1 - animRef.current.blue / 250 : 0;
-      const punchR = animRef.current.red > 0 ? 1 - animRef.current.red / 250 : 0;
-      drawFighter(b, punchB);
-      drawFighter(r, punchR);
+      animRef.current.blue.t = Math.max(0, animRef.current.blue.t - dt);
+      animRef.current.red.t = Math.max(0, animRef.current.red.t - dt);
+      if (animRef.current.blue.t === 0) animRef.current.blue.pose = 'idle';
+      if (animRef.current.red.t === 0) animRef.current.red.pose = 'idle';
+      drawFighter(b, animRef.current.blue);
+      drawFighter(r, animRef.current.red);
+
+      ctx.restore();
 
       // cooldown text
       ctx.fillStyle = '#e5e7eb';
@@ -247,6 +345,28 @@ const ArcadeModePanel: React.FC = () => {
       ctx.fillStyle = 'rgba(203,213,225,0.8)';
       ctx.font = '11px monospace';
       ctx.fillText('Blue: A/D move, J/K/L/U/I attack  •  Red: ←/→ move, 1..5 attack  •  Move into yellow reach boxes', 12, HEIGHT - 10);
+
+      // dust from movement
+      const emitDust = (x: number, y: number) => { dustRef.current.push({ x, y, t: performance.now() }); };
+      if (lastPosRef.current.bx) {
+        const dx = Math.abs(b.x - lastPosRef.current.bx);
+        if (dx > 4) emitDust(b.x - 10 * Math.sign(b.dir), 220);
+      }
+      if (lastPosRef.current.rx) {
+        const dx = Math.abs(r.x - lastPosRef.current.rx);
+        if (dx > 4) emitDust(r.x - 10 * Math.sign(r.dir), 220);
+      }
+      lastPosRef.current = { bx: b.x, rx: r.x };
+      // draw dust
+      const dlife = 500; const dcol = 'rgba(255,255,255,0.15)';
+      dustRef.current = dustRef.current.filter(d => performance.now() - d.t < dlife);
+      for (const d of dustRef.current) {
+        const p = (performance.now() - d.t) / dlife;
+        ctx.globalAlpha = 1 - p;
+        ctx.fillStyle = dcol;
+        ctx.fillRect(d.x - 6 + p * 10, d.y - 2 - p * 6, 6, 2);
+        ctx.globalAlpha = 1;
+      }
 
       drawOverlays(performance.now());
       raf = requestAnimationFrame(draw);
@@ -287,8 +407,8 @@ const ArcadeModePanel: React.FC = () => {
         if (athlete === 1) { setScore(s => ({ ...s, blue: s.blue + point_type })); setCooldown(c => ({ ...c, blue: 1200 })); }
         else { setScore(s => ({ ...s, red: s.red + point_type })); setCooldown(c => ({ ...c, red: 1200 })); }
         // animate + spark
-        if (athlete === 1) { animRef.current.blue = 250; sparksRef.current.push({ x: (b.x + r.x)/2, y: b.y - 26, t: performance.now(), color: '#60a5fa' }); }
-        else { animRef.current.red = 250; sparksRef.current.push({ x: (b.x + r.x)/2, y: r.y - 26, t: performance.now(), color: '#f87171' }); }
+        if (athlete === 1) { animRef.current.blue = { t: 250, pose: point_type >= 3 ? 'kick' : 'punch' }; sparksRef.current.push({ x: (b.x + r.x)/2, y: b.y - 26, t: performance.now(), color: '#60a5fa' }); }
+        else { animRef.current.red = { t: 250, pose: point_type >= 3 ? 'kick' : 'punch' }; sparksRef.current.push({ x: (b.x + r.x)/2, y: r.y - 26, t: performance.now(), color: '#f87171' }); }
         if (!mute) retroSound.playHit(athlete === 1 ? 'blue' : 'red');
         // floater
         const fx = (b.x + r.x) / 2; const fy = ((b.y + r.y) / 2) - 24;
@@ -389,10 +509,14 @@ const ArcadeModePanel: React.FC = () => {
             if (cooldown.blue > 0) return;
             if (!inRange(b, r)) return;
             sendManualEvent('point', { athlete: 1, point_type: pt });
+            animRef.current.blue = { t: 250, pose: pt >= 3 ? 'kick' : 'punch' };
+            if (!mute) retroSound.playHit('blue');
           } else {
             if (cooldown.red > 0) return;
             if (!inRange(r, b)) return;
             sendManualEvent('point', { athlete: 2, point_type: pt });
+            animRef.current.red = { t: 250, pose: pt >= 3 ? 'kick' : 'punch' };
+            if (!mute) retroSound.playHit('red');
           }
         };
         if (press(`p${player}-punch`, map.punch.index)) tryHit(1);
