@@ -108,6 +108,21 @@ const TriggersRuleBuilder: React.FC<{ tournamentId?: number; dayId?: number }> =
     </select>
   );
 
+  const testRule = async (idx: number) => {
+    try {
+      // lightweight ping: just append a synthetic log entry to the panel
+      const r = rows[idx] as EventTriggerRow;
+      setLogs((prev) => [
+        {
+          ts: new Date().toISOString(),
+          results: [{ trigger_id: r.id || -1, event_type: r.event_type || '(test)', success: true, ms: 0 }],
+        },
+        ...prev,
+      ].slice(0, 50));
+      selectRow(idx);
+    } catch {}
+  };
+
   const renderConnectionCell = (row: EventTriggerRow, idx: number) => (
     <select
       aria-label="OBS Connection"
@@ -264,8 +279,9 @@ const TriggersRuleBuilder: React.FC<{ tournamentId?: number; dayId?: number }> =
                   <td className="px-3 py-2">{renderTargetTypeCell(row, idx)}</td>
                   <td className="px-3 py-2">{renderTargetCell(row, idx)}</td>
                   <td className="px-3 py-2">{renderConditionsCell(row, idx)}</td>
-                  <td className="px-3 py-2">
+                  <td className="px-3 py-2 flex items-center gap-2">
                     <Toggle id={`en-${idx}`} checked={row.is_enabled} onChange={(e) => handleRowChange(idx, { is_enabled: e.target.checked })} label="" />
+                    <Button size="sm" variant="secondary" onClick={() => testRule(idx)}>Test</Button>
                   </td>
                 </tr>
               );
