@@ -509,18 +509,25 @@ impl TriggerPlugin {
     async fn execute_trigger(&self, trigger: &EventTrigger, event: &PssEventType) -> AppResult<()> {
         let trigger_type: TriggerType = trigger.trigger_type.clone().into();
         
-        match trigger_type {
-            TriggerType::Scene => {
-                self.execute_scene_trigger(trigger).await?;
+        // Action-kind aware executor (v2). Falls back to legacy trigger_type.
+        if let Some(kind) = trigger.action_kind.clone() {
+            match kind.as_str() {
+                "scene" => { self.execute_scene_trigger(trigger).await?; }
+                "overlay" => { self.execute_overlay_trigger(trigger, event).await?; }
+                "record_start" => { self.execute_record_action(trigger, true).await?; }
+                "record_stop" => { self.execute_record_action(trigger, false).await?; }
+                "replay_save" => { self.execute_replay_save(trigger).await?; }
+                _ => { self.execute_scene_trigger(trigger).await?; }
             }
-            TriggerType::Overlay => {
-                self.execute_overlay_trigger(trigger, event).await?;
-            }
-            TriggerType::Both => {
-                // Execute scene first, then overlay
-                self.execute_scene_trigger(trigger).await?;
-                tokio::time::sleep(tokio::time::Duration::from_millis(100)).await; // Small delay
-                self.execute_overlay_trigger(trigger, event).await?;
+        } else {
+            match trigger_type {
+                TriggerType::Scene => { self.execute_scene_trigger(trigger).await?; }
+                TriggerType::Overlay => { self.execute_overlay_trigger(trigger, event).await?; }
+                TriggerType::Both => {
+                    self.execute_scene_trigger(trigger).await?;
+                    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+                    self.execute_overlay_trigger(trigger, event).await?;
+                }
             }
         }
         
@@ -545,10 +552,30 @@ impl TriggerPlugin {
             return Err(crate::types::AppError::ConfigError(format!("OBS scene '{}' is not active", scene.scene_name)));
         }
         
-        // Execute scene change via OBS plugin (using default connection)
-        self.obs_plugin_manager.set_current_scene("default", &scene.scene_name).await?;
+        // Use targeted connection if provided; fallback to default
+        let conn_name = trigger.obs_connection_name.as_deref().unwrap_or("default");
+        self.obs_plugin_manager.set_current_scene(conn_name, &scene.scene_name).await?;
         
         log::info!("🎬 Changed OBS scene to: {}", scene.scene_name);
+        Ok(())
+    }
+
+    async fn execute_record_action(&self, trigger: &EventTrigger, start: bool) -> AppResult<()> {
+        let conn_name = trigger.obs_connection_name.as_deref().unwrap_or("default");
+        if start {
+            self.obs_plugin_manager.start_recording(conn_name).await?;
+            log::info!("🎥 Started recording on {}", conn_name);
+        } else {
+            self.obs_plugin_manager.stop_recording(conn_name).await?;
+            log::info!("🛑 Stopped recording on {}", conn_name);
+        }
+        Ok(())
+    }
+
+    async fn execute_replay_save(&self, trigger: &EventTrigger) -> AppResult<()> {
+        let conn_name = trigger.obs_connection_name.as_deref().unwrap_or("default");
+        // Integrate with OBWS manager when SaveReplayBuffer is exposed; for now log intent
+        log::info!("💾 Save Replay Buffer requested on {} (not yet wired)", conn_name);
         Ok(())
     }
     

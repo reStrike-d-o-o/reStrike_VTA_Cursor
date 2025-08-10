@@ -2611,8 +2611,13 @@ impl DatabaseConnection {
         
         use rusqlite::params;
         let id = conn.execute(
-            "INSERT INTO event_triggers (tournament_id, tournament_day_id, event_type, trigger_type, obs_scene_id, overlay_template_id, is_enabled, priority, created_at, updated_at) 
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+            "INSERT INTO event_triggers (
+                tournament_id, tournament_day_id, event_type, trigger_type,
+                obs_scene_id, overlay_template_id,
+                action_kind, obs_connection_name,
+                condition_round, condition_once_per, debounce_ms, cooldown_ms,
+                is_enabled, priority, created_at, updated_at
+             ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
             params![
                 trigger.tournament_id,
                 trigger.tournament_day_id,
@@ -2620,6 +2625,12 @@ impl DatabaseConnection {
                 trigger.trigger_type,
                 trigger.obs_scene_id,
                 trigger.overlay_template_id,
+                trigger.action_kind,
+                trigger.obs_connection_name,
+                trigger.condition_round,
+                trigger.condition_once_per,
+                trigger.debounce_ms,
+                trigger.cooldown_ms,
                 trigger.is_enabled,
                 trigger.priority,
                 trigger.created_at.to_rfc3339(),
@@ -2637,7 +2648,12 @@ impl DatabaseConnection {
         
         use rusqlite::params;
         conn.execute(
-            "UPDATE event_triggers SET tournament_id = ?, tournament_day_id = ?, event_type = ?, trigger_type = ?, obs_scene_id = ?, overlay_template_id = ?, is_enabled = ?, priority = ?, updated_at = ? 
+            "UPDATE event_triggers SET 
+                tournament_id = ?, tournament_day_id = ?, event_type = ?, trigger_type = ?,
+                obs_scene_id = ?, overlay_template_id = ?,
+                action_kind = ?, obs_connection_name = ?,
+                condition_round = ?, condition_once_per = ?, debounce_ms = ?, cooldown_ms = ?,
+                is_enabled = ?, priority = ?, updated_at = ? 
              WHERE id = ?",
             params![
                 trigger.tournament_id,
@@ -2646,6 +2662,12 @@ impl DatabaseConnection {
                 trigger.trigger_type,
                 trigger.obs_scene_id,
                 trigger.overlay_template_id,
+                trigger.action_kind,
+                trigger.obs_connection_name,
+                trigger.condition_round,
+                trigger.condition_once_per,
+                trigger.debounce_ms,
+                trigger.cooldown_ms,
                 trigger.is_enabled,
                 trigger.priority,
                 now,

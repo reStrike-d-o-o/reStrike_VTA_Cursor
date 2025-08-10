@@ -61,6 +61,13 @@ pub struct EventTriggerPayload {
     pub delay_ms: Option<i64>,
     pub is_enabled: bool,
     pub priority: i32,
+    // v2 additions
+    pub action_kind: Option<String>,
+    pub obs_connection_name: Option<String>,
+    pub condition_round: Option<i64>,
+    pub condition_once_per: Option<String>,
+    pub debounce_ms: Option<i64>,
+    pub cooldown_ms: Option<i64>,
 }
 
 #[tauri::command]
@@ -79,6 +86,12 @@ pub async fn triggers_save(app: State<'_, Arc<App>>, payload: Vec<EventTriggerPa
             trigger_type: p.target_type.clone(), // legacy field still required elsewhere
             obs_scene_id: p.obs_scene_id,
             overlay_template_id: p.overlay_template_id,
+            action_kind: p.action_kind.clone(),
+            obs_connection_name: p.obs_connection_name.clone(),
+            condition_round: p.condition_round,
+            condition_once_per: p.condition_once_per.clone(),
+            debounce_ms: p.debounce_ms,
+            cooldown_ms: p.cooldown_ms,
             is_enabled: p.is_enabled,
             priority: p.priority,
             // Additional fields for new schema
