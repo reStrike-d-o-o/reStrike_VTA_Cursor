@@ -12,7 +12,7 @@ import TabIcons from '../atoms/TabIcons';
 import LottieIcon from '../atoms/LottieIcon';
 import FlagManagementPanel from './FlagManagementPanel';
 import ScoreboardManager from './ScoreboardManager';
-import SimulationPanel from './SimulationPanel';
+import SimulationPanelV2 from './SimulationPanelV2';
 import { invoke as tauriInvoke } from '@tauri-apps/api/core';
 import { algorithmAnimation, locationAnimation, scoreboardAnimation, crossbowAnimation, robotAnimation } from '../../assets/icons/json';
 import { TriggersTable } from './TriggersTable';
@@ -1046,7 +1046,7 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
             id: 'simulation',
             label: 'Simulation',
             icon: <LottieIcon animationData={robotAnimation} size={32} />,
-            content: <SimulationPanel />
+            content: <SimulationPanelV2 />
           },
           {
             id: 'triggers',
