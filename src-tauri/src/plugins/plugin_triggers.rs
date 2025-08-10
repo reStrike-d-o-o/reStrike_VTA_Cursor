@@ -19,6 +19,11 @@ pub struct TriggerPlugin {
     paused: std::sync::Arc<std::sync::atomic::AtomicBool>,
     buffered_rdy: Arc<RwLock<Option<String>>>,
     resume_delay_ms: std::sync::Arc<std::sync::atomic::AtomicU64>,
+    // v2 runtime state
+    current_round: Arc<RwLock<Option<i64>>>,
+    last_fired_at: Arc<RwLock<HashMap<i64, std::time::Instant>>>,
+    last_fired_round: Arc<RwLock<HashMap<i64, i64>>>,
+    executed_once_match: Arc<RwLock<std::collections::HashSet<i64>>>,
 }
 
 /// PSS Event types extracted from protocol
@@ -143,6 +148,10 @@ impl Clone for TriggerPlugin {
             paused: self.paused.clone(),
             buffered_rdy: self.buffered_rdy.clone(),
             resume_delay_ms: self.resume_delay_ms.clone(),
+            current_round: self.current_round.clone(),
+            last_fired_at: self.last_fired_at.clone(),
+            last_fired_round: self.last_fired_round.clone(),
+            executed_once_match: self.executed_once_match.clone(),
         }
     }
 }
@@ -159,6 +168,10 @@ impl TriggerPlugin {
             paused: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
             buffered_rdy: Arc::new(RwLock::new(None)),
             resume_delay_ms: std::sync::Arc::new(std::sync::atomic::AtomicU64::new(2000)),
+            current_round: Arc::new(RwLock::new(None)),
+            last_fired_at: Arc::new(RwLock::new(HashMap::new())),
+            last_fired_round: Arc::new(RwLock::new(HashMap::new())),
+            executed_once_match: Arc::new(RwLock::new(std::collections::HashSet::new())),
         }
     }
     
@@ -416,6 +429,23 @@ impl TriggerPlugin {
             }
         };
         
+        // capture round/context updates & resets
+        match &event_type {
+            PssEventType::Rnd(args) => {
+                // args is like "3" or similar
+                if let Ok(r) = args.trim().parse::<i64>() {
+                    let mut cr = self.current_round.write().await;
+                    *cr = Some(r);
+                }
+            }
+            PssEventType::Pre(_) => {
+                // New fight loaded → reset once-per-match tracking
+                self.executed_once_match.write().await.clear();
+                self.last_fired_round.write().await.clear();
+            }
+            _ => {}
+        }
+
         // If system is paused, only buffer the last 'rdy' message and ignore others
         if self.paused.load(std::sync::atomic::Ordering::SeqCst) {
             if let PssEventType::Rdy(raw) = &event_type {
@@ -473,6 +503,10 @@ impl TriggerPlugin {
         
         // Execute each trigger
         for trigger in event_triggers {
+            // Simple condition matcher (round/once-per/debounce/cooldown)
+            if !self.should_fire(&trigger).await {
+                continue;
+            }
             let trigger_start = std::time::Instant::now();
             let trigger_type: TriggerType = trigger.trigger_type.clone().into();
             let mut result = TriggerExecutionResult {
@@ -487,6 +521,8 @@ impl TriggerPlugin {
             match self.execute_trigger(&trigger, &event_type).await {
                 Ok(_) => {
                     result.success = true;
+                    // mark fired
+                    if let Some(id) = trigger.id { self.mark_fired(id).await; }
                     log::info!("✅ Trigger {} executed successfully", trigger.id.unwrap_or(0));
                 }
                 Err(e) => {
@@ -503,6 +539,47 @@ impl TriggerPlugin {
         log::info!("🎯 Processed {} triggers in {:?}", results.len(), total_time);
         
         Ok(results)
+    }
+
+    /// Evaluate basic Triggers v2 conditions and rate limits
+    async fn should_fire(&self, trigger: &EventTrigger) -> bool {
+        let id = match trigger.id { Some(v) => v, None => return true };
+        // Round condition
+        if let Some(req_round) = trigger.condition_round {
+            let cr = *self.current_round.read().await;
+            if cr != Some(req_round) { return false; }
+        }
+        // Once-per scope
+        if let Some(scope) = trigger.condition_once_per.as_deref() {
+            match scope {
+                "match" => {
+                    if self.executed_once_match.read().await.contains(&id) { return false; }
+                }
+                "round" => {
+                    if let (Some(cr), Some(last_r)) = (*self.current_round.read().await, self.last_fired_round.read().await.get(&id).cloned()) {
+                        if last_r == cr { return false; }
+                    }
+                }
+                _ => {}
+            }
+        }
+        // Debounce/Cooldown
+        let now = std::time::Instant::now();
+        if let Some(prev) = self.last_fired_at.read().await.get(&id).cloned() {
+            let elapsed_ms = now.duration_since(prev).as_millis() as i64;
+            let need_gap = trigger.cooldown_ms.unwrap_or(0).max(trigger.debounce_ms.unwrap_or(0));
+            if need_gap > 0 && elapsed_ms < need_gap { return false; }
+        }
+        true
+    }
+
+    /// Mark trigger as fired for rate limits
+    async fn mark_fired(&self, id: i64) {
+        self.last_fired_at.write().await.insert(id, std::time::Instant::now());
+        if let Some(cr) = *self.current_round.read().await {
+            self.last_fired_round.write().await.insert(id, cr);
+        }
+        self.executed_once_match.write().await.insert(id);
     }
     
     /// Execute a single trigger
