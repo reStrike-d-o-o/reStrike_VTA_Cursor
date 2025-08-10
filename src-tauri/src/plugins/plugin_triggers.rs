@@ -2,7 +2,7 @@ use crate::database::{DatabaseConnection, models::{OverlayTemplate, EventTrigger
 use once_cell::sync::OnceCell;
 use crate::plugins::obs::ObsPluginManager;
 use crate::types::AppResult;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use serde::{Serialize, Deserialize};
@@ -23,7 +23,7 @@ pub struct TriggerPlugin {
     current_round: Arc<RwLock<Option<i64>>>,
     last_fired_at: Arc<RwLock<HashMap<i64, std::time::Instant>>>,
     last_fired_round: Arc<RwLock<HashMap<i64, i64>>>,
-    executed_once_match: Arc<RwLock<std::collections::HashSet<i64>>>,
+    executed_once_match: Arc<RwLock<HashSet<i64>>>,
 }
 
 /// PSS Event types extracted from protocol
@@ -580,6 +580,12 @@ impl TriggerPlugin {
             self.last_fired_round.write().await.insert(id, cr);
         }
         self.executed_once_match.write().await.insert(id);
+    }
+
+    /// Return a snapshot of recent execution logs
+    pub async fn get_recent_execution_logs(&self, _max: usize) -> Vec<serde_json::Value> {
+        // Minimal stub until recent_executions queue is introduced
+        vec![]
     }
     
     /// Execute a single trigger
