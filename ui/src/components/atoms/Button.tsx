@@ -9,12 +9,12 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   className?: string;
 }
 
-const baseStyles = 'transition-all duration-300 font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 relative group';
+const baseStyles = 'transition-all duration-300 font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 relative group square';
 const variantStyles: Record<ButtonVariant, string> = {
-  primary: 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md shadow-blue-500/15 hover:shadow-lg hover:shadow-blue-500/20',
-  secondary: 'bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white shadow-md shadow-gray-500/15 hover:shadow-lg hover:shadow-gray-500/20',
-  danger: 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-md shadow-red-500/15 hover:shadow-lg hover:shadow-red-500/20',
-  success: 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white shadow-md shadow-green-500/15 hover:shadow-lg hover:shadow-green-500/20',
+  primary: 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-none',
+  secondary: 'bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white shadow-none',
+  danger: 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-none',
+  success: 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white shadow-none',
   ghost: 'bg-transparent hover:bg-gray-700/30 text-gray-300 hover:text-white border border-gray-600/30 hover:border-gray-500/40 shadow-none',
   outline: 'bg-transparent border border-gray-500/40 hover:bg-gray-700/20 text-gray-300 hover:text-white shadow-none',
 };
@@ -36,10 +36,7 @@ const Button: React.FC<ButtonProps> = ({
       className={`${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${className}`}
       {...props}
     >
-      {/* Subtle glow effect for primary buttons */}
-      {variant === 'primary' && (
-        <div className="absolute inset-0 bg-blue-500/20 blur-sm group-hover:bg-blue-500/30 transition-all duration-300"></div>
-      )}
+      {/* Removed glow per sharp-corner theme */}
       <span className="relative z-10 flex items-center justify-center">{children}</span>
     </button>
   );
