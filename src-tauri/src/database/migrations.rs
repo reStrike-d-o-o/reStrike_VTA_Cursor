@@ -2111,6 +2111,7 @@ impl MigrationManager {
         migrations.push(Box::new(Migration15)); // Secure configuration storage with SHA256 encryption
         migrations.push(Box::new(Migration16)); // OBS recording configuration and session management
         migrations.push(Box::new(Migration17)); // Ensure folder_pattern column exists on obs_recording_config
+        migrations.push(Box::new(Migration18)); // Triggers v2: conditions, action_kind, connection targeting
         
         Self { migrations }
     }
@@ -2569,6 +2570,46 @@ impl Migration for Migration17 {
 
     fn down(&self, _conn: &Connection) -> SqliteResult<()> {
         // SQLite does not support DROP COLUMN; this is a no-op.
+        Ok(())
+    }
+}
+
+/// Migration 18: Triggers v2 additional columns
+pub struct Migration18;
+
+impl Migration for Migration18 {
+    fn version(&self) -> u32 { 18 }
+    fn description(&self) -> &str { "Add condition and action columns to event_triggers (Triggers v2)" }
+    fn up(&self, conn: &Connection) -> SqliteResult<()> {
+        // Helper to add a column if it does not exist
+        fn add_column_if_missing(conn: &Connection, table: &str, col: &str, ddl: &str) -> SqliteResult<()> {
+            let mut has_col = false;
+            let mut stmt = conn.prepare(&format!("PRAGMA table_info('{}')", table))?;
+            let mut rows = stmt.query([])?;
+            while let Some(row) = rows.next()? {
+                let name: String = row.get(1)?;
+                if name == col { has_col = true; break; }
+            }
+            if !has_col {
+                let _ = conn.execute(&format!("ALTER TABLE {} ADD COLUMN {} {}", table, col, ddl), []);
+            }
+            Ok(())
+        }
+
+        // New columns for event_triggers
+        add_column_if_missing(conn, "event_triggers", "action_kind", "TEXT")?; // scene|overlay|record_start|record_stop|replay_save|hotkey|stinger
+        add_column_if_missing(conn, "event_triggers", "obs_connection_name", "TEXT")?;
+        add_column_if_missing(conn, "event_triggers", "condition_round", "INTEGER")?;
+        add_column_if_missing(conn, "event_triggers", "condition_once_per", "TEXT")?; // 'round'|'match'
+        add_column_if_missing(conn, "event_triggers", "debounce_ms", "INTEGER NOT NULL DEFAULT 0")?;
+        add_column_if_missing(conn, "event_triggers", "cooldown_ms", "INTEGER NOT NULL DEFAULT 0")?;
+
+        log::info!("✅ Migration 18: Added Triggers v2 columns to event_triggers");
+        Ok(())
+    }
+    fn down(&self, _conn: &Connection) -> SqliteResult<()> {
+        // SQLite cannot drop columns; no-op
+        log::warn!("⚠️ Migration 18 rollback: cannot drop added columns due to SQLite limitations");
         Ok(())
     }
 }
