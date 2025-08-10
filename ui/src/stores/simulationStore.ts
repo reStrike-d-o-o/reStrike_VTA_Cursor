@@ -129,8 +129,12 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
           set({ selectedAutomatedScenario: scenarios[0].name });
         }
         if (isSimulationEnvError(get().error)) set({ error: '' });
-      } else if (result?.error && isSimulationEnvError(result.error)) {
-        set({ error: result.error });
+      } else if (result?.error) {
+        if (isSimulationEnvError(result.error)) {
+          set({ error: result.error });
+        } else if (String(result.error).includes('Failed to get scenarios')) {
+          set({ error: 'Backend connection failed. Please ensure the application is running properly.' });
+        }
       }
     } catch (e: any) {
       if (typeof e === 'string') {
