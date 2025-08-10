@@ -1,0 +1,20 @@
+flowchart TD
+  A[Select OBS connection in UI] --> B[Load config via invoke]
+  B -->|found| C[Populate UI]
+  B -->|not found| C
+  C --> D[Edit path, filename, folder pattern]
+  D --> E[Save configuration]
+  E --> F[invoke obs_obws_save_recording_config]
+  F --> G[Parse to ObsRecordingConfig]
+  G --> H[Upsert into obs_recording_config]
+  H --> I[Success response]
+  I --> J[UI shows saved]
+
+  J --> K[Generate path when needed]
+  K --> L[Read config from DB]
+  L --> M[Path generator builds directory]
+  M --> N[Create folders if missing]
+  N --> O[Set record dir + filename via OBWS]
+  O --> P[OBS acknowledges]
+  P --> Q[UI updates status]
+
