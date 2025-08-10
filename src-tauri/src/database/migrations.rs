@@ -2110,6 +2110,7 @@ impl MigrationManager {
         migrations.push(Box::new(Migration14)); // Change match_number from INTEGER to TEXT
         migrations.push(Box::new(Migration15)); // Secure configuration storage with SHA256 encryption
         migrations.push(Box::new(Migration16)); // OBS recording configuration and session management
+        migrations.push(Box::new(Migration17)); // Ensure folder_pattern column exists on obs_recording_config
         
         Self { migrations }
     }
@@ -2524,3 +2525,50 @@ impl Migration for Migration16 {
         Ok(())
     }
 } 
+
+/// Migration 17: Ensure folder_pattern column exists on obs_recording_config
+pub struct Migration17;
+
+impl Migration for Migration17 {
+    fn version(&self) -> u32 { 17 }
+
+    fn description(&self) -> &str {
+        "Ensure folder_pattern column exists on obs_recording_config"
+    }
+
+    fn up(&self, conn: &Connection) -> SqliteResult<()> {
+        // Guard: table may or may not exist depending on prior installs
+        // If table does not exist, create it with the correct schema (delegated to Migration16 originally),
+        // but here we only ensure the missing column is present for already-created tables.
+        let mut has_table = false;
+        {
+            let mut stmt = conn.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='obs_recording_config'")?;
+            let mut rows = stmt.query([])?;
+            if let Some(_) = rows.next()? { has_table = true; }
+        }
+
+        if has_table {
+            let mut stmt = conn.prepare("PRAGMA table_info('obs_recording_config')")?;
+            let mut has_folder_pattern = false;
+            let mut rows = stmt.query([])?;
+            while let Some(row) = rows.next()? {
+                let col_name: String = row.get(1)?;
+                if col_name == "folder_pattern" { has_folder_pattern = true; break; }
+            }
+
+            if !has_folder_pattern {
+                let _ = conn.execute(
+                    "ALTER TABLE obs_recording_config ADD COLUMN folder_pattern TEXT NOT NULL DEFAULT '{tournament}/{tournamentDay}'",
+                    [],
+                );
+            }
+        }
+
+        Ok(())
+    }
+
+    fn down(&self, _conn: &Connection) -> SqliteResult<()> {
+        // SQLite does not support DROP COLUMN; this is a no-op.
+        Ok(())
+    }
+}
