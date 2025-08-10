@@ -7,6 +7,7 @@ import SimulationModeTabs from './simulation/SimulationModeTabs';
 import ManualPanel from './simulation/ManualPanel';
 import AutomatedPanel from './simulation/AutomatedPanel';
 import StatusPanel from './simulation/StatusPanel';
+import ArcadeModePanel from './simulation/ArcadeModePanel';
 
 interface SimulationPanelProps { className?: string; }
 
@@ -18,6 +19,7 @@ const SimulationPanelV2: React.FC<SimulationPanelProps> = ({ className = '' }) =
   const renderBody = () => {
     if (store.showAutomated) return <AutomatedPanel />;
     if (store.showSelfTest) return <SelfTestPanel />;
+    if (store.showArcade) return <ArcadeModePanel />;
     return <ManualPanel />;
   };
 
