@@ -30,6 +30,8 @@ const TriggersRuleBuilder: React.FC<{ tournamentId?: number; dayId?: number }> =
 
   const [connections, setConnections] = useState<ObsConnection[]>([]);
   const [connLoading, setConnLoading] = useState(false);
+  const [logs, setLogs] = useState<any[]>([]);
+  const [logsLoading, setLogsLoading] = useState(false);
 
   useEffect(() => {
     fetchData(tournamentId, dayId);
@@ -48,6 +50,18 @@ const TriggersRuleBuilder: React.FC<{ tournamentId?: number; dayId?: number }> =
       }
     })();
   }, [fetchData, tournamentId, dayId]);
+
+  const refreshLogs = async () => {
+    try {
+      setLogsLoading(true);
+      const res = await (await import('@tauri-apps/api/core')).invoke<any>('triggers_recent_logs', { max: 50 });
+      if (res?.success) setLogs(res.logs || []);
+    } catch (e) {
+      console.warn('Failed to get trigger logs', e);
+    } finally {
+      setLogsLoading(false);
+    }
+  };
 
   const eventOptions = useMemo(() => eventsCatalog || [], [eventsCatalog]);
 
@@ -208,10 +222,12 @@ const TriggersRuleBuilder: React.FC<{ tournamentId?: number; dayId?: number }> =
             <Input type="number" className="w-24" value={resumeDelay} onChange={(e) => setResumeDelay(Number(e.target.value) || 0)} />
           </div>
           <Button variant="primary" onClick={saveChanges} disabled={!dirty}>Save</Button>
+          <Button variant="secondary" onClick={refreshLogs} disabled={logsLoading}>Logs</Button>
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto border border-gray-700 bg-[#0D131A]">
+      <div className="flex-1 overflow-hidden border border-gray-700 bg-[#0D131A] grid grid-cols-3">
+        <div className="col-span-2 overflow-auto">
         <table className="min-w-full text-left text-sm text-gray-200 border-collapse">
           <thead className="sticky top-0 bg-[#101820] z-10">
             <tr>
@@ -256,6 +272,28 @@ const TriggersRuleBuilder: React.FC<{ tournamentId?: number; dayId?: number }> =
             })}
           </tbody>
         </table>
+        </div>
+        <div className="col-span-1 border-l border-gray-700 overflow-auto">
+          <div className="p-3 sticky top-0 bg-[#101820] flex items-center justify-between">
+            <div className="text-gray-300 font-medium">Recent Executions</div>
+            <Button size="sm" variant="secondary" onClick={refreshLogs} disabled={logsLoading}>Refresh</Button>
+          </div>
+          <div className="p-2 space-y-2">
+            {logsLoading && <div className="text-sm text-gray-400 p-2">Loading…</div>}
+            {!logsLoading && logs.length === 0 && <div className="text-sm text-gray-500 p-2">No recent executions</div>}
+            {logs.map((entry, i) => (
+              <div key={i} className="p-2 bg-gray-800/50 border border-gray-700">
+                <div className="text-xs text-gray-400">{entry.ts || ''}</div>
+                {(entry.results || []).map((r: any, idx: number) => (
+                  <div key={idx} className="text-xs text-gray-300 flex justify-between">
+                    <span>#{r.trigger_id} {r.event_type}</span>
+                    <span className={r.success ? 'text-green-400' : 'text-red-400'}>{r.success ? 'OK' : 'ERR'}</span>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
