@@ -1,0 +1,266 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import Button from '../atoms/Button';
+import Input from '../atoms/Input';
+import Toggle from '../atoms/Toggle';
+import { useTriggersStore, EventTriggerRow, DelayTriggerRow, TriggerRow } from '../../stores/triggersStore';
+import { obsObwsCommands } from '../../utils/tauriCommandsObws';
+
+type ObsConnection = { name: string; host?: string; port?: number };
+
+const TriggersRuleBuilder: React.FC<{ tournamentId?: number; dayId?: number }> = ({ tournamentId, dayId }) => {
+  const store = useTriggersStore();
+  const {
+    eventsCatalog,
+    scenes,
+    overlays,
+    rows,
+    loading,
+    dirty,
+    selectedIndex,
+    resumeDelay,
+    fetchData,
+    fetchScenes,
+    addRow,
+    deleteSelectedRow,
+    selectRow,
+    updateRow,
+    setResumeDelay,
+    saveChanges,
+  } = store;
+
+  const [connections, setConnections] = useState<ObsConnection[]>([]);
+  const [connLoading, setConnLoading] = useState(false);
+
+  useEffect(() => {
+    fetchData(tournamentId, dayId);
+    // Load OBS connections for connection targeting
+    (async () => {
+      try {
+        setConnLoading(true);
+        const res = await obsObwsCommands.getConnections();
+        if (res.success && res.data?.connections) {
+          setConnections(res.data.connections.map((c: any) => ({ name: c.name, host: c.host, port: c.port })));
+        }
+      } catch (e) {
+        console.warn('Failed to fetch OBS connections', e);
+      } finally {
+        setConnLoading(false);
+      }
+    })();
+  }, [fetchData, tournamentId, dayId]);
+
+  const eventOptions = useMemo(() => eventsCatalog || [], [eventsCatalog]);
+
+  const handleRowChange = (idx: number, partial: Partial<EventTriggerRow & DelayTriggerRow>) => {
+    updateRow(idx, partial as Partial<TriggerRow>);
+  };
+
+  const renderEventCell = (row: EventTriggerRow, idx: number) => (
+    <select
+      aria-label="Event"
+      title="Event"
+      className="w-full bg-gray-800/50 border border-gray-700 rounded text-sm text-gray-100 px-2 py-1"
+      value={row.event_type || ''}
+      onChange={(e) => handleRowChange(idx, { event_type: e.target.value })}
+    >
+      <option value="">Select…</option>
+      {eventOptions.map((ev) => (
+        <option key={ev} value={ev}>{ev}</option>
+      ))}
+    </select>
+  );
+
+  const actionKinds: Array<{ value: NonNullable<EventTriggerRow['action_kind']>, label: string }> = [
+    { value: 'scene', label: 'Change Scene' },
+    { value: 'overlay', label: 'Show Overlay' },
+    { value: 'record_start', label: 'Start Recording' },
+    { value: 'record_stop', label: 'Stop Recording' },
+    { value: 'replay_save', label: 'Save Replay Buffer' },
+    // Future: { value: 'hotkey', label: 'Send Hotkey' },
+    // Future: { value: 'stinger', label: 'Play Stinger' },
+  ];
+
+  const renderActionCell = (row: EventTriggerRow, idx: number) => (
+    <select
+      aria-label="Action"
+      title="Action"
+      className="w-full bg-gray-800/50 border border-gray-700 rounded text-sm text-gray-100 px-2 py-1"
+      value={row.action_kind || 'scene'}
+      onChange={(e) => handleRowChange(idx, { action_kind: e.target.value as any })}
+    >
+      {actionKinds.map((k) => (
+        <option key={k.value} value={k.value}>{k.label}</option>
+      ))}
+    </select>
+  );
+
+  const renderConnectionCell = (row: EventTriggerRow, idx: number) => (
+    <select
+      aria-label="OBS Connection"
+      title="OBS Connection"
+      className="w-full bg-gray-800/50 border border-gray-700 rounded text-sm text-gray-100 px-2 py-1"
+      value={row.obs_connection_name || ''}
+      onChange={(e) => handleRowChange(idx, { obs_connection_name: e.target.value })}
+    >
+      <option value="">default</option>
+      {connections.map((c) => (
+        <option key={c.name} value={c.name}>{c.name}</option>
+      ))}
+    </select>
+  );
+
+  const renderTargetTypeCell = (row: EventTriggerRow, idx: number) => (
+    <select
+      aria-label="Target Type"
+      title="Target Type"
+      className="w-full bg-gray-800/50 border border-gray-700 rounded text-sm text-gray-100 px-2 py-1"
+      value={row.target_type || 'scene'}
+      onChange={(e) => handleRowChange(idx, { target_type: e.target.value as any })}
+      disabled={row.action_kind && row.action_kind !== 'scene' && row.action_kind !== 'overlay'}
+    >
+      <option value="scene">Scene</option>
+      <option value="overlay">Overlay</option>
+    </select>
+  );
+
+  const renderTargetCell = (row: EventTriggerRow, idx: number) => {
+    if ((row.action_kind ?? 'scene') === 'overlay' || row.target_type === 'overlay') {
+      return (
+        <select
+          aria-label="Overlay Target"
+          title="Overlay Target"
+          className="w-full bg-gray-800/50 border border-gray-700 rounded text-sm text-gray-100 px-2 py-1"
+          value={row.overlay_template_id || ''}
+          onChange={(e) => handleRowChange(idx, { overlay_template_id: Number(e.target.value) || undefined, target_type: 'overlay' })}
+        >
+          <option value="">Select overlay…</option>
+          {overlays.map((o) => (
+            <option key={o.id} value={o.id}>{o.name}{o.theme ? ` – ${o.theme}` : ''}</option>
+          ))}
+        </select>
+      );
+    }
+    return (
+      <select
+        aria-label="Scene Target"
+        title="Scene Target"
+        className="w-full bg-gray-800/50 border border-gray-700 rounded text-sm text-gray-100 px-2 py-1"
+        value={row.obs_scene_id || ''}
+        onChange={(e) => handleRowChange(idx, { obs_scene_id: Number(e.target.value) || undefined, target_type: 'scene' })}
+      >
+        <option value="">Select scene…</option>
+        {scenes.map((s) => (
+          <option key={s.id} value={s.id}>{s.connection_name ? `${s.connection_name} – ` : ''}{s.scene_name}</option>
+        ))}
+      </select>
+    );
+  };
+
+  const renderConditionsCell = (row: EventTriggerRow, idx: number) => (
+    <div className="flex gap-2 items-center">
+      <Input
+        type="number"
+        className="w-16"
+        placeholder="Rnd"
+        value={row.condition_round ?? ''}
+        onChange={(e) => handleRowChange(idx, { condition_round: e.target.value === '' ? null : Number(e.target.value) })}
+      />
+      <select
+        aria-label="Once-per scope"
+        title="Once-per scope"
+        className="bg-gray-800/50 border border-gray-700 rounded text-sm text-gray-100 px-2 py-1"
+        value={row.condition_once_per ?? ''}
+        onChange={(e) => handleRowChange(idx, { condition_once_per: (e.target.value || null) as any })}
+      >
+        <option value="">— once —</option>
+        <option value="round">Per Round</option>
+        <option value="match">Per Match</option>
+      </select>
+      <Input
+        type="number"
+        className="w-24"
+        placeholder="Debounce"
+        value={row.debounce_ms ?? ''}
+        onChange={(e) => handleRowChange(idx, { debounce_ms: e.target.value === '' ? null : Number(e.target.value) })}
+      />
+      <Input
+        type="number"
+        className="w-24"
+        placeholder="Cooldown"
+        value={row.cooldown_ms ?? ''}
+        onChange={(e) => handleRowChange(idx, { cooldown_ms: e.target.value === '' ? null : Number(e.target.value) })}
+      />
+    </div>
+  );
+
+  if (loading) return <div className="p-4">Loading triggers…</div>;
+
+  return (
+    <div className="flex h-full flex-col gap-3">
+      <div className="flex items-center justify-between">
+        <div className="text-sm text-gray-400">OBS connections: {connLoading ? 'loading…' : connections.length}</div>
+        <div className="flex gap-2">
+          <Button onClick={addRow}>Add Rule</Button>
+          <Button variant="danger" onClick={deleteSelectedRow} disabled={selectedIndex == null}>Delete</Button>
+          <Button variant="secondary" onClick={fetchScenes} disabled={loading}>Load OBS Scenes</Button>
+          <div className="flex items-center gap-2 ml-4">
+            <label className="text-xs text-gray-400">Resume delay (ms)</label>
+            <Input type="number" className="w-24" value={resumeDelay} onChange={(e) => setResumeDelay(Number(e.target.value) || 0)} />
+          </div>
+          <Button variant="primary" onClick={saveChanges} disabled={!dirty}>Save</Button>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-auto border border-gray-700 bg-[#0D131A]">
+        <table className="min-w-full text-left text-sm text-gray-200 border-collapse">
+          <thead className="sticky top-0 bg-[#101820] z-10">
+            <tr>
+              <th className="px-3 py-2 w-[120px]">Event</th>
+              <th className="px-3 py-2 w-[160px]">Action</th>
+              <th className="px-3 py-2 w-[140px]">Connection</th>
+              <th className="px-3 py-2 w-[120px]">Target Type</th>
+              <th className="px-3 py-2 w-[220px]">Target</th>
+              <th className="px-3 py-2">Conditions</th>
+              <th className="px-3 py-2 w-[90px]">Enabled</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r, idx) => {
+              if ((r as any).kind === 'delay') {
+                const d = r as DelayTriggerRow;
+                return (
+                  <tr key={idx} className={`border-b border-gray-700 ${selectedIndex === idx ? 'bg-blue-900/30' : ''}`} onClick={() => selectRow(idx)}>
+                    <td className="px-3 py-2 text-gray-400">Delay</td>
+                    <td className="px-3 py-2" colSpan={4}>
+                      <Input type="number" className="w-28" value={d.delay_ms} onChange={(e) => handleRowChange(idx, { delay_ms: Number(e.target.value) || 0 })} />
+                    </td>
+                    <td className="px-3 py-2"></td>
+                    <td className="px-3 py-2"><span className="text-gray-500">—</span></td>
+                  </tr>
+                );
+              }
+              const row = r as EventTriggerRow;
+              return (
+                <tr key={idx} className={`border-b border-gray-700 ${selectedIndex === idx ? 'bg-blue-900/30' : ''}`} onClick={() => selectRow(idx)}>
+                  <td className="px-3 py-2">{renderEventCell(row, idx)}</td>
+                  <td className="px-3 py-2">{renderActionCell(row, idx)}</td>
+                  <td className="px-3 py-2">{renderConnectionCell(row, idx)}</td>
+                  <td className="px-3 py-2">{renderTargetTypeCell(row, idx)}</td>
+                  <td className="px-3 py-2">{renderTargetCell(row, idx)}</td>
+                  <td className="px-3 py-2">{renderConditionsCell(row, idx)}</td>
+                  <td className="px-3 py-2">
+                    <Toggle id={`en-${idx}`} checked={row.is_enabled} onChange={(e) => handleRowChange(idx, { is_enabled: e.target.checked })} label="" />
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+export default TriggersRuleBuilder;
+
+

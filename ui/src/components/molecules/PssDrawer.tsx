@@ -16,6 +16,7 @@ import SimulationPanel from './SimulationPanel';
 import { invoke as tauriInvoke } from '@tauri-apps/api/core';
 import { algorithmAnimation, locationAnimation, scoreboardAnimation, crossbowAnimation, robotAnimation } from '../../assets/icons/json';
 import { TriggersTable } from './TriggersTable';
+import TriggersRuleBuilder from './TriggersRuleBuilder';
 import { Progress } from '../atoms/Progress';
 
 // Use the proper Tauri v2 invoke function with fallback
@@ -1051,7 +1052,7 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
             id: 'triggers',
             label: 'Triggers',
             icon: <LottieIcon animationData={crossbowAnimation} size={32} />,
-            content: <TriggersTable />
+            content: <div className="theme-card p-4"><h3 className="text-lg font-semibold text-gray-100 mb-3">Triggers (v2)</h3><TriggersRuleBuilder /></div>
           }
         ]}
         activeTab={activeTab}
