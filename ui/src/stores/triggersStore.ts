@@ -257,6 +257,42 @@ export const useTriggersStore = create<TriggersStore>((set, get) => ({
     const { rows, resumeDelay, dirty } = get();
     if (!dirty) return;
 
+    // Validate required fields before saving
+    const missingMessages: string[] = [];
+    rows.forEach((row, idx) => {
+      if (row.kind === 'event') {
+        const ev = row as EventTriggerRow;
+        if (!ev.event_type) missingMessages.push(`Row ${idx + 1}: missing event`);
+        const kind = ev.action_kind ?? (ev.target_type as any);
+        if ((kind === 'scene' || ev.target_type === 'scene') && (ev.obs_scene_id == null)) {
+          missingMessages.push(`Row ${idx + 1}: scene target not selected`);
+        }
+        if ((kind === 'overlay' || ev.target_type === 'overlay') && (ev.overlay_template_id == null)) {
+          missingMessages.push(`Row ${idx + 1}: overlay target not selected`);
+        }
+        if (!ev.action) missingMessages.push(`Row ${idx + 1}: action not set (show/hide)`);
+      } else {
+        const d = row as DelayTriggerRow;
+        if (d.delay_ms == null || Number.isNaN(d.delay_ms)) {
+          missingMessages.push(`Row ${idx + 1}: delay duration is invalid`);
+        }
+      }
+    });
+
+    if (missingMessages.length) {
+      // Lazy import to avoid circular deps in non-UI contexts
+      try {
+        const { useMessageCenter } = await import('../stores/messageCenter');
+        useMessageCenter.getState().showError(
+          'Cannot save: missing required fields',
+          missingMessages.join('\n')
+        );
+      } catch (e) {
+        console.error('Validation failed:', missingMessages.join('; '));
+      }
+      return;
+    }
+
     // Prepare payload for backend: convert rows into DB triggers format
     const payload = rows.map((row, idx) => {
       if (row.kind === 'delay') {
@@ -293,6 +329,10 @@ export const useTriggersStore = create<TriggersStore>((set, get) => ({
       set({ dirty: false });
     } catch (err) {
       console.error(err);
+      try {
+        const { useMessageCenter } = await import('../stores/messageCenter');
+        useMessageCenter.getState().showError('Failed to save triggers', (err as any)?.toString());
+      } catch {}
     }
   },
 }));
