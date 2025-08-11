@@ -169,7 +169,11 @@ const TriggersRuleBuilder: React.FC<{ tournamentId?: number; dayId?: number }> =
       title="OBS Connection"
       className="w-full bg-gray-800/50 border border-gray-700 rounded text-sm text-gray-100 px-2 py-1"
       value={row.obs_connection_name || ''}
-      onChange={(e) => handleRowChange(idx, { obs_connection_name: e.target.value })}
+      onChange={async (e) => {
+        handleRowChange(idx, { obs_connection_name: e.target.value });
+        // Auto-refresh scenes when connection changes so scene dropdown is populated
+        try { await fetchScenes(); } catch {}
+      }}
     >
       <option value="">default</option>
       {connections.map((c) => (
