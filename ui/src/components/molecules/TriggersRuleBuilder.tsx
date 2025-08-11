@@ -32,6 +32,7 @@ const TriggersRuleBuilder: React.FC<{ tournamentId?: number; dayId?: number }> =
   const [connLoading, setConnLoading] = useState(false);
   const [logs, setLogs] = useState<any[]>([]);
   const [logsLoading, setLogsLoading] = useState(false);
+  const [showRecent, setShowRecent] = useState(true);
 
   useEffect(() => {
     fetchData(tournamentId, dayId);
@@ -222,8 +223,10 @@ const TriggersRuleBuilder: React.FC<{ tournamentId?: number; dayId?: number }> =
         onChange={(e) => handleRowChange(idx, { obs_scene_id: Number(e.target.value) || undefined, target_type: 'scene' })}
       >
         <option value="">Select scene…</option>
-        {scenes.map((s) => (
-          <option key={s.id} value={s.id}>{s.connection_name ? `${s.connection_name} – ` : ''}{s.scene_name}</option>
+        {scenes.map((s, i) => (
+          <option key={s.id ?? `${s.scene_id}-${i}`} value={s.id ?? i}>
+            {s.connection_name ? `${s.connection_name} – ` : ''}{s.scene_name}
+          </option>
         ))}
       </select>
     );
@@ -281,13 +284,14 @@ const TriggersRuleBuilder: React.FC<{ tournamentId?: number; dayId?: number }> =
             <Input type="number" className="w-24" value={resumeDelay} onChange={(e) => setResumeDelay(Number(e.target.value) || 0)} />
           </div>
           <Button variant="primary" onClick={saveChanges} disabled={!dirty}>Save</Button>
-          <Button variant="secondary" onClick={refreshLogs} disabled={logsLoading}>Logs</Button>
+          <Button variant="secondary" onClick={() => setShowRecent((s) => !s)}>{showRecent ? 'Hide' : 'Show'} Recent</Button>
+          <Button variant="secondary" onClick={refreshLogs} disabled={logsLoading}>Refresh Logs</Button>
           <Button variant="secondary" onClick={handleSaveReplay}>Save Replay</Button>
         </div>
       </div>
 
-      <div className="flex-1 overflow-hidden border border-gray-700 bg-[#0D131A] grid grid-cols-3">
-        <div className="col-span-2 overflow-auto">
+      <div className="flex-1 overflow-hidden border border-gray-700 bg-[#0D131A] flex">
+        <div className="flex-1 overflow-auto">
         <table className="min-w-full text-left text-sm text-gray-200 border-collapse">
           <thead className="sticky top-0 bg-[#101820] z-10">
             <tr>
@@ -295,8 +299,18 @@ const TriggersRuleBuilder: React.FC<{ tournamentId?: number; dayId?: number }> =
               <th className="px-3 py-2 w-[160px]">Action</th>
               <th className="px-3 py-2 w-[140px]">Connection</th>
               <th className="px-3 py-2 w-[120px]">Target Type</th>
-              <th className="px-3 py-2 w-[220px]">Target</th>
-              <th className="px-3 py-2">Conditions</th>
+              <th className="px-3 py-2 w-[260px]">Target</th>
+              <th className="px-3 py-2">
+                <div className="flex items-center gap-3">
+                  <span>Conditions</span>
+                  <div className="hidden md:flex text-[10px] text-gray-400 gap-6">
+                    <span>Round</span>
+                    <span>Once-per</span>
+                    <span>Debounce</span>
+                    <span>Cooldown</span>
+                  </div>
+                </div>
+              </th>
               <th className="px-3 py-2 w-[90px]">Enabled</th>
             </tr>
           </thead>
@@ -334,10 +348,14 @@ const TriggersRuleBuilder: React.FC<{ tournamentId?: number; dayId?: number }> =
           </tbody>
         </table>
         </div>
-        <div className="col-span-1 border-l border-gray-700 overflow-auto">
+        {showRecent && (
+        <div className="w-[360px] border-l border-gray-700 overflow-auto">
           <div className="p-3 sticky top-0 bg-[#101820] flex items-center justify-between">
             <div className="text-gray-300 font-medium">Recent Executions</div>
-            <Button size="sm" variant="secondary" onClick={refreshLogs} disabled={logsLoading}>Refresh</Button>
+            <div className="flex gap-2">
+              <Button size="sm" variant="secondary" onClick={refreshLogs} disabled={logsLoading}>Refresh</Button>
+              <Button size="sm" variant="secondary" onClick={() => setShowRecent(false)}>Collapse</Button>
+            </div>
           </div>
           <div className="p-2 space-y-2">
             {logsLoading && <div className="text-sm text-gray-400 p-2">Loading…</div>}
@@ -355,6 +373,7 @@ const TriggersRuleBuilder: React.FC<{ tournamentId?: number; dayId?: number }> =
             ))}
           </div>
         </div>
+        )}
       </div>
     </div>
   );

@@ -15,6 +15,7 @@ interface PssMatchStore {
   updateCurrentRoundTime: (time: string) => void;
   setMatchLoaded: (loaded: boolean) => void;
   resetMatchData: () => void;
+  clearEvents: () => void;
   
   // Computed values
   getAthlete1: () => PssAthleteInfo | undefined;
@@ -143,6 +144,17 @@ export const usePssMatchStore = create<PssMatchStore>((set, get) => ({
         lastUpdated: new Date().toISOString(),
       },
     });
+  },
+  
+  clearEvents: () => {
+    // Event Table events are kept in matchData.events array if present
+    set((state) => ({
+      matchData: {
+        ...state.matchData,
+        events: [],
+        lastUpdated: new Date().toISOString(),
+      },
+    }));
   },
   
   // Computed values
