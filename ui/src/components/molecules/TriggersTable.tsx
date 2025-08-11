@@ -8,7 +8,7 @@ import {
   TriggerRow,
 } from '../../stores/triggersStore';
 import Button from '../atoms/Button';
-import { useConfirmStore } from '../../stores/confirmStore';
+import { useMessageCenter } from '../../stores/messageCenter';
 import Input from '../atoms/Input';
 
 interface Props {
@@ -225,13 +225,13 @@ export const TriggersTable: React.FC<Props> = ({ tournamentId, dayId }) => {
           <Button onClick={addRow}>Add</Button>
           <Button
             variant="danger"
-            onClick={() => {
-              useConfirmStore.getState().open({
+            onClick={async () => {
+              const ok = await useMessageCenter.getState().confirm({
                 title: 'Delete Row',
-                message: 'This will remove the selected trigger row.',
-                delayMs: 3000,
-                action: deleteSelectedRow,
+                body: 'This will remove the selected trigger row.',
+                confirmText: 'Delete',
               });
+              if (ok) deleteSelectedRow();
             }}
           >
             Delete

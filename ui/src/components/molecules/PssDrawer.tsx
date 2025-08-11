@@ -412,9 +412,14 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
   };
 
   const handleDeleteVersion = async (version: string) => {
-    if (!confirm(`Are you sure you want to delete protocol version ${version}?`)) {
-      return;
-    }
+    const { useMessageCenter } = await import('../../stores/messageCenter');
+    const ok = await useMessageCenter.getState().confirm({
+      title: 'Delete Protocol Version',
+      body: `Are you sure you want to delete protocol version ${version}?`,
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+    });
+    if (!ok) return;
 
     try {
       setError('');

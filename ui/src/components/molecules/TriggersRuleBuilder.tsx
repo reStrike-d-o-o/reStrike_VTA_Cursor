@@ -290,7 +290,7 @@ const TriggersRuleBuilder: React.FC<{ tournamentId?: number; dayId?: number }> =
         </div>
       </div>
 
-      <div className="flex-1 overflow-hidden border border-gray-700 bg-[#0D131A] flex">
+      <div className="flex-1 overflow-hidden border border-gray-700 bg-[#0D131A] relative">
         <div className="flex-1 overflow-auto">
         <table className="min-w-full text-left text-sm text-gray-200 border-collapse">
           <thead className="sticky top-0 bg-[#101820] z-10">
@@ -348,16 +348,37 @@ const TriggersRuleBuilder: React.FC<{ tournamentId?: number; dayId?: number }> =
           </tbody>
         </table>
         </div>
-        {showRecent && (
-        <div className="w-[360px] border-l border-gray-700 overflow-auto">
-          <div className="p-3 sticky top-0 bg-[#101820] flex items-center justify-between">
+
+        {/* Drawer handle when collapsed */}
+        {!showRecent && (
+          <button
+            aria-label="Open recent executions"
+            aria-controls="recent-executions-drawer"
+            aria-expanded="false"
+            className="absolute top-1/2 -translate-y-1/2 right-0 translate-x-full bg-gray-800 border border-gray-700 text-gray-200 px-2 py-3 hover:bg-gray-700"
+            onClick={() => setShowRecent(true)}
+          >
+            Recent
+          </button>
+        )}
+
+        {/* Sliding drawer */}
+        <div
+          id="recent-executions-drawer"
+          role="complementary"
+          aria-label="Recent Executions Drawer"
+          className={`absolute top-0 right-0 h-full w-[360px] border-l border-gray-700 bg-[#0F151C] transition-transform duration-300 ease-in-out ${
+            showRecent ? 'translate-x-0' : 'translate-x-full'
+          }`}
+        >
+          <div className="p-3 sticky top-0 bg-[#101820] flex items-center justify-between border-b border-gray-700">
             <div className="text-gray-300 font-medium">Recent Executions</div>
             <div className="flex gap-2">
               <Button size="sm" variant="secondary" onClick={refreshLogs} disabled={logsLoading}>Refresh</Button>
               <Button size="sm" variant="secondary" onClick={() => setShowRecent(false)}>Collapse</Button>
             </div>
           </div>
-          <div className="p-2 space-y-2">
+          <div className="p-2 space-y-2 overflow-auto h-[calc(100%-48px)]">
             {logsLoading && <div className="text-sm text-gray-400 p-2">Loading…</div>}
             {!logsLoading && logs.length === 0 && <div className="text-sm text-gray-500 p-2">No recent executions</div>}
             {logs.map((entry, i) => (
@@ -373,7 +394,6 @@ const TriggersRuleBuilder: React.FC<{ tournamentId?: number; dayId?: number }> =
             ))}
           </div>
         </div>
-        )}
       </div>
     </div>
   );

@@ -10,7 +10,7 @@ import { invoke } from '@tauri-apps/api/core';
 
 import { useTriggersStore } from './stores/triggersStore';
 import PausedOverlay from './components/molecules/PausedOverlay';
-import DestructiveConfirmModal from './components/molecules/DestructiveConfirmModal';
+import GlobalModals from './components/molecules/GlobalModals';
 import { useSettingsStore } from './stores/settingsStore';
 
 const App: React.FC = () => {
@@ -96,7 +96,7 @@ const App: React.FC = () => {
   return (
     <div className="h-screen flex flex-col bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white overflow-hidden">
       {paused && <PausedOverlay />}
-      <DestructiveConfirmModal />
+      <GlobalModals />
 
       {/* Subtle background pattern overlay */}
       <div className="absolute inset-0 bg-gradient-to-br from-gray-800/20 to-gray-900/30 opacity-50"></div>
