@@ -371,27 +371,29 @@ const TriggersRuleBuilder: React.FC<{ tournamentId?: number; dayId?: number }> =
             showRecent ? 'translate-x-0' : 'translate-x-full'
           }`}
         >
-          <div className="p-3 sticky top-0 bg-[#101820] flex items-center justify-between border-b border-gray-700">
-            <div className="text-gray-300 font-medium">Recent Executions</div>
-            <div className="flex gap-2">
-              <Button size="sm" variant="secondary" onClick={refreshLogs} disabled={logsLoading}>Refresh</Button>
-              <Button size="sm" variant="secondary" onClick={() => setShowRecent(false)}>Collapse</Button>
-            </div>
-          </div>
-          <div className="p-2 space-y-2 overflow-auto h-[calc(100%-48px)]">
-            {logsLoading && <div className="text-sm text-gray-400 p-2">Loading…</div>}
-            {!logsLoading && logs.length === 0 && <div className="text-sm text-gray-500 p-2">No recent executions</div>}
-            {logs.map((entry, i) => (
-              <div key={i} className="p-2 bg-gray-800/50 border border-gray-700">
-                <div className="text-xs text-gray-400">{entry.ts || ''}</div>
-                {(entry.results || []).map((r: any, idx: number) => (
-                  <div key={idx} className="text-xs text-gray-300 flex justify-between">
-                    <span>#{r.trigger_id} {r.event_type}</span>
-                    <span className={r.success ? 'text-green-400' : 'text-red-400'}>{r.success ? 'OK' : 'ERR'}</span>
-                  </div>
-                ))}
+          <div className="h-full flex flex-col">
+            <div className="p-3 bg-[#101820] flex items-center justify-between border-b border-gray-700">
+              <div className="text-gray-300 font-medium">Recent Executions</div>
+              <div className="flex gap-2">
+                <Button size="sm" variant="secondary" onClick={refreshLogs} disabled={logsLoading}>Refresh</Button>
+                <Button size="sm" variant="secondary" onClick={() => setShowRecent(false)}>Collapse</Button>
               </div>
-            ))}
+            </div>
+            <div className="p-2 space-y-2 flex-1 overflow-auto">
+              {logsLoading && <div className="text-sm text-gray-400 p-2">Loading…</div>}
+              {!logsLoading && logs.length === 0 && <div className="text-sm text-gray-500 p-2">No recent executions</div>}
+              {logs.map((entry, i) => (
+                <div key={i} className="p-2 bg-gray-800/50 border border-gray-700">
+                  <div className="text-xs text-gray-400">{entry.ts || ''}</div>
+                  {(entry.results || []).map((r: any, idx: number) => (
+                    <div key={idx} className="text-xs text-gray-300 flex justify-between">
+                      <span>#{r.trigger_id} {r.event_type}</span>
+                      <span className={r.success ? 'text-green-400' : 'text-red-400'}>{r.success ? 'OK' : 'ERR'}</span>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
