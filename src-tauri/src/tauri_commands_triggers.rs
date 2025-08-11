@@ -16,12 +16,39 @@ pub async fn triggers_list_pss_events() -> Result<Vec<String>, TauriError> {
 // ---------------- SCENES ----------------
 #[tauri::command]
 pub async fn triggers_list_obs_scenes(app: State<'_, Arc<App>>) -> Result<Vec<ObsScene>, TauriError> {
-    let scenes = app
+    // 1) Try database – preferred source
+    let scenes_db = app
         .database_plugin().get_database_connection()
         .get_active_obs_scenes()
         .await
         .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
-    Ok(scenes)
+    if !scenes_db.is_empty() {
+        return Ok(scenes_db);
+    }
+
+    // 2) Fallback: live query via obws (when legacy plugin has no synced scenes)
+    #[cfg(feature = "obs-obws")]
+    {
+        let mut out: Vec<ObsScene> = Vec::new();
+        let conn_names = app.obs_obws_plugin().get_connection_names().await;
+        for name in conn_names {
+            match app.obs_obws_plugin().get_scenes(Some(name.as_str())).await {
+                Ok(list) => {
+                    for s in list {
+                        // Map to DB model shape (id None, active true, timestamps auto)
+                        out.push(ObsScene::new(s.name.clone(), s.name.clone()));
+                    }
+                }
+                Err(e) => {
+                    log::warn!("Failed to fetch obws scenes for '{}': {}", name, e);
+                }
+            }
+        }
+        return Ok(out);
+    }
+
+    // 3) If obws feature is off, return empty
+    Ok(Vec::new())
 }
 
 // ---------------- OVERLAYS ----------------
