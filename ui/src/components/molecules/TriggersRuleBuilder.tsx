@@ -284,8 +284,11 @@ const TriggersRuleBuilder: React.FC<{ tournamentId?: number; dayId?: number }> =
             <Input type="number" className="w-24" value={resumeDelay} onChange={(e) => setResumeDelay(Number(e.target.value) || 0)} />
           </div>
           <Button variant="primary" onClick={saveChanges} disabled={!dirty}>Save</Button>
-          <Button variant="secondary" onClick={() => setShowRecent((s) => !s)}>{showRecent ? 'Hide' : 'Show'} Recent</Button>
-          {/* Intentionally removed inline refresh from drawer; use header button above */}
+          {/* Rectangular control buttons only (no square buttons) */}
+          <Button variant="secondary" onClick={() => setShowRecent((s) => !s)}>
+            {showRecent ? 'Hide Recent' : 'Show Recent'}
+          </Button>
+          <Button variant="secondary" onClick={refreshLogs} disabled={logsLoading}>Refresh Logs</Button>
           <Button variant="secondary" onClick={handleSaveReplay}>Save Replay</Button>
         </div>
       </div>
@@ -312,13 +315,6 @@ const TriggersRuleBuilder: React.FC<{ tournamentId?: number; dayId?: number }> =
                 </div>
               </th>
               <th className="px-3 py-2 w-[90px]">Enabled</th>
-              {/* Global actions */}
-              <th className="px-3 py-2 text-right">
-                <div className="flex items-center justify-end gap-2">
-                  <Button variant="secondary" onClick={() => setShowRecent((s) => !s)}>{showRecent ? 'Hide Recent' : 'Show Recent'}</Button>
-                  <Button variant="secondary" onClick={refreshLogs} disabled={logsLoading}>Refresh Logs</Button>
-                </div>
-              </th>
             </tr>
           </thead>
           <tbody>
