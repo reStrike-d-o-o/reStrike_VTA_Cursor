@@ -168,8 +168,8 @@ const ObsIntegrationPanel: React.FC = () => {
     }
   };
 
-  // Test recording
-  const testRecording = async () => {
+  // Start/Stop recording actions (for selected connection)
+  const startObsRecording = async () => {
     if (!recordingConfig.connectionName) {
       setTestResult('Please select a connection first');
       return;
@@ -177,12 +177,29 @@ const ObsIntegrationPanel: React.FC = () => {
     try {
       const result = await obsObwsCommands.startRecording(recordingConfig.connectionName);
       if (result.success) {
-        setTestResult('Start recording command sent successfully.');
+        setTestResult('Recording start command sent.');
       } else {
-        setTestResult(`Failed to send start recording: ${result.error}`);
+        setTestResult(`Failed to start recording: ${result.error}`);
       }
     } catch (error) {
-      setTestResult(`Failed to send start recording: ${error}`);
+      setTestResult(`Failed to start recording: ${error}`);
+    }
+  };
+
+  const stopObsRecording = async () => {
+    if (!recordingConfig.connectionName) {
+      setTestResult('Please select a connection first');
+      return;
+    }
+    try {
+      const result = await obsObwsCommands.stopRecording(recordingConfig.connectionName);
+      if (result.success) {
+        setTestResult('Recording stop command sent.');
+      } else {
+        setTestResult(`Failed to stop recording: ${result.error}`);
+      }
+    } catch (error) {
+      setTestResult(`Failed to stop recording: ${error}`);
     }
   };
 
@@ -318,45 +335,6 @@ const ObsIntegrationPanel: React.FC = () => {
       }
     } catch (error) {
       console.error('Failed to clear session:', error);
-    }
-  };
-
-  // Manual recording controls
-  const [manualMatchId, setManualMatchId] = useState('101');
-  const [manualConnectionName, setManualConnectionName] = useState('');
-
-  // Keep manualConnectionName in sync with selected connection to avoid mismatch
-  useEffect(() => {
-    if (recordingConfig.connectionName) {
-      setManualConnectionName(recordingConfig.connectionName);
-    }
-  }, [recordingConfig.connectionName]);
-
-  const startManualRecording = async () => {
-    try {
-      const result = await obsObwsCommands.startRecording(manualConnectionName);
-      if (result.success) {
-        console.log('Manual recording started');
-        loadCurrentSession();
-      } else {
-        console.error('Failed to start manual recording:', result.error);
-      }
-    } catch (error) {
-      console.error('Failed to start manual recording:', error);
-    }
-  };
-
-  const stopManualRecording = async () => {
-    try {
-      const result = await obsObwsCommands.stopRecording(manualConnectionName);
-      if (result.success) {
-        console.log('Manual recording stopped');
-        loadCurrentSession();
-      } else {
-        console.error('Failed to stop manual recording:', result.error);
-      }
-    } catch (error) {
-      console.error('Failed to stop manual recording:', error);
     }
   };
 
@@ -598,46 +576,7 @@ const ObsIntegrationPanel: React.FC = () => {
           </div>
         </div>
 
-        {/* Manual Recording Controls Section (Red Color) */}
-        <div className="border-t border-red-600/30 pt-4 mb-4">
-          <h4 className="text-md font-semibold text-red-300 mb-3">🎬 Manual Recording Controls</h4>
-          
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Match ID</label>
-              <Input
-                value={manualMatchId}
-                onChange={(e) => setManualMatchId(e.target.value)}
-                placeholder="101"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">OBS Connection Name</label>
-              <Input
-                value={manualConnectionName}
-                onChange={(e) => setManualConnectionName(e.target.value)}
-                placeholder="OBS_REC"
-              />
-            </div>
-          </div>
-
-          <div className="flex gap-3 mb-4">
-            <Button
-              onClick={startManualRecording}
-              disabled={!manualMatchId || !manualConnectionName}
-              className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed"
-            >
-              Start Manual Recording
-            </Button>
-            <Button
-              onClick={stopManualRecording}
-              disabled={!manualConnectionName}
-              className="bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed"
-            >
-              Stop Manual Recording
-            </Button>
-          </div>
-        </div>
+        {/* Manual Recording Controls removed */}
 
         {/* Consolidated Action Buttons */}
         <div className="flex flex-wrap gap-3">
@@ -656,11 +595,18 @@ const ObsIntegrationPanel: React.FC = () => {
             {isLoadingConfig ? 'Loading...' : 'Load Configuration'}
           </Button>
           <Button
-            onClick={testRecording}
+            onClick={startObsRecording}
             disabled={!recordingConfig.connectionName}
             className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed"
           >
-            Test Recording
+            Start Recording
+          </Button>
+          <Button
+            onClick={stopObsRecording}
+            disabled={!recordingConfig.connectionName}
+            className="bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed"
+          >
+            Stop Recording
           </Button>
           <Button
             onClick={sendConfigToObs}
