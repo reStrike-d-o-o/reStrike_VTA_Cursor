@@ -109,6 +109,12 @@ const ObsIntegrationPanel: React.FC = () => {
     }
   };
 
+  // Load both configs for current connection
+  const loadAllConfigs = async () => {
+    await loadRecordingConfig();
+    await loadAutoRecordingConfig();
+  };
+
   // Save recording configuration
   const saveRecordingConfig = async () => {
     if (!recordingConfig.connectionName) {
@@ -429,6 +435,8 @@ const ObsIntegrationPanel: React.FC = () => {
 
       if (autoResult.success) {
         setTestResult('All configurations saved successfully!');
+        // Immediately reload to verify persistence and reflect values in UI
+        await loadAllConfigs();
       } else {
         setTestResult(`Failed to save automatic recording configuration: ${autoResult.error}`);
       }
@@ -715,7 +723,7 @@ const ObsIntegrationPanel: React.FC = () => {
             {isSaving ? 'Saving...' : 'Save Configuration'}
           </Button>
           <Button
-            onClick={loadAutoRecordingConfig}
+            onClick={loadAllConfigs}
             disabled={isLoadingConfig}
             className="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-600 disabled:cursor-not-allowed"
           >
