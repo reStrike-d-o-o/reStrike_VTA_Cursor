@@ -491,27 +491,21 @@ export const obsObwsCommands = {
   // Recording Configuration Commands
   // ============================================================================
 
-  /**
-   * Get recording configuration from database
-   */
-  async getRecordingConfig(connectionName: string): Promise<TauriCommandResponse> {
+  // Unified Full Config
+  async saveFullConfig(payload: any): Promise<TauriCommandResponse> {
     try {
       if (isTauriAvailable()) {
-        return await safeInvoke('obs_obws_get_recording_config', { connectionName: connectionName });
+        return await safeInvoke('obs_obws_save_full_config', { payload });
       }
       return { success: false, error: 'Tauri not available' };
     } catch (error) {
       return { success: false, error: String(error) };
     }
   },
-
-  /**
-   * Save recording configuration to database
-   */
-  async saveRecordingConfig(config: any): Promise<TauriCommandResponse> {
+  async getFullConfig(connectionName?: string): Promise<TauriCommandResponse> {
     try {
       if (isTauriAvailable()) {
-        return await safeInvoke('obs_obws_save_recording_config', { config: config });
+        return await safeInvoke('obs_obws_get_full_config', { connectionName });
       }
       return { success: false, error: 'Tauri not available' };
     } catch (error) {
@@ -664,50 +658,7 @@ export const obsObwsCommands = {
     }
   },
 
-  /**
-   * Get automatic recording configuration
-   */
-  async getAutomaticRecordingConfig(): Promise<TauriCommandResponse> {
-    try {
-      if (isTauriAvailable()) {
-        return await safeInvoke('obs_obws_get_automatic_recording_config');
-      }
-      return { success: false, error: 'Tauri not available' };
-    } catch (error) {
-      return { success: false, error: String(error) };
-    }
-  },
-
-  /**
-   * Update automatic recording configuration
-   */
-  async updateAutomaticRecordingConfig(params: {
-    enabled: boolean;
-    obs_connection_name?: string;
-    autoStopOnMatchEnd: boolean;
-    autoStopOnWinner: boolean;
-    stopDelaySeconds: number;
-    includeReplayBuffer: boolean;
-  }): Promise<TauriCommandResponse> {
-    try {
-      if (isTauriAvailable()) {
-        // Tauri expects snake_case parameter names; map from camelCase
-        return await safeInvoke('obs_obws_update_automatic_recording_config', {
-          enabled: params.enabled,
-          // Send both snake_case and camelCase to be fully compatible with backend
-          obs_connection_name: params.obs_connection_name,
-          obsConnectionName: params.obs_connection_name,
-          auto_stop_on_match_end: params.autoStopOnMatchEnd,
-          auto_stop_on_winner: params.autoStopOnWinner,
-          stop_delay_seconds: params.stopDelaySeconds,
-          include_replay_buffer: params.includeReplayBuffer,
-        });
-      }
-      return { success: false, error: 'Tauri not available' };
-    } catch (error) {
-      return { success: false, error: String(error) };
-    }
-  },
+  // obsolete per-user request: get/updateAutomaticRecordingConfig removed
 
   /**
    * Get current recording session

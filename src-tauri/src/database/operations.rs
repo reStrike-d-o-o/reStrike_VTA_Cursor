@@ -170,6 +170,26 @@ impl UiSettingsOperations {
         
         Ok(())
     }
+
+    /// Ensure a UI setting key exists (idempotent) and has a default value if not present
+    pub fn ensure_key(
+        conn: &Connection,
+        key_name: &str,
+        display_name: &str,
+        data_type: &str,
+        default_value: Option<&str>,
+    ) -> DatabaseResult<()> {
+        let ui_category_id = Self::get_or_create_category(conn, "ui", "User Interface Settings", 5)?;
+        Self::create_setting_key_if_not_exists(
+            conn,
+            ui_category_id,
+            key_name,
+            display_name,
+            data_type,
+            default_value,
+            None,
+        )
+    }
     
     /// Get a UI setting value
     pub fn get_ui_setting(conn: &Connection, key_name: &str) -> DatabaseResult<Option<String>> {
@@ -2859,29 +2879,27 @@ impl ObsRecordingOperations {
     
     /// Create or update recording configuration
     pub fn upsert_recording_config(conn: &mut Connection, config: &ObsRecordingConfig) -> DatabaseResult<i64> {
+        use rusqlite::params;
         let config_id = conn.execute(
             "INSERT OR REPLACE INTO obs_recording_config (
-                obs_connection_name, recording_root_path, recording_format, recording_quality,
-                recording_bitrate, recording_resolution, replay_buffer_enabled, replay_buffer_duration,
+                obs_connection_name, recording_root_path, recording_format,
+                replay_buffer_enabled, replay_buffer_duration,
                 auto_start_recording, auto_start_replay_buffer, filename_template, folder_pattern, is_active,
                 created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            [
-                &config.obs_connection_name,
-                &config.recording_root_path,
-                &config.recording_format,
-                &config.recording_quality,
-                &config.recording_bitrate.map(|b| b.to_string()).unwrap_or_default(),
-                &config.recording_resolution.as_deref().unwrap_or("").to_string(),
-                &config.replay_buffer_enabled.to_string(),
-                &config.replay_buffer_duration.map(|d| d.to_string()).unwrap_or_default(),
-                &config.auto_start_recording.to_string(),
-                &config.auto_start_replay_buffer.to_string(),
-                &config.filename_template,
-                &config.folder_pattern,
-                &config.is_active.to_string(),
-                &config.created_at.to_rfc3339(),
-                &Utc::now().to_rfc3339(),
+            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
+            params![
+                config.obs_connection_name,
+                config.recording_root_path,
+                config.recording_format,
+                config.replay_buffer_enabled,
+                config.replay_buffer_duration,
+                config.auto_start_recording,
+                config.auto_start_replay_buffer,
+                config.filename_template,
+                config.folder_pattern,
+                config.is_active,
+                config.created_at.to_rfc3339(),
+                Utc::now().to_rfc3339(),
             ],
         )?;
         

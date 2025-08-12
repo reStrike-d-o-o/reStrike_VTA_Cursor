@@ -210,10 +210,11 @@ async fn main() -> AppResult<()> {
             tauri_commands_obws::obs_obws_set_replay_buffer_path,
             
             // OBS obws Recording Configuration Commands
+            // unified config
             #[cfg(feature = "obs-obws")]
-            tauri_commands_obws::obs_obws_get_recording_config,
+            tauri_commands_obws::obs_obws_save_full_config,
             #[cfg(feature = "obs-obws")]
-            tauri_commands_obws::obs_obws_save_recording_config,
+            tauri_commands_obws::obs_obws_get_full_config,
             #[cfg(feature = "obs-obws")]
             tauri_commands_obws::obs_obws_create_recording_session,
             #[cfg(feature = "obs-obws")]
@@ -230,10 +231,7 @@ async fn main() -> AppResult<()> {
             tauri_commands_obws::obs_obws_send_config_to_obs,
             #[cfg(feature = "obs-obws")]
             tauri_commands_obws::obs_obws_test_recording,
-            #[cfg(feature = "obs-obws")]
-            tauri_commands_obws::obs_obws_get_automatic_recording_config,
-            #[cfg(feature = "obs-obws")]
-            tauri_commands_obws::obs_obws_update_automatic_recording_config,
+            // obsolete per-user request removed: automatic/recording split
             #[cfg(feature = "obs-obws")]
             tauri_commands_obws::obs_obws_get_current_recording_session,
             #[cfg(feature = "obs-obws")]

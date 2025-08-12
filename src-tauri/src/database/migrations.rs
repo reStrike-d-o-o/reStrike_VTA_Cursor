@@ -2416,9 +2416,6 @@ impl Migration for Migration16 {
                 obs_connection_name TEXT NOT NULL UNIQUE,
                 recording_root_path TEXT NOT NULL,
                 recording_format TEXT NOT NULL DEFAULT 'mp4',
-                recording_quality TEXT NOT NULL DEFAULT 'high',
-                recording_bitrate INTEGER,
-                recording_resolution TEXT,
                 replay_buffer_enabled BOOLEAN NOT NULL DEFAULT 1,
                 replay_buffer_duration INTEGER DEFAULT 30,
                 auto_start_recording BOOLEAN NOT NULL DEFAULT 1,
@@ -2527,49 +2524,57 @@ impl Migration for Migration16 {
     }
 } 
 
-/// Migration 17: Ensure folder_pattern column exists on obs_recording_config
+// Migration 17 was consolidated into Migration16 and superseded by a new Migration17 below
+
+// Migration 17: Drop recording_quality/bitrate/resolution from obs_recording_config
 pub struct Migration17;
 
 impl Migration for Migration17 {
     fn version(&self) -> u32 { 17 }
-
-    fn description(&self) -> &str {
-        "Ensure folder_pattern column exists on obs_recording_config"
-    }
-
+    fn description(&self) -> &str { "Drop unused recording_quality/bitrate/resolution from obs_recording_config" }
     fn up(&self, conn: &Connection) -> SqliteResult<()> {
-        // Guard: table may or may not exist depending on prior installs
-        // If table does not exist, create it with the correct schema (delegated to Migration16 originally),
-        // but here we only ensure the missing column is present for already-created tables.
-        let mut has_table = false;
-        {
-            let mut stmt = conn.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='obs_recording_config'")?;
-            let mut rows = stmt.query([])?;
-            if let Some(_) = rows.next()? { has_table = true; }
-        }
+        // Create new table without the removed columns
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS obs_recording_config_new (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                obs_connection_name TEXT NOT NULL UNIQUE,
+                recording_root_path TEXT NOT NULL,
+                recording_format TEXT NOT NULL DEFAULT 'mp4',
+                replay_buffer_enabled BOOLEAN NOT NULL DEFAULT 1,
+                replay_buffer_duration INTEGER DEFAULT 30,
+                auto_start_recording BOOLEAN NOT NULL DEFAULT 1,
+                auto_start_replay_buffer BOOLEAN NOT NULL DEFAULT 1,
+                filename_template TEXT NOT NULL DEFAULT '{matchNumber}_{player1}_{player2}_{date}',
+                folder_pattern TEXT NOT NULL DEFAULT '{tournament}/{tournamentDay}',
+                is_active BOOLEAN NOT NULL DEFAULT 1,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )",
+            [],
+        )?;
 
-        if has_table {
-            let mut stmt = conn.prepare("PRAGMA table_info('obs_recording_config')")?;
-            let mut has_folder_pattern = false;
-            let mut rows = stmt.query([])?;
-            while let Some(row) = rows.next()? {
-                let col_name: String = row.get(1)?;
-                if col_name == "folder_pattern" { has_folder_pattern = true; break; }
-            }
+        // Copy data from old table if exists
+        conn.execute(
+            "INSERT OR REPLACE INTO obs_recording_config_new (
+                id, obs_connection_name, recording_root_path, recording_format,
+                replay_buffer_enabled, replay_buffer_duration, auto_start_recording, auto_start_replay_buffer,
+                filename_template, folder_pattern, is_active, created_at, updated_at
+            )
+            SELECT 
+                id, obs_connection_name, recording_root_path, recording_format,
+                replay_buffer_enabled, replay_buffer_duration, auto_start_recording, auto_start_replay_buffer,
+                filename_template, folder_pattern, is_active, created_at, updated_at
+            FROM obs_recording_config",
+            [],
+        ).ok();
 
-            if !has_folder_pattern {
-                let _ = conn.execute(
-                    "ALTER TABLE obs_recording_config ADD COLUMN folder_pattern TEXT NOT NULL DEFAULT '{tournament}/{tournamentDay}'",
-                    [],
-                );
-            }
-        }
-
+        // Replace old table
+        conn.execute("DROP TABLE IF EXISTS obs_recording_config", [])?;
+        conn.execute("ALTER TABLE obs_recording_config_new RENAME TO obs_recording_config", [])?;
         Ok(())
     }
-
     fn down(&self, _conn: &Connection) -> SqliteResult<()> {
-        // SQLite does not support DROP COLUMN; this is a no-op.
+        // No-op rollback: cannot reconstruct dropped columns easily
         Ok(())
     }
 }

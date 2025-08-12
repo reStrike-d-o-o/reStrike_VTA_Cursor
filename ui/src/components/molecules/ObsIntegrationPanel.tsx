@@ -81,75 +81,87 @@ const ObsIntegrationPanel: React.FC = () => {
     loadConnections();
   }, [setConnections]);
 
-  // Load recording configuration
-  const loadRecordingConfig = async () => {
-    if (!recordingConfig.connectionName) return;
-    
+  // Load full configuration
+  const loadFullConfig = async () => {
     try {
       setIsLoadingConfig(true);
-      const result = await obsObwsCommands.getRecordingConfig(recordingConfig.connectionName);
-      
-      if (result.success && result.data?.config) {
-        const config = result.data.config;
-        setRecordingConfig(prev => ({
-          ...prev,
-          recordingPath: config.recording_path || prev.recordingPath,
-          recordingFormat: config.recording_format || prev.recordingFormat,
-          filenamePattern: config.filename_pattern || prev.filenamePattern,
-          folderPattern: config.folder_pattern || prev.folderPattern,
-          autoStartRecording: config.auto_start_recording ?? prev.autoStartRecording,
-          autoStartReplayBuffer: config.auto_start_replay_buffer ?? prev.autoStartReplayBuffer,
-          saveReplayBufferOnMatchEnd: config.save_replay_buffer_on_match_end ?? prev.saveReplayBufferOnMatchEnd,
-        }));
+      const result = await obsObwsCommands.getFullConfig(recordingConfig.connectionName || undefined);
+      if (result.success && result.data) {
+        const rc = result.data.recording_config;
+        const ac = result.data.automatic_config;
+        if (rc) {
+          setRecordingConfig(prev => ({
+            ...prev,
+            connectionName: result.data.connection_name || prev.connectionName,
+            recordingPath: rc.recording_root_path || prev.recordingPath,
+            recordingFormat: rc.recording_format || prev.recordingFormat,
+            filenamePattern: rc.filename_template || prev.filenamePattern,
+            folderPattern: rc.folder_pattern || prev.folderPattern,
+            autoStartRecording: rc.auto_start_recording ?? prev.autoStartRecording,
+            autoStartReplayBuffer: rc.auto_start_replay_buffer ?? prev.autoStartReplayBuffer,
+          }));
+        }
+        if (ac) {
+          setAutoRecordingConfig(prev => ({
+            ...prev,
+            enabled: !!ac.enabled,
+            stopDelaySeconds: ac.stop_delay_seconds ?? prev.stopDelaySeconds,
+            includeReplayBuffer: ac.include_replay_buffer !== false,
+            autoStopOnMatchEnd: ac.auto_stop_on_match_end !== false,
+            autoStopOnWinner: ac.auto_stop_on_winner !== false,
+            replayBufferDuration: rc?.replay_buffer_duration ?? prev.replayBufferDuration,
+          }));
+          setRecordingConfig(prev => ({
+            ...prev,
+            autoStartRecording: ac.auto_start_recording_on_match_begin !== false,
+            autoStartReplayBuffer: ac.auto_start_replay_on_match_begin !== false,
+            saveReplayBufferOnMatchEnd: ac.save_replay_on_match_end === true,
+          }));
+        }
       }
     } catch (error) {
-      console.error('Failed to load recording config:', error);
+      console.error('Failed to load full config:', error);
     } finally {
       setIsLoadingConfig(false);
     }
   };
 
-  // Load both configs for current connection
+  // Load both using unified loader
   const loadAllConfigs = async () => {
-    await loadRecordingConfig();
-    await loadAutoRecordingConfig();
+    await loadFullConfig();
   };
 
-  // Save recording configuration
-  const saveRecordingConfig = async () => {
+  // Save unified configuration
+  const saveFullConfig = async () => {
     if (!recordingConfig.connectionName) {
       console.error('No connection selected');
       return;
     }
-    
     try {
       setIsSaving(true);
-      const result = await obsObwsCommands.saveRecordingConfig({
-        obs_connection_name: recordingConfig.connectionName,
-        recording_root_path: recordingConfig.recordingPath,
+      const result = await obsObwsCommands.saveFullConfig({
+        connection_name: recordingConfig.connectionName,
+        recording_path: recordingConfig.recordingPath,
         recording_format: recordingConfig.recordingFormat,
-        recording_quality: 'high', // Default quality
-        recording_bitrate: null,
-        recording_resolution: null,
-        replay_buffer_enabled: recordingConfig.autoStartReplayBuffer,
-        replay_buffer_duration: 30, // Default 30 seconds
-        auto_start_recording: recordingConfig.autoStartRecording,
-        auto_start_replay_buffer: recordingConfig.autoStartReplayBuffer,
         filename_template: recordingConfig.filenamePattern,
-        is_active: true,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        folder_pattern: recordingConfig.folderPattern || '{tournament}/{tournamentDay}',
+        enabled: autoRecordingConfig.enabled,
+        stop_delay_seconds: autoRecordingConfig.stopDelaySeconds,
+        include_replay_buffer: autoRecordingConfig.includeReplayBuffer,
+        auto_stop_on_match_end: autoRecordingConfig.autoStopOnMatchEnd,
+        auto_stop_on_winner: autoRecordingConfig.autoStopOnWinner,
+        auto_start_recording_on_match_begin: recordingConfig.autoStartRecording,
+        auto_start_replay_on_match_begin: recordingConfig.autoStartReplayBuffer,
+        save_replay_on_match_end: recordingConfig.saveReplayBufferOnMatchEnd,
+        replay_buffer_duration: autoRecordingConfig.replayBufferDuration,
       });
-      
       if (result.success) {
-        console.log('Recording config saved successfully');
         setTestResult('Configuration saved successfully!');
+        await loadFullConfig();
       } else {
-        console.error('Failed to save recording config:', result.error);
         setTestResult(`Failed to save configuration: ${result.error}`);
       }
     } catch (error) {
-      console.error('Failed to save recording config:', error);
       setTestResult(`Failed to save configuration: ${error}`);
     } finally {
       setIsSaving(false);
@@ -274,59 +286,11 @@ const ObsIntegrationPanel: React.FC = () => {
     autoStopOnWinner: true,
     stopDelaySeconds: 30,
     includeReplayBuffer: true,
+    replayBufferDuration: 30,
   });
   const [currentSession, setCurrentSession] = useState<any>(null);
 
-  // Load automatic recording configuration
-  const loadAutoRecordingConfig = async () => {
-    try {
-      setIsLoadingConfig(true);
-      const result = await obsObwsCommands.getAutomaticRecordingConfig();
-
-      if (result.success && result.data) {
-        setAutoRecordingConfig({
-          enabled: !!result.data.enabled,
-          autoStopOnMatchEnd: result.data.auto_stop_on_match_end !== false,
-          autoStopOnWinner: result.data.auto_stop_on_winner !== false,
-          stopDelaySeconds: result.data.stop_delay_seconds || 30,
-          includeReplayBuffer: result.data.include_replay_buffer !== false,
-        });
-        // If backend returned a connection name and we don't have one selected, adopt it
-        if (!recordingConfig.connectionName && result.data.obs_connection_name) {
-          setRecordingConfig(prev => ({ ...prev, connectionName: result.data.obs_connection_name }));
-        }
-      }
-    } catch (error) {
-      console.error('Failed to load auto recording config:', error);
-    } finally {
-      setIsLoadingConfig(false);
-    }
-  };
-
-  // Save automatic recording configuration
-  const saveAutoRecordingConfig = async () => {
-    try {
-      setIsLoadingConfig(true);
-      const result = await obsObwsCommands.updateAutomaticRecordingConfig({
-        enabled: autoRecordingConfig.enabled,
-        obs_connection_name: recordingConfig.connectionName || undefined,
-        autoStopOnMatchEnd: autoRecordingConfig.autoStopOnMatchEnd,
-        autoStopOnWinner: autoRecordingConfig.autoStopOnWinner,
-        stopDelaySeconds: autoRecordingConfig.stopDelaySeconds,
-        includeReplayBuffer: autoRecordingConfig.includeReplayBuffer,
-      });
-
-      if (result.success) {
-        console.log('Auto recording config saved successfully');
-      } else {
-        console.error('Failed to save auto recording config:', result.error);
-      }
-    } catch (error) {
-      console.error('Failed to save auto recording config:', error);
-    } finally {
-      setIsLoadingConfig(false);
-    }
-  };
+  // obsolete split loaders/savers removed in favor of unified ones
 
   // Load current recording session
   const loadCurrentSession = async () => {
@@ -396,71 +360,18 @@ const ObsIntegrationPanel: React.FC = () => {
     }
   };
 
-  // Consolidated save function that saves both configurations
-  const saveAllConfigurations = async () => {
-    try {
-      setIsSaving(true);
-      
-      // Save recording configuration first
-      if (recordingConfig.connectionName) {
-        const recordingResult = await obsObwsCommands.saveRecordingConfig({
-          obs_connection_name: recordingConfig.connectionName,
-          recording_root_path: recordingConfig.recordingPath,
-          recording_format: recordingConfig.recordingFormat,
-          recording_quality: 'high', // Default quality
-          recording_bitrate: null,
-          recording_resolution: null,
-          replay_buffer_enabled: recordingConfig.autoStartReplayBuffer,
-          replay_buffer_duration: 30, // Default 30 seconds
-          auto_start_recording: recordingConfig.autoStartRecording,
-          auto_start_replay_buffer: recordingConfig.autoStartReplayBuffer,
-          filename_template: recordingConfig.filenamePattern,
-          folder_pattern: recordingConfig.folderPattern || '{tournament}/{tournamentDay}',
-          is_active: true,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        });
-        
-        if (!recordingResult.success) {
-          setTestResult(`Failed to save recording configuration: ${recordingResult.error}`);
-          return;
-        }
-      }
-      
-      // Save automatic recording configuration
-      const autoResult = await obsObwsCommands.updateAutomaticRecordingConfig({
-        enabled: autoRecordingConfig.enabled,
-        obs_connection_name: recordingConfig.connectionName || undefined,
-        autoStopOnMatchEnd: autoRecordingConfig.autoStopOnMatchEnd,
-        autoStopOnWinner: autoRecordingConfig.autoStopOnWinner,
-        stopDelaySeconds: autoRecordingConfig.stopDelaySeconds,
-        includeReplayBuffer: autoRecordingConfig.includeReplayBuffer,
-      });
-
-      if (autoResult.success) {
-        setTestResult('All configurations saved successfully!');
-        // Immediately reload to verify persistence and reflect values in UI
-        await loadAllConfigs();
-      } else {
-        setTestResult(`Failed to save automatic recording configuration: ${autoResult.error}`);
-      }
-    } catch (error) {
-      setTestResult(`Failed to save configurations: ${error}`);
-    } finally {
-      setIsSaving(false);
-    }
-  };
+  // removed old split save; using saveFullConfig instead
 
   // Load config and session on component mount
   useEffect(() => {
-    loadAutoRecordingConfig();
+    loadFullConfig();
     loadCurrentSession();
   }, []);
 
   // Load recording config when connection changes
   useEffect(() => {
     if (recordingConfig.connectionName) {
-      loadRecordingConfig();
+      loadFullConfig();
       // read-only OBS profile values
       (async () => {
         try {
@@ -674,6 +585,17 @@ const ObsIntegrationPanel: React.FC = () => {
             />
             <span className="text-sm text-gray-400">seconds</span>
           </div>
+          <div className="flex items-center gap-3 mt-3">
+            <label className="text-sm font-medium text-gray-300">Replay Buffer Duration:</label>
+            <Input
+              type="number"
+              value={autoRecordingConfig.replayBufferDuration}
+              onChange={(e) => setAutoRecordingConfig({ ...autoRecordingConfig, replayBufferDuration: parseInt(e.target.value) || 30 })}
+              placeholder="30"
+              className="w-20"
+            />
+            <span className="text-sm text-gray-400">seconds</span>
+          </div>
         </div>
 
         {/* Manual Recording Controls Section (Red Color) */}
@@ -720,14 +642,14 @@ const ObsIntegrationPanel: React.FC = () => {
         {/* Consolidated Action Buttons */}
         <div className="flex flex-wrap gap-3">
           <Button
-            onClick={saveAllConfigurations}
+            onClick={saveFullConfig}
             disabled={isSaving}
             className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed"
           >
             {isSaving ? 'Saving...' : 'Save Configuration'}
           </Button>
           <Button
-            onClick={loadAllConfigs}
+            onClick={loadFullConfig}
             disabled={isLoadingConfig}
             className="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-600 disabled:cursor-not-allowed"
           >
