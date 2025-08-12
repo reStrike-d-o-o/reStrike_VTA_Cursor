@@ -285,12 +285,16 @@ const ObsIntegrationPanel: React.FC = () => {
 
       if (result.success && result.data) {
         setAutoRecordingConfig({
-          enabled: result.data.enabled || false,
+          enabled: !!result.data.enabled,
           autoStopOnMatchEnd: result.data.auto_stop_on_match_end !== false,
           autoStopOnWinner: result.data.auto_stop_on_winner !== false,
           stopDelaySeconds: result.data.stop_delay_seconds || 30,
           includeReplayBuffer: result.data.include_replay_buffer !== false,
         });
+        // If backend returned a connection name and we don't have one selected, adopt it
+        if (!recordingConfig.connectionName && result.data.obs_connection_name) {
+          setRecordingConfig(prev => ({ ...prev, connectionName: result.data.obs_connection_name }));
+        }
       }
     } catch (error) {
       console.error('Failed to load auto recording config:', error);
