@@ -227,7 +227,7 @@ const LogArchiveManager: React.FC = () => {
 
       {config.enabled && (
         <div className="mt-3 space-y-3">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
             <div>
               <label className="block text-xs font-medium text-gray-300 mb-1">Schedule</label>
               <select
@@ -245,7 +245,7 @@ const LogArchiveManager: React.FC = () => {
                 <option value="Annual">Annually</option>
               </select>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 justify-center md:justify-center">
               <Toggle
                 id="upload-to-drive"
                 checked={config.upload_to_drive}
