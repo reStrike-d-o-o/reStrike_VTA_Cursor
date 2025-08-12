@@ -837,13 +837,24 @@ pub async fn obs_obws_get_recording_config(
     
     let conn = app.database_plugin().get_connection().await?;
     match crate::database::operations::ObsRecordingOperations::get_recording_config(&*conn, &connection_name) {
-        Ok(config) => Ok(ObsObwsConnectionResponse {
-            success: true,
-            data: Some(serde_json::json!({
-                "config": config
-            })),
-            error: None,
-        }),
+        Ok(config) => {
+            if config.is_none() {
+                // Debug: list available configs to help diagnose name mismatch
+                if let Ok(all) = crate::database::operations::ObsRecordingOperations::get_recording_configs(&*conn) {
+                    let names: Vec<String> = all.into_iter().map(|c| c.obs_connection_name).collect();
+                    log::info!("No recording config found for '{}'. Available configs: {:?}", connection_name, names);
+                } else {
+                    log::info!("No recording config found for '{}' and failed to list configs", connection_name);
+                }
+            }
+            Ok(ObsObwsConnectionResponse {
+                success: true,
+                data: Some(serde_json::json!({
+                    "config": config
+                })),
+                error: None,
+            })
+        },
         Err(e) => Ok(ObsObwsConnectionResponse {
             success: false,
             data: None,
@@ -873,6 +884,17 @@ pub async fn obs_obws_save_recording_config(
                     data: None,
                     error: Some("obs_connection_name is required".to_string()),
                 });
+            }
+
+            // Defensive defaults and validations
+            if recording_config.recording_root_path.trim().is_empty() {
+                return Ok(ObsObwsConnectionResponse { success: false, data: None, error: Some("recording_root_path is required".to_string()) });
+            }
+            if recording_config.recording_format.trim().is_empty() {
+                return Ok(ObsObwsConnectionResponse { success: false, data: None, error: Some("recording_format is required".to_string()) });
+            }
+            if recording_config.filename_template.trim().is_empty() {
+                return Ok(ObsObwsConnectionResponse { success: false, data: None, error: Some("filename_template is required".to_string()) });
             }
 
             let mut conn = app.database_plugin().get_connection().await?;
