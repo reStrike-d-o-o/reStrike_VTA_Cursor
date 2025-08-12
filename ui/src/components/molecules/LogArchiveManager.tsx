@@ -221,6 +221,7 @@ const LogArchiveManager: React.FC = () => {
             onChange={(e) => updateConfig({ enabled: e.target.checked })}
             label="Auto-Archive"
             labelPosition="left"
+            className="self-center"
           />
         </div>
       </div>
@@ -252,6 +253,7 @@ const LogArchiveManager: React.FC = () => {
                 onChange={(e) => updateConfig({ upload_to_drive: e.target.checked })}
                 label="Upload"
                 labelPosition="right"
+                className="self-center"
               />
               {config.upload_to_drive && (
                 <Toggle
@@ -260,6 +262,7 @@ const LogArchiveManager: React.FC = () => {
                   onChange={(e) => updateConfig({ delete_after_upload: e.target.checked })}
                   label="Delete"
                   labelPosition="right"
+                  className="self-center"
                 />
               )}
             </div>
