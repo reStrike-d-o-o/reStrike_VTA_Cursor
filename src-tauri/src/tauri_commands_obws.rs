@@ -834,6 +834,7 @@ pub async fn obs_obws_get_recording_config(
     app: State<'_, Arc<App>>,
 ) -> Result<ObsObwsConnectionResponse, TauriError> {
     log::info!("OBS obws get recording config called: {}", connection_name);
+    println!("📥 obs_obws_get_recording_config: requesting for '{}'", connection_name);
     
     let conn = app.database_plugin().get_connection().await?;
     match crate::database::operations::ObsRecordingOperations::get_recording_config(&*conn, &connection_name) {
@@ -843,8 +844,17 @@ pub async fn obs_obws_get_recording_config(
                 if let Ok(all) = crate::database::operations::ObsRecordingOperations::get_recording_configs(&*conn) {
                     let names: Vec<String> = all.into_iter().map(|c| c.obs_connection_name).collect();
                     log::info!("No recording config found for '{}'. Available configs: {:?}", connection_name, names);
+                    println!("⚠️ No recording config for '{}'. Available configs: {:?}", connection_name, names);
                 } else {
                     log::info!("No recording config found for '{}' and failed to list configs", connection_name);
+                    println!("⚠️ No recording config found for '{}' and failed to list configs", connection_name);
+                }
+            } else {
+                if let Some(ref cfg) = config {
+                    println!(
+                        "✅ Found recording config for '{}': root='{}', format='{}', template='{}'",
+                        cfg.obs_connection_name, cfg.recording_root_path, cfg.recording_format, cfg.filename_template
+                    );
                 }
             }
             Ok(ObsObwsConnectionResponse {
@@ -870,6 +880,7 @@ pub async fn obs_obws_save_recording_config(
     app: State<'_, Arc<App>>,
 ) -> Result<ObsObwsConnectionResponse, TauriError> {
     log::info!("OBS obws save recording config called");
+    println!("💾 obs_obws_save_recording_config called");
     
     // Assumes migrations were run via Database → Run Database Migrations
 
@@ -879,6 +890,7 @@ pub async fn obs_obws_save_recording_config(
             // Validate connection name
             if recording_config.obs_connection_name.trim().is_empty() {
                 log::warn!("obs_obws_save_recording_config: missing obs_connection_name");
+                println!("❌ obs_obws_save_recording_config: missing obs_connection_name");
                 return Ok(ObsObwsConnectionResponse {
                     success: false,
                     data: None,
@@ -888,12 +900,15 @@ pub async fn obs_obws_save_recording_config(
 
             // Defensive defaults and validations
             if recording_config.recording_root_path.trim().is_empty() {
+                println!("❌ obs_obws_save_recording_config: missing recording_root_path");
                 return Ok(ObsObwsConnectionResponse { success: false, data: None, error: Some("recording_root_path is required".to_string()) });
             }
             if recording_config.recording_format.trim().is_empty() {
+                println!("❌ obs_obws_save_recording_config: missing recording_format");
                 return Ok(ObsObwsConnectionResponse { success: false, data: None, error: Some("recording_format is required".to_string()) });
             }
             if recording_config.filename_template.trim().is_empty() {
+                println!("❌ obs_obws_save_recording_config: missing filename_template");
                 return Ok(ObsObwsConnectionResponse { success: false, data: None, error: Some("filename_template is required".to_string()) });
             }
 
@@ -902,6 +917,13 @@ pub async fn obs_obws_save_recording_config(
                 Ok(_) => {
                     log::info!(
                         "Saved recording config for connection '{}' (root: {}, format: {}, template: {})",
+                        recording_config.obs_connection_name,
+                        recording_config.recording_root_path,
+                        recording_config.recording_format,
+                        recording_config.filename_template
+                    );
+                    println!(
+                        "💾 Saved recording config: conn='{}', root='{}', format='{}', template='{}'",
                         recording_config.obs_connection_name,
                         recording_config.recording_root_path,
                         recording_config.recording_format,
@@ -1328,6 +1350,7 @@ pub async fn obs_obws_get_automatic_recording_config(
     _app: State<'_, Arc<App>>,
 ) -> Result<ObsObwsConnectionResponse, TauriError> {
     log::info!("OBS obws get automatic recording config called");
+    println!("📥 obs_obws_get_automatic_recording_config called");
 
     // Try DB first; fallback to in-memory handler
     use crate::database::operations::UiSettingsOperations as UIOps;
@@ -1358,15 +1381,30 @@ pub async fn obs_obws_get_automatic_recording_config(
         }
     };
 
+    // If DB settings produce no connection name and handler has one, prefer handler
+    let handler_cfg = _app.recording_event_handler().get_config();
+    let effective = crate::plugins::obs_obws::AutomaticRecordingConfig {
+        enabled: config.enabled,
+        obs_connection_name: config.obs_connection_name.or(handler_cfg.obs_connection_name),
+        auto_stop_on_match_end: config.auto_stop_on_match_end,
+        auto_stop_on_winner: config.auto_stop_on_winner,
+        stop_delay_seconds: config.stop_delay_seconds,
+        include_replay_buffer: config.include_replay_buffer,
+    };
+
+    println!(
+        "📥 Auto config: enabled={}, conn={:?}, stop_delay={}, include_replay_buffer={}",
+        effective.enabled, effective.obs_connection_name, effective.stop_delay_seconds, effective.include_replay_buffer
+    );
     Ok(ObsObwsConnectionResponse {
         success: true,
         data: Some(serde_json::json!({
-            "enabled": config.enabled,
-            "obs_connection_name": config.obs_connection_name,
-            "auto_stop_on_match_end": config.auto_stop_on_match_end,
-            "auto_stop_on_winner": config.auto_stop_on_winner,
-            "stop_delay_seconds": config.stop_delay_seconds,
-            "include_replay_buffer": config.include_replay_buffer,
+            "enabled": effective.enabled,
+            "obs_connection_name": effective.obs_connection_name,
+            "auto_stop_on_match_end": effective.auto_stop_on_match_end,
+            "auto_stop_on_winner": effective.auto_stop_on_winner,
+            "stop_delay_seconds": effective.stop_delay_seconds,
+            "include_replay_buffer": effective.include_replay_buffer,
         })),
         error: None,
     })
