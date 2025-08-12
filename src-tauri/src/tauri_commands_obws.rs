@@ -1384,7 +1384,7 @@ pub async fn obs_obws_get_automatic_recording_config(
     // If DB settings produce no connection name and handler has one, prefer handler
     let handler_cfg = _app.recording_event_handler().get_config();
     let effective = crate::plugins::obs_obws::AutomaticRecordingConfig {
-        enabled: config.enabled,
+        enabled: if config.enabled { true } else { handler_cfg.enabled },
         obs_connection_name: config.obs_connection_name.or(handler_cfg.obs_connection_name),
         auto_stop_on_match_end: config.auto_stop_on_match_end,
         auto_stop_on_winner: config.auto_stop_on_winner,
