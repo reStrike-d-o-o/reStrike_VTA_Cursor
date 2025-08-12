@@ -285,7 +285,7 @@ const TriggersRuleBuilder: React.FC<{ tournamentId?: number; dayId?: number }> =
           </div>
           <Button variant="primary" onClick={saveChanges} disabled={!dirty}>Save</Button>
           <Button variant="secondary" onClick={() => setShowRecent((s) => !s)}>{showRecent ? 'Hide' : 'Show'} Recent</Button>
-          <Button variant="secondary" onClick={refreshLogs} disabled={logsLoading}>Refresh Logs</Button>
+          {/* Intentionally removed inline refresh from drawer; use header button above */}
           <Button variant="secondary" onClick={handleSaveReplay}>Save Replay</Button>
         </div>
       </div>
@@ -312,13 +312,13 @@ const TriggersRuleBuilder: React.FC<{ tournamentId?: number; dayId?: number }> =
                 </div>
               </th>
               <th className="px-3 py-2 w-[90px]">Enabled</th>
-                {/* Header actions aligned right */}
-                <th className="px-3 py-2 text-right">
-                  <div className="flex items-center justify-end gap-2">
-                    <Button variant="secondary" onClick={() => setShowRecent((s) => !s)}>{showRecent ? 'Hide Recent' : 'Show Recent'}</Button>
-                    <Button variant="secondary" onClick={refreshLogs} disabled={logsLoading}>Refresh Logs</Button>
-                  </div>
-                </th>
+              {/* Global actions */}
+              <th className="px-3 py-2 text-right">
+                <div className="flex items-center justify-end gap-2">
+                  <Button variant="secondary" onClick={() => setShowRecent((s) => !s)}>{showRecent ? 'Hide Recent' : 'Show Recent'}</Button>
+                  <Button variant="secondary" onClick={refreshLogs} disabled={logsLoading}>Refresh Logs</Button>
+                </div>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -349,8 +349,6 @@ const TriggersRuleBuilder: React.FC<{ tournamentId?: number; dayId?: number }> =
                     <Toggle id={`en-${idx}`} checked={row.is_enabled} onChange={(e) => handleRowChange(idx, { is_enabled: e.target.checked })} label="" />
                     <Button size="sm" variant="secondary" onClick={() => testRule(idx)}>Test</Button>
                   </td>
-                   {/* Empty cell to balance header actions */}
-                   <td className="px-3 py-2"></td>
                 </tr>
               );
             })}
