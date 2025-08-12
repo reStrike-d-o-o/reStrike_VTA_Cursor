@@ -1437,9 +1437,14 @@ pub async fn obs_obws_update_automatic_recording_config(
             if let Ok(list) = crate::database::operations::ObsRecordingOperations::get_recording_configs(&*conn) {
                 if let Some(first) = list.first() {
                     resolved_conn = Some(first.obs_connection_name.clone());
+                    println!("🧭 Auto-config: inferred connection from DB configs: '{}'", first.obs_connection_name);
                 }
             }
         }
+    }
+    if resolved_conn.is_none() {
+        resolved_conn = Some("OBS_REC".to_string());
+        println!("🧭 Auto-config: defaulting connection to 'OBS_REC'");
     }
     println!(
         "🛠️ obs_obws_update_automatic_recording_config: enabled={}, conn={:?}, stop_delay={}, include_replay_buffer={}",
