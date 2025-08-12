@@ -312,6 +312,13 @@ const TriggersRuleBuilder: React.FC<{ tournamentId?: number; dayId?: number }> =
                 </div>
               </th>
               <th className="px-3 py-2 w-[90px]">Enabled</th>
+                {/* Header actions aligned right */}
+                <th className="px-3 py-2 text-right">
+                  <div className="flex items-center justify-end gap-2">
+                    <Button variant="secondary" onClick={() => setShowRecent((s) => !s)}>{showRecent ? 'Hide Recent' : 'Show Recent'}</Button>
+                    <Button variant="secondary" onClick={refreshLogs} disabled={logsLoading}>Refresh Logs</Button>
+                  </div>
+                </th>
             </tr>
           </thead>
           <tbody>
@@ -338,10 +345,12 @@ const TriggersRuleBuilder: React.FC<{ tournamentId?: number; dayId?: number }> =
                   <td className="px-3 py-2">{renderTargetTypeCell(row, idx)}</td>
                   <td className="px-3 py-2">{renderTargetCell(row, idx)}</td>
                   <td className="px-3 py-2">{renderConditionsCell(row, idx)}</td>
-                  <td className="px-3 py-2 flex items-center gap-2">
+                   <td className="px-3 py-2 flex items-center gap-2">
                     <Toggle id={`en-${idx}`} checked={row.is_enabled} onChange={(e) => handleRowChange(idx, { is_enabled: e.target.checked })} label="" />
                     <Button size="sm" variant="secondary" onClick={() => testRule(idx)}>Test</Button>
                   </td>
+                   {/* Empty cell to balance header actions */}
+                   <td className="px-3 py-2"></td>
                 </tr>
               );
             })}
@@ -372,12 +381,8 @@ const TriggersRuleBuilder: React.FC<{ tournamentId?: number; dayId?: number }> =
           }`}
         >
           <div className="h-full flex flex-col">
-            <div className="p-3 bg-[#101820] flex items-center justify-between border-b border-gray-700">
+            <div className="px-3 py-2 bg-[#101820] flex items-center border-b border-gray-700">
               <div className="text-gray-300 font-medium">Recent Executions</div>
-              <div className="flex gap-2">
-                <Button size="sm" variant="secondary" onClick={refreshLogs} disabled={logsLoading}>Refresh</Button>
-                <Button size="sm" variant="secondary" onClick={() => setShowRecent(false)}>Collapse</Button>
-              </div>
             </div>
             <div className="p-2 space-y-2 flex-1 overflow-auto">
               {logsLoading && <div className="text-sm text-gray-400 p-2">Loading…</div>}
