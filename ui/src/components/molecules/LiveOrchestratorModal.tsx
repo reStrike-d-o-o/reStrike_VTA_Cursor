@@ -84,10 +84,8 @@ const LiveOrchestratorModal: React.FC<LiveOrchestratorModalProps> = ({ isOpen, o
 
       // Recording path configured (basic check via settings)
       try {
-        const autoCfg = await obsObwsCommands.getAutomaticRecordingConfig();
-        const connectionName = (autoCfg as any)?.data?.obs_connection_name || undefined;
-        const recCfg = connectionName ? await obsObwsCommands.getRecordingConfig(connectionName) : null;
-        const path = (recCfg as any)?.data?.recording_root_path;
+        const full = await obsObwsCommands.getFullConfig();
+        const path = (full as any)?.data?.recording_config?.recording_root_path;
         setRecordingPathStatus(path ? 'ok' : 'warn');
       } catch {
         setRecordingPathStatus('warn');
@@ -103,10 +101,8 @@ const LiveOrchestratorModal: React.FC<LiveOrchestratorModalProps> = ({ isOpen, o
 
       // Disk space (best effort) on integration recording root
       try {
-        const autoCfg = await obsObwsCommands.getAutomaticRecordingConfig();
-        const connectionName = (autoCfg as any)?.data?.obs_connection_name || undefined;
-        const recCfg = connectionName ? await obsObwsCommands.getRecordingConfig(connectionName) : null;
-        const path = (recCfg as any)?.data?.recording_root_path as string | undefined;
+        const full = await obsObwsCommands.getFullConfig();
+        const path = (full as any)?.data?.recording_config?.recording_root_path as string | undefined;
         if (path) {
           const disk = await checkDiskSpace(path);
           if (disk === 'warn') setRecordingPathStatus('warn');
@@ -177,12 +173,11 @@ const LiveOrchestratorModal: React.FC<LiveOrchestratorModalProps> = ({ isOpen, o
 
     try {
       // Read integration settings (recording config) - Integration tab is authoritative
-      const autoCfg = await obsObwsCommands.getAutomaticRecordingConfig();
-      const connectionName = (autoCfg as any)?.data?.obs_connection_name || 'OBS_REC';
-      const recCfg = await obsObwsCommands.getRecordingConfig(connectionName);
-      const root = (recCfg as any)?.data?.recording_root_path || 'C:/Users/Public/Videos';
-      const folderPattern = (recCfg as any)?.data?.folder_pattern || '{tournament}/{tournamentDay}';
-      const filenameTemplate = (recCfg as any)?.data?.filename_template || '{matchNumber} - {player1} {player1Flag} vs {player2} {player2Flag}';
+      const full = await obsObwsCommands.getFullConfig();
+      const connectionName = (full as any)?.data?.connection_name || 'OBS_REC';
+      const root = (full as any)?.data?.recording_config?.recording_root_path || 'C:/Users/Public/Videos';
+      const folderPattern = (full as any)?.data?.recording_config?.folder_pattern || '{tournament}/{tournamentDay}';
+      const filenameTemplate = (full as any)?.data?.recording_config?.filename_template || '{matchNumber} - {player1} {player1Flag} vs {player2} {player2Flag}';
 
       // Resolve tournament/day for today
       let tournamentName = 'Tournament';

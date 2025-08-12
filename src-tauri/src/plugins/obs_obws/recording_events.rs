@@ -49,6 +49,10 @@ pub struct AutomaticRecordingConfig {
     pub auto_stop_on_winner: bool,
     pub stop_delay_seconds: u32,
     pub include_replay_buffer: bool,
+    // New flags to match frontend UI
+    pub auto_start_recording_on_match_begin: bool,
+    pub auto_start_replay_on_match_begin: bool,
+    pub save_replay_on_match_end: bool,
 }
 
 impl Default for AutomaticRecordingConfig {
@@ -60,6 +64,9 @@ impl Default for AutomaticRecordingConfig {
             auto_stop_on_winner: true,
             stop_delay_seconds: 30,
             include_replay_buffer: true,
+            auto_start_recording_on_match_begin: true,
+            auto_start_replay_on_match_begin: true,
+            save_replay_on_match_end: false,
         }
     }
 }
@@ -260,8 +267,8 @@ impl ObsRecordingEventHandler {
         };
 
         if let Some(connection_name) = config.obs_connection_name {
-            // Ensure replay buffer is running if requested
-            if config.include_replay_buffer {
+            // Ensure replay buffer is running if requested and enabled by UI setting
+            if config.include_replay_buffer && config.auto_start_replay_on_match_begin {
                 if let Err(e) = self.obs_manager.start_replay_buffer(Some(&connection_name)).await {
                     log::warn!("Failed to start replay buffer: {}", e);
                 }
@@ -280,14 +287,16 @@ impl ObsRecordingEventHandler {
             }
 
             // Update session state to recording
-            self.update_session_state(RecordingState::Recording).await?;
-
-            // Start recording immediately via obws manager (authoritative)
-            if let Err(e) = self.obs_manager.start_recording(Some(&connection_name)).await {
-                log::error!("Failed to start recording via obws: {}", e);
+            if config.auto_start_recording_on_match_begin {
+                self.update_session_state(RecordingState::Recording).await?;
+                // Start recording immediately via obws manager (authoritative)
+                if let Err(e) = self.obs_manager.start_recording(Some(&connection_name)).await {
+                    log::error!("Failed to start recording via obws: {}", e);
+                }
+                log::info!("🎬 Recording started for connection: {}", connection_name);
+            } else {
+                log::info!("🎬 Auto-start recording disabled by UI setting; not starting recording on FightReady");
             }
-
-            log::info!("🎬 Recording started for connection: {}", connection_name);
         }
 
         Ok(())
@@ -353,6 +362,15 @@ impl ObsRecordingEventHandler {
             }
 
             log::info!("🎬 Recording stopped for connection: {}", connection_name);
+
+            // Optionally save replay buffer at match end if enabled
+            if config.save_replay_on_match_end {
+                if let Err(e) = self.obs_manager.save_replay_buffer(Some(&connection_name)).await {
+                    log::warn!("Failed to save replay buffer on match end: {}", e);
+                } else {
+                    log::info!("🎞️ Replay buffer saved on match end");
+                }
+            }
         }
 
         Ok(())

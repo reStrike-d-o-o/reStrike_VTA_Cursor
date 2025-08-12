@@ -9,9 +9,6 @@ pub struct ObsRecordingConfig {
     pub obs_connection_name: String,
     pub recording_root_path: String,
     pub recording_format: String, // 'mp4', 'mkv', 'mov', etc.
-    pub recording_quality: String, // 'high', 'medium', 'low'
-    pub recording_bitrate: Option<i32>, // kbps
-    pub recording_resolution: Option<String>, // '1920x1080', '1280x720', etc.
     pub replay_buffer_enabled: bool,
     pub replay_buffer_duration: Option<i32>, // seconds
     pub auto_start_recording: bool,
@@ -29,7 +26,7 @@ impl ObsRecordingConfig {
         obs_connection_name: String,
         recording_root_path: String,
         recording_format: String,
-        recording_quality: String,
+        _recording_quality: String,
         filename_template: String,
     ) -> Self {
         Self {
@@ -37,9 +34,6 @@ impl ObsRecordingConfig {
             obs_connection_name,
             recording_root_path,
             recording_format,
-            recording_quality,
-            recording_bitrate: None,
-            recording_resolution: None,
             replay_buffer_enabled: true,
             replay_buffer_duration: Some(30), // Default 30 seconds
             auto_start_recording: true,
@@ -54,21 +48,40 @@ impl ObsRecordingConfig {
     
     /// Create from database row
     pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
+        // Tolerant getters to handle legacy TEXT-in-BOOLEAN/INTEGER entries
+        fn get_opt_i32(row: &Row, col: &str) -> rusqlite::Result<Option<i32>> {
+            match row.get::<_, Option<i32>>(col) {
+                Ok(v) => Ok(v),
+                Err(_) => {
+                    let s: Option<String> = row.get(col)?;
+                    Ok(s.and_then(|t| t.trim().parse::<i32>().ok()))
+                }
+            }
+        }
+        fn get_bool(row: &Row, col: &str) -> rusqlite::Result<bool> {
+            match row.get::<_, bool>(col) {
+                Ok(v) => Ok(v),
+                Err(_) => {
+                    // Try integer then string
+                    if let Ok(i) = row.get::<_, i64>(col) { return Ok(i != 0); }
+                    let s: String = row.get(col).unwrap_or_else(|_| "false".to_string());
+                    let sl = s.to_lowercase();
+                    Ok(sl == "1" || sl == "true" || sl == "yes")
+                }
+            }
+        }
         Ok(Self {
             id: row.get("id")?,
             obs_connection_name: row.get("obs_connection_name")?,
             recording_root_path: row.get("recording_root_path")?,
             recording_format: row.get("recording_format")?,
-            recording_quality: row.get("recording_quality")?,
-            recording_bitrate: row.get("recording_bitrate")?,
-            recording_resolution: row.get("recording_resolution")?,
-            replay_buffer_enabled: row.get("replay_buffer_enabled")?,
-            replay_buffer_duration: row.get("replay_buffer_duration")?,
-            auto_start_recording: row.get("auto_start_recording")?,
-            auto_start_replay_buffer: row.get("auto_start_replay_buffer")?,
+            replay_buffer_enabled: get_bool(row, "replay_buffer_enabled")?,
+            replay_buffer_duration: get_opt_i32(row, "replay_buffer_duration")?,
+            auto_start_recording: get_bool(row, "auto_start_recording")?,
+            auto_start_replay_buffer: get_bool(row, "auto_start_replay_buffer")?,
             filename_template: row.get("filename_template")?,
             folder_pattern: row.get("folder_pattern")?,
-            is_active: row.get("is_active")?,
+            is_active: get_bool(row, "is_active")?,
             created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
             updated_at: parse_datetime_from_db(&row.get::<_, String>("updated_at")?, "updated_at")?,
         })

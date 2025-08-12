@@ -827,130 +827,9 @@ pub async fn obs_obws_set_replay_buffer_path(
 // Recording Configuration Commands
 // ============================================================================
 
-/// Get recording configuration from database
-#[tauri::command]
-pub async fn obs_obws_get_recording_config(
-    connection_name: String,
-    app: State<'_, Arc<App>>,
-) -> Result<ObsObwsConnectionResponse, TauriError> {
-    log::info!("OBS obws get recording config called: {}", connection_name);
-    println!("📥 obs_obws_get_recording_config: requesting for '{}'", connection_name);
-    
-    let conn = app.database_plugin().get_connection().await?;
-    match crate::database::operations::ObsRecordingOperations::get_recording_config(&*conn, &connection_name) {
-        Ok(config) => {
-            if config.is_none() {
-                // Debug: list available configs to help diagnose name mismatch
-                if let Ok(all) = crate::database::operations::ObsRecordingOperations::get_recording_configs(&*conn) {
-                    let names: Vec<String> = all.into_iter().map(|c| c.obs_connection_name).collect();
-                    log::info!("No recording config found for '{}'. Available configs: {:?}", connection_name, names);
-                    println!("⚠️ No recording config for '{}'. Available configs: {:?}", connection_name, names);
-                } else {
-                    log::info!("No recording config found for '{}' and failed to list configs", connection_name);
-                    println!("⚠️ No recording config found for '{}' and failed to list configs", connection_name);
-                }
-            } else {
-                if let Some(ref cfg) = config {
-                    println!(
-                        "✅ Found recording config for '{}': root='{}', format='{}', template='{}'",
-                        cfg.obs_connection_name, cfg.recording_root_path, cfg.recording_format, cfg.filename_template
-                    );
-                }
-            }
-            Ok(ObsObwsConnectionResponse {
-                success: true,
-                data: Some(serde_json::json!({
-                    "config": config
-                })),
-                error: None,
-            })
-        },
-        Err(e) => Ok(ObsObwsConnectionResponse {
-            success: false,
-            data: None,
-            error: Some(e.to_string()),
-        }),
-    }
-}
+// (obsolete) obs_obws_get_recording_config removed in favor of unified load
 
-/// Save recording configuration to database
-#[tauri::command]
-pub async fn obs_obws_save_recording_config(
-    config: serde_json::Value,
-    app: State<'_, Arc<App>>,
-) -> Result<ObsObwsConnectionResponse, TauriError> {
-    log::info!("OBS obws save recording config called");
-    println!("💾 obs_obws_save_recording_config called");
-    
-    // Assumes migrations were run via Database → Run Database Migrations
-
-    // Parse the config from JSON
-    match serde_json::from_value::<crate::database::models::ObsRecordingConfig>(config) {
-        Ok(recording_config) => {
-            // Validate connection name
-            if recording_config.obs_connection_name.trim().is_empty() {
-                log::warn!("obs_obws_save_recording_config: missing obs_connection_name");
-                println!("❌ obs_obws_save_recording_config: missing obs_connection_name");
-                return Ok(ObsObwsConnectionResponse {
-                    success: false,
-                    data: None,
-                    error: Some("obs_connection_name is required".to_string()),
-                });
-            }
-
-            // Defensive defaults and validations
-            if recording_config.recording_root_path.trim().is_empty() {
-                println!("❌ obs_obws_save_recording_config: missing recording_root_path");
-                return Ok(ObsObwsConnectionResponse { success: false, data: None, error: Some("recording_root_path is required".to_string()) });
-            }
-            if recording_config.recording_format.trim().is_empty() {
-                println!("❌ obs_obws_save_recording_config: missing recording_format");
-                return Ok(ObsObwsConnectionResponse { success: false, data: None, error: Some("recording_format is required".to_string()) });
-            }
-            if recording_config.filename_template.trim().is_empty() {
-                println!("❌ obs_obws_save_recording_config: missing filename_template");
-                return Ok(ObsObwsConnectionResponse { success: false, data: None, error: Some("filename_template is required".to_string()) });
-            }
-
-            let mut conn = app.database_plugin().get_connection().await?;
-            match crate::database::operations::ObsRecordingOperations::upsert_recording_config(&mut *conn, &recording_config) {
-                Ok(_) => {
-                    log::info!(
-                        "Saved recording config for connection '{}' (root: {}, format: {}, template: {})",
-                        recording_config.obs_connection_name,
-                        recording_config.recording_root_path,
-                        recording_config.recording_format,
-                        recording_config.filename_template
-                    );
-                    println!(
-                        "💾 Saved recording config: conn='{}', root='{}', format='{}', template='{}'",
-                        recording_config.obs_connection_name,
-                        recording_config.recording_root_path,
-                        recording_config.recording_format,
-                        recording_config.filename_template
-                    );
-                    Ok(ObsObwsConnectionResponse {
-                    success: true,
-                    data: Some(serde_json::json!({
-                        "message": "Recording configuration saved successfully"
-                        })),
-                        error: None,
-                    })
-                },
-                Err(e) => Ok(ObsObwsConnectionResponse {
-                    success: false,
-                    data: None,
-                    error: Some(e.to_string()),
-                }),
-            }
-        },
-        Err(e) => Ok(ObsObwsConnectionResponse {
-            success: false,
-            data: None,
-            error: Some(format!("Invalid configuration format: {}", e)),
-        }),
-    }
-}
+// (obsolete) obs_obws_save_recording_config removed in favor of unified save
 
 /// Create a new recording session
 #[tauri::command]
@@ -1344,176 +1223,9 @@ pub async fn obs_obws_send_config_to_obs(
     }
 }
 
-/// Get automatic recording configuration
-#[tauri::command]
-pub async fn obs_obws_get_automatic_recording_config(
-    _app: State<'_, Arc<App>>,
-) -> Result<ObsObwsConnectionResponse, TauriError> {
-    log::info!("OBS obws get automatic recording config called");
-    println!("📥 obs_obws_get_automatic_recording_config called");
+// (obsolete) obs_obws_get_automatic_recording_config removed in favor of unified load
 
-    // Try DB first; fallback to in-memory handler
-    use crate::database::operations::UiSettingsOperations as UIOps;
-    let config = {
-        match _app.database_plugin().get_connection().await {
-            Ok(conn) => {
-                let enabled = UIOps::get_ui_setting(&*conn, "obs.auto.enabled").ok().flatten()
-                    .map(|v| v == "true").unwrap_or(false);
-                let obs_connection_name = UIOps::get_ui_setting(&*conn, "obs.auto.connection").ok().flatten();
-                let auto_stop_on_match_end = UIOps::get_ui_setting(&*conn, "obs.auto.stop_on_match_end").ok().flatten()
-                    .map(|v| v == "true").unwrap_or(true);
-                let auto_stop_on_winner = UIOps::get_ui_setting(&*conn, "obs.auto.stop_on_winner").ok().flatten()
-                    .map(|v| v == "true").unwrap_or(true);
-                let stop_delay_seconds = UIOps::get_ui_setting(&*conn, "obs.auto.stop_delay_seconds").ok().flatten()
-                    .and_then(|s| s.parse::<u32>().ok()).unwrap_or(30);
-                let include_replay_buffer = UIOps::get_ui_setting(&*conn, "obs.auto.include_replay_buffer").ok().flatten()
-                    .map(|v| v == "true").unwrap_or(true);
-                crate::plugins::obs_obws::AutomaticRecordingConfig {
-                    enabled,
-                    obs_connection_name,
-                    auto_stop_on_match_end,
-                    auto_stop_on_winner,
-                    stop_delay_seconds,
-                    include_replay_buffer,
-                }
-            }
-            Err(_) => _app.recording_event_handler().get_config(),
-        }
-    };
-
-    // If DB settings produce no connection name and handler has one, prefer handler
-    let handler_cfg = _app.recording_event_handler().get_config();
-    let effective = crate::plugins::obs_obws::AutomaticRecordingConfig {
-        enabled: if config.enabled { true } else { handler_cfg.enabled },
-        obs_connection_name: config.obs_connection_name.or(handler_cfg.obs_connection_name),
-        auto_stop_on_match_end: config.auto_stop_on_match_end,
-        auto_stop_on_winner: config.auto_stop_on_winner,
-        stop_delay_seconds: config.stop_delay_seconds,
-        include_replay_buffer: config.include_replay_buffer,
-    };
-
-    println!(
-        "📥 Auto config: enabled={}, conn={:?}, stop_delay={}, include_replay_buffer={}",
-        effective.enabled, effective.obs_connection_name, effective.stop_delay_seconds, effective.include_replay_buffer
-    );
-    Ok(ObsObwsConnectionResponse {
-        success: true,
-        data: Some(serde_json::json!({
-            "enabled": effective.enabled,
-            "obs_connection_name": effective.obs_connection_name,
-            "auto_stop_on_match_end": effective.auto_stop_on_match_end,
-            "auto_stop_on_winner": effective.auto_stop_on_winner,
-            "stop_delay_seconds": effective.stop_delay_seconds,
-            "include_replay_buffer": effective.include_replay_buffer,
-        })),
-        error: None,
-    })
-}
-
-/// Update automatic recording configuration
-#[tauri::command]
-#[allow(non_snake_case)]
-pub async fn obs_obws_update_automatic_recording_config(
-    enabled: bool,
-    obs_connection_name: Option<String>,
-    obsConnectionName: Option<String>,
-    // Support both snake_case and camelCase keys from frontend
-    auto_stop_on_match_end: Option<bool>,
-    autoStopOnMatchEnd: Option<bool>,
-    auto_stop_on_winner: Option<bool>,
-    autoStopOnWinner: Option<bool>,
-    stop_delay_seconds: Option<u32>,
-    stopDelaySeconds: Option<u32>,
-    include_replay_buffer: Option<bool>,
-    includeReplayBuffer: Option<bool>,
-    app: State<'_, Arc<App>>,
-) -> Result<ObsObwsConnectionResponse, TauriError> {
-    log::info!("OBS obws update automatic recording config called");
-    // Resolve connection name from either snake_case or camelCase
-    let mut resolved_conn = obs_connection_name.or(obsConnectionName);
-    // Fallback: if none provided, try to infer from existing recording configs
-    if resolved_conn.is_none() {
-        if let Ok(conn) = app.database_plugin().get_connection().await {
-            if let Ok(list) = crate::database::operations::ObsRecordingOperations::get_recording_configs(&*conn) {
-                if let Some(first) = list.first() {
-                    resolved_conn = Some(first.obs_connection_name.clone());
-                    println!("🧭 Auto-config: inferred connection from DB configs: '{}'", first.obs_connection_name);
-                }
-            }
-        }
-    }
-    if resolved_conn.is_none() {
-        resolved_conn = Some("OBS_REC".to_string());
-        println!("🧭 Auto-config: defaulting connection to 'OBS_REC'");
-    }
-    println!(
-        "🛠️ obs_obws_update_automatic_recording_config: enabled={}, conn={:?}, stop_delay={}, include_replay_buffer={}",
-        enabled,
-        resolved_conn,
-        stop_delay_seconds.unwrap_or(30),
-        include_replay_buffer.unwrap_or(true)
-    );
-
-    // Get the recording event handler from the app state
-    let recording_handler = app.recording_event_handler();
-
-    // Coalesce parameter names
-    let auto_stop_on_match_end_val = auto_stop_on_match_end
-        .or(autoStopOnMatchEnd)
-        .unwrap_or(true);
-    let auto_stop_on_winner_val = auto_stop_on_winner
-        .or(autoStopOnWinner)
-        .unwrap_or(true);
-    let stop_delay_seconds_val = stop_delay_seconds
-        .or(stopDelaySeconds)
-        .unwrap_or(30);
-    let include_replay_buffer_val = include_replay_buffer
-        .or(includeReplayBuffer)
-        .unwrap_or(true);
-
-    let config = crate::plugins::obs_obws::AutomaticRecordingConfig {
-        enabled,
-        obs_connection_name: resolved_conn.clone(),
-        auto_stop_on_match_end: auto_stop_on_match_end_val,
-        auto_stop_on_winner: auto_stop_on_winner_val,
-        stop_delay_seconds: stop_delay_seconds_val,
-        include_replay_buffer: include_replay_buffer_val,
-    };
-
-    recording_handler.update_config(config)
-        .map_err(|e| TauriError::from(std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to update config: {}", e))))?;
-
-    // Persist to DB so it survives restarts
-    use crate::database::operations::UiSettingsOperations as UIOps;
-    match app.database_plugin().get_connection().await {
-        Ok(mut conn) => {
-            UIOps::set_ui_setting(&mut *conn, "obs.auto.enabled", if enabled {"true"} else {"false"}, "user", Some("update auto enabled"))
-                .map_err(|e| TauriError::from(std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to persist obs.auto.enabled: {}", e))))?;
-            if let Some(name) = resolved_conn.clone() {
-                UIOps::set_ui_setting(&mut *conn, "obs.auto.connection", &name, "user", Some("update auto connection"))
-                    .map_err(|e| TauriError::from(std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to persist obs.auto.connection: {}", e))))?;
-            }
-            UIOps::set_ui_setting(&mut *conn, "obs.auto.stop_on_match_end", if auto_stop_on_match_end_val {"true"} else {"false"}, "user", Some("update auto stop on match end"))
-                .map_err(|e| TauriError::from(std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to persist obs.auto.stop_on_match_end: {}", e))))?;
-            UIOps::set_ui_setting(&mut *conn, "obs.auto.stop_on_winner", if auto_stop_on_winner_val {"true"} else {"false"}, "user", Some("update auto stop on winner"))
-                .map_err(|e| TauriError::from(std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to persist obs.auto.stop_on_winner: {}", e))))?;
-            UIOps::set_ui_setting(&mut *conn, "obs.auto.stop_delay_seconds", &stop_delay_seconds_val.to_string(), "user", Some("update auto stop delay"))
-                .map_err(|e| TauriError::from(std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to persist obs.auto.stop_delay_seconds: {}", e))))?;
-            UIOps::set_ui_setting(&mut *conn, "obs.auto.include_replay_buffer", if include_replay_buffer_val {"true"} else {"false"}, "user", Some("update auto include replay buffer"))
-                .map_err(|e| TauriError::from(std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to persist obs.auto.include_replay_buffer: {}", e))))?;
-            println!("🛠️ Persisted auto config to DB (enabled={}, conn={:?})", enabled, resolved_conn);
-        }
-        Err(e) => return Err(TauriError::from(std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to get DB connection: {}", e))))
-    }
-
-    Ok(ObsObwsConnectionResponse {
-        success: true,
-        data: Some(serde_json::json!({
-            "message": "Automatic recording configuration updated successfully"
-        })),
-        error: None,
-    })
-}
+// (obsolete) obs_obws_update_automatic_recording_config removed in favor of unified save
 
 /// Get current recording session
 #[tauri::command]
@@ -1687,6 +1399,192 @@ pub async fn obs_obws_manual_stop_recording(
         success: true,
         data: Some(serde_json::json!({
             "message": "Manual recording stopped successfully"
+        })),
+        error: None,
+    })
+}
+
+// ============================================================================
+// Unified save for Recording + Automatic config
+// ============================================================================
+
+#[derive(Debug, Serialize, Deserialize)]
+struct FullObsConfigPayload {
+    // Recording config
+    connection_name: String,
+    recording_path: String,
+    recording_format: String,
+    filename_template: String,
+    #[serde(default = "default_folder_pattern")] 
+    folder_pattern: String,
+    // Automatic config
+    enabled: bool,
+    stop_delay_seconds: u32,
+    include_replay_buffer: bool,
+    #[serde(default)] replay_buffer_duration: Option<u32>,
+    #[serde(default = "default_true")] auto_stop_on_match_end: bool,
+    #[serde(default = "default_true")] auto_stop_on_winner: bool,
+    // Right column (auto-start) flags
+    #[serde(default = "default_true")] auto_start_recording_on_match_begin: bool,
+    #[serde(default = "default_true")] auto_start_replay_on_match_begin: bool,
+    #[serde(default)] save_replay_on_match_end: bool,
+}
+
+fn default_folder_pattern() -> String { "{tournament}/{tournamentDay}".to_string() }
+fn default_true() -> bool { true }
+
+#[tauri::command]
+pub async fn obs_obws_save_full_config(
+    payload: serde_json::Value,
+    app: State<'_, Arc<App>>,
+) -> Result<ObsObwsConnectionResponse, TauriError> {
+    // Parse payload
+    let cfg: FullObsConfigPayload = serde_json::from_value(payload)
+        .map_err(|e| TauriError::from(anyhow::anyhow!(format!("Invalid full config payload: {}", e))))?;
+
+    println!(
+        "💾 obs_obws_save_full_config(conn='{}', path='{}', fmt='{}', tmpl='{}', enabled={}, stop_delay={}, include_rb={}, rb_dur={:?}, stop_on_end={}, stop_on_winner={}, start_rec={}, start_replay={}, save_replay={})",
+        cfg.connection_name,
+        cfg.recording_path,
+        cfg.recording_format,
+        cfg.filename_template,
+        cfg.enabled,
+        cfg.stop_delay_seconds,
+        cfg.include_replay_buffer,
+        cfg.replay_buffer_duration,
+        cfg.auto_stop_on_match_end,
+        cfg.auto_stop_on_winner,
+        cfg.auto_start_recording_on_match_begin,
+        cfg.auto_start_replay_on_match_begin,
+        cfg.save_replay_on_match_end,
+    );
+
+    // 1) Save recording config
+    let recording_config = crate::database::models::ObsRecordingConfig {
+        id: None,
+        obs_connection_name: cfg.connection_name.clone(),
+        recording_root_path: cfg.recording_path.clone(),
+        recording_format: cfg.recording_format.clone(),
+        replay_buffer_enabled: cfg.include_replay_buffer,
+        replay_buffer_duration: Some(cfg.replay_buffer_duration.unwrap_or(30) as i32),
+        auto_start_recording: cfg.auto_start_recording_on_match_begin,
+        auto_start_replay_buffer: cfg.auto_start_replay_on_match_begin,
+        filename_template: cfg.filename_template.clone(),
+        folder_pattern: cfg.folder_pattern.clone(),
+        is_active: true,
+        created_at: chrono::Utc::now(),
+        updated_at: chrono::Utc::now(),
+    };
+    let mut conn = app.database_plugin().get_connection().await?;
+    crate::database::operations::ObsRecordingOperations::upsert_recording_config(&mut *conn, &recording_config)
+        .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+
+    // 2) Update in-memory handler and persist UiSettings
+    let recording_handler = app.recording_event_handler();
+    let new_auto_cfg = crate::plugins::obs_obws::AutomaticRecordingConfig {
+        enabled: cfg.enabled,
+        obs_connection_name: Some(cfg.connection_name.clone()),
+        auto_stop_on_match_end: cfg.auto_stop_on_match_end,
+        auto_stop_on_winner: cfg.auto_stop_on_winner,
+        stop_delay_seconds: cfg.stop_delay_seconds,
+        include_replay_buffer: cfg.include_replay_buffer,
+        auto_start_recording_on_match_begin: cfg.auto_start_recording_on_match_begin,
+        auto_start_replay_on_match_begin: cfg.auto_start_replay_on_match_begin,
+        save_replay_on_match_end: cfg.save_replay_on_match_end,
+    };
+    recording_handler.update_config(new_auto_cfg)
+        .map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to update handler config: {}", e))))?;
+
+    use crate::database::operations::UiSettingsOperations as UIOps;
+    UIOps::set_ui_setting(&mut *conn, "obs.auto.enabled", if cfg.enabled {"true"} else {"false"}, "user", Some("save full config"))
+        .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    UIOps::set_ui_setting(&mut *conn, "obs.auto.connection", &cfg.connection_name, "user", Some("save full config"))
+        .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    UIOps::set_ui_setting(&mut *conn, "obs.auto.stop_delay_seconds", &cfg.stop_delay_seconds.to_string(), "user", Some("save full config"))
+        .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    UIOps::set_ui_setting(&mut *conn, "obs.auto.include_replay_buffer", if cfg.include_replay_buffer {"true"} else {"false"}, "user", Some("save full config"))
+        .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    UIOps::set_ui_setting(&mut *conn, "obs.auto.stop_on_match_end", if cfg.auto_stop_on_match_end {"true"} else {"false"}, "user", Some("save full config"))
+        .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    UIOps::set_ui_setting(&mut *conn, "obs.auto.stop_on_winner", if cfg.auto_stop_on_winner {"true"} else {"false"}, "user", Some("save full config"))
+        .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    UIOps::set_ui_setting(&mut *conn, "obs.auto.start_recording_on_match_begin", if cfg.auto_start_recording_on_match_begin {"true"} else {"false"}, "user", Some("save full config"))
+        .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    UIOps::set_ui_setting(&mut *conn, "obs.auto.start_replay_on_match_begin", if cfg.auto_start_replay_on_match_begin {"true"} else {"false"}, "user", Some("save full config"))
+        .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    UIOps::set_ui_setting(&mut *conn, "obs.auto.save_replay_on_match_end", if cfg.save_replay_on_match_end {"true"} else {"false"}, "user", Some("save full config"))
+        .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+
+    Ok(ObsObwsConnectionResponse {
+        success: true,
+        data: Some(serde_json::json!({
+            "message": "Recording and automatic configuration saved successfully"
+        })),
+        error: None,
+    })
+}
+
+// ============================================================================
+// Unified load for Recording + Automatic config
+// ============================================================================
+
+#[tauri::command]
+pub async fn obs_obws_get_full_config(
+    connection_name: Option<String>,
+    app: State<'_, Arc<App>>,
+) -> Result<ObsObwsConnectionResponse, TauriError> {
+    use crate::database::operations::{ObsRecordingOperations as RecOps, UiSettingsOperations as UIOps};
+
+    let conn = app.database_plugin().get_connection().await?;
+
+    // Resolve connection name: param -> UiSettings -> default
+    let resolved_conn = connection_name
+        .or(UIOps::get_ui_setting(&*conn, "obs.auto.connection").ok().flatten())
+        .unwrap_or_else(|| "OBS_REC".to_string());
+
+    // Ensure keys exist so get_ui_setting won't fail on fresh DBs
+    let _ = UIOps::ensure_key(&*conn, "obs.auto.enabled", "OBS Auto Enabled", "boolean", Some("false"));
+    let _ = UIOps::ensure_key(&*conn, "obs.auto.connection", "OBS Auto Connection", "string", Some(&resolved_conn));
+    let _ = UIOps::ensure_key(&*conn, "obs.auto.stop_delay_seconds", "OBS Stop Delay", "integer", Some("30"));
+    let _ = UIOps::ensure_key(&*conn, "obs.auto.include_replay_buffer", "Include Replay Buffer", "boolean", Some("true"));
+    let _ = UIOps::ensure_key(&*conn, "obs.auto.start_recording_on_match_begin", "Auto-start Recording", "boolean", Some("true"));
+    let _ = UIOps::ensure_key(&*conn, "obs.auto.start_replay_on_match_begin", "Auto-start Replay", "boolean", Some("true"));
+    let _ = UIOps::ensure_key(&*conn, "obs.auto.save_replay_on_match_end", "Save Replay On End", "boolean", Some("false"));
+    let _ = UIOps::ensure_key(&*conn, "obs.auto.stop_on_match_end", "Stop On Match End", "boolean", Some("true"));
+    let _ = UIOps::ensure_key(&*conn, "obs.auto.stop_on_winner", "Stop On Winner", "boolean", Some("true"));
+
+    // Recording config
+    let rec_cfg = RecOps::get_recording_config(&*conn, &resolved_conn)
+        .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+
+    // Automatic config from UiSettings (fallbacks applied)
+    let enabled = UIOps::get_ui_setting(&*conn, "obs.auto.enabled").ok().flatten().map(|v| v=="true").unwrap_or(false);
+    let stop_delay_seconds = UIOps::get_ui_setting(&*conn, "obs.auto.stop_delay_seconds").ok().flatten().and_then(|s| s.parse::<u32>().ok()).unwrap_or(30);
+    let include_replay_buffer = UIOps::get_ui_setting(&*conn, "obs.auto.include_replay_buffer").ok().flatten().map(|v| v=="true").unwrap_or(true);
+    let auto_start_recording_on_match_begin = UIOps::get_ui_setting(&*conn, "obs.auto.start_recording_on_match_begin").ok().flatten().map(|v| v=="true").unwrap_or(true);
+    let auto_start_replay_on_match_begin = UIOps::get_ui_setting(&*conn, "obs.auto.start_replay_on_match_begin").ok().flatten().map(|v| v=="true").unwrap_or(true);
+    let save_replay_on_match_end = UIOps::get_ui_setting(&*conn, "obs.auto.save_replay_on_match_end").ok().flatten().map(|v| v=="true").unwrap_or(false);
+    let auto_stop_on_match_end = UIOps::get_ui_setting(&*conn, "obs.auto.stop_on_match_end").ok().flatten().map(|v| v=="true").unwrap_or(true);
+    let auto_stop_on_winner = UIOps::get_ui_setting(&*conn, "obs.auto.stop_on_winner").ok().flatten().map(|v| v=="true").unwrap_or(true);
+
+    println!("📥 obs_obws_get_full_config(conn='{}')", resolved_conn);
+
+    Ok(ObsObwsConnectionResponse {
+        success: true,
+        data: Some(serde_json::json!({
+            "connection_name": resolved_conn,
+            "recording_config": rec_cfg,
+            "automatic_config": {
+                "enabled": enabled,
+                "obs_connection_name": resolved_conn,
+                "stop_delay_seconds": stop_delay_seconds,
+                "include_replay_buffer": include_replay_buffer,
+                "auto_stop_on_match_end": auto_stop_on_match_end,
+                "auto_stop_on_winner": auto_stop_on_winner,
+                "auto_start_recording_on_match_begin": auto_start_recording_on_match_begin,
+                "auto_start_replay_on_match_begin": auto_start_replay_on_match_begin,
+                "save_replay_on_match_end": save_replay_on_match_end
+            }
         })),
         error: None,
     })
