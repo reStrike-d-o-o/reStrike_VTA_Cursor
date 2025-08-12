@@ -183,10 +183,9 @@ const LogArchiveManager: React.FC = () => {
         Log Archive Manager
       </h3>
 
-      {/* Manual Archive Actions */}
-      <div className="mb-6">
-        <h4 className="text-md font-medium mb-3 text-gray-200">Manual Archive Actions</h4>
-        <div className="flex flex-wrap gap-3 items-center">
+      {/* Manual Actions + Inline Auto Toggle */}
+      <div className="mb-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Button
             onClick={handleCreateArchive}
             disabled={loading}
@@ -214,93 +213,83 @@ const LogArchiveManager: React.FC = () => {
           >
             {loading ? 'Processing…' : 'Upload+Delete'}
           </Button>
-        </div>
-      </div>
 
-      {/* Automation Settings */}
-      <div className="mb-6">
-        <h4 className="text-md font-medium mb-3 text-gray-200">Automation Settings</h4>
-        
-        <div className="space-y-4">
+          <div className="flex-1" />
           <Toggle
             id="auto-archive-enabled"
             checked={config.enabled}
             onChange={(e) => updateConfig({ enabled: e.target.checked })}
-            label="Enable Auto-Archive"
-            labelPosition="right"
+            label="Auto-Archive"
+            labelPosition="left"
           />
+        </div>
+      </div>
 
-          {config.enabled && (
-            <>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Schedule
-                </label>
-                <select
-                  value={config.schedule}
-                  onChange={(e) => updateConfig({ 
-                    schedule: e.target.value as AutoArchiveConfig['schedule']
-                  })}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  title="Archive schedule frequency"
-                >
-                  <option value="Weekly">Weekly</option>
-                  <option value="Monthly">Monthly</option>
-                  <option value="Quarterly">Every 3 months</option>
-                  <option value="Biannual">Every 6 months</option>
-                  <option value="Annual">Annually</option>
-                </select>
-              </div>
-
+      {config.enabled && (
+        <div className="mt-3 space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+            <div>
+              <label className="block text-xs font-medium text-gray-300 mb-1">Schedule</label>
+              <select
+                value={config.schedule}
+                onChange={(e) => updateConfig({
+                  schedule: e.target.value as AutoArchiveConfig['schedule'],
+                })}
+                className="w-full px-2 py-1.5 bg-gray-700 border border-gray-600 rounded-md text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                title="Archive schedule frequency"
+              >
+                <option value="Weekly">Weekly</option>
+                <option value="Monthly">Monthly</option>
+                <option value="Quarterly">Every 3 months</option>
+                <option value="Biannual">Every 6 months</option>
+                <option value="Annual">Annually</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-4">
               <Toggle
                 id="upload-to-drive"
                 checked={config.upload_to_drive}
                 onChange={(e) => updateConfig({ upload_to_drive: e.target.checked })}
-                label="Upload to Google Drive"
+                label="Upload to Drive"
                 labelPosition="right"
               />
-
               {config.upload_to_drive && (
                 <Toggle
                   id="delete-after-upload"
                   checked={config.delete_after_upload}
                   onChange={(e) => updateConfig({ delete_after_upload: e.target.checked })}
-                  label="Delete local files after upload"
+                  label="Delete local after upload"
                   labelPosition="right"
                 />
               )}
-
-              {status && (
-                <div className="bg-gray-700/50 rounded-lg p-3">
-                  <div className="text-sm text-gray-300">
-                    <div>Status: {status.enabled ? 'Enabled' : 'Disabled'}</div>
-                    {status.next_archive_time && (
-                      <div>Next archive: {status.next_archive_time}</div>
-                    )}
-                    <div>Schedule: {status.schedule}</div>
-                    {status.should_archive && (
-                      <div className="text-yellow-400 mt-2">
-                        ⚠️ Archive is due - ready to run
-                      </div>
-                    )}
-                  </div>
-                  
-                  {status.should_archive && (
-                    <Button
-                      onClick={handlePerformAutoArchive}
-                      disabled={loading}
-                      className="mt-3 w-full justify-center"
-                      variant="primary"
-                    >
-                      {loading ? 'Running...' : 'Run Auto-Archive Now'}
-                    </Button>
-                  )}
-                </div>
+            </div>
+            <div className="text-right">
+              {status?.should_archive && (
+                <Button
+                  onClick={handlePerformAutoArchive}
+                  disabled={loading}
+                  variant="primary"
+                >
+                  {loading ? 'Running…' : 'Run Now'}
+                </Button>
               )}
-            </>
+            </div>
+          </div>
+          {status && (
+            <div className="bg-gray-700/40 rounded-md p-2 text-xs text-gray-300">
+              <div className="flex flex-wrap gap-4">
+                <div>Status: {status.enabled ? 'Enabled' : 'Disabled'}</div>
+                {status.next_archive_time && <div>Next: {status.next_archive_time}</div>}
+                <div>Schedule: {status.schedule}</div>
+                {status.should_archive && (
+                  <div className="text-yellow-400">⚠️ Archive is due</div>
+                )}
+              </div>
+            </div>
           )}
         </div>
-      </div>
+      )}
+
 
       {/* Status Messages */}
       {error && (
