@@ -250,7 +250,7 @@ const LogArchiveManager: React.FC = () => {
                 id="upload-to-drive"
                 checked={config.upload_to_drive}
                 onChange={(e) => updateConfig({ upload_to_drive: e.target.checked })}
-                label="Upload to Drive"
+                label="Upload"
                 labelPosition="right"
               />
               {config.upload_to_drive && (
@@ -258,7 +258,7 @@ const LogArchiveManager: React.FC = () => {
                   id="delete-after-upload"
                   checked={config.delete_after_upload}
                   onChange={(e) => updateConfig({ delete_after_upload: e.target.checked })}
-                  label="Delete local after upload"
+                  label="Delete"
                   labelPosition="right"
                 />
               )}
