@@ -471,10 +471,8 @@ impl ObsRecordingEventHandler {
         // Strategy: fetch the most recent PSS match with status "current/active" if available.
         // Fallback: None.
         let conn = self.database.get_connection().await?;
-        // Try to read the most recent/current match id and convert to external match_id string
-        // Using existing operations: get_pss_matches(limit) and find latest with non-empty match_id
-        let matches = crate::plugins::plugin_database::DatabasePlugin::get_pss_matches_static(&*conn, Some(1))
-            .unwrap_or_default();
+        // Use existing DB operations (PssUdpOperations) to get the most recent match
+        let matches = PssUdpOperations::get_pss_matches(&*conn, Some(1)).unwrap_or_default();
         let maybe = matches.into_iter().next().map(|m| m.match_id);
         Ok(maybe)
     }
