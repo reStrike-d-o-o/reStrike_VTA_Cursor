@@ -186,32 +186,33 @@ const LogArchiveManager: React.FC = () => {
       {/* Manual Archive Actions */}
       <div className="mb-6">
         <h4 className="text-md font-medium mb-3 text-gray-200">Manual Archive Actions</h4>
-        <div className="grid grid-cols-1 gap-3">
+        <div className="flex flex-wrap gap-3 items-center">
           <Button
             onClick={handleCreateArchive}
             disabled={loading}
-            className="w-full justify-center"
+            className="px-3"
             variant="secondary"
+            title="Create local archive"
           >
-            {loading ? 'Creating...' : 'Create Archive'}
+            {loading ? 'Creating…' : 'Create'}
           </Button>
-          
           <Button
             onClick={handleUploadArchive}
             disabled={loading}
-            className="w-full justify-center"
+            className="px-3"
             variant="primary"
+            title="Create and upload to Drive"
           >
-            {loading ? 'Uploading...' : 'Create & Upload to Drive'}
+            {loading ? 'Uploading…' : 'Create+Upload'}
           </Button>
-          
           <Button
             onClick={handleUploadAndCleanup}
             disabled={loading}
-            className="w-full justify-center"
+            className="px-3"
             variant="primary"
+            title="Upload and delete local copy"
           >
-            {loading ? 'Processing...' : 'Upload & Delete Local'}
+            {loading ? 'Processing…' : 'Upload+Delete'}
           </Button>
         </div>
       </div>
