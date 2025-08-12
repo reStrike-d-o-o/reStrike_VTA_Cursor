@@ -176,8 +176,14 @@ impl ObsRecordingEventHandler {
 
     /// Handle FightLoaded event - prepare recording session
     async fn handle_fight_loaded(&self) -> AppResult<()> {
-        // Get current match ID from UDP context
-        let match_id = self.get_current_match_id().await?;
+        // Get current match ID from UDP/DB context (fallback to most recent)
+        let mut match_id = self.get_current_match_id().await?;
+        if match_id.is_none() {
+            // Fallback: use most recent match from DB
+            let conn = self.database.get_connection().await?;
+            let latest = PssUdpOperations::get_pss_matches(&*conn, Some(1)).unwrap_or_default();
+            match_id = latest.into_iter().next().map(|m| m.match_id);
+        }
         
         if let Some(match_id) = match_id {
             let config = {
@@ -276,12 +282,9 @@ impl ObsRecordingEventHandler {
             // Update session state to recording
             self.update_session_state(RecordingState::Recording).await?;
 
-            // Send start recording event
-            if let Err(e) = self.event_tx.send(RecordingEvent::StartRecording {
-                match_id: self.get_current_match_id().await?.unwrap_or_default(),
-                obs_connection_name: connection_name.clone(),
-            }) {
-                log::error!("Failed to send start recording event: {}", e);
+            // Start recording immediately via obws manager (authoritative)
+            if let Err(e) = self.obs_manager.start_recording(Some(&connection_name)).await {
+                log::error!("Failed to start recording via obws: {}", e);
             }
 
             log::info!("🎬 Recording started for connection: {}", connection_name);
@@ -344,14 +347,9 @@ impl ObsRecordingEventHandler {
                 tokio::time::sleep(delay).await;
             }
 
-            // Send stop recording event
-            if let Some(session_id) = self.get_current_session_id().await? {
-                if let Err(e) = self.event_tx.send(RecordingEvent::StopRecording {
-                    session_id,
-                    obs_connection_name: connection_name.clone(),
-                }) {
-                    log::error!("Failed to send stop recording event: {}", e);
-                }
+            // Stop recording immediately via obws manager (authoritative)
+            if let Err(e) = self.obs_manager.stop_recording(Some(&connection_name)).await {
+                log::error!("Failed to stop recording via obws: {}", e);
             }
 
             log::info!("🎬 Recording stopped for connection: {}", connection_name);
