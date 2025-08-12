@@ -5,7 +5,7 @@ import { useAppStore } from '../../stores';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { windowCommands } from '../../utils/tauriCommands';
 import { useEnvironment } from '../../hooks/useEnvironment';
-import { logger, setLogLevel, LogLevel } from '../../utils/logger';
+import { logger, setLogLevel, LogLevel, applyConsolePatch } from '../../utils/logger';
 
 const AppSettingsSection: React.FC = () => {
   const { tauriAvailable } = useEnvironment();
@@ -53,6 +53,8 @@ const AppSettingsSection: React.FC = () => {
   const applyLogLevel = (lvl: LogLevel) => {
     setLevel(lvl);
     setLogLevel(lvl);
+    try { localStorage.setItem('logLevel', lvl); } catch {}
+    applyConsolePatch();
     logger.info('Log level set to', lvl);
   };
 
