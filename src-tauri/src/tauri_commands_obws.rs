@@ -1430,7 +1430,17 @@ pub async fn obs_obws_update_automatic_recording_config(
 ) -> Result<ObsObwsConnectionResponse, TauriError> {
     log::info!("OBS obws update automatic recording config called");
     // Resolve connection name from either snake_case or camelCase
-    let resolved_conn = obs_connection_name.or(obsConnectionName);
+    let mut resolved_conn = obs_connection_name.or(obsConnectionName);
+    // Fallback: if none provided, try to infer from existing recording configs
+    if resolved_conn.is_none() {
+        if let Ok(conn) = app.database_plugin().get_connection().await {
+            if let Ok(list) = crate::database::operations::ObsRecordingOperations::get_recording_configs(&*conn) {
+                if let Some(first) = list.first() {
+                    resolved_conn = Some(first.obs_connection_name.clone());
+                }
+            }
+        }
+    }
     println!(
         "🛠️ obs_obws_update_automatic_recording_config: enabled={}, conn={:?}, stop_delay={}, include_replay_buffer={}",
         enabled,
