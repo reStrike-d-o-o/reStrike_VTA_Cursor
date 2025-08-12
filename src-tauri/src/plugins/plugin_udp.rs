@@ -742,15 +742,22 @@ impl UdpServer {
                 format,
                 ..
             } => {
+                // Determine effective match identifier (fallback to number when match_id is empty/null)
+                let effective_match_id = if match_id.trim().is_empty() || match_id.eq_ignore_ascii_case("null") {
+                    format!("mch:{}", number)
+                } else {
+                    match_id.clone()
+                };
+
                 // Ensure match exists and set current match id
-                let db_match_id = database.get_or_create_pss_match(match_id).await?;
+                let db_match_id = database.get_or_create_pss_match(&effective_match_id).await?;
                 {
                     let mut guard = current_match_id.lock().unwrap();
                     *guard = Some(db_match_id);
                 }
 
                 // Update match metadata
-                let mut pss_match = crate::database::models::PssMatch::new(match_id.clone());
+                let mut pss_match = crate::database::models::PssMatch::new(effective_match_id.clone());
                 pss_match.id = Some(db_match_id);
                 pss_match.match_number = Some(number.clone());
                 pss_match.category = Some(category.clone());
@@ -763,9 +770,73 @@ impl UdpServer {
                 pss_match.updated_at = Utc::now();
 
                 if let Err(e) = database.update_pss_match(db_match_id, &pss_match).await {
-                    log::warn!("⚠️ Failed to update PSS match {}: {}", match_id, e);
+                    log::warn!("⚠️ Failed to update PSS match {}: {}", effective_match_id, e);
                 } else {
-                    log::info!("✅ Current match set: {} (db id {})", match_id, db_match_id);
+                    log::info!("✅ Current match set: {} (db id {})", effective_match_id, db_match_id);
+                    println!("✅ Current match set: {} (db id {})", effective_match_id, db_match_id);
+                }
+
+                // Attempt to link any pending athletes captured before match was configured
+                let (pending_a1, pending_a2) = {
+                    // Read pending ids without holding the lock across await
+                    if let Ok(cache) = _athlete_cache.lock() {
+                        (cache.get("__PENDING_A1_ID").copied(), cache.get("__PENDING_A2_ID").copied())
+                    } else { (None, None) }
+                };
+
+                if let (Some(a1_id), Some(a2_id)) = (pending_a1, pending_a2) {
+                    match database.get_connection().await {
+                        Ok(conn_guard) => {
+                            let conn = &*conn_guard;
+                            let existing = crate::database::operations::PssUdpOperations::get_pss_match_athletes(conn, db_match_id).unwrap_or_default();
+                            let mut have1 = existing.iter().any(|(ma, _)| ma.athlete_position == 1);
+                            let mut have2 = existing.iter().any(|(ma, _)| ma.athlete_position == 2);
+
+                            if !have1 {
+                                let ma = crate::database::models::PssMatchAthlete {
+                                    id: None,
+                                    match_id: db_match_id,
+                                    athlete_id: a1_id,
+                                    athlete_position: 1,
+                                    bg_color: None,
+                                    fg_color: None,
+                                    created_at: Utc::now(),
+                                };
+                                if let Err(e) = crate::database::operations::PssUdpOperations::insert_pss_match_athlete(conn, &ma) {
+                                    log::warn!("⚠️ Failed to link pending athlete1 to match {}: {}", db_match_id, e);
+                                } else {
+                                    have1 = true;
+                                }
+                            }
+
+                            if !have2 {
+                                let ma = crate::database::models::PssMatchAthlete {
+                                    id: None,
+                                    match_id: db_match_id,
+                                    athlete_id: a2_id,
+                                    athlete_position: 2,
+                                    bg_color: None,
+                                    fg_color: None,
+                                    created_at: Utc::now(),
+                                };
+                                if let Err(e) = crate::database::operations::PssUdpOperations::insert_pss_match_athlete(conn, &ma) {
+                                    log::warn!("⚠️ Failed to link pending athlete2 to match {}: {}", db_match_id, e);
+                                } else {
+                                    have2 = true;
+                                }
+                            }
+
+                            if have1 && have2 {
+                                log::info!("✅ Linked pending athletes to match {}", db_match_id);
+                                println!("✅ Linked pending athletes to match {}", db_match_id);
+                                if let Ok(mut cache) = _athlete_cache.lock() {
+                                    cache.remove("__PENDING_A1_ID");
+                                    cache.remove("__PENDING_A2_ID");
+                                }
+                            }
+                        }
+                        Err(e) => log::warn!("⚠️ Failed to get DB connection for pending athlete linking: {}", e),
+                    }
                 }
             }
             PssEvent::Athletes {
@@ -787,10 +858,7 @@ impl UdpServer {
                 }
 
                 // If we already have a current match, link athletes to match (positions 1 and 2)
-                let mid_opt = {
-                    let g = current_match_id.lock().unwrap();
-                    *g
-                };
+                let mid_opt = { current_match_id.lock().unwrap().clone() };
                 if let Some(mid) = mid_opt {
                     match database.get_connection().await {
                         Ok(conn_guard) => {
@@ -835,12 +903,19 @@ impl UdpServer {
 
                             if have1 && have2 {
                                 log::info!("✅ Linked athletes to match {}", mid);
+                                println!("✅ Linked athletes to match {}", mid);
                             }
                         }
                         Err(e) => log::warn!("⚠️ Failed to get DB connection for athlete linking: {}", e),
                     }
                 } else {
                     log::info!("ℹ️ Athletes received before match configured; will link once match is set");
+                    println!("ℹ️ Athletes received before match configured; will link once match is set");
+                    // Stash pending athlete ids for later linking on MatchConfig
+                    if let Ok(mut cache) = _athlete_cache.lock() {
+                        cache.insert("__PENDING_A1_ID".to_string(), a1_id);
+                        cache.insert("__PENDING_A2_ID".to_string(), a2_id);
+                    }
                 }
             }
             _ => {}

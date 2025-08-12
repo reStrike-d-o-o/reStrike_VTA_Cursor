@@ -49,17 +49,7 @@ pub async fn triggers_list_obs_scenes(app: State<'_, Arc<App>>) -> Result<Vec<Ob
 
     // 3) If obws feature is off, return empty
     #[cfg(not(feature = "obs-obws"))]
-    {
-        return Ok(Vec::new());
-    }
-
-    // If obs-obws feature is enabled, all code paths above returned already
-    #[cfg(feature = "obs-obws")]
-    {
-        // This branch is only to satisfy type checker; it will never execute
-        // because the obws-enabled path returns earlier.
-        return Ok(Vec::new());
-    }
+    return Ok(Vec::new());
 }
 
 // ---------------- OVERLAYS ----------------
