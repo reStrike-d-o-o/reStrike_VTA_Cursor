@@ -865,15 +865,34 @@ pub async fn obs_obws_save_recording_config(
     // Parse the config from JSON
     match serde_json::from_value::<crate::database::models::ObsRecordingConfig>(config) {
         Ok(recording_config) => {
+            // Validate connection name
+            if recording_config.obs_connection_name.trim().is_empty() {
+                log::warn!("obs_obws_save_recording_config: missing obs_connection_name");
+                return Ok(ObsObwsConnectionResponse {
+                    success: false,
+                    data: None,
+                    error: Some("obs_connection_name is required".to_string()),
+                });
+            }
+
             let mut conn = app.database_plugin().get_connection().await?;
             match crate::database::operations::ObsRecordingOperations::upsert_recording_config(&mut *conn, &recording_config) {
-                Ok(_) => Ok(ObsObwsConnectionResponse {
+                Ok(_) => {
+                    log::info!(
+                        "Saved recording config for connection '{}' (root: {}, format: {}, template: {})",
+                        recording_config.obs_connection_name,
+                        recording_config.recording_root_path,
+                        recording_config.recording_format,
+                        recording_config.filename_template
+                    );
+                    Ok(ObsObwsConnectionResponse {
                     success: true,
                     data: Some(serde_json::json!({
                         "message": "Recording configuration saved successfully"
-                    })),
-                    error: None,
-                }),
+                        })),
+                        error: None,
+                    })
+                },
                 Err(e) => Ok(ObsObwsConnectionResponse {
                     success: false,
                     data: None,
