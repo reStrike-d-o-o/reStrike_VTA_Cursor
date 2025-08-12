@@ -691,7 +691,15 @@ export const obsObwsCommands = {
   }): Promise<TauriCommandResponse> {
     try {
       if (isTauriAvailable()) {
-        return await safeInvoke('obs_obws_update_automatic_recording_config', params);
+        // Tauri expects snake_case parameter names; map from camelCase
+        return await safeInvoke('obs_obws_update_automatic_recording_config', {
+          enabled: params.enabled,
+          obs_connection_name: params.obs_connection_name,
+          auto_stop_on_match_end: params.autoStopOnMatchEnd,
+          auto_stop_on_winner: params.autoStopOnWinner,
+          stop_delay_seconds: params.stopDelaySeconds,
+          include_replay_buffer: params.includeReplayBuffer,
+        });
       }
       return { success: false, error: 'Tauri not available' };
     } catch (error) {
