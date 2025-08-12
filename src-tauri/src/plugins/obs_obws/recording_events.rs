@@ -254,6 +254,13 @@ impl ObsRecordingEventHandler {
         };
 
         if let Some(connection_name) = config.obs_connection_name {
+            // Ensure replay buffer is running if requested
+            if config.include_replay_buffer {
+                if let Err(e) = self.obs_manager.start_replay_buffer(Some(&connection_name)).await {
+                    log::warn!("Failed to start replay buffer: {}", e);
+                }
+            }
+
             // Update filename formatting per match before starting recording
             if let Some(session) = self.get_current_session() {
                 if let Some(template) = self.get_active_filename_template().await? {
@@ -329,6 +336,13 @@ impl ObsRecordingEventHandler {
         if let Some(connection_name) = config.obs_connection_name {
             // Update session state to stopping
             self.update_session_state(RecordingState::Stopping).await?;
+
+            // Respect stop delay seconds before stopping recording
+            let delay = std::time::Duration::from_secs(config.stop_delay_seconds as u64);
+            if delay.as_secs() > 0 {
+                log::info!("⏳ Waiting {}s before stopping recording", delay.as_secs());
+                tokio::time::sleep(delay).await;
+            }
 
             // Send stop recording event
             if let Some(session_id) = self.get_current_session_id().await? {
@@ -453,9 +467,16 @@ impl ObsRecordingEventHandler {
 
     /// Get current match ID from UDP context
     async fn get_current_match_id(&self) -> AppResult<Option<String>> {
-        // This would need to be integrated with the UDP plugin's current match tracking
-        // For now, return None - this will be implemented when we integrate with UDP
-        Ok(None)
+        // Read current_match_id from UDP plugin (DB-backed via PssUdpOperations)
+        // Strategy: fetch the most recent PSS match with status "current/active" if available.
+        // Fallback: None.
+        let conn = self.database.get_connection().await?;
+        // Try to read the most recent/current match id and convert to external match_id string
+        // Using existing operations: get_pss_matches(limit) and find latest with non-empty match_id
+        let matches = crate::plugins::plugin_database::DatabasePlugin::get_pss_matches_static(&*conn, Some(1))
+            .unwrap_or_default();
+        let maybe = matches.into_iter().next().map(|m| m.match_id);
+        Ok(maybe)
     }
 
     /// Get current session ID
