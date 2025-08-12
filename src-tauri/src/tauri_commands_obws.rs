@@ -1416,6 +1416,7 @@ pub async fn obs_obws_get_automatic_recording_config(
 pub async fn obs_obws_update_automatic_recording_config(
     enabled: bool,
     obs_connection_name: Option<String>,
+    obsConnectionName: Option<String>,
     // Support both snake_case and camelCase keys from frontend
     auto_stop_on_match_end: Option<bool>,
     autoStopOnMatchEnd: Option<bool>,
@@ -1428,6 +1429,15 @@ pub async fn obs_obws_update_automatic_recording_config(
     app: State<'_, Arc<App>>,
 ) -> Result<ObsObwsConnectionResponse, TauriError> {
     log::info!("OBS obws update automatic recording config called");
+    // Resolve connection name from either snake_case or camelCase
+    let resolved_conn = obs_connection_name.or(obsConnectionName);
+    println!(
+        "🛠️ obs_obws_update_automatic_recording_config: enabled={}, conn={:?}, stop_delay={}, include_replay_buffer={}",
+        enabled,
+        resolved_conn,
+        stop_delay_seconds.unwrap_or(30),
+        include_replay_buffer.unwrap_or(true)
+    );
 
     // Get the recording event handler from the app state
     let recording_handler = app.recording_event_handler();
@@ -1448,7 +1458,7 @@ pub async fn obs_obws_update_automatic_recording_config(
 
     let config = crate::plugins::obs_obws::AutomaticRecordingConfig {
         enabled,
-        obs_connection_name,
+        obs_connection_name: resolved_conn.clone(),
         auto_stop_on_match_end: auto_stop_on_match_end_val,
         auto_stop_on_winner: auto_stop_on_winner_val,
         stop_delay_seconds: stop_delay_seconds_val,
@@ -1460,15 +1470,25 @@ pub async fn obs_obws_update_automatic_recording_config(
 
     // Persist to DB so it survives restarts
     use crate::database::operations::UiSettingsOperations as UIOps;
-    if let Ok(mut conn) = app.database_plugin().get_connection().await {
-        let _ = UIOps::set_ui_setting(&mut *conn, "obs.auto.enabled", if enabled {"true"} else {"false"}, "user", Some("update auto enabled"));
-        if let Some(name) = recording_handler.get_config().obs_connection_name.clone() {
-            let _ = UIOps::set_ui_setting(&mut *conn, "obs.auto.connection", &name, "user", Some("update auto connection"));
+    match app.database_plugin().get_connection().await {
+        Ok(mut conn) => {
+            UIOps::set_ui_setting(&mut *conn, "obs.auto.enabled", if enabled {"true"} else {"false"}, "user", Some("update auto enabled"))
+                .map_err(|e| TauriError::from(std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to persist obs.auto.enabled: {}", e))))?;
+            if let Some(name) = resolved_conn.clone() {
+                UIOps::set_ui_setting(&mut *conn, "obs.auto.connection", &name, "user", Some("update auto connection"))
+                    .map_err(|e| TauriError::from(std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to persist obs.auto.connection: {}", e))))?;
+            }
+            UIOps::set_ui_setting(&mut *conn, "obs.auto.stop_on_match_end", if auto_stop_on_match_end_val {"true"} else {"false"}, "user", Some("update auto stop on match end"))
+                .map_err(|e| TauriError::from(std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to persist obs.auto.stop_on_match_end: {}", e))))?;
+            UIOps::set_ui_setting(&mut *conn, "obs.auto.stop_on_winner", if auto_stop_on_winner_val {"true"} else {"false"}, "user", Some("update auto stop on winner"))
+                .map_err(|e| TauriError::from(std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to persist obs.auto.stop_on_winner: {}", e))))?;
+            UIOps::set_ui_setting(&mut *conn, "obs.auto.stop_delay_seconds", &stop_delay_seconds_val.to_string(), "user", Some("update auto stop delay"))
+                .map_err(|e| TauriError::from(std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to persist obs.auto.stop_delay_seconds: {}", e))))?;
+            UIOps::set_ui_setting(&mut *conn, "obs.auto.include_replay_buffer", if include_replay_buffer_val {"true"} else {"false"}, "user", Some("update auto include replay buffer"))
+                .map_err(|e| TauriError::from(std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to persist obs.auto.include_replay_buffer: {}", e))))?;
+            println!("🛠️ Persisted auto config to DB (enabled={}, conn={:?})", enabled, resolved_conn);
         }
-        let _ = UIOps::set_ui_setting(&mut *conn, "obs.auto.stop_on_match_end", if auto_stop_on_match_end_val {"true"} else {"false"}, "user", Some("update auto stop on match end"));
-        let _ = UIOps::set_ui_setting(&mut *conn, "obs.auto.stop_on_winner", if auto_stop_on_winner_val {"true"} else {"false"}, "user", Some("update auto stop on winner"));
-        let _ = UIOps::set_ui_setting(&mut *conn, "obs.auto.stop_delay_seconds", &stop_delay_seconds_val.to_string(), "user", Some("update auto stop delay"));
-        let _ = UIOps::set_ui_setting(&mut *conn, "obs.auto.include_replay_buffer", if include_replay_buffer_val {"true"} else {"false"}, "user", Some("update auto include replay buffer"));
+        Err(e) => return Err(TauriError::from(std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to get DB connection: {}", e))))
     }
 
     Ok(ObsObwsConnectionResponse {
