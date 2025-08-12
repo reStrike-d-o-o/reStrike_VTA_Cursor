@@ -728,6 +728,124 @@ impl UdpServer {
             session_guard.ok_or_else(|| AppError::ConfigError("No active session".to_string()))?
         };
         
+        // Pre-process specific PSS events to maintain DB context (match + athletes)
+        match event {
+            PssEvent::MatchConfig {
+                number,
+                category,
+                weight,
+                match_id,
+                division,
+                total_rounds,
+                round_duration,
+                countdown_type,
+                format,
+                ..
+            } => {
+                // Ensure match exists and set current match id
+                let db_match_id = database.get_or_create_pss_match(match_id).await?;
+                {
+                    let mut guard = current_match_id.lock().unwrap();
+                    *guard = Some(db_match_id);
+                }
+
+                // Update match metadata
+                let mut pss_match = crate::database::models::PssMatch::new(match_id.clone());
+                pss_match.id = Some(db_match_id);
+                pss_match.match_number = Some(number.clone());
+                pss_match.category = Some(category.clone());
+                pss_match.weight_class = Some(weight.clone());
+                pss_match.division = Some(division.clone());
+                pss_match.total_rounds = *total_rounds as i32;
+                pss_match.round_duration = Some(*round_duration as i32);
+                pss_match.countdown_type = Some(countdown_type.clone());
+                pss_match.format_type = Some(*format as i32);
+                pss_match.updated_at = Utc::now();
+
+                if let Err(e) = database.update_pss_match(db_match_id, &pss_match).await {
+                    log::warn!("⚠️ Failed to update PSS match {}: {}", match_id, e);
+                } else {
+                    log::info!("✅ Current match set: {} (db id {})", match_id, db_match_id);
+                }
+            }
+            PssEvent::Athletes {
+                athlete1_short,
+                athlete1_long,
+                athlete1_country: _,
+                athlete2_short,
+                athlete2_long,
+                athlete2_country: _,
+            } => {
+                // Create or get athletes
+                let a1_id = database.get_or_create_pss_athlete(athlete1_short, athlete1_long).await?;
+                let a2_id = database.get_or_create_pss_athlete(athlete2_short, athlete2_long).await?;
+
+                // Cache athlete ids by short code for quick lookup
+                if let Ok(mut cache) = _athlete_cache.lock() {
+                    cache.insert(athlete1_short.clone(), a1_id);
+                    cache.insert(athlete2_short.clone(), a2_id);
+                }
+
+                // If we already have a current match, link athletes to match (positions 1 and 2)
+                let mid_opt = {
+                    let g = current_match_id.lock().unwrap();
+                    *g
+                };
+                if let Some(mid) = mid_opt {
+                    match database.get_connection().await {
+                        Ok(conn_guard) => {
+                            let conn = &*conn_guard;
+                            let existing = crate::database::operations::PssUdpOperations::get_pss_match_athletes(conn, mid).unwrap_or_default();
+                            let mut have1 = existing.iter().any(|(ma, _)| ma.athlete_position == 1);
+                            let mut have2 = existing.iter().any(|(ma, _)| ma.athlete_position == 2);
+
+                            if !have1 {
+                                let ma = crate::database::models::PssMatchAthlete {
+                                    id: None,
+                                    match_id: mid,
+                                    athlete_id: a1_id,
+                                    athlete_position: 1,
+                                    bg_color: None,
+                                    fg_color: None,
+                                    created_at: Utc::now(),
+                                };
+                                if let Err(e) = crate::database::operations::PssUdpOperations::insert_pss_match_athlete(conn, &ma) {
+                                    log::warn!("⚠️ Failed to link athlete1 to match {}: {}", mid, e);
+                                } else {
+                                    have1 = true;
+                                }
+                            }
+
+                            if !have2 {
+                                let ma = crate::database::models::PssMatchAthlete {
+                                    id: None,
+                                    match_id: mid,
+                                    athlete_id: a2_id,
+                                    athlete_position: 2,
+                                    bg_color: None,
+                                    fg_color: None,
+                                    created_at: Utc::now(),
+                                };
+                                if let Err(e) = crate::database::operations::PssUdpOperations::insert_pss_match_athlete(conn, &ma) {
+                                    log::warn!("⚠️ Failed to link athlete2 to match {}: {}", mid, e);
+                                } else {
+                                    have2 = true;
+                                }
+                            }
+
+                            if have1 && have2 {
+                                log::info!("✅ Linked athletes to match {}", mid);
+                            }
+                        }
+                        Err(e) => log::warn!("⚠️ Failed to get DB connection for athlete linking: {}", e),
+                    }
+                } else {
+                    log::info!("ℹ️ Athletes received before match configured; will link once match is set");
+                }
+            }
+            _ => {}
+        }
+
         // Convert PSS event to database model
         let event_model = Self::convert_pss_event_to_db_model(
             event,
