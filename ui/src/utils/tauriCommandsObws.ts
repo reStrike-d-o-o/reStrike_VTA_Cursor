@@ -694,7 +694,9 @@ export const obsObwsCommands = {
         // Tauri expects snake_case parameter names; map from camelCase
         return await safeInvoke('obs_obws_update_automatic_recording_config', {
           enabled: params.enabled,
+          // Send both snake_case and camelCase to be fully compatible with backend
           obs_connection_name: params.obs_connection_name,
+          obsConnectionName: params.obs_connection_name,
           auto_stop_on_match_end: params.autoStopOnMatchEnd,
           auto_stop_on_winner: params.autoStopOnWinner,
           stop_delay_seconds: params.stopDelaySeconds,
