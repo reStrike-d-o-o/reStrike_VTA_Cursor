@@ -37,12 +37,13 @@ Backend
 
 Phase 2 – Stop delay and auto-record flow
 Backend
-- [ ] Add `stop_delay_seconds` handling: on Winner/WinnerRounds, `sleep(stop_delay_seconds)` then send `StopRecording`.
-- [ ] On FightLoaded: generate recording path + ensure directory exists; on FightReady: apply filename formatting then start recording (via obws manager through event channel).
-- [ ] Ensure replay buffer is started for the recording connection on FightReady (or before first SaveReplay during the match). Add idempotent start guard.
+- [x] Stop delay: WinnerRounds is a no-op; on Winner, wait `stop_delay_seconds` then stop recording.
+- [x] FightLoaded: generate concrete recording path (no placeholders) + ensure directory exists; apply directory once per tournament day.
+- [x] FightReady: Always-on RB. Ensure Replay Buffer is Active (start if not), then apply filename formatting for the current match and start recording.
 Frontend
 - [x] Add `Automatic recording` UI controls for `stop_delay_seconds` and `replay_buffer_duration`.
 - [x] Remove "Save replay buffer on match end" toggle from UI to avoid confusion.
+- [x] Preserve OBS connection status across tabs; treat `Authenticated` as Connected. WebSocket list updates are non-destructive and followed by an immediate status refresh.
 
 Phase 3 – OBS connection roles (Recording / Streaming)
 DB + Backend
@@ -61,9 +62,9 @@ Frontend
 
 Phase 5 – Tournament/day activation guard
 Backend
-- [ ] In path generation and session prep, check active tournament/day. If not present, return structured error.
+- [x] If no active tournament/day, compute suggestions: Continue (`Tournament N / Day X+1`) or New (`Tournament N+1 / Day 1`) and emit a centralized message event.
 Frontend
-- [ ] On structured error, show modal with CTA to open Tournament Management to activate tournament/day.
+- [x] Show decision modal via Message Center; apply user choice back to backend which creates folders, applies record directory, and re-applies filename formatting.
 
 Phase 6 – Persist sessions and map events to recorded files
 DB + Backend
@@ -90,7 +91,7 @@ Phase 9 – Cleanup + docs
 
 Testing & verification plan
 - [ ] Unit-test path generator for multiple tournaments/days/flags.
-- [ ] Local end-to-end: simulate UDP PSS events → verify auto path prep, recording start, stop w/delay, replay buffer start, Save Replay + play.
+- [x] Local end-to-end: simulate UDP PSS events → verified: path prep, RB ensured, filename formatting uses current match, recording starts, Winner-only delayed stop.
 - [ ] Verify session persisted and event offsets computed; try opening recording at event-times via double-click.
 - [ ] Multi-connection: confirm only `role=recording` is used for recording and replay buffer; streaming unaffected.
 
