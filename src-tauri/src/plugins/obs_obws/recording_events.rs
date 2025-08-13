@@ -106,6 +106,9 @@ pub struct ObsRecordingEventHandler {
     last_applied_directory_day: Arc<Mutex<Option<String>>>,
     // Live UDP-provided current match id (from MatchConfig)
     last_udp_match_id: Arc<Mutex<Option<String>>>,
+    // User-selected path context for this session
+    selected_tournament_name: Arc<Mutex<Option<String>>>,
+    selected_tournament_day: Arc<Mutex<Option<String>>>>,
 }
 
 impl ObsRecordingEventHandler {
@@ -123,6 +126,8 @@ impl ObsRecordingEventHandler {
             obs_manager,
             last_applied_directory_day: Arc::new(Mutex::new(None)),
             last_udp_match_id: Arc::new(Mutex::new(None)),
+            selected_tournament_name: Arc::new(Mutex::new(None)),
+            selected_tournament_day: Arc::new(Mutex::new(None)),
         }
     }
 
