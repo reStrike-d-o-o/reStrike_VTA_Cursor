@@ -183,6 +183,8 @@ const WebSocketManager: React.FC<WebSocketManagerProps> = ({ mode = 'local' }) =
             // Connection already exists, which is expected
           }
         }
+        // Actively refresh statuses after loading list
+        await refreshConnectionStatuses();
       } else {
         // Fallback to direct OBS plugin query
         const result = await obsObwsCommands.getConnections();
@@ -226,6 +228,8 @@ const WebSocketManager: React.FC<WebSocketManagerProps> = ({ mode = 'local' }) =
               updateObsConnectionStatus(conn.name, existing.status, existing.error);
             }
           });
+          // Actively refresh statuses after loading list
+          await refreshConnectionStatuses();
         } else {
           // If no connections anywhere, initialize with empty state
           obsConnections.forEach(conn => removeObsConnection(conn.name));

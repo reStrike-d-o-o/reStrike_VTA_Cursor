@@ -306,7 +306,7 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
               const statusResult = await obsObwsCommands.getConnectionStatus(connectionName);
               if (statusResult && statusResult.success && statusResult.data) {
                 const status = statusResult.data.status;
-                if (status === 'Connected' || status === 'Authenticated') {
+                  if (status === 'Connected' || status === 'Authenticated') {
                   updateConnectionStatus(connectionName, 'connected');
                 } else if (status === 'Connecting' || status === 'Authenticating') {
                   updateConnectionStatus(connectionName, 'connecting');
@@ -354,6 +354,10 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
                 const status = statusResult.data.status;
                 if (status === 'Disconnected') {
                   updateConnectionStatus(connectionName, 'disconnected');
+                } else if (status === 'Authenticated' || status === 'Connected') {
+                  updateConnectionStatus(connectionName, 'connected');
+                } else if (status === 'Connecting' || status === 'Authenticating') {
+                  updateConnectionStatus(connectionName, 'connecting');
                 } else {
                   updateConnectionStatus(connectionName, 'error', status);
                 }
