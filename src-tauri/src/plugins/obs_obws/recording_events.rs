@@ -52,7 +52,7 @@ pub struct AutomaticRecordingConfig {
     // New flags to match frontend UI
     pub auto_start_recording_on_match_begin: bool,
     pub auto_start_replay_on_match_begin: bool,
-    pub save_replay_on_match_end: bool,
+    // removed: save_replay_on_match_end
 }
 
 impl Default for AutomaticRecordingConfig {
@@ -66,7 +66,7 @@ impl Default for AutomaticRecordingConfig {
             include_replay_buffer: true,
             auto_start_recording_on_match_begin: true,
             auto_start_replay_on_match_begin: true,
-            save_replay_on_match_end: false,
+            // removed: save_replay_on_match_end
         }
     }
 }
@@ -363,14 +363,7 @@ impl ObsRecordingEventHandler {
 
             log::info!("🎬 Recording stopped for connection: {}", connection_name);
 
-            // Optionally save replay buffer at match end if enabled
-            if config.save_replay_on_match_end {
-                if let Err(e) = self.obs_manager.save_replay_buffer(Some(&connection_name)).await {
-                    log::warn!("Failed to save replay buffer on match end: {}", e);
-                } else {
-                    log::info!("🎞️ Replay buffer saved on match end");
-                }
-            }
+            // Removed: save replay buffer on match end feature
         }
 
         Ok(())

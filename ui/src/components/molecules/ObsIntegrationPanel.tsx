@@ -16,7 +16,6 @@ interface RecordingConfig {
   folderPattern?: string;
   autoStartRecording: boolean;
   autoStartReplayBuffer: boolean;
-  saveReplayBufferOnMatchEnd: boolean;
 }
 
 const ObsIntegrationPanel: React.FC = () => {
@@ -29,7 +28,6 @@ const ObsIntegrationPanel: React.FC = () => {
     folderPattern: '{tournament}/{tournamentDay}',
     autoStartRecording: true,
     autoStartReplayBuffer: true,
-    saveReplayBufferOnMatchEnd: true,
   });
   // Folder pattern for future customization of directory layout
   const [folderPattern, setFolderPattern] = useState<string>('{tournament}/{tournamentDay}');
@@ -115,7 +113,6 @@ const ObsIntegrationPanel: React.FC = () => {
             ...prev,
             autoStartRecording: ac.auto_start_recording_on_match_begin !== false,
             autoStartReplayBuffer: ac.auto_start_replay_on_match_begin !== false,
-            saveReplayBufferOnMatchEnd: ac.save_replay_on_match_end === true,
           }));
         }
       }
@@ -152,7 +149,6 @@ const ObsIntegrationPanel: React.FC = () => {
         auto_stop_on_winner: autoRecordingConfig.autoStopOnWinner,
         auto_start_recording_on_match_begin: recordingConfig.autoStartRecording,
         auto_start_replay_on_match_begin: recordingConfig.autoStartReplayBuffer,
-        save_replay_on_match_end: recordingConfig.saveReplayBufferOnMatchEnd,
         replay_buffer_duration: autoRecordingConfig.replayBufferDuration,
       });
       if (result.success) {
@@ -508,72 +504,67 @@ const ObsIntegrationPanel: React.FC = () => {
           
           {/* Toggles in 3 columns */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
-            <Toggle
-              label="Enable Automatic Recording"
-              checked={autoRecordingConfig.enabled}
-              onChange={(e) => setAutoRecordingConfig({ ...autoRecordingConfig, enabled: e.target.checked })}
-            />
-            
-            <Toggle
-              label="Auto-start recording on match begin"
-              checked={recordingConfig.autoStartRecording}
-              onChange={(e) => setRecordingConfig(prev => ({ ...prev, autoStartRecording: e.target.checked }))}
-            />
-            
-            <Toggle
-              label="Auto-start replay buffer on match begin"
-              checked={recordingConfig.autoStartReplayBuffer}
-              onChange={(e) => setRecordingConfig(prev => ({ ...prev, autoStartReplayBuffer: e.target.checked }))}
-            />
-            
-            <Toggle
-              label="Auto Stop on Match End"
-              checked={autoRecordingConfig.autoStopOnMatchEnd}
-              onChange={(e) => setAutoRecordingConfig({ ...autoRecordingConfig, autoStopOnMatchEnd: e.target.checked })}
-            />
-            
-            <Toggle
-              label="Auto Stop on Winner"
-              checked={autoRecordingConfig.autoStopOnWinner}
-              onChange={(e) => setAutoRecordingConfig({ ...autoRecordingConfig, autoStopOnWinner: e.target.checked })}
-            />
-            
-            <Toggle
-              label="Save replay buffer on match end"
-              checked={recordingConfig.saveReplayBufferOnMatchEnd}
-              onChange={(e) => setRecordingConfig(prev => ({ ...prev, saveReplayBufferOnMatchEnd: e.target.checked }))}
-            />
-            
-            <Toggle
-              label="Include Replay Buffer"
-              checked={autoRecordingConfig.includeReplayBuffer}
-              onChange={(e) => setAutoRecordingConfig({ ...autoRecordingConfig, includeReplayBuffer: e.target.checked })}
-            />
+            <div className="space-y-2">
+              <Toggle
+                label="Enable Automatic Recording"
+                checked={autoRecordingConfig.enabled}
+                onChange={(e) => setAutoRecordingConfig({ ...autoRecordingConfig, enabled: e.target.checked })}
+              />
+              <Toggle
+                label="Auto Stop on Match End"
+                checked={autoRecordingConfig.autoStopOnMatchEnd}
+                onChange={(e) => setAutoRecordingConfig({ ...autoRecordingConfig, autoStopOnMatchEnd: e.target.checked })}
+              />
+              <Toggle
+                label="Auto Stop on Winner"
+                checked={autoRecordingConfig.autoStopOnWinner}
+                onChange={(e) => setAutoRecordingConfig({ ...autoRecordingConfig, autoStopOnWinner: e.target.checked })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Toggle
+                label="Auto-start recording on match begin"
+                checked={recordingConfig.autoStartRecording}
+                onChange={(e) => setRecordingConfig(prev => ({ ...prev, autoStartRecording: e.target.checked }))}
+              />
+              <Toggle
+                label="Auto-start replay buffer on match begin"
+                checked={recordingConfig.autoStartReplayBuffer}
+                onChange={(e) => setRecordingConfig(prev => ({ ...prev, autoStartReplayBuffer: e.target.checked }))}
+              />
+              <Toggle
+                label="Include Replay Buffer"
+                checked={autoRecordingConfig.includeReplayBuffer}
+                onChange={(e) => setAutoRecordingConfig({ ...autoRecordingConfig, includeReplayBuffer: e.target.checked })}
+              />
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <label className="text-sm font-medium text-gray-300">Stop Delay:</label>
+                <Input
+                  type="number"
+                  value={autoRecordingConfig.stopDelaySeconds}
+                  onChange={(e) => setAutoRecordingConfig({ ...autoRecordingConfig, stopDelaySeconds: parseInt(e.target.value) || 30 })}
+                  placeholder="30"
+                  className="w-20"
+                />
+                <span className="text-sm text-gray-400">seconds</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <label className="text-sm font-medium text-gray-300">Replay Buffer Duration:</label>
+                <Input
+                  type="number"
+                  value={autoRecordingConfig.replayBufferDuration}
+                  onChange={(e) => setAutoRecordingConfig({ ...autoRecordingConfig, replayBufferDuration: parseInt(e.target.value) || 30 })}
+                  placeholder="30"
+                  className="w-20"
+                />
+                <span className="text-sm text-gray-400">seconds</span>
+              </div>
+            </div>
           </div>
 
-          {/* Stop Delay */}
-          <div className="flex items-center gap-3">
-            <label className="text-sm font-medium text-gray-300">Stop Delay:</label>
-            <Input
-              type="number"
-              value={autoRecordingConfig.stopDelaySeconds}
-              onChange={(e) => setAutoRecordingConfig({ ...autoRecordingConfig, stopDelaySeconds: parseInt(e.target.value) || 30 })}
-              placeholder="30"
-              className="w-20"
-            />
-            <span className="text-sm text-gray-400">seconds</span>
-          </div>
-          <div className="flex items-center gap-3 mt-3">
-            <label className="text-sm font-medium text-gray-300">Replay Buffer Duration:</label>
-            <Input
-              type="number"
-              value={autoRecordingConfig.replayBufferDuration}
-              onChange={(e) => setAutoRecordingConfig({ ...autoRecordingConfig, replayBufferDuration: parseInt(e.target.value) || 30 })}
-              placeholder="30"
-              className="w-20"
-            />
-            <span className="text-sm text-gray-400">seconds</span>
-          </div>
+          {/* Stop Delay and Replay Buffer Duration moved up into 3rd column grid */}
         </div>
 
         {/* Manual Recording Controls removed */}

@@ -1427,7 +1427,6 @@ struct FullObsConfigPayload {
     // Right column (auto-start) flags
     #[serde(default = "default_true")] auto_start_recording_on_match_begin: bool,
     #[serde(default = "default_true")] auto_start_replay_on_match_begin: bool,
-    #[serde(default)] save_replay_on_match_end: bool,
 }
 
 fn default_folder_pattern() -> String { "{tournament}/{tournamentDay}".to_string() }
@@ -1443,7 +1442,7 @@ pub async fn obs_obws_save_full_config(
         .map_err(|e| TauriError::from(anyhow::anyhow!(format!("Invalid full config payload: {}", e))))?;
 
     println!(
-        "💾 obs_obws_save_full_config(conn='{}', path='{}', fmt='{}', tmpl='{}', enabled={}, stop_delay={}, include_rb={}, rb_dur={:?}, stop_on_end={}, stop_on_winner={}, start_rec={}, start_replay={}, save_replay={})",
+        "💾 obs_obws_save_full_config(conn='{}', path='{}', fmt='{}', tmpl='{}', enabled={}, stop_delay={}, include_rb={}, rb_dur={:?}, stop_on_end={}, stop_on_winner={}, start_rec={}, start_replay={})",
         cfg.connection_name,
         cfg.recording_path,
         cfg.recording_format,
@@ -1456,7 +1455,6 @@ pub async fn obs_obws_save_full_config(
         cfg.auto_stop_on_winner,
         cfg.auto_start_recording_on_match_begin,
         cfg.auto_start_replay_on_match_begin,
-        cfg.save_replay_on_match_end,
     );
 
     // 1) Save recording config
@@ -1490,7 +1488,6 @@ pub async fn obs_obws_save_full_config(
         include_replay_buffer: cfg.include_replay_buffer,
         auto_start_recording_on_match_begin: cfg.auto_start_recording_on_match_begin,
         auto_start_replay_on_match_begin: cfg.auto_start_replay_on_match_begin,
-        save_replay_on_match_end: cfg.save_replay_on_match_end,
     };
     recording_handler.update_config(new_auto_cfg)
         .map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to update handler config: {}", e))))?;
@@ -1512,8 +1509,7 @@ pub async fn obs_obws_save_full_config(
         .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
     UIOps::set_ui_setting(&mut *conn, "obs.auto.start_replay_on_match_begin", if cfg.auto_start_replay_on_match_begin {"true"} else {"false"}, "user", Some("save full config"))
         .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
-    UIOps::set_ui_setting(&mut *conn, "obs.auto.save_replay_on_match_end", if cfg.save_replay_on_match_end {"true"} else {"false"}, "user", Some("save full config"))
-        .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    // removed: save replay on match end persistence
 
     Ok(ObsObwsConnectionResponse {
         success: true,
@@ -1563,7 +1559,7 @@ pub async fn obs_obws_get_full_config(
     let include_replay_buffer = UIOps::get_ui_setting(&*conn, "obs.auto.include_replay_buffer").ok().flatten().map(|v| v=="true").unwrap_or(true);
     let auto_start_recording_on_match_begin = UIOps::get_ui_setting(&*conn, "obs.auto.start_recording_on_match_begin").ok().flatten().map(|v| v=="true").unwrap_or(true);
     let auto_start_replay_on_match_begin = UIOps::get_ui_setting(&*conn, "obs.auto.start_replay_on_match_begin").ok().flatten().map(|v| v=="true").unwrap_or(true);
-    let save_replay_on_match_end = UIOps::get_ui_setting(&*conn, "obs.auto.save_replay_on_match_end").ok().flatten().map(|v| v=="true").unwrap_or(false);
+    let save_replay_on_match_end = false;
     let auto_stop_on_match_end = UIOps::get_ui_setting(&*conn, "obs.auto.stop_on_match_end").ok().flatten().map(|v| v=="true").unwrap_or(true);
     let auto_stop_on_winner = UIOps::get_ui_setting(&*conn, "obs.auto.stop_on_winner").ok().flatten().map(|v| v=="true").unwrap_or(true);
 
