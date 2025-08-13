@@ -18,8 +18,8 @@
 **Config**:
 - DB keys: `ivr.replay.mpv_path`, `ivr.replay.seconds_from_end`, `ivr.replay.max_wait_ms`, `ivr.replay.auto_on_challenge`
 
-### OBS Recording Auto-Push Updates ✅
-**Status**: COMPLETED
+### OBS Recording Integration – Unified Save/Load + UI cleanup ✅
+**Status**: COMPLETED (latest)
 
 **Details**:
 - Fight loaded: set OBS recording directory once per tournament day using `folder_pattern`
@@ -46,8 +46,8 @@
 - **Maintainability**: Improved maintainability through better organization
 - **Developer Experience**: Enhanced developer experience with clearer documentation structure
 
-### OBS Recording Integration - Complete Implementation ✅ **COMPLETED**
-**Status**: COMPLETED  
+### OBS Recording Integration - Core Implementation ✅
+**Status**: PARTIAL (auto via PSS next)  
 **Files**: Multiple files across frontend and backend for complete OBS recording system
 
 **Key Features**:
@@ -56,6 +56,8 @@
 - **Backend Commands**: 20+ Tauri commands for OBS recording control and configuration
 - **Frontend UI**: Comprehensive recording configuration interface with connection selection
 - Added read-only OBS profile values (Recording Directory, Filename Formatting) in `ui/src/components/molecules/ObsIntegrationPanel.tsx` using backend read-back commands, a Refresh button, and a mismatch hint when OBS formatting differs from the app template.
+- Unified save/load: `obs_obws_save_full_config` and `obs_obws_get_full_config` replace split methods; strict mapping to Stop Delay, Replay Buffer Duration, and selected connection.
+- UI cleanup: Removed manual controls; added Start/Stop buttons; removed "Save replay buffer on match end".
 
 ### App Logging & Noise Reduction ✅
 **Status**: COMPLETED

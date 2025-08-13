@@ -20,6 +20,7 @@ Global guardrails
 - Compile often: After each logical change, build the Rust backend and rebuild UI. Fix errors immediately.
 - Centralized messages: User notifications via `useMessageCenter`.
 - OBS connections semantics: Add/persist connection roles (Recording vs Streaming). Default recording actions to role=Recording (`OBS_REC`).
+ - Removed feature: Save replay buffer on match end (no longer persisted or exposed). Use explicit Save Replay control paths instead.
 
 Phases and tasks (checklist)
 
@@ -40,7 +41,8 @@ Backend
 - [ ] On FightLoaded: generate recording path + ensure directory exists; on FightReady: apply filename formatting then start recording (via obws manager through event channel).
 - [ ] Ensure replay buffer is started for the recording connection on FightReady (or before first SaveReplay during the match). Add idempotent start guard.
 Frontend
-- [ ] Add `Automatic recording` UI control for `stop_delay_seconds` (default 10) if not present.
+- [x] Add `Automatic recording` UI controls for `stop_delay_seconds` and `replay_buffer_duration`.
+- [x] Remove "Save replay buffer on match end" toggle from UI to avoid confusion.
 
 Phase 3 – OBS connection roles (Recording / Streaming)
 DB + Backend
