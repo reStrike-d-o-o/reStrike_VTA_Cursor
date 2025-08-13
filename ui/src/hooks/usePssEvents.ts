@@ -106,7 +106,6 @@ export const usePssEvents = () => {
         // Cleaning up event listeners...
         unlisten();
         logUnlisten();
-        pathDecisionUnlisten();
         pathDecisionUnlisten2();
       };
       isListeningRef.current = true;
