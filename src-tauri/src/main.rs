@@ -231,6 +231,8 @@ async fn main() -> AppResult<()> {
             tauri_commands_obws::obs_obws_send_config_to_obs,
             #[cfg(feature = "obs-obws")]
             tauri_commands_obws::obs_obws_test_recording,
+            #[cfg(feature = "obs-obws")]
+            tauri_commands_obws::obs_obws_apply_path_decision,
             // obsolete per-user request removed: automatic/recording split
             #[cfg(feature = "obs-obws")]
             tauri_commands_obws::obs_obws_get_current_recording_session,
