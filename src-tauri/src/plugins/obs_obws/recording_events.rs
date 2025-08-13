@@ -629,6 +629,8 @@ impl ObsRecordingEventHandler {
         let waiting = *self.awaiting_path_decision.lock().unwrap();
         if !waiting {
             path_generator.ensure_directory_exists(&generated_path.directory)?;
+            // Suppress showing the modal later in the same session since we just created defaults
+            if let Ok(mut asked) = ASKED_THIS_SESSION.get_or_init(|| StdMutex::new(false)).lock() { *asked = true; }
         }
 
         // Update session with path information
