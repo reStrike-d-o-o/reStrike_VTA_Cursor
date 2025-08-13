@@ -141,7 +141,7 @@ impl ObsRecordingEventHandler {
 
         match event {
             // Capture live match id and number as soon as MatchConfig arrives
-            PssEvent::MatchConfig { match_id, number, .. } => {
+            PssEvent::MatchConfig { number, .. } => {
                 {
                     let mut guard = self.last_udp_match_id.lock().unwrap();
                     // Map UDP number to DB match_id format (e.g., "mch:101")
@@ -465,9 +465,14 @@ impl ObsRecordingEventHandler {
             if !t_dir.is_dir() {
                 tournament = None;
                 tournament_day = None;
-            } else if let Some(ref td) = tournament_day {
-                let day_dir = t_dir.join(format!("Day {}", td.unwrap().day_number));
-                if !day_dir.is_dir() { tournament_day = None; }
+            } else {
+                let day_num_opt: Option<i64> = tournament_day
+                    .as_ref()
+                    .and_then(|inner| inner.as_ref().map(|td| td.day_number));
+                if let Some(day_num) = day_num_opt {
+                    let day_dir = t_dir.join(format!("Day {}", day_num));
+                    if !day_dir.is_dir() { tournament_day = None; }
+                }
             }
         }
 
