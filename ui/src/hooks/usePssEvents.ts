@@ -92,6 +92,7 @@ export const usePssEvents = () => {
             body,
             confirmText: 'Continue',
             cancelText: 'New Tournament',
+            tone: 'blue',
           });
           const { obsObwsCommands } = await import('../utils/tauriCommandsObws');
           if (ok) {
@@ -117,6 +118,7 @@ export const usePssEvents = () => {
             body,
             confirmText: 'Continue',
             cancelText: 'New Tournament',
+            tone: 'blue',
           });
           const { obsObwsCommands } = await import('../utils/tauriCommandsObws');
           if (ok) {
