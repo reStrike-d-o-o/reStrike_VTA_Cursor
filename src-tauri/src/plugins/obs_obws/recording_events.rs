@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use crate::types::{AppError, AppResult};
 use crate::plugins::plugin_udp::PssEvent;
 use crate::plugins::obs_obws::ObsPathGenerator;
+use crate::plugins::obs_obws::types::ObsReplayBufferStatus;
 use crate::plugins::obs_obws::manager::ObsManager;
 use crate::database::operations::{TournamentOperations, PssUdpOperations};
 use chrono::Utc;
@@ -101,6 +102,8 @@ pub struct ObsRecordingEventHandler {
     database: Arc<crate::plugins::plugin_database::DatabasePlugin>,
     obs_manager: Arc<ObsManager>,
     last_applied_directory_day: Arc<Mutex<Option<String>>>,
+    // Live UDP-provided current match id (from MatchConfig)
+    last_udp_match_id: Arc<Mutex<Option<String>>>,
 }
 
 impl ObsRecordingEventHandler {
@@ -120,6 +123,7 @@ impl ObsRecordingEventHandler {
             database,
             obs_manager,
             last_applied_directory_day: Arc::new(Mutex::new(None)),
+            last_udp_match_id: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -135,6 +139,22 @@ impl ObsRecordingEventHandler {
         }
 
         match event {
+            // Capture live match id and number as soon as MatchConfig arrives
+            PssEvent::MatchConfig { match_id, number, .. } => {
+                {
+                    let mut guard = self.last_udp_match_id.lock().unwrap();
+                    *guard = Some(match_id.clone());
+                }
+                // Optionally update current session's match number early
+                {
+                    let mut session_guard = self.current_session.lock().unwrap();
+                    if let Some(ref mut session) = *session_guard {
+                        session.match_number = Some(number.to_string());
+                        session.updated_at = Utc::now();
+                    }
+                }
+                log::info!("📣 MatchConfig received - set current match_id={} number={}", match_id, number);
+            }
             // Match loaded - prepare recording
             PssEvent::FightLoaded => {
                 log::info!("🎬 FightLoaded event received - preparing recording session");
@@ -167,12 +187,9 @@ impl ObsRecordingEventHandler {
                 }
             }
 
-            // Match end indicators
+            // WinnerRounds should not auto-stop recording per requirement
             PssEvent::WinnerRounds { .. } => {
-                if config.auto_stop_on_match_end {
-                    log::info!("🎬 WinnerRounds event received - considering recording stop");
-                    self.handle_match_end().await?;
-                }
+                log::info!("🎬 WinnerRounds received - no auto-stop per requirement");
             }
 
             _ => {}
@@ -268,9 +285,17 @@ impl ObsRecordingEventHandler {
 
         if let Some(connection_name) = config.obs_connection_name {
             // Ensure replay buffer is running if requested and enabled by UI setting
-            if config.include_replay_buffer && config.auto_start_replay_on_match_begin {
-                if let Err(e) = self.obs_manager.start_replay_buffer(Some(&connection_name)).await {
-                    log::warn!("Failed to start replay buffer: {}", e);
+            // Ensure replay buffer is active before recording (always-on invariant)
+            match self.obs_manager.get_replay_buffer_status(Some(&connection_name)).await {
+                Ok(ObsReplayBufferStatus::Active) => {
+                    log::debug!("Replay buffer already active");
+                }
+                _ => {
+                    if let Err(e) = self.obs_manager.start_replay_buffer(Some(&connection_name)).await {
+                        log::warn!("Failed to start replay buffer: {}", e);
+                    } else {
+                        log::info!("▶️ Replay buffer started to satisfy recording invariant");
+                    }
                 }
             }
 
@@ -476,14 +501,16 @@ impl ObsRecordingEventHandler {
 
     /// Get current match ID from UDP context
     async fn get_current_match_id(&self) -> AppResult<Option<String>> {
-        // Read current_match_id from UDP plugin (DB-backed via PssUdpOperations)
-        // Strategy: fetch the most recent PSS match with status "current/active" if available.
-        // Fallback: None.
+        // Prefer live UDP-provided match id
+        let live = { self.last_udp_match_id.lock().unwrap().clone() };
+        if live.is_some() {
+            return Ok(live);
+        }
+
+        // Fallback: most recent match from DB
         let conn = self.database.get_connection().await?;
-        // Use existing DB operations (PssUdpOperations) to get the most recent match
         let matches = PssUdpOperations::get_pss_matches(&*conn, Some(1)).unwrap_or_default();
-        let maybe = matches.into_iter().next().map(|m| m.match_id);
-        Ok(maybe)
+        Ok(matches.into_iter().next().map(|m| m.match_id))
     }
 
     /// Get current session ID

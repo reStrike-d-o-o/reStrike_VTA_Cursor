@@ -5,6 +5,8 @@ import { useAppStore } from '../stores/index';
 // Singleton WebSocket instance to prevent multiple connections
 let globalWebSocket: LiveDataWebSocket | null = null;
 let connectionCount = 0;
+// Skip the first zero-time round/clock event immediately after a fight_ready clear
+let suppressZeroTimeAfterReady = false;
 
 export const useLiveDataEvents = () => {
   const wsRef = useRef<LiveDataWebSocket | null>(null);
@@ -70,13 +72,55 @@ export const useLiveDataEvents = () => {
           // Get current time and round from store for this event (AFTER updating)
           const currentStore = useLiveDataStore.getState();
           
-          // Handle fight_ready event - clear Event Table events
+          // Handle fight_ready event - clear Event Table events and suppress first zero-time tick
           if (eventData.event_type === 'fight_ready') {
             console.log('🎯 Fight ready event received via WebSocket - clearing Event Table events');
             useLiveDataStore.getState().clearEvents();
+            suppressZeroTimeAfterReady = true;
             return; // Don't add fight_ready events to the Event Table
           }
+
+          // On winner event: persist current Event Table to DB for this match
+          if (eventData.event_type === 'winner') {
+            try {
+              const current = useLiveDataStore.getState();
+              const eventsToStore = current.events;
+              if (eventsToStore.length > 0) {
+                const { invoke } = require('@tauri-apps/api/core');
+                // Try to infer match number from PSS store if available
+                const { usePssMatchStore } = require('../stores/pssMatchStore');
+                const matchNum: number | undefined = usePssMatchStore.getState().matchData.matchConfig?.number;
+                const matchId = (matchNum ?? 'current').toString();
+                for (const ev of [...eventsToStore].reverse()) {
+                  await invoke('store_pss_event', {
+                    eventData: {
+                      match_id: matchId,
+                      event_code: ev.eventCode,
+                      athlete: ev.athlete,
+                      round: ev.round,
+                      time: ev.time,
+                      timestamp: ev.timestamp,
+                      raw_data: ev.rawData,
+                    },
+                  });
+                }
+              }
+            } catch (e) {
+              console.warn('⚠️ Failed to persist Event Table on winner:', e);
+            }
+            // Do not early-return; also add winner event to list below
+          }
           
+          // Suppress the first zero-time 'round' or 'clock' event following a ready
+          if (
+            suppressZeroTimeAfterReady &&
+            (eventData.event_type === 'round' || eventData.event_type === 'clock') &&
+            (!eventData.time || eventData.time === '0:00')
+          ) {
+            suppressZeroTimeAfterReady = false; // one-time suppression
+            return;
+          }
+
           // Create event directly from structured data instead of parsing raw_data
           const event: PssEventData = {
             id: `${eventData.event_type}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -91,7 +135,8 @@ export const useLiveDataEvents = () => {
             action: eventData.action,
             structuredData: eventData.structured_data,
           };
-          
+          // Clear suppression once a non-zero-time or non-round/clock event arrives
+          suppressZeroTimeAfterReady = false;
 
           
 
