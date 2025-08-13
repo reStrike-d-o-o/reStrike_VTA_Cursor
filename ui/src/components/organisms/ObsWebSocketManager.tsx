@@ -111,6 +111,26 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
             
             console.log(`Filtered ${mode} connections:`, configConnections);
             setConnections(configConnections);
+            // Immediately resolve live status for each connection so the indicator doesn't reset to disconnected
+            try {
+              await Promise.all(configConnections.map(async (c: any) => {
+                const statusRes = await obsObwsCommands.getConnectionStatus(c.name);
+                if (statusRes && statusRes.success && statusRes.data) {
+                  const s = statusRes.data.status;
+                  if (s === 'Connected' || s === 'Authenticated') {
+                    updateConnectionStatus(c.name, 'connected');
+                  } else if (s === 'Connecting' || s === 'Authenticating') {
+                    updateConnectionStatus(c.name, 'connecting');
+                  } else if (s === 'Error') {
+                    updateConnectionStatus(c.name, 'error');
+                  } else {
+                    updateConnectionStatus(c.name, 'disconnected');
+                  }
+                }
+              }));
+            } catch (e) {
+              console.warn('Failed to refresh connection statuses on mount', e);
+            }
             
             // Ensure all config connections are registered with the obws plugin
             for (const conn of configConnections) {
@@ -490,6 +510,26 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
             }));
           
           setConnections(configConnections);
+          // Refresh statuses after resetting connections list
+          try {
+            await Promise.all(configConnections.map(async (c: any) => {
+              const statusRes = await obsObwsCommands.getConnectionStatus(c.name);
+              if (statusRes && statusRes.success && statusRes.data) {
+                const s = statusRes.data.status;
+                if (s === 'Connected' || s === 'Authenticated') {
+                  updateConnectionStatus(c.name, 'connected');
+                } else if (s === 'Connecting' || s === 'Authenticating') {
+                  updateConnectionStatus(c.name, 'connecting');
+                } else if (s === 'Error') {
+                  updateConnectionStatus(c.name, 'error');
+                } else {
+                  updateConnectionStatus(c.name, 'disconnected');
+                }
+              }
+            }));
+          } catch (e) {
+            console.warn('Failed to refresh connection statuses', e);
+          }
         }
       } catch (error) {
         console.error('Failed to refresh OBS connections:', error);
