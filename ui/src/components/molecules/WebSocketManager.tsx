@@ -153,9 +153,19 @@ const WebSocketManager: React.FC<WebSocketManagerProps> = ({ mode = 'local' }) =
             };
           });
         
-        // Update frontend store with configuration connections
-        obsConnections.forEach(conn => removeObsConnection(conn.name));
-        configConnections.forEach((conn: ObsConnection) => addObsConnection(conn));
+        // Update frontend store with configuration connections WITHOUT nuking current statuses
+        const current = [...obsConnections];
+        // Remove connections that no longer exist
+        current.filter(c => !configConnections.find(k => k.name === c.name)).forEach(c => removeObsConnection(c.name));
+        // Upsert connections, preserving status
+        configConnections.forEach((conn: ObsConnection) => {
+          const existing = obsConnections.find(c => c.name === conn.name);
+          if (!existing) {
+            addObsConnection(conn);
+          } else {
+            updateObsConnectionStatus(conn.name, existing.status, existing.error);
+          }
+        });
         
         // Ensure all config connections are registered with the OBS plugin
         for (const conn of configConnections) {
@@ -201,9 +211,17 @@ const WebSocketManager: React.FC<WebSocketManagerProps> = ({ mode = 'local' }) =
               };
             });
           
-          // Update frontend store
-          obsConnections.forEach(conn => removeObsConnection(conn.name));
-          backendConnections.forEach((conn: ObsConnection) => addObsConnection(conn));
+          // Update frontend store WITHOUT nuking current statuses
+          const current2 = [...obsConnections];
+          current2.filter(c => !backendConnections.find(k => k.name === c.name)).forEach(c => removeObsConnection(c.name));
+          backendConnections.forEach((conn: ObsConnection) => {
+            const existing = obsConnections.find(c => c.name === conn.name);
+            if (!existing) {
+              addObsConnection(conn);
+            } else {
+              updateObsConnectionStatus(conn.name, existing.status, existing.error);
+            }
+          });
         } else {
           // If no connections anywhere, initialize with empty state
           obsConnections.forEach(conn => removeObsConnection(conn.name));
