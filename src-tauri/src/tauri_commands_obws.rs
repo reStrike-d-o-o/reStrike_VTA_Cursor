@@ -1130,13 +1130,6 @@ pub async fn obs_obws_apply_path_decision(
     log::info!("OBS obws apply path decision called: {} / {}", tournament_name, tournament_day);
 
     let handler = app.recording_event_handler();
-    // Cache selection in handler for scoping
-    {
-        let tn = handler.selected_tournament_name.clone();
-        let td = handler.selected_tournament_day.clone();
-        if let Ok(mut g) = tn.lock() { *g = Some(tournament_name.clone()); }
-        if let Ok(mut g) = td.lock() { *g = Some(tournament_day.clone()); }
-    }
     match handler.regenerate_path_with_overrides(tournament_name, tournament_day).await {
         Ok(()) => Ok(ObsObwsConnectionResponse {
             success: true,
