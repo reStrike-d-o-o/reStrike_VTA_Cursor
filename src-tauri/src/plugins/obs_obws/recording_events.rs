@@ -270,12 +270,14 @@ impl ObsRecordingEventHandler {
                 };
                 if should_apply {
                     if let (Some(dir), Some(conn_name)) = (session.recording_path.clone(), session.obs_connection_name.clone()) {
+                        // Normalize path separators for OBS
+                        let dir_norm = dir.replace('\\', "/");
                         // Release the mutex before awaiting
-                        match self.obs_manager.set_record_directory(&dir, Some(&conn_name)).await {
+                        match self.obs_manager.set_record_directory(&dir_norm, Some(&conn_name)).await {
                             Ok(()) => {
                                 let mut last = self.last_applied_directory_day.lock().unwrap();
                                 *last = Some(day_key);
-                                log::info!("📁 Applied recording directory to OBS: {}", dir);
+                                log::info!("📁 Applied recording directory to OBS: {}", dir_norm);
                             }
                             Err(e) => log::warn!("Failed to set record directory in OBS: {}", e),
                         }
@@ -320,6 +322,15 @@ impl ObsRecordingEventHandler {
             }
 
             // Update filename formatting per match before starting recording
+            // If session is missing fields (athletes/match number), try a quick refresh
+            if {
+                let s = self.get_current_session();
+                s.as_ref().map(|ss| ss.player1_name.is_none() || ss.player2_name.is_none() || ss.match_number.is_none()).unwrap_or(true)
+            } {
+                if let Some(mid) = { self.get_current_session().map(|s| s.match_id) } {
+                    let _ = self.generate_recording_path(&mid).await;
+                }
+            }
             if let Some(session) = self.get_current_session() {
                 if let Some(template) = self.get_active_filename_template().await? {
                     let formatting = self.build_filename_formatting(&template, &session);
@@ -436,27 +447,25 @@ impl ObsRecordingEventHandler {
             .find(|m| m.match_id == match_id)
             .ok_or_else(|| AppError::ConfigError(format!("Match not found: {}", match_id)))?;
 
-        // Get match athletes
-        let match_athletes = PssUdpOperations::get_pss_match_athletes(&*conn, match_info.id.unwrap())?;
-
-        // Extract player information
-        let mut player1_name = None;
-        let mut player1_flag = None;
-        let mut player2_name = None;
-        let mut player2_flag = None;
-
-        for (match_athlete, athlete) in match_athletes {
-            match match_athlete.athlete_position {
-                1 => {
-                    player1_name = Some(athlete.short_name);
-                    player1_flag = athlete.country_code;
-                },
-                2 => {
-                    player2_name = Some(athlete.short_name);
-                    player2_flag = athlete.country_code;
-                },
-                _ => {}
+        // Get match athletes with a short retry window to allow UDP linking to persist
+        let match_db_id = match_info.id.unwrap();
+        let mut player1_name: Option<String> = None;
+        let mut player1_flag: Option<String> = None;
+        let mut player2_name: Option<String> = None;
+        let mut player2_flag: Option<String> = None;
+        for _ in 0..8 { // up to ~600ms
+            let match_athletes = PssUdpOperations::get_pss_match_athletes(&*conn, match_db_id)?;
+            let mut found1 = false;
+            let mut found2 = false;
+            for (match_athlete, athlete) in &match_athletes {
+                match match_athlete.athlete_position {
+                    1 => { player1_name = Some(athlete.short_name.clone()); player1_flag = athlete.country_code.clone(); found1 = true; },
+                    2 => { player2_name = Some(athlete.short_name.clone()); player2_flag = athlete.country_code.clone(); found2 = true; },
+                    _ => {}
+                }
             }
+            if found1 && found2 { break; }
+            tokio::time::sleep(std::time::Duration::from_millis(75)).await;
         }
 
         // Build path generator from active recording config to avoid sending placeholders

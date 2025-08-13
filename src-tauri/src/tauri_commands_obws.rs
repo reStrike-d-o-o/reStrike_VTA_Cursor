@@ -1537,10 +1537,14 @@ pub async fn obs_obws_save_full_config(
         .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
     // removed: save replay on match end persistence
 
+    // Also return live connection status for the selected connection so the UI doesn't reset indicator
+    let live_status = app.obs_obws_plugin().get_connection_status(&cfg.connection_name).await.ok();
     Ok(ObsObwsConnectionResponse {
         success: true,
         data: Some(serde_json::json!({
-            "message": "Recording and automatic configuration saved successfully"
+            "message": "Recording and automatic configuration saved successfully",
+            "connection": cfg.connection_name,
+            "status": live_status
         })),
         error: None,
     })
