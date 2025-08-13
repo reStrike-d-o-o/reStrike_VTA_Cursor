@@ -156,7 +156,9 @@ const WebSocketManager: React.FC<WebSocketManagerProps> = ({ mode = 'local' }) =
         // Update frontend store with configuration connections WITHOUT nuking current statuses
         const current = [...obsConnections];
         // Remove connections that no longer exist
-        current.filter(c => !configConnections.find(k => k.name === c.name)).forEach(c => removeObsConnection(c.name));
+        current
+          .filter((c: ObsConnection) => !configConnections.find((k: ObsConnection) => k.name === c.name))
+          .forEach((c: ObsConnection) => removeObsConnection(c.name));
         // Upsert connections, preserving status
         configConnections.forEach((conn: ObsConnection) => {
           const existing = obsConnections.find(c => c.name === conn.name);
@@ -213,7 +215,9 @@ const WebSocketManager: React.FC<WebSocketManagerProps> = ({ mode = 'local' }) =
           
           // Update frontend store WITHOUT nuking current statuses
           const current2 = [...obsConnections];
-          current2.filter(c => !backendConnections.find(k => k.name === c.name)).forEach(c => removeObsConnection(c.name));
+          current2
+            .filter((c: ObsConnection) => !backendConnections.find((k: ObsConnection) => k.name === c.name))
+            .forEach((c: ObsConnection) => removeObsConnection(c.name));
           backendConnections.forEach((conn: ObsConnection) => {
             const existing = obsConnections.find(c => c.name === conn.name);
             if (!existing) {
