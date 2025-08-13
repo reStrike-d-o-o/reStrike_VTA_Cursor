@@ -106,9 +106,6 @@ pub struct ObsRecordingEventHandler {
     last_applied_directory_day: Arc<Mutex<Option<String>>>,
     // Live UDP-provided current match id (from MatchConfig)
     last_udp_match_id: Arc<Mutex<Option<String>>>,
-    // User-selected path context for this session
-    selected_tournament_name: Arc<Mutex<Option<String>>>,
-    selected_tournament_day: Arc<Mutex<Option<String>>>>,
 }
 
 impl ObsRecordingEventHandler {
@@ -126,8 +123,6 @@ impl ObsRecordingEventHandler {
             obs_manager,
             last_applied_directory_day: Arc::new(Mutex::new(None)),
             last_udp_match_id: Arc::new(Mutex::new(None)),
-            selected_tournament_name: Arc::new(Mutex::new(None)),
-            selected_tournament_day: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -443,19 +438,38 @@ impl ObsRecordingEventHandler {
     pub async fn generate_recording_path(&self, match_id: &str) -> AppResult<()> {
         let conn = self.database.get_connection().await?;
 
-        // Determine tournament/day context from user selection; fallback to active; fallback to defaults
-        let (tournament, tournament_day) = {
-            let sel_tn = self.selected_tournament_name.lock().unwrap().clone();
-            let sel_td = self.selected_tournament_day.lock().unwrap().clone();
-            if let (Some(tn), Some(td)) = (sel_tn, sel_td) {
-                (Some(crate::database::models::Tournament { id: None, name: tn.clone(), start_date: None, end_date: None, created_at: None, updated_at: None }),
-                 Some(crate::database::models::TournamentDay { id: None, tournament_id: None, day_number: td.trim_start_matches("Day ").parse().unwrap_or(1), start_time: None, end_time: None, created_at: None, updated_at: None }))
+        // Resolve Videos root and path generator settings first (we must verify folders on disk)
+        let (videos_root, recording_format, folder_pattern) = {
+            use crate::database::operations::ObsRecordingOperations as RecOps;
+            // Resolve connection name from auto-config
+            let conn_name = {
+                let cfg = self.config.lock().unwrap();
+                cfg.obs_connection_name.clone().unwrap_or_else(|| "OBS_REC".to_string())
+            };
+            if let Ok(Some(cfg)) = RecOps::get_recording_config(&*conn, &conn_name) {
+                (std::path::PathBuf::from(cfg.recording_root_path), cfg.recording_format, Some(cfg.folder_pattern))
             } else {
-                let t = TournamentOperations::get_active_tournament(&*conn)?;
-                let td = if let Some(ref t) = t { TournamentOperations::get_active_tournament_day(&*conn, t.id.unwrap()).ok() } else { None };
-                (t, td)
+                // Fallback to default Videos folder
+                (PathGeneratorConfig::detect_windows_videos_folder(), "mp4".to_string(), Some("{tournament}/{tournamentDay}".to_string()))
             }
         };
+
+        // Determine tournament/day context from DB but DEMOTE if folders are missing on disk
+        let mut tournament = TournamentOperations::get_active_tournament(&*conn)?;
+        let mut tournament_day = if let Some(ref t) = tournament {
+            TournamentOperations::get_active_tournament_day(&*conn, t.id.unwrap()).ok()
+        } else { None };
+        // If the active tournament/day don't exist on disk under videos_root, ignore them
+        if let Some(ref t) = tournament {
+            let t_dir = videos_root.join(&t.name);
+            if !t_dir.is_dir() {
+                tournament = None;
+                tournament_day = None;
+            } else if let Some(ref td) = tournament_day {
+                let day_dir = t_dir.join(format!("Day {}", td.unwrap().day_number));
+                if !day_dir.is_dir() { tournament_day = None; }
+            }
+        }
 
         // Get match details (support both raw db IDs and mch:<number> keys)
         let matches = PssUdpOperations::get_pss_matches(&*conn, Some(200))?;
@@ -485,20 +499,6 @@ impl ObsRecordingEventHandler {
         }
 
         // Build path generator from active recording config to avoid sending placeholders
-        let (videos_root, recording_format, folder_pattern) = {
-            use crate::database::operations::ObsRecordingOperations as RecOps;
-            // Resolve connection name from auto-config
-            let conn_name = {
-                let cfg = self.config.lock().unwrap();
-                cfg.obs_connection_name.clone().unwrap_or_else(|| "OBS_REC".to_string())
-            };
-            if let Ok(Some(cfg)) = RecOps::get_recording_config(&*conn, &conn_name) {
-                (std::path::PathBuf::from(cfg.recording_root_path), cfg.recording_format, Some(cfg.folder_pattern))
-            } else {
-                // Fallback to default Videos folder
-                (PathGeneratorConfig::detect_windows_videos_folder(), "mp4".to_string(), Some("{tournament}/{tournamentDay}".to_string()))
-            }
-        };
 
         let gen_cfg = PathGeneratorConfig {
             videos_root: videos_root.clone(),
