@@ -3,6 +3,7 @@ import Button from '../atoms/Button';
 import { StatusDot } from '../atoms/StatusDot';
 import { useLiveDataStore, PssEventData } from '../../stores/liveDataStore';
 import { useAppStore } from '../../stores/index';
+import { usePssMatchStore } from '../../stores/pssMatchStore';
 
 const colorOptions = [
   { color: 'red', class: 'bg-red-500' },
@@ -36,6 +37,7 @@ const EventTableSection: React.FC = () => {
   } = useLiveDataStore();
   
   const { isManualModeEnabled } = useAppStore();
+  const matchNumber = usePssMatchStore((s) => s.matchData.matchConfig?.number);
 
   // Filtering logic - only show important events when manual mode is OFF
   const allEvents = isManualModeEnabled ? [] : getFilteredEvents(colorFilter, eventTypeFilter);
@@ -99,9 +101,9 @@ const EventTableSection: React.FC = () => {
       <div className="flex-shrink-0 flex items-center justify-between">
         <div className="text-lg font-semibold text-gray-200 flex items-center gap-2">
           <span>Event Table</span>
-          {/* Match selector placeholder - wired later to backend */}
-          <select aria-label="Select match" className="text-xs bg-gray-800 border border-gray-600 rounded px-2 py-1 text-gray-200">
-            <option value="">Current</option>
+          {/* Current match dropdown (display only) */}
+          <select aria-label="Select match" className="text-xs bg-gray-800 border border-gray-600 rounded px-2 py-1 text-gray-200" value={matchNumber || ''} onChange={() => { /* display-only */ }}>
+            <option value={matchNumber || ''}>{`Current ${matchNumber ? `#${matchNumber}` : ''}`.trim()}</option>
           </select>
         </div>
         <div className="flex items-center space-x-2">
