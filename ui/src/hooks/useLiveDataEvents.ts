@@ -91,19 +91,25 @@ export const useLiveDataEvents = () => {
                 const { usePssMatchStore } = require('../stores/pssMatchStore');
                 const matchNum: number | undefined = usePssMatchStore.getState().matchData.matchConfig?.number;
                 const matchId = (matchNum ?? 'current').toString();
-                for (const ev of [...eventsToStore].reverse()) {
-                  await invoke('store_pss_event', {
-                    eventData: {
-                      match_id: matchId,
-                      event_code: ev.eventCode,
-                      athlete: ev.athlete,
-                      round: ev.round,
-                      time: ev.time,
-                      timestamp: ev.timestamp,
-                      raw_data: ev.rawData,
-                    },
-                  });
-                }
+                (async () => {
+                  for (const ev of [...eventsToStore].reverse()) {
+                    try {
+                      await invoke('store_pss_event', {
+                        eventData: {
+                          match_id: matchId,
+                          event_code: ev.eventCode,
+                          athlete: ev.athlete,
+                          round: ev.round,
+                          time: ev.time,
+                          timestamp: ev.timestamp,
+                          raw_data: ev.rawData,
+                        },
+                      });
+                    } catch (err) {
+                      console.warn('⚠️ Failed to store event:', err);
+                    }
+                  }
+                })();
               }
             } catch (e) {
               console.warn('⚠️ Failed to persist Event Table on winner:', e);
