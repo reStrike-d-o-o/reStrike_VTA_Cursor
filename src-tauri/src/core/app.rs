@@ -501,6 +501,15 @@ impl App {
             }
         }
     }
+
+    /// Emit a custom event name to frontend with JSON payload
+    pub fn emit_custom_event(event_name: &str, event_json: serde_json::Value) {
+        if let Some(app_handle) = TAURI_APP_HANDLE.get() {
+            if let Err(e) = app_handle.emit(event_name, event_json) {
+                log::warn!("⚠️ Failed to emit custom event '{}': {}", event_name, e);
+            }
+        }
+    }
     
     /// Emit log events to frontend for Live Data panel
     pub fn emit_log_event(log_message: String) {
@@ -562,6 +571,7 @@ impl App {
                 if let Some(app_handle) = TAURI_APP_HANDLE.get() {
                     if let Some(app) = app_handle.try_state::<Arc<App>>() {
                         let recording_handler = app.recording_event_handler();
+                        log::info!("🔀 Forwarding PSS event to auto-recording handler: {:?}", event);
                         // Handle PSS event for automatic recording
                         if let Err(e) = recording_handler.handle_pss_event(&event).await {
                             log::warn!("⚠️ Failed to handle PSS event for recording: {}", e);

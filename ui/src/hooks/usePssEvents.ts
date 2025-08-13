@@ -103,12 +103,36 @@ export const usePssEvents = () => {
           // Silent
         }
       });
+
+      // Also listen to a dedicated event to ensure delivery
+      const pathDecisionUnlisten2 = await window.__TAURI__.event.listen('obs_path_decision_needed', async (event: any) => {
+        try {
+          const payload = event.payload;
+          if (!payload || typeof payload !== 'object') return;
+          const cont = payload.continue;
+          const nw = payload.new;
+          const body = `Continue with ${cont.tournament} / ${cont.day}\n\nOr create ${nw.tournament} / ${nw.day}?`;
+          const ok = await (await import('../stores/messageCenter')).useMessageCenter.getState().confirm({
+            title: 'Select recording path context',
+            body,
+            confirmText: 'Continue',
+            cancelText: 'New Tournament',
+          });
+          const { obsObwsCommands } = await import('../utils/tauriCommandsObws');
+          if (ok) {
+            await obsObwsCommands.applyPathDecision(cont.tournament, cont.day);
+          } else {
+            await obsObwsCommands.applyPathDecision(nw.tournament, nw.day);
+          }
+        } catch {}
+      });
       
       listenerRef.current = () => {
         // Cleaning up event listeners...
         unlisten();
         logUnlisten();
         pathDecisionUnlisten();
+        pathDecisionUnlisten2();
       };
       isListeningRef.current = true;
       // PSS event listener setup complete
