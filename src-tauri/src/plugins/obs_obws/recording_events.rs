@@ -303,26 +303,7 @@ impl ObsRecordingEventHandler {
         if let Some(connection_name) = config.obs_connection_name {
             log::info!("🎬 FightReady: using OBS connection '{}'", connection_name);
             println!("🎬 FightReady: using OBS connection '{}'", connection_name);
-            // Ensure replay buffer is enabled and active before recording
-            match self.obs_manager.get_replay_buffer_status(Some(&connection_name)).await {
-                Ok(ObsReplayBufferStatus::Active) => {
-                    log::info!("▶️ Replay buffer already active");
-                    println!("▶️ Replay buffer already active");
-                }
-                _ => {
-                    log::info!("▶️ Starting replay buffer before recording...");
-                    println!("▶️ Starting replay buffer before recording...");
-                if let Err(e) = self.obs_manager.start_replay_buffer(Some(&connection_name)).await {
-                    log::warn!("Failed to start replay buffer: {}", e);
-                        println!("Failed to start replay buffer: {}", e);
-                    } else {
-                        log::info!("▶️ Replay buffer started to satisfy recording invariant");
-                        println!("▶️ Replay buffer started to satisfy recording invariant");
-                    }
-                }
-            }
-
-            // Update filename formatting per match before starting recording
+            // Apply recording directory and filename formatting BEFORE starting RB/recording
             // If session is missing fields (athletes/match number), try a quick refresh
             if {
                 let s = self.get_current_session();
@@ -333,12 +314,43 @@ impl ObsRecordingEventHandler {
                 }
             }
             if let Some(session) = self.get_current_session() {
+                // Apply directory (normalize separators) to be sure OBS accepts formatting update
+                if let (Some(dir), Some(conn_name)) = (session.recording_path.clone(), session.obs_connection_name.clone()) {
+                    let dir_norm = dir.replace('\\', "/");
+                    if let Err(e) = self.obs_manager.set_record_directory(&dir_norm, Some(&conn_name)).await {
+                        log::warn!("Failed to set record directory before start: {}", e);
+                    } else {
+                        log::info!("📁 Record directory ensured before start: {}", dir_norm);
+                    }
+                }
                 if let Some(template) = self.get_active_filename_template().await? {
                     let formatting = self.build_filename_formatting(&template, &session);
                     if let Err(e) = self.obs_manager.set_filename_formatting(&formatting, Some(&connection_name)).await {
                         log::warn!("Failed to set filename formatting: {}", e);
                     } else {
                         log::info!("🧾 Applied filename formatting to OBS: {}", formatting);
+                    }
+                }
+            }
+
+            // Small delay to allow OBS to commit profile updates before starting outputs
+            tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+
+            // Ensure replay buffer is enabled and active before recording
+            match self.obs_manager.get_replay_buffer_status(Some(&connection_name)).await {
+                Ok(ObsReplayBufferStatus::Active) => {
+                    log::info!("▶️ Replay buffer already active");
+                    println!("▶️ Replay buffer already active");
+                }
+                _ => {
+                    log::info!("▶️ Starting replay buffer before recording...");
+                    println!("▶️ Starting replay buffer before recording...");
+                    if let Err(e) = self.obs_manager.start_replay_buffer(Some(&connection_name)).await {
+                        log::warn!("Failed to start replay buffer: {}", e);
+                        println!("Failed to start replay buffer: {}", e);
+                    } else {
+                        log::info!("▶️ Replay buffer started to satisfy recording invariant");
+                        println!("▶️ Replay buffer started to satisfy recording invariant");
                     }
                 }
             }
