@@ -153,6 +153,22 @@ const ObsIntegrationPanel: React.FC = () => {
       });
       if (result.success) {
         setTestResult('Configuration saved successfully!');
+        // Update WebSocket indicator using status echoed by backend
+        try {
+          const status = result.data?.status?.Error ? 'error' : (result.data?.status || '');
+          const conn = result.data?.connection || recordingConfig.connectionName;
+          if (conn) {
+            if (status === 'Connected' || status === 'Authenticated') {
+              useObsStore.getState().updateConnectionStatus(conn, 'connected');
+            } else if (status === 'Connecting' || status === 'Authenticating') {
+              useObsStore.getState().updateConnectionStatus(conn, 'connecting');
+            } else if (status === 'Error') {
+              useObsStore.getState().updateConnectionStatus(conn, 'error');
+            } else if (status) {
+              useObsStore.getState().updateConnectionStatus(conn, 'disconnected');
+            }
+          }
+        } catch {}
         await loadFullConfig();
       } else {
         setTestResult(`Failed to save configuration: ${result.error}`);
