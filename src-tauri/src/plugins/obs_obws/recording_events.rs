@@ -577,14 +577,18 @@ impl ObsRecordingEventHandler {
             }
         });
 
-        // If we defaulted any value OR this is the first run this session, emit a prompt to frontend via centralized messaging
+        // If folders already exist on disk (returning user), emit a prompt; if not, create Tournament 1/Day 1 silently
         static ASKED_THIS_SESSION: OnceCell<StdMutex<bool>> = OnceCell::new();
         let asked_flag = ASKED_THIS_SESSION.get_or_init(|| StdMutex::new(false));
         let should_prompt_this_session = {
             let asked = asked_flag.lock().unwrap();
             !*asked
         };
-        if should_prompt_this_session || !original_had_tournament || !original_had_day {
+        let has_existing_tournaments = {
+            let t_dir = &videos_root;
+            t_dir.is_dir() && std::fs::read_dir(t_dir).map(|mut it| it.any(|e| e.ok().and_then(|x| x.file_name().to_str().map(|s| s.starts_with("Tournament "))).unwrap_or(false))).unwrap_or(false)
+        };
+        if should_prompt_this_session && has_existing_tournaments {
             let tn = tournament_name_resolved.clone().unwrap_or_else(|| "Tournament 1".to_string());
             // Suggest next tournament as Tournament N+1
             let tn_suggest_new = if let Some(rest) = tn.strip_prefix("Tournament ") {
@@ -622,8 +626,11 @@ impl ObsRecordingEventHandler {
             player2_flag.clone()
         )?;
 
-        // Ensure directory exists
-        path_generator.ensure_directory_exists(&generated_path.directory)?;
+        // Ensure directory exists. If we showed prompt, wait for user decision; if no prompt, create now
+        let waiting = *self.awaiting_path_decision.lock().unwrap();
+        if !waiting {
+            path_generator.ensure_directory_exists(&generated_path.directory)?;
+        }
 
         // Update session with path information
         {
