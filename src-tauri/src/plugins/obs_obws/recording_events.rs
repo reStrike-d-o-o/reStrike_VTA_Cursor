@@ -747,7 +747,7 @@ impl ObsRecordingEventHandler {
         let mut fmt = template.to_string();
         if let Some(ref n) = session.match_number {
             // Replace both {matchNumber}_{player1} and stand-alone {matchNumber}
-            fmt = fmt.replace("{matchNumber}_{player1}", &format!("{} {player1}", n));
+            fmt = fmt.replace("{matchNumber}_{player1}", &format!("{} {}", n, p1));
             fmt = fmt.replace("{matchNumber}", n);
         }
         if let Some(ref f1) = session.player1_flag { fmt = fmt.replace("{player1Flag}", f1); }
