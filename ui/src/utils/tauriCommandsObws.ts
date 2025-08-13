@@ -795,4 +795,15 @@ export const obsObwsCommands = {
       return { success: false, error: String(error) };
     }
   },
+
+  async applyPathDecision(tournamentName: string, tournamentDay: string): Promise<TauriCommandResponse> {
+    try {
+      if (isTauriAvailable()) {
+        return await safeInvoke('obs_obws_apply_path_decision', { tournamentName, tournamentDay });
+      }
+      return { success: false, error: 'Tauri not available' };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  },
 };

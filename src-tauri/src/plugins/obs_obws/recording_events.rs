@@ -481,6 +481,7 @@ impl ObsRecordingEventHandler {
         let path_generator = ObsPathGenerator::new(Some(gen_cfg));
 
         // Resolve concrete tournament/day defaults if not provided by DB
+        let original_had_tournament = tournament.is_some();
         let tournament_name_resolved: Option<String> = Some(match tournament {
             Some(t) => t.name,
             None => {
@@ -488,6 +489,7 @@ impl ObsRecordingEventHandler {
                 "Tournament 1".to_string()
             }
         });
+        let original_had_day = tournament_day.is_some();
         let tournament_day_resolved: Option<String> = Some(match tournament_day {
             Some(td) => format!("Day {}", td.unwrap().day_number),
             None => {
@@ -514,6 +516,23 @@ impl ObsRecordingEventHandler {
                 format!("Day {}", next_day_num)
             }
         });
+
+        // If we defaulted any value, emit a prompt to frontend via centralized messaging
+        if !original_had_tournament || !original_had_day {
+            let tn = tournament_name_resolved.clone().unwrap_or_else(|| "Tournament 1".to_string());
+            // Suggest next tournament as Tournament N+1
+            let tn_suggest_new = if let Some(rest) = tn.strip_prefix("Tournament ") {
+                if let Ok(n) = rest.trim().parse::<u32>() { format!("Tournament {}", n+1) } else { "Tournament 2".to_string() }
+            } else { "Tournament 2".to_string() };
+            // Suggest next day as Day X+1 baseline is computed above as resolved day; for new tournament, Day 1
+            let resolved_day = tournament_day_resolved.clone().unwrap_or_else(|| "Day 1".to_string());
+            let payload = serde_json::json!({
+                "type": "obs_path_decision_needed",
+                "continue": { "tournament": tn, "day": resolved_day },
+                "new": { "tournament": tn_suggest_new, "day": "Day 1" }
+            });
+            crate::core::app::App::emit_pss_event(payload);
+        }
 
         // Generate path
         let generated_path = path_generator.generate_recording_path(
@@ -548,6 +567,82 @@ impl ObsRecordingEventHandler {
         }
 
         log::info!("🎬 Generated recording path: {}", generated_path.full_path.to_string_lossy());
+        Ok(())
+    }
+
+    /// Regenerate recording path with explicit tournament/day overrides and apply to OBS
+    pub async fn regenerate_path_with_overrides(&self, tournament_name: String, tournament_day: String) -> AppResult<()> {
+        // Get current session and match_id
+        let match_id = {
+            let session_guard = self.current_session.lock().unwrap();
+            session_guard.as_ref().map(|s| s.match_id.clone())
+        }.ok_or_else(|| AppError::ConfigError("No active recording session".to_string()))?;
+
+        let conn = self.database.get_connection().await?;
+        // Build generator from config
+        let (videos_root, recording_format, folder_pattern) = {
+            use crate::database::operations::ObsRecordingOperations as RecOps;
+            let conn_name = {
+                let cfg = self.config.lock().unwrap();
+                cfg.obs_connection_name.clone().unwrap_or_else(|| "OBS_REC".to_string())
+            };
+            if let Ok(Some(cfg)) = RecOps::get_recording_config(&*conn, &conn_name) {
+                (std::path::PathBuf::from(cfg.recording_root_path), cfg.recording_format, Some(cfg.folder_pattern))
+            } else {
+                (PathGeneratorConfig::detect_windows_videos_folder(), "mp4".to_string(), Some("{tournament}/{tournamentDay}".to_string()))
+            }
+        };
+        let gen_cfg = PathGeneratorConfig { videos_root, default_format: recording_format, include_minutes_seconds: true, folder_pattern };
+        let path_generator = ObsPathGenerator::new(Some(gen_cfg));
+
+        // Fetch match info for filename fields
+        let matches = PssUdpOperations::get_pss_matches(&*conn, Some(100))?;
+        let match_info = matches.into_iter().find(|m| m.match_id == match_id).ok_or_else(|| AppError::ConfigError("Match not found for override".to_string()))?;
+        let match_athletes = PssUdpOperations::get_pss_match_athletes(&*conn, match_info.id.unwrap())?;
+        let mut player1_name = None; let mut player1_flag = None; let mut player2_name = None; let mut player2_flag = None;
+        for (match_athlete, athlete) in match_athletes { match match_athlete.athlete_position { 1 => { player1_name = Some(athlete.short_name); player1_flag = athlete.country_code; }, 2 => { player2_name = Some(athlete.short_name); player2_flag = athlete.country_code; }, _ => {} } }
+
+        let generated_path = path_generator.generate_recording_path(
+            &match_id,
+            Some(tournament_name.clone()),
+            Some(tournament_day.clone()),
+            match_info.match_number,
+            player1_name.clone(), player1_flag.clone(), player2_name.clone(), player2_flag.clone()
+        )?;
+        path_generator.ensure_directory_exists(&generated_path.directory)?;
+
+        // Update session
+        {
+            let mut session_guard = self.current_session.lock().unwrap();
+            if let Some(ref mut session) = *session_guard {
+                session.recording_path = Some(generated_path.directory.to_string_lossy().to_string());
+                session.recording_filename = Some(generated_path.filename);
+                session.tournament_name = Some(tournament_name);
+                session.tournament_day = Some(tournament_day);
+                session.match_number = match_info.match_number;
+                session.player1_name = player1_name; session.player1_flag = player1_flag;
+                session.player2_name = player2_name; session.player2_flag = player2_flag;
+                session.updated_at = Utc::now();
+            }
+        }
+
+        // Apply directory to OBS (re-evaluate day boundary)
+        if let Some(session) = self.get_current_session() {
+            if let (Some(dir), Some(conn_name)) = (session.recording_path.clone(), session.obs_connection_name.clone()) {
+                match self.obs_manager.set_record_directory(&dir, Some(&conn_name)).await {
+                    Ok(()) => log::info!("📁 Applied overridden recording directory to OBS: {}", dir),
+                    Err(e) => log::warn!("Failed to set overridden record directory in OBS: {}", e),
+                }
+                // Re-apply filename formatting
+                if let Some(template) = self.get_active_filename_template().await? {
+                    let formatting = self.build_filename_formatting(&template, &session);
+                    if let Err(e) = self.obs_manager.set_filename_formatting(&formatting, Some(&conn_name)).await {
+                        log::warn!("Failed to set filename formatting after override: {}", e);
+                    }
+                }
+            }
+        }
+
         Ok(())
     }
 

@@ -1120,6 +1120,32 @@ pub async fn obs_obws_test_recording(
     })
 }
 
+/// Apply path decision from UI (tournament/day overrides)
+#[tauri::command]
+pub async fn obs_obws_apply_path_decision(
+    tournament_name: String,
+    tournament_day: String,
+    app: State<'_, Arc<App>>,
+) -> Result<ObsObwsConnectionResponse, TauriError> {
+    log::info!("OBS obws apply path decision called: {} / {}", tournament_name, tournament_day);
+
+    let handler = app.recording_event_handler();
+    match handler.regenerate_path_with_overrides(tournament_name, tournament_day).await {
+        Ok(()) => Ok(ObsObwsConnectionResponse {
+            success: true,
+            data: Some(serde_json::json!({
+                "message": "Recording path decision applied"
+            })),
+            error: None,
+        }),
+        Err(e) => Ok(ObsObwsConnectionResponse {
+            success: false,
+            data: None,
+            error: Some(e.to_string()),
+        }),
+    }
+}
+
 /// Create test folders in Windows (actually creates the directory structure)
 #[tauri::command]
 pub async fn obs_obws_create_test_folders(
