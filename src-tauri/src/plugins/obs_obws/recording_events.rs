@@ -5,6 +5,7 @@ use crate::types::{AppError, AppResult};
 use crate::plugins::plugin_udp::PssEvent;
 use crate::plugins::obs_obws::ObsPathGenerator;
 use crate::plugins::obs_obws::types::ObsReplayBufferStatus;
+use crate::plugins::obs_obws::PathGeneratorConfig;
 use crate::plugins::obs_obws::manager::ObsManager;
 use crate::database::operations::{TournamentOperations, PssUdpOperations};
 use chrono::Utc;
@@ -154,6 +155,20 @@ impl ObsRecordingEventHandler {
                     }
                 }
                 log::info!("📣 MatchConfig received - set current match_id={} number={}", match_id, number);
+
+                // If we don't have a prepared session for this match, prepare now
+                let need_prepare = {
+                    let session_guard = self.current_session.lock().unwrap();
+                    match &*session_guard {
+                        Some(s) => s.match_id != *match_id,
+                        None => true,
+                    }
+                };
+                if need_prepare {
+                    if let Err(e) = self.handle_fight_loaded().await {
+                        log::warn!("Failed to prepare session on MatchConfig: {}", e);
+                    }
+                }
             }
             // Match loaded - prepare recording
             PssEvent::FightLoaded => {
@@ -441,11 +456,70 @@ impl ObsRecordingEventHandler {
             }
         }
 
+        // Build path generator from active recording config to avoid sending placeholders
+        let (videos_root, recording_format, folder_pattern) = {
+            use crate::database::operations::ObsRecordingOperations as RecOps;
+            // Resolve connection name from auto-config
+            let conn_name = {
+                let cfg = self.config.lock().unwrap();
+                cfg.obs_connection_name.clone().unwrap_or_else(|| "OBS_REC".to_string())
+            };
+            if let Ok(Some(cfg)) = RecOps::get_recording_config(&*conn, &conn_name) {
+                (std::path::PathBuf::from(cfg.recording_root_path), cfg.recording_format, Some(cfg.folder_pattern))
+            } else {
+                // Fallback to default Videos folder
+                (PathGeneratorConfig::detect_windows_videos_folder(), "mp4".to_string(), Some("{tournament}/{tournamentDay}".to_string()))
+            }
+        };
+
+        let gen_cfg = PathGeneratorConfig {
+            videos_root,
+            default_format: recording_format,
+            include_minutes_seconds: true,
+            folder_pattern,
+        };
+        let path_generator = ObsPathGenerator::new(Some(gen_cfg));
+
+        // Resolve concrete tournament/day defaults if not provided by DB
+        let tournament_name_resolved: Option<String> = Some(match tournament {
+            Some(t) => t.name,
+            None => {
+                // Default tournament name when none active
+                "Tournament 1".to_string()
+            }
+        });
+        let tournament_day_resolved: Option<String> = Some(match tournament_day {
+            Some(td) => format!("Day {}", td.unwrap().day_number),
+            None => {
+                // Compute next Day N under the tournament folder if exists; else Day 1
+                let t_dir = videos_root.join(tournament_name_resolved.clone().unwrap());
+                let mut next_day_num = 1u32;
+                if t_dir.is_dir() {
+                    if let Ok(entries) = std::fs::read_dir(&t_dir) {
+                        let mut max_day = 0u32;
+                        for e in entries.flatten() {
+                            if let Ok(md) = e.metadata() {
+                                if md.is_dir() {
+                                    if let Some(name) = e.file_name().to_str() {
+                                        if let Some(rest) = name.strip_prefix("Day ") {
+                                            if let Ok(n) = rest.trim().parse::<u32>() { if n > max_day { max_day = n; } }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        next_day_num = if max_day == 0 { 1 } else { max_day + 1 };
+                    }
+                }
+                format!("Day {}", next_day_num)
+            }
+        });
+
         // Generate path
-        let generated_path = self.path_generator.generate_recording_path(
+        let generated_path = path_generator.generate_recording_path(
             match_id,
-            tournament.map(|t| t.name),
-            tournament_day.map(|td| format!("Day {}", td.unwrap().day_number)),
+            tournament_name_resolved,
+            tournament_day_resolved,
             match_info.match_number,
             player1_name.clone(),
             player1_flag.clone(),
@@ -454,7 +528,7 @@ impl ObsRecordingEventHandler {
         )?;
 
         // Ensure directory exists
-        self.path_generator.ensure_directory_exists(&generated_path.directory)?;
+        path_generator.ensure_directory_exists(&generated_path.directory)?;
 
         // Update session with path information
         {
@@ -489,13 +563,33 @@ impl ObsRecordingEventHandler {
     }
 
     fn build_filename_formatting(&self, template: &str, session: &RecordingSession) -> String {
+        // Replace variables with concrete values and ensure "VS" is between players
+        let mut p1 = session.player1_name.clone().unwrap_or_default();
+        let mut p2 = session.player2_name.clone().unwrap_or_default();
+        if !p1.is_empty() && !p2.is_empty() {
+            // Insert VS into a local copy for replacement convenience
+            // We will map {player1} -> p1, {player2} -> p2 and let template include VS, but also patch common templates
+        }
+
         let mut fmt = template.to_string();
         if let Some(ref n) = session.match_number { fmt = fmt.replace("{matchNumber}", n); }
-        if let Some(ref p1) = session.player1_name { fmt = fmt.replace("{player1}", p1); }
-        if let Some(ref p2) = session.player2_name { fmt = fmt.replace("{player2}", p2); }
         if let Some(ref f1) = session.player1_flag { fmt = fmt.replace("{player1Flag}", f1); }
         if let Some(ref f2) = session.player2_flag { fmt = fmt.replace("{player2Flag}", f2); }
-        // Keep {date} and {time} placeholders intact for OBS to resolve
+        fmt = fmt.replace("{player1}", &p1);
+        fmt = fmt.replace("{player2}", &p2);
+
+        // If template lacked VS, inject a sane default pattern
+        if !fmt.contains("VS") && fmt.contains(&p1) && fmt.contains(&p2) {
+            // Try to place VS between players when pattern is exactly p1 _ p2 or similar
+            // Simple heuristic: if pattern contains "_" between players, replace first "_" between them with " VS "
+            let combined = format!("{}_{}", p1, p2);
+            if fmt.contains(&combined) {
+                fmt = fmt.replace(&combined, &format!("{} VS {}", p1, p2));
+            }
+        }
+
+        // Ensure we keep date/time placeholders for OBS to resolve
+        // Recommend using %CCYY-%MM-%DD %hh-%mm-%ss in OBS; we simply pass through any {date}/{time}
         fmt
     }
 
