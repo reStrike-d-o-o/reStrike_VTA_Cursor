@@ -110,7 +110,13 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
               }));
             
             console.log(`Filtered ${mode} connections:`, configConnections);
-            setConnections(configConnections);
+            // Preserve existing statuses before replacing list
+            const prev = connections;
+            const merged = configConnections.map((c: any) => {
+              const p = prev.find((x) => x.name === c.name);
+              return { ...c, status: p?.status || c.status };
+            });
+            setConnections(merged);
             // Immediately resolve live status for each connection so the indicator doesn't reset to disconnected
             try {
               await Promise.all(configConnections.map(async (c: any) => {
@@ -509,7 +515,12 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
               error: undefined
             }));
           
-          setConnections(configConnections);
+            const prev2 = connections;
+            const merged2 = configConnections.map((c: any) => {
+              const p = prev2.find((x) => x.name === c.name);
+              return { ...c, status: p?.status || c.status };
+            });
+            setConnections(merged2);
           // Refresh statuses after resetting connections list
           try {
             await Promise.all(configConnections.map(async (c: any) => {
