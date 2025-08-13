@@ -36,6 +36,10 @@ pub async fn start_udp_server(app: State<'_, Arc<App>>) -> Result<(), TauriError
     log::info!("Starting UDP server");
     let config = app.config_manager().get_config().await;
     app.udp_plugin().start(&config).await.map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
+    // Ensure UDP event handler is running so PSS events reach auto-recording
+    app.inner().start_udp_event_handler().await;
+    log::info!("✅ UDP event handler started (manual start)");
+    println!("✅ UDP event handler started (manual start)");
     Ok(())
 }
 
@@ -74,6 +78,10 @@ pub async fn update_udp_settings(settings: serde_json::Value, app: State<'_, Arc
         app.udp_plugin().stop().await.map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
         let config = app.config_manager().get_config().await;
         app.udp_plugin().start(&config).await.map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
+        // Re-ensure event handler is started after restart
+        app.inner().start_udp_event_handler().await;
+        log::info!("✅ UDP event handler started (restart)");
+        println!("✅ UDP event handler started (restart)");
     }
     
     Ok(())
