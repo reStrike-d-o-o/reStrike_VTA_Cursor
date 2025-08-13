@@ -572,6 +572,7 @@ impl App {
                     if let Some(app) = app_handle.try_state::<Arc<App>>() {
                         let recording_handler = app.recording_event_handler();
                         log::info!("🔀 Forwarding PSS event to auto-recording handler: {:?}", event);
+                        println!("🔀 Forwarding PSS event to auto-recording handler: {:?}", event);
                         // Handle PSS event for automatic recording
                         if let Err(e) = recording_handler.handle_pss_event(&event).await {
                             log::warn!("⚠️ Failed to handle PSS event for recording: {}", e);

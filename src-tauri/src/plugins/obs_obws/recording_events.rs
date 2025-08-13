@@ -127,6 +127,7 @@ impl ObsRecordingEventHandler {
     /// Handle PSS events and trigger recording actions
     pub async fn handle_pss_event(&self, event: &PssEvent) -> AppResult<()> {
         log::info!("🎥 ObsRecordingEventHandler::handle_pss_event called with: {:?}", event);
+        println!("🎥 ObsRecordingEventHandler::handle_pss_event: {:?}", event);
         let config = {
             let config_guard = self.config.lock().unwrap();
             config_guard.clone()
@@ -297,18 +298,23 @@ impl ObsRecordingEventHandler {
 
         if let Some(connection_name) = config.obs_connection_name {
             log::info!("🎬 FightReady: using OBS connection '{}'", connection_name);
+            println!("🎬 FightReady: using OBS connection '{}'", connection_name);
             // Ensure replay buffer is running if requested and enabled by UI setting
             // Ensure replay buffer is active before recording (always-on invariant)
             match self.obs_manager.get_replay_buffer_status(Some(&connection_name)).await {
                 Ok(ObsReplayBufferStatus::Active) => {
                     log::info!("▶️ Replay buffer already active");
+                    println!("▶️ Replay buffer already active");
                 }
                 _ => {
                     log::info!("▶️ Starting replay buffer before recording...");
+                    println!("▶️ Starting replay buffer before recording...");
                     if let Err(e) = self.obs_manager.start_replay_buffer(Some(&connection_name)).await {
                         log::warn!("Failed to start replay buffer: {}", e);
+                        println!("Failed to start replay buffer: {}", e);
                     } else {
                         log::info!("▶️ Replay buffer started to satisfy recording invariant");
+                        println!("▶️ Replay buffer started to satisfy recording invariant");
                     }
                 }
             }
@@ -330,9 +336,10 @@ impl ObsRecordingEventHandler {
                 self.update_session_state(RecordingState::Recording).await?;
                 // Start recording immediately via obws manager (authoritative)
                 log::info!("🎬 Starting OBS recording...");
+                println!("🎬 Starting OBS recording...");
                 match self.obs_manager.start_recording(Some(&connection_name)).await {
-                    Ok(()) => log::info!("🎬 Recording started for connection: {}", connection_name),
-                    Err(e) => log::error!("Failed to start recording via obws: {}", e),
+                    Ok(()) => { log::info!("🎬 Recording started for connection: {}", connection_name); println!("🎬 Recording started for connection: {}", connection_name); },
+                    Err(e) => { log::error!("Failed to start recording via obws: {}", e); println!("Failed to start recording via obws: {}", e); },
                 }
             } else {
                 log::info!("🎬 Auto-start recording disabled by UI setting; not starting recording on FightReady");
@@ -529,7 +536,12 @@ impl ObsRecordingEventHandler {
             });
             // Emit on both pss_event (legacy) and a dedicated custom event to guarantee UI handling
             crate::core::app::App::emit_pss_event(payload.clone());
-            crate::core::app::App::emit_custom_event("obs_path_decision_needed", payload);
+            crate::core::app::App::emit_custom_event("obs_path_decision_needed", payload.clone());
+            println!(
+                "📣 Emitted obs_path_decision_needed with options: Continue={}/{} New={}/{}",
+                payload["continue"]["tournament"], payload["continue"]["day"],
+                payload["new"]["tournament"], payload["new"]["day"],
+            );
         }
 
         // Generate path
