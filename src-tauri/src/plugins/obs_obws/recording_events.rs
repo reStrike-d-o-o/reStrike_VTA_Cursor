@@ -499,18 +499,36 @@ impl ObsRecordingEventHandler {
 
         // Resolve concrete tournament/day defaults if not provided by DB
         let original_had_tournament = tournament.is_some();
+        // Determine base tournament name by scanning root when none active
         let tournament_name_resolved: Option<String> = Some(match tournament {
             Some(t) => t.name,
             None => {
-                // Default tournament name when none active
-                "Tournament 1".to_string()
+                // Scan root for existing "Tournament N" directories
+                let mut max_tournament = 0u32;
+                if videos_root.is_dir() {
+                    if let Ok(entries) = std::fs::read_dir(&videos_root) {
+                        for e in entries.flatten() {
+                            if let Ok(md) = e.metadata() {
+                                if md.is_dir() {
+                                    if let Some(name) = e.file_name().to_str() {
+                                        if let Some(rest) = name.strip_prefix("Tournament ") {
+                                            if let Ok(n) = rest.trim().parse::<u32>() { if n > max_tournament { max_tournament = n; } }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                // If none exist, start at Tournament 1
+                if max_tournament == 0 { "Tournament 1".to_string() } else { format!("Tournament {}", max_tournament) }
             }
         });
         let original_had_day = tournament_day.is_some();
         let tournament_day_resolved: Option<String> = Some(match tournament_day {
             Some(td) => format!("Day {}", td.unwrap().day_number),
             None => {
-                // Compute next Day N under the tournament folder if exists; else Day 1
+                // Compute next Day N under the chosen tournament folder if exists; else Day 1
                 let t_dir = videos_root.join(tournament_name_resolved.clone().unwrap());
                 let mut next_day_num = 1u32;
                 if t_dir.is_dir() {
