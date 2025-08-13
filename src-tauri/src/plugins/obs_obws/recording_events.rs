@@ -466,7 +466,7 @@ impl ObsRecordingEventHandler {
                 tournament = None;
                 tournament_day = None;
             } else {
-                let day_num_opt: Option<i64> = tournament_day
+                let day_num_opt = tournament_day
                     .as_ref()
                     .and_then(|inner| inner.as_ref().map(|td| td.day_number));
                 if let Some(day_num) = day_num_opt {
