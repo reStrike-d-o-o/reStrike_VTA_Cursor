@@ -77,32 +77,7 @@ export const usePssEvents = () => {
         // You can add log event handling here for the Live Data panel
       });
 
-      // Listen for OBS path decision requests
-      const pathDecisionUnlisten = await window.__TAURI__.event.listen('pss_event', async (event: any) => {
-        try {
-          const payload = event.payload;
-          if (!payload || typeof payload !== 'object') return;
-          if (payload.type !== 'obs_path_decision_needed') return;
-
-          const cont = payload.continue;
-          const nw = payload.new;
-          const body = `Continue with ${cont.tournament} / ${cont.day}\n\nOr create ${nw.tournament} / ${nw.day}?`;
-          const ok = await (await import('../stores/messageCenter')).useMessageCenter.getState().confirm({
-            title: 'Select recording path context',
-            body,
-            confirmText: 'Continue',
-            cancelText: 'New Tournament',
-          });
-          const { obsObwsCommands } = await import('../utils/tauriCommandsObws');
-          if (ok) {
-            await obsObwsCommands.applyPathDecision(cont.tournament, cont.day);
-          } else {
-            await obsObwsCommands.applyPathDecision(nw.tournament, nw.day);
-          }
-        } catch (e) {
-          // Silent
-        }
-      });
+      // NOTE: We only listen to the dedicated custom event to avoid double prompts
 
       // Also listen to a dedicated event to ensure delivery
       const pathDecisionUnlisten2 = await window.__TAURI__.event.listen('obs_path_decision_needed', async (event: any) => {
