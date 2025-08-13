@@ -473,7 +473,7 @@ impl ObsRecordingEventHandler {
         };
 
         let gen_cfg = PathGeneratorConfig {
-            videos_root,
+            videos_root: videos_root.clone(),
             default_format: recording_format,
             include_minutes_seconds: true,
             folder_pattern,
@@ -539,7 +539,7 @@ impl ObsRecordingEventHandler {
             match_id,
             tournament_name_resolved,
             tournament_day_resolved,
-            match_info.match_number,
+            match_info.match_number.clone(),
             player1_name.clone(),
             player1_flag.clone(),
             player2_name.clone(),
@@ -619,7 +619,7 @@ impl ObsRecordingEventHandler {
                 session.recording_filename = Some(generated_path.filename);
                 session.tournament_name = Some(tournament_name);
                 session.tournament_day = Some(tournament_day);
-                session.match_number = match_info.match_number;
+                session.match_number = match_info.match_number.clone();
                 session.player1_name = player1_name; session.player1_flag = player1_flag;
                 session.player2_name = player2_name; session.player2_flag = player2_flag;
                 session.updated_at = Utc::now();
@@ -659,8 +659,8 @@ impl ObsRecordingEventHandler {
 
     fn build_filename_formatting(&self, template: &str, session: &RecordingSession) -> String {
         // Replace variables with concrete values and ensure "VS" is between players
-        let mut p1 = session.player1_name.clone().unwrap_or_default();
-        let mut p2 = session.player2_name.clone().unwrap_or_default();
+        let p1 = session.player1_name.clone().unwrap_or_default();
+        let p2 = session.player2_name.clone().unwrap_or_default();
         if !p1.is_empty() && !p2.is_empty() {
             // Insert VS into a local copy for replacement convenience
             // We will map {player1} -> p1, {player2} -> p2 and let template include VS, but also patch common templates
