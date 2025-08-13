@@ -18,12 +18,15 @@
 **Config**:
 - DB keys: `ivr.replay.mpv_path`, `ivr.replay.seconds_from_end`, `ivr.replay.max_wait_ms`, `ivr.replay.auto_on_challenge`
 
-### OBS Recording Integration – Unified Save/Load + UI cleanup ✅
+### OBS Recording Integration – Auto-flow + Unified Save/Load ✅
 **Status**: COMPLETED (latest)
 
 **Details**:
-- Fight loaded: set OBS recording directory once per tournament day using `folder_pattern`
-- Fight ready: set filename formatting per match from template
+- FightLoaded: generate concrete path from DB template and context; ensure folder exists; set OBS recording directory once per tournament day
+- FightReady: Always-on RB (start if not Active), apply filename formatting using current match athletes and matchNumber, then start recording
+- Winner-only delayed stop honoring Stop Delay seconds; WinnerRounds does nothing
+- If no active tournament/day: propose Continue (`Tournament N / Day X+1`) vs New (`Tournament N+1 / Day 1`) via centralized message, then apply selection
+- Path normalization to forward slashes before applying to OBS
 - `folder_pattern` added to DB and used by generator
 
 ### Documentation Reorganization ✅ **LATEST COMPLETION**
@@ -317,7 +320,7 @@
 - **First-time Setup**: Automatic master password configuration on initial authentication
 - **Session Management**: 12-hour timeouts with refresh capability and manual logout
 
-### DockBar Status Indicators Fix ✅
+### DockBar/WebSocket Status Indicators Fix ✅
 **Status**: COMPLETED  
 **Files**: `ui/src/components/layouts/StatusbarDock.tsx`, `ui/src/components/molecules/WebSocketManager.tsx`
 
@@ -327,7 +330,8 @@
 - **Eliminated Constant Polling**: Removed 3-second interval that was making unnecessary `obs_get_connection_status` requests
 - **Real-time Status Updates**: Status indicators now immediately reflect connection state changes
 - **Efficient Event-driven System**: Replaced polling with reactive store updates
-- **Proper Status Mapping**: Fixed case sensitivity issues with connection status values
+- **Proper Status Mapping**: Fixed case sensitivity issues; map `Authenticated` as Connected; `Authenticating` as Connecting
+- **Non-destructive Updates**: Preserve statuses when refreshing lists; actively re-query live status after list rebuilds
 
 **Technical Details**:
 - Changed StatusbarDock from `useObsStore` to `useAppStore` for consistency
