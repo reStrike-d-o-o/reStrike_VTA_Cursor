@@ -247,13 +247,21 @@ const WebSocketManager: React.FC<WebSocketManagerProps> = ({ mode = 'local' }) =
         try {
           const result = await obsObwsCommands.getConnectionStatus(connection.name);
           if (result.success) {
-            // The backend returns { success: true, status: "Connected" }
-            const status = (result as any).status || 'Disconnected';
+            // The backend returns { data: { status: "Connected" | "Authenticated" | ... } }
+            const status = (result as any).data?.status || (result as any).status || 'Disconnected';
             const error = (result as any).error;
             
             // Only update if status has changed
             if (connection.status !== status || connection.error !== error) {
-              updateObsConnectionStatus(connection.name, status, error);
+              if (status === 'Connected' || status === 'Authenticated') {
+                updateObsConnectionStatus(connection.name, 'Connected' as any);
+              } else if (status === 'Connecting' || status === 'Authenticating') {
+                updateObsConnectionStatus(connection.name, 'Connecting' as any);
+              } else if (status === 'Error') {
+                updateObsConnectionStatus(connection.name, 'Error' as any, error);
+              } else {
+                updateObsConnectionStatus(connection.name, 'Disconnected' as any);
+              }
             }
           }
         } catch (error) {
