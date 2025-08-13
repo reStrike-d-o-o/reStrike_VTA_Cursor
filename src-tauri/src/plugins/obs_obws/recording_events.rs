@@ -443,12 +443,18 @@ impl ObsRecordingEventHandler {
     pub async fn generate_recording_path(&self, match_id: &str) -> AppResult<()> {
         let conn = self.database.get_connection().await?;
 
-        // Get active tournament and tournament day
-        let tournament = TournamentOperations::get_active_tournament(&*conn)?;
-        let tournament_day = if let Some(ref tournament) = tournament {
-            TournamentOperations::get_active_tournament_day(&*conn, tournament.id.unwrap()).ok()
-        } else {
-            None
+        // Determine tournament/day context from user selection; fallback to active; fallback to defaults
+        let (tournament, tournament_day) = {
+            let sel_tn = self.selected_tournament_name.lock().unwrap().clone();
+            let sel_td = self.selected_tournament_day.lock().unwrap().clone();
+            if let (Some(tn), Some(td)) = (sel_tn, sel_td) {
+                (Some(crate::database::models::Tournament { id: None, name: tn.clone(), start_date: None, end_date: None, created_at: None, updated_at: None }),
+                 Some(crate::database::models::TournamentDay { id: None, tournament_id: None, day_number: td.trim_start_matches("Day ").parse().unwrap_or(1), start_time: None, end_time: None, created_at: None, updated_at: None }))
+            } else {
+                let t = TournamentOperations::get_active_tournament(&*conn)?;
+                let td = if let Some(ref t) = t { TournamentOperations::get_active_tournament_day(&*conn, t.id.unwrap()).ok() } else { None };
+                (t, td)
+            }
         };
 
         // Get match details (support both raw db IDs and mch:<number> keys)
