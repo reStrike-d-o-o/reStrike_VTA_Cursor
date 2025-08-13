@@ -606,7 +606,7 @@ impl ObsRecordingEventHandler {
             &match_id,
             Some(tournament_name.clone()),
             Some(tournament_day.clone()),
-            match_info.match_number,
+            match_info.match_number.clone(),
             player1_name.clone(), player1_flag.clone(), player2_name.clone(), player2_flag.clone()
         )?;
         path_generator.ensure_directory_exists(&generated_path.directory)?;
