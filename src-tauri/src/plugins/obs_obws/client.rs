@@ -208,13 +208,10 @@ impl ObsClient {
     /// Get replay buffer status
     pub async fn get_replay_buffer_status(&self) -> AppResult<ObsReplayBufferStatus> {
         let client = self.get_client()?;
-        let _status = client.replay_buffer().status().await.map_err(|e| {
+        let active = client.replay_buffer().status().await.map_err(|e| {
             AppError::ConfigError(format!("Failed to get replay buffer status: {}", e))
         })?;
-        
-        // For now, return a simple status since obws doesn't expose the enum variants
-        // TODO: Implement proper status detection based on the actual response
-        Ok(ObsReplayBufferStatus::Active)
+        Ok(if active { ObsReplayBufferStatus::Active } else { ObsReplayBufferStatus::Stopped })
     }
 
     /// Start virtual camera
