@@ -79,10 +79,12 @@ const ObsIntegrationPanel: React.FC = () => {
     loadConnections();
   }, [setConnections]);
 
-  // Load full configuration
+  // Load full configuration (status-preserving)
   const loadFullConfig = async () => {
     try {
       setIsLoadingConfig(true);
+      // Preserve current connection statuses from Obs store to avoid flicker
+      const prevConnections = useObsStore.getState().connections;
       const result = await obsObwsCommands.getFullConfig(recordingConfig.connectionName || undefined);
       if (result.success && result.data) {
         const rc = result.data.recording_config;
@@ -120,6 +122,25 @@ const ObsIntegrationPanel: React.FC = () => {
       console.error('Failed to load full config:', error);
     } finally {
       setIsLoadingConfig(false);
+      // After loading config, actively refresh status for the selected connection once
+      try {
+        const connName = useObsStore.getState().connections.find(c => c.name)?.name || recordingConfig.connectionName;
+        if (connName) {
+          const statusRes = await obsObwsCommands.getConnectionStatus(connName);
+          if (statusRes && statusRes.success && statusRes.data) {
+            const s = statusRes.data.status;
+            if (s === 'Connected' || s === 'Authenticated') {
+              useObsStore.getState().updateConnectionStatus(connName, 'connected');
+            } else if (s === 'Connecting' || s === 'Authenticating') {
+              useObsStore.getState().updateConnectionStatus(connName, 'connecting');
+            } else if (s === 'Error') {
+              useObsStore.getState().updateConnectionStatus(connName, 'error');
+            } else {
+              useObsStore.getState().updateConnectionStatus(connName, 'disconnected');
+            }
+          }
+        }
+      } catch {}
     }
   };
 
