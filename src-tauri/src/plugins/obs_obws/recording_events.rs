@@ -106,6 +106,8 @@ pub struct ObsRecordingEventHandler {
     last_applied_directory_day: Arc<Mutex<Option<String>>>,
     // Live UDP-provided current match id (from MatchConfig)
     last_udp_match_id: Arc<Mutex<Option<String>>>,
+    // Whether we are waiting for user to confirm path decision (Continue/New)
+    awaiting_path_decision: Arc<Mutex<bool>>,
 }
 
 impl ObsRecordingEventHandler {
@@ -123,6 +125,7 @@ impl ObsRecordingEventHandler {
             obs_manager,
             last_applied_directory_day: Arc::new(Mutex::new(None)),
             last_udp_match_id: Arc::new(Mutex::new(None)),
+            awaiting_path_decision: Arc::new(Mutex::new(false)),
         }
     }
 
@@ -291,6 +294,12 @@ impl ObsRecordingEventHandler {
             let config_guard = self.config.lock().unwrap();
             config_guard.clone()
         };
+
+        // If we are awaiting user's path decision, do nothing yet
+        if *self.awaiting_path_decision.lock().unwrap() {
+            log::info!("⏸️ Waiting for user's path decision before applying OBS settings or starting outputs");
+            return Ok(());
+        }
 
         if let Some(connection_name) = config.obs_connection_name {
             log::info!("🎬 FightReady: using OBS connection '{}'", connection_name);
@@ -596,8 +605,9 @@ impl ObsRecordingEventHandler {
                 payload["continue"]["tournament"], payload["continue"]["day"],
                 payload["new"]["tournament"], payload["new"]["day"],
             );
-            // Mark asked for this session
+            // Mark asked for this session and block auto-start until user decides
             if let Ok(mut asked) = asked_flag.lock() { *asked = true; }
+            if let Ok(mut wait_flag) = self.awaiting_path_decision.lock() { *wait_flag = true; }
         }
 
         // Generate path
@@ -692,7 +702,7 @@ impl ObsRecordingEventHandler {
             }
         }
 
-        // Apply directory to OBS (re-evaluate day boundary)
+        // Apply directory to OBS (re-evaluate day boundary) and release the wait flag
         if let Some(session) = self.get_current_session() {
             if let (Some(dir), Some(conn_name)) = (session.recording_path.clone(), session.obs_connection_name.clone()) {
                 match self.obs_manager.set_record_directory(&dir, Some(&conn_name)).await {
@@ -706,6 +716,8 @@ impl ObsRecordingEventHandler {
                         log::warn!("Failed to set filename formatting after override: {}", e);
                     }
                 }
+                // Clear awaiting flag so FightReady will proceed next time
+                if let Ok(mut wait_flag) = self.awaiting_path_decision.lock() { *wait_flag = false; }
             }
         }
 
@@ -733,7 +745,11 @@ impl ObsRecordingEventHandler {
         }
 
         let mut fmt = template.to_string();
-        if let Some(ref n) = session.match_number { fmt = fmt.replace("{matchNumber}", n); }
+        if let Some(ref n) = session.match_number {
+            // Replace both {matchNumber}_{player1} and stand-alone {matchNumber}
+            fmt = fmt.replace("{matchNumber}_{player1}", &format!("{} {player1}", n));
+            fmt = fmt.replace("{matchNumber}", n);
+        }
         if let Some(ref f1) = session.player1_flag { fmt = fmt.replace("{player1Flag}", f1); }
         if let Some(ref f2) = session.player2_flag { fmt = fmt.replace("{player2Flag}", f2); }
         fmt = fmt.replace("{player1}", &p1);
@@ -749,8 +765,10 @@ impl ObsRecordingEventHandler {
             }
         }
 
-        // Ensure we keep date/time placeholders for OBS to resolve
-        // Recommend using %CCYY-%MM-%DD %hh-%mm-%ss in OBS; we simply pass through any {date}/{time}
+        // Map app placeholders to OBS placeholders
+        fmt = fmt.replace("{date}_{time}", "%DD-%MM-%CCYY_%hh-%mm-%ss");
+        fmt = fmt.replace("{date}", "%DD-%MM-%CCYY");
+        fmt = fmt.replace("{time}", "%hh-%mm-%ss");
         fmt
     }
 
