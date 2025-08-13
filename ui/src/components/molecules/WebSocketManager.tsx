@@ -140,15 +140,18 @@ const WebSocketManager: React.FC<WebSocketManagerProps> = ({ mode = 'local' }) =
               return conn.name !== 'OBS_REC' && conn.name !== 'OBS_STR';
             }
           })
-          .map((conn: any) => ({
-            name: conn.name,
-            host: conn.host,
-            port: conn.port,
-            password: conn.password,
-            enabled: conn.enabled,
-            status: 'Disconnected' as const, // Will be updated by status check
-            error: undefined,
-          }));
+          .map((conn: any) => {
+            const prev = obsConnections.find((c) => c.name === conn.name);
+            return {
+              name: conn.name,
+              host: conn.host,
+              port: conn.port,
+              password: conn.password,
+              enabled: conn.enabled,
+              status: (prev?.status as any) || ('Disconnected' as const),
+              error: prev?.error,
+            };
+          });
         
         // Update frontend store with configuration connections
         obsConnections.forEach(conn => removeObsConnection(conn.name));
@@ -185,15 +188,18 @@ const WebSocketManager: React.FC<WebSocketManagerProps> = ({ mode = 'local' }) =
                 return conn.name !== 'OBS_REC' && conn.name !== 'OBS_STR';
               }
             })
-            .map((conn: any) => ({
-              name: conn.name,
-              host: conn.host,
-              port: conn.port,
-              password: conn.password,
-              enabled: conn.enabled,
-              status: conn.status || 'Disconnected',
-              error: undefined,
-            }));
+            .map((conn: any) => {
+              const prev = obsConnections.find((c) => c.name === conn.name);
+              return {
+                name: conn.name,
+                host: conn.host,
+                port: conn.port,
+                password: conn.password,
+                enabled: conn.enabled,
+                status: prev?.status || conn.status || 'Disconnected',
+                error: prev?.error,
+              };
+            });
           
           // Update frontend store
           obsConnections.forEach(conn => removeObsConnection(conn.name));
