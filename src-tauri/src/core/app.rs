@@ -398,7 +398,19 @@ impl App {
         let max_wait_ms: u32 = UIOps::get_ui_setting(&*conn, "ivr.replay.max_wait_ms").ok().flatten()
             .and_then(|s| s.parse::<u32>().ok()).unwrap_or(500).clamp(50, 500);
 
-        // Save replay buffer via obws
+        // Ensure RB is enabled+active: start if not active, then save
+        match self.obs_obws_plugin().get_replay_buffer_status(connection_name).await {
+            Ok(status) => {
+                use crate::plugins::obs_obws::types::ObsReplayBufferStatus;
+                if status != ObsReplayBufferStatus::Active {
+                    let _ = self.obs_obws_plugin().start_replay_buffer(connection_name).await;
+                }
+            }
+            Err(_) => {
+                let _ = self.obs_obws_plugin().start_replay_buffer(connection_name).await;
+            }
+        }
+        // Save replay buffer via obws (creates clip)
         self.obs_obws_plugin().save_replay_buffer(connection_name).await?;
 
         // Try to get last replay filename within bounded wait

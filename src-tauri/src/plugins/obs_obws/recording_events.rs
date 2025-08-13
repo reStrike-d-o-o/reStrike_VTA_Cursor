@@ -9,6 +9,8 @@ use crate::plugins::obs_obws::PathGeneratorConfig;
 use crate::plugins::obs_obws::manager::ObsManager;
 use crate::database::operations::{TournamentOperations, PssUdpOperations};
 use chrono::Utc;
+use once_cell::sync::OnceCell;
+use std::sync::Mutex as StdMutex;
 
 /// Recording session state
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -301,8 +303,7 @@ impl ObsRecordingEventHandler {
         if let Some(connection_name) = config.obs_connection_name {
             log::info!("🎬 FightReady: using OBS connection '{}'", connection_name);
             println!("🎬 FightReady: using OBS connection '{}'", connection_name);
-            // Ensure replay buffer is running if requested and enabled by UI setting
-            // Ensure replay buffer is active before recording (always-on invariant)
+            // Ensure replay buffer is enabled and active before recording
             match self.obs_manager.get_replay_buffer_status(Some(&connection_name)).await {
                 Ok(ObsReplayBufferStatus::Active) => {
                     log::info!("▶️ Replay buffer already active");
@@ -311,8 +312,8 @@ impl ObsRecordingEventHandler {
                 _ => {
                     log::info!("▶️ Starting replay buffer before recording...");
                     println!("▶️ Starting replay buffer before recording...");
-                    if let Err(e) = self.obs_manager.start_replay_buffer(Some(&connection_name)).await {
-                        log::warn!("Failed to start replay buffer: {}", e);
+                if let Err(e) = self.obs_manager.start_replay_buffer(Some(&connection_name)).await {
+                    log::warn!("Failed to start replay buffer: {}", e);
                         println!("Failed to start replay buffer: {}", e);
                     } else {
                         log::info!("▶️ Replay buffer started to satisfy recording invariant");
@@ -453,7 +454,7 @@ impl ObsRecordingEventHandler {
         let mut player1_flag: Option<String> = None;
         let mut player2_name: Option<String> = None;
         let mut player2_flag: Option<String> = None;
-        for _ in 0..8 { // up to ~600ms
+        for _ in 0..20 { // up to ~3s
             let match_athletes = PssUdpOperations::get_pss_match_athletes(&*conn, match_db_id)?;
             let mut found1 = false;
             let mut found2 = false;
@@ -465,7 +466,7 @@ impl ObsRecordingEventHandler {
                 }
             }
             if found1 && found2 { break; }
-            tokio::time::sleep(std::time::Duration::from_millis(75)).await;
+            tokio::time::sleep(std::time::Duration::from_millis(150)).await;
         }
 
         // Build path generator from active recording config to avoid sending placeholders
@@ -529,8 +530,14 @@ impl ObsRecordingEventHandler {
             }
         });
 
-        // If we defaulted any value, emit a prompt to frontend via centralized messaging
-        if !original_had_tournament || !original_had_day {
+        // If we defaulted any value OR this is the first run this session, emit a prompt to frontend via centralized messaging
+        static ASKED_THIS_SESSION: OnceCell<StdMutex<bool>> = OnceCell::new();
+        let asked_flag = ASKED_THIS_SESSION.get_or_init(|| StdMutex::new(false));
+        let should_prompt_this_session = {
+            let asked = asked_flag.lock().unwrap();
+            !*asked
+        };
+        if should_prompt_this_session || !original_had_tournament || !original_had_day {
             let tn = tournament_name_resolved.clone().unwrap_or_else(|| "Tournament 1".to_string());
             // Suggest next tournament as Tournament N+1
             let tn_suggest_new = if let Some(rest) = tn.strip_prefix("Tournament ") {
@@ -551,6 +558,8 @@ impl ObsRecordingEventHandler {
                 payload["continue"]["tournament"], payload["continue"]["day"],
                 payload["new"]["tournament"], payload["new"]["day"],
             );
+            // Mark asked for this session
+            if let Ok(mut asked) = asked_flag.lock() { *asked = true; }
         }
 
         // Generate path
