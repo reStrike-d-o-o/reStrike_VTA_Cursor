@@ -523,7 +523,6 @@ impl ObsRecordingEventHandler {
         let path_generator = ObsPathGenerator::new(Some(gen_cfg));
 
         // Resolve concrete tournament/day defaults if not provided by DB
-        let original_had_tournament = tournament.is_some();
         // Determine base tournament name by scanning root when none active
         let tournament_name_resolved: Option<String> = Some(match tournament {
             Some(t) => t.name,
@@ -549,7 +548,7 @@ impl ObsRecordingEventHandler {
                 if max_tournament == 0 { "Tournament 1".to_string() } else { format!("Tournament {}", max_tournament) }
             }
         });
-        let original_had_day = tournament_day.is_some();
+        // Determine default day when DB has none
         let tournament_day_resolved: Option<String> = Some(match tournament_day {
             Some(td) => format!("Day {}", td.unwrap().day_number),
             None => {
