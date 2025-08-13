@@ -144,7 +144,8 @@ impl ObsRecordingEventHandler {
             PssEvent::MatchConfig { match_id, number, .. } => {
                 {
                     let mut guard = self.last_udp_match_id.lock().unwrap();
-                    *guard = Some(match_id.clone());
+                    // Map UDP number to DB match_id format (e.g., "mch:101")
+                    *guard = Some(format!("mch:{}", number));
                 }
                 // Optionally update current session's match number early
                 {
@@ -154,20 +155,11 @@ impl ObsRecordingEventHandler {
                         session.updated_at = Utc::now();
                     }
                 }
-                log::info!("📣 MatchConfig received - set current match_id={} number={}", match_id, number);
+                log::info!("📣 MatchConfig received - set current match_id=mch:{} number={}", number, number);
 
                 // If we don't have a prepared session for this match, prepare now
-                let need_prepare = {
-                    let session_guard = self.current_session.lock().unwrap();
-                    match &*session_guard {
-                        Some(s) => s.match_id != *match_id,
-                        None => true,
-                    }
-                };
-                if need_prepare {
-                    if let Err(e) = self.handle_fight_loaded().await {
-                        log::warn!("Failed to prepare session on MatchConfig: {}", e);
-                    }
+                if let Err(e) = self.handle_fight_loaded().await {
+                    log::warn!("Failed to prepare session on MatchConfig: {}", e);
                 }
             }
             // Match loaded - prepare recording
@@ -454,10 +446,10 @@ impl ObsRecordingEventHandler {
             None
         };
 
-        // Get match details
-        let matches = PssUdpOperations::get_pss_matches(&*conn, Some(100))?;
+        // Get match details (support both raw db IDs and mch:<number> keys)
+        let matches = PssUdpOperations::get_pss_matches(&*conn, Some(200))?;
         let match_info = matches.into_iter()
-            .find(|m| m.match_id == match_id)
+            .find(|m| m.match_id == match_id || m.match_id == format!("mch:{}", m.match_number.clone().unwrap_or_default()))
             .ok_or_else(|| AppError::ConfigError(format!("Match not found: {}", match_id)))?;
 
         // Get match athletes with a short retry window to allow UDP linking to persist
