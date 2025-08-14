@@ -354,6 +354,11 @@ impl ObsRecordingEventHandler {
                         log::warn!("Failed to set filename formatting: {}", e);
                     } else {
                         log::info!("🧾 Applied filename formatting to OBS: {}", formatting);
+                        // Read-back verification
+                        match self.obs_manager.get_filename_formatting(Some(&connection_name)).await {
+                            Ok(current) => println!("🔎 OBS current filename formatting='{}'", current),
+                            Err(err) => println!("⚠️ Failed to read back filename formatting: {}", err),
+                        }
                     }
                 } else {
                     println!("⚠️ No active filename template available; skipping set_filename_formatting");
@@ -824,6 +829,10 @@ impl ObsRecordingEventHandler {
                 }
             }
         }
+
+        // Now that the decision is applied and waiting flag cleared, proceed with the standard FightReady flow
+        // to ensure filename formatting, RB, and recording start are executed.
+        let _ = self.handle_fight_ready().await;
 
         Ok(())
     }

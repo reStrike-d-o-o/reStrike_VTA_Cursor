@@ -2,7 +2,7 @@ import { create } from 'zustand';
 
 export type MessageSeverity = 'info' | 'success' | 'warning' | 'error';
 
-type ModalKind = 'message' | 'confirm';
+type ModalKind = 'message' | 'confirm' | 'choices';
 
 export interface ModalItem {
   id: string;
@@ -12,8 +12,9 @@ export interface ModalItem {
   body?: string;
   confirmText?: string;
   cancelText?: string;
+  choices?: Array<{ text: string; value: string }>;
   /** Internal: resolver for confirm modal */
-  _resolve?: (ok: boolean) => void;
+  _resolve?: (value: any) => void;
 }
 
 interface MessageCenterState {
@@ -26,7 +27,8 @@ interface MessageCenterState {
   showInfo: (title: string, body?: string) => void;
   showSuccess: (title: string, body?: string) => void;
   confirm: (args: { title: string; body?: string; confirmText?: string; cancelText?: string; severity?: MessageSeverity }) => Promise<boolean>;
-  close: (ok?: boolean) => void;
+  choose: (args: { title: string; body?: string; choices: Array<{ text: string; value: string }>; severity?: MessageSeverity }) => Promise<string>;
+  close: (value?: any) => void;
   /** Internal: advance queue when current is empty */
   _ensureCurrent: () => void;
 }
@@ -71,11 +73,25 @@ export const useMessageCenter = create<MessageCenterState>((set, get) => ({
     });
   },
 
-  close: (ok = true) => {
+  choose: ({ title, body, choices, severity = 'info' }) => {
+    return new Promise<string>((resolve) => {
+      const item: ModalItem = {
+        id: makeId(),
+        kind: 'choices',
+        severity,
+        title,
+        body,
+        choices,
+        _resolve: resolve,
+      };
+      set((state) => ({ queue: [...state.queue, item] }));
+      get()._ensureCurrent();
+    });
+  },
+
+  close: (value = true) => {
     const current = get().current;
-    if (current?.kind === 'confirm' && current._resolve) {
-      current._resolve(!!ok);
-    }
+    if (current?._resolve) current._resolve(value);
     set((state) => ({ current: null }));
     get()._ensureCurrent();
   },
