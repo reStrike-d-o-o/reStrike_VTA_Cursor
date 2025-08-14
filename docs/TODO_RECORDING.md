@@ -30,10 +30,9 @@
 
 ### 🔄 **IN PROGRESS FEATURES**
 
-#### **Day 2 Creation Logic** 🔄
-- **Current Status**: Basic implementation exists but needs refinement
-- **Next Steps**: Implement session reuse logic to avoid recomputing Day from disk on subsequent events
-- **Priority**: High - affects user experience for multi-day tournaments
+#### **Day Creation / Reuse Logic** ✅
+- **Status**: Completed
+- **Notes**: In-session memo reuses just-created Tournament/Day; no disk rescan; after override path decision, FightReady auto-runs
 
 #### **OBS Connection Roles** 🔄
 - **Current Status**: Basic structure exists but needs completion
@@ -42,10 +41,10 @@
 
 ### 📋 **REMAINING TASKS**
 
-#### **Phase 1 – UDP/PSS Event Wiring** 📋
-- [ ] Implement `get_current_match_id()` in `recording_events.rs` to read active match from UDP context
-- [ ] Ensure UDP plugin emits PSS events to `ObsRecordingEventHandler::handle_pss_event`
-- [ ] Add robust logging around each handled event
+#### **Phase 1 – UDP/PSS Event Wiring** ✅
+- [x] Implement `get_current_match_id()` with UDP-first fallback to DB
+- [x] Wire all PSS events to `ObsRecordingEventHandler::handle_pss_event`
+- [x] Add robust logging around each handled event and FightReady
 
 #### **Phase 3 – OBS Connection Roles** 📋
 - [ ] Extend OBS connection storage with `role: enum { recording, streaming, none }`
@@ -87,12 +86,19 @@
 - [x] Path generation for multiple tournaments/days/flags
 - [x] Modal gating logic (no modal on clean disk, modal only when folders exist)
 - [x] Live athletes capture and filename formatting
+- [x] Post-decision FightReady auto-run (no double click), directory/formatting/RB/record invoke sequence with read-backs
 
 #### **Remaining Tests** 📋
 - [ ] Verify session persisted and event offsets computed
 - [ ] Test opening recording at event-times via double-click
 - [ ] Multi-connection: confirm only `role=recording` used for recording and replay buffer
 - [ ] Verify no modal on clean disk; modal only when Tournament folders already exist
+- [ ] Clean-disk first-run: No `Tournament *` folders exist
+  - [ ] App silently creates `Tournament 1/Day 1`
+  - [ ] Sends directory to OBS (forward slashes)
+  - [ ] Resolves effective template; sends filename formatting; read-back matches
+  - [ ] Wait 500 ms → Ensure RB Active → Start recording
+  - [ ] Logs show the full sequence without any modal and without double-clicks
 
 ### 🔧 **WORK PROTOCOL**
 

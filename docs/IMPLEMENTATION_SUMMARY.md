@@ -11,14 +11,17 @@
 - **Live Athletes Capture**: Real-time capture of athlete names and flags from PSS events for immediate filename formatting
 - **Session Reuse**: If Tournament 1/Day 1 was just created in the current session, reuse those instead of recomputing from disk
 - **Explicit Logging**: Comprehensive logging on FightReady when applying directory/formatting changes
+ - **Single-Click Start**: After path decision (Continue/Next/New), the app immediately proceeds with FightReady flow (no second click needed)
 
 **Implementation Details**:
 - **FightLoaded**: Generate concrete path from DB template and context; ensure folder exists; set OBS recording directory once per tournament day
-- **FightReady**: Strict sequence: set record directory → set filename formatting → wait 500ms → ensure RB → start recording
+- **FightReady**: Strict sequence: set record directory → set filename formatting → wait 500ms → ensure RB → start recording; always resolves an effective filename template (DB or default) and logs read-back from OBS
 - **Live Data Priority**: Use `session.match_number` and `session.player` names from MatchConfig/Athletes over database rows
 - **Modal Logic**: No modal on clean disk; modal only when Tournament folders already exist (prevents unnecessary prompts during first-time setup)
 - **Path Normalization**: Forward slash conversion before applying to OBS for cross-platform compatibility
 - **Session Persistence**: Tournament/day context maintained across matches within the same session
+ - **Connection Fallback**: FightReady uses configured connection name, else session connection, else defaults to `OBS_REC` (with log)
+ - **Deadlock Avoidance**: Release DB connection before awaiting OBS profile calls (avoids async stalls)
 
 **Technical Architecture**:
 - **Path Generation**: `ObsPathGenerator` with Windows Videos folder detection and dynamic tournament/day creation
@@ -32,6 +35,7 @@
 - **Database Persistence**: Event Table automatically saved to database on Winner event
 - **Status Indicators**: Real-time recording status with proper color coding
 - **Configuration Panel**: Comprehensive recording settings with live OBS read-back
+- **Unified Modal Styling**: Folder-selection modal uses the same blue theme as global dialogs and the app’s Button atom (choices: Continue, Next, New)
 
 ### IVR Replay Feature (Replay Buffer + mpv) ✅
 **Status**: COMPLETED
