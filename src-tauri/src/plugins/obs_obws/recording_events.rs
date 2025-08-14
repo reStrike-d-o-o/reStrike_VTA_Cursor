@@ -390,7 +390,7 @@ impl ObsRecordingEventHandler {
                 let effective_template = match self.get_active_filename_template().await? {
                     Some(t) => t,
                     None => {
-                        let def = "{matchNumber}_{player1}_{player2}_{date}_{time}".to_string();
+                        let def = "{matchNumber} {player1} ({country1}) VS {player2} ({country2}) - {date} - {time}".to_string();
                         println!("⚠️ No DB filename template; using default: {}", def);
                         def
                     }
@@ -883,12 +883,12 @@ impl ObsRecordingEventHandler {
                 let eff_tmpl = match self.get_active_filename_template().await {
                     Ok(Some(t)) => t,
                     Ok(None) => {
-                        let d = "{matchNumber}_{player1}_{player2}_{date}_{time}".to_string();
+                        let d = "{matchNumber} {player1} ({country1}) VS {player2} ({country2}) - {date} - {time}".to_string();
                         println!("⚠️ Override: no DB template -> using default: {}", d);
                         d
                     }
                     Err(e) => {
-                        let d = "{matchNumber}_{player1}_{player2}_{date}_{time}".to_string();
+                        let d = "{matchNumber} {player1} ({country1}) VS {player2} ({country2}) - {date} - {time}".to_string();
                         println!("⚠️ Override: failed to get DB template ({}), using default: {}", e, d);
                         d
                     }
@@ -932,6 +932,8 @@ impl ObsRecordingEventHandler {
         // Replace variables with concrete values and ensure "VS" is between players
         let p1 = session.player1_name.clone().unwrap_or_default();
         let p2 = session.player2_name.clone().unwrap_or_default();
+        let c1 = session.player1_flag.clone().unwrap_or_default();
+        let c2 = session.player2_flag.clone().unwrap_or_default();
         if !p1.is_empty() && !p2.is_empty() {
             // Insert VS into a local copy for replacement convenience
             // We will map {player1} -> p1, {player2} -> p2 and let template include VS, but also patch common templates
@@ -947,6 +949,9 @@ impl ObsRecordingEventHandler {
         if let Some(ref f2) = session.player2_flag { fmt = fmt.replace("{player2Flag}", f2); }
         fmt = fmt.replace("{player1}", &p1);
         fmt = fmt.replace("{player2}", &p2);
+        // New country placeholders
+        fmt = fmt.replace("{country1}", &c1);
+        fmt = fmt.replace("{country2}", &c2);
 
         // If template lacked VS, inject a sane default pattern
         if !fmt.contains("VS") && fmt.contains(&p1) && fmt.contains(&p2) {
@@ -959,6 +964,7 @@ impl ObsRecordingEventHandler {
         }
 
         // Map app placeholders to OBS placeholders
+        fmt = fmt.replace("{date} - {time}", "%DD-%MM-%CCYY %hh-%mm-%ss");
         fmt = fmt.replace("{date}_{time}", "%DD-%MM-%CCYY_%hh-%mm-%ss");
         fmt = fmt.replace("{date}", "%DD-%MM-%CCYY");
         fmt = fmt.replace("{time}", "%hh-%mm-%ss");

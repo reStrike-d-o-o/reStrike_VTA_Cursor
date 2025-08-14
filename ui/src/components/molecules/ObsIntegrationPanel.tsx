@@ -24,7 +24,7 @@ const ObsIntegrationPanel: React.FC = () => {
     connectionName: '',
     recordingPath: 'C:/Users/Damjan/Videos',
     recordingFormat: 'mp4',
-    filenamePattern: '{matchNumber}_{player1}_{player2}_{date}_{time}',
+    filenamePattern: '{matchNumber} {player1} ({country1}) VS {player2} ({country2}) - {date} - {time}',
     folderPattern: '{tournament}/{tournamentDay}',
     autoStartRecording: true,
     autoStartReplayBuffer: true,
@@ -489,11 +489,11 @@ const ObsIntegrationPanel: React.FC = () => {
             type="text"
             value={recordingConfig.filenamePattern}
             onChange={(e) => setRecordingConfig(prev => ({ ...prev, filenamePattern: e.target.value }))}
-            placeholder="{matchNumber}_{player1}_{player2}_{date}_{time}"
+            placeholder="{matchNumber} {player1} ({country1}) VS {player2} ({country2}) - {date} - {time}"
             className="w-full"
           />
           <p className="text-xs text-gray-400 mt-1">
-            Available variables: {'{matchNumber}'}, {'{player1}'}, {'{player2}'}, {'{date}'}, {'{time}'}, {'{tournament}'}, {'{tournamentDay}'}
+            Available variables: {'{matchNumber}'}, {'{player1}'}, {'{player2}'}, {'{country1}'}, {'{country2}'}, {'{date}'}, {'{time}'}, {'{tournament}'}, {'{tournamentDay}'}
           </p>
         </div>
 
