@@ -55,6 +55,24 @@ const GlobalModals: React.FC = () => {
                 {current.confirmText || 'Confirm'}
               </button>
             </>
+          ) : current.kind === 'choices' ? (
+            <>
+              {(current.choices || []).map((c) => (
+                <button
+                  key={c.value}
+                  className="px-3 py-1 bg-blue-700 hover:bg-blue-600 text-white border border-blue-500"
+                  onClick={() => close(c.value)}
+                >
+                  {c.text}
+                </button>
+              ))}
+              <button
+                className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-gray-100 border border-gray-500"
+                onClick={() => close('cancel')}
+              >
+                Cancel
+              </button>
+            </>
           ) : (
             <button
               className="px-3 py-1 bg-blue-700 hover:bg-blue-600 text-white border border-blue-500"

@@ -86,19 +86,26 @@ export const usePssEvents = () => {
           if (!payload || typeof payload !== 'object') return;
           const cont = payload.continue;
           const nw = payload.new;
-          const body = `Continue with ${cont.tournament} / ${cont.day}\n\nOr create ${nw.tournament} / ${nw.day}?`;
-          const ok = await (await import('../stores/messageCenter')).useMessageCenter.getState().confirm({
+          const { useMessageCenter } = await import('../stores/messageCenter');
+          const choice = await useMessageCenter.getState().choose({
             title: 'Select recording path context',
-            body,
-            confirmText: 'Continue',
-            cancelText: 'New Tournament',
-            severity: 'info', // match global modal blue theme
+            body: 'Would you like to CONTINUE with existent day, start a NEXT day or create a NEW tournament?',
+            severity: 'info',
+            choices: [
+              { text: 'Continue', value: 'continue' },
+              { text: 'Next', value: 'next' },
+              { text: 'New', value: 'new' },
+            ],
           });
           const { obsObwsCommands } = await import('../utils/tauriCommandsObws');
-          if (ok) {
+          if (choice === 'continue') {
             await obsObwsCommands.applyPathDecision(cont.tournament, cont.day);
+          } else if (choice === 'next') {
+            await obsObwsCommands.applyPathDecision(cont.tournament, 'Day NEXT');
+          } else if (choice === 'new') {
+            await obsObwsCommands.applyPathDecision(nw.tournament, 'Day 1');
           } else {
-            await obsObwsCommands.applyPathDecision(nw.tournament, nw.day);
+            // Cancel/no-op
           }
         } catch {}
       });
