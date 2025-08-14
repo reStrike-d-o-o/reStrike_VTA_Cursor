@@ -2005,7 +2005,13 @@ impl UdpServer {
                                     match &event {
                                         PssEvent::HitLevel { athlete, level } => {
                                             // Track this hit level for potential linking with point events
-                                            let mut hit_levels = recent_hit_levels.lock().unwrap();
+                                            let mut hit_levels = match recent_hit_levels.lock() {
+                                                Ok(guard) => guard,
+                                                Err(poisoned) => {
+                                                    log::warn!("recent_hit_levels mutex poisoned; recovering");
+                                                    poisoned.into_inner()
+                                                }
+                                            };
                                             let now = std::time::SystemTime::now();
                                             
                                             // Get or create the athlete's hit level history
@@ -2016,11 +2022,14 @@ impl UdpServer {
                                             
                                             // Keep only the last 10 hit levels per athlete (to avoid memory bloat)
                                             if athlete_hit_levels.len() > 10 {
-                                                // Remove the oldest entries (first elements) to keep only the last 10
-                                                // Use a safer approach to avoid panic with invalid ranges
-                                                let to_remove = athlete_hit_levels.len() - 10;
-                                                if to_remove > 0 && to_remove <= athlete_hit_levels.len() {
-                                                    athlete_hit_levels.drain(0..to_remove);
+                                                // Keep only the last 10 entries defensively
+                                                let keep = 10;
+                                                let len = athlete_hit_levels.len();
+                                                if len > keep {
+                                                    let end = len.saturating_sub(keep);
+                                                    if end > 0 {
+                                                        athlete_hit_levels.drain(0..end);
+                                                    }
                                                 }
                                             }
                                             
@@ -2028,7 +2037,10 @@ impl UdpServer {
                                         }
                                         PssEvent::FightLoaded | PssEvent::FightReady => {
                                             // Clear hit level tracking when a new fight starts
-                                            let mut hit_levels = recent_hit_levels.lock().unwrap();
+                                            let mut hit_levels = match recent_hit_levels.lock() {
+                                                Ok(guard) => guard,
+                                                Err(poisoned) => poisoned.into_inner(),
+                                            };
                                             hit_levels.clear();
                                             log::debug!("🧹 Cleared hit level tracking for new fight");
                                         }
@@ -2066,7 +2078,13 @@ impl UdpServer {
 
                             // Add event to recent events storage
                             {
-                                let mut events_guard = recent_events.lock().unwrap();
+                                let mut events_guard = match recent_events.lock() {
+                                    Ok(g) => g,
+                                    Err(poisoned) => {
+                                        log::warn!("recent_events mutex poisoned; recovering");
+                                        poisoned.into_inner()
+                                    }
+                                };
                                 events_guard.push_back(event.clone());
                                 
                                 // Keep only the last 100 events
