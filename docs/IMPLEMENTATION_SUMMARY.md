@@ -1,8 +1,39 @@
 # Implementation Summary - reStrike VTA Project
 
-## Latest Implementations (2025-01-29)
+## Latest Implementations (2025-01-30)
 
-### IVR Replay Feature (Replay Buffer + mpv) ✅ LATEST COMPLETION
+### OBS Recording Integration – Disk-First Flow + Modal Gating ✅ **LATEST COMPLETION**
+**Status**: COMPLETED (latest)
+
+**Key Features**:
+- **Disk-First Flow**: Tournament/Day folders are created on disk first, then OBS settings are applied
+- **Modal Gating**: Smart modal system that only appears when Tournament folders already exist on disk
+- **Live Athletes Capture**: Real-time capture of athlete names and flags from PSS events for immediate filename formatting
+- **Session Reuse**: If Tournament 1/Day 1 was just created in the current session, reuse those instead of recomputing from disk
+- **Explicit Logging**: Comprehensive logging on FightReady when applying directory/formatting changes
+
+**Implementation Details**:
+- **FightLoaded**: Generate concrete path from DB template and context; ensure folder exists; set OBS recording directory once per tournament day
+- **FightReady**: Strict sequence: set record directory → set filename formatting → wait 500ms → ensure RB → start recording
+- **Live Data Priority**: Use `session.match_number` and `session.player` names from MatchConfig/Athletes over database rows
+- **Modal Logic**: No modal on clean disk; modal only when Tournament folders already exist (prevents unnecessary prompts during first-time setup)
+- **Path Normalization**: Forward slash conversion before applying to OBS for cross-platform compatibility
+- **Session Persistence**: Tournament/day context maintained across matches within the same session
+
+**Technical Architecture**:
+- **Path Generation**: `ObsPathGenerator` with Windows Videos folder detection and dynamic tournament/day creation
+- **Event Handling**: `ObsRecordingEventHandler` with PSS event integration and live data capture
+- **Modal System**: Centralized message system with `obs_path_decision_needed` events
+- **Session Management**: In-memory session tracking with database persistence
+- **OBS Integration**: Native obws implementation with proper WebSocket communication
+
+**UI Integration**:
+- **Event Table**: "Current" dropdown shows current + previous matches
+- **Database Persistence**: Event Table automatically saved to database on Winner event
+- **Status Indicators**: Real-time recording status with proper color coding
+- **Configuration Panel**: Comprehensive recording settings with live OBS read-back
+
+### IVR Replay Feature (Replay Buffer + mpv) ✅
 **Status**: COMPLETED
 
 **Backend**:
@@ -17,17 +48,6 @@
 
 **Config**:
 - DB keys: `ivr.replay.mpv_path`, `ivr.replay.seconds_from_end`, `ivr.replay.max_wait_ms`, `ivr.replay.auto_on_challenge`
-
-### OBS Recording Integration – Auto-flow + Unified Save/Load ✅
-**Status**: COMPLETED (latest)
-
-**Details**:
-- FightLoaded: generate concrete path from DB template and context; ensure folder exists; set OBS recording directory once per tournament day
-- FightReady: Always-on RB (start if not Active), apply filename formatting using current match athletes and matchNumber, then start recording
-- Winner-only delayed stop honoring Stop Delay seconds; WinnerRounds does nothing
-- If no active tournament/day: propose Continue (`Tournament N / Day X+1`) vs New (`Tournament N+1 / Day 1`) via centralized message, then apply selection
-- Path normalization to forward slashes before applying to OBS
-- `folder_pattern` added to DB and used by generator
 
 ### Documentation Reorganization ✅ **LATEST COMPLETION**
 **Status**: COMPLETED  
