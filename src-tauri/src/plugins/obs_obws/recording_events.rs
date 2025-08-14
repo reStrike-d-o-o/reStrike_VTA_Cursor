@@ -327,13 +327,17 @@ impl ObsRecordingEventHandler {
             return Ok(());
         }
 
-        // Prefer configured connection; fall back to session's connection if missing
-        let connection_name_opt = config
+        // Resolve connection name: config -> session -> default "OBS_REC"
+        let connection_name = config
             .obs_connection_name
             .clone()
-            .or_else(|| self.get_current_session().and_then(|s| s.obs_connection_name.clone()));
+            .or_else(|| self.get_current_session().and_then(|s| s.obs_connection_name.clone()))
+            .unwrap_or_else(|| {
+                log::warn!("⚠️ No connection name in config/session; defaulting to 'OBS_REC'");
+                "OBS_REC".to_string()
+            });
 
-        if let Some(connection_name) = connection_name_opt {
+        if !connection_name.is_empty() {
             log::info!("🎬 FightReady: using OBS connection '{}'", connection_name);
             println!("🎬 FightReady: using OBS connection '{}'", connection_name);
             // Apply recording directory and filename formatting BEFORE starting RB/recording
@@ -348,12 +352,12 @@ impl ObsRecordingEventHandler {
             }
             if let Some(session) = self.get_current_session() {
                 // Apply directory (normalize separators) to be sure OBS accepts formatting update
-                if let (Some(dir), Some(conn_name)) = (session.recording_path.clone(), session.obs_connection_name.clone()) {
+                if let Some(dir) = session.recording_path.clone() {
                     let dir_norm = dir.replace('\\', "/");
                     // Print exactly what we're sending to OBS
-                    println!("📤 Sending to OBS '{}' record directory (pre-start): {}", conn_name, dir_norm);
-                    log::info!("📤 Sending to OBS '{}' record directory (pre-start): {}", conn_name, dir_norm);
-                    if let Err(e) = self.obs_manager.set_record_directory(&dir_norm, Some(&conn_name)).await {
+                    println!("📤 Sending to OBS '{}' record directory (pre-start): {}", connection_name, dir_norm);
+                    log::info!("📤 Sending to OBS '{}' record directory (pre-start): {}", connection_name, dir_norm);
+                    if let Err(e) = self.obs_manager.set_record_directory(&dir_norm, Some(&connection_name)).await {
                         log::warn!("Failed to set record directory before start: {}", e);
                     } else {
                         log::info!("📁 Record directory ensured before start: {}", dir_norm);
@@ -420,6 +424,8 @@ impl ObsRecordingEventHandler {
             } else {
                 log::info!("🎬 Auto-start recording disabled by UI setting; not starting recording on FightReady");
             }
+        } else {
+            log::warn!("⚠️ FightReady: empty connection name resolved; skipping start");
         }
 
         Ok(())
