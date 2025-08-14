@@ -37,6 +37,7 @@
 - **Status Indicators**: Real-time recording status with proper color coding
 - **Configuration Panel**: Comprehensive recording settings with live OBS read-back
 - **Unified Modal Styling**: Folder-selection modal uses the same blue theme as global dialogs and the app’s Button atom (choices: Continue, Next, New)
+ - **Event Table Lifecycle**: Clears automatically 500 ms after recording starts; at Winner, current table stored to DB for later review; selecting previous matches in the dropdown loads their events without affecting recording flow
 
 ### IVR Replay Feature (Replay Buffer + mpv) ✅
 **Status**: COMPLETED
