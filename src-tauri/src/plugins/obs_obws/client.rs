@@ -332,9 +332,19 @@ impl ObsClient {
     /// Set recording directory (Output -> Recording -> Recording path)
     pub async fn set_record_directory(&self, directory: &str) -> AppResult<()> {
         let client = self.get_client()?;
-        // Fallback to profile parameter because obws general API does not expose SetRecordDirectory
-        // The parameter name in OBS is typically: "Output", section "Recording", key "RecFilePath"
-        // For broad compatibility, use profile.set_parameter(category, parameter, value)
+        // Prefer official obws Config API
+        println!("🛰️ obws.config.set_record_directory directory='{}'", directory);
+        match client.config().set_record_directory(directory).await {
+            Ok(_) => {
+                log::info!("📁 Recording directory set via Config API: {}", directory);
+                return Ok(());
+            }
+            Err(e) => {
+                log::warn!("Config.set_record_directory failed ({}). Falling back to profiles.set_parameter.", e);
+            }
+        }
+        // Fallback to profile parameter because some OBS profiles store RecFilePath there
+        println!("🛰️ obws.profiles.set_parameter category=Output name=RecFilePath value='{}'", directory);
         client
             .profiles()
             .set_parameter(obws::requests::profiles::SetParameter {
@@ -344,7 +354,17 @@ impl ObsClient {
             })
             .await
             .map_err(|e| AppError::ConfigError(format!("Failed to set record directory: {}", e)))?;
-        log::info!("📁 Recording directory set to: {}", directory);
+        // Try alternative advanced output key as well, but do not fail the call if it errors
+        println!("🛰️ obws.profiles.set_parameter category=AdvOut name=RecFilePath value='{}'", directory);
+        let _ = client
+            .profiles()
+            .set_parameter(obws::requests::profiles::SetParameter {
+                category: "AdvOut",
+                name: "RecFilePath",
+                value: Some(directory),
+            })
+            .await;
+        log::info!("📁 Recording directory set (fallback): {}", directory);
         Ok(())
     }
 
@@ -353,6 +373,10 @@ impl ObsClient {
         let client = self.get_client()?;
         // Use profile.set_parameter for filename formatting. Key commonly "FilenameFormatting" under "Output" or "AdvOut".
         // We set both likely keys to improve compatibility; ignore errors on the second set.
+        println!(
+            "🛰️ obws.profiles.set_parameter {{category='Output', name='FilenameFormatting', value='{}'}}",
+            formatting
+        );
         client
             .profiles()
             .set_parameter(obws::requests::profiles::SetParameter {
@@ -363,6 +387,10 @@ impl ObsClient {
             .await
             .map_err(|e| AppError::ConfigError(format!("Failed to set filename formatting: {}", e)))?;
         // Try alternative advanced key without failing whole call if it errors
+        println!(
+            "🛰️ obws.profiles.set_parameter {{category='AdvOut', name='FilenameFormatting', value='{}'}}",
+            formatting
+        );
         let _ = client
             .profiles()
             .set_parameter(obws::requests::profiles::SetParameter {
@@ -378,6 +406,11 @@ impl ObsClient {
     /// Get recording directory from OBS profile
     pub async fn get_record_directory(&self) -> AppResult<String> {
         let client = self.get_client()?;
+        // Prefer official API
+        if let Ok(dir) = client.config().record_directory().await {
+            return Ok(dir);
+        }
+        // Fallback to profile parameter
         let param = client
             .profiles()
             .parameter("Output", "RecFilePath")

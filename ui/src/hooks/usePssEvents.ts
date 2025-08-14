@@ -92,6 +92,7 @@ export const usePssEvents = () => {
             body,
             confirmText: 'Continue',
             cancelText: 'New Tournament',
+            severity: 'info', // match global modal blue theme
           });
           const { obsObwsCommands } = await import('../utils/tauriCommandsObws');
           if (ok) {
