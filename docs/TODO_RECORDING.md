@@ -87,6 +87,7 @@
 - [x] Modal gating logic (no modal on clean disk, modal only when folders exist)
 - [x] Live athletes capture and filename formatting
 - [x] Post-decision FightReady auto-run (no double click), directory/formatting/RB/record invoke sequence with read-backs
+- [x] UDP-first precedence: Athletes/MatchConfig names and flags override database values for filename formatting
 
 #### **Remaining Tests** 📋
 - [ ] Verify session persisted and event offsets computed
@@ -113,6 +114,7 @@ After completing any task above:
 2. **Complete OBS Connection Roles** - Add role-based connection management
 3. **Enhance Replay Buffer Integration** - Improve save/play functionality with mpv
 4. **Session Persistence** - Implement complete session tracking and event mapping
+5. **Regression Test Suite** - Add scripted tests/log assertions for clean disk vs existing folders, UDP-first formatting, RB/record start timing
 
 ### 📚 **KEY IMPLEMENTATION FILES**
 

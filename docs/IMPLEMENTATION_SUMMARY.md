@@ -17,6 +17,7 @@
 - **FightLoaded**: Generate concrete path from DB template and context; ensure folder exists; set OBS recording directory once per tournament day
 - **FightReady**: Strict sequence: set record directory → set filename formatting → wait 500ms → ensure RB → start recording; always resolves an effective filename template (DB or default) and logs read-back from OBS
 - **Live Data Priority**: Use `session.match_number` and `session.player` names from MatchConfig/Athletes over database rows
+  - UDP-first precedence: pending UDP values (Athletes/MatchConfig) are captured even before a session exists and override DB values for filename formatting
 - **Modal Logic**: No modal on clean disk; modal only when Tournament folders already exist (prevents unnecessary prompts during first-time setup)
 - **Path Normalization**: Forward slash conversion before applying to OBS for cross-platform compatibility
 - **Session Persistence**: Tournament/day context maintained across matches within the same session
