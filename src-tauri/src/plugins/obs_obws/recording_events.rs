@@ -344,24 +344,29 @@ impl ObsRecordingEventHandler {
                         log::info!("📁 Record directory ensured before start: {}", dir_norm);
                     }
                 }
-                if let Some(template) = self.get_active_filename_template().await? {
-                    println!("🧪 Active filename template: {}", template);
-                    let formatting = self.build_filename_formatting(&template, &session);
-                    // Print exactly what we're sending to OBS
-                    println!("📤 Sending to OBS '{}' filename formatting: {}", connection_name, formatting);
-                    log::info!("📤 Sending to OBS '{}' filename formatting: {}", connection_name, formatting);
-                    if let Err(e) = self.obs_manager.set_filename_formatting(&formatting, Some(&connection_name)).await {
-                        log::warn!("Failed to set filename formatting: {}", e);
-                    } else {
-                        log::info!("🧾 Applied filename formatting to OBS: {}", formatting);
-                        // Read-back verification
-                        match self.obs_manager.get_filename_formatting(Some(&connection_name)).await {
-                            Ok(current) => println!("🔎 OBS current filename formatting='{}'", current),
-                            Err(err) => println!("⚠️ Failed to read back filename formatting: {}", err),
-                        }
+                // Resolve filename template; if DB has none, fall back to default mapping
+                let effective_template = match self.get_active_filename_template().await? {
+                    Some(t) => t,
+                    None => {
+                        let def = "{matchNumber}_{player1}_{player2}_{date}_{time}".to_string();
+                        println!("⚠️ No DB filename template; using default: {}", def);
+                        def
                     }
+                };
+                println!("🧪 Active filename template: {}", effective_template);
+                let formatting = self.build_filename_formatting(&effective_template, &session);
+                // Print exactly what we're sending to OBS
+                println!("📤 Sending to OBS '{}' filename formatting: {}", connection_name, formatting);
+                log::info!("📤 Sending to OBS '{}' filename formatting: {}", connection_name, formatting);
+                if let Err(e) = self.obs_manager.set_filename_formatting(&formatting, Some(&connection_name)).await {
+                    log::warn!("Failed to set filename formatting: {}", e);
                 } else {
-                    println!("⚠️ No active filename template available; skipping set_filename_formatting");
+                    log::info!("🧾 Applied filename formatting to OBS: {}", formatting);
+                    // Read-back verification
+                    match self.obs_manager.get_filename_formatting(Some(&connection_name)).await {
+                        Ok(current) => println!("🔎 OBS current filename formatting='{}'", current),
+                        Err(err) => println!("⚠️ Failed to read back filename formatting: {}", err),
+                    }
                 }
             }
 
@@ -813,13 +818,15 @@ impl ObsRecordingEventHandler {
                     Err(e) => log::warn!("Failed to set overridden record directory in OBS: {}", e),
                 }
                 // Re-apply filename formatting
-                if let Some(template) = self.get_active_filename_template().await? {
-                    let formatting = self.build_filename_formatting(&template, &session);
-                    println!("📤 Sending to OBS '{}' filename formatting (override): {}", conn_name, formatting);
-                    log::info!("📤 Sending to OBS '{}' filename formatting (override): {}", conn_name, formatting);
-                    if let Err(e) = self.obs_manager.set_filename_formatting(&formatting, Some(&conn_name)).await {
-                        log::warn!("Failed to set filename formatting after override: {}", e);
-                    }
+                let eff_tmpl = match self.get_active_filename_template().await? {
+                    Some(t) => t,
+                    None => "{matchNumber}_{player1}_{player2}_{date}_{time}".to_string(),
+                };
+                let formatting = self.build_filename_formatting(&eff_tmpl, &session);
+                println!("📤 Sending to OBS '{}' filename formatting (override): {}", conn_name, formatting);
+                log::info!("📤 Sending to OBS '{}' filename formatting (override): {}", conn_name, formatting);
+                if let Err(e) = self.obs_manager.set_filename_formatting(&formatting, Some(&conn_name)).await {
+                    log::warn!("Failed to set filename formatting after override: {}", e);
                 }
                 // Clear awaiting flag so FightReady will proceed next time
                 if let Ok(mut wait_flag) = self.awaiting_path_decision.lock() { *wait_flag = false; }
