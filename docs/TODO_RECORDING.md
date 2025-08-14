@@ -64,6 +64,17 @@
 - [ ] Persist PSS events with absolute times and compute offsets
 - [ ] Frontend integration for match review and seek functionality
 
+#### **Phase 6.1 – Event Table lifecycle & review** 📋
+- [ ] On recording started (OBS RecordStateChanged=true): wait 500 ms → `clearEvents()` so table represents only current match
+- [ ] On match end (Winner): store current Event Table to DB for this match (id/number)
+- [ ] "Current" dropdown: maintain rolling list of current + previous matches; when user selects a previous match, load its events from DB into the table (read-only)
+- [ ] Ensure selecting previous matches does NOT trigger any recording/path/formatting logic
+- [ ] Add read-only Tauri command to fetch events by match id/number for the review flow
+
+#### **Phase 6.2 – Round tracking accuracy** 📋
+- [ ] Fix Event Table RND column: capture and persist live round changes; ensure events are linked to the correct round (R1/R2/R3)
+- [ ] Add regression test where 2–3 rounds occur; verify RND increments and table shows correct round per event
+
 #### **Phase 7 – Status Indicators** 📋
 - [ ] Update DockBar status dots colors for OBS_REC and OBS_STR
 - [ ] Add notifications for recording started/stopped, replay saved/played
@@ -100,6 +111,8 @@
   - [ ] Resolves effective template; sends filename formatting; read-back matches
   - [ ] Wait 500 ms → Ensure RB Active → Start recording
   - [ ] Logs show the full sequence without any modal and without double-clicks
+- [ ] Event Table lifecycle: 500 ms post-recording start → table cleared; at Winner → events stored; dropdown review of previous matches populates table without side-effects
+- [ ] Round tracking across 2–3 rounds; verify table RND values and DB persistence
 
 ### 🔧 **WORK PROTOCOL**
 
