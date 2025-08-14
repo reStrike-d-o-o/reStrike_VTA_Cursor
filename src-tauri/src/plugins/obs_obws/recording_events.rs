@@ -165,6 +165,17 @@ impl ObsRecordingEventHandler {
                     log::warn!("Failed to prepare session on MatchConfig: {}", e);
                 }
             }
+            // Capture athletes immediately to ensure filename uses current match names
+            PssEvent::Athletes { athlete1_short, athlete1_country, athlete2_short, athlete2_country, .. } => {
+                let mut session_guard = self.current_session.lock().unwrap();
+                if let Some(ref mut session) = *session_guard {
+                    session.player1_name = Some(athlete1_short.clone());
+                    session.player1_flag = Some(athlete1_country.clone());
+                    session.player2_name = Some(athlete2_short.clone());
+                    session.player2_flag = Some(athlete2_country.clone());
+                    session.updated_at = Utc::now();
+                }
+            }
             // Match loaded - prepare recording
             PssEvent::FightLoaded => {
                 log::info!("🎬 FightLoaded event received - preparing recording session");
@@ -593,8 +604,27 @@ impl ObsRecordingEventHandler {
             let tn_suggest_new = if let Some(rest) = tn.strip_prefix("Tournament ") {
                 if let Ok(n) = rest.trim().parse::<u32>() { format!("Tournament {}", n+1) } else { "Tournament 2".to_string() }
             } else { "Tournament 2".to_string() };
-            // Suggest next day as Day X+1 baseline is computed above as resolved day; for new tournament, Day 1
-            let resolved_day = tournament_day_resolved.clone().unwrap_or_else(|| "Day 1".to_string());
+            // Continue with the highest existing Day under current tournament (or Day 1 if none)
+            let resolved_day = {
+                let t_dir = videos_root.join(&tn);
+                if t_dir.is_dir() {
+                    let mut max_day = 0u32;
+                    if let Ok(entries) = std::fs::read_dir(&t_dir) {
+                        for e in entries.flatten() {
+                            if let Ok(md) = e.metadata() {
+                                if md.is_dir() {
+                                    if let Some(name) = e.file_name().to_str() {
+                                        if let Some(rest) = name.strip_prefix("Day ") {
+                                            if let Ok(n) = rest.trim().parse::<u32>() { if n > max_day { max_day = n; } }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if max_day == 0 { "Day 1".to_string() } else { format!("Day {}", max_day) }
+                } else { "Day 1".to_string() }
+            };
             let payload = serde_json::json!({
                 "type": "obs_path_decision_needed",
                 "continue": { "tournament": tn, "day": resolved_day },
