@@ -827,6 +827,9 @@ impl ObsRecordingEventHandler {
             }
         }
 
+        // Release DB connection before awaiting any OBS/profile calls to avoid pool deadlocks
+        drop(conn);
+
         // Apply directory to OBS (re-evaluate day boundary) and release the wait flag
         if let Some(session) = self.get_current_session() {
             if let (Some(dir), Some(conn_name)) = (session.recording_path.clone(), session.obs_connection_name.clone()) {
@@ -839,10 +842,21 @@ impl ObsRecordingEventHandler {
                     Err(e) => log::warn!("Failed to set overridden record directory in OBS: {}", e),
                 }
                 // Re-apply filename formatting
-                let eff_tmpl = match self.get_active_filename_template().await? {
-                    Some(t) => t,
-                    None => "{matchNumber}_{player1}_{player2}_{date}_{time}".to_string(),
+                println!("🧪 Override: resolving filename template...");
+                let eff_tmpl = match self.get_active_filename_template().await {
+                    Ok(Some(t)) => t,
+                    Ok(None) => {
+                        let d = "{matchNumber}_{player1}_{player2}_{date}_{time}".to_string();
+                        println!("⚠️ Override: no DB template -> using default: {}", d);
+                        d
+                    }
+                    Err(e) => {
+                        let d = "{matchNumber}_{player1}_{player2}_{date}_{time}".to_string();
+                        println!("⚠️ Override: failed to get DB template ({}), using default: {}", e, d);
+                        d
+                    }
                 };
+                println!("🧪 Override: active filename template: {}", eff_tmpl);
                 let formatting = self.build_filename_formatting(&eff_tmpl, &session);
                 println!("📤 Sending to OBS '{}' filename formatting (override): {}", conn_name, formatting);
                 log::info!("📤 Sending to OBS '{}' filename formatting (override): {}", conn_name, formatting);
@@ -860,6 +874,7 @@ impl ObsRecordingEventHandler {
 
         // Now that the decision is applied and waiting flag cleared, proceed with the standard FightReady flow
         // to ensure filename formatting, RB, and recording start are executed.
+        println!("⏭️ Calling FightReady immediately after override apply...");
         let _ = self.handle_fight_ready().await;
 
         Ok(())
