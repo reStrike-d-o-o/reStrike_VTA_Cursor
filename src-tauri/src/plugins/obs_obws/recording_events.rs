@@ -312,13 +312,28 @@ impl ObsRecordingEventHandler {
             config_guard.clone()
         };
 
+        // Debug snapshot of config to trace issues in production logs
+        log::info!(
+            "🧩 FightReady config: enabled={} conn={:?} auto_start_rec={} include_rb={}",
+            config.enabled,
+            config.obs_connection_name,
+            config.auto_start_recording_on_match_begin,
+            config.include_replay_buffer
+        );
+
         // If we are awaiting user's path decision, do nothing yet
         if *self.awaiting_path_decision.lock().unwrap() {
             log::info!("⏸️ Waiting for user's path decision before applying OBS settings or starting outputs");
             return Ok(());
         }
 
-        if let Some(connection_name) = config.obs_connection_name {
+        // Prefer configured connection; fall back to session's connection if missing
+        let connection_name_opt = config
+            .obs_connection_name
+            .clone()
+            .or_else(|| self.get_current_session().and_then(|s| s.obs_connection_name.clone()));
+
+        if let Some(connection_name) = connection_name_opt {
             log::info!("🎬 FightReady: using OBS connection '{}'", connection_name);
             println!("🎬 FightReady: using OBS connection '{}'", connection_name);
             // Apply recording directory and filename formatting BEFORE starting RB/recording
