@@ -25,7 +25,7 @@ interface MessageCenterState {
   showWarning: (title: string, body?: string) => void;
   showInfo: (title: string, body?: string) => void;
   showSuccess: (title: string, body?: string) => void;
-  confirm: (args: { title: string; body?: string; confirmText?: string; cancelText?: string }) => Promise<boolean>;
+  confirm: (args: { title: string; body?: string; confirmText?: string; cancelText?: string; severity?: MessageSeverity }) => Promise<boolean>;
   close: (ok?: boolean) => void;
   /** Internal: advance queue when current is empty */
   _ensureCurrent: () => void;
@@ -54,12 +54,12 @@ export const useMessageCenter = create<MessageCenterState>((set, get) => ({
   showInfo: (title, body) => get().showMessage({ severity: 'info', title, body }),
   showSuccess: (title, body) => get().showMessage({ severity: 'success', title, body }),
 
-  confirm: ({ title, body, confirmText = 'Confirm', cancelText = 'Cancel' }) => {
+  confirm: ({ title, body, confirmText = 'Confirm', cancelText = 'Cancel', severity = 'warning' }) => {
     return new Promise<boolean>((resolve) => {
       const item: ModalItem = {
         id: makeId(),
         kind: 'confirm',
-        severity: 'warning',
+        severity,
         title,
         body,
         confirmText,

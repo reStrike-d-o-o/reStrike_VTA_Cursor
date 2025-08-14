@@ -283,6 +283,9 @@ impl ObsRecordingEventHandler {
                     if let (Some(dir), Some(conn_name)) = (session.recording_path.clone(), session.obs_connection_name.clone()) {
                         // Normalize path separators for OBS
                         let dir_norm = dir.replace('\\', "/");
+                        // Print exactly what we're sending to OBS
+                        println!("📤 Sending to OBS '{}' record directory (day apply): {}", conn_name, dir_norm);
+                        log::info!("📤 Sending to OBS '{}' record directory (day apply): {}", conn_name, dir_norm);
                         // Release the mutex before awaiting
                         match self.obs_manager.set_record_directory(&dir_norm, Some(&conn_name)).await {
                             Ok(()) => {
@@ -332,6 +335,9 @@ impl ObsRecordingEventHandler {
                 // Apply directory (normalize separators) to be sure OBS accepts formatting update
                 if let (Some(dir), Some(conn_name)) = (session.recording_path.clone(), session.obs_connection_name.clone()) {
                     let dir_norm = dir.replace('\\', "/");
+                    // Print exactly what we're sending to OBS
+                    println!("📤 Sending to OBS '{}' record directory (pre-start): {}", conn_name, dir_norm);
+                    log::info!("📤 Sending to OBS '{}' record directory (pre-start): {}", conn_name, dir_norm);
                     if let Err(e) = self.obs_manager.set_record_directory(&dir_norm, Some(&conn_name)).await {
                         log::warn!("Failed to set record directory before start: {}", e);
                     } else {
@@ -339,12 +345,18 @@ impl ObsRecordingEventHandler {
                     }
                 }
                 if let Some(template) = self.get_active_filename_template().await? {
+                    println!("🧪 Active filename template: {}", template);
                     let formatting = self.build_filename_formatting(&template, &session);
+                    // Print exactly what we're sending to OBS
+                    println!("📤 Sending to OBS '{}' filename formatting: {}", connection_name, formatting);
+                    log::info!("📤 Sending to OBS '{}' filename formatting: {}", connection_name, formatting);
                     if let Err(e) = self.obs_manager.set_filename_formatting(&formatting, Some(&connection_name)).await {
                         log::warn!("Failed to set filename formatting: {}", e);
                     } else {
                         log::info!("🧾 Applied filename formatting to OBS: {}", formatting);
                     }
+                } else {
+                    println!("⚠️ No active filename template available; skipping set_filename_formatting");
                 }
             }
 
@@ -507,18 +519,26 @@ impl ObsRecordingEventHandler {
 
         // Get match athletes with a short retry window to allow UDP linking to persist
         let match_db_id = match_info.id.unwrap();
-        let mut player1_name: Option<String> = None;
-        let mut player1_flag: Option<String> = None;
-        let mut player2_name: Option<String> = None;
-        let mut player2_flag: Option<String> = None;
+        let mut db_player1_name: Option<String> = None;
+        let mut db_player1_flag: Option<String> = None;
+        let mut db_player2_name: Option<String> = None;
+        let mut db_player2_flag: Option<String> = None;
         for _ in 0..20 { // up to ~3s
             let match_athletes = PssUdpOperations::get_pss_match_athletes(&*conn, match_db_id)?;
             let mut found1 = false;
             let mut found2 = false;
             for (match_athlete, athlete) in &match_athletes {
                 match match_athlete.athlete_position {
-                    1 => { player1_name = Some(athlete.short_name.clone()); player1_flag = athlete.country_code.clone(); found1 = true; },
-                    2 => { player2_name = Some(athlete.short_name.clone()); player2_flag = athlete.country_code.clone(); found2 = true; },
+                    1 => {
+                        db_player1_name = Some(athlete.short_name.clone());
+                        db_player1_flag = athlete.country_code.clone(); // Option<String>
+                        found1 = true;
+                    },
+                    2 => {
+                        db_player2_name = Some(athlete.short_name.clone());
+                        db_player2_flag = athlete.country_code.clone(); // Option<String>
+                        found2 = true;
+                    },
                     _ => {}
                 }
             }
@@ -535,6 +555,26 @@ impl ObsRecordingEventHandler {
             folder_pattern,
         };
         let path_generator = ObsPathGenerator::new(Some(gen_cfg));
+
+        // Prefer live UDP/session values over DB when available
+        let (live_p1_name, live_p1_flag, live_p2_name, live_p2_flag, live_match_number) = {
+            let existing = self.current_session.lock().unwrap().clone();
+            let (mut p1n, mut p1f, mut p2n, mut p2f, mut mnum): (Option<String>, Option<String>, Option<String>, Option<String>, Option<String>) = (None, None, None, None, None);
+            if let Some(s) = existing {
+                p1n = s.player1_name;
+                p1f = s.player1_flag;
+                p2n = s.player2_name;
+                p2f = s.player2_flag;
+                mnum = s.match_number;
+            }
+            (
+                p1n.or(db_player1_name.clone()),
+                p1f.or(db_player1_flag.clone()),
+                p2n.or(db_player2_name.clone()),
+                p2f.or(db_player2_flag.clone()),
+                mnum.or(match_info.match_number.clone()),
+            )
+        };
 
         // Resolve concrete tournament/day defaults if not provided by DB
         // First prefer in-session memo to avoid recomputing Day from disk after we just created Day 1
@@ -659,11 +699,11 @@ impl ObsRecordingEventHandler {
             match_id,
             tournament_name_resolved,
             tournament_day_resolved,
-            match_info.match_number.clone(),
-            player1_name.clone(),
-            player1_flag.clone(),
-            player2_name.clone(),
-            player2_flag.clone()
+            live_match_number.clone(),
+            live_p1_name.clone(),
+            live_p1_flag.clone(),
+            live_p2_name.clone(),
+            live_p2_flag.clone()
         )?;
 
         // Ensure directory exists. If we showed prompt, wait for user decision; if no prompt, create now
@@ -686,11 +726,12 @@ impl ObsRecordingEventHandler {
                 session.recording_filename = Some(generated_path.filename);
                 session.tournament_name = generated_path.tournament_name;
                 session.tournament_day = generated_path.tournament_day;
-                session.match_number = generated_path.match_number;
-                session.player1_name = player1_name;
-                session.player1_flag = player1_flag;
-                session.player2_name = player2_name;
-                session.player2_flag = player2_flag;
+                // Preserve live values if already set; otherwise use resolved/live/db values
+                session.match_number = session.match_number.clone().or(live_match_number);
+                session.player1_name = session.player1_name.clone().or(live_p1_name);
+                session.player1_flag = session.player1_flag.clone().or(live_p1_flag);
+                session.player2_name = session.player2_name.clone().or(live_p2_name);
+                session.player2_flag = session.player2_flag.clone().or(live_p2_flag);
                 session.updated_at = Utc::now();
             }
         }
@@ -758,13 +799,19 @@ impl ObsRecordingEventHandler {
         // Apply directory to OBS (re-evaluate day boundary) and release the wait flag
         if let Some(session) = self.get_current_session() {
             if let (Some(dir), Some(conn_name)) = (session.recording_path.clone(), session.obs_connection_name.clone()) {
-                match self.obs_manager.set_record_directory(&dir, Some(&conn_name)).await {
+                // Normalize path separators to forward slashes for OBS compatibility
+                let dir_norm = dir.replace('\\', "/");
+                println!("📤 Sending to OBS '{}' record directory (override): {}", conn_name, dir_norm);
+                log::info!("📤 Sending to OBS '{}' record directory (override): {}", conn_name, dir_norm);
+                match self.obs_manager.set_record_directory(&dir_norm, Some(&conn_name)).await {
                     Ok(()) => log::info!("📁 Applied overridden recording directory to OBS: {}", dir),
                     Err(e) => log::warn!("Failed to set overridden record directory in OBS: {}", e),
                 }
                 // Re-apply filename formatting
                 if let Some(template) = self.get_active_filename_template().await? {
                     let formatting = self.build_filename_formatting(&template, &session);
+                    println!("📤 Sending to OBS '{}' filename formatting (override): {}", conn_name, formatting);
+                    log::info!("📤 Sending to OBS '{}' filename formatting (override): {}", conn_name, formatting);
                     if let Err(e) = self.obs_manager.set_filename_formatting(&formatting, Some(&conn_name)).await {
                         log::warn!("Failed to set filename formatting after override: {}", e);
                     }
