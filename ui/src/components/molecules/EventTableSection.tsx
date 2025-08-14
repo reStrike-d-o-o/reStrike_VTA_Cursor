@@ -38,18 +38,47 @@ const EventTableSection: React.FC = () => {
   
   const { isManualModeEnabled } = useAppStore();
   const matchNumber = usePssMatchStore((s) => s.matchData.matchConfig?.number);
-  // Keep a small history of recent match numbers for the dropdown (display-only)
-  const recentMatchNumbersRef = useRef<number[]>([]);
+  // Keep a small history of recent match numbers for the dropdown (reviewable)
+  const recentMatchNumbersRef = useRef<string[]>([]);
+  // Load events for review mode
+  const [reviewMatchId, setReviewMatchId] = useState<string | null>(null);
+  const setEvents = useLiveDataStore.getState().setEvents;
   useEffect(() => {
-    if (typeof matchNumber === 'number' && matchNumber > 0) {
+    const asStr = matchNumber != null ? String(matchNumber) : '';
+    if (asStr) {
       const list = recentMatchNumbersRef.current;
-      if (list[0] !== matchNumber) {
-        // Prepend and dedupe, keep last 5
-        const next = [matchNumber, ...list.filter((n) => n !== matchNumber)].slice(0, 5);
+      if (list[0] !== asStr) {
+        const next = [asStr, ...list.filter((n) => n !== asStr)].slice(0, 8);
         recentMatchNumbersRef.current = next;
       }
     }
   }, [matchNumber]);
+
+  const loadMatchEventsForReview = async (idStr: string) => {
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      // Backend expects numeric match id; for now pass as string key; backend should handle mapping
+      const resp = await invoke('pss_get_events_for_match', { matchId: idStr });
+      // Expect resp to be array of events matching PssEventData shape or convertible
+      const list = Array.isArray(resp) ? resp : [];
+      // Convert to PssEventData[] if needed
+      const normalized = list.map((e: any) => ({
+        id: String(e.id ?? `${idStr}_${Math.random()}`),
+        eventType: e.type ?? e.event_type ?? '',
+        eventCode: e.event_code ?? '',
+        athlete: (e.athlete ?? 'yellow') as any,
+        round: Number(e.round ?? 1),
+        time: String(e.time ?? '0:00'),
+        timestamp: String(e.timestamp ?? new Date().toISOString()),
+        rawData: String(e.raw_data ?? ''),
+        description: String(e.description ?? ''),
+      }));
+      setEvents(normalized.reverse());
+      setReviewMatchId(idStr);
+    } catch (err) {
+      console.warn('⚠️ Failed to load match events for review:', err);
+    }
+  };
 
   // Filtering logic - only show important events when manual mode is OFF
   const allEvents = isManualModeEnabled ? [] : getFilteredEvents(colorFilter, eventTypeFilter);
@@ -114,10 +143,23 @@ const EventTableSection: React.FC = () => {
         <div className="text-lg font-semibold text-gray-200 flex items-center gap-2">
           <span>Event Table</span>
           {/* Current match dropdown (display only) */}
-          <select aria-label="Select match" className="text-xs bg-gray-800 border border-gray-600 rounded px-2 py-1 text-gray-200" value={matchNumber || ''} onChange={() => { /* display-only */ }}>
-            <option value={matchNumber || ''}>{`Current ${matchNumber ? `#${matchNumber}` : ''}`.trim()}</option>
+          <select
+            aria-label="Select match"
+            className="text-xs bg-gray-800 border border-gray-600 rounded px-2 py-1 text-gray-200"
+            value={reviewMatchId ?? String(matchNumber ?? '')}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v && v !== String(matchNumber ?? '')) {
+                loadMatchEventsForReview(v);
+              } else {
+                // Back to current: do nothing special; live stream will keep filling
+                setReviewMatchId(null);
+              }
+            }}
+          >
+            <option value={String(matchNumber ?? '')}>{`Current ${matchNumber ? `#${matchNumber}` : ''}`.trim()}</option>
             {recentMatchNumbersRef.current
-              .filter((n) => n !== matchNumber)
+              .filter((n) => n !== String(matchNumber ?? ''))
               .map((n) => (
                 <option key={n} value={n}>{`Previous #${n}`}</option>
               ))}
