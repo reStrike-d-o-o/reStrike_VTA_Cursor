@@ -108,6 +108,8 @@ pub struct ObsRecordingEventHandler {
     last_udp_match_id: Arc<Mutex<Option<String>>>,
     // Whether we are waiting for user to confirm path decision (Continue/New)
     awaiting_path_decision: Arc<Mutex<bool>>,
+    // In-session memo of the active tournament/day chosen or created (prevents recomputing Day from disk)
+    active_tournament_day: Arc<Mutex<Option<(String, String)>>>,
 }
 
 impl ObsRecordingEventHandler {
@@ -126,6 +128,7 @@ impl ObsRecordingEventHandler {
             last_applied_directory_day: Arc::new(Mutex::new(None)),
             last_udp_match_id: Arc::new(Mutex::new(None)),
             awaiting_path_decision: Arc::new(Mutex::new(false)),
+            active_tournament_day: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -534,58 +537,66 @@ impl ObsRecordingEventHandler {
         let path_generator = ObsPathGenerator::new(Some(gen_cfg));
 
         // Resolve concrete tournament/day defaults if not provided by DB
-        // Determine base tournament name by scanning root when none active
-        let tournament_name_resolved: Option<String> = Some(match tournament {
-            Some(t) => t.name,
-            None => {
-                // Scan root for existing "Tournament N" directories
-                let mut max_tournament = 0u32;
-                if videos_root.is_dir() {
-                    if let Ok(entries) = std::fs::read_dir(&videos_root) {
-                        for e in entries.flatten() {
-                            if let Ok(md) = e.metadata() {
-                                if md.is_dir() {
-                                    if let Some(name) = e.file_name().to_str() {
-                                        if let Some(rest) = name.strip_prefix("Tournament ") {
-                                            if let Ok(n) = rest.trim().parse::<u32>() { if n > max_tournament { max_tournament = n; } }
+        // First prefer in-session memo to avoid recomputing Day from disk after we just created Day 1
+        let memo_td = { self.active_tournament_day.lock().unwrap().clone() };
+        let has_memo_td = memo_td.is_some();
+        let (tournament_name_resolved, tournament_day_resolved): (Option<String>, Option<String>) = if let Some((ref tn, ref td)) = memo_td {
+            (Some(tn.clone()), Some(td.clone()))
+        } else {
+            // Determine base tournament name by scanning root when none active
+            let tn: Option<String> = Some(match tournament {
+                Some(t) => t.name,
+                None => {
+                    // Scan root for existing "Tournament N" directories
+                    let mut max_tournament = 0u32;
+                    if videos_root.is_dir() {
+                        if let Ok(entries) = std::fs::read_dir(&videos_root) {
+                            for e in entries.flatten() {
+                                if let Ok(md) = e.metadata() {
+                                    if md.is_dir() {
+                                        if let Some(name) = e.file_name().to_str() {
+                                            if let Some(rest) = name.strip_prefix("Tournament ") {
+                                                if let Ok(n) = rest.trim().parse::<u32>() { if n > max_tournament { max_tournament = n; } }
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
                     }
+                    // If none exist, start at Tournament 1
+                    if max_tournament == 0 { "Tournament 1".to_string() } else { format!("Tournament {}", max_tournament) }
                 }
-                // If none exist, start at Tournament 1
-                if max_tournament == 0 { "Tournament 1".to_string() } else { format!("Tournament {}", max_tournament) }
-            }
-        });
-        // Determine default day when DB has none
-        let tournament_day_resolved: Option<String> = Some(match tournament_day {
-            Some(td) => format!("Day {}", td.unwrap().day_number),
-            None => {
-                // Compute next Day N under the chosen tournament folder if exists; else Day 1
-                let t_dir = videos_root.join(tournament_name_resolved.clone().unwrap());
-                let mut next_day_num = 1u32;
-                if t_dir.is_dir() {
-                    if let Ok(entries) = std::fs::read_dir(&t_dir) {
-                        let mut max_day = 0u32;
-                        for e in entries.flatten() {
-                            if let Ok(md) = e.metadata() {
-                                if md.is_dir() {
-                                    if let Some(name) = e.file_name().to_str() {
-                                        if let Some(rest) = name.strip_prefix("Day ") {
-                                            if let Ok(n) = rest.trim().parse::<u32>() { if n > max_day { max_day = n; } }
+            });
+            // Determine default day when DB has none
+            let td: Option<String> = Some(match tournament_day {
+                Some(td) => format!("Day {}", td.unwrap().day_number),
+                None => {
+                    // Compute next Day N under the chosen tournament folder if exists; else Day 1
+                    let t_dir = videos_root.join(tn.clone().unwrap());
+                    let mut next_day_num = 1u32;
+                    if t_dir.is_dir() {
+                        if let Ok(entries) = std::fs::read_dir(&t_dir) {
+                            let mut max_day = 0u32;
+                            for e in entries.flatten() {
+                                if let Ok(md) = e.metadata() {
+                                    if md.is_dir() {
+                                        if let Some(name) = e.file_name().to_str() {
+                                            if let Some(rest) = name.strip_prefix("Day ") {
+                                                if let Ok(n) = rest.trim().parse::<u32>() { if n > max_day { max_day = n; } }
+                                            }
                                         }
                                     }
                                 }
                             }
+                            next_day_num = if max_day == 0 { 1 } else { max_day + 1 };
                         }
-                        next_day_num = if max_day == 0 { 1 } else { max_day + 1 };
                     }
+                    format!("Day {}", next_day_num)
                 }
-                format!("Day {}", next_day_num)
-            }
-        });
+            });
+            (tn, td)
+        };
 
         // If folders already exist on disk (returning user), emit a prompt; if not, create Tournament 1/Day 1 silently
         static ASKED_THIS_SESSION: OnceCell<StdMutex<bool>> = OnceCell::new();
@@ -598,7 +609,7 @@ impl ObsRecordingEventHandler {
             let t_dir = &videos_root;
             t_dir.is_dir() && std::fs::read_dir(t_dir).map(|mut it| it.any(|e| e.ok().and_then(|x| x.file_name().to_str().map(|s| s.starts_with("Tournament "))).unwrap_or(false))).unwrap_or(false)
         };
-        if should_prompt_this_session && has_existing_tournaments {
+        if should_prompt_this_session && has_existing_tournaments && !has_memo_td {
             let tn = tournament_name_resolved.clone().unwrap_or_else(|| "Tournament 1".to_string());
             // Suggest next tournament as Tournament N+1
             let tn_suggest_new = if let Some(rest) = tn.strip_prefix("Tournament ") {
@@ -661,6 +672,10 @@ impl ObsRecordingEventHandler {
             path_generator.ensure_directory_exists(&generated_path.directory)?;
             // Suppress showing the modal later in the same session since we just created defaults
             if let Ok(mut asked) = ASKED_THIS_SESSION.get_or_init(|| StdMutex::new(false)).lock() { *asked = true; }
+            // Memoize the active tournament/day for this session to avoid recomputing Day from disk again
+            if let (Some(ref tn), Some(ref td)) = (&generated_path.tournament_name, &generated_path.tournament_day) {
+                if let Ok(mut memo) = self.active_tournament_day.lock() { *memo = Some((tn.clone(), td.clone())); }
+            }
         }
 
         // Update session with path information
@@ -756,6 +771,10 @@ impl ObsRecordingEventHandler {
                 }
                 // Clear awaiting flag so FightReady will proceed next time
                 if let Ok(mut wait_flag) = self.awaiting_path_decision.lock() { *wait_flag = false; }
+                // Memoize the user-selected tournament/day for this session
+                if let (Some(ref tn), Some(ref td)) = (session.tournament_name.clone(), session.tournament_day.clone()) {
+                    if let Ok(mut memo) = self.active_tournament_day.lock() { *memo = Some((tn.clone(), td.clone())); }
+                }
             }
         }
 

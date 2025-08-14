@@ -38,6 +38,18 @@ const EventTableSection: React.FC = () => {
   
   const { isManualModeEnabled } = useAppStore();
   const matchNumber = usePssMatchStore((s) => s.matchData.matchConfig?.number);
+  // Keep a small history of recent match numbers for the dropdown (display-only)
+  const recentMatchNumbersRef = useRef<number[]>([]);
+  useEffect(() => {
+    if (typeof matchNumber === 'number' && matchNumber > 0) {
+      const list = recentMatchNumbersRef.current;
+      if (list[0] !== matchNumber) {
+        // Prepend and dedupe, keep last 5
+        const next = [matchNumber, ...list.filter((n) => n !== matchNumber)].slice(0, 5);
+        recentMatchNumbersRef.current = next;
+      }
+    }
+  }, [matchNumber]);
 
   // Filtering logic - only show important events when manual mode is OFF
   const allEvents = isManualModeEnabled ? [] : getFilteredEvents(colorFilter, eventTypeFilter);
@@ -104,6 +116,11 @@ const EventTableSection: React.FC = () => {
           {/* Current match dropdown (display only) */}
           <select aria-label="Select match" className="text-xs bg-gray-800 border border-gray-600 rounded px-2 py-1 text-gray-200" value={matchNumber || ''} onChange={() => { /* display-only */ }}>
             <option value={matchNumber || ''}>{`Current ${matchNumber ? `#${matchNumber}` : ''}`.trim()}</option>
+            {recentMatchNumbersRef.current
+              .filter((n) => n !== matchNumber)
+              .map((n) => (
+                <option key={n} value={n}>{`Previous #${n}`}</option>
+              ))}
           </select>
         </div>
         <div className="flex items-center space-x-2">
