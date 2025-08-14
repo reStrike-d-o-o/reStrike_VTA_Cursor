@@ -10,6 +10,7 @@ let suppressZeroTimeAfterReady = false;
 
 export const useLiveDataEvents = () => {
   const wsRef = useRef<LiveDataWebSocket | null>(null);
+  const recordStartedTimeoutRef = useRef<number | null>(null);
   const isManualModeRef = useRef<boolean>(false);
   
   const { isManualModeEnabled } = useAppStore();
@@ -155,6 +156,25 @@ export const useLiveDataEvents = () => {
       });
 
       globalWebSocket.connect();
+
+      // Listen for OBS events from backend to detect actual recording start
+      if (window.__TAURI__?.event?.listen) {
+        window.__TAURI__.event.listen('obs_event', (evt: any) => {
+          try {
+            const payload = evt?.payload;
+            if (payload && payload.type === 'RecordStateChanged') {
+              const isRecording = !!payload.is_recording || !!payload.isRecording || !!payload.isRecordingActive;
+              if (isRecording) {
+                if (recordStartedTimeoutRef.current) window.clearTimeout(recordStartedTimeoutRef.current);
+                recordStartedTimeoutRef.current = window.setTimeout(() => {
+                  console.log('🧹 Clearing Event Table 500ms after recording started');
+                  useLiveDataStore.getState().clearEvents();
+                }, 500);
+              }
+            }
+          } catch {}
+        });
+      }
     }
 
     wsRef.current = globalWebSocket;

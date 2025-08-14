@@ -26,6 +26,7 @@ interface LiveDataState {
   // Actions
   addEvent: (event: PssEventData) => void;
   clearEvents: () => void;
+  setEvents: (events: PssEventData[]) => void;
   storeEventsToDatabase: (matchId: string) => Promise<void>;
   setCurrentRound: (round: number) => void;
   setCurrentRoundTime: (time: string) => void;
@@ -55,6 +56,13 @@ export const useLiveDataStore = create<LiveDataState>()(
     clearEvents: () => {
       set({
         events: [],
+        lastUpdate: new Date().toISOString(),
+      });
+    },
+
+    setEvents: (events: PssEventData[]) => {
+      set({
+        events,
         lastUpdate: new Date().toISOString(),
       });
     },
