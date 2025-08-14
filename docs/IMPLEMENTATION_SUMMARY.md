@@ -1,6 +1,6 @@
 # Implementation Summary - reStrike VTA Project
 
-## Latest Implementations (2025-01-30)
+## Latest Implementations (2025-08-14)
 
 ### OBS Recording Integration – Disk-First Flow + Modal Gating ✅ **LATEST COMPLETION**
 **Status**: COMPLETED (latest)
@@ -8,7 +8,7 @@
 **Key Features**:
 - **Disk-First Flow**: Tournament/Day folders are created on disk first, then OBS settings are applied
 - **Modal Gating**: Smart modal system that only appears when Tournament folders already exist on disk
-- **Live Athletes Capture**: Real-time capture of athlete names and flags from PSS events for immediate filename formatting
+- **Live Athletes Capture**: Real-time capture of athlete names and flags from PSS events for immediate filename formatting (countries included in filenames)
 - **Session Reuse**: If Tournament 1/Day 1 was just created in the current session, reuse those instead of recomputing from disk
 - **Explicit Logging**: Comprehensive logging on FightReady when applying directory/formatting changes
  - **Single-Click Start**: After path decision (Continue/Next/New), the app immediately proceeds with FightReady flow (no second click needed)
@@ -16,6 +16,7 @@
 **Implementation Details**:
 - **FightLoaded**: Generate concrete path from DB template and context; ensure folder exists; set OBS recording directory once per tournament day
 - **FightReady**: Strict sequence: set record directory → set filename formatting → wait 500ms → ensure RB → start recording; always resolves an effective filename template (DB or default) and logs read-back from OBS
+- **Filename Template Update**: Default template now includes country codes: `{matchNumber} {player1} ({country1}) VS {player2} ({country2}) - {date} - {time}`
 - **Live Data Priority**: Use `session.match_number` and `session.player` names from MatchConfig/Athletes over database rows
   - UDP-first precedence: pending UDP values (Athletes/MatchConfig) are captured even before a session exists and override DB values for filename formatting
 - **Modal Logic**: No modal on clean disk; modal only when Tournament folders already exist (prevents unnecessary prompts during first-time setup)
@@ -32,12 +33,12 @@
 - **OBS Integration**: Native obws implementation with proper WebSocket communication
 
 **UI Integration**:
-- **Event Table**: "Current" dropdown shows current + previous matches
+- **Event Table**: "Current" dropdown shows current + previous matches; preview loads via new `pss_get_events_for_match` command with fallback to recent events; duplication fixed by removing frontend re-broadcast loop
 - **Database Persistence**: Event Table automatically saved to database on Winner event
 - **Status Indicators**: Real-time recording status with proper color coding
 - **Configuration Panel**: Comprehensive recording settings with live OBS read-back
 - **Unified Modal Styling**: Folder-selection modal uses the same blue theme as global dialogs and the app’s Button atom (choices: Continue, Next, New)
- - **Event Table Lifecycle**: Clears automatically 500 ms after recording starts; at Winner, current table stored to DB for later review; selecting previous matches in the dropdown loads their events without affecting recording flow
+ - **Event Table Lifecycle**: Clears at FightLoaded and FightReady, and automatically 500 ms after recording starts; at Winner, current table stored to DB for later review; selecting previous matches in the dropdown loads their events without affecting recording flow
 
 ### IVR Replay Feature (Replay Buffer + mpv) ✅
 **Status**: COMPLETED

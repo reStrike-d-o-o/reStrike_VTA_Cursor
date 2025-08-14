@@ -1,6 +1,6 @@
 # Recording, Replay Buffer and Playback – Migration Plan (obws-first)
 
-## Current Implementation Status (2025-01-30)
+## Current Implementation Status (2025-08-14)
 
 ### ✅ **COMPLETED FEATURES**
 
@@ -13,7 +13,7 @@
 #### **Live Athletes Capture & Filename Formatting** ✅
 - **Real-time Data Capture**: Athlete names and flags captured immediately from PSS events (MatchConfig, Athletes)
 - **Live Data Priority**: Use `session.match_number` and `session.player` names from MatchConfig/Athletes over database rows
-- **Filename Placeholder Mapping**: Complete mapping from app placeholders to OBS placeholders with VS insertion logic
+- **Filename Placeholder Mapping**: Complete mapping from app placeholders to OBS placeholders with VS insertion logic; default template updated to `{matchNumber} {player1} ({country1}) VS {player2} ({country2}) - {date} - {time}`
 - **Template System**: Dynamic filename formatting using live match data with fallback to database values
 
 #### **OBS Recording Flow** ✅
@@ -23,10 +23,9 @@
 - **Replay Buffer Management**: Always-on RB with proper status checking and activation
 
 #### **Event Table & UI Integration** ✅
-- **Event Table**: "Current" dropdown shows current + previous matches
+- **Event Table**: "Current" dropdown shows current + previous matches; preview uses `pss_get_events_for_match` with fallback
 - **Database Persistence**: Event Table automatically saved to database on Winner event
-- **Status Indicators**: Real-time recording status with proper color coding
-- **Configuration Panel**: Comprehensive recording settings with live OBS read-back
+- **Duplication Fix**: Removed frontend re-broadcast to prevent duplicated events; UI now consumes only backend WebSocket stream
 
 ### 🔄 **IN PROGRESS FEATURES**
 
@@ -64,16 +63,17 @@
 - [ ] Persist PSS events with absolute times and compute offsets
 - [ ] Frontend integration for match review and seek functionality
 
-#### **Phase 6.1 – Event Table lifecycle & review** 📋
-- [ ] On recording started (OBS RecordStateChanged=true): wait 500 ms → `clearEvents()` so table represents only current match
-- [ ] On match end (Winner): store current Event Table to DB for this match (id/number)
-- [ ] "Current" dropdown: maintain rolling list of current + previous matches; when user selects a previous match, load its events from DB into the table (read-only)
-- [ ] Ensure selecting previous matches does NOT trigger any recording/path/formatting logic
-- [ ] Add read-only Tauri command to fetch events by match id/number for the review flow
+#### **Phase 6.1 – Event Table lifecycle & review** ✅
+- [x] On FightLoaded/FightReady: clear events; on recording started (RecordStateChanged=true): wait 500 ms → clear again
+- [x] On match end (Winner): store current Event Table to DB for this match (id/number)
+- [x] "Current" dropdown: maintain rolling list of current + previous matches; selecting a previous match loads its events (read-only)
+- [x] Ensure selecting previous matches does NOT trigger any recording/path/formatting logic
+- [x] Added `pss_get_events_for_match` Tauri command; UI falls back to `pss_get_events` if not yet present
 
-#### **Phase 6.2 – Round tracking accuracy** 📋
+#### **Phase 6.2 – Round tracking accuracy** 🔄
 - [ ] Fix Event Table RND column: capture and persist live round changes; ensure events are linked to the correct round (R1/R2/R3)
 - [ ] Add regression test where 2–3 rounds occur; verify RND increments and table shows correct round per event
+- Note: Clock events no longer change round; only explicit Round events update it
 
 #### **Phase 7 – Status Indicators** 📋
 - [ ] Update DockBar status dots colors for OBS_REC and OBS_STR
@@ -123,11 +123,10 @@ After completing any task above:
 
 ### 🎯 **NEXT PRIORITY TASKS**
 
-1. **Fix Day 2 Creation Logic** - Implement session reuse to avoid disk recomputation
-2. **Complete OBS Connection Roles** - Add role-based connection management
-3. **Enhance Replay Buffer Integration** - Improve save/play functionality with mpv
-4. **Session Persistence** - Implement complete session tracking and event mapping
-5. **Regression Test Suite** - Add scripted tests/log assertions for clean disk vs existing folders, UDP-first formatting, RB/record start timing
+1. **Complete OBS Connection Roles** - Add role-based connection management
+2. **Enhance Replay Buffer Integration** - Improve save/play functionality with mpv
+3. **Session Persistence** - Implement complete session tracking and event mapping
+4. **Regression Test Suite** - Add scripted tests/log assertions for clean disk vs existing folders, UDP-first formatting, RB/record start timing
 
 ### 📚 **KEY IMPLEMENTATION FILES**
 
@@ -149,6 +148,6 @@ After completing any task above:
 
 ---
 
-**Last Updated**: 2025-01-30  
-**Current Focus**: Day 2 Creation Logic & OBS Connection Roles  
-**Next Milestone**: Complete Replay Buffer Integration & Session Persistence
+**Last Updated**: 2025-08-14  
+**Current Focus**: OBS Connection Roles & Round Tracking  
+**Next Milestone**: Replay Buffer Save/Play & Session Persistence
