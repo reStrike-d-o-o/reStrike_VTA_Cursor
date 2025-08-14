@@ -73,12 +73,20 @@ export const useLiveDataEvents = () => {
           // Get current time and round from store for this event (AFTER updating)
           const currentStore = useLiveDataStore.getState();
           
+          // Clear Event Table at start-of-match signals
           // Handle fight_ready event - clear Event Table events and suppress first zero-time tick
           if (eventData.event_type === 'fight_ready') {
             console.log('🎯 Fight ready event received via WebSocket - clearing Event Table events');
             useLiveDataStore.getState().clearEvents();
             suppressZeroTimeAfterReady = true;
             return; // Don't add fight_ready events to the Event Table
+          }
+
+          // Also clear on fight_loaded to avoid stale events when a new fight loads before ready
+          if (eventData.event_type === 'fight_loaded') {
+            console.log('🎯 Fight loaded event - pre-clearing Event Table events');
+            useLiveDataStore.getState().clearEvents();
+            // do not return; we still want subsequent setup events to display if needed
           }
 
           // On winner event: persist current Event Table to DB for this match

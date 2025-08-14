@@ -77,6 +77,26 @@ const EventTableSection: React.FC = () => {
       setReviewMatchId(idStr);
     } catch (err) {
       console.warn('⚠️ Failed to load match events for review:', err);
+      // Fall back to recent events API if specific command is unavailable
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        const resp2: any = await invoke('pss_get_events');
+        const normalized = (Array.isArray(resp2) ? resp2 : []).map((e: any) => ({
+          id: String(e.id ?? `${idStr}_${Math.random()}`),
+          eventType: e.type ?? e.event_type ?? '',
+          eventCode: e.event_code ?? '',
+          athlete: (e.athlete ?? 'yellow') as any,
+          round: Number(e.round ?? 1),
+          time: String(e.time ?? '0:00'),
+          timestamp: String(e.timestamp ?? new Date().toISOString()),
+          rawData: String(e.raw_data ?? ''),
+          description: String(e.description ?? ''),
+        }));
+        setEvents(normalized.reverse());
+        setReviewMatchId(idStr);
+      } catch (_) {
+        // ignore
+      }
     }
   };
 

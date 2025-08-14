@@ -18,8 +18,8 @@ export const handlePssEvent = (event: any) => {
   // Emit browser event for scoreboard overlays
   emitBrowserEvent(event);
   
-  // Broadcast event to HTML overlays via WebSocket
-  broadcastPssEventViaWebSocket(event);
+  // Avoid re-broadcasting to the WebSocket server here to prevent duplicate events in UI.
+  // The backend UDP plugin already broadcasts events to the WebSocket server.
   
   // Handle different event types based on the event structure
   switch (event.type) {
@@ -373,15 +373,18 @@ const handleFightReadyEvent = (event: any, store: any) => {
  */
 const handleClockEvent = (event: any, store: any) => {
   try {
-    // Extract round and time from the event
-    const currentRound = event.round || event.current_round || 1;
+    // Extract time and optional round from the event
+    const maybeRound = event.round ?? event.current_round;
     const currentTime = event.time || '0:00';
     
-    // Update store with current round and time
-    store.updateCurrentRound(currentRound);
+    // Only update round when the payload explicitly includes it
+    if (typeof maybeRound === 'number' && Number.isFinite(maybeRound)) {
+      store.updateCurrentRound(maybeRound);
+    }
+    // Always update time
     store.updateCurrentRoundTime(currentTime);
     
-    logger.debug('📊 Updated current round and time from clock event', { currentRound, currentTime });
+    logger.debug('📊 Updated current time from clock event', { currentTime, maybeRound });
   } catch (error) {
     console.error('Error handling clock event:', error);
   }

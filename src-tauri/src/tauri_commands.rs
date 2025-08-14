@@ -1785,6 +1785,61 @@ pub async fn pss_get_events(app: State<'_, Arc<App>>) -> Result<Vec<serde_json::
     Ok(event_json)
 }
 
+#[tauri::command]
+pub async fn pss_get_events_for_match(app: State<'_, Arc<App>>, match_id: String) -> Result<Vec<serde_json::Value>, TauriError> {
+    log::info!("pss_get_events_for_match called for match_id={}", match_id);
+    // Try to parse numeric id if provided, but allow string key fallbacks later
+    let events = if let Ok(mid) = match_id.parse::<i64>() {
+        // Use database plugin when possible
+        match app.database_plugin().get_pss_events_for_match(mid, Some(200)).await {
+            Ok(rows) => rows.into_iter().map(|row| {
+                // The row model stores raw_data and parsed_data blobs; event_type_id is numeric, so we omit and let UI derive.
+                serde_json::json!({
+                    "id": row.id,
+                    "type": null,
+                    "event_type": null,
+                    "event_code": null,
+                    "athlete": null,
+                    "round": row.round_id.unwrap_or(1),
+                    "time": null,
+                    "timestamp": row.timestamp.to_rfc3339(),
+                    "raw_data": row.raw_data,
+                    "description": row.parsed_data
+                })
+            }).collect::<Vec<_>>(),
+            Err(e) => {
+                log::warn!("Failed DB fetch for match events: {}. Falling back to recent events.", e);
+                // Fallback to recent in-memory events
+                app.udp_plugin().get_recent_events().into_iter().map(|event| {
+                    let event_code = crate::plugins::plugin_udp::UdpServer::get_event_code(&event);
+                    serde_json::json!({
+                        "type": format!("{:?}", event).to_lowercase(),
+                        "event_code": event_code,
+                        "athlete": "",
+                        "round": 1,
+                        "time": "0:00",
+                        "timestamp": chrono::Utc::now().timestamp_millis()
+                    })
+                }).collect::<Vec<_>>()
+            }
+        }
+    } else {
+        // Non-numeric key: return recent events as a graceful fallback
+        app.udp_plugin().get_recent_events().into_iter().map(|event| {
+            let event_code = crate::plugins::plugin_udp::UdpServer::get_event_code(&event);
+            serde_json::json!({
+                "type": format!("{:?}", event).to_lowercase(),
+                "event_code": event_code,
+                "athlete": "",
+                "round": 1,
+                "time": "0:00",
+                "timestamp": chrono::Utc::now().timestamp_millis()
+            })
+        }).collect::<Vec<_>>()
+    };
+    Ok(events)
+}
+
 // System commands
 #[tauri::command]
 pub async fn system_get_info(_app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
