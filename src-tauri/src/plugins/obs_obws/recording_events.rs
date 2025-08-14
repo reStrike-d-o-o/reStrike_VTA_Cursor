@@ -110,6 +110,12 @@ pub struct ObsRecordingEventHandler {
     awaiting_path_decision: Arc<Mutex<bool>>,
     // In-session memo of the active tournament/day chosen or created (prevents recomputing Day from disk)
     active_tournament_day: Arc<Mutex<Option<(String, String)>>>,
+    // Pending UDP values captured before a session exists
+    pending_p1_name: Arc<Mutex<Option<String>>>,
+    pending_p1_flag: Arc<Mutex<Option<String>>>,
+    pending_p2_name: Arc<Mutex<Option<String>>>,
+    pending_p2_flag: Arc<Mutex<Option<String>>>,
+    pending_match_number: Arc<Mutex<Option<String>>>,
 }
 
 impl ObsRecordingEventHandler {
@@ -129,6 +135,11 @@ impl ObsRecordingEventHandler {
             last_udp_match_id: Arc::new(Mutex::new(None)),
             awaiting_path_decision: Arc::new(Mutex::new(false)),
             active_tournament_day: Arc::new(Mutex::new(None)),
+            pending_p1_name: Arc::new(Mutex::new(None)),
+            pending_p1_flag: Arc::new(Mutex::new(None)),
+            pending_p2_name: Arc::new(Mutex::new(None)),
+            pending_p2_flag: Arc::new(Mutex::new(None)),
+            pending_match_number: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -153,6 +164,10 @@ impl ObsRecordingEventHandler {
                     // Map UDP number to DB match_id format (e.g., "mch:101")
                     *guard = Some(format!("mch:{}", number));
                 }
+                {
+                    let mut m = self.pending_match_number.lock().unwrap();
+                    *m = Some(number.clone());
+                }
                 // Optionally update current session's match number early
                 {
                     let mut session_guard = self.current_session.lock().unwrap();
@@ -170,6 +185,14 @@ impl ObsRecordingEventHandler {
             }
             // Capture athletes immediately to ensure filename uses current match names
             PssEvent::Athletes { athlete1_short, athlete1_country, athlete2_short, athlete2_country, .. } => {
+                // Store pending UDP names/flags (used when session does not exist yet)
+                {
+                    *self.pending_p1_name.lock().unwrap() = Some(athlete1_short.clone());
+                    *self.pending_p1_flag.lock().unwrap() = Some(athlete1_country.clone());
+                    *self.pending_p2_name.lock().unwrap() = Some(athlete2_short.clone());
+                    *self.pending_p2_flag.lock().unwrap() = Some(athlete2_country.clone());
+                }
+                // Also update current session if present
                 let mut session_guard = self.current_session.lock().unwrap();
                 if let Some(ref mut session) = *session_guard {
                     session.player1_name = Some(athlete1_short.clone());
@@ -350,7 +373,7 @@ impl ObsRecordingEventHandler {
                     let _ = self.generate_recording_path(&mid).await;
                 }
             }
-            if let Some(session) = self.get_current_session() {
+            if let Some(mut session) = self.get_current_session() {
                 // Apply directory (normalize separators) to be sure OBS accepts formatting update
                 if let Some(dir) = session.recording_path.clone() {
                     let dir_norm = dir.replace('\\', "/");
@@ -373,6 +396,12 @@ impl ObsRecordingEventHandler {
                     }
                 };
                 println!("🧪 Active filename template: {}", effective_template);
+                // Ensure we use the most recent UDP values for formatting
+                if session.player1_name.is_none() { session.player1_name = self.pending_p1_name.lock().unwrap().clone(); }
+                if session.player1_flag.is_none() { session.player1_flag = self.pending_p1_flag.lock().unwrap().clone(); }
+                if session.player2_name.is_none() { session.player2_name = self.pending_p2_name.lock().unwrap().clone(); }
+                if session.player2_flag.is_none() { session.player2_flag = self.pending_p2_flag.lock().unwrap().clone(); }
+                if session.match_number.is_none() { session.match_number = self.pending_match_number.lock().unwrap().clone(); }
                 let formatting = self.build_filename_formatting(&effective_template, &session);
                 // Print exactly what we're sending to OBS
                 println!("📤 Sending to OBS '{}' filename formatting: {}", connection_name, formatting);
@@ -589,15 +618,23 @@ impl ObsRecordingEventHandler {
 
         // Prefer live UDP/session values over DB when available
         let (live_p1_name, live_p1_flag, live_p2_name, live_p2_flag, live_match_number) = {
-            let existing = self.current_session.lock().unwrap().clone();
-            let (mut p1n, mut p1f, mut p2n, mut p2f, mut mnum): (Option<String>, Option<String>, Option<String>, Option<String>, Option<String>) = (None, None, None, None, None);
-            if let Some(s) = existing {
-                p1n = s.player1_name;
-                p1f = s.player1_flag;
-                p2n = s.player2_name;
-                p2f = s.player2_flag;
-                mnum = s.match_number;
+            // Start with pending UDP values
+            let mut p1n = self.pending_p1_name.lock().unwrap().clone();
+            let mut p1f = self.pending_p1_flag.lock().unwrap().clone();
+            let mut p2n = self.pending_p2_name.lock().unwrap().clone();
+            let mut p2f = self.pending_p2_flag.lock().unwrap().clone();
+            let mut mnum = self.pending_match_number.lock().unwrap().clone();
+
+            // Overlay current session values if present
+            if let Some(s) = self.current_session.lock().unwrap().clone() {
+                if p1n.is_none() { p1n = s.player1_name; }
+                if p1f.is_none() { p1f = s.player1_flag; }
+                if p2n.is_none() { p2n = s.player2_name; }
+                if p2f.is_none() { p2f = s.player2_flag; }
+                if mnum.is_none() { mnum = s.match_number; }
             }
+
+            // Finally fallback to DB-derived values
             (
                 p1n.or(db_player1_name.clone()),
                 p1f.or(db_player1_flag.clone()),
