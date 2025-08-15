@@ -57,8 +57,10 @@ const EventTableSection: React.FC = () => {
   const loadMatchEventsForReview = async (idStr: string) => {
     try {
       const { invoke } = await import('@tauri-apps/api/core');
-      // Backend expects numeric match id; for now pass as string key; backend should handle mapping
-      const resp = await invoke('pss_get_events_for_match', { matchId: idStr });
+      // Normalize id to numeric-only for robust backend resolution
+      const numericId = idStr.replace(/[^0-9]/g, '');
+      const effective = numericId.length > 0 ? numericId : idStr;
+      const resp = await invoke('pss_get_events_for_match', { matchId: effective });
       // Expect resp to be array of events matching PssEventData shape or convertible
       const list = Array.isArray(resp) ? resp : [];
       // Convert to PssEventData[] if needed
@@ -74,7 +76,44 @@ const EventTableSection: React.FC = () => {
         description: String(e.description ?? ''),
       }));
       setEvents(normalized.reverse());
-      setReviewMatchId(idStr);
+      setReviewMatchId(effective);
+
+      // Also load match details to populate MatchDetailsSection
+      try {
+        const details: any = await invoke('pss_get_match_details', { matchId: effective });
+        if (details && details.athlete1 && details.athlete2) {
+          const a1 = {
+            short: details.athlete1.short_name ?? '',
+            long: details.athlete1.long_name ?? '',
+            country: details.athlete1.country_code ?? '',
+            iocCode: details.athlete1.country_code ?? '',
+          } as any;
+          const a2 = {
+            short: details.athlete2.short_name ?? '',
+            long: details.athlete2.long_name ?? '',
+            country: details.athlete2.country_code ?? '',
+            iocCode: details.athlete2.country_code ?? '',
+          } as any;
+          const { usePssMatchStore } = await import('../../stores/pssMatchStore');
+          usePssMatchStore.getState().updateAthletes(a1, a2);
+          if (details.match) {
+            const cfg = {
+              number: Number(details.match.number ?? 0),
+              category: String(details.match.category ?? ''),
+              weight: String(details.match.weight ?? ''),
+              division: String(details.match.division ?? ''),
+              totalRounds: 3,
+              roundDuration: 120,
+              countdownType: 'cntDown',
+              format: 5,
+            } as any;
+            usePssMatchStore.getState().updateMatchConfig(cfg);
+          }
+          usePssMatchStore.getState().setMatchLoaded(true);
+        }
+      } catch (e) {
+        console.warn('⚠️ Failed to load match details for review:', e);
+      }
     } catch (err) {
       console.warn('⚠️ Failed to load match events for review:', err);
       // Fall back to recent events API if specific command is unavailable
