@@ -1984,6 +1984,24 @@ pub async fn pss_get_events_for_match(app: State<'_, Arc<App>>, match_id: String
     Ok(out)
 }
 
+/// List recent PSS matches for review dropdown
+#[tauri::command]
+pub async fn pss_list_recent_matches(app: State<'_, Arc<App>>, limit: Option<i64>) -> Result<Vec<serde_json::Value>, TauriError> {
+    let conn = app.database_plugin().get_connection().await
+        .map_err(|e| TauriError::from(anyhow::anyhow!(format!("DB connection error: {}", e))))?;
+    let list = crate::database::operations::PssUdpOperations::get_pss_matches(&*conn, limit.or(Some(50)))
+        .map_err(|e| TauriError::from(anyhow::anyhow!(format!("get_pss_matches: {}", e))))?;
+    let out = list.into_iter().map(|m| serde_json::json!({
+        "id": m.id,
+        "match_id": m.match_id,
+        "match_number": m.match_number,
+        "category": m.category,
+        "division": m.division,
+        "created_at": m.created_at.to_rfc3339(),
+    })).collect();
+    Ok(out)
+}
+
 /// Advance tournament/day context according to selection
 /// mode: "continue" | "next" | "new"
 #[tauri::command]
