@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { usePssMatchStore } from '../stores/pssMatchStore';
 import { handlePssEvent } from '../utils/pssEventHandler';
+import { useLiveDataStore } from '../stores/liveDataStore';
 import { pssCommands } from '../utils/tauriCommands';
 
 export interface PssEvent {
