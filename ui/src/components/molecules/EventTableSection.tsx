@@ -38,20 +38,25 @@ const EventTableSection: React.FC = () => {
   
   const { isManualModeEnabled } = useAppStore();
   const matchNumber = usePssMatchStore((s) => s.matchData.matchConfig?.number);
-  // Keep a small history of recent match numbers for the dropdown (reviewable)
-  const recentMatchNumbersRef = useRef<string[]>([]);
+  const isLoaded = usePssMatchStore((s) => s.matchData.isLoaded);
+  // Recent matches list by DB id for review dropdown
+  const recentMatchesRef = useRef<Array<{ id: number; label: string }>>([]);
   // Load events for review mode
   const [reviewMatchId, setReviewMatchId] = useState<string | null>(null);
   const setEvents = useLiveDataStore.getState().setEvents;
   useEffect(() => {
-    const asStr = matchNumber != null ? String(matchNumber) : '';
-    if (asStr) {
-      const list = recentMatchNumbersRef.current;
-      if (list[0] !== asStr) {
-        const next = [asStr, ...list.filter((n) => n !== asStr)].slice(0, 8);
-        recentMatchNumbersRef.current = next;
+    (async () => {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        const resp: any[] = await invoke('pss_list_recent_matches', { limit: 20 });
+        recentMatchesRef.current = (resp || [])
+          .filter((m: any) => m && m.id != null)
+          .map((m: any) => ({ id: Number(m.id), label: `#${m.match_number ?? ''} ${m.category ?? ''}`.trim() }))
+          .slice(0, 20);
+      } catch (_) {
+        recentMatchesRef.current = [];
       }
-    }
+    })();
   }, [matchNumber]);
 
   const loadMatchEventsForReview = async (idStr: string) => {
@@ -238,6 +243,7 @@ const EventTableSection: React.FC = () => {
             aria-label="Select match"
             className="text-xs bg-gray-800 border border-gray-600 rounded px-2 py-1 text-gray-200"
             value={reviewMatchId ?? String(matchNumber ?? '')}
+            disabled={!!isLoaded}
             onChange={(e) => {
               const v = e.target.value;
               if (v && v !== String(matchNumber ?? '')) {
@@ -249,11 +255,9 @@ const EventTableSection: React.FC = () => {
             }}
           >
             <option value={String(matchNumber ?? '')}>{`Current ${matchNumber ? `#${matchNumber}` : ''}`.trim()}</option>
-            {recentMatchNumbersRef.current
-              .filter((n) => n !== String(matchNumber ?? ''))
-              .map((n) => (
-                <option key={n} value={n}>{`Previous #${n}`}</option>
-              ))}
+            {recentMatchesRef.current.map((m) => (
+              <option key={m.id} value={String(m.id)}>{m.label}</option>
+            ))}
           </select>
         </div>
         <div className="flex items-center space-x-2">
