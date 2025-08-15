@@ -64,8 +64,8 @@ export const useLiveDataEvents = () => {
             normalizedAthlete = 'yellow';
           }
           
-          // Update round and time FIRST if provided, so the event gets the current values
-          if (eventData.round) {
+          // Update round only on explicit round events to avoid unintended resets
+          if (eventData.event_type === 'round' && typeof eventData.round === 'number') {
             useLiveDataStore.getState().setCurrentRound(eventData.round);
           }
           // Only update time if it's a valid time (not "0:00" or empty)
@@ -157,7 +157,7 @@ export const useLiveDataEvents = () => {
           suppressZeroTimeAfterReady = false;
 
           // De-duplicate frequent duplicates using a short signature window
-          const sig = `${event.eventType}|${event.eventCode}|${event.athlete}|${event.round}|${event.time}`;
+          const sig = `${event.eventType}|${event.eventCode}|${event.athlete}|${event.round}|${event.time}|${event.timestamp}`;
           const nowMs = Date.now();
           const lastSeen = recentEventSignatures.get(sig) || 0;
           if (nowMs - lastSeen < DUP_WINDOW_MS) {
