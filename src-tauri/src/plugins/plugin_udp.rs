@@ -718,7 +718,7 @@ impl UdpServer {
         recent_hit_levels: &Arc<Mutex<std::collections::HashMap<u8, Vec<(u8, std::time::SystemTime)>>>>,
         current_tournament_id: &Arc<Mutex<Option<i64>>>,
         current_tournament_day_id: &Arc<Mutex<Option<i64>>>,
-        _websocket_server: &Arc<WebSocketServer>,
+        websocket_server: &Arc<WebSocketServer>,
     ) -> AppResult<()> {
         let start_time = Instant::now();
         
@@ -767,6 +767,8 @@ impl UdpServer {
                     let mut guard = current_match_id.lock().unwrap();
                     *guard = Some(db_match_id);
                 }
+                // Update WS server with current match DB id
+                websocket_server.set_current_match_db_id(Some(db_match_id));
 
                 // Update match metadata
                 let mut pss_match = crate::database::models::PssMatch::new(effective_match_id.clone());

@@ -75,9 +75,19 @@ pub struct WebSocketServer {
     countdown_type: Arc<Mutex<Option<String>>>, // Countdown type from MatchConfig
     count_up: Arc<Mutex<Option<u32>>>, // Count up value from MatchConfig
     format: Arc<Mutex<Option<u8>>>, // Format from MatchConfig
+    pub(crate) current_match_db_id: Arc<Mutex<Option<i64>>>,
 }
 
 impl WebSocketServer {
+    pub fn set_current_match_db_id(&self, id: Option<i64>) {
+        if let Ok(mut guard) = self.current_match_db_id.lock() {
+            *guard = id;
+        }
+    }
+
+    pub fn get_current_match_db_id(&self) -> Option<i64> {
+        self.current_match_db_id.lock().ok().and_then(|g| *g)
+    }
     /// Format seconds to mm:ss format
     fn format_time_from_seconds(seconds: u32) -> String {
         let minutes = seconds / 60;
@@ -112,6 +122,7 @@ impl WebSocketServer {
             countdown_type: Arc::new(Mutex::new(None)),
             count_up: Arc::new(Mutex::new(None)),
             format: Arc::new(Mutex::new(None)),
+            current_match_db_id: Arc::new(Mutex::new(None)),
         }
     }
     
@@ -489,11 +500,8 @@ impl WebSocketServer {
             }
         };
         
-        // Capture current match id if available (shared with UDP plugin)
-        let current_match_db_id: Option<i64> = {
-            // We expose a helper via UDP server when available; otherwise None
-            None
-        };
+        // Capture current match id if available
+        let current_match_db_id: Option<i64> = self.current_match_db_id.lock().ok().and_then(|g| *g);
 
         match event {
             PssEvent::Clock { time, action } => {
