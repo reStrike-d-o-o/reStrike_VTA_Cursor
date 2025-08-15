@@ -728,6 +728,18 @@ impl UdpServer {
             session_guard.ok_or_else(|| AppError::ConfigError("No active session".to_string()))?
         };
         
+        // Ensure a current match exists so every event is attached to a valid match
+        {
+            let has_match = { current_match_id.lock().unwrap().is_some() };
+            if !has_match {
+                let auto_match_key = format!("auto_{}", Utc::now().format("%Y%m%d%H%M%S%3f"));
+                let db_match_id = database.get_or_create_pss_match(&auto_match_key).await?;
+                let mut guard = current_match_id.lock().unwrap();
+                *guard = Some(db_match_id);
+                log::info!("✅ ensure_current_match: created match {} (db id {})", auto_match_key, db_match_id);
+            }
+        }
+
         // Pre-process specific PSS events to maintain DB context (match + athletes)
         match event {
             PssEvent::MatchConfig {
@@ -842,14 +854,27 @@ impl UdpServer {
             PssEvent::Athletes {
                 athlete1_short,
                 athlete1_long,
-                athlete1_country: _,
+                athlete1_country,
                 athlete2_short,
                 athlete2_long,
-                athlete2_country: _,
+                athlete2_country,
             } => {
                 // Create or get athletes
                 let a1_id = database.get_or_create_pss_athlete(athlete1_short, athlete1_long).await?;
                 let a2_id = database.get_or_create_pss_athlete(athlete2_short, athlete2_long).await?;
+
+                // Persist extended athlete info (long name, country)
+                {
+                    let mut a1 = crate::database::models::PssAthlete::new(athlete1_short.clone(), athlete1_short.clone());
+                    a1.long_name = Some(athlete1_long.clone());
+                    a1.country_code = Some(athlete1_country.clone());
+                    if let Err(e) = database.update_pss_athlete(a1_id, &a1).await { log::warn!("⚠️ Failed to update athlete1 info: {}", e); }
+
+                    let mut a2 = crate::database::models::PssAthlete::new(athlete2_short.clone(), athlete2_short.clone());
+                    a2.long_name = Some(athlete2_long.clone());
+                    a2.country_code = Some(athlete2_country.clone());
+                    if let Err(e) = database.update_pss_athlete(a2_id, &a2).await { log::warn!("⚠️ Failed to update athlete2 info: {}", e); }
+                }
 
                 // Cache athlete ids by short code for quick lookup
                 if let Ok(mut cache) = _athlete_cache.lock() {
