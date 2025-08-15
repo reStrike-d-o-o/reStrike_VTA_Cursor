@@ -95,6 +95,7 @@ export const handlePssEvent = (event: any) => {
     case 'winner':
       // Handle winner events (for future features)
       logger.debug('🎯 Winner event', event);
+      try { store.setMatchLoaded(false); } catch {}
       break;
     default:
       logger.debug('🎯 Unknown event type', event.type);
