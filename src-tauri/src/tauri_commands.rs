@@ -1809,7 +1809,7 @@ pub async fn pss_get_events_for_match(app: State<'_, Arc<App>>, match_id: String
                 serde_json::json!({
                     "type": format!("{:?}", event).to_lowercase(),
                     "event_code": event_code,
-                    "athlete": "",
+                    "athlete": "yellow",
                     "round": 1,
                     "time": "0:00",
                     "timestamp": chrono::Utc::now().timestamp_millis()
@@ -1822,22 +1822,39 @@ pub async fn pss_get_events_for_match(app: State<'_, Arc<App>>, match_id: String
     // Fetch events for resolved match id
     let mut rows = match app.database_plugin().get_pss_events_for_match(resolved_mid, Some(500)).await {
         Ok(r) => r,
-        Err(e) => {
-            log::warn!("Failed DB fetch for match events: {}. Falling back to recent events.", e);
+            Err(e) => {
+                log::warn!("Failed DB fetch for match events: {}. Falling back to recent events.", e);
             let fallback = app.udp_plugin().get_recent_events().into_iter().map(|event| {
-                let event_code = crate::plugins::plugin_udp::UdpServer::get_event_code(&event);
-                serde_json::json!({
-                    "type": format!("{:?}", event).to_lowercase(),
-                    "event_code": event_code,
-                    "athlete": "",
-                    "round": 1,
-                    "time": "0:00",
-                    "timestamp": chrono::Utc::now().timestamp_millis()
-                })
+                    let event_code = crate::plugins::plugin_udp::UdpServer::get_event_code(&event);
+                    serde_json::json!({
+                        "type": format!("{:?}", event).to_lowercase(),
+                        "event_code": event_code,
+                    "athlete": "yellow",
+                        "round": 1,
+                        "time": "0:00",
+                        "timestamp": chrono::Utc::now().timestamp_millis()
+                    })
             }).collect::<Vec<_>>();
             return Ok(fallback);
         }
     };
+
+    // If no rows found for this match, gracefully fall back to recent events to avoid empty UI
+    if rows.is_empty() {
+        log::info!("No DB events found for match_id={}; returning recent in-memory events as fallback", resolved_mid);
+        let fallback = app.udp_plugin().get_recent_events().into_iter().map(|event| {
+            let event_code = crate::plugins::plugin_udp::UdpServer::get_event_code(&event);
+            serde_json::json!({
+                "type": format!("{:?}", event).to_lowercase(),
+                "event_code": event_code,
+                "athlete": "yellow",
+                "round": 1,
+                "time": "0:00",
+                "timestamp": chrono::Utc::now().timestamp_millis()
+            })
+        }).collect::<Vec<_>>();
+        return Ok(fallback);
+    }
 
     // Build enriched event list with inferred round/time/athlete from parsed_data
     // Iterate oldest->newest to maintain running state
@@ -1847,7 +1864,8 @@ pub async fn pss_get_events_for_match(app: State<'_, Arc<App>>, match_id: String
     let mut out: Vec<serde_json::Value> = Vec::with_capacity(rows.len());
 
     for row in rows.into_iter() {
-        let mut athlete = String::new();
+        // Default system events to referee/yellow; specific event types will override
+        let mut athlete = "yellow".to_string();
         let mut round = last_round as i64;
         let mut time = last_time.clone();
         let mut ev_type = String::from("other");
@@ -1859,11 +1877,13 @@ pub async fn pss_get_events_for_match(app: State<'_, Arc<App>>, match_id: String
                 event_code = crate::plugins::plugin_udp::UdpServer::get_event_code(&ev);
                 match ev {
                     PssEvent::Round { current_round } => {
+                        athlete = "yellow".to_string();
                         last_round = current_round;
                         round = current_round as i64;
                         ev_type = "round".to_string();
                     }
                     PssEvent::Clock { time: t, .. } => {
+                        athlete = "yellow".to_string();
                         last_time = t.clone();
                         time = t;
                         ev_type = "clock".to_string();
@@ -1888,38 +1908,45 @@ pub async fn pss_get_events_for_match(app: State<'_, Arc<App>>, match_id: String
                         ev_type = "warnings".to_string();
                     }
                     PssEvent::Break { time: t, .. } => {
+                        athlete = "yellow".to_string();
                         time = t.clone();
                         round = last_round as i64;
                         ev_type = "break".to_string();
                     }
                     PssEvent::CurrentScores { .. } => {
+                        athlete = "yellow".to_string();
                         round = last_round as i64;
                         time = last_time.clone();
                         ev_type = "current_scores".to_string();
                     }
                     PssEvent::Scores { .. } => {
+                        athlete = "yellow".to_string();
                         round = last_round as i64;
                         time = last_time.clone();
                         ev_type = "scores".to_string();
                     }
                     PssEvent::WinnerRounds { .. } => {
+                        athlete = "yellow".to_string();
                         round = last_round as i64;
                         time = last_time.clone();
                         ev_type = "winner_rounds".to_string();
                     }
                     PssEvent::Winner { .. } => {
+                        athlete = "yellow".to_string();
                         round = last_round as i64;
                         time = last_time.clone();
                         ev_type = "winner".to_string();
                     }
                     PssEvent::Athletes { .. } => {
+                        athlete = "yellow".to_string();
                         ev_type = "athletes".to_string();
                     }
                     PssEvent::MatchConfig { .. } => {
+                        athlete = "yellow".to_string();
                         ev_type = "match_config".to_string();
                     }
-                    PssEvent::FightLoaded => { ev_type = "fight_loaded".to_string(); }
-                    PssEvent::FightReady => { ev_type = "fight_ready".to_string(); }
+                    PssEvent::FightLoaded => { athlete = "yellow".to_string(); ev_type = "fight_loaded".to_string(); }
+                    PssEvent::FightReady => { athlete = "yellow".to_string(); ev_type = "fight_ready".to_string(); }
                     PssEvent::Challenge { .. } => {
                         athlete = "yellow".to_string();
                         round = last_round as i64;
@@ -1933,13 +1960,12 @@ pub async fn pss_get_events_for_match(app: State<'_, Arc<App>>, match_id: String
                         ev_type = "injury".to_string();
                     }
                     PssEvent::Supremacy { .. } => {
+                        athlete = "yellow".to_string();
                         round = last_round as i64;
                         time = last_time.clone();
                         ev_type = "supremacy".to_string();
                     }
-                    PssEvent::Raw(_) => {
-                        ev_type = "raw".to_string();
-                    }
+                    PssEvent::Raw(_) => { athlete = "yellow".to_string(); ev_type = "raw".to_string(); }
                 }
             }
         }
@@ -1959,6 +1985,109 @@ pub async fn pss_get_events_for_match(app: State<'_, Arc<App>>, match_id: String
     }
 
     Ok(out)
+}
+
+/// Advance tournament/day context according to selection
+/// mode: "continue" | "next" | "new"
+#[tauri::command]
+pub async fn tournament_progress_context(
+    app: State<'_, Arc<App>>,
+    mode: String,
+) -> Result<serde_json::Value, TauriError> {
+    let mut conn = app.database_plugin().get_connection().await
+        .map_err(|e| TauriError::from(anyhow::anyhow!(format!("DB connection error: {}", e))))?;
+
+    // Get current active tournament/day
+    let active_tournament = crate::database::operations::TournamentOperations::get_active_tournament(&*conn)
+        .map_err(|e| TauriError::from(anyhow::anyhow!(format!("get_active_tournament: {}", e))))?;
+    let (mut tournament_id, mut tournament_day_id) = if let Some(t) = active_tournament {
+        let day = crate::database::operations::TournamentOperations::get_active_tournament_day(&*conn, t.id.unwrap())
+            .map_err(|e| TauriError::from(anyhow::anyhow!(format!("get_active_tournament_day: {}", e))))?;
+        (t.id, day.and_then(|d| d.id))
+    } else { (None, None) };
+
+    match mode.to_lowercase().as_str() {
+        "continue" => {
+            // Keep as-is
+        }
+        "next" => {
+            // Same tournament, next day
+            if let Some(tid) = tournament_id {
+                // Create a new day under same tournament (1 day duration) starting now
+                let start_dt = chrono::Utc::now();
+                crate::database::operations::TournamentOperations::create_tournament_days(&mut *conn, tid, start_dt, 1)
+                    .map_err(|e| TauriError::from(anyhow::anyhow!(format!("create_tournament_days(next): {}", e))))?;
+                let day = crate::database::operations::TournamentOperations::get_active_tournament_day(&*conn, tid)
+                    .map_err(|e| TauriError::from(anyhow::anyhow!(format!("get_active_tournament_day(after next): {}", e))))?;
+                tournament_day_id = day.and_then(|d| d.id);
+            }
+        }
+        "new" => {
+            // New tournament, new day
+            let name = format!("Tournament {}", chrono::Utc::now().format("%Y-%m-%d"));
+            let tid = app.tournament_plugin().create_tournament(
+                name,
+                1, // duration_days
+                "".to_string(), // city
+                "".to_string(), // country
+                None, // country_code
+                Some(chrono::Utc::now()), // start_date
+            ).await.map_err(|e| TauriError::from(anyhow::anyhow!(format!("create_tournament: {}", e))))?;
+            tournament_id = Some(tid);
+            // Auto create first day
+            let start_dt = chrono::Utc::now();
+            crate::database::operations::TournamentOperations::create_tournament_days(&mut *conn, tid, start_dt, 1)
+                .map_err(|e| TauriError::from(anyhow::anyhow!(format!("create_tournament_days(new): {}", e))))?;
+            let day = crate::database::operations::TournamentOperations::get_active_tournament_day(&*conn, tid)
+                .map_err(|e| TauriError::from(anyhow::anyhow!(format!("get_active_tournament_day(after new): {}", e))))?;
+            tournament_day_id = day.and_then(|d| d.id);
+        }
+        _ => {}
+    }
+
+    // Set UDP context so events inherit these IDs
+    app.udp_plugin().set_tournament_context(tournament_id, tournament_day_id).await
+        .map_err(|e| TauriError::from(anyhow::anyhow!(format!("set_tournament_context: {}", e))))?;
+
+    Ok(serde_json::json!({
+        "tournament_id": tournament_id,
+        "tournament_day_id": tournament_day_id
+    }))
+}
+
+/// Provide details for a match, including athletes, for MatchDetailsSection
+#[tauri::command]
+pub async fn pss_get_match_details(app: State<'_, Arc<App>>, match_id: String) -> Result<serde_json::Value, TauriError> {
+    let conn = app.database_plugin().get_connection().await
+        .map_err(|e| TauriError::from(anyhow::anyhow!(format!("DB connection error: {}", e))))?;
+    let matches = crate::database::operations::PssUdpOperations::get_pss_matches(&*conn, Some(500))
+        .map_err(|e| TauriError::from(anyhow::anyhow!(format!("get_pss_matches: {}", e))))?;
+    let info = matches.into_iter().find(|m| m.match_id == match_id)
+        .ok_or_else(|| TauriError::from(anyhow::anyhow!("Match not found")))?;
+    let athletes = crate::database::operations::PssUdpOperations::get_pss_match_athletes(&*conn, info.id.unwrap())
+        .map_err(|e| TauriError::from(anyhow::anyhow!(format!("get_pss_match_athletes: {}", e))))?;
+    let mut a1 = serde_json::json!({});
+    let mut a2 = serde_json::json!({});
+    for (ma, a) in athletes {
+        let obj = serde_json::json!({
+            "short_name": a.short_name,
+            "long_name": a.long_name,
+            "country_code": a.country_code,
+        });
+        if ma.athlete_position == 1 { a1 = obj; } else if ma.athlete_position == 2 { a2 = obj; }
+    }
+    Ok(serde_json::json!({
+        "match": {
+            "id": info.id,
+            "match_id": info.match_id,
+            "number": info.match_number,
+            "category": info.category,
+            "weight": info.weight_class,
+            "division": info.division,
+        },
+        "athlete1": a1,
+        "athlete2": a2,
+    }))
 }
 
 // System commands
