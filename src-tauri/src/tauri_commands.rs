@@ -1796,26 +1796,41 @@ pub async fn pss_get_events_for_match(app: State<'_, Arc<App>>, match_id: String
             let candidate = if !numeric_only.is_empty() { numeric_only } else { match_id.clone() };
             let conn = app.database_plugin().get_connection().await
                 .map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to get DB connection: {}", e))))?;
-            // Try match_number first
-            if let Ok(mut stmt) = conn.prepare("SELECT id FROM pss_matches WHERE match_number = ? ORDER BY created_at DESC LIMIT 1") {
-                if let Ok(mut rows) = stmt.query(rusqlite::params![candidate.as_str()]) {
-                    if let Some(row) = rows.next().map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to read match lookup row: {}", e))))? {
-                        let id: i64 = row.get(0).map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to read match id: {}", e))))?;
-                        id
-                    } else {
-                        // Try match_id (mch:<number>)
-                        let mch_key = format!("mch:{}", candidate);
-                        let mut stmt2 = conn.prepare("SELECT id FROM pss_matches WHERE match_id = ? ORDER BY created_at DESC LIMIT 1")
-                            .map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to prepare match_id lookup: {}", e))))?;
-                        let mut rows2 = stmt2.query(rusqlite::params![mch_key])
-                            .map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to run match_id lookup: {}", e))))?;
-                        if let Some(row2) = rows2.next().map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to read match_id row: {}", e))))? {
-                            let id: i64 = row2.get(0).map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to read match id: {}", e))))?;
-                            id
-                        } else { return Ok(vec![]); }
-                    }
-                } else { return Ok(vec![]); }
-            } else { return Ok(vec![]); }
+
+            // Try match_number lookup in a scoped block so borrows drop before we reuse conn
+            let first_try: Option<i64> = {
+                let mut stmt = match conn.prepare("SELECT id FROM pss_matches WHERE match_number = ? ORDER BY created_at DESC LIMIT 1") {
+                    Ok(s) => s,
+                    Err(_) => return Ok(vec![]),
+                };
+                let mut rows = match stmt.query(rusqlite::params![candidate.as_str()]) {
+                    Ok(r) => r,
+                    Err(_) => return Ok(vec![]),
+                };
+                if let Some(row) = rows.next().map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to read match lookup row: {}", e))))? {
+                    let id: i64 = row.get(0).map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to read match id: {}", e))))?;
+                    Some(id)
+                } else {
+                    None
+                }
+            };
+
+            if let Some(id) = first_try { id } else {
+                // Try match_id (mch:<number>) in a new scope
+                let mch_key = format!("mch:{}", candidate);
+                // Use a second scoped query to ensure statement lifetime is bound before conn drops
+                let id_opt: Option<i64> = {
+                    let mut stmt2 = conn.prepare("SELECT id FROM pss_matches WHERE match_id = ? ORDER BY created_at DESC LIMIT 1")
+                        .map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to prepare match_id lookup: {}", e))))?;
+                    let mut rows2 = stmt2.query(rusqlite::params![mch_key])
+                        .map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to run match_id lookup: {}", e))))?;
+                    if let Some(row2) = rows2.next().map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to read match_id row: {}", e))))? {
+                        let id: i64 = row2.get(0).map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to read match id: {}", e))))?;
+                        Some(id)
+                    } else { None }
+                };
+                if let Some(id) = id_opt { id } else { return Ok(vec![]); }
+            }
         }
     };
 
