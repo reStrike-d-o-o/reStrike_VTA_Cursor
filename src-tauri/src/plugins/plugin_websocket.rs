@@ -489,6 +489,12 @@ impl WebSocketServer {
             }
         };
         
+        // Capture current match id if available (shared with UDP plugin)
+        let current_match_db_id: Option<i64> = {
+            // We expose a helper via UDP server when available; otherwise None
+            None
+        };
+
         match event {
             PssEvent::Clock { time, action } => {
                 // Only update current_time when we receive a valid Clock event
@@ -516,7 +522,8 @@ impl WebSocketServer {
                     action: action.clone(),
                     structured_data: serde_json::json!({
                         "time": time,
-                        "action": action
+                        "action": action,
+                        "match_db_id": current_match_db_id,
                     }),
                 }
             }
@@ -537,7 +544,8 @@ impl WebSocketServer {
                     description: format!("Round {}", current_round),
                     action: None,
                     structured_data: serde_json::json!({
-                        "current_round": current_round
+                        "current_round": current_round,
+                        "match_db_id": current_match_db_id,
                     }),
                 }
             }
@@ -581,7 +589,8 @@ impl WebSocketServer {
                     structured_data: serde_json::json!({
                         "athlete": *athlete,
                         "point_type": *point_type,
-                        "match_started": match_started
+                        "match_started": match_started,
+                        "match_db_id": current_match_db_id,
                     }),
                 }
             }
