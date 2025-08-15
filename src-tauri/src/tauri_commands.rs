@@ -1788,56 +1788,177 @@ pub async fn pss_get_events(app: State<'_, Arc<App>>) -> Result<Vec<serde_json::
 #[tauri::command]
 pub async fn pss_get_events_for_match(app: State<'_, Arc<App>>, match_id: String) -> Result<Vec<serde_json::Value>, TauriError> {
     log::info!("pss_get_events_for_match called for match_id={}", match_id);
-    // Try to parse numeric id if provided, but allow string key fallbacks later
-    let events = if let Ok(mid) = match_id.parse::<i64>() {
-        // Use database plugin when possible
-        match app.database_plugin().get_pss_events_for_match(mid, Some(200)).await {
-            Ok(rows) => rows.into_iter().map(|row| {
-                // The row model stores raw_data and parsed_data blobs; event_type_id is numeric, so we omit and let UI derive.
+    // Resolve database match id: accept numeric id or try to map match_number -> id
+    let resolved_mid: i64 = if let Ok(mid) = match_id.parse::<i64>() {
+        mid
+    } else {
+        // Try to resolve from pss_matches by match_number
+        let conn = app.database_plugin().get_connection().await
+            .map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to get DB connection: {}", e))))?;
+        let mut stmt = conn.prepare("SELECT id FROM pss_matches WHERE match_number = ? ORDER BY created_at DESC LIMIT 1")
+            .map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to prepare match lookup: {}", e))))?;
+        let mut rows = stmt.query(rusqlite::params![match_id])
+            .map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to run match lookup: {}", e))))?;
+        if let Some(row) = rows.next().map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to read match lookup row: {}", e))))? {
+            let id: i64 = row.get(0).map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to read match id: {}", e))))?;
+            id
+        } else {
+            // As a last resort, fall back to recent events (live memory)
+            let fallback = app.udp_plugin().get_recent_events().into_iter().map(|event| {
+                let event_code = crate::plugins::plugin_udp::UdpServer::get_event_code(&event);
                 serde_json::json!({
-                    "id": row.id,
-                    "type": null,
-                    "event_type": null,
-                    "event_code": null,
-                    "athlete": null,
-                    "round": row.round_id.unwrap_or(1),
-                    "time": null,
-                    "timestamp": row.timestamp.to_rfc3339(),
-                    "raw_data": row.raw_data,
-                    "description": row.parsed_data
+                    "type": format!("{:?}", event).to_lowercase(),
+                    "event_code": event_code,
+                    "athlete": "",
+                    "round": 1,
+                    "time": "0:00",
+                    "timestamp": chrono::Utc::now().timestamp_millis()
                 })
-            }).collect::<Vec<_>>(),
-            Err(e) => {
-                log::warn!("Failed DB fetch for match events: {}. Falling back to recent events.", e);
-                // Fallback to recent in-memory events
-                app.udp_plugin().get_recent_events().into_iter().map(|event| {
-                    let event_code = crate::plugins::plugin_udp::UdpServer::get_event_code(&event);
-                    serde_json::json!({
-                        "type": format!("{:?}", event).to_lowercase(),
-                        "event_code": event_code,
-                        "athlete": "",
-                        "round": 1,
-                        "time": "0:00",
-                        "timestamp": chrono::Utc::now().timestamp_millis()
-                    })
-                }).collect::<Vec<_>>()
+            }).collect::<Vec<_>>();
+            return Ok(fallback);
+        }
+    };
+
+    // Fetch events for resolved match id
+    let mut rows = match app.database_plugin().get_pss_events_for_match(resolved_mid, Some(500)).await {
+        Ok(r) => r,
+        Err(e) => {
+            log::warn!("Failed DB fetch for match events: {}. Falling back to recent events.", e);
+            let fallback = app.udp_plugin().get_recent_events().into_iter().map(|event| {
+                let event_code = crate::plugins::plugin_udp::UdpServer::get_event_code(&event);
+                serde_json::json!({
+                    "type": format!("{:?}", event).to_lowercase(),
+                    "event_code": event_code,
+                    "athlete": "",
+                    "round": 1,
+                    "time": "0:00",
+                    "timestamp": chrono::Utc::now().timestamp_millis()
+                })
+            }).collect::<Vec<_>>();
+            return Ok(fallback);
+        }
+    };
+
+    // Build enriched event list with inferred round/time/athlete from parsed_data
+    // Iterate oldest->newest to maintain running state
+    rows.sort_by_key(|r| r.timestamp);
+    let mut last_round: u8 = 1;
+    let mut last_time: String = "0:00".to_string();
+    let mut out: Vec<serde_json::Value> = Vec::with_capacity(rows.len());
+
+    for row in rows.into_iter() {
+        let mut athlete = String::new();
+        let mut round = last_round as i64;
+        let mut time = last_time.clone();
+        let mut ev_type = String::from("other");
+        let mut event_code = String::from("O");
+
+        if let Some(ref pd) = row.parsed_data {
+            if let Ok(ev) = serde_json::from_str::<crate::plugins::plugin_udp::PssEvent>(pd) {
+                use crate::plugins::plugin_udp::PssEvent;
+                event_code = crate::plugins::plugin_udp::UdpServer::get_event_code(&ev);
+                match ev {
+                    PssEvent::Round { current_round } => {
+                        last_round = current_round;
+                        round = current_round as i64;
+                        ev_type = "round".to_string();
+                    }
+                    PssEvent::Clock { time: t, .. } => {
+                        last_time = t.clone();
+                        time = t;
+                        ev_type = "clock".to_string();
+                    }
+                    PssEvent::Points { athlete: a, point_type: _ } => {
+                        athlete = match a { 1 => "blue".to_string(), 2 => "red".to_string(), _ => "yellow".to_string() };
+                        round = last_round as i64;
+                        time = last_time.clone();
+                        ev_type = "points".to_string();
+                        // Optionally include point_type in description
+                    }
+                    PssEvent::HitLevel { athlete: a, level: _ } => {
+                        athlete = match a { 1 => "blue".to_string(), 2 => "red".to_string(), _ => "yellow".to_string() };
+                        round = last_round as i64;
+                        time = last_time.clone();
+                        ev_type = "hit_level".to_string();
+                    }
+                    PssEvent::Warnings { .. } => {
+                        athlete = "yellow".to_string();
+                        round = last_round as i64;
+                        time = last_time.clone();
+                        ev_type = "warnings".to_string();
+                    }
+                    PssEvent::Break { time: t, .. } => {
+                        time = t.clone();
+                        round = last_round as i64;
+                        ev_type = "break".to_string();
+                    }
+                    PssEvent::CurrentScores { .. } => {
+                        round = last_round as i64;
+                        time = last_time.clone();
+                        ev_type = "current_scores".to_string();
+                    }
+                    PssEvent::Scores { .. } => {
+                        round = last_round as i64;
+                        time = last_time.clone();
+                        ev_type = "scores".to_string();
+                    }
+                    PssEvent::WinnerRounds { .. } => {
+                        round = last_round as i64;
+                        time = last_time.clone();
+                        ev_type = "winner_rounds".to_string();
+                    }
+                    PssEvent::Winner { .. } => {
+                        round = last_round as i64;
+                        time = last_time.clone();
+                        ev_type = "winner".to_string();
+                    }
+                    PssEvent::Athletes { .. } => {
+                        ev_type = "athletes".to_string();
+                    }
+                    PssEvent::MatchConfig { .. } => {
+                        ev_type = "match_config".to_string();
+                    }
+                    PssEvent::FightLoaded => { ev_type = "fight_loaded".to_string(); }
+                    PssEvent::FightReady => { ev_type = "fight_ready".to_string(); }
+                    PssEvent::Challenge { .. } => {
+                        athlete = "yellow".to_string();
+                        round = last_round as i64;
+                        time = last_time.clone();
+                        ev_type = "challenge".to_string();
+                    }
+                    PssEvent::Injury { time: t, athlete: a, .. } => {
+                        time = t.clone();
+                        athlete = match a { 1 => "blue".to_string(), 2 => "red".to_string(), _ => "yellow".to_string() };
+                        round = last_round as i64;
+                        ev_type = "injury".to_string();
+                    }
+                    PssEvent::Supremacy { .. } => {
+                        round = last_round as i64;
+                        time = last_time.clone();
+                        ev_type = "supremacy".to_string();
+                    }
+                    PssEvent::Raw(_) => {
+                        ev_type = "raw".to_string();
+                    }
+                }
             }
         }
-    } else {
-        // Non-numeric key: return recent events as a graceful fallback
-        app.udp_plugin().get_recent_events().into_iter().map(|event| {
-            let event_code = crate::plugins::plugin_udp::UdpServer::get_event_code(&event);
-            serde_json::json!({
-                "type": format!("{:?}", event).to_lowercase(),
-                "event_code": event_code,
-                "athlete": "",
-                "round": 1,
-                "time": "0:00",
-                "timestamp": chrono::Utc::now().timestamp_millis()
-            })
-        }).collect::<Vec<_>>()
-    };
-    Ok(events)
+
+        out.push(serde_json::json!({
+            "id": row.id,
+            "type": ev_type,
+            "event_type": ev_type,
+            "event_code": event_code,
+            "athlete": athlete,
+            "round": round,
+            "time": time,
+            "timestamp": row.timestamp.to_rfc3339(),
+            "raw_data": row.raw_data,
+            "description": row.parsed_data
+        }));
+    }
+
+    Ok(out)
 }
 
 // System commands
