@@ -2109,8 +2109,9 @@ impl UdpServer {
                                                 log::warn!("⚠️ Failed to send PSS event to internal channel: {}", e);
                                             }
                                             
-                                            // Emit to frontend via core app's unified event emission
-                                            crate::core::app::App::emit_pss_event(event_json);
+                                            // Emit to frontend (Tauri) only to avoid double WebSocket broadcast
+                                            // WebSocket broadcasting is already handled directly below via websocket_server.broadcast_event(event)
+                                            crate::core::app::App::emit_custom_event("pss_event", event_json);
                                             
                                             // Stream log to frontend for Live Data panel
                                             let log_message = format!("🎯 UDP-EVENT: {:?}", event);
