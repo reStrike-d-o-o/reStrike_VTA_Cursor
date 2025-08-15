@@ -73,6 +73,13 @@ export const usePssEvents = () => {
           if (payload?.type === 'fight_ready' || payload?.event === 'FightReady') {
             try { useLiveDataStore.getState().clearEvents(); } catch {}
           }
+          // Also mirror round/time updates to keep UI state in sync even if WS arrives later
+          if (payload?.type === 'round' && typeof payload?.round === 'number') {
+            try { useLiveDataStore.getState().setCurrentRound(payload.round); } catch {}
+          }
+          if (payload?.type === 'clock' && typeof payload?.time === 'string' && payload.time !== '0:00') {
+            try { useLiveDataStore.getState().setCurrentRoundTime(payload.time); } catch {}
+          }
           handlePssEvent(payload);
         } else {
           // Invalid PSS event payload
