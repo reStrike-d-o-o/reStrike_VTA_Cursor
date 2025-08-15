@@ -718,7 +718,7 @@ impl UdpServer {
         recent_hit_levels: &Arc<Mutex<std::collections::HashMap<u8, Vec<(u8, std::time::SystemTime)>>>>,
         current_tournament_id: &Arc<Mutex<Option<i64>>>,
         current_tournament_day_id: &Arc<Mutex<Option<i64>>>,
-        websocket_server: &Arc<WebSocketServer>,
+        _websocket_server: &Arc<WebSocketServer>,
     ) -> AppResult<()> {
         let start_time = Instant::now();
         
@@ -940,10 +940,7 @@ impl UdpServer {
             database.store_pss_event_details(event_id, &details).await?;
         }
         
-        // Broadcast event to WebSocket clients for real-time updates
-        if let Err(e) = websocket_server.broadcast_event(event) {
-            log::warn!("Failed to broadcast event to WebSocket: {}", e);
-        }
+        // Note: WebSocket broadcast happens immediately after parsing to preserve order
         
         // Update performance metrics
         let processing_time = start_time.elapsed().as_millis() as i32;
@@ -1671,7 +1668,13 @@ impl UdpServer {
                 ];
                 
                 // Add recent hit levels for this athlete (within last 5 seconds)
-                let hit_levels_data = recent_hit_levels.lock().unwrap();
+                let hit_levels_data = match recent_hit_levels.lock() {
+                    Ok(guard) => guard,
+                    Err(poisoned) => {
+                        log::warn!("recent_hit_levels mutex poisoned; recovering");
+                        poisoned.into_inner()
+                    }
+                };
                 if let Some(athlete_hit_levels) = hit_levels_data.get(athlete) {
                     let now = std::time::SystemTime::now();
                     let time_window_ms = 5000; // 5 seconds
@@ -2047,7 +2050,12 @@ impl UdpServer {
                                         _ => {}
                                     }
 
-                            // Store event in database (now properly async)
+                            // Broadcast to WebSocket clients immediately to preserve event order
+                            if let Err(e) = websocket_server.broadcast_event(&event) {
+                                log::warn!("Failed to broadcast event to WebSocket: {}", e);
+                            }
+
+                            // Store event in database asynchronously (do not block IO path)
                             let event_clone = event.clone();
                             let database_clone = database.clone();
                             let current_session_id_clone = current_session_id.clone();
@@ -2058,7 +2066,6 @@ impl UdpServer {
                             let tournament_id_clone = tournament_id.clone();
                             let tournament_day_id_clone = tournament_day_id.clone();
                             let websocket_server_clone = websocket_server.clone();
-                            
                             tokio::spawn(async move {
                                 if let Err(e) = Self::store_event_in_database(
                                     &database_clone,
@@ -2070,6 +2077,7 @@ impl UdpServer {
                                     &recent_hit_levels_clone,
                                     &tournament_id_clone,
                                     &tournament_day_id_clone,
+                                    // Note: WebSocket broadcast already done
                                     &websocket_server_clone,
                                 ).await {
                                     log::error!("Failed to store event in database: {}", e);
