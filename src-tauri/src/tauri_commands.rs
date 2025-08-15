@@ -1788,62 +1788,10 @@ pub async fn pss_get_events(app: State<'_, Arc<App>>) -> Result<Vec<serde_json::
 #[tauri::command]
 pub async fn pss_get_events_for_match(app: State<'_, Arc<App>>, match_id: String) -> Result<Vec<serde_json::Value>, TauriError> {
     log::info!("pss_get_events_for_match called for match_id={}", match_id);
-    // Resolve database match id: accept DB id, match_number, or derived from labels like "Previous #5555"
-    let resolved_mid: i64 = {
-        if let Ok(mid) = match_id.parse::<i64>() { mid } else {
-            // Extract numeric component from labels
-            let numeric_only: String = match_id.chars().filter(|c| c.is_ascii_digit()).collect();
-            let candidate = if !numeric_only.is_empty() { numeric_only } else { match_id.clone() };
-            let conn = app.database_plugin().get_connection().await
-                .map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to get DB connection: {}", e))))?;
-
-            // Try match_number lookup in a scoped block so borrows drop before we reuse conn
-            let first_try: Option<i64> = {
-                let mut stmt = match conn.prepare("SELECT id FROM pss_matches WHERE match_number = ? ORDER BY created_at DESC LIMIT 1") {
-                    Ok(s) => s,
-                    Err(_) => return Ok(vec![]),
-                };
-                let mut rows = match stmt.query(rusqlite::params![candidate.as_str()]) {
-                    Ok(r) => r,
-                    Err(_) => return Ok(vec![]),
-                };
-                if let Some(row) = rows.next().map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to read match lookup row: {}", e))))? {
-                    let id: i64 = row.get(0).map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to read match id: {}", e))))?;
-                    Some(id)
-                } else {
-                    None
-                }
-            };
-
-            if let Some(id) = first_try { id } else {
-                // Try match_id equal to candidate
-                let direct_opt: Option<i64> = {
-                    let mut stmt = conn.prepare("SELECT id FROM pss_matches WHERE match_id = ? ORDER BY created_at DESC LIMIT 1")
-                        .map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to prepare match_id lookup: {}", e))))?;
-                    let mut rows = stmt.query(rusqlite::params![candidate.as_str()])
-                        .map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to run match_id lookup: {}", e))))?;
-                    if let Some(row) = rows.next().map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to read match_id row: {}", e))))? {
-                        let id: i64 = row.get(0).map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to read match id: {}", e))))?;
-                        Some(id)
-                    } else { None }
-                };
-                if let Some(id) = direct_opt { id } else {
-                    // Try match_id (mch:<number>)
-                    let mch_key = format!("mch:{}", candidate);
-                    let id_opt: Option<i64> = {
-                        let mut stmt2 = conn.prepare("SELECT id FROM pss_matches WHERE match_id = ? ORDER BY created_at DESC LIMIT 1")
-                            .map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to prepare match_id lookup: {}", e))))?;
-                        let mut rows2 = stmt2.query(rusqlite::params![mch_key])
-                            .map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to run match_id lookup: {}", e))))?;
-                        if let Some(row2) = rows2.next().map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to read match_id row: {}", e))))? {
-                            let id: i64 = row2.get(0).map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to read match id: {}", e))))?;
-                            Some(id)
-                        } else { None }
-                    };
-                    if let Some(id) = id_opt { id } else { return Ok(vec![]); }
-                }
-            }
-        }
+    // Require numeric DB id only. Reject non-numeric inputs.
+    let resolved_mid: i64 = match match_id.parse::<i64>() {
+        Ok(id) => id,
+        Err(_) => return Ok(vec![]),
     };
 
     // Fetch events for resolved match id
