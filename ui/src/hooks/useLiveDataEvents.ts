@@ -65,13 +65,12 @@ export const useLiveDataEvents = () => {
           }
           
           // Keep currentRound in sync with backend whenever a round number is present
-          if (typeof eventData.round === 'number') {
-            useLiveDataStore.getState().setCurrentRound(eventData.round);
-          } else if (typeof (eventData.current_round) === 'number') {
-            useLiveDataStore.getState().setCurrentRound(eventData.current_round);
-          } else if (eventData.event_type === 'round' && typeof eventData.round === 'number') {
-            // Fallback (kept for completeness)
-            useLiveDataStore.getState().setCurrentRound(eventData.round);
+          const prevRound = useLiveDataStore.getState().currentRound;
+          const incomingRound = (typeof eventData.round === 'number')
+            ? eventData.round
+            : (typeof (eventData.current_round) === 'number' ? eventData.current_round : undefined);
+          if (typeof incomingRound === 'number' && incomingRound >= prevRound) {
+            useLiveDataStore.getState().setCurrentRound(incomingRound);
           }
           // Only update time if it's a valid time (not "0:00" or empty)
           if (eventData.time && eventData.time !== '0:00') {
@@ -146,11 +145,12 @@ export const useLiveDataEvents = () => {
 
           // Create event directly from structured data instead of parsing raw_data
           // Prefer backend-provided round over store to stamp correct RND on rows
-          const effectiveRound = (typeof eventData.round === 'number')
+          const effectiveRoundRaw = (typeof eventData.round === 'number')
             ? eventData.round
             : (typeof (eventData.current_round) === 'number'
               ? eventData.current_round
               : currentStore.currentRound);
+          const effectiveRound = Math.max(currentStore.currentRound, effectiveRoundRaw);
 
           const event: PssEventData = {
             id: `${eventData.event_type}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
