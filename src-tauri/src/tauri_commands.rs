@@ -1950,6 +1950,14 @@ pub async fn pss_list_recent_matches(app: State<'_, Arc<App>>, limit: Option<i64
     Ok(out)
 }
 
+/// Get current live match DB id (if any)
+#[tauri::command]
+pub async fn pss_get_current_match(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    // Pull from WebSocket server's propagated current_match_db_id
+    let id_opt = app.websocket_plugin().lock().await.get_current_match_db_id();
+    Ok(serde_json::json!({ "id": id_opt }))
+}
+
 /// Advance tournament/day context according to selection
 /// mode: "continue" | "next" | "new"
 #[tauri::command]
@@ -2024,38 +2032,14 @@ pub async fn pss_get_match_details(app: State<'_, Arc<App>>, match_id: String) -
     let conn = app.database_plugin().get_connection().await
         .map_err(|e| TauriError::from(anyhow::anyhow!(format!("DB connection error: {}", e))))?;
 
-    // Resolve match by id (DB id), match_number, or match_id (mch:<number>)
-    let numeric_only: String = match_id.chars().filter(|c| c.is_ascii_digit()).collect();
-    let candidate = if !numeric_only.is_empty() { numeric_only } else { match_id.clone() };
-
-    // Try DB id first
-    // Try DB id
-    let info = if let Ok(dbid) = candidate.parse::<i64>() {
-        let all = crate::database::operations::PssUdpOperations::get_pss_matches(&*conn, Some(1000))
-            .map_err(|e| TauriError::from(anyhow::anyhow!(format!("get_pss_matches: {}", e))))?;
-        all.into_iter().find(|m| m.id == Some(dbid))
-    } else { None };
-
-    let info = if let Some(i) = info { Some(i) } else {
-        // Try match_number
-        let all = crate::database::operations::PssUdpOperations::get_pss_matches(&*conn, Some(1000))
-            .map_err(|e| TauriError::from(anyhow::anyhow!(format!("get_pss_matches: {}", e))))?;
-        if let Some(i) = all.into_iter().find(|m| m.match_number.as_deref() == Some(candidate.as_str())) {
-            Some(i)
-    } else {
-            // Try match_id equal to candidate, then mch:candidate
-            let all2 = crate::database::operations::PssUdpOperations::get_pss_matches(&*conn, Some(1000))
-                .map_err(|e| TauriError::from(anyhow::anyhow!(format!("get_pss_matches: {}", e))))?;
-            if let Some(i) = all2.into_iter().find(|m| m.match_id == candidate) {
-                Some(i)
-            } else {
-                let all3 = crate::database::operations::PssUdpOperations::get_pss_matches(&*conn, Some(1000))
-                    .map_err(|e| TauriError::from(anyhow::anyhow!(format!("get_pss_matches: {}", e))))?;
-                let mch_key = format!("mch:{}", candidate);
-                all3.into_iter().find(|m| m.match_id == mch_key)
-            }
-        }
+    // ID-only resolution: accept only numeric DB id
+    let dbid: i64 = match match_id.parse::<i64>() {
+        Ok(id) => id,
+        Err(_) => return Err(TauriError::from(anyhow::anyhow!("Match not found"))),
     };
+    let list = crate::database::operations::PssUdpOperations::get_pss_matches(&*conn, Some(1000))
+        .map_err(|e| TauriError::from(anyhow::anyhow!(format!("get_pss_matches: {}", e))))?;
+    let info = list.into_iter().find(|m| m.id == Some(dbid));
 
     let info = info.ok_or_else(|| TauriError::from(anyhow::anyhow!("Match not found")))?;
     let athletes = crate::database::operations::PssUdpOperations::get_pss_match_athletes(&*conn, info.id.unwrap())
