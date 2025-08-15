@@ -145,7 +145,9 @@ export const useLiveDataEvents = () => {
             eventType: eventData.event_type || '',
             eventCode: eventData.event_code || '', // Always from backend
             athlete: normalizedAthlete,
-            round: eventData.round || currentStore.currentRound,
+            round: (typeof eventData.round === 'number' ? eventData.round : (
+              typeof (eventData.current_round) === 'number' ? eventData.current_round : currentStore.currentRound
+            )),
             time: currentStore.currentRoundTime, // ALWAYS use current store time
             timestamp: eventData.timestamp || new Date().toISOString(),
             rawData: eventData.raw_data || '',
