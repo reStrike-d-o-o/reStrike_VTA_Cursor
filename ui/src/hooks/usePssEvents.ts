@@ -64,7 +64,15 @@ export const usePssEvents = () => {
         // Ensure we have a valid payload
         if (event.payload && typeof event.payload === 'object') {
           // Valid payload received, processing event...
-          handlePssEvent(event.payload);
+          const payload = event.payload;
+          // Mirror clears here too to avoid race with WS arrival order
+          if (payload?.type === 'fight_loaded' || payload?.event === 'FightLoaded') {
+            try { useLiveDataStore.getState().clearEvents(); } catch {}
+          }
+          if (payload?.type === 'fight_ready' || payload?.event === 'FightReady') {
+            try { useLiveDataStore.getState().clearEvents(); } catch {}
+          }
+          handlePssEvent(payload);
         } else {
           // Invalid PSS event payload
         }
