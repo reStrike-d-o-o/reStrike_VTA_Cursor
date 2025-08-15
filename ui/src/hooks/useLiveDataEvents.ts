@@ -64,8 +64,13 @@ export const useLiveDataEvents = () => {
             normalizedAthlete = 'yellow';
           }
           
-          // Update round only on explicit round events to avoid unintended resets
-          if (eventData.event_type === 'round' && typeof eventData.round === 'number') {
+          // Keep currentRound in sync with backend whenever a round number is present
+          if (typeof eventData.round === 'number') {
+            useLiveDataStore.getState().setCurrentRound(eventData.round);
+          } else if (typeof (eventData.current_round) === 'number') {
+            useLiveDataStore.getState().setCurrentRound(eventData.current_round);
+          } else if (eventData.event_type === 'round' && typeof eventData.round === 'number') {
+            // Fallback (kept for completeness)
             useLiveDataStore.getState().setCurrentRound(eventData.round);
           }
           // Only update time if it's a valid time (not "0:00" or empty)
@@ -140,14 +145,19 @@ export const useLiveDataEvents = () => {
           }
 
           // Create event directly from structured data instead of parsing raw_data
+          // Prefer backend-provided round over store to stamp correct RND on rows
+          const effectiveRound = (typeof eventData.round === 'number')
+            ? eventData.round
+            : (typeof (eventData.current_round) === 'number'
+              ? eventData.current_round
+              : currentStore.currentRound);
+
           const event: PssEventData = {
             id: `${eventData.event_type}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
             eventType: eventData.event_type || '',
             eventCode: eventData.event_code || '', // Always from backend
             athlete: normalizedAthlete,
-            round: (typeof eventData.round === 'number' ? eventData.round : (
-              typeof (eventData.current_round) === 'number' ? eventData.current_round : currentStore.currentRound
-            )),
+            round: effectiveRound,
             time: currentStore.currentRoundTime, // ALWAYS use current store time
             timestamp: eventData.timestamp || new Date().toISOString(),
             rawData: eventData.raw_data || '',

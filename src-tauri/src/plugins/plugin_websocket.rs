@@ -357,6 +357,7 @@ impl WebSocketServer {
                     "event_code": event_code,
                     "athlete": athlete,
                     "round": round,
+                    "current_round": round, // always include current_round for robust UI stamping
                     "time": time,
                     "timestamp": timestamp,
                     "raw_data": raw_data,
