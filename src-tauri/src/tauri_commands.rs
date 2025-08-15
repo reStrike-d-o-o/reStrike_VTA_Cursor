@@ -1816,20 +1816,32 @@ pub async fn pss_get_events_for_match(app: State<'_, Arc<App>>, match_id: String
             };
 
             if let Some(id) = first_try { id } else {
-                // Try match_id (mch:<number>) in a new scope
-                let mch_key = format!("mch:{}", candidate);
-                // Use a second scoped query to ensure statement lifetime is bound before conn drops
-                let id_opt: Option<i64> = {
-                    let mut stmt2 = conn.prepare("SELECT id FROM pss_matches WHERE match_id = ? ORDER BY created_at DESC LIMIT 1")
+                // Try match_id equal to candidate
+                let direct_opt: Option<i64> = {
+                    let mut stmt = conn.prepare("SELECT id FROM pss_matches WHERE match_id = ? ORDER BY created_at DESC LIMIT 1")
                         .map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to prepare match_id lookup: {}", e))))?;
-                    let mut rows2 = stmt2.query(rusqlite::params![mch_key])
+                    let mut rows = stmt.query(rusqlite::params![candidate.as_str()])
                         .map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to run match_id lookup: {}", e))))?;
-                    if let Some(row2) = rows2.next().map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to read match_id row: {}", e))))? {
-                        let id: i64 = row2.get(0).map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to read match id: {}", e))))?;
+                    if let Some(row) = rows.next().map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to read match_id row: {}", e))))? {
+                        let id: i64 = row.get(0).map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to read match id: {}", e))))?;
                         Some(id)
                     } else { None }
                 };
-                if let Some(id) = id_opt { id } else { return Ok(vec![]); }
+                if let Some(id) = direct_opt { id } else {
+                    // Try match_id (mch:<number>)
+                    let mch_key = format!("mch:{}", candidate);
+                    let id_opt: Option<i64> = {
+                        let mut stmt2 = conn.prepare("SELECT id FROM pss_matches WHERE match_id = ? ORDER BY created_at DESC LIMIT 1")
+                            .map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to prepare match_id lookup: {}", e))))?;
+                        let mut rows2 = stmt2.query(rusqlite::params![mch_key])
+                            .map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to run match_id lookup: {}", e))))?;
+                        if let Some(row2) = rows2.next().map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to read match_id row: {}", e))))? {
+                            let id: i64 = row2.get(0).map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to read match id: {}", e))))?;
+                            Some(id)
+                        } else { None }
+                    };
+                    if let Some(id) = id_opt { id } else { return Ok(vec![]); }
+                }
             }
         }
     };
@@ -2045,10 +2057,41 @@ pub async fn tournament_progress_context(
 pub async fn pss_get_match_details(app: State<'_, Arc<App>>, match_id: String) -> Result<serde_json::Value, TauriError> {
     let conn = app.database_plugin().get_connection().await
         .map_err(|e| TauriError::from(anyhow::anyhow!(format!("DB connection error: {}", e))))?;
-    let matches = crate::database::operations::PssUdpOperations::get_pss_matches(&*conn, Some(500))
-        .map_err(|e| TauriError::from(anyhow::anyhow!(format!("get_pss_matches: {}", e))))?;
-    let info = matches.into_iter().find(|m| m.match_id == match_id)
-        .ok_or_else(|| TauriError::from(anyhow::anyhow!("Match not found")))?;
+
+    // Resolve match by id (DB id), match_number, or match_id (mch:<number>)
+    let numeric_only: String = match_id.chars().filter(|c| c.is_ascii_digit()).collect();
+    let candidate = if !numeric_only.is_empty() { numeric_only } else { match_id.clone() };
+
+    // Try DB id first
+    // Try DB id
+    let info = if let Ok(dbid) = candidate.parse::<i64>() {
+        let all = crate::database::operations::PssUdpOperations::get_pss_matches(&*conn, Some(1000))
+            .map_err(|e| TauriError::from(anyhow::anyhow!(format!("get_pss_matches: {}", e))))?;
+        all.into_iter().find(|m| m.id == Some(dbid))
+    } else { None };
+
+    let info = if let Some(i) = info { Some(i) } else {
+        // Try match_number
+        let all = crate::database::operations::PssUdpOperations::get_pss_matches(&*conn, Some(1000))
+            .map_err(|e| TauriError::from(anyhow::anyhow!(format!("get_pss_matches: {}", e))))?;
+        if let Some(i) = all.into_iter().find(|m| m.match_number.as_deref() == Some(candidate.as_str())) {
+            Some(i)
+        } else {
+            // Try match_id equal to candidate, then mch:candidate
+            let all2 = crate::database::operations::PssUdpOperations::get_pss_matches(&*conn, Some(1000))
+                .map_err(|e| TauriError::from(anyhow::anyhow!(format!("get_pss_matches: {}", e))))?;
+            if let Some(i) = all2.into_iter().find(|m| m.match_id == candidate) {
+                Some(i)
+            } else {
+                let all3 = crate::database::operations::PssUdpOperations::get_pss_matches(&*conn, Some(1000))
+                    .map_err(|e| TauriError::from(anyhow::anyhow!(format!("get_pss_matches: {}", e))))?;
+                let mch_key = format!("mch:{}", candidate);
+                all3.into_iter().find(|m| m.match_id == mch_key)
+            }
+        }
+    };
+
+    let info = info.ok_or_else(|| TauriError::from(anyhow::anyhow!("Match not found")))?;
     let athletes = crate::database::operations::PssUdpOperations::get_pss_match_athletes(&*conn, info.id.unwrap())
         .map_err(|e| TauriError::from(anyhow::anyhow!(format!("get_pss_match_athletes: {}", e))))?;
     let mut a1 = serde_json::json!({});
