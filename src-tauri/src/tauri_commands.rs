@@ -1968,16 +1968,16 @@ pub async fn pss_get_events_for_match(app: State<'_, Arc<App>>, match_id: String
         }
 
         out.push(serde_json::json!({
-            "id": row.id,
+                    "id": row.id,
             "type": ev_type,
             "event_type": ev_type,
             "event_code": event_code,
             "athlete": athlete,
             "round": round,
             "time": time,
-            "timestamp": row.timestamp.to_rfc3339(),
-            "raw_data": row.raw_data,
-            "description": row.parsed_data
+                    "timestamp": row.timestamp.to_rfc3339(),
+                    "raw_data": row.raw_data,
+                    "description": row.parsed_data
         }));
     }
 
@@ -2094,7 +2094,7 @@ pub async fn pss_get_match_details(app: State<'_, Arc<App>>, match_id: String) -
             .map_err(|e| TauriError::from(anyhow::anyhow!(format!("get_pss_matches: {}", e))))?;
         if let Some(i) = all.into_iter().find(|m| m.match_number.as_deref() == Some(candidate.as_str())) {
             Some(i)
-        } else {
+    } else {
             // Try match_id equal to candidate, then mch:candidate
             let all2 = crate::database::operations::PssUdpOperations::get_pss_matches(&*conn, Some(1000))
                 .map_err(|e| TauriError::from(anyhow::anyhow!(format!("get_pss_matches: {}", e))))?;

@@ -225,15 +225,6 @@ const EventTableSection: React.FC = () => {
           </select>
         </div>
         <div className="flex items-center space-x-2">
-          <button
-            aria-label="Live toggle"
-            className={`px-2 py-1 text-xs rounded border bg-red-700 border-red-600 text-white`}
-            onClick={(e)=>{
-              e.preventDefault();
-              const evt = new CustomEvent('open-live-orchestrator');
-              window.dispatchEvent(evt);
-            }}
-          >LIVE</button>
           {isManualModeEnabled && (
             <span className="text-xs text-yellow-400 bg-yellow-900/20 px-2 py-1 rounded">
               Manual Mode

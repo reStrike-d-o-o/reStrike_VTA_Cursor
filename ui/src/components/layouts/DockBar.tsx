@@ -44,14 +44,7 @@ const DockBar: React.FC = () => {
   const [liveToggle, setLiveToggle] = useState<'off'|'checking'|'on'>('off');
   const [showLiveModal, setShowLiveModal] = useState(false);
 
-  useEffect(() => {
-    const handler = () => {
-      setLiveToggle('checking');
-      setShowLiveModal(true);
-    };
-    window.addEventListener('open-live-orchestrator', handler as EventListener);
-    return () => window.removeEventListener('open-live-orchestrator', handler as EventListener);
-  }, []);
+  // Removed LIVE orchestrator event hook (button removed)
 
   // Handle Advanced button click
   const handleAdvancedClick = async () => {
