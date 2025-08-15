@@ -1279,7 +1279,7 @@ impl UdpServer {
                     _ => "P".to_string(),  // Default to Punch
                 }
             },
-            PssEvent::HitLevel { .. } => "O".to_string(), // Hit Level -> Other (CHANGED from K to O)
+            PssEvent::HitLevel { .. } => "HL".to_string(), // Hit Level stored distinctly for review
             PssEvent::Warnings { .. } => "R".to_string(), // Warning/Gam-jeom
             PssEvent::Challenge { .. } => "R".to_string(), // Challenge/IVR
             PssEvent::Injury { .. } => "O".to_string(), // Injury time -> Other
@@ -1659,60 +1659,13 @@ impl UdpServer {
         }
     }
 
-    fn extract_event_details(event: &PssEvent, recent_hit_levels: &Arc<Mutex<std::collections::HashMap<u8, Vec<(u8, std::time::SystemTime)>>>>) -> Option<Vec<(String, Option<String>, String)>> {
+    fn extract_event_details(event: &PssEvent, _recent_hit_levels: &Arc<Mutex<std::collections::HashMap<u8, Vec<(u8, std::time::SystemTime)>>>>) -> Option<Vec<(String, Option<String>, String)>> {
         match event {
             PssEvent::Points { athlete, point_type } => {
-                let mut details = vec![
+                let details = vec![
                 ("athlete".to_string(), Some(athlete.to_string()), "u8".to_string()),
                 ("point_type".to_string(), Some(point_type.to_string()), "u8".to_string()),
                 ];
-                
-                // Add recent hit levels for this athlete (within last 5 seconds)
-                let hit_levels_data = match recent_hit_levels.lock() {
-                    Ok(guard) => guard,
-                    Err(poisoned) => {
-                        log::warn!("recent_hit_levels mutex poisoned; recovering");
-                        poisoned.into_inner()
-                    }
-                };
-                if let Some(athlete_hit_levels) = hit_levels_data.get(athlete) {
-                    let now = std::time::SystemTime::now();
-                    let time_window_ms = 5000; // 5 seconds
-                    
-                    // Filter hit levels within the time window
-                    let recent_hit_levels: Vec<u8> = athlete_hit_levels
-                        .iter()
-                        .filter_map(|(level, timestamp)| {
-                            if let Ok(duration) = now.duration_since(*timestamp) {
-                                if duration.as_millis() <= time_window_ms as u128 {
-                                    Some(*level)
-                                } else {
-                                    None
-                                }
-                            } else {
-                                None
-                            }
-                        })
-                        .collect();
-                    
-                    if !recent_hit_levels.is_empty() {
-                        let hit_levels_str = recent_hit_levels.iter()
-                            .map(|level| level.to_string())
-                            .collect::<Vec<_>>()
-                            .join(",");
-                        details.push(("recent_hit_levels".to_string(), Some(hit_levels_str), "String".to_string()));
-                        
-                        // Add the highest hit level in the recent window
-                        if let Some(max_level) = recent_hit_levels.iter().max() {
-                            details.push(("max_hit_level".to_string(), Some(max_level.to_string()), "u8".to_string()));
-                        }
-                        
-                        // Add the average hit level in the recent window
-                        let avg_level = recent_hit_levels.iter().sum::<u8>() as f32 / recent_hit_levels.len() as f32;
-                        details.push(("avg_hit_level".to_string(), Some(format!("{:.1}", avg_level)), "float".to_string()));
-                    }
-                }
-                
                 Some(details)
             },
             PssEvent::HitLevel { athlete, level } => Some(vec![
@@ -2006,47 +1959,8 @@ impl UdpServer {
 
                                     // Track hit level events for statistics
                                     match &event {
-                                        PssEvent::HitLevel { athlete, level } => {
-                                            // Track this hit level for potential linking with point events
-                                            let mut hit_levels = match recent_hit_levels.lock() {
-                                                Ok(guard) => guard,
-                                                Err(poisoned) => {
-                                                    log::warn!("recent_hit_levels mutex poisoned; recovering");
-                                                    poisoned.into_inner()
-                                                }
-                                            };
-                                            let now = std::time::SystemTime::now();
-                                            
-                                            // Get or create the athlete's hit level history
-                                            let athlete_hit_levels = hit_levels.entry(*athlete).or_insert_with(Vec::new);
-                                            
-                                            // Add the new hit level with timestamp
-                                            athlete_hit_levels.push((*level, now));
-                                            
-                                            // Keep only the last 10 hit levels per athlete (to avoid memory bloat)
-                                            if athlete_hit_levels.len() > 10 {
-                                                // Keep only the last 10 entries defensively
-                                                let keep = 10;
-                                                let len = athlete_hit_levels.len();
-                                                if len > keep {
-                                                    let end = len.saturating_sub(keep);
-                                                    if end > 0 {
-                                                        athlete_hit_levels.drain(0..end);
-                                                    }
-                                                }
-                                            }
-                                            
-                                            log::debug!("🎯 Tracked hit level for athlete {}: level {}", athlete, level);
-                                        }
-                                        PssEvent::FightLoaded | PssEvent::FightReady => {
-                                            // Clear hit level tracking when a new fight starts
-                                            let mut hit_levels = match recent_hit_levels.lock() {
-                                                Ok(guard) => guard,
-                                                Err(poisoned) => poisoned.into_inner(),
-                                            };
-                                            hit_levels.clear();
-                                            log::debug!("🧹 Cleared hit level tracking for new fight");
-                                        }
+                                        PssEvent::HitLevel { .. } => { /* no aggregation needed */ }
+                                        PssEvent::FightLoaded | PssEvent::FightReady => { /* nothing to clear */ }
                                         _ => {}
                                     }
 
