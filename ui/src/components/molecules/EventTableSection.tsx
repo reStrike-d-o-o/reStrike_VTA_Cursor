@@ -60,9 +60,9 @@ const EventTableSection: React.FC = () => {
       // Normalize id to numeric-only for robust backend resolution
       const numericId = idStr.replace(/[^0-9]/g, '');
       const effective = numericId.length > 0 ? numericId : idStr;
-      const resp = await invoke('pss_get_events_for_match', { matchId: effective });
+      let resp: any = await invoke('pss_get_events_for_match', { matchId: effective });
       // Expect resp to be array of events matching PssEventData shape or convertible
-      const list = Array.isArray(resp) ? resp : [];
+      let list = Array.isArray(resp) ? resp : [];
       // Convert to PssEventData[] if needed
       const normalized = list.map((e: any) => ({
         id: String(e.id ?? `${idStr}_${Math.random()}`),
@@ -75,8 +75,40 @@ const EventTableSection: React.FC = () => {
         rawData: String(e.raw_data ?? ''),
         description: String(e.description ?? ''),
       }));
-      setEvents(normalized.reverse());
-      setReviewMatchId(effective);
+      // If empty via match number, resolve DB id via details and retry with DB id
+      if (normalized.length === 0) {
+        try {
+          const details: any = await invoke('pss_get_match_details', { matchId: effective });
+          const dbId = details?.match?.id;
+          if (dbId != null) {
+            resp = await invoke('pss_get_events_for_match', { matchId: String(dbId) });
+            list = Array.isArray(resp) ? resp : [];
+            const normalized2 = list.map((e: any) => ({
+              id: String(e.id ?? `${dbId}_${Math.random()}`),
+              eventType: e.type ?? e.event_type ?? '',
+              eventCode: e.event_code ?? '',
+              athlete: (e.athlete ?? 'yellow') as any,
+              round: Number(e.round ?? 1),
+              time: String(e.time ?? '0:00'),
+              timestamp: String(e.timestamp ?? new Date().toISOString()),
+              rawData: String(e.raw_data ?? ''),
+              description: String(e.description ?? ''),
+            }));
+            setEvents(normalized2.reverse());
+            setReviewMatchId(String(dbId));
+          } else {
+            setEvents([]);
+            setReviewMatchId(effective);
+          }
+        } catch (e) {
+          // If details fail, keep empty
+          setEvents([]);
+          setReviewMatchId(effective);
+        }
+      } else {
+        setEvents(normalized.reverse());
+        setReviewMatchId(effective);
+      }
 
       // Also load match details to populate MatchDetailsSection
       try {
