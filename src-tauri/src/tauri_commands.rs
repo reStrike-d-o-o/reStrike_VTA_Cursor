@@ -1788,73 +1788,43 @@ pub async fn pss_get_events(app: State<'_, Arc<App>>) -> Result<Vec<serde_json::
 #[tauri::command]
 pub async fn pss_get_events_for_match(app: State<'_, Arc<App>>, match_id: String) -> Result<Vec<serde_json::Value>, TauriError> {
     log::info!("pss_get_events_for_match called for match_id={}", match_id);
-    // Resolve database match id: accept numeric id or try to map match_number -> id
-    let resolved_mid: i64 = if let Ok(mid) = match_id.parse::<i64>() {
-        mid
-    } else {
-        // Try to resolve from pss_matches by match_number
-        let conn = app.database_plugin().get_connection().await
-            .map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to get DB connection: {}", e))))?;
-        let mut stmt = conn.prepare("SELECT id FROM pss_matches WHERE match_number = ? ORDER BY created_at DESC LIMIT 1")
-            .map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to prepare match lookup: {}", e))))?;
-        let mut rows = stmt.query(rusqlite::params![match_id])
-            .map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to run match lookup: {}", e))))?;
-        if let Some(row) = rows.next().map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to read match lookup row: {}", e))))? {
-            let id: i64 = row.get(0).map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to read match id: {}", e))))?;
-            id
-        } else {
-            // As a last resort, fall back to recent events (live memory)
-            let fallback = app.udp_plugin().get_recent_events().into_iter().map(|event| {
-                let event_code = crate::plugins::plugin_udp::UdpServer::get_event_code(&event);
-                serde_json::json!({
-                    "type": format!("{:?}", event).to_lowercase(),
-                    "event_code": event_code,
-                    "athlete": "yellow",
-                    "round": 1,
-                    "time": "0:00",
-                    "timestamp": chrono::Utc::now().timestamp_millis()
-                })
-            }).collect::<Vec<_>>();
-            return Ok(fallback);
+    // Resolve database match id: accept DB id, match_number, or derived from labels like "Previous #5555"
+    let resolved_mid: i64 = {
+        if let Ok(mid) = match_id.parse::<i64>() { mid } else {
+            // Extract numeric component from labels
+            let numeric_only: String = match_id.chars().filter(|c| c.is_ascii_digit()).collect();
+            let candidate = if !numeric_only.is_empty() { numeric_only } else { match_id.clone() };
+            let conn = app.database_plugin().get_connection().await
+                .map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to get DB connection: {}", e))))?;
+            // Try match_number first
+            if let Ok(mut stmt) = conn.prepare("SELECT id FROM pss_matches WHERE match_number = ? ORDER BY created_at DESC LIMIT 1") {
+                if let Ok(mut rows) = stmt.query(rusqlite::params![candidate.as_str()]) {
+                    if let Some(row) = rows.next().map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to read match lookup row: {}", e))))? {
+                        let id: i64 = row.get(0).map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to read match id: {}", e))))?;
+                        id
+                    } else {
+                        // Try match_id (mch:<number>)
+                        let mch_key = format!("mch:{}", candidate);
+                        let mut stmt2 = conn.prepare("SELECT id FROM pss_matches WHERE match_id = ? ORDER BY created_at DESC LIMIT 1")
+                            .map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to prepare match_id lookup: {}", e))))?;
+                        let mut rows2 = stmt2.query(rusqlite::params![mch_key])
+                            .map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to run match_id lookup: {}", e))))?;
+                        if let Some(row2) = rows2.next().map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to read match_id row: {}", e))))? {
+                            let id: i64 = row2.get(0).map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to read match id: {}", e))))?;
+                            id
+                        } else { return Ok(vec![]); }
+                    }
+                } else { return Ok(vec![]); }
+            } else { return Ok(vec![]); }
         }
     };
 
     // Fetch events for resolved match id
-    let mut rows = match app.database_plugin().get_pss_events_for_match(resolved_mid, Some(500)).await {
-        Ok(r) => r,
-            Err(e) => {
-                log::warn!("Failed DB fetch for match events: {}. Falling back to recent events.", e);
-            let fallback = app.udp_plugin().get_recent_events().into_iter().map(|event| {
-                    let event_code = crate::plugins::plugin_udp::UdpServer::get_event_code(&event);
-                    serde_json::json!({
-                        "type": format!("{:?}", event).to_lowercase(),
-                        "event_code": event_code,
-                    "athlete": "yellow",
-                        "round": 1,
-                        "time": "0:00",
-                        "timestamp": chrono::Utc::now().timestamp_millis()
-                    })
-            }).collect::<Vec<_>>();
-            return Ok(fallback);
-        }
-    };
+    let mut rows = app.database_plugin().get_pss_events_for_match(resolved_mid, Some(1000)).await
+        .map_err(|e| TauriError::from(anyhow::anyhow!(format!("DB fetch for match events failed: {}", e))))?;
 
-    // If no rows found for this match, gracefully fall back to recent events to avoid empty UI
-    if rows.is_empty() {
-        log::info!("No DB events found for match_id={}; returning recent in-memory events as fallback", resolved_mid);
-        let fallback = app.udp_plugin().get_recent_events().into_iter().map(|event| {
-            let event_code = crate::plugins::plugin_udp::UdpServer::get_event_code(&event);
-            serde_json::json!({
-                "type": format!("{:?}", event).to_lowercase(),
-                "event_code": event_code,
-                "athlete": "yellow",
-                "round": 1,
-                "time": "0:00",
-                "timestamp": chrono::Utc::now().timestamp_millis()
-            })
-        }).collect::<Vec<_>>();
-        return Ok(fallback);
-    }
+    // If no rows found for this match, return empty (no fallback to live memory)
+    if rows.is_empty() { return Ok(vec![]); }
 
     // Build enriched event list with inferred round/time/athlete from parsed_data
     // Iterate oldest->newest to maintain running state

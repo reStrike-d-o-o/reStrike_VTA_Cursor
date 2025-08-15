@@ -143,6 +143,14 @@ export const useLiveDataEvents = () => {
             return;
           }
 
+          // Do not display pre-match system events in the table until clock start
+          const isSystem = eventData.event_type === 'clock' || eventData.event_type === 'round' || eventData.event_type === 'fight_ready' || eventData.event_type === 'fight_loaded' || eventData.event_type === 'match_config' || eventData.event_type === 'athletes';
+          const clockStarted = currentStore.currentRoundTime && currentStore.currentRoundTime !== '0:00';
+          if (isSystem && !clockStarted) {
+            // Still allow header time/round updates (already done above), but skip adding row
+            return;
+          }
+
           // Create event directly from structured data instead of parsing raw_data
           // Prefer backend-provided round over store to stamp correct RND on rows
           const effectiveRoundRaw = (typeof eventData.round === 'number')
