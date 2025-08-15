@@ -5,6 +5,9 @@ import { useAppStore } from '../stores/index';
 // Singleton WebSocket instance to prevent multiple connections
 let globalWebSocket: LiveDataWebSocket | null = null;
 let connectionCount = 0;
+let obsEventListenerRegistered = false;
+const recentEventSignatures: Map<string, number> = new Map();
+const DUP_WINDOW_MS = 1500;
 // Skip the first zero-time round/clock event immediately after a fight_ready clear
 let suppressZeroTimeAfterReady = false;
 
@@ -153,9 +156,22 @@ export const useLiveDataEvents = () => {
           // Clear suppression once a non-zero-time or non-round/clock event arrives
           suppressZeroTimeAfterReady = false;
 
-          
-
-          useLiveDataStore.getState().addEvent(event);
+          // De-duplicate frequent duplicates using a short signature window
+          const sig = `${event.eventType}|${event.eventCode}|${event.athlete}|${event.round}|${event.time}`;
+          const nowMs = Date.now();
+          const lastSeen = recentEventSignatures.get(sig) || 0;
+          if (nowMs - lastSeen < DUP_WINDOW_MS) {
+            // skip duplicate
+          } else {
+            recentEventSignatures.set(sig, nowMs);
+            if (recentEventSignatures.size > 400) {
+              const cutoff = nowMs - DUP_WINDOW_MS * 4;
+              for (const [k, v] of recentEventSignatures) {
+                if (v < cutoff) recentEventSignatures.delete(k);
+              }
+            }
+            useLiveDataStore.getState().addEvent(event);
+          }
         } else if (data.type === 'connection') {
           useLiveDataStore.getState().setConnectionStatus(data.connected);
         } else if (data.type === 'error') {
@@ -166,7 +182,8 @@ export const useLiveDataEvents = () => {
       globalWebSocket.connect();
 
       // Listen for OBS events from backend to detect actual recording start
-      if (window.__TAURI__?.event?.listen) {
+      if (window.__TAURI__?.event?.listen && !obsEventListenerRegistered) {
+        obsEventListenerRegistered = true;
         window.__TAURI__.event.listen('obs_event', (evt: any) => {
           try {
             const payload = evt?.payload;

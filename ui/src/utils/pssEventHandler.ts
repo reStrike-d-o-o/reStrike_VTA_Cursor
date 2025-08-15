@@ -298,16 +298,10 @@ const handleCurrentScoresEvent = (event: any, store: any) => {
     logger.debug('📊 Updating current scores', currentScores);
     store.updateCurrentScores(currentScores);
     
-    // Also update current round and time if available in structured data
-    if (event.structured_data) {
-      if (event.structured_data.current_round !== undefined) {
-        store.updateCurrentRound(event.structured_data.current_round);
-        logger.debug('📊 Updated current round from current scores event', event.structured_data.current_round);
-      }
-      if (event.structured_data.current_time !== undefined) {
-        store.updateCurrentRoundTime(event.structured_data.current_time);
-        logger.debug('📊 Updated current time from current scores event', event.structured_data.current_time);
-      }
+    // Do not update round from current_scores; it causes resets. Time may be updated if provided.
+    if (event.structured_data && event.structured_data.current_time !== undefined) {
+      store.updateCurrentRoundTime(event.structured_data.current_time);
+      logger.debug('📊 Updated current time from current scores event', event.structured_data.current_time);
     }
   } catch (error) {
     console.error('Error handling current scores event:', error);
