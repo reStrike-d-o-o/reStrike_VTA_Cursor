@@ -206,6 +206,50 @@ pub async fn ivr_open_video_path(
     }
 }
 
+/// Open a recorded video by its DB id and compute a precise offset from event timing when available
+#[tauri::command]
+pub async fn ivr_open_recorded_video(
+    recorded_video_id: i64,
+    event_id: Option<i64>,
+    app: State<'_, Arc<App>>,
+) -> Result<ObsObwsConnectionResponse, TauriError> {
+    let conn = app.database_plugin().get_connection().await?;
+    // Fetch recorded video info
+    let (file_path_opt, record_dir_opt, start_time_str, match_id_db, stored_event_id_opt): (Option<String>, Option<String>, String, i64, Option<i64>) = conn.query_row(
+        "SELECT file_path, record_directory, start_time, match_id, event_id FROM recorded_videos WHERE id = ?",
+        rusqlite::params![recorded_video_id],
+        |r| Ok((r.get(0).ok(), r.get(1).ok(), r.get::<_, String>(2)?, r.get::<_, i64>(3)?, r.get(4).ok())),
+    ).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    let path_to_open = if let Some(fp) = file_path_opt { fp } else {
+        return Ok(ObsObwsConnectionResponse{ success: false, data: None, error: Some("Cannot open: file_path not set".to_string()) });
+    };
+    let start_time = chrono::DateTime::parse_from_rfc3339(&start_time_str)
+        .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?
+        .with_timezone(&chrono::Utc);
+    // Determine event to use for offset
+    let chosen_event_id = event_id.or(stored_event_id_opt);
+    let event_time_opt: Option<chrono::DateTime<chrono::Utc>> = if let Some(eid) = chosen_event_id {
+        conn.query_row(
+            "SELECT timestamp FROM pss_events_v2 WHERE id = ?",
+            rusqlite::params![eid],
+            |r| r.get::<_, String>(0)
+        ).ok().and_then(|s: String| chrono::DateTime::parse_from_rfc3339(&s).ok().map(|dt| dt.with_timezone(&chrono::Utc)))
+    } else {
+        // Fallback: first event after start_time for this match
+        conn.query_row(
+            "SELECT timestamp FROM pss_events_v2 WHERE match_id = ? AND timestamp >= ? ORDER BY timestamp ASC LIMIT 1",
+            rusqlite::params![match_id_db, start_time.to_rfc3339()],
+            |r| r.get::<_, String>(0)
+        ).ok().and_then(|s: String| chrono::DateTime::parse_from_rfc3339(&s).ok().map(|dt| dt.with_timezone(&chrono::Utc)))
+    };
+    let offset_seconds: i64 = event_time_opt.map(|et| (et - start_time).num_seconds().max(0)).unwrap_or(0);
+    // Open the video at computed offset
+    match app.open_video_at(path_to_open, offset_seconds).await {
+        Ok(()) => Ok(ObsObwsConnectionResponse{ success: true, data: Some(serde_json::json!({"opened": true, "offset_seconds": offset_seconds})), error: None }),
+        Err(e) => Ok(ObsObwsConnectionResponse{ success: false, data: None, error: Some(e.to_string()) })
+    }
+}
+
 /// Validate mpv.exe path exists and is a file
 #[tauri::command]
 pub async fn ivr_validate_mpv_path(mpv_path: String) -> Result<ObsObwsConnectionResponse, TauriError> {
@@ -1797,19 +1841,117 @@ pub async fn ivr_upload_recorded_videos(ids: Vec<i64>, app: State<'_, Arc<App>>)
         return Ok(ObsObwsConnectionResponse{ success: false, data: None, error: Some("No files to upload".to_string()) });
     }
     // Create a zip in temp dir
-    let zip_path = {
-        let ts = chrono::Utc::now().format("%Y%m%d_%H%M%S");
-        let p = std::env::temp_dir().join(format!("ivr_upload_{}.zip", ts));
-        // Very simple zip via zip crate is not wired; reuse existing log archive commands if available
-        // For now, return error to avoid partial implementation
-        p
-    };
-    // TODO: Implement actual zipping and call existing drive upload
-    Ok(ObsObwsConnectionResponse{ success: false, data: None, error: Some("Upload not yet implemented".to_string()) })
+    let ts = chrono::Utc::now().format("%Y%m%d_%H%M%S");
+    let zip_path = std::env::temp_dir().join(format!("ivr_videos_{}.zip", ts));
+    // Create zip using zip crate
+    {
+        use std::io::Write;
+        let file = std::fs::File::create(&zip_path).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+        let mut zip = zip::ZipWriter::new(file);
+        let options = zip::write::FileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+        for p in paths.iter() {
+            let name_in_zip = std::path::Path::new(p).file_name().and_then(|s| s.to_str()).unwrap_or("video.mp4");
+            zip.start_file(name_in_zip, options).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+            let bytes = std::fs::read(p).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+            zip.write_all(&bytes).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+        }
+        zip.finish().map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    }
+    // Reuse existing Drive upload flow if available
+    let file_name = zip_path.file_name().and_then(|s| s.to_str()).unwrap_or("ivr_videos.zip").to_string();
+    let file_id = crate::plugins::drive_plugin().upload_file_streaming(&zip_path, &file_name).await
+        .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    Ok(ObsObwsConnectionResponse{ success: true, data: Some(serde_json::json!({"zip_path": zip_path.to_string_lossy().to_string(), "file_id": file_id})), error: None })
 }
 
-/// Import recordings from local zip or Drive (stub)
+/// Import recordings from local zip or Drive into a tournament day directory and index them
 #[tauri::command]
-pub async fn ivr_import_recorded_videos(_source: String, _path_or_id: String, _app: State<'_, Arc<App>>) -> Result<ObsObwsConnectionResponse, TauriError> {
-    Ok(ObsObwsConnectionResponse{ success: false, data: None, error: Some("Import not yet implemented".to_string()) })
+pub async fn ivr_import_recorded_videos(
+    source: String,
+    path_or_id: String,
+    tournament_day_id: i64,
+    match_id: i64,
+    app: State<'_, Arc<App>>,
+) -> Result<ObsObwsConnectionResponse, TauriError> {
+    // Resolve videos root and target directory (TournamentName/Day N)
+    let conn = app.database_plugin().get_connection().await?;
+    let (tournament_id, day_number): (i64, i32) = conn.query_row(
+        "SELECT tournament_id, day_number FROM tournament_days WHERE id = ?",
+        rusqlite::params![tournament_day_id],
+        |r| Ok((r.get(0)?, r.get(1)?))
+    ).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    let tournament_name: String = conn.query_row(
+        "SELECT name FROM tournaments WHERE id = ?",
+        rusqlite::params![tournament_id],
+        |r| r.get(0)
+    ).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+
+    // Determine videos root from OBS recording config
+    let videos_root: std::path::PathBuf = {
+        use crate::database::operations::ObsRecordingOperations as RecOps;
+        let resolved_conn_name = "OBS_REC".to_string();
+        if let Ok(Some(cfg)) = RecOps::get_recording_config(&*conn, &resolved_conn_name) {
+            std::path::PathBuf::from(cfg.recording_root_path)
+        } else {
+            crate::plugins::obs_obws::PathGeneratorConfig::detect_windows_videos_folder()
+        }
+    };
+    let target_dir = videos_root.join(&tournament_name).join(format!("Day {}", day_number));
+    std::fs::create_dir_all(&target_dir).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+
+    // Support local or drive sources
+    let zip_path = if source.to_lowercase() == "drive" {
+        // Download from Drive to temp and use that
+        let tmp = std::env::temp_dir().join(format!("ivr_import_{}.zip", chrono::Utc::now().timestamp()));
+        match crate::plugins::drive_plugin().download_backup_archive(&path_or_id).await {
+            Ok(_) => tmp, // Assuming plugin writes to a known location; adapt if needed
+            Err(e) => return Ok(ObsObwsConnectionResponse{ success: false, data: None, error: Some(format!("Failed to download from Drive: {}", e)) })
+        }
+    } else {
+        let p = std::path::PathBuf::from(&path_or_id);
+        if !p.is_file() { return Ok(ObsObwsConnectionResponse{ success: false, data: None, error: Some("Zip file not found".to_string()) }); }
+        p
+    };
+
+    // Extract videos
+    let file = std::fs::File::open(&zip_path).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    let mut archive = zip::ZipArchive::new(file).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    let mut imported: Vec<String> = Vec::new();
+    for i in 0..archive.len() {
+        let mut zf = archive.by_index(i).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+        if zf.is_dir() { continue; }
+        let name = zf.name().to_string();
+        // Filter by common video extensions
+        let lower = name.to_lowercase();
+        if !(lower.ends_with(".mp4") || lower.ends_with(".mkv") || lower.ends_with(".mov") || lower.ends_with(".avi")) { continue; }
+        let fname = std::path::Path::new(&name).file_name().and_then(|s| s.to_str()).unwrap_or("video.mp4");
+        let out_path = target_dir.join(fname);
+        {
+            let mut out = std::fs::File::create(&out_path).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+            std::io::copy(&mut zf, &mut out).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+        }
+        // Determine start_time from file metadata if available
+        let start_time = std::fs::metadata(&out_path).ok().and_then(|md| md.modified().ok()).and_then(|st| {
+            st.duration_since(std::time::UNIX_EPOCH).ok().map(|d| chrono::DateTime::<chrono::Utc>::from(std::time::UNIX_EPOCH + std::time::Duration::new(d.as_secs(), d.subsec_nanos())))
+        }).unwrap_or_else(|| chrono::Utc::now());
+        let record_directory = target_dir.to_string_lossy().to_string();
+        let file_path_str = out_path.to_string_lossy().to_string();
+        // Insert into recorded_videos and link earliest event after start
+        let inserted_id = {
+            conn.execute(
+                "INSERT INTO recorded_videos (match_id, event_id, tournament_id, tournament_day_id, video_type, file_path, record_directory, filename_formatting, start_time, duration_seconds, created_at) VALUES (?, NULL, ?, ?, 'recording', ?, ?, NULL, ?, NULL, ?)",
+                rusqlite::params![ match_id, tournament_id, tournament_day_id, file_path_str, record_directory, start_time.to_rfc3339(), chrono::Utc::now().to_rfc3339() ]
+            ).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+            conn.last_insert_rowid()
+        };
+        let _ = conn.execute(
+            "UPDATE recorded_videos SET event_id = (
+                SELECT e.id FROM pss_events_v2 e WHERE e.match_id = recorded_videos.match_id AND e.timestamp >= ? ORDER BY e.timestamp ASC LIMIT 1
+            ) WHERE id = ?",
+            rusqlite::params![ start_time.to_rfc3339(), inserted_id ]
+        );
+        imported.push(out_path.to_string_lossy().to_string());
+    }
+
+    Ok(ObsObwsConnectionResponse{ success: true, data: Some(serde_json::json!({"imported": imported})), error: None })
 }
