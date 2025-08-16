@@ -16,8 +16,7 @@ const VideoEventPicker: React.FC<VideoEventPickerProps> = ({ recordedVideoId, ma
 			try {
 				setLoading(true); setError(null);
 				const { invoke } = await import('@tauri-apps/api/core');
-				// Fetch events for this match; the backend will compute offsets from recorded_videos.start_time
-				const ev: any[] = await invoke('pss_get_events_for_match', { matchId: String(matchId) });
+				const ev: any = await invoke('pss_get_events_for_match', { matchId: String(matchId) });
 				setEvents(Array.isArray(ev) ? ev : (ev?.data ?? []));
 			} catch (e: any) {
 				setError(typeof e==='string'?e:(e?.message||'Failed to load events'));
@@ -40,7 +39,7 @@ const VideoEventPicker: React.FC<VideoEventPickerProps> = ({ recordedVideoId, ma
 							const { invoke } = await import('@tauri-apps/api/core');
 							const num = String(e.id).replace(/[^0-9]/g, '');
 							if (num) {
-								await invoke('ivr_open_recorded_video', { recordedVideoId: recordedVideoId, eventId: Number(num) });
+								await invoke('ivr_open_recorded_video', { recordedVideoId, eventId: Number(num) });
 								onClose();
 							}
 						} catch (err) { console.warn('Failed to open event', err); }
