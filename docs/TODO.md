@@ -20,6 +20,11 @@
 - **Frontend**: `IvrReplaySettings` UI (mpv path, seconds, max wait, auto on challenge), DockBar `REPLAY` wired
 - **DB Settings**: `ivr.replay.mpv_path`, `ivr.replay.seconds_from_end`, `ivr.replay.max_wait_ms`, `ivr.replay.auto_on_challenge`
 - **Notes**: Bounded wait (50–500 ms) to resolve last replay; uses obws ReplayBuffer API
+ - **Fix**: Ensured UI keys are created before saving (prevents save no-op); added full replay debug logs; mpv process tracked for later auto-close
+
+#### IVR Auto-close mpv on Resume/Challenge Resolution ✅ **COMPLETED (2025-08-16)**
+- Track mpv process and close it on `Clock start` or `Challenge` acceptance/rejection.
+- Implemented centrally in UDP event handler without changing replay initiation rules (still gated by IVR toggle).
 
 #### OBS Recording Auto-Push Updates ✅ **COMPLETED (2025-08-09)**
 - Directory pushed once per tournament day (supports `folder_pattern`)
