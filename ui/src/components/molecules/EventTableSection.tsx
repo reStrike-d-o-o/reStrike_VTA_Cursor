@@ -381,7 +381,8 @@ const EventTableSection: React.FC = () => {
                     }`}
                     onClick={() => setSelectedIdx(idx)}
                     onDoubleClick={async () => {
-                      if (!isReviewMode) return;
+                      // Enable only when the "Current" dropdown is enabled (i.e., not live-loaded or explicitly in review mode)
+                      if (!!isLoaded && !isReviewMode) return;
                       try {
                         const { invoke } = await import('@tauri-apps/api/core');
                         const numeric = String(event.id).replace(/[^0-9]/g, '');
