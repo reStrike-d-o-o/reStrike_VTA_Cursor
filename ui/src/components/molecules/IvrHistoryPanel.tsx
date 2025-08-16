@@ -19,7 +19,7 @@ const IvrHistoryPanel: React.FC = () => {
 			try {
 				setLoading(true); setError(null);
 				const { invoke } = await import('@tauri-apps/api/core');
-				const resp: any[] = await invoke('ivr_list_tournament_days');
+				const resp: any = await invoke('ivr_list_tournament_days');
 				setDays(Array.isArray(resp) ? resp : (resp?.data ?? []));
 			} catch (e: any) {
 				setError(typeof e === 'string' ? e : (e?.message || 'Failed to load days'));
@@ -33,9 +33,9 @@ const IvrHistoryPanel: React.FC = () => {
 			try {
 				setLoading(true); setError(null);
 				const { invoke } = await import('@tauri-apps/api/core');
-				const m: any[] = await invoke('ivr_list_matches_for_day', { dayId: selectedDayId });
+				const m: any = await invoke('ivr_list_matches_for_day', { dayId: selectedDayId });
 				setMatches(Array.isArray(m) ? m : (m?.data ?? []));
-				const v: any[] = await invoke('ivr_list_recorded_videos', { tournamentDayId: selectedDayId, matchId: selectedMatchId });
+				const v: any = await invoke('ivr_list_recorded_videos', { tournamentDayId: selectedDayId, matchId: selectedMatchId });
 				setVideos(Array.isArray(v) ? v : (v?.data ?? []));
 				setSelectedVideoIds(new Set());
 			} catch (e: any) {
@@ -49,7 +49,7 @@ const IvrHistoryPanel: React.FC = () => {
 			if (selectedMatchId == null) { setEvents([]); return; }
 			try {
 				const { invoke } = await import('@tauri-apps/api/core');
-				const ev: any[] = await invoke('pss_get_events_for_match', { matchId: String(selectedMatchId) });
+				const ev: any = await invoke('pss_get_events_for_match', { matchId: String(selectedMatchId) });
 				const list = Array.isArray(ev) ? ev : (ev?.data ?? []);
 				setEvents(list);
 			} catch (e) {
@@ -76,7 +76,7 @@ const IvrHistoryPanel: React.FC = () => {
 			if (res?.success !== false) {
 				// Refresh list
 				if (selectedDayId != null) {
-					const v: any[] = await invoke('ivr_list_recorded_videos', { tournamentDayId: selectedDayId, matchId: selectedMatchId });
+					const v: any = await invoke('ivr_list_recorded_videos', { tournamentDayId: selectedDayId, matchId: selectedMatchId });
 					setVideos(Array.isArray(v) ? v : (v?.data ?? []));
 					setSelectedVideoIds(new Set());
 				}
@@ -157,7 +157,7 @@ const IvrHistoryPanel: React.FC = () => {
 								Events
 							</button>
 							{pickerVideoId===v.id && pickerMatchId && (
-								<VideoEventPicker recordedVideoId={pickerVideoId} matchId={pickerMatchId} onClose={() => setPickerVideoId(null)} />
+								<VideoEventPicker recordedVideoId={pickerVideoId!} matchId={pickerMatchId!} onClose={() => setPickerVideoId(null)} />
 							)}
 						</div>
 					))}
@@ -192,7 +192,7 @@ const IvrHistoryPanel: React.FC = () => {
 						if (res?.success === false) alert(res?.error || 'Import failed');
 						else {
 							alert('Import completed');
-							const v: any[] = await invoke('ivr_list_recorded_videos', { tournamentDayId: selectedDayId, matchId: selectedMatchId });
+							const v: any = await invoke('ivr_list_recorded_videos', { tournamentDayId: selectedDayId, matchId: selectedMatchId });
 							setVideos(Array.isArray(v) ? v : (v?.data ?? []));
 						}
 					} catch (e: any) { alert(typeof e==='string'?e:(e?.message||'Import failed')); }
