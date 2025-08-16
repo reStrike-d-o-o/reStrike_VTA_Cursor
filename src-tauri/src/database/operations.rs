@@ -1121,7 +1121,7 @@ impl PssUdpOperations {
     }
 
     pub fn insert_pss_match(conn: &Connection, pss_match: &PssMatch) -> DatabaseResult<i64> {
-        let match_id = conn.execute(
+        conn.execute(
             "INSERT INTO pss_matches (match_id, match_number, category, weight_class, division, total_rounds, round_duration, countdown_type, format_type, creation_mode, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             params![
                 pss_match.match_id,
@@ -1138,12 +1138,11 @@ impl PssUdpOperations {
                 pss_match.updated_at.to_rfc3339(),
             ],
         )?;
-        
-        Ok(match_id as i64)
+        Ok(conn.last_insert_rowid())
     }
 
     pub fn insert_pss_athlete(conn: &Connection, athlete: &PssAthlete) -> DatabaseResult<i64> {
-        let athlete_id = conn.execute(
+        conn.execute(
             "INSERT INTO pss_athletes (athlete_code, short_name, long_name, country_code, flag_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
             params![
                 athlete.athlete_code,
@@ -1155,12 +1154,11 @@ impl PssUdpOperations {
                 athlete.updated_at.to_rfc3339(),
             ],
         )?;
-        
-        Ok(athlete_id as i64)
+        Ok(conn.last_insert_rowid())
     }
 
     pub fn insert_pss_match_athlete(conn: &Connection, match_athlete: &PssMatchAthlete) -> DatabaseResult<i64> {
-        let match_athlete_id = conn.execute(
+        conn.execute(
             "INSERT INTO pss_match_athletes (match_id, athlete_id, athlete_position, bg_color, fg_color, created_at) VALUES (?, ?, ?, ?, ?, ?)",
             params![
                 match_athlete.match_id,
@@ -1171,8 +1169,7 @@ impl PssUdpOperations {
                 match_athlete.created_at.to_rfc3339(),
             ],
         )?;
-        
-        Ok(match_athlete_id as i64)
+        Ok(conn.last_insert_rowid())
     }
 
     /// Get athletes for a specific match with their details
