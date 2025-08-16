@@ -1747,3 +1747,69 @@ pub async fn obs_obws_get_full_config(
         error: None,
     })
 }
+
+// ============================================================================
+// IVR Match History - Actions (Delete, Upload, Import)
+// ============================================================================
+
+/// Delete recorded videos by IDs: removes DB rows and local files
+#[tauri::command]
+pub async fn ivr_delete_recorded_videos(ids: Vec<i64>, app: State<'_, Arc<App>>) -> Result<ObsObwsConnectionResponse, TauriError> {
+    use std::fs;
+    let mut deleted: Vec<i64> = Vec::new();
+    let mut errors: Vec<String> = Vec::new();
+    let conn = app.database_plugin().get_connection().await?;
+    for id in ids.iter() {
+        let row = conn.query_row(
+            "SELECT file_path, record_directory FROM recorded_videos WHERE id = ?",
+            rusqlite::params![id],
+            |r| Ok((r.get::<_, Option<String>>(0)?, r.get::<_, Option<String>>(1)?))
+        ).ok();
+        if let Some((file_path, _dir)) = row {
+            if let Some(fp) = file_path {
+                if let Err(e) = fs::remove_file(&fp) { errors.push(format!("{}", e)); }
+            }
+            let _ = conn.execute("DELETE FROM recorded_videos WHERE id = ?", rusqlite::params![id]);
+            deleted.push(*id);
+        } else {
+            // Row not found; still push as deleted from UI standpoint
+            let _ = conn.execute("DELETE FROM recorded_videos WHERE id = ?", rusqlite::params![id]);
+            deleted.push(*id);
+        }
+    }
+    Ok(ObsObwsConnectionResponse{ success: errors.is_empty(), data: Some(serde_json::json!({"deleted": deleted})), error: if errors.is_empty(){None}else{Some(errors.join("; "))} })
+}
+
+/// Upload selected recorded videos to Google Drive by zipping them first
+#[tauri::command]
+pub async fn ivr_upload_recorded_videos(ids: Vec<i64>, app: State<'_, Arc<App>>) -> Result<ObsObwsConnectionResponse, TauriError> {
+    let conn = app.database_plugin().get_connection().await?;
+    let mut paths: Vec<String> = Vec::new();
+    for id in ids.iter() {
+        let row = conn.query_row(
+            "SELECT file_path FROM recorded_videos WHERE id = ?",
+            rusqlite::params![id],
+            |r| r.get::<_, Option<String>>(0)
+        ).ok().flatten();
+        if let Some(fp) = row { paths.push(fp); }
+    }
+    if paths.is_empty() {
+        return Ok(ObsObwsConnectionResponse{ success: false, data: None, error: Some("No files to upload".to_string()) });
+    }
+    // Create a zip in temp dir
+    let zip_path = {
+        let ts = chrono::Utc::now().format("%Y%m%d_%H%M%S");
+        let p = std::env::temp_dir().join(format!("ivr_upload_{}.zip", ts));
+        // Very simple zip via zip crate is not wired; reuse existing log archive commands if available
+        // For now, return error to avoid partial implementation
+        p
+    };
+    // TODO: Implement actual zipping and call existing drive upload
+    Ok(ObsObwsConnectionResponse{ success: false, data: None, error: Some("Upload not yet implemented".to_string()) })
+}
+
+/// Import recordings from local zip or Drive (stub)
+#[tauri::command]
+pub async fn ivr_import_recorded_videos(_source: String, _path_or_id: String, _app: State<'_, Arc<App>>) -> Result<ObsObwsConnectionResponse, TauriError> {
+    Ok(ObsObwsConnectionResponse{ success: false, data: None, error: Some("Import not yet implemented".to_string()) })
+}
