@@ -737,3 +737,31 @@
 **Last Updated**: 2025-01-30  
 **Current Focus**: OBS WebSocket Migration & Security Enhancement  
 **Next Milestone**: Performance Optimization & Master/Slave Architecture 
+
+## IVR History, Upload/Import, and Precise Offsets (2025-08-16)
+
+- Database
+  - `recorded_videos` table used to persist match-linked recordings and replays.
+  - On immediate stop and on next FightLoaded (delayed stop), rows are inserted with `match_id`, `tournament_id`, `tournament_day_id`, `file_path`, `record_directory`, `start_time`, `duration_seconds`. NOT EXISTS guard prevents duplicates.
+  - Best‑effort `event_id` linkage for an event inside the recording window.
+
+- Backend
+  - `ivr_open_event_video(event_id)`: resolves correct recording and opens at exact offset.
+  - `open_video_at(path, offset_seconds)`: centralized mpv launcher with offset.
+  - `ivr_open_video_path(path, offset_seconds?)`: open video directly.
+  - `ivr_open_recorded_video(recorded_video_id, event_id?)`: computes precise offset from `recorded_videos.start_time` and chosen/linked event.
+  - `ivr_upload_recorded_videos(ids)`: zips selected videos with `zip` crate and uploads via Drive plugin’s `upload_file_streaming`.
+  - `ivr_import_recorded_videos(source, path_or_id, tournament_day_id, match_id)`: extracts local/Drive zip into Tournament/Day folder and indexes rows.
+
+- Frontend
+  - IVR drawer “Match history” organism:
+    - Lists Days → Matches → Events and Recorded Videos.
+    - Multi‑select Recorded Videos; Delete removes DB rows + local files.
+    - Upload/Import actions wired (local and Drive import supported via Drive file id).
+    - Double‑click events open at exact offset. Double‑click videos open at computed offset.
+    - VideoEventPicker molecule: optional popover to choose a specific event to open within a video.
+  - Event Table (DockBar): double‑click gated to review mode only (disabled when live match).
+
+- Notes
+  - All new UI follows atomic components and existing theme styling.
+  - core/app.rs warnings cleaned in new changes (no non‑Send captures in new task spawns). 

@@ -601,3 +601,26 @@
 
 **Last Updated**: 2025-01-29
 **Current Focus**: Control Room Phase 1 - Real OBS Integration for Audio Sources and Scenes (Next Priority) 
+
+### Completed (2025-08-16)
+- IVR History: Days → Matches → Events and Recorded Videos UI with atomic styling
+- Delete: multi-select recorded videos, remove local files + DB rows
+- Upload: zip selected files and upload via Drive plugin (resumable)
+- Import: local zip and Drive file id; extract and index into `recorded_videos`
+- Event-to-Video: precise offsets using `recorded_videos.start_time` and chosen/linked event
+- Event Table gating: double‑click opens only in review mode
+
+### New Tasks (Post-merge)
+1) Drive Browser Modal (UI)
+   - List/search Drive files/folders, filter zips; select zip for import or folder for upload
+   - Atoms/Molecules: `DriveBrowser` molecule, confirm dialogs
+2) Progress & Feedback
+   - Progress toasts for zip/upload/download/extract/index; cancel/abort and retry
+   - Backend progress events, frontend `ProgressToast` atom
+3) Event-to-Recording Refinement
+   - Link all events within recording to `recorded_video_id` with `offset_ms`
+   - Picker shows offsets; videos list “Open at…” menu
+4) Conflict Handling on Import
+   - Dedupe (checksum/size), rename/overwrite/skip policy
+5) QoL
+   - Persist last Drive folder and import path; add keyboard shortcuts and filters 
