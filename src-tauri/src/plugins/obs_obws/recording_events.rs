@@ -633,6 +633,16 @@ impl ObsRecordingEventHandler {
                         "INSERT INTO recorded_videos (match_id, event_id, tournament_id, tournament_day_id, video_type, file_path, record_directory, filename_formatting, start_time, duration_seconds, created_at)\n                         SELECT (SELECT id FROM pss_matches WHERE match_id = ? ORDER BY created_at DESC LIMIT 1), NULL, ?, ?, 'recording', ?, ?, NULL, ?, ?, ?\n                         WHERE NOT EXISTS (SELECT 1 FROM recorded_videos rv WHERE rv.match_id = (SELECT id FROM pss_matches WHERE match_id = ? ORDER BY created_at DESC LIMIT 1) AND rv.start_time = ?)",
                         rusqlite::params![ mid, tid_opt, day_opt, file_path, record_dir, start_time.to_rfc3339(), duration, created.to_rfc3339(), mid, start_time.to_rfc3339() ]
                     );
+                    // Link events that occurred during this recording window to the newly inserted video (best-effort)
+                    let _ = conn_ref.execute(
+                        "UPDATE recorded_videos SET event_id = (
+                            SELECT e.id FROM pss_events_v2 e
+                            WHERE e.match_id = recorded_videos.match_id
+                              AND e.timestamp >= ? AND e.timestamp <= ?
+                            ORDER BY e.timestamp ASC LIMIT 1
+                        ) WHERE match_id = (SELECT id FROM pss_matches WHERE match_id = ? ORDER BY created_at DESC LIMIT 1) AND start_time = ?",
+                        rusqlite::params![ start_time.to_rfc3339(), (start_time + chrono::Duration::seconds(duration as i64)).to_rfc3339(), mid, start_time.to_rfc3339() ]
+                    );
                 }
             }
         }

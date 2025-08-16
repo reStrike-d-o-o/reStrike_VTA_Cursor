@@ -234,7 +234,8 @@ impl App {
             // Connect WebSocket plugin to PSS event broadcaster for real-time overlays
             if let Some(pss_receiver) = Self::subscribe_to_pss_events() {
                 let websocket_plugin_clone = self.websocket_plugin().clone();
-                tokio::spawn(async move {
+                // This task does not capture any non-Send types
+                tokio::task::spawn(async move {
                     Self::handle_pss_to_websocket(pss_receiver, websocket_plugin_clone).await;
                 });
                 println!("✅ WebSocket plugin connected to PSS event broadcaster");
@@ -253,7 +254,8 @@ impl App {
                 // Start UDP event handler when UDP server starts
                 if let Some(udp_event_rx) = self.udp_event_rx.lock().await.take() {
                     let log_manager_clone = self.log_manager().clone();
-                    tokio::spawn(async move {
+                    // This task does not capture any non-Send types
+                    tokio::task::spawn(async move {
                         Self::handle_udp_events(udp_event_rx, log_manager_clone).await;
                     });
                     println!("✅ UDP event handler started");
@@ -551,19 +553,30 @@ impl App {
             Err(e) => return Err(crate::types::AppError::ConfigError(format!("Invalid event time: {}", e)))
         };
 
-        // Get latest recording metadata for match
+        // Prefer recording that started before event_time; fallback to the earliest after
         let (record_path_opt, record_dir_opt, record_start_str_opt) = {
             let conn_guard = self.database_plugin().get_connection().await.map_err(|e| crate::types::AppError::ConfigError(e.to_string()))?;
             let conn_ref = &*conn_guard;
-            conn_ref
+            let before: Option<(Option<String>, Option<String>, Option<String>)> = conn_ref
                 .query_row(
                     "SELECT file_path, record_directory, start_time FROM recorded_videos
-                     WHERE match_id = ? AND video_type = 'recording'
+                     WHERE match_id = ? AND video_type = 'recording' AND start_time <= ?
                      ORDER BY start_time DESC LIMIT 1",
-                    rusqlite::params![match_db_id],
-                    |row| Ok((row.get::<_, Option<String>>(0)?, row.get::<_, Option<String>>(1)?, row.get::<_, Option<String>>(2)?)),
+                    rusqlite::params![match_db_id, event_time.to_rfc3339()],
+                    |row| Ok((row.get(0).ok(), row.get(1).ok(), row.get(2).ok())),
                 )
-                .unwrap_or((None, None, None))
+                .ok();
+            if let Some(t) = before { t } else {
+                conn_ref
+                    .query_row(
+                        "SELECT file_path, record_directory, start_time FROM recorded_videos
+                         WHERE match_id = ? AND video_type = 'recording' AND start_time > ?
+                         ORDER BY start_time ASC LIMIT 1",
+                        rusqlite::params![match_db_id, event_time.to_rfc3339()],
+                        |row| Ok((row.get(0).ok(), row.get(1).ok(), row.get(2).ok())),
+                    )
+                    .unwrap_or((None, None, None))
+            }
         };
 
         let record_dir = record_dir_opt.unwrap_or_else(|| {
@@ -685,7 +698,8 @@ impl App {
     pub async fn start_udp_event_handler(&self) {
         if let Some(udp_event_rx) = self.udp_event_rx.lock().await.take() {
             let log_manager_clone = self.log_manager().clone();
-            tokio::spawn(async move {
+            // This task does not capture any non-Send types
+            tokio::task::spawn(async move {
                 Self::handle_udp_events(udp_event_rx, log_manager_clone).await;
             });
             println!("✅ UDP event handler started manually");

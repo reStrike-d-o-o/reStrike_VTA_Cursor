@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import VideoEventPicker from './VideoEventPicker';
 
 const IvrHistoryPanel: React.FC = () => {
 	const [days, setDays] = useState<Array<any>>([]);
@@ -8,6 +9,8 @@ const IvrHistoryPanel: React.FC = () => {
 	const [videos, setVideos] = useState<Array<any>>([]);
 	const [selectedVideoIds, setSelectedVideoIds] = useState<Set<number>>(new Set());
 	const [events, setEvents] = useState<Array<any>>([]);
+	const [pickerVideoId, setPickerVideoId] = useState<number | null>(null);
+	const [pickerMatchId, setPickerMatchId] = useState<number | null>(null);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
@@ -135,10 +138,12 @@ const IvrHistoryPanel: React.FC = () => {
 				<div className="text-sm font-semibold mb-2">Recorded Videos</div>
 				<div className="space-y-1 max-h-48 overflow-auto pr-1 text-xs">
 					{videos.map((v) => (
-						<div key={v.id} className={`flex items-center justify-between px-2 py-1 rounded hover:bg-gray-700/40 cursor-pointer ${selectedVideoIds.has(v.id)?'bg-blue-700/40':''}`} onClick={() => toggleVideoSelection(v.id)} onDoubleClick={async () => {
+						<div key={v.id} className={`relative flex items-center justify-between px-2 py-1 rounded hover:bg-gray-700/40 cursor-pointer ${selectedVideoIds.has(v.id)?'bg-blue-700/40':''}`} onClick={() => toggleVideoSelection(v.id)} onDoubleClick={async () => {
 							try {
 								const { invoke } = await import('@tauri-apps/api/core');
-								if (v.file_path) {
+								if (v.id) {
+									await invoke('ivr_open_recorded_video', { recordedVideoId: v.id });
+								} else if (v.file_path) {
 									await invoke('ivr_open_video_path', { filePath: v.file_path, offsetSeconds: 0 });
 								} else if (v.record_directory) {
 									// If only directory known, do nothing for now (future: browse directory)
@@ -147,6 +152,13 @@ const IvrHistoryPanel: React.FC = () => {
 						}}>
 							<div className="truncate mr-2">{v.file_path ?? v.record_directory ?? ''}</div>
 							<div className="text-gray-400 ml-2 whitespace-nowrap">{new Date(v.start_time).toLocaleString()}</div>
+							{/* Event picker trigger */}
+							<button className="ml-2 text-[10px] px-2 py-0.5 rounded bg-gray-700/60 hover:bg-gray-700 text-gray-300" title="Pick event" onClick={(e) => { e.stopPropagation(); if (selectedMatchId) { setPickerVideoId(v.id); setPickerMatchId(selectedMatchId); } }}>
+								Events
+							</button>
+							{pickerVideoId===v.id && pickerMatchId && (
+								<VideoEventPicker recordedVideoId={pickerVideoId} matchId={pickerMatchId} onClose={() => setPickerVideoId(null)} />
+							)}
 						</div>
 					))}
 				</div>
@@ -155,10 +167,36 @@ const IvrHistoryPanel: React.FC = () => {
 				<button className="px-3 py-1 bg-gray-700/70 rounded text-xs text-gray-300 disabled:opacity-50" disabled={selectedVideoIds.size===0} onClick={handleDeleteSelected}>
 					Delete
 				</button>
-				<button className="px-3 py-1 bg-gray-700/70 rounded text-xs text-gray-300" disabled>
+				<button className="px-3 py-1 bg-gray-700/70 rounded text-xs text-gray-300" disabled={selectedVideoIds.size===0} onClick={async () => {
+					if (selectedVideoIds.size===0) return;
+					try {
+						const { invoke } = await import('@tauri-apps/api/core');
+						const ids = Array.from(selectedVideoIds);
+						const res: any = await invoke('ivr_upload_recorded_videos', { ids });
+						if (res?.success === false) alert(res?.error || 'Upload failed');
+						else alert(`Upload started. Drive file id: ${res?.data?.file_id ?? 'unknown'}`);
+					} catch (e: any) { alert(typeof e==='string'?e:(e?.message||'Upload failed')); }
+				}}>
 					Upload to Drive
 				</button>
-				<button className="px-3 py-1 bg-gray-700/70 rounded text-xs text-gray-300" disabled>
+				<button className="px-3 py-1 bg-gray-700/70 rounded text-xs text-gray-300" disabled={!selectedDayId || !selectedMatchId} onClick={async () => {
+					if (!selectedDayId || !selectedMatchId) return;
+					const mode = window.prompt('Import from: local or drive? (type local/drive)', 'local');
+					if (!mode) return;
+					const key = mode.toLowerCase()==='drive' ? 'Enter Drive file id to import:' : 'Enter local zip file path to import:';
+					const path = window.prompt(key);
+					if (!path) return;
+					try {
+						const { invoke } = await import('@tauri-apps/api/core');
+						const res: any = await invoke('ivr_import_recorded_videos', { source: mode.toLowerCase(), pathOrId: path, tournamentDayId: selectedDayId, matchId: selectedMatchId });
+						if (res?.success === false) alert(res?.error || 'Import failed');
+						else {
+							alert('Import completed');
+							const v: any[] = await invoke('ivr_list_recorded_videos', { tournamentDayId: selectedDayId, matchId: selectedMatchId });
+							setVideos(Array.isArray(v) ? v : (v?.data ?? []));
+						}
+					} catch (e: any) { alert(typeof e==='string'?e:(e?.message||'Import failed')); }
+				}}>
 					Import
 				</button>
 			</div>

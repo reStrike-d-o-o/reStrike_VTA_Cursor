@@ -249,6 +249,7 @@ async fn main() -> AppResult<()> {
             tauri_commands_obws::ivr_list_matches_for_day,
             tauri_commands_obws::ivr_list_recorded_videos,
             tauri_commands_obws::ivr_open_video_path,
+            tauri_commands_obws::ivr_open_recorded_video,
             tauri_commands_obws::ivr_open_event_video,
             tauri_commands_obws::ivr_delete_recorded_videos,
             tauri_commands_obws::ivr_upload_recorded_videos,
