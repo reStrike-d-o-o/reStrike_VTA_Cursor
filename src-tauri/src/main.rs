@@ -375,6 +375,7 @@ async fn main() -> AppResult<()> {
             tauri_commands::pss_list_recent_matches,
             tauri_commands::pss_get_current_match,
             tauri_commands::pss_get_match_details,
+            tauri_commands::pss_clear_all_data,
             tauri_commands::pss_emit_event,
             tauri_commands::pss_emit_pending_events,
             tauri_commands::pss_setup_event_listener,

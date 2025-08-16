@@ -742,6 +742,18 @@ impl UdpServer {
 
         // Pre-process specific PSS events to maintain DB context (match + athletes)
         match event {
+            // Start a fresh match context at FightLoaded to avoid attaching early
+            // system events of a new fight to the previous match
+            PssEvent::FightLoaded => {
+                let auto_match_key = format!("auto_{}", Utc::now().format("%Y%m%d%H%M%S%3f"));
+                let db_match_id = database.get_or_create_pss_match(&auto_match_key).await?;
+                {
+                    let mut guard = current_match_id.lock().unwrap();
+                    *guard = Some(db_match_id);
+                }
+                websocket_server.set_current_match_db_id(Some(db_match_id));
+                log::info!("✅ FightLoaded: started new match {} (db id {})", auto_match_key, db_match_id);
+            }
             PssEvent::MatchConfig {
                 number,
                 category,
@@ -761,8 +773,37 @@ impl UdpServer {
                     match_id.clone()
                 };
 
-                // Ensure match exists and set current match id
-                let db_match_id = database.get_or_create_pss_match(&effective_match_id).await?;
+                // Prefer reusing the auto_* match created at FightLoaded by renaming it
+                // to the effective identifier to avoid creating duplicate/empty matches
+                let db_match_id = {
+                    let current_id_opt = { current_match_id.lock().unwrap().clone() };
+                    if let Some(cur_id) = current_id_opt {
+                        if let Ok(mut conn_guard) = database.get_connection().await {
+                            let conn = &mut *conn_guard;
+                            use crate::database::operations::PssUdpOperations as Ops;
+                            if let Ok(Some(cur)) = Ops::get_pss_match_by_id(conn, cur_id) {
+                                let is_auto = cur.match_id.starts_with("auto_");
+                                let target_exists = Ops::get_pss_match_by_match_id(conn, &effective_match_id)
+                                    .ok()
+                                    .flatten()
+                                    .is_some();
+                                if is_auto && !target_exists {
+                                    let _ = Ops::rename_pss_match_id(conn, cur_id, &effective_match_id);
+                                    cur_id
+                                } else {
+                                    // Fall back to fetching/creating the target
+                                    database.get_or_create_pss_match(&effective_match_id).await?
+                                }
+                            } else {
+                                database.get_or_create_pss_match(&effective_match_id).await?
+                            }
+                        } else {
+                            database.get_or_create_pss_match(&effective_match_id).await?
+                        }
+                    } else {
+                        database.get_or_create_pss_match(&effective_match_id).await?
+                    }
+                };
                 {
                     let mut guard = current_match_id.lock().unwrap();
                     *guard = Some(db_match_id);
