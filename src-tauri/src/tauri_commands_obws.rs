@@ -53,9 +53,17 @@ pub async fn ivr_save_replay_settings(
 ) -> Result<ObsObwsConnectionResponse, TauriError> {
     let mut conn = app.database_plugin().get_connection().await?;
     use crate::database::operations::UiSettingsOperations as UIOps;
+    // Ensure keys exist before setting values so updates don't fail silently
+    let _ = UIOps::ensure_key(&*conn, "ivr.replay.mpv_path", "MPV Path", "string", None);
+    let _ = UIOps::ensure_key(&*conn, "ivr.replay.seconds_from_end", "IVR Seconds From End", "integer", Some("10"));
+    let _ = UIOps::ensure_key(&*conn, "ivr.replay.max_wait_ms", "IVR Max Wait (ms)", "integer", Some("500"));
+    let _ = UIOps::ensure_key(&*conn, "ivr.replay.auto_on_challenge", "IVR Auto on Challenge", "boolean", Some("false"));
+
     let secs = seconds_from_end.min(20);
     let wait = max_wait_ms.clamp(50, 500);
-    if let Some(path) = mpv_path { let _ = UIOps::set_ui_setting(&mut *conn, "ivr.replay.mpv_path", &path, "user", Some("update mpv path")); }
+    if let Some(path) = mpv_path {
+        let _ = UIOps::set_ui_setting(&mut *conn, "ivr.replay.mpv_path", &path, "user", Some("update mpv path"));
+    }
     let _ = UIOps::set_ui_setting(&mut *conn, "ivr.replay.seconds_from_end", &secs.to_string(), "user", Some("update ivr seconds"));
     let _ = UIOps::set_ui_setting(&mut *conn, "ivr.replay.max_wait_ms", &wait.to_string(), "user", Some("update ivr wait"));
     let _ = UIOps::set_ui_setting(&mut *conn, "ivr.replay.auto_on_challenge", if auto_on_challenge {"true"} else {"false"}, "user", Some("update ivr auto"));
