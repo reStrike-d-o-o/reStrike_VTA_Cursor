@@ -6,6 +6,7 @@ interface PssMatchStore {
   matchData: PssMatchData;
   
   // Actions
+  setReviewMode: (review: boolean) => void;
   updateAthletes: (athlete1: PssAthleteInfo, athlete2: PssAthleteInfo) => void;
   updateMatchConfig: (config: PssMatchConfig) => void;
   updateScores: (scores: PssScores) => void;
@@ -29,6 +30,7 @@ interface PssMatchStore {
 
 const initialMatchData: PssMatchData = {
   isLoaded: false,
+  isReviewMode: false,
   lastUpdated: new Date().toISOString(),
 };
 
@@ -37,6 +39,15 @@ export const usePssMatchStore = create<PssMatchStore>((set, get) => ({
   matchData: initialMatchData,
   
   // Actions
+  setReviewMode: (review: boolean) => {
+    set((state) => ({
+      matchData: {
+        ...state.matchData,
+        isReviewMode: review,
+        lastUpdated: new Date().toISOString(),
+      },
+    }));
+  },
   updateAthletes: (athlete1: PssAthleteInfo, athlete2: PssAthleteInfo) => {
     console.log('🎯 updateAthletes called with:', { athlete1, athlete2 });
     set((state) => {
@@ -132,6 +143,9 @@ export const usePssMatchStore = create<PssMatchStore>((set, get) => ({
       matchData: {
         ...state.matchData,
         isLoaded: loaded,
+        // Turning match loaded on implies we are in live mode
+        // unless explicitly set otherwise immediately after
+        isReviewMode: loaded ? false : state.matchData.isReviewMode,
         lastUpdated: new Date().toISOString(),
       },
     }));
@@ -141,6 +155,7 @@ export const usePssMatchStore = create<PssMatchStore>((set, get) => ({
     set({
       matchData: {
         isLoaded: false,
+        isReviewMode: false,
         lastUpdated: new Date().toISOString(),
       },
     });
