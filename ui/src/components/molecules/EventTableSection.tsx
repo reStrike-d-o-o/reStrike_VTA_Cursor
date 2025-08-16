@@ -380,6 +380,18 @@ const EventTableSection: React.FC = () => {
                       selectedIdx === idx ? 'bg-blue-900/60 border border-blue-400' : 'hover:bg-gray-700/50'
                     }`}
                     onClick={() => setSelectedIdx(idx)}
+                    onDoubleClick={async () => {
+                      if (!isReviewMode) return;
+                      try {
+                        const { invoke } = await import('@tauri-apps/api/core');
+                        const numeric = String(event.id).replace(/[^0-9]/g, '');
+                        const eventId = numeric.length > 0 ? Number(numeric) : Number(event.id);
+                        if (!Number.isFinite(eventId)) return;
+                        await invoke('ivr_open_event_video', { eventId });
+                      } catch (e) {
+                        console.warn('Failed to open event video:', e);
+                      }
+                    }}
                   >
                             <div className="w-16 text-gray-300 font-bold mr-2 ml-8">
           R{event.round}

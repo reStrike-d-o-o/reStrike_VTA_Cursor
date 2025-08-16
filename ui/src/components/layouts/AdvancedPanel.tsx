@@ -23,6 +23,7 @@ import LottieIcon from '../atoms/LottieIcon';
 import { useAppStore } from '../../stores';
 import { configCommands } from '../../utils/tauriCommands';
 import { flowChartAnimation, spyAnimation, plansAnimation, watcherAnimation, taekwondoAnimation, liveStreamingAnimation, settingsAnimation, robotAnimation, noConnectionAnimation, businessAnimation, tournamentAnimation, mixerAnimation } from '../../assets/icons/json';
+import IvrHistoryPanel from '../molecules/IvrHistoryPanel';
 
 type AdvancedPanelProps = React.ComponentProps<'div'>;
 
@@ -180,11 +181,7 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
                 label: 'Match history',
                 icon: <LottieIcon animationData={businessAnimation} size={32} />,
                 content: (
-                  <div className="theme-card p-4 text-gray-200 shadow-lg accent-ivr">
-                    <div className="text-gray-400 text-center py-8">
-                      Match history UI placeholder (tournaments/days → matches → events, and recorded videos list with actions)
-                    </div>
-                  </div>
+                  <IvrHistoryPanel />
                 )
               }
             ]}

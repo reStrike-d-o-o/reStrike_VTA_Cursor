@@ -275,6 +275,9 @@ impl ObsRecordingEventHandler {
 
     /// Handle FightLoaded event - prepare recording session
     async fn handle_fight_loaded(&self) -> AppResult<()> {
+        // Before starting a new session, finalize and index the previous one (for delayed-stop cases)
+        let _ = self.finalize_previous_session_index().await;
+
         // Get current match ID from UDP/DB context (fallback to most recent)
         let mut match_id = self.get_current_match_id().await?;
         if match_id.is_none() {
@@ -353,6 +356,44 @@ impl ObsRecordingEventHandler {
             log::info!("🎬 Recording session prepared for match: {}", match_id);
         }
 
+        Ok(())
+    }
+
+    /// Finalize and index the previous recording session (used on next FightLoaded after a delayed stop)
+    async fn finalize_previous_session_index(&self) -> AppResult<()> {
+        if let Some(prev) = self.get_current_session() {
+            // Only index if we have path, filename and start_time
+            if let (Some(dir), Some(fname), Some(start_time)) = (
+                prev.recording_path.clone(),
+                prev.recording_filename.clone(),
+                prev.start_time,
+            ) {
+                let created = chrono::Utc::now();
+                let duration = (prev.end_time.unwrap_or(created) - start_time)
+                    .num_seconds()
+                    .max(0) as i32;
+                let full_path = std::path::PathBuf::from(&dir)
+                    .join(&fname)
+                    .to_string_lossy()
+                    .to_string();
+                if let Ok(conn_guard) = self.database.get_connection().await {
+                    let conn_ref = &*conn_guard;
+                    let _ = conn_ref.execute(
+                        "INSERT INTO recorded_videos (match_id, event_id, tournament_id, tournament_day_id, video_type, file_path, record_directory, filename_formatting, start_time, duration_seconds, created_at)\n                         SELECT (SELECT id FROM pss_matches WHERE match_id = ? ORDER BY created_at DESC LIMIT 1), NULL, NULL, NULL, 'recording', ?, ?, NULL, ?, ?, ?\n                         WHERE NOT EXISTS (SELECT 1 FROM recorded_videos rv WHERE rv.match_id = (SELECT id FROM pss_matches WHERE match_id = ? ORDER BY created_at DESC LIMIT 1) AND rv.start_time = ?)",
+                        rusqlite::params![
+                            prev.match_id,
+                            full_path,
+                            dir,
+                            start_time.to_rfc3339(),
+                            duration,
+                            created.to_rfc3339(),
+                            prev.match_id,
+                            start_time.to_rfc3339()
+                        ],
+                    );
+                }
+            }
+        }
         Ok(())
     }
 
@@ -574,16 +615,23 @@ impl ObsRecordingEventHandler {
         if let Some(session) = self.get_current_session() {
             let start_opt = session.start_time;
             let dir_opt = session.recording_path.clone();
+            let fname_opt = session.recording_filename.clone();
             let mid = session.match_id.clone();
             let created = chrono::Utc::now();
             if let (Some(start_time), Some(record_dir)) = (start_opt, dir_opt) {
+                let file_path: Option<String> = fname_opt.map(|f| std::path::PathBuf::from(&record_dir).join(f).to_string_lossy().to_string());
                 if let Ok(conn_guard) = self.database.get_connection().await {
                     let conn_ref = &*conn_guard;
                     let duration = (created - start_time).num_seconds().max(0) as i32;
+                    // Resolve active tournament/day IDs for better indexing
+                    let (tid_opt, day_opt) = {
+                        let t = TournamentOperations::get_active_tournament(&*conn_ref).ok().flatten();
+                        let d = t.as_ref().and_then(|tt| TournamentOperations::get_active_tournament_day(&*conn_ref, tt.id.unwrap()).ok().flatten());
+                        (t.and_then(|tt| tt.id), d.and_then(|dd| dd.id))
+                    };
                     let _ = conn_ref.execute(
-                        "INSERT INTO recorded_videos (match_id, event_id, tournament_id, tournament_day_id, video_type, file_path, record_directory, filename_formatting, start_time, duration_seconds, created_at)
-                         VALUES ((SELECT id FROM pss_matches WHERE match_id = ? ORDER BY created_at DESC LIMIT 1), NULL, NULL, NULL, 'recording', NULL, ?, NULL, ?, ?, ?)",
-                        rusqlite::params![ mid, record_dir, start_time.to_rfc3339(), duration, created.to_rfc3339() ]
+                        "INSERT INTO recorded_videos (match_id, event_id, tournament_id, tournament_day_id, video_type, file_path, record_directory, filename_formatting, start_time, duration_seconds, created_at)\n                         SELECT (SELECT id FROM pss_matches WHERE match_id = ? ORDER BY created_at DESC LIMIT 1), NULL, ?, ?, 'recording', ?, ?, NULL, ?, ?, ?\n                         WHERE NOT EXISTS (SELECT 1 FROM recorded_videos rv WHERE rv.match_id = (SELECT id FROM pss_matches WHERE match_id = ? ORDER BY created_at DESC LIMIT 1) AND rv.start_time = ?)",
+                        rusqlite::params![ mid, tid_opt, day_opt, file_path, record_dir, start_time.to_rfc3339(), duration, created.to_rfc3339(), mid, start_time.to_rfc3339() ]
                     );
                 }
             }

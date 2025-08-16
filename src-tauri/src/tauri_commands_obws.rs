@@ -94,6 +94,118 @@ pub async fn ivr_open_event_video(
     }
 }
 
+// ============================================================================
+// IVR Match History - Read APIs
+// ============================================================================
+
+/// List tournaments and their days (flattened as day entries)
+#[tauri::command]
+pub async fn ivr_list_tournament_days(app: State<'_, Arc<App>>) -> Result<ObsObwsConnectionResponse, TauriError> {
+    let conn = app.database_plugin().get_connection().await?;
+    use crate::database::operations::TournamentOperations as TOps;
+    let tournaments = TOps::get_tournaments(&*conn).unwrap_or_default();
+    let mut days: Vec<serde_json::Value> = Vec::new();
+    for t in tournaments {
+        let t_id = t.id.unwrap_or_default();
+        let t_name = t.name.clone();
+        let dlist = TOps::get_tournament_days(&*conn, t_id).unwrap_or_default();
+        for d in dlist {
+            days.push(serde_json::json!({
+                "tournament_id": t_id,
+                "tournament_name": t_name,
+                "day_id": d.id.unwrap_or_default(),
+                "day_number": d.day_number,
+                "date": d.date.to_rfc3339(),
+                "status": d.status,
+            }));
+        }
+    }
+    Ok(ObsObwsConnectionResponse{ success: true, data: Some(serde_json::json!(days)), error: None })
+}
+
+/// List matches for a given tournament day (based on recorded_videos linkage)
+#[tauri::command]
+pub async fn ivr_list_matches_for_day(day_id: i64, app: State<'_, Arc<App>>) -> Result<ObsObwsConnectionResponse, TauriError> {
+    let conn = app.database_plugin().get_connection().await?;
+    let mut stmt = conn.prepare(
+        "SELECT m.id, m.match_id, m.match_number, m.category, m.created_at, m.updated_at
+         FROM pss_matches m
+         JOIN recorded_videos rv ON rv.match_id = m.id
+         WHERE rv.tournament_day_id = ?
+         GROUP BY m.id
+         ORDER BY m.created_at DESC"
+    ).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    let rows = stmt.query_map(rusqlite::params![day_id], |row| {
+        Ok(serde_json::json!({
+            "id": row.get::<_, i64>(0)?,
+            "match_id": row.get::<_, String>(1)?,
+            "match_number": row.get::<_, Option<String>>(2)?,
+            "category": row.get::<_, Option<String>>(3)?,
+            "created_at": row.get::<_, String>(4)?,
+            "updated_at": row.get::<_, String>(5)?,
+        }))
+    }).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?
+    .collect::<Result<Vec<_>, _>>()
+    .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    Ok(ObsObwsConnectionResponse{ success: true, data: Some(serde_json::json!(rows)), error: None })
+}
+
+/// List recorded videos for a tournament day, optionally filtered by match_id (DB id)
+#[tauri::command]
+pub async fn ivr_list_recorded_videos(
+    tournament_day_id: i64,
+    match_id: Option<i64>,
+    app: State<'_, Arc<App>>,
+) -> Result<ObsObwsConnectionResponse, TauriError> {
+    let conn = app.database_plugin().get_connection().await?;
+    let (query, params): (&str, Vec<rusqlite::types::Value>) = if let Some(mid) = match_id {
+        (
+            "SELECT id, match_id, event_id, tournament_id, tournament_day_id, video_type, file_path, record_directory, start_time, duration_seconds, created_at
+             FROM recorded_videos WHERE tournament_day_id = ? AND match_id = ? ORDER BY start_time DESC",
+            vec![rusqlite::types::Value::from(tournament_day_id), rusqlite::types::Value::from(mid)]
+        )
+    } else {
+        (
+            "SELECT id, match_id, event_id, tournament_id, tournament_day_id, video_type, file_path, record_directory, start_time, duration_seconds, created_at
+             FROM recorded_videos WHERE tournament_day_id = ? ORDER BY start_time DESC",
+            vec![rusqlite::types::Value::from(tournament_day_id)]
+        )
+    };
+    let mut stmt = conn.prepare(query).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    let rows = stmt.query_map(rusqlite::params_from_iter(params.iter()), |row| {
+        Ok(serde_json::json!({
+            "id": row.get::<_, i64>(0)?,
+            "match_id": row.get::<_, i64>(1)?,
+            "event_id": row.get::<_, Option<i64>>(2)?,
+            "tournament_id": row.get::<_, Option<i64>>(3)?,
+            "tournament_day_id": row.get::<_, Option<i64>>(4)?,
+            "video_type": row.get::<_, String>(5)?,
+            "file_path": row.get::<_, Option<String>>(6)?,
+            "record_directory": row.get::<_, Option<String>>(7)?,
+            "start_time": row.get::<_, String>(8)?,
+            "duration_seconds": row.get::<_, Option<i32>>(9)?,
+            "created_at": row.get::<_, String>(10)?,
+        }))
+    }).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?
+    .collect::<Result<Vec<_>, _>>()
+    .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    Ok(ObsObwsConnectionResponse{ success: true, data: Some(serde_json::json!(rows)), error: None })
+}
+
+/// Open a recorded video path directly with optional positive offset seconds
+#[tauri::command]
+pub async fn ivr_open_video_path(
+    file_path: String,
+    offset_seconds: Option<i64>,
+    app: State<'_, Arc<App>>,
+) -> Result<ObsObwsConnectionResponse, TauriError> {
+    let off = offset_seconds.unwrap_or(0);
+    match app.open_video_at(file_path, off).await {
+        Ok(()) => Ok(ObsObwsConnectionResponse{ success: true, data: Some(serde_json::json!({"opened": true})), error: None }),
+        Err(e) => Ok(ObsObwsConnectionResponse{ success: false, data: None, error: Some(e.to_string()) })
+    }
+}
+
 /// Validate mpv.exe path exists and is a file
 #[tauri::command]
 pub async fn ivr_validate_mpv_path(mpv_path: String) -> Result<ObsObwsConnectionResponse, TauriError> {
