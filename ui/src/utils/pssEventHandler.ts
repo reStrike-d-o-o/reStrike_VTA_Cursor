@@ -46,10 +46,12 @@ export const handlePssEvent = (event: any) => {
     case 'fight_loaded':
       logger.debug('🎯 Handling fight_loaded event');
       handleFightLoadedEvent(event, store);
+      try { store.setReviewMode(false); } catch {}
       break;
     case 'fight_ready':
       logger.debug('🎯 Handling fight_ready event');
       handleFightReadyEvent(event, store);
+      try { store.setReviewMode(false); } catch {}
       break;
     case 'points':
       // Handle points events (for future scoring features)
@@ -96,6 +98,8 @@ export const handlePssEvent = (event: any) => {
       // Handle winner events (for future features)
       logger.debug('🎯 Winner event', event);
       try { store.setMatchLoaded(false); } catch {}
+      // End of match: allow review selection window
+      try { store.setReviewMode(false); } catch {}
       break;
     default:
       logger.debug('🎯 Unknown event type', event.type);

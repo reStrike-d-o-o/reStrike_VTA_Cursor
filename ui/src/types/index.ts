@@ -139,6 +139,9 @@ export interface PssMatchData {
   currentRound?: number;
   currentRoundTime?: string; // Format: "mm:ss" or "m:ss"
   isLoaded: boolean;
+  // Review mode indicates the UI is showing a historical match review
+  // and should not apply live gating logic (e.g., disabling dropdown)
+  isReviewMode?: boolean;
   lastUpdated: string;
 }
 

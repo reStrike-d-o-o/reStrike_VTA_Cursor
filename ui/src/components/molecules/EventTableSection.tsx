@@ -39,6 +39,7 @@ const EventTableSection: React.FC = () => {
   const { isManualModeEnabled } = useAppStore();
   const matchNumber = usePssMatchStore((s) => s.matchData.matchConfig?.number);
   const isLoaded = usePssMatchStore((s) => s.matchData.isLoaded);
+  const isReviewMode = usePssMatchStore((s) => s.matchData.isReviewMode);
   // Recent matches list by DB id for review dropdown
   const recentMatchesRef = useRef<Array<{ id: number; label: string }>>([]);
   // Load events for review mode
@@ -146,7 +147,9 @@ const EventTableSection: React.FC = () => {
             } as any;
             usePssMatchStore.getState().updateMatchConfig(cfg);
           }
-          usePssMatchStore.getState().setMatchLoaded(true);
+          // Enter review mode explicitly; do not mark as live-loaded
+          usePssMatchStore.getState().setReviewMode(true);
+          usePssMatchStore.getState().setMatchLoaded(false);
         }
       } catch (e) {
         console.warn('⚠️ Failed to load match details for review:', e);
@@ -243,7 +246,7 @@ const EventTableSection: React.FC = () => {
             aria-label="Select match"
             className="text-xs bg-gray-800 border border-gray-600 rounded px-2 py-1 text-gray-200"
             value={reviewMatchId ?? String(matchNumber ?? '')}
-            disabled={!!isLoaded}
+            disabled={!!isLoaded && !isReviewMode}
             onChange={(e) => {
               const v = e.target.value;
               if (v && v !== String(matchNumber ?? '')) {
@@ -251,6 +254,8 @@ const EventTableSection: React.FC = () => {
               } else {
                 // Back to current: do nothing special; live stream will keep filling
                 setReviewMatchId(null);
+                // Exit review mode when switching back to current
+                usePssMatchStore.getState().setReviewMode(false);
               }
             }}
           >
