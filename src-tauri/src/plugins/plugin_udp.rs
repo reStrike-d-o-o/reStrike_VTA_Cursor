@@ -733,10 +733,20 @@ impl UdpServer {
             let has_match = { current_match_id.lock().unwrap().is_some() };
             if !has_match {
                 let auto_match_key = format!("auto_{}", Utc::now().format("%Y%m%d%H%M%S%3f"));
-                let db_match_id = database.get_or_create_pss_match(&auto_match_key).await?;
-                let mut guard = current_match_id.lock().unwrap();
-                *guard = Some(db_match_id);
-                log::info!("✅ ensure_current_match: created match {} (db id {})", auto_match_key, db_match_id);
+                // Always insert a new row for a new match context
+                if let Ok(conn_guard) = database.get_connection().await {
+                    let conn = &*conn_guard;
+                    let mut pss_match = crate::database::models::PssMatch::new(auto_match_key.clone());
+                    pss_match.creation_mode = "Automatic".to_string();
+                    let new_id = crate::database::operations::PssUdpOperations::insert_pss_match(conn, &pss_match)
+                        .unwrap_or_else(|_| -1);
+                    if new_id > 0 {
+                        let mut guard = current_match_id.lock().unwrap();
+                        *guard = Some(new_id);
+                        websocket_server.set_current_match_db_id(Some(new_id));
+                        log::info!("✅ ensure_current_match: created match {} (db id {})", auto_match_key, new_id);
+                    }
+                }
             }
         }
 
@@ -745,14 +755,22 @@ impl UdpServer {
             // Start a fresh match context at FightLoaded to avoid attaching early
             // system events of a new fight to the previous match
             PssEvent::FightLoaded => {
+                // Always create a brand new match row for each fight instance
                 let auto_match_key = format!("auto_{}", Utc::now().format("%Y%m%d%H%M%S%3f"));
-                let db_match_id = database.get_or_create_pss_match(&auto_match_key).await?;
-                {
-                    let mut guard = current_match_id.lock().unwrap();
-                    *guard = Some(db_match_id);
+                if let Ok(conn_guard) = database.get_connection().await {
+                    let conn = &*conn_guard;
+                    let mut pss_match = crate::database::models::PssMatch::new(auto_match_key.clone());
+                    pss_match.creation_mode = "Automatic".to_string();
+                    match crate::database::operations::PssUdpOperations::insert_pss_match(conn, &pss_match) {
+                        Ok(db_match_id) => {
+                            let mut guard = current_match_id.lock().unwrap();
+                            *guard = Some(db_match_id);
+                            websocket_server.set_current_match_db_id(Some(db_match_id));
+                            log::info!("✅ FightLoaded: started new match {} (db id {})", auto_match_key, db_match_id);
+                        }
+                        Err(e) => log::warn!("⚠️ FightLoaded: failed to insert match {}: {}", auto_match_key, e),
+                    }
                 }
-                websocket_server.set_current_match_db_id(Some(db_match_id));
-                log::info!("✅ FightLoaded: started new match {} (db id {})", auto_match_key, db_match_id);
             }
             PssEvent::MatchConfig {
                 number,
@@ -773,43 +791,20 @@ impl UdpServer {
                     match_id.clone()
                 };
 
-                // Prefer reusing the auto_* match created at FightLoaded by renaming it
-                // to the effective identifier to avoid creating duplicate/empty matches
+                // Update only the metadata of the existing current match row.
                 let db_match_id = {
-                    let current_id_opt = { current_match_id.lock().unwrap().clone() };
-                    if let Some(cur_id) = current_id_opt {
-                        if let Ok(mut conn_guard) = database.get_connection().await {
-                            let conn = &mut *conn_guard;
-                            use crate::database::operations::PssUdpOperations as Ops;
-                            if let Ok(Some(cur)) = Ops::get_pss_match_by_id(conn, cur_id) {
-                                let is_auto = cur.match_id.starts_with("auto_");
-                                let target_exists = Ops::get_pss_match_by_match_id(conn, &effective_match_id)
-                                    .ok()
-                                    .flatten()
-                                    .is_some();
-                                if is_auto && !target_exists {
-                                    let _ = Ops::rename_pss_match_id(conn, cur_id, &effective_match_id);
-                                    cur_id
-                                } else {
-                                    // Fall back to fetching/creating the target
-                                    database.get_or_create_pss_match(&effective_match_id).await?
-                                }
-                            } else {
-                                database.get_or_create_pss_match(&effective_match_id).await?
-                            }
-                        } else {
-                            database.get_or_create_pss_match(&effective_match_id).await?
-                        }
-                    } else {
-                        database.get_or_create_pss_match(&effective_match_id).await?
-                    }
+                    let guard = current_match_id.lock().unwrap();
+                    guard.unwrap_or_default()
                 };
-                {
-                    let mut guard = current_match_id.lock().unwrap();
-                    *guard = Some(db_match_id);
+                if db_match_id == 0 {
+                    log::warn!("⚠️ MatchConfig without current match id; ignoring metadata update");
+                    return Ok(());
                 }
-                // Update WS server with current match DB id
-                websocket_server.set_current_match_db_id(Some(db_match_id));
+                // Rename the current row's match_id string to the effective identifier for readability
+                if let Ok(mut conn_guard) = database.get_connection().await {
+                    let conn = &mut *conn_guard;
+                    let _ = crate::database::operations::PssUdpOperations::rename_pss_match_id(conn, db_match_id, &effective_match_id);
+                }
 
                 // Update match metadata
                 let mut pss_match = crate::database::models::PssMatch::new(effective_match_id.clone());

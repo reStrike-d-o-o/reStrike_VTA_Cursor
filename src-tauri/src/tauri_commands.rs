@@ -1937,24 +1937,35 @@ pub async fn pss_get_events_for_match(app: State<'_, Arc<App>>, match_id: String
 pub async fn pss_list_recent_matches(app: State<'_, Arc<App>>, limit: Option<i64>) -> Result<Vec<serde_json::Value>, TauriError> {
     let conn = app.database_plugin().get_connection().await
         .map_err(|e| TauriError::from(anyhow::anyhow!(format!("DB connection error: {}", e))))?;
-    let list = crate::database::operations::PssUdpOperations::get_pss_matches(&*conn, limit.or(Some(50)))
-        .map_err(|e| TauriError::from(anyhow::anyhow!(format!("get_pss_matches: {}", e))))?;
-    let out = list.into_iter().map(|m| serde_json::json!({
-        "id": m.id,
-        "match_id": m.match_id,
-        "match_number": m.match_number,
-        "category": m.category,
-        "division": m.division,
-        "created_at": m.created_at.to_rfc3339(),
-        "updated_at": m.updated_at.to_rfc3339(),
-    })).collect();
-    Ok(out)
+    // Return only matches that have at least one event; newest first
+    let max = limit.unwrap_or(50);
+    let mut stmt = conn.prepare(
+        "SELECT m.id, m.match_id, m.match_number, m.category, m.weight_class, m.division, m.created_at, m.updated_at
+         FROM pss_matches m
+         WHERE EXISTS (SELECT 1 FROM pss_events_v2 e WHERE e.match_id = m.id)
+         ORDER BY m.created_at DESC
+         LIMIT ?"
+    ).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    let rows = stmt.query_map([max], |row| {
+        Ok(serde_json::json!({
+            "id": row.get::<_, i64>(0)?,
+            "match_id": row.get::<_, String>(1)?,
+            "match_number": row.get::<_, Option<String>>(2)?,
+            "category": row.get::<_, Option<String>>(3)?,
+            "weight_class": row.get::<_, Option<String>>(4)?,
+            "division": row.get::<_, Option<String>>(5)?,
+            "created_at": row.get::<_, String>(6)?,
+            "updated_at": row.get::<_, String>(7)?,
+        }))
+    }).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?
+    .collect::<Result<Vec<_>, _>>()
+    .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    Ok(rows)
 }
 
 /// Danger: clear all PSS matches and events for a fresh start
 #[tauri::command]
 pub async fn pss_clear_all_data(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
-    use rusqlite::params;
     let mut conn = app.database_plugin().get_connection().await
         .map_err(|e| TauriError::from(anyhow::anyhow!(format!("DB connection error: {}", e))))?;
     // Wrap in transaction for atomicity
