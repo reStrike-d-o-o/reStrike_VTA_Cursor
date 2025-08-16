@@ -82,6 +82,18 @@ pub async fn ivr_round_replay_now(
     }
 }
 
+/// Open recorded video at the exact time of the specified event
+#[tauri::command]
+pub async fn ivr_open_event_video(
+    event_id: i64,
+    app: State<'_, Arc<App>>,
+) -> Result<ObsObwsConnectionResponse, TauriError> {
+    match app.open_event_video(event_id).await {
+        Ok(()) => Ok(ObsObwsConnectionResponse{ success: true, data: Some(serde_json::json!({"opened": true})), error: None }),
+        Err(e) => Ok(ObsObwsConnectionResponse{ success: false, data: None, error: Some(e.to_string()) })
+    }
+}
+
 /// Validate mpv.exe path exists and is a file
 #[tauri::command]
 pub async fn ivr_validate_mpv_path(mpv_path: String) -> Result<ObsObwsConnectionResponse, TauriError> {
