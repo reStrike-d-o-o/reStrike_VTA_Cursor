@@ -13,6 +13,7 @@ use std::sync::Arc;
 use std::path::PathBuf;
 use tokio::sync::{RwLock, Mutex, broadcast};
 use tauri::{Emitter, Manager};
+use std::process::Child;
 
 // Global PSS event broadcaster for real-time event emission to WebSocket overlays
 static PSS_EVENT_BROADCASTER: std::sync::OnceLock<broadcast::Sender<serde_json::Value>> = std::sync::OnceLock::new();
@@ -48,6 +49,8 @@ pub struct App {
     event_stream_processor: Arc<EventStreamProcessor>,
     event_distributor: Arc<EventDistributor>,
     advanced_analytics: Arc<AdvancedAnalytics>,
+    // Track last launched mpv process to close it when match resumes or challenge is resolved
+    mpv_child: Arc<Mutex<Option<Child>>>,
 }
 
 impl App {
@@ -200,6 +203,7 @@ impl App {
             event_stream_processor,
             event_distributor,
             advanced_analytics,
+            mpv_child: Arc::new(Mutex::new(None)),
         })
     }
     
@@ -455,13 +459,39 @@ impl App {
         let start_arg = format!("--start=-{}", seconds_from_end);
         let file_arg = file_path.to_string_lossy().to_string();
         println!("🚀 Launching mpv: '{}' '{}' '{}'", mpv_path, start_arg, file_arg);
-        std::process::Command::new(&mpv_path)
+        let child = std::process::Command::new(&mpv_path)
             .arg(&start_arg)
             .arg(&file_arg)
             .spawn()
             .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to launch mpv: {}", e)))?;
+        // Track mpv process so it can be closed later
+        {
+            let mut slot = self.mpv_child.lock().await;
+            if let Some(old) = slot.as_mut() {
+                let _ = old.try_wait();
+            }
+            *slot = Some(child);
+        }
         println!("✅ mpv launched");
 
+        Ok(())
+    }
+
+    /// Close mpv if it is currently running (used on resume or challenge accept/reject)
+    pub async fn close_mpv_if_running(&self) -> AppResult<()> {
+        let mut slot = self.mpv_child.lock().await;
+        if let Some(mut child) = slot.take() {
+            if child.try_wait().ok().flatten().is_some() {
+                println!("🧹 mpv already exited");
+                return Ok(());
+            }
+            println!("⏹️ Attempting to close mpv (killing process)");
+            if let Err(e) = child.kill() {
+                println!("⚠️ Failed to kill mpv: {}", e);
+            } else {
+                println!("✅ mpv closed");
+            }
+        }
         Ok(())
     }
 
@@ -605,6 +635,21 @@ impl App {
                         // Handle PSS event for automatic recording
                         if let Err(e) = recording_handler.handle_pss_event(&event).await {
                             log::warn!("⚠️ Failed to handle PSS event for recording: {}", e);
+                        }
+
+                        // Close mpv if match resumes or challenge resolved
+                        match event {
+                            crate::plugins::plugin_udp::PssEvent::Clock { action: Some(ref a), .. } if a == "start" => {
+                                println!("⏹️ Closing mpv on clock start (resume)");
+                                if let Err(e) = app.close_mpv_if_running().await { println!("⚠️ close_mpv_if_running error: {}", e); }
+                            }
+                            crate::plugins::plugin_udp::PssEvent::Challenge { accepted, .. } => {
+                                if matches!(accepted, Some(true) | Some(false)) {
+                                    println!("⏹️ Closing mpv on challenge resolution (accepted/rejected)");
+                                    if let Err(e) = app.close_mpv_if_running().await { println!("⚠️ close_mpv_if_running error: {}", e); }
+                                }
+                            }
+                            _ => {}
                         }
 
                         // IVR: Auto round replay on challenge if enabled
