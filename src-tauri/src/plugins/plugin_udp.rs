@@ -2210,9 +2210,11 @@ impl UdpServer {
         // Log the incoming message for debugging
         log::debug!("🔍 Parsing PSS message: '{}'", message);
         
-        // Clean the message: remove trailing semicolons and normalize
-        let clean_message = message.trim_end_matches(';').trim();
-        let parts: Vec<&str> = clean_message.split(';').collect();
+        // Clean the message: trim whitespace first, then remove trailing semicolons, and split
+        let clean_message = message.trim();
+        let clean_message = clean_message.trim_end_matches(';');
+        // Split and drop empty segments (e.g., trailing ';' producing an empty token)
+        let parts: Vec<&str> = clean_message.split(';').filter(|p| !p.is_empty()).collect();
         
         // Handle empty or whitespace-only messages
         if clean_message.is_empty() {
