@@ -23,6 +23,8 @@ const eventTypeOptions = [
 
 const EventTableSection: React.FC = () => {
   const tableRef = useRef<HTMLDivElement>(null);
+  const selectRef = useRef<HTMLSelectElement>(null);
+  const [selectWidthPx, setSelectWidthPx] = useState<number | null>(null);
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
   const [colorFilter, setColorFilter] = useState<string | null>(null);
   const [eventTypeFilter, setEventTypeFilter] = useState<string | null>(null);
@@ -54,20 +56,68 @@ const EventTableSection: React.FC = () => {
           .filter((m: any) => m && m.id != null)
           .map((m: any) => {
             const num = m.match_number ?? '';
-            const cat = m.category ?? '';
+            const catRaw = m.category ?? '';
+            const cat = (() => {
+              let s = String(catRaw);
+              s = s.replace(/round of\s*128/i, 'R128');
+              s = s.replace(/round of\s*64/i, 'R64');
+              s = s.replace(/round of\s*32/i, 'R32');
+              s = s.replace(/round of\s*16/i, 'R16');
+              s = s.replace(/bronze\s*medal\s*contest/i, 'BMD');
+              s = s.replace(/semifinals?/i, 'SF');
+              s = s.replace(/qu(?:a|)rterfinals?/i, 'QF');
+              s = s.replace(/finals?/i, 'F');
+              return s;
+            })();
             const when = m.updated_at || m.created_at;
-            const dt = when ? new Date(when).toLocaleString() : '';
+            const whenMs = when ? new Date(when).getTime() : 0;
+            const dt = when
+              ? new Date(when).toLocaleString(undefined, {
+                  year: 'numeric',
+                  month: '2-digit',
+                  day: '2-digit',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })
+              : '';
             const base = `#${num} ${cat}`.trim();
             const label = dt ? `${base} • ${dt}` : base;
-            return { id: Number(m.id), label };
+            return { id: Number(m.id), label, sortKey: whenMs };
           })
-          .filter((o: any) => o.label && o.label !== '#' && o.label !== '# ')
+          .sort((a: any, b: any) => b.sortKey - a.sortKey)
+          .map((x: any) => ({ id: x.id, label: x.label }))
           .slice(0, 20);
       } catch (_) {
         recentMatchesRef.current = [];
       }
     })();
   }, [matchNumber]);
+
+  // Lock the dropdown width to its initial rendered width so adding date/time
+  // does not change its size. We apply a dynamic CSS rule to avoid inline styles.
+  useEffect(() => {
+    if (selectRef.current && selectWidthPx == null) {
+      setSelectWidthPx(selectRef.current.offsetWidth);
+    }
+  }, [selectWidthPx]);
+
+  useEffect(() => {
+    if (selectWidthPx != null) {
+      const styleId = 'pss-select-width-style';
+      let tag = document.getElementById(styleId) as HTMLStyleElement | null;
+      const width = Math.max(0, Math.floor(selectWidthPx * 2));
+      const css = `.pss-fixed-select-width{width:${width}px !important;}`;
+      if (!tag) {
+        tag = document.createElement('style');
+        tag.id = styleId;
+        tag.type = 'text/css';
+        tag.appendChild(document.createTextNode(css));
+        document.head.appendChild(tag);
+      } else {
+        tag.textContent = css;
+      }
+    }
+  }, [selectWidthPx]);
 
   const loadMatchEventsForReview = async (idStr: string) => {
     try {
@@ -252,8 +302,9 @@ const EventTableSection: React.FC = () => {
           <span>Event Table</span>
           {/* Current match dropdown (display only) */}
           <select
+            ref={selectRef}
             aria-label="Select match"
-            className="text-xs bg-gray-800 border border-gray-600 rounded px-2 py-1 text-gray-200"
+            className={`text-xs bg-gray-800 border border-gray-600 rounded px-2 py-1 text-gray-200 ${selectWidthPx != null ? 'pss-fixed-select-width' : ''}`}
             value={reviewMatchId ?? String(matchNumber ?? '')}
             disabled={!!isLoaded && !isReviewMode}
             onChange={(e) => {
