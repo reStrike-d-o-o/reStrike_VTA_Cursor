@@ -215,7 +215,7 @@ pub async fn ivr_open_recorded_video(
 ) -> Result<ObsObwsConnectionResponse, TauriError> {
     let conn = app.database_plugin().get_connection().await?;
     // Fetch recorded video info
-    let (file_path_opt, record_dir_opt, start_time_str, match_id_db, stored_event_id_opt): (Option<String>, Option<String>, String, i64, Option<i64>) = conn.query_row(
+    let (file_path_opt, _record_dir_opt, start_time_str, match_id_db, stored_event_id_opt): (Option<String>, Option<String>, String, i64, Option<i64>) = conn.query_row(
         "SELECT file_path, record_directory, start_time, match_id, event_id FROM recorded_videos WHERE id = ?",
         rusqlite::params![recorded_video_id],
         |r| Ok((r.get(0).ok(), r.get(1).ok(), r.get::<_, String>(2)?, r.get::<_, i64>(3)?, r.get(4).ok())),

@@ -489,21 +489,22 @@ impl App {
                 let ws = self.websocket_plugin().lock().await;
                 ws.get_current_match_db_id()
             };
-            if let Ok(conn_guard) = self.database_plugin().get_connection().await {
-                let conn_ref = &*conn_guard;
-                let directory = match self.obs_obws_plugin().get_record_directory(connection_name).await {
-                    Ok(dir) if !dir.is_empty() => dir,
-                    _ => crate::plugins::obs_obws::PathGeneratorConfig::detect_windows_videos_folder().to_string_lossy().to_string(),
-                };
-                let file_path_str = std::path::PathBuf::from(&directory).join(name_owned).to_string_lossy().to_string();
+            let directory = match self.obs_obws_plugin().get_record_directory(connection_name).await {
+                Ok(dir) if !dir.is_empty() => dir,
+                _ => crate::plugins::obs_obws::PathGeneratorConfig::detect_windows_videos_folder().to_string_lossy().to_string(),
+            };
+            let file_path_str = std::path::PathBuf::from(&directory).join(name_owned).to_string_lossy().to_string();
+            // Acquire a fresh short-lived connection only for DB writes to avoid holding across await
+            if let Ok(conn2) = self.database_plugin().get_connection().await {
+                let conn_ref2 = &*conn2;
                 let _ = if let Some(dbid) = match_id_db {
-                    conn_ref.execute(
+                    conn_ref2.execute(
                         "INSERT INTO recorded_videos (match_id, event_id, tournament_id, tournament_day_id, video_type, file_path, record_directory, filename_formatting, start_time, duration_seconds, created_at) VALUES (?, NULL, NULL, NULL, 'replay', ?, ?, NULL, ?, ?, ?)",
                         rusqlite::params![ dbid, file_path_str, directory, start_time.to_rfc3339(), seconds_from_end as i32, created.to_rfc3339() ]
                     )
                 } else {
                     // Fallback: map pss_matches by most recent created_at
-                    conn_ref.execute(
+                    conn_ref2.execute(
                         "INSERT INTO recorded_videos (match_id, event_id, tournament_id, tournament_day_id, video_type, file_path, record_directory, filename_formatting, start_time, duration_seconds, created_at) VALUES ((SELECT id FROM pss_matches ORDER BY created_at DESC LIMIT 1), NULL, NULL, NULL, 'replay', ?, ?, NULL, ?, ?, ?)",
                         rusqlite::params![ file_path_str, directory, start_time.to_rfc3339(), seconds_from_end as i32, created.to_rfc3339() ]
                     )
