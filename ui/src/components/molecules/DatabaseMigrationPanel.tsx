@@ -226,6 +226,27 @@ const DatabaseMigrationPanel: React.FC = () => {
                 {isLoading ? 'Running…' : 'Run Database Migrations'}
               </Button>
               <Button
+                onClick={async () => {
+                  if (isLoading) return;
+                  try {
+                    const confirmed = window.confirm('This will DELETE all matches, events, scores, warnings and related data. Continue?');
+                    if (!confirmed) return;
+                    (document.activeElement as HTMLElement | null)?.blur?.();
+                    await invoke('pss_clear_all_data');
+                    alert('Database cleared successfully.');
+                    await Promise.all([loadMigrationStatus(), loadDatabaseTables()]);
+                  } catch (e: any) {
+                    console.error('pss_clear_all_data failed', e);
+                    alert(`Failed to clear database: ${String(e)}`);
+                  }
+                }}
+                variant="danger"
+                size="sm"
+                disabled={isLoading}
+              >
+                Clear All PSS Data
+              </Button>
+              <Button
                 onClick={loadMigrationStatus}
                 variant="secondary"
                 size="sm"

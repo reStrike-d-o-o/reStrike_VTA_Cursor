@@ -2085,6 +2085,110 @@ impl Migration for Migration14 {
     }
 }
 
+/// Migration 19: Remove UNIQUE constraint from pss_matches.match_id
+pub struct Migration19;
+
+impl Migration for Migration19 {
+    fn version(&self) -> u32 {
+        19
+    }
+
+    fn description(&self) -> &str {
+        "Remove UNIQUE constraint from pss_matches.match_id and recreate indices"
+    }
+
+    fn up(&self, conn: &Connection) -> SqliteResult<()> {
+        // Disable foreign keys to allow table recreation
+        conn.execute("PRAGMA foreign_keys = OFF", [])?;
+
+        // Create a new table without UNIQUE constraint on match_id
+        conn.execute(
+            "CREATE TABLE pss_matches_new (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                match_id TEXT NOT NULL,
+                match_number TEXT,
+                category TEXT,
+                weight_class TEXT,
+                division TEXT,
+                total_rounds INTEGER DEFAULT 3,
+                round_duration INTEGER,
+                countdown_type TEXT,
+                format_type INTEGER,
+                creation_mode TEXT DEFAULT 'Automatic',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )",
+            [],
+        )?;
+
+        // Copy data from old table
+        conn.execute(
+            "INSERT INTO pss_matches_new 
+             SELECT id, match_id, match_number, category, weight_class, division, total_rounds,
+                    round_duration, countdown_type, format_type, 
+                    COALESCE(creation_mode, 'Automatic') as creation_mode,
+                    created_at, updated_at
+             FROM pss_matches",
+            [],
+        )?;
+
+        // Drop old table and rename new one
+        conn.execute("DROP TABLE pss_matches", [])?;
+        conn.execute("ALTER TABLE pss_matches_new RENAME TO pss_matches", [])?;
+
+        // Recreate indexes
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_matches_match_id ON pss_matches(match_id)", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_matches_created_at ON pss_matches(created_at)", [])?;
+
+        // Re-enable foreign keys
+        conn.execute("PRAGMA foreign_keys = ON", [])?;
+
+        Ok(())
+    }
+
+    fn down(&self, conn: &Connection) -> SqliteResult<()> {
+        // Best-effort rollback: recreate table with UNIQUE constraint again
+        conn.execute("PRAGMA foreign_keys = OFF", [])?;
+
+        conn.execute(
+            "CREATE TABLE pss_matches_old (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                match_id TEXT NOT NULL UNIQUE,
+                match_number TEXT,
+                category TEXT,
+                weight_class TEXT,
+                division TEXT,
+                total_rounds INTEGER DEFAULT 3,
+                round_duration INTEGER,
+                countdown_type TEXT,
+                format_type INTEGER,
+                creation_mode TEXT DEFAULT 'Automatic',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )",
+            [],
+        )?;
+
+        conn.execute(
+            "INSERT INTO pss_matches_old 
+             SELECT id, match_id, match_number, category, weight_class, division, total_rounds,
+                    round_duration, countdown_type, format_type, 
+                    COALESCE(creation_mode, 'Automatic') as creation_mode,
+                    created_at, updated_at
+             FROM pss_matches",
+            [],
+        )?;
+
+        conn.execute("DROP TABLE pss_matches", [])?;
+        conn.execute("ALTER TABLE pss_matches_old RENAME TO pss_matches", [])?;
+
+        conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_pss_matches_match_id_unique ON pss_matches(match_id)", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_matches_created_at ON pss_matches(created_at)", [])?;
+
+        conn.execute("PRAGMA foreign_keys = ON", [])?;
+        Ok(())
+    }
+}
 /// Migration manager for handling database schema updates
 pub struct MigrationManager {
     migrations: Vec<Box<dyn Migration>>,
@@ -2112,6 +2216,7 @@ impl MigrationManager {
         migrations.push(Box::new(Migration16)); // OBS recording configuration and session management
         migrations.push(Box::new(Migration17)); // Ensure folder_pattern column exists on obs_recording_config
         migrations.push(Box::new(Migration18)); // Triggers v2: conditions, action_kind, connection targeting
+        migrations.push(Box::new(Migration19)); // Remove UNIQUE from pss_matches.match_id
         
         Self { migrations }
     }
