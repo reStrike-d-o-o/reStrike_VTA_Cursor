@@ -116,6 +116,8 @@ pub struct ObsRecordingEventHandler {
     pending_p2_name: Arc<Mutex<Option<String>>>,
     pending_p2_flag: Arc<Mutex<Option<String>>>,
     pending_match_number: Arc<Mutex<Option<String>>>,
+    // Pending delayed stop task (aborted on new match)
+    pending_stop_task: Arc<Mutex<Option<tokio::task::JoinHandle<()>>>>,
 }
 
 impl ObsRecordingEventHandler {
@@ -140,6 +142,7 @@ impl ObsRecordingEventHandler {
             pending_p2_name: Arc::new(Mutex::new(None)),
             pending_p2_flag: Arc::new(Mutex::new(None)),
             pending_match_number: Arc::new(Mutex::new(None)),
+            pending_stop_task: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -178,6 +181,9 @@ impl ObsRecordingEventHandler {
                 }
                 log::info!("📣 MatchConfig received - set current match_id=mch:{} number={}", number, number);
 
+                // Ensure any pending delayed stop is cancelled and enforce immediate stop
+                let _ = self.cancel_pending_stop_and_stop_immediately().await;
+
                 // If we don't have a prepared session for this match, prepare now
                 if let Err(e) = self.handle_fight_loaded().await {
                     log::warn!("Failed to prepare session on MatchConfig: {}", e);
@@ -205,6 +211,8 @@ impl ObsRecordingEventHandler {
             // Match loaded - prepare recording
             PssEvent::FightLoaded => {
                 log::info!("🎬 FightLoaded event received - preparing recording session");
+                // Ensure any pending delayed stop is cancelled and enforce immediate stop
+                let _ = self.cancel_pending_stop_and_stop_immediately().await;
                 self.handle_fight_loaded().await?;
             }
 
@@ -242,6 +250,26 @@ impl ObsRecordingEventHandler {
             _ => {}
         }
 
+        Ok(())
+    }
+
+    /// Cancel any pending delayed stop and stop OBS recording immediately
+    async fn cancel_pending_stop_and_stop_immediately(&self) -> AppResult<()> {
+        // Abort any scheduled delayed stop
+        if let Some(handle) = self.pending_stop_task.lock().unwrap().take() {
+            handle.abort();
+            log::info!("⏹️ Aborted pending delayed stop task");
+        }
+
+        let config = { self.config.lock().unwrap().clone() };
+        if let Some(connection_name) = config.obs_connection_name {
+            // Attempt to stop recording immediately; ignore error if already stopped
+            if let Err(e) = self.obs_manager.stop_recording(Some(&connection_name)).await {
+                log::warn!("Stop recording on new match failed (may already be stopped): {}", e);
+            } else {
+                log::info!("🎬 Recording stopped immediately for connection: {}", connection_name);
+            }
+        }
         Ok(())
     }
 
@@ -507,21 +535,31 @@ impl ObsRecordingEventHandler {
             // Update session state to stopping
             self.update_session_state(RecordingState::Stopping).await?;
 
-            // Respect stop delay seconds before stopping recording
-            let delay = std::time::Duration::from_secs(config.stop_delay_seconds as u64);
-            if delay.as_secs() > 0 {
-                log::info!("⏳ Waiting {}s before stopping recording", delay.as_secs());
-                tokio::time::sleep(delay).await;
+            // Respect stop delay seconds, but allow cancellation by new match
+            let delay_secs = config.stop_delay_seconds as u64;
+            if delay_secs == 0 {
+                // Stop immediately
+                if let Err(e) = self.obs_manager.stop_recording(Some(&connection_name)).await {
+                    log::error!("Failed to stop recording via obws: {}", e);
+                } else {
+                    log::info!("🎬 Recording stopped for connection: {}", connection_name);
+                }
+            } else {
+                log::info!("⏳ Scheduling stop in {}s (will cancel if new match loads)", delay_secs);
+                let mgr = self.obs_manager.clone();
+                let conn = connection_name.clone();
+                // Abort any previous pending stop
+                if let Some(handle) = self.pending_stop_task.lock().unwrap().take() { handle.abort(); }
+                let handle = tokio::spawn(async move {
+                    tokio::time::sleep(std::time::Duration::from_secs(delay_secs)).await;
+                    if let Err(e) = mgr.stop_recording(Some(&conn)).await {
+                        log::error!("Delayed stop: failed to stop recording via obws: {}", e);
+                    } else {
+                        log::info!("🎬 Delayed stop: recording stopped for connection: {}", conn);
+                    }
+                });
+                *self.pending_stop_task.lock().unwrap() = Some(handle);
             }
-
-            // Stop recording immediately via obws manager (authoritative)
-            if let Err(e) = self.obs_manager.stop_recording(Some(&connection_name)).await {
-                log::error!("Failed to stop recording via obws: {}", e);
-            }
-
-            log::info!("🎬 Recording stopped for connection: {}", connection_name);
-
-            // Removed: save replay buffer on match end feature
         }
 
         Ok(())
