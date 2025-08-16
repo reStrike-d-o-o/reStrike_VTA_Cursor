@@ -163,9 +163,34 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
           />
         )}
         {drawer?.key === 'ivr' && (
-          <div className="theme-card p-6 text-gray-200 shadow-lg accent-ivr">
-            <IvrReplaySettings />
-          </div>
+          <TabGroup
+            tabs={[
+              {
+                id: 'ivr-playback',
+                label: 'IVR playback settings',
+                icon: <LottieIcon animationData={watcherAnimation} size={32} />,
+                content: (
+                  <div className="theme-card p-6 text-gray-200 shadow-lg accent-ivr">
+                    <IvrReplaySettings />
+                  </div>
+                )
+              },
+              {
+                id: 'ivr-history',
+                label: 'Match history',
+                icon: <LottieIcon animationData={businessAnimation} size={32} />,
+                content: (
+                  <div className="theme-card p-4 text-gray-200 shadow-lg accent-ivr">
+                    <div className="text-gray-400 text-center py-8">
+                      Match history UI placeholder (tournaments/days → matches → events, and recorded videos list with actions)
+                    </div>
+                  </div>
+                )
+              }
+            ]}
+            activeTab={'ivr-playback'}
+            onTabChange={() => {}}
+          />
         )}
         {drawer?.key === 'ai' && (
           <div className="theme-card p-6 text-gray-200 shadow-lg accent-ai">[AI report creation and data analyzer will be implemented here]</div>

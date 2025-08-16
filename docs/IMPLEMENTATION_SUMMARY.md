@@ -48,6 +48,9 @@
 - `App::replay_round_now`: save replay buffer → bounded wait (50–500 ms, default 500) → fetch last replay filename via obws → launch mpv with `--start=-{seconds_from_end}`
 - Auto-trigger on PSS `Challenge` when enabled in DB
 - obws reference: [ReplayBuffer](https://docs.rs/obws/latest/obws/client/struct.ReplayBuffer.html)
+ - Debug logging: full println trace added (RB status, save, polling last replay file, resolved directory, exact mpv command)
+ - DB-backed settings with safe defaults: `ivr.replay.seconds_from_end` (default 10), `ivr.replay.max_wait_ms` (default 500), `ivr.replay.mpv_path` (default `C:/Program Files/mpv/mpv.exe`)
+ - Persistence fix: ensure UI settings keys exist before saving (prevents silent failures)
 
 **Frontend**:
 - IVR drawer `IvrReplaySettings` with DB-backed settings
@@ -55,6 +58,17 @@
 
 **Config**:
 - DB keys: `ivr.replay.mpv_path`, `ivr.replay.seconds_from_end`, `ivr.replay.max_wait_ms`, `ivr.replay.auto_on_challenge`
+
+### IVR Auto-close mpv on Resume/Challenge Resolution ✅
+**Status**: COMPLETED
+
+**Behavior**:
+- When match resumes (`Clock` start) or a `Challenge` is accepted or rejected, the app auto-closes any running mpv instance started by IVR replay.
+
+**Implementation**:
+- Track the launched mpv `Child` handle in `App` and provide `close_mpv_if_running()`.
+- Hooked in the central UDP event loop to close mpv on `Clock{action: Some("start")}` and on `Challenge{accepted: Some(true|false)}`.
+- Non-intrusive; does not affect the REPLAY initiation rules (still respects the IVR toggle for auto-trigger).
 
 ### Documentation Reorganization ✅ **LATEST COMPLETION**
 **Status**: COMPLETED  

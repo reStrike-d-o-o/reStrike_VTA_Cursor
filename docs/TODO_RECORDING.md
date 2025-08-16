@@ -1,6 +1,6 @@
 # Recording, Replay Buffer and Playback – Migration Plan (obws-first)
 
-## Current Implementation Status (2025-08-14)
+## Current Implementation Status (2025-08-16)
 
 ### ✅ **COMPLETED FEATURES**
 
@@ -27,6 +27,11 @@
 - **Database Persistence**: Event Table automatically saved to database on Winner event
 - **Duplication Fix**: Removed frontend re-broadcast to prevent duplicated events; UI now consumes only backend WebSocket stream
 
+#### **IVR Replay & Debugging** ✅
+- REPLAY button and Challenge auto-trigger (respecting IVR toggle) call `replay_round_now` with DB settings
+- Added robust println logs for RB status, save, polling, path resolution, and exact mpv command
+- mpv auto-close on Clock start (resume) and Challenge accepted/rejected
+
 ### 🔄 **IN PROGRESS FEATURES**
 
 #### **Day Creation / Reuse Logic** ✅
@@ -51,29 +56,24 @@
 - [ ] Expose get/set role via Tauri commands
 - [ ] Wire manager to default recording actions to `recording` role
 
-#### **Phase 4 – Replay Buffer Save + Play** 📋
-- [ ] Add obws method to return last saved replay filename
-- [ ] Ensure combined flow: start RB → wait ready → save → return filename
-- [ ] Optionally add combined command `obs_obws_save_replay_and_play`
-- [ ] Frontend integration with success/error feedback
+#### **Phase 4 – Replay Buffer Save + Play** ✅
+- [x] Add obws method to return last saved replay filename (via obws `replay_buffer().last_replay()`)
+- [x] Combined flow: ensure RB active → save → poll last filename (bounded)
+- [x] Frontend integration with success/error feedback
 
-#### **Phase 6 – Session Persistence** 📋
-- [ ] On recording start: store session start_time, path, filename, obs_connection_name
-- [ ] On stop: store end_time and finalize session
-- [ ] Persist PSS events with absolute times and compute offsets
+#### **Phase 6 – Session Persistence** 🔄
+- [ ] Persist recording sessions with start/end time and effective paths
+- [ ] Compute event offsets relative to recording start
 - [ ] Frontend integration for match review and seek functionality
 
 #### **Phase 6.1 – Event Table lifecycle & review** ✅
-- [x] On FightLoaded/FightReady: clear events; on recording started (RecordStateChanged=true): wait 500 ms → clear again
+- [x] On FightLoaded/FightReady: clear events; on recording started: wait 500 ms → clear again
 - [x] On match end (Winner): store current Event Table to DB for this match (id/number)
-- [x] "Current" dropdown: maintain rolling list of current + previous matches; selecting a previous match loads its events (read-only)
-- [x] Ensure selecting previous matches does NOT trigger any recording/path/formatting logic
-- [x] Added `pss_get_events_for_match` Tauri command; UI falls back to `pss_get_events` if not yet present
+- [x] "Current" dropdown: maintain rolling list; selecting a previous match loads its events (read-only)
+- [x] Ensure selecting previous matches does NOT trigger OBS logic
 
-#### **Phase 6.2 – Round tracking accuracy** 🔄
-- [ ] Fix Event Table RND column: capture and persist live round changes; ensure events are linked to the correct round (R1/R2/R3)
-- [ ] Add regression test where 2–3 rounds occur; verify RND increments and table shows correct round per event
-- Note: Clock events no longer change round; only explicit Round events update it
+#### **Phase 6.2 – Round tracking accuracy** ✅
+- [x] Fix Event Table RND/round counter to avoid regression on clock events; backend stamps `current_round`
 
 #### **Phase 7 – Status Indicators** 📋
 - [ ] Update DockBar status dots colors for OBS_REC and OBS_STR
@@ -86,68 +86,33 @@
 - [ ] Build to confirm compilation success
 
 #### **Phase 9 – Cleanup + Documentation** 📋
-- [ ] Delete remaining legacy OBS recording/streaming code paths
-- [ ] Document new flow and APIs with examples
+- [ ] Delete remaining legacy OBS code paths
 - [ ] Update all related documentation
 
-### 🧪 **TESTING & VERIFICATION PLAN**
+### 🎞️ **NEW: Recorded Videos & Event-to-Video Linking** 🔄
+- [ ] Migration: add `recorded_videos` table (id, match_id, event_id?, tournament_id?, tournament_day_id?, video_type, file_path, record_directory, filename_formatting, start_time, duration_seconds?, created_at)
+- [ ] Insert 'recording' entries at recording stop (Winner) with match_id and resolved path/duration
+- [ ] Insert 'replay' entries in `replay_round_now` after last replay filename resolved; compute start_time=now-RB_duration
+- [ ] New command: `ivr_open_event_video(event_id)` → finds appropriate video, computes offset `event.timestamp - video.start_time`, launches mpv `--start=+offset`
+- [ ] IVR drawer → Match history tab: Tournament/Day → Matches → Events → Videos table; Delete/Upload/Import actions
+- [ ] Tie videos to matches for clean filtering and review
+- [ ] Respect IVR toggle for auto-trigger; auto-close mpv on resume and challenge result (already done)
+
+## 🧪 **TESTING & VERIFICATION PLAN**
 
 #### **Completed Tests** ✅
-- [x] Local end-to-end: simulate UDP PSS events → verified path prep, RB ensured, filename formatting uses current match, recording starts, Winner-only delayed stop
-- [x] Path generation for multiple tournaments/days/flags
-- [x] Modal gating logic (no modal on clean disk, modal only when folders exist)
-- [x] Live athletes capture and filename formatting
-- [x] Post-decision FightReady auto-run (no double click), directory/formatting/RB/record invoke sequence with read-backs
-- [x] UDP-first precedence: Athletes/MatchConfig names and flags override database values for filename formatting
+- [x] End-to-end: UDP PSS events → path prep → RB ensured → filename formatting → recording start → Winner delayed stop
+- [x] REPLAY/Challenge replay uses DB seconds_from_end; mpv command logs verified
+- [x] mpv auto-close on resume/challenge resolution
 
 #### **Remaining Tests** 📋
-- [ ] Verify session persisted and event offsets computed
-- [ ] Test opening recording at event-times via double-click
-- [ ] Multi-connection: confirm only `role=recording` used for recording and replay buffer
-- [ ] Verify no modal on clean disk; modal only when Tournament folders already exist
-- [ ] Clean-disk first-run: No `Tournament *` folders exist
-  - [ ] App silently creates `Tournament 1/Day 1`
-  - [ ] Sends directory to OBS (forward slashes)
-  - [ ] Resolves effective template; sends filename formatting; read-back matches
-  - [ ] Wait 500 ms → Ensure RB Active → Start recording
-  - [ ] Logs show the full sequence without any modal and without double-clicks
-- [ ] Event Table lifecycle: 500 ms post-recording start → table cleared; at Winner → events stored; dropdown review of previous matches populates table without side-effects
-- [ ] Round tracking across 2–3 rounds; verify table RND values and DB persistence
-
-### 🔧 **WORK PROTOCOL**
-
-After completing any task above:
-1. Remove any equivalent legacy method in the same change
-2. Build backend and UI; fix compile/lint immediately
-3. Update this TODO file – check the item and add short notes (date, SHA, reviewer)
-
-### 🎯 **NEXT PRIORITY TASKS**
-
-1. **Complete OBS Connection Roles** - Add role-based connection management
-2. **Enhance Replay Buffer Integration** - Improve save/play functionality with mpv
-3. **Session Persistence** - Implement complete session tracking and event mapping
-4. **Regression Test Suite** - Add scripted tests/log assertions for clean disk vs existing folders, UDP-first formatting, RB/record start timing
-
-### 📚 **KEY IMPLEMENTATION FILES**
-
-- **Frontend obws bridge**: `ui/src/utils/tauriCommandsObws.ts`
-- **Tauri obws commands**: `src-tauri/src/tauri_commands_obws.rs`
-- **Recording event handler**: `src-tauri/src/plugins/obs_obws/recording_events.rs`
-- **Path generator**: `src-tauri/src/plugins/obs_obws/path_generator.rs`
-- **UDP/PSS events**: `src-tauri/src/plugins/plugin_udp`
-- **Triggers UI**: `ui/src/components/molecules/TriggersRuleBuilder.tsx` + `ui/src/stores/triggersStore.ts`
-- **IVR replay**: `ivr_*` in `src-tauri/src/tauri_commands_obws.rs`
-
-### 🚨 **GLOBAL GUARDRAILS**
-
-- **obws only**: New work MUST use `plugins::obs_obws`. Do not call legacy `plugins::obs` from new code
-- **Compile often**: After each logical change, build the Rust backend and rebuild UI. Fix errors immediately
-- **Centralized messages**: User notifications via `useMessageCenter`
-- **OBS connections semantics**: Add/persist connection roles (Recording vs Streaming). Default recording actions to role=Recording (`OBS_REC`)
-- **Removed feature**: Save replay buffer on match end (no longer persisted or exposed). Use explicit Save Replay control paths instead
+- [ ] Verify `recorded_videos` insertions for both recording and replay flows
+- [ ] Event double-click opens file at correct offset
+- [ ] Match history tab lists tournaments/days, matches, events, videos; filters correctly
+- [ ] Delete/Upload/Import actions guarded and accurate
 
 ---
 
-**Last Updated**: 2025-08-14  
-**Current Focus**: OBS Connection Roles & Round Tracking  
-**Next Milestone**: Replay Buffer Save/Play & Session Persistence
+**Last Updated**: 2025-08-16  
+**Current Focus**: Recorded videos & Event-to-Video Linking  
+**Next Milestone**: Match history UI + Playback command
