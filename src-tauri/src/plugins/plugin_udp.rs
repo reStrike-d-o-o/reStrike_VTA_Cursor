@@ -995,12 +995,23 @@ impl UdpServer {
             current_tournament_day_id,
         ).await?;
         
-        // Store event in database
+        // Store event in database only when session and match context are valid
+        if event_model.session_id <= 0 {
+            log::warn!("Skip storing event: missing session_id");
+            return Ok(());
+        }
+        if event_model.match_id.is_none() {
+            // Allow some pre-match/initialization messages to skip persistence safely
+            log::warn!("Skip storing event: missing match_id (pre-match context)");
+            return Ok(());
+        }
+
         let event_id = database.store_pss_event(&event_model).await?;
-        
-        // Extract and store event details
+
         if let Some(details) = Self::extract_event_details(event, recent_hit_levels) {
-            database.store_pss_event_details(event_id, &details).await?;
+            if let Err(e) = database.store_pss_event_details(event_id, &details).await {
+                log::warn!("Skipping event details for event {} due to error: {}", event_id, e);
+            }
         }
         
         // Note: WebSocket broadcast happens immediately after parsing to preserve order

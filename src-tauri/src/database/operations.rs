@@ -876,7 +876,7 @@ impl PssUdpOperations {
     
     /// Store PSS event
     pub fn store_pss_event(conn: &mut Connection, event: &PssEventV2) -> DatabaseResult<i64> {
-        let event_id = conn.execute(
+        conn.execute(
             "INSERT INTO pss_events_v2 (
                 session_id, match_id, round_id, event_type_id, timestamp, raw_data,
                 parsed_data, event_sequence, processing_time_ms, is_valid, error_message, created_at
@@ -896,8 +896,7 @@ impl PssUdpOperations {
                 event.created_at.to_rfc3339()
             ]
         )?;
-        
-        Ok(event_id as i64)
+        Ok(conn.last_insert_rowid())
     }
     
     /// Get PSS events for a session
@@ -934,6 +933,20 @@ impl PssUdpOperations {
     
     /// Store PSS event details
     pub fn store_pss_event_details(conn: &mut Connection, event_id: i64, details: &[(String, Option<String>, String)]) -> DatabaseResult<()> {
+        // Defensive: ensure referenced event exists to avoid FK errors in edge cases
+        let exists: i32 = conn
+            .query_row(
+                "SELECT COUNT(1) FROM pss_events_v2 WHERE id = ?",
+                params![event_id],
+                |row| row.get(0),
+            )
+            .unwrap_or(0);
+        if exists == 0 {
+            // Event row not found; skip details to maintain integrity
+            log::warn!("pss_event_details skipped: event_id {} not found", event_id);
+            return Ok(());
+        }
+
         let tx = conn.transaction()?;
         
         for (key, value, detail_type) in details {
