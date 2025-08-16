@@ -534,23 +534,26 @@ impl App {
     pub async fn open_event_video(&self, event_id: i64) -> AppResult<()> {
         // Query event (match_id, created_at) without holding connection across await boundaries
         let (match_db_id, event_time_str) = {
-            let conn_guard = self.database_plugin().get_connection().await?;
+            let conn_guard = self.database_plugin().get_connection().await.map_err(|e| crate::types::AppError::ConfigError(e.to_string()))?;
             let conn_ref = &*conn_guard;
-            let row: (i64, String) = conn_ref.query_row(
-                "SELECT match_id, created_at FROM pss_events_v2 WHERE id = ?",
-                rusqlite::params![event_id],
-                |row| Ok((row.get(0)?, row.get(1)?)),
-            )?;
+            let row: (i64, String) = conn_ref
+                .query_row(
+                    "SELECT match_id, created_at FROM pss_events_v2 WHERE id = ?",
+                    rusqlite::params![event_id],
+                    |row| Ok((row.get(0)?, row.get(1)?)),
+                )
+                .map_err(|e| crate::types::AppError::ConfigError(e.to_string()))?;
             row
         };
 
-        let event_time = chrono::DateTime::parse_from_rfc3339(&event_time_str)
-            .map(|dt| dt.with_timezone(&chrono::Utc))
-            .map_err(|e| crate::types::AppError::ConfigError(format!("Invalid event time: {}", e)))?;
+        let event_time = match chrono::DateTime::parse_from_rfc3339(&event_time_str) {
+            Ok(dt) => dt.with_timezone(&chrono::Utc),
+            Err(e) => return Err(crate::types::AppError::ConfigError(format!("Invalid event time: {}", e)))
+        };
 
         // Get latest recording metadata for match
         let (record_path_opt, record_dir_opt, record_start_str_opt) = {
-            let conn_guard = self.database_plugin().get_connection().await?;
+            let conn_guard = self.database_plugin().get_connection().await.map_err(|e| crate::types::AppError::ConfigError(e.to_string()))?;
             let conn_ref = &*conn_guard;
             conn_ref
                 .query_row(
@@ -585,7 +588,7 @@ impl App {
         // Resolve mpv path
         let mpv_path: String = {
             use crate::database::operations::UiSettingsOperations as UIOps;
-            let conn_guard = self.database_plugin().get_connection().await?;
+            let conn_guard = self.database_plugin().get_connection().await.map_err(|e| crate::types::AppError::ConfigError(e.to_string()))?;
             let conn_ref = &*conn_guard;
             UIOps::get_ui_setting(conn_ref, "ivr.replay.mpv_path")
                 .ok()
@@ -644,6 +647,38 @@ impl App {
                 log::warn!("⚠️ Failed to emit PSS event to Tauri frontend: {}", e);
             }
         }
+    }
+
+    /// Open a video file with mpv at the given positive offset (seconds)
+    pub async fn open_video_at(&self, file_path: String, offset_seconds: i64) -> AppResult<()> {
+        // Resolve mpv path from settings
+        let mpv_path: String = {
+            use crate::database::operations::UiSettingsOperations as UIOps;
+            let conn_guard = self.database_plugin().get_connection().await.map_err(|e| crate::types::AppError::ConfigError(e.to_string()))?;
+            let conn_ref = &*conn_guard;
+            UIOps::get_ui_setting(conn_ref, "ivr.replay.mpv_path")
+                .ok()
+                .flatten()
+                .filter(|s| !s.is_empty())
+                .unwrap_or_else(|| "mpv".to_string())
+        };
+
+        // Close any running mpv first
+        let _ = self.close_mpv_if_running().await;
+
+        // Launch mpv
+        let start_arg = format!("--start=+{}", std::cmp::max(0, offset_seconds));
+        println!("🎬 Opening video: '{}' '{}'", start_arg, &file_path);
+        let child = std::process::Command::new(&mpv_path)
+            .arg(&start_arg)
+            .arg(file_path)
+            .spawn()
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to launch mpv: {}", e)))?;
+        {
+            let mut slot = self.mpv_child.lock().await;
+            *slot = Some(child);
+        }
+        Ok(())
     }
     
     /// Start UDP event handler manually (for when UDP is started manually)
