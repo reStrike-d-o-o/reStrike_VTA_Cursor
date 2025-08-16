@@ -377,6 +377,8 @@ impl App {
 
     /// Trigger instant round replay: save replay buffer, resolve last file within configured wait, launch mpv
     pub async fn replay_round_now(&self, connection_name: Option<&str>) -> AppResult<()> {
+        let conn_dbg = connection_name.unwrap_or("OBS_REC");
+        println!("🎞️ replay_round_now: invoked for OBS connection='{}'", conn_dbg);
         // Simple debounce to avoid repeated triggers
         static LAST_REPLAY_MS: std::sync::OnceLock<std::sync::Mutex<i64>> = std::sync::OnceLock::new();
         let now_ms = chrono::Utc::now().timestamp_millis();
@@ -384,6 +386,7 @@ impl App {
         {
             let mut last = m.lock().unwrap();
             if now_ms - *last < 2000 { // 2s
+                println!("⏳ replay_round_now: debounced (called again within 2s)");
                 return Ok(());
             }
             *last = now_ms;
@@ -397,27 +400,34 @@ impl App {
             .and_then(|s| s.parse::<u32>().ok()).unwrap_or(10).min(20);
         let max_wait_ms: u32 = UIOps::get_ui_setting(&*conn, "ivr.replay.max_wait_ms").ok().flatten()
             .and_then(|s| s.parse::<u32>().ok()).unwrap_or(500).clamp(50, 500);
+        println!("🛠️ replay_round_now settings: mpv='{}', seconds_from_end={}, max_wait_ms={}", mpv_path, seconds_from_end, max_wait_ms);
 
         // Ensure RB is enabled+active: start if not active, then save
+        println!("🔍 Checking replay buffer status (conn='{}')", conn_dbg);
         match self.obs_obws_plugin().get_replay_buffer_status(connection_name).await {
             Ok(status) => {
                 use crate::plugins::obs_obws::types::ObsReplayBufferStatus;
                 if status != ObsReplayBufferStatus::Active {
+                    println!("▶️ Replay buffer inactive → starting (conn='{}')", conn_dbg);
                     let _ = self.obs_obws_plugin().start_replay_buffer(connection_name).await;
                 }
             }
             Err(_) => {
+                println!("⚠️ Unable to query RB status → attempting start (conn='{}')", conn_dbg);
                 let _ = self.obs_obws_plugin().start_replay_buffer(connection_name).await;
             }
         }
         // Save replay buffer via obws (creates clip)
+        println!("💾 Saving replay buffer (conn='{}')", conn_dbg);
         self.obs_obws_plugin().save_replay_buffer(connection_name).await?;
+        println!("✅ Save replay requested");
 
         // Try to get last replay filename within bounded wait
         let mut filename: Option<String> = None;
         let mut elapsed: u32 = 0;
         let step: u32 = 150;
         while elapsed <= max_wait_ms {
+            println!("📥 Polling last replay filename: attempt at {} ms", elapsed);
             match self.obs_obws_plugin().get_last_replay_filename(connection_name).await {
                 Ok(name) if !name.is_empty() => { filename = Some(name); break; }
                 _ => {}
@@ -427,23 +437,30 @@ impl App {
             tokio::time::sleep(std::time::Duration::from_millis(sleep_ms as u64)).await;
             elapsed += sleep_ms;
         }
+        if let Some(ref name) = filename { println!("🧾 Last replay filename detected='{}'", name); } else { println!("⛔ No replay filename detected within {} ms", max_wait_ms); }
 
         // Build full path using OBS recording directory if available, else Videos root
         let directory = match self.obs_obws_plugin().get_record_directory(connection_name).await {
             Ok(dir) if !dir.is_empty() => std::path::PathBuf::from(dir),
             _ => crate::plugins::obs_obws::PathGeneratorConfig::detect_windows_videos_folder(),
         };
+        println!("📁 Using record directory='{}'", directory.to_string_lossy());
         let file_path = if let Some(name) = filename { directory.join(name) } else { directory };
+        println!("🔗 Resolved replay file path='{}'", file_path.to_string_lossy());
 
         // Launch mpv
         if !file_path.is_file() {
             return Err(crate::types::AppError::ConfigError("Replay file not found within time window".to_string()));
         }
-        std::process::Command::new(mpv_path)
-            .arg(format!("--start=-{}", seconds_from_end))
-            .arg(file_path.to_string_lossy().to_string())
+        let start_arg = format!("--start=-{}", seconds_from_end);
+        let file_arg = file_path.to_string_lossy().to_string();
+        println!("🚀 Launching mpv: '{}' '{}' '{}'", mpv_path, start_arg, file_arg);
+        std::process::Command::new(&mpv_path)
+            .arg(&start_arg)
+            .arg(&file_arg)
             .spawn()
             .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to launch mpv: {}", e)))?;
+        println!("✅ mpv launched");
 
         Ok(())
     }
