@@ -777,6 +777,46 @@ impl PssUdpOperations {
         
         Ok(())
     }
+
+    /// Get PSS match by database id
+    pub fn get_pss_match_by_id(conn: &Connection, id: i64) -> DatabaseResult<Option<PssMatch>> {
+        let mut stmt = conn.prepare("SELECT * FROM pss_matches WHERE id = ?")?;
+        let mut rows = stmt.query([id])?;
+        if let Some(row) = rows.next()? {
+            Ok(Some(PssMatch::from_row(&row)?))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Get PSS match by external match_id string
+    pub fn get_pss_match_by_match_id(conn: &Connection, match_id: &str) -> DatabaseResult<Option<PssMatch>> {
+        let mut stmt = conn.prepare("SELECT * FROM pss_matches WHERE match_id = ?")?;
+        let mut rows = stmt.query([match_id])?;
+        if let Some(row) = rows.next()? {
+            Ok(Some(PssMatch::from_row(&row)?))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Rename the match_id string for an existing PSS match
+    pub fn rename_pss_match_id(conn: &mut Connection, id: i64, new_match_id: &str) -> DatabaseResult<()> {
+        conn.execute(
+            "UPDATE pss_matches SET match_id = ?, updated_at = ? WHERE id = ?",
+            params![new_match_id, Utc::now().to_rfc3339(), id],
+        )?;
+        Ok(())
+    }
+
+    /// Reassign all events from one match to another
+    pub fn reassign_events_between_matches(conn: &mut Connection, from_match_id: i64, to_match_id: i64) -> DatabaseResult<usize> {
+        let updated = conn.execute(
+            "UPDATE pss_events_v2 SET match_id = ? WHERE match_id = ?",
+            params![to_match_id, from_match_id],
+        )? as usize;
+        Ok(updated)
+    }
     
     // PSS Athlete Operations
     

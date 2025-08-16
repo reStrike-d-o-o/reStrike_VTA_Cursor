@@ -1946,8 +1946,38 @@ pub async fn pss_list_recent_matches(app: State<'_, Arc<App>>, limit: Option<i64
         "category": m.category,
         "division": m.division,
         "created_at": m.created_at.to_rfc3339(),
+        "updated_at": m.updated_at.to_rfc3339(),
     })).collect();
     Ok(out)
+}
+
+/// Danger: clear all PSS matches and events for a fresh start
+#[tauri::command]
+pub async fn pss_clear_all_data(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    use rusqlite::params;
+    let mut conn = app.database_plugin().get_connection().await
+        .map_err(|e| TauriError::from(anyhow::anyhow!(format!("DB connection error: {}", e))))?;
+    // Wrap in transaction for atomicity
+    let tx = conn.transaction().map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    // Delete in child->parent order
+    tx.execute("DELETE FROM pss_event_details", [])
+        .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    tx.execute("DELETE FROM pss_events_v2", [])
+        .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    tx.execute("DELETE FROM pss_scores", [])
+        .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    tx.execute("DELETE FROM pss_warnings", [])
+        .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    tx.execute("DELETE FROM pss_rounds", [])
+        .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    tx.execute("DELETE FROM pss_match_athletes", [])
+        .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    tx.execute("DELETE FROM pss_athletes", [])
+        .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    tx.execute("DELETE FROM pss_matches", [])
+        .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    tx.commit().map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    Ok(serde_json::json!({"success": true}))
 }
 
 /// Get current live match DB id (if any)

@@ -52,7 +52,16 @@ const EventTableSection: React.FC = () => {
         const resp: any[] = await invoke('pss_list_recent_matches', { limit: 20 });
         recentMatchesRef.current = (resp || [])
           .filter((m: any) => m && m.id != null)
-          .map((m: any) => ({ id: Number(m.id), label: `#${m.match_number ?? ''} ${m.category ?? ''}`.trim() }))
+          .map((m: any) => {
+            const num = m.match_number ?? '';
+            const cat = m.category ?? '';
+            const when = m.updated_at || m.created_at;
+            const dt = when ? new Date(when).toLocaleString() : '';
+            const base = `#${num} ${cat}`.trim();
+            const label = dt ? `${base} • ${dt}` : base;
+            return { id: Number(m.id), label };
+          })
+          .filter((o: any) => o.label && o.label !== '#' && o.label !== '# ')
           .slice(0, 20);
       } catch (_) {
         recentMatchesRef.current = [];
