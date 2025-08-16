@@ -2194,6 +2194,44 @@ pub struct MigrationManager {
     migrations: Vec<Box<dyn Migration>>,
 }
 
+/// Migration 20: Create recorded_videos table (link recordings/replays to matches/events)
+pub struct Migration20;
+
+impl Migration for Migration20 {
+    fn version(&self) -> u32 { 20 }
+    fn description(&self) -> &str { "Add recorded_videos table for linking videos to matches and events" }
+    fn up(&self, conn: &Connection) -> SqliteResult<()> {
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS recorded_videos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                match_id INTEGER NOT NULL,
+                event_id INTEGER,
+                tournament_id INTEGER,
+                tournament_day_id INTEGER,
+                video_type TEXT NOT NULL, -- 'recording' | 'replay'
+                file_path TEXT,
+                record_directory TEXT,
+                filename_formatting TEXT,
+                start_time TEXT NOT NULL,
+                duration_seconds INTEGER,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (match_id) REFERENCES pss_matches(id),
+                FOREIGN KEY (event_id) REFERENCES pss_events_v2(id)
+            )",
+            [],
+        )?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_recorded_videos_match ON recorded_videos(match_id)", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_recorded_videos_event ON recorded_videos(event_id)", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_recorded_videos_day ON recorded_videos(tournament_day_id)", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_recorded_videos_start ON recorded_videos(start_time)", [])?;
+        Ok(())
+    }
+    fn down(&self, conn: &Connection) -> SqliteResult<()> {
+        conn.execute("DROP TABLE IF EXISTS recorded_videos", [])?;
+        Ok(())
+    }
+}
+
 impl MigrationManager {
     /// Create a new migration manager
     pub fn new() -> Self {
@@ -2217,6 +2255,7 @@ impl MigrationManager {
         migrations.push(Box::new(Migration17)); // Ensure folder_pattern column exists on obs_recording_config
         migrations.push(Box::new(Migration18)); // Triggers v2: conditions, action_kind, connection targeting
         migrations.push(Box::new(Migration19)); // Remove UNIQUE from pss_matches.match_id
+        migrations.push(Box::new(Migration20)); // Recorded videos table for IVR playback
         
         Self { migrations }
     }
