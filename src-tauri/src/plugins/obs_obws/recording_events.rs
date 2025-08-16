@@ -543,11 +543,15 @@ impl ObsRecordingEventHandler {
                     log::error!("Failed to stop recording via obws: {}", e);
                 } else {
                     log::info!("🎬 Recording stopped for connection: {}", connection_name);
+                    // Index the recording synchronously (best-effort)
+                    let _ = self.index_recording_after_stop().await;
                 }
             } else {
                 log::info!("⏳ Scheduling stop in {}s (will cancel if new match loads)", delay_secs);
                 let mgr = self.obs_manager.clone();
                 let conn = connection_name.clone();
+                let _app_db = self.database.clone(); // reserved for future richer indexing
+                let _session_before = self.get_current_session();
                 // Abort any previous pending stop
                 if let Some(handle) = self.pending_stop_task.lock().unwrap().take() { handle.abort(); }
                 let handle = tokio::spawn(async move {
@@ -562,6 +566,28 @@ impl ObsRecordingEventHandler {
             }
         }
 
+        Ok(())
+    }
+
+    /// After a successful immediate stop, try to index the recording for the current session
+    async fn index_recording_after_stop(&self) -> AppResult<()> {
+        if let Some(session) = self.get_current_session() {
+            let start_opt = session.start_time;
+            let dir_opt = session.recording_path.clone();
+            let mid = session.match_id.clone();
+            let created = chrono::Utc::now();
+            if let (Some(start_time), Some(record_dir)) = (start_opt, dir_opt) {
+                if let Ok(conn_guard) = self.database.get_connection().await {
+                    let conn_ref = &*conn_guard;
+                    let duration = (created - start_time).num_seconds().max(0) as i32;
+                    let _ = conn_ref.execute(
+                        "INSERT INTO recorded_videos (match_id, event_id, tournament_id, tournament_day_id, video_type, file_path, record_directory, filename_formatting, start_time, duration_seconds, created_at)
+                         VALUES ((SELECT id FROM pss_matches WHERE match_id = ? ORDER BY created_at DESC LIMIT 1), NULL, NULL, NULL, 'recording', NULL, ?, NULL, ?, ?, ?)",
+                        rusqlite::params![ mid, record_dir, start_time.to_rfc3339(), duration, created.to_rfc3339() ]
+                    );
+                }
+            }
+        }
         Ok(())
     }
 

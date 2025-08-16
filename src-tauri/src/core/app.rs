@@ -449,7 +449,10 @@ impl App {
             _ => crate::plugins::obs_obws::PathGeneratorConfig::detect_windows_videos_folder(),
         };
         println!("📁 Using record directory='{}'", directory.to_string_lossy());
-        let file_path = if let Some(name) = filename { directory.join(name) } else { directory };
+        let file_path = match &filename {
+            Some(name) => directory.join(name),
+            None => directory.clone(),
+        };
         println!("🔗 Resolved replay file path='{}'", file_path.to_string_lossy());
 
         // Launch mpv
@@ -474,6 +477,38 @@ impl App {
         }
         println!("✅ mpv launched");
 
+        // Index replay video into recorded_videos
+        if let Some(name) = &filename {
+            let name_owned = name.clone();
+            let created = chrono::Utc::now();
+            let start_time = created - chrono::Duration::seconds(seconds_from_end as i64);
+            // Resolve current match DB id from WebSocket plugin (fast path); fallback to most recent match
+            let match_id_db: Option<i64> = {
+                let ws = self.websocket_plugin().lock().await;
+                ws.get_current_match_db_id()
+            };
+            if let Ok(conn_guard) = self.database_plugin().get_connection().await {
+                let conn_ref = &*conn_guard;
+                let directory = match self.obs_obws_plugin().get_record_directory(connection_name).await {
+                    Ok(dir) if !dir.is_empty() => dir,
+                    _ => crate::plugins::obs_obws::PathGeneratorConfig::detect_windows_videos_folder().to_string_lossy().to_string(),
+                };
+                let file_path_str = std::path::PathBuf::from(&directory).join(name_owned).to_string_lossy().to_string();
+                let _ = if let Some(dbid) = match_id_db {
+                    conn_ref.execute(
+                        "INSERT INTO recorded_videos (match_id, event_id, tournament_id, tournament_day_id, video_type, file_path, record_directory, filename_formatting, start_time, duration_seconds, created_at) VALUES (?, NULL, NULL, NULL, 'replay', ?, ?, NULL, ?, ?, ?)",
+                        rusqlite::params![ dbid, file_path_str, directory, start_time.to_rfc3339(), seconds_from_end as i32, created.to_rfc3339() ]
+                    )
+                } else {
+                    // Fallback: map pss_matches by most recent created_at
+                    conn_ref.execute(
+                        "INSERT INTO recorded_videos (match_id, event_id, tournament_id, tournament_day_id, video_type, file_path, record_directory, filename_formatting, start_time, duration_seconds, created_at) VALUES ((SELECT id FROM pss_matches ORDER BY created_at DESC LIMIT 1), NULL, NULL, NULL, 'replay', ?, ?, NULL, ?, ?, ?)",
+                        rusqlite::params![ file_path_str, directory, start_time.to_rfc3339(), seconds_from_end as i32, created.to_rfc3339() ]
+                    )
+                };
+            }
+        }
+
         Ok(())
     }
 
@@ -492,6 +527,93 @@ impl App {
                 println!("✅ mpv closed");
             }
         }
+        Ok(())
+    }
+
+    /// Open the recorded video for a given event at the exact event timestamp
+    pub async fn open_event_video(&self, event_id: i64) -> AppResult<()> {
+        // Query event (match_id, created_at) without holding connection across await boundaries
+        let (match_db_id, event_time_str) = {
+            let conn_guard = self.database_plugin().get_connection().await?;
+            let conn_ref = &*conn_guard;
+            let row: (i64, String) = conn_ref.query_row(
+                "SELECT match_id, created_at FROM pss_events_v2 WHERE id = ?",
+                rusqlite::params![event_id],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )?;
+            row
+        };
+
+        let event_time = chrono::DateTime::parse_from_rfc3339(&event_time_str)
+            .map(|dt| dt.with_timezone(&chrono::Utc))
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Invalid event time: {}", e)))?;
+
+        // Get latest recording metadata for match
+        let (record_path_opt, record_dir_opt, record_start_str_opt) = {
+            let conn_guard = self.database_plugin().get_connection().await?;
+            let conn_ref = &*conn_guard;
+            conn_ref
+                .query_row(
+                    "SELECT file_path, record_directory, start_time FROM recorded_videos
+                     WHERE match_id = ? AND video_type = 'recording'
+                     ORDER BY start_time DESC LIMIT 1",
+                    rusqlite::params![match_db_id],
+                    |row| Ok((row.get::<_, Option<String>>(0)?, row.get::<_, Option<String>>(1)?, row.get::<_, Option<String>>(2)?)),
+                )
+                .unwrap_or((None, None, None))
+        };
+
+        let record_dir = record_dir_opt.unwrap_or_else(|| {
+            crate::plugins::obs_obws::PathGeneratorConfig::detect_windows_videos_folder()
+                .to_string_lossy()
+                .to_string()
+        });
+        let file_path = if let Some(fp) = record_path_opt {
+            std::path::PathBuf::from(fp)
+        } else {
+            std::path::PathBuf::from(&record_dir)
+        };
+        let start_time = record_start_str_opt
+            .and_then(|s| chrono::DateTime::parse_from_rfc3339(&s).ok())
+            .map(|dt| dt.with_timezone(&chrono::Utc))
+            .unwrap_or(event_time);
+        let mut offset_secs = (event_time - start_time).num_seconds();
+        if offset_secs < 0 {
+            offset_secs = 0;
+        }
+
+        // Resolve mpv path
+        let mpv_path: String = {
+            use crate::database::operations::UiSettingsOperations as UIOps;
+            let conn_guard = self.database_plugin().get_connection().await?;
+            let conn_ref = &*conn_guard;
+            UIOps::get_ui_setting(conn_ref, "ivr.replay.mpv_path")
+                .ok()
+                .flatten()
+                .filter(|s| !s.is_empty())
+                .unwrap_or_else(|| "mpv".to_string())
+        };
+
+        // Close existing mpv if any
+        let _ = self.close_mpv_if_running().await;
+
+        // Launch mpv with positive offset from recording start
+        let start_arg = format!("--start=+{}", offset_secs.max(0));
+        println!(
+            "🎬 Opening event video: '{}' '{}'",
+            start_arg,
+            file_path.to_string_lossy()
+        );
+        let child = std::process::Command::new(&mpv_path)
+            .arg(&start_arg)
+            .arg(file_path.to_string_lossy().to_string())
+            .spawn()
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to launch mpv: {}", e)))?;
+        {
+            let mut slot = self.mpv_child.lock().await;
+            *slot = Some(child);
+        }
+
         Ok(())
     }
 
