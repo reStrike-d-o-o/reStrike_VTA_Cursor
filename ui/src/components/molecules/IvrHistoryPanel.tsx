@@ -34,9 +34,9 @@ const IvrHistoryPanel: React.FC = () => {
 			try {
 				setLoading(true); setError(null);
 				const { invoke } = await import('@tauri-apps/api/core');
-				const m: any = await invoke('ivr_list_matches_for_day', { dayId: selectedDayId });
+				const m: any = await invoke('ivr_list_matches_for_day', { day_id: selectedDayId });
 				setMatches(Array.isArray(m) ? m : (m?.data ?? []));
-				const v: any = await invoke('ivr_list_recorded_videos', { tournamentDayId: selectedDayId, matchId: selectedMatchId });
+				const v: any = await invoke('ivr_list_recorded_videos', { tournament_day_id: selectedDayId, match_id: selectedMatchId });
 				setVideos(Array.isArray(v) ? v : (v?.data ?? []));
 				setSelectedVideoIds(new Set());
 			} catch (e: any) {
@@ -50,7 +50,7 @@ const IvrHistoryPanel: React.FC = () => {
 			if (selectedMatchId == null) { setEvents([]); return; }
 			try {
 				const { invoke } = await import('@tauri-apps/api/core');
-				const ev: any = await invoke('pss_get_events_for_match', { matchId: String(selectedMatchId) });
+				const ev: any = await invoke('pss_get_events_for_match', { match_id: String(selectedMatchId) });
 				const list = Array.isArray(ev) ? ev : (ev?.data ?? []);
 				setEvents(list);
 			} catch (e) {
@@ -77,7 +77,7 @@ const IvrHistoryPanel: React.FC = () => {
 			if (res?.success !== false) {
 				// Refresh list
 				if (selectedDayId != null) {
-					const v: any = await invoke('ivr_list_recorded_videos', { tournamentDayId: selectedDayId, matchId: selectedMatchId });
+					const v: any = await invoke('ivr_list_recorded_videos', { tournament_day_id: selectedDayId, match_id: selectedMatchId });
 					setVideos(Array.isArray(v) ? v : (v?.data ?? []));
 					setSelectedVideoIds(new Set());
 				}
@@ -193,7 +193,7 @@ const IvrHistoryPanel: React.FC = () => {
 											try {
 												const { invoke } = await import('@tauri-apps/api/core');
 												const num = String(e.id).replace(/[^0-9]/g, '');
-												if (num) { await invoke('ivr_open_event_video', { eventId: Number(num) }); }
+												if (num) { await invoke('ivr_open_event_video', { event_id: Number(num) }); }
 											} catch (err) { console.warn('Failed to open event video', err); }
 										}}>
 											<td className="px-3 py-2 whitespace-nowrap">R{e.round ?? 1}</td>
@@ -233,11 +233,11 @@ const IvrHistoryPanel: React.FC = () => {
 							if (!path) return;
 							try {
 								const { invoke } = await import('@tauri-apps/api/core');
-								const res: any = await invoke('ivr_import_recorded_videos', { source: mode.toLowerCase(), pathOrId: path, tournamentDayId: selectedDayId, matchId: selectedMatchId });
+								const res: any = await invoke('ivr_import_recorded_videos', { source: mode.toLowerCase(), path_or_id: path, tournament_day_id: selectedDayId, match_id: selectedMatchId });
 								if (res?.success === false) alert(res?.error || 'Import failed');
 								else {
 									alert('Import completed');
-									const v: any = await invoke('ivr_list_recorded_videos', { tournamentDayId: selectedDayId, matchId: selectedMatchId });
+									const v: any = await invoke('ivr_list_recorded_videos', { tournament_day_id: selectedDayId, match_id: selectedMatchId });
 									setVideos(Array.isArray(v) ? v : (v?.data ?? []));
 								}
 							} catch (e: any) { alert(typeof e==='string'?e:(e?.message||'Import failed')); }
@@ -265,15 +265,15 @@ const IvrHistoryPanel: React.FC = () => {
 										try {
 											const { invoke } = await import('@tauri-apps/api/core');
 											if (v.id) {
-												await invoke('ivr_open_recorded_video', { recordedVideoId: v.id });
+												await invoke('ivr_open_recorded_video', { recorded_video_id: v.id });
 											} else if (v.file_path) {
-												await invoke('ivr_open_video_path', { filePath: v.file_path, offsetSeconds: 0 });
+												await invoke('ivr_open_video_path', { file_path: v.file_path, offset_seconds: 0 });
 											}
 										} catch (e) { console.warn('Failed to open video', e); }} }>
 										<td className="px-3 py-2 whitespace-nowrap truncate max-w-[28rem]">{v.file_path ?? v.record_directory ?? ''}</td>
 										<td className="px-3 py-2 whitespace-nowrap">{new Date(v.start_time).toLocaleString()}</td>
 										<td className="px-3 py-2 whitespace-nowrap">
-											<Button variant="ghost" size="sm" className="text-blue-400 hover:text-blue-300 mr-2" onClick={async (e) => { e.stopPropagation(); if (v.id) { const { invoke } = await import('@tauri-apps/api/core'); await invoke('ivr_open_recorded_video', { recordedVideoId: v.id }); } }}>Open</Button>
+											<Button variant="ghost" size="sm" className="text-blue-400 hover:text-blue-300 mr-2" onClick={async (e) => { e.stopPropagation(); if (v.id) { const { invoke } = await import('@tauri-apps/api/core'); await invoke('ivr_open_recorded_video', { recorded_video_id: v.id }); } }}>Open</Button>
 											<Button variant="ghost" size="sm" className="text-gray-300 hover:text-white" onClick={(e) => { e.stopPropagation(); if (selectedMatchId) { setPickerVideoId(v.id); setPickerMatchId(selectedMatchId); } }}>Pick Event</Button>
 											{pickerVideoId===v.id && pickerMatchId && (
 												<VideoEventPicker recordedVideoId={pickerVideoId!} matchId={pickerMatchId!} onClose={() => setPickerVideoId(null)} />
