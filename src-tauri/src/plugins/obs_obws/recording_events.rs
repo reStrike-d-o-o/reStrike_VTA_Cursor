@@ -378,10 +378,18 @@ impl ObsRecordingEventHandler {
                     .to_string();
                 if let Ok(conn_guard) = self.database.get_connection().await {
                     let conn_ref = &*conn_guard;
+                    // Resolve active tournament/day IDs
+                    let (tid_opt, day_opt) = {
+                        let t = TournamentOperations::get_active_tournament(&*conn_ref).ok().flatten();
+                        let d = t.as_ref().and_then(|tt| TournamentOperations::get_active_tournament_day(&*conn_ref, tt.id.unwrap()).ok().flatten());
+                        (t.and_then(|tt| tt.id), d.and_then(|dd| dd.id))
+                    };
                     let _ = conn_ref.execute(
-                        "INSERT INTO recorded_videos (match_id, event_id, tournament_id, tournament_day_id, video_type, file_path, record_directory, filename_formatting, start_time, duration_seconds, created_at)\n                         SELECT (SELECT id FROM pss_matches WHERE match_id = ? ORDER BY created_at DESC LIMIT 1), NULL, NULL, NULL, 'recording', ?, ?, NULL, ?, ?, ?\n                         WHERE NOT EXISTS (SELECT 1 FROM recorded_videos rv WHERE rv.match_id = (SELECT id FROM pss_matches WHERE match_id = ? ORDER BY created_at DESC LIMIT 1) AND rv.start_time = ?)",
+                        "INSERT INTO recorded_videos (match_id, event_id, tournament_id, tournament_day_id, video_type, file_path, record_directory, filename_formatting, start_time, duration_seconds, created_at)\n                         SELECT (SELECT id FROM pss_matches WHERE match_id = ? ORDER BY created_at DESC LIMIT 1), NULL, ?, ?, 'recording', ?, ?, NULL, ?, ?, ?\n                         WHERE NOT EXISTS (SELECT 1 FROM recorded_videos rv WHERE rv.match_id = (SELECT id FROM pss_matches WHERE match_id = ? ORDER BY created_at DESC LIMIT 1) AND rv.start_time = ?)",
                         rusqlite::params![
                             prev.match_id,
+                            tid_opt,
+                            day_opt,
                             full_path,
                             dir,
                             start_time.to_rfc3339(),
@@ -390,6 +398,11 @@ impl ObsRecordingEventHandler {
                             prev.match_id,
                             start_time.to_rfc3339()
                         ],
+                    );
+                    // Link only important events (K,P,H,TH,TB,R) within window
+                    let _ = conn_ref.execute(
+                        "INSERT OR IGNORE INTO recorded_video_events (recorded_video_id, event_id, offset_ms, created_at)\n                         SELECT rv.id, e.id, CAST((julianday(e.timestamp) - julianday(?)) * 86400000 AS INTEGER), ?\n                         FROM recorded_videos rv\n                         JOIN pss_events_v2 e ON e.match_id = rv.match_id\n                         JOIN pss_event_types t ON t.id = e.event_type_id\n                         WHERE rv.file_path = ? AND e.timestamp >= ? AND e.timestamp <= ?\n                           AND t.event_code IN ('K','P','H','TH','TB','R')\n                         ORDER BY e.timestamp ASC",
+                        rusqlite::params![ start_time.to_rfc3339(), chrono::Utc::now().to_rfc3339(), full_path, start_time.to_rfc3339(), (prev.end_time.unwrap_or(created)).to_rfc3339() ]
                     );
                 }
             }
@@ -642,11 +655,16 @@ impl ObsRecordingEventHandler {
                         .unwrap_or_else(|_| conn_ref.last_insert_rowid());
                     // Bulk-link events inside window with offset_ms
                     let end_time = start_time + chrono::Duration::seconds(duration as i64);
+                    // Link only important events (K,P,H,TH,TB,R) for this recording window
                     let _ = conn_ref.execute(
                         "INSERT OR IGNORE INTO recorded_video_events (recorded_video_id, event_id, offset_ms, created_at)
                          SELECT ?, e.id, CAST((julianday(e.timestamp) - julianday(?)) * 86400000 AS INTEGER), ?
-                         FROM pss_events_v2 e WHERE e.match_id = (SELECT id FROM pss_matches WHERE match_id = ? ORDER BY created_at DESC LIMIT 1)
-                           AND e.timestamp >= ? AND e.timestamp <= ? ORDER BY e.timestamp ASC",
+                         FROM pss_events_v2 e
+                         JOIN pss_event_types t ON t.id = e.event_type_id
+                         WHERE e.match_id = (SELECT id FROM pss_matches WHERE match_id = ? ORDER BY created_at DESC LIMIT 1)
+                           AND e.timestamp >= ? AND e.timestamp <= ?
+                           AND t.event_code IN ('K','P','H','TH','TB','R')
+                         ORDER BY e.timestamp ASC",
                         rusqlite::params![ rvid, start_time.to_rfc3339(), chrono::Utc::now().to_rfc3339(), mid, start_time.to_rfc3339(), end_time.to_rfc3339() ]
                     );
                 }
