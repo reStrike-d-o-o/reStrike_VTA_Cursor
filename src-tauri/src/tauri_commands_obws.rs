@@ -7,6 +7,20 @@ use crate::plugins::obs_obws::ObsConnectionConfig;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tauri::{State, Error as TauriError, Emitter};
+use std::collections::HashSet;
+use once_cell::sync::Lazy;
+
+static CANCELLED_JOBS: Lazy<std::sync::Mutex<HashSet<String>>> = Lazy::new(|| std::sync::Mutex::new(HashSet::new()));
+
+fn is_cancelled(job_id: &str) -> bool {
+    CANCELLED_JOBS.lock().ok().map(|set| set.contains(job_id)).unwrap_or(false)
+}
+
+#[tauri::command]
+pub async fn ivr_cancel_job(job_id: String) -> Result<ObsObwsConnectionResponse, TauriError> {
+    if let Ok(mut set) = CANCELLED_JOBS.lock() { set.insert(job_id); }
+    Ok(ObsObwsConnectionResponse{ success: true, data: None, error: None })
+}
 
 // progress emit helpers
 
@@ -1888,10 +1902,12 @@ pub async fn ivr_delete_recorded_videos(ids: Vec<i64>, app: State<'_, Arc<App>>)
 
 /// Upload selected recorded videos to Google Drive by zipping them first
 #[tauri::command]
-pub async fn ivr_upload_recorded_videos(ids: Vec<i64>, app: State<'_, Arc<App>>, window: tauri::Window, folder_id: Option<String>) -> Result<ObsObwsConnectionResponse, TauriError> {
+pub async fn ivr_upload_recorded_videos(ids: Vec<i64>, app: State<'_, Arc<App>>, window: tauri::Window, folder_id: Option<String>, job_id: Option<String>) -> Result<ObsObwsConnectionResponse, TauriError> {
+    let jid = job_id.unwrap_or_else(|| format!("job_{}", chrono::Utc::now().timestamp_millis()));
     let conn = app.database_plugin().get_connection().await?;
     let mut paths: Vec<String> = Vec::new();
     for id in ids.iter() {
+        if is_cancelled(&jid) { return Ok(ObsObwsConnectionResponse{ success: false, data: None, error: Some("Cancelled".to_string()) }); }
         let row = conn.query_row(
             "SELECT file_path FROM recorded_videos WHERE id = ?",
             rusqlite::params![id],
@@ -1902,7 +1918,6 @@ pub async fn ivr_upload_recorded_videos(ids: Vec<i64>, app: State<'_, Arc<App>>,
     if paths.is_empty() {
         return Ok(ObsObwsConnectionResponse{ success: false, data: None, error: Some("No files to upload".to_string()) });
     }
-    // Create a zip in temp dir
     let ts = chrono::Utc::now().format("%Y%m%d_%H%M%S");
     let zip_path = std::env::temp_dir().join(format!("ivr_videos_{}.zip", ts));
     {
@@ -1912,18 +1927,20 @@ pub async fn ivr_upload_recorded_videos(ids: Vec<i64>, app: State<'_, Arc<App>>,
         let options = zip::write::FileOptions::default().compression_method(zip::CompressionMethod::Deflated);
         let total = paths.len() as u64;
         for (idx, p) in paths.iter().enumerate() {
+            if is_cancelled(&jid) { return Ok(ObsObwsConnectionResponse{ success: false, data: None, error: Some("Cancelled".to_string()) }); }
             let name_in_zip = std::path::Path::new(p).file_name().and_then(|s| s.to_str()).unwrap_or("video.mp4");
             zip.start_file(name_in_zip, options).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
             let bytes = std::fs::read(p).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
             zip.write_all(&bytes).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
             let _ = window.emit("ivr_zip_progress", serde_json::json!({
+                "job_id": jid,
                 "phase":"zipping","items_done": idx+1, "items_total": total, "file": name_in_zip
             }));
         }
         zip.finish().map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
     }
     let file_name = zip_path.file_name().and_then(|s| s.to_str()).unwrap_or("ivr_videos.zip").to_string();
-    let _ = window.emit("ivr_upload_progress", serde_json::json!({"phase":"starting","file": file_name}));
+    let _ = window.emit("ivr_upload_progress", serde_json::json!({"job_id": jid, "phase":"starting","file": file_name}));
     let file_id = if let Some(fid) = folder_id.as_ref() {
         crate::plugins::drive_plugin().upload_file_streaming_to_folder(&zip_path, &file_name, Some(fid.as_str())).await
             .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?
@@ -1931,8 +1948,8 @@ pub async fn ivr_upload_recorded_videos(ids: Vec<i64>, app: State<'_, Arc<App>>,
         crate::plugins::drive_plugin().upload_file_streaming(&zip_path, &file_name).await
             .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?
     };
-    let _ = window.emit("ivr_upload_progress", serde_json::json!({"phase":"complete","file": file_name, "file_id": file_id}));
-    Ok(ObsObwsConnectionResponse{ success: true, data: Some(serde_json::json!({"zip_path": zip_path.to_string_lossy().to_string(), "file_id": file_id})), error: None })
+    let _ = window.emit("ivr_upload_progress", serde_json::json!({"job_id": jid, "phase":"complete","file": file_name, "file_id": file_id}));
+    Ok(ObsObwsConnectionResponse{ success: true, data: Some(serde_json::json!({"zip_path": zip_path.to_string_lossy().to_string(), "file_id": file_id, "job_id": jid})), error: None })
 }
 
 /// Import recordings from local zip or Drive into a tournament day directory and index them
@@ -1944,8 +1961,9 @@ pub async fn ivr_import_recorded_videos(
     match_id: i64,
     app: State<'_, Arc<App>>,
     window: tauri::Window,
+    job_id: Option<String>,
 ) -> Result<ObsObwsConnectionResponse, TauriError> {
-    // Resolve videos root and target directory
+    let jid = job_id.unwrap_or_else(|| format!("job_{}", chrono::Utc::now().timestamp_millis()));
     let conn = app.database_plugin().get_connection().await?;
     let (tournament_id, day_number): (i64, i32) = conn.query_row(
         "SELECT tournament_id, day_number FROM tournament_days WHERE id = ?",
@@ -1970,9 +1988,8 @@ pub async fn ivr_import_recorded_videos(
     let target_dir = videos_root.join(&tournament_name).join(format!("Day {}", day_number));
     std::fs::create_dir_all(&target_dir).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
 
-    // Download if Drive
     let zip_path = if source.to_lowercase() == "drive" {
-        let _ = window.emit("ivr_download_progress", serde_json::json!({"phase":"starting","id": path_or_id}));
+        let _ = window.emit("ivr_download_progress", serde_json::json!({"job_id": jid, "phase":"starting","id": path_or_id}));
         let tmp = std::env::temp_dir().join(format!("ivr_import_{}.zip", chrono::Utc::now().timestamp()));
         match crate::plugins::drive_plugin().download_backup_archive(&path_or_id).await {
             Ok(_) => tmp,
@@ -1984,12 +2001,12 @@ pub async fn ivr_import_recorded_videos(
         p
     };
 
-    // Extract zip
     let file = std::fs::File::open(&zip_path).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
     let mut archive = zip::ZipArchive::new(file).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
     let mut imported: Vec<String> = Vec::new();
     let total = archive.len();
     for i in 0..total {
+        if is_cancelled(&jid) { return Ok(ObsObwsConnectionResponse{ success: false, data: None, error: Some("Cancelled".to_string()) }); }
         let mut zf = archive.by_index(i).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
         if zf.is_dir() { continue; }
         let name = zf.name().to_string();
@@ -2000,11 +2017,11 @@ pub async fn ivr_import_recorded_videos(
         let mut out = std::fs::File::create(&out_path).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
         std::io::copy(&mut zf, &mut out).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
         imported.push(out_path.to_string_lossy().to_string());
-        let _ = window.emit("ivr_extract_progress", serde_json::json!({"phase":"file","done": imported.len(), "total": total, "file": fname}));
+        let _ = window.emit("ivr_extract_progress", serde_json::json!({"job_id": jid, "phase":"file","done": imported.len(), "total": total, "file": fname}));
 
         // Metadata
         let file_size = std::fs::metadata(&out_path).ok().map(|m| m.len() as i64);
-        let checksum = None::<String>; // optional: compute later
+        let checksum = None::<String>;
 
         // Insert into recorded_videos
         let start_time = chrono::Utc::now();
@@ -2017,15 +2034,16 @@ pub async fn ivr_import_recorded_videos(
         ).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
         let rvid = conn.last_insert_rowid();
 
-        // Link events within window using nearest event after start_time
+        // Bulk-link events within a 4-hour window from start_time
+        let end_time = start_time + chrono::Duration::hours(4);
         let _ = conn.execute(
             "INSERT OR IGNORE INTO recorded_video_events (recorded_video_id, event_id, offset_ms, created_at)
              SELECT ?, e.id, CAST((julianday(e.timestamp) - julianday(?)) * 86400000 AS INTEGER), ?
-             FROM pss_events_v2 e WHERE e.match_id = ? AND e.timestamp >= ? ORDER BY e.timestamp ASC LIMIT 1",
-            rusqlite::params![ rvid, start_time.to_rfc3339(), chrono::Utc::now().to_rfc3339(), match_id, start_time.to_rfc3339() ]
+             FROM pss_events_v2 e WHERE e.match_id = ? AND e.timestamp >= ? AND e.timestamp <= ? ORDER BY e.timestamp ASC",
+            rusqlite::params![ rvid, start_time.to_rfc3339(), chrono::Utc::now().to_rfc3339(), match_id, start_time.to_rfc3339(), end_time.to_rfc3339() ]
         );
     }
 
-    let _ = window.emit("ivr_index_progress", serde_json::json!({"phase":"complete","count": imported.len()}));
-    Ok(ObsObwsConnectionResponse{ success: true, data: Some(serde_json::json!({"imported": imported})), error: None })
+    let _ = window.emit("ivr_index_progress", serde_json::json!({"job_id": jid, "phase":"complete","count": imported.len()}));
+    Ok(ObsObwsConnectionResponse{ success: true, data: Some(serde_json::json!({"imported": imported, "job_id": jid})), error: None })
 }
