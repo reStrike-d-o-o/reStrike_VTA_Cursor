@@ -1914,18 +1914,22 @@ pub async fn pss_get_events_for_match(app: State<'_, Arc<App>>, match_id: String
             }
         }
 
-        out.push(serde_json::json!({
-                    "id": row.id,
-            "type": ev_type,
-            "event_type": ev_type,
-            "event_code": event_code,
-            "athlete": athlete,
-            "round": round,
-            "time": time,
-                    "timestamp": row.timestamp.to_rfc3339(),
-                    "raw_data": row.raw_data,
-                    "description": row.parsed_data
-        }));
+        // Only return important events to UI; keep others persisted for timing/state
+        let important = matches!(event_code.as_str(), "K"|"P"|"H"|"TH"|"TB"|"R");
+        if important {
+            out.push(serde_json::json!({
+                "id": row.id,
+                "type": ev_type,
+                "event_type": ev_type,
+                "event_code": event_code,
+                "athlete": athlete,
+                "round": round,
+                "time": time,
+                "timestamp": row.timestamp.to_rfc3339(),
+                "raw_data": row.raw_data,
+                "description": row.parsed_data
+            }));
+        }
     }
 
     Ok(out)
