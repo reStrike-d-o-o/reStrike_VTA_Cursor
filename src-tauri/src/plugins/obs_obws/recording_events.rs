@@ -641,10 +641,48 @@ impl ObsRecordingEventHandler {
                         let d = t.as_ref().and_then(|tt| TournamentOperations::get_active_tournament_day(&*conn_ref, tt.id.unwrap()).ok().flatten());
                         (t.and_then(|tt| tt.id), d.and_then(|dd| dd.id))
                     };
-                    let _ = conn_ref.execute(
-                        "INSERT INTO recorded_videos (match_id, event_id, tournament_id, tournament_day_id, video_type, file_path, record_directory, filename_formatting, start_time, duration_seconds, created_at)\n                         SELECT (SELECT id FROM pss_matches WHERE match_id = ? ORDER BY created_at DESC LIMIT 1), NULL, ?, ?, 'recording', ?, ?, NULL, ?, ?, ?\n                         WHERE NOT EXISTS (SELECT 1 FROM recorded_videos rv WHERE rv.match_id = (SELECT id FROM pss_matches WHERE match_id = ? ORDER BY created_at DESC LIMIT 1) AND rv.start_time = ?)",
-                        rusqlite::params![ mid, tid_opt, day_opt, file_path, record_dir, start_time.to_rfc3339(), duration, created.to_rfc3339(), mid, start_time.to_rfc3339() ]
-                    );
+                    // Resolve match DB id robustly: try by match_id string, then by match_number, else most recent
+                    let match_db_id: i64 = {
+                        let by_mid = conn_ref
+                            .query_row(
+                                "SELECT id FROM pss_matches WHERE match_id = ? ORDER BY updated_at DESC LIMIT 1",
+                                rusqlite::params![ mid ],
+                                |r| r.get::<_, i64>(0),
+                            )
+                            .ok();
+                        if let Some(id) = by_mid { id } else {
+                            // Try by match_number from session
+                            let maybe_num: Option<String> = {
+                                let s = self.get_current_session();
+                                s.and_then(|ss| ss.match_number.clone())
+                            };
+                            if let Some(mnum) = maybe_num {
+                                if let Ok(id2) = conn_ref.query_row(
+                                    "SELECT id FROM pss_matches WHERE match_number = ? ORDER BY updated_at DESC LIMIT 1",
+                                    rusqlite::params![ mnum ],
+                                    |r| r.get::<_, i64>(0),
+                                ) { id2 } else {
+                                    conn_ref.query_row(
+                                        "SELECT id FROM pss_matches ORDER BY created_at DESC LIMIT 1",
+                                        [],
+                                        |r| r.get::<_, i64>(0),
+                                    ).unwrap_or(0)
+                                }
+                            } else {
+                                conn_ref.query_row(
+                                    "SELECT id FROM pss_matches ORDER BY created_at DESC LIMIT 1",
+                                    [],
+                                    |r| r.get::<_, i64>(0),
+                                ).unwrap_or(0)
+                            }
+                        }
+                    };
+                    if match_db_id > 0 {
+                        let _ = conn_ref.execute(
+                            "INSERT INTO recorded_videos (match_id, event_id, tournament_id, tournament_day_id, video_type, file_path, record_directory, filename_formatting, start_time, duration_seconds, created_at) VALUES (?, NULL, ?, ?, 'recording', ?, ?, NULL, ?, ?, ?)",
+                            rusqlite::params![ match_db_id, tid_opt, day_opt, file_path, record_dir, start_time.to_rfc3339(), duration, created.to_rfc3339() ]
+                        );
+                    }
                     // Resolve recorded_video_id for this recording window
                     let rvid: i64 = conn_ref
                         .query_row(

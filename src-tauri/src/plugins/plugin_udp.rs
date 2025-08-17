@@ -727,6 +727,7 @@ impl UdpServer {
         let code = Self::get_event_code(event);
         let is_important = matches!(code.as_str(), "K" | "P" | "H" | "TH" | "TB" | "R");
         if !is_important {
+            // Still broadcast to overlays, but skip DB persistence
             return Ok(());
         }
 
