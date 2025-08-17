@@ -596,7 +596,7 @@ impl App {
         };
 
         // Prefer recording that started before event_time; fallback to the earliest after
-        let (record_path_opt, record_dir_opt, record_start_str_opt) = {
+        let (record_path_opt, _record_dir_opt, record_start_str_opt) = {
             let conn_guard = self.database_plugin().get_connection().await.map_err(|e| crate::types::AppError::ConfigError(e.to_string()))?;
             let conn_ref = &*conn_guard;
             let before: Option<(Option<String>, Option<String>, Option<String>)> = conn_ref
