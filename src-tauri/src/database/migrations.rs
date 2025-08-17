@@ -2232,6 +2232,54 @@ impl Migration for Migration20 {
     }
 }
 
+/// Migration 21: Event-to-video precision and file metadata
+pub struct Migration21;
+
+impl Migration for Migration21 {
+    fn version(&self) -> u32 { 21 }
+    fn description(&self) -> &str { "Add recorded_video_events table and file metadata (size, checksum)" }
+    fn up(&self, conn: &Connection) -> SqliteResult<()> {
+        // Add file_size and checksum to recorded_videos if missing
+        let mut stmt = conn.prepare("PRAGMA table_info('recorded_videos')")?;
+        let mut has_file_size = false;
+        let mut has_checksum = false;
+        let mut rows = stmt.query([])?;
+        while let Some(row) = rows.next()? {
+            let col_name: String = row.get(1)?;
+            if col_name == "file_size" { has_file_size = true; }
+            if col_name == "checksum" { has_checksum = true; }
+        }
+        if !has_file_size {
+            let _ = conn.execute("ALTER TABLE recorded_videos ADD COLUMN file_size INTEGER", []);
+        }
+        if !has_checksum {
+            let _ = conn.execute("ALTER TABLE recorded_videos ADD COLUMN checksum TEXT", []);
+        }
+
+        // Create link table for event offsets
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS recorded_video_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                recorded_video_id INTEGER NOT NULL,
+                event_id INTEGER NOT NULL,
+                offset_ms INTEGER NOT NULL,
+                created_at TEXT NOT NULL,
+                UNIQUE(recorded_video_id, event_id),
+                FOREIGN KEY (recorded_video_id) REFERENCES recorded_videos(id) ON DELETE CASCADE,
+                FOREIGN KEY (event_id) REFERENCES pss_events_v2(id) ON DELETE CASCADE
+            )",
+            [],
+        )?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_rve_video ON recorded_video_events(recorded_video_id)", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_rve_event ON recorded_video_events(event_id)", [])?;
+        Ok(())
+    }
+    fn down(&self, conn: &Connection) -> SqliteResult<()> {
+        conn.execute("DROP TABLE IF EXISTS recorded_video_events", [])?;
+        Ok(())
+    }
+}
+
 impl MigrationManager {
     /// Create a new migration manager
     pub fn new() -> Self {
@@ -2256,6 +2304,7 @@ impl MigrationManager {
         migrations.push(Box::new(Migration18)); // Triggers v2: conditions, action_kind, connection targeting
         migrations.push(Box::new(Migration19)); // Remove UNIQUE from pss_matches.match_id
         migrations.push(Box::new(Migration20)); // Recorded videos table for IVR playback
+        migrations.push(Box::new(Migration21)); // recorded_video_events + file metadata
         
         Self { migrations }
     }
