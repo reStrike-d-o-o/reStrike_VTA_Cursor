@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import VideoEventPicker from './VideoEventPicker';
+import Button from '../atoms/Button';
 
 const IvrHistoryPanel: React.FC = () => {
 	const [days, setDays] = useState<Array<any>>([]);
@@ -89,116 +90,201 @@ const IvrHistoryPanel: React.FC = () => {
 	};
 
 	return (
-		<div className="theme-card p-4 text-gray-200 shadow-lg accent-ivr">
-			{loading && <div className="text-xs text-gray-400 mb-2">Loading…</div>}
-			{error && <div className="text-xs text-red-400 mb-2">{error}</div>}
-			<div className="grid grid-cols-3 gap-3 mb-3">
-				<div className="bg-gray-800/60 rounded p-3 min-h-[200px]">
-					<div className="text-sm font-semibold mb-2">Tournament / Day</div>
-					<div className="space-y-1 max-h-64 overflow-auto pr-1">
-						{days.map((d) => (
-							<button key={`${d.tournament_id}-${d.day_id}`} className={`w-full text-left text-xs px-2 py-1 rounded ${selectedDayId===d.day_id?'bg-blue-700/60':'hover:bg-gray-700/40'}`} onClick={() => { setSelectedDayId(d.day_id); setSelectedMatchId(null); }}>
-								<span className="font-semibold">{d.tournament_name}</span>
-								<span className="ml-2 text-gray-400">Day {d.day_number}</span>
-								<span className="ml-2 text-gray-500">{new Date(d.date).toLocaleDateString()}</span>
-							</button>
-						))}
+		<div className="space-y-6">
+			{/* Header */}
+			<div className="flex items-center justify-between">
+				<div>
+					<h2 className="text-xl font-semibold text-white">Match history</h2>
+					<p className="text-sm text-gray-400">Review recorded sessions by day, match and event</p>
+				</div>
+			</div>
+
+			{/* Status */}
+			{loading && <div className="text-xs text-gray-400">Loading…</div>}
+			{error && (
+				<div className="bg-red-900/20 border border-red-500/50 rounded-lg p-3">
+					<span className="text-red-400 font-medium">Error</span>
+					<p className="text-red-300 mt-1 text-sm">{error}</p>
+				</div>
+			)}
+
+			{/* Main Columns */}
+			<div className="grid grid-cols-3 gap-4">
+				{/* Days */}
+				<div className="theme-card p-6 shadow-lg">
+					<h3 className="text-lg font-semibold text-blue-300 mb-3">Tournament / Day</h3>
+					<div className="max-h-64 overflow-y-auto border border-gray-700 rounded">
+						<table className="min-w-full text-left text-sm text-gray-200">
+							<thead className="theme-surface-2 sticky top-0 z-10">
+								<tr>
+									<th className="px-3 py-2 font-semibold">Tournament</th>
+									<th className="px-3 py-2 font-semibold">Day</th>
+									<th className="px-3 py-2 font-semibold">Date</th>
+								</tr>
+							</thead>
+							<tbody>
+								{days.length === 0 ? (
+									<tr>
+										<td colSpan={3} className="px-3 py-2 text-gray-400 text-center">No days found</td>
+									</tr>
+								) : (
+									days.map((d) => (
+										<tr key={`${d.tournament_id}-${d.day_id}`} className={`cursor-pointer hover:bg-blue-900 ${selectedDayId===d.day_id ? 'bg-blue-900/60' : ''}`} onClick={() => { setSelectedDayId(d.day_id); setSelectedMatchId(null); }}>
+											<td className="px-3 py-2 whitespace-nowrap">{d.tournament_name}</td>
+											<td className="px-3 py-2 whitespace-nowrap">Day {d.day_number}</td>
+											<td className="px-3 py-2 whitespace-nowrap">{new Date(d.date).toLocaleDateString()}</td>
+										</tr>
+									))
+								)}
+							</tbody>
+						</table>
 					</div>
 				</div>
-				<div className="bg-gray-800/60 rounded p-3 min-h-[200px]">
-					<div className="text-sm font-semibold mb-2">Matches</div>
-					<div className="space-y-1 max-h-64 overflow-auto pr-1">
-						{matches.map((m) => (
-							<button key={m.id} className={`w-full text-left text-xs px-2 py-1 rounded ${selectedMatchId===m.id?'bg-blue-700/60':'hover:bg-gray-700/40'}`} onClick={() => setSelectedMatchId(m.id)}>
-								<span className="font-semibold">#{m.match_number ?? ''}</span>
-								<span className="ml-2 text-gray-400">{m.category ?? ''}</span>
-							</button>
-						))}
+
+				{/* Matches */}
+				<div className="theme-card p-6 shadow-lg">
+					<h3 className="text-lg font-semibold text-blue-300 mb-3">Matches</h3>
+					<div className="max-h-64 overflow-y-auto border border-gray-700 rounded">
+						<table className="min-w-full text-left text-sm text-gray-200">
+							<thead className="theme-surface-2 sticky top-0 z-10">
+								<tr>
+									<th className="px-3 py-2 font-semibold">#</th>
+									<th className="px-3 py-2 font-semibold">Category</th>
+								</tr>
+							</thead>
+							<tbody>
+								{matches.length === 0 ? (
+									<tr>
+										<td colSpan={2} className="px-3 py-2 text-gray-400 text-center">No matches</td>
+									</tr>
+								) : (
+									matches.map((m) => (
+										<tr key={m.id} className={`cursor-pointer hover:bg-blue-900 ${selectedMatchId===m.id ? 'bg-blue-900/60' : ''}`} onClick={() => setSelectedMatchId(m.id)}>
+											<td className="px-3 py-2 whitespace-nowrap">#{m.match_number ?? ''}</td>
+											<td className="px-3 py-2 whitespace-nowrap">{m.category ?? ''}</td>
+										</tr>
+									))
+								)}
+							</tbody>
+						</table>
 					</div>
 				</div>
-				<div className="bg-gray-800/60 rounded p-3 min-h-[200px]">
-					<div className="text-sm font-semibold mb-2">Events</div>
-					<div className="space-y-1 max-h-64 overflow-auto pr-1 text-xs">
-						{events.map((e) => (
-							<div key={e.id} className="flex items-center justify-between px-2 py-1 rounded hover:bg-gray-700/40 cursor-pointer" onDoubleClick={async () => {
-								try {
-									const { invoke } = await import('@tauri-apps/api/core');
-									const num = String(e.id).replace(/[^0-9]/g, '');
-									if (num) { await invoke('ivr_open_event_video', { eventId: Number(num) }); }
-								} catch (err) { console.warn('Failed to open event video', err); }
-							}}>
-								<div className="truncate mr-2">R{e.round ?? 1} • {e.time ?? ''}</div>
-								<div className="text-gray-200 ml-2 whitespace-nowrap font-semibold">{e.event_code ?? e.eventCode ?? ''}</div>
-							</div>
-						))}
+
+				{/* Events */}
+				<div className="theme-card p-6 shadow-lg">
+					<h3 className="text-lg font-semibold text-blue-300 mb-3">Events</h3>
+					<div className="max-h-64 overflow-y-auto border border-gray-700 rounded">
+						<table className="min-w-full text-left text-sm text-gray-200">
+							<thead className="theme-surface-2 sticky top-0 z-10">
+								<tr>
+									<th className="px-3 py-2 font-semibold">RND</th>
+									<th className="px-3 py-2 font-semibold">Time</th>
+									<th className="px-3 py-2 font-semibold">Code</th>
+								</tr>
+							</thead>
+							<tbody>
+								{events.length === 0 ? (
+									<tr>
+										<td colSpan={3} className="px-3 py-2 text-gray-400 text-center">No events</td>
+									</tr>
+								) : (
+									events.map((e) => (
+										<tr key={e.id} className="cursor-pointer hover:bg-blue-900" onDoubleClick={async () => {
+											try {
+												const { invoke } = await import('@tauri-apps/api/core');
+												const num = String(e.id).replace(/[^0-9]/g, '');
+												if (num) { await invoke('ivr_open_event_video', { eventId: Number(num) }); }
+											} catch (err) { console.warn('Failed to open event video', err); }
+										}}>
+											<td className="px-3 py-2 whitespace-nowrap">R{e.round ?? 1}</td>
+											<td className="px-3 py-2 whitespace-nowrap">{e.time ?? ''}</td>
+											<td className="px-3 py-2 whitespace-nowrap">{e.event_code ?? e.eventCode ?? ''}</td>
+										</tr>
+									))
+								)}
+							</tbody>
+						</table>
 					</div>
 				</div>
 			</div>
-			<div className="bg-gray-800/60 rounded p-3 min-h-[140px] mb-3">
-				<div className="text-sm font-semibold mb-2">Recorded Videos</div>
-				<div className="space-y-1 max-h-48 overflow-auto pr-1 text-xs">
-					{videos.map((v) => (
-						<div key={v.id} className={`relative flex items-center justify-between px-2 py-1 rounded hover:bg-gray-700/40 cursor-pointer ${selectedVideoIds.has(v.id)?'bg-blue-700/40':''}`} onClick={() => toggleVideoSelection(v.id)} onDoubleClick={async () => {
+
+			{/* Recorded Videos Section */}
+			<div className="theme-card p-6 shadow-lg">
+				<div className="flex items-center justify-between mb-3">
+					<h3 className="text-lg font-semibold text-blue-300">Recorded Videos</h3>
+					<div className="flex gap-2">
+						<Button variant="secondary" size="sm" disabled={selectedVideoIds.size===0} onClick={handleDeleteSelected}>Delete</Button>
+						<Button variant="secondary" size="sm" disabled={selectedVideoIds.size===0} onClick={async () => {
+							if (selectedVideoIds.size===0) return;
 							try {
 								const { invoke } = await import('@tauri-apps/api/core');
-								if (v.id) {
-									await invoke('ivr_open_recorded_video', { recordedVideoId: v.id });
-								} else if (v.file_path) {
-									await invoke('ivr_open_video_path', { filePath: v.file_path, offsetSeconds: 0 });
-								} else if (v.record_directory) {
-									// If only directory known, do nothing for now (future: browse directory)
+								const ids = Array.from(selectedVideoIds);
+								const res: any = await invoke('ivr_upload_recorded_videos', { ids });
+								if (res?.success === false) alert(res?.error || 'Upload failed');
+								else alert(`Upload started. Drive file id: ${res?.data?.file_id ?? 'unknown'}`);
+							} catch (e: any) { alert(typeof e==='string'?e:(e?.message||'Upload failed')); }
+						}}>Upload to Drive</Button>
+						<Button variant="primary" size="sm" disabled={!selectedDayId || !selectedMatchId} onClick={async () => {
+							if (!selectedDayId || !selectedMatchId) return;
+							const mode = window.prompt('Import from: local or drive? (type local/drive)', 'local');
+							if (!mode) return;
+							const key = mode.toLowerCase()==='drive' ? 'Enter Drive file id to import:' : 'Enter local zip file path to import:';
+							const path = window.prompt(key);
+							if (!path) return;
+							try {
+								const { invoke } = await import('@tauri-apps/api/core');
+								const res: any = await invoke('ivr_import_recorded_videos', { source: mode.toLowerCase(), pathOrId: path, tournamentDayId: selectedDayId, matchId: selectedMatchId });
+								if (res?.success === false) alert(res?.error || 'Import failed');
+								else {
+									alert('Import completed');
+									const v: any = await invoke('ivr_list_recorded_videos', { tournamentDayId: selectedDayId, matchId: selectedMatchId });
+									setVideos(Array.isArray(v) ? v : (v?.data ?? []));
 								}
-							} catch (e) { console.warn('Failed to open video', e); }
-						}}>
-							<div className="truncate mr-2">{v.file_path ?? v.record_directory ?? ''}</div>
-							<div className="text-gray-400 ml-2 whitespace-nowrap">{new Date(v.start_time).toLocaleString()}</div>
-							{/* Event picker trigger */}
-							<button className="ml-2 text-[10px] px-2 py-0.5 rounded bg-gray-700/60 hover:bg-gray-700 text-gray-300" title="Pick event" onClick={(e) => { e.stopPropagation(); if (selectedMatchId) { setPickerVideoId(v.id); setPickerMatchId(selectedMatchId); } }}>
-								Events
-							</button>
-							{pickerVideoId===v.id && pickerMatchId && (
-								<VideoEventPicker recordedVideoId={pickerVideoId!} matchId={pickerMatchId!} onClose={() => setPickerVideoId(null)} />
-							)}
-						</div>
-					))}
+							} catch (e: any) { alert(typeof e==='string'?e:(e?.message||'Import failed')); }
+						}}>Import</Button>
+					</div>
 				</div>
-			</div>
-			<div className="flex justify-end gap-2">
-				<button className="px-3 py-1 bg-gray-700/70 rounded text-xs text-gray-300 disabled:opacity-50" disabled={selectedVideoIds.size===0} onClick={handleDeleteSelected}>
-					Delete
-				</button>
-				<button className="px-3 py-1 bg-gray-700/70 rounded text-xs text-gray-300" disabled={selectedVideoIds.size===0} onClick={async () => {
-					if (selectedVideoIds.size===0) return;
-					try {
-						const { invoke } = await import('@tauri-apps/api/core');
-						const ids = Array.from(selectedVideoIds);
-						const res: any = await invoke('ivr_upload_recorded_videos', { ids });
-						if (res?.success === false) alert(res?.error || 'Upload failed');
-						else alert(`Upload started. Drive file id: ${res?.data?.file_id ?? 'unknown'}`);
-					} catch (e: any) { alert(typeof e==='string'?e:(e?.message||'Upload failed')); }
-				}}>
-					Upload to Drive
-				</button>
-				<button className="px-3 py-1 bg-gray-700/70 rounded text-xs text-gray-300" disabled={!selectedDayId || !selectedMatchId} onClick={async () => {
-					if (!selectedDayId || !selectedMatchId) return;
-					const mode = window.prompt('Import from: local or drive? (type local/drive)', 'local');
-					if (!mode) return;
-					const key = mode.toLowerCase()==='drive' ? 'Enter Drive file id to import:' : 'Enter local zip file path to import:';
-					const path = window.prompt(key);
-					if (!path) return;
-					try {
-						const { invoke } = await import('@tauri-apps/api/core');
-						const res: any = await invoke('ivr_import_recorded_videos', { source: mode.toLowerCase(), pathOrId: path, tournamentDayId: selectedDayId, matchId: selectedMatchId });
-						if (res?.success === false) alert(res?.error || 'Import failed');
-						else {
-							alert('Import completed');
-							const v: any = await invoke('ivr_list_recorded_videos', { tournamentDayId: selectedDayId, matchId: selectedMatchId });
-							setVideos(Array.isArray(v) ? v : (v?.data ?? []));
-						}
-					} catch (e: any) { alert(typeof e==='string'?e:(e?.message||'Import failed')); }
-				}}>
-					Import
-				</button>
+
+				<div className="max-h-56 overflow-y-auto border border-gray-700 rounded">
+					<table className="min-w-full text-left text-sm text-gray-200">
+						<thead className="theme-surface-2 sticky top-0 z-10">
+							<tr>
+								<th className="px-3 py-2 font-semibold">Path</th>
+								<th className="px-3 py-2 font-semibold">Start</th>
+								<th className="px-3 py-2 font-semibold">Actions</th>
+							</tr>
+						</thead>
+						<tbody>
+							{videos.length === 0 ? (
+								<tr>
+									<td colSpan={3} className="px-3 py-2 text-gray-400 text-center">No videos</td>
+								</tr>
+							) : (
+								videos.map((v) => (
+									<tr key={v.id} className={`cursor-pointer hover:bg-blue-900 ${selectedVideoIds.has(v.id)?'bg-blue-900/40':''}`} onClick={() => toggleVideoSelection(v.id)} onDoubleClick={async () => {
+										try {
+											const { invoke } = await import('@tauri-apps/api/core');
+											if (v.id) {
+												await invoke('ivr_open_recorded_video', { recordedVideoId: v.id });
+											} else if (v.file_path) {
+												await invoke('ivr_open_video_path', { filePath: v.file_path, offsetSeconds: 0 });
+											}
+										} catch (e) { console.warn('Failed to open video', e); }} }>
+										<td className="px-3 py-2 whitespace-nowrap truncate max-w-[28rem]">{v.file_path ?? v.record_directory ?? ''}</td>
+										<td className="px-3 py-2 whitespace-nowrap">{new Date(v.start_time).toLocaleString()}</td>
+										<td className="px-3 py-2 whitespace-nowrap">
+											<Button variant="ghost" size="sm" className="text-blue-400 hover:text-blue-300 mr-2" onClick={async (e) => { e.stopPropagation(); if (v.id) { const { invoke } = await import('@tauri-apps/api/core'); await invoke('ivr_open_recorded_video', { recordedVideoId: v.id }); } }}>Open</Button>
+											<Button variant="ghost" size="sm" className="text-gray-300 hover:text-white" onClick={(e) => { e.stopPropagation(); if (selectedMatchId) { setPickerVideoId(v.id); setPickerMatchId(selectedMatchId); } }}>Pick Event</Button>
+											{pickerVideoId===v.id && pickerMatchId && (
+												<VideoEventPicker recordedVideoId={pickerVideoId!} matchId={pickerMatchId!} onClose={() => setPickerVideoId(null)} />
+											)}
+										</td>
+									</tr>
+								))
+							)}
+						</tbody>
+					</table>
+				</div>
 			</div>
 		</div>
 	);
