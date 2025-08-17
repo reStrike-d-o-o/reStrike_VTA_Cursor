@@ -246,32 +246,6 @@ const IvrHistoryPanel: React.FC = () => {
 						<Button variant="secondary" size="sm" disabled={selectedVideoIds.size===0} onClick={handleDeleteSelected}>Delete</Button>
 						<Button variant="secondary" size="sm" disabled={selectedVideoIds.size===0} onClick={() => setDriveOpen('folder')}>Upload to Drive</Button>
 						<Button variant="primary" size="sm" disabled={!selectedDayId || !selectedMatchId} onClick={() => setDriveOpen('zip')}>Import</Button>
-						{/* Temporary maintenance action: DB backfill for existing recordings */}
-						<Button
-							variant="ghost"
-							size="sm"
-							disabled={!selectedDayId && !selectedMatchId}
-							onClick={async () => {
-								try {
-									const { invoke } = await import('@tauri-apps/api/core');
-									const res: any = await invoke('ivr_backfill_recorded_videos', {
-										tournament_day_id: selectedDayId ?? undefined,
-										tournamentDayId: selectedDayId ?? undefined,
-										match_id: selectedMatchId ?? undefined,
-										matchId: selectedMatchId ?? undefined,
-									});
-									setProgressMsg(`Backfilled: ${res?.data?.updated ?? res?.updated ?? 0}, relinked: ${res?.data?.relinked ?? res?.relinked ?? 0}`);
-									if (selectedDayId) {
-										const v: any = await invoke('ivr_list_recorded_videos', { tournament_day_id: selectedDayId, tournamentDayId: selectedDayId, match_id: selectedMatchId ?? undefined, matchId: selectedMatchId ?? undefined });
-										setVideos(Array.isArray(v) ? v : (v?.data ?? []));
-									}
-								} catch (e) {
-									setProgressMsg('Backfill failed');
-								}
-							}}
-						>
-							Backfill
-						</Button>
 					</div>
 				</div>
 
