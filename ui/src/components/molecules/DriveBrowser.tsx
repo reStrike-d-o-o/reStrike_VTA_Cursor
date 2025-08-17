@@ -16,56 +16,78 @@ interface DriveBrowserProps {
 
 const DriveBrowser: React.FC<DriveBrowserProps> = ({ isOpen, mode, onClose, onPick }) => {
   const [items, setItems] = useState<DriveItem[]>([]);
-  const [filtered, setFiltered] = useState<DriveItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<'name' | 'modified'>('modified');
+  const [breadcrumbs, setBreadcrumbs] = useState<{ id: string | null; name: string }[]>([{ id: null, name: 'My Drive' }]);
 
-  const filterByMode = (list: DriveItem[]) => {
-    if (mode === 'pick-zip') {
-      return list.filter(i => i.name?.toLowerCase().endsWith('.zip'));
-    }
-    // pick-folder: Google folders have mimeType value indicating folder; when missing, allow name-only fallback
-    return list.filter(i => (i.mimeType?.includes('folder')) || (!i.mimeType && !i.name?.includes('.')));
-  };
+  const currentFolderId = breadcrumbs[breadcrumbs.length - 1]?.id;
 
-  const sortList = (list: DriveItem[]) => {
-    if (sort === 'name') return [...list].sort((a, b) => (a.name||'').localeCompare(b.name||''));
-    return [...list].sort((a, b) => (b.modifiedTime||'').localeCompare(a.modifiedTime||''));
-  };
-
-  const load = async () => {
+  const loadChildren = async () => {
     try {
       setLoading(true); setError(null);
       const { invoke } = await import('@tauri-apps/api/core');
-      // Prefer full listing; backend can page later if needed
-      const res: any = await invoke('drive_list_all_files');
+      const res: any = await invoke('drive_list_children', { parentId: currentFolderId || null });
       const list: DriveItem[] = Array.isArray(res?.files) ? res.files : (Array.isArray(res) ? res : (res?.data ?? []));
       setItems(list);
-      const filtered = sortList(filterByMode(list));
-      setFiltered(filtered);
     } catch (e: any) {
       setError(typeof e==='string'?e:(e?.message||'Failed to load Drive files'));
-      setItems([]); setFiltered([]);
+      setItems([]);
     } finally { setLoading(false); }
   };
 
-  useEffect(() => { if (isOpen) { load(); } }, [isOpen]);
+  useEffect(() => { if (isOpen) { loadChildren(); } }, [isOpen, currentFolderId]);
 
-  useEffect(() => {
-    const list = filterByMode(items).filter(i => (i.name||'').toLowerCase().includes(query.toLowerCase()));
-    setFiltered(sortList(list));
-  }, [query, sort, items, mode]);
+  const filtered = useMemo(() => {
+    const base = items.filter(i => (i.name||'').toLowerCase().includes(query.toLowerCase()));
+    const modeFiltered = mode === 'pick-zip' ? base.filter(i => i.name?.toLowerCase().endsWith('.zip')) : base;
+    const sorted = sort === 'name' ? [...modeFiltered].sort((a,b) => (a.name||'').localeCompare(b.name||'')) : [...modeFiltered].sort((a,b) => (b.modifiedTime||'').localeCompare(a.modifiedTime||''));
+    return sorted;
+  }, [items, query, sort, mode]);
+
+  const enterFolder = (item: DriveItem) => {
+    if (item.mimeType?.includes('folder')) {
+      setBreadcrumbs(prev => [...prev, { id: item.id, name: item.name }]);
+    } else if (mode === 'pick-zip') {
+      onPick(item);
+    }
+  };
+
+  const goTo = (index: number) => {
+    setBreadcrumbs(prev => prev.slice(0, index + 1));
+  };
+
+  const createFolder = async () => {
+    const name = window.prompt('Folder name');
+    if (!name) return;
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('drive_create_folder', { name, parentId: currentFolderId || null });
+      await loadChildren();
+    } catch (e: any) { alert(typeof e==='string'?e:(e?.message||'Failed to create folder')); }
+  };
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={mode==='pick-zip' ? 'Choose ZIP from Drive' : 'Choose Drive folder'}>
-      <div className="flex items-center gap-3 mb-3">
-        <Input placeholder="Search…" value={query} onChange={(e) => setQuery(e.target.value)} className="flex-1" />
-        <select aria-label="Sort" className="bg-gray-800 text-gray-200 px-3 py-2 rounded" value={sort} onChange={(e)=>setSort(e.target.value as any)}>
-          <option value="modified">Modified</option>
-          <option value="name">Name</option>
-        </select>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2 text-sm text-gray-300">
+          {breadcrumbs.map((b, idx) => (
+            <span key={idx}>
+              <button className={`hover:underline ${idx===breadcrumbs.length-1?'text-white font-semibold':''}`} onClick={()=>goTo(idx)}>{b.name}</button>
+              {idx<breadcrumbs.length-1 && <span className="mx-1">/</span>}
+            </span>
+          ))}
+        </div>
+        <div className="flex items-center gap-2">
+          <Input placeholder="Search…" value={query} onChange={(e) => setQuery(e.target.value)} className="w-56" />
+          <select aria-label="Sort" className="bg-gray-800 text-gray-200 px-3 py-2 rounded" value={sort} onChange={(e)=>setSort(e.target.value as any)}>
+            <option value="modified">Modified</option>
+            <option value="name">Name</option>
+          </select>
+          {mode==='pick-folder' && <Button variant="secondary" size="sm" onClick={createFolder}>New Folder</Button>}
+          {mode==='pick-folder' && <Button variant="primary" size="sm" onClick={()=>onPick({ id: currentFolderId || 'root', name: breadcrumbs[breadcrumbs.length-1].name })}>Choose here</Button>}
+        </div>
       </div>
       {loading && <div className="text-xs text-gray-400">Loading…</div>}
       {error && <div className="text-xs text-red-400 mb-2">{error}</div>}
@@ -87,8 +109,12 @@ const DriveBrowser: React.FC<DriveBrowserProps> = ({ isOpen, mode, onClose, onPi
                 <td className="px-3 py-2 whitespace-nowrap">{i.mimeType || ''}</td>
                 <td className="px-3 py-2 whitespace-nowrap">{i.modifiedTime || ''}</td>
                 <td className="px-3 py-2 whitespace-nowrap">{i.size || ''}</td>
-                <td className="px-3 py-2 whitespace-nowrap">
-                  <Button variant="ghost" size="sm" onClick={()=>onPick(i)}>Select</Button>
+                <td className="px-3 py-2 whitespace-nowrap flex gap-2">
+                  {i.mimeType?.includes('folder') ? (
+                    <Button variant="ghost" size="sm" onClick={()=>enterFolder(i)}>Open</Button>
+                  ) : (
+                    <Button variant="ghost" size="sm" onClick={()=>onPick(i)}>Select</Button>
+                  )}
                 </td>
               </tr>
             ))}
