@@ -489,6 +489,18 @@ impl App {
                 let ws = self.websocket_plugin().lock().await;
                 ws.get_current_match_db_id()
             };
+            // Resolve active tournament/day IDs for better indexing
+            let (tid_opt, day_opt) = {
+                match self.database_plugin().get_connection().await {
+                    Ok(conn2) => {
+                        use crate::database::operations::TournamentOperations as TOps;
+                        let t = TOps::get_active_tournament(&*conn2).ok().flatten();
+                        let d = t.as_ref().and_then(|tt| TOps::get_active_tournament_day(&*conn2, tt.id.unwrap()).ok().flatten());
+                        (t.and_then(|tt| tt.id), d.and_then(|dd| dd.id))
+                    },
+                    Err(_) => (None, None)
+                }
+            };
             let directory = match self.obs_obws_plugin().get_record_directory(connection_name).await {
                 Ok(dir) if !dir.is_empty() => dir,
                 _ => crate::plugins::obs_obws::PathGeneratorConfig::detect_windows_videos_folder().to_string_lossy().to_string(),
@@ -499,14 +511,14 @@ impl App {
                 let conn_ref2 = &*conn2;
                 let _ = if let Some(dbid) = match_id_db {
                     conn_ref2.execute(
-                        "INSERT INTO recorded_videos (match_id, event_id, tournament_id, tournament_day_id, video_type, file_path, record_directory, filename_formatting, start_time, duration_seconds, created_at) VALUES (?, NULL, NULL, NULL, 'replay', ?, ?, NULL, ?, ?, ?)",
-                        rusqlite::params![ dbid, file_path_str, directory, start_time.to_rfc3339(), seconds_from_end as i32, created.to_rfc3339() ]
+                        "INSERT INTO recorded_videos (match_id, event_id, tournament_id, tournament_day_id, video_type, file_path, record_directory, filename_formatting, start_time, duration_seconds, created_at) VALUES (?, NULL, ?, ?, 'replay', ?, ?, NULL, ?, ?, ?)",
+                        rusqlite::params![ dbid, tid_opt, day_opt, file_path_str, directory, start_time.to_rfc3339(), seconds_from_end as i32, created.to_rfc3339() ]
                     )
                 } else {
                     // Fallback: map pss_matches by most recent created_at
                     conn_ref2.execute(
-                        "INSERT INTO recorded_videos (match_id, event_id, tournament_id, tournament_day_id, video_type, file_path, record_directory, filename_formatting, start_time, duration_seconds, created_at) VALUES ((SELECT id FROM pss_matches ORDER BY created_at DESC LIMIT 1), NULL, NULL, NULL, 'replay', ?, ?, NULL, ?, ?, ?)",
-                        rusqlite::params![ file_path_str, directory, start_time.to_rfc3339(), seconds_from_end as i32, created.to_rfc3339() ]
+                        "INSERT INTO recorded_videos (match_id, event_id, tournament_id, tournament_day_id, video_type, file_path, record_directory, filename_formatting, start_time, duration_seconds, created_at) VALUES ((SELECT id FROM pss_matches ORDER BY created_at DESC LIMIT 1), NULL, ?, ?, 'replay', ?, ?, NULL, ?, ?, ?)",
+                        rusqlite::params![ tid_opt, day_opt, file_path_str, directory, start_time.to_rfc3339(), seconds_from_end as i32, created.to_rfc3339() ]
                     )
                 };
             }
@@ -580,15 +592,40 @@ impl App {
             }
         };
 
-        let record_dir = record_dir_opt.unwrap_or_else(|| {
-            crate::plugins::obs_obws::PathGeneratorConfig::detect_windows_videos_folder()
-                .to_string_lossy()
-                .to_string()
-        });
-        let file_path = if let Some(fp) = record_path_opt {
-            std::path::PathBuf::from(fp)
-        } else {
-            std::path::PathBuf::from(&record_dir)
+        // Resolve a concrete file path. Prefer the recording row with a valid file_path; else try replay rows near the event time.
+        let mut file_path: Option<std::path::PathBuf> = record_path_opt.clone().map(std::path::PathBuf::from);
+        if file_path.as_ref().map(|p| p.is_file()).unwrap_or(false) == false {
+            // Try to find a replay near the event time
+            let (rp_opt, _rd_opt): (Option<String>, Option<String>) = {
+                let conn_guard = self.database_plugin().get_connection().await.map_err(|e| crate::types::AppError::ConfigError(e.to_string()))?;
+                let conn_ref = &*conn_guard;
+                // Prefer replay started before event
+                let before: Option<(Option<String>, Option<String>)> = conn_ref
+                    .query_row(
+                        "SELECT file_path, record_directory FROM recorded_videos
+                         WHERE match_id = ? AND video_type = 'replay' AND start_time <= ?
+                         ORDER BY start_time DESC LIMIT 1",
+                        rusqlite::params![match_db_id, event_time.to_rfc3339()],
+                        |row| Ok((row.get(0).ok(), row.get(1).ok())),
+                    )
+                    .ok();
+                if let Some(t) = before { t } else {
+                    conn_ref
+                        .query_row(
+                            "SELECT file_path, record_directory FROM recorded_videos
+                             WHERE match_id = ? AND video_type = 'replay' AND start_time > ?
+                             ORDER BY start_time ASC LIMIT 1",
+                            rusqlite::params![match_db_id, event_time.to_rfc3339()],
+                            |row| Ok((row.get(0).ok(), row.get(1).ok())),
+                        )
+                        .unwrap_or((None, None))
+                }
+            };
+            if let Some(fp) = rp_opt { file_path = Some(std::path::PathBuf::from(fp)); }
+        }
+        let file_path = match file_path {
+            Some(p) if p.is_file() => p,
+            _ => return Err(crate::types::AppError::ConfigError("No recorded video file found for this event".to_string()))
         };
         let start_time = record_start_str_opt
             .and_then(|s| chrono::DateTime::parse_from_rfc3339(&s).ok())
