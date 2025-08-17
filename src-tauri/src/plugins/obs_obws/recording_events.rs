@@ -27,8 +27,11 @@ pub enum RecordingState {
 pub struct RecordingSession {
     pub id: Option<i64>,
     pub match_id: String,
+    pub match_db_id: Option<i64>,
     pub tournament_name: Option<String>,
     pub tournament_day: Option<String>,
+    pub tournament_id: Option<i64>,
+    pub tournament_day_id: Option<i64>,
     pub match_number: Option<String>,
     pub player1_name: Option<String>,
     pub player1_flag: Option<String>,
@@ -297,8 +300,11 @@ impl ObsRecordingEventHandler {
             let session = RecordingSession {
                 id: None,
                 match_id: match_id.clone(),
+                match_db_id: None,
                 tournament_name: None,
                 tournament_day: None,
+                tournament_id: None,
+                tournament_day_id: None,
                 match_number: None,
                 player1_name: None,
                 player1_flag: None,
@@ -686,8 +692,8 @@ impl ObsRecordingEventHandler {
                     // Resolve recorded_video_id for this recording window
                     let rvid: i64 = conn_ref
                         .query_row(
-                            "SELECT id FROM recorded_videos WHERE match_id = (SELECT id FROM pss_matches WHERE match_id = ? ORDER BY created_at DESC LIMIT 1) AND start_time = ?",
-                            rusqlite::params![ mid, start_time.to_rfc3339() ],
+                            "SELECT id FROM recorded_videos WHERE match_id = ? AND start_time = ?",
+                            rusqlite::params![ match_db_id, start_time.to_rfc3339() ],
                             |r| r.get(0),
                         )
                         .unwrap_or_else(|_| conn_ref.last_insert_rowid());
@@ -695,15 +701,8 @@ impl ObsRecordingEventHandler {
                     let end_time = start_time + chrono::Duration::seconds(duration as i64);
                     // Link only important events (K,P,H,TH,TB,R) for this recording window
                     let _ = conn_ref.execute(
-                        "INSERT OR IGNORE INTO recorded_video_events (recorded_video_id, event_id, offset_ms, created_at)
-                         SELECT ?, e.id, CAST((julianday(e.timestamp) - julianday(?)) * 86400000 AS INTEGER), ?
-                         FROM pss_events_v2 e
-                         JOIN pss_event_types t ON t.id = e.event_type_id
-                         WHERE e.match_id = (SELECT id FROM pss_matches WHERE match_id = ? ORDER BY created_at DESC LIMIT 1)
-                           AND e.timestamp >= ? AND e.timestamp <= ?
-                           AND t.event_code IN ('K','P','H','TH','TB','R')
-                         ORDER BY e.timestamp ASC",
-                        rusqlite::params![ rvid, start_time.to_rfc3339(), chrono::Utc::now().to_rfc3339(), mid, start_time.to_rfc3339(), end_time.to_rfc3339() ]
+                        "INSERT OR IGNORE INTO recorded_video_events (recorded_video_id, event_id, offset_ms, created_at)\n                         SELECT ?, e.id, CAST((julianday(e.timestamp) - julianday(?)) * 86400000 AS INTEGER), ?\n                         FROM pss_events_v2 e\n                         JOIN pss_event_types t ON t.id = e.event_type_id\n                         WHERE e.match_id = ?\n                           AND e.timestamp >= ? AND e.timestamp <= ?\n                           AND t.event_code IN ('K','P','H','TH','TB','R')\n                         ORDER BY e.timestamp ASC",
+                        rusqlite::params![ rvid, start_time.to_rfc3339(), chrono::Utc::now().to_rfc3339(), match_db_id, start_time.to_rfc3339(), end_time.to_rfc3339() ]
                     );
                 }
             }
@@ -820,8 +819,8 @@ impl ObsRecordingEventHandler {
             (Some(tn.clone()), Some(td.clone()))
         } else {
             // Determine base tournament name by scanning root when none active
-            let tn: Option<String> = Some(match tournament {
-                Some(t) => t.name,
+            let tn: Option<String> = Some(match &tournament {
+                Some(t) => t.name.clone(),
                 None => {
                     // Scan root for existing "Tournament N" directories
                     let mut max_tournament = 0u32;
@@ -845,8 +844,8 @@ impl ObsRecordingEventHandler {
                 }
             });
             // Determine default day when DB has none
-            let td: Option<String> = Some(match tournament_day {
-                Some(td) => format!("Day {}", td.unwrap().day_number),
+            let td: Option<String> = Some(match &tournament_day {
+                Some(td) => format!("Day {}", td.as_ref().map(|x| x.day_number).unwrap_or(1)),
                 None => {
                     // Compute next Day N under the chosen tournament folder if exists; else Day 1
                     let t_dir = videos_root.join(tn.clone().unwrap());
@@ -961,6 +960,10 @@ impl ObsRecordingEventHandler {
                 session.recording_filename = Some(generated_path.filename);
                 session.tournament_name = generated_path.tournament_name;
                 session.tournament_day = generated_path.tournament_day;
+                session.match_db_id = Some(match_db_id);
+                // Store numeric tournament/day ids when available
+                if let Some(ref t) = tournament { session.tournament_id = t.id; }
+                if let Some(ref td_opt) = tournament_day { session.tournament_day_id = td_opt.as_ref().and_then(|td| td.id); }
                 // Preserve live values if already set; otherwise use resolved/live/db values
                 session.match_number = session.match_number.clone().or(live_match_number);
                 session.player1_name = session.player1_name.clone().or(live_p1_name);
