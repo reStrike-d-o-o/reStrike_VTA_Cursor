@@ -2111,14 +2111,71 @@ pub async fn ivr_backfill_recorded_videos(
         ).ok()
     } else { None };
 
-    // Build candidate query (prefer day filter; do not require match_id to avoid missing rows)
+    // Resolve human-friendly context for path/date matching when a day is provided
+    let (ctx_tournament_name, ctx_day_num, ctx_day_date): (Option<String>, Option<i32>, Option<String>) = if let Some((day_id, tour_id)) = provided_day_and_tournament {
+        let tn: Option<String> = conn.query_row(
+            "SELECT name FROM tournaments WHERE id = ?",
+            rusqlite::params![tour_id],
+            |r| r.get::<_, String>(0)
+        ).ok();
+        let (dn_opt, dd_opt): (Option<i32>, Option<String>) = conn.query_row(
+            "SELECT day_number, date FROM tournament_days WHERE id = ?",
+            rusqlite::params![day_id],
+            |r| Ok((r.get::<_, i32>(0).ok(), r.get::<_, String>(1).ok()))
+        ).unwrap_or((None, None));
+        (tn, dn_opt, dd_opt)
+    } else { (None, None, None) };
+
+    // Compute expected recording directory for this tournament/day to match by prefix
+    let (expected_dir_like_a, expected_dir_like_b): (Option<String>, Option<String>) = if let (Some(ref tn), Some(dn)) = (ctx_tournament_name.as_ref(), ctx_day_num) {
+        use crate::database::operations::ObsRecordingOperations as RecOps;
+        let root = RecOps::get_recording_config(&*conn, "OBS_REC").ok().flatten()
+            .map(|cfg| cfg.recording_root_path)
+            .unwrap_or_else(|| crate::plugins::obs_obws::PathGeneratorConfig::detect_windows_videos_folder().to_string_lossy().to_string());
+        let pb = std::path::PathBuf::from(&root).join(tn).join(format!("Day {}", dn));
+        let p_back = pb.to_string_lossy().to_string();
+        let p_fwd = p_back.replace('\\', "/");
+        (Some(format!("{}%", p_back)), Some(format!("{}%", p_fwd)))
+    } else { (None, None) };
+
+    // Build candidate query: when a day is provided, include any video whose path or start_date matches it,
+    // plus any with NULL tournament/day to repair; optionally narrow by match_id.
     let mut query = String::from(
         "SELECT id, file_path, record_directory, start_time, duration_seconds, match_id, tournament_id, tournament_day_id FROM recorded_videos"
     );
     let mut params_dyn: Vec<rusqlite::types::Value> = Vec::new();
     if let Some(td) = tournament_day_id {
-        query.push_str(" WHERE (tournament_day_id IS NULL OR tournament_day_id = ?)");
-        params_dyn.push(rusqlite::types::Value::from(td));
+        // Build robust path/date matching conditions (exact directory prefix and day date)
+        if expected_dir_like_a.is_some() || expected_dir_like_b.is_some() || ctx_day_date.is_some() {
+            query.push_str(" WHERE (");
+            let mut first = true;
+            if let Some(pat) = expected_dir_like_a.as_ref() {
+                if !first { query.push_str(" OR "); } first = false;
+                query.push_str(" file_path LIKE ? OR record_directory LIKE ? ");
+                params_dyn.push(rusqlite::types::Value::from(pat.clone()));
+                params_dyn.push(rusqlite::types::Value::from(pat.clone()));
+            }
+            if let Some(pat2) = expected_dir_like_b.as_ref() {
+                if !first { query.push_str(" OR "); } first = false;
+                query.push_str(" file_path LIKE ? OR record_directory LIKE ? ");
+                params_dyn.push(rusqlite::types::Value::from(pat2.clone()));
+                params_dyn.push(rusqlite::types::Value::from(pat2.clone()));
+            }
+            if let Some(dd) = ctx_day_date.as_ref() {
+                if !first { query.push_str(" OR "); } first = false;
+                query.push_str(" date(start_time) = date(?) ");
+                params_dyn.push(rusqlite::types::Value::from(dd.clone()));
+            }
+            // Also include any with NULL tournament/day to repair
+            if !first { query.push_str(" OR "); }
+            query.push_str(" tournament_day_id IS NULL OR tournament_id IS NULL ");
+            query.push_str(")");
+        } else {
+            // Fallback: include NULLs
+            query.push_str(" WHERE (tournament_day_id IS NULL OR tournament_id IS NULL)");
+        }
+        // Optional match narrowing
+        if let Some(mid) = match_id { query.push_str(" AND match_id = ?"); params_dyn.push(rusqlite::types::Value::from(mid)); }
     } else if let Some(mid) = match_id {
         query.push_str(" WHERE match_id = ?");
         params_dyn.push(rusqlite::types::Value::from(mid));
