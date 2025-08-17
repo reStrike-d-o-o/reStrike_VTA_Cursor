@@ -3,6 +3,13 @@ import VideoEventPicker from './VideoEventPicker';
 import Button from '../atoms/Button';
 import DriveBrowser from './DriveBrowser';
 
+const ProgressToast: React.FC<{ message: string; onCancel?: () => void }> = ({ message, onCancel }) => (
+	<div className="fixed right-6 bottom-6 z-50 theme-card p-4 shadow-lg flex items-center gap-3">
+		<div className="text-sm text-gray-200">{message}</div>
+		{onCancel && <Button variant="ghost" size="sm" onClick={onCancel}>Cancel</Button>}
+	</div>
+);
+
 const IvrHistoryPanel: React.FC = () => {
 	const [days, setDays] = useState<Array<any>>([]);
 	const [selectedDayId, setSelectedDayId] = useState<number | null>(null);
@@ -17,6 +24,7 @@ const IvrHistoryPanel: React.FC = () => {
 	const [error, setError] = useState<string | null>(null);
 	const [driveOpen, setDriveOpen] = useState<null | 'zip' | 'folder'>(null);
 	const [progressMsg, setProgressMsg] = useState<string | null>(null);
+	const [jobId, setJobId] = useState<string | null>(null);
 
 	useEffect(() => {
 		(async () => {
@@ -63,7 +71,6 @@ const IvrHistoryPanel: React.FC = () => {
 	}, [selectedMatchId]);
 
 	useEffect(() => {
-		// Subscribe to progress events
 		if (!(window as any).__TAURI__?.event) return;
 		const unsubs: Array<Promise<() => void>> = [];
 		unsubs.push((window as any).__TAURI__.event.listen('ivr_zip_progress', (e: any) => setProgressMsg(`Zipping ${e?.payload?.items_done}/${e?.payload?.items_total}: ${e?.payload?.file||''}`)));
@@ -73,6 +80,15 @@ const IvrHistoryPanel: React.FC = () => {
 		unsubs.push((window as any).__TAURI__.event.listen('ivr_index_progress', (_: any) => setProgressMsg('Index complete')));
 		return () => { unsubs.forEach(p => p.then(unsub => unsub()).catch(()=>{})); };
 	}, []);
+
+	const cancelJob = async () => {
+		if (!jobId) return;
+		try {
+			const { invoke } = await import('@tauri-apps/api/core');
+			await invoke('ivr_cancel_job', { jobId: jobId });
+			setProgressMsg('Cancelled');
+		} catch {}
+	};
 
 	const toggleVideoSelection = (id: number) => {
 		setSelectedVideoIds(prev => {
@@ -90,7 +106,6 @@ const IvrHistoryPanel: React.FC = () => {
 			const ids = Array.from(selectedVideoIds);
 			const res: any = await invoke('ivr_delete_recorded_videos', { ids });
 			if (res?.success !== false) {
-				// Refresh list
 				if (selectedDayId != null) {
 					const v: any = await invoke('ivr_list_recorded_videos', { tournament_day_id: selectedDayId, tournamentDayId: selectedDayId, match_id: selectedMatchId ?? undefined, matchId: selectedMatchId ?? undefined });
 					setVideos(Array.isArray(v) ? v : (v?.data ?? []));
@@ -112,7 +127,6 @@ const IvrHistoryPanel: React.FC = () => {
 					<h2 className="text-xl font-semibold text-white">Match history</h2>
 					<p className="text-sm text-gray-400">Review recorded sessions by day, match and event</p>
 				</div>
-				{progressMsg && <div className="text-xs text-blue-300">{progressMsg}</div>}
 			</div>
 
 			{/* Status */}
@@ -287,7 +301,8 @@ const IvrHistoryPanel: React.FC = () => {
 					if (!selectedDayId || !selectedMatchId) return;
 					try {
 						const { invoke } = await import('@tauri-apps/api/core');
-						const res: any = await invoke('ivr_import_recorded_videos', { source: 'drive', path_or_id: file.id, tournament_day_id: selectedDayId, match_id: selectedMatchId });
+						const newJob = `job_${Date.now()}`; setJobId(newJob); setProgressMsg('Starting import…');
+						const res: any = await invoke('ivr_import_recorded_videos', { source: 'drive', path_or_id: file.id, tournament_day_id: selectedDayId, match_id: selectedMatchId, job_id: newJob });
 						if (res?.success === false) alert(res?.error || 'Import failed');
 						else {
 							const v: any = await invoke('ivr_list_recorded_videos', { tournament_day_id: selectedDayId, match_id: selectedMatchId });
@@ -301,17 +316,20 @@ const IvrHistoryPanel: React.FC = () => {
 				isOpen={driveOpen==='folder'}
 				mode='pick-folder'
 				onClose={()=>setDriveOpen(null)}
-				onPick={async (_folder) => {
+				onPick={async (folder) => {
 					setDriveOpen(null);
 					try {
 						const { invoke } = await import('@tauri-apps/api/core');
 						const ids = Array.from(selectedVideoIds);
-						const res: any = await invoke('ivr_upload_recorded_videos', { ids });
+						const newJob = `job_${Date.now()}`; setJobId(newJob); setProgressMsg('Starting upload…');
+						const res: any = await invoke('ivr_upload_recorded_videos', { ids, folder_id: folder.id, job_id: newJob });
 						if (res?.success === false) alert(res?.error || 'Upload failed');
-						else alert('Upload started');
+						else setProgressMsg('Upload complete');
 					} catch (e: any) { alert(typeof e==='string'?e:(e?.message||'Upload failed')); }
 				}}
 			/>
+
+			{progressMsg && <ProgressToast message={progressMsg} onCancel={jobId ? cancelJob : undefined} />}
 		</div>
 	);
 };
