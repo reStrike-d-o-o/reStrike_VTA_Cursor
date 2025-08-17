@@ -2030,3 +2030,110 @@ pub async fn ivr_import_recorded_videos(
     let _ = window.emit("ivr_index_progress", serde_json::json!({"job_id": jid, "phase":"complete","count": imported.len()}));
     Ok(ObsObwsConnectionResponse{ success: true, data: Some(serde_json::json!({"imported": imported, "job_id": jid})), error: None })
 }
+
+/// Backfill recorded_videos with tournament/day and relink important events (K,P,H,TH,TB,R)
+#[tauri::command]
+pub async fn ivr_backfill_recorded_videos(
+    tournament_day_id: Option<i64>,
+    match_id: Option<i64>,
+    app: State<'_, Arc<App>>,
+) -> Result<ObsObwsConnectionResponse, TauriError> {
+    let conn = app.database_plugin().get_connection().await?;
+    let mut updated: i64 = 0;
+    let mut relinked: i64 = 0;
+
+    // Build candidate query
+    let mut query = String::from(
+        "SELECT id, file_path, record_directory, start_time, duration_seconds, match_id, tournament_id, tournament_day_id FROM recorded_videos"
+    );
+    let mut where_parts: Vec<&str> = Vec::new();
+    if tournament_day_id.is_some() || match_id.is_some() {
+        if tournament_day_id.is_some() { where_parts.push(" (tournament_day_id IS NULL OR tournament_day_id = ?) "); }
+        if match_id.is_some() { where_parts.push(" (match_id = ?) "); }
+    } else {
+        where_parts.push(" (tournament_day_id IS NULL OR tournament_id IS NULL) ");
+    }
+    if !where_parts.is_empty() { query.push_str(" WHERE "); query.push_str(&where_parts.join(" AND ")); }
+
+    let mut params_dyn: Vec<rusqlite::types::Value> = Vec::new();
+    if let Some(td) = tournament_day_id { params_dyn.push(rusqlite::types::Value::from(td)); }
+    if let Some(mid) = match_id { params_dyn.push(rusqlite::types::Value::from(mid)); }
+
+    let mut stmt = conn.prepare(&query).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    let rows = stmt.query_map(rusqlite::params_from_iter(params_dyn.iter()), |r| {
+        Ok((
+            r.get::<_, i64>(0)?,
+            r.get::<_, Option<String>>(1)?,
+            r.get::<_, Option<String>>(2)?,
+            r.get::<_, String>(3)?,
+            r.get::<_, Option<i32>>(4)?,
+            r.get::<_, i64>(5)?,
+            r.get::<_, Option<i64>>(6)?,
+            r.get::<_, Option<i64>>(7)?,
+        ))
+    }).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    let candidates = rows.collect::<Result<Vec<_>, _>>().map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+
+    for (rv_id, file_path_opt, record_dir_opt, start_time_str, duration_opt, match_id_db, tid_opt, tday_opt) in candidates.into_iter() {
+        let mut resolved_tid = tid_opt;
+        let mut resolved_day_id = tday_opt;
+
+        if resolved_tid.is_none() || resolved_day_id.is_none() {
+            // Parse from path: .../<Tournament>/Day N/...
+            let path_string = file_path_opt.clone().or(record_dir_opt.clone());
+            if let Some(path_str) = path_string {
+                let pb = std::path::PathBuf::from(&path_str);
+                let comps: Vec<String> = pb.components().map(|c| c.as_os_str().to_string_lossy().to_string()).collect();
+                if let Some(idx) = comps.iter().position(|s| s.to_lowercase().starts_with("day ")) {
+                    if idx > 0 {
+                        let tn = comps.get(idx-1).cloned();
+                        let day_num = comps[idx].split_whitespace().last().and_then(|n| n.parse::<i64>().ok());
+                        if let (Some(tn), Some(dn)) = (tn, day_num) {
+                            let tid = conn.query_row(
+                                "SELECT id FROM tournaments WHERE name = ?",
+                                rusqlite::params![tn],
+                                |r| r.get::<_, i64>(0)
+                            ).ok();
+                            if let Some(tid_val) = tid {
+                                let tdid = conn.query_row(
+                                    "SELECT id FROM tournament_days WHERE tournament_id = ? AND day_number = ?",
+                                    rusqlite::params![tid_val, dn],
+                                    |r| r.get::<_, i64>(0)
+                                ).ok();
+                                if tdid.is_some() { resolved_tid = Some(tid_val); resolved_day_id = tdid; }
+                            }
+                        }
+                    }
+                }
+            }
+            // Fallback: match tournament_day by date(start_time)
+            if resolved_day_id.is_none() {
+                let tdid = conn.query_row(
+                    "SELECT id, tournament_id FROM tournament_days WHERE date(date) = date(?) ORDER BY id DESC LIMIT 1",
+                    rusqlite::params![&start_time_str],
+                    |r| Ok((r.get::<_, i64>(0)?, r.get::<_, i64>(1)?))
+                ).ok();
+                if let Some((day_id, tour_id)) = tdid { resolved_day_id = Some(day_id); resolved_tid = Some(tour_id); }
+            }
+        }
+
+        if let (Some(tid), Some(tday)) = (resolved_tid, resolved_day_id) {
+            let _ = conn.execute(
+                "UPDATE recorded_videos SET tournament_id = ?, tournament_day_id = ? WHERE id = ?",
+                rusqlite::params![tid, tday, rv_id]
+            );
+            updated += 1;
+
+            // Relink important events within video window
+            let start_dt = chrono::DateTime::parse_from_rfc3339(&start_time_str).map(|d| d.with_timezone(&chrono::Utc)).unwrap_or(chrono::Utc::now());
+            let end_dt = start_dt + chrono::Duration::seconds(duration_opt.unwrap_or(4*3600) as i64);
+            let _ = conn.execute(
+                "INSERT OR IGNORE INTO recorded_video_events (recorded_video_id, event_id, offset_ms, created_at)\n                 SELECT ?, e.id, CAST((julianday(e.timestamp) - julianday(?)) * 86400000 AS INTEGER), ?\n                 FROM pss_events_v2 e JOIN pss_event_types t ON t.id = e.event_type_id\n                 WHERE e.match_id = ? AND e.timestamp >= ? AND e.timestamp <= ?\n                   AND t.event_code IN ('K','P','H','TH','TB','R')\n                 ORDER BY e.timestamp ASC",
+                rusqlite::params![ rv_id, start_dt.to_rfc3339(), chrono::Utc::now().to_rfc3339(), match_id_db, start_dt.to_rfc3339(), end_dt.to_rfc3339() ]
+            );
+            relinked += 1;
+        }
+    }
+
+    Ok(ObsObwsConnectionResponse{ success: true, data: Some(serde_json::json!({"updated": updated, "relinked": relinked})), error: None })
+}
