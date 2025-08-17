@@ -262,7 +262,7 @@ const IvrHistoryPanel: React.FC = () => {
 									});
 									setProgressMsg(`Backfilled: ${res?.data?.updated ?? res?.updated ?? 0}, relinked: ${res?.data?.relinked ?? res?.relinked ?? 0}`);
 									if (selectedDayId) {
-										const v: any = await invoke('ivr_list_recorded_videos', { tournament_day_id: selectedDayId, match_id: selectedMatchId ?? undefined });
+										const v: any = await invoke('ivr_list_recorded_videos', { tournament_day_id: selectedDayId, tournamentDayId: selectedDayId, match_id: selectedMatchId ?? undefined, matchId: selectedMatchId ?? undefined });
 										setVideos(Array.isArray(v) ? v : (v?.data ?? []));
 									}
 								} catch (e) {
