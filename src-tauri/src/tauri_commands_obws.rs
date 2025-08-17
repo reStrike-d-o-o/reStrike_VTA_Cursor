@@ -1640,8 +1640,11 @@ pub async fn obs_obws_manual_start_recording(
     let session = crate::plugins::obs_obws::RecordingSession {
         id: None,
         match_id: match_id.clone(),
+        match_db_id: None,
         tournament_name: None,
         tournament_day: None,
+        tournament_id: None,
+        tournament_day_id: None,
         match_number: None,
         player1_name: None,
         player1_flag: None,
