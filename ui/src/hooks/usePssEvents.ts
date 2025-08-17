@@ -117,7 +117,11 @@ export const usePssEvents = () => {
           if (choice === 'continue') {
             await obsObwsCommands.applyPathDecision(cont.tournament, cont.day);
           } else if (choice === 'next') {
-            await obsObwsCommands.applyPathDecision(cont.tournament, 'Day NEXT');
+            // Compute next day number from the suggested continue day (e.g., "Day 3" -> "Day 4")
+            const m = typeof cont?.day === 'string' ? cont.day.match(/Day\s*(\d+)/i) : null;
+            const currentNum = m && m[1] ? parseInt(m[1], 10) : 0;
+            const nextDay = `Day ${currentNum > 0 ? currentNum + 1 : 1}`;
+            await obsObwsCommands.applyPathDecision(cont.tournament, nextDay);
           } else if (choice === 'new') {
             await obsObwsCommands.applyPathDecision(nw.tournament, 'Day 1');
           } else {
