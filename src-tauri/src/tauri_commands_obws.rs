@@ -2051,22 +2051,20 @@ pub async fn ivr_backfill_recorded_videos(
         ).ok()
     } else { None };
 
-    // Build candidate query
+    // Build candidate query (prefer day filter; do not require match_id to avoid missing rows)
     let mut query = String::from(
         "SELECT id, file_path, record_directory, start_time, duration_seconds, match_id, tournament_id, tournament_day_id FROM recorded_videos"
     );
-    let mut where_parts: Vec<&str> = Vec::new();
-    if tournament_day_id.is_some() || match_id.is_some() {
-        if tournament_day_id.is_some() { where_parts.push(" (tournament_day_id IS NULL OR tournament_day_id = ?) "); }
-        if match_id.is_some() { where_parts.push(" (match_id = ?) "); }
-    } else {
-        where_parts.push(" (tournament_day_id IS NULL OR tournament_id IS NULL) ");
-    }
-    if !where_parts.is_empty() { query.push_str(" WHERE "); query.push_str(&where_parts.join(" AND ")); }
-
     let mut params_dyn: Vec<rusqlite::types::Value> = Vec::new();
-    if let Some(td) = tournament_day_id { params_dyn.push(rusqlite::types::Value::from(td)); }
-    if let Some(mid) = match_id { params_dyn.push(rusqlite::types::Value::from(mid)); }
+    if let Some(td) = tournament_day_id {
+        query.push_str(" WHERE (tournament_day_id IS NULL OR tournament_day_id = ?)");
+        params_dyn.push(rusqlite::types::Value::from(td));
+    } else if let Some(mid) = match_id {
+        query.push_str(" WHERE match_id = ?");
+        params_dyn.push(rusqlite::types::Value::from(mid));
+    } else {
+        query.push_str(" WHERE (tournament_day_id IS NULL OR tournament_id IS NULL)");
+    }
 
     let mut stmt = conn.prepare(&query).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
     let rows = stmt.query_map(rusqlite::params_from_iter(params_dyn.iter()), |r| {
