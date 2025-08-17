@@ -131,7 +131,36 @@ impl App {
             obs_obws_manager.clone(),
         ));
         #[cfg(feature = "obs-obws")]
-        log::info!("✅ Recording event handler initialized");
+        {
+            log::info!("✅ Recording event handler initialized");
+            // Load persisted automatic recording config from DB into handler so it works after restart
+            use crate::database::operations::UiSettingsOperations as UIOps;
+            if let Ok(conn) = database_plugin.get_connection().await {
+                let enabled = UIOps::get_ui_setting(&*conn, "obs.auto.enabled").ok().flatten().map(|v| v=="true").unwrap_or(false);
+                let obs_name = UIOps::get_ui_setting(&*conn, "obs.auto.connection").ok().flatten().filter(|s| !s.is_empty()).unwrap_or_else(|| "OBS_REC".to_string());
+                let stop_on_end = UIOps::get_ui_setting(&*conn, "obs.auto.stop_on_match_end").ok().flatten().map(|v| v=="true").unwrap_or(true);
+                let stop_on_winner = UIOps::get_ui_setting(&*conn, "obs.auto.stop_on_winner").ok().flatten().map(|v| v=="true").unwrap_or(true);
+                let stop_delay = UIOps::get_ui_setting(&*conn, "obs.auto.stop_delay_seconds").ok().flatten().and_then(|s| s.parse::<u32>().ok()).unwrap_or(30);
+                let include_rb = UIOps::get_ui_setting(&*conn, "obs.auto.include_replay_buffer").ok().flatten().map(|v| v=="true").unwrap_or(true);
+                let auto_start_rec = UIOps::get_ui_setting(&*conn, "obs.auto.start_recording_on_match_begin").ok().flatten().map(|v| v=="true").unwrap_or(true);
+                let auto_start_rb = UIOps::get_ui_setting(&*conn, "obs.auto.start_replay_on_match_begin").ok().flatten().map(|v| v=="true").unwrap_or(true);
+                let cfg = crate::plugins::obs_obws::AutomaticRecordingConfig {
+                    enabled,
+                    obs_connection_name: Some(obs_name),
+                    auto_stop_on_match_end: stop_on_end,
+                    auto_stop_on_winner: stop_on_winner,
+                    stop_delay_seconds: stop_delay,
+                    include_replay_buffer: include_rb,
+                    auto_start_recording_on_match_begin: auto_start_rec,
+                    auto_start_replay_on_match_begin: auto_start_rb,
+                };
+                if let Err(e) = recording_event_handler.update_config(cfg) {
+                    log::warn!("⚠️ Failed to load automatic recording config into handler: {}", e);
+                } else {
+                    log::info!("✅ Automatic recording config loaded into handler");
+                }
+            }
+        }
         
         let protocol_manager_arc = Arc::new(protocol_manager.clone());
         let database_plugin_arc = Arc::new(database_plugin.clone());
