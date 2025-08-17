@@ -1365,6 +1365,66 @@ pub async fn obs_obws_apply_path_decision(
     log::info!("OBS obws apply path decision called: {} / {}", tournament_name, tournament_day);
 
     let handler = app.recording_event_handler();
+    // Ensure the chosen tournament/day exist in DB and set them active so indexing will capture non-null IDs
+    {
+        use crate::database::operations::TournamentOperations as TOps;
+        use crate::database::models::Tournament;
+        let mut conn = app.database_plugin().get_connection().await?;
+        // Find or create tournament by name
+        let tid_opt: Option<i64> = conn
+            .query_row(
+                "SELECT id FROM tournaments WHERE name = ?",
+                rusqlite::params![&tournament_name],
+                |r| r.get::<_, i64>(0),
+            )
+            .ok();
+        let tid: i64 = if let Some(id) = tid_opt {
+            id
+        } else {
+            // Create a minimal tournament record
+            let t = Tournament::new(tournament_name.clone(), 30, "".to_string(), "".to_string(), None);
+            TOps::create_tournament(&mut *conn, &t)
+                .map_err(|e| TauriError::from(anyhow::anyhow!(format!("create_tournament: {}", e))))?
+        };
+        // Parse day number from string like "Day 3"
+        let day_num: i32 = tournament_day
+            .split_whitespace()
+            .last()
+            .and_then(|s| s.parse::<i32>().ok())
+            .unwrap_or(1);
+        // Ensure the day exists up to day_num
+        let existing: i64 = conn
+            .query_row(
+                "SELECT COUNT(1) FROM tournament_days WHERE tournament_id = ?",
+                rusqlite::params![tid],
+                |r| r.get(0),
+            )
+            .unwrap_or(0);
+        if existing < day_num as i64 {
+            // Create missing days starting today; create_tournament_days appends days sequentially
+            let start_dt = chrono::Utc::now();
+            // Create enough days to reach day_num
+            TOps::create_tournament_days(&mut *conn, tid, start_dt, day_num)
+                .map_err(|e| TauriError::from(anyhow::anyhow!(format!("create_tournament_days: {}", e))))?;
+        }
+        // Lookup the selected day id
+        let day_id: i64 = conn
+            .query_row(
+                "SELECT id FROM tournament_days WHERE tournament_id = ? AND day_number = ?",
+                rusqlite::params![tid, day_num],
+                |r| r.get::<_, i64>(0),
+            )
+            .map_err(|e| TauriError::from(anyhow::anyhow!(format!("resolve day_id: {}", e))))?;
+        // Start the selected day (mark active)
+        TOps::start_tournament_day(&mut *conn, day_id)
+            .map_err(|e| TauriError::from(anyhow::anyhow!(format!("start_tournament_day: {}", e))))?;
+        // Update UDP/tournament context so subsequent events carry these IDs
+        app.udp_plugin()
+            .set_tournament_context(Some(tid), Some(day_id))
+            .await
+            .map_err(|e| TauriError::from(anyhow::anyhow!(format!("set_tournament_context: {}", e))))?;
+    }
+
     match handler.regenerate_path_with_overrides(tournament_name, tournament_day).await {
         Ok(()) => Ok(ObsObwsConnectionResponse {
             success: true,
