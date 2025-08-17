@@ -535,13 +535,13 @@ impl App {
 
     /// Open the recorded video for a given event at the exact event timestamp
     pub async fn open_event_video(&self, event_id: i64) -> AppResult<()> {
-        // Query event (match_id, created_at) without holding connection across await boundaries
+        // Query event (match_id, timestamp) without holding connection across await boundaries
         let (match_db_id, event_time_str) = {
             let conn_guard = self.database_plugin().get_connection().await.map_err(|e| crate::types::AppError::ConfigError(e.to_string()))?;
             let conn_ref = &*conn_guard;
             let row: (i64, String) = conn_ref
                 .query_row(
-                    "SELECT match_id, created_at FROM pss_events_v2 WHERE id = ?",
+                    "SELECT match_id, timestamp FROM pss_events_v2 WHERE id = ?",
                     rusqlite::params![event_id],
                     |row| Ok((row.get(0)?, row.get(1)?)),
                 )
