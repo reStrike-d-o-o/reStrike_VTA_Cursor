@@ -101,9 +101,28 @@ pub async fn ivr_open_event_video(
 /// List tournaments and their days (flattened as day entries)
 #[tauri::command]
 pub async fn ivr_list_tournament_days(app: State<'_, Arc<App>>) -> Result<ObsObwsConnectionResponse, TauriError> {
-    let conn = app.database_plugin().get_connection().await?;
     use crate::database::operations::TournamentOperations as TOps;
-    let tournaments = TOps::get_tournaments(&*conn).unwrap_or_default();
+    use crate::database::models::Tournament;
+    use chrono::Utc;
+
+    // Ensure at least a default tournament/day exists
+    let mut conn = app.database_plugin().get_connection().await?;
+    let mut tournaments = TOps::get_tournaments(&*conn).unwrap_or_default();
+    if tournaments.is_empty() {
+        // Create default Tournament 1 with Day 1 and mark day active
+        let default_t = Tournament::new("Tournament 1".to_string(), 1, "".to_string(), "".to_string(), None);
+        let tid = TOps::create_tournament(&mut *conn, &default_t)
+            .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+        TOps::create_tournament_days(&mut *conn, tid, Utc::now(), 1)
+            .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+        // Make day 1 active
+        if let Ok(days) = TOps::get_tournament_days(&*conn, tid) {
+            if let Some(d) = days.first().and_then(|d| d.id) {
+                let _ = TOps::start_tournament_day(&mut *conn, d);
+            }
+        }
+        tournaments = TOps::get_tournaments(&*conn).unwrap_or_default();
+    }
     let mut days: Vec<serde_json::Value> = Vec::new();
     for t in tournaments {
         let t_id = t.id.unwrap_or_default();
@@ -127,6 +146,7 @@ pub async fn ivr_list_tournament_days(app: State<'_, Arc<App>>) -> Result<ObsObw
 #[tauri::command]
 pub async fn ivr_list_matches_for_day(day_id: i64, app: State<'_, Arc<App>>) -> Result<ObsObwsConnectionResponse, TauriError> {
     let conn = app.database_plugin().get_connection().await?;
+    // Primary: matches with recordings for the given day
     let mut stmt = conn.prepare(
         "SELECT m.id, m.match_id, m.match_number, m.category, m.created_at, m.updated_at
          FROM pss_matches m
@@ -135,7 +155,7 @@ pub async fn ivr_list_matches_for_day(day_id: i64, app: State<'_, Arc<App>>) -> 
          GROUP BY m.id
          ORDER BY m.created_at DESC"
     ).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
-    let rows = stmt.query_map(rusqlite::params![day_id], |row| {
+    let mut rows = stmt.query_map(rusqlite::params![day_id], |row| {
         Ok(serde_json::json!({
             "id": row.get::<_, i64>(0)?,
             "match_id": row.get::<_, String>(1)?,
@@ -147,6 +167,46 @@ pub async fn ivr_list_matches_for_day(day_id: i64, app: State<'_, Arc<App>>) -> 
     }).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?
     .collect::<Result<Vec<_>, _>>()
     .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+
+    // Fallback A: matches linked by tournament_day_id even if no recordings
+    if rows.is_empty() {
+        let mut stmt2 = conn.prepare(
+            "SELECT id, match_id, match_number, category, created_at, updated_at
+             FROM pss_matches WHERE tournament_day_id = ? ORDER BY created_at DESC LIMIT 100"
+        ).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+        rows = stmt2.query_map(rusqlite::params![day_id], |row| {
+            Ok(serde_json::json!({
+                "id": row.get::<_, i64>(0)?,
+                "match_id": row.get::<_, String>(1)?,
+                "match_number": row.get::<_, Option<String>>(2)?,
+                "category": row.get::<_, Option<String>>(3)?,
+                "created_at": row.get::<_, String>(4)?,
+                "updated_at": row.get::<_, String>(5)?,
+            }))
+        }).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    }
+
+    // Fallback B: latest matches overall
+    if rows.is_empty() {
+        let mut stmt3 = conn.prepare(
+            "SELECT id, match_id, match_number, category, created_at, updated_at
+             FROM pss_matches ORDER BY created_at DESC LIMIT 100"
+        ).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+        rows = stmt3.query_map([], |row| {
+            Ok(serde_json::json!({
+                "id": row.get::<_, i64>(0)?,
+                "match_id": row.get::<_, String>(1)?,
+                "match_number": row.get::<_, Option<String>>(2)?,
+                "category": row.get::<_, Option<String>>(3)?,
+                "created_at": row.get::<_, String>(4)?,
+                "updated_at": row.get::<_, String>(5)?,
+            }))
+        }).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    }
     Ok(ObsObwsConnectionResponse{ success: true, data: Some(serde_json::json!(rows)), error: None })
 }
 
