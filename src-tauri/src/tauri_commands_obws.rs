@@ -1888,7 +1888,7 @@ pub async fn ivr_delete_recorded_videos(ids: Vec<i64>, app: State<'_, Arc<App>>)
 
 /// Upload selected recorded videos to Google Drive by zipping them first
 #[tauri::command]
-pub async fn ivr_upload_recorded_videos(ids: Vec<i64>, app: State<'_, Arc<App>>, window: tauri::Window) -> Result<ObsObwsConnectionResponse, TauriError> {
+pub async fn ivr_upload_recorded_videos(ids: Vec<i64>, app: State<'_, Arc<App>>, window: tauri::Window, folder_id: Option<String>) -> Result<ObsObwsConnectionResponse, TauriError> {
     let conn = app.database_plugin().get_connection().await?;
     let mut paths: Vec<String> = Vec::new();
     for id in ids.iter() {
@@ -1924,8 +1924,13 @@ pub async fn ivr_upload_recorded_videos(ids: Vec<i64>, app: State<'_, Arc<App>>,
     }
     let file_name = zip_path.file_name().and_then(|s| s.to_str()).unwrap_or("ivr_videos.zip").to_string();
     let _ = window.emit("ivr_upload_progress", serde_json::json!({"phase":"starting","file": file_name}));
-    let file_id = crate::plugins::drive_plugin().upload_file_streaming(&zip_path, &file_name).await
-        .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    let file_id = if let Some(fid) = folder_id.as_ref() {
+        crate::plugins::drive_plugin().upload_file_streaming_to_folder(&zip_path, &file_name, Some(fid.as_str())).await
+            .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?
+    } else {
+        crate::plugins::drive_plugin().upload_file_streaming(&zip_path, &file_name).await
+            .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?
+    };
     let _ = window.emit("ivr_upload_progress", serde_json::json!({"phase":"complete","file": file_name, "file_id": file_id}));
     Ok(ObsObwsConnectionResponse{ success: true, data: Some(serde_json::json!({"zip_path": zip_path.to_string_lossy().to_string(), "file_id": file_id})), error: None })
 }
