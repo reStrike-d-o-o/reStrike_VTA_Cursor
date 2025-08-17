@@ -63,4 +63,10 @@ Accepted param names in the UI layer are dual-keyed for safety:
 - Styling mirrors Local Backup tables (`theme-card p-6 shadow-lg`, bordered tables with sticky headers, Button atoms).
 - Offsets are computed from `recorded_videos.start_time` vs event `timestamp` (UTC), clamped ≥ 0.
 
+### Second-pass features
+- Bulk event-to-video linking on import and record index: `recorded_video_events` stores offsets for all matching events within window.
+- Folder-targeted Drive uploads: pass `folder_id` to `ivr_upload_recorded_videos`.
+- Progress and cancel: job_id carried through all progress events; cancel with `ivr_cancel_job(job_id)`.
+- DriveBrowser supports breadcrumb navigation, new folder, and choose-here selection via `drive_list_children`, `drive_create_folder`.
+
 

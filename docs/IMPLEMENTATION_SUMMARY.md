@@ -765,3 +765,10 @@
 - Notes
   - All new UI follows atomic components and existing theme styling.
   - core/app.rs warnings cleaned in new changes (no non‑Send captures in new task spawns). 
+
+## IVR History, Drive Integration, and Precise Offsets – Completed
+- DriveBrowser modal with breadcrumb navigation, folder creation (Drive), and choose-here target selection. Uses `drive_list_children`, `drive_create_folder`.
+- Folder‑targeted uploads: `ivr_upload_recorded_videos` accepts `folder_id` and uses folder‑aware resumable upload.
+- Import flow bulk‑links events to recordings: `recorded_video_events(recorded_video_id, event_id, offset_ms)` populated on import and record index.
+- Progress & cancel: backend emits zip/upload/download/extract/index events with `job_id`; UI shows ProgressToast with Cancel wired to `ivr_cancel_job`.
+- UI parity: Match history tables styled like Local Backup; IVR Replay Settings and DriveBrowser match theme. 

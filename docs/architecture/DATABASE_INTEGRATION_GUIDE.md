@@ -13,17 +13,14 @@ This document provides a comprehensive guide to the database structure, models, 
 - **Error Handling**: Custom `AppError` and `DatabaseResult` types
 - **Integration**: Tauri v2 plugin architecture with frontend exposure
 
-### **Current Schema Version**: 15
-- **Migration 1**: Initial schema (PSS events, OBS connections, app config, flag mappings)
-- **Migration 2**: Normalized settings schema (categories, keys, values, history)
-- **Migration 3**: Comprehensive flag management system (253+ IOC flags)
-- **Migration 4**: PSS and UDP subsystem integration with normalization
-- **Migration 5**: Enhanced event validation and recognition system
-- **Migration 6**: Hit level tracking and statistical analysis
-- **Migration 7**: Analytics and performance monitoring tables
-- **Migration 8**: Event validation rules and unknown event collection
-- **Migration 9-14**: System enhancements and optimizations
-- **Migration 15**: ✅ **Security System** - Encrypted configuration storage with SHA256 encryption
+### **Current Schema Version**: 21
+- **Migration 19**: Remove UNIQUE from `pss_matches.match_id`
+- **Migration 20**: `recorded_videos` table for linking videos to matches/events
+- **Migration 21**: `recorded_video_events(recorded_video_id, event_id, offset_ms)` and `file_size`, `checksum` on `recorded_videos`
+
+#### Recording/Replay Tables
+- `recorded_videos`: id, match_id, event_id?, tournament_id?, tournament_day_id?, video_type, file_path?, record_directory?, start_time, duration_seconds?, file_size?, checksum?, created_at
+- `recorded_video_events`: id, recorded_video_id, event_id, offset_ms, created_at (UNIQUE on recorded_video_id+event_id)
 
 ## Performance Optimizations
 
