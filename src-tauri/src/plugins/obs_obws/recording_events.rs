@@ -413,10 +413,9 @@ impl ObsRecordingEventHandler {
             config.include_replay_buffer
         );
 
-        // If we are awaiting user's path decision, do nothing yet
+        // If a path decision prompt was emitted, do not block auto-start; proceed with current/default path
         if *self.awaiting_path_decision.lock().unwrap() {
-            log::info!("⏸️ Waiting for user's path decision before applying OBS settings or starting outputs");
-            return Ok(());
+            log::info!("⏸️ Path decision pending, proceeding with current/default path to avoid blocking recording");
         }
 
         // Resolve connection name: config -> session -> default "OBS_REC"
@@ -870,9 +869,8 @@ impl ObsRecordingEventHandler {
                 payload["continue"]["tournament"], payload["continue"]["day"],
                 payload["new"]["tournament"], payload["new"]["day"],
             );
-            // Mark asked for this session and block auto-start until user decides
+            // Mark asked for this session; do not block auto-start (we'll proceed with defaults)
             if let Ok(mut asked) = asked_flag.lock() { *asked = true; }
-            if let Ok(mut wait_flag) = self.awaiting_path_decision.lock() { *wait_flag = true; }
         }
 
         // Generate path
