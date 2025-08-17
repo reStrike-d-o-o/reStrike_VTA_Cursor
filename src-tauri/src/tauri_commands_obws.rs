@@ -6,7 +6,9 @@ use crate::core::app::App;
 use crate::plugins::obs_obws::ObsConnectionConfig;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use tauri::{State, Error as TauriError};
+use tauri::{State, Error as TauriError, Emitter};
+
+// progress emit helpers
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ObsObwsConnectionRequest {
@@ -1886,7 +1888,7 @@ pub async fn ivr_delete_recorded_videos(ids: Vec<i64>, app: State<'_, Arc<App>>)
 
 /// Upload selected recorded videos to Google Drive by zipping them first
 #[tauri::command]
-pub async fn ivr_upload_recorded_videos(ids: Vec<i64>, app: State<'_, Arc<App>>) -> Result<ObsObwsConnectionResponse, TauriError> {
+pub async fn ivr_upload_recorded_videos(ids: Vec<i64>, app: State<'_, Arc<App>>, window: tauri::Window) -> Result<ObsObwsConnectionResponse, TauriError> {
     let conn = app.database_plugin().get_connection().await?;
     let mut paths: Vec<String> = Vec::new();
     for id in ids.iter() {
@@ -1903,24 +1905,28 @@ pub async fn ivr_upload_recorded_videos(ids: Vec<i64>, app: State<'_, Arc<App>>)
     // Create a zip in temp dir
     let ts = chrono::Utc::now().format("%Y%m%d_%H%M%S");
     let zip_path = std::env::temp_dir().join(format!("ivr_videos_{}.zip", ts));
-    // Create zip using zip crate
     {
         use std::io::Write;
         let file = std::fs::File::create(&zip_path).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
         let mut zip = zip::ZipWriter::new(file);
         let options = zip::write::FileOptions::default().compression_method(zip::CompressionMethod::Deflated);
-        for p in paths.iter() {
+        let total = paths.len() as u64;
+        for (idx, p) in paths.iter().enumerate() {
             let name_in_zip = std::path::Path::new(p).file_name().and_then(|s| s.to_str()).unwrap_or("video.mp4");
             zip.start_file(name_in_zip, options).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
             let bytes = std::fs::read(p).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
             zip.write_all(&bytes).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+            let _ = window.emit("ivr_zip_progress", serde_json::json!({
+                "phase":"zipping","items_done": idx+1, "items_total": total, "file": name_in_zip
+            }));
         }
         zip.finish().map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
     }
-    // Reuse existing Drive upload flow if available
     let file_name = zip_path.file_name().and_then(|s| s.to_str()).unwrap_or("ivr_videos.zip").to_string();
+    let _ = window.emit("ivr_upload_progress", serde_json::json!({"phase":"starting","file": file_name}));
     let file_id = crate::plugins::drive_plugin().upload_file_streaming(&zip_path, &file_name).await
         .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    let _ = window.emit("ivr_upload_progress", serde_json::json!({"phase":"complete","file": file_name, "file_id": file_id}));
     Ok(ObsObwsConnectionResponse{ success: true, data: Some(serde_json::json!({"zip_path": zip_path.to_string_lossy().to_string(), "file_id": file_id})), error: None })
 }
 
@@ -1932,8 +1938,9 @@ pub async fn ivr_import_recorded_videos(
     tournament_day_id: i64,
     match_id: i64,
     app: State<'_, Arc<App>>,
+    window: tauri::Window,
 ) -> Result<ObsObwsConnectionResponse, TauriError> {
-    // Resolve videos root and target directory (TournamentName/Day N)
+    // Resolve videos root and target directory
     let conn = app.database_plugin().get_connection().await?;
     let (tournament_id, day_number): (i64, i32) = conn.query_row(
         "SELECT tournament_id, day_number FROM tournament_days WHERE id = ?",
@@ -1946,7 +1953,6 @@ pub async fn ivr_import_recorded_videos(
         |r| r.get(0)
     ).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
 
-    // Determine videos root from OBS recording config
     let videos_root: std::path::PathBuf = {
         use crate::database::operations::ObsRecordingOperations as RecOps;
         let resolved_conn_name = "OBS_REC".to_string();
@@ -1959,12 +1965,12 @@ pub async fn ivr_import_recorded_videos(
     let target_dir = videos_root.join(&tournament_name).join(format!("Day {}", day_number));
     std::fs::create_dir_all(&target_dir).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
 
-    // Support local or drive sources
+    // Download if Drive
     let zip_path = if source.to_lowercase() == "drive" {
-        // Download from Drive to temp and use that
+        let _ = window.emit("ivr_download_progress", serde_json::json!({"phase":"starting","id": path_or_id}));
         let tmp = std::env::temp_dir().join(format!("ivr_import_{}.zip", chrono::Utc::now().timestamp()));
         match crate::plugins::drive_plugin().download_backup_archive(&path_or_id).await {
-            Ok(_) => tmp, // Assuming plugin writes to a known location; adapt if needed
+            Ok(_) => tmp,
             Err(e) => return Ok(ObsObwsConnectionResponse{ success: false, data: None, error: Some(format!("Failed to download from Drive: {}", e)) })
         }
     } else {
@@ -1973,45 +1979,48 @@ pub async fn ivr_import_recorded_videos(
         p
     };
 
-    // Extract videos
+    // Extract zip
     let file = std::fs::File::open(&zip_path).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
     let mut archive = zip::ZipArchive::new(file).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
     let mut imported: Vec<String> = Vec::new();
-    for i in 0..archive.len() {
+    let total = archive.len();
+    for i in 0..total {
         let mut zf = archive.by_index(i).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
         if zf.is_dir() { continue; }
         let name = zf.name().to_string();
-        // Filter by common video extensions
         let lower = name.to_lowercase();
         if !(lower.ends_with(".mp4") || lower.ends_with(".mkv") || lower.ends_with(".mov") || lower.ends_with(".avi")) { continue; }
         let fname = std::path::Path::new(&name).file_name().and_then(|s| s.to_str()).unwrap_or("video.mp4");
         let out_path = target_dir.join(fname);
-        {
-            let mut out = std::fs::File::create(&out_path).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
-            std::io::copy(&mut zf, &mut out).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
-        }
-        // Determine start_time from file metadata if available
-        let start_time = std::fs::metadata(&out_path).ok().and_then(|md| md.modified().ok()).and_then(|st| {
-            st.duration_since(std::time::UNIX_EPOCH).ok().map(|d| chrono::DateTime::<chrono::Utc>::from(std::time::UNIX_EPOCH + std::time::Duration::new(d.as_secs(), d.subsec_nanos())))
-        }).unwrap_or_else(|| chrono::Utc::now());
+        let mut out = std::fs::File::create(&out_path).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+        std::io::copy(&mut zf, &mut out).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+        imported.push(out_path.to_string_lossy().to_string());
+        let _ = window.emit("ivr_extract_progress", serde_json::json!({"phase":"file","done": imported.len(), "total": total, "file": fname}));
+
+        // Metadata
+        let file_size = std::fs::metadata(&out_path).ok().map(|m| m.len() as i64);
+        let checksum = None::<String>; // optional: compute later
+
+        // Insert into recorded_videos
+        let start_time = chrono::Utc::now();
         let record_directory = target_dir.to_string_lossy().to_string();
         let file_path_str = out_path.to_string_lossy().to_string();
-        // Insert into recorded_videos and link earliest event after start
-        let inserted_id = {
-            conn.execute(
-                "INSERT INTO recorded_videos (match_id, event_id, tournament_id, tournament_day_id, video_type, file_path, record_directory, filename_formatting, start_time, duration_seconds, created_at) VALUES (?, NULL, ?, ?, 'recording', ?, ?, NULL, ?, NULL, ?)",
-                rusqlite::params![ match_id, tournament_id, tournament_day_id, file_path_str, record_directory, start_time.to_rfc3339(), chrono::Utc::now().to_rfc3339() ]
-            ).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
-            conn.last_insert_rowid()
-        };
+        conn.execute(
+            "INSERT INTO recorded_videos (match_id, event_id, tournament_id, tournament_day_id, video_type, file_path, record_directory, filename_formatting, start_time, duration_seconds, file_size, checksum, created_at)
+             VALUES (?, NULL, ?, ?, 'recording', ?, ?, NULL, ?, NULL, ?, ?, ?)",
+            rusqlite::params![ match_id, tournament_id, tournament_day_id, file_path_str, record_directory, start_time.to_rfc3339(), file_size, checksum, chrono::Utc::now().to_rfc3339() ]
+        ).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+        let rvid = conn.last_insert_rowid();
+
+        // Link events within window using nearest event after start_time
         let _ = conn.execute(
-            "UPDATE recorded_videos SET event_id = (
-                SELECT e.id FROM pss_events_v2 e WHERE e.match_id = recorded_videos.match_id AND e.timestamp >= ? ORDER BY e.timestamp ASC LIMIT 1
-            ) WHERE id = ?",
-            rusqlite::params![ start_time.to_rfc3339(), inserted_id ]
+            "INSERT OR IGNORE INTO recorded_video_events (recorded_video_id, event_id, offset_ms, created_at)
+             SELECT ?, e.id, CAST((julianday(e.timestamp) - julianday(?)) * 86400000 AS INTEGER), ?
+             FROM pss_events_v2 e WHERE e.match_id = ? AND e.timestamp >= ? ORDER BY e.timestamp ASC LIMIT 1",
+            rusqlite::params![ rvid, start_time.to_rfc3339(), chrono::Utc::now().to_rfc3339(), match_id, start_time.to_rfc3339() ]
         );
-        imported.push(out_path.to_string_lossy().to_string());
     }
 
+    let _ = window.emit("ivr_index_progress", serde_json::json!({"phase":"complete","count": imported.len()}));
     Ok(ObsObwsConnectionResponse{ success: true, data: Some(serde_json::json!({"imported": imported})), error: None })
 }

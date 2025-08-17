@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import VideoEventPicker from './VideoEventPicker';
 import Button from '../atoms/Button';
+import DriveBrowser from './DriveBrowser';
 
 const IvrHistoryPanel: React.FC = () => {
 	const [days, setDays] = useState<Array<any>>([]);
@@ -14,6 +15,8 @@ const IvrHistoryPanel: React.FC = () => {
 	const [pickerMatchId, setPickerMatchId] = useState<number | null>(null);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const [driveOpen, setDriveOpen] = useState<null | 'zip' | 'folder'>(null);
+	const [progressMsg, setProgressMsg] = useState<string | null>(null);
 
 	useEffect(() => {
 		(async () => {
@@ -59,6 +62,18 @@ const IvrHistoryPanel: React.FC = () => {
 		})();
 	}, [selectedMatchId]);
 
+	useEffect(() => {
+		// Subscribe to progress events
+		if (!(window as any).__TAURI__?.event) return;
+		const unsubs: Array<Promise<() => void>> = [];
+		unsubs.push((window as any).__TAURI__.event.listen('ivr_zip_progress', (e: any) => setProgressMsg(`Zipping ${e?.payload?.items_done}/${e?.payload?.items_total}: ${e?.payload?.file||''}`)));
+		unsubs.push((window as any).__TAURI__.event.listen('ivr_upload_progress', (e: any) => setProgressMsg(e?.payload?.phase==='complete'? 'Upload complete' : 'Starting upload…')));
+		unsubs.push((window as any).__TAURI__.event.listen('ivr_download_progress', (_: any) => setProgressMsg('Downloading…')));
+		unsubs.push((window as any).__TAURI__.event.listen('ivr_extract_progress', (e: any) => setProgressMsg(`Extracting ${e?.payload?.done}/${e?.payload?.total}: ${e?.payload?.file||''}`)));
+		unsubs.push((window as any).__TAURI__.event.listen('ivr_index_progress', (_: any) => setProgressMsg('Index complete')));
+		return () => { unsubs.forEach(p => p.then(unsub => unsub()).catch(()=>{})); };
+	}, []);
+
 	const toggleVideoSelection = (id: number) => {
 		setSelectedVideoIds(prev => {
 			const next = new Set(prev);
@@ -97,6 +112,7 @@ const IvrHistoryPanel: React.FC = () => {
 					<h2 className="text-xl font-semibold text-white">Match history</h2>
 					<p className="text-sm text-gray-400">Review recorded sessions by day, match and event</p>
 				</div>
+				{progressMsg && <div className="text-xs text-blue-300">{progressMsg}</div>}
 			</div>
 
 			{/* Status */}
@@ -214,34 +230,8 @@ const IvrHistoryPanel: React.FC = () => {
 					<h3 className="text-lg font-semibold text-blue-300">Recorded Videos</h3>
 					<div className="flex gap-2">
 						<Button variant="secondary" size="sm" disabled={selectedVideoIds.size===0} onClick={handleDeleteSelected}>Delete</Button>
-						<Button variant="secondary" size="sm" disabled={selectedVideoIds.size===0} onClick={async () => {
-							if (selectedVideoIds.size===0) return;
-							try {
-								const { invoke } = await import('@tauri-apps/api/core');
-								const ids = Array.from(selectedVideoIds);
-								const res: any = await invoke('ivr_upload_recorded_videos', { ids });
-								if (res?.success === false) alert(res?.error || 'Upload failed');
-								else alert(`Upload started. Drive file id: ${res?.data?.file_id ?? 'unknown'}`);
-							} catch (e: any) { alert(typeof e==='string'?e:(e?.message||'Upload failed')); }
-						}}>Upload to Drive</Button>
-						<Button variant="primary" size="sm" disabled={!selectedDayId || !selectedMatchId} onClick={async () => {
-							if (!selectedDayId || !selectedMatchId) return;
-							const mode = window.prompt('Import from: local or drive? (type local/drive)', 'local');
-							if (!mode) return;
-							const key = mode.toLowerCase()==='drive' ? 'Enter Drive file id to import:' : 'Enter local zip file path to import:';
-							const path = window.prompt(key);
-							if (!path) return;
-							try {
-								const { invoke } = await import('@tauri-apps/api/core');
-								const res: any = await invoke('ivr_import_recorded_videos', { source: mode.toLowerCase(), path_or_id: path, pathOrId: path, tournament_day_id: selectedDayId, tournamentDayId: selectedDayId, match_id: selectedMatchId, matchId: selectedMatchId });
-								if (res?.success === false) alert(res?.error || 'Import failed');
-								else {
-									alert('Import completed');
-									const v: any = await invoke('ivr_list_recorded_videos', { tournament_day_id: selectedDayId, tournamentDayId: selectedDayId, match_id: selectedMatchId, matchId: selectedMatchId });
-									setVideos(Array.isArray(v) ? v : (v?.data ?? []));
-								}
-							} catch (e: any) { alert(typeof e==='string'?e:(e?.message||'Import failed')); }
-						}}>Import</Button>
+						<Button variant="secondary" size="sm" disabled={selectedVideoIds.size===0} onClick={() => setDriveOpen('folder')}>Upload to Drive</Button>
+						<Button variant="primary" size="sm" disabled={!selectedDayId || !selectedMatchId} onClick={() => setDriveOpen('zip')}>Import</Button>
 					</div>
 				</div>
 
@@ -286,6 +276,42 @@ const IvrHistoryPanel: React.FC = () => {
 					</table>
 				</div>
 			</div>
+
+			{/* Drive Browser Modals */}
+			<DriveBrowser
+				isOpen={driveOpen==='zip'}
+				mode='pick-zip'
+				onClose={()=>setDriveOpen(null)}
+				onPick={async (file) => {
+					setDriveOpen(null);
+					if (!selectedDayId || !selectedMatchId) return;
+					try {
+						const { invoke } = await import('@tauri-apps/api/core');
+						const res: any = await invoke('ivr_import_recorded_videos', { source: 'drive', path_or_id: file.id, tournament_day_id: selectedDayId, match_id: selectedMatchId });
+						if (res?.success === false) alert(res?.error || 'Import failed');
+						else {
+							const v: any = await invoke('ivr_list_recorded_videos', { tournament_day_id: selectedDayId, match_id: selectedMatchId });
+							setVideos(Array.isArray(v) ? v : (v?.data ?? []));
+						}
+					} catch (e: any) { alert(typeof e==='string'?e:(e?.message||'Import failed')); }
+				}}
+			/>
+
+			<DriveBrowser
+				isOpen={driveOpen==='folder'}
+				mode='pick-folder'
+				onClose={()=>setDriveOpen(null)}
+				onPick={async (_folder) => {
+					setDriveOpen(null);
+					try {
+						const { invoke } = await import('@tauri-apps/api/core');
+						const ids = Array.from(selectedVideoIds);
+						const res: any = await invoke('ivr_upload_recorded_videos', { ids });
+						if (res?.success === false) alert(res?.error || 'Upload failed');
+						else alert('Upload started');
+					} catch (e: any) { alert(typeof e==='string'?e:(e?.message||'Upload failed')); }
+				}}
+			/>
 		</div>
 	);
 };
