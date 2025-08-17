@@ -2042,6 +2042,15 @@ pub async fn ivr_backfill_recorded_videos(
     let mut updated: i64 = 0;
     let mut relinked: i64 = 0;
 
+    // If the caller provided an explicit tournament_day_id, resolve its tournament_id
+    let provided_day_and_tournament: Option<(i64, i64)> = if let Some(td) = tournament_day_id {
+        conn.query_row(
+            "SELECT id, tournament_id FROM tournament_days WHERE id = ?",
+            rusqlite::params![td],
+            |r| Ok((r.get::<_, i64>(0)?, r.get::<_, i64>(1)?))
+        ).ok()
+    } else { None };
+
     // Build candidate query
     let mut query = String::from(
         "SELECT id, file_path, record_directory, start_time, duration_seconds, match_id, tournament_id, tournament_day_id FROM recorded_videos"
@@ -2079,6 +2088,11 @@ pub async fn ivr_backfill_recorded_videos(
         let mut resolved_day_id = tday_opt;
 
         if resolved_tid.is_none() || resolved_day_id.is_none() {
+            // Prefer the explicitly provided Tournament/Day when available
+            if let Some((day_id, tour_id)) = provided_day_and_tournament {
+                resolved_day_id = Some(day_id);
+                resolved_tid = Some(tour_id);
+            } else {
             // Parse from path: .../<Tournament>/Day N/...
             let path_string = file_path_opt.clone().or(record_dir_opt.clone());
             if let Some(path_str) = path_string {
@@ -2114,6 +2128,7 @@ pub async fn ivr_backfill_recorded_videos(
                     |r| Ok((r.get::<_, i64>(0)?, r.get::<_, i64>(1)?))
                 ).ok();
                 if let Some((day_id, tour_id)) = tdid { resolved_day_id = Some(day_id); resolved_tid = Some(tour_id); }
+            }
             }
         }
 
