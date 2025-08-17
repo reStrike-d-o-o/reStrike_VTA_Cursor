@@ -722,6 +722,14 @@ impl UdpServer {
     ) -> AppResult<()> {
         let start_time = Instant::now();
         
+        // Persist only important events for IVR linking (K, P, H, TH, TB, R)
+        // Others (like O/clock/system) are ignored to keep DB clean and UI focused
+        let code = Self::get_event_code(event);
+        let is_important = matches!(code.as_str(), "K" | "P" | "H" | "TH" | "TB" | "R");
+        if !is_important {
+            return Ok(());
+        }
+
         // Get session ID
         let session_id = {
             let session_guard = current_session_id.lock().unwrap();
