@@ -31,15 +31,15 @@ struct StoredToken {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GoogleDriveFile {
-    id: String,
-    name: String,
+    pub id: String,
+    pub name: String,
     #[serde(rename = "mimeType")]
-    mime_type: Option<String>,
-    size: Option<String>,
+    pub mime_type: Option<String>,
+    pub size: Option<String>,
     #[serde(rename = "createdTime")]
-    created_time: String,
+    pub created_time: String,
     #[serde(rename = "modifiedTime")]
-    modified_time: String,
+    pub modified_time: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -93,6 +93,107 @@ impl DrivePlugin {
         let usage = quota["usage"].as_str().and_then(|s| s.parse::<u64>().ok()).unwrap_or(0);
         let usage_in_drive = quota["usageInDrive"].as_str().and_then(|s| s.parse::<u64>().ok()).unwrap_or(0);
         Ok((limit, usage, usage_in_drive))
+    }
+
+    /// Create a folder in Google Drive, optionally under a parent folder
+    pub async fn create_folder(&self, name: &str, parent_id: Option<&str>) -> AppResult<String> {
+        let token = self.get_access_token().await?;
+        let url = format!("{}/files", GOOGLE_DRIVE_API_BASE);
+        let mut metadata = serde_json::json!({
+            "name": name,
+            "mimeType": "application/vnd.google-apps.folder"
+        });
+        if let Some(pid) = parent_id {
+            metadata["parents"] = serde_json::json!([pid]);
+        }
+        let resp = self.http_client
+            .post(&url)
+            .header("Authorization", format!("Bearer {}", token))
+            .header("Content-Type", "application/json")
+            .body(metadata.to_string())
+            .send()
+            .await
+            .map_err(|e| AppError::NetworkError(e.to_string()))?;
+        if !resp.status().is_success() {
+            let status = resp.status();
+            let text = resp.text().await.unwrap_or_default();
+            return Err(AppError::NetworkError(format!("Failed to create folder: {} - {}", status, text)));
+        }
+        let v: serde_json::Value = resp.json().await.map_err(|e| AppError::NetworkError(e.to_string()))?;
+        let id = v["id"].as_str().unwrap_or("").to_string();
+        Ok(id)
+    }
+
+    /// List children for a given parent folder (root if None)
+    pub async fn list_children(&self, parent_id: Option<&str>) -> AppResult<Vec<GoogleDriveFile>> {
+        let token = self.get_access_token().await?;
+        let parent = parent_id.unwrap_or("root");
+        let q = format!("'{}' in parents and trashed = false", parent);
+        let url = format!(
+            "{}/files?q={}&fields=files(id,name,mimeType,size,createdTime,modifiedTime),nextPageToken&pageSize=1000",
+            GOOGLE_DRIVE_API_BASE,
+            urlencoding::encode(&q)
+        );
+        let response = self.http_client
+            .get(&url)
+            .header("Authorization", format!("Bearer {}", token))
+            .send()
+            .await
+            .map_err(|e| AppError::NetworkError(e.to_string()))?;
+        if !response.status().is_success() {
+            let status = response.status();
+            let text = response.text().await.unwrap_or_default();
+            return Err(AppError::NetworkError(format!("Failed to list children: {} - {}", status, text)));
+        }
+        let file_list: GoogleDriveFileList = response.json().await
+            .map_err(|e| AppError::NetworkError(e.to_string()))?;
+        Ok(file_list.files)
+    }
+
+    /// Resumable upload to a specific parent folder (if provided)
+    pub async fn upload_file_streaming_to_folder(&self, file_path: &std::path::Path, file_name: &str, parent_id: Option<&str>) -> AppResult<String> {
+        let token = self.get_access_token().await?;
+        if !file_path.exists() { return Err(AppError::ConfigError(format!("File does not exist: {}", file_path.display()))); }
+        let file_size = std::fs::metadata(file_path).map_err(AppError::IoError)?.len();
+        let mut metadata = serde_json::json!({
+            "name": file_name,
+            "mimeType": "application/zip"
+        });
+        if let Some(pid) = parent_id { metadata["parents"] = serde_json::json!([pid]); }
+        let initiate_url = "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable";
+        let initiate = self.http_client.post(initiate_url)
+            .header("Authorization", format!("Bearer {}", token))
+            .header("Content-Type", "application/json; charset=UTF-8")
+            .header("X-Upload-Content-Type", "application/zip")
+            .header("X-Upload-Content-Length", file_size.to_string())
+            .json(&metadata)
+            .send().await.map_err(|e| AppError::NetworkError(e.to_string()))?;
+        if !initiate.status().is_success() {
+            return Err(AppError::NetworkError(format!("Failed to initiate upload: {}", initiate.status())));
+        }
+        let session_uri = initiate.headers().get("location").or_else(|| initiate.headers().get("Location")).and_then(|v| v.to_str().ok()).ok_or_else(|| AppError::ConfigError("No Location header".to_string()))?.to_string();
+        let mut file = std::fs::File::open(file_path).map_err(AppError::IoError)?;
+        let mut sent: u64 = 0;
+        let chunk = 8 * 1024 * 1024; // 8MB
+        let mut buf = vec![0u8; chunk];
+        while sent < file_size {
+            let to_read = std::cmp::min(chunk as u64, file_size - sent) as usize;
+            let n = std::io::Read::read(&mut file, &mut buf[..to_read]).map_err(AppError::IoError)?;
+            let start = sent;
+            let end = sent + n as u64 - 1;
+            let content_range = format!("bytes {}-{}/{}", start, end, file_size);
+            let resp = self.http_client.put(&session_uri)
+                .header("Content-Length", n)
+                .header("Content-Range", content_range)
+                .body(buf[..n].to_vec())
+                .send().await.map_err(|e| AppError::NetworkError(e.to_string()))?;
+            if resp.status() != 308 && !resp.status().is_success() {
+                return Err(AppError::NetworkError(format!("Upload failed: {}", resp.status())));
+            }
+            sent += n as u64;
+        }
+        // Finalize: GET metadata or rely on last response
+        Ok("uploaded".to_string())
     }
 
     // Enhanced error logging with crash detection

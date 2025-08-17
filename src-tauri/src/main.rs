@@ -555,6 +555,9 @@ async fn main() -> AppResult<()> {
             tauri_commands::drive_delete_backup_archive,
             tauri_commands::drive_get_connection_status,
             tauri_commands::drive_get_quota,
+            tauri_commands::drive_create_folder,
+            tauri_commands::drive_list_children,
+            tauri_commands::drive_upload_zip_to_folder,
             
             // Phase 3: Advanced Caching Commands
             tauri_commands::get_cache_statistics,

@@ -799,7 +799,6 @@ pub async fn obs_get_available_recording_formats(app: State<'_, Arc<App>>) -> Re
         Err(e) => Err(TauriError::from(e)),
     }
 }
-
 #[tauri::command]
 pub async fn obs_get_filename_format_variables(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     match app.obs_plugin().settings().get_filename_format_variables().await {
@@ -1577,7 +1576,6 @@ pub async fn pss_stop_listener(app: State<'_, Arc<App>>) -> Result<serde_json::V
         }))
     }
 }
-
 #[tauri::command]
 pub async fn pss_get_events(app: State<'_, Arc<App>>) -> Result<Vec<serde_json::Value>, TauriError> {
     log::info!("PSS get events called");
@@ -1641,6 +1639,7 @@ pub async fn pss_get_events(app: State<'_, Arc<App>>) -> Result<Vec<serde_json::
                     "time": time,
                     "action": action,
                     "round": 1, // Will be updated by WebSocket plugin
+                    "time": "2:00", // Will be updated by WebSocket plugin
                     "description": format!("Clock: {} {:?}", time, action.as_ref().unwrap_or(&String::new()))
                 })
             }
@@ -2314,6 +2313,29 @@ pub async fn stop_live_data(subsystem: String, app: State<'_, Arc<App>>, window:
 }
 
 #[tauri::command]
+pub async fn drive_create_folder(name: String, parent_id: Option<String>) -> Result<serde_json::Value, TauriError> {
+    let id = crate::plugins::drive_plugin().create_folder(&name, parent_id.as_deref())
+        .await.map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    Ok(serde_json::json!({"success": true, "id": id}))
+}
+
+#[tauri::command]
+pub async fn drive_list_children(parent_id: Option<String>) -> Result<serde_json::Value, TauriError> {
+    let files = crate::plugins::drive_plugin().list_children(parent_id.as_deref()).await
+        .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    Ok(serde_json::json!({"success": true, "files": files}))
+}
+
+#[tauri::command]
+pub async fn drive_upload_zip_to_folder(zip_path: String, folder_id: Option<String>) -> Result<serde_json::Value, TauriError> {
+    let p = std::path::PathBuf::from(&zip_path);
+    if !p.is_file() { return Ok(serde_json::json!({"success": false, "error": "zip not found"})); }
+    let file_name = p.file_name().and_then(|s| s.to_str()).unwrap_or("archive.zip").to_string();
+    let id = crate::plugins::drive_plugin().upload_file_streaming_to_folder(&p, &file_name, folder_id.as_deref())
+        .await.map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    Ok(serde_json::json!({"success": true, "file_id": id}))
+}
+#[tauri::command]
 pub async fn get_live_data(subsystem: String, app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting live data for subsystem: {}", subsystem);
     
@@ -2486,37 +2508,37 @@ pub async fn obs_get_recent_events(app: State<'_, Arc<App>>) -> Result<serde_jso
 // CPU Monitoring Commands
 #[tauri::command]
 pub async fn cpu_get_process_data(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
-    // println!("ðŸš¨ [CPU_CMD] ===== CPU GET PROCESS DATA CALLED =====");
+    // println!("🚨 [CPU_CMD] ===== CPU GET PROCESS DATA CALLED =====");
     log::info!("[CPU_CMD] ===== CPU GET PROCESS DATA CALLED =====");
     
-    // println!("ðŸš¨ [CPU_CMD] Triggering immediate data collection...");
+    // println!("🚨 [CPU_CMD] Triggering immediate data collection...");
     log::info!("[CPU_CMD] Triggering immediate data collection...");
     
     match app.cpu_monitor_plugin().update_cpu_data().await {
         Ok(_) => {
-            // println!("ðŸš¨ [CPU_CMD] Data collection successful");
+            // println!("🚨 [CPU_CMD] Data collection successful");
             log::info!("[CPU_CMD] Data collection successful");
         },
         Err(e) => {
-            // println!("ðŸš¨ [CPU_CMD] Failed to update CPU data: {}", e);
+            // println!("🚨 [CPU_CMD] Failed to update CPU data: {}", e);
             log::error!("[CPU_CMD] Failed to update CPU data: {}", e);
         },
     }
     
     let process_data = app.cpu_monitor_plugin().get_process_cpu_data().await;
     
-    // println!("ðŸš¨ [CPU_CMD] Process data count: {}", process_data.len());
+    // println!("🚨 [CPU_CMD] Process data count: {}", process_data.len());
     log::info!("[CPU_CMD] Process data count: {}", process_data.len());
     
     // Log first few processes for debugging
     for (i, process) in process_data.iter().take(3).enumerate() {
-        // println!("ðŸš¨ [CPU_CMD] Process {}: {} - CPU: {:.1}%, Memory: {:.1}MB", 
+        // println!("🚨 [CPU_CMD] Process {}: {} - CPU: {:.1}%, Memory: {:.1}MB", 
         //     i, process.process_name, process.cpu_percent, process.memory_mb);
         log::debug!("[CPU_CMD] Process {}: {} - CPU: {:.1}%, Memory: {:.1}MB", 
             i, process.process_name, process.cpu_percent, process.memory_mb);
     }
     
-    // println!("ðŸš¨ [CPU_CMD] Returning result with {} processes", process_data.len());
+    // println!("🚨 [CPU_CMD] Returning result with {} processes", process_data.len());
     log::info!("[CPU_CMD] Returning result with {} processes", process_data.len());
     
     Ok(serde_json::json!({
@@ -2527,25 +2549,25 @@ pub async fn cpu_get_process_data(app: State<'_, Arc<App>>) -> Result<serde_json
 
 #[tauri::command]
 pub async fn cpu_get_system_data(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
-    // println!("ðŸš¨ [CPU_CMD] ===== CPU GET SYSTEM DATA CALLED =====");
+    // println!("🚨 [CPU_CMD] ===== CPU GET SYSTEM DATA CALLED =====");
     log::info!("[CPU_CMD] ===== CPU GET SYSTEM DATA CALLED =====");
     
     // Trigger immediate data collection
-    // println!("ðŸš¨ [CPU_CMD] Triggering immediate data collection...");
+    // println!("🚨 [CPU_CMD] Triggering immediate data collection...");
     log::info!("[CPU_CMD] Triggering immediate data collection...");
     match app.cpu_monitor_plugin().update_cpu_data().await {
         Ok(_) => {
-            // println!("ðŸš¨ [CPU_CMD] Data collection successful");
+            // println!("🚨 [CPU_CMD] Data collection successful");
             log::info!("[CPU_CMD] Data collection successful");
         },
         Err(e) => {
-            // println!("ðŸš¨ [CPU_CMD] Failed to update CPU data: {}", e);
+            // println!("🚨 [CPU_CMD] Failed to update CPU data: {}", e);
             log::error!("[CPU_CMD] Failed to update CPU data: {}", e);
         },
     }
     
     let system_data = app.cpu_monitor_plugin().get_system_cpu_data().await;
-    // println!("ðŸš¨ [CPU_CMD] System data available: {}", system_data.is_some());
+    // println!("🚨 [CPU_CMD] System data available: {}", system_data.is_some());
     log::info!("[CPU_CMD] System data available: {}", system_data.is_some());
     
     let result = serde_json::json!({
@@ -2553,7 +2575,7 @@ pub async fn cpu_get_system_data(app: State<'_, Arc<App>>) -> Result<serde_json:
         "system": system_data
     });
     
-    // println!("ðŸš¨ [CPU_CMD] Returning system data");
+    // println!("🚨 [CPU_CMD] Returning system data");
     log::info!("[CPU_CMD] Returning system data");
     Ok(result)
 }
@@ -2898,19 +2920,19 @@ pub async fn get_best_ip_address_for_interface(interface_name: String) -> Result
 // PSS Event Emission Command
 #[tauri::command]
 pub async fn pss_emit_event(event_data: serde_json::Value, window: tauri::Window) -> Result<(), TauriError> {
-    log::info!("ðŸ§ª Emitting PSS event via hybrid approach: {:?}", event_data);
+    log::info!("🧪 Emitting PSS event via hybrid approach: {:?}", event_data);
     
     // HYBRID APPROACH: Real-time emission to both systems
     // 1. Emit to Tauri frontend (React components) - Real-time
     if let Err(e) = window.emit("pss_event", event_data.clone()) {
-        log::error!("âŒ Failed to emit PSS event to Tauri frontend: {}", e);
+        log::error!("❌ Failed to emit PSS event to Tauri frontend: {}", e);
         return Err(TauriError::from(anyhow::anyhow!("{}", e)));
     }
     
     // 2. Broadcast to WebSocket overlays (HTML overlays) - Real-time
     crate::core::app::App::emit_pss_event(event_data);
     
-    log::info!("âœ… Successfully emitted PSS event via hybrid approach");
+    log::info!("✅ Successfully emitted PSS event via hybrid approach");
     Ok(())
 }
 
@@ -2979,6 +3001,7 @@ pub async fn pss_emit_pending_events(window: tauri::Window, app: State<'_, Arc<A
                     "time": time,
                     "action": action,
                     "round": 1, // Will be updated by WebSocket plugin
+                    "time": "2:00", // Will be updated by WebSocket plugin
                     "description": format!("Clock: {} {:?}", time, action.as_ref().unwrap_or(&String::new()))
                 })
             }
@@ -3104,7 +3127,6 @@ pub async fn pss_emit_pending_events(window: tauri::Window, app: State<'_, Arc<A
     
     Ok(())
 } 
-
 // Set up PSS event listener that emits events to frontend
 #[tauri::command]
 pub async fn pss_setup_event_listener(_window: tauri::Window) -> Result<(), TauriError> {
@@ -3112,7 +3134,7 @@ pub async fn pss_setup_event_listener(_window: tauri::Window) -> Result<(), Taur
     
     // Note: This command is no longer needed since we're using the original working mechanism
     // The frontend will fetch events via pss_get_events or they will be emitted via pss_emit_event
-    log::info!("âœ… PSS event listener setup complete (using original mechanism)");
+    log::info!("✅ PSS event listener setup complete (using original mechanism)");
     
     Ok(())
 } 
@@ -3892,7 +3914,6 @@ pub async fn drive_download_backup_archive(file_id: String) -> Result<serde_json
         }))
     }
 }
-
 #[tauri::command]
 pub async fn drive_delete_backup_archive(file_id: String) -> Result<serde_json::Value, TauriError> {
     log::info!("Deleting backup archive from Google Drive: {}", file_id);
@@ -3908,7 +3929,6 @@ pub async fn drive_delete_backup_archive(file_id: String) -> Result<serde_json::
         }))
     }
 }
-
 #[tauri::command]
 pub async fn drive_get_connection_status() -> Result<serde_json::Value, TauriError> {
     log::info!("Checking Google Drive connection status");
@@ -4603,7 +4623,6 @@ pub async fn websocket_broadcast_pss_event(
         "message": "PSS event broadcasted successfully"
     }))
 }
-
 #[tauri::command]
 pub async fn store_pss_event(
     event_data: serde_json::Value,
@@ -4698,7 +4717,6 @@ pub async fn store_pss_event(
 }
 
 // Tournament Management Commands
-
 #[tauri::command]
 pub async fn tournament_create(
     name: String,
@@ -5397,7 +5415,6 @@ pub async fn get_unknown_events(
         }
     }
 }
-
 /// Set tournament context for UDP event tracking
 #[tauri::command]
 pub async fn set_udp_tournament_context(
@@ -5495,7 +5512,6 @@ pub async fn restore_from_archive(
     log::info!("✅ Restored {} events from archive", restored_count);
     Ok(restored_count)
 }
-
 /// Phase 2 Optimization: Clean up old archive data
 #[tauri::command]
 pub async fn cleanup_old_archive_data(
@@ -5980,7 +5996,6 @@ pub async fn simulation_run_automated(
         }))
     }
 }
-
             #[tauri::command]
             pub async fn simulation_get_detailed_status(_app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
                 log::info!("Getting detailed simulation status");
@@ -6234,7 +6249,6 @@ pub async fn simulation_run_automated(
                     }))
                 }
             }
-
 // Helper function to parse scenarios from command output
 fn parse_scenarios_from_output(output: &str) -> Vec<serde_json::Value> {
     let mut scenarios = Vec::new();
@@ -6779,7 +6793,6 @@ pub async fn youtube_delete_playlist(app: State<'_, Arc<App>>, playlist_id: Stri
         Err(e) => { log::error!("Failed to delete playlist: {}", e); Err(TauriError::from(e)) }
     }
 }
-
 /// Create a new scheduled YouTube stream
 #[tauri::command]
 pub async fn youtube_create_scheduled_stream(
@@ -6991,7 +7004,6 @@ pub async fn control_room_get_obs_connections_with_status(
         }
     }
 }
-
 /// Get all Control Room OBS connections with their full details and status
 #[tauri::command]
 pub async fn control_room_get_obs_connections_with_details(
@@ -7569,7 +7581,6 @@ pub async fn control_room_change_password(
         }
     }
 }
-
 #[tauri::command]
 pub async fn control_room_get_audit_log(
     session_id: String,
