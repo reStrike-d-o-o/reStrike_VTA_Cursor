@@ -3,7 +3,6 @@ import Label from '../atoms/Label';
 import Input from '../atoms/Input';
 import Toggle from '../atoms/Toggle';
 import Button from '../atoms/Button';
-import { Card, CardHeader, CardTitle, CardContent } from '../atoms/Card';
 import { obsObwsCommands } from '../../utils/tauriCommandsObws';
 
 const IvrReplaySettings: React.FC = () => {
@@ -61,67 +60,66 @@ const IvrReplaySettings: React.FC = () => {
   useEffect(() => { load(); }, []);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>IVR Replay Settings</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="mpv-path" className="block text-sm font-medium text-gray-300 mb-2">Path to mpv.exe</Label>
-            <div className="flex gap-2">
-              <Input id="mpv-path" type="text" value={mpvPath} onChange={(e) => setMpvPath(e.target.value)} placeholder="C:/Program Files/mpv/mpv.exe" className="flex-1" />
-              <Button
-                onClick={async () => {
-                  try {
-                    if (typeof window !== 'undefined' && (window as any).__TAURI__) {
-                      const { open } = await import('@tauri-apps/plugin-dialog');
-                      const selected = await open({ multiple: false, filters: [{ name: 'Executable', extensions: ['exe'] }] });
-                      if (selected && typeof selected === 'string') setMpvPath(selected);
-                      return;
-                    }
-                    const input = document.createElement('input');
-                    input.type = 'file';
-                    input.accept = '.exe';
-                    input.onchange = () => {
-                      const file = (input.files && input.files[0]) || null;
-                      if (file) setMpvPath(file.name);
-                    };
-                    input.click();
-                  } catch (e) {
-                    setMessage('Failed to open file dialog');
+    <div className="theme-card p-6 shadow-lg">
+      <h3 className="text-lg font-semibold mb-4 text-gray-100">IVR Replay Settings</h3>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <Label htmlFor="mpv-path" className="block text-sm font-medium text-gray-300 mb-2">Path to mpv.exe</Label>
+          <div className="flex gap-2">
+            <Input id="mpv-path" type="text" value={mpvPath} onChange={(e) => setMpvPath(e.target.value)} placeholder="C:/Program Files/mpv/mpv.exe" className="flex-1" />
+            <Button
+              onClick={async () => {
+                try {
+                  // Prefer Tauri dialog plugin when available
+                  if (typeof window !== 'undefined' && (window as any).__TAURI__) {
+                    const { open } = await import('@tauri-apps/plugin-dialog');
+                    const selected = await open({ multiple: false, filters: [{ name: 'Executable', extensions: ['exe'] }] });
+                    if (selected && typeof selected === 'string') setMpvPath(selected);
+                    return;
                   }
-                }}
-                className="bg-gray-600 hover:bg-gray-700"
-              >
-                Browse
-              </Button>
-            </div>
-          </div>
-
-          <div>
-            <Label htmlFor="seconds-end" className="block text-sm font-medium text-gray-300 mb-2">Seconds from end (0–20)</Label>
-            <Input id="seconds-end" type="number" value={secondsFromEnd} onChange={(e) => setSecondsFromEnd(parseInt(e.target.value) || 0)} />
-          </div>
-
-          <div>
-            <Label htmlFor="max-wait" className="block text-sm font-medium text-gray-300 mb-2">Max wait (ms, 50–500)</Label>
-            <Input id="max-wait" type="number" value={maxWaitMs} onChange={(e) => setMaxWaitMs(parseInt(e.target.value) || 500)} />
-          </div>
-
-          <div className="flex items-end">
-            <Toggle label="Auto on PSS Challenge" checked={autoOnChallenge} onChange={(e) => setAutoOnChallenge(e.target.checked)} />
+                  // Fallback: hidden file input in web
+                  const input = document.createElement('input');
+                  input.type = 'file';
+                  input.accept = '.exe';
+                  input.onchange = () => {
+                    const file = (input.files && input.files[0]) || null;
+                    if (file) setMpvPath(file.name);
+                  };
+                  input.click();
+                } catch (e) {
+                  setMessage('Failed to open file dialog');
+                }
+              }}
+              className="bg-gray-600 hover:bg-gray-700"
+            >
+              Browse
+            </Button>
           </div>
         </div>
 
-        <div className="flex gap-3 mt-4">
-          <Button onClick={load} disabled={loading} className="bg-gray-600 hover:bg-gray-700">{loading ? 'Loading...' : 'Load'}</Button>
-          <Button onClick={save} disabled={saving} className="bg-blue-600 hover:bg-blue-700">{saving ? 'Saving...' : 'Save'}</Button>
+        <div>
+          <Label htmlFor="seconds-end" className="block text-sm font-medium text-gray-300 mb-2">Seconds from end (0–20)</Label>
+          <Input id="seconds-end" type="number" value={secondsFromEnd} onChange={(e) => setSecondsFromEnd(parseInt(e.target.value) || 0)} />
         </div>
 
-        {message && <div className="text-sm text-gray-300 mt-2">{message}</div>}
-      </CardContent>
-    </Card>
+        <div>
+          <Label htmlFor="max-wait" className="block text-sm font-medium text-gray-300 mb-2">Max wait (ms, 50–500)</Label>
+          <Input id="max-wait" type="number" value={maxWaitMs} onChange={(e) => setMaxWaitMs(parseInt(e.target.value) || 500)} />
+        </div>
+
+        <div className="flex items-end">
+          <Toggle label="Auto on PSS Challenge" checked={autoOnChallenge} onChange={(e) => setAutoOnChallenge(e.target.checked)} />
+        </div>
+      </div>
+
+      <div className="flex gap-3 mt-4">
+        <Button onClick={load} disabled={loading} className="bg-gray-600 hover:bg-gray-700">{loading ? 'Loading...' : 'Load'}</Button>
+        <Button onClick={save} disabled={saving} className="bg-blue-600 hover:bg-blue-700">{saving ? 'Saving...' : 'Save'}</Button>
+      </div>
+
+      {message && <div className="text-sm text-gray-300 mt-2">{message}</div>}
+    </div>
   );
 };
 

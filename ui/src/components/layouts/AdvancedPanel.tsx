@@ -77,6 +77,8 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
   const [obsTab, setObsTab] = useState('websocket');
   // OVR horizontal drawer state
   const [ovrTab, setOvrTab] = useState('integration');
+  // IVR horizontal drawer state
+  const [ivrTab, setIvrTab] = useState('ivr-playback');
   
   const drawer = DRAWERS.find(d => d.key === activeDrawer);
 
@@ -171,9 +173,7 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
                 label: 'IVR playback settings',
                 icon: <LottieIcon animationData={watcherAnimation} size={32} />,
                 content: (
-                  <div className="theme-card p-6 text-gray-200 shadow-lg accent-ivr">
-                    <IvrReplaySettings />
-                  </div>
+                  <IvrReplaySettings />
                 )
               },
               {
@@ -185,8 +185,8 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
                 )
               }
             ]}
-            activeTab={'ivr-playback'}
-            onTabChange={() => {}}
+            activeTab={ivrTab}
+            onTabChange={setIvrTab}
           />
         )}
         {drawer?.key === 'ai' && (
