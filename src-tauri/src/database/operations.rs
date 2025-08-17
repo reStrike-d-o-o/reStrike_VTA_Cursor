@@ -1278,7 +1278,7 @@ impl TournamentOperations {
             ));
         }
 
-        let tournament_id = conn.execute(
+        conn.execute(
             "INSERT INTO tournaments (name, duration_days, city, country, country_code, logo_path, status, start_date, end_date, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             params![
                 tournament.name,
@@ -1294,8 +1294,8 @@ impl TournamentOperations {
                 tournament.updated_at.to_rfc3339(),
             ]
         )?;
-        
-        Ok(tournament_id as i64)
+        // Return the actual inserted row id, not affected rows count
+        Ok(conn.last_insert_rowid())
     }
     
     /// Get all tournaments
