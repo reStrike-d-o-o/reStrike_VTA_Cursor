@@ -722,14 +722,7 @@ impl UdpServer {
     ) -> AppResult<()> {
         let start_time = Instant::now();
         
-        // Persist only important events for IVR linking (K, P, H, TH, TB, R)
-        // Others (like O/clock/system) are ignored to keep DB clean and UI focused
-        let code = Self::get_event_code(event);
-        let is_important = matches!(code.as_str(), "K" | "P" | "H" | "TH" | "TB" | "R");
-        if !is_important {
-            // Still broadcast to overlays, but skip DB persistence
-            return Ok(());
-        }
+        // Do not filter persistence: keep all events (including Clock) so time/round can be reconstructed accurately.
 
         // Get session ID
         let session_id = {
@@ -812,7 +805,21 @@ impl UdpServer {
                 // Rename the current row's match_id string to the effective identifier for readability
                 if let Ok(mut conn_guard) = database.get_connection().await {
                     let conn = &mut *conn_guard;
-                    let _ = crate::database::operations::PssUdpOperations::rename_pss_match_id(conn, db_match_id, &effective_match_id);
+                    // Try transactional rename; compute fallback flag so the transaction borrow ends before fallback
+                    let need_fallback = match conn.transaction() {
+                        Ok(tx) => {
+                            let _ = tx.execute(
+                                "UPDATE pss_matches SET match_id = ?, updated_at = ? WHERE id = ?",
+                                rusqlite::params![ &effective_match_id, Utc::now().to_rfc3339(), db_match_id ],
+                            );
+                            let _ = tx.commit();
+                            false
+                        }
+                        Err(_) => true,
+                    };
+                    if need_fallback {
+                        let _ = crate::database::operations::PssUdpOperations::rename_pss_match_id(conn, db_match_id, &effective_match_id);
+                    }
                 }
 
                 // Update match metadata
