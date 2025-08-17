@@ -678,27 +678,11 @@ impl ObsRecordingEventHandler {
             }
         };
 
-        // Determine tournament/day context from DB but DEMOTE if folders are missing on disk
-        let mut tournament = TournamentOperations::get_active_tournament(&*conn)?;
-        let mut tournament_day = if let Some(ref t) = tournament {
+        // Determine tournament/day from DB and always use them; ensure folders exist instead of demoting
+        let tournament = TournamentOperations::get_active_tournament(&*conn)?;
+        let tournament_day = if let Some(ref t) = tournament {
             TournamentOperations::get_active_tournament_day(&*conn, t.id.unwrap()).ok()
         } else { None };
-        // If the active tournament/day don't exist on disk under videos_root, ignore them
-        if let Some(ref t) = tournament {
-            let t_dir = videos_root.join(&t.name);
-            if !t_dir.is_dir() {
-                tournament = None;
-                tournament_day = None;
-            } else {
-                let day_num_opt = tournament_day
-                    .as_ref()
-                    .and_then(|inner| inner.as_ref().map(|td| td.day_number));
-                if let Some(day_num) = day_num_opt {
-                    let day_dir = t_dir.join(format!("Day {}", day_num));
-                    if !day_dir.is_dir() { tournament_day = None; }
-                }
-            }
-        }
 
         // Get match details (support both raw db IDs and mch:<number> keys)
         let matches = PssUdpOperations::get_pss_matches(&*conn, Some(200))?;

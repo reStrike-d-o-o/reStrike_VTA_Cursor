@@ -185,24 +185,7 @@ pub async fn ivr_list_matches_for_day(day_id: i64, app: State<'_, Arc<App>>) -> 
     .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
 
     // Fallback A: matches linked by tournament_day_id even if no recordings
-    if rows.is_empty() {
-        let mut stmt2 = conn.prepare(
-            "SELECT id, match_id, match_number, category, created_at, updated_at
-             FROM pss_matches WHERE tournament_day_id = ? ORDER BY created_at DESC LIMIT 100"
-        ).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
-        rows = stmt2.query_map(rusqlite::params![day_id], |row| {
-            Ok(serde_json::json!({
-                "id": row.get::<_, i64>(0)?,
-                "match_id": row.get::<_, String>(1)?,
-                "match_number": row.get::<_, Option<String>>(2)?,
-                "category": row.get::<_, Option<String>>(3)?,
-                "created_at": row.get::<_, String>(4)?,
-                "updated_at": row.get::<_, String>(5)?,
-            }))
-        }).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
-    }
+    // (removed) Fallback A that queried a non-existent pss_matches.tournament_day_id column
 
     // Fallback B: latest matches overall
     if rows.is_empty() {
