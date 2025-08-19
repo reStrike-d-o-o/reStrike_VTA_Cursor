@@ -1,7 +1,7 @@
 {
   "app": {
     "version": "0.1.0",
-    "last_save": "2025-08-15T15:57:34.004015600+00:00",
+    "last_save": "2025-08-18T19:48:55.654094200+00:00",
     "startup": {
       "auto_start_udp": false,
       "auto_connect_obs": false,
@@ -58,7 +58,7 @@
   "udp": {
     "listener": {
       "port": 8888,
-      "bind_address": "192.168.8.140",
+      "bind_address": "192.168.0.109",
       "enabled": true,
       "buffer_size": 8192,
       "timeout_seconds": 30,
@@ -106,10 +106,10 @@
       "include_subsystem": true
     },
     "subsystems": {
-      "obs": {
-        "name": "obs",
+      "udp": {
+        "name": "udp",
         "level": "info",
-        "enabled": false,
+        "enabled": true,
         "custom_file": null
       },
       "pss": {
@@ -118,10 +118,10 @@
         "enabled": true,
         "custom_file": null
       },
-      "udp": {
-        "name": "udp",
+      "obs": {
+        "name": "obs",
         "level": "info",
-        "enabled": true,
+        "enabled": false,
         "custom_file": null
       }
     },

@@ -1,4 +1,36 @@
-# OBS WebSocket Migration: Implementation Steps
+# OBS WebSocket Migration: Implementation (Completed)
+
+The legacy OBS plugin has been fully replaced with the obws-based implementation. This document now reflects the final state and key differences.
+
+## Summary
+
+- Legacy module `src-tauri/src/plugins/obs/` has been removed.
+- All OBS interactions now use `plugins/obs_obws` (`ObsManager` and friends).
+- Tauri commands route exclusively through `tauri_commands_obws.rs` and obws-backed helpers in `tauri_commands.rs`.
+- `core/app.rs` no longer contains or exposes `ObsPluginManager`.
+- Control Room commands have been migrated to obws where supported or safely stubbed pending obws feature parity.
+
+## Key Differences vs Legacy
+
+- Status shape uses `ObsStatus` (recording_status, streaming_status, replay_buffer_status, virtual_camera_status, scenes, stats).
+- Bulk operations iterate obws connections (connect, disconnect, start/stop streaming, set scenes).
+- Audio mute/unmute is currently stubbed pending obws per-source support.
+
+## Cleanup Completed
+
+- Removed all `#[allow(dead_code)]` markers and unused imports.
+- Deleted legacy files under `plugins/obs/`.
+- `plugins/mod.rs` initializes/shuts down `obs_obws` only.
+
+## Next Steps
+
+- Implement per-source audio controls with obws when available.
+- Expand scene/source controls (visibility, transforms) with obws types.
+- Keep docs aligned with `plugins/obs_obws/types.rs`.
+
+---
+
+## Appendix: Original Phases (for reference)
 
 ## Phase 1: Foundation Setup
 

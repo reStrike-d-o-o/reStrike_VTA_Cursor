@@ -976,43 +976,114 @@ pub async fn obs_obws_get_replay_buffer_status(
 /// Get recording path settings using obws
 #[tauri::command]
 pub async fn obs_obws_get_recording_path_settings(
-    _connection_name: Option<String>,
-    _app: State<'_, Arc<App>>,
+    connection_name: Option<String>,
+    app: State<'_, Arc<App>>,
 ) -> Result<ObsObwsConnectionResponse, TauriError> {
     log::info!("OBS obws get recording path settings called");
     
-    // For now, return a placeholder since obws doesn't have direct path configuration
-    // This will be implemented using custom requests in the future
-    Ok(ObsObwsConnectionResponse {
-        success: true,
-        data: Some(serde_json::json!({
-            "recording_path": "C:/Users/Damjan/Videos",
-            "recording_format": "mp4",
-            "filename_pattern": "{matchNumber}_{player1}_{player2}_{date}",
-            "message": "Recording path settings retrieved (placeholder)"
-        })),
-        error: None,
-    })
+    let directory_result = app.obs_obws_plugin().get_record_directory(connection_name.as_deref()).await;
+    let formatting_result = app.obs_obws_plugin().get_filename_formatting(connection_name.as_deref()).await;
+
+    match (directory_result, formatting_result) {
+        (Ok(dir), Ok(pattern)) => Ok(ObsObwsConnectionResponse {
+            success: true,
+            data: Some(serde_json::json!({
+                "recording_path": dir,
+                "filename_pattern": pattern
+            })),
+            error: None,
+        }),
+        (dir_res, fmt_res) => {
+            let err_msg = format!(
+                "Failed to get recording settings: dir={:?}, pattern={:?}",
+                dir_res.err().map(|e| e.to_string()),
+                fmt_res.err().map(|e| e.to_string())
+            );
+            Ok(ObsObwsConnectionResponse { success: false, data: None, error: Some(err_msg) })
+        }
+    }
 }
 
 /// Set recording path using obws
 #[tauri::command]
 pub async fn obs_obws_set_recording_path(
     path: String,
-    _connection_name: Option<String>,
-    _app: State<'_, Arc<App>>,
+    connection_name: Option<String>,
+    app: State<'_, Arc<App>>,
 ) -> Result<ObsObwsConnectionResponse, TauriError> {
     log::info!("OBS obws set recording path called: {}", path);
-    
-    // For now, return a placeholder since obws doesn't have direct path configuration
-    // This will be implemented using custom requests in the future
+    match app.obs_obws_plugin().set_record_directory(&path, connection_name.as_deref()).await {
+        Ok(_) => Ok(ObsObwsConnectionResponse {
+            success: true,
+            data: Some(serde_json::json!({ "recording_path": path })),
+            error: None,
+        }),
+        Err(e) => Ok(ObsObwsConnectionResponse { success: false, data: None, error: Some(e.to_string()) }),
+    }
+}
+
+/// Set recording filename formatting using obws
+#[tauri::command]
+pub async fn obs_obws_set_recording_filename(
+    pattern: String,
+    connection_name: Option<String>,
+    app: State<'_, Arc<App>>,
+) -> Result<ObsObwsConnectionResponse, TauriError> {
+    log::info!("OBS obws set recording filename called: {}", pattern);
+    match app.obs_obws_plugin().set_filename_formatting(&pattern, connection_name.as_deref()).await {
+        Ok(_) => Ok(ObsObwsConnectionResponse {
+            success: true,
+            data: Some(serde_json::json!({
+                "filename_pattern": pattern,
+                "message": "Filename formatting set successfully"
+            })),
+            error: None,
+        }),
+        Err(e) => Ok(ObsObwsConnectionResponse {
+            success: false,
+            data: None,
+            error: Some(e.to_string()),
+        }),
+    }
+}
+
+// ============================================================================
+// Scene Items (Sources) Commands
+// ============================================================================
+
+/// List sources (scene items) for a scene using obws. Placeholder implementation until client support is added.
+#[tauri::command]
+pub async fn obs_obws_get_sources(
+    scene_name: String,
+    _app: State<'_, Arc<App>>,
+) -> Result<ObsObwsConnectionResponse, TauriError> {
+    log::info!("OBS obws get sources called for scene: {}", scene_name);
     Ok(ObsObwsConnectionResponse {
         success: true,
         data: Some(serde_json::json!({
-            "recording_path": path,
-            "message": "Recording path set successfully (placeholder)"
+            "scene_name": scene_name,
+            "sources": []
         })),
         error: None,
+    })
+}
+
+/// Set source visibility in a scene using obws. Placeholder implementation until client support is added.
+#[tauri::command]
+pub async fn obs_obws_set_source_visibility(
+    scene_name: String,
+    source_name: String,
+    visible: bool,
+    _app: State<'_, Arc<App>>,
+) -> Result<ObsObwsConnectionResponse, TauriError> {
+    log::info!(
+        "OBS obws set source visibility called: scene={}, source={}, visible={}",
+        scene_name, source_name, visible
+    );
+    Ok(ObsObwsConnectionResponse {
+        success: false,
+        data: None,
+        error: Some("Source visibility not implemented in obws integration yet".to_string()),
     })
 }
 

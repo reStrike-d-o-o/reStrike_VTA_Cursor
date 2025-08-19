@@ -18,7 +18,7 @@ The reStrike VTA backend is built with Rust and Tauri v2, providing a native Win
 - **Framework**: Tauri v2 for native Windows integration
 - **Async Runtime**: Tokio for asynchronous operations
 - **Database**: SQLite with rusqlite + sqlx (hybrid approach for thread safety)
-- **OBS Integration**: obws crate for OBS WebSocket v5 (migration in progress)
+- **OBS Integration**: obws crate for OBS WebSocket v5 (migration completed)
 - **WebSocket**: tokio-tungstenite for custom WebSocket needs
 - **Serialization**: Serde for JSON handling
 - **Logging**: Structured logging with file rotation
@@ -46,7 +46,7 @@ src-tauri/
 │   │   └── mod.rs           # Logging module
 │   ├── plugins/             # Plugin modules
 │   │   ├── mod.rs           # Plugin module registration
-│   │   ├── obs/             # Legacy OBS WebSocket integration (custom implementation)
+│   │   ├── obs/             # Legacy OBS WebSocket integration (removed)
 │   │   │   ├── mod.rs       # OBS module registration
 │   │   │   ├── types.rs     # Shared types and data structures
 │   │   │   ├── manager.rs   # Plugin coordination
@@ -251,10 +251,7 @@ The OBS plugin system has been successfully modularized to improve maintainabili
 - **Configuration Persistence**: Secure database storage of connection configurations
 
 #### **Audio Control Integration**
-- **Mute/Unmute Functionality**: Audio source control for STR instances via existing OBS API
-- **Source Discovery**: Audio source enumeration for connected STR instances
-- **Bulk Operations**: Multi-STR audio control operations
-- **API Reuse**: Leverages existing OBS streaming plugin audio control methods
+- ⚠️ With obws migration: per-source mute/unmute is currently not implemented; the backend stubs return success with empty results until obws-level source controls are added. UI remains in place for future wiring.
 
 #### **Bulk Operations**
 - **Multi-STR Scene Changes**: Change scenes across all connected STR instances
@@ -299,21 +296,12 @@ The OBS plugin system has been successfully modularized to improve maintainabili
 - **`control_room_connections`**: STR connection configurations with metadata
 - **`control_room_audit`**: Security audit log with comprehensive event tracking
 
-### OBS WebSocket Integration Migration 🔄 **IN PROGRESS**
+### OBS WebSocket Integration Migration ✅ **COMPLETED**
 
-#### **Current Implementation (Legacy)**
-- **Custom WebSocket Implementation**: 800+ lines of custom WebSocket code using `tokio-tungstenite`
-- **Manual JSON Handling**: Custom JSON serialization/deserialization for OBS WebSocket v5
-- **Complex Connection Management**: Manual WebSocket lifecycle management with potential race conditions
-- **Authentication Complexity**: Manual OBS WebSocket v5 authentication implementation
-- **Error Handling**: Inconsistent error propagation and handling
-
-#### **Target Implementation (obws Crate)**
-- **Professional Library**: Migration to `obws` crate (v0.14.0) - mature, well-maintained Rust library
-- **Type-Safe API**: Strongly typed requests and responses with compile-time guarantees
-- **Built-in Features**: Automatic authentication, connection pooling, and error handling
-- **Performance**: Optimized WebSocket handling and connection management
-- **Maintenance**: Active development and community support
+#### **Final Implementation (obws Crate)**
+- All OBS functionality is provided via `plugins/obs_obws`.
+- Tauri commands call obws-backed handlers only.
+- Control Room: connect/disconnect, set scene, start/stop streaming supported; audio mute/unmute currently stubbed.
 
 #### **Migration Benefits**
 - **Reduced Complexity**: Eliminate 800+ lines of custom WebSocket code
@@ -322,7 +310,7 @@ The OBS plugin system has been successfully modularized to improve maintainabili
 - **Future-Proof**: Ongoing community support and updates
 - **Performance**: Optimized WebSocket handling and connection pooling
 
-#### **Migration Strategy**
+#### **Migration Strategy (Archived)**
 - **Phase 1**: Add obws dependency and create new plugin structure
 - **Phase 2**: Implement core client and manager with obws
 - **Phase 3**: Update Tauri commands to use new API

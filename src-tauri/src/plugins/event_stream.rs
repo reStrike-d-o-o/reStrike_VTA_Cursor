@@ -333,7 +333,6 @@ impl EventStreamProcessor {
     }
 
     /// Update athlete statistics
-    #[allow(dead_code)]
     async fn update_athlete_statistics(
         cache: &Arc<EventCache>,
         athlete_id: i64,

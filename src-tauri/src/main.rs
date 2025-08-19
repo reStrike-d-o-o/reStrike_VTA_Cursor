@@ -70,21 +70,8 @@ async fn main() -> AppResult<()> {
             tauri_commands::obs_disconnect,
             tauri_commands::obs_remove_connection,
             tauri_commands::obs_get_obs_version,
-            tauri_commands::obs_get_profiles,
-            tauri_commands::obs_get_current_profile,
-            tauri_commands::obs_set_current_profile,
-            tauri_commands::obs_get_studio_mode,
-            tauri_commands::obs_set_studio_mode,
-            tauri_commands::obs_get_sources,
-            tauri_commands::obs_set_source_visibility,
-            tauri_commands::obs_get_recording_settings,
-            tauri_commands::obs_set_recording_settings,
-            tauri_commands::obs_get_streaming_settings,
-            tauri_commands::obs_set_streaming_settings,
-            tauri_commands::obs_get_streaming_accounts,
-            tauri_commands::obs_get_streaming_channels,
-            tauri_commands::obs_set_streaming_account,
-            tauri_commands::obs_get_streaming_events,
+            
+            
             
             // Control Room Commands - Using new async implementation
             tauri_commands::control_room_authenticate_async,
@@ -112,37 +99,69 @@ async fn main() -> AppResult<()> {
             tauri_commands::control_room_get_audio_sources,
             tauri_commands::control_room_get_scenes,
             
-            // YouTube Streaming Management Commands
+            // YouTube Streaming Management Commands (feature-gated)
+            #[cfg(feature = "youtube")]
             tauri_commands::obs_get_youtube_accounts,
+            #[cfg(feature = "youtube")]
             tauri_commands::obs_get_youtube_channels,
+            #[cfg(feature = "youtube")]
             tauri_commands::obs_get_youtube_stream_key,
+            #[cfg(feature = "youtube")]
             tauri_commands::obs_set_youtube_streaming_config,
+            #[cfg(feature = "youtube")]
             tauri_commands::obs_get_youtube_categories,
+            #[cfg(feature = "youtube")]
             tauri_commands::obs_get_youtube_privacy_options,
+            #[cfg(feature = "youtube")]
             tauri_commands::obs_get_youtube_latency_options,
+            #[cfg(feature = "youtube")]
             tauri_commands::obs_get_youtube_server_urls,
+            #[cfg(feature = "youtube")]
             tauri_commands::obs_regenerate_youtube_stream_key,
+            #[cfg(feature = "youtube")]
             tauri_commands::obs_get_youtube_streaming_analytics,
+            #[cfg(feature = "youtube")]
             tauri_commands::obs_get_youtube_streaming_schedule,
+            #[cfg(feature = "youtube")]
             tauri_commands::obs_create_youtube_streaming_schedule,
             
-            // Other Streaming Destinations Commands
-            tauri_commands::obs_get_available_streaming_services,
-            tauri_commands::obs_get_twitch_config,
-            tauri_commands::obs_get_facebook_config,
-            tauri_commands::obs_get_custom_rtmp_config,
-            tauri_commands::obs_set_custom_rtmp_config,
-            tauri_commands::obs_get_streaming_auth_status,
-            tauri_commands::obs_authenticate_streaming_service,
-            tauri_commands::obs_refresh_streaming_auth,
+            // YouTube API commands (feature-gated)
+            #[cfg(feature = "youtube")]
+            tauri_commands::youtube_get_auth_url,
+            #[cfg(feature = "youtube")]
+            tauri_commands::youtube_authenticate,
+            #[cfg(feature = "youtube")]
+            tauri_commands::youtube_create_playlist,
+            #[cfg(feature = "youtube")]
+            tauri_commands::youtube_get_playlists,
+            #[cfg(feature = "youtube")]
+            tauri_commands::youtube_add_video_to_playlist,
+            #[cfg(feature = "youtube")]
+            tauri_commands::youtube_get_playlist_videos,
+            #[cfg(feature = "youtube")]
+            tauri_commands::youtube_update_playlist,
+            #[cfg(feature = "youtube")]
+            tauri_commands::youtube_delete_playlist,
+            #[cfg(feature = "youtube")]
+            tauri_commands::youtube_create_scheduled_stream,
+            #[cfg(feature = "youtube")]
+            tauri_commands::youtube_get_live_streams,
+            #[cfg(feature = "youtube")]
+            tauri_commands::youtube_get_scheduled_streams,
+            #[cfg(feature = "youtube")]
+            tauri_commands::youtube_get_completed_streams,
+            #[cfg(feature = "youtube")]
+            tauri_commands::youtube_end_stream,
+            #[cfg(feature = "youtube")]
+            tauri_commands::youtube_get_channel_info,
+            #[cfg(feature = "youtube")]
+            tauri_commands::youtube_get_video_analytics,
+            #[cfg(feature = "youtube")]
+            tauri_commands::youtube_initialize,
             
-            tauri_commands::obs_get_performance_metrics,
-        tauri_commands::obs_start_monitoring,
-        tauri_commands::obs_stop_monitoring,
-            tauri_commands::obs_add_event_filter,
-            tauri_commands::obs_get_event_filters,
-            tauri_commands::obs_add_event_route,
-            tauri_commands::obs_get_event_routes,
+            // Other Streaming Destinations Commands (removed)
+            
+            
             tauri_commands::obs_command,
             
             // OBS obws commands - New obws-based implementation
@@ -275,36 +294,34 @@ async fn main() -> AppResult<()> {
             tauri_commands::control_room_get_scenes,
             
             // YouTube Streaming Management Commands
+            #[cfg(feature = "youtube")]
             tauri_commands::obs_get_youtube_accounts,
+            #[cfg(feature = "youtube")]
             tauri_commands::obs_get_youtube_channels,
+            #[cfg(feature = "youtube")]
             tauri_commands::obs_get_youtube_stream_key,
+            #[cfg(feature = "youtube")]
             tauri_commands::obs_set_youtube_streaming_config,
+            #[cfg(feature = "youtube")]
             tauri_commands::obs_get_youtube_categories,
+            #[cfg(feature = "youtube")]
             tauri_commands::obs_get_youtube_privacy_options,
+            #[cfg(feature = "youtube")]
             tauri_commands::obs_get_youtube_latency_options,
+            #[cfg(feature = "youtube")]
             tauri_commands::obs_get_youtube_server_urls,
+            #[cfg(feature = "youtube")]
             tauri_commands::obs_regenerate_youtube_stream_key,
+            #[cfg(feature = "youtube")]
             tauri_commands::obs_get_youtube_streaming_analytics,
+            #[cfg(feature = "youtube")]
             tauri_commands::obs_get_youtube_streaming_schedule,
+            #[cfg(feature = "youtube")]
             tauri_commands::obs_create_youtube_streaming_schedule,
             
-            // Other Streaming Destinations Commands
-            tauri_commands::obs_get_available_streaming_services,
-            tauri_commands::obs_get_twitch_config,
-            tauri_commands::obs_get_facebook_config,
-            tauri_commands::obs_get_custom_rtmp_config,
-            tauri_commands::obs_set_custom_rtmp_config,
-            tauri_commands::obs_get_streaming_auth_status,
-            tauri_commands::obs_authenticate_streaming_service,
-            tauri_commands::obs_refresh_streaming_auth,
+            // Other Streaming Destinations Commands (removed)
             
-            tauri_commands::obs_get_performance_metrics,
-        tauri_commands::obs_start_monitoring,
-        tauri_commands::obs_stop_monitoring,
-            tauri_commands::obs_add_event_filter,
-            tauri_commands::obs_get_event_filters,
-            tauri_commands::obs_add_event_route,
-            tauri_commands::obs_get_event_routes,
+            
             tauri_commands::obs_command,
             tauri_commands::obs_connect_to_connection,
             tauri_commands::obs_get_connection_status,
@@ -313,57 +330,16 @@ async fn main() -> AppResult<()> {
             tauri_commands::obs_setup_status_listener,
             tauri_commands::cpu_setup_stats_listener,
             
-            // Recording Path and Filename Commands
+            // Recording Path and Filename Commands (obws-backed where applicable)
             tauri_commands::obs_get_recording_path_settings,
             tauri_commands::obs_set_recording_path,
             tauri_commands::obs_set_recording_filename,
-            tauri_commands::obs_set_recording_format,
-            tauri_commands::obs_get_available_recording_formats,
-            tauri_commands::obs_get_filename_format_variables,
-            tauri_commands::obs_get_default_recording_settings,
             
-            // Replay Buffer Settings Commands
-            tauri_commands::obs_get_replay_buffer_settings,
-            tauri_commands::obs_set_replay_buffer_settings,
-            tauri_commands::obs_set_replay_buffer_duration,
-            tauri_commands::obs_set_replay_buffer_path,
-            tauri_commands::obs_set_replay_buffer_filename,
-            tauri_commands::obs_get_default_replay_buffer_settings,
+            // Replay Buffer Settings Commands (legacy removed)
             
-            // Advanced Replay Buffer Commands
-            tauri_commands::obs_get_detailed_replay_buffer_status,
-            tauri_commands::obs_get_replay_buffer_duration,
-            tauri_commands::obs_set_replay_buffer_duration_advanced,
-            tauri_commands::obs_get_replay_buffer_path_advanced,
-            tauri_commands::obs_set_replay_buffer_path_advanced,
-            tauri_commands::obs_get_replay_buffer_filename_advanced,
-            tauri_commands::obs_set_replay_buffer_filename_advanced,
-            tauri_commands::obs_get_replay_buffer_format,
-            tauri_commands::obs_set_replay_buffer_format,
-            tauri_commands::obs_get_replay_buffer_quality,
-            tauri_commands::obs_set_replay_buffer_quality,
-            tauri_commands::obs_get_replay_buffer_bitrate,
-            tauri_commands::obs_set_replay_buffer_bitrate,
-            tauri_commands::obs_get_replay_buffer_keyframe_interval,
-            tauri_commands::obs_set_replay_buffer_keyframe_interval,
-            tauri_commands::obs_get_replay_buffer_rate_control,
-            tauri_commands::obs_set_replay_buffer_rate_control,
-            tauri_commands::obs_get_replay_buffer_preset,
-            tauri_commands::obs_set_replay_buffer_preset,
-            tauri_commands::obs_get_replay_buffer_profile,
-            tauri_commands::obs_set_replay_buffer_profile,
-            tauri_commands::obs_get_replay_buffer_tune,
-            tauri_commands::obs_set_replay_buffer_tune,
-            tauri_commands::obs_get_all_replay_buffer_settings,
-            tauri_commands::obs_set_all_replay_buffer_settings,
+            // Advanced Replay Buffer Commands (legacy removed)
             
-            // Replay Buffer Options Commands
-            tauri_commands::obs_get_available_replay_buffer_formats,
-            tauri_commands::obs_get_available_replay_buffer_qualities,
-            tauri_commands::obs_get_available_replay_buffer_rate_controls,
-            tauri_commands::obs_get_available_replay_buffer_presets,
-            tauri_commands::obs_get_available_replay_buffer_profiles,
-            tauri_commands::obs_get_available_replay_buffer_tunes,
+            // Replay Buffer Options Commands (legacy removed)
             
             // WebSocket commands for HTML overlays
             tauri_commands::websocket_get_status,

@@ -15,10 +15,11 @@ pub mod plugin_protocol_manager;
 // Old plugin_obs removed - using modular obs system
 pub mod load_balancer;
 pub mod advanced_analytics;
-pub mod obs; // Add modular OBS plugins
+// Legacy modular OBS plugin removed in favor of obws
 #[cfg(feature = "obs-obws")]
 pub mod obs_obws; // Add new obws-based OBS plugin
-pub mod youtube_api; // Add YouTube API integration
+#[cfg(feature = "youtube")]
+pub mod youtube_api; // YouTube API integration (feature-gated)
 
 // Add placeholder modules for missing imports
 pub mod performance_monitor {
@@ -149,8 +150,9 @@ pub use plugin_protocol_manager::ProtocolManager; // Fixed: was ProtocolManagerP
 pub use load_balancer::{EventDistributor, LoadBalancer, LoadBalancerConfig, LoadDistributionStrategy, ServerHealth, ServerStatistics, DistributorStatistics, UdpServerInstance};
 pub use advanced_analytics::{AdvancedAnalytics, AnalyticsConfig, TournamentAnalytics, PerformanceAnalytics, AthleteAnalytics, MatchAnalytics, AnalyticsSnapshot, AthletePerformance, SystemPerformance, EventProcessingPerformance, DatabasePerformance, CachePerformance, NetworkPerformance, MatchPerformance, PerformancePoint, MatchPerformancePoint};
 // Re-export modular OBS plugins
-pub use obs::{ObsPluginManager, ObsCorePlugin, ObsRecordingPlugin, ObsStreamingPlugin, ObsScenesPlugin, ObsSettingsPlugin, ObsEventsPlugin, ObsStatusPlugin};
-// Re-export YouTube API plugin
+// Legacy modular OBS plugin re-exports removed
+// Re-export YouTube API plugin conditionally
+#[cfg(feature = "youtube")]
 pub use youtube_api::{YouTubeApiPlugin, YouTubeApiClient, YouTubeApiConfig, YouTubePlaylist, YouTubeStream, YouTubeVideo};
 
 // Re-export drive plugin function
@@ -177,8 +179,9 @@ pub async fn init() -> Result<(), Box<dyn std::error::Error>> {
     plugin_license::init()?;       // License management
     plugin_cpu_monitor::init()?;   // CPU monitoring
     plugin_protocol_manager::init()?; // Protocol management
-    // Old OBS plugin removed - using modular system
-    obs::init()?;                  // Initialize modular OBS plugin system
+    // Initialize OBS WebSocket plugin (obws)
+    #[cfg(feature = "obs-obws")]
+    obs_obws::init()?;
     // YouTube API plugin will be initialized when needed (requires OAuth setup)
     
     println!("✅ All plugins initialized successfully");
@@ -190,7 +193,10 @@ pub async fn shutdown() -> Result<(), Box<dyn std::error::Error>> {
     log::info!("🔧 Shutting down all plugins...");
     
     // Shutdown plugins in reverse order
-    obs::shutdown().await?;        // Shutdown modular OBS plugin system
+    #[cfg(feature = "obs-obws")]
+    // Shutdown OBS WebSocket plugin (obws)
+    #[cfg(feature = "obs-obws")]
+    obs_obws::shutdown().await?;
     // Note: Individual plugin shutdown methods may not exist yet
     // plugin_obs::shutdown()?;       // Shutdown old OBS plugin
     // plugin_protocol_manager::shutdown()?;
