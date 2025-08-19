@@ -1,8 +1,10 @@
 //! Main application class and lifecycle management
 
 use crate::types::{AppResult, AppState, AppView};
-use crate::plugins::{PlaybackPlugin, UdpPlugin, StorePlugin, LicensePlugin, CpuMonitorPlugin, ProtocolManager, DatabasePlugin, WebSocketPlugin, TournamentPlugin, EventCache, EventStreamProcessor, EventDistributor, AdvancedAnalytics, YouTubeApiPlugin};
-use crate::plugins::obs::ObsPluginManager; // Use new modular OBS plugin system
+use crate::plugins::{PlaybackPlugin, UdpPlugin, StorePlugin, LicensePlugin, CpuMonitorPlugin, ProtocolManager, DatabasePlugin, WebSocketPlugin, TournamentPlugin, EventCache, EventStreamProcessor, EventDistributor, AdvancedAnalytics};
+#[cfg(feature = "youtube")]
+use crate::plugins::YouTubeApiPlugin;
+// Legacy ObsPluginManager removed
 #[cfg(feature = "obs-obws")]
 use crate::plugins::obs_obws::manager::ObsManager as ObsObwsManager; // Use new obws-based OBS manager
 #[cfg(feature = "obs-obws")]
@@ -25,11 +27,12 @@ static TAURI_APP_HANDLE: std::sync::OnceLock<tauri::AppHandle> = std::sync::Once
 pub struct App {
     state: Arc<RwLock<AppState>>,
     config_manager: ConfigManager,
-    obs_plugin_manager: Arc<ObsPluginManager>, // Use new modular OBS plugin manager
+    // legacy obs_plugin_manager removed
     #[cfg(feature = "obs-obws")]
-    obs_obws_manager: Arc<ObsObwsManager>, // Use new obws-based OBS manager
+    obs_obws_manager: Arc<ObsObwsManager>,
     #[cfg(feature = "obs-obws")]
     recording_event_handler: Arc<ObsRecordingEventHandler>, // Recording event handler for PSS integration
+    #[cfg(feature = "youtube")]
     youtube_api_plugin: Arc<Mutex<YouTubeApiPlugin>>, // YouTube API integration
     playback_plugin: PlaybackPlugin,
     udp_plugin: UdpPlugin,
@@ -70,7 +73,6 @@ impl App {
         log::info!("✅ Configuration manager initialized");
         
         // Create event channels for plugins
-        let (_obs_event_tx, _obs_event_rx) = tokio::sync::mpsc::unbounded_channel::<crate::plugins::obs::types::ObsEvent>();
         let (playback_event_tx, _playback_event_rx) = tokio::sync::mpsc::unbounded_channel();
         let (udp_event_tx, udp_event_rx) = tokio::sync::mpsc::unbounded_channel();
         
@@ -83,9 +85,7 @@ impl App {
             .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to initialize logging: {}", e)))?));
         
         // Initialize plugins
-        let obs_plugin_manager = Arc::new(ObsPluginManager::new()
-            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to create OBS plugin manager: {}", e)))?);
-        log::info!("✅ OBS plugin manager initialized");
+        // legacy OBS plugin manager removed
         
         #[cfg(feature = "obs-obws")]
         let obs_obws_manager = Arc::new(ObsObwsManager::new());
@@ -96,7 +96,9 @@ impl App {
         #[cfg(feature = "obs-obws")]
         let (recording_event_tx, _recording_event_rx) = tokio::sync::mpsc::unbounded_channel::<crate::plugins::obs_obws::RecordingEvent>();
         
+        #[cfg(feature = "youtube")]
         let youtube_api_plugin = Arc::new(Mutex::new(YouTubeApiPlugin::new()));
+        #[cfg(feature = "youtube")]
         log::info!("✅ YouTube API plugin initialized");
         
         let playback_plugin = PlaybackPlugin::new(crate::plugins::plugin_playback::PlaybackConfig::default(), playback_event_tx);
@@ -195,26 +197,31 @@ impl App {
         
         // Note: UDP event handler will be started in start() method when UDP server starts
         
-        // Load OBS connections from config manager
+        // Load OBS connections from config manager (obws)
         let config_connections = config_manager.get_obs_connections().await;
-        
-        // Load connections into the modular OBS plugin system
-        if let Err(e) = obs_plugin_manager.load_connections_from_config(config_connections.clone()).await {
-            log::warn!("⚠️ Failed to load OBS connections into plugin system: {}", e);
-        } else {
-            log::info!("✅ OBS connections loaded into modular plugin system");
+        #[cfg(feature = "obs-obws")]
+        {
+            for cfg in &config_connections {
+                let _ = obs_obws_manager.add_connection(crate::plugins::obs_obws::types::ObsConnectionConfig {
+                    name: cfg.name.clone(),
+                    host: cfg.host.clone(),
+                    port: cfg.port as u16,
+                    password: cfg.password.clone(),
+                    timeout_seconds: 30,
+                }).await;
+            }
+            log::info!("✅ OBS obws connections configured ({} connections)", config_connections.len());
         }
-        
-        log::info!("✅ OBS connections configuration loaded ({} connections)", config_connections.len());
         
         Ok(Self {
             state,
             config_manager,
-            obs_plugin_manager,
+            // legacy obs_plugin_manager removed,
             #[cfg(feature = "obs-obws")]
             obs_obws_manager,
             #[cfg(feature = "obs-obws")]
             recording_event_handler,
+            #[cfg(feature = "youtube")]
             youtube_api_plugin,
             playback_plugin,
             udp_plugin,
@@ -319,10 +326,7 @@ impl App {
         Ok(())
     }
     
-    /// Get OBS plugin reference
-    pub fn obs_plugin(&self) -> &Arc<ObsPluginManager> {
-        &self.obs_plugin_manager
-    }
+    // Legacy obs_plugin accessor fully removed
     
     #[cfg(feature = "obs-obws")]
     pub fn obs_obws_plugin(&self) -> &Arc<ObsObwsManager> {
@@ -334,6 +338,7 @@ impl App {
         &self.recording_event_handler
     }
     
+    #[cfg(feature = "youtube")]
     pub fn youtube_api_plugin(&self) -> &Arc<Mutex<YouTubeApiPlugin>> {
         &self.youtube_api_plugin
     }
@@ -702,8 +707,11 @@ impl App {
 
     /// Get the default connection name for OBS operations
     pub async fn get_default_connection_name(&self) -> AppResult<String> {
-        // Try to get the first available connection name
-        let connection_names = self.obs_plugin().get_connection_names().await;
+        // Try to get the first available obws connection name
+        #[cfg(feature = "obs-obws")]
+        let connection_names = self.obs_obws_manager.get_connection_names().await;
+        #[cfg(not(feature = "obs-obws"))]
+        let connection_names: Vec<String> = Vec::new();
         
         if connection_names.is_empty() {
             // If no connections exist, return a default name

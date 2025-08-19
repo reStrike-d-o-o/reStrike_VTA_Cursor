@@ -2,7 +2,17 @@
 
 ## Latest Implementations (2025-08-14)
 
-### OBS Recording Integration – Disk-First Flow + Modal Gating ✅ **LATEST COMPLETION**
+### OBS Integration Migration to obws ✅ **LATEST COMPLETION**
+**Status**: COMPLETED (latest)
+
+**Summary**:
+- Legacy `plugins/obs` removed. All OBS functionality now via `plugins/obs_obws`.
+- Tauri commands use obws-backed endpoints exclusively; Control Room uses obws for connect/disconnect, list/status, set scene, start/stop streaming. Audio mute/unmute currently stubbed.
+- `core/app.rs` no longer contains `ObsPluginManager`; default connection names resolved from `obs_obws_manager`.
+
+---
+
+### OBS Recording Integration – Disk-First Flow + Modal Gating ✅
 **Status**: COMPLETED (latest)
 
 **Key Features**:
