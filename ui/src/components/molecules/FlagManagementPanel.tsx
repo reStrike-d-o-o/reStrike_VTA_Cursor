@@ -362,8 +362,8 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
               className="hidden"
               id="flag-upload"
               disabled={isLoading}
-              aria-label="Choose flag image file"
-              title="Choose flag image file"
+              aria-label={"Choose flag image file"}
+              title={"Choose flag image file"}
             />
             <Button
               size="sm"

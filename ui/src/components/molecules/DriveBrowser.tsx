@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import Modal from '../atoms/Modal';
 import Button from '../atoms/Button';
 import Input from '../atoms/Input';
+import { useI18n } from '../../i18n/index';
 
 interface DriveItem { id: string; name: string; mimeType?: string; size?: string; createdTime?: string; modifiedTime?: string; }
 
@@ -21,6 +22,7 @@ const DriveBrowser: React.FC<DriveBrowserProps> = ({ isOpen, mode, onClose, onPi
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<'name' | 'modified'>('modified');
   const [breadcrumbs, setBreadcrumbs] = useState<{ id: string | null; name: string }[]>([{ id: null, name: 'My Drive' }]);
+  const { t } = useI18n();
 
   const currentFolderId = breadcrumbs[breadcrumbs.length - 1]?.id;
 
@@ -59,17 +61,17 @@ const DriveBrowser: React.FC<DriveBrowserProps> = ({ isOpen, mode, onClose, onPi
   };
 
   const createFolder = async () => {
-    const name = window.prompt('Folder name');
+    const name = window.prompt(t('drive.folder_name', 'Folder name'));
     if (!name) return;
     try {
       const { invoke } = await import('@tauri-apps/api/core');
       await invoke('drive_create_folder', { name, parentId: currentFolderId || null });
       await loadChildren();
-    } catch (e: any) { alert(typeof e==='string'?e:(e?.message||'Failed to create folder')); }
+    } catch (e: any) { alert(typeof e==='string'?e:(e?.message||t('drive.err_create_folder', 'Failed to create folder'))); }
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={mode==='pick-zip' ? 'Choose ZIP from Drive' : 'Choose Drive folder'}>
+    <Modal isOpen={isOpen} onClose={onClose} title={mode==='pick-zip' ? t('drive.choose_zip', 'Choose ZIP from Drive') : t('drive.choose_folder', 'Choose Drive folder')}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2 text-sm text-gray-300">
           {breadcrumbs.map((b, idx) => (
@@ -80,26 +82,26 @@ const DriveBrowser: React.FC<DriveBrowserProps> = ({ isOpen, mode, onClose, onPi
           ))}
         </div>
         <div className="flex items-center gap-2">
-          <Input placeholder="Search…" value={query} onChange={(e) => setQuery(e.target.value)} className="w-56" />
-          <select aria-label="Sort" className="bg-gray-800 text-gray-200 px-3 py-2 rounded" value={sort} onChange={(e)=>setSort(e.target.value as any)}>
-            <option value="modified">Modified</option>
-            <option value="name">Name</option>
+          <Input placeholder={t('common.search', 'Search…')} value={query} onChange={(e) => setQuery(e.target.value)} className="w-56" />
+          <select aria-label={t('common.sort', 'Sort')} className="bg-gray-800 text-gray-200 px-3 py-2 rounded" value={sort} onChange={(e)=>setSort(e.target.value as any)}>
+            <option value="modified">{t('drive.modified', 'Modified')}</option>
+            <option value="name">{t('drive.name', 'Name')}</option>
           </select>
-          {mode==='pick-folder' && <Button variant="secondary" size="sm" onClick={createFolder}>New Folder</Button>}
-          {mode==='pick-folder' && <Button variant="primary" size="sm" onClick={()=>onPick({ id: currentFolderId || 'root', name: breadcrumbs[breadcrumbs.length-1].name })}>Choose here</Button>}
+          {mode==='pick-folder' && <Button variant="secondary" size="sm" onClick={createFolder}>{t('drive.new_folder', 'New Folder')}</Button>}
+          {mode==='pick-folder' && <Button variant="primary" size="sm" onClick={()=>onPick({ id: currentFolderId || 'root', name: breadcrumbs[breadcrumbs.length-1].name })}>{t('drive.choose_here', 'Choose here')}</Button>}
         </div>
       </div>
-      {loading && <div className="text-xs text-gray-400">Loading…</div>}
+      {loading && <div className="text-xs text-gray-400">{t('common.loading', 'Loading…')}</div>}
       {error && <div className="text-xs text-red-400 mb-2">{error}</div>}
       <div className="max-h-[50vh] overflow-auto border border-gray-700 rounded">
         <table className="min-w-full text-left text-sm text-gray-200">
           <thead className="theme-surface-2 sticky top-0 z-10">
             <tr>
-              <th className="px-3 py-2 font-semibold">Name</th>
-              <th className="px-3 py-2 font-semibold">Type</th>
-              <th className="px-3 py-2 font-semibold">Modified</th>
-              <th className="px-3 py-2 font-semibold">Size</th>
-              <th className="px-3 py-2 font-semibold">Action</th>
+              <th className="px-3 py-2 font-semibold">{t('drive.col.name', 'Name')}</th>
+              <th className="px-3 py-2 font-semibold">{t('drive.col.type', 'Type')}</th>
+              <th className="px-3 py-2 font-semibold">{t('drive.col.modified', 'Modified')}</th>
+              <th className="px-3 py-2 font-semibold">{t('drive.col.size', 'Size')}</th>
+              <th className="px-3 py-2 font-semibold">{t('drive.col.action', 'Action')}</th>
             </tr>
           </thead>
           <tbody>
@@ -111,9 +113,9 @@ const DriveBrowser: React.FC<DriveBrowserProps> = ({ isOpen, mode, onClose, onPi
                 <td className="px-3 py-2 whitespace-nowrap">{i.size || ''}</td>
                 <td className="px-3 py-2 whitespace-nowrap flex gap-2">
                   {i.mimeType?.includes('folder') ? (
-                    <Button variant="ghost" size="sm" onClick={()=>enterFolder(i)}>Open</Button>
+                    <Button variant="ghost" size="sm" onClick={()=>enterFolder(i)}>{t('common.open', 'Open')}</Button>
                   ) : (
-                    <Button variant="ghost" size="sm" onClick={()=>onPick(i)}>Select</Button>
+                    <Button variant="ghost" size="sm" onClick={()=>onPick(i)}>{t('common.select', 'Select')}</Button>
                   )}
                 </td>
               </tr>
@@ -122,7 +124,7 @@ const DriveBrowser: React.FC<DriveBrowserProps> = ({ isOpen, mode, onClose, onPi
         </table>
       </div>
       <div className="flex justify-end gap-2 mt-3">
-        <Button variant="secondary" size="sm" onClick={onClose}>Close</Button>
+        <Button variant="secondary" size="sm" onClick={onClose}>{t('common.close', 'Close')}</Button>
       </div>
     </Modal>
   );

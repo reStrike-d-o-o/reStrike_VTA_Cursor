@@ -362,7 +362,7 @@ const DatabaseMigrationPanel: React.FC = () => {
                 value={selectedTable}
                 onChange={(e) => handleTableSelect(e.target.value)}
                 className="px-3 py-1 bg-[#101820] border border-gray-700 rounded text-gray-300 text-sm"
-                aria-label="Select database table to preview"
+                aria-label={"Select database table to preview"}
               >
                 <option value="">Select a table</option>
                 {(databaseTables || []).map(table => (

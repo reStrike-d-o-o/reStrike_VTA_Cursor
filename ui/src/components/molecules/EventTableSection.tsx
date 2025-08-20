@@ -4,6 +4,7 @@ import { StatusDot } from '../atoms/StatusDot';
 import { useLiveDataStore, PssEventData } from '../../stores/liveDataStore';
 import { useAppStore } from '../../stores/index';
 import { usePssMatchStore } from '../../stores/pssMatchStore';
+import { useI18n } from '../../i18n/index';
 
 const colorOptions = [
   { color: 'red', class: 'bg-red-500' },
@@ -294,16 +295,17 @@ const EventTableSection: React.FC = () => {
     }
   };
 
+  const { t } = useI18n();
   return (
     <div className="flex flex-col space-y-4 overflow-hidden pt-4">
       {/* Section Title */}
       <div className="flex-shrink-0 flex items-center justify-between">
         <div className="text-lg font-semibold text-gray-200 flex items-center gap-2">
-          <span>Event Table</span>
+          <span>{t('live.event_table', 'Event Table')}</span>
           {/* Current match dropdown (display only) */}
           <select
             ref={selectRef}
-            aria-label="Select match"
+            aria-label={t('live.select_match', 'Select match')}
             className={`text-xs bg-gray-800 border border-gray-600 rounded px-2 py-1 text-gray-200 ${selectWidthPx != null ? 'pss-fixed-select-width' : ''}`}
             value={reviewMatchId ?? String(matchNumber ?? '')}
             disabled={!!isLoaded && !isReviewMode}
@@ -319,7 +321,7 @@ const EventTableSection: React.FC = () => {
               }
             }}
           >
-            <option value={String(matchNumber ?? '')}>{`Current ${matchNumber ? `#${matchNumber}` : ''}`.trim()}</option>
+            <option value={String(matchNumber ?? '')}>{t('live.current_match', 'Current')} {matchNumber ? `#${matchNumber}` : ''}</option>
             {recentMatchesRef.current.map((m) => (
               <option key={m.id} value={String(m.id)}>{m.label}</option>
             ))}
@@ -328,7 +330,7 @@ const EventTableSection: React.FC = () => {
         <div className="flex items-center space-x-2">
           {isManualModeEnabled && (
             <span className="text-xs text-yellow-400 bg-yellow-900/20 px-2 py-1 rounded">
-              Manual Mode
+              {t('live.manual_mode', 'Manual Mode')}
             </span>
           )}
         </div>
@@ -341,10 +343,10 @@ const EventTableSection: React.FC = () => {
           <div className="w-80 flex flex-col overflow-hidden mr-3">
             {/* Table Header */}
             <div className="flex-shrink-0 flex text-xs text-gray-400 mb-3 border-b border-gray-600 pb-2 items-center mt-2">
-              <div className="w-16 font-semibold text-white px-1 rounded mr-2 ml-12">RND</div>
-              <div className="w-24 font-semibold mr-2 ml-1">TIME</div>
+              <div className="w-16 font-semibold text-white px-1 rounded mr-2 ml-12">{t('table.rnd', 'RND')}</div>
+              <div className="w-24 font-semibold mr-2 ml-1">{t('common.time', 'TIME')}</div>
               <div className="w-32 font-semibold flex items-center space-x-1 -ml-8">
-                <span>EVENT</span>
+                <span>{t('common.event', 'EVENT')}</span>
                 {colorOptions.map((opt) => (
                   <button
                     key={opt.color}
@@ -366,11 +368,11 @@ const EventTableSection: React.FC = () => {
             <div ref={tableRef} className="h-64 space-y-1 overflow-y-auto bg-[#1a2a3a] rounded-md p-3">
               {isManualModeEnabled ? (
                 <div className="flex items-center justify-center h-full text-gray-500 text-sm">
-                  Manual Mode Active - Real-time events disabled
+                  {t('live.manual_active', 'Manual Mode Active - Real-time events disabled')}
                 </div>
               ) : filteredEvents.length === 0 ? (
                 <div className="flex items-center justify-center h-full text-gray-500 text-sm">
-                  {isConnected ? 'Waiting for events...' : 'Not connected to PSS'}
+                  {isConnected ? t('live.waiting', 'Waiting for events...') : t('live.not_connected_pss', 'Not connected to PSS')}
                 </div>
               ) : (
                 filteredEvents.map((event, idx) => (
