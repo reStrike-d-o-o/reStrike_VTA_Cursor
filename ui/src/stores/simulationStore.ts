@@ -1,7 +1,3 @@
-/**
- * simulationStore
- * - Simulation state and progress tracking
- */
 import { create } from 'zustand';
 
 // Safe invoke for Tauri v2/v1 fallback

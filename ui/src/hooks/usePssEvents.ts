@@ -1,7 +1,3 @@
-/**
- * usePssEvents
- * - Hook to consume and filter PSS events for components
- */
 import { useEffect, useRef } from 'react';
 import { usePssMatchStore } from '../stores/pssMatchStore';
 import { handlePssEvent } from '../utils/pssEventHandler';

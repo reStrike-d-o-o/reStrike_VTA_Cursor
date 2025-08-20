@@ -1,3 +1,7 @@
+/**
+ * LiveDataPanel
+ * - Visualizes live PSS event stream and computed stats
+ */
 import React, { useState, useRef, useEffect } from 'react';
 import { diagLogsCommands, configCommands } from '../../utils/tauriCommands';
 import { useEnvironment } from '../../hooks/useEnvironment';

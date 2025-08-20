@@ -1,3 +1,7 @@
+/**
+ * ObsIntegrationPanel
+ * - obws integration settings panel (paths, templates, connections)
+ */
 import React, { useState, useEffect } from 'react';
 import Toggle from '../atoms/Toggle';
 import Button from '../atoms/Button';

@@ -1,3 +1,7 @@
+/**
+ * LogArchiveManager
+ * - Configure and trigger log archival/cleanup operations
+ */
 import React, { useState, useEffect } from 'react';
 import { diagLogsCommands } from '../../utils/tauriCommands';
 import Button from '../atoms/Button';

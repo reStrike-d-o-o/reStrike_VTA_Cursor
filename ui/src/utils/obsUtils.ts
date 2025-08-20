@@ -1,9 +1,3 @@
-/**
- * obsUtils
- * - Helpers for mapping obws types to UI-friendly shapes
- */
-export const noop = () => {};
-
 // OBS utility functions for reStrike VTA
 
 import { ObsConnection, ObsStatusInfo } from '../types';

@@ -1,3 +1,7 @@
+/**
+ * WebSocketManager
+ * - Manage overlay WebSocket connections and status
+ */
 import React, { useState, useEffect } from 'react';
 import Button from '../atoms/Button';
 import Input from '../atoms/Input';

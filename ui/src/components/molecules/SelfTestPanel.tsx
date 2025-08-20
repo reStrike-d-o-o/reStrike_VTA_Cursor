@@ -1,3 +1,7 @@
+/**
+ * SelfTestPanel
+ * - Run environment/self-tests and display status
+ */
 import React, { useState, useEffect } from 'react';
 import Button from '../atoms/Button';
 import Label from '../atoms/Label';

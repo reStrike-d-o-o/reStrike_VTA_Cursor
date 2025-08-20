@@ -1,3 +1,7 @@
+/**
+ * LogDownloadList
+ * - Lists log files with download options
+ */
 import React, { useState, useEffect } from 'react';
 import { diagLogsCommands } from '../../utils/tauriCommands';
 

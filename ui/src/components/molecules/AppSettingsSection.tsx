@@ -1,3 +1,7 @@
+/**
+ * AppSettingsSection
+ * - Application-level settings grouped for Advanced panel
+ */
 import React, { useState } from 'react';
 import Button from '../atoms/Button';
 import Input from '../atoms/Input';

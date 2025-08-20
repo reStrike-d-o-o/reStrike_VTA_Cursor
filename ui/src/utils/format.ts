@@ -1,9 +1,3 @@
-/**
- * format utils
- * - Common string/date formatting helpers
- */
-export const formatDateTime = (s: string) => new Date(s).toLocaleString();
-
 export const formatDate = (iso?: string): string => {
   if (!iso) return '';
   const d = new Date(iso);
@@ -19,6 +13,11 @@ export const formatTime = (iso?: string): string => {
   const hh = String(d.getHours()).padStart(2, '0');
   const mi = String(d.getMinutes()).padStart(2, '0');
   return `${hh}:${mi}`;
+};
+
+export const formatDateTime = (iso?: string): string => {
+  if (!iso) return '';
+  return `${formatDate(iso)} ${formatTime(iso)}`;
 };
 
 export const pad2 = (n: number) => String(n).padStart(2, '0');

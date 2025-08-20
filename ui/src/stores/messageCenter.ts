@@ -35,16 +35,6 @@ interface MessageCenterState {
 
 const makeId = () => Math.random().toString(36).slice(2);
 
-/**
- * messageCenter store
- * - Lightweight pub/sub utility for UI messages/events
- */
-export const messageCenter = {
-  subscribers: new Set<(...args: any[]) => void>(),
-  subscribe(fn: (...args: any[]) => void) { this.subscribers.add(fn); return () => this.subscribers.delete(fn); },
-  emit(...args: any[]) { this.subscribers.forEach(fn => fn(...args)); }
-};
-
 export const useMessageCenter = create<MessageCenterState>((set, get) => ({
   current: null,
   queue: [],

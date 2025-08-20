@@ -130,13 +130,13 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
                 if (statusRes && statusRes.success && statusRes.data) {
                   const s = statusRes.data.status;
                   if (s === 'Connected' || s === 'Authenticated') {
-                    updateConnectionStatus(c.name, 'Connected');
+                    updateConnectionStatus(c.name, 'connected');
                   } else if (s === 'Connecting' || s === 'Authenticating') {
-                    updateConnectionStatus(c.name, 'Connecting');
+                    updateConnectionStatus(c.name, 'connecting');
                   } else if (s === 'Error') {
-                    updateConnectionStatus(c.name, 'Error');
+                    updateConnectionStatus(c.name, 'error');
                   } else {
-                    updateConnectionStatus(c.name, 'Disconnected');
+                    updateConnectionStatus(c.name, 'disconnected');
                   }
                 }
               }));
@@ -168,14 +168,14 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
                   host: 'localhost',
                   port: 4455,
                   enabled: true,
-                  status: 'Disconnected'
+                  status: 'disconnected'
                 },
                 {
                   name: 'OBS_STR',
                   host: 'localhost',
                   port: 4466,
                   enabled: true,
-                  status: 'Disconnected'
+                  status: 'disconnected'
                 }
               ]);
             } else {
@@ -192,14 +192,14 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
                 host: 'localhost',
                 port: 4455,
                 enabled: true,
-                status: 'Disconnected'
+                status: 'disconnected'
               },
               {
                 name: 'OBS_STR',
                 host: 'localhost',
                 port: 4466,
                 enabled: true,
-                status: 'Disconnected'
+                status: 'disconnected'
               }
             ]);
           } else {
@@ -248,15 +248,15 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
       // Update connection status if it's a connection status event
       if (event.eventType === 'ConnectionStatusChanged') {
         const { connection_name, status } = event;
-        let frontendStatus: ObsConnection['status'] = 'Disconnected';
+        let frontendStatus: ObsConnection['status'] = 'disconnected';
         if (status === 'Connected' || status === 'Authenticated') {
-          frontendStatus = 'Connected';
+          frontendStatus = 'connected';
         } else if (status === 'Connecting' || status === 'Authenticating') {
-          frontendStatus = 'Connecting';
+          frontendStatus = 'connecting';
         } else if (status === 'Error') {
-          frontendStatus = 'Error';
+          frontendStatus = 'error';
         } else {
-          frontendStatus = 'Disconnected';
+          frontendStatus = 'disconnected';
         }
         updateConnectionStatus(connection_name, frontendStatus);
       }
@@ -295,7 +295,7 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
 
   const connectToObs = async (connectionName: string) => {
     console.log(`Connecting to OBS: ${connectionName}`);
-    updateConnectionStatus(connectionName, 'Connecting');
+    updateConnectionStatus(connectionName, 'connecting');
     
     try {
       // Use obws Tauri command for OBS connection
@@ -304,7 +304,7 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
         
         if (result && typeof result === 'object' && 'success' in result && result.success) {
           console.log(`✅ Successfully connected to OBS: ${connectionName}`);
-          updateConnectionStatus(connectionName, 'Connected');
+          updateConnectionStatus(connectionName, 'connected');
           
           // Refresh connection status from backend
           setTimeout(async () => {
@@ -313,13 +313,13 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
               if (statusResult && statusResult.success && statusResult.data) {
                 const status = statusResult.data.status;
                   if (status === 'Connected' || status === 'Authenticated') {
-                  updateConnectionStatus(connectionName, 'Connected');
+                  updateConnectionStatus(connectionName, 'connected');
                 } else if (status === 'Connecting' || status === 'Authenticating') {
-                  updateConnectionStatus(connectionName, 'Connecting');
+                  updateConnectionStatus(connectionName, 'connecting');
                 } else if (status === 'Error') {
-                  updateConnectionStatus(connectionName, 'Error', status);
+                  updateConnectionStatus(connectionName, 'error', status);
                 } else {
-                  updateConnectionStatus(connectionName, 'Disconnected');
+                  updateConnectionStatus(connectionName, 'disconnected');
                 }
               }
             } catch (error) {
@@ -328,15 +328,15 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
           }, 1000);
         } else {
           console.error(`❌ Failed to connect to OBS: ${connectionName}`, result);
-          updateConnectionStatus(connectionName, 'Error', result.error || 'Connection failed');
+          updateConnectionStatus(connectionName, 'error', result.error || 'Connection failed');
         }
       } else {
         console.error('❌ Tauri not available for OBS connection');
-        updateConnectionStatus(connectionName, 'Error', 'Tauri not available');
+        updateConnectionStatus(connectionName, 'error', 'Tauri not available');
       }
     } catch (error) {
       console.error(`❌ Error connecting to OBS: ${connectionName}`, error);
-      updateConnectionStatus(connectionName, 'Error', (error as Error)?.message || String(error));
+      updateConnectionStatus(connectionName, 'error', (error as Error)?.message || String(error));
     }
   };
 

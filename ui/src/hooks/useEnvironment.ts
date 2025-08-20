@@ -1,8 +1,6 @@
-/**
- * useEnvironment
- * - Detects environment (web vs windows/tauri) and exposes flags
- */
-import { useEffect, useState } from 'react';
+// Environment detection hook for reStrike VTA
+
+import { useState, useEffect } from 'react';
 // Tauri v2 invoke function that uses the core module
 const safeInvoke = async (command: string, args?: any) => {
   try {
