@@ -355,7 +355,13 @@ const EventTableSection: React.FC = () => {
                       transition-all duration-200 cursor-pointer p-0.5 w-5 h-5 flex items-center justify-center
                     `}
                     onClick={() => setColorFilter(colorFilter === opt.color ? null : opt.color)}
-                    title={opt.color.charAt(0).toUpperCase() + opt.color.slice(1)}
+                    title={
+                      opt.color === 'red'
+                        ? t('live.color.red', 'Red')
+                        : opt.color === 'blue'
+                        ? t('live.color.blue', 'Blue')
+                        : t('live.color.yellow', 'Yellow')
+                    }
                     type="button"
                   >
                     <StatusDot color={opt.class} size="w-3 h-3" />
@@ -419,7 +425,7 @@ const EventTableSection: React.FC = () => {
               variant="secondary"
               size="sm"
               onClick={handleScrollTopAndClear}
-              title="Scroll to bottom (oldest events) and clear filters"
+              title={t('live.clear_and_scroll', 'Scroll to bottom (oldest events) and clear filters')}
               className="absolute top-0 w-8 h-8 p-0 flex items-center justify-center text-base"
             >
               ↑
@@ -435,7 +441,19 @@ const EventTableSection: React.FC = () => {
                   variant={eventTypeFilter === type.value ? 'primary' : 'secondary'}
                   size="sm"
                   onClick={() => setEventTypeFilter(eventTypeFilter === type.value ? null : type.value)}
-                  title={type.label}
+                  title={
+                    type.value === 'K'
+                      ? t('live.event_type.kick', 'Kick')
+                      : type.value === 'P'
+                      ? t('live.event_type.punch', 'Punch')
+                      : type.value === 'H'
+                      ? t('live.event_type.head', 'Head')
+                      : type.value === 'TH'
+                      ? t('live.event_type.tech_head', 'Tech Head')
+                      : type.value === 'TB'
+                      ? t('live.event_type.tech_body', 'Tech Body')
+                      : t('live.event_type.referee', 'Referee')
+                  }
                   className="w-8 h-8 p-0 text-xs font-bold"
                   disabled={isManualModeEnabled}
                 >
@@ -450,12 +468,12 @@ const EventTableSection: React.FC = () => {
       {/* Current Status Bar */}
       <div className="flex-shrink-0 flex items-center justify-between text-xs text-gray-400 border-t border-gray-600 pt-2">
         <div className="flex items-center space-x-4">
-          <span>Round: {currentRound}</span>
-          <span>Time: {currentRoundTime}</span>
+          <span>{t('live.round_label', 'Round')}: {currentRound}</span>
+          <span>{t('live.time_label', 'Time')}: {currentRoundTime}</span>
         </div>
         <div className="flex items-center space-x-2">
-          <span>Total: {events.length}</span>
-          <span>Table: {filteredEvents.length}</span>
+          <span>{t('live.total_label', 'Total')}: {events.length}</span>
+          <span>{t('live.table_label', 'Table')}: {filteredEvents.length}</span>
         </div>
       </div>
     </div>
