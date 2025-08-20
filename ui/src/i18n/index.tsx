@@ -475,6 +475,8 @@ const catalogs: Catalogs = {
     'common.connect': 'Poveži',
     'common.disconnect': 'Prekini vezu',
     'common.connecting': 'Povezivanje...',
+    'common.enabled': 'Omogućeno',
+    'common.disabled': 'Onemogućeno',
     'common.test_passed': 'Test uspješan!',
     'common.test_failed': 'Test nije uspio: {err}',
     'common.remove': 'Ukloni',
@@ -1130,6 +1132,14 @@ const catalogs: Catalogs = {
     'db.migration.preview.showing_rows': 'Prikazujem svih {n} redaka',
     'db.migration.preview.loading': 'Učitavanje podataka tablice...',
     'db.migration.preview.select_prompt': 'Odaberite tablicu za pregled podataka',
+    // DockBar
+    'dock.manual_mode': 'Ručni način',
+    'dock.advanced': 'Napredno',
+    'dock.new_match': 'Novi meč',
+    'dock.restore': 'Vrati',
+    'dock.restoring': 'Vraćanje...',
+    'dock.auth.title': 'Autentikacija Naprednog načina',
+    'dock.auth.message': 'Unesite lozinku za omogućavanje Naprednog načina:',
     // Triggers drawer helper
     'triggers.recent_drawer': 'Ladica nedavnih izvršenja',
     // Simulation aria helpers (kept literal where labels are not visible)

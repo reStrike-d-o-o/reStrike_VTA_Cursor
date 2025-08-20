@@ -17,9 +17,11 @@ import { useLiveDataStore } from '../../stores/liveDataStore';
 import { PssAthleteInfo, PssMatchConfig } from '../../types';
 import { useLiveDataEvents } from '../../hooks/useLiveDataEvents';
 import LiveOrchestratorModal from '../molecules/LiveOrchestratorModal';
+import { useI18n } from '../../i18n/index';
 
 const DockBar: React.FC = () => {
   const { tauriAvailable } = useEnvironment();
+  const { t } = useI18n();
   
   // Store state
   const isAdvancedPanelOpen = useAppStore((state) => state.isAdvancedPanelOpen);
@@ -244,7 +246,7 @@ const DockBar: React.FC = () => {
                   <Toggle
                     checked={isManualModeEnabled}
                     onChange={handleManualModeToggle}
-                    label={"Manual Mode"}
+                    label={t('dock.manual_mode', 'Manual Mode')}
                     labelPosition="bottom"
                     className="scale-100"
                   />
@@ -258,7 +260,7 @@ const DockBar: React.FC = () => {
                       onClick={handleAdvancedClick}
                       className="w-32 relative z-10"
                     >
-                      Advanced
+                      {t('dock.advanced', 'Advanced')}
                     </Button>
                   </div>
                 </div>
@@ -278,7 +280,7 @@ const DockBar: React.FC = () => {
                         onClick={handleNewMatchClick}
                         className="w-32 relative z-10 bg-green-600 hover:bg-green-700"
                       >
-                        New Match
+                        {t('dock.new_match', 'New Match')}
                       </Button>
                     </div>
                     {/* Restore Button */}
@@ -291,7 +293,7 @@ const DockBar: React.FC = () => {
                         className="w-32 relative z-10"
                         disabled={isRestoring}
                       >
-                        {isRestoring ? 'Restoring...' : 'Restore'}
+                        {isRestoring ? t('dock.restoring', 'Restoring...') : t('dock.restore', 'Restore')}
                       </Button>
                     </div>
                   </div>
@@ -339,8 +341,8 @@ const DockBar: React.FC = () => {
         isOpen={showPasswordDialog}
         onClose={() => setShowPasswordDialog(false)}
         onAuthenticate={authenticateAdvancedMode}
-        title="Advanced Mode Authentication"
-        message="Please enter the password to enable Advanced mode:"
+        title={t('dock.auth.title', 'Advanced Mode Authentication')}
+        message={t('dock.auth.message', 'Please enter the password to enable Advanced mode:')}
       />
 
       {/* Manual Mode Dialog */}
