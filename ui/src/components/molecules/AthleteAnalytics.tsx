@@ -4,6 +4,7 @@ import { Badge } from '../atoms/Badge';
 import { Progress } from '../atoms/Progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../atoms/Tabs';
 import { usePssMatchStore } from '../../stores/pssMatchStore';
+import { useI18n } from '../../i18n/index';
 
 interface AthleteStats {
   totalMatches: number;
@@ -33,6 +34,7 @@ export const AthleteAnalytics: React.FC<AthleteAnalyticsProps> = ({
   athleteName,
   countryCode,
 }) => {
+  const { t } = useI18n();
   const [stats, setStats] = useState<AthleteStats>({
     totalMatches: 0,
     wins: 0,
@@ -191,18 +193,18 @@ export const AthleteAnalytics: React.FC<AthleteAnalyticsProps> = ({
             </span>
           )}
           <span>{athleteName}</span>
-          <Badge variant="secondary">Analytics</Badge>
+          <Badge variant="secondary">{t('analytics.badge', 'Analytics')}</Badge>
         </CardTitle>
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="overview" className="w-full">
           <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="performance">Performance</TabsTrigger>
-            <TabsTrigger value="matches">Matches</TabsTrigger>
+            <TabsTrigger value="overview">{t('analytics.sections.overview', 'Overview')}</TabsTrigger>
+            <TabsTrigger value="performance">{t('analytics.sections.performance', 'Performance')}</TabsTrigger>
+            <TabsTrigger value="matches">{t('analytics.sections.matches', 'Matches')}</TabsTrigger>
             <TabsTrigger value="trends">
               <img src="/icons/bar-graph.json" alt="Statistics" className="w-4 h-4 mr-2" />
-              Statistics
+              {t('analytics.sections.trends', 'Statistics')}
             </TabsTrigger>
           </TabsList>
 
@@ -210,7 +212,7 @@ export const AthleteAnalytics: React.FC<AthleteAnalyticsProps> = ({
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-sm font-medium">Total Matches</span>
+                  <span className="text-sm font-medium">{t('analytics.athlete.total_matches', 'Total Matches')}</span>
                   <span className="text-sm text-muted-foreground">{stats.totalMatches}</span>
                 </div>
                 <Progress value={stats.totalMatches > 0 ? Math.min((stats.totalMatches / 50) * 100, 100) : 0} />
@@ -218,7 +220,7 @@ export const AthleteAnalytics: React.FC<AthleteAnalyticsProps> = ({
 
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-sm font-medium">Win Rate</span>
+                  <span className="text-sm font-medium">{t('analytics.athlete.win_rate', 'Win Rate')}</span>
                   <span className="text-sm text-muted-foreground">{stats.winRate.toFixed(1)}%</span>
                 </div>
                 <Progress value={stats.winRate} />
@@ -226,7 +228,7 @@ export const AthleteAnalytics: React.FC<AthleteAnalyticsProps> = ({
 
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-sm font-medium">Total Points</span>
+                  <span className="text-sm font-medium">{t('analytics.athlete.total_points', 'Total Points')}</span>
                   <span className="text-sm text-muted-foreground">{stats.totalPoints}</span>
                 </div>
                 <Progress value={stats.totalPoints > 0 ? Math.min((stats.totalPoints / 1000) * 100, 100) : 0} />
@@ -234,7 +236,7 @@ export const AthleteAnalytics: React.FC<AthleteAnalyticsProps> = ({
 
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-sm font-medium">Avg Points/Match</span>
+                  <span className="text-sm font-medium">{t('analytics.athlete.avg_points', 'Avg Points/Match')}</span>
                   <span className="text-sm text-muted-foreground">{stats.averagePointsPerMatch.toFixed(1)}</span>
                 </div>
                 <Progress value={stats.averagePointsPerMatch > 0 ? Math.min((stats.averagePointsPerMatch / 50) * 100, 100) : 0} />
@@ -244,15 +246,15 @@ export const AthleteAnalytics: React.FC<AthleteAnalyticsProps> = ({
             <div className="grid grid-cols-3 gap-4 pt-4">
               <div className="text-center">
                 <div className="text-2xl font-bold text-green-600">{stats.wins}</div>
-                <div className="text-sm text-muted-foreground">Wins</div>
+                <div className="text-sm text-muted-foreground">{t('analytics.athlete.wins', 'Wins')}</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-red-600">{stats.losses}</div>
-                <div className="text-sm text-muted-foreground">Losses</div>
+                <div className="text-sm text-muted-foreground">{t('analytics.athlete.losses', 'Losses')}</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-blue-600">{stats.totalWarnings}</div>
-                <div className="text-sm text-muted-foreground">Warnings</div>
+                <div className="text-sm text-muted-foreground">{t('analytics.athlete.warnings', 'Warnings')}</div>
               </div>
             </div>
           </TabsContent>
@@ -260,35 +262,35 @@ export const AthleteAnalytics: React.FC<AthleteAnalyticsProps> = ({
           <TabsContent value="performance" className="space-y-4">
             <div className="space-y-4">
               <div className="p-4 bg-muted rounded-lg">
-                <h4 className="font-semibold mb-2">Best Performance</h4>
+                <h4 className="font-semibold mb-2">{t('analytics.athlete.best_performance', 'Best Performance')}</h4>
                 {stats.bestPerformance ? (
                   <div className="space-y-1">
                     <div className="flex justify-between">
-                      <span className="text-sm">Match Points:</span>
+                      <span className="text-sm">{t('analytics.athlete.match_points', 'Match Points:')}</span>
                       <span className="text-sm font-medium">{stats.bestPerformance.points}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-sm">Match ID:</span>
+                      <span className="text-sm">{t('analytics.athlete.match_id', 'Match ID:')}</span>
                       <span className="text-sm font-mono">{stats.bestPerformance.matchId}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-sm">Date:</span>
+                      <span className="text-sm">{t('analytics.athlete.date', 'Date:')}</span>
                       <span className="text-sm">{require('../../utils/format').formatDateTime(stats.bestPerformance.date)}</span>
                     </div>
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground">No performance data available</p>
+                  <p className="text-sm text-muted-foreground">{t('analytics.athlete.no_performance', 'No performance data available')}</p>
                 )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 border rounded-lg">
                   <div className="text-2xl font-bold text-green-600">{stats.totalPoints}</div>
-                  <div className="text-sm text-muted-foreground">Total Points Scored</div>
+                  <div className="text-sm text-muted-foreground">{t('analytics.athlete.total_points_scored', 'Total Points Scored')}</div>
                 </div>
                 <div className="p-4 border rounded-lg">
                   <div className="text-2xl font-bold text-orange-600">{stats.totalWarnings}</div>
-                  <div className="text-sm text-muted-foreground">Total Warnings</div>
+                  <div className="text-sm text-muted-foreground">{t('analytics.athlete.total_warnings', 'Total Warnings')}</div>
                 </div>
               </div>
             </div>
@@ -296,14 +298,14 @@ export const AthleteAnalytics: React.FC<AthleteAnalyticsProps> = ({
 
           <TabsContent value="matches" className="space-y-4">
             <div className="space-y-2">
-              <h4 className="font-semibold">Recent Match History</h4>
+              <h4 className="font-semibold">{t('analytics.athlete.recent_history', 'Recent Match History')}</h4>
               <div className="space-y-2">
                 {stats.totalMatches > 0 ? (
                   <div className="text-sm text-muted-foreground">
-                    {stats.wins} wins, {stats.losses} losses in {stats.totalMatches} total matches
+                    {t('analytics.athlete.recent_summary', '{wins} wins, {losses} losses in {total} total matches', { wins: stats.wins, losses: stats.losses, total: stats.totalMatches })}
                   </div>
                 ) : (
-                  <div className="text-sm text-muted-foreground">No match history available</div>
+                  <div className="text-sm text-muted-foreground">{t('analytics.athlete.no_history', 'No match history available')}</div>
                 )}
               </div>
             </div>
@@ -312,22 +314,22 @@ export const AthleteAnalytics: React.FC<AthleteAnalyticsProps> = ({
           <TabsContent value="trends" className="space-y-4">
             <div className="space-y-4">
               <div className="p-4 bg-muted rounded-lg">
-                <h4 className="font-semibold mb-2">Performance Trends</h4>
+                <h4 className="font-semibold mb-2">{t('analytics.athlete.performance_trends', 'Performance Trends')}</h4>
                 <div className="space-y-2">
                   <div className="flex justify-between">
-                    <span className="text-sm">Win Rate Trend:</span>
+                    <span className="text-sm">{t('analytics.athlete.win_rate_trend', 'Win Rate Trend:')}</span>
                     <span className={`text-sm font-medium ${stats.winRate > 50 ? 'text-green-600' : 'text-red-600'}`}>
-                      {stats.winRate > 50 ? '↗️ Improving' : '↘️ Declining'}
+                      {stats.winRate > 50 ? t('analytics.athlete.improving', '↗️ Improving') : t('analytics.athlete.declining', '↘️ Declining')}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-sm">Points Per Match:</span>
+                    <span className="text-sm">{t('analytics.athlete.points_per_match', 'Points Per Match:')}</span>
                     <span className="text-sm font-medium">{stats.averagePointsPerMatch.toFixed(1)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-sm">Discipline:</span>
+                    <span className="text-sm">{t('analytics.athlete.discipline', 'Discipline:')}</span>
                     <span className={`text-sm font-medium ${stats.totalWarnings < 5 ? 'text-green-600' : 'text-red-600'}`}>
-                      {stats.totalWarnings < 5 ? 'Good' : 'Needs Improvement'}
+                      {stats.totalWarnings < 5 ? t('analytics.athlete.good', 'Good') : t('analytics.athlete.needs_improvement', 'Needs Improvement')}
                     </span>
                   </div>
                 </div>

@@ -4,6 +4,7 @@ import { Badge } from '../atoms/Badge';
 import { Progress } from '../atoms/Progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../atoms/Tabs';
 import { usePssMatchStore } from '../../stores/pssMatchStore';
+import { useI18n } from '../../i18n/index';
 
 interface MatchStats {
   matchId: string;
@@ -51,6 +52,7 @@ export const MatchAnalytics: React.FC<MatchAnalyticsProps> = ({
   athlete1Country,
   athlete2Country,
 }) => {
+  const { t } = useI18n();
   const [stats, setStats] = useState<MatchStats>({
     matchId,
     duration: 0,
@@ -236,13 +238,13 @@ export const MatchAnalytics: React.FC<MatchAnalyticsProps> = ({
     <Card className="w-full">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <span>Match Analytics</span>
+          <span>{t('analytics.match.header', 'Match Analytics')}</span>
           <Badge variant={stats.isCompleted ? "default" : "secondary"}>
-            {stats.isCompleted ? "Completed" : "In Progress"}
+            {stats.isCompleted ? t('analytics.match.completed', 'Completed') : t('analytics.match.in_progress', 'In Progress')}
           </Badge>
           {stats.winner && (
             <Badge variant="outline" className="text-green-600">
-              Winner: {stats.winner}
+              {t('analytics.match.winner', 'Winner: {name}', { name: stats.winner })}
             </Badge>
           )}
         </CardTitle>
@@ -250,12 +252,12 @@ export const MatchAnalytics: React.FC<MatchAnalyticsProps> = ({
       <CardContent>
         <Tabs defaultValue="overview" className="w-full">
           <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="athletes">Athletes</TabsTrigger>
-            <TabsTrigger value="events">Events</TabsTrigger>
+            <TabsTrigger value="overview">{t('analytics.sections.overview', 'Overview')}</TabsTrigger>
+            <TabsTrigger value="athletes">{t('analytics.match.tabs.athletes', 'Athletes')}</TabsTrigger>
+            <TabsTrigger value="events">{t('analytics.match.tabs.events', 'Events')}</TabsTrigger>
             <TabsTrigger value="timeline">
               <img src="/icons/bar-graph.json" alt="Statistics" className="w-4 h-4 mr-2" />
-              Statistics
+              {t('analytics.sections.trends', 'Statistics')}
             </TabsTrigger>
           </TabsList>
 
@@ -263,7 +265,7 @@ export const MatchAnalytics: React.FC<MatchAnalyticsProps> = ({
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-sm font-medium">Duration</span>
+                  <span className="text-sm font-medium">{t('analytics.match.duration', 'Duration')}</span>
                   <span className="text-sm text-muted-foreground">{formatDuration(stats.duration)}</span>
                 </div>
                 <Progress value={stats.duration > 0 ? Math.min((stats.duration / 600) * 100, 100) : 0} />
@@ -271,7 +273,7 @@ export const MatchAnalytics: React.FC<MatchAnalyticsProps> = ({
 
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-sm font-medium">Total Events</span>
+                  <span className="text-sm font-medium">{t('analytics.metrics.total_events', 'Total Events')}</span>
                   <span className="text-sm text-muted-foreground">{stats.totalEvents}</span>
                 </div>
                 <Progress value={stats.totalEvents > 0 ? Math.min((stats.totalEvents / 100) * 100, 100) : 0} />
@@ -279,15 +281,15 @@ export const MatchAnalytics: React.FC<MatchAnalyticsProps> = ({
 
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-sm font-medium">Match Intensity</span>
-                  <span className="text-sm text-muted-foreground">{stats.matchIntensity.toFixed(2)} events/min</span>
+                  <span className="text-sm font-medium">{t('analytics.match.intensity', 'Match Intensity')}</span>
+                  <span className="text-sm text-muted-foreground">{stats.matchIntensity.toFixed(2)} {t('analytics.match.events_per_min', 'events/min')}</span>
                 </div>
                 <Progress value={stats.matchIntensity > 0 ? Math.min((stats.matchIntensity / 5) * 100, 100) : 0} />
               </div>
 
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-sm font-medium">Points Scored</span>
+                  <span className="text-sm font-medium">{t('analytics.match.points_scored', 'Points Scored')}</span>
                   <span className="text-sm text-muted-foreground">{stats.eventBreakdown.points}</span>
                 </div>
                 <Progress value={stats.eventBreakdown.points > 0 ? Math.min((stats.eventBreakdown.points / 50) * 100, 100) : 0} />
@@ -308,7 +310,7 @@ export const MatchAnalytics: React.FC<MatchAnalyticsProps> = ({
                   <span className="font-semibold">{stats.athlete1Stats.name}</span>
                 </div>
                 <div className="text-2xl font-bold text-blue-600">{stats.athlete1Stats.points}</div>
-                <div className="text-sm text-muted-foreground">Points</div>
+                <div className="text-sm text-muted-foreground">{t('analytics.match.points', 'Points')}</div>
               </div>
 
               <div className="p-4 border rounded-lg">
@@ -324,7 +326,7 @@ export const MatchAnalytics: React.FC<MatchAnalyticsProps> = ({
                   <span className="font-semibold">{stats.athlete2Stats.name}</span>
                 </div>
                 <div className="text-2xl font-bold text-red-600">{stats.athlete2Stats.points}</div>
-                <div className="text-sm text-muted-foreground">Points</div>
+                <div className="text-sm text-muted-foreground">{t('analytics.match.points', 'Points')}</div>
               </div>
             </div>
           </TabsContent>
@@ -345,19 +347,19 @@ export const MatchAnalytics: React.FC<MatchAnalyticsProps> = ({
                 </h4>
                 <div className="space-y-2">
                   <div className="flex justify-between">
-                    <span className="text-sm">Points:</span>
+                    <span className="text-sm">{t('analytics.match.points', 'Points')}:</span>
                     <span className="text-sm font-medium">{stats.athlete1Stats.points}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-sm">Warnings:</span>
+                    <span className="text-sm">{t('analytics.match.warnings', 'Warnings')}:</span>
                     <span className="text-sm font-medium">{stats.athlete1Stats.warnings}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-sm">Injuries:</span>
+                    <span className="text-sm">{t('analytics.match.injuries', 'Injuries')}:</span>
                     <span className="text-sm font-medium">{stats.athlete1Stats.injuries}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-sm">Total Events:</span>
+                    <span className="text-sm">{t('analytics.match.total_events', 'Total Events')}:</span>
                     <span className="text-sm font-medium">{stats.athlete1Stats.events}</span>
                   </div>
                 </div>
@@ -377,19 +379,19 @@ export const MatchAnalytics: React.FC<MatchAnalyticsProps> = ({
                 </h4>
                 <div className="space-y-2">
                   <div className="flex justify-between">
-                    <span className="text-sm">Points:</span>
+                    <span className="text-sm">{t('analytics.match.points', 'Points')}:</span>
                     <span className="text-sm font-medium">{stats.athlete2Stats.points}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-sm">Warnings:</span>
+                    <span className="text-sm">{t('analytics.match.warnings', 'Warnings')}:</span>
                     <span className="text-sm font-medium">{stats.athlete2Stats.warnings}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-sm">Injuries:</span>
+                    <span className="text-sm">{t('analytics.match.injuries', 'Injuries')}:</span>
                     <span className="text-sm font-medium">{stats.athlete2Stats.injuries}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-sm">Total Events:</span>
+                    <span className="text-sm">{t('analytics.match.total_events', 'Total Events')}:</span>
                     <span className="text-sm font-medium">{stats.athlete2Stats.events}</span>
                   </div>
                 </div>
@@ -402,48 +404,48 @@ export const MatchAnalytics: React.FC<MatchAnalyticsProps> = ({
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 bg-muted rounded-lg">
                   <div className="text-2xl font-bold text-green-600">{stats.eventBreakdown.points}</div>
-                  <div className="text-sm text-muted-foreground">Points Events</div>
+                  <div className="text-sm text-muted-foreground">{t('analytics.match.points_events', 'Points Events')}</div>
                 </div>
                 <div className="p-4 bg-muted rounded-lg">
                   <div className="text-2xl font-bold text-orange-600">{stats.eventBreakdown.warnings}</div>
-                  <div className="text-sm text-muted-foreground">Warning Events</div>
+                  <div className="text-sm text-muted-foreground">{t('analytics.match.warning_events', 'Warning Events')}</div>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 bg-muted rounded-lg">
                   <div className="text-2xl font-bold text-red-600">{stats.eventBreakdown.injuries}</div>
-                  <div className="text-sm text-muted-foreground">Injury Events</div>
+                  <div className="text-sm text-muted-foreground">{t('analytics.match.injury_events', 'Injury Events')}</div>
                 </div>
                 <div className="p-4 bg-muted rounded-lg">
                   <div className="text-2xl font-bold text-gray-600">{stats.eventBreakdown.other}</div>
-                  <div className="text-sm text-muted-foreground">Other Events</div>
+                  <div className="text-sm text-muted-foreground">{t('analytics.match.other_events', 'Other Events')}</div>
                 </div>
               </div>
 
               <div className="p-4 border rounded-lg">
-                <h4 className="font-semibold mb-2">Event Distribution</h4>
+                <h4 className="font-semibold mb-2">{t('analytics.match.event_distribution', 'Event Distribution')}</h4>
                 <div className="space-y-2">
                   <div className="flex justify-between">
-                    <span className="text-sm">Points:</span>
+                    <span className="text-sm">{t('analytics.match.points', 'Points')}:</span>
                     <span className="text-sm font-medium">
                       {stats.totalEvents > 0 ? ((stats.eventBreakdown.points / stats.totalEvents) * 100).toFixed(1) : 0}%
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-sm">Warnings:</span>
+                    <span className="text-sm">{t('analytics.match.warnings', 'Warnings')}:</span>
                     <span className="text-sm font-medium">
                       {stats.totalEvents > 0 ? ((stats.eventBreakdown.warnings / stats.totalEvents) * 100).toFixed(1) : 0}%
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-sm">Injuries:</span>
+                    <span className="text-sm">{t('analytics.match.injuries', 'Injuries')}:</span>
                     <span className="text-sm font-medium">
                       {stats.totalEvents > 0 ? ((stats.eventBreakdown.injuries / stats.totalEvents) * 100).toFixed(1) : 0}%
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-sm">Other:</span>
+                    <span className="text-sm">{t('analytics.match.other', 'Other')}:</span>
                     <span className="text-sm font-medium">
                       {stats.totalEvents > 0 ? ((stats.eventBreakdown.other / stats.totalEvents) * 100).toFixed(1) : 0}%
                     </span>
@@ -456,48 +458,48 @@ export const MatchAnalytics: React.FC<MatchAnalyticsProps> = ({
           <TabsContent value="timeline" className="space-y-4">
             <div className="space-y-4">
               <div className="p-4 bg-muted rounded-lg">
-                <h4 className="font-semibold mb-2">Match Timeline</h4>
+                <h4 className="font-semibold mb-2">{t('analytics.match.timeline', 'Match Timeline')}</h4>
                 <div className="space-y-2">
                   <div className="flex justify-between">
-                    <span className="text-sm">Start Time:</span>
+                    <span className="text-sm">{t('analytics.match.start_time', 'Start Time:')}</span>
                     <span className="text-sm font-medium">
                       {stats.duration > 0 ? (()=>{ const d=new Date(Date.now() - stats.duration*1000); const hh=String(d.getHours()).padStart(2,'0'); const mi=String(d.getMinutes()).padStart(2,'0'); const ss=String(d.getSeconds()).padStart(2,'0'); return `${hh}:${mi}:${ss}`; })() : 'N/A'}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-sm">End Time:</span>
+                    <span className="text-sm">{t('analytics.match.end_time', 'End Time:')}</span>
                     <span className="text-sm font-medium">
                       {stats.duration > 0 ? (()=>{ const d=new Date(); const hh=String(d.getHours()).padStart(2,'0'); const mi=String(d.getMinutes()).padStart(2,'0'); const ss=String(d.getSeconds()).padStart(2,'0'); return `${hh}:${mi}:${ss}`; })() : 'N/A'}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-sm">Duration:</span>
+                    <span className="text-sm">{t('analytics.match.duration', 'Duration')}:</span>
                     <span className="text-sm font-medium">{formatDuration(stats.duration)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-sm">Events per Minute:</span>
+                    <span className="text-sm">{t('analytics.match.events_per_minute', 'Events per Minute:')}</span>
                     <span className="text-sm font-medium">{stats.matchIntensity.toFixed(2)}</span>
                   </div>
                 </div>
               </div>
 
               <div className="p-4 border rounded-lg">
-                <h4 className="font-semibold mb-2">Match Status</h4>
+                <h4 className="font-semibold mb-2">{t('analytics.match.status', 'Match Status')}</h4>
                 <div className="space-y-2">
                   <div className="flex justify-between">
-                    <span className="text-sm">Status:</span>
+                    <span className="text-sm">{t('analytics.match.status_label', 'Status:')}</span>
                     <Badge variant={stats.isCompleted ? "default" : "secondary"}>
-                      {stats.isCompleted ? "Completed" : "In Progress"}
+                      {stats.isCompleted ? t('analytics.match.completed', 'Completed') : t('analytics.match.in_progress', 'In Progress')}
                     </Badge>
                   </div>
                   {stats.winner && (
                     <div className="flex justify-between">
-                      <span className="text-sm">Winner:</span>
+                      <span className="text-sm">{t('analytics.match.winner_label', 'Winner:')}</span>
                       <span className="text-sm font-medium text-green-600">{stats.winner}</span>
                     </div>
                   )}
                   <div className="flex justify-between">
-                    <span className="text-sm">Match ID:</span>
+                    <span className="text-sm">{t('analytics.match.id', 'Match ID:')}</span>
                     <span className="text-sm font-mono">{stats.matchId}</span>
                   </div>
                 </div>
