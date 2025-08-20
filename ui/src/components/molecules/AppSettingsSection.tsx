@@ -6,10 +6,11 @@ import { useSettingsStore } from '../../stores/settingsStore';
 import { windowCommands } from '../../utils/tauriCommands';
 import { useEnvironment } from '../../hooks/useEnvironment';
 import { logger, setLogLevel, LogLevel, applyConsolePatch } from '../../utils/logger';
-import { useI18n } from '../../i18n';
+import { useI18n } from '../../i18n/index';
+import LanguageSelect from '../atoms/LanguageSelect';
 
 const AppSettingsSection: React.FC = () => {
-  const { locale, setLocale } = useI18n();
+  const { locale, setLocale, t } = useI18n();
   const { tauriAvailable } = useEnvironment();
   const windowSettings = useAppStore((state) => state.windowSettings);
   const updateWindowSettings = useAppStore((state) => state.updateWindowSettings);
@@ -67,38 +68,25 @@ const AppSettingsSection: React.FC = () => {
         <h3 className="text-lg font-semibold text-white mb-2">Language</h3>
         <div className="flex items-center gap-2">
           <label className="text-sm text-gray-300" htmlFor="app-language">Select language</label>
-          <select
-            id="app-language"
-            aria-label="Language"
-            title="Language"
-            className="bg-gray-700 text-gray-200 text-sm px-2 py-1 rounded border border-gray-600"
+          <LanguageSelect
+            className="ml-2"
             value={locale}
-            onChange={(e) => setLocale(e.target.value)}
-          >
-            <option value="en">🇬🇧 English</option>
-            <option value="sr">🇷🇸 Srpski</option>
-            <option value="hr">🇭🇷 Hrvatski</option>
-            <option value="de">🇩🇪 Deutsch</option>
-            <option value="fr">🇫🇷 Français</option>
-          </select>
+            onChange={(code) => setLocale(code)}
+          />
         </div>
       </div>
       <div>
-        <h3 className="text-lg font-semibold text-white mb-4">Window Settings</h3>
-        <p className="text-gray-300 text-sm mb-4">
-          Configure the window dimensions for compact and fullscreen modes.
-        </p>
+        <h3 className="text-lg font-semibold text-white mb-4">{t('settings.window.title', 'Window Settings')}</h3>
+        <p className="text-gray-300 text-sm mb-4">{t('settings.window.help', 'Configure the window dimensions for compact and fullscreen modes.')}</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Compact Mode Settings */}
         <div className="space-y-4">
-          <h4 className="text-md font-medium text-white">Compact Mode (Default)</h4>
+          <h4 className="text-md font-medium text-white">{t('settings.window.compact', 'Compact Mode (Default)')}</h4>
           <div className="space-y-3">
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">
-                Width (px)
-              </label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">{t('settings.window.width', 'Width (px)')}</label>
               <Input
                 type="number"
                 value={windowSettings.compactWidth}
@@ -109,9 +97,7 @@ const AppSettingsSection: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">
-                Height (px)
-              </label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">{t('settings.window.height', 'Height (px)')}</label>
               <Input
                 type="number"
                 value={windowSettings.compactHeight}
@@ -126,12 +112,10 @@ const AppSettingsSection: React.FC = () => {
 
         {/* Fullscreen Mode Settings */}
         <div className="space-y-4">
-          <h4 className="text-md font-medium text-white">Fullscreen Mode (Advanced)</h4>
+          <h4 className="text-md font-medium text-white">{t('settings.window.full', 'Fullscreen Mode (Advanced)')}</h4>
           <div className="space-y-3">
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">
-                Width (px)
-              </label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">{t('settings.window.width', 'Width (px)')}</label>
               <Input
                 type="number"
                 value={windowSettings.fullscreenWidth}
@@ -142,9 +126,7 @@ const AppSettingsSection: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">
-                Height (px)
-              </label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">{t('settings.window.height', 'Height (px)')}</label>
               <Input
                 type="number"
                 value={windowSettings.fullscreenHeight}
@@ -160,7 +142,7 @@ const AppSettingsSection: React.FC = () => {
 
       {/* Quick Presets */}
       <div className="space-y-3">
-        <h4 className="text-md font-medium text-white">Quick Presets</h4>
+        <h4 className="text-md font-medium text-white">{t('settings.quick.title', 'Quick Presets')}</h4>
         <div className="flex flex-wrap gap-2">
           <Button
             variant="secondary"
@@ -199,16 +181,16 @@ const AppSettingsSection: React.FC = () => {
 
       {/* Theme & Log verbosity */}
       <div className="space-y-3">
-        <h4 className="text-md font-medium text-white">Appearance</h4>
+        <h4 className="text-md font-medium text-white">{t('settings.appearance.title', 'Appearance')}</h4>
         <div className="flex flex-wrap items-center gap-3">
-          <span className="text-sm text-gray-300">Theme</span>
-          <Button size="sm" variant={theme==='dark' ? 'primary' : 'secondary'} onClick={() => setTheme('dark')}>Dark</Button>
-          <Button size="sm" variant={theme==='light' ? 'primary' : 'secondary'} onClick={() => setTheme('light')}>Light</Button>
-          <span className="text-sm text-gray-300 ml-4">Corners</span>
-          <Button size="sm" variant={sharp ? 'primary' : 'secondary'} onClick={() => setSharp(true)}>Square</Button>
-          <Button size="sm" variant={!sharp ? 'primary' : 'secondary'} onClick={() => setSharp(false)}>Rounded</Button>
+          <span className="text-sm text-gray-300">{t('settings.appearance.theme', 'Theme')}</span>
+          <Button size="sm" variant={theme==='dark' ? 'primary' : 'secondary'} onClick={() => setTheme('dark')}>{t('settings.appearance.dark', 'Dark')}</Button>
+          <Button size="sm" variant={theme==='light' ? 'primary' : 'secondary'} onClick={() => setTheme('light')}>{t('settings.appearance.light', 'Light')}</Button>
+          <span className="text-sm text-gray-300 ml-4">{t('settings.appearance.corners', 'Corners')}</span>
+          <Button size="sm" variant={sharp ? 'primary' : 'secondary'} onClick={() => setSharp(true)}>{t('settings.appearance.square', 'Square')}</Button>
+          <Button size="sm" variant={!sharp ? 'primary' : 'secondary'} onClick={() => setSharp(false)}>{t('settings.appearance.rounded', 'Rounded')}</Button>
         </div>
-        <h4 className="text-md font-medium text-white mt-4">Log verbosity</h4>
+        <h4 className="text-md font-medium text-white mt-4">{t('settings.log.title', 'Log verbosity')}</h4>
         <div className="flex flex-wrap gap-2">
           {(['silent','error','warn','info','debug'] as LogLevel[]).map((lvl) => (
             <Button
@@ -221,7 +203,7 @@ const AppSettingsSection: React.FC = () => {
             </Button>
           ))}
         </div>
-        <p className="text-xs text-gray-400">Lower levels reduce console noise in production.</p>
+        <p className="text-xs text-gray-400">{t('settings.log.note', 'Lower levels reduce console noise in production.')}</p>
       </div>
 
       {/* Actions */}
@@ -232,14 +214,14 @@ const AppSettingsSection: React.FC = () => {
           disabled={isLoading}
           className="flex-1"
         >
-          {isLoading ? 'Applying...' : 'Apply Settings'}
+          {isLoading ? 'Applying...' : t('settings.actions.apply', 'Apply Settings')}
         </Button>
         <Button
           variant="secondary"
           onClick={handleReset}
           className="px-4"
         >
-          Reset
+          {t('settings.actions.reset', 'Reset')}
         </Button>
       </div>
 
@@ -257,8 +239,7 @@ const AppSettingsSection: React.FC = () => {
       {/* Info */}
       <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
         <p className="text-blue-300 text-sm">
-          <strong>Note:</strong> Compact mode is used when the app starts and when Advanced mode is disabled. 
-          Fullscreen mode is used when Advanced mode is enabled.
+          <strong>{t('settings.note.title', 'Note:')}</strong> {t('settings.note.text', 'Compact mode is used when the app starts and when Advanced mode is disabled. Fullscreen mode is used when Advanced mode is enabled.')}
         </p>
       </div>
     </div>

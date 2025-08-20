@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { diagLogsCommands } from '../../utils/tauriCommands';
+import { useI18n } from '../../i18n/index';
 
 const logTypes = [
   { key: 'pss', label: 'PSS' },
@@ -26,6 +27,7 @@ const LogDownloadList: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [downloading, setDownloading] = useState<string>('');
+  const { t } = useI18n();
 
   const fetchLogs = async () => {
     setLoading(true);
@@ -46,7 +48,7 @@ const LogDownloadList: React.FC = () => {
           setLogs(archiveLogs);
         } else {
           setLogs([]);
-          setError(res.error || 'Failed to fetch archive files');
+          setError(res.error || t('logs.error.fetch_archives', 'Failed to fetch archive files'));
         }
       } else {
         // For regular logs, use the listLogFiles command
@@ -55,18 +57,18 @@ const LogDownloadList: React.FC = () => {
           setLogs(res.data);
         } else {
           setLogs([]);
-          setError(res.error || 'Failed to fetch log files');
+          setError(res.error || t('logs.error.fetch_logs', 'Failed to fetch log files'));
         }
       }
     } catch (err) {
       setLogs([]);
       const errorMessage = err instanceof Error ? err.message : String(err);
       if (errorMessage.includes('timeout') || errorMessage.includes('timed out')) {
-        setError(`Command timed out. The backend may be busy or unresponsive. Please try again.`);
+        setError(t('logs.error.timeout', 'Command timed out. The backend may be busy or unresponsive. Please try again.'));
       } else if (errorMessage.includes('Cannot read properties of undefined')) {
-        setError(`Tauri not available. Please ensure the app is running in desktop mode.`);
+        setError(t('logs.error.tauri_missing', 'Tauri not available. Please ensure the app is running in desktop mode.'));
       } else {
-        setError(`Error fetching ${selectedType === 'arc' ? 'archives' : 'logs'}: ${errorMessage}`);
+        setError(t('logs.error.generic_fetch', 'Error fetching {what}: {msg}', { what: selectedType === 'arc' ? 'archives' : 'logs', msg: errorMessage }));
       }
     } finally {
       setLoading(false);
@@ -94,11 +96,11 @@ const LogDownloadList: React.FC = () => {
           a.remove();
           window.URL.revokeObjectURL(url);
         } else {
-          const errorMsg = res.error || 'Unknown error';
+          const errorMsg = res.error || t('common.unknown_error', 'Unknown error');
           if (errorMsg.includes('timeout') || errorMsg.includes('timed out')) {
-            alert(`Download timed out for ${logName}. Please try again.`);
+            alert(t('logs.error.download_timeout', 'Download timed out for {name}. Please try again.', { name: logName }));
           } else {
-            alert(`Failed to download ${logName}: ${errorMsg}`);
+            alert(t('logs.error.download_failed', 'Failed to download {name}: {msg}', { name: logName, msg: errorMsg }));
           }
         }
       } else {
@@ -115,22 +117,22 @@ const LogDownloadList: React.FC = () => {
           a.remove();
           window.URL.revokeObjectURL(url);
         } else {
-          const errorMsg = res.error || 'Unknown error';
+          const errorMsg = res.error || t('common.unknown_error', 'Unknown error');
           if (errorMsg.includes('timeout') || errorMsg.includes('timed out')) {
-            alert(`Download timed out for ${logName}. Please try again.`);
+            alert(t('logs.error.download_timeout', 'Download timed out for {name}. Please try again.', { name: logName }));
           } else {
-            alert(`Failed to download ${logName}: ${errorMsg}`);
+            alert(t('logs.error.download_failed', 'Failed to download {name}: {msg}', { name: logName, msg: errorMsg }));
           }
         }
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
       if (errorMessage.includes('Cannot read properties of undefined')) {
-        alert(`Tauri not available. Cannot download ${logName} in web mode.`);
+        alert(t('logs.error.tauri_no_download', 'Tauri not available. Cannot download {name} in web mode.', { name: logName }));
       } else if (errorMessage.includes('timeout') || errorMessage.includes('timed out')) {
-        alert(`Download timed out for ${logName}. Please try again.`);
+        alert(t('logs.error.download_timeout', 'Download timed out for {name}. Please try again.', { name: logName }));
       } else {
-        alert(`Error downloading ${logName}: ${errorMessage}`);
+        alert(t('logs.error.download_error', 'Error downloading {name}: {msg}', { name: logName, msg: errorMessage }));
       }
     } finally {
       setDownloading('');
@@ -139,21 +141,21 @@ const LogDownloadList: React.FC = () => {
 
   return (
   <div className="theme-card p-4 shadow-lg">
-      <h3 className="text-lg font-semibold mb-2 text-blue-300">Download Logs</h3>
+      <h3 className="text-lg font-semibold mb-2 text-blue-300">{t('logs.title', 'Download Logs')}</h3>
       <div className="flex flex-row items-start gap-6">
         <div className="flex flex-col min-w-[120px]">
-          <span className="text-gray-200 font-medium mb-1" id="log-type-label">Type:</span>
+          <span className="text-gray-200 font-medium mb-1" id="log-type-label">{t('logs.type', 'Type:')}</span>
           <select
             className="theme-surface-2 rounded px-2 py-1"
             value={selectedType}
             onChange={e => setSelectedType(e.target.value as LogType)}
             aria-labelledby="log-type-label"
-            title="Select log type"
-            aria-label="Select log type"
+            title={t('logs.select_type', 'Select log type')}
+            aria-label={t('logs.select_type', 'Select log type')}
             disabled={loading}
           >
             {logTypes.map(type => (
-              <option key={type.key} value={type.key}>{type.label}</option>
+              <option key={type.key} value={type.key}>{t(`logs.types.${type.key}`, type.label)}</option>
             ))}
           </select>
         </div>
@@ -165,7 +167,7 @@ const LogDownloadList: React.FC = () => {
                 onClick={fetchLogs}
                 className="ml-2 text-blue-400 hover:text-blue-300 underline"
               >
-                Retry
+                {t('common.retry', 'Retry')}
               </button>
             </div>
           )}
@@ -173,38 +175,38 @@ const LogDownloadList: React.FC = () => {
             <table className="min-w-full text-left text-sm text-gray-200">
             <thead className="theme-surface-2 sticky top-0 z-10">
               <tr>
-                <th className="px-3 py-2 font-semibold">File Name</th>
-                <th className="px-3 py-2 font-semibold">Size</th>
-                <th className="px-3 py-2 font-semibold">Modified</th>
+                <th className="px-3 py-2 font-semibold">{t('logs.table.file', 'File Name')}</th>
+                <th className="px-3 py-2 font-semibold">{t('logs.table.size', 'Size')}</th>
+                <th className="px-3 py-2 font-semibold">{t('logs.table.modified', 'Modified')}</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={3} className="px-3 py-2 text-blue-400">Loading logs...</td>
+                  <td colSpan={3} className="px-3 py-2 text-blue-400">{t('logs.loading', 'Loading logs...')}</td>
                 </tr>
               ) : logs.length > 0 ? logs.map(log => (
                 <tr
                   key={log.name}
                   className="hover:bg-blue-900 cursor-pointer transition-colors"
                   onDoubleClick={() => handleDownload(log.name)}
-                  title="Double-click to download"
+                  title={t('logs.double_click', 'Double-click to download')}
                 >
                   <td className="px-3 py-2 whitespace-nowrap">
                     {log.name}
                     {downloading === log.name && (
-                      <span className="ml-2 text-blue-400 text-xs">Downloading...</span>
+                      <span className="ml-2 text-blue-400 text-xs">{t('logs.downloading', 'Downloading...')}</span>
                     )}
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap">
-                    {selectedType === 'arc' ? 'Archive' : `${(log.size / 1024).toFixed(1)} KB`}
+                    {selectedType === 'arc' ? t('logs.archive', 'Archive') : `${(log.size / 1024).toFixed(1)} KB`}
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap">{log.modified ? require('../../utils/format').formatDateTime(log.modified) : ''}</td>
                 </tr>
               )) : (
                 <tr>
                   <td colSpan={3} className="px-3 py-2 text-gray-400">
-                    {error ? 'No logs found due to error' : 'No logs found'}
+                    {error ? t('logs.none_error', 'No logs found due to error') : t('logs.none', 'No logs found')}
                   </td>
                 </tr>
               )}

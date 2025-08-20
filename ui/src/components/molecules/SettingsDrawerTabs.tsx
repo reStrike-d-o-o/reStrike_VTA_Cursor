@@ -2,7 +2,7 @@ import React from 'react';
 import IconDocument from '../atoms/IconDocument';
 import LottieIcon from '../atoms/LottieIcon';
 import { bugAnimation, databaseAnimation, usbAnimation, brainAnimation } from '../../assets/icons/json';
-import { useI18n } from '../../i18n';
+import { useI18n } from '../../i18n/index';
 
 interface SettingsDrawerTabsProps {
   activeTab: string;

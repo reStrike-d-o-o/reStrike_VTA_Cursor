@@ -10,7 +10,7 @@ import Icon from '../atoms/Icon';
 import TabGroup from '../molecules/TabGroup';
 import TabIcons from '../atoms/TabIcons';
 import LottieIcon from '../atoms/LottieIcon';
-import { useI18n } from '../../i18n';
+import { useI18n } from '../../i18n/index';
 import FlagManagementPanel from './FlagManagementPanel';
 import ScoreboardManager from './ScoreboardManager';
 import SimulationPanelV2 from './SimulationPanelV2';

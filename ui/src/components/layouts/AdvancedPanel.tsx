@@ -25,7 +25,7 @@ import { useAppStore } from '../../stores';
 import { configCommands } from '../../utils/tauriCommands';
 import { flowChartAnimation, spyAnimation, plansAnimation, watcherAnimation, taekwondoAnimation, liveStreamingAnimation, settingsAnimation, robotAnimation, noConnectionAnimation, businessAnimation, tournamentAnimation, mixerAnimation } from '../../assets/icons/json';
 import IvrHistoryPanel from '../molecules/IvrHistoryPanel';
-import { useI18n } from '../../i18n';
+import { useI18n } from '../../i18n/index';
 
 type AdvancedPanelProps = React.ComponentProps<'div'>;
 
