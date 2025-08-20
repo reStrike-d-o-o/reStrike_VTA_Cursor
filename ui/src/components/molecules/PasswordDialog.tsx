@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Button from '../atoms/Button';
 import Input from '../atoms/Input';
+import { useI18n } from '../../i18n/index';
 
 interface PasswordDialogProps {
   isOpen: boolean;
@@ -17,6 +18,7 @@ const PasswordDialog: React.FC<PasswordDialogProps> = ({
   title = 'Advanced Mode Authentication',
   message = 'Please enter the password to enable Advanced mode:'
 }) => {
+  const { t } = useI18n();
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
@@ -29,7 +31,7 @@ const PasswordDialog: React.FC<PasswordDialogProps> = ({
       setPassword('');
       onClose();
     } else {
-      setError('Wrong password. Please try again.');
+      setError(t('dialog.password.wrong', 'Wrong password. Please try again.'));
     }
   };
 
@@ -49,7 +51,7 @@ const PasswordDialog: React.FC<PasswordDialogProps> = ({
         
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Hidden username field for accessibility */}
-          <input type="text" autoComplete="username" style={{ display: 'none' }} />
+          <input type="text" autoComplete="username" aria-hidden="true" title="username" placeholder="username" className="hidden" />
           
           <div>
             <Input
@@ -57,7 +59,7 @@ const PasswordDialog: React.FC<PasswordDialogProps> = ({
               autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter password"
+              placeholder={t('dialog.password.placeholder', 'Enter password')}
               className="w-full"
               autoFocus
             />
@@ -74,14 +76,14 @@ const PasswordDialog: React.FC<PasswordDialogProps> = ({
               onClick={handleCancel}
               className="px-4 py-2"
             >
-              Cancel
+              {t('common.cancel', 'Cancel')}
             </Button>
             <Button
               type="submit"
               variant="primary"
               className="px-4 py-2"
             >
-              Authenticate
+              {t('dialog.password.authenticate', 'Authenticate')}
             </Button>
           </div>
         </form>
