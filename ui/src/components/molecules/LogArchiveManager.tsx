@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { diagLogsCommands } from '../../utils/tauriCommands';
 import Button from '../atoms/Button';
 import Toggle from '../atoms/Toggle';
+import { useI18n } from '../../i18n/index';
 
 interface AutoArchiveConfig {
   enabled: boolean;
@@ -32,6 +33,7 @@ const LogArchiveManager: React.FC = () => {
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
 
+  const { t } = useI18n();
   // Load configuration on component mount
   useEffect(() => {
     loadConfig();
@@ -50,10 +52,10 @@ const LogArchiveManager: React.FC = () => {
       if (response.success && response.data) {
         setConfig(response.data);
       } else {
-        setError(response.error || 'Failed to load configuration');
+        setError(response.error || t('logs.archive_mgr.load_failed', 'Failed to load configuration'));
       }
     } catch (err) {
-      setError(`Failed to load configuration: ${err}`);
+      setError(t('logs.archive_mgr.load_failed_with', 'Failed to load configuration: {err}', { err: String(err) }));
     }
   };
 
@@ -66,13 +68,13 @@ const LogArchiveManager: React.FC = () => {
       const response = await diagLogsCommands.setAutoArchiveConfig(newConfig);
       if (response.success) {
         setConfig(newConfig);
-        setSuccess('Configuration saved successfully');
+        setSuccess(t('logs.archive_mgr.save_ok', 'Configuration saved successfully'));
         setTimeout(() => setSuccess(''), 3000);
       } else {
-        setError(response.error || 'Failed to save configuration');
+        setError(response.error || t('logs.archive_mgr.save_failed', 'Failed to save configuration'));
       }
     } catch (err) {
-      setError(`Failed to save configuration: ${err}`);
+      setError(t('logs.archive_mgr.save_failed_with', 'Failed to save configuration: {err}', { err: String(err) }));
     } finally {
       setLoading(false);
     }
@@ -97,12 +99,12 @@ const LogArchiveManager: React.FC = () => {
     try {
       const response = await diagLogsCommands.createCompleteLogArchive();
       if (response.success) {
-        setSuccess(`Archive created successfully: ${response.data?.name}`);
+        setSuccess(t('logs.archive_mgr.create_ok', 'Archive created successfully: {name}', { name: String(response.data?.name || '') }));
       } else {
-        setError(response.error || 'Failed to create archive');
+        setError(response.error || t('logs.archive_mgr.create_failed', 'Failed to create archive'));
       }
     } catch (err) {
-      setError(`Failed to create archive: ${err}`);
+      setError(t('logs.archive_mgr.create_failed_with', 'Failed to create archive: {err}', { err: String(err) }));
     } finally {
       setLoading(false);
     }
@@ -116,12 +118,12 @@ const LogArchiveManager: React.FC = () => {
     try {
       const response = await diagLogsCommands.createAndUploadLogArchive();
       if (response.success) {
-        setSuccess(response.message || 'Archive uploaded successfully');
+        setSuccess(response.message || t('logs.archive_mgr.upload_ok', 'Archive uploaded successfully'));
       } else {
-        setError(response.error || 'Failed to upload archive');
+        setError(response.error || t('logs.archive_mgr.upload_failed', 'Failed to upload archive'));
       }
     } catch (err) {
-      setError(`Failed to upload archive: ${err}`);
+      setError(t('logs.archive_mgr.upload_failed_with', 'Failed to upload archive: {err}', { err: String(err) }));
     } finally {
       setLoading(false);
     }
@@ -135,12 +137,12 @@ const LogArchiveManager: React.FC = () => {
     try {
       const response = await diagLogsCommands.createUploadAndCleanupLogArchive();
       if (response.success) {
-        setSuccess(response.message || 'Archive uploaded and cleaned up successfully');
+        setSuccess(response.message || t('logs.archive_mgr.upload_cleanup_ok', 'Archive uploaded and cleaned up successfully'));
       } else {
-        setError(response.error || 'Failed to upload and cleanup archive');
+        setError(response.error || t('logs.archive_mgr.upload_cleanup_failed', 'Failed to upload and cleanup archive'));
       }
     } catch (err) {
-      setError(`Failed to upload and cleanup archive: ${err}`);
+      setError(t('logs.archive_mgr.upload_cleanup_failed_with', 'Failed to upload and cleanup archive: {err}', { err: String(err) }));
     } finally {
       setLoading(false);
     }
@@ -154,15 +156,15 @@ const LogArchiveManager: React.FC = () => {
     try {
       const response = await diagLogsCommands.performAutoArchive(config);
       if (response.success) {
-        setSuccess(response.message || 'Auto-archive completed successfully');
+        setSuccess(response.message || t('logs.archive_mgr.auto_ok', 'Auto-archive completed successfully'));
         if (response.updated_config) {
           setConfig(response.updated_config);
         }
       } else {
-        setError(response.error || 'Auto-archive failed');
+        setError(response.error || t('logs.archive_mgr.auto_failed', 'Auto-archive failed'));
       }
     } catch (err) {
-      setError(`Auto-archive failed: ${err}`);
+      setError(t('logs.archive_mgr.auto_failed_with', 'Auto-archive failed: {err}', { err: String(err) }));
     } finally {
       setLoading(false);
     }
@@ -180,7 +182,7 @@ const LogArchiveManager: React.FC = () => {
         <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
         </svg>
-        Log Archive Manager
+        {t('logs.archive_mgr.title', 'Log Archive Manager')}
       </h3>
 
       {/* Manual Actions + Inline Auto Toggle */}
@@ -191,27 +193,27 @@ const LogArchiveManager: React.FC = () => {
             disabled={loading}
             className="px-3"
             variant="secondary"
-            title="Create local archive"
+            title={t('logs.archive_mgr.create_title', 'Create local archive')}
           >
-            {loading ? 'Creating…' : 'Create'}
+            {loading ? t('common.creating', 'Creating…') : t('common.create', 'Create')}
           </Button>
           <Button
             onClick={handleUploadArchive}
             disabled={loading}
             className="px-3"
             variant="primary"
-            title="Create and upload to Drive"
+            title={t('logs.archive_mgr.create_upload_title', 'Create and upload to Drive')}
           >
-            {loading ? 'Uploading…' : 'Create+Upload'}
+            {loading ? t('common.uploading', 'Uploading…') : t('logs.archive_mgr.create_upload', 'Create+Upload')}
           </Button>
           <Button
             onClick={handleUploadAndCleanup}
             disabled={loading}
             className="px-3"
             variant="primary"
-            title="Upload and delete local copy"
+            title={t('logs.archive_mgr.upload_delete_title', 'Upload and delete local copy')}
           >
-            {loading ? 'Processing…' : 'Upload+Delete'}
+            {loading ? t('common.processing', 'Processing…') : t('logs.archive_mgr.upload_delete', 'Upload+Delete')}
           </Button>
 
           <div className="flex-1" />
@@ -219,7 +221,7 @@ const LogArchiveManager: React.FC = () => {
             id="auto-archive-enabled"
             checked={config.enabled}
             onChange={(e) => updateConfig({ enabled: e.target.checked })}
-            label="Auto-Archive"
+            label={t('logs.archive_mgr.auto_label', 'Auto-Archive')}
             labelPosition="left"
             className="self-center"
           />
@@ -230,7 +232,7 @@ const LogArchiveManager: React.FC = () => {
         <div className="mt-3 space-y-3">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
             <div>
-              <label className="block text-xs font-medium text-gray-300 mb-1">Schedule</label>
+              <label className="block text-xs font-medium text-gray-300 mb-1">{t('logs.archive_mgr.schedule', 'Schedule')}</label>
               <select
                 value={config.schedule}
                 onChange={(e) => updateConfig({
@@ -239,11 +241,11 @@ const LogArchiveManager: React.FC = () => {
                 className="w-full px-2 py-1.5 bg-gray-700 border border-gray-600 rounded-md text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 title="Archive schedule frequency"
               >
-                <option value="Weekly">Weekly</option>
-                <option value="Monthly">Monthly</option>
-                <option value="Quarterly">Every 3 months</option>
-                <option value="Biannual">Every 6 months</option>
-                <option value="Annual">Annually</option>
+                <option value="Weekly">{t('logs.archive_mgr.weekly', 'Weekly')}</option>
+                <option value="Monthly">{t('logs.archive_mgr.monthly', 'Monthly')}</option>
+                <option value="Quarterly">{t('logs.archive_mgr.quarterly', 'Every 3 months')}</option>
+                <option value="Biannual">{t('logs.archive_mgr.biannual', 'Every 6 months')}</option>
+                <option value="Annual">{t('logs.archive_mgr.annual', 'Annually')}</option>
               </select>
             </div>
             <div className="flex items-center gap-4 justify-center md:justify-center">
@@ -251,7 +253,7 @@ const LogArchiveManager: React.FC = () => {
                 id="upload-to-drive"
                 checked={config.upload_to_drive}
                 onChange={(e) => updateConfig({ upload_to_drive: e.target.checked })}
-                label="Upload"
+                label={t('logs.archive_mgr.upload', 'Upload')}
                 labelPosition="right"
                 className="self-center"
               />
@@ -260,7 +262,7 @@ const LogArchiveManager: React.FC = () => {
                   id="delete-after-upload"
                   checked={config.delete_after_upload}
                   onChange={(e) => updateConfig({ delete_after_upload: e.target.checked })}
-                  label="Delete"
+                  label={t('logs.archive_mgr.delete', 'Delete')}
                   labelPosition="right"
                   className="self-center"
                 />
@@ -273,7 +275,7 @@ const LogArchiveManager: React.FC = () => {
                   disabled={loading}
                   variant="primary"
                 >
-                  {loading ? 'Running…' : 'Run Now'}
+                  {loading ? t('common.running', 'Running…') : t('logs.archive_mgr.run_now', 'Run Now')}
                 </Button>
               )}
             </div>
@@ -281,11 +283,11 @@ const LogArchiveManager: React.FC = () => {
           {status && (
             <div className="bg-gray-700/40 rounded-md p-2 text-xs text-gray-300">
               <div className="flex flex-wrap gap-4">
-                <div>Status: {status.enabled ? 'Enabled' : 'Disabled'}</div>
-                {status.next_archive_time && <div>Next: {status.next_archive_time}</div>}
-                <div>Schedule: {status.schedule}</div>
+                <div>{t('logs.archive_mgr.status', 'Status')}: {status.enabled ? t('logs.archive_mgr.enabled', 'Enabled') : t('logs.archive_mgr.disabled', 'Disabled')}</div>
+                {status.next_archive_time && <div>{t('logs.archive_mgr.next', 'Next')}: {status.next_archive_time}</div>}
+                <div>{t('logs.archive_mgr.schedule', 'Schedule')}: {status.schedule}</div>
                 {status.should_archive && (
-                  <div className="text-yellow-400">⚠️ Archive is due</div>
+                  <div className="text-yellow-400">⚠️ {t('logs.archive_mgr.due', 'Archive is due')}</div>
                 )}
               </div>
             </div>

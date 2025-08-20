@@ -6,6 +6,7 @@ import Label from '../atoms/Label';
 import StatusDot from '../atoms/StatusDot';
 import { useObsStore } from '../../stores/obsStore';
 import { obsObwsCommands } from '../../utils/tauriCommandsObws';
+import { useI18n } from '../../i18n/index';
 
 // Recording Configuration interface
 interface RecordingConfig {
@@ -19,6 +20,7 @@ interface RecordingConfig {
 }
 
 const ObsIntegrationPanel: React.FC = () => {
+  const { t } = useI18n();
   // Recording Configuration state
   const [recordingConfig, setRecordingConfig] = useState<RecordingConfig>({
     connectionName: '',
@@ -152,7 +154,7 @@ const ObsIntegrationPanel: React.FC = () => {
   // Save unified configuration
   const saveFullConfig = async () => {
     if (!recordingConfig.connectionName) {
-      console.error('No connection selected');
+      console.error(t('obs.integration.no_connection', 'No connection selected'));
       return;
     }
     try {
@@ -173,7 +175,7 @@ const ObsIntegrationPanel: React.FC = () => {
         replay_buffer_duration: autoRecordingConfig.replayBufferDuration,
       });
       if (result.success) {
-        setTestResult('Configuration saved successfully!');
+        setTestResult(t('obs.integration.save_ok', 'Configuration saved successfully!'));
         // Update status by actively querying right after save to avoid stale indicator
         try {
           const conn = result.data?.connection || recordingConfig.connectionName;
@@ -196,10 +198,10 @@ const ObsIntegrationPanel: React.FC = () => {
         // Reduce redundant calls: only one load after save
         await loadFullConfig();
       } else {
-        setTestResult(`Failed to save configuration: ${result.error}`);
+        setTestResult(t('obs.integration.save_failed_with', 'Failed to save configuration: {err}', { err: String(result.error || '') }));
       }
     } catch (error) {
-      setTestResult(`Failed to save configuration: ${error}`);
+      setTestResult(t('obs.integration.save_failed_with', 'Failed to save configuration: {err}', { err: String(error) }));
     } finally {
       setIsSaving(false);
     }
@@ -208,35 +210,35 @@ const ObsIntegrationPanel: React.FC = () => {
   // Start/Stop recording actions (for selected connection)
   const startObsRecording = async () => {
     if (!recordingConfig.connectionName) {
-      setTestResult('Please select a connection first');
+      setTestResult(t('obs.integration.select_first', 'Please select a connection first'));
       return;
     }
     try {
       const result = await obsObwsCommands.startRecording(recordingConfig.connectionName);
       if (result.success) {
-        setTestResult('Recording start command sent.');
+        setTestResult(t('obs.integration.start_sent', 'Recording start command sent.'));
       } else {
-        setTestResult(`Failed to start recording: ${result.error}`);
+        setTestResult(t('obs.integration.start_failed_with', 'Failed to start recording: {err}', { err: String(result.error || '') }));
       }
     } catch (error) {
-      setTestResult(`Failed to start recording: ${error}`);
+      setTestResult(t('obs.integration.start_failed_with', 'Failed to start recording: {err}', { err: String(error) }));
     }
   };
 
   const stopObsRecording = async () => {
     if (!recordingConfig.connectionName) {
-      setTestResult('Please select a connection first');
+      setTestResult(t('obs.integration.select_first', 'Please select a connection first'));
       return;
     }
     try {
       const result = await obsObwsCommands.stopRecording(recordingConfig.connectionName);
       if (result.success) {
-        setTestResult('Recording stop command sent.');
+        setTestResult(t('obs.integration.stop_sent', 'Recording stop command sent.'));
       } else {
-        setTestResult(`Failed to stop recording: ${result.error}`);
+        setTestResult(t('obs.integration.stop_failed_with', 'Failed to stop recording: {err}', { err: String(result.error || '') }));
       }
     } catch (error) {
-      setTestResult(`Failed to stop recording: ${error}`);
+      setTestResult(t('obs.integration.stop_failed_with', 'Failed to stop recording: {err}', { err: String(error) }));
     }
   };
 
@@ -261,12 +263,12 @@ const ObsIntegrationPanel: React.FC = () => {
       const result = await obsObwsCommands.createTestFolders(pathTestData);
       
       if (result.success && result.data) {
-        setPathTestResult(`✅ Folders created successfully!\n\n📁 Directory: ${result.data.directory}\n📄 Filename: ${result.data.filename}\n📍 Full Path: ${result.data.full_path}`);
+        setPathTestResult(t('obs.integration.create_dirs_ok', '✅ Folders created successfully!\n\n📁 Directory: {dir}\n📄 Filename: {file}\n📍 Full Path: {full}', { dir: String(result.data.directory || ''), file: String(result.data.filename || ''), full: String(result.data.full_path || '') }));
       } else {
-        setPathTestResult(`❌ Failed to create folders: ${result.error}`);
+        setPathTestResult(t('obs.integration.create_dirs_failed', '❌ Failed to create folders: {err}', { err: String(result.error || '') }));
       }
     } catch (error) {
-      setPathTestResult(`❌ Failed to create folders: ${error}`);
+      setPathTestResult(t('obs.integration.create_dirs_failed', '❌ Failed to create folders: {err}', { err: String(error) }));
     } finally {
       setIsTestingPath(false);
     }
@@ -275,7 +277,7 @@ const ObsIntegrationPanel: React.FC = () => {
   // Send configuration to OBS
   const sendConfigToObs = async () => {
     if (!recordingConfig.connectionName) {
-      setTestResult('Please select a connection first');
+      setTestResult(t('obs.integration.select_first', 'Please select a connection first'));
       return;
     }
     
@@ -288,12 +290,12 @@ const ObsIntegrationPanel: React.FC = () => {
       );
       
       if (result.success) {
-        setTestResult(`✅ Configuration sent to OBS successfully!\n\n📁 Recording Path: ${result.data?.recording_path}\n📄 Filename Template: ${result.data?.filename_template}`);
+        setTestResult(t('obs.integration.sent_ok', '✅ Configuration sent to OBS successfully!\n\n📁 Recording Path: {path}\n📄 Filename Template: {fmt}', { path: String(result.data?.recording_path || ''), fmt: String(result.data?.filename_template || '') }));
       } else {
-        setTestResult(`❌ Failed to send configuration to OBS: ${result.error}`);
+        setTestResult(t('obs.integration.sent_failed', '❌ Failed to send configuration to OBS: {err}', { err: String(result.error || '') }));
       }
     } catch (error) {
-      setTestResult(`❌ Failed to send configuration to OBS: ${error}`);
+      setTestResult(t('obs.integration.sent_failed', '❌ Failed to send configuration to OBS: {err}', { err: String(error) }));
     } finally {
       setIsSaving(false);
     }
@@ -306,12 +308,12 @@ const ObsIntegrationPanel: React.FC = () => {
       const result = await obsObwsCommands.generateRecordingPath(pathTestData.matchId);
       
       if (result.success && result.data) {
-        setPathTestResult(result.data.full_path || 'Path generated from database successfully');
+        setPathTestResult(result.data.full_path || t('obs.integration.db_path_ok', 'Path generated from database successfully'));
       } else {
-        setPathTestResult(`Database path generation failed: ${result.error}`);
+        setPathTestResult(t('obs.integration.db_path_failed', 'Database path generation failed: {err}', { err: String(result.error || '') }));
       }
     } catch (error) {
-      setPathTestResult(`Database path generation failed: ${error}`);
+      setPathTestResult(t('obs.integration.db_path_failed', 'Database path generation failed: {err}', { err: String(error) }));
     } finally {
       setIsTestingPath(false);
     }
@@ -324,12 +326,12 @@ const ObsIntegrationPanel: React.FC = () => {
       
       if (result.success && result.data?.videos_path) {
         setRecordingConfig(prev => ({ ...prev, recordingPath: result.data.videos_path }));
-        setPathTestResult(`Detected videos folder: ${result.data.videos_path}`);
+        setPathTestResult(t('obs.integration.detect_videos_ok', 'Detected videos folder: {path}', { path: String(result.data.videos_path) }));
       } else {
-        setPathTestResult(`Failed to detect videos folder: ${result.error}`);
+        setPathTestResult(t('obs.integration.detect_videos_failed', 'Failed to detect videos folder: {err}', { err: String(result.error || '') }));
       }
     } catch (error) {
-      setPathTestResult(`Failed to detect videos folder: ${error}`);
+      setPathTestResult(t('obs.integration.detect_videos_failed', 'Failed to detect videos folder: {err}', { err: String(error) }));
     }
   };
 
