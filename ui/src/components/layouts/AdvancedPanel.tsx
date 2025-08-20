@@ -13,6 +13,7 @@ import { GoogleDriveBackupRestore } from '../molecules/GoogleDriveBackupRestore'
 import DatabaseMigrationPanel from '../molecules/DatabaseMigrationPanel';
 import FlagManagementPanel from '../molecules/FlagManagementPanel';
 import TournamentManagementPanel from '../molecules/TournamentManagementPanel';
+import ScoreboardManager from '../molecules/ScoreboardManager';
 import ObsWebSocketManager from '../organisms/ObsWebSocketManager';
 import ObsIntegrationPanel from '../molecules/ObsIntegrationPanel';
 import IvrReplaySettings from '../molecules/IvrReplaySettings';
@@ -24,53 +25,14 @@ import { useAppStore } from '../../stores';
 import { configCommands } from '../../utils/tauriCommands';
 import { flowChartAnimation, spyAnimation, plansAnimation, watcherAnimation, taekwondoAnimation, liveStreamingAnimation, settingsAnimation, robotAnimation, noConnectionAnimation, businessAnimation, tournamentAnimation, mixerAnimation } from '../../assets/icons/json';
 import IvrHistoryPanel from '../molecules/IvrHistoryPanel';
+import { useI18n } from '../../i18n';
 
 type AdvancedPanelProps = React.ComponentProps<'div'>;
-
-
-
-const DRAWERS = [
-  {
-    key: 'pss',
-    label: 'PSS',
-    icon: <LottieIcon animationData={taekwondoAnimation} size={48} />,
-    description: 'UDP server, PSS protocol, event database, etc.'
-  },
-  {
-    key: 'obs',
-    label: 'OBS',
-    icon: <LottieIcon animationData={liveStreamingAnimation} size={48} />,
-    description: 'OBS connection management and options.'
-  },
-  {
-    key: 'ovr',
-    label: 'OVR',
-    icon: <LottieIcon animationData={plansAnimation} size={48} />,
-    description: 'Overlay integration and tournament management.'
-  },
-  {
-    key: 'ivr',
-    label: 'IVR',
-    icon: <LottieIcon animationData={watcherAnimation} size={48} />,
-    description: 'Instant Video Replay integration and controls.'
-  },
-  {
-    key: 'ai',
-    label: 'AI',
-    icon: <LottieIcon animationData={robotAnimation} size={48} />,
-    description: 'AI report creation and data analyzer.'
-  },
-  {
-    key: 'settings',
-    label: 'Settings',
-    icon: <LottieIcon animationData={settingsAnimation} size={48} />,
-    description: 'All settings, including Diagnostics & Logs Manager.'
-  },
-];
 
 const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }) => {
   const activeDrawer = useAppStore((state) => state.activeDrawer);
   const setActiveDrawer = useAppStore((state) => state.setActiveDrawer);
+  const { t } = useI18n();
   // Settings horizontal drawer state
   const [settingsTab, setSettingsTab] = useState('diagnostics');
   // OBS horizontal drawer state
@@ -78,7 +40,46 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
   // OVR horizontal drawer state
   const [ovrTab, setOvrTab] = useState('integration');
   // IVR horizontal drawer state
-  const [ivrTab, setIvrTab] = useState('ivr-playback');
+  const [ivrTab, setIvrTab] = useState('history');
+  
+  const DRAWERS = [
+    {
+      key: 'pss',
+      label: t('drawer.pss', 'PSS'),
+      icon: <LottieIcon animationData={taekwondoAnimation} size={48} />,
+      description: 'UDP server, PSS protocol, event database, etc.'
+    },
+    {
+      key: 'obs',
+      label: t('drawer.obs', 'OBS'),
+      icon: <LottieIcon animationData={liveStreamingAnimation} size={48} />,
+      description: 'OBS connection management and options.'
+    },
+    {
+      key: 'ovr',
+      label: t('drawer.ovr', 'OVR'),
+      icon: <LottieIcon animationData={plansAnimation} size={48} />,
+      description: 'Overlay integration and tournament management.'
+    },
+    {
+      key: 'ivr',
+      label: t('drawer.ivr', 'IVR'),
+      icon: <LottieIcon animationData={watcherAnimation} size={48} />,
+      description: 'Instant Video Replay integration and controls.'
+    },
+    {
+      key: 'ai',
+      label: t('drawer.ai', 'AI'),
+      icon: <LottieIcon animationData={robotAnimation} size={48} />,
+      description: 'AI report creation and data analyzer.'
+    },
+    {
+      key: 'settings',
+      label: t('drawer.settings', 'Settings'),
+      icon: <LottieIcon animationData={settingsAnimation} size={48} />,
+      description: 'All settings, including Diagnostics & Logs Manager.'
+    },
+  ];
   
   const drawer = DRAWERS.find(d => d.key === activeDrawer);
 
@@ -120,19 +121,19 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
             tabs={[
               {
                 id: 'websocket',
-                label: 'WebSocket',
+                label: t('obs.tabs.websocket', 'WebSocket'),
                 icon: <LottieIcon animationData={noConnectionAnimation} size={32} />,
                 content: <WebSocketManager mode="local" />
               },
               {
                 id: 'control-room',
-                label: 'Control Room',
+                label: t('obs.tabs.control_room', 'Control Room'),
                 icon: <LottieIcon animationData={mixerAnimation} size={32} />,
                 content: <ObsWebSocketManager mode="remote" />
               },
                                               {
                 id: 'integration',
-                label: 'Integration',
+                label: t('obs.tabs.integration', 'Integration'),
                 icon: <LottieIcon animationData={businessAnimation} size={32} />,
                 content: <ObsIntegrationPanel />
               }
@@ -144,19 +145,19 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
         {drawer?.key === 'ovr' && (
           <TabGroup
             tabs={[
-                                {
-                    id: 'integration',
-                    label: 'Integration',
-                    icon: <LottieIcon animationData={businessAnimation} size={32} />,
+              {
+                id: 'integration',
+                label: t('ovr.tabs.integration', 'Integration'),
+                icon: <LottieIcon animationData={businessAnimation} size={32} />,
                 content: (
-                  <div className="text-gray-400 text-center py-8">
-                    OVR Integration Settings will be implemented here
+                  <div className="space-y-6">
+                    <ScoreboardManager />
                   </div>
                 )
               },
               {
                 id: 'tournament',
-                label: 'Tournament',
+                label: t('ovr.tabs.tournament', 'Tournament Management'),
                 icon: <LottieIcon animationData={tournamentAnimation} size={32} />,
                 content: <TournamentManagementPanel />
               }
@@ -169,20 +170,16 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
           <TabGroup
             tabs={[
               {
-                id: 'ivr-playback',
-                label: 'IVR playback settings',
-                icon: <LottieIcon animationData={watcherAnimation} size={32} />,
-                content: (
-                  <IvrReplaySettings />
-                )
+                id: 'history',
+                label: t('ivr.tabs.history', 'Match History'),
+                icon: <LottieIcon animationData={businessAnimation} size={32} />,
+                content: <IvrHistoryPanel />
               },
               {
-                id: 'ivr-history',
-                label: 'Match history',
-                icon: <LottieIcon animationData={businessAnimation} size={32} />,
-                content: (
-                  <IvrHistoryPanel />
-                )
+                id: 'settings',
+                label: t('ivr.tabs.settings', 'IVR Video Settings'),
+                icon: <LottieIcon animationData={watcherAnimation} size={32} />,
+                content: <IvrReplaySettings />
               }
             ]}
             activeTab={ivrTab}
