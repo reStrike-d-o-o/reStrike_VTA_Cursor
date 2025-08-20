@@ -53,31 +53,31 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
       key: 'obs',
       label: t('drawer.obs', 'OBS'),
       icon: <LottieIcon animationData={liveStreamingAnimation} size={48} />,
-      description: 'OBS connection management and options.'
+      description: t('obs.description', 'OBS connection management and options.')
     },
     {
       key: 'ovr',
       label: t('drawer.ovr', 'OVR'),
       icon: <LottieIcon animationData={plansAnimation} size={48} />,
-      description: 'Overlay integration and tournament management.'
+      description: t('ovr.description', 'Overlay integration and tournament management.')
     },
     {
       key: 'ivr',
       label: t('drawer.ivr', 'IVR'),
       icon: <LottieIcon animationData={watcherAnimation} size={48} />,
-      description: 'Instant Video Replay integration and controls.'
+      description: t('ivr.description', 'Instant Video Replay integration and controls.')
     },
     {
       key: 'ai',
       label: t('drawer.ai', 'AI'),
       icon: <LottieIcon animationData={robotAnimation} size={48} />,
-      description: 'AI report creation and data analyzer.'
+      description: t('ai.description', 'AI report creation and data analyzer.')
     },
     {
       key: 'settings',
       label: t('drawer.settings', 'Settings'),
       icon: <LottieIcon animationData={settingsAnimation} size={48} />,
-      description: 'All settings, including Diagnostics & Logs Manager.'
+      description: t('settings.description', 'All settings, including Diagnostics & Logs Manager.')
     },
   ];
   

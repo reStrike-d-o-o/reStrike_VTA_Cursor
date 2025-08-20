@@ -1132,6 +1132,12 @@ const catalogs: Catalogs = {
     'db.migration.preview.showing_rows': 'Prikazujem svih {n} redaka',
     'db.migration.preview.loading': 'Učitavanje podataka tablice...',
     'db.migration.preview.select_prompt': 'Odaberite tablicu za pregled podataka',
+    // Advanced panel helper/descriptions
+    'obs.description': 'Upravljanje OBS vezama i postavkama.',
+    'ovr.description': 'Integracija overlaya i upravljanje turnirom.',
+    'ivr.description': 'Integracija i kontrole za trenutni video replay.',
+    'ai.description': 'Izrada AI izvješća i analizator podataka.',
+    'settings.description': 'Sve postavke, uključujući Dijagnostiku i upravljanje zapisima.',
     // DockBar
     'dock.manual_mode': 'Ručni način',
     'dock.advanced': 'Napredno',
