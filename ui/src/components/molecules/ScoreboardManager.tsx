@@ -345,18 +345,18 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
             <div>
               <Label className="text-sm text-gray-300">{t('ovr.obs_settings', 'OBS Settings')}</Label>
               <div className="text-xs text-gray-400 space-y-1 mt-1">
-                <div>Width: 1920</div>
-                <div>Height: 1080</div>
+                <div>{t('ovr.obs_settings.width', 'Width')}: 1920</div>
+                <div>{t('ovr.obs_settings.height', 'Height')}: 1080</div>
                 <div>{t('ovr.obs_settings.refresh', 'Refresh: When scene becomes active')}</div>
               </div>
             </div>
             <div>
               <Label className="text-sm text-gray-300">{t('ovr.network_access', 'Network Access')}</Label>
               <div className="text-xs text-gray-400 space-y-1 mt-1">
-                <div>Local: http://localhost:3000</div>
-                <div>Network: http://[your-ip]:3000</div>
+                <div>{t('ovr.network.local', 'Local')}: http://localhost:3000</div>
+                <div>{t('ovr.network.network', 'Network')}: http://[your-ip]:3000</div>
                 <div>{t('ovr.network_access.tip', 'Use "npm run dev:network" for network access')}</div>
-                <div>WebSocket: ws://[your-ip]:3001</div>
+                <div>{t('ovr.network.websocket', 'WebSocket')}: ws://[your-ip]:3001</div>
               </div>
             </div>
           </div>

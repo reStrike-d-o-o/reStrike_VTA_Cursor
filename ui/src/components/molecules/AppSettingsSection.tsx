@@ -65,9 +65,9 @@ const AppSettingsSection: React.FC = () => {
     <div className="space-y-6">
       {/* Language */}
       <div>
-        <h3 className="text-lg font-semibold text-white mb-2">Language</h3>
+        <h3 className="text-lg font-semibold text-white mb-2">{t('settings.language', 'Language')}</h3>
         <div className="flex items-center gap-2">
-          <label className="text-sm text-gray-300" htmlFor="app-language">Select language</label>
+          <label className="text-sm text-gray-300" htmlFor="app-language">{t('settings.select_language', 'Select language')}</label>
           <LanguageSelect
             className="ml-2"
             value={locale}

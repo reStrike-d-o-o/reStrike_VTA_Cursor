@@ -763,7 +763,7 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
                       <div className="flex items-center space-x-2">
                         <span className="capitalize">{iface.type}</span>
                         {iface.media_state === 'disconnected' && (
-                          <span className="text-red-400 text-xs">(Disconnected)</span>
+                          <span className="text-red-400 text-xs">({t('common.disconnected', 'Disconnected')})</span>
                         )}
                       </div>
                       {iface.description && (
@@ -773,7 +773,7 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
                       )}
                       {iface.ip_addresses.length > 0 && (
                         <div>
-                          <div className="font-medium text-gray-300">IP Addresses:</div>
+                          <div className="font-medium text-gray-300">{t('pss.udp.ip_addresses', 'IP Addresses:')}</div>
                           {iface.ip_addresses.map((ip, index) => (
                             <div key={index} className="text-xs text-left">
                               {ip}
@@ -786,17 +786,17 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
                       )}
                       {iface.default_gateway && (
                         <div className="text-xs text-left">
-                          <span className="text-gray-500">Gateway:</span> {iface.default_gateway}
+                          <span className="text-gray-500">{t('pss.udp.gateway', 'Gateway:')}</span> {iface.default_gateway}
                         </div>
                       )}
                       {iface.dns_suffix && (
                         <div className="text-xs text-left">
-                          <span className="text-gray-500">DNS:</span> {iface.dns_suffix}
+                          <span className="text-gray-500">{t('pss.udp.dns', 'DNS:')}</span> {iface.dns_suffix}
                         </div>
                       )}
                       {bestInterface?.name === iface.name && (
                         <div className="text-green-400 font-medium mt-1">
-                          ⭐ Recommended
+                          ⭐ {t('pss.udp.recommended', 'Recommended')}
                         </div>
                       )}
                     </div>
@@ -955,26 +955,26 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
   const TriggersContent = () => (
     <div className="space-y-6">
       <div className="bg-gray-800/50 p-6">
-        <h3 className="text-lg font-semibold text-gray-100 mb-4">Event Triggers</h3>
+        <h3 className="text-lg font-semibold text-gray-100 mb-4">{t('pss.triggers.title', 'Event Triggers')}</h3>
         <p className="text-sm text-gray-300 mb-4">
           Configure automatic triggers and actions based on PSS events and match conditions.
         </p>
         
         <div className="space-y-4">
           <div className="bg-gray-700/50 p-4">
-            <h4 className="text-md font-medium text-gray-200 mb-3">Match Triggers</h4>
+            <h4 className="text-md font-medium text-gray-200 mb-3">{t('pss.triggers.match', 'Match Triggers')}</h4>
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-300">Auto-start recording</p>
-                  <p className="text-xs text-gray-400">Start video recording when match begins</p>
+                  <p className="text-sm text-gray-300">{t('pss.triggers.auto_start', 'Auto-start recording')}</p>
+                  <p className="text-xs text-gray-400">{t('pss.triggers.auto_start_desc', 'Start video recording when match begins')}</p>
                 </div>
                 <Toggle id="auto-record" label="" checked={false} onChange={() => {}} />
               </div>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-300">Auto-stop recording</p>
-                  <p className="text-xs text-gray-400">Stop recording when match ends</p>
+                  <p className="text-sm text-gray-300">{t('pss.triggers.auto_stop', 'Auto-stop recording')}</p>
+                  <p className="text-xs text-gray-400">{t('pss.triggers.auto_stop_desc', 'Stop recording when match ends')}</p>
                 </div>
                 <Toggle id="auto-stop" label="" checked={false} onChange={() => {}} />
               </div>
@@ -982,19 +982,19 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
           </div>
 
           <div className="bg-gray-700/50 p-4">
-            <h4 className="text-md font-medium text-gray-200 mb-3">Score Triggers</h4>
+            <h4 className="text-md font-medium text-gray-200 mb-3">{t('pss.triggers.score', 'Score Triggers')}</h4>
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-300">Point threshold alerts</p>
-                  <p className="text-xs text-gray-400">Notify when score reaches certain points</p>
+                  <p className="text-sm text-gray-300">{t('pss.triggers.threshold', 'Point threshold alerts')}</p>
+                  <p className="text-xs text-gray-400">{t('pss.triggers.threshold_desc', 'Notify when score reaches certain points')}</p>
                 </div>
                 <Toggle id="point-alerts" label="" checked={false} onChange={() => {}} />
               </div>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-300">Win condition detection</p>
-                  <p className="text-xs text-gray-400">Automatically detect match winners</p>
+                  <p className="text-sm text-gray-300">{t('pss.triggers.win_detection', 'Win condition detection')}</p>
+                  <p className="text-xs text-gray-400">{t('pss.triggers.win_detection_desc', 'Automatically detect match winners')}</p>
                 </div>
                 <Toggle id="win-detection" label="" checked={false} onChange={() => {}} />
               </div>
@@ -1002,19 +1002,19 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
           </div>
 
           <div className="bg-gray-700/50 p-4">
-            <h4 className="text-md font-medium text-gray-200 mb-3">System Triggers</h4>
+            <h4 className="text-md font-medium text-gray-200 mb-3">{t('pss.triggers.system', 'System Triggers')}</h4>
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-300">Connection monitoring</p>
-                  <p className="text-xs text-gray-400">Alert on UDP connection issues</p>
+                  <p className="text-sm text-gray-300">{t('pss.triggers.connection_monitoring', 'Connection monitoring')}</p>
+                  <p className="text-xs text-gray-400">{t('pss.triggers.connection_monitoring_desc', 'Alert on UDP connection issues')}</p>
                 </div>
                 <Toggle id="connection-monitor" label="" checked={true} onChange={() => {}} />
               </div>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-300">Performance alerts</p>
-                  <p className="text-xs text-gray-400">Notify on high CPU/memory usage</p>
+                  <p className="text-sm text-gray-300">{t('pss.triggers.performance_alerts', 'Performance alerts')}</p>
+                  <p className="text-xs text-gray-400">{t('pss.triggers.performance_alerts_desc', 'Notify on high CPU/memory usage')}</p>
                 </div>
                 <Toggle id="performance-alerts" label="" checked={false} onChange={() => {}} />
               </div>
@@ -1058,7 +1058,7 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
             id: 'triggers',
             label: t('pss.tabs.triggers', 'Triggers'),
             icon: <LottieIcon animationData={crossbowAnimation} size={32} />,
-            content: <div className="theme-card p-4"><h3 className="text-lg font-semibold text-gray-100 mb-3">Triggers (v2)</h3><TriggersRuleBuilder /></div>
+            content: <div className="theme-card p-4"><h3 className="text-lg font-semibold text-gray-100 mb-3">{t('pss.triggers.v2', 'Triggers (v2)')}</h3><TriggersRuleBuilder /></div>
           }
         ]}
         activeTab={activeTab}

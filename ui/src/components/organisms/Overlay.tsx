@@ -5,6 +5,7 @@ import Button from '../atoms/Button';
 import Input from '../atoms/Input';
 import { StatusDot } from '../atoms/StatusDot';
 import { Icon } from '../atoms/Icon';
+import { useI18n } from '../../i18n/index';
 
 const Overlay: React.FC = () => {
   const {
@@ -18,6 +19,7 @@ const Overlay: React.FC = () => {
   } = useAppStore();
 
   const videoRef = useRef<HTMLVideoElement>(null);
+  const { t } = useI18n();
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [showControls, setShowControls] = useState(false);
@@ -155,7 +157,7 @@ const Overlay: React.FC = () => {
                   <rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" strokeWidth="2"/>
                   <polygon points="10,9 16,12 10,15" fill="currentColor"/>
                 </svg>
-                <p className="text-gray-400">No video selected</p>
+                <p className="text-gray-400">{t('overlay.no_video', 'No video selected')}</p>
               </div>
             </div>
           )}
@@ -240,7 +242,7 @@ const Overlay: React.FC = () => {
                     <div className="text-center">
                       <h3 className="font-semibold">{currentClip.name}</h3>
                       <p className="text-sm text-gray-400">
-                        Duration: {formatTime(currentClip.duration)}
+                        {t('overlay.duration', 'Duration')}: {formatTime(currentClip.duration)}
                       </p>
                     </div>
                   </div>
@@ -256,14 +258,14 @@ const Overlay: React.FC = () => {
               {/* OBS Status */}
               <div className="flex items-center space-x-1">
                 <StatusDot color="bg-green-500" />
-                <span>OBS: {obsConnections.filter(c => c.status === 'Connected').length} connected</span>
+                <span>OBS: {obsConnections.filter(c => c.status === 'Connected').length} {t('common.connected', 'Connected')}</span>
               </div>
               
               {/* Video Status */}
               {currentClip && (
                 <div className="flex items-center space-x-1">
                   <StatusDot color="bg-blue-500" />
-                  <span>Video: {currentClip.name}</span>
+                  <span>{t('overlay.video', 'Video')}: {currentClip.name}</span>
                 </div>
               )}
             </div>
@@ -274,7 +276,7 @@ const Overlay: React.FC = () => {
               <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="animate-pulse">
                 <polygon points="5,3 19,12 5,21" fill="currentColor"/>
               </svg>
-              <span>Playing</span>
+              <span>{t('overlay.playing', 'Playing')}</span>
             </div>
             )}
           </div>

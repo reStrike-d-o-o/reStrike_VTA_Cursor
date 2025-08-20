@@ -5,9 +5,11 @@ import Button from '../atoms/Button';
 import Input from '../atoms/Input';
 import Label from '../atoms/Label';
 import { Icon } from '../atoms/Icon';
+import { useI18n } from '../../i18n/index';
 
 const VideoClips: React.FC = () => {
   const { videoClips, currentClip, setCurrentClip, addVideoClip, removeVideoClip, setPlaying } = useAppStore();
+  const { t } = useI18n();
   const [isAddingClip, setIsAddingClip] = useState(false);
   const [newClip, setNewClip] = useState({
     name: '',
@@ -32,7 +34,7 @@ const VideoClips: React.FC = () => {
 
   const handleAddClip = () => {
     if (!newClip.name.trim() || !newClip.path.trim()) {
-      alert('Name and path are required');
+      alert(t('clips.form.required', 'Name and path are required'));
       return;
     }
 
@@ -77,14 +79,14 @@ const VideoClips: React.FC = () => {
   return (
     <div className="p-6 bg-gray-900 text-white rounded-lg">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold">Video Clips</h2>
+        <h2 className="text-2xl font-bold">{t('clips.title', 'Video Clips')}</h2>
         <Button
           onClick={() => setIsAddingClip(!isAddingClip)}
           variant="primary"
           size="md"
           className="px-4 py-2"
         >
-          {isAddingClip ? 'Cancel' : '+ Add Clip'}
+          {isAddingClip ? t('common.cancel', 'Cancel') : t('clips.add_toggle_add', '+ Add Clip')}
         </Button>
       </div>
 
@@ -98,37 +100,37 @@ const VideoClips: React.FC = () => {
         >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="clipName">Clip Name *</Label>
+                <Label htmlFor="clipName">{t('clips.form.name_label', 'Clip Name *')}</Label>
                 <Input
                   type="text"
                   value={newClip.name}
                   onChange={(e) => setNewClip(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="e.g., Amazing Goal, Epic Save"
+                  placeholder={t('clips.form.name_placeholder', 'e.g., Amazing Goal, Epic Save')}
                 />
               </div>
 
               <div>
-                <Label htmlFor="filePath">File Path *</Label>
+                <Label htmlFor="filePath">{t('clips.form.path_label', 'File Path *')}</Label>
                 <Input
                   type="text"
                   value={newClip.path}
                   onChange={(e) => setNewClip(prev => ({ ...prev, path: e.target.value }))}
-                  placeholder="/path/to/video.mp4"
+                  placeholder={t('clips.form.path_placeholder', '/path/to/video.mp4')}
                 />
               </div>
 
               <div>
-                <Label htmlFor="duration">Duration (seconds)</Label>
+                <Label htmlFor="duration">{t('clips.form.duration_label', 'Duration (seconds)')}</Label>
                 <Input
                   type="number"
                   value={newClip.duration}
                   onChange={(e) => setNewClip(prev => ({ ...prev, duration: parseInt(e.target.value) || 0 }))}
-                  placeholder="120"
+                  placeholder={t('clips.form.duration_placeholder', '120')}
                 />
               </div>
 
               <div>
-                <Label htmlFor="tags">Tags (comma-separated)</Label>
+                <Label htmlFor="tags">{t('clips.form.tags_label', 'Tags (comma-separated)')}</Label>
                 <Input
                   type="text"
                   value={newClip.tags.join(', ')}
@@ -136,7 +138,7 @@ const VideoClips: React.FC = () => {
                     ...prev, 
                     tags: e.target.value.split(',').map(tag => tag.trim()).filter(tag => tag)
                   }))}
-                  placeholder="goal, save, highlight"
+                  placeholder={t('clips.form.tags_placeholder', 'goal, save, highlight')}
                 />
               </div>
             </div>
@@ -148,7 +150,7 @@ const VideoClips: React.FC = () => {
                 size="md"
                 className="px-4 py-2"
               >
-                Add Clip
+                {t('clips.add_button', 'Add Clip')}
               </Button>
               <Button
                 onClick={() => setIsAddingClip(false)}
@@ -156,7 +158,7 @@ const VideoClips: React.FC = () => {
                 size="md"
                 className="px-4 py-2"
               >
-                Cancel
+                {t('common.cancel', 'Cancel')}
               </Button>
             </div>
           </motion.div>
@@ -167,7 +169,7 @@ const VideoClips: React.FC = () => {
         <div>
           <Input
             type="text"
-            placeholder="Search clips..."
+            placeholder={t('clips.search_placeholder', 'Search clips...')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -175,7 +177,7 @@ const VideoClips: React.FC = () => {
 
         {allTags.length > 0 && (
           <div>
-            <Label htmlFor="filterTags">Filter by Tags</Label>
+            <Label htmlFor="filterTags">{t('clips.filter.label', 'Filter by Tags')}</Label>
             <div className="flex flex-wrap gap-2">
               {allTags.map(tag => (
                 <button
@@ -208,7 +210,7 @@ const VideoClips: React.FC = () => {
               <polygon points="10,9 16,12 10,15" fill="currentColor"/>
             </svg>
             <p className="text-gray-400 mb-2">
-              {videoClips.length === 0 ? 'No clips added yet' : 'No clips match your search'}
+              {videoClips.length === 0 ? t('clips.empty.no_clips', 'No clips added yet') : t('clips.empty.no_match', 'No clips match your search')}
             </p>
             {videoClips.length === 0 && (
               <Button
@@ -217,7 +219,7 @@ const VideoClips: React.FC = () => {
                 size="md"
                 className="px-4 py-2"
               >
-                Add Your First Clip
+                {t('clips.empty.add_first', 'Add Your First Clip')}
               </Button>
             )}
           </div>
@@ -243,7 +245,7 @@ const VideoClips: React.FC = () => {
                 <h3 className="font-semibold truncate">{clip.name}</h3>
                 
                 <div className="flex items-center justify-between text-sm text-gray-400">
-                  <span>Duration: {formatDuration(clip.duration)}</span>
+                  <span>{t('clips.duration', 'Duration')}: {formatDuration(clip.duration)}</span>
                   <span>{formatDate(clip.timestamp)}</span>
                 </div>
 
@@ -273,7 +275,7 @@ const VideoClips: React.FC = () => {
                       variant="primary"
                       size="sm"
                       className="p-1"
-                      title="Play"
+                      title={t('common.play', 'Play')}
                     >
                       <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <polygon points="5,3 19,12 5,21" fill="currentColor"/>
@@ -287,7 +289,7 @@ const VideoClips: React.FC = () => {
                       variant="danger"
                       size="sm"
                       className="p-1"
-                      title="Delete"
+                      title={t('common.delete', 'Delete')}
                     >
                       <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />

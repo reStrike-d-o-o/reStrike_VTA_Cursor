@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useI18n } from '../../i18n/index';
 
 export interface LanguageOption {
   code: string; // 'en', 'sr', 'hr', 'de', 'fr'
@@ -47,6 +48,7 @@ const LanguageSelect: React.FC<LanguageSelectProps> = ({ value, onChange, option
     console.log('[LanguageSelect] open state changed', { open });
   }, [open]);
 
+  const { t } = useI18n();
   return (
     <div ref={ref} className={`relative inline-block ${className}`}>
       <button
@@ -54,8 +56,8 @@ const LanguageSelect: React.FC<LanguageSelectProps> = ({ value, onChange, option
         className="flex items-center gap-2 bg-gray-700 text-gray-200 text-sm px-2 py-1 rounded border border-gray-600 hover:bg-gray-650"
         onClick={() => { console.log('[LanguageSelect] toggle clicked', { prevOpen: open, nextOpen: !open }); setOpen(o => !o); }}
         aria-haspopup="listbox"
-        aria-label="Language"
-        title="Language selector"
+        aria-label={t('settings.language', 'Language')}
+        title={t('settings.language_selector', 'Language selector')}
       >
         <img
           src={`/assets/flags/svg/${current.flag}.svg`}
@@ -73,7 +75,7 @@ const LanguageSelect: React.FC<LanguageSelectProps> = ({ value, onChange, option
       {open && (
         <ul
           role="listbox"
-          aria-label="Available languages"
+          aria-label={t('settings.available_languages', 'Available languages')}
           className="absolute z-20 mt-1 w-44 max-h-64 overflow-auto rounded border border-gray-600 bg-gray-800 shadow-lg"
         >
           {options.map(opt => (
