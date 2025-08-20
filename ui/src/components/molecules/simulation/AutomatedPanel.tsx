@@ -39,7 +39,7 @@ const AutomatedPanel: React.FC = () => {
       <div>
         <Label>Automated Scenario</Label>
         <select
-          aria-label="Select automated simulation scenario"
+          aria-label={"Select automated simulation scenario"}
           value={selectedAutomatedScenario}
           onChange={(e) => setSelectedAutomatedScenario(e.target.value)}
           disabled={status.isRunning || loading}

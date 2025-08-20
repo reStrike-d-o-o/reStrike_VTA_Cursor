@@ -27,7 +27,7 @@ const ManualPanel: React.FC = () => {
       <div>
         <Label>Simulation Mode</Label>
         <select
-          aria-label="Select simulation mode"
+          aria-label={"Select simulation mode"}
           className="w-full bg-gray-800 border border-gray-600 square px-3 py-2 text-gray-200 focus:border-blue-500 focus:outline-none"
           value={selectedMode}
           onChange={(e) => setSelectedMode(e.target.value)}
@@ -43,7 +43,7 @@ const ManualPanel: React.FC = () => {
       <div>
         <Label>Scenario</Label>
         <select
-          aria-label="Select simulation scenario"
+          aria-label={"Select simulation scenario"}
           className="w-full bg-gray-800 border border-gray-600 square px-3 py-2 text-gray-200 focus:border-blue-500 focus:outline-none"
           value={selectedScenario}
           onChange={(e) => setSelectedScenario(e.target.value)}

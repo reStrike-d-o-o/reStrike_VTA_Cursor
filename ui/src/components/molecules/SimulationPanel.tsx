@@ -407,7 +407,7 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
               onChange={(e) => setSelectedAutomatedScenario(e.target.value)}
               disabled={status.isRunning || isLoading}
               className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-gray-200 focus:border-blue-500 focus:outline-none"
-              aria-label="Select automated simulation scenario"
+              aria-label={"Select automated simulation scenario"}
             >
               {automatedScenarios.length === 0 ? (
                 <option value="">Loading scenarios...</option>
@@ -484,7 +484,7 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
               onChange={(e) => setSelectedMode(e.target.value)}
               disabled={status.isRunning || isLoading}
               className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-gray-200 focus:border-blue-500 focus:outline-none"
-              aria-label="Select simulation mode"
+              aria-label={"Select simulation mode"}
             >
               <option value="demo">Demo</option>
               <option value="random">Random Events</option>
@@ -500,7 +500,7 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
               onChange={(e) => setSelectedScenario(e.target.value)}
               disabled={status.isRunning || isLoading}
               className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-gray-200 focus:border-blue-500 focus:outline-none"
-              aria-label="Select simulation scenario"
+              aria-label={"Select simulation scenario"}
             >
               <option value="basic">Basic Match</option>
               <option value="championship">Championship</option>
