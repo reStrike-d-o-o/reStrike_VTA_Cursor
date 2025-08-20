@@ -7,6 +7,7 @@ import StatusDot from '../atoms/StatusDot';
 import Icon from '../atoms/Icon';
 import SelfTestPanel from './SelfTestPanel';
 import { invoke as tauriInvoke } from '@tauri-apps/api/core';
+import { useI18n } from '../../i18n/index';
 
 // Use the proper Tauri v2 invoke function with fallback
 const invoke = async (command: string, args?: any) => {
@@ -59,6 +60,7 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
   const [isInstallingDeps, setIsInstallingDeps] = useState(false);
+  const { t } = useI18n();
   
   // Automated simulation state
   const [showAutomated, setShowAutomated] = useState(false);
@@ -325,7 +327,7 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <Icon name="🤖" className="w-6 h-6 text-blue-400" />
-          <h3 className="text-lg font-semibold text-gray-200">Simulation Control</h3>
+          <h3 className="text-lg font-semibold text-gray-200">{t('simulation.title', 'Simulation Control')}</h3>
         </div>
         <div className="flex items-center space-x-2">
           <StatusDot
@@ -333,7 +335,7 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
             size="w-3 h-3"
           />
           <span className="text-xs text-gray-400">
-            {status.isConnected ? 'Connected' : 'Disconnected'}
+            {status.isConnected ? t('common.connected', 'Connected') : t('common.disconnected', 'Disconnected')}
           </span>
         </div>
       </div>
@@ -377,7 +379,7 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
                         {/* Mode Toggles */}
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <Label>Automated Simulation</Label>
+                      <Label>{t('simulation.modes.automated', 'Automated Simulation')}</Label>
                       <Toggle
                         label=""
                         checked={showAutomated}
@@ -386,7 +388,7 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
                       />
                     </div>
                     <div className="flex items-center justify-between">
-                      <Label>System Self-Test</Label>
+                      <Label>{t('simulation.modes.selftest', 'System Self-Test')}</Label>
                       <Toggle
                         label=""
                         checked={showSelfTest}
@@ -401,7 +403,7 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
         <div className="space-y-4">
           {/* Scenario Selection */}
           <div>
-            <Label>Automated Scenario</Label>
+            <Label>{t('simulation.automated.label', 'Automated Scenario')}</Label>
             <select
               value={selectedAutomatedScenario}
               onChange={(e) => setSelectedAutomatedScenario(e.target.value)}
@@ -410,11 +412,11 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
               aria-label={"Select automated simulation scenario"}
             >
               {automatedScenarios.length === 0 ? (
-                <option value="">Loading scenarios...</option>
+                <option value="">{t('common.loading', 'Loading...')}</option>
               ) : (
                 automatedScenarios.map((scenario) => (
                   <option key={scenario.name} value={scenario.name}>
-                    {scenario.display_name} ({scenario.match_count} matches, ~{Math.round(scenario.estimated_duration / 60)}min)
+                    {scenario.display_name} ({scenario.match_count} {t('simulation.automated.matches', 'matches')}, ~{Math.round(scenario.estimated_duration / 60)}{t('common.min', 'min')})
                   </option>
                 ))
               )}
@@ -454,10 +456,10 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
               {isLoading ? (
                 <div className="flex items-center space-x-2">
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  <span>Starting...</span>
+                  <span>{t('common.starting', 'Starting...')}</span>
                 </div>
               ) : (
-                <span>Start Automated</span>
+                <span>{t('simulation.automated.start', 'Start Automated')}</span>
               )}
             </Button>
             <Button
@@ -466,7 +468,7 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
               onClick={stopSimulation}
               disabled={!status.isRunning || isLoading}
             >
-              Stop
+              {t('common.stop', 'Stop')}
             </Button>
                                 </div>
                     </div>
@@ -478,39 +480,39 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
                     <div className="space-y-4">
           {/* Mode Selection */}
           <div>
-            <Label>Simulation Mode</Label>
+            <Label>{t('simulation.manual.mode', 'Simulation Mode')}</Label>
             <select
               value={selectedMode}
               onChange={(e) => setSelectedMode(e.target.value)}
               disabled={status.isRunning || isLoading}
               className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-gray-200 focus:border-blue-500 focus:outline-none"
-              aria-label={"Select simulation mode"}
+              aria-label={t('simulation.manual.mode_aria', 'Select simulation mode')}
             >
-              <option value="demo">Demo</option>
-              <option value="random">Random Events</option>
-              <option value="interactive">Interactive</option>
+              <option value="demo">{t('simulation.manual.mode.demo', 'Demo')}</option>
+              <option value="random">{t('simulation.manual.mode.random', 'Random Events')}</option>
+              <option value="interactive">{t('simulation.manual.mode.interactive', 'Interactive')}</option>
             </select>
           </div>
 
           {/* Scenario Selection */}
           <div>
-            <Label>Scenario</Label>
+            <Label>{t('simulation.manual.scenario', 'Scenario')}</Label>
             <select
               value={selectedScenario}
               onChange={(e) => setSelectedScenario(e.target.value)}
               disabled={status.isRunning || isLoading}
               className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-gray-200 focus:border-blue-500 focus:outline-none"
-              aria-label={"Select simulation scenario"}
+              aria-label={t('simulation.manual.scenario_aria', 'Select simulation scenario')}
             >
-              <option value="basic">Basic Match</option>
-              <option value="championship">Championship</option>
-              <option value="training">Training</option>
+              <option value="basic">{t('simulation.manual.scenario.basic', 'Basic Match')}</option>
+              <option value="championship">{t('simulation.manual.scenario.championship', 'Championship')}</option>
+              <option value="training">{t('simulation.manual.scenario.training', 'Training')}</option>
             </select>
           </div>
 
           {/* Duration Input */}
           <div>
-            <Label>Duration (seconds)</Label>
+            <Label>{t('simulation.manual.duration', 'Duration (seconds)')}</Label>
             <Input
               type="number"
               value={duration}
@@ -533,10 +535,10 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
               {isLoading ? (
                 <div className="flex items-center space-x-2">
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  <span>Starting...</span>
+                  <span>{t('common.starting', 'Starting...')}</span>
                 </div>
               ) : (
-                <span>Start Simulation</span>
+                <span>{t('simulation.manual.start', 'Start Simulation')}</span>
               )}
             </Button>
             <Button
@@ -545,17 +547,17 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
               onClick={stopSimulation}
               disabled={!status.isRunning || isLoading}
             >
-              Stop
+              {t('common.stop', 'Stop')}
             </Button>
           </div>
 
           {/* Manual Event Buttons */}
           <div>
-            <Label>Manual Events</Label>
+            <Label>{t('simulation.manual.events', 'Manual Events')}</Label>
             
             {/* Points Section */}
             <div className="mt-3">
-              <h5 className="text-xs font-medium text-gray-300 mb-2">Points (Blue Athlete)</h5>
+              <h5 className="text-xs font-medium text-gray-300 mb-2">{t('simulation.manual.points_blue', 'Points (Blue Athlete)')}</h5>
               <div className="grid grid-cols-2 gap-2">
                 <Button
                   variant="outline"
@@ -563,7 +565,7 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
                   onClick={() => sendManualEvent('point', { athlete: 1, point_type: 1 })}
                   disabled={status.isRunning || isLoading}
                 >
-                  Punch (1pt)
+                  {t('simulation.points.punch', 'Punch (1pt)')}
                 </Button>
                 <Button
                   variant="outline"
@@ -571,7 +573,7 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
                   onClick={() => sendManualEvent('point', { athlete: 1, point_type: 2 })}
                   disabled={status.isRunning || isLoading}
                 >
-                  Body Kick (2pt)
+                  {t('simulation.points.body_kick', 'Body Kick (2pt)')}
                 </Button>
                 <Button
                   variant="outline"
@@ -579,7 +581,7 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
                   onClick={() => sendManualEvent('point', { athlete: 1, point_type: 3 })}
                   disabled={status.isRunning || isLoading}
                 >
-                  Head Kick (3pt)
+                  {t('simulation.points.head_kick', 'Head Kick (3pt)')}
                 </Button>
                 <Button
                   variant="outline"
@@ -587,7 +589,7 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
                   onClick={() => sendManualEvent('point', { athlete: 1, point_type: 4 })}
                   disabled={status.isRunning || isLoading}
                 >
-                  Tech Body (4pt)
+                  {t('simulation.points.tech_body', 'Tech Body (4pt)')}
                 </Button>
                 <Button
                   variant="outline"
@@ -595,13 +597,13 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
                   onClick={() => sendManualEvent('point', { athlete: 1, point_type: 5 })}
                   disabled={status.isRunning || isLoading}
                 >
-                  Tech Head (5pt)
+                  {t('simulation.points.tech_head', 'Tech Head (5pt)')}
                 </Button>
               </div>
             </div>
 
             <div className="mt-3">
-              <h5 className="text-xs font-medium text-gray-300 mb-2">Points (Red Athlete)</h5>
+              <h5 className="text-xs font-medium text-gray-300 mb-2">{t('simulation.manual.points_red', 'Points (Red Athlete)')}</h5>
               <div className="grid grid-cols-2 gap-2">
                 <Button
                   variant="outline"
@@ -609,7 +611,7 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
                   onClick={() => sendManualEvent('point', { athlete: 2, point_type: 1 })}
                   disabled={status.isRunning || isLoading}
                 >
-                  Punch (1pt)
+                  {t('simulation.points.punch', 'Punch (1pt)')}
                 </Button>
                 <Button
                   variant="outline"
@@ -617,7 +619,7 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
                   onClick={() => sendManualEvent('point', { athlete: 2, point_type: 2 })}
                   disabled={status.isRunning || isLoading}
                 >
-                  Body Kick (2pt)
+                  {t('simulation.points.body_kick', 'Body Kick (2pt)')}
                 </Button>
                 <Button
                   variant="outline"
@@ -625,7 +627,7 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
                   onClick={() => sendManualEvent('point', { athlete: 2, point_type: 3 })}
                   disabled={status.isRunning || isLoading}
                 >
-                  Head Kick (3pt)
+                  {t('simulation.points.head_kick', 'Head Kick (3pt)')}
                 </Button>
                 <Button
                   variant="outline"
@@ -633,7 +635,7 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
                   onClick={() => sendManualEvent('point', { athlete: 2, point_type: 4 })}
                   disabled={status.isRunning || isLoading}
                 >
-                  Tech Body (4pt)
+                  {t('simulation.points.tech_body', 'Tech Body (4pt)')}
                 </Button>
                 <Button
                   variant="outline"
@@ -641,14 +643,14 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
                   onClick={() => sendManualEvent('point', { athlete: 2, point_type: 5 })}
                   disabled={status.isRunning || isLoading}
                 >
-                  Tech Head (5pt)
+                  {t('simulation.points.tech_head', 'Tech Head (5pt)')}
                 </Button>
               </div>
             </div>
 
             {/* Hit Levels Section */}
             <div className="mt-3">
-              <h5 className="text-xs font-medium text-gray-300 mb-2">Hit Levels</h5>
+              <h5 className="text-xs font-medium text-gray-300 mb-2">{t('simulation.manual.hit_levels', 'Hit Levels')}</h5>
               <div className="grid grid-cols-3 gap-2">
                 <Button
                   variant="outline"
@@ -656,7 +658,7 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
                   onClick={() => sendManualEvent('hit_level', { athlete: 1, level: 25 })}
                   disabled={status.isRunning || isLoading}
                 >
-                  Blue Low (25)
+                  {t('simulation.hit.blue_low', 'Blue Low (25)')}
                 </Button>
                 <Button
                   variant="outline"
@@ -664,7 +666,7 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
                   onClick={() => sendManualEvent('hit_level', { athlete: 1, level: 75 })}
                   disabled={status.isRunning || isLoading}
                 >
-                  Blue High (75)
+                  {t('simulation.hit.blue_high', 'Blue High (75)')}
                 </Button>
                 <Button
                   variant="outline"
@@ -672,7 +674,7 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
                   onClick={() => sendManualEvent('hit_level', { athlete: 2, level: 25 })}
                   disabled={status.isRunning || isLoading}
                 >
-                  Red Low (25)
+                  {t('simulation.hit.red_low', 'Red Low (25)')}
                 </Button>
                 <Button
                   variant="outline"
@@ -680,14 +682,14 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
                   onClick={() => sendManualEvent('hit_level', { athlete: 2, level: 75 })}
                   disabled={status.isRunning || isLoading}
                 >
-                  Red High (75)
+                  {t('simulation.hit.red_high', 'Red High (75)')}
                 </Button>
               </div>
             </div>
 
             {/* Warnings Section */}
             <div className="mt-3">
-              <h5 className="text-xs font-medium text-gray-300 mb-2">Warnings</h5>
+              <h5 className="text-xs font-medium text-gray-300 mb-2">{t('simulation.manual.warnings', 'Warnings')}</h5>
               <div className="grid grid-cols-2 gap-2">
                 <Button
                   variant="outline"
@@ -695,7 +697,7 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
                   onClick={() => sendManualEvent('warning', { athlete: 1 })}
                   disabled={status.isRunning || isLoading}
                 >
-                  Blue Warning
+                  {t('simulation.warn.blue', 'Blue Warning')}
                 </Button>
                 <Button
                   variant="outline"
@@ -703,14 +705,14 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
                   onClick={() => sendManualEvent('warning', { athlete: 2 })}
                   disabled={status.isRunning || isLoading}
                 >
-                  Red Warning
+                  {t('simulation.warn.red', 'Red Warning')}
                 </Button>
               </div>
             </div>
 
             {/* Injury Time Section */}
             <div className="mt-3">
-              <h5 className="text-xs font-medium text-gray-300 mb-2">Injury Time</h5>
+              <h5 className="text-xs font-medium text-gray-300 mb-2">{t('simulation.manual.injury', 'Injury Time')}</h5>
               <div className="grid grid-cols-2 gap-2">
                 <Button
                   variant="outline"
@@ -718,7 +720,7 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
                   onClick={() => sendManualEvent('injury', { athlete: 1, duration: 60 })}
                   disabled={status.isRunning || isLoading}
                 >
-                  Blue Injury
+                  {t('simulation.injury.blue', 'Blue Injury')}
                 </Button>
                 <Button
                   variant="outline"
@@ -726,14 +728,14 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
                   onClick={() => sendManualEvent('injury', { athlete: 2, duration: 60 })}
                   disabled={status.isRunning || isLoading}
                 >
-                  Red Injury
+                  {t('simulation.injury.red', 'Red Injury')}
                 </Button>
               </div>
             </div>
 
             {/* Challenges Section */}
             <div className="mt-3">
-              <h5 className="text-xs font-medium text-gray-300 mb-2">Challenges</h5>
+              <h5 className="text-xs font-medium text-gray-300 mb-2">{t('simulation.manual.challenges', 'Challenges')}</h5>
               <div className="grid grid-cols-2 gap-2">
                 <Button
                   variant="outline"
@@ -741,7 +743,7 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
                   onClick={() => sendManualEvent('challenge', { source: 1, accepted: true, won: true })}
                   disabled={status.isRunning || isLoading}
                 >
-                  Blue Win
+                  {t('simulation.challenge.blue_win', 'Blue Win')}
                 </Button>
                 <Button
                   variant="outline"
@@ -749,14 +751,14 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
                   onClick={() => sendManualEvent('challenge', { source: 2, accepted: true, won: false })}
                   disabled={status.isRunning || isLoading}
                 >
-                  Red Lose
+                  {t('simulation.challenge.red_lose', 'Red Lose')}
                 </Button>
               </div>
             </div>
 
             {/* Break Time Section */}
             <div className="mt-3">
-              <h5 className="text-xs font-medium text-gray-300 mb-2">Break Time</h5>
+              <h5 className="text-xs font-medium text-gray-300 mb-2">{t('simulation.manual.break', 'Break Time')}</h5>
               <div className="grid grid-cols-2 gap-2">
                 <Button
                   variant="outline"
@@ -764,7 +766,7 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
                   onClick={() => sendManualEvent('break', { duration: 60 })}
                   disabled={status.isRunning || isLoading}
                 >
-                  Start Break
+                  {t('simulation.manual.break_start', 'Start Break')}
                 </Button>
                 <Button
                   variant="outline"
@@ -772,14 +774,14 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
                   onClick={() => sendManualEvent('break_end', {})}
                   disabled={status.isRunning || isLoading}
                 >
-                  End Break
+                  {t('simulation.manual.break_end', 'End Break')}
                 </Button>
               </div>
             </div>
 
             {/* Clock Control Section */}
             <div className="mt-3">
-              <h5 className="text-xs font-medium text-gray-300 mb-2">Clock Control</h5>
+              <h5 className="text-xs font-medium text-gray-300 mb-2">{t('simulation.manual.clock', 'Clock Control')}</h5>
               <div className="grid grid-cols-2 gap-2">
                 <Button
                   variant="outline"
@@ -787,7 +789,7 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
                   onClick={() => sendManualEvent('clock_start', {})}
                   disabled={status.isRunning || isLoading}
                 >
-                  Start Clock
+                  {t('simulation.manual.clock_start', 'Start Clock')}
                 </Button>
                 <Button
                   variant="outline"
@@ -795,14 +797,14 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
                   onClick={() => sendManualEvent('clock_stop', {})}
                   disabled={status.isRunning || isLoading}
                 >
-                  Stop Clock
+                  {t('simulation.manual.clock_stop', 'Stop Clock')}
                 </Button>
               </div>
             </div>
 
             {/* Round Control Section */}
             <div className="mt-3">
-              <h5 className="text-xs font-medium text-gray-300 mb-2">Round Control</h5>
+              <h5 className="text-xs font-medium text-gray-300 mb-2">{t('simulation.manual.round', 'Round Control')}</h5>
               <div className="grid grid-cols-3 gap-2">
                 <Button
                   variant="outline"
@@ -810,7 +812,7 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
                   onClick={() => sendManualEvent('round', { round: 1 })}
                   disabled={status.isRunning || isLoading}
                 >
-                  Round 1
+                  {t('simulation.manual.round1', 'Round 1')}
                 </Button>
                 <Button
                   variant="outline"
@@ -818,7 +820,7 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
                   onClick={() => sendManualEvent('round', { round: 2 })}
                   disabled={status.isRunning || isLoading}
                 >
-                  Round 2
+                  {t('simulation.manual.round2', 'Round 2')}
                 </Button>
                 <Button
                   variant="outline"
@@ -826,7 +828,7 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
                   onClick={() => sendManualEvent('round', { round: 3 })}
                   disabled={status.isRunning || isLoading}
                 >
-                  Round 3
+                  {t('simulation.manual.round3', 'Round 3')}
                 </Button>
               </div>
             </div>
@@ -836,13 +838,13 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
 
       {/* Current Status */}
       <div className="bg-gray-800/50 rounded-lg p-3">
-        <h4 className="text-sm font-medium text-gray-300 mb-2">Current Status</h4>
+        <h4 className="text-sm font-medium text-gray-300 mb-2">{t('simulation.status.title', 'Current Status')}</h4>
         <div className="space-y-1 text-xs text-gray-400">
-          <div>Running: {status.isRunning ? 'Yes' : 'No'}</div>
-          <div>Scenario: {status.currentScenario}</div>
-          <div>Mode: {status.currentMode}</div>
-          <div>Events Sent: {status.eventsSent}</div>
-          <div>Last Event: {status.lastEvent}</div>
+          <div>{t('simulation.status.running', 'Running')}: {status.isRunning ? t('common.yes', 'Yes') : t('common.no', 'No')}</div>
+          <div>{t('simulation.status.scenario', 'Scenario')}: {status.currentScenario}</div>
+          <div>{t('simulation.status.mode', 'Mode')}: {status.currentMode}</div>
+          <div>{t('simulation.status.events_sent', 'Events Sent')}: {status.eventsSent}</div>
+          <div>{t('simulation.status.last_event', 'Last Event')}: {status.lastEvent}</div>
         </div>
       </div>
     </div>

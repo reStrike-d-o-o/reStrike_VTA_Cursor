@@ -3,6 +3,7 @@ import Button from '../../atoms/Button';
 import Input from '../../atoms/Input';
 import Label from '../../atoms/Label';
 import { useSimulationStore } from '../../../stores/simulationStore';
+import { useI18n } from '../../../i18n/index';
 
 const ManualPanel: React.FC = () => {
   const {
@@ -20,51 +21,52 @@ const ManualPanel: React.FC = () => {
   } = useSimulationStore();
 
   const disabled = status.isRunning || loading;
+  const { t } = useI18n();
 
   return (
     <div className="space-y-4">
       {/* Mode */}
       <div>
-        <Label>Simulation Mode</Label>
+        <Label>{t('simulation.manual.mode', 'Simulation Mode')}</Label>
         <select
-          aria-label={"Select simulation mode"}
+          aria-label={t('simulation.manual.mode_aria', 'Select simulation mode')}
           className="w-full bg-gray-800 border border-gray-600 square px-3 py-2 text-gray-200 focus:border-blue-500 focus:outline-none"
           value={selectedMode}
           onChange={(e) => setSelectedMode(e.target.value)}
           disabled={disabled}
         >
-          <option value="demo">Demo</option>
-          <option value="random">Random Events</option>
-          <option value="interactive">Interactive</option>
+          <option value="demo">{t('simulation.manual.mode.demo', 'Demo')}</option>
+          <option value="random">{t('simulation.manual.mode.random', 'Random Events')}</option>
+          <option value="interactive">{t('simulation.manual.mode.interactive', 'Interactive')}</option>
         </select>
       </div>
 
       {/* Scenario */}
       <div>
-        <Label>Scenario</Label>
+        <Label>{t('simulation.manual.scenario', 'Scenario')}</Label>
         <select
-          aria-label={"Select simulation scenario"}
+          aria-label={t('simulation.manual.scenario_aria', 'Select simulation scenario')}
           className="w-full bg-gray-800 border border-gray-600 square px-3 py-2 text-gray-200 focus:border-blue-500 focus:outline-none"
           value={selectedScenario}
           onChange={(e) => setSelectedScenario(e.target.value)}
           disabled={disabled}
         >
-          <option value="basic">Basic Match</option>
-          <option value="championship">Championship</option>
-          <option value="training">Training</option>
+          <option value="basic">{t('simulation.manual.scenario.basic', 'Basic Match')}</option>
+          <option value="championship">{t('simulation.manual.scenario.championship', 'Championship')}</option>
+          <option value="training">{t('simulation.manual.scenario.training', 'Training')}</option>
         </select>
       </div>
 
       {/* Duration */}
       <div>
-        <Label>Duration (seconds)</Label>
+        <Label>{t('simulation.manual.duration', 'Duration (seconds)')}</Label>
         <Input type="number" value={duration} onChange={(e) => setDuration(parseInt(e.target.value) || 30)} disabled={disabled} min={10} max={600} />
       </div>
 
       {/* Controls */}
       <div className="flex gap-2">
-        <Button variant="primary" size="sm" onClick={startManual} disabled={disabled} className="flex-1">Start Simulation</Button>
-        <Button variant="secondary" size="sm" onClick={stop} disabled={!status.isRunning || loading}>Stop</Button>
+        <Button variant="primary" size="sm" onClick={startManual} disabled={disabled} className="flex-1">{t('simulation.manual.start', 'Start Simulation')}</Button>
+        <Button variant="secondary" size="sm" onClick={stop} disabled={!status.isRunning || loading}>{t('common.stop', 'Stop')}</Button>
       </div>
 
       {/* Event Palette - Two columns: Blue (left), Red (right). Global controls below. */}
@@ -151,25 +153,25 @@ const ManualPanel: React.FC = () => {
       {/* Global controls */}
       <div className="grid md:grid-cols-3 gap-4">
         <div className="p-2 border border-gray-700">
-          <h5 className="text-xs font-medium text-gray-300 mb-2">Break Time</h5>
+          <h5 className="text-xs font-medium text-gray-300 mb-2">{t('simulation.manual.break', 'Break Time')}</h5>
           <div className="grid grid-cols-2 gap-1.5">
-            <Button variant="outline" size="sm" className="px-2 text-xs w-auto" onClick={() => sendManualEvent('break', { duration: 60 })} disabled={disabled}>Start Break</Button>
-            <Button variant="outline" size="sm" className="px-2 text-xs w-auto" onClick={() => sendManualEvent('break_end', {})} disabled={disabled}>End Break</Button>
+            <Button variant="outline" size="sm" className="px-2 text-xs w-auto" onClick={() => sendManualEvent('break', { duration: 60 })} disabled={disabled}>{t('simulation.manual.break_start', 'Start Break')}</Button>
+            <Button variant="outline" size="sm" className="px-2 text-xs w-auto" onClick={() => sendManualEvent('break_end', {})} disabled={disabled}>{t('simulation.manual.break_end', 'End Break')}</Button>
           </div>
         </div>
         <div className="p-2 border border-gray-700">
-          <h5 className="text-xs font-medium text-gray-300 mb-2">Clock Control</h5>
+          <h5 className="text-xs font-medium text-gray-300 mb-2">{t('simulation.manual.clock', 'Clock Control')}</h5>
           <div className="grid grid-cols-2 gap-1.5">
-            <Button variant="outline" size="sm" className="px-2 text-xs w-auto" onClick={() => sendManualEvent('clock_start', {})} disabled={disabled}>Start Clock</Button>
-            <Button variant="outline" size="sm" className="px-2 text-xs w-auto" onClick={() => sendManualEvent('clock_stop', {})} disabled={disabled}>Stop Clock</Button>
+            <Button variant="outline" size="sm" className="px-2 text-xs w-auto" onClick={() => sendManualEvent('clock_start', {})} disabled={disabled}>{t('simulation.manual.clock_start', 'Start Clock')}</Button>
+            <Button variant="outline" size="sm" className="px-2 text-xs w-auto" onClick={() => sendManualEvent('clock_stop', {})} disabled={disabled}>{t('simulation.manual.clock_stop', 'Stop Clock')}</Button>
           </div>
         </div>
         <div className="p-2 border border-gray-700">
-          <h5 className="text-xs font-medium text-gray-300 mb-2">Round Control</h5>
+          <h5 className="text-xs font-medium text-gray-300 mb-2">{t('simulation.manual.round', 'Round Control')}</h5>
           <div className="grid grid-cols-3 gap-1.5">
-            <Button variant="outline" size="sm" className="px-2 text-xs w-auto" onClick={() => sendManualEvent('round', { round: 1 })} disabled={disabled}>Round 1</Button>
-            <Button variant="outline" size="sm" className="px-2 text-xs w-auto" onClick={() => sendManualEvent('round', { round: 2 })} disabled={disabled}>Round 2</Button>
-            <Button variant="outline" size="sm" className="px-2 text-xs w-auto" onClick={() => sendManualEvent('round', { round: 3 })} disabled={disabled}>Round 3</Button>
+            <Button variant="outline" size="sm" className="px-2 text-xs w-auto" onClick={() => sendManualEvent('round', { round: 1 })} disabled={disabled}>{t('simulation.manual.round1', 'Round 1')}</Button>
+            <Button variant="outline" size="sm" className="px-2 text-xs w-auto" onClick={() => sendManualEvent('round', { round: 2 })} disabled={disabled}>{t('simulation.manual.round2', 'Round 2')}</Button>
+            <Button variant="outline" size="sm" className="px-2 text-xs w-auto" onClick={() => sendManualEvent('round', { round: 3 })} disabled={disabled}>{t('simulation.manual.round3', 'Round 3')}</Button>
           </div>
         </div>
       </div>

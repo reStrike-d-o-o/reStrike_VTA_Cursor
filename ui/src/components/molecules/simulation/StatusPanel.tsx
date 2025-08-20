@@ -1,9 +1,11 @@
 import React from 'react';
 import { useSimulationStore } from '../../../stores/simulationStore';
 import Button from '../../atoms/Button';
+import { useI18n } from '../../../i18n/index';
 
 const StatusPanel: React.FC = () => {
   const { status, error, success, retry, installDependencies, loading } = useSimulationStore();
+  const { t } = useI18n();
 
   const isEnvErr = (msg: string) =>
     !!msg && (
@@ -22,10 +24,10 @@ const StatusPanel: React.FC = () => {
           <p className="text-red-400 text-sm mb-2">{error}</p>
           {isEnvErr(error) && (
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={retry} disabled={loading}>Retry</Button>
+              <Button variant="outline" size="sm" onClick={retry} disabled={loading}>{t('common.retry', 'Retry')}</Button>
               {(error.includes('DependencyCheckFailed') || error.includes('PipInstallFailed')) && (
                 <Button variant="outline" size="sm" onClick={installDependencies} disabled={loading}>
-                  {loading ? 'Installing...' : 'Install Dependencies'}
+                  {loading ? t('common.installing', 'Installing...') : t('simulation.install_deps', 'Install Dependencies')}
                 </Button>
               )}
             </div>
@@ -37,13 +39,13 @@ const StatusPanel: React.FC = () => {
       )}
 
       <div className="theme-surface-2 p-3">
-        <h4 className="text-sm font-medium text-gray-300 mb-2">Current Status</h4>
+        <h4 className="text-sm font-medium text-gray-300 mb-2">{t('simulation.status.title', 'Current Status')}</h4>
         <div className="space-y-1 text-xs text-gray-400">
-          <div>Running: {status.isRunning ? 'Yes' : 'No'}</div>
-          <div>Scenario: {status.currentScenario}</div>
-          <div>Mode: {status.currentMode}</div>
-          <div>Events Sent: {status.eventsSent}</div>
-          <div>Last Event: {status.lastEvent}</div>
+          <div>{t('simulation.status.running', 'Running')}: {status.isRunning ? t('common.yes', 'Yes') : t('common.no', 'No')}</div>
+          <div>{t('simulation.status.scenario', 'Scenario')}: {status.currentScenario}</div>
+          <div>{t('simulation.status.mode', 'Mode')}: {status.currentMode}</div>
+          <div>{t('simulation.status.events_sent', 'Events Sent')}: {status.eventsSent}</div>
+          <div>{t('simulation.status.last_event', 'Last Event')}: {status.lastEvent}</div>
         </div>
       </div>
     </div>
