@@ -75,8 +75,11 @@ const AppSettingsSection: React.FC = () => {
             value={locale}
             onChange={(e) => setLocale(e.target.value)}
           >
-            <option value="en">English</option>
-            <option value="sr">Srpski</option>
+            <option value="en">🇬🇧 English</option>
+            <option value="sr">🇷🇸 Srpski</option>
+            <option value="hr">🇭🇷 Hrvatski</option>
+            <option value="de">🇩🇪 Deutsch</option>
+            <option value="fr">🇫🇷 Français</option>
           </select>
         </div>
       </div>
