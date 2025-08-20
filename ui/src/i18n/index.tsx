@@ -1128,7 +1128,8 @@ const catalogs: Catalogs = {
     'flags.success.mapping_update': 'Mapiranje ažurirano za {ioc}',
     'flags.success.mapping_reset': 'PSS kod vraćen na IOC kod za {ioc}',
   },
-  sr: {
+  // Serbian catalog removed to prevent mixed content; all HR keys live under 'hr'
+  /* sr: {
     'logs.archive_mgr.title': 'Menadžer arhiviranja logova',
     'logs.archive_mgr.load_failed': 'Učitavanje konfiguracije nije uspelo',
     'logs.archive_mgr.load_failed_with': 'Učitavanje konfiguracije nije uspelo: {err}',
@@ -1463,7 +1464,7 @@ const catalogs: Catalogs = {
     'analytics.match.status_label': 'Status:',
     'analytics.match.winner_label': 'Pobjednik:',
     'analytics.match.id': 'ID meča:',
-  },
+  }, */
   de: {
     'drawer.pss': 'PSS',
     'drawer.obs': 'OBS',
@@ -1759,10 +1760,8 @@ function normalizeLocale(input: string | undefined | null): string {
   try {
     const short = input.toLowerCase().split('-')[0];
     const exists = Boolean((catalogs as any)[short]);
-    console.log('[i18n] normalizeLocale:', { input, short, exists });
     return exists ? short : 'en';
   } catch {
-    console.warn('[i18n] normalizeLocale failed, defaulting to en for input:', input);
     return 'en';
   }
 }
