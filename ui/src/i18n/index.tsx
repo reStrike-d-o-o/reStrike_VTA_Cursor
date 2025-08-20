@@ -744,6 +744,23 @@ const catalogs: Catalogs = {
     'drive.col.action': 'Akcija',
     'common.select': 'Odaberi',
     'common.close': 'Zatvori',
+    // Database management
+    'db.mgmt.title': 'Upravljanje bazom podataka',
+    'db.mgmt.subtitle': 'Upravljajte postavkama aplikacije i bazom podataka',
+    'db.not_initialized': 'Baza podataka nije inicijalizirana',
+    'db.initializing': 'Inicijalizacija...',
+    'db.initialize': 'Inicijaliziraj',
+    'db.info.title': 'Informacije o bazi podataka',
+    'db.info.path': 'Put do baze',
+    'db.info.size': 'Veličina datoteke',
+    'db.info.tables': 'Tablice',
+    'db.info.settings_count': 'Broj postavki',
+    'db.info.hint': 'Kliknite Osvježi za učitavanje informacija o bazi',
+    // Triggers drawer helper
+    'triggers.recent_drawer': 'Ladica nedavnih izvršenja',
+    // Simulation aria helpers (kept literal where labels are not visible)
+    'simulation.select_mode': 'Odaberite način simulacije',
+    'simulation.select_scenario': 'Odaberite scenarij simulacije',
   },
   sr: {
     'logs.archive_mgr.title': 'Menadžer arhiviranja logova',

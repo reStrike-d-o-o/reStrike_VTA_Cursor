@@ -369,7 +369,7 @@ const TriggersRuleBuilder: React.FC<{ tournamentId?: number; dayId?: number }> =
         <div
           id="recent-executions-drawer"
           role="complementary"
-          aria-label="Recent Executions Drawer"
+          aria-label={t('triggers.recent_drawer', 'Recent Executions Drawer')}
           className={`absolute top-0 right-0 h-full w-[360px] border-l border-gray-700 bg-[#0F151C] transition-transform duration-300 ease-in-out ${
             showRecent ? 'translate-x-0' : 'translate-x-full'
           }`}
