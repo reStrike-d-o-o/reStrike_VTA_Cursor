@@ -861,6 +861,16 @@ const catalogs: Catalogs = {
   },
 };
 
+function normalizeLocale(input: string | undefined | null): string {
+  if (!input || typeof input !== 'string') return 'en';
+  try {
+    const short = input.toLowerCase().split('-')[0];
+    return (catalogs as any)[short] ? short : 'en';
+  } catch {
+    return 'en';
+  }
+}
+
 function interpolate(str: string, values?: Record<string, string | number>): string {
   if (!str || !values) return str;
   return str.replace(/\{(.*?)\}/g, (_m, key) => {
@@ -873,11 +883,11 @@ export const I18nProvider: React.FC<React.PropsWithChildren<{ defaultLocale?: st
   const initialLocale = useMemo(() => {
     try {
       const stored = localStorage.getItem(I18N_STORAGE_KEY);
-      if (stored) return stored;
-      if (defaultLocale) return defaultLocale;
+      if (stored) return normalizeLocale(stored);
+      if (defaultLocale) return normalizeLocale(defaultLocale);
       if (typeof navigator !== 'undefined' && navigator.language) {
-        const short = navigator.language.split('-')[0];
-        if (catalogs[short]) return short;
+        const short = normalizeLocale(navigator.language);
+        if ((catalogs as any)[short]) return short;
       }
     } catch {}
     return 'en';
@@ -898,7 +908,9 @@ export const I18nProvider: React.FC<React.PropsWithChildren<{ defaultLocale?: st
   }, [locale]);
 
   const setLocale = (loc: string) => {
-    setLocaleState(catalogs[loc] ? loc : 'en');
+    const normalized = normalizeLocale(loc);
+    setLocaleState(normalized);
+    try { localStorage.setItem(I18N_STORAGE_KEY, normalized); } catch {}
   };
 
   const value: I18nContextValue = { locale, setLocale, t };

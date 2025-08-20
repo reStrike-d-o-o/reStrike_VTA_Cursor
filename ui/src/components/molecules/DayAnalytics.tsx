@@ -4,6 +4,7 @@ import { Badge } from '../atoms/Badge';
 import { Progress } from '../atoms/Progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../atoms/Tabs';
 import { usePssMatchStore } from '../../stores/pssMatchStore';
+import { useI18n } from '../../i18n/index';
 
 interface DayStats {
   date: string;
@@ -51,6 +52,7 @@ export const DayAnalytics: React.FC<DayAnalyticsProps> = ({
   date,
   tournamentId,
 }) => {
+  const { t } = useI18n();
   const [stats, setStats] = useState<DayStats>({
     date: date || new Date().toISOString().split('T')[0],
     totalMatches: 0,
@@ -308,18 +310,18 @@ export const DayAnalytics: React.FC<DayAnalyticsProps> = ({
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <span>📅 {require('../../utils/format').formatDateTime(stats.date)}</span>
-          <Badge variant="secondary">Day Analytics</Badge>
+          <Badge variant="secondary">{t('analytics.day.badge', 'Day Analytics')}</Badge>
         </CardTitle>
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="overview" className="w-full">
           <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="timeline">Timeline</TabsTrigger>
-            <TabsTrigger value="athletes">Top Athletes</TabsTrigger>
+            <TabsTrigger value="overview">{t('analytics.sections.overview', 'Overview')}</TabsTrigger>
+            <TabsTrigger value="timeline">{t('analytics.day.tabs.timeline', 'Timeline')}</TabsTrigger>
+            <TabsTrigger value="athletes">{t('analytics.tournament.tabs.athletes', 'Top Athletes')}</TabsTrigger>
             <TabsTrigger value="performance">
               <img src="/icons/bar-graph.json" alt="Statistics" className="w-4 h-4 mr-2" />
-              Statistics
+              {t('analytics.sections.trends', 'Statistics')}
             </TabsTrigger>
           </TabsList>
 
@@ -327,7 +329,7 @@ export const DayAnalytics: React.FC<DayAnalyticsProps> = ({
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-sm font-medium">Total Matches</span>
+                  <span className="text-sm font-medium">{t('analytics.metrics.total_matches', 'Total Matches')}</span>
                   <span className="text-sm text-muted-foreground">{stats.totalMatches}</span>
                 </div>
                 <Progress value={stats.totalMatches > 0 ? Math.min((stats.totalMatches / 50) * 100, 100) : 0} />
@@ -335,15 +337,15 @@ export const DayAnalytics: React.FC<DayAnalyticsProps> = ({
 
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-sm font-medium">Total Events</span>
+                  <span className="text-sm font-medium">{t('analytics.metrics.total_events', 'Total Events')}</span>
                   <span className="text-sm text-muted-foreground">{stats.totalEvents}</span>
                 </div>
                 <Progress value={stats.totalEvents > 0 ? Math.min((stats.totalEvents / 500) * 100, 100) : 0} />
               </div>
 
               <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-sm font-medium">Day Efficiency</span>
+                <div className="flex justify_between">
+                  <span className="text-sm font-medium">{t('analytics.day.efficiency', 'Day Efficiency')}</span>
                   <span className="text-sm text-muted-foreground">{stats.dayEfficiency.toFixed(1)}%</span>
                 </div>
                 <Progress value={stats.dayEfficiency} />
@@ -351,7 +353,7 @@ export const DayAnalytics: React.FC<DayAnalyticsProps> = ({
 
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-sm font-medium">Peak Hour</span>
+                  <span className="text-sm font-medium">{t('analytics.day.peak_hour', 'Peak Hour')}</span>
                   <span className="text-sm text-muted-foreground">{formatHour(stats.peakHour)}</span>
                 </div>
                 <Progress value={stats.peakHourEvents > 0 ? Math.min((stats.peakHourEvents / 100) * 100, 100) : 0} />
@@ -361,26 +363,26 @@ export const DayAnalytics: React.FC<DayAnalyticsProps> = ({
             <div className="grid grid-cols-3 gap-4 pt-4">
               <div className="text-center">
                 <div className="text-2xl font-bold text-green-600">{stats.completedMatches}</div>
-                <div className="text-sm text-muted-foreground">Completed</div>
+                <div className="text-sm text-muted-foreground">{t('analytics.tournament.completed', 'Completed')}</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-blue-600">{stats.inProgressMatches}</div>
-                <div className="text-sm text-muted-foreground">In Progress</div>
+                <div className="text-sm text-muted-foreground">{t('analytics.tournament.in_progress', 'In Progress')}</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-orange-600">{stats.totalPoints}</div>
-                <div className="text-sm text-muted-foreground">Total Points</div>
+                <div className="text-sm text-muted-foreground">{t('analytics.tournament.total_points', 'Total Points')}</div>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="p-4 border rounded-lg">
                 <div className="text-2xl font-bold text-purple-600">{formatDuration(stats.averageMatchDuration)}</div>
-                <div className="text-sm text-muted-foreground">Avg Match Duration</div>
+                <div className="text-sm text-muted-foreground">{t('analytics.tournament.avg_duration', 'Avg Match Duration')}</div>
               </div>
               <div className="p-4 border rounded-lg">
                 <div className="text-2xl font-bold text-indigo-600">{stats.averageEventsPerMatch.toFixed(1)}</div>
-                <div className="text-sm text-muted-foreground">Avg Events/Match</div>
+                <div className="text-sm text-muted-foreground">{t('analytics.tournament.avg_events_per_match', 'Avg Events/Match')}</div>
               </div>
             </div>
           </TabsContent>
@@ -388,19 +390,19 @@ export const DayAnalytics: React.FC<DayAnalyticsProps> = ({
           <TabsContent value="timeline" className="space-y-4">
             <div className="space-y-4">
               <div className="p-4 bg-muted rounded-lg">
-                <h4 className="font-semibold mb-2">Peak Activity Hour</h4>
+                <h4 className="font-semibold mb-2">{t('analytics.day.peak_activity', 'Peak Activity Hour')}</h4>
                 <div className="space-y-2">
                   <div className="flex justify-between">
-                    <span className="text-sm">Peak Hour:</span>
+                    <span className="text-sm">{t('analytics.day.peak_hour_label', 'Peak Hour:')}</span>
                     <span className="text-sm font-medium">{formatHour(stats.peakHour)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-sm">Events in Peak Hour:</span>
+                    <span className="text-sm">{t('analytics.day.events_in_peak', 'Events in Peak Hour:')}</span>
                     <span className="text-sm font-medium">{stats.peakHourEvents}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-sm">Matches in Peak Hour:</span>
-                    <span className="text-sm font-medium">
+                    <span className="text-sm">{t('analytics.day.matches_in_peak', 'Matches in Peak Hour:')}</span>
+                    <span className="text-sm font_medium">
                       {stats.eventTimeline[stats.peakHour]?.matches || 0}
                     </span>
                   </div>
@@ -408,20 +410,17 @@ export const DayAnalytics: React.FC<DayAnalyticsProps> = ({
               </div>
 
               <div className="space-y-2">
-                <h4 className="font-semibold">Hourly Activity</h4>
+                <h4 className="font-semibold">{t('analytics.day.hourly_activity', 'Hourly Activity')}</h4>
                 <div className="space-y-2">
                   {stats.eventTimeline.map((hourData, index) => (
-                    <div key={index} className="flex items-center justify-between p-2 border rounded">
+                    <div key={index} className="flex items_center justify-between p-2 border rounded">
                       <span className="text-sm font-medium">{formatHour(hourData.hour)}</span>
                       <div className="flex items-center gap-4">
-                        <span className="text-sm text-muted-foreground">{hourData.events} events</span>
-                        <span className="text-sm text-muted-foreground">{hourData.matches} matches</span>
+                        <span className="text-sm text-muted-foreground">{t('analytics.day.events_label', '{n} events', { n: hourData.events })}</span>
+                        <span className="text-sm text-muted-foreground">{t('analytics.day.matches_label', '{n} matches', { n: hourData.matches })}</span>
                         {hourData.events > 0 && (
-                          <div className="w-20 bg-gray-200 rounded-full h-2">
-                            <div 
-                              className="bg-blue-600 h-2 rounded-full" 
-                              style={{ width: `${(hourData.events / stats.peakHourEvents) * 100}%` }}
-                            ></div>
+                          <div className="w-20">
+                            <Progress value={stats.peakHourEvents > 0 ? Math.min((hourData.events / stats.peakHourEvents) * 100, 100) : 0} />
                           </div>
                         )}
                       </div>
@@ -434,10 +433,10 @@ export const DayAnalytics: React.FC<DayAnalyticsProps> = ({
 
           <TabsContent value="athletes" className="space-y-4">
             <div className="space-y-4">
-              <h4 className="font-semibold">Top 10 Athletes of the Day</h4>
+              <h4 className="font-semibold">{t('analytics.day.top_athletes_title', 'Top 10 Athletes of the Day')}</h4>
               <div className="space-y-2">
                 {stats.topAthletes.map((athlete, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div key={index} className="flex items-center justify_between p-3 border rounded-lg">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center text-sm font-bold">
                         {index + 1}
@@ -457,7 +456,7 @@ export const DayAnalytics: React.FC<DayAnalyticsProps> = ({
                     <div className="text-right">
                       <div className="font-bold text-green-600">{athlete.points}</div>
                       <div className="text-sm text-muted-foreground">
-                        {athlete.matches} matches • {athlete.events} events
+                        {t('analytics.day.athlete_summary', '{matches} matches • {events} events', { matches: String(athlete.matches), events: String(athlete.events) })}
                       </div>
                     </div>
                   </div>
@@ -471,50 +470,50 @@ export const DayAnalytics: React.FC<DayAnalyticsProps> = ({
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 bg-muted rounded-lg">
                   <div className="text-2xl font-bold text-green-600">{stats.eventDistribution.points}</div>
-                  <div className="text-sm text-muted-foreground">Points Events</div>
+                  <div className="text-sm text-muted-foreground">{t('analytics.match.points_events', 'Points Events')}</div>
                 </div>
                 <div className="p-4 bg-muted rounded-lg">
                   <div className="text-2xl font-bold text-orange-600">{stats.eventDistribution.warnings}</div>
-                  <div className="text-sm text-muted-foreground">Warning Events</div>
+                  <div className="text-sm text-muted-foreground">{t('analytics.match.warning_events', 'Warning Events')}</div>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 bg-muted rounded-lg">
                   <div className="text-2xl font-bold text-red-600">{stats.eventDistribution.injuries}</div>
-                  <div className="text-sm text-muted-foreground">Injury Events</div>
+                  <div className="text-sm text-muted-foreground">{t('analytics.match.injury_events', 'Injury Events')}</div>
                 </div>
                 <div className="p-4 bg-muted rounded-lg">
                   <div className="text-2xl font-bold text-gray-600">{stats.eventDistribution.other}</div>
-                  <div className="text-sm text-muted-foreground">Other Events</div>
+                  <div className="text-sm text-muted-foreground">{t('analytics.match.other_events', 'Other Events')}</div>
                 </div>
               </div>
 
               <div className="p-4 border rounded-lg">
-                <h4 className="font-semibold mb-2">Day Performance Metrics</h4>
+                <h4 className="font-semibold mb-2">{t('analytics.day.performance_title', 'Day Performance Metrics')}</h4>
                 <div className="space-y-2">
                   <div className="flex justify-between">
-                    <span className="text-sm">Match Intensity:</span>
-                    <span className="text-sm font-medium">{stats.matchIntensity.toFixed(2)} events/min</span>
+                    <span className="text-sm">{t('analytics.match.intensity', 'Match Intensity')}:</span>
+                    <span className="text-sm font-medium">{stats.matchIntensity.toFixed(2)} {t('analytics.match.events_per_min', 'events/min')}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm">Completion Rate:</span>
+                  <div className="flex justify_between">
+                    <span className="text-sm">{t('analytics.day.completion_rate', 'Completion Rate:')}</span>
                     <span className="text-sm font-medium">{stats.dayEfficiency.toFixed(1)}%</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm">Average Match Duration:</span>
+                  <div className="flex justify_between">
+                    <span className="text-sm">{t('analytics.tournament.avg_match_duration', 'Average Match Duration:')}</span>
                     <span className="text-sm font-medium">{formatDuration(stats.averageMatchDuration)}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm">Average Events per Match:</span>
+                  <div className="flex justify_between">
+                    <span className="text-sm">{t('analytics.tournament.avg_events_match', 'Average Events per Match:')}</span>
                     <span className="text-sm font-medium">{stats.averageEventsPerMatch.toFixed(1)}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm">Total Athletes:</span>
+                  <div className="flex justify_between">
+                    <span className="text-sm">{t('analytics.metrics.total_athletes', 'Total Athletes')}:</span>
                     <span className="text-sm font-medium">{stats.totalAthletes}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm">Total Countries:</span>
+                  <div className="flex justify_between">
+                    <span className="text-sm">{t('analytics.metrics.total_countries', 'Total Countries')}:</span>
                     <span className="text-sm font-medium">{stats.totalCountries}</span>
                   </div>
                 </div>
