@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Button from '../atoms/Button';
 import StatusDot from '../atoms/StatusDot';
 import { Icon } from '../atoms/Icon';
+import { useI18n } from '../../i18n/index';
 
 // Use the same safeInvoke function as the environment hook
 const safeInvoke = async (command: string, args?: any) => {
@@ -38,6 +39,7 @@ interface CpuMonitoringSectionProps {
 }
 
 export const CpuMonitoringSection: React.FC<CpuMonitoringSectionProps> = ({ className = '' }) => {
+  const { t } = useI18n();
   const [processData, setProcessData] = useState<CpuProcessData[]>([]);
   const [systemData, setSystemData] = useState<SystemCpuData | null>(null);
   const [isMonitoring, setIsMonitoring] = useState<boolean>(false); // Start disabled
@@ -148,7 +150,7 @@ export const CpuMonitoringSection: React.FC<CpuMonitoringSectionProps> = ({ clas
             <line x1="8" y1="21" x2="16" y2="21" stroke="currentColor" strokeWidth="2"/>
             <line x1="12" y1="17" x2="12" y2="21" stroke="currentColor" strokeWidth="2"/>
           </svg>
-          <h3 className="text-lg font-semibold text-white">CPU Monitoring</h3>
+          <h3 className="text-lg font-semibold text-white">{t('cpu.title', 'CPU Monitoring')}</h3>
           <StatusDot 
             color={isMonitoring ? 'bg-green-400' : 'bg-gray-400'} 
             className="ml-2" 
@@ -156,28 +158,30 @@ export const CpuMonitoringSection: React.FC<CpuMonitoringSectionProps> = ({ clas
         </div>
         <div className="flex items-center space-x-2">
           <span className="text-sm text-gray-400">
-            Last update: {lastUpdate.toLocaleTimeString()}
+            {t('cpu.last_update', 'Last update: {time}', { time: lastUpdate.toLocaleTimeString() })}
           </span>
           <Button
             variant={isMonitoring ? 'secondary' : 'primary'}
             size="sm"
             onClick={toggleMonitoring}
           >
-            {isMonitoring ? 'Stop' : 'Start'} Monitoring
+            {isMonitoring ? t('cpu.stop_monitoring', 'Stop Monitoring') : t('cpu.start_monitoring', 'Start Monitoring')}
           </Button>
         </div>
       </div>
 
       {/* Controls */}
       <div className="flex items-center gap-3 mb-4">
-        <span className="text-sm text-gray-300">Refresh</span>
-        <select className="theme-surface-2 px-2 py-1" value={refreshMs} onChange={(e)=>setRefreshMs(parseInt(e.target.value)||2000)}>
+        <span className="text-sm text-gray-300">{t('cpu.refresh', 'Refresh')}</span>
+        <select className="theme-surface-2 px-2 py-1" value={refreshMs} onChange={(e)=>setRefreshMs(parseInt(e.target.value)||2000)}
+          aria-label={t('cpu.refresh', 'Refresh')} title={t('cpu.refresh', 'Refresh')}>
           <option value={2000}>2s</option>
           <option value={5000}>5s</option>
           <option value={10000}>10s</option>
         </select>
-        <span className="text-sm text-gray-300 ml-4">Top</span>
-        <select className="theme-surface-2 px-2 py-1" value={topN} onChange={(e)=>setTopN(parseInt(e.target.value)||20)}>
+        <span className="text-sm text-gray-300 ml-4">{t('cpu.top', 'Top')}</span>
+        <select className="theme-surface-2 px-2 py-1" value={topN} onChange={(e)=>setTopN(parseInt(e.target.value)||20)}
+          aria-label={t('cpu.top', 'Top')} title={t('cpu.top', 'Top')}>
           <option value={5}>5</option>
           <option value={10}>10</option>
           <option value={20}>20</option>
@@ -188,10 +192,10 @@ export const CpuMonitoringSection: React.FC<CpuMonitoringSectionProps> = ({ clas
       {/* System CPU Overview */}
       {systemData && (
         <div className="mb-6 p-3 bg-gray-700 rounded-lg">
-          <h4 className="text-md font-medium text-white mb-2">System CPU</h4>
+          <h4 className="text-md font-medium text-white mb-2">{t('cpu.system_cpu', 'System CPU')}</h4>
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-2">
-              <span className="text-sm text-gray-300">Total:</span>
+              <span className="text-sm text-gray-300">{t('cpu.total', 'Total:')}</span>
               <span 
                 className={`text-lg font-bold ${getCpuColor(systemData.total_cpu_percent || 0) === 'red' ? 'text-red-400' : 
                   getCpuColor(systemData.total_cpu_percent || 0) === 'yellow' ? 'text-yellow-400' : 'text-green-400'}`}
@@ -200,13 +204,13 @@ export const CpuMonitoringSection: React.FC<CpuMonitoringSectionProps> = ({ clas
               </span>
             </div>
             <div className="flex items-center space-x-2">
-              <span className="text-sm text-gray-300">Cores:</span>
+              <span className="text-sm text-gray-300">{t('cpu.cores', 'Cores:')}</span>
               <span className="text-sm text-gray-300">
-                {systemData.cores?.length || 0} detected
+                {t('cpu.cores_detected', '{n} detected', { n: systemData.cores?.length || 0 })}
               </span>
             </div>
             <div className="flex items-center space-x-2">
-              <span className="text-sm text-gray-300">Updated:</span>
+              <span className="text-sm text-gray-300">{t('cpu.updated', 'Updated:')}</span>
               <span className="text-sm text-gray-400">
                 {formatTimestamp(systemData.last_update)}
               </span>
@@ -219,7 +223,7 @@ export const CpuMonitoringSection: React.FC<CpuMonitoringSectionProps> = ({ clas
 
       {/* Process List */}
       <div className="space-y-2">
-        <h4 className="text-md font-medium text-white mb-2">All Running Processes ({processData.length})</h4>
+        <h4 className="text-md font-medium text-white mb-2">{t('cpu.all_processes', 'All Running Processes ({n})', { n: processData.length })}</h4>
         {processData.length > 0 ? (
           <div className="space-y-2 max-h-64 overflow-y-auto">
             {processData
@@ -233,7 +237,7 @@ export const CpuMonitoringSection: React.FC<CpuMonitoringSectionProps> = ({ clas
                   </span>
                   <div className="flex items-center space-x-4">
                     <div className="flex items-center space-x-1">
-                      <span className="text-xs text-gray-400">CPU:</span>
+                      <span className="text-xs text-gray-400">{t('cpu.cpu', 'CPU:')}</span>
                       <span 
                         className={`text-sm font-medium ${getCpuColor(process.cpu_percent || 0) === 'red' ? 'text-red-400' : 
                           getCpuColor(process.cpu_percent || 0) === 'yellow' ? 'text-yellow-400' : 'text-green-400'}`}
@@ -242,9 +246,9 @@ export const CpuMonitoringSection: React.FC<CpuMonitoringSectionProps> = ({ clas
                       </span>
                     </div>
                     <div className="flex items-center space-x-1">
-                      <span className="text-xs text-gray-400">Memory:</span>
+                      <span className="text-xs text-gray-400">{t('cpu.memory', 'Memory:')}</span>
                       <span className="text-sm text-gray-300">
-                        {(process.memory_mb || 0).toFixed(1)} MB
+                        {(process.memory_mb || 0).toFixed(1)} {t('cpu.mb', 'MB')}
                       </span>
                     </div>
                   </div>
@@ -262,7 +266,7 @@ export const CpuMonitoringSection: React.FC<CpuMonitoringSectionProps> = ({ clas
           </div>
         ) : (
           <div className="text-center py-4 text-gray-400">
-            {isMonitoring ? 'No processes detected' : 'Monitoring is disabled'}
+            {isMonitoring ? t('cpu.no_processes', 'No processes detected') : t('cpu.disabled', 'Monitoring is disabled')}
           </div>
         )}
       </div>
@@ -270,8 +274,8 @@ export const CpuMonitoringSection: React.FC<CpuMonitoringSectionProps> = ({ clas
       {/* Footer */}
       <div className="mt-4 pt-3 border-t border-gray-600">
         <div className="flex items-center justify-between text-xs text-gray-400">
-          <span>CPU monitoring powered by system commands (wmic/ps)</span>
-          <span>Update interval: {process.env.NODE_ENV === 'production' ? '2 seconds' : '1 second'}</span>
+          <span>{t('cpu.powered_by', 'CPU monitoring powered by system commands (wmic/ps)')}</span>
+          <span>{t('cpu.update_interval', 'Update interval: {s}', { s: process.env.NODE_ENV === 'production' ? '2 seconds' : '1 second' })}</span>
         </div>
       </div>
     </div>

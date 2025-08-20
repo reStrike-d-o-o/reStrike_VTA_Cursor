@@ -1214,7 +1214,28 @@ const catalogs: Catalogs = {
     'flags.success.cleared': 'Baza zastava je uspješno očišćena! Obrisano: {n} zapisa',
     'flags.success.mapping_update': 'Mapiranje ažurirano za {ioc}',
     'flags.success.mapping_reset': 'PSS kod vraćen na IOC kod za {ioc}',
+    // CPU monitoring
+    'cpu.title': 'Nadzor CPU-a',
+    'cpu.last_update': 'Zadnje ažuriranje: {time}',
+    'cpu.start_monitoring': 'Pokreni nadzor',
+    'cpu.stop_monitoring': 'Zaustavi nadzor',
+    'cpu.refresh': 'Osvježi',
+    'cpu.top': 'Top',
+    'cpu.system_cpu': 'Sustav CPU',
+    'cpu.total': 'Ukupno:',
+    'cpu.cores': 'Jezgre:',
+    'cpu.cores_detected': '{n} otkriveno',
+    'cpu.updated': 'Ažurirano:',
+    'cpu.all_processes': 'Svi aktivni procesi ({n})',
+    'cpu.no_processes': 'Nema detektiranih procesa',
+    'cpu.disabled': 'Nadzor je onemogućen',
+    'cpu.cpu': 'CPU:',
+    'cpu.memory': 'Memorija:',
+    'cpu.mb': 'MB',
+    'cpu.powered_by': 'Nadzor CPU-a pokreću sistemske naredbe (wmic/ps)',
+    'cpu.update_interval': 'Interval ažuriranja: {s}',
   },
+  
   // German
   de: {
     'drawer.pss': 'PSS',
