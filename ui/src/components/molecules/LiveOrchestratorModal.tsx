@@ -1,3 +1,7 @@
+/**
+ * LiveOrchestratorModal
+ * - Modal for orchestrating live workflows (connect/start/stop flows)
+ */
 import React, { useEffect, useMemo, useState } from 'react';
 import Button from '../atoms/Button';
 import StatusDot from '../atoms/StatusDot';

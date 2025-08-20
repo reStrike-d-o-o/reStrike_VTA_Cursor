@@ -1,3 +1,7 @@
+/**
+ * SimulationModeTabs
+ * - Tabs switching between simulation modes
+ */
 import React from 'react';
 import Toggle from '../../atoms/Toggle';
 import Label from '../../atoms/Label';

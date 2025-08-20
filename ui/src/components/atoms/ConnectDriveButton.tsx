@@ -1,3 +1,7 @@
+/**
+ * ConnectDriveButton atom
+ * - Starts Google Drive OAuth flow using Tauri commands (with web fallback)
+ */
 import React from 'react';
 
 const ConnectDriveButton: React.FC = () => {

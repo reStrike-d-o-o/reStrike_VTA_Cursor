@@ -1,4 +1,10 @@
 /**
+ * countryCodeMapping
+ * - ISO/NOC code helpers for flags and labels
+ */
+export const countryCodeMap: Record<string, string> = {};
+
+/**
  * Country Code Mapping Utility
  * Maps PSS protocol country codes to IOC codes for flag display
  * 

@@ -1,3 +1,7 @@
+//! Video playback plugin (mpv integration)
+//!
+//! Purpose: Manage mpv child process lifecycle and expose simple playback
+//! controls. The core app coordinates when to launch/kill mpv for IVR.
 use std::process::{Command, Child, Stdio};
 use std::sync::{Arc, Mutex};
 use std::thread;

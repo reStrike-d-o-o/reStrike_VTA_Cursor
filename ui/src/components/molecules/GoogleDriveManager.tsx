@@ -1,4 +1,8 @@
-import React, { useState, useEffect } from 'react';
+/**
+ * GoogleDriveManager
+ * - End-to-end Drive management UI (connect, status, uploads)
+ */
+import React, { useEffect, useMemo, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import Button from '../atoms/Button';
 import { StatusDot } from '../atoms/StatusDot';

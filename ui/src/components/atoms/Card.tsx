@@ -1,3 +1,7 @@
+/**
+ * Card atom
+ * - Structural container with header/title/content helpers
+ */
 import React from 'react';
 
 interface CardProps {

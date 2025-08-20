@@ -1,3 +1,7 @@
+/**
+ * PausedOverlay
+ * - Shows paused indicator and overlay content
+ */
 import React from 'react';
 
 const PausedOverlay: React.FC = () => {

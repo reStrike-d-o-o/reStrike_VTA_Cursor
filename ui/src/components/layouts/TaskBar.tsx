@@ -1,3 +1,7 @@
+/**
+ * TaskBar
+ * - Top bar for desktop mode; shows environment and quick actions
+ */
 import React from 'react';
 import { useEnvironment } from '../../hooks/useEnvironment';
 

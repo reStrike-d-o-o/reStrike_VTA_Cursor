@@ -1,3 +1,7 @@
+/**
+ * ReplayButton atom
+ * - Prominent circular button used to trigger IVR replay flow
+ */
 import React from 'react';
 
 interface ReplayButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {

@@ -1,3 +1,7 @@
+/**
+ * DriveBrowser
+ * - UI for browsing Google Drive folders/files for import
+ */
 import React, { useEffect, useMemo, useState } from 'react';
 import Modal from '../atoms/Modal';
 import Button from '../atoms/Button';

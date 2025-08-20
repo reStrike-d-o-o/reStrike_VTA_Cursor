@@ -1,3 +1,7 @@
+//! Tournament management plugin
+//!
+//! Purpose: Create tournaments/days and manage active selections used by
+//! recording/indexing and UI filters. Ensures days are created and linked.
 use std::sync::Arc;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};

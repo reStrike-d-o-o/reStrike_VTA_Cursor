@@ -1,3 +1,7 @@
+/**
+ * TournamentManagementPanel
+ * - Create/select tournaments and days; manage basic metadata
+ */
 import React, { useState, useEffect } from 'react';
 import { formatDate, formatDateTime } from '../../utils/format';
 import { invoke } from '@tauri-apps/api/core';

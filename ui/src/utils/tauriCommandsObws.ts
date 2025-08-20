@@ -1,3 +1,7 @@
+/**
+ * tauriCommandsObws
+ * - Wrapper utilities for OBS (obws) Tauri commands
+ */
 // Tauri command utilities for OBS obws integration
 
 import { TauriCommandResponse } from '../types';

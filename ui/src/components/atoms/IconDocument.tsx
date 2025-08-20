@@ -1,3 +1,7 @@
+/**
+ * IconDocument atom
+ * - Simple document SVG
+ */
 import React from 'react';
 
 const IconDocument: React.FC<{ className?: string }> = ({ className = '' }) => (

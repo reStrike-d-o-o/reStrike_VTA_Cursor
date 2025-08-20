@@ -1,4 +1,8 @@
-import React from 'react';
+/**
+ * ManualModeDialog
+ * - Enables/disables manual mode with confirmation
+ */
+import React, { useState } from 'react';
 import Button from '../atoms/Button';
 
 interface ManualModeDialogProps {

@@ -1,3 +1,9 @@
+/**
+ * liveDataStore (Zustand)
+ * - Holds real-time PSS events and connection state for overlays/UI
+ * - Provides actions to add/clear/set events and persist to DB when needed
+ * - Exposes selectors for filtered lists and per-round queries
+ */
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 

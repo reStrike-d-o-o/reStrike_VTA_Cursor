@@ -1,3 +1,7 @@
+/**
+ * GlobalModals
+ * - App-wide modals (confirmation, path decisions, etc.)
+ */
 import React from 'react';
 import { useMessageCenter } from '../../stores/messageCenter';
 

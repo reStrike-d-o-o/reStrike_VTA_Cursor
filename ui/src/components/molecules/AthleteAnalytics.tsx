@@ -1,4 +1,8 @@
-import React, { useState, useEffect } from 'react';
+/**
+ * AthleteAnalytics
+ * - Athlete-level analytics view
+ */
+import React, { useMemo, useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../atoms/Card';
 import { Badge } from '../atoms/Badge';
 import { Progress } from '../atoms/Progress';

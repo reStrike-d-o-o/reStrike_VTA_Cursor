@@ -1,3 +1,12 @@
+//! Google Drive integration
+//!
+//! Purpose: OAuth2 flow and Drive v3 operations for folder creation, listing,
+//! and streaming uploads. Long operations emit progress via Tauri events.
+//!
+//! Notes:
+//! - Tokens stored securely; refresh handled automatically
+//! - Network requests use sensible timeouts and retries
+//! - Upload APIs support cancellation via a shared job-id registry
 use oauth2::{
     basic::BasicClient, reqwest::async_http_client, AuthUrl, AuthorizationCode, ClientId,
     ClientSecret, CsrfToken, RedirectUrl, Scope, TokenResponse, TokenUrl,

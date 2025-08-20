@@ -1,3 +1,9 @@
+/**
+ * EventTableSection
+ * - Displays live PSS events from store; filters by color and type
+ * - In review mode, double‑click opens recorded video at precise event offset
+ * - Disabled during current/live mode; wired via Tauri commands and IVR backend
+ */
 import React, { useRef, useEffect, useState } from 'react';
 import Button from '../atoms/Button';
 import { StatusDot } from '../atoms/StatusDot';

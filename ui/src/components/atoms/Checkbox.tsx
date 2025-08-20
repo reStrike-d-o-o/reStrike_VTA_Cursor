@@ -1,3 +1,7 @@
+/**
+ * Checkbox atom
+ * - Labeled checkbox with flexible label positioning
+ */
 import React from 'react';
 
 export interface CheckboxProps extends React.InputHTMLAttributes<HTMLInputElement> {

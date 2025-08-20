@@ -1,3 +1,7 @@
+/**
+ * VideoClips manager (demo)
+ * - Manage a list of local clips with tags and quick preview
+ */
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore, VideoClip } from '../../stores';

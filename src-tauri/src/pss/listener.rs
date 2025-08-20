@@ -1,1 +1,1 @@
-// listener.rs - UDP listener for PSS 
+//! UDP listener for PSS (deprecated; see plugins::plugin_udp)

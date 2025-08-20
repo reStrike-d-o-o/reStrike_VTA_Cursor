@@ -1,3 +1,7 @@
+/**
+ * AutomatedPanel
+ * - Automated simulation controls
+ */
 import React, { useEffect } from 'react';
 import Button from '../../atoms/Button';
 import Label from '../../atoms/Label';

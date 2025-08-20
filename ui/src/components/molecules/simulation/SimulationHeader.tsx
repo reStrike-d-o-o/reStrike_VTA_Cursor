@@ -1,3 +1,7 @@
+/**
+ * SimulationHeader
+ * - Header for simulation views (tabs, status)
+ */
 import React from 'react';
 import StatusRow from '../../atoms/StatusRow';
 import { useSimulationStore } from '../../../stores/simulationStore';

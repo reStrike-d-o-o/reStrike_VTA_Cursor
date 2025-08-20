@@ -1,3 +1,7 @@
+/**
+ * SimulationPanel
+ * - UI to control simulation runs and visualize state
+ */
 import React, { useState, useEffect } from 'react';
 import Button from '../atoms/Button';
 import Toggle from '../atoms/Toggle';
@@ -435,8 +439,20 @@ const SimulationPanel: React.FC<SimulationPanelProps> = ({ className = '' }) => 
               </div>
               <div className="w-full bg-gray-700 rounded-full h-2">
                 <div
-                  className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${(progress.current / progress.total) * 100}%` }}
+                  className={`bg-blue-500 h-2 rounded-full transition-all duration-300 ${(() => {
+                    const pct = Math.min(100, Math.round((progress.current / progress.total) * 100));
+                    if (pct >= 100) return 'w-full';
+                    if (pct >= 90) return 'w-[90%]';
+                    if (pct >= 80) return 'w-[80%]';
+                    if (pct >= 70) return 'w-[70%]';
+                    if (pct >= 60) return 'w-[60%]';
+                    if (pct >= 50) return 'w-[50%]';
+                    if (pct >= 40) return 'w-[40%]';
+                    if (pct >= 30) return 'w-[30%]';
+                    if (pct >= 20) return 'w-[20%]';
+                    if (pct >= 10) return 'w-[10%]';
+                    return 'w-[5%]';
+                  })()}`}
                 />
               </div>
             </div>

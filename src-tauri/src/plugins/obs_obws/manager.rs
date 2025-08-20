@@ -1,4 +1,13 @@
-//! OBS Manager implementation for managing multiple OBS connections
+//! obws-based OBS Manager (multi-connection)
+//!
+//! Purpose: Provide a safe, async API for connecting to multiple OBS instances via obws
+//! and expose high-level operations (recording/streaming/scenes/status) to the app and
+//! tauri commands.
+//!
+//! Contracts:
+//! - All names are unique keys; add_connection will fail on duplicate names
+//! - Methods return AppResult with readable errors suitable for UI
+//! - No long-held locks across awaits; short critical sections only
 
 use std::collections::HashMap;
 use std::sync::Arc;

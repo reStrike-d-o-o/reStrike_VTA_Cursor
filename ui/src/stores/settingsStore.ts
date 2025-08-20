@@ -1,3 +1,7 @@
+/**
+ * settingsStore
+ * - UI settings and persistence flags
+ */
 import { create } from 'zustand';
 
 interface SettingsState {

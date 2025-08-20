@@ -1,3 +1,7 @@
+/**
+ * DayAnalytics
+ * - Analytics for a selected tournament day
+ */
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../atoms/Card';
 import { Badge } from '../atoms/Badge';
@@ -419,8 +423,15 @@ export const DayAnalytics: React.FC<DayAnalyticsProps> = ({
                         {hourData.events > 0 && (
                           <div className="w-20 bg-gray-200 rounded-full h-2">
                             <div 
-                              className="bg-blue-600 h-2 rounded-full" 
-                              style={{ width: `${(hourData.events / stats.peakHourEvents) * 100}%` }}
+                              className={`bg-blue-600 h-2 rounded-full ${(() => {
+                                const pct = Math.min(100, Math.round((hourData.events / stats.peakHourEvents) * 100));
+                                if (pct >= 100) return 'w-full';
+                                if (pct >= 80) return 'w-[80%]';
+                                if (pct >= 60) return 'w-[60%]';
+                                if (pct >= 40) return 'w-[40%]';
+                                if (pct >= 20) return 'w-[20%]';
+                                return 'w-[10%]';
+                              })()}`}
                             ></div>
                           </div>
                         )}

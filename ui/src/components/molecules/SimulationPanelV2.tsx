@@ -1,4 +1,8 @@
-import React, { useEffect } from 'react';
+/**
+ * SimulationPanelV2
+ * - Second iteration of simulation control UI
+ */
+import React, { useEffect, useState } from 'react';
 import Icon from '../atoms/Icon';
 import SelfTestPanel from './SelfTestPanel';
 import { useSimulationStore } from '../../stores/simulationStore';

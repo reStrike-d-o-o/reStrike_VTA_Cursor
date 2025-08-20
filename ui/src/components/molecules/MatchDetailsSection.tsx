@@ -1,4 +1,8 @@
-import React from 'react';
+/**
+ * MatchDetailsSection
+ * - Displays selected match details and quick actions
+ */
+import React, { useEffect, useState } from 'react';
 import { FlagImage } from '../../utils/flagUtils';
 import { usePssMatchStore } from '../../stores';
 

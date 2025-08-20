@@ -1,4 +1,7 @@
 //! Tauri commands for OBS WebSocket integration using obws crate
+//!
+//! Purpose: Public command surface for obws features and IVR actions. Returns
+//! consistent { success, data?, error? } shapes. Long operations emit progress.
 
 use crate::core::app::App;
 // AppError and AppResult are used in the ObsManager implementation

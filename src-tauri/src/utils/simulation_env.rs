@@ -1,3 +1,4 @@
+//! Simulation environment setup helpers
 use std::process::Command;
 use std::path::{PathBuf};
 use std::io;

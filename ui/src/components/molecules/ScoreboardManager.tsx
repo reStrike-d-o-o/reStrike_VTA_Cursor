@@ -1,3 +1,7 @@
+/**
+ * ScoreboardManager
+ * - Manage scoreboard overlay and OBS scene/source bindings
+ */
 import React, { useState, useEffect, useRef } from 'react';
 import Button from '../atoms/Button';
 import Toggle from '../atoms/Toggle';

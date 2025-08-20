@@ -1,3 +1,7 @@
+//! Event-driven automation (triggers)
+//!
+//! Purpose: Execute configured actions (scenes, recording, replay buffer) in
+//! response to PSS events. Uses obws manager exclusively.
 use crate::database::{DatabaseConnection, models::{OverlayTemplate, EventTrigger}};
 use once_cell::sync::OnceCell;
 use crate::plugins::obs_obws::manager::ObsManager;

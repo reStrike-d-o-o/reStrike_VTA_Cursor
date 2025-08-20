@@ -1,3 +1,7 @@
+//! Log archival: rotate, compress, and optionally prepare for upload
+//!
+//! Purpose: Manage archived log bundles with configurable schedules and
+//! retention policies.
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};

@@ -1,3 +1,4 @@
+//! Configuration manager (atomic saves with backup)
 use crate::config::AppConfig;
 use crate::types::AppResult;
 use serde_json;

@@ -1,4 +1,8 @@
-import React, { useState } from 'react';
+/**
+ * DatabaseManagementPanel
+ * - Inspect tables, preview data, manage backups
+ */
+import React, { useEffect, useState } from 'react';
 import { useDatabaseSettings } from '../../hooks/useDatabaseSettings';
 import Button from '../atoms/Button';
 

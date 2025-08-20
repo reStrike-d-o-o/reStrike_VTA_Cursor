@@ -14,6 +14,16 @@ use crate::database::models::{
 use chrono::Utc;
 use std::time::{Duration, Instant};
 
+/// UDP/PSS Ingest and Persistence
+///
+/// Purpose: Receive PSS events over UDP, normalize/validate, broadcast to overlays,
+/// and persist to the database for live display and precise video offsets.
+///
+/// Notes:
+/// - All events are stored; display filtering happens on read for the UI
+/// - Defensive parsing: trims/sanitizes segments; avoids panics on malformed messages
+/// - Concurrency: short DB interactions, no long locks across await
+/// - Removed legacy validation stubs; authoritative rules live in DB and read API
 /// Initialize the UDP plugin
 pub fn init() -> Result<(), Box<dyn std::error::Error>> {
     log::info!("🔧 Initializing UDP plugin...");

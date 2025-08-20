@@ -1,3 +1,7 @@
+/**
+ * CpuMonitoringSection
+ * - Displays CPU metrics and status indicators sourced from backend/store
+ */
 import React, { useState, useEffect } from 'react';
 import Button from '../atoms/Button';
 import StatusDot from '../atoms/StatusDot';
@@ -171,13 +175,13 @@ export const CpuMonitoringSection: React.FC<CpuMonitoringSectionProps> = ({ clas
       {/* Controls */}
       <div className="flex items-center gap-3 mb-4">
         <span className="text-sm text-gray-300">Refresh</span>
-        <select className="theme-surface-2 px-2 py-1" value={refreshMs} onChange={(e)=>setRefreshMs(parseInt(e.target.value)||2000)}>
+        <select title="Refresh interval" aria-label="Refresh interval" className="theme-surface-2 px-2 py-1" value={refreshMs} onChange={(e)=>setRefreshMs(parseInt(e.target.value)||2000)}>
           <option value={2000}>2s</option>
           <option value={5000}>5s</option>
           <option value={10000}>10s</option>
         </select>
         <span className="text-sm text-gray-300 ml-4">Top</span>
-        <select className="theme-surface-2 px-2 py-1" value={topN} onChange={(e)=>setTopN(parseInt(e.target.value)||20)}>
+        <select title="Top N processes" aria-label="Top N processes" className="theme-surface-2 px-2 py-1" value={topN} onChange={(e)=>setTopN(parseInt(e.target.value)||20)}>
           <option value={5}>5</option>
           <option value={10}>10</option>
           <option value={20}>20</option>

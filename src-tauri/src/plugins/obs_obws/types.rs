@@ -1,4 +1,7 @@
 //! Types and data structures for OBS obws integration
+//!
+//! These mirror the logical state we expose to the UI: connection status,
+//! recording/streaming/replay buffer state, current scene list, stats, etc.
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

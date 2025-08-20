@@ -1,3 +1,7 @@
+/**
+ * SidebarTest (Windows-only demo)
+ * - Experimental sidebar behaviors gated by Tauri environment
+ */
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useAppStore } from '../../stores';

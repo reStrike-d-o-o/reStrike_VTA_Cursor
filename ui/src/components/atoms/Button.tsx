@@ -1,3 +1,8 @@
+/**
+ * Button atom
+ * - Variants: primary, secondary, danger, success, ghost, outline
+ * - Sizes: sm, md, lg
+ */
 import React from 'react';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'success' | 'ghost' | 'outline';

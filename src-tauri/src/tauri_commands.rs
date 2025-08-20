@@ -1,4 +1,16 @@
-﻿use serde::{Deserialize, Serialize};
+﻿//! Tauri command layer
+//!
+//! Purpose: Expose backend features (OBS over obws, IVR, Drive, UDP/DB queries) to the frontend via
+//! strongly-typed commands. Each command returns a stable JSON shape and performs strict
+//! argument validation, logging, and error conversion.
+//!
+//! Conventions:
+//! - All commands return { success, data?, error? } unless noted otherwise
+//! - OBS operations call obws-backed manager exclusively; legacy OBS code is removed
+//! - Control Room audio mute/unmute is currently a no-op stub; it returns success with empty results
+//! - Never block on long-lived operations without spawning; keep UI responsive
+//!
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tauri::{State, Emitter, Error as TauriError};
 use crate::core::app::App;

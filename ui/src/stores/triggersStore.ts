@@ -1,3 +1,7 @@
+/**
+ * triggersStore
+ * - Stores triggers and rules for event-driven actions
+ */
 import { create } from 'zustand';
 
 // --------------------

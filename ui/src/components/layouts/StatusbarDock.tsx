@@ -1,3 +1,8 @@
+/**
+ * StatusbarDock
+ * - Shows REC/STR/CPU indicators tied to obws connections (OBS_REC/OBS_STR)
+ * - Reflects Connected/Connecting/Error states and CPU usage coloring
+ */
 import React from 'react';
 import { StatusDot } from '../atoms/StatusDot';
 import { usePssMatchStore } from '../../stores';
@@ -38,82 +43,48 @@ const StatusbarDock: React.FC = () => {
             ? 'bg-yellow-500/10 border-yellow-500/20'
             : recConnection && recConnection.status === 'Error'
             ? 'bg-red-500/10 border-red-500/20'
-            : 'bg-gray-500/10 border-gray-500/20'
+            : 'bg-gray-700/10 border-gray-600/20'
         }`}>
-          <StatusDot 
-            color={
-              recConnection && isConnectionActive(recConnection.status) ? "bg-red-500" :
-              recConnection && isConnectionConnecting(recConnection.status) ? "bg-yellow-500" :
-              recConnection && recConnection.status === 'Error' ? "bg-red-500" :
-              "bg-gray-500"
-            } 
-            size="w-3 h-3" 
-            className={`shadow-lg ${
-              recConnection && isConnectionActive(recConnection.status)
-                ? 'shadow-red-500/50 animate-pulse' 
-                : recConnection && isConnectionConnecting(recConnection.status)
-                ? 'shadow-yellow-500/50 animate-pulse'
-                : recConnection && recConnection.status === 'Error'
-                ? 'shadow-red-500/50'
-                : 'shadow-gray-500/50'
-            }`} 
-          />
-          <span className="font-medium">REC</span>
+          <div className={`w-2 h-2 rounded-full ${
+            recConnection && isConnectionActive(recConnection.status)
+              ? 'bg-red-500' 
+              : recConnection && isConnectionConnecting(recConnection.status)
+              ? 'bg-yellow-500'
+              : 'bg-gray-500'
+          }`} />
+          <span>REC</span>
         </div>
-        
+
         {/* STR Status - Shows OBS_STR connection status */}
         <div className={`flex items-center space-x-2 px-3 py-2 rounded-lg border backdrop-blur-sm ${
           strConnection && isConnectionActive(strConnection.status)
-            ? 'bg-orange-500/10 border-orange-500/20' 
+            ? 'bg-green-500/10 border-green-500/20' 
             : strConnection && isConnectionConnecting(strConnection.status)
             ? 'bg-yellow-500/10 border-yellow-500/20'
             : strConnection && strConnection.status === 'Error'
             ? 'bg-red-500/10 border-red-500/20'
-            : 'bg-gray-500/10 border-gray-500/20'
+            : 'bg-gray-700/10 border-gray-600/20'
         }`}>
-          <StatusDot 
-            color={
-              strConnection && isConnectionActive(strConnection.status) ? "bg-orange-500" :
-              strConnection && isConnectionConnecting(strConnection.status) ? "bg-yellow-500" :
-              strConnection && strConnection.status === 'Error' ? "bg-red-500" :
-              "bg-gray-500"
-            } 
-            size="w-3 h-3" 
-            className={`shadow-lg ${
-              strConnection && isConnectionActive(strConnection.status)
-                ? 'shadow-orange-500/50 animate-pulse' 
-                : strConnection && isConnectionConnecting(strConnection.status)
-                ? 'shadow-yellow-500/50 animate-pulse'
-                : strConnection && strConnection.status === 'Error'
-                ? 'shadow-red-500/50'
-                : 'shadow-gray-500/50'
-            }`} 
-          />
-          <span className="font-medium">STR</span>
+          <div className={`w-2 h-2 rounded-full ${
+            strConnection && isConnectionActive(strConnection.status)
+              ? 'bg-green-500' 
+              : strConnection && isConnectionConnecting(strConnection.status)
+              ? 'bg-yellow-500'
+              : 'bg-gray-500'
+          }`} />
+          <span>STR</span>
         </div>
-        
-        {/* PSS Data Status */}
-        <div className={`flex items-center space-x-2 px-3 py-2 rounded-lg border backdrop-blur-sm ${
-          isPssDataLoaded 
-            ? 'bg-green-500/10 border-green-500/20' 
-            : 'bg-gray-500/10 border-gray-500/20'
-        }`}>
-          <StatusDot 
-            color={isPssDataLoaded ? "bg-green-500" : "bg-gray-500"} 
-            size="w-3 h-3" 
-            className={`shadow-lg ${
-              isPssDataLoaded 
-                ? 'shadow-green-500/50' 
-                : 'shadow-gray-500/50'
-            }`} 
-          />
-          <span className="font-medium">PSS</span>
-        </div>
-        
-        {/* CPU Status */}
-        <div className="flex items-center space-x-2 px-3 py-2 bg-green-500/10 rounded-lg border border-green-500/20 backdrop-blur-sm">
-          <StatusDot color="bg-green-500" size="w-3 h-3" className="shadow-lg shadow-green-500/50" />
-          <span className="font-medium">CPU {obsStatus?.cpu_usage?.toFixed(1) || '0.0'}%</span>
+
+        {/* CPU Status - Reflects OBS load from app store */}
+        <div className="flex items-center space-x-2 px-3 py-2 rounded-lg border backdrop-blur-sm bg-gray-700/10 border-gray-600/20">
+          <div className={`w-2 h-2 rounded-full ${
+            (obsStatus?.cpu_usage ?? 0) < 50
+              ? 'bg-green-500'
+              : (obsStatus?.cpu_usage ?? 0) < 75
+              ? 'bg-yellow-500'
+              : 'bg-red-500'
+          }`} />
+          <span>CPU {obsStatus?.cpu_usage?.toFixed?.(0) ?? '--'}%</span>
         </div>
       </div>
     </div>

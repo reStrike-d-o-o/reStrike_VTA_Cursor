@@ -1,3 +1,7 @@
+/**
+ * SettingsDrawerTabs
+ * - Tabs wrapper for Advanced panel sections
+ */
 import React from 'react';
 import IconDocument from '../atoms/IconDocument';
 import LottieIcon from '../atoms/LottieIcon';

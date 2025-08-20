@@ -1,4 +1,8 @@
-import React, { useState } from 'react';
+/**
+ * NewMatchDialog
+ * - Wizard dialog for entering new match parameters
+ */
+import React, { useEffect, useState } from 'react';
 import Button from '../atoms/Button';
 import Input from '../atoms/Input';
 import { FlagImage } from '../../utils/flagUtils';

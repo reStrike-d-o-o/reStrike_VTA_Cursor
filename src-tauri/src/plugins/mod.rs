@@ -1,5 +1,8 @@
-// Plugins module - Central registry for all application plugins
-// This module manages the lifecycle and coordination of all plugins
+//! Plugins registry and lifecycle
+//!
+//! Purpose: Centralize plugin modules (UDP/PSS, store, playback, tournament,
+//! triggers, websocket, database, drive, license, CPU monitor, protocol manager,
+//! load balancer, analytics). obws-based OBS lives under `obs_obws` feature.
 
 pub mod plugin_udp;
 pub mod plugin_store;
@@ -12,7 +15,7 @@ pub mod plugin_drive;
 pub mod plugin_license;
 pub mod plugin_cpu_monitor;
 pub mod plugin_protocol_manager;
-// Old plugin_obs removed - using modular obs system
+// Legacy plugin_obs removed
 pub mod load_balancer;
 pub mod advanced_analytics;
 // Legacy modular OBS plugin removed in favor of obws

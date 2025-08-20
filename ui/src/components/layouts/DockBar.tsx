@@ -1,3 +1,9 @@
+/**
+ * DockBar layout
+ * - Two-column sidebar: SidebarSmall (left) + SidebarBig (right) per project baseline
+ * - Hosts Replay button, Manual Mode, Advanced, status elements, and event table
+ * - Coordinates window sizing and panel toggles; integrates with live data stores
+ */
 import React, { useState, useEffect } from 'react';
 import MatchDetailsSection from '../molecules/MatchDetailsSection';
 import EventTableSection from '../molecules/EventTableSection';

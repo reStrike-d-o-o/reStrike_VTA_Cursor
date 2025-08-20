@@ -19,11 +19,10 @@ export const Icon: React.FC<IconProps> = ({
   onClick,
 }) => (
   <span
-    className={`inline-block align-middle ${size} ${className}`}
+    className={`inline-block align-middle ${size} ${onClick ? 'cursor-pointer' : ''} ${className}`}
     aria-label={ariaLabel}
     tabIndex={onClick ? 0 : undefined}
     onClick={onClick}
-    style={{ cursor: onClick ? 'pointer' : undefined }}
   >
     {name}
   </span>

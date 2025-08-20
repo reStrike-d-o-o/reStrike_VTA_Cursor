@@ -1,3 +1,7 @@
+//! Real-time event stream processor
+//!
+//! Purpose: Buffer, process, and broadcast PSS events in real-time, updating
+//! caches and analytics at configured intervals.
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::{mpsc, RwLock, broadcast};

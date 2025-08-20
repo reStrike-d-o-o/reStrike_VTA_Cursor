@@ -1,3 +1,6 @@
+/**
+ * Tab atom (drawer navigation)
+ */
 import React from 'react';
 
 interface TabProps {
@@ -9,9 +12,6 @@ interface TabProps {
   className?: string;
 }
 
-/**
- * Tab component for drawer navigation
- */
 export const Tab: React.FC<TabProps> = ({
   id,
   label,

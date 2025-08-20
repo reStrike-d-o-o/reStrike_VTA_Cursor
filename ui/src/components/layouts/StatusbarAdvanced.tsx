@@ -1,3 +1,7 @@
+/**
+ * StatusbarAdvanced
+ * - Minimal footer bar for Advanced view; can host diagnostics/actions
+ */
 import React from 'react';
 
 const StatusbarAdvanced: React.FC = () => {

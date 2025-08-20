@@ -1,4 +1,17 @@
-//! Main application class and lifecycle management
+//! Application core and lifecycle orchestration
+//!
+//! Purpose: Central coordinator of configuration, plugins (UDP/PSS, OBS over obws, playback,
+//! database, security), and UI-facing behaviors (mpv process control for IVR).
+//!
+//! Highlights:
+//! - Owns and initializes all backend plugins (see `crate::plugins::mod`)
+//! - Provides mpv lifecycle management (store/kill child on resume/challenge resolution)
+//! - Emits structured events to the frontend via Tauri
+//! - Uses obws exclusively for OBS operations; legacy plugin removed
+//!
+//! Concurrency:
+//! - Async functions avoid holding DB connections across await points
+//! - Shared state guarded by RwLock/Mutex with short critical sections
 
 use crate::types::{AppResult, AppState, AppView};
 use crate::plugins::{PlaybackPlugin, UdpPlugin, StorePlugin, LicensePlugin, CpuMonitorPlugin, ProtocolManager, DatabasePlugin, WebSocketPlugin, TournamentPlugin, EventCache, EventStreamProcessor, EventDistributor, AdvancedAnalytics};
@@ -416,6 +429,15 @@ impl App {
     }
 
     /// Trigger instant round replay: save replay buffer, resolve last file within configured wait, launch mpv
+    /// Triggers an Instant Video Replay flow.
+    ///
+    /// Workflow: save replay buffer in OBS → wait up to maxWaitMs (DB-backed) → resolve last replay filename →
+    /// spawn mpv with `--start=-secondsFromEnd` (DB-backed; default 10s). Logs every step for debugging.
+    ///
+    /// Arguments:
+    /// - `connection_name`: optional OBS connection override; falls back to default connection.
+    ///
+    /// Errors: returns `AppError` if any OBS or filesystem step fails. mpv spawn failures are logged and returned.
     pub async fn replay_round_now(&self, connection_name: Option<&str>) -> AppResult<()> {
         let conn_dbg = connection_name.unwrap_or("OBS_REC");
         println!("🎞️ replay_round_now: invoked for OBS connection='{}'", conn_dbg);
@@ -562,6 +584,9 @@ impl App {
     }
 
     /// Close mpv if it is currently running (used on resume or challenge accept/reject)
+    /// Closes a running mpv instance if it was launched by the app.
+    ///
+    /// Called on match resume or challenge resolution to avoid replay overlapping with live action.
     pub async fn close_mpv_if_running(&self) -> AppResult<()> {
         let mut slot = self.mpv_child.lock().await;
         if let Some(mut child) = slot.take() {
@@ -580,6 +605,10 @@ impl App {
     }
 
     /// Open the recorded video for a given event at the exact event timestamp
+    /// Opens the recording that contains the specified event and seeks to the precise event offset.
+    ///
+    /// Resolves the matching `recorded_videos` row by match/day/tournament context, computes offset from
+    /// `recorded_videos.start_time` and the event timestamp, then launches mpv.
     pub async fn open_event_video(&self, event_id: i64) -> AppResult<()> {
         // Query event (match_id, timestamp) without holding connection across await boundaries
         let (match_db_id, event_time_str) = {
@@ -738,6 +767,9 @@ impl App {
     }
 
     /// Open a video file with mpv at the given positive offset (seconds)
+    /// Opens a video file at the given offset in seconds using mpv.
+    ///
+    /// Validates the path exists (`is_file()`) and closes any active mpv before launching a new one.
     pub async fn open_video_at(&self, file_path: String, offset_seconds: i64) -> AppResult<()> {
         // Resolve mpv path from settings
         let mpv_path: String = {

@@ -1,3 +1,7 @@
+//! Synchronous database connection utilities and pooling
+//!
+//! Purpose: Provide pooled connections and helpers for performance-sensitive paths
+//! that operate in synchronous contexts.
 use rusqlite::{Connection, Result as SqliteResult};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};

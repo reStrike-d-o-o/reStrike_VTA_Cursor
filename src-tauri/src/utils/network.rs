@@ -1,3 +1,4 @@
+//! Network utilities (interface discovery and settings application)
 use std::net::{IpAddr, Ipv4Addr};
 use crate::types::AppResult;
 use crate::config::NetworkInterfaceSettings;

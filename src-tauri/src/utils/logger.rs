@@ -1,1 +1,1 @@
-// logger.rs - Rust logging system 
+//! Logging adapters and helpers for internal usage

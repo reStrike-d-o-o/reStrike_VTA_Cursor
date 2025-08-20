@@ -1,3 +1,12 @@
+/**
+ * IVR History Panel
+ * - Browse tournament days, matches, and recorded videos
+ * - Actions: open, delete, upload to Drive, import from Drive (progress/cancel supported)
+ * - Integrates with VideoEventPicker for precise event playback
+ * - Uses Tauri commands: ivr_list_tournament_days, ivr_list_matches_for_day,
+ *   ivr_list_recorded_videos, ivr_open_recorded_video, ivr_delete_recorded_video,
+ *   ivr_upload_recorded_videos, ivr_import_from_drive, ivr_cancel_job
+ */
 import React, { useEffect, useState } from 'react';
 import VideoEventPicker from './VideoEventPicker';
 import Button from '../atoms/Button';

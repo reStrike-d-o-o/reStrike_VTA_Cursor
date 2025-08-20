@@ -1,3 +1,7 @@
+//! Logging subsystem facade
+//!
+//! Purpose: Provide simple APIs to emit logs, rotate files, and archive bundles.
+//! Submodules: `logger`, `rotation`, `archival`.
 use std::fs;
 use std::io;
 use std::path::Path;

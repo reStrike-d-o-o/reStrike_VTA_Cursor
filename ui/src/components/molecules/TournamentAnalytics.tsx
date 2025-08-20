@@ -1,4 +1,8 @@
-import React, { useState, useEffect } from 'react';
+/**
+ * TournamentAnalytics
+ * - Aggregated tournament analytics and insights
+ */
+import React, { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../atoms/Card';
 import { Badge } from '../atoms/Badge';
 import { Progress } from '../atoms/Progress';

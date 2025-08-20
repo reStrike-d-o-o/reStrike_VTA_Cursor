@@ -1,3 +1,7 @@
+/**
+ * Toggle atom
+ * - Clickable switch with optional label left/right/bottom
+ */
 import React from 'react';
 
 export interface ToggleProps extends React.InputHTMLAttributes<HTMLInputElement> {

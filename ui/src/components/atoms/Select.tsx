@@ -1,3 +1,7 @@
+/**
+ * Select atom
+ * - Headless select composed from Trigger, Value, Content, Item
+ */
 import React, { useState, useRef, useEffect } from 'react';
 
 interface SelectProps {

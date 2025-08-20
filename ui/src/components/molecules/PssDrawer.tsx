@@ -1,3 +1,7 @@
+/**
+ * PssDrawer
+ * - UDP/PSS configuration and live controls UI
+ */
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { formatDateTime } from '../../utils/format';
 import Button from '../atoms/Button';

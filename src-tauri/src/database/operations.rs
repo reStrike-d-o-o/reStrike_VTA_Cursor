@@ -1,3 +1,13 @@
+//! Database operations layer
+//!
+//! Purpose: Safe, transactional CRUD helpers and higher-level workflows for
+//! settings, tournaments/days/matches, UDP PSS event persistence, and IVR linkage
+//! (recorded videos ↔ matches/events).
+//!
+//! Contracts:
+//! - All insert fns return last_insert_rowid() where relevant
+//! - Foreign-key constraints are checked defensively; clear errors on violations
+//! - No long-lived Connection borrows across await points
 use rusqlite::{Connection, Result as SqliteResult, params, OptionalExtension};
 use chrono::Utc;
 use crate::database::{

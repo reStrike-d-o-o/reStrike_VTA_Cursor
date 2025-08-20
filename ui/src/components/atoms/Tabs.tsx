@@ -1,3 +1,7 @@
+/**
+ * Tabs atom
+ * - Controlled/uncontrolled tabs with list/trigger/content parts
+ */
 import React, { createContext, useContext, useState } from 'react';
 
 interface TabsContextType {

@@ -1,3 +1,7 @@
+/**
+ * IvrReplaySettings
+ * - Configure IVR replay behavior (seconds from end, wait, auto on challenge)
+ */
 import React, { useEffect, useState } from 'react';
 import Label from '../atoms/Label';
 import Input from '../atoms/Input';

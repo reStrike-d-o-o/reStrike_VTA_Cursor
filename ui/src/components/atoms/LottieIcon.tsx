@@ -1,54 +1,46 @@
+/**
+ * LottieIcon atom
+ * - Displays Lottie animations as icons (local/public assets supported)
+ */
 import React from 'react';
 import Lottie from 'lottie-react';
 
 interface LottieIconProps {
   animationData: any;
-  size?: number;
+  size?: number; // px; will be mapped to nearest preset class
   loop?: boolean;
   autoplay?: boolean;
   className?: string;
-  style?: React.CSSProperties;
   onComplete?: () => void;
-  color?: string;
-  filter?: string;
 }
 
-/**
- * LottieIcon Component
- * 
- * Displays Lottie animations as icons. Can import animations from:
- * - src/assets/icons/json/ (local assets)
- * - public/assets/icons/json/ (public assets - thanks to craco webpack config)
- * 
- * Usage:
- * import diagramAnimation from '../../../public/assets/icons/json/diagram.json';
- * <LottieIcon animationData={diagramAnimation} size={24} />
- */
+const sizeToClass = (size: number): string => {
+  if (size <= 16) return 'w-4 h-4';
+  if (size <= 24) return 'w-6 h-6';
+  if (size <= 32) return 'w-8 h-8';
+  if (size <= 40) return 'w-10 h-10';
+  if (size <= 48) return 'w-12 h-12';
+  if (size <= 56) return 'w-14 h-14';
+  if (size <= 64) return 'w-16 h-16';
+  return 'w-20 h-20';
+};
+
 const LottieIcon: React.FC<LottieIconProps> = ({
   animationData,
   size = 48,
   loop = true,
   autoplay = true,
   className = '',
-  style = {},
   onComplete,
-  color,
-  filter
 }) => {
+  const sizeClass = sizeToClass(size);
   return (
-    <div 
-      className={`flex items-center justify-center ${className}`}
-      style={{ width: size, height: size, ...style }}
-    >
+    <div className={`flex items-center justify-center ${sizeClass} ${className}`}>
       <Lottie
         animationData={animationData}
         loop={loop}
         autoplay={autoplay}
-        style={{ 
-          width: size, 
-          height: size,
-          filter: filter || (color ? `brightness(0) saturate(100%) invert(1) sepia(1) saturate(10000%) hue-rotate(${color === 'blue' ? '200deg' : color === 'red' ? '0deg' : color === 'green' ? '120deg' : '0deg'})` : undefined)
-        }}
+        className={`${sizeClass}`}
         onComplete={onComplete}
       />
     </div>

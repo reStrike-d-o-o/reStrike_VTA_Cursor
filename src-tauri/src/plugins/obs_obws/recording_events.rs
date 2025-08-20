@@ -1,3 +1,12 @@
+//! Automatic OBS recording and IVR indexing
+//!
+//! Purpose: React to PSS events and orchestrate recording via obws, ensuring
+//! each file is indexed to tournaments/matches and events for precise playback.
+//!
+//! Behaviors:
+//! - Cancelable delayed stops; immediate stop on new match begin
+//! - Populate numeric `match_db_id`, `tournament_id`, `tournament_day_id`
+//! - Track `start_time`/`end_time` for accurate offsets
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc;
 use serde::{Deserialize, Serialize};

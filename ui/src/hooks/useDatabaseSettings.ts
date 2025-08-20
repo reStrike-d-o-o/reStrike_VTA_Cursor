@@ -1,3 +1,9 @@
+/**
+ * useDatabaseSettings hook
+ * - Initializes and manages UI settings persisted in the database
+ * - Exposes getters/setters and maintenance actions (migrate, backup, restore)
+ * - Wraps Tauri v2 core.invoke with a safe helper for desktop context
+ */
 import { useState, useEffect, useCallback } from 'react';
 
 // Tauri v2 invoke function that uses the core module

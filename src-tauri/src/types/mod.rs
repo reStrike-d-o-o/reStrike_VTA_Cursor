@@ -1,4 +1,7 @@
 //! Shared types and data structures for the reStrike VTA application
+//!
+//! Note: Some legacy OBS types remain for compatibility with UI payloads but
+//! the active OBS integration uses `plugins::obs_obws::types`.
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

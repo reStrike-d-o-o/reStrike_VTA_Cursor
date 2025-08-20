@@ -1,3 +1,7 @@
+//! Protocol manager (PSS protocol registry)
+//!
+//! Purpose: Load, select, and expose UDP protocol definitions used by parsing
+//! and validation. Manages active version and metadata.
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};

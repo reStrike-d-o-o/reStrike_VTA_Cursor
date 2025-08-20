@@ -1,3 +1,7 @@
+/**
+ * TabGroup
+ * - Simple tabs layout component for molecules/organisms
+ */
 import React from 'react';
 import Tab from '../atoms/Tab';
 

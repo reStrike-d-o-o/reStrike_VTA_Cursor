@@ -1,3 +1,7 @@
+/**
+ * pssMatchStore
+ * - Holds current match state and review mode flags
+ */
 import { create } from 'zustand';
 import { PssMatchData, PssAthleteInfo, PssMatchConfig, PssScores, PssCurrentScores, PssWinnerRounds } from '../types';
 

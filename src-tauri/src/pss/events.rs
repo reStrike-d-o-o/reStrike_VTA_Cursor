@@ -1,1 +1,1 @@
-// events.rs - PSS event processing 
+//! PSS event processing (deprecated; handled in plugins::plugin_udp and event_stream)

@@ -1,3 +1,7 @@
+/**
+ * EventTable (legacy/demo)
+ * - Debug-oriented event table; main production table is EventTableSection
+ */
 import React, { useState, useEffect } from 'react';
 import Button from '../atoms/Button';
 import { StatusDot } from '../atoms/StatusDot';

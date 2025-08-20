@@ -1,7 +1,8 @@
 import React from 'react';
 
 /**
- * Tab Icons for different sections
+ * TabIcons atom
+ * - Collection of small inline SVG icons used in tabs/drawers
  */
 export const TabIcons = {
   // OBS Icons

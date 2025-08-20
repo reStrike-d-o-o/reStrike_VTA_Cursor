@@ -1,3 +1,7 @@
+//! Schema migrations
+//!
+//! Purpose: Versioned schema evolution for PSS events, IVR, OBS settings, and app
+//! configuration. Each migration is idempotent and reversible where feasible.
 use rusqlite::{Connection, Result as SqliteResult};
 use crate::database::{DatabaseError, DatabaseResult, CURRENT_SCHEMA_VERSION, SchemaVersion};
 

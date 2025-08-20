@@ -1,3 +1,8 @@
+/**
+ * AnalyticsDrawer
+ * - Placeholder analytics views for athletes, matches, tournaments, days
+ * - Wired to stores; ready for real PSS/DB data integration
+ */
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../atoms/Card';
 import { Badge } from '../atoms/Badge';

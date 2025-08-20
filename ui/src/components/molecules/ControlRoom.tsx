@@ -1,3 +1,7 @@
+/**
+ * ControlRoom
+ * - Bulk OBS operations across multiple connections (scenes/streaming)
+ */
 import React, { useState, useEffect } from 'react';
 import Button from '../atoms/Button';
 import Input from '../atoms/Input';

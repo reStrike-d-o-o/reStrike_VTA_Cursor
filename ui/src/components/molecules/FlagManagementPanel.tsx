@@ -1,3 +1,7 @@
+/**
+ * FlagManagementPanel
+ * - Manage country flags: fetch, resolve, validate assets
+ */
 import React, { useState, useEffect, useRef } from 'react';
 import Button from '../atoms/Button';
 import Input from '../atoms/Input';

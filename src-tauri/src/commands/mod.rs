@@ -1,2 +1,3 @@
-// Command modules
-// pub mod tauri_commands;
+//! Commands module (empty)
+//!
+//! Tauri commands live in `src-tauri/src/tauri_commands*.rs`.

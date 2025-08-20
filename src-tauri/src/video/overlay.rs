@@ -1,1 +1,3 @@
-// overlay.rs - video overlay system 
+//! Video overlay primitives
+//!
+//! Future work: reusable overlay templates and rendering helpers.

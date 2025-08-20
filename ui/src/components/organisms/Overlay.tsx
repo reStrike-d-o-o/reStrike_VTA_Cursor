@@ -1,3 +1,7 @@
+/**
+ * Overlay (demo)
+ * - In-app overlay preview with simple player controls and status
+ */
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../../stores';
@@ -83,33 +87,44 @@ const Overlay: React.FC = () => {
     }
   };
 
-  // Get position styles
-  const getPositionStyles = () => {
-    const baseStyles = {
-      position: 'fixed' as const,
-      zIndex: 9999,
-      transform: `scale(${overlaySettings.scale})`,
-      opacity: overlaySettings.opacity,
-    };
+  // Map dynamic opacity/scale to a finite set of utility classes (avoid inline styles)
+  const getOpacityClass = () => {
+    const o = Math.max(0, Math.min(1, overlaySettings.opacity));
+    if (o >= 0.95) return 'opacity-100';
+    if (o >= 0.85) return 'opacity-90';
+    if (o >= 0.75) return 'opacity-80';
+    if (o >= 0.65) return 'opacity-70';
+    if (o >= 0.55) return 'opacity-60';
+    return 'opacity-50';
+  };
 
+  const getScaleClass = () => {
+    const s = Math.max(0.5, Math.min(2, overlaySettings.scale));
+    if (s >= 1.75) return 'scale-150';
+    if (s >= 1.35) return 'scale-125';
+    if (s >= 1.15) return 'scale-110';
+    if (s >= 0.95) return 'scale-100';
+    if (s >= 0.85) return 'scale-90';
+    if (s >= 0.65) return 'scale-75';
+    return 'scale-50';
+  };
+
+  // Position classes
+  const getPositionClassName = () => {
+    const base = `fixed z-[9999] transform ${getScaleClass()} ${getOpacityClass()}`;
     switch (overlaySettings.position) {
       case 'top-left':
-        return { ...baseStyles, top: '20px', left: '20px' };
+        return `${base} top-5 left-5`;
       case 'top-right':
-        return { ...baseStyles, top: '20px', right: '20px' };
+        return `${base} top-5 right-5`;
       case 'bottom-left':
-        return { ...baseStyles, bottom: '20px', left: '20px' };
+        return `${base} bottom-5 left-5`;
       case 'bottom-right':
-        return { ...baseStyles, bottom: '20px', right: '20px' };
+        return `${base} bottom-5 right-5`;
       case 'center':
-        return { 
-          ...baseStyles, 
-          top: '50%', 
-          left: '50%', 
-          transform: `translate(-50%, -50%) scale(${overlaySettings.scale})` 
-        };
+        return `${base} top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2`;
       default:
-        return { ...baseStyles, bottom: '20px', right: '20px' };
+        return `${base} bottom-5 right-5`;
     }
   };
 
@@ -130,7 +145,7 @@ const Overlay: React.FC = () => {
   }
 
   return (
-    <div style={getPositionStyles()} className="overlay-container">
+    <div className={`overlay-container ${getPositionClassName()}`}>
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}

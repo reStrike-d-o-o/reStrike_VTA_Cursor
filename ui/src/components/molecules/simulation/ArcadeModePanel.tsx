@@ -1,3 +1,7 @@
+/**
+ * ArcadeModePanel
+ * - Arcade mode controls and indicators
+ */
 import React, { useEffect, useRef, useState } from 'react';
 import { useSimulationStore } from '../../../stores/simulationStore';
 import { usePssMatchStore } from '../../../stores/pssMatchStore';

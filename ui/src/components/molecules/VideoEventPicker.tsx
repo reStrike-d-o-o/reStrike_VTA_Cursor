@@ -1,3 +1,9 @@
+/**
+ * VideoEventPicker
+ * - Popover list of events for a given recorded video and match
+ * - On selection, invokes ivr_open_recorded_video with the chosen event id
+ * - Props: recordedVideoId, matchId, onClose
+ */
 import React, { useEffect, useState } from 'react';
 
 interface VideoEventPickerProps {

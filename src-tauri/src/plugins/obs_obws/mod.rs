@@ -1,7 +1,8 @@
 //! OBS WebSocket integration using the obws crate
-//! 
-//! This module provides a native Rust implementation for OBS WebSocket integration
-//! using the obws crate, which offers type-safe API access to OBS Studio.
+//!
+//! Native Rust implementation with type-safe API access to OBS Studio.
+//! Multi-connection manager, clients, operations, path generation, and
+//! automatic recording/IVR indexing live here.
 
 pub mod client;
 pub mod manager;

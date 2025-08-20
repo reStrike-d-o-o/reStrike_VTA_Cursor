@@ -1,3 +1,7 @@
+//! WebSocket server for overlays and live UIs
+//!
+//! Purpose: Accept WS clients and broadcast structured PSS events and status
+//! updates. Pairs with UDP ingest to provide low-latency overlay data.
 use crate::plugins::plugin_udp::PssEvent;
 use crate::types::AppError;
 use crate::types::AppResult;

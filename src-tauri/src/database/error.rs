@@ -1,3 +1,6 @@
+//! Database error types
+//!
+//! Purpose: Unified error enum used across connection, migrations, and operations.
 use thiserror::Error;
 
 #[derive(Error, Debug)]

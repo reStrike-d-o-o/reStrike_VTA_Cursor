@@ -1,3 +1,7 @@
+/**
+ * Modal atom
+ * - Centered overlay dialog with header and scrollable content
+ */
 import React from 'react';
 
 interface ModalProps {

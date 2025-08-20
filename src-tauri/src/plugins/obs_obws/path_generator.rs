@@ -248,6 +248,7 @@ mod tests {
             videos_root: PathBuf::from("C:/Videos"),
             default_format: "mp4".to_string(),
             include_minutes_seconds: true,
+            folder_pattern: Some("{tournament}/{tournamentDay}".to_string()),
         };
         
         let generator = ObsPathGenerator::new(Some(config));

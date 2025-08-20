@@ -1,3 +1,7 @@
+//! Store plugin facade
+//!
+//! Purpose: Adapter for future persistent KV or document store operations
+//! not covered by the SQL schema.
 // Store plugin stub
 pub fn store_data() {
     // TODO: Implement data storage

@@ -1,3 +1,7 @@
+/**
+ * ManualPanel
+ * - Manual simulation controls
+ */
 import React from 'react';
 import Button from '../../atoms/Button';
 import Input from '../../atoms/Input';

@@ -1,3 +1,8 @@
+/**
+ * StatusBar (legacy)
+ * - Simple REC/STR/CPU status row using legacy ObsStatusInfo fields
+ * - Production status is derived from obws status via DockBar/StatusbarDock
+ */
 import React, { useEffect, useState } from 'react';
 import { useAppStore, ObsStatusInfo } from '../../stores';
 import Button from '../atoms/Button';

@@ -1,3 +1,7 @@
+//! Subsystem logger with rotation support
+//!
+//! Purpose: Structured log writing per subsystem; pairs with LogRotator and
+//! LogArchiver to manage file lifecycles.
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, Write, BufWriter};
 use std::path::{Path, PathBuf};

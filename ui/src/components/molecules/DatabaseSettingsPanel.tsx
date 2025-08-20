@@ -1,4 +1,8 @@
-import React, { useState } from 'react';
+/**
+ * DatabaseSettingsPanel
+ * - Initialize UI settings in DB; backup/restore and migration controls
+ */
+import React, { useEffect, useState } from 'react';
 import { useDatabaseSettings } from '../../hooks/useDatabaseSettings';
 import Button from '../atoms/Button';
 import Input from '../atoms/Input';

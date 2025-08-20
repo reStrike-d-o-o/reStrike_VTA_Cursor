@@ -1,3 +1,7 @@
+/**
+ * PasswordDialog
+ * - Prompt for Advanced mode authentication
+ */
 import React, { useState } from 'react';
 import Button from '../atoms/Button';
 import Input from '../atoms/Input';
@@ -49,7 +53,7 @@ const PasswordDialog: React.FC<PasswordDialogProps> = ({
         
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Hidden username field for accessibility */}
-          <input type="text" autoComplete="username" style={{ display: 'none' }} />
+          <input type="text" autoComplete="username" className="hidden" aria-hidden="true" tabIndex={-1} />
           
           <div>
             <Input
@@ -60,6 +64,8 @@ const PasswordDialog: React.FC<PasswordDialogProps> = ({
               placeholder="Enter password"
               className="w-full"
               autoFocus
+              aria-label="Password"
+              title="Password"
             />
           </div>
           
@@ -76,12 +82,8 @@ const PasswordDialog: React.FC<PasswordDialogProps> = ({
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              className="px-4 py-2"
-            >
-              Authenticate
+            <Button type="submit" className="px-4 py-2">
+              Confirm
             </Button>
           </div>
         </form>

@@ -1,3 +1,7 @@
+//! Async database access (sqlx)
+//!
+//! Purpose: Thread-safe async DB operations used by tauri commands and any
+//! asynchronous workflows. Optimized for WAL mode and reasonable defaults.
 use sqlx::{SqlitePool, Sqlite};
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode};
 use std::path::PathBuf;

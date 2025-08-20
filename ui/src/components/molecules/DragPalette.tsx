@@ -1,3 +1,7 @@
+/**
+ * DragPalette
+ * - Small utility palette for drag-and-drop scenarios
+ */
 import React from 'react';
 import { useDraggable } from '@dnd-kit/core';
 
@@ -32,6 +36,7 @@ const DraggableBadge: React.FC<BadgeProps> = ({ id, label, colorClass }) => {
       ref={setNodeRef}
       {...listeners}
       {...attributes}
+      // eslint-disable-next-line
       style={style}
       className={`flex items-center px-3 py-1 rounded-lg backdrop-blur-sm text-xs font-medium select-none mb-2 ${containerBg} ${borderColor} border ${textColor}`}
     >
@@ -47,7 +52,7 @@ interface DragPaletteProps {
 
 const DragPalette: React.FC<React.PropsWithChildren<DragPaletteProps & {className?:string}>> = ({ scenes, overlays, className='' }) => {
   return (
-    <div className={`w-40 p-2 border-r border-gray-700 overflow-y-auto ${className}`} style={{ maxHeight: '600px' }}>
+    <div className={`w-40 p-2 border-r border-gray-700 overflow-y-auto max-h-[600px] ${className}`}>
       <h3 className="text-xs font-bold text-gray-300 mb-1">Events</h3>
       {['pre', 'rdy', 'rnd', 'sup', 'wrd', 'wmh'].map(ev => (
         <DraggableBadge key={ev} id={`ev-${ev}`} label={humanReadableEvent(ev)} colorClass="bg-blue-600" />

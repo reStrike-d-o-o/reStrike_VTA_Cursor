@@ -1,3 +1,7 @@
+//! Database plugin (pooling, migrations, hybrid settings)
+//!
+//! Purpose: Provide pooled sync access, run migrations on startup, and expose a
+//! hybrid settings provider (DB + config file) to the rest of the app.
 use crate::types::AppResult;
 use crate::database::{
     connection::{DatabaseConnection, DatabaseConnectionPool, PooledConnection},

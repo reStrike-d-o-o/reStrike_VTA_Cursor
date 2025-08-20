@@ -1,3 +1,9 @@
+/**
+ * AdvancedPanel layout
+ * - Hosts drawers for PSS, OBS (obws), OVR, IVR, AI, Logs, DB, Flags, Tournament
+ * - Single source for advanced configuration and diagnostics
+ * - Uses atomic components and organism-level managers where appropriate
+ */
 import React, { useState, useEffect } from 'react';
 import SettingsDrawerTabs from '../molecules/SettingsDrawerTabs';
 import LogDownloadList from '../molecules/LogDownloadList';

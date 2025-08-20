@@ -1,3 +1,7 @@
+/**
+ * DatabaseMigrationPanel
+ * - Orchestrate migration from JSON/config to database storage
+ */
 import React, { useState, useEffect, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import Button from '../atoms/Button';

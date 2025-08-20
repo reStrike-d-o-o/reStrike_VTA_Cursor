@@ -1,3 +1,7 @@
+/**
+ * ArcadeBindingsPanel
+ * - Configure arcade input bindings
+ */
 import React, { useEffect, useMemo, useState } from 'react';
 import { defaultMapping, loadMapping, saveMapping, listConnectedGamepads } from './gamepad';
 

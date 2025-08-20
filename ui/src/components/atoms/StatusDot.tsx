@@ -1,25 +1,40 @@
+/**
+ * StatusDot atom
+ * - Colored dot indicator for status (REC/STR/CPU etc.)
+ * - Backward compatible: accepts semantic colors (red|green|yellow|gray) or full tailwind bg-* classes
+ */
 import React from 'react';
 
-interface StatusDotProps {
-  color?: string; // Tailwind class or custom
-  size?: string; // Tailwind size class, e.g., 'w-2 h-2'
-  className?: string;
-  ariaLabel?: string;
+type SemanticColor = 'red' | 'green' | 'yellow' | 'gray';
+
+interface StatusDotProps extends React.HTMLAttributes<HTMLSpanElement> {
+  color?: SemanticColor | string;
+  title?: string;
+  size?: string; // e.g., 'w-3 h-3'
 }
 
-/**
- * StatusDot atom for colored status indicators (e.g., REC, STR, CPU)
- */
-export const StatusDot: React.FC<StatusDotProps> = ({
-  color = 'bg-gray-400',
-  size = 'w-2 h-2',
-  className = '',
-  ariaLabel,
-}) => (
-  <span
-    className={`inline-block ${size} ${color} shadow-lg transition-all duration-300 flex-shrink-0 ${className} square`}
-    aria-label={ariaLabel}
-  />
-);
+export const StatusDot: React.FC<StatusDotProps> = ({ color = 'gray', title, className = '', size, ...props }) => {
+  const classFromColor = (c: string): string => {
+    if (c.startsWith('bg-')) return c;
+    switch (c as SemanticColor) {
+      case 'red':
+        return 'bg-red-500';
+      case 'green':
+        return 'bg-green-500';
+      case 'yellow':
+        return 'bg-yellow-500';
+      default:
+        return 'bg-gray-500';
+    }
+  };
 
-export default StatusDot; 
+  return (
+    <span
+      title={title}
+      className={`inline-block ${size ? size : 'w-2 h-2'} rounded-full ${classFromColor(String(color))} ${className}`}
+      {...props}
+    />
+  );
+};
+
+export default StatusDot;
