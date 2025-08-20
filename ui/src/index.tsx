@@ -5,6 +5,7 @@ import App from './App';
 import { initLogLevelFromStorage, applyConsolePatch } from './utils/logger';
 import { diagLogsCommands } from './utils/tauriCommands';
 import { useMessageCenter } from './stores/messageCenter';
+import { I18nProvider } from './i18n';
 
 // Initialize logging level and patch console globally before rendering
 initLogLevelFromStorage();
@@ -35,12 +36,18 @@ applyConsolePatch();
 if (process.env.NODE_ENV === 'development') {
   // Disable React.StrictMode in development for faster renders
   const root = ReactDOM.createRoot(document.getElementById('root') as HTMLElement);
-  root.render(<App />);
+  root.render(
+    <I18nProvider>
+      <App />
+    </I18nProvider>
+  );
 } else {
   const root = ReactDOM.createRoot(document.getElementById('root') as HTMLElement);
   root.render(
     <React.StrictMode>
-      <App />
+      <I18nProvider>
+        <App />
+      </I18nProvider>
     </React.StrictMode>
   );
 }

@@ -6,8 +6,10 @@ import { useSettingsStore } from '../../stores/settingsStore';
 import { windowCommands } from '../../utils/tauriCommands';
 import { useEnvironment } from '../../hooks/useEnvironment';
 import { logger, setLogLevel, LogLevel, applyConsolePatch } from '../../utils/logger';
+import { useI18n } from '../../i18n';
 
 const AppSettingsSection: React.FC = () => {
+  const { locale, setLocale } = useI18n();
   const { tauriAvailable } = useEnvironment();
   const windowSettings = useAppStore((state) => state.windowSettings);
   const updateWindowSettings = useAppStore((state) => state.updateWindowSettings);
@@ -60,6 +62,24 @@ const AppSettingsSection: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Language */}
+      <div>
+        <h3 className="text-lg font-semibold text-white mb-2">Language</h3>
+        <div className="flex items-center gap-2">
+          <label className="text-sm text-gray-300" htmlFor="app-language">Select language</label>
+          <select
+            id="app-language"
+            aria-label="Language"
+            title="Language"
+            className="bg-gray-700 text-gray-200 text-sm px-2 py-1 rounded border border-gray-600"
+            value={locale}
+            onChange={(e) => setLocale(e.target.value)}
+          >
+            <option value="en">English</option>
+            <option value="sr">Srpski</option>
+          </select>
+        </div>
+      </div>
       <div>
         <h3 className="text-lg font-semibold text-white mb-4">Window Settings</h3>
         <p className="text-gray-300 text-sm mb-4">

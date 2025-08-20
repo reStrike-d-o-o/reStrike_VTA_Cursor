@@ -10,6 +10,7 @@ import Icon from '../atoms/Icon';
 import TabGroup from '../molecules/TabGroup';
 import TabIcons from '../atoms/TabIcons';
 import LottieIcon from '../atoms/LottieIcon';
+import { useI18n } from '../../i18n';
 import FlagManagementPanel from './FlagManagementPanel';
 import ScoreboardManager from './ScoreboardManager';
 import SimulationPanelV2 from './SimulationPanelV2';
@@ -1025,37 +1026,38 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
     </div>
   );
 
+  const { t } = useI18n();
   return (
     <div className={className}>
       <TabGroup
         tabs={[
           {
             id: 'udp',
-            label: 'UDP Server & Protocol',
+            label: t('pss.tabs.udp', 'UDP Server & Protocol'),
             icon: <LottieIcon animationData={algorithmAnimation} size={32} />,
             content: <UdpServerContent />
           },
           {
             id: 'flags',
-            label: 'Flag Management',
+            label: t('pss.tabs.flags', 'Flag Management'),
             icon: <LottieIcon animationData={locationAnimation} size={32} />,
             content: flagPanel
           },
           {
             id: 'scoreboard',
-            label: 'Scoreboard',
+            label: t('pss.tabs.scoreboard', 'Scoreboard'),
             icon: <LottieIcon animationData={scoreboardAnimation} size={32} />,
             content: <ScoreboardContent />
           },
           {
             id: 'simulation',
-            label: 'Simulation',
+            label: t('pss.tabs.simulation', 'Simulation'),
             icon: <LottieIcon animationData={robotAnimation} size={32} />,
             content: <SimulationPanelV2 />
           },
           {
             id: 'triggers',
-            label: 'Triggers',
+            label: t('pss.tabs.triggers', 'Triggers'),
             icon: <LottieIcon animationData={crossbowAnimation} size={32} />,
             content: <div className="theme-card p-4"><h3 className="text-lg font-semibold text-gray-100 mb-3">Triggers (v2)</h3><TriggersRuleBuilder /></div>
           }
