@@ -5,6 +5,7 @@ import Label from '../atoms/Label';
 import StatusDot from '../atoms/StatusDot';
 import { Progress } from '../atoms/Progress';
 import { getFlagConfig, getFlagUrl, handleFlagError, FLAG_CONFIGS } from '../../utils/flagUtils';
+import { useI18n } from '../../i18n/index';
 
 interface FlagInfo {
   iocCode: string;
@@ -33,6 +34,7 @@ interface FlagManagementPanelProps {
 }
 
 const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '' }) => {
+  const { t } = useI18n();
   const [flags, setFlags] = useState<FlagInfo[]>([]);
   const [filteredFlags, setFilteredFlags] = useState<FlagInfo[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -193,7 +195,7 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
         setStatistics({ total: flagList.length, recognized: flagList.length, pending: 0, failed: 0 });
       }
     } catch (error) {
-      setError(`Failed to load flags: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setError(t('flags.err.load', 'Failed to load flags: {msg}', { msg: error instanceof Error ? error.message : 'Unknown error' }));
       setStatistics({ total: 0, recognized: 0, pending: 0, failed: 0 });
     } finally {
       setIsLoading(false);
@@ -211,7 +213,7 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
 
   const scanAndPopulateFlags = async () => {
     if (!window.__TAURI__) {
-      setError('Database functionality not available in this environment');
+      setError(t('flags.err.nodb', 'Database functionality not available in this environment'));
       return;
     }
 
@@ -223,19 +225,19 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
       const result = await window.__TAURI__.core.invoke('scan_and_populate_flags');
       
       if (result.success) {
-        setSuccess(`Successfully scanned and populated flags! Processed: ${result.processed_count}, Skipped: ${result.skipped_count}`);
+        setSuccess(t('flags.success.scan', 'Successfully scanned and populated flags! Processed: {p}, Skipped: {s}', { p: result.processed_count, s: result.skipped_count }));
         
         if (result.errors && result.errors.length > 0) {
-          setError(`Some errors occurred: ${result.errors.join(', ')}`);
+          setError(t('flags.err.some', 'Some errors occurred: {err}', { err: result.errors.join(', ') }));
         }
         
         // Reload flags after scanning
         await loadFlags();
       } else {
-        setError(result.error || 'Failed to scan and populate flags');
+        setError(result.error || t('flags.err.scan_populate', 'Failed to scan and populate flags'));
       }
     } catch (error) {
-      setError(`Failed to scan flags: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setError(t('flags.err.scan', 'Failed to scan flags: {msg}', { msg: error instanceof Error ? error.message : 'Unknown error' }));
     } finally {
       setIsLoading(false);
     }
@@ -243,11 +245,11 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
 
   const clearFlagsDatabase = async () => {
     if (!window.__TAURI__) {
-      setError('Database functionality not available in this environment');
+      setError(t('flags.err.nodb', 'Database functionality not available in this environment'));
       return;
     }
 
-    if (!window.confirm('Are you sure you want to clear all flags from the database? This action cannot be undone.')) {
+    if (!window.confirm(t('flags.confirm.clear', 'Are you sure you want to clear all flags from the database? This action cannot be undone.'))) {
       return;
     }
 
@@ -258,15 +260,15 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
       const result = await window.__TAURI__.core.invoke('clear_flags_table');
       
       if (result.success) {
-        setSuccess(`Successfully cleared flags database! Deleted: ${result.deleted_count} entries`);
+        setSuccess(t('flags.success.cleared', 'Successfully cleared flags database! Deleted: {n} entries', { n: result.deleted_count }));
         
         // Reload flags after clearing
         await loadFlags();
       } else {
-        setError(result.error || 'Failed to clear flags database');
+        setError(result.error || t('flags.err.clear_db', 'Failed to clear flags database'));
       }
     } catch (error) {
-      setError(`Failed to clear flags: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setError(t('flags.err.clear', 'Failed to clear flags: {msg}', { msg: error instanceof Error ? error.message : 'Unknown error' }));
     } finally {
       setIsLoading(false);
     }
@@ -277,7 +279,7 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      setError('Please select an image file');
+      setError(t('flags.err.select_image', 'Please select an image file'));
       return;
     }
 
@@ -293,12 +295,12 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
       }
 
       // This would typically call a Tauri command to upload the flag
-      setSuccess(`Flag uploaded successfully: ${file.name}`);
+      setSuccess(t('flags.success.upload', 'Flag uploaded successfully: {name}', { name: file.name }));
       
       // Reload flags after upload
       await loadFlags();
     } catch (error) {
-      setError('Failed to upload flag');
+      setError(t('flags.err.upload', 'Failed to upload flag'));
     } finally {
       setIsLoading(false);
       setUploadProgress(0);
@@ -313,9 +315,9 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
           ? { ...flag, pssCode, hasCustomMapping: true }
           : flag
       ));
-      setSuccess(`Mapping updated for ${iocCode}`);
+      setSuccess(t('flags.success.mapping_update', 'Mapping updated for {ioc}', { ioc: iocCode }));
     } catch (error) {
-      setError('Failed to update mapping');
+      setError(t('flags.err.mapping_update', 'Failed to update mapping'));
     }
   };
 
@@ -327,9 +329,9 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
           ? { ...flag, pssCode: iocCode, hasCustomMapping: true }
           : flag
       ));
-      setSuccess(`PSS code reset to IOC code for ${iocCode}`);
+      setSuccess(t('flags.success.mapping_reset', 'PSS code reset to IOC code for {ioc}', { ioc: iocCode }));
     } catch (error) {
-      setError('Failed to reset mapping');
+      setError(t('flags.err.mapping_reset', 'Failed to reset mapping'));
     }
   };
 
@@ -352,7 +354,7 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
 
       {/* Flag Upload Section */}
       <div className="p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
-        <h3 className="text-lg font-semibold mb-4 text-gray-100">Upload Custom Flag</h3>
+        <h3 className="text-lg font-semibold mb-4 text-gray-100">{t('flags.upload.title', 'Upload Custom Flag')}</h3>
         <div className="space-y-4">
           <div className="flex items-center space-x-3">
             <input
@@ -362,8 +364,8 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
               className="hidden"
               id="flag-upload"
               disabled={isLoading}
-              aria-label={"Choose flag image file"}
-              title={"Choose flag image file"}
+              aria-label={t('flags.upload.choose_file_aria', 'Choose flag image file')}
+              title={t('flags.upload.choose_file_title', 'Choose flag image file')}
             />
             <Button
               size="sm"
@@ -371,52 +373,47 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
               onClick={() => document.getElementById('flag-upload')?.click()}
               disabled={isLoading}
             >
-              Choose Flag Image
+              {t('flags.upload.choose_button', 'Choose Flag Image')}
             </Button>
-            <span className="text-xs text-gray-400">PNG, JPG, or GIF format</span>
+            <span className="text-xs text-gray-400">{t('flags.upload.format_hint', 'PNG, JPG, or GIF format')}</span>
           </div>
           
           {uploadProgress > 0 && (
             <Progress value={uploadProgress} />
           )}
           
-          <p className="text-xs text-gray-400">
-            Upload a custom flag image to add it to the available flags. 
-            The image should be in PNG, JPG, or GIF format.
-          </p>
+          <p className="text-xs text-gray-400">{t('flags.upload.help', 'Upload a custom flag image to add it to the available flags. The image should be in PNG, JPG, or GIF format.')}</p>
         </div>
       </div>
 
       {/* Flag List Section */}
       <div className="p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-100">Available Flags</h3>
+          <h3 className="text-lg font-semibold text-gray-100">{t('flags.list.title', 'Available Flags')}</h3>
           <div className="flex items-center space-x-2">
             <StatusDot color={isLoading ? 'yellow' : 'green'} />
-            <span className="text-xs text-gray-400">
-              {filteredFlags.length} of {flags.length} flags
-            </span>
+            <span className="text-xs text-gray-400">{t('flags.list.count', '{n} of {m} flags', { n: filteredFlags.length, m: flags.length })}</span>
           </div>
         </div>
 
         {/* Search */}
         <div className="mb-4">
-          <Label htmlFor="flag-search" className="text-xs text-gray-400">Search Flags</Label>
+          <Label htmlFor="flag-search" className="text-xs text-gray-400">{t('flags.search.label', 'Search Flags')}</Label>
           <Input
             id="flag-search"
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search by IOC code, country name, or PSS code..."
+            placeholder={t('flags.search.placeholder', 'Search by IOC code, country name, or PSS code...')}
             className="mt-1"
           />
         </div>
 
         {/* Flag Grid */}
             {isLoading ? (
-            <div className="text-sm text-gray-400">Loading flags...</div>
+            <div className="text-sm text-gray-400">{t('flags.list.loading', 'Loading flags...')}</div>
           ) : filteredFlags.length === 0 ? (
-          <div className="text-sm text-gray-400">No flags found</div>
+          <div className="text-sm text-gray-400">{t('flags.list.none', 'No flags found')}</div>
           ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto">
             {filteredFlags.map((flag) => (
@@ -451,9 +448,7 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
                 </div>
                 
                 {flag.hasCustomMapping && (
-                  <div className="text-xs text-blue-300">
-                    Mapped to: {flag.pssCode}
-                  </div>
+                  <div className="text-xs text-blue-300">{t('flags.mapping.mapped_to', 'Mapped to')}: {flag.pssCode}</div>
                 )}
               </div>
             ))}
@@ -464,7 +459,7 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
       {/* Flag Details Section */}
       {selectedFlag && (
         <div className="p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
-          <h3 className="text-lg font-semibold mb-4 text-gray-100">Flag Details</h3>
+          <h3 className="text-lg font-semibold mb-4 text-gray-100">{t('flags.details.title', 'Flag Details')}</h3>
           <div className="space-y-4">
             <div className="flex items-center space-x-4">
               <img
@@ -478,13 +473,9 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
                 <div className="text-lg font-medium text-gray-200">
                   {selectedFlag.countryName}
                 </div>
-                <div className="text-sm text-gray-400">
-                  IOC Code: {selectedFlag.iocCode}
-                </div>
+                <div className="text-sm text-gray-400">{t('flags.details.ioc_code', 'IOC Code')}: {selectedFlag.iocCode}</div>
                 {selectedFlag.filename && (
-                  <div className="text-xs text-gray-500">
-                    File: {selectedFlag.filename}
-                  </div>
+                  <div className="text-xs text-gray-500">{t('flags.details.file', 'File')}: {selectedFlag.filename}</div>
                 )}
               </div>
             </div>
@@ -492,15 +483,15 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
             {/* Database Information */}
             {selectedFlag.id && (
               <div className="border-t border-gray-600/30 pt-4">
-                <h4 className="text-sm font-medium text-gray-300 mb-3">Database Information</h4>
+                <h4 className="text-sm font-medium text-gray-300 mb-3">{t('flags.db.title', 'Database Information')}</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <div className="flex justify-between">
-                      <span className="text-xs text-gray-400">ID:</span>
+                      <span className="text-xs text-gray-400">{t('flags.db.id', 'ID')}:</span>
                       <span className="text-xs text-gray-300">{selectedFlag.id}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-xs text-gray-400">Status:</span>
+                      <span className="text-xs text-gray-400">{t('flags.db.status', 'Status')}:</span>
                       <span className={`text-xs px-2 py-1 rounded ${
                         selectedFlag.recognition_status === 'recognized' 
                           ? 'bg-green-900/30 text-green-300 border border-green-600/30'
@@ -513,7 +504,7 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
                     </div>
                     {selectedFlag.recognition_confidence && (
                       <div className="flex justify-between">
-                        <span className="text-xs text-gray-400">Confidence:</span>
+                        <span className="text-xs text-gray-400">{t('flags.db.confidence', 'Confidence')}:</span>
                         <span className="text-xs text-gray-300">{(selectedFlag.recognition_confidence * 100).toFixed(1)}%</span>
                       </div>
                     )}
@@ -521,7 +512,7 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
                   <div className="space-y-2">
                     {selectedFlag.upload_date && (
                       <div className="flex justify-between">
-                        <span className="text-xs text-gray-400">Uploaded:</span>
+                        <span className="text-xs text-gray-400">{t('flags.db.uploaded', 'Uploaded')}:</span>
                         <span className="text-xs text-gray-300">
                           {(() => { const d=new Date(selectedFlag.upload_date); const dd=String(d.getDate()).padStart(2,'0'); const mm=String(d.getMonth()+1).padStart(2,'0'); const yyyy=d.getFullYear(); return `${dd}.${mm}.${yyyy}`; })()}
                         </span>
@@ -529,7 +520,7 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
                     )}
                     {selectedFlag.file_size && (
                       <div className="flex justify-between">
-                        <span className="text-xs text-gray-400">Size:</span>
+                        <span className="text-xs text-gray-400">{t('flags.db.size', 'Size')}:</span>
                         <span className="text-xs text-gray-300">
                           {(selectedFlag.file_size / 1024).toFixed(1)} KB
                         </span>
@@ -542,21 +533,19 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
 
             {/* PSS Code Mapping */}
             <div className="border-t border-gray-600/30 pt-4">
-              <h4 className="text-sm font-medium text-gray-300 mb-3">PSS Code Mapping</h4>
+              <h4 className="text-sm font-medium text-gray-300 mb-3">{t('flags.mapping.title', 'PSS Code Mapping')}</h4>
               <div className="space-y-3">
                 <div className="flex items-center space-x-3">
-                  <span className="text-sm text-gray-400">Current PSS Code:</span>
+                  <span className="text-sm text-gray-400">{t('flags.mapping.current', 'Current PSS Code')}:</span>
                   <span className="px-2 py-1 bg-blue-900/30 text-blue-300 text-sm rounded border border-blue-600/30">
                     {selectedFlag.pssCode}
                   </span>
                 </div>
-                <div className="text-xs text-gray-500 mb-2">
-                  This flag is mapped to the PSS protocol code shown above. You can modify this mapping if needed.
-                </div>
+                <div className="text-xs text-gray-500 mb-2">{t('flags.mapping.help', 'This flag is mapped to the PSS protocol code shown above. You can modify this mapping if needed.')}</div>
                 <div className="flex space-x-2">
                   <Input
                     type="text"
-                    placeholder="New PSS code..."
+                    placeholder={t('flags.mapping.new_placeholder', 'New PSS code...')}
                     className="flex-1"
                     value={pssCodeInput}
                     onChange={(e) => setPssCodeInput(e.target.value)}
@@ -577,14 +566,14 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
                       }
                     }}
                   >
-                    Update
+                    {t('flags.mapping.update', 'Update')}
                   </Button>
                   <Button
                     size="sm"
                     variant="danger"
                     onClick={() => handleMappingRemove(selectedFlag.iocCode)}
                   >
-                    Reset to IOC
+                    {t('flags.mapping.reset', 'Reset to IOC')}
                   </Button>
                 </div>
               </div>
@@ -595,31 +584,31 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
 
       {/* Database Statistics */}
       <div className="p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
-        <h3 className="text-lg font-semibold mb-4 text-gray-100">Database Statistics</h3>
+        <h3 className="text-lg font-semibold mb-4 text-gray-100">{t('flags.stats.title', 'Database Statistics')}</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="p-4 rounded-lg bg-gray-700/30 border border-gray-600/30">
-            <p className="text-sm font-medium text-gray-300">Total Flags</p>
+            <p className="text-sm font-medium text-gray-300">{t('flags.stats.total', 'Total Flags')}</p>
             <p className="text-2xl font-bold text-blue-400">{statistics.total}</p>
           </div>
           <div className="p-4 rounded-lg bg-gray-700/30 border border-gray-600/30">
-            <p className="text-sm font-medium text-gray-300">Recognized</p>
+            <p className="text-sm font-medium text-gray-300">{t('flags.stats.recognized', 'Recognized')}</p>
             <p className="text-2xl font-bold text-green-400">{statistics.recognized}</p>
           </div>
           <div className="p-4 rounded-lg bg-gray-700/30 border border-gray-600/30">
-            <p className="text-sm font-medium text-gray-300">Pending</p>
+            <p className="text-sm font-medium text-gray-300">{t('flags.stats.pending', 'Pending')}</p>
             <p className="text-2xl font-bold text-yellow-400">{statistics.pending}</p>
           </div>
           <div className="p-4 rounded-lg bg-gray-700/30 border border-gray-600/30">
-            <p className="text-sm font-medium text-gray-300">Failed</p>
+            <p className="text-sm font-medium text-gray-300">{t('flags.stats.failed', 'Failed')}</p>
             <p className="text-2xl font-bold text-red-400">{statistics.failed}</p>
           </div>
         </div>
         <div className="mt-6 flex space-x-2">
           <Button size="sm" variant="primary" onClick={scanAndPopulateFlags} disabled={isLoading}>
-            Scan and Populate Flags
+            {t('flags.actions.scan_populate', 'Scan and Populate Flags')}
           </Button>
           <Button size="sm" variant="danger" onClick={clearFlagsDatabase} disabled={isLoading}>
-            Clear Flags Database
+            {t('flags.actions.clear_db', 'Clear Flags Database')}
           </Button>
         </div>
       </div>
