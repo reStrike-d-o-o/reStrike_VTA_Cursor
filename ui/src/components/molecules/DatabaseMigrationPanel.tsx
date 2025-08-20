@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import Button from '../atoms/Button';
+import { useI18n } from '../../i18n/index';
 
 interface MigrationStatus {
   database_enabled: boolean;
@@ -18,6 +19,7 @@ interface TableData {
 }
 
 const DatabaseMigrationPanel: React.FC = () => {
+  const { t } = useI18n();
   const [activeTab, setActiveTab] = useState<'migration' | 'status' | 'preview'>('migration');
   const [migrationStatus, setMigrationStatus] = useState<MigrationStatus | null>(null);
   const [databaseTables, setDatabaseTables] = useState<string[]>([]);
@@ -154,22 +156,22 @@ const DatabaseMigrationPanel: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-white">Database Migration</h2>
-          <p className="text-sm text-gray-400">Manage database migration and view data</p>
+          <h2 className="text-xl font-semibold text-white">{t('db.migration.title', 'Database Migration')}</h2>
+          <p className="text-sm text-gray-400">{t('db.migration.subtitle', 'Manage database migration and view data')}</p>
         </div>
       </div>
 
       {/* Error/Success Messages */}
       {error && (
         <div className="bg-red-900/20 border border-red-500/50 rounded-lg p-3">
-          <span className="text-red-400 font-medium">Error</span>
+          <span className="text-red-400 font-medium">{t('common.error', 'Error')}</span>
           <p className="text-red-300 mt-1 text-sm">{error}</p>
         </div>
       )}
 
       {success && (
         <div className="bg-green-900/20 border border-green-500/50 rounded-lg p-3">
-          <span className="text-green-400 font-medium">Success</span>
+          <span className="text-green-400 font-medium">{t('common.success', 'Success')}</span>
           <p className="text-green-300 mt-1 text-sm">{success}</p>
         </div>
       )}
@@ -185,7 +187,7 @@ const DatabaseMigrationPanel: React.FC = () => {
           }`}
         >
           <span>🔄</span>
-          Migration
+          {t('db.migration.tabs.migration', 'Migration')}
         </button>
         <button
           onClick={() => setActiveTab('status')}
@@ -196,7 +198,7 @@ const DatabaseMigrationPanel: React.FC = () => {
           }`}
         >
           <span>📊</span>
-          Status
+          {t('db.migration.tabs.status', 'Status')}
         </button>
         <button
           onClick={() => setActiveTab('preview')}
@@ -207,7 +209,7 @@ const DatabaseMigrationPanel: React.FC = () => {
           }`}
         >
           <span>👁️</span>
-          Preview
+          {t('db.migration.tabs.preview', 'Preview')}
         </button>
       </div>
 
@@ -215,7 +217,7 @@ const DatabaseMigrationPanel: React.FC = () => {
       {activeTab === 'migration' && (
         <div className="theme-card rounded-lg p-4 shadow-lg">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold text-blue-300">Migration Status</h3>
+            <h3 className="text-lg font-semibold text-blue-300">{t('db.migration.status.title', 'Migration Status')}</h3>
             <div className="flex gap-2">
               <Button
                 onClick={runMigrations}
@@ -223,28 +225,28 @@ const DatabaseMigrationPanel: React.FC = () => {
                 size="sm"
                 disabled={isLoading}
               >
-                {isLoading ? 'Running…' : 'Run Database Migrations'}
+                {isLoading ? t('db.migration.running', 'Running…') : t('db.migration.run', 'Run Database Migrations')}
               </Button>
               <Button
                 onClick={async () => {
                   if (isLoading) return;
                   try {
-                    const confirmed = window.confirm('This will DELETE all matches, events, scores, warnings and related data. Continue?');
+                    const confirmed = window.confirm(t('db.migration.clear_confirm', 'This will DELETE all matches, events, scores, warnings and related data. Continue?'));
                     if (!confirmed) return;
                     (document.activeElement as HTMLElement | null)?.blur?.();
                     await invoke('pss_clear_all_data');
-                    alert('Database cleared successfully.');
+                    alert(t('db.migration.clear_ok', 'Database cleared successfully.'));
                     await Promise.all([loadMigrationStatus(), loadDatabaseTables()]);
                   } catch (e: any) {
                     console.error('pss_clear_all_data failed', e);
-                    alert(`Failed to clear database: ${String(e)}`);
+                    alert(t('db.migration.clear_failed', 'Failed to clear database: {err}', { err: String(e) }));
                   }
                 }}
                 variant="danger"
                 size="sm"
                 disabled={isLoading}
               >
-                Clear All PSS Data
+                {t('db.migration.clear_pss', 'Clear All PSS Data')}
               </Button>
               <Button
                 onClick={loadMigrationStatus}
@@ -252,7 +254,7 @@ const DatabaseMigrationPanel: React.FC = () => {
                 size="sm"
                 disabled={isLoading}
               >
-                Refresh
+                {t('common.refresh', 'Refresh')}
               </Button>
             </div>
           </div>
@@ -260,53 +262,53 @@ const DatabaseMigrationPanel: React.FC = () => {
           <div className="space-y-4">
             <div className="flex items-center justify-between p-3 bg-[#101820] rounded border border-gray-700">
               <div>
-                <span className="text-gray-300 font-medium">Database Enabled</span>
-                <p className="text-sm text-gray-400">Current database mode status</p>
+                <span className="text-gray-300 font-medium">{t('db.migration.database_enabled.title', 'Database Enabled')}</span>
+                <p className="text-sm text-gray-400">{t('db.migration.database_enabled.desc', 'Current database mode status')}</p>
               </div>
               <div className={`px-3 py-1 rounded-full text-sm font-medium ${
                 migrationStatus?.database_enabled 
                   ? 'bg-green-900 text-green-300' 
                   : 'bg-yellow-900 text-yellow-300'
               }`}>
-                {migrationStatus?.database_enabled ? 'Enabled' : 'Disabled'}
+                {migrationStatus?.database_enabled ? t('db.migration.database_enabled.enabled', 'Enabled') : t('db.migration.database_enabled.disabled', 'Disabled')}
               </div>
             </div>
 
             <div className="flex items-center justify-between p-3 bg-[#101820] rounded border border-gray-700">
               <div>
-                <span className="text-gray-300 font-medium">Migration Completed</span>
-                <p className="text-sm text-gray-400">Status of data migration from JSON to database</p>
+                <span className="text-gray-300 font-medium">{t('db.migration.completed.title', 'Migration Completed')}</span>
+                <p className="text-sm text-gray-400">{t('db.migration.completed.desc', 'Status of data migration from JSON to database')}</p>
               </div>
               <div className={`px-3 py-1 rounded-full text-sm font-medium ${
                 migrationStatus?.migration_completed 
                   ? 'bg-green-900 text-green-300' 
                   : 'bg-yellow-900 text-yellow-300'
               }`}>
-                {migrationStatus?.migration_completed ? 'Completed' : 'Pending'}
+                {migrationStatus?.migration_completed ? t('db.migration.completed.completed', 'Completed') : t('db.migration.completed.pending', 'Pending')}
               </div>
             </div>
 
             <div className="flex items-center justify-between p-3 bg-[#101820] rounded border border-gray-700">
               <div>
-                <span className="text-gray-300 font-medium">Backup Created</span>
-                <p className="text-sm text-gray-400">Status of JSON backup creation</p>
+                <span className="text-gray-300 font-medium">{t('db.migration.backup.title', 'Backup Created')}</span>
+                <p className="text-sm text-gray-400">{t('db.migration.backup.desc', 'Status of JSON backup creation')}</p>
               </div>
               <div className={`px-3 py-1 rounded-full text-sm font-medium ${
                 migrationStatus?.backup_created 
                   ? 'bg-green-900 text-green-300' 
                   : 'bg-yellow-900 text-yellow-300'
               }`}>
-                {migrationStatus?.backup_created ? 'Created' : 'Not Created'}
+                {migrationStatus?.backup_created ? t('db.migration.backup.created', 'Created') : t('db.migration.backup.not_created', 'Not Created')}
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="p-3 bg-[#101820] rounded border border-gray-700">
-                <span className="text-gray-300 font-medium">JSON Settings</span>
+                <span className="text-gray-300 font-medium">{t('db.migration.count.json_settings', 'JSON Settings')}</span>
                 <p className="text-2xl font-bold text-blue-400">{migrationStatus?.json_settings_count || 0}</p>
               </div>
               <div className="p-3 bg-[#101820] rounded border border-gray-700">
-                <span className="text-gray-300 font-medium">Database Settings</span>
+                <span className="text-gray-300 font-medium">{t('db.migration.count.database_settings', 'Database Settings')}</span>
                 <p className="text-2xl font-bold text-green-400">{migrationStatus?.database_settings_count || 0}</p>
               </div>
             </div>
@@ -318,31 +320,31 @@ const DatabaseMigrationPanel: React.FC = () => {
       {activeTab === 'status' && (
         <div className="theme-card rounded-lg p-4 shadow-lg">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold text-blue-300">Database Status</h3>
+            <h3 className="text-lg font-semibold text-blue-300">{t('db.migration.status_page.title', 'Database Status')}</h3>
             <Button
               onClick={loadMigrationStatus}
               variant="secondary"
               size="sm"
             >
-              Refresh
+              {t('common.refresh', 'Refresh')}
             </Button>
           </div>
 
           <div className="space-y-4">
             <div className="flex items-center justify-between p-3 bg-[#101820] rounded border border-gray-700">
               <div>
-                <span className="text-gray-300 font-medium">Database Connection</span>
-                <p className="text-sm text-gray-400">Connection status to SQLite database</p>
+                <span className="text-gray-300 font-medium">{t('db.migration.db_conn.title', 'Database Connection')}</span>
+                <p className="text-sm text-gray-400">{t('db.migration.db_conn.desc', 'Connection status to SQLite database')}</p>
               </div>
               <div className="px-3 py-1 rounded-full text-sm font-medium bg-green-900 text-green-300">
-                Connected
+                {t('common.connected', 'Connected')}
               </div>
             </div>
 
             <div className="flex items-center justify-between p-3 bg-[#101820] rounded border border-gray-700">
               <div>
-                <span className="text-gray-300 font-medium">Tables Count</span>
-                <p className="text-sm text-gray-400">Number of tables in database</p>
+                <span className="text-gray-300 font-medium">{t('db.migration.tables.title', 'Tables Count')}</span>
+                <p className="text-sm text-gray-400">{t('db.migration.tables.desc', 'Number of tables in database')}</p>
               </div>
               <div className="px-3 py-1 rounded-full text-sm font-medium bg-blue-900 text-blue-300">
                 {databaseTables.length}
@@ -356,15 +358,15 @@ const DatabaseMigrationPanel: React.FC = () => {
       {activeTab === 'preview' && (
         <div className="theme-card rounded-lg p-4 shadow-lg">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold text-blue-300">Data Preview</h3>
+            <h3 className="text-lg font-semibold text-blue-300">{t('db.migration.preview.title', 'Data Preview')}</h3>
             <div className="flex gap-2">
               <select
                 value={selectedTable}
                 onChange={(e) => handleTableSelect(e.target.value)}
                 className="px-3 py-1 bg-[#101820] border border-gray-700 rounded text-gray-300 text-sm"
-                aria-label={"Select database table to preview"}
+                aria-label={t('db.migration.preview.select_aria', 'Select database table to preview')}
               >
-                <option value="">Select a table</option>
+                <option value="">{t('db.migration.preview.select_placeholder', 'Select a table')}</option>
                 {(databaseTables || []).map(table => (
                   <option key={table} value={table}>{table}</option>
                 ))}
@@ -375,8 +377,8 @@ const DatabaseMigrationPanel: React.FC = () => {
           {selectedTable && tableData && (
             <div className="space-y-4">
               <div className="p-3 bg-[#101820] rounded border border-gray-700">
-                <span className="text-gray-300 font-medium">Table: {tableData.table_name}</span>
-                <p className="text-sm text-gray-400">Rows: {tableData.row_count}</p>
+                <span className="text-gray-300 font-medium">{t('db.migration.preview.table', 'Table: {name}', { name: tableData.table_name })}</span>
+                <p className="text-sm text-gray-400">{t('db.migration.preview.rows', 'Rows: {n}', { n: tableData.row_count })}</p>
               </div>
 
               <div className="w-full">
@@ -428,7 +430,7 @@ const DatabaseMigrationPanel: React.FC = () => {
                   
                   {tableData.rows && tableData.rows.length > 0 && (
                     <p className="text-xs text-gray-400 mt-2 px-3">
-                      Showing all {tableData.rows.length} rows
+                      {t('db.migration.preview.showing_rows', 'Showing all {n} rows', { n: tableData.rows.length })}
                     </p>
                   )}
                 </div>
@@ -438,13 +440,13 @@ const DatabaseMigrationPanel: React.FC = () => {
 
           {selectedTable && !tableData && (
             <div className="text-center py-8 text-gray-400">
-              Loading table data...
+              {t('db.migration.preview.loading', 'Loading table data...')}
             </div>
           )}
 
           {!selectedTable && (
             <div className="text-center py-8 text-gray-400">
-              Select a table to preview its data
+              {t('db.migration.preview.select_prompt', 'Select a table to preview its data')}
             </div>
           )}
         </div>
