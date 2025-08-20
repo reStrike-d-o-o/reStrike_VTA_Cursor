@@ -9,6 +9,7 @@ import { StatusDot } from '../atoms/StatusDot';
 import { useObsStore, ObsConnection } from '../../stores/obsStore';
 import { obsObwsCommands } from '../../utils/tauriCommandsObws';
 import { configCommands } from '../../utils/tauriCommands';
+import { useI18n } from '../../i18n/index';
 
 // Use the proper Tauri v2 invoke function with fallback
 const invoke = async (command: string, args?: any) => {
@@ -41,6 +42,7 @@ interface ObsWebSocketManagerProps {
 }
 
 const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
+  const { t } = useI18n();
   const {
     connections,
     events,
@@ -388,17 +390,17 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
 
   const handleAddConnection = async () => {
     if (!formData.name.trim()) {
-      setFormError('Connection name is required');
+      setFormError(t('obs.conn.name_required', 'Connection name is required'));
       return;
     }
 
     if (!formData.host.trim()) {
-      setFormError('Host is required');
+      setFormError(t('obs.conn.host_required', 'Host is required'));
       return;
     }
 
     if (formData.port < 1 || formData.port > 65535) {
-      setFormError('Port must be between 1 and 65535');
+      setFormError(t('obs.conn.port_range', 'Port must be between 1 and 65535'));
       return;
     }
 
@@ -418,7 +420,7 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
       resetForm();
     } catch (error) {
       console.error('Failed to add connection:', error);
-      setFormError('Failed to add connection: ' + (error as Error)?.message || String(error));
+      setFormError(t('obs.conn.add_failed_with', 'Failed to add connection: {err}', { err: (error as Error)?.message || String(error) }));
     }
   };
 
@@ -436,23 +438,23 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
 
   const handleUpdateConnection = async () => {
     if (!formData.name.trim()) {
-      setFormError('Connection name is required');
+      setFormError(t('obs.conn.name_required', 'Connection name is required'));
       return;
     }
 
     if (!formData.host.trim()) {
-      setFormError('Host is required');
+      setFormError(t('obs.conn.host_required', 'Host is required'));
       return;
     }
 
     if (formData.port < 1 || formData.port > 65535) {
-      setFormError('Port must be between 1 and 65535');
+      setFormError(t('obs.conn.port_range', 'Port must be between 1 and 65535'));
       return;
     }
 
     // Ensure editingConnection is not null
     if (!editingConnection) {
-      setFormError('No connection being edited');
+      setFormError(t('obs.conn.no_edit', 'No connection being edited'));
       return;
     }
 
@@ -485,11 +487,11 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
         setEditingConnection(null);
         resetForm();
       } else {
-        setFormError(result.error || 'Failed to update connection');
+        setFormError(result.error || t('obs.conn.update_failed', 'Failed to update connection'));
       }
     } catch (error) {
       console.error('Failed to update connection:', error);
-      setFormError('Failed to update connection: ' + (error as Error)?.message || String(error));
+      setFormError(t('obs.conn.update_failed_with', 'Failed to update connection: {err}', { err: (error as Error)?.message || String(error) }));
     }
   };
 
@@ -610,10 +612,10 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
 
   const getStatusText = (status: ObsConnection['status']) => {
     switch (status) {
-      case 'connected': return 'Connected';
-      case 'connecting': return 'Connecting...';
-      case 'error': return 'Error';
-      default: return 'Disconnected';
+      case 'connected': return t('common.connected', 'Connected');
+      case 'connecting': return t('common.connecting', 'Connecting...');
+      case 'error': return t('common.error', 'Error');
+      default: return t('common.disconnected', 'Disconnected');
     }
   };
 
@@ -624,29 +626,29 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold text-white">
-              {mode === 'local' ? 'Local OBS WebSocket Manager' : 'Remote OBS Control Room'}
+              {mode === 'local' ? t('obs.header.local', 'Local OBS WebSocket Manager') : t('obs.header.remote', 'Remote OBS Control Room')}
             </h2>
             <p className="text-gray-400 mt-1">
               {mode === 'local' 
-                ? 'Manage local OBS Studio connections (OBS_REC, OBS_STR) using obws implementation'
-                : 'Control remote OBS instances on the network using obws implementation'
+                ? t('obs.header.local_sub', 'Manage local OBS Studio connections (OBS_REC, OBS_STR) using obws implementation')
+                : t('obs.header.remote_sub', 'Control remote OBS instances on the network using obws implementation')
               }
             </p>
           </div>
           <div className="flex items-center space-x-4">
             <span className="px-3 py-1 bg-blue-600 text-white text-sm rounded-full">
-              Windows Native
+              {t('env.windows_native', 'Windows Native')}
             </span>
             <span className="px-3 py-1 bg-purple-600 text-white text-sm rounded-full">
-              obws Implementation
+              {t('obs.obws_impl', 'obws Implementation')}
             </span>
             <span className={`px-3 py-1 text-white text-sm rounded-full ${
               mode === 'local' ? 'bg-green-600' : 'bg-orange-600'
             }`}>
-              {mode === 'local' ? 'Local Mode' : 'Remote Mode'}
+              {mode === 'local' ? t('obs.mode.local', 'Local Mode') : t('obs.mode.remote', 'Remote Mode')}
             </span>
             <span className="px-3 py-1 bg-green-600 text-white text-sm rounded-full">
-              {connections.filter(c => c.status === 'connected').length}/{connections.length} Connected
+              {connections.filter(c => c.status === 'connected').length}/{connections.length} {t('common.connected', 'Connected')}
             </span>
           </div>
         </div>
@@ -656,7 +658,7 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
       <div className="bg-gray-800 rounded-lg p-6">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-lg font-semibold text-white">
-            {mode === 'local' ? 'Local OBS Connections' : 'Remote OBS Connections'}
+            {mode === 'local' ? t('obs.conn.local', 'Local OBS Connections') : t('obs.conn.remote', 'Remote OBS Connections')}
           </h3>
           <div className="flex items-center space-x-2">
             <Button 
@@ -665,7 +667,7 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
               size="sm"
               disabled={loading}
             >
-              {loading ? 'Refreshing...' : 'Refresh'}
+              {loading ? t('common.refreshing', 'Refreshing...') : t('common.refresh', 'Refresh')}
             </Button>
             <Button 
               onClick={syncFromConfig} 
@@ -673,7 +675,7 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
               size="sm"
               disabled={loading}
             >
-              {loading ? 'Syncing...' : 'Sync from Config'}
+              {loading ? t('common.syncing', 'Syncing...') : t('obs.conn.sync_from_config', 'Sync from Config')}
             </Button>
             <Button 
               onClick={async () => {
@@ -695,23 +697,23 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
               variant="secondary" 
               size="sm"
             >
-              Force Refresh
+              {t('obs.conn.force_refresh', 'Force Refresh')}
             </Button>
             <Button 
               onClick={async () => {
                 try {
                   const result = await obsObwsCommands.testConnection();
                   console.log('OBS obws test result:', result);
-                  alert(result.success ? 'Test passed!' : `Test failed: ${result.error}`);
+                  alert(result.success ? t('common.test_passed', 'Test passed!') : t('common.test_failed', 'Test failed: {err}', { err: String(result.error || '') }));
                 } catch (error) {
                   console.error('Failed to test obws connection:', error);
-                  alert('Test failed: ' + error);
+                  alert(t('common.test_failed', 'Test failed: {err}', { err: String(error) }));
                 }
               }} 
               variant="secondary" 
               size="sm"
             >
-              Test obws
+              {t('obs.test_obws', 'Test obws')}
             </Button>
             <Button 
               onClick={addConnection} 
@@ -722,7 +724,7 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
               <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="mr-2">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
-              Add Connection
+              {t('common.add_connection', 'Add Connection')}
             </Button>
           </div>
         </div>
@@ -731,7 +733,7 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
         {(isAdding || editingConnection) && (
           <div className="p-4 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg mb-4">
             <h4 className="text-md font-medium mb-3">
-              {editingConnection ? 'Edit Connection' : 'Add New Connection'}
+              {editingConnection ? t('obs.conn.edit', 'Edit Connection') : t('obs.conn.add_new', 'Add New Connection')}
             </h4>
             
             {formError && (
@@ -742,7 +744,7 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="connection-name">Connection Name *</Label>
+                <Label htmlFor="connection-name">{t('obs.conn.name_label', 'Connection Name *')}</Label>
                 <Input
                   id="connection-name"
                   value={formData.name}
@@ -752,7 +754,7 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
               </div>
 
               <div>
-                <Label htmlFor="connection-host">Host</Label>
+                <Label htmlFor="connection-host">{t('obs.conn.host_label', 'Host')}</Label>
                 <Input
                   id="connection-host"
                   value={formData.host}
@@ -762,7 +764,7 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
               </div>
 
               <div>
-                <Label htmlFor="connection-port">Port</Label>
+                <Label htmlFor="connection-port">{t('obs.conn.port_label', 'Port')}</Label>
                 <Input
                   id="connection-port"
                   type="number"
@@ -775,7 +777,7 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
               </div>
 
               <div>
-                <Label htmlFor="connection-password">Password (optional)</Label>
+                <Label htmlFor="connection-password">{t('obs.conn.password_label', 'Password (optional)')}</Label>
                 <Input
                   id="connection-password"
                   type="password"
@@ -783,8 +785,8 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   placeholder={editingConnection && connections.find(c => c.name === editingConnection)?.password 
-                    ? "Password is set (click to change)" 
-                    : "Leave empty if no password"}
+                    ? t('obs.conn.password_set', 'Password is set (click to change)') 
+                    : t('obs.conn.password_hint', 'Leave empty if no password')}
                 />
                 {/* Hidden username field for accessibility */}
                 <input 
@@ -800,7 +802,7 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
                 <Toggle
                   checked={formData.enabled}
                   onChange={(e) => setFormData({ ...formData, enabled: e.target.checked })}
-                  label="Enabled"
+                  label={t('common.enabled', 'Enabled')}
                   labelPosition="right"
                 />
               </div>
@@ -812,7 +814,7 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
                 variant="primary"
                 size="sm"
               >
-                {editingConnection ? 'Save Connection Settings' : 'Add'} Connection
+                {editingConnection ? t('obs.conn.save_settings', 'Save Connection Settings') : t('common.add', 'Add')} {t('obs.conn.connection', 'Connection')}
               </Button>
               <Button
                 onClick={() => {
@@ -823,7 +825,7 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
                 variant="secondary"
                 size="sm"
               >
-                Cancel
+                {t('common.cancel', 'Cancel')}
               </Button>
             </div>
           </div>
@@ -832,12 +834,12 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
         {/* Connection List */}
         <div className="space-y-4">
           {loading ? (
-            <p className="text-gray-400">Loading OBS connections...</p>
+            <p className="text-gray-400">{t('obs.conn.loading', 'Loading OBS connections...')}</p>
           ) : connections.length === 0 ? (
             <p className="text-gray-400">
               {mode === 'local' 
-                ? 'No local OBS connections found. Add OBS_REC and OBS_STR to get started!'
-                : 'No remote OBS connections found. Add remote instances to control them.'
+                ? t('obs.conn.none_local', 'No local OBS connections found. Add OBS_REC and OBS_STR to get started!')
+                : t('obs.conn.none_remote', 'No remote OBS connections found. Add remote instances to control them.')
               }
             </p>
           ) : (
@@ -879,7 +881,7 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
                       variant="primary"
                       size="sm"
                     >
-                      Connect
+                      {t('common.connect', 'Connect')}
                     </Button>
                   )}
                   {connection.status === 'connected' && (
@@ -888,7 +890,7 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
                       variant="secondary"
                       size="sm"
                     >
-                      Disconnect
+                      {t('common.disconnect', 'Disconnect')}
                     </Button>
                   )}
                   {connection.status === 'connecting' && (
@@ -897,7 +899,7 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
                       variant="secondary"
                       size="sm"
                     >
-                      Connecting...
+                      {t('common.connecting', 'Connecting...')}
                     </Button>
                   )}
                   
@@ -910,7 +912,7 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
                     <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="mr-2">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>
-                    Edit
+                    {t('common.edit', 'Edit')}
                   </Button>
                   
                   <Button
@@ -919,14 +921,14 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
                     size="sm"
                     disabled={editingConnection !== null}
                   >
-                    Remove
+                    {t('common.remove', 'Remove')}
                   </Button>
                 </div>
               </div>
               
               {connection.error && (
                 <div className="mt-2 p-2 bg-red-900/20 border border-red-700 rounded text-red-400 text-sm">
-                  Error: {connection.error}
+                  {t('common.error', 'Error')}: {connection.error}
                 </div>
               )}
             </motion.div>
@@ -937,28 +939,28 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
 
       {/* OBS Events Section */}
       <div className="bg-gray-800 rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-white mb-4">OBS Events</h3>
+        <h3 className="text-lg font-semibold text-white mb-4">{t('obs.events.title', 'OBS Events')}</h3>
         <div className="text-sm text-gray-300 space-y-2 mb-4">
-          <div>Total Events: {events.length}</div>
-          <div>Last Event: {events.length > 0 ? events[0].timestamp : 'None'}</div>
+          <div>{t('obs.events.total', 'Total Events')}: {events.length}</div>
+          <div>{t('obs.events.last', 'Last Event')}: {events.length > 0 ? events[0].timestamp : t('common.none', 'None')}</div>
         </div>
         <div className="max-h-40 overflow-y-auto space-y-2">
           {events.length === 0 ? (
-            <p className="text-gray-400 text-sm">No OBS events received yet. Events will appear here when OBS sends them.</p>
+            <p className="text-gray-400 text-sm">{t('obs.events.empty', 'No OBS events received yet. Events will appear here when OBS sends them.')}</p>
           ) : (
             events.slice(0, 10).map((event, index) => (
               <div key={index} className="bg-gray-700 p-2 rounded text-xs">
                 <div className="font-medium text-blue-300">{event.eventType}</div>
                 <div className="text-gray-400">{event.connection_name}</div>
-                {event.scene_name && <div className="text-green-300">Scene: {event.scene_name}</div>}
+                {event.scene_name && <div className="text-green-300">{t('obs.events.scene', 'Scene')}: {event.scene_name}</div>}
                 {event.is_recording !== undefined && (
                   <div className={event.is_recording ? 'text-red-300' : 'text-gray-400'}>
-                    Recording: {event.is_recording ? 'ON' : 'OFF'}
+                    {t('obs.events.recording', 'Recording')}: {event.is_recording ? 'ON' : 'OFF'}
                   </div>
                 )}
                 {event.is_streaming !== undefined && (
                   <div className={event.is_streaming ? 'text-orange-300' : 'text-gray-400'}>
-                    Streaming: {event.is_streaming ? 'ON' : 'OFF'}
+                    {t('obs.events.streaming', 'Streaming')}: {event.is_streaming ? 'ON' : 'OFF'}
                   </div>
                 )}
                 <div className="text-gray-500 text-xs">{event.timestamp}</div>
@@ -970,18 +972,18 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
 
       {/* Debug Section */}
       <div className="bg-gray-800 rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-white mb-4">Debug Information</h3>
+        <h3 className="text-lg font-semibold text-white mb-4">{t('obs.debug.title', 'Debug Information')}</h3>
         <div className="text-sm text-gray-300 space-y-2">
           {(() => {
             const counts = getConnectionCount();
             return (
               <>
-                <div>Mode: {mode}</div>
-                <div>Total Connections: {counts.total}</div>
-                <div>Connected: {counts.connected}</div>
-                <div>Connecting: {counts.connecting}</div>
-                <div>Disconnected: {counts.disconnected}</div>
-                <div>Errors: {counts.error}</div>
+                <div>{t('obs.debug.mode', 'Mode')}: {mode}</div>
+                <div>{t('obs.debug.total', 'Total Connections')}: {counts.total}</div>
+                <div>{t('common.connected', 'Connected')}: {counts.connected}</div>
+                <div>{t('common.connecting', 'Connecting...')}: {counts.connecting}</div>
+                <div>{t('common.disconnected', 'Disconnected')}: {counts.disconnected}</div>
+                <div>{t('obs.debug.errors', 'Errors')}: {counts.error}</div>
               </>
             );
           })()}
@@ -992,7 +994,7 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
               try {
                 const result = await obsObwsCommands.getConnections();
                 console.log('Raw backend response:', result);
-                alert('Check console for raw backend response');
+                alert(t('obs.debug.check_console', 'Check console for raw backend response'));
               } catch (error) {
                 console.error('Failed to get raw response:', error);
               }
@@ -1000,7 +1002,7 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
             variant="secondary" 
             size="sm"
           >
-            Get Raw Backend Response
+            {t('obs.debug.raw_backend', 'Get Raw Backend Response')}
           </Button>
           <Button 
             onClick={async () => {
@@ -1011,9 +1013,9 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
                   const firstConnection = connections.data.connections[0];
                   const result = await obsObwsCommands.getStatus(firstConnection.name);
                   console.log('OBS Status:', result);
-                  alert('Check console for OBS status');
+                  alert(t('obs.debug.check_console', 'Check console for raw backend response'));
                 } else {
-                  alert('No connections available for status check');
+                  alert(t('obs.debug.no_conn_status', 'No connections available for status check'));
                 }
               } catch (error) {
                 console.error('Failed to get OBS status:', error);
@@ -1022,7 +1024,7 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
             variant="secondary" 
             size="sm"
           >
-            Get OBS Status
+            {t('obs.debug.get_status', 'Get OBS Status')}
           </Button>
         </div>
       </div>
