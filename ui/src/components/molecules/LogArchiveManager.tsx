@@ -239,7 +239,7 @@ const LogArchiveManager: React.FC = () => {
                   schedule: e.target.value as AutoArchiveConfig['schedule'],
                 })}
                 className="w-full px-2 py-1.5 bg-gray-700 border border-gray-600 rounded-md text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                title="Archive schedule frequency"
+                title={"Archive schedule frequency"}
               >
                 <option value="Weekly">{t('logs.archive_mgr.weekly', 'Weekly')}</option>
                 <option value="Monthly">{t('logs.archive_mgr.monthly', 'Monthly')}</option>

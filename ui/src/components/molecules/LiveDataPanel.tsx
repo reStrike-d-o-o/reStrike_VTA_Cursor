@@ -4,6 +4,7 @@ import { useEnvironment } from '../../hooks/useEnvironment';
 import { useLiveDataStore } from '../../stores/liveDataStore';
 import Toggle from '../atoms/Toggle';
 import { useLiveDataEvents } from '../../hooks/useLiveDataEvents';
+import { useI18n } from '../../i18n/index';
 
 // Use the proper Tauri v2 invoke function
 const invoke = async (command: string, args?: any) => {
@@ -27,6 +28,7 @@ const LiveDataPanel: React.FC = () => {
     currentRoundTime, 
     isConnected
   } = useLiveDataStore();
+  const { t } = useI18n();
   
   // Use the new live data events hook
   const { isConnected: wsConnected, eventCount } = useLiveDataEvents();
@@ -207,15 +209,15 @@ const LiveDataPanel: React.FC = () => {
   if (isLoadingSettings) {
     return (
       <div className="theme-card p-4 shadow-lg">
-        <h3 className="text-lg font-semibold mb-2 text-blue-300">LIVE DATA</h3>
-        <div className="text-sm text-gray-400">Loading settings...</div>
+        <h3 className="text-lg font-semibold mb-2 text-blue-300">{t('live.title', 'LIVE DATA')}</h3>
+        <div className="text-sm text-gray-400">{t('live.loading_settings', 'Loading settings...')}</div>
       </div>
     );
   }
 
   return (
     <div className="theme-card p-4 shadow-lg">
-      <h3 className="text-lg font-semibold mb-2 text-blue-300">LIVE DATA</h3>
+      <h3 className="text-lg font-semibold mb-2 text-blue-300">{t('live.title', 'LIVE DATA')}</h3>
       
 
       
@@ -223,18 +225,18 @@ const LiveDataPanel: React.FC = () => {
         <Toggle
           checked={wsConnected} 
           onChange={handleToggle} 
-          label="Enable"
+          label={t('common.enabled', 'Enabled')}
           labelPosition="right"
           disabled={false}
         />
-        <span className="text-gray-200 font-medium" id="live-type-label">Type:</span>
+        <span className="text-gray-200 font-medium" id="live-type-label">{t('live.type', 'Type:')}</span>
         <select
         className="theme-surface-2 rounded px-2 py-1"
           value="pss"
           onChange={e => handleTypeChange(e.target.value)}
           aria-labelledby="live-type-label"
-          title="Select live data type"
-          aria-label="Select live data type"
+          title={t('live.select_type', 'Select live data type')}
+          aria-label={t('live.select_type', 'Select live data type')}
           disabled={false}
         >
           <option value="pss">PSS</option>
@@ -244,7 +246,7 @@ const LiveDataPanel: React.FC = () => {
         <Toggle
           checked={showFullEvents}
           onChange={handleFullEventsToggle}
-          label="Full Events"
+          label={t('live.full_events', 'Full Events')}
           labelPosition="right"
           disabled={false}
           className="ml-4"
@@ -255,10 +257,10 @@ const LiveDataPanel: React.FC = () => {
       <div className="flex items-center gap-2 mb-3 text-sm">
         <span className={`w-2 h-2 rounded-full ${wsConnected ? 'bg-green-500' : 'bg-red-500'}`}></span>
         <span className="text-gray-300">
-          {wsConnected ? 'Connected' : 'Disconnected'} | 
-          Events: {eventCount} | 
-          Round: {currentRound} | 
-                      Time: {currentRoundTime}
+          {wsConnected ? t('common.connected', 'Connected') : t('common.disconnected', 'Disconnected')} | 
+          {t('live.events', 'Events')}: {eventCount} | 
+          {t('common.round', 'Round')}: {currentRound} | 
+          {t('common.time', 'Time')}: {currentRoundTime}
         </span>
       </div>
 
@@ -269,8 +271,8 @@ const LiveDataPanel: React.FC = () => {
       >
         {events.length === 0 ? (
           <div className="text-gray-500 text-center py-8">
-            No PSS events available. 
-            {!wsConnected && ' WebSocket not connected.'}
+            {t('live.no_events', 'No PSS events available.')} 
+            {!wsConnected && ` ${t('live.ws_not_connected', 'WebSocket not connected.')}`}
           </div>
         ) : (
           events.map((event, index) => {
@@ -280,7 +282,7 @@ const LiveDataPanel: React.FC = () => {
               <div key={event.id} className={`${color} mb-1`}>
                 <span className="text-gray-500">[{index + 1}]</span> {emoji} {event.description}
                 <div className="text-gray-400 ml-4 text-xs">
-                  Round: {event.round} | Time: {event.time} | Type: {event.eventCode}
+                  {t('common.round', 'Round')}: {event.round} | {t('common.time', 'Time')}: {event.time} | {t('common.type', 'Type')}: {event.eventCode}
                 </div>
               </div>
             );
@@ -293,21 +295,21 @@ const LiveDataPanel: React.FC = () => {
           <button
             onClick={scrollToTop}
             className="bg-gray-700 hover:bg-gray-600 text-white px-2 py-1 rounded text-xs"
-            title="Scroll to top"
+            title={t('common.scroll_top', 'Scroll to top')}
           >
             ↑
           </button>
           <button
             onClick={scrollToBottom}
             className="bg-gray-700 hover:bg-gray-600 text-white px-2 py-1 rounded text-xs"
-            title="Scroll to bottom"
+            title={t('common.scroll_bottom', 'Scroll to bottom')}
           >
             ↓
           </button>
           <button
             onClick={() => setAutoScroll(!autoScroll)}
             className={`px-2 py-1 rounded text-xs ${autoScroll ? 'bg-blue-600 text-white' : 'bg-gray-700 text-white hover:bg-gray-600'}`}
-            title="Toggle auto-scroll"
+            title={t('live.toggle_autoscroll', 'Toggle auto-scroll')}
           >
             🔄
           </button>

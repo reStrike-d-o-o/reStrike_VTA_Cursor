@@ -244,7 +244,7 @@ const DockBar: React.FC = () => {
                   <Toggle
                     checked={isManualModeEnabled}
                     onChange={handleManualModeToggle}
-                    label="Manual Mode"
+                    label={"Manual Mode"}
                     labelPosition="bottom"
                     className="scale-100"
                   />
