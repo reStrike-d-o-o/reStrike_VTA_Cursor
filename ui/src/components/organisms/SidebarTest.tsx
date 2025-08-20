@@ -6,6 +6,7 @@ import Label from '../atoms/Label';
 import { StatusDot } from '../atoms/StatusDot';
 import { Icon } from '../atoms/Icon';
 import { useEnvironment } from '../../hooks/useEnvironment';
+import { useI18n } from '../../i18n/index';
 
 interface Event {
   id: string;
@@ -18,6 +19,7 @@ interface Event {
 
 const SidebarTest: React.FC = () => {
   const { tauriAvailable, environment } = useEnvironment();
+  const { t } = useI18n();
   const [isVisible, setIsVisible] = useState(false);
   const { obsConnections } = useAppStore();
   const [events, setEvents] = useState<Event[]>([]);
@@ -147,23 +149,19 @@ const SidebarTest: React.FC = () => {
       <div className="bg-gray-800 rounded-lg p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-white">Event Sidebar</h2>
-            <p className="text-gray-400 mt-1">Real-time competition events and status</p>
+            <h2 className="text-2xl font-bold text-white">{t('sidebar.title', 'Event Sidebar')}</h2>
+            <p className="text-gray-400 mt-1">{t('sidebar.subtitle', 'Real-time competition events and status')}</p>
           </div>
           <div className="flex items-center space-x-4">
-            <span className="px-3 py-1 bg-blue-600 text-white text-sm rounded-full">
-              Windows Native
-            </span>
-            <span className="px-3 py-1 bg-green-600 text-white text-sm rounded-full">
-              {filteredEvents.length} Events
-            </span>
+            <span className="px-3 py-1 bg-blue-600 text-white text-sm rounded-full">{t('env.windows_native', 'Windows Native')}</span>
+            <span className="px-3 py-1 bg-green-600 text-white text-sm rounded-full">{filteredEvents.length} {t('sidebar.events', 'Events')}</span>
           </div>
         </div>
       </div>
 
       {/* OBS Status */}
       <div className="bg-gray-800 rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-white mb-4">OBS Status</h3>
+        <h3 className="text-lg font-semibold text-white mb-4">{t('sidebar.obs_status', 'OBS Status')}</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {obsConnections.map((connection) => (
             <div key={connection.name} className="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
@@ -186,53 +184,53 @@ const SidebarTest: React.FC = () => {
       {/* Filters */}
       <div className="bg-gray-800 rounded-lg p-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-white">Event Filters</h3>
+          <h3 className="text-lg font-semibold text-white">{t('sidebar.filters', 'Event Filters')}</h3>
           <Button
             onClick={clearFilters}
             variant="secondary"
             size="sm"
           >
-            Clear Filters
+            {t('sidebar.clear_filters', 'Clear Filters')}
           </Button>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Player Filter */}
           <div>
-            <Label htmlFor="player-filter" className="block text-sm font-medium text-gray-300 mb-2">Player</Label>
+            <Label htmlFor="player-filter" className="block text-sm font-medium text-gray-300 mb-2">{t('sidebar.player', 'Player')}</Label>
             <select
               id="player-filter"
               value={selectedPlayer}
               onChange={(e) => setSelectedPlayer(e.target.value as any)}
               className="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              title="Sidebar option"
-              aria-label="Sidebar option"
+              title={t('sidebar.option', 'Sidebar option')}
+              aria-label={t('sidebar.option', 'Sidebar option')}
             >
-              <option value="ALL">All Players</option>
-              <option value="RED">Red Player</option>
-              <option value="BLUE">Blue Player</option>
-              <option value="YELLOW">Yellow Player</option>
+              <option value="ALL">{t('sidebar.all_players', 'All Players')}</option>
+              <option value="RED">{t('sidebar.red_player', 'Red Player')}</option>
+              <option value="BLUE">{t('sidebar.blue_player', 'Blue Player')}</option>
+              <option value="YELLOW">{t('sidebar.yellow_player', 'Yellow Player')}</option>
             </select>
           </div>
 
           {/* Type Filter */}
           <div>
-            <Label htmlFor="type-filter" className="block text-sm font-medium text-gray-300 mb-2">Event Type</Label>
+            <Label htmlFor="type-filter" className="block text-sm font-medium text-gray-300 mb-2">{t('sidebar.event_type', 'Event Type')}</Label>
             <select
               id="type-filter"
               value={selectedType}
               onChange={(e) => setSelectedType(e.target.value as any)}
               className="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              title="Sidebar option"
-              aria-label="Sidebar option"
+              title={t('sidebar.option', 'Sidebar option')}
+              aria-label={t('sidebar.option', 'Sidebar option')}
             >
-              <option value="ALL">All Events</option>
-              <option value="point">Points</option>
-              <option value="warning">Warnings</option>
-              <option value="clock">Clock</option>
-              <option value="round">Rounds</option>
-              <option value="score">Scores</option>
-              <option value="athlete">Athletes</option>
+              <option value="ALL">{t('sidebar.all_events', 'All Events')}</option>
+              <option value="point">{t('sidebar.points', 'Points')}</option>
+              <option value="warning">{t('sidebar.warnings', 'Warnings')}</option>
+              <option value="clock">{t('sidebar.clock', 'Clock')}</option>
+              <option value="round">{t('sidebar.rounds', 'Rounds')}</option>
+              <option value="score">{t('sidebar.scores', 'Scores')}</option>
+              <option value="athlete">{t('sidebar.athletes', 'Athletes')}</option>
             </select>
           </div>
         </div>
@@ -240,16 +238,16 @@ const SidebarTest: React.FC = () => {
 
       {/* Events Table */}
       <div className="bg-gray-800 rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-white mb-4">Recent Events</h3>
+        <h3 className="text-lg font-semibold text-white mb-4">{t('sidebar.recent_events', 'Recent Events')}</h3>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-700">
-                <th className="text-left py-3 px-4 text-gray-300 font-medium">Time</th>
-                <th className="text-left py-3 px-4 text-gray-300 font-medium">Type</th>
-                <th className="text-left py-3 px-4 text-gray-300 font-medium">Player</th>
-                <th className="text-left py-3 px-4 text-gray-300 font-medium">Description</th>
-                <th className="text-left py-3 px-4 text-gray-300 font-medium">Value</th>
+                <th className="text-left py-3 px-4 text-gray-300 font-medium">{t('common.time', 'Time')}</th>
+                <th className="text-left py-3 px-4 text-gray-300 font-medium">{t('common.type', 'Type')}</th>
+                <th className="text-left py-3 px-4 text-gray-300 font-medium">{t('common.player', 'Player')}</th>
+                <th className="text-left py-3 px-4 text-gray-300 font-medium">{t('common.description', 'Description')}</th>
+                <th className="text-left py-3 px-4 text-gray-300 font-medium">{t('common.value', 'Value')}</th>
               </tr>
             </thead>
             <tbody>

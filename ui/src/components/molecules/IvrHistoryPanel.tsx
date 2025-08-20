@@ -4,12 +4,15 @@ import Button from '../atoms/Button';
 import DriveBrowser from './DriveBrowser';
 import { useI18n } from '../../i18n/index';
 
-const ProgressToast: React.FC<{ message: string; onCancel?: () => void }> = ({ message, onCancel }) => (
+const ProgressToast: React.FC<{ message: string; onCancel?: () => void }> = ({ message, onCancel }) => {
+  const { t } = useI18n();
+  return (
 	<div className="fixed right-6 bottom-6 z-50 theme-card p-4 shadow-lg flex items-center gap-3">
 		<div className="text-sm text-gray-200">{message}</div>
-		{onCancel && <Button variant="ghost" size="sm" onClick={onCancel}>Cancel</Button>}
+		{onCancel && <Button variant="ghost" size="sm" onClick={onCancel}>{t('common.cancel', 'Cancel')}</Button>}
 	</div>
-);
+  );
+};
 
 const IvrHistoryPanel: React.FC = () => {
 	const { t } = useI18n();

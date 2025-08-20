@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Button from '../atoms/Button';
 import { StatusDot } from '../atoms/StatusDot';
 import { usePssMatchStore } from '../../stores/pssMatchStore';
+import { useI18n } from '../../i18n/index';
 
 interface EventTableEvent {
   id: string;
@@ -14,6 +15,7 @@ interface EventTableEvent {
 
 const EventTable: React.FC = () => {
   console.log('🔍 EventTable - Component rendering');
+  const { t } = useI18n();
   
   const [events, setEvents] = useState<EventTableEvent[]>([]);
   const { matchData } = usePssMatchStore();
@@ -175,9 +177,9 @@ const EventTable: React.FC = () => {
     <div className="mb-4 relative">
       {/* Header */}
       <div className="grid grid-cols-12 gap-2 text-xs text-gray-400 mb-2 border-b border-gray-700 pb-1">
-        <div className="col-span-2">RND</div>
-        <div className="col-span-4">TIME</div>
-        <div className="col-span-6">EVENT</div>
+        <div className="col-span-2">{t('table.rnd', 'RND')}</div>
+        <div className="col-span-4">{t('common.time', 'TIME')}</div>
+        <div className="col-span-6">{t('common.event', 'EVENT')}</div>
       </div>
       {/* Event Rows */}
       <div className="space-y-1 max-h-32 overflow-y-auto">
@@ -196,9 +198,7 @@ const EventTable: React.FC = () => {
             );
           })
         ) : (
-          <div className="text-center text-gray-500 text-xs py-4">
-            No events yet
-          </div>
+          <div className="text-center text-gray-500 text-xs py-4">{t('table.no_events', 'No events yet')}</div>
         )}
       </div>
       {/* Go to Top Arrow */}

@@ -7,6 +7,7 @@ import Toggle from '../atoms/Toggle';
 import Label from '../atoms/Label';
 import { StatusDot } from '../atoms/StatusDot';
 import { Icon } from '../atoms/Icon';
+import { useI18n } from '../../i18n/index';
 
 const Settings: React.FC = () => {
   const {
@@ -19,6 +20,7 @@ const Settings: React.FC = () => {
   } = useAppStore();
 
   const [activeTab, setActiveTab] = useState<'overlay' | 'performance' | 'data'>('overlay');
+  const { t } = useI18n();
   const [isResetting, setIsResetting] = useState(false);
 
   const handleResetSettings = () => {
@@ -35,15 +37,15 @@ const Settings: React.FC = () => {
   };
 
   const tabs = [
-    { id: 'overlay', label: 'Overlay Settings', icon: 'overlay' },
-    { id: 'performance', label: 'Performance', icon: 'performance' },
-    { id: 'data', label: 'Data Management', icon: 'data' },
+    { id: 'overlay', label: t('demo.settings.tab.overlay', 'Overlay Settings'), icon: 'overlay' },
+    { id: 'performance', label: t('demo.settings.tab.performance', 'Performance'), icon: 'performance' },
+    { id: 'data', label: t('demo.settings.tab.data', 'Data Management'), icon: 'data' },
   ] as const;
 
   return (
     <div className="p-6 bg-gray-900 text-white rounded-lg">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold">Settings</h2>
+        <h2 className="text-2xl font-bold">{t('demo.settings.title', 'Settings')}</h2>
         <div className="flex space-x-2">
           <Button
             onClick={toggleOverlayVisibility}
@@ -54,7 +56,7 @@ const Settings: React.FC = () => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
             </svg>
-            {overlaySettings.visible ? 'Hide Overlay' : 'Show Overlay'}
+            {overlaySettings.visible ? t('demo.settings.hide_overlay', 'Hide Overlay') : t('demo.settings.show_overlay', 'Show Overlay')}
           </Button>
           <Button
             onClick={handleResetSettings}
@@ -71,7 +73,7 @@ const Settings: React.FC = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
             )}
-            {isResetting ? 'Resetting...' : 'Reset to Defaults'}
+            {isResetting ? t('common.resetting', 'Resetting...') : t('demo.settings.reset_defaults', 'Reset to Defaults')}
           </Button>
         </div>
       </div>
@@ -117,7 +119,7 @@ const Settings: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Position */}
               <div>
-                <Label htmlFor="overlay-position">Overlay Position</Label>
+                <Label htmlFor="overlay-position">{t('demo.settings.overlay.position', 'Overlay Position')}</Label>
                 <select
                   id="overlay-position"
                   value={overlaySettings.position}
@@ -125,20 +127,20 @@ const Settings: React.FC = () => {
                     position: e.target.value as any 
                   })}
                   className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-blue-500"
-                  title="Settings option"
-                  aria-label="Settings option"
+                  title={t('demo.settings.option', 'Settings option')}
+                  aria-label={t('demo.settings.option', 'Settings option')}
                 >
-                  <option value="top-left">Top Left</option>
-                  <option value="top-right">Top Right</option>
-                  <option value="bottom-left">Bottom Left</option>
-                  <option value="bottom-right">Bottom Right</option>
-                  <option value="center">Center</option>
+                  <option value="top-left">{t('demo.settings.pos.top_left', 'Top Left')}</option>
+                  <option value="top-right">{t('demo.settings.pos.top_right', 'Top Right')}</option>
+                  <option value="bottom-left">{t('demo.settings.pos.bottom_left', 'Bottom Left')}</option>
+                  <option value="bottom-right">{t('demo.settings.pos.bottom_right', 'Bottom Right')}</option>
+                  <option value="center">{t('demo.settings.pos.center', 'Center')}</option>
                 </select>
               </div>
 
               {/* Theme */}
               <div>
-                <Label htmlFor="overlay-theme">Theme</Label>
+                <Label htmlFor="overlay-theme">{t('demo.settings.overlay.theme', 'Theme')}</Label>
                 <select
                   id="overlay-theme"
                   value={overlaySettings.theme}
@@ -146,19 +148,19 @@ const Settings: React.FC = () => {
                     theme: e.target.value as any 
                   })}
                   className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-blue-500"
-                  title="Settings option"
-                  aria-label="Settings option"
+                  title={t('demo.settings.option', 'Settings option')}
+                  aria-label={t('demo.settings.option', 'Settings option')}
                 >
-                  <option value="dark">Dark</option>
-                  <option value="light">Light</option>
-                  <option value="transparent">Transparent</option>
+                  <option value="dark">{t('demo.settings.theme.dark', 'Dark')}</option>
+                  <option value="light">{t('demo.settings.theme.light', 'Light')}</option>
+                  <option value="transparent">{t('demo.settings.theme.transparent', 'Transparent')}</option>
                 </select>
               </div>
 
               {/* Opacity */}
               <div>
                 <Label htmlFor="overlay-opacity">
-                  Opacity: {Math.round(overlaySettings.opacity * 100)}%
+                  {t('demo.settings.overlay.opacity', 'Opacity')}: {Math.round(overlaySettings.opacity * 100)}%
                 </Label>
                 <input
                   type="range"
@@ -171,14 +173,14 @@ const Settings: React.FC = () => {
                     opacity: parseFloat(e.target.value) 
                   })}
                   className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
-                  title="Adjust the opacity of the overlay"
+                  title={t('demo.settings.overlay.opacity_tip', 'Adjust the opacity of the overlay')}
                 />
               </div>
 
               {/* Scale */}
               <div>
                 <Label htmlFor="overlay-scale">
-                  Scale: {Math.round(overlaySettings.scale * 100)}%
+                  {t('demo.settings.overlay.scale', 'Scale')}: {Math.round(overlaySettings.scale * 100)}%
                 </Label>
                 <input
                   type="range"
@@ -191,14 +193,14 @@ const Settings: React.FC = () => {
                     scale: parseFloat(e.target.value) 
                   })}
                   className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
-                  title="Adjust the scale of the overlay"
+                  title={t('demo.settings.overlay.scale_tip', 'Adjust the scale of the overlay')}
                 />
               </div>
             </div>
 
             {/* Preview */}
             <div className="p-4 bg-gray-800 rounded-lg">
-              <h3 className="text-lg font-semibold mb-3">Preview</h3>
+              <h3 className="text-lg font-semibold mb-3">{t('demo.settings.preview', 'Preview')}</h3>
               <div className="relative w-64 h-48 bg-gray-700 rounded-lg overflow-hidden">
                 <div
                   className={`absolute inset-2 rounded border-2 ${overlaySettings.theme === 'light' ? 'bg-white text-gray-900' : 'bg-gray-900 text-white'}`}
@@ -208,9 +210,9 @@ const Settings: React.FC = () => {
                   }}
                 >
                   <div className="p-2 text-xs">
-                    <div>Video Player</div>
-                    <div>Status Bar</div>
-                    <div>Controls</div>
+                    <div>{t('demo.settings.preview.player', 'Video Player')}</div>
+                    <div>{t('demo.settings.preview.status', 'Status Bar')}</div>
+                    <div>{t('demo.settings.preview.controls', 'Controls')}</div>
                   </div>
                 </div>
               </div>
@@ -221,54 +223,54 @@ const Settings: React.FC = () => {
         {activeTab === 'performance' && (
           <div className="space-y-6">
             <div className="p-4 bg-gray-800 rounded-lg">
-              <h3 className="text-lg font-semibold mb-3">Performance Settings</h3>
+              <h3 className="text-lg font-semibold mb-3">{t('demo.settings.performance.title', 'Performance Settings')}</h3>
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="advanced-video-quality">Video Quality</Label>
-                  <select id="advanced-video-quality" className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500" title="Settings option" aria-label="Settings option">
-                    <option value="high">High Quality</option>
-                    <option value="medium">Medium Quality</option>
-                    <option value="low">Low Quality</option>
+                  <Label htmlFor="advanced-video-quality">{t('demo.settings.performance.quality', 'Video Quality')}</Label>
+                  <select id="advanced-video-quality" className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500" title={t('demo.settings.option', 'Settings option')} aria-label={t('demo.settings.option', 'Settings option')}>
+                    <option value="high">{t('demo.settings.quality.high', 'High Quality')}</option>
+                    <option value="medium">{t('demo.settings.quality.medium', 'Medium Quality')}</option>
+                    <option value="low">{t('demo.settings.quality.low', 'Low Quality')}</option>
                   </select>
                 </div>
                 <Toggle
                   id="advanced-hardware-acceleration"
                   checked={true}
                   onChange={() => {}}
-                  label="Hardware acceleration"
+                  label={t('demo.settings.performance.hw', 'Hardware acceleration')}
                   labelPosition="right"
                 />
                 <Toggle
                   id="advanced-video-caching"
                   checked={false}
                   onChange={() => {}}
-                  label="Enable video caching"
+                  label={t('demo.settings.performance.caching', 'Enable video caching')}
                   labelPosition="right"
                 />
               </div>
             </div>
 
             <div className="p-4 bg-gray-800 rounded-lg">
-              <h3 className="text-lg font-semibold mb-3">Keyboard Shortcuts</h3>
+              <h3 className="text-lg font-semibold mb-3">{t('demo.settings.shortcuts.title', 'Keyboard Shortcuts')}</h3>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span>Toggle overlay visibility</span>
+                  <span>{t('demo.settings.shortcuts.toggle_overlay', 'Toggle overlay visibility')}</span>
                   <span className="text-gray-400">Ctrl + Shift + O</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Play/pause current clip</span>
+                  <span>{t('demo.settings.shortcuts.play_pause', 'Play/pause current clip')}</span>
                   <span className="text-gray-400">Space</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Next clip</span>
+                  <span>{t('demo.settings.shortcuts.next', 'Next clip')}</span>
                   <span className="text-gray-400">Right Arrow</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Previous clip</span>
+                  <span>{t('demo.settings.shortcuts.prev', 'Previous clip')}</span>
                   <span className="text-gray-400">Left Arrow</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Toggle fullscreen</span>
+                  <span>{t('demo.settings.shortcuts.fullscreen', 'Toggle fullscreen')}</span>
                   <span className="text-gray-400">F</span>
                 </div>
               </div>
@@ -279,27 +281,27 @@ const Settings: React.FC = () => {
         {activeTab === 'data' && (
           <div className="space-y-6">
             <div className="p-4 bg-gray-800 rounded-lg">
-              <h3 className="text-lg font-semibold mb-3">Data Management</h3>
+              <h3 className="text-lg font-semibold mb-3">{t('demo.settings.data.title', 'Data Management')}</h3>
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="data-clip-location">Clip Storage Location</Label>
+                  <Label htmlFor="data-clip-location">{t('demo.settings.data.clip_location', 'Clip Storage Location')}</Label>
                   <input
                     type="text"
                     id="data-clip-location"
                     defaultValue="/home/user/clips"
                     className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500"
-                    title="Enter the location where clips are stored"
+                    title={t('demo.settings.data.clip_location_tip', 'Enter the location where clips are stored')}
                   />
                 </div>
                 <div className="flex space-x-2">
                   <Button variant="primary" size="sm">
-                    Export Settings
+                    {t('demo.settings.data.export', 'Export Settings')}
                   </Button>
                   <Button variant="success" size="sm">
-                    Import Settings
+                    {t('demo.settings.data.import', 'Import Settings')}
                   </Button>
                   <Button variant="danger" size="sm">
-                    Clear All Data
+                    {t('demo.settings.data.clear', 'Clear All Data')}
                   </Button>
                 </div>
               </div>
