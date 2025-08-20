@@ -8,6 +8,7 @@ import Toggle from '../atoms/Toggle';
 import { useAppStore, ObsConnection } from '../../stores';
 import { configCommands } from '../../utils/tauriCommands';
 import { obsObwsCommands } from '../../utils/tauriCommandsObws';
+import { useI18n } from '../../i18n/index';
 
 // Reconnection settings interface
 interface ReconnectionSettings {
@@ -23,6 +24,7 @@ interface WebSocketManagerProps {
 }
 
 const WebSocketManager: React.FC<WebSocketManagerProps> = ({ mode = 'local' }) => {
+  const { t } = useI18n();
   const { obsConnections, addObsConnection, removeObsConnection, updateObsConnectionStatus, setActiveObsConnection, activeObsConnection } = useAppStore();
   
   const [isAdding, setIsAdding] = useState(false);
@@ -119,7 +121,7 @@ const WebSocketManager: React.FC<WebSocketManagerProps> = ({ mode = 'local' }) =
       }
     } catch (error) {
       console.error('Failed to save reconnection settings:', error);
-      setError(`Failed to save reconnection settings: ${error}`);
+      setError(t('obs.ws.save_reconnect_failed', 'Failed to save reconnection settings: {err}', { err: String(error) }));
     } finally {
       setIsLoadingSettings(false);
     }
@@ -275,17 +277,17 @@ const WebSocketManager: React.FC<WebSocketManagerProps> = ({ mode = 'local' }) =
 
   const handleAddConnection = async () => {
     if (!formData.name.trim()) {
-      setError('Connection name is required');
+      setError(t('obs.conn.name_required', 'Connection name is required'));
       return;
     }
 
     if (obsConnections.some(c => c.name === formData.name)) {
-      setError('Connection name already exists');
+      setError(t('obs.conn.name_exists', 'Connection name already exists'));
       return;
     }
 
     if (formData.port < 1 || formData.port > 65535) {
-      setError('Port must be between 1 and 65535');
+      setError(t('obs.conn.port_range', 'Port must be between 1 and 65535'));
       return;
     }
 
@@ -303,10 +305,10 @@ const WebSocketManager: React.FC<WebSocketManagerProps> = ({ mode = 'local' }) =
         resetForm();
         setIsAdding(false);
       } else {
-        setError(result.error || 'Failed to add connection');
+        setError(result.error || t('obs.conn.add_failed', 'Failed to add connection'));
       }
     } catch (error) {
-      setError(`Failed to add connection: ${error}`);
+      setError(t('obs.conn.add_failed_with', 'Failed to add connection: {err}', { err: String(error) }));
     }
   };
 
@@ -323,23 +325,23 @@ const WebSocketManager: React.FC<WebSocketManagerProps> = ({ mode = 'local' }) =
 
   const handleUpdateConnection = async () => {
     if (!formData.name.trim()) {
-      setError('Connection name is required');
+      setError(t('obs.conn.name_required', 'Connection name is required'));
       return;
     }
 
     if (formData.name !== editingConnection && obsConnections.some(c => c.name === formData.name)) {
-      setError('Connection name already exists');
+      setError(t('obs.conn.name_exists', 'Connection name already exists'));
       return;
     }
 
     if (formData.port < 1 || formData.port > 65535) {
-      setError('Port must be between 1 and 65535');
+      setError(t('obs.conn.port_range', 'Port must be between 1 and 65535'));
       return;
     }
 
     // Ensure editingConnection is not null
     if (!editingConnection) {
-      setError('No connection being edited');
+      setError(t('obs.conn.no_edit', 'No connection being edited'));
       return;
     }
 
@@ -378,15 +380,15 @@ const WebSocketManager: React.FC<WebSocketManagerProps> = ({ mode = 'local' }) =
         resetForm();
         setEditingConnection(null);
       } else {
-        setError(result.error || 'Failed to save connection settings');
+        setError(result.error || t('obs.conn.save_failed', 'Failed to save connection settings'));
       }
     } catch (error) {
-      setError(`Failed to save connection settings: ${error}`);
+      setError(t('obs.conn.save_failed_with', 'Failed to save connection settings: {err}', { err: String(error) }));
     }
   };
 
   const handleDeleteConnection = (name: string) => {
-    if (window.confirm(`Are you sure you want to delete the connection "${name}"?`)) {
+    if (window.confirm(t('obs.conn.confirm_delete', 'Are you sure you want to delete the connection "{name}"?', { name }))) {
       removeObsConnection(name);
     }
   };
@@ -532,14 +534,14 @@ const WebSocketManager: React.FC<WebSocketManagerProps> = ({ mode = 'local' }) =
       
       if (result.success) {
         console.log('✅ Start recording command sent successfully:', result.data);
-        alert(`✅ Start recording command sent successfully to ${connection.name}!`);
+        alert(t('obs.test_recording_ok', 'Start recording command sent successfully to {name}!', { name: connection.name }));
       } else {
         console.error('❌ Failed to send start recording command:', result.error);
-        alert(`❌ Failed to send start recording command: ${result.error}`);
+        alert(t('obs.test_recording_failed', 'Failed to send start recording command: {err}', { err: String(result.error || '') }));
       }
     } catch (error) {
       console.error('❌ Error sending start recording command:', error);
-      alert(`❌ Error sending start recording command: ${error}`);
+      alert(t('obs.test_recording_failed', 'Failed to send start recording command: {err}', { err: String(error) }));
     }
   };
 
@@ -548,7 +550,7 @@ const WebSocketManager: React.FC<WebSocketManagerProps> = ({ mode = 'local' }) =
       {/* Header */}
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">
-          {mode === 'local' ? 'Local OBS WebSocket Connections' : 'Remote OBS WebSocket Connections'}
+          {mode === 'local' ? t('obs.ws.header.local', 'Local OBS WebSocket Connections') : t('obs.ws.header.remote', 'Remote OBS WebSocket Connections')}
         </h3>
         <Button
           onClick={() => {
@@ -563,7 +565,7 @@ const WebSocketManager: React.FC<WebSocketManagerProps> = ({ mode = 'local' }) =
           <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="mr-2">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
-          Add Connection
+          {t('common.add_connection', 'Add Connection')}
         </Button>
       </div>
 
@@ -571,7 +573,7 @@ const WebSocketManager: React.FC<WebSocketManagerProps> = ({ mode = 'local' }) =
       {(isAdding || editingConnection) && (
         <div className="p-4 theme-card shadow-lg">
           <h4 className="text-md font-medium mb-3">
-            {editingConnection ? 'Edit Connection' : 'Add New Connection'}
+            {editingConnection ? t('obs.conn.edit', 'Edit Connection') : t('obs.conn.add_new', 'Add New Connection')}
           </h4>
           
           {error && (
@@ -582,7 +584,7 @@ const WebSocketManager: React.FC<WebSocketManagerProps> = ({ mode = 'local' }) =
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="connection-name">Connection Name *</Label>
+              <Label htmlFor="connection-name">{t('obs.conn.name_label', 'Connection Name *')}</Label>
               <Input
                 id="connection-name"
                 value={formData.name}
@@ -592,7 +594,7 @@ const WebSocketManager: React.FC<WebSocketManagerProps> = ({ mode = 'local' }) =
             </div>
 
             <div>
-              <Label htmlFor="connection-host">Host</Label>
+              <Label htmlFor="connection-host">{t('obs.conn.host_label', 'Host')}</Label>
               <Input
                 id="connection-host"
                 value={formData.host}
@@ -602,7 +604,7 @@ const WebSocketManager: React.FC<WebSocketManagerProps> = ({ mode = 'local' }) =
             </div>
 
             <div>
-              <Label htmlFor="connection-port">Port</Label>
+              <Label htmlFor="connection-port">{t('obs.conn.port_label', 'Port')}</Label>
               <Input
                 id="connection-port"
                 type="number"
@@ -615,7 +617,7 @@ const WebSocketManager: React.FC<WebSocketManagerProps> = ({ mode = 'local' }) =
             </div>
 
             <div>
-              <Label htmlFor="connection-password">Password (optional)</Label>
+              <Label htmlFor="connection-password">{t('obs.conn.password_label', 'Password (optional)')}</Label>
               <Input
                 id="connection-password"
                 type="password"
@@ -623,8 +625,8 @@ const WebSocketManager: React.FC<WebSocketManagerProps> = ({ mode = 'local' }) =
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 placeholder={editingConnection && obsConnections.find(c => c.name === editingConnection)?.password 
-                  ? "Password is set (click to change)" 
-                  : "Leave empty if no password"}
+                  ? t('obs.conn.password_set', 'Password is set (click to change)') 
+                  : t('obs.conn.password_hint', 'Leave empty if no password')}
               />
               {/* Hidden username field for accessibility */}
               <input 
@@ -640,7 +642,7 @@ const WebSocketManager: React.FC<WebSocketManagerProps> = ({ mode = 'local' }) =
               <Toggle
                 checked={formData.enabled}
                 onChange={(e) => setFormData({ ...formData, enabled: e.target.checked })}
-                label="Enabled"
+                label={t('common.enabled', 'Enabled')}
                 labelPosition="right"
               />
             </div>
@@ -652,7 +654,7 @@ const WebSocketManager: React.FC<WebSocketManagerProps> = ({ mode = 'local' }) =
               variant="primary"
               size="sm"
             >
-              {editingConnection ? 'Save Connection Settings' : 'Add'} Connection
+              {editingConnection ? t('obs.conn.save_settings', 'Save Connection Settings') : t('common.add', 'Add')} {t('obs.conn.connection', 'Connection')}
             </Button>
             <Button
               onClick={() => {
@@ -663,7 +665,7 @@ const WebSocketManager: React.FC<WebSocketManagerProps> = ({ mode = 'local' }) =
               variant="secondary"
               size="sm"
             >
-              Cancel
+              {t('common.cancel', 'Cancel')}
             </Button>
           </div>
         </div>
@@ -673,7 +675,7 @@ const WebSocketManager: React.FC<WebSocketManagerProps> = ({ mode = 'local' }) =
       <div className="space-y-2">
         {obsConnections.length === 0 ? (
           <div className="p-4 theme-card text-center text-gray-400">
-            No WebSocket connections configured
+            {t('obs.ws.none', 'No WebSocket connections configured')}
           </div>
         ) : (
           obsConnections.map((connection) => (
@@ -690,15 +692,15 @@ const WebSocketManager: React.FC<WebSocketManagerProps> = ({ mode = 'local' }) =
                     <StatusDot color={getStatusColor(connection.status)} />
                     <span className="text-sm text-gray-400">{connection.status}</span>
                     {activeObsConnection === connection.name && (
-                      <span className="text-xs bg-blue-500 text-white px-2 py-1 rounded">Active</span>
+                      <span className="text-xs bg-blue-500 text-white px-2 py-1 rounded">{t('common.active', 'Active')}</span>
                     )}
                   </div>
                   
                   <div className="text-sm text-gray-400 space-y-1">
                     <div>{connection.host}:{connection.port} (v5)</div>
-                    {connection.password && <div>Password: {'•'.repeat(8)}</div>}
+                    {connection.password && <div>{t('obs.conn.password_label', 'Password (optional)')}: {'•'.repeat(8)}</div>}
                     {connection.error && (
-                      <div className="text-red-400">Error: {connection.error}</div>
+                      <div className="text-red-400">{t('common.error', 'Error')}: {connection.error}</div>
                     )}
                   </div>
                 </div>
@@ -713,7 +715,7 @@ const WebSocketManager: React.FC<WebSocketManagerProps> = ({ mode = 'local' }) =
                       <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="mr-2">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0" />
                       </svg>
-                      Disconnect
+                      {t('common.disconnect', 'Disconnect')}
                     </Button>
                   ) : (
                     <Button
@@ -725,7 +727,7 @@ const WebSocketManager: React.FC<WebSocketManagerProps> = ({ mode = 'local' }) =
                       <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="mr-2">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                       </svg>
-                      Connect
+                      {t('common.connect', 'Connect')}
                     </Button>
                   )}
                   
@@ -738,7 +740,7 @@ const WebSocketManager: React.FC<WebSocketManagerProps> = ({ mode = 'local' }) =
                     <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="mr-2">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>
-                    Edit
+                    {t('common.edit', 'Edit')}
                   </Button>
                   
                   {(connection.status === 'Connected' || connection.status === 'Authenticated') && (
@@ -746,12 +748,12 @@ const WebSocketManager: React.FC<WebSocketManagerProps> = ({ mode = 'local' }) =
                       onClick={() => handleTestRecording(connection)}
                       variant="primary"
                       size="sm"
-                      title="Test OBS start recording command"
+                      title={t('obs.test_recording_title', 'Test OBS start recording command')}
                     >
                       <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="mr-2">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
-                      Test Recording
+                      {t('obs.test_recording', 'Test Recording')}
                     </Button>
                   )}
                   
@@ -764,7 +766,7 @@ const WebSocketManager: React.FC<WebSocketManagerProps> = ({ mode = 'local' }) =
                     <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="mr-2">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
-                    Delete
+                    {t('common.delete', 'Delete')}
                   </Button>
                 </div>
               </div>
@@ -776,7 +778,7 @@ const WebSocketManager: React.FC<WebSocketManagerProps> = ({ mode = 'local' }) =
       {/* Reconnection Settings */}
       <div className="p-4 theme-card shadow-lg">
         <div className="flex items-center justify-between mb-3">
-          <h4 className="text-md font-medium">Global Reconnection Settings</h4>
+          <h4 className="text-md font-medium">{t('obs.ws.reconnect.title', 'Global Reconnection Settings')}</h4>
           <Button
             onClick={() => setShowReconnectionSettings(!showReconnectionSettings)}
             variant="secondary"
@@ -785,7 +787,7 @@ const WebSocketManager: React.FC<WebSocketManagerProps> = ({ mode = 'local' }) =
             <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="mr-2">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={showReconnectionSettings ? "M5 15l7-7 7 7" : "M19 9l-7 7-7-7"} />
             </svg>
-            {showReconnectionSettings ? 'Hide' : 'Show'} Settings
+            {showReconnectionSettings ? t('common.hide_settings', 'Hide Settings') : t('common.show_settings', 'Show Settings')}
           </Button>
         </div>
         
@@ -800,10 +802,10 @@ const WebSocketManager: React.FC<WebSocketManagerProps> = ({ mode = 'local' }) =
                     ...reconnectionSettings,
                     autoReconnect: e.target.checked
                   })}
-                  label="Auto-reconnect on connection loss"
+                  label={t('obs.ws.reconnect.auto', 'Auto-reconnect on connection loss')}
                   labelPosition="right"
-                  title="Enable automatic reconnection when connection is lost"
-                  aria-label="Auto-reconnect on connection loss"
+                  title={t('obs.ws.reconnect.auto_title', 'Enable automatic reconnection when connection is lost')}
+                  aria-label={t('obs.ws.reconnect.auto_aria', 'Auto-reconnect on connection loss')}
                 />
               </div>
               
@@ -815,15 +817,15 @@ const WebSocketManager: React.FC<WebSocketManagerProps> = ({ mode = 'local' }) =
                     ...reconnectionSettings,
                     statusMonitoring: e.target.checked
                   })}
-                  label="Enable connection status monitoring"
+                  label={t('obs.ws.reconnect.monitor', 'Enable connection status monitoring')}
                   labelPosition="right"
-                  title="Enable continuous monitoring of connection status"
-                  aria-label="Enable connection status monitoring"
+                  title={t('obs.ws.reconnect.monitor_title', 'Enable continuous monitoring of connection status')}
+                  aria-label={t('obs.ws.reconnect.monitor_aria', 'Enable connection status monitoring')}
                 />
               </div>
               
               <div>
-                <Label htmlFor="reconnect-delay">Reconnection Delay (seconds)</Label>
+                <Label htmlFor="reconnect-delay">{t('obs.ws.reconnect.delay', 'Reconnection Delay (seconds)')}</Label>
                 <Input
                   id="reconnect-delay"
                   type="number"
@@ -839,7 +841,7 @@ const WebSocketManager: React.FC<WebSocketManagerProps> = ({ mode = 'local' }) =
               </div>
               
               <div>
-                <Label htmlFor="max-attempts">Maximum Reconnection Attempts</Label>
+                <Label htmlFor="max-attempts">{t('obs.ws.reconnect.max', 'Maximum Reconnection Attempts')}</Label>
                 <Input
                   id="max-attempts"
                   type="number"
@@ -855,7 +857,7 @@ const WebSocketManager: React.FC<WebSocketManagerProps> = ({ mode = 'local' }) =
               </div>
               
               <div>
-                <Label htmlFor="status-interval">Status Check Interval (seconds)</Label>
+                <Label htmlFor="status-interval">{t('obs.ws.reconnect.interval', 'Status Check Interval (seconds)')}</Label>
                 <Input
                   id="status-interval"
                   type="number"
@@ -881,7 +883,7 @@ const WebSocketManager: React.FC<WebSocketManagerProps> = ({ mode = 'local' }) =
                 <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="mr-2">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
                 </svg>
-                Save Reconnection Settings
+                {t('obs.ws.reconnect.save', 'Save Reconnection Settings')}
               </Button>
               <Button
                 onClick={loadReconnectionSettings}
@@ -892,7 +894,7 @@ const WebSocketManager: React.FC<WebSocketManagerProps> = ({ mode = 'local' }) =
                 <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="mr-2">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
-                Reload Settings
+                {t('common.reload_settings', 'Reload Settings')}
               </Button>
             </div>
             
@@ -907,17 +909,17 @@ const WebSocketManager: React.FC<WebSocketManagerProps> = ({ mode = 'local' }) =
 
       {/* Protocol Information */}
       <div className="p-4 theme-card shadow-lg">
-        <h4 className="text-md font-medium mb-3">Protocol Information</h4>
+        <h4 className="text-md font-medium mb-3">{t('obs.ws.protocol.title', 'Protocol Information')}</h4>
         <div className="text-sm">
           <div>
-            <h5 className="font-medium text-blue-400 mb-2">OBS WebSocket v5</h5>
+            <h5 className="font-medium text-blue-400 mb-2">{t('obs.ws.protocol.v5', 'OBS WebSocket v5')}</h5>
             <ul className="text-gray-300 space-y-1">
-              <li>• Default port: 4455</li>
-              <li>• SHA256 authentication</li>
-              <li>• Enhanced features and API</li>
-              <li>• Better error handling</li>
-              <li>• Modern WebSocket implementation</li>
-              <li>• Recommended for all new installations</li>
+              <li>• {t('obs.ws.protocol.default_port', 'Default port')}: 4455</li>
+              <li>• {t('obs.ws.protocol.auth', 'SHA256 authentication')}</li>
+              <li>• {t('obs.ws.protocol.features', 'Enhanced features and API')}</li>
+              <li>• {t('obs.ws.protocol.errors', 'Better error handling')}</li>
+              <li>• {t('obs.ws.protocol.impl', 'Modern WebSocket implementation')}</li>
+              <li>• {t('obs.ws.protocol.recommended', 'Recommended for all new installations')}</li>
             </ul>
           </div>
         </div>

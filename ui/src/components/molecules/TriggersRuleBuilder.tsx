@@ -4,10 +4,12 @@ import Input from '../atoms/Input';
 import Toggle from '../atoms/Toggle';
 import { useTriggersStore, EventTriggerRow, DelayTriggerRow, TriggerRow } from '../../stores/triggersStore';
 import { obsObwsCommands } from '../../utils/tauriCommandsObws';
+import { useI18n } from '../../i18n/index';
 
 type ObsConnection = { name: string; host?: string; port?: number };
 
 const TriggersRuleBuilder: React.FC<{ tournamentId?: number; dayId?: number }> = ({ tournamentId, dayId }) => {
+  const { t } = useI18n();
   const store = useTriggersStore();
   const {
     eventsCatalog,
@@ -72,13 +74,13 @@ const TriggersRuleBuilder: React.FC<{ tournamentId?: number; dayId?: number }> =
 
   const renderEventCell = (row: EventTriggerRow, idx: number) => (
     <select
-      aria-label="Event"
-      title="Event"
+      aria-label={t('triggers.event', 'Event')}
+      title={t('triggers.event', 'Event')}
       className="w-full bg-gray-800/50 border border-gray-700 rounded text-sm text-gray-100 px-2 py-1"
       value={row.event_type || ''}
       onChange={(e) => handleRowChange(idx, { event_type: e.target.value })}
     >
-      <option value="">Select…</option>
+      <option value="">{t('triggers.select', 'Select…')}</option>
       {eventOptions.map((ev) => (
         <option key={ev} value={ev}>{ev}</option>
       ))}
@@ -86,19 +88,17 @@ const TriggersRuleBuilder: React.FC<{ tournamentId?: number; dayId?: number }> =
   );
 
   const actionKinds: Array<{ value: NonNullable<EventTriggerRow['action_kind']>, label: string }> = [
-    { value: 'scene', label: 'Change Scene' },
-    { value: 'overlay', label: 'Show Overlay' },
-    { value: 'record_start', label: 'Start Recording' },
-    { value: 'record_stop', label: 'Stop Recording' },
-    { value: 'replay_save', label: 'Save Replay Buffer' },
-    // Future: { value: 'hotkey', label: 'Send Hotkey' },
-    // Future: { value: 'stinger', label: 'Play Stinger' },
+    { value: 'scene', label: t('triggers.action.change_scene', 'Change Scene') },
+    { value: 'overlay', label: t('triggers.action.show_overlay', 'Show Overlay') },
+    { value: 'record_start', label: t('triggers.action.record_start', 'Start Recording') },
+    { value: 'record_stop', label: t('triggers.action.record_stop', 'Stop Recording') },
+    { value: 'replay_save', label: t('triggers.action.replay_save', 'Save Replay Buffer') },
   ];
 
   const renderActionCell = (row: EventTriggerRow, idx: number) => (
     <select
-      aria-label="Action"
-      title="Action"
+      aria-label={t('triggers.action', 'Action')}
+      title={t('triggers.action', 'Action')}
       className="w-full bg-gray-800/50 border border-gray-700 rounded text-sm text-gray-100 px-2 py-1"
       value={row.action_kind || 'scene'}
       onChange={(e) => handleRowChange(idx, { action_kind: e.target.value as any })}
@@ -166,8 +166,8 @@ const TriggersRuleBuilder: React.FC<{ tournamentId?: number; dayId?: number }> =
 
   const renderConnectionCell = (row: EventTriggerRow, idx: number) => (
     <select
-      aria-label="OBS Connection"
-      title="OBS Connection"
+      aria-label={t('triggers.connection', 'OBS Connection')}
+      title={t('triggers.connection', 'OBS Connection')}
       className="w-full bg-gray-800/50 border border-gray-700 rounded text-sm text-gray-100 px-2 py-1"
       value={row.obs_connection_name || ''}
       onChange={async (e) => {
@@ -176,7 +176,7 @@ const TriggersRuleBuilder: React.FC<{ tournamentId?: number; dayId?: number }> =
         try { await fetchScenes(); } catch {}
       }}
     >
-      <option value="">default</option>
+      <option value="">{t('triggers.default', 'default')}</option>
       {connections.map((c) => (
         <option key={c.name} value={c.name}>{c.name}</option>
       ))}
@@ -185,15 +185,15 @@ const TriggersRuleBuilder: React.FC<{ tournamentId?: number; dayId?: number }> =
 
   const renderTargetTypeCell = (row: EventTriggerRow, idx: number) => (
     <select
-      aria-label="Target Type"
-      title="Target Type"
+      aria-label={t('triggers.target_type', 'Target Type')}
+      title={t('triggers.target_type', 'Target Type')}
       className="w-full bg-gray-800/50 border border-gray-700 rounded text-sm text-gray-100 px-2 py-1"
       value={row.target_type || 'scene'}
       onChange={(e) => handleRowChange(idx, { target_type: e.target.value as any })}
       disabled={row.action_kind && row.action_kind !== 'scene' && row.action_kind !== 'overlay'}
     >
-      <option value="scene">Scene</option>
-      <option value="overlay">Overlay</option>
+      <option value="scene">{t('triggers.scene', 'Scene')}</option>
+      <option value="overlay">{t('triggers.overlay', 'Overlay')}</option>
     </select>
   );
 
@@ -201,13 +201,13 @@ const TriggersRuleBuilder: React.FC<{ tournamentId?: number; dayId?: number }> =
     if ((row.action_kind ?? 'scene') === 'overlay' || row.target_type === 'overlay') {
       return (
         <select
-          aria-label="Overlay Target"
-          title="Overlay Target"
+          aria-label={t('triggers.overlay_target', 'Overlay Target')}
+          title={t('triggers.overlay_target', 'Overlay Target')}
           className="w-full bg-gray-800/50 border border-gray-700 rounded text-sm text-gray-100 px-2 py-1"
           value={row.overlay_template_id || ''}
           onChange={(e) => handleRowChange(idx, { overlay_template_id: Number(e.target.value) || undefined, target_type: 'overlay' })}
         >
-          <option value="">Select overlay…</option>
+          <option value="">{t('triggers.select_overlay', 'Select overlay…')}</option>
           {overlays.map((o) => (
             <option key={o.id} value={o.id}>{o.name}{o.theme ? ` – ${o.theme}` : ''}</option>
           ))}
@@ -216,13 +216,13 @@ const TriggersRuleBuilder: React.FC<{ tournamentId?: number; dayId?: number }> =
     }
     return (
       <select
-        aria-label="Scene Target"
-        title="Scene Target"
+        aria-label={t('triggers.scene_target', 'Scene Target')}
+        title={t('triggers.scene_target', 'Scene Target')}
         className="w-full bg-gray-800/50 border border-gray-700 rounded text-sm text-gray-100 px-2 py-1"
         value={row.obs_scene_id || ''}
         onChange={(e) => handleRowChange(idx, { obs_scene_id: Number(e.target.value) || undefined, target_type: 'scene' })}
       >
-        <option value="">Select scene…</option>
+        <option value="">{t('triggers.select_scene', 'Select scene…')}</option>
         {scenes.map((s, i) => (
           <option key={s.id ?? `${s.scene_id}-${i}`} value={s.id ?? i}>
             {s.connection_name ? `${s.connection_name} – ` : ''}{s.scene_name}
@@ -237,59 +237,59 @@ const TriggersRuleBuilder: React.FC<{ tournamentId?: number; dayId?: number }> =
       <Input
         type="number"
         className="w-16"
-        placeholder="Rnd"
+        placeholder={t('triggers.round_ph', 'Rnd')}
         value={row.condition_round ?? ''}
         onChange={(e) => handleRowChange(idx, { condition_round: e.target.value === '' ? null : Number(e.target.value) })}
       />
       <select
-        aria-label="Once-per scope"
-        title="Once-per scope"
+        aria-label={t('triggers.once_per', 'Once-per scope')}
+        title={t('triggers.once_per', 'Once-per scope')}
         className="bg-gray-800/50 border border-gray-700 rounded text-sm text-gray-100 px-2 py-1"
         value={row.condition_once_per ?? ''}
         onChange={(e) => handleRowChange(idx, { condition_once_per: (e.target.value || null) as any })}
       >
-        <option value="">— once —</option>
-        <option value="round">Per Round</option>
-        <option value="match">Per Match</option>
+        <option value="">— {t('triggers.once', 'once')} —</option>
+        <option value="round">{t('triggers.per_round', 'Per Round')}</option>
+        <option value="match">{t('triggers.per_match', 'Per Match')}</option>
       </select>
       <Input
         type="number"
         className="w-24"
-        placeholder="Debounce"
+        placeholder={t('triggers.debounce', 'Debounce')}
         value={row.debounce_ms ?? ''}
         onChange={(e) => handleRowChange(idx, { debounce_ms: e.target.value === '' ? null : Number(e.target.value) })}
       />
       <Input
         type="number"
         className="w-24"
-        placeholder="Cooldown"
+        placeholder={t('triggers.cooldown', 'Cooldown')}
         value={row.cooldown_ms ?? ''}
         onChange={(e) => handleRowChange(idx, { cooldown_ms: e.target.value === '' ? null : Number(e.target.value) })}
       />
     </div>
   );
 
-  if (loading) return <div className="p-4">Loading triggers…</div>;
+  if (loading) return <div className="p-4">{t('triggers.loading', 'Loading triggers…')}</div>;
 
   return (
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-center justify-between">
-        <div className="text-sm text-gray-400">OBS connections: {connLoading ? 'loading…' : connections.length}</div>
+        <div className="text-sm text-gray-400">{t('triggers.obs_connections', 'OBS connections')}: {connLoading ? t('common.loading', 'loading…') : connections.length}</div>
         <div className="flex gap-2">
-          <Button onClick={addRow}>Add Rule</Button>
-          <Button variant="danger" onClick={deleteSelectedRow} disabled={selectedIndex == null}>Delete</Button>
-          <Button variant="secondary" onClick={fetchScenes} disabled={loading}>Load OBS Scenes</Button>
+          <Button onClick={addRow}>{t('triggers.add_rule', 'Add Rule')}</Button>
+          <Button variant="danger" onClick={deleteSelectedRow} disabled={selectedIndex == null}>{t('triggers.delete', 'Delete')}</Button>
+          <Button variant="secondary" onClick={fetchScenes} disabled={loading}>{t('triggers.load_scenes', 'Load OBS Scenes')}</Button>
           <div className="flex items-center gap-2 ml-4">
-            <label className="text-xs text-gray-400">Resume delay (ms)</label>
+            <label className="text-xs text-gray-400">{t('triggers.resume_delay', 'Resume delay (ms)')}</label>
             <Input type="number" className="w-24" value={resumeDelay} onChange={(e) => setResumeDelay(Number(e.target.value) || 0)} />
           </div>
-          <Button variant="primary" onClick={saveChanges} disabled={!dirty}>Save</Button>
+          <Button variant="primary" onClick={saveChanges} disabled={!dirty}>{t('common.save', 'Save')}</Button>
           {/* Rectangular control buttons only (no square buttons) */}
           <Button variant="secondary" onClick={() => setShowRecent((s) => !s)}>
-            {showRecent ? 'Hide Recent' : 'Show Recent'}
+            {showRecent ? t('triggers.hide_recent', 'Hide Recent') : t('triggers.show_recent', 'Show Recent')}
           </Button>
-          <Button variant="secondary" onClick={refreshLogs} disabled={logsLoading}>Refresh Logs</Button>
-          <Button variant="secondary" onClick={handleSaveReplay}>Save Replay</Button>
+          <Button variant="secondary" onClick={refreshLogs} disabled={logsLoading}>{t('triggers.refresh_logs', 'Refresh Logs')}</Button>
+          <Button variant="secondary" onClick={handleSaveReplay}>{t('triggers.save_replay', 'Save Replay')}</Button>
         </div>
       </div>
 
@@ -298,23 +298,23 @@ const TriggersRuleBuilder: React.FC<{ tournamentId?: number; dayId?: number }> =
         <table className="min-w-full text-left text-sm text-gray-200 border-collapse">
           <thead className="sticky top-0 bg-[#101820] z-10">
             <tr>
-              <th className="px-3 py-2 w-[120px]">Event</th>
-              <th className="px-3 py-2 w-[160px]">Action</th>
-              <th className="px-3 py-2 w-[140px]">Connection</th>
-              <th className="px-3 py-2 w-[120px]">Target Type</th>
-              <th className="px-3 py-2 w-[260px]">Target</th>
+              <th className="px-3 py-2 w-[120px]">{t('triggers.event', 'Event')}</th>
+              <th className="px-3 py-2 w-[160px]">{t('triggers.action', 'Action')}</th>
+              <th className="px-3 py-2 w-[140px]">{t('triggers.connection', 'Connection')}</th>
+              <th className="px-3 py-2 w-[120px]">{t('triggers.target_type', 'Target Type')}</th>
+              <th className="px-3 py-2 w-[260px]">{t('triggers.target', 'Target')}</th>
               <th className="px-3 py-2">
                 <div className="flex items-center gap-3">
-                  <span>Conditions</span>
+                  <span>{t('triggers.conditions', 'Conditions')}</span>
                   <div className="hidden md:flex text-[10px] text-gray-400 gap-6">
-                    <span>Round</span>
-                    <span>Once-per</span>
-                    <span>Debounce</span>
-                    <span>Cooldown</span>
+                    <span>{t('triggers.round', 'Round')}</span>
+                    <span>{t('triggers.once_per_short', 'Once-per')}</span>
+                    <span>{t('triggers.debounce', 'Debounce')}</span>
+                    <span>{t('triggers.cooldown', 'Cooldown')}</span>
                   </div>
                 </div>
               </th>
-              <th className="px-3 py-2 w-[90px]">Enabled</th>
+              <th className="px-3 py-2 w-[90px]">{t('triggers.enabled', 'Enabled')}</th>
             </tr>
           </thead>
           <tbody>
@@ -323,7 +323,7 @@ const TriggersRuleBuilder: React.FC<{ tournamentId?: number; dayId?: number }> =
                 const d = r as DelayTriggerRow;
                 return (
                   <tr key={idx} className={`border-b border-gray-700 ${selectedIndex === idx ? 'bg-blue-900/30' : ''}`} onClick={() => selectRow(idx)}>
-                    <td className="px-3 py-2 text-gray-400">Delay</td>
+                    <td className="px-3 py-2 text-gray-400">{t('triggers.delay', 'Delay')}</td>
                     <td className="px-3 py-2" colSpan={4}>
                       <Input type="number" className="w-28" value={d.delay_ms} onChange={(e) => handleRowChange(idx, { delay_ms: Number(e.target.value) || 0 })} />
                     </td>
@@ -343,7 +343,7 @@ const TriggersRuleBuilder: React.FC<{ tournamentId?: number; dayId?: number }> =
                   <td className="px-3 py-2">{renderConditionsCell(row, idx)}</td>
                    <td className="px-3 py-2 flex items-center gap-2">
                     <Toggle id={`en-${idx}`} checked={row.is_enabled} onChange={(e) => handleRowChange(idx, { is_enabled: e.target.checked })} label="" />
-                    <Button size="sm" variant="secondary" onClick={() => testRule(idx)}>Test</Button>
+                    <Button size="sm" variant="secondary" onClick={() => testRule(idx)}>{t('triggers.test', 'Test')}</Button>
                   </td>
                 </tr>
               );
@@ -355,13 +355,13 @@ const TriggersRuleBuilder: React.FC<{ tournamentId?: number; dayId?: number }> =
         {/* Drawer handle when collapsed */}
         {!showRecent && (
           <button
-            aria-label="Open recent executions"
+            aria-label={t('triggers.open_recent', 'Open recent executions')}
             aria-controls="recent-executions-drawer"
             aria-expanded="false"
             className="absolute top-1/2 -translate-y-1/2 right-0 translate-x-full bg-gray-800 border border-gray-700 text-gray-200 px-2 py-3 hover:bg-gray-700"
             onClick={() => setShowRecent(true)}
           >
-            Recent
+            {t('triggers.recent', 'Recent')}
           </button>
         )}
 
@@ -376,11 +376,11 @@ const TriggersRuleBuilder: React.FC<{ tournamentId?: number; dayId?: number }> =
         >
           <div className="h-full flex flex-col">
             <div className="px-3 py-2 bg-[#101820] flex items-center border-b border-gray-700">
-              <div className="text-gray-300 font-medium">Recent Executions</div>
+              <div className="text-gray-300 font-medium">{t('triggers.recent_exec', 'Recent Executions')}</div>
             </div>
             <div className="p-2 space-y-2 flex-1 overflow-auto">
-              {logsLoading && <div className="text-sm text-gray-400 p-2">Loading…</div>}
-              {!logsLoading && logs.length === 0 && <div className="text-sm text-gray-500 p-2">No recent executions</div>}
+              {logsLoading && <div className="text-sm text-gray-400 p-2">{t('common.loading', 'Loading…')}</div>}
+              {!logsLoading && logs.length === 0 && <div className="text-sm text-gray-500 p-2">{t('triggers.no_recent', 'No recent executions')}</div>}
               {logs.map((entry, i) => (
                 <div key={i} className="p-2 bg-gray-800/50 border border-gray-700">
                   <div className="text-xs text-gray-400">{entry.ts || ''}</div>
