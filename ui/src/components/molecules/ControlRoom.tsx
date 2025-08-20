@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useI18n } from '../../i18n/index';
 import Button from '../atoms/Button';
 import Input from '../atoms/Input';
 import { StatusDot } from '../atoms/StatusDot';
@@ -49,6 +50,7 @@ interface ControlRoomState {
 }
 
 const ControlRoom: React.FC = () => {
+  const { t } = useI18n();
   const [state, setState] = useState<ControlRoomState>({
     isAuthenticated: false,
     isLoading: false,
@@ -259,10 +261,10 @@ const ControlRoom: React.FC = () => {
 
   const getStatusText = (status: ObsConnection['status']) => {
     switch (status) {
-      case 'Connected': return 'Connected';
-      case 'Connecting': return 'Connecting...';
-      case 'Error': return 'Error';
-      default: return 'Disconnected';
+      case 'Connected': return t('common.connected', 'Connected');
+      case 'Connecting': return t('common.connecting', 'Connecting...');
+      case 'Error': return t('common.error', 'Error');
+      default: return t('common.disconnected', 'Disconnected');
     }
   };
 
