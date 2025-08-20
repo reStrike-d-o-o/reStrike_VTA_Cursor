@@ -55,7 +55,7 @@ interface LocationVerification {
 }
 
 const TournamentManagementPanel: React.FC = () => {
-	const { t } = useI18n();
+	const { t, locale } = useI18n();
 	const [tournaments, setTournaments] = useState<Tournament[]>([]);
 	const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null);
 	const [tournamentDays, setTournamentDays] = useState<TournamentDay[]>([]);
@@ -93,8 +93,23 @@ const TournamentManagementPanel: React.FC = () => {
 
   // Load tournaments on component mount
   useEffect(() => {
+    try {
+      console.log('[OVR/Tournaments] mount', {
+        locale,
+        samples: {
+          title: t('tournament.title', 'Tournaments'),
+          add: t('tournament.add', 'Add Tournament'),
+          filters: {
+            all: t('tournament.filters.all', 'All'),
+            pending: t('tournament.filters.pending', 'Pending'),
+            active: t('tournament.filters.active', 'Active'),
+            ended: t('tournament.filters.ended', 'Ended'),
+          },
+        },
+      });
+    } catch {}
     loadTournaments();
-  }, []);
+  }, [locale]);
 
   // Load tournament days when a tournament is selected
   useEffect(() => {
