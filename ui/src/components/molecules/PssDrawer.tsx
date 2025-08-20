@@ -19,7 +19,7 @@ import ScoreboardManager from './ScoreboardManager';
 import SimulationPanelV2 from './SimulationPanelV2';
 import { invoke as tauriInvoke } from '@tauri-apps/api/core';
 import { algorithmAnimation, locationAnimation, scoreboardAnimation, crossbowAnimation, robotAnimation } from '../../assets/icons/json';
-import { TriggersTable } from './TriggersTable';
+import TriggersTable from './TriggersTable';
 import TriggersRuleBuilder from './TriggersRuleBuilder';
 import { Progress } from '../atoms/Progress';
 

@@ -1,9 +1,8 @@
 /**
  * DragPalette
- * - Small utility palette for drag-and-drop scenarios
+ * - Small utility palette for scenarios (static badges; dragging removed)
  */
 import React from 'react';
-import { useDraggable } from '@dnd-kit/core';
 
 interface BadgeProps {
   id: string;
@@ -18,26 +17,13 @@ const humanReadableEvent = (ev: string) => {
   return map[ev] ?? ev;
 };
 
-const DraggableBadge: React.FC<BadgeProps> = ({ id, label, colorClass }) => {
-  const { attributes, listeners, setNodeRef, transform } = useDraggable({ id });
-  const style: React.CSSProperties = {
-    transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
-    cursor: 'grab',
-    zIndex: 1000,
-    position: transform ? 'fixed' : 'relative',
-  };
-
+const Badge: React.FC<BadgeProps> = ({ label, colorClass }) => {
   const color = colorClass.replace('bg-', '');
   const containerBg = `bg-${color}/10`;
   const borderColor = `border-${color}/20`;
   const textColor = `text-${color.replace('600','400')}`;
   return (
     <div
-      ref={setNodeRef}
-      {...listeners}
-      {...attributes}
-      // eslint-disable-next-line
-      style={style}
       className={`flex items-center px-3 py-1 rounded-lg backdrop-blur-sm text-xs font-medium select-none mb-2 ${containerBg} ${borderColor} border ${textColor}`}
     >
       <span>{label}</span>
@@ -55,22 +41,22 @@ const DragPalette: React.FC<React.PropsWithChildren<DragPaletteProps & {classNam
     <div className={`w-40 p-2 border-r border-gray-700 overflow-y-auto max-h-[600px] ${className}`}>
       <h3 className="text-xs font-bold text-gray-300 mb-1">Events</h3>
       {['pre', 'rdy', 'rnd', 'sup', 'wrd', 'wmh'].map(ev => (
-        <DraggableBadge key={ev} id={`ev-${ev}`} label={humanReadableEvent(ev)} colorClass="bg-blue-600" />
+        <Badge key={ev} id={`ev-${ev}`} label={humanReadableEvent(ev)} colorClass="bg-blue-600" />
       ))}
 
       <h3 className="text-xs font-bold text-gray-300 mt-4 mb-1">Actions</h3>
       {['show', 'hide', 'delay'].map(a => (
-        <DraggableBadge key={a} id={`act-${a}`} label={a} colorClass="bg-green-600" />
+        <Badge key={a} id={`act-${a}`} label={a} colorClass="bg-green-600" />
       ))}
 
       <h3 className="text-xs font-bold text-gray-300 mt-4 mb-1">Scenes</h3>
       {scenes.map(s => (
-        <DraggableBadge key={s.id} id={`scene-${s.id}`} label={s.scene_name} colorClass="bg-orange-500" />
+        <Badge key={s.id} id={`scene-${s.id}`} label={s.scene_name} colorClass="bg-orange-500" />
       ))}
 
       <h3 className="text-xs font-bold text-gray-300 mt-4 mb-1">Overlays</h3>
       {overlays.map(o => (
-        <DraggableBadge key={o.id} id={`ov-${o.id}`} label={o.name} colorClass="bg-amber-500" />
+        <Badge key={o.id} id={`ov-${o.id}`} label={o.name} colorClass="bg-amber-500" />
       ))}
     </div>
   );
