@@ -68,6 +68,18 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
   });
   const [formError, setFormError] = useState<string | null>(null);
 
+  const translateObsError = (err: unknown): string => {
+    const raw = typeof err === 'string' ? err : (typeof err === 'object' && err && 'toString' in (err as any) ? String(err) : '');
+    if (!raw) return t('obs.error.connection_failed', 'Connection failed');
+    let out = raw;
+    out = out.replace(/Configuration error/gi, t('obs.error.configuration', 'Configuration error'));
+    out = out.replace(/Failed to connect to OBS/gi, t('obs.error.connect_failed', 'Failed to connect to OBS'));
+    out = out.replace(/failed to connect to the obs-websocket plugin/gi, t('obs.error.plugin_connect_failed', 'Failed to connect to the obs-websocket plugin'));
+    out = out.replace(/Connection failed/gi, t('obs.error.connection_failed', 'Connection failed'));
+    out = out.replace(/Disconnect failed/gi, t('obs.error.disconnect_failed', 'Disconnect failed'));
+    return out;
+  };
+
   const resetForm = () => {
     setFormData({
       name: '',
@@ -323,16 +335,20 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
             }
           }, 1000);
         } else {
-          console.error(`❌ Failed to connect to OBS: ${connectionName}`, result);
-          updateConnectionStatus(connectionName, 'error', result.error || 'Connection failed');
+          console.error(`❌ ${t('obs.error.connect_failed_console', 'Failed to connect to OBS')}: ${connectionName}`, result);
+          updateConnectionStatus(
+            connectionName,
+            'error',
+            translateObsError(result.error || t('obs.error.connect_failed', 'Failed to connect to OBS'))
+          );
         }
       } else {
-        console.error('❌ Tauri not available for OBS connection');
-        updateConnectionStatus(connectionName, 'error', 'Tauri not available');
+        console.error(`❌ ${t('obs.error.tauri_unavailable_console', 'Tauri not available for OBS connection')}`);
+        updateConnectionStatus(connectionName, 'error', t('obs.error.tauri_unavailable', 'Tauri not available'));
       }
     } catch (error) {
-      console.error(`❌ Error connecting to OBS: ${connectionName}`, error);
-      updateConnectionStatus(connectionName, 'error', (error as Error)?.message || String(error));
+      console.error(`❌ ${t('obs.error.connect_generic_console', 'Error connecting to OBS')}: ${connectionName}`, error);
+      updateConnectionStatus(connectionName, 'error', translateObsError((error as Error)?.message || t('obs.error.connect_generic', 'Connection error')));
     }
   };
 
@@ -369,8 +385,8 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
             }
           }, 1000);
         } else {
-          console.error(`❌ Failed to disconnect from OBS: ${connectionName}`, result);
-          updateConnectionStatus(connectionName, 'error', result.error || 'Disconnect failed');
+          console.error(`❌ ${t('obs.error.disconnect_failed_console', 'Failed to disconnect from OBS')}: ${connectionName}`, result);
+          updateConnectionStatus(connectionName, 'error', translateObsError(result.error || t('obs.error.disconnect_failed', 'Disconnect failed')));
         }
       } else {
         console.error('❌ Tauri not available for OBS disconnection');
