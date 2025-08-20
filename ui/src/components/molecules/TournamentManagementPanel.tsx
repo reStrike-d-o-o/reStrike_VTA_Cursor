@@ -501,9 +501,9 @@ const TournamentManagementPanel: React.FC = () => {
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'pending': return 'Pending';
-      case 'active': return 'Active';
-      case 'ended': return 'Ended';
+      case 'pending': return t('tournament.status.pending', 'Pending');
+      case 'active': return t('tournament.status.active', 'Active');
+      case 'ended': return t('tournament.status.ended', 'Ended');
       default: return status;
     }
   };
@@ -706,16 +706,16 @@ const TournamentManagementPanel: React.FC = () => {
                 >
                   <div className="flex items-center justify-between">
                     <div>
-                      <h4 className="font-medium text-gray-100">Day {day.day_number}</h4>
+                      <h4 className="font-medium text-gray-100">{t('tournament.day_label', 'Day')} {day.day_number}</h4>
                       <p className="text-sm text-gray-400">
                         {formatDate(day.date)}
-                        {day.start_time && ` • ${t('started_at')}: ${formatDateTime(day.start_time)}`}
-                        {day.end_time && ` • ${t('ended_at')}: ${formatDateTime(day.end_time)}`}
+                        {day.start_time && ` • ${t('started_at', 'started at')}: ${formatDateTime(day.start_time)}`}
+                        {day.end_time && ` • ${t('ended_at', 'ended at')}: ${formatDateTime(day.end_time)}`}
                       </p>
                     </div>
                     <div className="flex items-center space-x-2">
                       <StatusDot color={getDayStatusColor(day.status)} />
-                      <span className="text-sm text-gray-400 capitalize">{day.status}</span>
+                      <span className="text-sm text-gray-400 capitalize">{day.status === 'pending' ? t('tournament.day_status.pending', 'Pending') : day.status === 'active' ? t('tournament.day_status.active', 'Active') : t('tournament.day_status.completed', 'Completed')}</span>
                       {day.status === 'pending' && (
                         <Button
                           onClick={() => {
@@ -725,7 +725,7 @@ const TournamentManagementPanel: React.FC = () => {
                           size="sm"
                           className="bg-green-600 hover:bg-green-700 text-white"
                         >
-                          {t('start_day_button')}
+                          {t('start_day_button', 'Start Day')}
                         </Button>
                       )}
                       {day.status === 'active' && (
@@ -737,7 +737,7 @@ const TournamentManagementPanel: React.FC = () => {
                           size="sm"
                           className="bg-blue-600 hover:bg-blue-700 text-white"
                         >
-                          {t('end_day_button')}
+                          {t('end_day_button', 'End Day')}
                         </Button>
                       )}
                     </div>
