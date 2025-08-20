@@ -508,7 +508,7 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
       {/* UDP Server Section */}
       <div className="p-6 theme-card shadow-lg">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-100">UDP Server</h3>
+          <h3 className="text-lg font-semibold text-gray-100">{t('pss.udp.title', 'UDP Server')}</h3>
           <Button
             size="sm"
             variant="secondary"
@@ -517,7 +517,7 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
             <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="mr-2">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={showAdvancedSettings ? "M5 15l7-7 7 7" : "M19 9l-7 7-7-7"} />
             </svg>
-            {showAdvancedSettings ? 'Hide' : 'Show'} Settings
+            {showAdvancedSettings ? t('common.hide_settings', 'Hide Settings') : t('common.show_settings', 'Show Settings')}
           </Button>
         </div>
         
@@ -525,8 +525,8 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-300">UDP Server Status</p>
-              <p className="text-xs text-gray-400">Port: {udpPort}</p>
+              <p className="text-sm text-gray-300">{t('pss.udp.status', 'UDP Server Status')}</p>
+              <p className="text-xs text-gray-400">{t('pss.udp.port', 'Port')}: {udpPort}</p>
             </div>
             <div className="flex items-center space-x-3">
               <span className={`px-2 py-1 rounded text-xs font-medium ${
@@ -540,7 +540,7 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
                 id="udp-enabled"
                 checked={udpEnabled}
                 onChange={(e) => handleUdpToggle(e.target.checked)}
-                label="Enable UDP Server"
+                label={t('pss.udp.enable', 'Enable UDP Server')}
                 labelPosition="left"
               />
             </div>
@@ -553,15 +553,15 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
         {/* Advanced Settings (Expandable) */}
         {showAdvancedSettings && (
           <div className="mt-6 pt-4 border-t border-gray-600/30">
-            <h4 className="text-sm font-medium text-gray-300 mb-4">Advanced Settings</h4>
+            <h4 className="text-sm font-medium text-gray-300 mb-4">{t('pss.udp.advanced', 'Advanced Settings')}</h4>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Port Configuration */}
               <div className="space-y-4">
-                <h5 className="text-xs font-medium text-gray-400 uppercase tracking-wide">Port Configuration</h5>
+                <h5 className="text-xs font-medium text-gray-400 uppercase tracking-wide">{t('pss.udp.port_cfg', 'Port Configuration')}</h5>
                 
                 <div>
-                  <Label htmlFor="udp-port" className="text-xs text-gray-400">UDP Port</Label>
+                  <Label htmlFor="udp-port" className="text-xs text-gray-400">{t('pss.udp.port_label', 'UDP Port')}</Label>
                   <Input
                     id="udp-port"
                     type="number"
@@ -575,12 +575,12 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
 
                 <div>
                   <Label htmlFor="bind-address" className="text-xs text-gray-400">
-                    Bind Address
+                    {t('pss.udp.bind_address', 'Bind Address')}
                     {udpSettings.network_interface.auto_detect && bestInterface && (
-                      <span className="ml-2 text-blue-400 text-xs">(Auto-detected from {bestInterface.name})</span>
+                      <span className="ml-2 text-blue-400 text-xs">({t('pss.udp.auto_from', 'Auto-detected from {name}', { name: bestInterface.name })})</span>
                     )}
                     {!udpSettings.network_interface.auto_detect && udpSettings.network_interface.selected_interface && (
-                      <span className="ml-2 text-green-400 text-xs">(Auto-copied from selected interface)</span>
+                      <span className="ml-2 text-green-400 text-xs">({t('pss.udp.copied_from_selected', 'Auto-copied from selected interface')})</span>
                     )}
                   </Label>
                   {udpSettings.network_interface.auto_detect ? (
@@ -606,7 +606,7 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
                       value={udpSettings.bind_address}
                       onChange={(e) => setUdpSettings(prev => ({ ...prev, bind_address: e.target.value }))}
                       className="mt-1 block w-full rounded-md border-gray-600 bg-gray-700 text-gray-200 text-sm"
-                      aria-label="Select bind address"
+                      aria-label={t('pss.udp.bind_address_select', 'Select bind address')}
                     >
                       <option value="127.0.0.1">127.0.0.1 (localhost)</option>
                       {getAvailableIpAddresses().map((ip) => (
@@ -621,7 +621,7 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
 
               {/* Network Interface Settings */}
               <div className="space-y-4">
-                <h5 className="text-xs font-medium text-gray-400 uppercase tracking-wide">Network Interface</h5>
+                <h5 className="text-xs font-medium text-gray-400 uppercase tracking-wide">{t('pss.udp.net_if', 'Network Interface')}</h5>
                 
                 <div>
                   <Checkbox
@@ -636,17 +636,17 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
                     }))}
                   />
                   <Label htmlFor="auto-detect" className="ml-2 text-xs text-gray-400">
-                    Auto-detect network interface
+                    {t('pss.udp.auto_detect', 'Auto-detect network interface')}
                   </Label>
                   <div className="mt-1 ml-6 text-xs text-gray-500">
-                    When enabled, automatically selects the best network interface and copies its IP address to the bind address field.
+                    {t('pss.udp.auto_detect_desc', 'When enabled, automatically selects the best network interface and copies its IP address to the bind address field.')}
                   </div>
                 </div>
 
                 {udpSettings.network_interface.auto_detect && (
                   <div className="space-y-3">
                     <div>
-                      <Label htmlFor="preferred-type" className="text-xs text-gray-400">Preferred Type</Label>
+                      <Label htmlFor="preferred-type" className="text-xs text-gray-400">{t('pss.udp.preferred_type', 'Preferred Type')}</Label>
                       <select
                         id="preferred-type"
                         value={udpSettings.network_interface.preferred_type}
@@ -658,20 +658,20 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
                           }
                         }))}
                         className="mt-1 block w-full rounded-md border-gray-600 bg-gray-700 text-gray-200 text-sm"
-                        aria-label="Preferred interface type"
+                        aria-label={t('pss.udp.preferred_type_aria', 'Preferred interface type')}
                       >
-                        <option value="ethernet">Ethernet</option>
-                        <option value="wifi">WiFi</option>
-                        <option value="any">Any</option>
+                        <option value="ethernet">{t('pss.udp.type.ethernet', 'Ethernet')}</option>
+                        <option value="wifi">{t('pss.udp.type.wifi', 'WiFi')}</option>
+                        <option value="any">{t('pss.udp.type.any', 'Any')}</option>
                       </select>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-400">Current Best Interface</span>
+                      <span className="text-xs text-gray-400">{t('pss.udp.current_best', 'Current Best Interface')}</span>
                       <button
                         onClick={loadBestInterface}
                         className="text-xs text-blue-400 hover:text-blue-300 underline"
                       >
-                        Refresh
+                        {t('common.refresh', 'Refresh')}
                       </button>
                     </div>
                     {bestInterface && (
@@ -687,12 +687,12 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
                 {!udpSettings.network_interface.auto_detect && (
                   <div>
                     <div className="flex items-center justify-between">
-                      <Label htmlFor="selected-interface" className="text-xs text-gray-400">Select Interface</Label>
+                      <Label htmlFor="selected-interface" className="text-xs text-gray-400">{t('pss.udp.select_interface', 'Select Interface')}</Label>
                       <button
                         onClick={loadNetworkInterfaces}
                         className="text-xs text-blue-400 hover:text-blue-300 underline"
                       >
-                        Refresh
+                        {t('common.refresh', 'Refresh')}
                       </button>
                     </div>
                     <select
@@ -706,17 +706,17 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
                         }
                       }))}
                       className="mt-1 block w-full rounded-md border-gray-600 bg-gray-700 text-gray-200 text-sm"
-                      aria-label="Select network interface"
+                      aria-label={t('pss.udp.select_interface_aria', 'Select network interface')}
                     >
-                      <option value="">Select an interface...</option>
+                      <option value="">{t('pss.udp.select_interface_placeholder', 'Select an interface...')}</option>
                       {networkInterfaces.map((iface) => (
                         <option key={iface.name} value={iface.name}>
-                          {iface.name} ({iface.type}) - {iface.media_state === 'connected' ? 'Connected' : 'Disconnected'} - {iface.ip_addresses.join(', ')}
+                          {iface.name} ({iface.type}) - {iface.media_state === 'connected' ? t('common.connected', 'Connected') : t('common.disconnected', 'Disconnected')} - {iface.ip_addresses.join(', ')}
                         </option>
                       ))}
                     </select>
                     <div className="mt-1 text-xs text-gray-500">
-                      When auto-detect is disabled, you can manually select a network interface and choose from available IP addresses in the bind address dropdown.
+                      {t('pss.udp.manual_desc', 'When auto-detect is disabled, you can manually select a network interface and choose from available IP addresses in the bind address dropdown.')}
                     </div>
                   </div>
                 )}
@@ -734,7 +734,7 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
                     }))}
                   />
                   <Label htmlFor="fallback-localhost" className="ml-2 text-xs text-gray-400">
-                    Fallback to localhost (127.0.0.1)
+                    {t('pss.udp.fallback_localhost', 'Fallback to localhost (127.0.0.1)')}
                   </Label>
                 </div>
               </div>
@@ -742,7 +742,7 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
 
             {/* Available Network Interfaces */}
             <div className="mt-6">
-              <h5 className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-3">Available Interfaces</h5>
+              <h5 className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-3">{t('pss.udp.available_ifaces', 'Available Interfaces')}</h5>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 {networkInterfaces.map((iface) => (
                   <div
@@ -812,7 +812,7 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
                 variant="primary"
                 onClick={saveUdpSettings}
               >
-                Save Settings
+                {t('common.save_settings', 'Save Settings')}
               </Button>
             </div>
           </div>
@@ -821,27 +821,27 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
 
       {/* Protocol Management Section */}
       <div className="p-6 theme-card shadow-lg">
-        <h3 className="text-lg font-semibold mb-4 text-gray-100">Protocol Management</h3>
+        <h3 className="text-lg font-semibold mb-4 text-gray-100">{t('pss.protocol.title', 'Protocol Management')}</h3>
         
         {/* Current Protocol */}
         {currentProtocol && (
           <div className="mb-6 p-4 bg-blue-900/20 border border-blue-600/30">
-            <h4 className="text-sm font-medium text-blue-300 mb-2">Current Protocol</h4>
+            <h4 className="text-sm font-medium text-blue-300 mb-2">{t('pss.protocol.current', 'Current Protocol')}</h4>
             <div className="text-sm text-gray-300">
-              <p><span className="text-gray-400">Version:</span> {currentProtocol.version}</p>
-              <p><span className="text-gray-400">Description:</span> {currentProtocol.description}</p>
-              <p><span className="text-gray-400">Year:</span> {currentProtocol.year}</p>
+              <p><span className="text-gray-400">{t('pss.protocol.version', 'Version')}:</span> {currentProtocol.version}</p>
+              <p><span className="text-gray-400">{t('pss.protocol.description', 'Description')}:</span> {currentProtocol.description}</p>
+              <p><span className="text-gray-400">{t('pss.protocol.year', 'Year')}:</span> {currentProtocol.year}</p>
             </div>
           </div>
         )}
 
         {/* Protocol Version Selection */}
         <div className="mb-6">
-          <h4 className="text-sm font-medium text-gray-300 mb-3">Available Versions</h4>
+          <h4 className="text-sm font-medium text-gray-300 mb-3">{t('pss.protocol.available', 'Available Versions')}</h4>
           {isLoading ? (
-            <div className="text-sm text-gray-400">Loading protocol versions...</div>
+            <div className="text-sm text-gray-400">{t('pss.protocol.loading', 'Loading protocol versions...')}</div>
           ) : protocolVersions.length === 0 ? (
-            <div className="text-sm text-gray-400">No protocol versions available</div>
+            <div className="text-sm text-gray-400">{t('pss.protocol.none', 'No protocol versions available')}</div>
           ) : (
             <div className="space-y-2">
               {protocolVersions.map((version) => (
@@ -857,19 +857,19 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
                     <div className="flex-1">
                       <div className="flex items-center space-x-2">
                         <span className="text-sm font-medium text-gray-200">
-                          Version {version.version}
+                          {t('pss.protocol.version_n', 'Version {v}', { v: version.version })}
                         </span>
                         {version.is_active && (
                           <span className="px-2 py-1 bg-green-900/30 text-green-300 text-xs border border-green-600/30">
-                            Active
+                            {t('common.active', 'Active')}
                           </span>
                         )}
                       </div>
                       <p className="text-xs text-gray-400 mt-1">{version.description}</p>
                       <div className="flex items-center space-x-4 mt-2 text-xs text-gray-500">
-                        <span>Size: {formatFileSize(version.file_size)}</span>
-                        <span>Created: {formatDate(version.created_date)}</span>
-                        <span>Modified: {formatDate(version.last_modified)}</span>
+                        <span>{t('pss.protocol.size', 'Size')}: {formatFileSize(version.file_size)}</span>
+                        <span>{t('pss.protocol.created', 'Created')}: {formatDate(version.created_date)}</span>
+                        <span>{t('pss.protocol.modified', 'Modified')}: {formatDate(version.last_modified)}</span>
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
@@ -879,7 +879,7 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
                           variant="secondary"
                           onClick={() => handleVersionChange(version.version)}
                         >
-                          Activate
+                          {t('pss.protocol.activate', 'Activate')}
                         </Button>
                       )}
                       <Button
@@ -887,7 +887,7 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
                         variant="secondary"
                         onClick={() => handleExportVersion(version.version)}
                       >
-                        Export
+                        {t('pss.protocol.export', 'Export')}
                       </Button>
                       {!version.is_active && (
                         <Button
@@ -895,7 +895,7 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
                           variant="danger"
                           onClick={() => handleDeleteVersion(version.version)}
                         >
-                          Delete
+                          {t('common.delete', 'Delete')}
                         </Button>
                       )}
                     </div>
@@ -908,7 +908,7 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
 
         {/* Upload New Protocol */}
         <div className="border-t border-gray-600/30 pt-4">
-          <h4 className="text-sm font-medium text-gray-300 mb-3">Upload New Protocol</h4>
+          <h4 className="text-sm font-medium text-gray-300 mb-3">{t('pss.protocol.upload', 'Upload New Protocol')}</h4>
           <div className="space-y-3">
             <div className="flex items-center space-x-3">
               <input
@@ -917,8 +917,8 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
                 accept=".txt"
                 onChange={handleFileUpload}
                 className="hidden"
-                aria-label="Choose protocol file"
-                title="Choose protocol file"
+                aria-label={t('pss.protocol.choose_file_aria', 'Choose protocol file')}
+                title={t('pss.protocol.choose_file_title', 'Choose protocol file')}
               />
               <Button
                 size="sm"
@@ -926,9 +926,9 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isLoading}
               >
-                Choose Protocol File
+                {t('pss.protocol.choose', 'Choose Protocol File')}
               </Button>
-              <span className="text-xs text-gray-400">TXT format only</span>
+              <span className="text-xs text-gray-400">{t('pss.protocol.txt_only', 'TXT format only')}</span>
             </div>
             
             {uploadProgress > 0 && (
@@ -936,8 +936,7 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
             )}
             
             <p className="text-xs text-gray-400">
-              Upload a new protocol file to add it to the available versions. 
-              The file should be in TXT format and contain valid protocol definitions.
+              {t('pss.protocol.upload_help', 'Upload a new protocol file to add it to the available versions. The file should be in TXT format and contain valid protocol definitions.')}
             </p>
           </div>
         </div>

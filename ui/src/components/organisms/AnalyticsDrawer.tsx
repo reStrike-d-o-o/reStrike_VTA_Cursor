@@ -11,6 +11,7 @@ import { MatchAnalytics } from '../molecules/MatchAnalytics';
 import { TournamentAnalytics } from '../molecules/TournamentAnalytics';
 import { DayAnalytics } from '../molecules/DayAnalytics';
 import { usePssMatchStore } from '../../stores/pssMatchStore';
+import { useI18n } from '../../i18n/index';
 
 interface AnalyticsDrawerProps {
   isOpen: boolean;
@@ -21,6 +22,7 @@ export const AnalyticsDrawer: React.FC<AnalyticsDrawerProps> = ({
   isOpen,
   onClose,
 }) => {
+  const { t } = useI18n();
   const [selectedAthlete, setSelectedAthlete] = useState<string>('');
   const [selectedMatch, setSelectedMatch] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
@@ -70,36 +72,36 @@ export const AnalyticsDrawer: React.FC<AnalyticsDrawerProps> = ({
         <div className="p-6">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-2">
-              <h2 className="text-2xl font-bold">📊 Analytics Dashboard</h2>
-              <Badge variant="secondary">Real-time</Badge>
+              <h2 className="text-2xl font-bold">{t('analytics.title', '📊 Analytics Dashboard')}</h2>
+              <Badge variant="secondary">{t('analytics.realtime', 'Real-time')}</Badge>
             </div>
             <Button variant="ghost" onClick={onClose}>
-              ✕ Close
+              ✕ {t('common.close', 'Close')}
             </Button>
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="tournament">🏆 Tournament</TabsTrigger>
-              <TabsTrigger value="athlete">👤 Athlete</TabsTrigger>
-              <TabsTrigger value="match">🥋 Match</TabsTrigger>
-              <TabsTrigger value="day">📅 Day</TabsTrigger>
+              <TabsTrigger value="tournament">🏆 {t('analytics.tabs.tournament', 'Tournament')}</TabsTrigger>
+              <TabsTrigger value="athlete">👤 {t('analytics.tabs.athlete', 'Athlete')}</TabsTrigger>
+              <TabsTrigger value="match">🥋 {t('analytics.tabs.match', 'Match')}</TabsTrigger>
+              <TabsTrigger value="day">📅 {t('analytics.tabs.day', 'Day')}</TabsTrigger>
             </TabsList>
 
             <TabsContent value="tournament" className="space-y-4">
               <div className="space-y-4">
                 <div className="flex items-center gap-4">
                   <div className="flex-1">
-                    <Label htmlFor="tournament-select">Select Tournament</Label>
+                    <Label htmlFor="tournament-select">{t('analytics.select.tournament', 'Select Tournament')}</Label>
                     <Select value={selectedTournament} onValueChange={setSelectedTournament}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Choose a tournament" />
+                        <SelectValue placeholder={t('analytics.placeholder.tournament', 'Choose a tournament')} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All Tournaments</SelectItem>
+                        <SelectItem value="">{t('analytics.all_tournaments', 'All Tournaments')}</SelectItem>
                         {tournaments.map((tournamentId) => (
                           <SelectItem key={tournamentId} value={tournamentId}>
-                            Tournament {tournamentId}
+                            {t('analytics.item.tournament', 'Tournament {id}', { id: String(tournamentId) })}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -108,7 +110,7 @@ export const AnalyticsDrawer: React.FC<AnalyticsDrawerProps> = ({
                 </div>
 
                 <TournamentAnalytics 
-                  tournamentName={selectedTournament ? `Tournament ${selectedTournament}` : "All Tournaments"}
+                  tournamentName={selectedTournament ? t('analytics.item.tournament', 'Tournament {id}', { id: String(selectedTournament) }) : t('analytics.all_tournaments', 'All Tournaments')}
                   tournamentId={selectedTournament || undefined}
                 />
               </div>
@@ -118,10 +120,10 @@ export const AnalyticsDrawer: React.FC<AnalyticsDrawerProps> = ({
               <div className="space-y-4">
                 <div className="flex items-center gap-4">
                   <div className="flex-1">
-                    <Label htmlFor="athlete-select">Select Athlete</Label>
+                    <Label htmlFor="athlete-select">{t('analytics.select.athlete', 'Select Athlete')}</Label>
                     <Select value={selectedAthlete} onValueChange={setSelectedAthlete}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Choose an athlete" />
+                        <SelectValue placeholder={t('analytics.placeholder.athlete', 'Choose an athlete')} />
                       </SelectTrigger>
                       <SelectContent>
                         {athletes.map((athlete) => (
@@ -145,11 +147,11 @@ export const AnalyticsDrawer: React.FC<AnalyticsDrawerProps> = ({
                 {!selectedAthlete && (
                   <Card>
                     <CardHeader>
-                      <CardTitle>👤 Athlete Analytics</CardTitle>
+                      <CardTitle>👤 {t('analytics.athlete.title', 'Athlete Analytics')}</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <p className="text-muted-foreground">
-                        Select an athlete from the dropdown above to view their detailed analytics and performance metrics.
+                        {t('analytics.athlete.help', 'Select an athlete from the dropdown above to view their detailed analytics and performance metrics.')}
                       </p>
                     </CardContent>
                   </Card>
@@ -161,15 +163,15 @@ export const AnalyticsDrawer: React.FC<AnalyticsDrawerProps> = ({
               <div className="space-y-4">
                 <div className="flex items-center gap-4">
                   <div className="flex-1">
-                    <Label htmlFor="match-select">Select Match</Label>
+                    <Label htmlFor="match-select">{t('analytics.select.match', 'Select Match')}</Label>
                     <Select value={selectedMatch} onValueChange={setSelectedMatch}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Choose a match" />
+                        <SelectValue placeholder={t('analytics.placeholder.match', 'Choose a match')} />
                       </SelectTrigger>
                       <SelectContent>
                         {matches.map((matchId) => (
                           <SelectItem key={matchId} value={matchId}>
-                            Match {matchId}
+                            {t('analytics.item.match', 'Match {id}', { id: String(matchId) })}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -190,11 +192,11 @@ export const AnalyticsDrawer: React.FC<AnalyticsDrawerProps> = ({
                 {!selectedMatch && (
                   <Card>
                     <CardHeader>
-                      <CardTitle>🥋 Match Analytics</CardTitle>
+                      <CardTitle>🥋 {t('analytics.match.title', 'Match Analytics')}</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <p className="text-muted-foreground">
-                        Select a match from the dropdown above to view detailed match analytics and performance metrics.
+                        {t('analytics.match.help', 'Select a match from the dropdown above to view detailed match analytics and performance metrics.')}
                       </p>
                     </CardContent>
                   </Card>
@@ -206,10 +208,10 @@ export const AnalyticsDrawer: React.FC<AnalyticsDrawerProps> = ({
               <div className="space-y-4">
                 <div className="flex items-center gap-4">
                   <div className="flex-1">
-                    <Label htmlFor="date-select">Select Date</Label>
+                    <Label htmlFor="date-select">{t('analytics.select.date', 'Select Date')}</Label>
                     <Select value={selectedDate} onValueChange={setSelectedDate}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Choose a date" />
+                        <SelectValue placeholder={t('analytics.placeholder.date', 'Choose a date')} />
                       </SelectTrigger>
                       <SelectContent>
                         {dates.map((date) => (
@@ -231,22 +233,22 @@ export const AnalyticsDrawer: React.FC<AnalyticsDrawerProps> = ({
           </Tabs>
 
           <div className="mt-8 p-4 bg-muted rounded-lg">
-            <h3 className="font-semibold mb-2">📈 Analytics Overview</h3>
+            <h3 className="font-semibold mb-2">{t('analytics.overview.title', '📈 Analytics Overview')}</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
               <div>
-                <div className="font-medium">Total Events</div>
+                <div className="font-medium">{t('analytics.metrics.total_events', 'Total Events')}</div>
                 <div className="text-muted-foreground">{events.length}</div>
               </div>
               <div>
-                <div className="font-medium">Unique Matches</div>
+                <div className="font-medium">{t('analytics.metrics.unique_matches', 'Unique Matches')}</div>
                 <div className="text-muted-foreground">{matches.length}</div>
               </div>
               <div>
-                <div className="font-medium">Unique Athletes</div>
+                <div className="font-medium">{t('analytics.metrics.unique_athletes', 'Unique Athletes')}</div>
                 <div className="text-muted-foreground">{athletes.length}</div>
               </div>
               <div>
-                <div className="font-medium">Tournaments</div>
+                <div className="font-medium">{t('analytics.metrics.tournaments', 'Tournaments')}</div>
                 <div className="text-muted-foreground">{tournaments.length}</div>
               </div>
             </div>
