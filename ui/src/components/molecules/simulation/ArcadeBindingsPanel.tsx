@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useI18n } from '../../../i18n/index';
 import { defaultMapping, loadMapping, saveMapping, listConnectedGamepads } from './gamepad';
 
 const ArcadeBindingsPanel: React.FC = () => {
@@ -22,6 +23,7 @@ const ArcadeBindingsPanel: React.FC = () => {
     });
   };
 
+  const { t } = useI18n();
   const mappingRows = useMemo(() => ([
     { label: 'Move X Axis', key: 'moveX.index', player: 1 },
     { label: 'Punch (1pt)', key: 'punch.index', player: 1 },
@@ -114,7 +116,7 @@ const ArcadeBindingsPanel: React.FC = () => {
           type="number"
           value={cfg.hitLevelValue}
           aria-labelledby="lbl-hit-level"
-          title="Hit level intensity value"
+          title={t('simulation.arcade.hit_level_tooltip', 'Intezitet udarca')}
           onChange={(e) => update(prev => ({ ...prev, hitLevelValue: Number(e.target.value || 0) }))}
         />
         <button
