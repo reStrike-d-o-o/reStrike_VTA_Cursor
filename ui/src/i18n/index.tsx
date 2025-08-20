@@ -1054,6 +1054,14 @@ const catalogs: Catalogs = {
     // EventTable
     'table.rnd': 'RND',
     'table.no_events': 'Još nema događaja',
+    'live.event_table': 'TABLICA DOGAĐAJA',
+    'live.select_match': 'Odaberite meč',
+    'live.current_match': 'Trenutni',
+    'live.round_label': 'Runda',
+    'live.time_label': 'Vrijeme',
+    'live.total_label': 'Ukupno',
+    'live.table_label': 'Tablica',
+    'live.clear_and_scroll': 'Pomakni na dno (najstariji događaji) i očisti filtre',
     // LiveDataPanel
     'live.title': 'LIVE PODACI',
     'live.loading_settings': 'Učitavanje postavki...',
@@ -1064,6 +1072,16 @@ const catalogs: Catalogs = {
     'live.no_events': 'Nema dostupnih PSS događaja.',
     'live.ws_not_connected': 'WebSocket nije povezan.',
     'live.toggle_autoscroll': 'Uključi/isključi automatsko pomicanje',
+    // EventTable tooltips
+    'live.color.red': 'Crveni',
+    'live.color.blue': 'Plavi',
+    'live.color.yellow': 'Žuti',
+    'live.event_type.kick': 'Udarac',
+    'live.event_type.punch': 'Udarac rukom',
+    'live.event_type.head': 'Glava',
+    'live.event_type.tech_head': 'Tehnička glava',
+    'live.event_type.tech_body': 'Tehničko tijelo',
+    'live.event_type.referee': 'Sudac',
     // Drive browser
     'drive.folder_name': 'Naziv mape',
     'drive.err_create_folder': 'Neuspjelo kreiranje mape',
