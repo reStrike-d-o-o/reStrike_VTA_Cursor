@@ -1084,6 +1084,8 @@ const catalogs: Catalogs = {
     'live.no_events': 'Nema dostupnih PSS događaja.',
     'live.ws_not_connected': 'WebSocket nije povezan.',
     'live.toggle_autoscroll': 'Uključi/isključi automatsko pomicanje',
+    // Simulation arcade
+    'simulation.arcade.hit_level_tooltip': 'Intezitet udarca',
     // EventTable tooltips
     'live.color.red': 'Crveni',
     'live.color.blue': 'Plavi',
