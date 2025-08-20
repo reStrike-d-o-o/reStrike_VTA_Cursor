@@ -1,6 +1,6 @@
 import React from 'react';
 import { useEnvironment } from '../../hooks/useEnvironment';
-import { useI18n } from '../../i18n';
+import { useI18n } from '../../i18n/index';
 
 const TaskBar: React.FC = () => {
   const { environment, tauriAvailable } = useEnvironment();

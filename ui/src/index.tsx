@@ -5,7 +5,7 @@ import App from './App';
 import { initLogLevelFromStorage, applyConsolePatch } from './utils/logger';
 import { diagLogsCommands } from './utils/tauriCommands';
 import { useMessageCenter } from './stores/messageCenter';
-import { I18nProvider } from './i18n';
+import { I18nProvider } from './i18n/index';
 
 // Initialize logging level and patch console globally before rendering
 initLogLevelFromStorage();
