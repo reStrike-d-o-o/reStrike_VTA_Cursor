@@ -7,6 +7,7 @@ import StatusDot from '../atoms/StatusDot';
 import { usePssMatchStore } from '../../stores/pssMatchStore';
 import { useAppStore } from '../../stores';
 import { invoke as tauriInvoke } from '@tauri-apps/api/core';
+import { useI18n } from '../../i18n/index';
 
 // Use the proper Tauri v2 invoke function with fallback
 const invoke = async (command: string, args?: any) => {
@@ -47,6 +48,7 @@ interface OverlayTemplate {
 }
 
 const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' }) => {
+  const { t } = useI18n();
   // Overlay settings state
   const [overlaySettings, setOverlaySettings] = useState<OverlaySettings>({
     type: 'scoreboard',
@@ -125,10 +127,6 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
     setOverlaySettings(newSettings);
   };
 
-
-
-
-
   // Update overlay content with PSS data
   const updateOverlayContent = (svg: SVGElement, settings: OverlaySettings) => {
     if (!isLoaded) return;
@@ -138,7 +136,7 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
     updateElement(svg, 'redPlayerName', athlete2?.long || 'RED PLAYER');
 
     // Update match information
-    updateElement(svg, 'matchCategory', matchCategory || 'MEN\'S -58KG');
+    updateElement(svg, 'matchCategory', matchCategory || "MEN'S -58KG");
     updateElement(svg, 'matchNumber', matchNumber?.toString() || '1');
     
     // Update scores
@@ -156,21 +154,13 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
     }
   };
 
-
-
-
-
-
-
-
-
   return (
     <div className={`space-y-6 ${className}`}>
 
       {/* Overlay Type Selection */}
       <div className="p-6 theme-card shadow-lg">
         <div className="flex items-center justify-between mb-4">
-          <h4 className="text-md font-semibold text-gray-100">Overlay Type</h4>
+          <h4 className="text-md font-semibold text-gray-100">{t('ovr.scoreboard.title', 'Overlay Type')}</h4>
           <div className="flex items-center space-x-2">
             <Button
               size="sm"
@@ -178,7 +168,7 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
               onClick={populateOverlayTemplates}
               disabled={isLoadingTemplates}
             >
-              {isLoadingTemplates ? 'Loading...' : 'Populate from Files'}
+              {isLoadingTemplates ? t('common.loading', 'Loading...') : t('ovr.templates.populate', 'Populate from Files')}
             </Button>
             <Button
               size="sm"
@@ -186,15 +176,15 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
               onClick={loadOverlayTemplates}
               disabled={isLoadingTemplates}
             >
-              {isLoadingTemplates ? 'Loading...' : 'Refresh'}
+              {isLoadingTemplates ? t('common.loading', 'Loading...') : t('common.refresh', 'Refresh')}
             </Button>
           </div>
         </div>
         
         {isLoadingTemplates ? (
-          <div className="text-sm text-gray-400">Loading overlay templates...</div>
+          <div className="text-sm text-gray-400">{t('ovr.templates.loading', 'Loading overlay templates...')}</div>
         ) : overlayTemplates.length === 0 ? (
-          <div className="text-sm text-gray-400">No overlay templates found</div>
+          <div className="text-sm text-gray-400">{t('ovr.templates.none', 'No overlay templates found')}</div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {overlayTemplates.map((template) => (
@@ -214,7 +204,7 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
                       </span>
                       {template.is_active && (
                         <span className="px-2 py-1 bg-green-900/30 text-green-300 text-xs rounded border border-green-600/30">
-                          Active
+                          {t('common.active', 'Active')}
                         </span>
                       )}
                     </div>
@@ -222,9 +212,9 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
                       <p className="text-xs text-gray-400 mt-1">{template.description}</p>
                     )}
                     <div className="flex items-center space-x-4 mt-2 text-xs text-gray-500">
-                      <span>Theme: {template.theme}</span>
-                      <span>Animation: {template.animation_type}</span>
-                      <span>Duration: {template.duration_ms}ms</span>
+                      <span>{t('ovr.templates.theme', 'Theme')}: {template.theme}</span>
+                      <span>{t('ovr.templates.animation', 'Animation')}: {template.animation_type}</span>
+                      <span>{t('ovr.templates.duration', 'Duration')}: {template.duration_ms}ms</span>
                       {template.url && (
                         <span className="text-blue-400">URL: {template.url}</span>
                       )}
@@ -235,7 +225,7 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
                       id={`overlay-${template.id}`}
                       checked={template.is_active}
                       onChange={(e) => toggleOverlayActive(template.id!, e.target.checked)}
-                      label="Active"
+                      label={t('common.active', 'Active')}
                       labelPosition="left"
                     />
                   </div>
@@ -246,22 +236,16 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
         )}
       </div>
 
-
-
-
-
-
-
       {/* OBS Integration */}
       <div className="p-6 theme-card shadow-lg">
-        <h4 className="text-md font-semibold text-gray-100 mb-4">OBS Integration</h4>
+        <h4 className="text-md font-semibold text-gray-100 mb-4">{t('ovr.obs_integration.title', 'OBS Integration')}</h4>
         <div className="space-y-4">
           {/* HTML Overlay URLs */}
           <div className="p-3 bg-blue-900/20 rounded-lg border border-blue-500/30">
-            <Label className="text-sm text-blue-300 mb-2">HTML Overlay URLs (Real-time PSS Updates)</Label>
+            <Label className="text-sm text-blue-300 mb-2">{t('ovr.urls.title', 'HTML Overlay URLs (Real-time PSS Updates)')}</Label>
             <div className="space-y-3">
               <div>
-                <Label className="text-xs text-gray-300">Scoreboard Overlay</Label>
+                <Label className="text-xs text-gray-300">{t('ovr.urls.scoreboard', 'Scoreboard Overlay')}</Label>
                 <div className="flex items-center space-x-2">
                   <Input
                     value={`${window.location.origin}/scoreboard-overlay.html`}
@@ -273,20 +257,20 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
                     variant="secondary"
                     onClick={() => window.open(`${window.location.origin}/scoreboard-overlay.html`, '_blank')}
                   >
-                    Open in Browser
+                    {t('common.open_browser', 'Open in Browser')}
                   </Button>
                   <Button
                     size="sm"
                     variant="secondary"
                     onClick={() => navigator.clipboard.writeText(`${window.location.origin}/scoreboard-overlay.html`)}
                   >
-                    Copy
+                    {t('common.copy', 'Copy')}
                   </Button>
                 </div>
               </div>
               
               <div>
-                <Label className="text-xs text-gray-300">Player Introduction Overlay</Label>
+                <Label className="text-xs text-gray-300">{t('ovr.urls.player_intro', 'Player Introduction Overlay')}</Label>
                 <div className="flex items-center space-x-2">
                   <Input
                     value={`${window.location.origin}/player-introduction-overlay.html`}
@@ -298,81 +282,80 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
                     variant="secondary"
                     onClick={() => window.open(`${window.location.origin}/player-introduction-overlay.html`, '_blank')}
                   >
-                    Open in Browser
+                    {t('common.open_browser', 'Open in Browser')}
                   </Button>
                   <Button
                     size="sm"
                     variant="secondary"
                     onClick={() => navigator.clipboard.writeText(`${window.location.origin}/player-introduction-overlay.html`)}
                   >
-                    Copy
+                    {t('common.copy', 'Copy')}
                   </Button>
                 </div>
               </div>
-
+              
               {/* Arcade Series (Tekken/Street-Fighter style) */}
               <div className="pt-2">
-                <Label className="text-xs text-purple-300">Arcade Scoreboard (New)</Label>
+                <Label className="text-xs text-purple-300">{t('ovr.urls.arcade_scoreboard', 'Arcade Scoreboard (New)')}</Label>
                 <div className="flex items-center space-x-2">
                   <Input value={`${window.location.origin}/overlays/arcade/scoreboard.html`} readOnly className="flex-1 text-xs" />
-                  <Button size="sm" variant="secondary" onClick={() => window.open(`${window.location.origin}/overlays/arcade/scoreboard.html`, '_blank')}>Open</Button>
-                  <Button size="sm" variant="secondary" onClick={() => navigator.clipboard.writeText(`${window.location.origin}/overlays/arcade/scoreboard.html`)}>Copy</Button>
+                  <Button size="sm" variant="secondary" onClick={() => window.open(`${window.location.origin}/overlays/arcade/scoreboard.html`, '_blank')}>{t('common.open', 'Open')}</Button>
+                  <Button size="sm" variant="secondary" onClick={() => navigator.clipboard.writeText(`${window.location.origin}/overlays/arcade/scoreboard.html`)}>{t('common.copy', 'Copy')}</Button>
                 </div>
               </div>
-              {/* Placeholders for upcoming arcade overlays */}
               <div>
-                <Label className="text-xs text-purple-300">Arcade Intro</Label>
+                <Label className="text-xs text-purple-300">{t('ovr.urls.arcade_intro', 'Arcade Intro')}</Label>
                 <div className="flex items-center space-x-2">
                   <Input value={`${window.location.origin}/overlays/arcade/intro.html`} readOnly className="flex-1 text-xs" />
-                  <Button size="sm" variant="secondary" onClick={() => window.open(`${window.location.origin}/overlays/arcade/intro.html`, '_blank')}>Open</Button>
-                  <Button size="sm" variant="secondary" onClick={() => navigator.clipboard.writeText(`${window.location.origin}/overlays/arcade/intro.html`)}>Copy</Button>
+                  <Button size="sm" variant="secondary" onClick={() => window.open(`${window.location.origin}/overlays/arcade/intro.html`, '_blank')}>{t('common.open', 'Open')}</Button>
+                  <Button size="sm" variant="secondary" onClick={() => navigator.clipboard.writeText(`${window.location.origin}/overlays/arcade/intro.html`)}>{t('common.copy', 'Copy')}</Button>
                 </div>
               </div>
               <div>
-                <Label className="text-xs text-purple-300">Arcade Intermission Stats</Label>
+                <Label className="text-xs text-purple-300">{t('ovr.urls.arcade_intermission', 'Arcade Intermission Stats')}</Label>
                 <div className="flex items-center space-x-2">
                   <Input value={`${window.location.origin}/overlays/arcade/intermission.html`} readOnly className="flex-1 text-xs" />
-                  <Button size="sm" variant="secondary" onClick={() => window.open(`${window.location.origin}/overlays/arcade/intermission.html`, '_blank')}>Open</Button>
-                  <Button size="sm" variant="secondary" onClick={() => navigator.clipboard.writeText(`${window.location.origin}/overlays/arcade/intermission.html`)}>Copy</Button>
+                  <Button size="sm" variant="secondary" onClick={() => window.open(`${window.location.origin}/overlays/arcade/intermission.html`, '_blank')}>{t('common.open', 'Open')}</Button>
+                  <Button size="sm" variant="secondary" onClick={() => navigator.clipboard.writeText(`${window.location.origin}/overlays/arcade/intermission.html`)}>{t('common.copy', 'Copy')}</Button>
                 </div>
               </div>
               <div>
-                <Label className="text-xs text-purple-300">Arcade Winner</Label>
+                <Label className="text-xs text-purple-300">{t('ovr.urls.arcade_winner', 'Arcade Winner')}</Label>
                 <div className="flex items-center space-x-2">
                   <Input value={`${window.location.origin}/overlays/arcade/winner.html`} readOnly className="flex-1 text-xs" />
-                  <Button size="sm" variant="secondary" onClick={() => window.open(`${window.location.origin}/overlays/arcade/winner.html`, '_blank')}>Open</Button>
-                  <Button size="sm" variant="secondary" onClick={() => navigator.clipboard.writeText(`${window.location.origin}/overlays/arcade/winner.html`)}>Copy</Button>
+                  <Button size="sm" variant="secondary" onClick={() => window.open(`${window.location.origin}/overlays/arcade/winner.html`, '_blank')}>{t('common.open', 'Open')}</Button>
+                  <Button size="sm" variant="secondary" onClick={() => navigator.clipboard.writeText(`${window.location.origin}/overlays/arcade/winner.html`)}>{t('common.copy', 'Copy')}</Button>
                 </div>
               </div>
               <div>
-                <Label className="text-xs text-purple-300">Arcade Specials</Label>
+                <Label className="text-xs text-purple-300">{t('ovr.urls.arcade_specials', 'Arcade Specials')}</Label>
                 <div className="flex items-center space-x-2">
                   <Input value={`${window.location.origin}/overlays/arcade/specials.html`} readOnly className="flex-1 text-xs" />
-                  <Button size="sm" variant="secondary" onClick={() => window.open(`${window.location.origin}/overlays/arcade/specials.html`, '_blank')}>Open</Button>
-                  <Button size="sm" variant="secondary" onClick={() => navigator.clipboard.writeText(`${window.location.origin}/overlays/arcade/specials.html`)}>Copy</Button>
+                  <Button size="sm" variant="secondary" onClick={() => window.open(`${window.location.origin}/overlays/arcade/specials.html`, '_blank')}>{t('common.open', 'Open')}</Button>
+                  <Button size="sm" variant="secondary" onClick={() => navigator.clipboard.writeText(`${window.location.origin}/overlays/arcade/specials.html`)}>{t('common.copy', 'Copy')}</Button>
                 </div>
               </div>
             </div>
             <p className="text-xs text-blue-400 mt-2">
-              ✨ These HTML overlays support real-time PSS data updates via WebSocket events
+              {t('ovr.urls.realtime_note', '✨ These HTML overlays support real-time PSS data updates via WebSocket events')}
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label className="text-sm text-gray-300">OBS Settings</Label>
+              <Label className="text-sm text-gray-300">{t('ovr.obs_settings', 'OBS Settings')}</Label>
               <div className="text-xs text-gray-400 space-y-1 mt-1">
                 <div>Width: 1920</div>
                 <div>Height: 1080</div>
-                <div>Refresh: When scene becomes active</div>
+                <div>{t('ovr.obs_settings.refresh', 'Refresh: When scene becomes active')}</div>
               </div>
             </div>
             <div>
-              <Label className="text-sm text-gray-300">Network Access</Label>
+              <Label className="text-sm text-gray-300">{t('ovr.network_access', 'Network Access')}</Label>
               <div className="text-xs text-gray-400 space-y-1 mt-1">
                 <div>Local: http://localhost:3000</div>
                 <div>Network: http://[your-ip]:3000</div>
-                <div>Use "npm run dev:network" for network access</div>
+                <div>{t('ovr.network_access.tip', 'Use "npm run dev:network" for network access')}</div>
                 <div>WebSocket: ws://[your-ip]:3001</div>
               </div>
             </div>
@@ -380,40 +363,38 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
         </div>
       </div>
 
-
-
       {/* PSS Data Status */}
       <div className="p-6 theme-card shadow-lg">
-        <h4 className="text-md font-semibold text-gray-100 mb-4">PSS Data Status</h4>
+        <h4 className="text-md font-semibold text-gray-100 mb-4">{t('ovr.pss_status.title', 'PSS Data Status')}</h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <Label className="text-sm text-gray-300">Connection Status</Label>
+            <Label className="text-sm text-gray-300">{t('ovr.pss_status.connection', 'Connection Status')}</Label>
             <div className="flex items-center space-x-2 mt-1">
               <StatusDot color={isLoaded ? 'green' : 'red'} />
               <span className="text-sm text-gray-200">
-                {isLoaded ? 'Connected' : 'Disconnected'}
+                {isLoaded ? t('common.connected', 'Connected') : t('common.disconnected', 'Disconnected')}
               </span>
             </div>
           </div>
           
           <div>
-            <Label className="text-sm text-gray-300">Current Match</Label>
+            <Label className="text-sm text-gray-300">{t('ovr.pss_status.current_match', 'Current Match')}</Label>
             <div className="text-sm text-gray-200 mt-1">
-              {matchCategory || 'No match loaded'}
+              {matchCategory || t('ovr.pss_status.no_match', 'No match loaded')}
             </div>
           </div>
 
           {isLoaded && (
             <>
               <div>
-                <Label className="text-sm text-gray-300">Blue Player</Label>
+                <Label className="text-sm text-gray-300">{t('ovr.pss_status.blue', 'Blue Player')}</Label>
                 <div className="text-sm text-gray-200 mt-1">
                   {athlete1?.long} ({athlete1?.short})
                 </div>
               </div>
               
               <div>
-                <Label className="text-sm text-gray-300">Red Player</Label>
+                <Label className="text-sm text-gray-300">{t('ovr.pss_status.red', 'Red Player')}</Label>
                 <div className="text-sm text-gray-200 mt-1">
                   {athlete2?.long} ({athlete2?.short})
                 </div>
@@ -421,7 +402,7 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
 
               {totalScore && (
                 <div>
-                  <Label className="text-sm text-gray-300">Current Score</Label>
+                  <Label className="text-sm text-gray-300">{t('ovr.pss_status.score', 'Current Score')}</Label>
                   <div className="text-sm text-gray-200 mt-1">
                     {totalScore.athlete1} - {totalScore.athlete2}
                   </div>
@@ -431,9 +412,6 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
           )}
         </div>
       </div>
-
-
-
 
     </div>
   );

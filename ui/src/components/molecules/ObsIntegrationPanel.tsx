@@ -421,26 +421,26 @@ const ObsIntegrationPanel: React.FC = () => {
     <div className="space-y-4">
       {/* OBS Recording Automatisation Section */}
       <div className="p-6 theme-card shadow-lg">
-        <h3 className="text-lg font-semibold mb-4 text-gray-100">🎬 OBS Recording Automatisation</h3>
+        <h3 className="text-lg font-semibold mb-4 text-gray-100">{t('obs.integration.ui.title', '🎬 OBS Recording Automatisation')}</h3>
         
         {/* Connection Selection, Recording Path, and Recording Format in 3 columns */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           {/* Connection Selection */}
           <div>
             <Label htmlFor="connection-select" className="block text-sm font-medium text-gray-300 mb-2">
-              OBS WebSocket Connection
+              {t('obs.integration.ui.connection', 'OBS WebSocket Connection')}
             </Label>
             <select
               id="connection-select"
               value={recordingConfig.connectionName}
               onChange={(e) => setRecordingConfig(prev => ({ ...prev, connectionName: e.target.value }))}
               className="w-full px-3 py-2 bg-gray-800/50 border border-gray-600/30 rounded-md text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              aria-label="Select OBS WebSocket connection"
+              aria-label={t('obs.integration.ui.connection_aria', 'Select OBS WebSocket connection')}
             >
-              <option value="">Select a connection...</option>
+              <option value="">{t('obs.integration.ui.select_connection', 'Select a connection...')}</option>
               {connections.map((conn) => (
                 <option key={conn.name} value={conn.name}>
-                  {conn.name} {conn.status === 'connected' ? ' (Connected)' : ''}
+                  {conn.name} {conn.status === 'connected' ? ` (${t('common.connected', 'Connected')})` : ''}
                 </option>
               ))}
             </select>
@@ -449,7 +449,7 @@ const ObsIntegrationPanel: React.FC = () => {
           {/* Recording Path */}
           <div>
             <Label htmlFor="recording-path" className="block text-sm font-medium text-gray-300 mb-2">
-              Recording Path
+              {t('obs.integration.ui.recording_path', 'Recording Path')}
             </Label>
             <Input
               id="recording-path"
@@ -464,14 +464,14 @@ const ObsIntegrationPanel: React.FC = () => {
           {/* Recording Format */}
           <div>
             <Label htmlFor="recording-format" className="block text-sm font-medium text-gray-300 mb-2">
-              Recording Format
+              {t('obs.integration.ui.recording_format', 'Recording Format')}
             </Label>
             <select
               id="recording-format"
               value={recordingConfig.recordingFormat}
               onChange={(e) => setRecordingConfig(prev => ({ ...prev, recordingFormat: e.target.value }))}
               className="w-full px-3 py-2 bg-gray-800/50 border border-gray-600/30 rounded-md text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              aria-label="Select recording format"
+              aria-label={t('obs.integration.ui.recording_format_aria', 'Select recording format')}
             >
               <option value="mp4">MP4</option>
               <option value="mkv">MKV</option>
@@ -484,7 +484,7 @@ const ObsIntegrationPanel: React.FC = () => {
         {/* Filename Pattern */}
         <div className="mb-4">
           <Label htmlFor="filename-pattern" className="block text-sm font-medium text-gray-300 mb-2">
-            Filename Pattern
+            {t('obs.integration.ui.filename_pattern', 'Filename Pattern')}
           </Label>
           <Input
             id="filename-pattern"
@@ -495,14 +495,14 @@ const ObsIntegrationPanel: React.FC = () => {
             className="w-full"
           />
           <p className="text-xs text-gray-400 mt-1">
-            Available variables: {'{matchNumber}'}, {'{player1}'}, {'{player2}'}, {'{country1}'}, {'{country2}'}, {'{date}'}, {'{time}'}, {'{tournament}'}, {'{tournamentDay}'}
+            {t('obs.integration.ui.vars', 'Available variables')}: {'{matchNumber}'}, {'{player1}'}, {'{player2}'}, {'{country1}'}, {'{country2}'}, {'{date}'}, {'{time}'}, {'{tournament}'}, {'{tournamentDay}'}
           </p>
         </div>
 
         {/* Folder Pattern (directory layout) */}
         <div className="mb-4">
           <Label htmlFor="folder-pattern" className="block text-sm font-medium text-gray-300 mb-2">
-            Folder Pattern
+            {t('obs.integration.ui.folder_pattern', 'Folder Pattern')}
           </Label>
           <Input
             id="folder-pattern"
@@ -513,28 +513,27 @@ const ObsIntegrationPanel: React.FC = () => {
             className="w-full"
           />
           <p className="text-xs text-gray-400 mt-1">
-            The app currently sends the Recording Path directly. This pattern will be used by path generation to build the directory path.
+            {t('obs.integration.ui.folder_note', 'The app currently sends the Recording Path directly. This pattern will be used by path generation to build the directory path.')}
           </p>
         </div>
 
-        {/* Automatic Recording Settings */}
         {/* OBS Profile (read-only) */}
         <div className="border-t border-gray-600/30 pt-4 mb-4">
           <div className="flex items-center justify-between mb-2">
-            <h4 className="text-md font-semibold text-gray-100">OBS Profile (Read-only)</h4>
-            <Button onClick={refreshObsProfileValues} className="bg-gray-600 hover:bg-gray-700">Refresh</Button>
+            <h4 className="text-md font-semibold text-gray-100">{t('obs.integration.ui.profile.title', 'OBS Profile (Read-only)')}</h4>
+            <Button onClick={refreshObsProfileValues} className="bg-gray-600 hover:bg-gray-700">{t('common.refresh', 'Refresh')}</Button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <Label className="block text-sm font-medium text-gray-300 mb-1">Recording Directory (OBS)</Label>
-              <div className="px-3 py-2 bg-gray-800/50 border border-gray-600/30 rounded-md text-gray-200 break-all">{obsRecordDir || 'N/A'}</div>
+              <Label className="block text-sm font-medium text-gray-300 mb-1">{t('obs.integration.ui.profile.dir', 'Recording Directory (OBS)')}</Label>
+              <div className="px-3 py-2 bg-gray-800/50 border border-gray-600/30 rounded-md text-gray-200 break-all">{obsRecordDir || t('common.na', 'N/A')}</div>
             </div>
             <div>
-              <Label className="block text-sm font-medium text-gray-300 mb-1">Filename Formatting (OBS)</Label>
-              <div className="px-3 py-2 bg-gray-800/50 border border-gray-600/30 rounded-md text-gray-200 break-all">{obsFilenameFmt || 'N/A'}</div>
+              <Label className="block text-sm font-medium text-gray-300 mb-1">{t('obs.integration.ui.profile.fmt', 'Filename Formatting (OBS)')}</Label>
+              <div className="px-3 py-2 bg-gray-800/50 border border-gray-600/30 rounded-md text-gray-200 break-all">{obsFilenameFmt || t('common.na', 'N/A')}</div>
               {filenameMismatch && (
                 <div className="mt-1 text-xs text-amber-400">
-                  OBS formatting differs from app template. Send config to OBS to sync or adjust manually.
+                  {t('obs.integration.ui.profile.mismatch', 'OBS formatting differs from app template. Send config to OBS to sync or adjust manually.')}
                 </div>
               )}
             </div>
@@ -542,48 +541,48 @@ const ObsIntegrationPanel: React.FC = () => {
         </div>
         <div className="border-t border-gray-600/30 pt-4 mb-4">
           <div className="flex items-center justify-between mb-3">
-            <h4 className="text-md font-semibold text-gray-100">Automatic Recording Settings</h4>
+            <h4 className="text-md font-semibold text-gray-100">{t('obs.integration.ui.auto.title', 'Automatic Recording Settings')}</h4>
           </div>
           
           {/* Toggles in 3 columns */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
             <div className="space-y-2">
               <Toggle
-                label="Enable Automatic Recording"
+                label={t('obs.integration.ui.auto.enable', 'Enable Automatic Recording')}
                 checked={autoRecordingConfig.enabled}
                 onChange={(e) => setAutoRecordingConfig({ ...autoRecordingConfig, enabled: e.target.checked })}
               />
               <Toggle
-                label="Auto Stop on Match End"
+                label={t('obs.integration.ui.auto.stop_on_end', 'Auto Stop on Match End')}
                 checked={autoRecordingConfig.autoStopOnMatchEnd}
                 onChange={(e) => setAutoRecordingConfig({ ...autoRecordingConfig, autoStopOnMatchEnd: e.target.checked })}
               />
               <Toggle
-                label="Auto Stop on Winner"
+                label={t('obs.integration.ui.auto.stop_on_winner', 'Auto Stop on Winner')}
                 checked={autoRecordingConfig.autoStopOnWinner}
                 onChange={(e) => setAutoRecordingConfig({ ...autoRecordingConfig, autoStopOnWinner: e.target.checked })}
               />
             </div>
             <div className="space-y-2">
               <Toggle
-                label="Auto-start recording on match begin"
+                label={t('obs.integration.ui.auto.start_rec', 'Auto-start recording on match begin')}
                 checked={recordingConfig.autoStartRecording}
                 onChange={(e) => setRecordingConfig(prev => ({ ...prev, autoStartRecording: e.target.checked }))}
               />
               <Toggle
-                label="Auto-start replay buffer on match begin"
+                label={t('obs.integration.ui.auto.start_replay', 'Auto-start replay buffer on match begin')}
                 checked={recordingConfig.autoStartReplayBuffer}
                 onChange={(e) => setRecordingConfig(prev => ({ ...prev, autoStartReplayBuffer: e.target.checked }))}
               />
               <Toggle
-                label="Include Replay Buffer"
+                label={t('obs.integration.ui.auto.include_replay', 'Include Replay Buffer')}
                 checked={autoRecordingConfig.includeReplayBuffer}
                 onChange={(e) => setAutoRecordingConfig({ ...autoRecordingConfig, includeReplayBuffer: e.target.checked })}
               />
             </div>
             <div className="space-y-3">
               <div className="flex items-center gap-3">
-                <label className="text-sm font-medium text-gray-300">Stop Delay:</label>
+                <label className="text-sm font-medium text-gray-300">{t('obs.integration.ui.auto.stop_delay', 'Stop Delay')}:</label>
                 <Input
                   type="number"
                   value={autoRecordingConfig.stopDelaySeconds}
@@ -591,10 +590,10 @@ const ObsIntegrationPanel: React.FC = () => {
                   placeholder="30"
                   className="w-20"
                 />
-                <span className="text-sm text-gray-400">seconds</span>
+                <span className="text-sm text-gray-400">{t('common.seconds', 'seconds')}</span>
               </div>
               <div className="flex items-center gap-3">
-                <label className="text-sm font-medium text-gray-300">Replay Buffer Duration:</label>
+                <label className="text-sm font-medium text-gray-300">{t('obs.integration.ui.auto.replay_duration', 'Replay Buffer Duration')}:</label>
                 <Input
                   type="number"
                   value={autoRecordingConfig.replayBufferDuration}
@@ -602,15 +601,12 @@ const ObsIntegrationPanel: React.FC = () => {
                   placeholder="30"
                   className="w-20"
                 />
-                <span className="text-sm text-gray-400">seconds</span>
+                <span className="text-sm text-gray-400">{t('common.seconds', 'seconds')}</span>
               </div>
             </div>
           </div>
-
-          {/* Stop Delay and Replay Buffer Duration moved up into 3rd column grid */}
+          
         </div>
-
-        {/* Manual Recording Controls removed */}
 
         {/* Consolidated Action Buttons */}
         <div className="flex flex-wrap gap-3">
@@ -619,35 +615,35 @@ const ObsIntegrationPanel: React.FC = () => {
             disabled={isSaving}
             className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed"
           >
-            {isSaving ? 'Saving...' : 'Save Configuration'}
+            {isSaving ? t('common.saving', 'Saving...') : t('obs.integration.ui.actions.save', 'Save Configuration')}
           </Button>
           <Button
             onClick={loadFullConfig}
             disabled={isLoadingConfig}
             className="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-600 disabled:cursor-not-allowed"
           >
-            {isLoadingConfig ? 'Loading...' : 'Load Configuration'}
+            {isLoadingConfig ? t('common.loading', 'Loading...') : t('obs.integration.ui.actions.load', 'Load Configuration')}
           </Button>
           <Button
             onClick={startObsRecording}
             disabled={!recordingConfig.connectionName}
             className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed"
           >
-            Start Recording
+            {t('obs.integration.ui.actions.start', 'Start Recording')}
           </Button>
           <Button
             onClick={stopObsRecording}
             disabled={!recordingConfig.connectionName}
             className="bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed"
           >
-            Stop Recording
+            {t('obs.integration.ui.actions.stop', 'Stop Recording')}
           </Button>
           <Button
             onClick={sendConfigToObs}
             disabled={!recordingConfig.connectionName || isSaving}
             className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed"
           >
-            {isSaving ? 'Sending...' : 'Send Config to OBS'}
+            {isSaving ? t('obs.integration.ui.actions.sending', 'Sending...') : t('obs.integration.ui.actions.send', 'Send Config to OBS')}
           </Button>
         </div>
 
@@ -661,13 +657,13 @@ const ObsIntegrationPanel: React.FC = () => {
 
       {/* Path Generation Test */}
       <div className="p-6 theme-card shadow-lg">
-        <h3 className="text-lg font-semibold mb-4 text-gray-100">Path Generation Test</h3>
+        <h3 className="text-lg font-semibold mb-4 text-gray-100">{t('obs.integration.ui.path_test.title', 'Path Generation Test')}</h3>
         
         {/* Test Data Input */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           <div>
             <Label htmlFor="test-match-id" className="block text-sm font-medium text-gray-300 mb-2">
-              Match ID
+              {t('obs.integration.ui.path_test.match_id', 'Match ID')}
             </Label>
             <Input
               id="test-match-id"
@@ -680,7 +676,7 @@ const ObsIntegrationPanel: React.FC = () => {
           </div>
           <div>
             <Label htmlFor="test-match-number" className="block text-sm font-medium text-gray-300 mb-2">
-              Match Number
+              {t('obs.integration.ui.path_test.match_number', 'Match Number')}
             </Label>
             <Input
               id="test-match-number"
@@ -696,27 +692,27 @@ const ObsIntegrationPanel: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           <div>
             <Label htmlFor="test-tournament-name" className="block text-sm font-medium text-gray-300 mb-2">
-              Tournament Name
+              {t('obs.integration.ui.path_test.tournament_name', 'Tournament Name')}
             </Label>
             <Input
               id="test-tournament-name"
               type="text"
               value={pathTestData.tournamentName}
               onChange={(e) => setPathTestData(prev => ({ ...prev, tournamentName: e.target.value }))}
-              placeholder="Test Tournament"
+              placeholder={t('obs.integration.ui.path_test.tournament_name_ph', 'Test Tournament')}
               className="w-full"
             />
           </div>
           <div>
             <Label htmlFor="test-tournament-day" className="block text-sm font-medium text-gray-300 mb-2">
-              Tournament Day
+              {t('obs.integration.ui.path_test.tournament_day', 'Tournament Day')}
             </Label>
             <Input
               id="test-tournament-day"
               type="text"
               value={pathTestData.tournamentDay}
               onChange={(e) => setPathTestData(prev => ({ ...prev, tournamentDay: e.target.value }))}
-              placeholder="Day 1"
+              placeholder={t('obs.integration.ui.path_test.tournament_day_ph', 'Day 1')}
               className="w-full"
             />
           </div>
@@ -725,7 +721,7 @@ const ObsIntegrationPanel: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           <div>
             <Label htmlFor="test-player1-name" className="block text-sm font-medium text-gray-300 mb-2">
-              Player 1 Name
+              {t('obs.integration.ui.path_test.player1_name', 'Player 1 Name')}
             </Label>
             <Input
               id="test-player1-name"
@@ -738,7 +734,7 @@ const ObsIntegrationPanel: React.FC = () => {
           </div>
           <div>
             <Label htmlFor="test-player1-flag" className="block text-sm font-medium text-gray-300 mb-2">
-              Player 1 Flag
+              {t('obs.integration.ui.path_test.player1_flag', 'Player 1 Flag')}
             </Label>
             <Input
               id="test-player1-flag"
@@ -754,7 +750,7 @@ const ObsIntegrationPanel: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           <div>
             <Label htmlFor="test-player2-name" className="block text-sm font-medium text-gray-300 mb-2">
-              Player 2 Name
+              {t('obs.integration.ui.path_test.player2_name', 'Player 2 Name')}
             </Label>
             <Input
               id="test-player2-name"
@@ -767,7 +763,7 @@ const ObsIntegrationPanel: React.FC = () => {
           </div>
           <div>
             <Label htmlFor="test-player2-flag" className="block text-sm font-medium text-gray-300 mb-2">
-              Player 2 Flag
+              {t('obs.integration.ui.path_test.player2_flag', 'Player 2 Flag')}
             </Label>
             <Input
               id="test-player2-flag"
@@ -787,20 +783,20 @@ const ObsIntegrationPanel: React.FC = () => {
             disabled={isTestingPath}
             className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed"
           >
-            {isTestingPath ? 'Creating...' : 'Create Test Folders'}
+            {isTestingPath ? t('obs.integration.ui.test.creating', 'Creating...') : t('obs.integration.ui.test.create_folders', 'Create Test Folders')}
           </Button>
           <Button
             onClick={generateRecordingPathFromDb}
             disabled={isTestingPath}
             className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed"
           >
-            {isTestingPath ? 'Generating...' : 'Generate from Database'}
+            {isTestingPath ? t('obs.integration.ui.test.generating', 'Generating...') : t('obs.integration.ui.test.generate_db', 'Generate from Database')}
           </Button>
           <Button
             onClick={getWindowsVideosFolder}
             className="bg-blue-600 hover:bg-blue-700"
           >
-            Detect Videos Folder
+            {t('obs.integration.ui.test.detect_videos', 'Detect Videos Folder')}
           </Button>
         </div>
 
@@ -814,56 +810,56 @@ const ObsIntegrationPanel: React.FC = () => {
 
       {/* Current Recording Session Section */}
       <div className="bg-gray-800 rounded-lg p-4 mb-4">
-        <h3 className="text-lg font-semibold text-white mb-4">🎬 Current Recording Session</h3>
+        <h3 className="text-lg font-semibold text-white mb-4">{t('obs.integration.ui.session.title', '🎬 Current Recording Session')}</h3>
         
         {currentSession ? (
           <div className="bg-gray-900 rounded p-3 mb-4">
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <span className="text-gray-400">Match ID:</span>
+                <span className="text-gray-400">{t('obs.integration.ui.session.match_id', 'Match ID')}:</span>
                 <span className="text-white ml-2">{currentSession.match_id}</span>
               </div>
               <div>
-                <span className="text-gray-400">State:</span>
+                <span className="text-gray-400">{t('obs.integration.ui.session.state', 'State')}:</span>
                 <span className="text-white ml-2">{currentSession.state}</span>
               </div>
               <div>
-                <span className="text-gray-400">Tournament:</span>
-                <span className="text-white ml-2">{currentSession.tournament_name || 'None'}</span>
+                <span className="text-gray-400">{t('obs.integration.ui.session.tournament', 'Tournament')}:</span>
+                <span className="text-white ml-2">{currentSession.tournament_name || t('common.none', 'None')}</span>
               </div>
               <div>
-                <span className="text-gray-400">Tournament Day:</span>
-                <span className="text-white ml-2">{currentSession.tournament_day || 'None'}</span>
+                <span className="text-gray-400">{t('obs.integration.ui.session.day', 'Tournament Day')}:</span>
+                <span className="text-white ml-2">{currentSession.tournament_day || t('common.none', 'None')}</span>
               </div>
               <div>
-                <span className="text-gray-400">Match Number:</span>
-                <span className="text-white ml-2">{currentSession.match_number || 'None'}</span>
+                <span className="text-gray-400">{t('obs.integration.ui.session.match_number', 'Match Number')}:</span>
+                <span className="text-white ml-2">{currentSession.match_number || t('common.none', 'None')}</span>
               </div>
               <div>
-                <span className="text-gray-400">OBS Connection:</span>
-                <span className="text-white ml-2">{currentSession.obs_connection_name || 'None'}</span>
+                <span className="text-gray-400">{t('obs.integration.ui.session.obs_conn', 'OBS Connection')}:</span>
+                <span className="text-white ml-2">{currentSession.obs_connection_name || t('common.none', 'None')}</span>
               </div>
               <div>
-                <span className="text-gray-400">Player 1:</span>
-                <span className="text-white ml-2">{currentSession.player1_name || 'None'} ({currentSession.player1_flag || 'None'})</span>
+                <span className="text-gray-400">{t('obs.integration.ui.session.player1', 'Player 1')}:</span>
+                <span className="text-white ml-2">{currentSession.player1_name || t('common.none', 'None')} ({currentSession.player1_flag || t('common.none', 'None')})</span>
               </div>
               <div>
-                <span className="text-gray-400">Player 2:</span>
-                <span className="text-white ml-2">{currentSession.player2_name || 'None'} ({currentSession.player2_flag || 'None'})</span>
+                <span className="text-gray-400">{t('obs.integration.ui.session.player2', 'Player 2')}:</span>
+                <span className="text-white ml-2">{currentSession.player2_name || t('common.none', 'None')} ({currentSession.player2_flag || t('common.none', 'None')})</span>
               </div>
               <div className="col-span-2">
-                <span className="text-gray-400">Recording Path:</span>
-                <span className="text-white ml-2">{currentSession.recording_path || 'None'}</span>
+                <span className="text-gray-400">{t('obs.integration.ui.session.path', 'Recording Path')}:</span>
+                <span className="text-white ml-2">{currentSession.recording_path || t('common.none', 'None')}</span>
               </div>
               <div className="col-span-2">
-                <span className="text-gray-400">Filename:</span>
-                <span className="text-white ml-2">{currentSession.recording_filename || 'None'}</span>
+                <span className="text-gray-400">{t('obs.integration.ui.session.filename', 'Filename')}:</span>
+                <span className="text-white ml-2">{currentSession.recording_filename || t('common.none', 'None')}</span>
               </div>
             </div>
           </div>
         ) : (
           <div className="bg-gray-900 rounded p-3 mb-4 text-gray-400">
-            No active recording session
+            {t('obs.integration.ui.session.none', 'No active recording session')}
           </div>
         )}
 
@@ -872,13 +868,13 @@ const ObsIntegrationPanel: React.FC = () => {
             onClick={loadCurrentSession}
             className="bg-blue-600 hover:bg-blue-700"
           >
-            Refresh Session
+            {t('obs.integration.ui.session.refresh', 'Refresh Session')}
           </Button>
           <Button
             onClick={clearSession}
             className="bg-red-600 hover:bg-red-700"
           >
-            Clear Session
+            {t('obs.integration.ui.session.clear', 'Clear Session')}
           </Button>
         </div>
       </div>

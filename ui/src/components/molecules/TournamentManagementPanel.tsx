@@ -6,6 +6,7 @@ import Input from '../atoms/Input';
 import Label from '../atoms/Label';
 import StatusDot from '../atoms/StatusDot';
 import Icon from '../atoms/Icon';
+import { useI18n } from '../../i18n/index';
 
 interface Tournament {
   id: number;
@@ -54,14 +55,15 @@ interface LocationVerification {
 }
 
 const TournamentManagementPanel: React.FC = () => {
-  const [tournaments, setTournaments] = useState<Tournament[]>([]);
-  const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null);
-  const [tournamentDays, setTournamentDays] = useState<TournamentDay[]>([]);
-  const [tournamentOverview, setTournamentOverview] = useState<TournamentOverview | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isLoadingOverview, setIsLoadingOverview] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'active' | 'ended'>('all');
+	const { t } = useI18n();
+	const [tournaments, setTournaments] = useState<Tournament[]>([]);
+	const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null);
+	const [tournamentDays, setTournamentDays] = useState<TournamentDay[]>([]);
+	const [tournamentOverview, setTournamentOverview] = useState<TournamentOverview | null>(null);
+	const [isLoading, setIsLoading] = useState(false);
+	const [isLoadingOverview, setIsLoadingOverview] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+	const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'active' | 'ended'>('all');
   
   // Form states
   const [showAddForm, setShowAddForm] = useState(false);
@@ -552,13 +554,13 @@ const TournamentManagementPanel: React.FC = () => {
       {/* Tournament List */}
       <div className="theme-card p-6">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold text-gray-100">Tournaments</h3>
+          <h3 className="text-lg font-semibold text-gray-100">{t('tournament.title', 'Tournaments')}</h3>
           <Button
             onClick={() => setShowAddForm(true)}
             disabled={isLoading}
             className="bg-blue-600 hover:bg-blue-700 text-white"
           >
-            Add Tournament
+            {t('tournament.add', 'Add Tournament')}
           </Button>
         </div>
 
@@ -571,15 +573,15 @@ const TournamentManagementPanel: React.FC = () => {
               className={`${statusFilter === s ? 'bg-blue-600' : 'bg-gray-600 hover:bg-gray-700'}`}
               onClick={() => setStatusFilter(s)}
             >
-              {s[0].toUpperCase()+s.slice(1)}
+              {s === 'all' ? t('tournament.filters.all', 'All') : s === 'pending' ? t('tournament.filters.pending', 'Pending') : s === 'active' ? t('tournament.filters.active', 'Active') : t('tournament.filters.ended', 'Ended')}
             </Button>
           ))}
         </div>
 
         {isLoading ? (
-          <div className="text-center py-8 text-gray-400">Loading tournaments...</div>
+          <div className="text-center py-8 text-gray-400">{t('tournament.loading', 'Loading tournaments...')}</div>
         ) : tournaments.length === 0 ? (
-          <div className="text-center py-8 text-gray-400">No tournaments found. Create your first tournament to get started.</div>
+          <div className="text-center py-8 text-gray-400">{t('tournament.none', 'No tournaments found. Create your first tournament to get started.')}</div>
         ) : (
           <div className="space-y-3">
             {tournaments
@@ -606,7 +608,7 @@ const TournamentManagementPanel: React.FC = () => {
                     <div>
                       <h4 className="font-medium text-gray-100">{tournament.name}</h4>
                       <p className="text-sm text-gray-400">
-                        {tournament.city}, {tournament.country} • {tournament.duration_days} day{tournament.duration_days !== 1 ? 's' : ''}
+                        {tournament.city}, {tournament.country} • {tournament.duration_days} {tournament.duration_days !== 1 ? t('days') : t('day')}
                       </p>
                     </div>
                   </div>
@@ -623,7 +625,7 @@ const TournamentManagementPanel: React.FC = () => {
                         className="bg-purple-600 hover:bg-purple-700 text-white"
                         disabled={isLoadingOverview}
                       >
-                        {isLoadingOverview ? 'Loading...' : 'Overview'}
+                        {isLoadingOverview ? t('common.loading', 'Loading...') : t('tournament.overview', 'Overview')}
                       </Button>
                       <Button
                         onClick={(e) => {
@@ -633,7 +635,7 @@ const TournamentManagementPanel: React.FC = () => {
                         size="sm"
                         className="bg-gray-600 hover:bg-gray-700 text-white"
                       >
-                        Edit
+                        {t('common.edit', 'Edit')}
                       </Button>
                       <Button
                         onClick={(e) => {
@@ -643,7 +645,7 @@ const TournamentManagementPanel: React.FC = () => {
                         size="sm"
                         className="bg-red-600 hover:bg-red-700 text-white"
                       >
-                        Delete
+                        {t('common.delete', 'Delete')}
                       </Button>
                     </div>
                   </div>
@@ -658,7 +660,7 @@ const TournamentManagementPanel: React.FC = () => {
       {selectedTournament && (
         <div className="theme-card p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-100">Tournament Days - {selectedTournament.name}</h3>
+            <h3 className="text-lg font-semibold text-gray-100">{t('tournament.days.title', 'Tournament Days')} - {selectedTournament.name}</h3>
             <div className="flex gap-2">
               <Button
                 size="sm"
@@ -672,7 +674,7 @@ const TournamentManagementPanel: React.FC = () => {
                   }
                 }}
               >
-                Start Tournament
+                {t('tournament.start', 'Start Tournament')}
               </Button>
               <Button
                 size="sm"
@@ -688,13 +690,13 @@ const TournamentManagementPanel: React.FC = () => {
                   }
                 }}
               >
-                End Tournament
+                {t('tournament.end', 'End Tournament')}
               </Button>
             </div>
           </div>
           
           {tournamentDays.length === 0 ? (
-            <div className="text-center py-8 text-gray-400">No tournament days found.</div>
+            <div className="text-center py-8 text-gray-400">{t('tournament.days.none', 'No tournament days found.')}</div>
           ) : (
             <div className="space-y-3">
               {tournamentDays.map((day) => (
@@ -707,8 +709,8 @@ const TournamentManagementPanel: React.FC = () => {
                       <h4 className="font-medium text-gray-100">Day {day.day_number}</h4>
                       <p className="text-sm text-gray-400">
                         {formatDate(day.date)}
-                        {day.start_time && ` • Started: ${formatDateTime(day.start_time)}`}
-                        {day.end_time && ` • Ended: ${formatDateTime(day.end_time)}`}
+                        {day.start_time && ` • ${t('started_at')}: ${formatDateTime(day.start_time)}`}
+                        {day.end_time && ` • ${t('ended_at')}: ${formatDateTime(day.end_time)}`}
                       </p>
                     </div>
                     <div className="flex items-center space-x-2">
@@ -723,7 +725,7 @@ const TournamentManagementPanel: React.FC = () => {
                           size="sm"
                           className="bg-green-600 hover:bg-green-700 text-white"
                         >
-                          Start Day
+                          {t('start_day_button')}
                         </Button>
                       )}
                       {day.status === 'active' && (
@@ -735,7 +737,7 @@ const TournamentManagementPanel: React.FC = () => {
                           size="sm"
                           className="bg-blue-600 hover:bg-blue-700 text-white"
                         >
-                          End Day
+                          {t('end_day_button')}
                         </Button>
                       )}
                     </div>
@@ -752,12 +754,12 @@ const TournamentManagementPanel: React.FC = () => {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="theme-card shadow-xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-semibold text-gray-100">Tournament Overview</h3>
+              <h3 className="text-xl font-semibold text-gray-100">{t('tournament.overview.title', 'Tournament Overview')}</h3>
               <Button
                 onClick={() => setShowOverview(false)}
                 className="bg-gray-600 hover:bg-gray-700 text-white"
               >
-                Close
+                {t('common.close', 'Close')}
               </Button>
             </div>
             
@@ -767,7 +769,7 @@ const TournamentManagementPanel: React.FC = () => {
                 {tournamentOverview.tournament.logo_path && (
                   <img
                     src={tournamentOverview.tournament.logo_path}
-                    alt="Tournament logo"
+                    alt={t('tournament.logo_alt', 'Tournament logo')}
                     className="w-16 h-16 rounded-lg"
                   />
                 )}
@@ -787,40 +789,40 @@ const TournamentManagementPanel: React.FC = () => {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="bg-gray-700/30 rounded-lg p-4 text-center">
                   <div className="text-2xl font-bold text-blue-400">{tournamentOverview.total_matches}</div>
-                  <div className="text-sm text-gray-400">Total Matches</div>
+                  <div className="text-sm text-gray-400">{t('tournament.stats.total_matches', 'Total Matches')}</div>
                 </div>
                 <div className="bg-gray-700/30 rounded-lg p-4 text-center">
                   <div className="text-2xl font-bold text-green-400">{tournamentOverview.total_events}</div>
-                  <div className="text-sm text-gray-400">Total Events</div>
+                  <div className="text-sm text-gray-400">{t('tournament.stats.total_events', 'Total Events')}</div>
                 </div>
                 <div className="bg-gray-700/30 rounded-lg p-4 text-center">
                   <div className="text-2xl font-bold text-yellow-400">{tournamentOverview.total_scores}</div>
-                  <div className="text-sm text-gray-400">Total Scores</div>
+                  <div className="text-sm text-gray-400">{t('tournament.stats.total_scores', 'Total Scores')}</div>
                 </div>
                 <div className="bg-gray-700/30 rounded-lg p-4 text-center">
                   <div className="text-2xl font-bold text-red-400">{tournamentOverview.total_warnings}</div>
-                  <div className="text-sm text-gray-400">Total Warnings</div>
+                  <div className="text-sm text-gray-400">{t('tournament.stats.total_warnings', 'Total Warnings')}</div>
                 </div>
               </div>
             </div>
             
             {/* Tournament Days Overview */}
             <div className="theme-surface-2 rounded-lg p-6 mb-6">
-              <h5 className="text-lg font-semibold text-gray-100 mb-4">Tournament Days Progress</h5>
+              <h5 className="text-lg font-semibold text-gray-100 mb-4">{t('tournament.days.progress', 'Tournament Days Progress')}</h5>
               <div className="grid grid-cols-3 gap-4 mb-4">
                 <div className="text-center">
                   <div className="text-2xl font-bold text-yellow-400">{tournamentOverview.pending_days}</div>
-                  <div className="text-sm text-gray-400">Pending Days</div>
+                  <div className="text-sm text-gray-400">{t('tournament.days.pending', 'Pending Days')}</div>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-green-400">
                     {tournamentOverview.active_day ? 1 : 0}
                   </div>
-                  <div className="text-sm text-gray-400">Active Day</div>
+                  <div className="text-sm text-gray-400">{t('tournament.days.active', 'Active Day')}</div>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-red-400">{tournamentOverview.completed_days}</div>
-                  <div className="text-sm text-gray-400">Completed Days</div>
+                  <div className="text-sm text-gray-400">{t('tournament.days.completed', 'Completed Days')}</div>
                 </div>
               </div>
               
@@ -835,8 +837,8 @@ const TournamentManagementPanel: React.FC = () => {
                         <h6 className="font-medium text-gray-100">Day {day.day_number}</h6>
                         <p className="text-sm text-gray-400">
                           {new Date(day.date).toLocaleDateString()}
-                          {day.start_time && ` • Started: ${new Date(day.start_time).toLocaleTimeString()}`}
-                          {day.end_time && ` • Ended: ${new Date(day.end_time).toLocaleTimeString()}`}
+                          {day.start_time && ` • ${t('started_at')}: ${new Date(day.start_time).toLocaleTimeString()}`}
+                          {day.end_time && ` • ${t('ended_at')}: ${new Date(day.end_time).toLocaleTimeString()}`}
                         </p>
                       </div>
                       <div className="flex items-center space-x-2">
@@ -851,12 +853,12 @@ const TournamentManagementPanel: React.FC = () => {
             
             {/* Tournament Timeline */}
             <div className="theme-surface-2 rounded-lg p-6">
-              <h5 className="text-lg font-semibold text-gray-100 mb-4">Tournament Timeline</h5>
+              <h5 className="text-lg font-semibold text-gray-100 mb-4">{t('tournament.timeline', 'Tournament Timeline')}</h5>
               <div className="space-y-3">
                 <div className="flex items-center space-x-3">
                   <div className="w-3 h-3 bg-green-400 rounded-full"></div>
                   <div>
-                    <div className="text-gray-100">Created</div>
+                    <div className="text-gray-100">{t('tournament.created', 'Created')}</div>
                     <div className="text-sm text-gray-400">
                       {formatDateTime(tournamentOverview.tournament.created_at)}
                     </div>
@@ -866,7 +868,7 @@ const TournamentManagementPanel: React.FC = () => {
                   <div className="flex items-center space-x-3">
                     <div className="w-3 h-3 bg-blue-400 rounded-full"></div>
                     <div>
-                      <div className="text-gray-100">Started</div>
+                      <div className="text-gray-100">{t('tournament.started', 'Started')}</div>
                       <div className="text-sm text-gray-400">
                         {formatDateTime(tournamentOverview.tournament.start_date)}
                       </div>
@@ -877,7 +879,7 @@ const TournamentManagementPanel: React.FC = () => {
                   <div className="flex items-center space-x-3">
                     <div className="w-3 h-3 bg-red-400 rounded-full"></div>
                     <div>
-                      <div className="text-gray-100">Ended</div>
+                      <div className="text-gray-100">{t('tournament.ended', 'Ended')}</div>
                       <div className="text-sm text-gray-400">
                         {formatDateTime(tournamentOverview.tournament.end_date)}
                       </div>
@@ -894,21 +896,21 @@ const TournamentManagementPanel: React.FC = () => {
       {showAddForm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="theme-card shadow-xl p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold text-gray-100 mb-4">Add New Tournament</h3>
+            <h3 className="text-lg font-semibold text-gray-100 mb-4">{t('tournament.add_new', 'Add New Tournament')}</h3>
             
             <div className="space-y-4">
               <div>
-                <Label htmlFor="name">Tournament Name</Label>
+                <Label htmlFor="name">{t('tournament.form.name', 'Tournament Name')}</Label>
                 <Input
                   id="name"
                   value={formData.name}
                   onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="Enter tournament name"
+                  placeholder={t('tournament.form.name_ph', 'Enter tournament name')}
                 />
               </div>
               
               <div>
-                <Label htmlFor="duration">Duration (days)</Label>
+                <Label htmlFor="duration">{t('tournament.form.duration', 'Duration (days)')}</Label>
                 <Input
                   id="duration"
                   type="number"
@@ -920,21 +922,21 @@ const TournamentManagementPanel: React.FC = () => {
               
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="city">City</Label>
+                  <Label htmlFor="city">{t('tournament.form.city', 'City')}</Label>
                   <Input
                     id="city"
                     value={formData.city}
                     onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))}
-                    placeholder="Enter city"
+                    placeholder={t('tournament.form.city_ph', 'Enter city')}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="country">Country</Label>
+                  <Label htmlFor="country">{t('tournament.form.country', 'Country')}</Label>
                   <Input
                     id="country"
                     value={formData.country}
                     onChange={(e) => setFormData(prev => ({ ...prev, country: e.target.value }))}
-                    placeholder="Enter country"
+                    placeholder={t('tournament.form.country_ph', 'Enter country')}
                   />
                 </div>
               </div>
@@ -946,12 +948,12 @@ const TournamentManagementPanel: React.FC = () => {
                   size="sm"
                   className="bg-blue-600 hover:bg-blue-700 text-white"
                 >
-                  {isVerifyingLocation ? 'Verifying...' : 'Verify Location'}
+                  {isVerifyingLocation ? t('tournament.location.verifying', 'Verifying...') : t('tournament.location.verify', 'Verify Location')}
                 </Button>
                 {locationVerification.verified && (
                   <div className="flex items-center space-x-1 text-green-400">
                     <Icon name="✅" size="text-sm" />
-                    <span className="text-sm">Verified</span>
+                    <span className="text-sm">{t('tournament.location.verified', 'Verified')}</span>
                   </div>
                 )}
                 {locationVerification.error && (
@@ -963,7 +965,7 @@ const TournamentManagementPanel: React.FC = () => {
               </div>
               
               <div>
-                <Label htmlFor="start_date">Start Date (Optional)</Label>
+                <Label htmlFor="start_date">{t('tournament.form.start_date', 'Start Date (Optional)')}</Label>
                 <Input
                   id="start_date"
                   type="datetime-local"
@@ -973,7 +975,7 @@ const TournamentManagementPanel: React.FC = () => {
               </div>
               
               <div>
-                <Label htmlFor="logo">Tournament Logo (Optional)</Label>
+                <Label htmlFor="logo">{t('tournament.form.logo', 'Tournament Logo (Optional)')}</Label>
                 <Input
                   id="logo"
                   type="file"
@@ -988,14 +990,14 @@ const TournamentManagementPanel: React.FC = () => {
                 onClick={() => setShowAddForm(false)}
                 className="bg-gray-600 hover:bg-gray-700 text-white"
               >
-                Cancel
+                {t('common.cancel', 'Cancel')}
               </Button>
               <Button
                 onClick={createTournament}
                 disabled={isLoading || !formData.name || !formData.city || !formData.country}
                 className="bg-blue-600 hover:bg-blue-700 text-white"
               >
-                {isLoading ? 'Creating...' : 'Create Tournament'}
+                {isLoading ? t('common.creating', 'Creating...') : t('tournament.create', 'Create Tournament')}
               </Button>
             </div>
           </div>
@@ -1006,21 +1008,21 @@ const TournamentManagementPanel: React.FC = () => {
       {showEditForm && selectedTournament && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="theme-card shadow-xl p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold text-gray-100 mb-4">Edit Tournament</h3>
+            <h3 className="text-lg font-semibold text-gray-100 mb-4">{t('tournament.edit', 'Edit Tournament')}</h3>
             
             <div className="space-y-4">
               <div>
-                <Label htmlFor="edit-name">Tournament Name</Label>
+                <Label htmlFor="edit-name">{t('tournament.form.name', 'Tournament Name')}</Label>
                 <Input
                   id="edit-name"
                   value={formData.name}
                   onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="Enter tournament name"
+                  placeholder={t('tournament.form.name_ph', 'Enter tournament name')}
                 />
               </div>
               
               <div>
-                <Label htmlFor="edit-duration">Duration (days)</Label>
+                <Label htmlFor="edit-duration">{t('tournament.form.duration', 'Duration (days)')}</Label>
                 <Input
                   id="edit-duration"
                   type="number"
@@ -1032,21 +1034,21 @@ const TournamentManagementPanel: React.FC = () => {
               
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="edit-city">City</Label>
+                  <Label htmlFor="edit-city">{t('tournament.form.city', 'City')}</Label>
                   <Input
                     id="edit-city"
                     value={formData.city}
                     onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))}
-                    placeholder="Enter city"
+                    placeholder={t('tournament.form.city_ph', 'Enter city')}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="edit-country">Country</Label>
+                  <Label htmlFor="edit-country">{t('tournament.form.country', 'Country')}</Label>
                   <Input
                     id="edit-country"
                     value={formData.country}
                     onChange={(e) => setFormData(prev => ({ ...prev, country: e.target.value }))}
-                    placeholder="Enter country"
+                    placeholder={t('tournament.form.country_ph', 'Enter country')}
                   />
                 </div>
               </div>
@@ -1058,12 +1060,12 @@ const TournamentManagementPanel: React.FC = () => {
                   size="sm"
                   className="bg-blue-600 hover:bg-blue-700 text-white"
                 >
-                  {isVerifyingLocation ? 'Verifying...' : 'Verify Location'}
+                  {isVerifyingLocation ? t('tournament.location.verifying', 'Verifying...') : t('tournament.location.verify', 'Verify Location')}
                 </Button>
                 {locationVerification.verified && (
                   <div className="flex items-center space-x-1 text-green-400">
                     <Icon name="✅" size="text-sm" />
-                    <span className="text-sm">Verified</span>
+                    <span className="text-sm">{t('tournament.location.verified', 'Verified')}</span>
                   </div>
                 )}
                 {locationVerification.error && (
@@ -1075,7 +1077,7 @@ const TournamentManagementPanel: React.FC = () => {
               </div>
               
               <div>
-                <Label htmlFor="edit-start_date">Start Date (Optional)</Label>
+                <Label htmlFor="edit-start_date">{t('tournament.form.start_date', 'Start Date (Optional)')}</Label>
                 <Input
                   id="edit-start_date"
                   type="datetime-local"
@@ -1085,7 +1087,7 @@ const TournamentManagementPanel: React.FC = () => {
               </div>
               
               <div>
-                <Label htmlFor="edit-logo">Tournament Logo (Optional)</Label>
+                <Label htmlFor="edit-logo">{t('tournament.form.logo', 'Tournament Logo (Optional)')}</Label>
                 <Input
                   id="edit-logo"
                   type="file"
@@ -1099,7 +1101,7 @@ const TournamentManagementPanel: React.FC = () => {
                     size="sm"
                     className="mt-2 bg-green-600 hover:bg-green-700 text-white"
                   >
-                    {isUploadingLogo ? 'Uploading...' : 'Upload Logo'}
+                    {isUploadingLogo ? t('common.uploading', 'Uploading...') : t('tournament.upload_logo', 'Upload Logo')}
                   </Button>
                 )}
               </div>
@@ -1110,14 +1112,14 @@ const TournamentManagementPanel: React.FC = () => {
                 onClick={() => setShowEditForm(false)}
                 className="bg-gray-600 hover:bg-gray-700 text-white"
               >
-                Cancel
+                {t('common.cancel', 'Cancel')}
               </Button>
               <Button
                 onClick={updateTournament}
                 disabled={isLoading || !formData.name || !formData.city || !formData.country}
                 className="bg-blue-600 hover:bg-blue-700 text-white"
               >
-                {isLoading ? 'Updating...' : 'Update Tournament'}
+                {isLoading ? t('common.updating', 'Updating...') : t('tournament.update', 'Update Tournament')}
               </Button>
             </div>
           </div>
@@ -1128,24 +1130,23 @@ const TournamentManagementPanel: React.FC = () => {
       {showStartDayModal && selectedDay && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="theme-card shadow-xl p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold text-gray-100 mb-4">Start Tournament Day</h3>
+            <h3 className="text-lg font-semibold text-gray-100 mb-4">{t('tournament.start_day.title', 'Start Tournament Day')}</h3>
             <p className="text-gray-300 mb-6">
-              Are you sure you want to start Day {selectedDay.day_number}? 
-              This will automatically start the tournament if it's the first day.
+              {t('tournament.start_day.confirm', "Are you sure you want to start Day {n}? This will automatically start the tournament if it's the first day.", { n: selectedDay.day_number })}
             </p>
             <div className="flex justify-end space-x-3">
               <Button
                 onClick={() => setShowStartDayModal(false)}
                 className="bg-gray-600 hover:bg-gray-700 text-white"
               >
-                Cancel
+                {t('cancel_button')}
               </Button>
               <Button
                 onClick={() => startTournamentDay(selectedDay.id)}
                 disabled={isLoading}
                 className="bg-green-600 hover:bg-green-700 text-white"
               >
-                {isLoading ? 'Starting...' : 'Start Day'}
+                {isLoading ? t('tournament.starting', 'Starting...') : t('tournament.start_day', 'Start Day')}
               </Button>
             </div>
           </div>
@@ -1156,24 +1157,23 @@ const TournamentManagementPanel: React.FC = () => {
       {showEndDayModal && selectedDay && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="theme-card shadow-xl p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold text-gray-100 mb-4">End Tournament Day</h3>
+            <h3 className="text-lg font-semibold text-gray-100 mb-4">{t('tournament.end_day.title', 'End Tournament Day')}</h3>
             <p className="text-gray-300 mb-6">
-              Are you sure you want to end Day {selectedDay.day_number}? 
-              This will automatically end the tournament if it's the final day.
+              {t('tournament.end_day.confirm', "Are you sure you want to end Day {n}? This will automatically end the tournament if it's the final day.", { n: selectedDay.day_number })}
             </p>
             <div className="flex justify-end space-x-3">
               <Button
                 onClick={() => setShowEndDayModal(false)}
                 className="bg-gray-600 hover:bg-gray-700 text-white"
               >
-                Cancel
+                {t('cancel_button')}
               </Button>
               <Button
                 onClick={() => endTournamentDay(selectedDay.id)}
                 disabled={isLoading}
                 className="bg-blue-600 hover:bg-blue-700 text-white"
               >
-                {isLoading ? 'Ending...' : 'End Day'}
+                {isLoading ? t('tournament.ending', 'Ending...') : t('tournament.end_day', 'End Day')}
               </Button>
             </div>
           </div>
