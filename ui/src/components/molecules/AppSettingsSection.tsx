@@ -71,7 +71,7 @@ const AppSettingsSection: React.FC = () => {
           <LanguageSelect
             className="ml-2"
             value={locale}
-            onChange={(code) => setLocale(code)}
+            onChange={(code) => { console.log('[AppSettings] setLocale requested:', code); setLocale(code); }}
           />
         </div>
       </div>

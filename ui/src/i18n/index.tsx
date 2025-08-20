@@ -248,6 +248,27 @@ const catalogs: Catalogs = {
     'analytics.match.winner_label': 'Winner:',
     'analytics.match.id': 'Match ID:',
   },
+  hr: {
+    'drawer.pss': 'PSS',
+    'drawer.obs': 'OBS',
+    'drawer.ovr': 'OVR',
+    'drawer.ivr': 'IVR',
+    'drawer.ai': 'AI',
+    'drawer.settings': 'Postavke',
+    'app.title': 'reStrike VTA - Windows Desktop',
+    'env.windows_native': 'Windows aplikacija',
+    'env.web_mode': 'Web način',
+    'status.ready': 'Status: Spremno',
+    'settings.language': 'Jezik',
+    'settings.select_language': 'Odaberite jezik',
+    // Minimal analytics labels to confirm hr works; remaining keys fall back to en until filled
+    'analytics.title': '📊 Analitička nadzorna ploča',
+    'analytics.realtime': 'U stvarnom vremenu',
+    'analytics.tabs.tournament': 'Turnir',
+    'analytics.tabs.athlete': 'Natjecatelj',
+    'analytics.tabs.match': 'Meč',
+    'analytics.tabs.day': 'Dan',
+  },
   sr: {
     'logs.archive_mgr.title': 'Menadžer arhiviranja logova',
     'logs.archive_mgr.load_failed': 'Učitavanje konfiguracije nije uspelo',
@@ -865,8 +886,11 @@ function normalizeLocale(input: string | undefined | null): string {
   if (!input || typeof input !== 'string') return 'en';
   try {
     const short = input.toLowerCase().split('-')[0];
-    return (catalogs as any)[short] ? short : 'en';
+    const exists = Boolean((catalogs as any)[short]);
+    console.log('[i18n] normalizeLocale:', { input, short, exists });
+    return exists ? short : 'en';
   } catch {
+    console.warn('[i18n] normalizeLocale failed, defaulting to en for input:', input);
     return 'en';
   }
 }
@@ -883,11 +907,21 @@ export const I18nProvider: React.FC<React.PropsWithChildren<{ defaultLocale?: st
   const initialLocale = useMemo(() => {
     try {
       const stored = localStorage.getItem(I18N_STORAGE_KEY);
-      if (stored) return normalizeLocale(stored);
-      if (defaultLocale) return normalizeLocale(defaultLocale);
+      if (stored) {
+        const norm = normalizeLocale(stored);
+        console.log('[i18n] initial from localStorage:', { stored, norm });
+        return norm;
+      }
+      if (defaultLocale) {
+        const norm = normalizeLocale(defaultLocale);
+        console.log('[i18n] initial from defaultLocale prop:', { defaultLocale, norm });
+        return norm;
+      }
       if (typeof navigator !== 'undefined' && navigator.language) {
         const short = normalizeLocale(navigator.language);
-        if ((catalogs as any)[short]) return short;
+        const exists = Boolean((catalogs as any)[short]);
+        console.log('[i18n] initial from navigator:', { navigatorLanguage: navigator.language, short, exists });
+        if (exists) return short;
       }
     } catch {}
     return 'en';
@@ -896,13 +930,21 @@ export const I18nProvider: React.FC<React.PropsWithChildren<{ defaultLocale?: st
   const [locale, setLocaleState] = useState<string>(initialLocale);
 
   useEffect(() => {
-    try { localStorage.setItem(I18N_STORAGE_KEY, locale); } catch {}
+    try {
+      localStorage.setItem(I18N_STORAGE_KEY, locale);
+      console.log('[i18n] persisted locale to storage:', locale);
+    } catch (e) {
+      console.warn('[i18n] failed to persist locale:', e);
+    }
   }, [locale]);
 
   const t = useMemo(() => {
     return (id: string, fallback?: string, values?: Record<string, string | number>) => {
       const cat = catalogs[locale] || catalogs.en || {};
       const raw = cat[id] ?? fallback ?? id;
+      if (cat[id] === undefined && fallback === undefined) {
+        console.debug('[i18n] missing key; using id as string', { locale, id });
+      }
       return interpolate(raw, values);
     };
   }, [locale]);
@@ -911,6 +953,7 @@ export const I18nProvider: React.FC<React.PropsWithChildren<{ defaultLocale?: st
     const normalized = normalizeLocale(loc);
     setLocaleState(normalized);
     try { localStorage.setItem(I18N_STORAGE_KEY, normalized); } catch {}
+    console.log('[i18n] setLocale called:', { requested: loc, normalized });
   };
 
   const value: I18nContextValue = { locale, setLocale, t };

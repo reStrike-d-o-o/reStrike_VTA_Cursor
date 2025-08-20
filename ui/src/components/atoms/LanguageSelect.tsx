@@ -28,6 +28,7 @@ const LanguageSelect: React.FC<LanguageSelectProps> = ({ value, onChange, option
   useEffect(() => {
     const onDocClick = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) {
+        console.log('[LanguageSelect] outside click -> closing');
         setOpen(false);
       }
     };
@@ -36,13 +37,22 @@ const LanguageSelect: React.FC<LanguageSelectProps> = ({ value, onChange, option
   }, []);
 
   const current = options.find(o => o.code === value) || options[0];
+  useEffect(() => {
+    console.log('[LanguageSelect] mount', { value, current, options: options.map(o => o.code) });
+  }, []);
+  useEffect(() => {
+    console.log('[LanguageSelect] value changed', { value, current });
+  }, [value]);
+  useEffect(() => {
+    console.log('[LanguageSelect] open state changed', { open });
+  }, [open]);
 
   return (
     <div ref={ref} className={`relative inline-block ${className}`}>
       <button
         type="button"
         className="flex items-center gap-2 bg-gray-700 text-gray-200 text-sm px-2 py-1 rounded border border-gray-600 hover:bg-gray-650"
-        onClick={() => setOpen(o => !o)}
+        onClick={() => { console.log('[LanguageSelect] toggle clicked', { prevOpen: open, nextOpen: !open }); setOpen(o => !o); }}
         aria-haspopup="listbox"
         aria-label="Language"
         title="Language selector"
@@ -71,7 +81,7 @@ const LanguageSelect: React.FC<LanguageSelectProps> = ({ value, onChange, option
               key={opt.code}
               role="option"
               className={`px-2 py-1 flex items-center gap-2 cursor-pointer hover:bg-gray-700 ${opt.code === value ? 'bg-gray-700' : ''}`}
-              onClick={() => { onChange(opt.code); setOpen(false); }}
+              onClick={() => { console.log('[LanguageSelect] select clicked', { requested: opt.code }); onChange(opt.code); setOpen(false); }}
             >
               <img src={`/assets/flags/svg/${opt.flag}.svg`} alt="" width={18} height={12} />
               <span className="text-sm text-gray-200">{opt.label}</span>
