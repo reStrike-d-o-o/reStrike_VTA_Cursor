@@ -344,9 +344,9 @@ const EventTableSection: React.FC = () => {
             {/* Table Header */}
             <div className="flex-shrink-0 flex text-xs text-gray-400 mb-3 border-b border-gray-600 pb-2 items-center mt-2">
               <div className="w-16 font-semibold text-white px-1 rounded mr-2 ml-12">{t('table.rnd', 'RND')}</div>
-              <div className="w-24 font-semibold mr-2 ml-1">{t('common.time', 'TIME')}</div>
+              <div className="w-24 font-semibold mr-2 ml-1">{t('common.time', 'TIME').toUpperCase()}</div>
               <div className="w-32 font-semibold flex items-center space-x-1 -ml-8">
-                <span>{t('common.event', 'EVENT')}</span>
+                <span>{t('common.event', 'EVENT').toUpperCase()}</span>
                 {colorOptions.map((opt) => (
                   <button
                     key={opt.color}
