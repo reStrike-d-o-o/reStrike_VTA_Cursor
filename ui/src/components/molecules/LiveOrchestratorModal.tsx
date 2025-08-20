@@ -4,6 +4,7 @@ import StatusDot from '../atoms/StatusDot';
 import StatusRow from '../atoms/StatusRow';
 import { invoke } from '@tauri-apps/api/core';
 import { obsObwsCommands } from '../../utils/tauriCommandsObws';
+import { useI18n } from '../../i18n/index';
 
 type CheckStatus = 'unknown' | 'ok' | 'warn' | 'error';
 
@@ -14,6 +15,7 @@ interface LiveOrchestratorModalProps {
 }
 
 const LiveOrchestratorModal: React.FC<LiveOrchestratorModalProps> = ({ isOpen, onClose, onStarted }) => {
+  const { t } = useI18n();
   const [runningChecks, setRunningChecks] = useState(false);
   const [udpStatus, setUdpStatus] = useState<CheckStatus>('unknown');
   const [tournamentStatus, setTournamentStatus] = useState<CheckStatus>('unknown');
@@ -45,7 +47,7 @@ const LiveOrchestratorModal: React.FC<LiveOrchestratorModalProps> = ({ isOpen, o
 
   const runChecks = async () => {
     setRunningChecks(true);
-    setMessage('Running system checks...');
+    setMessage(t('live_orch.running_checks', 'Running system checks...'));
     try {
       // UDP server status
       try {
@@ -117,7 +119,7 @@ const LiveOrchestratorModal: React.FC<LiveOrchestratorModalProps> = ({ isOpen, o
         setDriveStatus('warn');
       }
 
-      setMessage('Checks completed.');
+      setMessage(t('live_orch.checks_completed', 'Checks completed.'));
     } finally {
       setRunningChecks(false);
     }
@@ -135,7 +137,7 @@ const LiveOrchestratorModal: React.FC<LiveOrchestratorModalProps> = ({ isOpen, o
   }, [isOpen]);
 
   const activateAll = async () => {
-    setMessage('Activating subsystems...');
+    setMessage(t('live_orch.activating', 'Activating subsystems...'));
     try {
       // Start UDP
       try { await invoke('start_udp_server'); setUdpStatus('ok'); } catch {}
@@ -168,7 +170,7 @@ const LiveOrchestratorModal: React.FC<LiveOrchestratorModalProps> = ({ isOpen, o
   };
 
   const startAll = async () => {
-    setMessage('Starting systems...');
+    setMessage(t('live_orch.starting', 'Starting systems...'));
     await activateAll();
 
     try {
@@ -180,8 +182,8 @@ const LiveOrchestratorModal: React.FC<LiveOrchestratorModalProps> = ({ isOpen, o
       const filenameTemplate = (full as any)?.data?.recording_config?.filename_template || '{matchNumber} - {player1} {player1Flag} vs {player2} {player2Flag}';
 
       // Resolve tournament/day for today
-      let tournamentName = 'Tournament';
-      let tournamentDay = 'Day 1';
+      let tournamentName = t('tournament.title', 'Tournaments');
+      let tournamentDay = t('tournament.day_label', 'Day') + ' 1';
       try {
         const active = await invoke<any>('tournament_get_active');
         if (active?.success && active.tournament) {
@@ -218,14 +220,14 @@ const LiveOrchestratorModal: React.FC<LiveOrchestratorModalProps> = ({ isOpen, o
       console.warn('OBS path/template push failed:', e);
     }
 
-    setMessage('All systems ready.');
+    setMessage(t('live_orch.ready', 'All systems ready.'));
     onStarted();
   };
 
   // End (green -> click) flow
   const endDayAndShutdown = async () => {
-    if (!confirm('Do you really want to end the active day and shutdown subsystems?')) return;
-    setMessage('Ending day and shutting down subsystems...');
+    if (!confirm(t('live_orch.end_confirm', 'Do you really want to end the active day and shutdown subsystems?'))) return;
+    setMessage(t('live_orch.ending', 'Ending day and shutting down subsystems...'));
     try {
       // End active day (if present)
       try {
@@ -246,7 +248,7 @@ const LiveOrchestratorModal: React.FC<LiveOrchestratorModalProps> = ({ isOpen, o
       try { await obsObwsCommands.stopRecording(); } catch {}
       try { await obsObwsCommands.stopStreaming(); } catch {}
 
-      setMessage('Day ended. Systems stopped. Ready for next day setup.');
+      setMessage(t('live_orch.ended', 'Day ended. Systems stopped. Ready for next day setup.'));
     } finally {
       // Keep modal open to allow next steps; external toggle handler will change UI state
     }
@@ -261,28 +263,28 @@ const LiveOrchestratorModal: React.FC<LiveOrchestratorModalProps> = ({ isOpen, o
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
       <div className="bg-gradient-to-br from-gray-800/90 to-gray-900/95 rounded-lg border border-gray-600/30 shadow-xl p-6 w-full max-w-2xl">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-white">Live Orchestrator</h3>
-          <Button size="sm" className="bg-gray-600 hover:bg-gray-700" onClick={onClose}>Close</Button>
+          <h3 className="text-lg font-semibold text-white">{t('live_orch.title', 'Live Orchestrator')}</h3>
+          <Button size="sm" className="bg-gray-600 hover:bg-gray-700" onClick={onClose}>{t('common.close', 'Close')}</Button>
         </div>
 
         <div className="space-y-3">
-          <StatusRow label="UDP Server" status={udpStatus} />
-          <StatusRow label="Tournament / Day Active" status={tournamentStatus} />
-          <StatusRow label="Recording Path Configured" status={recordingPathStatus} />
-          <StatusRow label="OBS WebSocket" status={obsStatus} />
-          <StatusRow label="Google Drive Connectivity" status={driveStatus} />
+          <StatusRow label={t('live_orch.udp', 'UDP Server')} status={udpStatus} />
+          <StatusRow label={t('live_orch.tournament_day', 'Tournament / Day Active')} status={tournamentStatus} />
+          <StatusRow label={t('live_orch.recording_path', 'Recording Path Configured')} status={recordingPathStatus} />
+          <StatusRow label={t('live_orch.obs', 'OBS WebSocket')} status={obsStatus} />
+          <StatusRow label={t('live_orch.drive', 'Google Drive Connectivity')} status={driveStatus} />
           <DriveQuotaRow />
         </div>
 
         {message && <div className="mt-4 text-sm text-gray-300">{message}</div>}
 
         <div className="flex items-center justify-between gap-2 mt-6">
-          <div className="text-sm text-gray-400">Use Integration tab patterns for path and filename. Folders will be created automatically.</div>
+          <div className="text-sm text-gray-400">{t('live_orch.hint', 'Use Integration tab patterns for path and filename. Folders will be created automatically.')}</div>
           <div className="flex items-center gap-2">
-            <Button size="sm" className="bg-gray-600 hover:bg-gray-700" onClick={runChecks} disabled={runningChecks}>Re-check</Button>
-            <Button size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={activateAll} disabled={runningChecks}>Activate All</Button>
-            <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={startAll} disabled={runningChecks}>Start</Button>
-            <Button size="sm" className="bg-red-600 hover:bg-red-700" onClick={endDayAndShutdown} disabled={runningChecks}>End Day</Button>
+            <Button size="sm" className="bg-gray-600 hover:bg-gray-700" onClick={runChecks} disabled={runningChecks}>{t('live_orch.recheck', 'Re-check')}</Button>
+            <Button size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={activateAll} disabled={runningChecks}>{t('live_orch.activate_all', 'Activate All')}</Button>
+            <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={startAll} disabled={runningChecks}>{t('live_orch.start', 'Start')}</Button>
+            <Button size="sm" className="bg-red-600 hover:bg-red-700" onClick={endDayAndShutdown} disabled={runningChecks}>{t('live_orch.end_day', 'End Day')}</Button>
           </div>
         </div>
       </div>
@@ -295,6 +297,7 @@ export default LiveOrchestratorModal;
 // Sub-component to show Drive quota if available
 const DriveQuotaRow: React.FC = () => {
   const [text, setText] = React.useState<string>('');
+  const { t } = useI18n();
   React.useEffect(() => {
     (async () => {
       try {
@@ -314,7 +317,7 @@ const DriveQuotaRow: React.FC = () => {
 
   if (!text) return null;
   return (
-    <StatusRow label="Drive Quota" right={text} />
+    <StatusRow label={t('live_orch.drive_quota', 'Drive Quota')} right={text} />
   );
 };
 
