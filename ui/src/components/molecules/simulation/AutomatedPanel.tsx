@@ -3,6 +3,7 @@ import Button from '../../atoms/Button';
 import Label from '../../atoms/Label';
 import { Progress } from '../../atoms/Progress';
 import { useSimulationStore } from '../../../stores/simulationStore';
+import { useI18n } from '../../../i18n/index';
 
 const AutomatedPanel: React.FC = () => {
   const {
@@ -16,6 +17,7 @@ const AutomatedPanel: React.FC = () => {
     progress,
   } = useSimulationStore();
   const showAutomated = useSimulationStore((s) => s.showAutomated);
+  const { t } = useI18n();
 
   // Ensure scenarios are loaded when Automated mode is shown
   const loadScenarios = useSimulationStore((s) => s.loadScenarios);
@@ -37,9 +39,9 @@ const AutomatedPanel: React.FC = () => {
   return (
     <div className="space-y-4">
       <div>
-        <Label>Automated Scenario</Label>
+        <Label>{t('simulation.automated.label', 'Automated Scenario')}</Label>
         <select
-          aria-label={"Select automated simulation scenario"}
+          aria-label={t('simulation.automated.select_aria', 'Select automated simulation scenario')}
           value={selectedAutomatedScenario}
           onChange={(e) => setSelectedAutomatedScenario(e.target.value)}
           disabled={status.isRunning || loading}
@@ -48,12 +50,12 @@ const AutomatedPanel: React.FC = () => {
           {(scenarios && scenarios.length > 0
             ? scenarios
             : [
-                { name: 'basic', display_name: 'Basic Match', match_count: 1, estimated_duration: 90 },
-                { name: 'quick_test', display_name: 'Quick Test', match_count: 1, estimated_duration: 45 },
+                { name: 'basic', display_name: t('simulation.automated.option.basic', 'Basic Match'), match_count: 1, estimated_duration: 90 },
+                { name: 'quick_test', display_name: t('simulation.automated.option.quick', 'Quick Test'), match_count: 1, estimated_duration: 45 },
               ] as any
           ).map((s: any) => (
             <option key={s.name} value={s.name}>
-              {s.display_name} ({s.match_count} matches, ~{Math.round((s.estimated_duration || 60) / 60)}min)
+              {s.display_name} ({s.match_count} {t('simulation.automated.matches', 'matches')}, ~{Math.round((s.estimated_duration || 60) / 60)}{t('common.min', 'min')})
             </option>
           ))}
         </select>
@@ -66,8 +68,8 @@ const AutomatedPanel: React.FC = () => {
       {status.isRunning && progress.total > 0 && (
         <div>
           <div className="flex justify-between text-xs text-gray-400 mb-1">
-            <span>Progress</span>
-            <span>{progress.current}/{progress.total} matches</span>
+            <span>{t('simulation.automated.progress', 'Progress')}</span>
+            <span>{progress.current}/{progress.total} {t('simulation.automated.matches', 'matches')}</span>
           </div>
           <Progress value={(progress.current / progress.total) * 100} />
         </div>
@@ -75,8 +77,8 @@ const AutomatedPanel: React.FC = () => {
 
       {/* Controls */}
       <div className="flex gap-2">
-        <Button variant="primary" size="sm" onClick={startAutomated} disabled={status.isRunning || loading || !selectedAutomatedScenario} className="flex-1">Start Automated</Button>
-        <Button variant="secondary" size="sm" onClick={stop} disabled={!status.isRunning || loading}>Stop</Button>
+        <Button variant="primary" size="sm" onClick={startAutomated} disabled={status.isRunning || loading || !selectedAutomatedScenario} className="flex-1">{t('simulation.automated.start', 'Start Automated')}</Button>
+        <Button variant="secondary" size="sm" onClick={stop} disabled={!status.isRunning || loading}>{t('common.stop', 'Stop')}</Button>
       </div>
     </div>
   );

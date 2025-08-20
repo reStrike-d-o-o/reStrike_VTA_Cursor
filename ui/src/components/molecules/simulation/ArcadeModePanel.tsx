@@ -5,6 +5,7 @@ import Button from '../../atoms/Button';
 import ArcadeBindingsPanel from './ArcadeBindingsPanel';
 import { loadMapping, listConnectedGamepads, isButtonPressed, axisValue } from './gamepad';
 import retroSound from './sound';
+import { useI18n } from '../../../i18n/index';
 
 type Fighter = {
   x: number;
@@ -22,6 +23,7 @@ const ArcadeModePanel: React.FC = () => {
   const [running, setRunning] = useState(true);
   const [mute, setMute] = useState(false);
   const [music, setMusic] = useState(true);
+  const { t } = useI18n();
 
   const [b, setB] = useState<Fighter>({ x: 120, y: 180, dir: 1, color: 'blue' });
   const [r, setR] = useState<Fighter>({ x: 600, y: 180, dir: -1, color: 'red' });
@@ -658,19 +660,19 @@ const ArcadeModePanel: React.FC = () => {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <div className="text-sm text-gray-300">Arcade Mode – Blue: A/D J K L U I | Red: ←/→ 1..5</div>
+        <div className="text-sm text-gray-300">{t('simulation.arcade.hint', 'Arcade Mode – Blue: A/D J K L U I | Red: ←/→ 1..5')}</div>
         <Button size="sm" variant={running ? 'secondary' : 'primary'} onClick={() => setRunning(v => !v)}>
-          {running ? 'Pause' : 'Resume'}
+          {running ? t('common.pause', 'Pause') : t('common.resume', 'Resume')}
         </Button>
       </div>
       <div className="flex items-center justify-end space-x-2">
         <label className="text-xs text-gray-400 flex items-center space-x-1">
           <input type="checkbox" checked={mute} onChange={(e) => { setMute(e.target.checked); retroSound.setMuted(e.target.checked); }} />
-          <span>Mute SFX</span>
+          <span>{t('simulation.arcade.mute_sfx', 'Mute SFX')}</span>
         </label>
         <label className="text-xs text-gray-400 flex items-center space-x-1">
           <input type="checkbox" checked={music} onChange={async (e) => { setMusic(e.target.checked); await retroSound.setMusicOn(e.target.checked); }} />
-          <span>Music</span>
+          <span>{t('simulation.arcade.music', 'Music')}</span>
         </label>
       </div>
       <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} className="border border-gray-700 bg-[#0d131a]" />
