@@ -261,6 +261,35 @@ const catalogs: Catalogs = {
     'status.ready': 'Status: Spremno',
     'settings.language': 'Jezik',
     'settings.select_language': 'Odaberite jezik',
+    // Settings
+    'settings.window.title': 'Postavke prozora',
+    'settings.window.help': 'Konfigurirajte dimenzije prozora za kompaktni i cijeli zaslon.',
+    'settings.window.compact': 'Kompaktni način (zadano)',
+    'settings.window.full': 'Način preko cijelog zaslona (napredno)',
+    'settings.window.width': 'Širina (px)',
+    'settings.window.height': 'Visina (px)',
+    'settings.quick.title': 'Brze postavke',
+    'settings.appearance.title': 'Izgled',
+    'settings.appearance.theme': 'Tema',
+    'settings.appearance.corners': 'Rubovi',
+    'settings.appearance.dark': 'Tamna',
+    'settings.appearance.light': 'Svijetla',
+    'settings.appearance.square': 'Kvadratni',
+    'settings.appearance.rounded': 'Zaobljeni',
+    'settings.log.title': 'Razina zapisivanja',
+    'settings.log.note': 'Niže razine smanjuju šum u konzoli u produkciji.',
+    'settings.actions.apply': 'Primijeni postavke',
+    'settings.actions.reset': 'Resetiraj',
+    'settings.note.title': 'Napomena:',
+    'settings.note.text': 'Kompaktni način se koristi pri pokretanju aplikacije i kada je Napredni način isključen. Način preko cijelog zaslona se koristi kada je Napredni način uključen.',
+    // Common
+    'common.open': 'Otvori',
+    'common.open_browser': 'Otvori u pregledniku',
+    'common.copy': 'Kopiraj',
+    'common.refresh': 'Osvježi',
+    'common.active': 'Aktivno',
+    'common.connected': 'Povezano',
+    'common.disconnected': 'Nepovezano',
     // Minimal analytics labels to confirm hr works; remaining keys fall back to en until filled
     'analytics.title': '📊 Analitička nadzorna ploča',
     'analytics.realtime': 'U stvarnom vremenu',
@@ -940,10 +969,13 @@ export const I18nProvider: React.FC<React.PropsWithChildren<{ defaultLocale?: st
 
   const t = useMemo(() => {
     return (id: string, fallback?: string, values?: Record<string, string | number>) => {
-      const cat = catalogs[locale] || catalogs.en || {};
-      const raw = cat[id] ?? fallback ?? id;
-      if (cat[id] === undefined && fallback === undefined) {
-        console.debug('[i18n] missing key; using id as string', { locale, id });
+      const primary = catalogs[locale] || {};
+      let raw: string | undefined = primary[id];
+      if (raw === undefined) {
+        raw = fallback ?? id;
+        if (primary[id] === undefined && fallback === undefined) {
+          console.debug('[i18n] missing key; using id as string', { locale, id });
+        }
       }
       return interpolate(raw, values);
     };
