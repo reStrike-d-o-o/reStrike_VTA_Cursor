@@ -1,0 +1,13 @@
+{
+  "payload": {
+    "product_id": "re-strike-vta",
+    "machine_hash": "02dbaf78fcae6f65d2431edb8c39fd37e49624a632c5aff3d3462188e1e8e28e",
+    "issued_at": 1755798959,
+    "expires_at": null,
+    "plan": "perpetual",
+    "features": [],
+    "nonce": "7259fcf4-5c2b-472e-a1cf-3625c95ddfe4",
+    "version": 1
+  },
+  "signature": "i1kzwVRoche8Jwae3MjIcNGuRlZXRnQCeujlEtn6ewaXOzjVsyOpOMF6ROaXTMc5nDhHvdqfBtyekWfLTLPgDA=="
+}

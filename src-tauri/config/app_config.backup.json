@@ -1,7 +1,7 @@
 {
   "app": {
     "version": "0.1.0",
-    "last_save": "2025-08-18T19:48:55.654094200+00:00",
+    "last_save": "2025-08-21T17:59:01.539757600+00:00",
     "startup": {
       "auto_start_udp": false,
       "auto_connect_obs": false,
@@ -58,7 +58,7 @@
   "udp": {
     "listener": {
       "port": 8888,
-      "bind_address": "192.168.0.109",
+      "bind_address": "192.168.136.192",
       "enabled": true,
       "buffer_size": 8192,
       "timeout_seconds": 30,
@@ -112,16 +112,16 @@
         "enabled": true,
         "custom_file": null
       },
-      "pss": {
-        "name": "pss",
-        "level": "info",
-        "enabled": true,
-        "custom_file": null
-      },
       "obs": {
         "name": "obs",
         "level": "info",
         "enabled": false,
+        "custom_file": null
+      },
+      "pss": {
+        "name": "pss",
+        "level": "info",
+        "enabled": true,
         "custom_file": null
       }
     },
@@ -200,12 +200,12 @@
     }
   },
   "license": {
-    "license_key": null,
-    "status": "trial",
+    "license_key": "[ENCRYPTED]",
+    "status": "valid",
     "expiration_date": null,
     "auto_renewal": false,
     "offline_grace_days": 7,
-    "last_validation": null
+    "last_validation": "2025-08-21T17:59:01.538507100+00:00"
   },
   "flags": {
     "storage": {
