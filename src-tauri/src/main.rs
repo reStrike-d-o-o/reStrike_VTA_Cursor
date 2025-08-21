@@ -394,6 +394,7 @@ async fn main() -> AppResult<()> {
             tauri_commands::activate_license,
             tauri_commands::validate_license,
             tauri_commands::get_license_status,
+            tauri_commands::get_machine_identity,
             
             // Settings commands
             tauri_commands::get_settings,
