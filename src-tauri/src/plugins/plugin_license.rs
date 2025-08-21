@@ -7,6 +7,7 @@ use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 use aes_gcm::{Aes256Gcm, aead::{Aead, KeyInit}};
 use rand::rngs::OsRng;
+use rand::RngCore;
 
 use crate::types::{AppError, AppResult};
 
@@ -28,7 +29,6 @@ const LICENSE_STORAGE_SALT: &str = "rst_vta_license_v1";
 
 /// Minimum allowed delta when system clock moves backwards (seconds)
 const CLOCK_BACK_DELTA_SECS: i64 = 86_400; // 1 day
-const GRACE_SECS: i64 = 86_400; // 24h grace
 const ANCHOR_DIR_NAME: &str = "re-strike-vta/.anchors";
 const ANCHOR_FILE_NAME: &str = "license_anchor.json";
 const ANCHOR_TOUCH_NAME: &str = "anchor.touch";
@@ -210,11 +210,12 @@ impl LicensePlugin {
         let key_bytes = self.derive_store_key()?;
         let cipher = Aes256Gcm::new_from_slice(&key_bytes).map_err(|e| AppError::ConfigError(format!("Cipher init failed: {:?}", e)))?;
         let mut nonce = [0u8;12];
-        OsRng.fill(&mut nonce);
+        let mut rng = OsRng;
+        rng.fill_bytes(&mut nonce);
         let ct = cipher.encrypt(&nonce.into(), token.as_bytes()).map_err(|e| AppError::ConfigError(format!("Encrypt failed: {:?}", e)))?;
         #[derive(Serialize)]
-        struct Stored { v: u8, n: String, c: String }
-        let s = Stored { v: 1, n: base64::engine::general_purpose::STANDARD.encode(&nonce), c: base64::engine::general_purpose::STANDARD.encode(&ct) };
+        struct Stored { _v: u8, n: String, c: String }
+        let s = Stored { _v: 1, n: base64::engine::general_purpose::STANDARD.encode(&nonce), c: base64::engine::general_purpose::STANDARD.encode(&ct) };
         Ok(serde_json::to_string(&s)?)
     }
 
@@ -222,20 +223,27 @@ impl LicensePlugin {
     fn decrypt_token(&self, blob: &str) -> AppResult<String> {
         // Try current format
         #[derive(Deserialize)]
-        struct Stored { v: u8, n: String, c: String }
+        struct Stored { _v: u8, n: String, c: String }
         if let Ok(stored) = serde_json::from_str::<Stored>(blob) {
             let key_bytes = self.derive_store_key()?;
             let cipher = Aes256Gcm::new_from_slice(&key_bytes).map_err(|e| AppError::ConfigError(format!("Cipher init failed: {:?}", e)))?;
             let nonce_bytes = base64::engine::general_purpose::STANDARD.decode(stored.n).map_err(|e| AppError::ConfigError(format!("Invalid nonce: {}", e)))?;
             let ct_bytes = base64::engine::general_purpose::STANDARD.decode(stored.c).map_err(|e| AppError::ConfigError(format!("Invalid ciphertext: {}", e)))?;
             let nonce = aes_gcm::Nonce::from_slice(&nonce_bytes);
-            let pt = cipher.decrypt(nonce, ct_bytes.as_ref()).map_err(|e| AppError::ConfigError(format!("Decrypt failed: {:?}", e)))?;
-            return String::from_utf8(pt).map_err(|e| AppError::ConfigError(format!("Invalid UTF-8: {}", e)));
+            match cipher.decrypt(nonce, ct_bytes.as_ref()) {
+                Ok(pt) => {
+                    return String::from_utf8(pt).map_err(|e| AppError::ConfigError(format!("Invalid UTF-8: {}", e)));
+                }
+                Err(_e) => {
+                    // Fallback to legacy format if AES decryption fails (e.g., file from previous version)
+                }
+            }
         }
         // Fallback to legacy SecureConfig format for backward compatibility
         let master = format!("license_store:{}", self.compute_machine_hash()?);
         let sc = crate::security::SecureConfig::new(master)?;
-        let enc: crate::security::encryption::EncryptedData = serde_json::from_str(blob)?;
+        let enc: crate::security::encryption::EncryptedData = serde_json::from_str(blob)
+            .map_err(|e| AppError::ConfigError(format!("Failed to parse legacy license: {}", e)))?;
         sc.decrypt_value(&enc).map_err(|e| AppError::ConfigError(format!("Failed to decrypt legacy license: {}", e)))
     }
 
