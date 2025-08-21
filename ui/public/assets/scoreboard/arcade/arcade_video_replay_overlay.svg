@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" viewBox="0 0 452.113525 52.69524">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: url(#linear-gradient);
+      }
+
+      .cls-2 {
+        fill: #0f223c;
+        font-family: BebasNeue-Regular, 'Bebas Neue';
+        font-size: 43.822018px;
+        letter-spacing: .099992em;
+      }
+    </style>
+    <linearGradient id="linear-gradient" x1="1927.758492" y1="26.34762" x2="2379.872017" y2="26.34762" gradientTransform="translate(-1927.758492)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff"/>
+      <stop offset="1" stop-color="#abbcff"/>
+    </linearGradient>
+  </defs>
+  <!-- Generator: Adobe Illustrator 28.7.5, SVG Export Plug-In . SVG Version: 1.2.0 Build 176)  -->
+  <g>
+    <g id="Layer_2">
+      <g id="video_x5F_overlay">
+        <polygon class="cls-1" points="452.113525 0 18.751051 0 0 52.69524 433.362475 52.69524 452.113525 0"/>
+        <text class="cls-2" transform="translate(35.698486 41.685547)"><tspan x="0" y="0">INSTANT VIDEO REPLAY</tspan></text>
+      </g>
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" viewBox="0 0 1533.350098 83.949417">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #fff;
+        font-size: 57.143105px;
+      }
+
+      .cls-2 {
+        font-family: FixelDisplay-ExtraLight, 'Fixel Display';
+        font-weight: 200;
+      }
+
+      .cls-2, .cls-3 {
+        letter-spacing: .050005em;
+      }
+
+      .cls-4 {
+        fill: url(#linear-gradient-4);
+      }
+
+      .cls-5 {
+        fill: url(#linear-gradient-3);
+      }
+
+      .cls-6 {
+        fill: url(#linear-gradient-2);
+      }
+
+      .cls-7 {
+        letter-spacing: .049996em;
+      }
+
+      .cls-7, .cls-3 {
+        font-family: FixelDisplay-SemiBold, 'Fixel Display';
+        font-weight: 600;
+      }
+
+      .cls-8 {
+        fill: url(#linear-gradient);
+      }
+
+      .cls-9 {
+        fill: #0f223c;
+        font-family: BebasNeue-Regular, 'Bebas Neue';
+        font-size: 49.417313px;
+        letter-spacing: .100013em;
+      }
+    </style>
+    <linearGradient id="linear-gradient" x1="10158.002339" y1="40.149365" x2="10418.214665" y2="40.149365" gradientTransform="translate(11691.352463) rotate(-180) scale(1 -1)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff"/>
+      <stop offset="1" stop-color="#abbcff"/>
+    </linearGradient>
+    <linearGradient id="linear-gradient-2" x1="10476.789808" y1=".000065" x2="10476.789808" y2="80.298665" gradientTransform="translate(11691.352463) rotate(-180) scale(1 -1)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#e01600"/>
+      <stop offset=".502388" stop-color="#ff3636"/>
+      <stop offset=".504352" stop-color="#e01600"/>
+    </linearGradient>
+    <linearGradient id="linear-gradient-3" x1="-.000026" y1="40.149366" x2="260.212299" y2="40.149366" gradientTransform="matrix(1,0,0,1,0,0)" xlink:href="#linear-gradient"/>
+    <linearGradient id="linear-gradient-4" x1="318.787442" y1=".000049" x2="318.787442" y2="80.298683" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2c4dff"/>
+      <stop offset=".502388" stop-color="#3d7aff"/>
+      <stop offset=".504372" stop-color="#2c4dff"/>
+    </linearGradient>
+  </defs>
+  <!-- Generator: Adobe Illustrator 28.7.5, SVG Export Plug-In . SVG Version: 1.2.0 Build 176)  -->
+  <g>
+    <g id="Layer_2">
+      <g id="gam-jeom">
+        <g id="player2_x5F_red">
+          <g>
+            <polygon class="cls-8" points="1273.137798 10.437592 1512.204877 10.437592 1533.350124 69.861137 1294.283046 69.861137 1273.137798 10.437592"/>
+            <polygon class="cls-6" points="1128.45607 .000065 1272.095823 .000065 1300.669241 80.298665 1157.029488 80.298665 1128.45607 .000065"/>
+          </g>
+          <text class="cls-9" transform="translate(1314.255615 57.436035)"><tspan x="0" y="0">gam-jeom</tspan></text>
+          <text id="player2Fouls" class="cls-1" transform="translate(1167.476807 60.511719)"><tspan class="cls-7" x="0" y="0">0</tspan><tspan class="cls-2" x="40.228027" y="0">/</tspan><tspan class="cls-3" x="59.999023" y="0">5</tspan></text>
+        </g>
+        <g id="player1_x5F_blue">
+          <polygon class="cls-5" points="260.212299 10.437581 21.145221 10.437581 -.000026 69.861151 239.067052 69.861151 260.212299 10.437581"/>
+          <text class="cls-9" transform="translate(33.29248 57.445312)"><tspan x="0" y="0">gam-jeom</tspan></text>
+          <polygon class="cls-4" points="404.894027 .000049 261.254275 .000049 232.680857 80.298683 376.32061 80.298683 404.894027 .000049"/>
+          <text id="player1Fouls" data-name="fouls" class="cls-1" transform="translate(271.245941 60.520752)"><tspan class="cls-7" x="0" y="0">0</tspan><tspan class="cls-2" x="40.228027" y="0">/</tspan><tspan class="cls-3" x="59.999023" y="0">5</tspan></text>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>

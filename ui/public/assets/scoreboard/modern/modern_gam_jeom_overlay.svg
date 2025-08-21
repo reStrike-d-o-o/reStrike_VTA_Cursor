@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 1533.138062 83.94902">
+  <defs>
+    <style>
+      .cls-1 {
+        letter-spacing: .020004em;
+      }
+
+      .cls-1, .cls-2 {
+        font-size: 57.143105px;
+      }
+
+      .cls-1, .cls-2, .cls-3 {
+        fill: #fff;
+      }
+
+      .cls-1, .cls-2, .cls-4, .cls-5 {
+        font-family: FixelDisplay-SemiBold, 'Fixel Display';
+        font-weight: 600;
+      }
+
+      .cls-2 {
+        letter-spacing: .019995em;
+      }
+
+      .cls-6 {
+        fill: #e01600;
+      }
+
+      .cls-7 {
+        fill: #2c4dff;
+      }
+
+      .cls-4 {
+        letter-spacing: .019982em;
+      }
+
+      .cls-4, .cls-5 {
+        fill: #0f223c;
+        font-size: 35.481701px;
+      }
+
+      .cls-5 {
+        letter-spacing: .019995em;
+      }
+    </style>
+  </defs>
+  <!-- Generator: Adobe Illustrator 28.7.5, SVG Export Plug-In . SVG Version: 1.2.0 Build 176)  -->
+  <g>
+    <g id="Layer_2">
+      <g id="gam-jeom">
+        <g id="player2_x5F_red">
+          <path class="cls-3" d="M1263.363874.02549h251.040905c10.346116,0,18.7333,8.387676,18.7333,18.734399v46.620705h-279.27921V9.531053c0-5.249777,4.255536-9.505562,9.505005-9.505562Z"/>
+          <text class="cls-4" transform="translate(1324.128418 45.118164)"><tspan x="0" y="0">GAM-JEOM</tspan></text>
+          <path class="cls-6" d="M1305.06485,37.063218v-18.303235c0-10.346708-8.387173-18.734373-18.733274-18.734373h-89.778857c-10.346116,0-18.7333,8.387676-18.7333,18.734399v61.568945h355.318661v-15.299799h-200.108933c-15.444255,0-27.964297-12.520777-27.964297-27.965937Z"/>
+          <text id="player2Fouls" class="cls-2" transform="translate(1194.786377 60.545898)"><tspan x="0" y="0">0/5</tspan></text>
+        </g>
+        <g id="player1_x5F_blue">
+          <path class="cls-3" d="M269.774187.025508H18.733282C8.387166.025508-.000018,8.412692-.000018,18.758808v46.617971h279.27921V9.530513c0-5.249469-4.255536-9.505005-9.505005-9.505005Z"/>
+          <text class="cls-5" transform="translate(15.884068 45.119629)"><tspan x="0" y="0">GAM-JEOM</tspan></text>
+          <path class="cls-7" d="M228.073212,37.061064v-18.302161C228.073212,8.4128,236.460384.025628,246.806486.025628h89.778857c10.346116,0,18.7333,8.387184,18.7333,18.7333v61.565334H-.000018v-15.298901h200.108933c15.444255,0,27.964297-12.520042,27.964297-27.964297Z"/>
+          <text id="player1Fouls" data-name="fouls" class="cls-1" transform="translate(245.039337 60.546387)"><tspan x="0" y="0">0/5</tspan></text>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>
