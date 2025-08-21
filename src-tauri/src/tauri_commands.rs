@@ -8,6 +8,23 @@ use crate::utils::simulation_env::ensure_simulation_env;
 
 
 
+async fn ensure_license_ok(app: &State<'_, Arc<App>>) -> Result<(), TauriError> {
+    let status = app
+        .license_plugin()
+        .validate(app.config_manager())
+        .await
+        .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    let allowed = matches!(status.state, crate::plugins::plugin_license::LicenseState::Valid);
+    if allowed {
+        Ok(())
+    } else {
+        Err(TauriError::from(anyhow::anyhow!(format!(
+            "License not valid: state={:?}, reason={:?}",
+            status.state, status.reason
+        ))))
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LogFileInfo {
     pub name: String,
@@ -34,6 +51,7 @@ pub async fn shutdown_app(app: State<'_, Arc<App>>) -> Result<(), TauriError> {
 #[tauri::command]
 pub async fn start_udp_server(app: State<'_, Arc<App>>) -> Result<(), TauriError> {
     log::info!("Starting UDP server");
+    ensure_license_ok(&app).await?;
     let config = app.config_manager().get_config().await;
     app.udp_plugin().start(&config).await.map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
     // Ensure UDP event handler is running so PSS events reach auto-recording
@@ -91,6 +109,7 @@ pub async fn update_udp_settings(settings: serde_json::Value, app: State<'_, Arc
 #[tauri::command]
 pub async fn obs_connect(url: String, app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("OBS connect called with URL: {}", url);
+    ensure_license_ok(&app).await?;
     // Parse basic info
     let host = url.replace("ws://", "").replace("wss://", "").split(':').next().unwrap_or("localhost").to_string();
     // Create connection via obws, name default to OBS_REC if not provided in UI
@@ -110,6 +129,7 @@ pub async fn obs_add_connection(
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("OBS add connection called: {}@{}:{}", name, host, port);
+    ensure_license_ok(&app).await?;
     // Delegate to obws add_connection
     let req = crate::tauri_commands_obws::ObsObwsConnectionRequest { name: name.clone(), host: host.clone(), port, password: password.clone(), enabled };
     let res = crate::tauri_commands_obws::obs_obws_add_connection(req, app.clone()).await;
@@ -129,6 +149,7 @@ pub async fn obs_connect_to_connection(
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("OBS connect to connection called: {}", connection_name);
+    ensure_license_ok(&app).await?;
     let res = crate::tauri_commands_obws::obs_obws_connect(connection_name, app.clone()).await;
     match res { Ok(_) => Ok(serde_json::json!({ "success": true })), Err(e) => Err(e) }
 }
@@ -179,6 +200,7 @@ pub async fn obs_get_status(app: State<'_, Arc<App>>) -> Result<serde_json::Valu
 #[tauri::command]
 pub async fn obs_start_recording(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("OBS start recording called");
+    ensure_license_ok(&app).await?;
     let res = crate::tauri_commands_obws::obs_obws_start_recording(None, app.clone()).await?;
     Ok(serde_json::json!({ "success": res.success, "data": res.data, "error": res.error }))
 }
@@ -186,6 +208,7 @@ pub async fn obs_start_recording(app: State<'_, Arc<App>>) -> Result<serde_json:
 #[tauri::command]
 pub async fn obs_stop_recording(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("OBS stop recording called");
+    ensure_license_ok(&app).await?;
     let res = crate::tauri_commands_obws::obs_obws_stop_recording(None, app.clone()).await?;
     Ok(serde_json::json!({ "success": res.success, "data": res.data, "error": res.error }))
 }
@@ -194,6 +217,7 @@ pub async fn obs_stop_recording(app: State<'_, Arc<App>>) -> Result<serde_json::
 #[tauri::command]
 pub async fn obs_start_streaming(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("OBS start streaming called");
+    ensure_license_ok(&app).await?;
     let res = crate::tauri_commands_obws::obs_obws_start_streaming(None, app.clone()).await?;
     Ok(serde_json::json!({ "success": res.success, "data": res.data, "error": res.error }))
 }
@@ -201,6 +225,7 @@ pub async fn obs_start_streaming(app: State<'_, Arc<App>>) -> Result<serde_json:
 #[tauri::command]
 pub async fn obs_stop_streaming(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("OBS stop streaming called");
+    ensure_license_ok(&app).await?;
     let res = crate::tauri_commands_obws::obs_obws_stop_streaming(None, app.clone()).await?;
     Ok(serde_json::json!({ "success": res.success, "data": res.data, "error": res.error }))
 }
@@ -246,6 +271,7 @@ pub async fn obs_get_replay_buffer_status(app: State<'_, Arc<App>>) -> Result<se
 #[tauri::command]
 pub async fn obs_start_replay_buffer(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("OBS start replay buffer called");
+    ensure_license_ok(&app).await?;
     let res = crate::tauri_commands_obws::obs_obws_start_replay_buffer(None, app.clone()).await?;
     Ok(serde_json::json!({ "success": res.success, "data": res.data, "error": res.error }))
 }
@@ -253,6 +279,7 @@ pub async fn obs_start_replay_buffer(app: State<'_, Arc<App>>) -> Result<serde_j
 #[tauri::command]
 pub async fn obs_stop_replay_buffer(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("OBS stop replay buffer called");
+    ensure_license_ok(&app).await?;
     let res = crate::tauri_commands_obws::obs_obws_stop_replay_buffer(None, app.clone()).await?;
     Ok(serde_json::json!({ "success": res.success, "data": res.data, "error": res.error }))
 }
@@ -260,6 +287,7 @@ pub async fn obs_stop_replay_buffer(app: State<'_, Arc<App>>) -> Result<serde_js
 #[tauri::command]
 pub async fn obs_save_replay_buffer(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("OBS save replay buffer called");
+    ensure_license_ok(&app).await?;
     let res = crate::tauri_commands_obws::obs_obws_save_replay_buffer(None, app.clone()).await?;
     Ok(serde_json::json!({ "success": res.success, "data": res.data, "error": res.error }))
 }
