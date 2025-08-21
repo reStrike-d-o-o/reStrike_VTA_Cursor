@@ -20,7 +20,8 @@
     "i18n:extract": "node scripts/extract-i18n-keys.mjs",
     "i18n:sync": "node scripts/sync-i18n.mjs",
     "i18n:update": "npm run i18n:extract && npm run i18n:sync",
-    "i18n:report": "node scripts/report-i18n-untranslated.mjs"
+    "i18n:report": "node scripts/report-i18n-untranslated.mjs",
+    "i18n:translate": "node scripts/translate-i18n.mjs"
   },
   "dependencies": {
     "@craco/craco": "^7.1.0",
