@@ -45,6 +45,18 @@ export default {
 
       // Increase TypeScript checker memory to prevent OOM in large projects
       try {
+        const nodeMajor = parseInt(process.versions.node.split('.')[0] || '0', 10);
+        const isDev = process.env.NODE_ENV !== 'production';
+        const disableChecker = isDev && (process.env.FORK_TS_DISABLE === '1' || nodeMajor >= 22);
+
+        if (disableChecker) {
+          // Remove ForkTsChecker entirely in dev on Node >= 22 (known incompatibility)
+          webpackConfig.plugins = (webpackConfig.plugins || []).filter(
+            (p) => !(p && p.constructor && p.constructor.name === 'ForkTsCheckerWebpackPlugin')
+          );
+          return webpackConfig;
+        }
+
         const ftcIndex = (webpackConfig.plugins || []).findIndex(
           (p) => p && p.constructor && p.constructor.name === 'ForkTsCheckerWebpackPlugin'
         );
