@@ -2,36 +2,26 @@
 
 High-resolution SVG overlays for taekwondo competition livestreaming at 1080p and 4K resolutions.
 
-## 📁 Files Created
+## 📁 Current Structure
 
-### SVG Overlays
-- **`scoreboard-overlay.svg`** - Main live scoreboard with real-time updates (redesigned to match example style)
-- **`player-introduction-overlay.svg`** - Player introduction display
-- **`winner-announcement-overlay.svg`** - Winner announcement and final results
-- **`previous-results-overlay.svg`** - Player match history and statistics
-- **`victory-ceremony-overlay.svg`** - 4-player medal ceremony (Gold, Silver, 2 Bronze)
+We standardized overlays by theme and use HTML wrappers for OBS:
+
+### HTML Wrappers
+```
+ui/public/overlays/
+  olympic/
+    scoreboard.html  -> /assets/scoreboard/olympic/olympic_scoreboard.svg
+    intro.html       -> /assets/scoreboard/olympic/olympic_players_overlay.svg
+  modern/
+    scoreboard.html  -> /assets/scoreboard/modern/modern_scoreboard.svg
+    intro.html       -> /assets/scoreboard/modern/modern_players_overlay.svg
+  arcade/
+    scoreboard.html  -> /assets/scoreboard/arcade/arcade_scoreboard.svg
+    intro.html       -> /assets/scoreboard/arcade/arcade_players_overlay.svg
+```
 
 ### JavaScript Utilities
-- **`scoreboard-utils.js`** - Dynamic update functions and event handling
-
-## 📂 Directory Structure
-
-Organize scoreboard SVGs into themed sets:
-```
-ui/public/assets/scoreboard/
-  olympic/
-    scoreboard-overlay.svg
-    player-introduction-overlay.svg
-    winner-announcement-overlay.svg
-    previous-results-overlay.svg
-    victory-ceremony-overlay.svg
-  modern/
-    (reserved for future set)
-  arcade/
-    (reserved for future set)
-```
-
-Wrappers default to the Olympic set. Update wrapper object `data` paths if you change set.
+- `scoreboard-utils.js` (canonical bindings) and `scoreboard-name-utils.js`
 
 ## 🎨 Design Features
 
@@ -68,12 +58,9 @@ The scoreboard functionality is now fully integrated into the PSS drawer's Score
 
 ### 2. Basic Integration
 
-```html
-<!-- Include the SVG overlay in your streaming software -->
-<object data="ui/public/assets/scoreboard/scoreboard-overlay.svg" type="image/svg+xml" width="1920" height="1080"></object>
-
-<!-- Include the JavaScript utilities -->
-<script src="ui/public/assets/scoreboard/scoreboard-utils.js"></script>
+Use the theme wrapper URLs (examples use localhost):
+```
+http://localhost:3000/overlays/olympic/scoreboard.html
 ```
 
 ### 2. Dynamic Updates
