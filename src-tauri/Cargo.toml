@@ -6,6 +6,7 @@ authors = ["reStrike Team"]
 license = "MIT"
 repository = "https://github.com/restrike/vta"
 edition = "2021"
+default-run = "re-strike-vta-app"
 
 [lib]
 name = "re_strike_vta"
