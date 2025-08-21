@@ -18,6 +18,7 @@ import { PssAthleteInfo, PssMatchConfig } from '../../types';
 import { useLiveDataEvents } from '../../hooks/useLiveDataEvents';
 import LiveOrchestratorModal from '../molecules/LiveOrchestratorModal';
 import { useI18n } from '../../i18n/index';
+import { licenseCommands } from '../../utils/tauriCommands';
 
 const DockBar: React.FC = () => {
   const { tauriAvailable } = useEnvironment();
@@ -45,6 +46,7 @@ const DockBar: React.FC = () => {
   const [isRestoring, setIsRestoring] = useState(false);
   const [liveToggle, setLiveToggle] = useState<'off'|'checking'|'on'>('off');
   const [showLiveModal, setShowLiveModal] = useState(false);
+  const [licenseStatus, setLicenseStatus] = useState<any>(null);
 
   // Removed LIVE orchestrator event hook (button removed)
 
@@ -93,6 +95,17 @@ const DockBar: React.FC = () => {
   useEffect(() => {
     console.log('🔧 DockBar - Manual mode state:', isManualModeEnabled);
   }, [isManualModeEnabled]);
+
+  // Load license status (poll lightly)
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      try { const res = await licenseCommands.getStatus(); if (mounted && res.success) setLicenseStatus(res.data); } catch {}
+    };
+    load();
+    const id = setInterval(load, 30000);
+    return () => { mounted = false; clearInterval(id); };
+  }, []);
 
   // Handle Manual mode confirmation
   const handleManualModeConfirm = () => {
@@ -265,6 +278,30 @@ const DockBar: React.FC = () => {
                   </div>
                 </div>
               </div>
+
+              {/* License Block Banner */}
+              {licenseStatus && licenseStatus.state !== 'Valid' && (
+                <div className="mt-2 mx-2">
+                  <div className="relative rounded-lg border-2 border-red-600 bg-gradient-to-r from-red-900 via-red-800 to-red-900 p-3 shadow-[0_0_20px_rgba(220,38,38,0.6)]">
+                    <div className="absolute -top-2 -left-2 right-0 h-0.5 bg-red-600/60 rounded-t" />
+                    <div className="flex items-center gap-3">
+                      <div className="text-red-300 text-2xl">⚠️</div>
+                      <div className="flex-1">
+                        <div className="text-red-200 font-extrabold text-lg tracking-wide uppercase">
+                          {t('license.blocked.title', 'License invalid or clock tampering detected')}
+                        </div>
+                        <div className="text-red-200/90 text-xs mt-0.5">
+                          {t('license.blocked.subtitle', 'Open Settings → App settings → License to activate.')}
+                        </div>
+                        <div className="text-red-300 text-xs mt-1">
+                          {t('license.blocked.status', 'Status')}: <span className="font-semibold">{licenseStatus.state}</span>
+                          {licenseStatus.reason ? <> • {t('license.blocked.reason', 'Reason')}: <span className="font-semibold">{licenseStatus.reason}</span></> : null}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Visual separation and Manual Mode action row */}
               {isManualModeEnabled && (

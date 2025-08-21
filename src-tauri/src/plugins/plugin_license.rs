@@ -3,7 +3,8 @@ use ring::signature;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::types::{AppError, AppResult};
 
@@ -25,6 +26,19 @@ const LICENSE_STORAGE_SALT: &str = "rst_vta_license_v1";
 
 /// Minimum allowed delta when system clock moves backwards (seconds)
 const CLOCK_BACK_DELTA_SECS: i64 = 86_400; // 1 day
+const GRACE_SECS: i64 = 86_400; // 24h grace
+const ANCHOR_DIR_NAME: &str = "re-strike-vta/.anchors";
+const ANCHOR_FILE_NAME: &str = "license_anchor.json";
+const ANCHOR_TOUCH_NAME: &str = "anchor.touch";
+const BACKWARD_TOLERANCE_SECS: i64 = 300; // 5 minutes tolerance
+const FUTURE_TOLERANCE_SECS: i64 = 300;   // 5 minutes tolerance
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+struct LicenseAnchor {
+    earliest_seen: Option<i64>,
+    last_seen: Option<i64>,
+    blocked_until: Option<i64>,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LicensePayload {
@@ -61,6 +75,7 @@ pub struct LicenseStatus {
     pub machine_ok: bool,
     pub reason: Option<String>,
     pub days_remaining: Option<i64>,
+    pub in_grace: bool,
 }
 
 pub struct LicensePlugin;
@@ -87,6 +102,82 @@ impl LicensePlugin {
         fs::create_dir_all(&dir)
             .map_err(|e| AppError::ConfigError(format!("Failed to create license dir: {}", e)))?;
         Ok(dir.join("license.dat"))
+    }
+
+    fn anchor_dir() -> PathBuf {
+        let base = dirs::data_dir()
+            .or_else(|| dirs::config_dir())
+            .unwrap_or(std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
+        base.join(ANCHOR_DIR_NAME)
+    }
+
+    fn anchor_path() -> PathBuf {
+        Self::anchor_dir().join(ANCHOR_FILE_NAME)
+    }
+
+    fn anchor_touch_path() -> PathBuf {
+        Self::anchor_dir().join(ANCHOR_TOUCH_NAME)
+    }
+
+    fn now_epoch() -> i64 {
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs() as i64
+    }
+
+    fn read_anchor() -> Option<LicenseAnchor> {
+        let p = Self::anchor_path();
+        let s = fs::read_to_string(p).ok()?;
+        serde_json::from_str(&s).ok()
+    }
+
+    fn write_anchor(anchor: &LicenseAnchor) {
+        let dir = Self::anchor_dir();
+        let _ = fs::create_dir_all(&dir);
+        let p = Self::anchor_path();
+        if let Ok(s) = serde_json::to_string_pretty(anchor) {
+            let _ = fs::write(&p, s);
+        }
+        // touch file for filesystem mtime anchor
+        let touch = Self::anchor_touch_path();
+        let _ = fs::write(&touch, b".");
+    }
+
+    fn check_anchors_for_tamper() -> bool {
+        let now = Self::now_epoch();
+        // Check JSON anchor
+        if let Some(anchor) = Self::read_anchor() {
+            if let Some(last) = anchor.last_seen {
+                if now + BACKWARD_TOLERANCE_SECS < last {
+                    // Time moved backwards beyond tolerance
+                    return true;
+                }
+            }
+        }
+        // Check touch file mtime against now (future mtime indicates tamper)
+        let touch = Self::anchor_touch_path();
+        if let Ok(meta) = fs::metadata(&touch) {
+            if let Ok(modified) = meta.modified() {
+                if let Ok(dur) = modified.duration_since(UNIX_EPOCH) {
+                    let m = dur.as_secs() as i64;
+                    if m > now + FUTURE_TOLERANCE_SECS {
+                        return true;
+                    }
+                }
+            }
+        }
+        false
+    }
+
+    fn update_anchor_after_validation() {
+        let mut anchor = Self::read_anchor().unwrap_or_default();
+        let now = Self::now_epoch();
+        if anchor.earliest_seen.is_none() {
+            anchor.earliest_seen = Some(now);
+        }
+        anchor.last_seen = Some(now);
+        Self::write_anchor(&anchor);
     }
 
     /// Load raw encrypted license blob from disk (if any)
@@ -123,56 +214,56 @@ impl LicensePlugin {
         // Parse
         let parsed: Result<LicenseToken, _> = serde_json::from_str(token);
         if parsed.is_err() {
-            return LicenseStatus { state: LicenseState::Invalid, plan: None, expires_at: None, machine_ok: false, reason: Some("Invalid token format".into()), days_remaining: None };
+            return LicenseStatus { state: LicenseState::Invalid, plan: None, expires_at: None, machine_ok: false, reason: Some("Invalid token format".into()), days_remaining: None, in_grace: false };
         }
         let token = parsed.unwrap();
 
         // Product check
         if token.payload.product_id != PRODUCT_ID {
-            return LicenseStatus { state: LicenseState::Invalid, plan: Some(token.payload.plan), expires_at: token.payload.expires_at, machine_ok: false, reason: Some("Product mismatch".into()), days_remaining: None };
+            return LicenseStatus { state: LicenseState::Invalid, plan: Some(token.payload.plan), expires_at: token.payload.expires_at, machine_ok: false, reason: Some("Product mismatch".into()), days_remaining: None, in_grace: false };
         }
 
         // Machine binding check
         let mh = self.compute_machine_hash().ok();
         let machine_ok = mh.as_deref() == Some(token.payload.machine_hash.as_str());
         if !machine_ok {
-            return LicenseStatus { state: LicenseState::Invalid, plan: Some(token.payload.plan), expires_at: token.payload.expires_at, machine_ok, reason: Some("Machine mismatch".into()), days_remaining: None };
+            return LicenseStatus { state: LicenseState::Invalid, plan: Some(token.payload.plan), expires_at: token.payload.expires_at, machine_ok, reason: Some("Machine mismatch".into()), days_remaining: None, in_grace: false };
         }
 
         // Signature check
         let pubkey = match general_purpose::STANDARD.decode(LICENSE_PUBKEY_B64) {
             Ok(bytes) => bytes,
             Err(_) => {
-                return LicenseStatus { state: LicenseState::Invalid, plan: Some(token.payload.plan), expires_at: token.payload.expires_at, machine_ok, reason: Some("Invalid embedded public key".into()), days_remaining: None }
+                return LicenseStatus { state: LicenseState::Invalid, plan: Some(token.payload.plan), expires_at: token.payload.expires_at, machine_ok, reason: Some("Invalid embedded public key".into()), days_remaining: None, in_grace: false }
             }
         };
         let sig = match general_purpose::STANDARD.decode(&token.signature) {
             Ok(s) => s,
             Err(_) => {
-                return LicenseStatus { state: LicenseState::Invalid, plan: Some(token.payload.plan), expires_at: token.payload.expires_at, machine_ok, reason: Some("Invalid signature encoding".into()), days_remaining: None }
+                return LicenseStatus { state: LicenseState::Invalid, plan: Some(token.payload.plan), expires_at: token.payload.expires_at, machine_ok, reason: Some("Invalid signature encoding".into()), days_remaining: None, in_grace: false }
             }
         };
         let payload_bytes = match serde_json::to_vec(&token.payload) {
             Ok(b) => b,
             Err(_) => {
-                return LicenseStatus { state: LicenseState::Invalid, plan: Some(token.payload.plan), expires_at: token.payload.expires_at, machine_ok, reason: Some("Payload serialization error".into()), days_remaining: None }
+                return LicenseStatus { state: LicenseState::Invalid, plan: Some(token.payload.plan), expires_at: token.payload.expires_at, machine_ok, reason: Some("Payload serialization error".into()), days_remaining: None, in_grace: false }
             }
         };
         let verifier = signature::UnparsedPublicKey::new(&signature::ED25519, pubkey);
         if verifier.verify(&payload_bytes, &sig).is_err() {
-            return LicenseStatus { state: LicenseState::Invalid, plan: Some(token.payload.plan), expires_at: token.payload.expires_at, machine_ok, reason: Some("Signature verification failed".into()), days_remaining: None };
+            return LicenseStatus { state: LicenseState::Invalid, plan: Some(token.payload.plan), expires_at: token.payload.expires_at, machine_ok, reason: Some("Signature verification failed".into()), days_remaining: None, in_grace: false };
         }
 
         // Expiry check
         let now = chrono::Utc::now().timestamp();
         if let Some(exp) = token.payload.expires_at {
             if now > exp {
-                return LicenseStatus { state: LicenseState::Expired, plan: Some(token.payload.plan), expires_at: token.payload.expires_at, machine_ok, reason: Some("License expired".into()), days_remaining: Some(0) };
+                return LicenseStatus { state: LicenseState::Expired, plan: Some(token.payload.plan), expires_at: token.payload.expires_at, machine_ok, reason: Some("License expired".into()), days_remaining: Some(0), in_grace: false };
             }
         }
 
         let days_remaining = token.payload.expires_at.map(|e| ((e - now) as f64 / 86_400.0).ceil() as i64);
-        LicenseStatus { state: LicenseState::Valid, plan: Some(token.payload.plan), expires_at: token.payload.expires_at, machine_ok, reason: None, days_remaining }
+        LicenseStatus { state: LicenseState::Valid, plan: Some(token.payload.plan), expires_at: token.payload.expires_at, machine_ok, reason: None, days_remaining, in_grace: false }
     }
 
     /// Activate a license: verify, then encrypt+persist and update config.
@@ -182,6 +273,8 @@ impl LicensePlugin {
             LicenseState::Valid | LicenseState::Trial => {
                 let blob = self.encrypt_token(key)?;
                 self.save_encrypted(&blob)?;
+                // Update anchor on successful activation
+                Self::update_anchor_after_validation();
                 // Update config lightweight mirror
                 let mut settings = config.get_config().await;
                 settings.license.status = match status.state { LicenseState::Valid => "valid".into(), LicenseState::Trial => "trial".into(), _ => "invalid".into() };
@@ -202,12 +295,12 @@ impl LicensePlugin {
             Some(b) => b,
             None => {
                 // trial as default if configured that way; here we signal invalid
-                return Ok(LicenseStatus { state: LicenseState::Invalid, plan: None, expires_at: None, machine_ok: false, reason: Some("No license installed".into()), days_remaining: None });
+                return Ok(LicenseStatus { state: LicenseState::Invalid, plan: None, expires_at: None, machine_ok: false, reason: Some("No license installed".into()), days_remaining: None, in_grace: false });
             }
         };
         let token = match self.decrypt_token(&blob) {
             Ok(t) => t,
-            Err(e) => return Ok(LicenseStatus { state: LicenseState::Invalid, plan: None, expires_at: None, machine_ok: false, reason: Some(format!("{}", e)), days_remaining: None }),
+            Err(e) => return Ok(LicenseStatus { state: LicenseState::Invalid, plan: None, expires_at: None, machine_ok: false, reason: Some(format!("{}", e)), days_remaining: None, in_grace: false }),
         };
         let mut status = self.verify_token(&token);
 
@@ -224,10 +317,21 @@ impl LicensePlugin {
             }
         }
 
+        // Anchor file tamper checks (timezone travel safe, uses UTC epoch and mtime)
+        if Self::check_anchors_for_tamper() {
+            status.state = LicenseState::ClockTampered;
+            status.reason = Some("Time tampering detected".into());
+        }
+
+        // No grace allowed (policy): do not set in_grace
+
         // Persist last_validation if still acceptable
         let mut cfg2 = cfg.clone();
         cfg2.license.last_validation = Some(chrono::Utc::now().to_rfc3339());
         let _ = config.update_config(cfg2).await; // best-effort
+
+        // Update anchors after each validation attempt
+        Self::update_anchor_after_validation();
 
         Ok(status)
     }
