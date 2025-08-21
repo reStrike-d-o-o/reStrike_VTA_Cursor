@@ -4,6 +4,7 @@ import Toggle from '../atoms/Toggle';
 import Input from '../atoms/Input';
 import Label from '../atoms/Label';
 import StatusDot from '../atoms/StatusDot';
+import TabGroup from '../molecules/TabGroup';
 import { usePssMatchStore } from '../../stores/pssMatchStore';
 import { useAppStore } from '../../stores';
 import { invoke as tauriInvoke } from '@tauri-apps/api/core';
@@ -58,6 +59,7 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
   // Overlay templates state
   const [overlayTemplates, setOverlayTemplates] = useState<OverlayTemplate[]>([]);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
+  const [overlayTab, setOverlayTab] = useState('olympic');
 
   // PSS data from store - use direct property selectors to avoid infinite loops
   const matchData = usePssMatchStore((state) => state.matchData);
@@ -243,99 +245,125 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
           {/* HTML Overlay URLs */}
           <div className="p-3 bg-blue-900/20 rounded-lg border border-blue-500/30">
             <Label className="text-sm text-blue-300 mb-2">{t('ovr.urls.title', 'HTML Overlay URLs (Real-time PSS Updates)')}</Label>
-            <div className="space-y-3">
-              <div>
-                <Label className="text-xs text-gray-300">{t('ovr.urls.scoreboard', 'Scoreboard Overlay')}</Label>
-                <div className="flex items-center space-x-2">
-                  <Input
-                    value={`${window.location.origin}/scoreboard-overlay.html`}
-                    readOnly
-                    className="flex-1 text-xs"
-                  />
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => window.open(`${window.location.origin}/scoreboard-overlay.html`, '_blank')}
-                  >
-                    {t('common.open_browser', 'Open in Browser')}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => navigator.clipboard.writeText(`${window.location.origin}/scoreboard-overlay.html`)}
-                  >
-                    {t('common.copy', 'Copy')}
-                  </Button>
-                </div>
-              </div>
-              
-              <div>
-                <Label className="text-xs text-gray-300">{t('ovr.urls.player_intro', 'Player Introduction Overlay')}</Label>
-                <div className="flex items-center space-x-2">
-                  <Input
-                    value={`${window.location.origin}/player-introduction-overlay.html`}
-                    readOnly
-                    className="flex-1 text-xs"
-                  />
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => window.open(`${window.location.origin}/player-introduction-overlay.html`, '_blank')}
-                  >
-                    {t('common.open_browser', 'Open in Browser')}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => navigator.clipboard.writeText(`${window.location.origin}/player-introduction-overlay.html`)}
-                  >
-                    {t('common.copy', 'Copy')}
-                  </Button>
-                </div>
-              </div>
-              
-              {/* Arcade Series (Tekken/Street-Fighter style) */}
-              <div className="pt-2">
-                <Label className="text-xs text-purple-300">{t('ovr.urls.arcade_scoreboard', 'Arcade Scoreboard (New)')}</Label>
-                <div className="flex items-center space-x-2">
-                  <Input value={`${window.location.origin}/overlays/arcade/scoreboard.html`} readOnly className="flex-1 text-xs" />
-                  <Button size="sm" variant="secondary" onClick={() => window.open(`${window.location.origin}/overlays/arcade/scoreboard.html`, '_blank')}>{t('common.open', 'Open')}</Button>
-                  <Button size="sm" variant="secondary" onClick={() => navigator.clipboard.writeText(`${window.location.origin}/overlays/arcade/scoreboard.html`)}>{t('common.copy', 'Copy')}</Button>
-                </div>
-              </div>
-              <div>
-                <Label className="text-xs text-purple-300">{t('ovr.urls.arcade_intro', 'Arcade Intro')}</Label>
-                <div className="flex items-center space-x-2">
-                  <Input value={`${window.location.origin}/overlays/arcade/intro.html`} readOnly className="flex-1 text-xs" />
-                  <Button size="sm" variant="secondary" onClick={() => window.open(`${window.location.origin}/overlays/arcade/intro.html`, '_blank')}>{t('common.open', 'Open')}</Button>
-                  <Button size="sm" variant="secondary" onClick={() => navigator.clipboard.writeText(`${window.location.origin}/overlays/arcade/intro.html`)}>{t('common.copy', 'Copy')}</Button>
-                </div>
-              </div>
-              <div>
-                <Label className="text-xs text-purple-300">{t('ovr.urls.arcade_intermission', 'Arcade Intermission Stats')}</Label>
-                <div className="flex items-center space-x-2">
-                  <Input value={`${window.location.origin}/overlays/arcade/intermission.html`} readOnly className="flex-1 text-xs" />
-                  <Button size="sm" variant="secondary" onClick={() => window.open(`${window.location.origin}/overlays/arcade/intermission.html`, '_blank')}>{t('common.open', 'Open')}</Button>
-                  <Button size="sm" variant="secondary" onClick={() => navigator.clipboard.writeText(`${window.location.origin}/overlays/arcade/intermission.html`)}>{t('common.copy', 'Copy')}</Button>
-                </div>
-              </div>
-              <div>
-                <Label className="text-xs text-purple-300">{t('ovr.urls.arcade_winner', 'Arcade Winner')}</Label>
-                <div className="flex items-center space-x-2">
-                  <Input value={`${window.location.origin}/overlays/arcade/winner.html`} readOnly className="flex-1 text-xs" />
-                  <Button size="sm" variant="secondary" onClick={() => window.open(`${window.location.origin}/overlays/arcade/winner.html`, '_blank')}>{t('common.open', 'Open')}</Button>
-                  <Button size="sm" variant="secondary" onClick={() => navigator.clipboard.writeText(`${window.location.origin}/overlays/arcade/winner.html`)}>{t('common.copy', 'Copy')}</Button>
-                </div>
-              </div>
-              <div>
-                <Label className="text-xs text-purple-300">{t('ovr.urls.arcade_specials', 'Arcade Specials')}</Label>
-                <div className="flex items-center space-x-2">
-                  <Input value={`${window.location.origin}/overlays/arcade/specials.html`} readOnly className="flex-1 text-xs" />
-                  <Button size="sm" variant="secondary" onClick={() => window.open(`${window.location.origin}/overlays/arcade/specials.html`, '_blank')}>{t('common.open', 'Open')}</Button>
-                  <Button size="sm" variant="secondary" onClick={() => navigator.clipboard.writeText(`${window.location.origin}/overlays/arcade/specials.html`)}>{t('common.copy', 'Copy')}</Button>
-                </div>
-              </div>
-            </div>
+            <TabGroup
+              tabs={[
+                {
+                  id: 'olympic',
+                  label: t('ovr.tabs.olympic', 'Olympic'),
+                  content: (
+                    <div className="space-y-3">
+                      <div>
+                        <Label className="text-xs text-gray-300">{t('ovr.urls.scoreboard', 'Scoreboard Overlay')}</Label>
+                        <div className="flex items-center space-x-2">
+                          <Input
+                            value={`${window.location.origin}/scoreboard-overlay.html`}
+                            readOnly
+                            className="flex-1 text-xs"
+                          />
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => window.open(`${window.location.origin}/scoreboard-overlay.html`, '_blank')}
+                          >
+                            {t('common.open_browser', 'Open in Browser')}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => navigator.clipboard.writeText(`${window.location.origin}/scoreboard-overlay.html`)}
+                          >
+                            {t('common.copy', 'Copy')}
+                          </Button>
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-gray-300">{t('ovr.urls.player_intro', 'Player Introduction Overlay')}</Label>
+                        <div className="flex items-center space-x-2">
+                          <Input
+                            value={`${window.location.origin}/player-introduction-overlay.html`}
+                            readOnly
+                            className="flex-1 text-xs"
+                          />
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => window.open(`${window.location.origin}/player-introduction-overlay.html`, '_blank')}
+                          >
+                            {t('common.open_browser', 'Open in Browser')}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => navigator.clipboard.writeText(`${window.location.origin}/player-introduction-overlay.html`)}
+                          >
+                            {t('common.copy', 'Copy')}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                },
+                {
+                  id: 'modern',
+                  label: t('ovr.tabs.modern', 'Modern'),
+                  content: (
+                    <div className="text-xs text-gray-400">
+                      {t('ovr.urls.modern_placeholder', 'Modern overlays coming soon')}
+                    </div>
+                  )
+                },
+                {
+                  id: 'arcade',
+                  label: t('ovr.tabs.arcade', 'Arcade'),
+                  content: (
+                    <div className="space-y-3">
+                      <div className="pt-2">
+                        <Label className="text-xs text-purple-300">{t('ovr.urls.arcade_scoreboard', 'Arcade Scoreboard (New)')}</Label>
+                        <div className="flex items-center space-x-2">
+                          <Input value={`${window.location.origin}/overlays/arcade/scoreboard.html`} readOnly className="flex-1 text-xs" />
+                          <Button size="sm" variant="secondary" onClick={() => window.open(`${window.location.origin}/overlays/arcade/scoreboard.html`, '_blank')}>{t('common.open', 'Open')}</Button>
+                          <Button size="sm" variant="secondary" onClick={() => navigator.clipboard.writeText(`${window.location.origin}/overlays/arcade/scoreboard.html`)}>{t('common.copy', 'Copy')}</Button>
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-purple-300">{t('ovr.urls.arcade_intro', 'Arcade Intro')}</Label>
+                        <div className="flex items-center space-x-2">
+                          <Input value={`${window.location.origin}/overlays/arcade/intro.html`} readOnly className="flex-1 text-xs" />
+                          <Button size="sm" variant="secondary" onClick={() => window.open(`${window.location.origin}/overlays/arcade/intro.html`, '_blank')}>{t('common.open', 'Open')}</Button>
+                          <Button size="sm" variant="secondary" onClick={() => navigator.clipboard.writeText(`${window.location.origin}/overlays/arcade/intro.html`)}>{t('common.copy', 'Copy')}</Button>
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-purple-300">{t('ovr.urls.arcade_intermission', 'Arcade Intermission Stats')}</Label>
+                        <div className="flex items-center space-x-2">
+                          <Input value={`${window.location.origin}/overlays/arcade/intermission.html`} readOnly className="flex-1 text-xs" />
+                          <Button size="sm" variant="secondary" onClick={() => window.open(`${window.location.origin}/overlays/arcade/intermission.html`, '_blank')}>{t('common.open', 'Open')}</Button>
+                          <Button size="sm" variant="secondary" onClick={() => navigator.clipboard.writeText(`${window.location.origin}/overlays/arcade/intermission.html`)}>{t('common.copy', 'Copy')}</Button>
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-purple-300">{t('ovr.urls.arcade_winner', 'Arcade Winner')}</Label>
+                        <div className="flex items-center space-x-2">
+                          <Input value={`${window.location.origin}/overlays/arcade/winner.html`} readOnly className="flex-1 text-xs" />
+                          <Button size="sm" variant="secondary" onClick={() => window.open(`${window.location.origin}/overlays/arcade/winner.html`, '_blank')}>{t('common.open', 'Open')}</Button>
+                          <Button size="sm" variant="secondary" onClick={() => navigator.clipboard.writeText(`${window.location.origin}/overlays/arcade/winner.html`)}>{t('common.copy', 'Copy')}</Button>
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-purple-300">{t('ovr.urls.arcade_specials', 'Arcade Specials')}</Label>
+                        <div className="flex items-center space-x-2">
+                          <Input value={`${window.location.origin}/overlays/arcade/specials.html`} readOnly className="flex-1 text-xs" />
+                          <Button size="sm" variant="secondary" onClick={() => window.open(`${window.location.origin}/overlays/arcade/specials.html`, '_blank')}>{t('common.open', 'Open')}</Button>
+                          <Button size="sm" variant="secondary" onClick={() => navigator.clipboard.writeText(`${window.location.origin}/overlays/arcade/specials.html`)}>{t('common.copy', 'Copy')}</Button>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                }
+              ]}
+              activeTab={overlayTab}
+              onTabChange={setOverlayTab}
+            />
             <p className="text-xs text-blue-400 mt-2">
               {t('ovr.urls.realtime_note', '✨ These HTML overlays support real-time PSS data updates via WebSocket events')}
             </p>
