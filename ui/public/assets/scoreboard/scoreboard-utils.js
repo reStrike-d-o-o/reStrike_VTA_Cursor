@@ -31,11 +31,15 @@ class ScoreboardOverlay {
     this.hideInjurySection();
   }
 
+  // Internal: try multiple candidate IDs and return the first element found
+  getSvgElement(id) {
+    return this.svg.getElementById(id);
+  }
+
   // Update player names
   updatePlayerName(player, name) {
-    // Map player colors to SVG element IDs
-    const elementId = player === 'blue' ? 'player1Name' : 'player2Name';
-    const nameElement = this.svg.getElementById(elementId);
+    // Map player colors to SVG element IDs (support legacy and new schemas)
+    const nameElement = this.getSvgElement(player === 'blue' ? 'player1Name' : 'player2Name');
     if (nameElement) {
       // Apply proper capitalization (first letter of each word)
       const capitalizedName = capitalizeName(name);
@@ -48,12 +52,12 @@ class ScoreboardOverlay {
 
   // Update player scores
   updateScore(player, score) {
-    // Map player colors to SVG element IDs
+    // Map player colors to SVG element IDs (support legacy and new schemas)
     const elementId = player === 'blue' ? 'player1Score' : 'player2Score';
-    console.log(`🎯 Updating score for ${player} player, element ID: ${elementId}, score: ${score}`);
+    console.log(`🎯 Updating score for ${player} player, id: ${elementId}, score: ${score}`);
     console.log(`🎯 SVG element:`, this.svg);
     
-    const scoreElement = this.svg.getElementById(elementId);
+    const scoreElement = this.getSvgElement(elementId);
     console.log(`🎯 Found score element:`, scoreElement);
     
     if (scoreElement) {
@@ -69,15 +73,14 @@ class ScoreboardOverlay {
 
   // Update player countries (flags)
   updateCountry(player, country) {
-    // Map player colors to SVG element IDs
-    const elementId = player === 'blue' ? 'player1Flag' : 'player2Flag';
-    const flagElement = this.svg.getElementById(elementId);
+    // Map player colors to SVG element IDs (support legacy and new schemas)
+    const flagElement = this.getSvgElement(player === 'blue' ? 'player1Flag' : 'player2Flag');
     if (flagElement) {
-      // Update the flag image source
-      flagElement.setAttribute('href', `../flags/svg/${country}.svg`);
+      // Update the flag image source (use absolute path for consistency)
+      flagElement.setAttribute('href', `/assets/flags/svg/${country}.svg`);
       console.log(`✅ Updated ${player} player country flag: ${country}`);
     } else {
-      console.warn(`⚠️ Could not find ${elementId} element`);
+      console.warn(`⚠️ Could not find flag element for ${player}`);
     }
   }
 
@@ -89,9 +92,8 @@ class ScoreboardOverlay {
 
   // Update penalties and warnings
   updatePenalties(player, penalties, warnings) {
-    // Map player colors to SVG element IDs
-    const elementId = player === 'blue' ? 'player1Fouls' : 'player2Fouls';
-    const penaltiesElement = this.svg.getElementById(elementId);
+    // Map player colors to SVG element IDs (support legacy and new schemas)
+    const penaltiesElement = this.getSvgElement(player === 'blue' ? 'player1Fouls' : 'player2Fouls');
     if (penaltiesElement) {
       penaltiesElement.textContent = warnings || penalties || 0;
       // Apply pop-out animation
@@ -105,9 +107,8 @@ class ScoreboardOverlay {
 
   // Update round wins
   updateRoundWins(player, wins) {
-    // Map player colors to SVG element IDs
-    const elementId = player === 'blue' ? 'player1Rounds' : 'player2Rounds';
-    const winsElement = this.svg.getElementById(elementId);
+    // Map player colors to SVG element IDs (support legacy and new schemas)
+    const winsElement = this.getSvgElement(player === 'blue' ? 'player1Rounds' : 'player2Rounds');
     if (winsElement) {
       winsElement.textContent = wins || 0;
       // Apply pop-out animation
@@ -121,7 +122,7 @@ class ScoreboardOverlay {
 
   // Update match timer
   updateTimer(minutes, seconds) {
-    const timerElement = this.svg.getElementById('matchTimer');
+    const timerElement = this.getSvgElement('matchTimer');
     if (timerElement) {
       timerElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
       console.log(`✅ Updated match timer: ${minutes}:${seconds.toString().padStart(2, '0')}`);
@@ -132,7 +133,7 @@ class ScoreboardOverlay {
 
   // Update current round
   updateRound(round) {
-    const roundElement = this.svg.getElementById('currentRound');
+    const roundElement = this.getSvgElement('currentRound');
     if (roundElement) {
       roundElement.textContent = this.getOrdinalSuffix(round);
       console.log(`✅ Updated current round: ${this.getOrdinalSuffix(round)}`);
@@ -143,7 +144,7 @@ class ScoreboardOverlay {
 
   // Update injury time
   updateInjuryTime(time) {
-    const injuryElement = this.svg.getElementById('injuryTime');
+    const injuryElement = this.getSvgElement('injuryTime');
     if (injuryElement) {
       // Handle both string format ("1:00") and separate parameters (minutes, seconds)
       if (typeof time === 'string') {
@@ -244,7 +245,7 @@ class ScoreboardOverlay {
 
   // Update combined match info (weight, division, category)
   updateMatchInfo(weight, division, category) {
-    const matchInfoElement = this.svg.getElementById('matchInfo');
+    const matchInfoElement = this.getSvgElement('matchInfo');
     if (matchInfoElement) {
       const combinedText = `${weight || ''} ${division || ''} ${category || ''}`.trim();
       matchInfoElement.textContent = combinedText;
@@ -256,7 +257,7 @@ class ScoreboardOverlay {
 
   // Update match category (for backward compatibility)
   updateMatchCategory(category) {
-    const matchInfoElement = this.svg.getElementById('matchInfo');
+    const matchInfoElement = this.getSvgElement('matchInfo');
     if (matchInfoElement) {
       // Get current weight and division from the element
       const currentText = matchInfoElement.textContent || '';
@@ -273,7 +274,7 @@ class ScoreboardOverlay {
 
   // Update match type (weight class) - for backward compatibility
   updateMatchType(type) {
-    const typeElement = this.svg.getElementById('matchType');
+    const typeElement = this.getSvgElement('matchType');
     if (typeElement) {
       typeElement.textContent = type;
       console.log(`✅ Updated match type: ${type}`);
@@ -284,7 +285,7 @@ class ScoreboardOverlay {
 
   // Update match weight (for backward compatibility)
   updateMatchWeight(weight) {
-    const matchInfoElement = this.svg.getElementById('matchInfo');
+    const matchInfoElement = this.getSvgElement('matchInfo');
     if (matchInfoElement) {
       // Get current division and category from the element
       const currentText = matchInfoElement.textContent || '';
@@ -301,7 +302,7 @@ class ScoreboardOverlay {
 
   // Update match division (for backward compatibility)
   updateMatchDivision(division) {
-    const matchInfoElement = this.svg.getElementById('matchInfo');
+    const matchInfoElement = this.getSvgElement(['matchInfo', 'tournament_x5F_name']);
     if (matchInfoElement) {
       // Get current weight and category from the element
       const currentText = matchInfoElement.textContent || '';
@@ -433,16 +434,21 @@ class PlayerIntroductionOverlay extends ScoreboardOverlay {
 
   // Update Player 1 name in the VS string
   updatePlayer1Name(name) {
-    const nameElement = this.svg.getElementById('playerVSString');
+    // Prefer VS string, otherwise fall back to per-side name element (new schema)
+    const nameElement = this.getSvgElement(['playerVSString', 'player1_x5F_name']);
     if (nameElement) {
       const currentText = nameElement.textContent;
-      const parts = currentText.split(' VS ');
-      if (parts.length === 2) {
-        const newText = `${capitalizeName(name)} VS ${parts[1]}`;
-        nameElement.textContent = newText;
+      if (nameElement.id === 'playerVSString') {
+        const parts = currentText.split(' VS ');
+        if (parts.length === 2) {
+          const newText = `${capitalizeName(name)} VS ${parts[1]}`;
+          nameElement.textContent = newText;
+        } else {
+          const newText = `${capitalizeName(name)} VS Gashim Magomedov`;
+          nameElement.textContent = newText;
+        }
       } else {
-        const newText = `${capitalizeName(name)} VS Gashim Magomedov`;
-        nameElement.textContent = newText;
+        nameElement.textContent = capitalizeName(name);
       }
       
       console.log(`✅ Updated Player 1 name: ${capitalizeName(name)}`);
@@ -451,16 +457,20 @@ class PlayerIntroductionOverlay extends ScoreboardOverlay {
 
   // Update Player 2 name in the VS string
   updatePlayer2Name(name) {
-    const nameElement = this.svg.getElementById('playerVSString');
+    const nameElement = this.getSvgElement(['playerVSString', 'player2_x5F_name']);
     if (nameElement) {
       const currentText = nameElement.textContent;
-      const parts = currentText.split(' VS ');
-      if (parts.length === 2) {
-        const newText = `${parts[0]} VS ${capitalizeName(name)}`;
-        nameElement.textContent = newText;
+      if (nameElement.id === 'playerVSString') {
+        const parts = currentText.split(' VS ');
+        if (parts.length === 2) {
+          const newText = `${parts[0]} VS ${capitalizeName(name)}`;
+          nameElement.textContent = newText;
+        } else {
+          const newText = `Park Taejoon VS ${capitalizeName(name)}`;
+          nameElement.textContent = newText;
+        }
       } else {
-        const newText = `Park Taejoon VS ${capitalizeName(name)}`;
-        nameElement.textContent = newText;
+        nameElement.textContent = capitalizeName(name);
       }
       
       console.log(`✅ Updated Player 2 name: ${capitalizeName(name)}`);
@@ -469,9 +479,9 @@ class PlayerIntroductionOverlay extends ScoreboardOverlay {
 
   // Update Player 1 flag
   updatePlayer1Flag(countryCode) {
-    const flagElement = this.svg.getElementById('leftPlayerFlag');
+    const flagElement = this.getSvgElement('leftPlayerFlag');
     if (flagElement) {
-      flagElement.setAttribute('href', `../flags/svg/${countryCode}.svg`);
+      flagElement.setAttribute('href', `/assets/flags/svg/${countryCode}.svg`);
       
              // Adjust glass effect rectangle after flag loads
        const adjustLeftFlag = () => {
@@ -502,9 +512,9 @@ class PlayerIntroductionOverlay extends ScoreboardOverlay {
 
   // Update Player 2 flag
   updatePlayer2Flag(countryCode) {
-    const flagElement = this.svg.getElementById('rightPlayerFlag');
+    const flagElement = this.getSvgElement('rightPlayerFlag');
     if (flagElement) {
-      flagElement.setAttribute('href', `../flags/svg/${countryCode}.svg`);
+      flagElement.setAttribute('href', `/assets/flags/svg/${countryCode}.svg`);
       
              // Dynamically adjust position after flag loads to ensure 20px right padding
        const adjustFlagPosition = () => {

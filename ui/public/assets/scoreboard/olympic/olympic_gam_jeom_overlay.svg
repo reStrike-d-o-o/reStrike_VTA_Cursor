@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 1535.456299 76.668236">
+  <defs>
+    <style>
+      .cls-1 {
+        font-size: 57.143101px;
+        letter-spacing: .020004em;
+      }
+
+      .cls-1, .cls-2 {
+        fill: #fff;
+        font-family: FixelDisplay-SemiBold, 'Fixel Display';
+        font-weight: 600;
+      }
+
+      .cls-3 {
+        stroke: #dab264;
+        stroke-width: 1.355993px;
+      }
+
+      .cls-3, .cls-4 {
+        fill: none;
+        stroke-miterlimit: 10;
+      }
+
+      .cls-2 {
+        font-size: 35.481701px;
+        letter-spacing: .019995em;
+      }
+
+      .cls-5 {
+        fill: #e01600;
+      }
+
+      .cls-6 {
+        fill: #2c4dff;
+      }
+
+      .cls-7 {
+        fill: #282f39;
+      }
+
+      .cls-4 {
+        stroke: #fff;
+        stroke-width: 2px;
+      }
+    </style>
+  </defs>
+  <!-- Generator: Adobe Illustrator 28.7.5, SVG Export Plug-In . SVG Version: 1.2.0 Build 176)  -->
+  <g>
+    <g id="Layer_2">
+      <g id="gam-jeom">
+        <g id="player2_x5F_red">
+          <rect class="cls-7" x="1298.705389" y=".339014" width="236.072921" height="65.123564"/>
+          <rect class="cls-5" x="1168.45826" y=".339014" width="130.247129" height="65.123564"/>
+          <rect class="cls-3" x="1168.45826" y=".339014" width="366.32005" height="65.123564"/>
+          <line id="diveder" class="cls-4" x1="1233.581825" y1="55.607656" x2="1233.581825" y2="10.193938"/>
+          <text id="fouls_x5F_max" class="cls-1" transform="translate(1247.45813 52.900635)"><tspan x="0" y="0">5</tspan></text>
+          <text id="fouls_x5F_current" class="cls-1" transform="translate(1182.334595 52.900635)"><tspan x="0" y="0">0</tspan></text>
+          <text id="player2_x5F_Gam-Jeom" class="cls-2" transform="translate(1320.942261 45.319092)"><tspan x="0" y="0">GAM-JEOM</tspan></text>
+        </g>
+        <g id="player1_x5F_blue">
+          <rect class="cls-7" x=".677989" y=".339014" width="236.072921" height="65.123564"/>
+          <rect class="cls-6" x="236.75091" y=".339014" width="130.247129" height="65.123564"/>
+          <rect class="cls-3" x=".677989" y=".339014" width="366.32005" height="65.123564"/>
+          <line id="diveder-2" data-name="diveder" class="cls-4" x1="301.874474" y1="55.607656" x2="301.874474" y2="10.193938"/>
+          <text id="fouls_x5F_max-2" data-name="fouls_x5F_max" class="cls-1" transform="translate(315.751495 52.900635)"><tspan x="0" y="0">5</tspan></text>
+          <text id="fouls_x5F_current-2" data-name="fouls_x5F_current" class="cls-1" transform="translate(250.627823 52.900635)"><tspan x="0" y="0">0</tspan></text>
+          <text id="player1_x5F_Gam-Jeom" class="cls-2" transform="translate(21.915318 45.319092)"><tspan x="0" y="0">GAM-JEOM</tspan></text>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>

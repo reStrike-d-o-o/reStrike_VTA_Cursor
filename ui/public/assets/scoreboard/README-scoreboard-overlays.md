@@ -16,12 +16,22 @@ High-resolution SVG overlays for taekwondo competition livestreaming at 1080p an
 
 ## 📂 Directory Structure
 
-All scoreboard overlay files are located in:
+Organize scoreboard SVGs into themed sets:
 ```
 ui/public/assets/scoreboard/
+  olympic/
+    scoreboard-overlay.svg
+    player-introduction-overlay.svg
+    winner-announcement-overlay.svg
+    previous-results-overlay.svg
+    victory-ceremony-overlay.svg
+  modern/
+    (reserved for future set)
+  arcade/
+    (reserved for future set)
 ```
 
-This organized structure makes it easy to manage and deploy the overlays for different streaming scenarios.
+Wrappers default to the Olympic set. Update wrapper object `data` paths if you change set.
 
 ## 🎨 Design Features
 
