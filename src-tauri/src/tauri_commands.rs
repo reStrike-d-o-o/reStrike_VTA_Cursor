@@ -444,18 +444,62 @@ pub async fn clear_events(_app: State<'_, Arc<App>>) -> Result<(), TauriError> {
 
 // License commands
 #[tauri::command]
-pub async fn activate_license(_key: String, _app: State<'_, Arc<App>>) -> Result<(), TauriError> {
-    Ok(())
+pub async fn activate_license(key: String, app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    let lp = app.license_plugin();
+    let status = lp.activate(&key, app.config_manager()).await
+        .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    Ok(serde_json::json!({
+        "state": format!("{:?}", status.state),
+        "plan": status.plan,
+        "expires_at": status.expires_at,
+        "machine_ok": status.machine_ok,
+        "reason": status.reason,
+        "days_remaining": status.days_remaining,
+    }))
 }
 
 #[tauri::command]
-pub async fn validate_license(_app: State<'_, Arc<App>>) -> Result<(), TauriError> {
-    Ok(())
+pub async fn validate_license(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    let lp = app.license_plugin();
+    let status = lp.validate(app.config_manager()).await
+        .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    Ok(serde_json::json!({
+        "state": format!("{:?}", status.state),
+        "plan": status.plan,
+        "expires_at": status.expires_at,
+        "machine_ok": status.machine_ok,
+        "reason": status.reason,
+        "days_remaining": status.days_remaining,
+    }))
 }
 
 #[tauri::command]
-pub async fn get_license_status(_app: State<'_, Arc<App>>) -> Result<String, TauriError> {
-    Ok("Valid".to_string())
+pub async fn get_license_status(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    let lp = app.license_plugin();
+    let status = lp.validate(app.config_manager()).await
+        .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    Ok(serde_json::json!({
+        "state": format!("{:?}", status.state),
+        "plan": status.plan,
+        "expires_at": status.expires_at,
+        "machine_ok": status.machine_ok,
+        "reason": status.reason,
+        "days_remaining": status.days_remaining,
+    }))
+}
+
+// Machine identity (raw UID + machine_hash) for vendor issuance
+#[tauri::command]
+pub async fn get_machine_identity(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    let uid = machine_uid::get().unwrap_or_else(|_| "unknown".to_string());
+    let mh = app
+        .license_plugin()
+        .compute_machine_hash()
+        .unwrap_or_else(|_| "".to_string());
+    Ok(serde_json::json!({
+        "uid": uid,
+        "machine_hash": mh,
+    }))
 }
 
 // Settings commands

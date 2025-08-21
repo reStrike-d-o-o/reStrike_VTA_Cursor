@@ -228,6 +228,60 @@ export const systemCommands = {
 };
 
 // ============================================================================
+// License Commands
+// ============================================================================
+
+export const licenseCommands = {
+  async getStatus(): Promise<TauriCommandResponse<any>> {
+    try {
+      if (isTauriAvailable()) {
+        const result = await safeInvoke('get_license_status');
+        return { success: true, data: result };
+      }
+      return { success: false, error: 'Tauri not available' };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  },
+
+  async validate(): Promise<TauriCommandResponse<any>> {
+    try {
+      if (isTauriAvailable()) {
+        const result = await safeInvoke('validate_license');
+        return { success: true, data: result };
+      }
+      return { success: false, error: 'Tauri not available' };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  },
+
+  async activate(key: string): Promise<TauriCommandResponse<any>> {
+    try {
+      if (isTauriAvailable()) {
+        const result = await safeInvoke('activate_license', { key });
+        return { success: true, data: result };
+      }
+      return { success: false, error: 'Tauri not available' };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  },
+
+  async getMachineIdentity(): Promise<TauriCommandResponse<{ uid: string; machine_hash: string }>> {
+    try {
+      if (isTauriAvailable()) {
+        const result = await safeInvoke('get_machine_identity');
+        return { success: true, data: result };
+      }
+      return { success: false, error: 'Tauri not available' };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  },
+};
+
+// ============================================================================
 // Diagnostics & Logs Manager Commands
 // ============================================================================
 
