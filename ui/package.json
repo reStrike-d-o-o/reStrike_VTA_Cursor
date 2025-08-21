@@ -17,7 +17,9 @@
     "format": "prettier --write src/**/*.{ts,tsx,js,jsx}",
     "clean": "rm -rf build node_modules/.cache",
     "analyze": "npm run build && npx webpack-bundle-analyzer build/static/js/*.js",
-    "i18n:sync": "node scripts/sync-i18n.mjs"
+    "i18n:extract": "node scripts/extract-i18n-keys.mjs",
+    "i18n:sync": "node scripts/sync-i18n.mjs",
+    "i18n:update": "npm run i18n:extract && npm run i18n:sync"
   },
   "dependencies": {
     "@craco/craco": "^7.1.0",

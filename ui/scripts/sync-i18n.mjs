@@ -4,7 +4,7 @@ import path from 'path';
 const uiRoot = path.resolve(process.cwd());
 const i18nIndexPath = path.join(uiRoot, 'src', 'i18n', 'index.tsx');
 const publicI18nDir = path.join(uiRoot, 'public', 'i18n');
-const locales = ['hr', 'sr', 'de', 'fr', 'es', 'it', 'bs', 'zh', 'ru'];
+const enJsonPath = path.join(publicI18nDir, 'en.json');
 
 function readFileSafe(p) {
   return fs.readFileSync(p, 'utf8');
@@ -53,6 +53,30 @@ function parsePairsFromTsObjectBlock(block) {
   return map;
 }
 
+function loadEnCatalog() {
+  // Prefer en.json if present (canonical)
+  if (fs.existsSync(enJsonPath)) {
+    try {
+      const obj = JSON.parse(fs.readFileSync(enJsonPath, 'utf8'));
+      if (obj && typeof obj === 'object') return obj;
+    } catch (e) {
+      console.warn('[i18n-sync] Warning: failed to parse en.json, falling back to inline en block');
+    }
+  }
+  // Fallback: parse inline en block from index.tsx
+  const tsx = readFileSafe(i18nIndexPath);
+  const enBlock = extractEnBlock(tsx);
+  return parsePairsFromTsObjectBlock(enBlock);
+}
+
+function listLocales() {
+  if (!fs.existsSync(publicI18nDir)) return [];
+  return fs.readdirSync(publicI18nDir)
+    .filter((f) => f.toLowerCase().endsWith('.json'))
+    .map((f) => path.basename(f, '.json'))
+    .filter((loc) => loc !== 'en');
+}
+
 function loadJson(file) {
   try {
     const s = fs.readFileSync(file, 'utf8');
@@ -69,10 +93,8 @@ function saveJson(file, obj) {
 }
 
 function main() {
-  console.log('[i18n-sync] Reading English catalog from', i18nIndexPath);
-  const tsx = readFileSafe(i18nIndexPath);
-  const enBlock = extractEnBlock(tsx);
-  const enMap = parsePairsFromTsObjectBlock(enBlock);
+  console.log('[i18n-sync] Loading English catalog (en.json preferred)');
+  const enMap = loadEnCatalog();
   const enKeys = Object.keys(enMap);
   console.log('[i18n-sync] English keys:', enKeys.length);
 
@@ -80,6 +102,8 @@ function main() {
     throw new Error('Missing public/i18n directory: ' + publicI18nDir);
   }
 
+  const locales = listLocales();
+  console.log('[i18n-sync] Locales found:', locales.join(', ') || '(none)');
   locales.forEach((loc) => {
     const file = path.join(publicI18nDir, `${loc}.json`);
     const data = loadJson(file);
