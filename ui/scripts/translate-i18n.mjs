@@ -218,9 +218,19 @@ async function main() {
 		for (const k of enKeys) {
 			const enVal = enMap[k];
 			const cur = data[k];
-			const needsCyrillicFix = loc === 'sr' && (args['force-cyrillic-sr'] === '1' || args['force-cyrillic-sr'] === 'true') && typeof cur === 'string' && /[A-Za-z]|\uFFFD/.test(cur);
+			// Detect Latin script or replacement diamonds
+			const latinRe = /\p{Script=Latin}/u;
+			const needsCyrillicFix = loc === 'sr' && (args['force-cyrillic-sr'] === '1' || args['force-cyrillic-sr'] === 'true') && typeof cur === 'string' && (latinRe.test(cur) || /\uFFFD/.test(cur));
 			if (cur === undefined || cur === enVal || needsCyrillicFix) {
 				work.push({ key: k, text: enVal });
+			}
+		}
+
+		// If forcing Cyrillic for sr, retranslate all keys to normalize script fully
+		if (loc === 'sr' && (args['force-cyrillic-sr'] === '1' || args['force-cyrillic-sr'] === 'true')) {
+			work.length = 0;
+			for (const k of enKeys) {
+				work.push({ key: k, text: enMap[k] });
 			}
 		}
 		if (!work.length) {
