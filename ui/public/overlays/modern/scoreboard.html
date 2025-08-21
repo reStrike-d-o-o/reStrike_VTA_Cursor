@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>reStrike VTA - Modern Scoreboard Overlay</title>
+    <link rel="stylesheet" href="/assets/fonts/fonts.css">
+    <style>
+        body { margin: 0; padding: 0; overflow: hidden; background: transparent; font-family: 'Fixel Display', 'Fixel Text', Arial, sans-serif; }
+        #scoreboard-container { width: 1920px; height: 1080px; position: relative; }
+        #scoreboard-svg { width: 100%; height: 100%; display: block; }
+        .connection-status { position: absolute; top: 10px; right: 10px; width: 20px; height: 20px; border-radius: 50%; background: #ef4444; border: 2px solid #ffffff; z-index: 1000; }
+        .connection-status.connected { background: #10b981; }
+    </style>
+</head>
+<body>
+    <div id="connection-status" class="connection-status"></div>
+    <div id="scoreboard-container">
+        <object id="scoreboard-svg" data="/assets/scoreboard/modern/modern_scoreboard.svg" type="image/svg+xml">
+            <div style="width: 1920px; height: 1080px; background: #000; color: white; display: flex; align-items: center; justify-content: center; font-size: 48px;">Scoreboard Overlay Loading...</div>
+        </object>
+    </div>
+
+    <script src="/assets/scoreboard/scoreboard-name-utils.js"></script>
+    <script src="/assets/scoreboard/scoreboard-utils.js"></script>
+    <script>
+        let scoreboardInstance = null; let isConnected=false; let roundDuration=120;
+        function updateConnectionStatus(c){const e=document.getElementById('connection-status');if(c)e.classList.add('connected');else e.classList.remove('connected');}
+        function initialize(){const o=document.getElementById('scoreboard-svg');const d=o.contentDocument||o.contentWindow?.document; if(d&&d.querySelector('svg')){ if(typeof ScoreboardOverlay==='undefined'){ setTimeout(initialize,1000); return;} scoreboardInstance=new ScoreboardOverlay(d.querySelector('svg')); updateConnectionStatus(false);} else { setTimeout(initialize,1000);} }
+        function handle(e){ if(!scoreboardInstance) return; switch(e.type){ case 'athletes': if(e.athlete1?.long) scoreboardInstance.updatePlayerName('blue', e.athlete1.long); if(e.athlete2?.long) scoreboardInstance.updatePlayerName('red', e.athlete2.long); if(e.athlete1?.country) scoreboardInstance.updateCountry('blue', e.athlete1.country); if(e.athlete2?.country) scoreboardInstance.updateCountry('red', e.athlete2.country); break; case 'match_config': const d=e.raw_data?JSON.parse(e.raw_data):(e.structured_data||e); if(d.round_duration!==undefined&&d.round_duration!==null) roundDuration=parseInt(d.round_duration); if(d.weight||d.division||d.category) scoreboardInstance.updateMatchInfo(d.weight,d.division,d.category); if(d.number){ const el=scoreboardInstance.svg.getElementById('matchNumber'); if(el) el.textContent=`#${d.number}`;} break; case 'current_scores': const sc=e.raw_data?JSON.parse(e.raw_data):e; const b=sc.athlete1_score??sc?.athlete1?.score??0; const r=sc.athlete2_score??sc?.athlete2?.score??0; scoreboardInstance.updateScore('blue', b); scoreboardInstance.updateScore('red', r); break; case 'clock': if(e.time){ let m=0,s=0; if(e.time.includes(':')){const p=e.time.split(':'); m=parseInt(p[0])||0; s=parseInt(p[1])||0;} else { s=parseInt(e.time)||0;} scoreboardInstance.updateTimer(m,s);} break; case 'round': const rn=e.current_round??e.round??null; if(rn!==null){ scoreboardInstance.updateRound(rn); const m=Math.floor(roundDuration/60), s=roundDuration%60; scoreboardInstance.updateTimer(m,s);} break; }}
+        let ws=null, tries=0; const max=5, delay=2000; function connect(){ try{ const h=window.location.hostname; const w=(h==='localhost'||h==='127.0.0.1')?'127.0.0.1':h; const url=`ws://${w}:3001`; ws=new WebSocket(url); ws.onopen=()=>{updateConnectionStatus(true); tries=0;}; ws.onmessage=(ev)=>{ try{ const d=JSON.parse(ev.data); if(d.type==='pss_event') handle(d.data);}catch(_){}}; ws.onclose=()=>{updateConnectionStatus(false); if(tries<max){tries++; setTimeout(connect,delay);} }; ws.onerror=()=>updateConnectionStatus(false);}catch(_){updateConnectionStatus(false);} }
+        document.addEventListener('DOMContentLoaded',()=>{ const o=document.getElementById('scoreboard-svg'); o.addEventListener('load', initialize); connect(); if(o.contentDocument) initialize(); });
+        window.ModernScoreboard={handle};
+    </script>
+</body>
+</html>
+
+
