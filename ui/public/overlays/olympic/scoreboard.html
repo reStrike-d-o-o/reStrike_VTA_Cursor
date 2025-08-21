@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>reStrike VTA - Olympic Scoreboard Overlay</title>
+    <link rel="stylesheet" href="/assets/fonts/fonts.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: transparent;
+            font-family: 'Fixel Display', 'Fixel Text', Arial, sans-serif;
+        }
+        #scoreboard-container { width: 1920px; height: 1080px; position: relative; }
+        #scoreboard-svg { width: 100%; height: 100%; display: block; }
+        .connection-status { position: absolute; top: 10px; right: 10px; width: 20px; height: 20px; border-radius: 50%; background: #ef4444; border: 2px solid #ffffff; z-index: 1000; }
+        .connection-status.connected { background: #10b981; }
+        .debug-panel { position: absolute; top: 10px; left: 10px; background: rgba(0, 0, 0, 0.8); color: white; padding: 10px; border-radius: 5px; font-size: 12px; z-index: 1000; display: none; }
+        .debug-panel.show { display: block; }
+    </style>
+</head>
+<body>
+    <div id="connection-status" class="connection-status"></div>
+    <div id="debug-panel" class="debug-panel">
+        <div>PSS Status: <span id="pss-status">Disconnected</span></div>
+        <div>Last Update: <span id="last-update">Never</span></div>
+        <div>Blue Player: <span id="debug-blue">-</span></div>
+        <div>Red Player: <span id="debug-red">-</span></div>
+        <div>Blue Score: <span id="debug-blue-score">0</span></div>
+        <div>Red Score: <span id="debug-red-score">0</span></div>
+    </div>
+
+    <div id="scoreboard-container">
+        <object id="scoreboard-svg" data="/assets/scoreboard/olympic/olympic_scoreboard.svg" type="image/svg+xml">
+            <div style="width: 1920px; height: 1080px; background: #000; color: white; display: flex; align-items: center; justify-content: center; font-size: 48px;">
+                Scoreboard Overlay Loading...
+            </div>
+        </object>
+    </div>
+
+    <script src="/assets/scoreboard/scoreboard-name-utils.js"></script>
+    <script src="/assets/scoreboard/scoreboard-utils.js"></script>
+
+    <script>
+        let scoreboardInstance = null;
+        let nameManager = null;
+        let isConnected = false;
+        let lastUpdateTime = null;
+        let roundDuration = 120;
+        const DEBUG_MODE = false;
+
+        function updateConnectionStatus(connected) {
+            isConnected = connected;
+            const statusElement = document.getElementById('connection-status');
+            const pssStatusElement = document.getElementById('pss-status');
+            if (connected) { statusElement.classList.add('connected'); pssStatusElement.textContent = 'Connected'; pssStatusElement.style.color = '#10b981'; }
+            else { statusElement.classList.remove('connected'); pssStatusElement.textContent = 'Disconnected'; pssStatusElement.style.color = '#ef4444'; }
+        }
+
+        function updateDebugInfo() {
+            const lastUpdateElement = document.getElementById('last-update');
+            if (lastUpdateTime) { lastUpdateElement.textContent = lastUpdateTime.toLocaleTimeString(); }
+        }
+
+        function initializeScoreboard() {
+            const svgObject = document.getElementById('scoreboard-svg');
+            if (!svgObject) { console.error('❌ SVG object not found'); return; }
+            const svgDoc = svgObject.contentDocument || svgObject.contentWindow?.document;
+            if (svgDoc && svgDoc.querySelector('svg')) {
+                if (typeof ScoreboardOverlay === 'undefined' || typeof ScoreboardNameManager === 'undefined') { setTimeout(initializeScoreboard, 1000); return; }
+                try {
+                    scoreboardInstance = new ScoreboardOverlay(svgDoc.querySelector('svg'));
+                    nameManager = new ScoreboardNameManager();
+                    updateConnectionStatus(false); updateDebugInfo();
+                    if (DEBUG_MODE) { document.getElementById('debug-panel').classList.add('show'); }
+                } catch (error) { console.error('❌ Error initializing scoreboard:', error); setTimeout(initializeScoreboard, 1000); }
+            } else { setTimeout(initializeScoreboard, 1000); }
+        }
+
+        function handlePssEvent(event) {
+            lastUpdateTime = new Date();
+            if (!scoreboardInstance) return;
+            try {
+                updateConnectionStatus(true);
+                switch (event.type) {
+                    case 'athletes':
+                        if (event.athlete1?.long) { scoreboardInstance.updatePlayerName('blue', event.athlete1.long); document.getElementById('debug-blue').textContent = event.athlete1.long; }
+                        if (event.athlete2?.long) { scoreboardInstance.updatePlayerName('red', event.athlete2.long); document.getElementById('debug-red').textContent = event.athlete2.long; }
+                        if (event.athlete1?.country) { scoreboardInstance.updateCountry('blue', event.athlete1.country); }
+                        if (event.athlete2?.country) { scoreboardInstance.updateCountry('red', event.athlete2.country); }
+                        break;
+                    case 'match_config':
+                        const data = event.raw_data ? JSON.parse(event.raw_data) : (event.structured_data || event);
+                        if (data.round_duration !== undefined && data.round_duration !== null) { roundDuration = parseInt(data.round_duration); }
+                        if (data.weight || data.division || data.category) { scoreboardInstance.updateMatchInfo(data.weight, data.division, data.category); }
+                        if (data.number) {
+                            const matchNumberElement = scoreboardInstance.svg.getElementById('matchNumber');
+                            if (matchNumberElement) matchNumberElement.textContent = `#${data.number}`;
+                        }
+                        break;
+                    case 'current_scores':
+                        const sc = event.raw_data ? JSON.parse(event.raw_data) : event;
+                        const blue = sc.athlete1_score ?? sc?.athlete1?.score ?? 0;
+                        const red = sc.athlete2_score ?? sc?.athlete2?.score ?? 0;
+                        scoreboardInstance.updateScore('blue', blue);
+                        scoreboardInstance.updateScore('red', red);
+                        document.getElementById('debug-blue-score').textContent = blue;
+                        document.getElementById('debug-red-score').textContent = red;
+                        break;
+                    case 'clock':
+                        if (event.time) {
+                            let minutes = 0, seconds = 0;
+                            if (event.time.includes(':')) { const parts = event.time.split(':'); minutes = parseInt(parts[0])||0; seconds = parseInt(parts[1])||0; }
+                            else { seconds = parseInt(event.time)||0; }
+                            scoreboardInstance.updateTimer(minutes, seconds);
+                        }
+                        break;
+                    case 'round':
+                        const roundNumber = event.current_round ?? event.round ?? null;
+                        if (roundNumber !== null) {
+                            scoreboardInstance.updateRound(roundNumber);
+                            const m = Math.floor(roundDuration / 60), s = roundDuration % 60;
+                            scoreboardInstance.updateTimer(m, s);
+                        }
+                        break;
+                }
+                updateDebugInfo();
+            } catch (error) { console.error('❌ Error handling PSS event:', error); }
+        }
+
+        let websocket = null; let reconnectAttempts = 0; const maxReconnectAttempts = 5; const reconnectDelay = 2000;
+        function setupWebSocketConnection() {
+            try {
+                const currentHost = window.location.hostname; const wsHost = (currentHost === 'localhost' || currentHost === '127.0.0.1') ? '127.0.0.1' : currentHost; const wsUrl = `ws://${wsHost}:3001`;
+                websocket = new WebSocket(wsUrl);
+                websocket.onopen = function() { updateConnectionStatus(true); reconnectAttempts = 0; setInterval(()=>{ if(websocket.readyState===WebSocket.OPEN){ websocket.send('ping'); } }, 30000); };
+                websocket.onmessage = function(event) { try { const data = JSON.parse(event.data); if (data.type === 'pss_event') { handlePssEvent(data.data); } } catch(e) { console.error('❌ WS parse error:', e); } };
+                websocket.onclose = function() { updateConnectionStatus(false); if (reconnectAttempts < maxReconnectAttempts) { reconnectAttempts++; setTimeout(setupWebSocketConnection, reconnectDelay); } };
+                websocket.onerror = function() { updateConnectionStatus(false); };
+            } catch (error) { updateConnectionStatus(false); }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const svgObject = document.getElementById('scoreboard-svg');
+            svgObject.addEventListener('load', initializeScoreboard);
+            setupWebSocketConnection();
+            if (svgObject.contentDocument) { initializeScoreboard(); }
+        });
+
+        window.ScoreboardOverlayManager = { handlePssEvent, updateConnectionStatus, scoreboardInstance: () => scoreboardInstance, nameManager: () => nameManager };
+    </script>
+</body>
+</html>
+
+

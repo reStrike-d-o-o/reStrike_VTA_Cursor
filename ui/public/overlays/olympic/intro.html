@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>reStrike VTA - Olympic Player Introduction</title>
+    <link rel="stylesheet" href="/assets/fonts/fonts.css">
+    <style>
+        body { margin: 0; padding: 0; overflow: hidden; background: transparent; font-family: 'Fixel Display', 'Fixel Text', Arial, sans-serif; }
+        #overlay-container { width: 1920px; height: 1080px; position: relative; }
+        #overlay-svg { width: 100%; height: 100%; display: block; }
+        .connection-status { position: absolute; top: 10px; right: 10px; width: 20px; height: 20px; border-radius: 50%; background: #ef4444; border: 2px solid #ffffff; z-index: 1000; }
+        .connection-status.connected { background: #10b981; }
+    </style>
+</head>
+<body>
+    <div id="connection-status" class="connection-status"></div>
+    <div id="overlay-container">
+        <object id="overlay-svg" data="/assets/scoreboard/olympic/olympic_players_overlay.svg" type="image/svg+xml">
+            <div style="width: 1920px; height: 1080px; background: #000; color: white; display: flex; align-items: center; justify-content: center; font-size: 48px;">
+                Player Introduction Overlay Loading...
+            </div>
+        </object>
+    </div>
+
+    <script src="/assets/scoreboard/scoreboard-utils.js"></script>
+    <script>
+        let overlayInstance = null;
+        function updateConnectionStatus(connected) {
+            const el = document.getElementById('connection-status');
+            if (connected) el.classList.add('connected'); else el.classList.remove('connected');
+        }
+        function initializeOverlay() {
+            const svgObject = document.getElementById('overlay-svg');
+            const svgDoc = svgObject.contentDocument || svgObject.contentWindow?.document;
+            if (svgDoc && svgDoc.querySelector('svg')) {
+                try { overlayInstance = new PlayerIntroductionOverlay(svgDoc.querySelector('svg')); updateConnectionStatus(false); }
+                catch(e){ setTimeout(initializeOverlay, 1000); }
+            } else { setTimeout(initializeOverlay, 1000); }
+        }
+        function handlePssEvent(event) {
+            if (!overlayInstance) return;
+            switch (event.type) {
+                case 'athletes':
+                    if (event.athlete1_long) overlayInstance.updatePlayer1Name(event.athlete1_long);
+                    if (event.athlete2_long) overlayInstance.updatePlayer2Name(event.athlete2_long);
+                    if (event.athlete1_country) overlayInstance.updatePlayer1Flag(event.athlete1_country);
+                    if (event.athlete2_country) overlayInstance.updatePlayer2Flag(event.athlete2_country);
+                    break;
+            }
+        }
+        let websocket = null; function setupWebSocketConnection(){ try{ const h = window.location.hostname; const ws = (h==='localhost'||h==='127.0.0.1')?'127.0.0.1':h; const url=`ws://${ws}:3001`; websocket = new WebSocket(url); websocket.onopen=()=>updateConnectionStatus(true); websocket.onmessage=(e)=>{ try{ const d=JSON.parse(e.data); if(d.type==='pss_event'){ handlePssEvent(d.data); } }catch(_){} }; websocket.onclose=()=>updateConnectionStatus(false); websocket.onerror=()=>updateConnectionStatus(false);}catch(_){}}
+        document.addEventListener('DOMContentLoaded',()=>{ const o=document.getElementById('overlay-svg'); o.addEventListener('load', initializeOverlay); setupWebSocketConnection(); if(o.contentDocument){ initializeOverlay(); }});
+    </script>
+</body>
+</html>
+
+
