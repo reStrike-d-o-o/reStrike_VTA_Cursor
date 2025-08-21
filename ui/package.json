@@ -16,7 +16,8 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write src/**/*.{ts,tsx,js,jsx}",
     "clean": "rm -rf build node_modules/.cache",
-    "analyze": "npm run build && npx webpack-bundle-analyzer build/static/js/*.js"
+    "analyze": "npm run build && npx webpack-bundle-analyzer build/static/js/*.js",
+    "i18n:sync": "node scripts/sync-i18n.mjs"
   },
   "dependencies": {
     "@craco/craco": "^7.1.0",
