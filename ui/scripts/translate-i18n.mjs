@@ -213,12 +213,13 @@ async function main() {
 		const data = loadJson(file);
 		const googleTarget = localeToGoogle[loc] || loc;
 
-		// Build translation worklist: missing or identical to English
+		// Build translation worklist: missing, identical to English, or Cyrillic fix for sr
 		const work = [];
 		for (const k of enKeys) {
 			const enVal = enMap[k];
 			const cur = data[k];
-			if (cur === undefined || cur === enVal) {
+			const needsCyrillicFix = loc === 'sr' && (args['force-cyrillic-sr'] === '1' || args['force-cyrillic-sr'] === 'true') && typeof cur === 'string' && /[A-Za-z]|\uFFFD/.test(cur);
+			if (cur === undefined || cur === enVal || needsCyrillicFix) {
 				work.push({ key: k, text: enVal });
 			}
 		}
