@@ -1,5 +1,5 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -7,147 +7,31 @@
   <link rel="stylesheet" href="/assets/fonts/fonts.css" />
   <style>
     html, body { margin: 0; padding: 0; width: 1920px; height: 1080px; overflow: hidden; background: transparent; font-family: 'Fixel Display', 'Fixel Text', Arial, sans-serif; }
-    #root { position: relative; width: 1920px; height: 1080px; background: radial-gradient(circle at 50% 30%, rgba(255,255,255,0.05), rgba(0,0,0,0)); }
-    /* Ribbons layout */
-    .hud { position: absolute; top: 140px; left: 0; right: 0; height: 220px; display: grid; grid-template-columns: 1fr 360px 1fr; align-items: center; }
-    .ribbon { position: relative; height: 160px; filter: drop-shadow(0 18px 30px rgba(0,0,0,0.55)); }
-    .ribbon .layer { position:absolute; inset:0; }
-    .ribbon .shape { position:absolute; inset:0; clip-path: polygon(0% 18%, 85% 18%, 100% 50%, 85% 82%, 0% 82%, 8% 50%); }
-    .ribbon.left .shape { background: linear-gradient(135deg, #a11119, #ff2c43); border: 4px solid #ff2c43; box-sizing:border-box; }
-    .ribbon.right .shape { background: linear-gradient(135deg, #0f4ac0, #2f7dff); border: 4px solid #2f7dff; box-sizing:border-box; transform: scaleX(-1); }
-    .ribbon .inner { position:absolute; inset: 12px 40px; background: rgba(0,0,0,0.55); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; display:flex; align-items:center; gap:14px; padding: 10px 14px; }
-    .ribbon.right .inner { flex-direction: row-reverse; }
-    .ribbon .flag { width: 90px; height: 60px; object-fit: contain; filter: drop-shadow(0 3px 6px rgba(0,0,0,0.5)); }
-    .ribbon .name { font-size: 44px; font-weight: 900; color: #e5e7eb; text-shadow: 0 3px 12px rgba(0,0,0,0.55); letter-spacing: 1px; }
-    /* VS block */
-    .vs { position: relative; width: 360px; height: 200px; display:flex; align-items:center; justify-content:center; }
-    .vs .plate { position:absolute; inset:0; background: linear-gradient(180deg, #1f2937, #0b0f17); border: 3px solid rgba(255,255,255,0.08); border-radius: 10px; box-shadow: inset 0 -4px 18px rgba(255,255,255,0.08), 0 20px 40px rgba(0,0,0,0.6); }
-    .vs .label { position:relative; font-size: 128px; font-weight: 900; color: #ffd9a3; text-shadow: 0 10px 30px rgba(0,0,0,0.65), 0 0 18px rgba(255,217,163,0.35); letter-spacing: 6px; }
-    /* Score / timer */
-    .score { position:absolute; top: 40px; left:50%; transform: translateX(-50%); font-size: 110px; font-weight: 900; color:#ffffff; text-shadow: 0 8px 24px rgba(0,0,0,0.7), 0 0 14px rgba(255,255,255,0.25); }
-    .timer { position:absolute; top: 320px; left: 50%; transform: translateX(-50%); font-size: 72px; font-weight: 900; color: #e5e7eb; text-shadow: 0 4px 12px rgba(0,0,0,0.6); letter-spacing: 4px; }
-    .round { position: absolute; top: 400px; left: 50%; transform: translateX(-50%); font-size: 28px; color: #cbd5e1; letter-spacing: 3px; }
-    /* Effects */
-    .effects { position: absolute; inset: 0; pointer-events: none; }
-    .hit { position: absolute; width: 520px; height: 520px; border-radius: 50%; filter: blur(22px); mix-blend-mode: screen; opacity: 0; }
-    .hit.blue { background: radial-gradient(circle, rgba(59,130,246,0.75), rgba(59,130,246,0.0)); left: 10%; top: 22%; }
-    .hit.red { background: radial-gradient(circle, rgba(239,68,68,0.75), rgba(239,68,68,0.0)); right: 10%; top: 22%; }
-    .hit.show { animation: hitPulse 460ms cubic-bezier(.2,.9,.3,1) forwards; }
-    @keyframes hitPulse { 0% { transform: scale(0.8); opacity: 0.0; } 50% { transform: scale(1); opacity: 1; } 100% { transform: scale(1.35); opacity: 0; } }
-    .top-banner { position: absolute; top: 0; left: 0; right: 0; height: 10px; background: linear-gradient(90deg, rgba(59,130,246,0.0), rgba(59,130,246,0.7), rgba(59,130,246,0.0)); opacity: 0; }
-    .top-banner.red { background: linear-gradient(90deg, rgba(239,68,68,0.0), rgba(239,68,68,0.7), rgba(239,68,68,0.0)); }
-    .top-banner.show { animation: banner 620ms ease-out forwards; }
-    @keyframes banner { 0% { opacity: 0; } 50% { opacity: 1; } 100% { opacity: 0; } }
+    #scoreboard-container { width: 1920px; height: 1080px; position: relative; }
+    #scoreboard-svg { width: 100%; height: 100%; display: block; }
+    .connection-status { position: absolute; top: 10px; right: 10px; width: 20px; height: 20px; border-radius: 50%; background: #ef4444; border: 2px solid #ffffff; z-index: 1000; }
+    .connection-status.connected { background: #10b981; }
   </style>
 </head>
 <body>
-  <div id="root">
-    <div style="position:absolute; right:24px; bottom:24px; display:flex; align-items:center; gap:10px; color:#cbd5e1; font-size:14px;">
-      <label><input type="checkbox" id="sfx" checked /> SFX</label>
-      <label><input type="checkbox" id="theme" /> Dark Theme</label>
-    </div>
-    <div class="hud">
-      <div class="ribbon left">
-        <div class="layer shape"></div>
-        <div class="inner">
-          <img id="flagBlue" class="flag" alt="" />
-          <div class="name" id="nameBlue">BLUE</div>
-        </div>
-      </div>
-      <div class="vs">
-        <div class="plate"></div>
-        <div class="label">VS</div>
-      </div>
-      <div class="ribbon right">
-        <div class="layer shape"></div>
-        <div class="inner">
-          <img id="flagRed" class="flag" alt="" />
-          <div class="name" id="nameRed">RED</div>
-        </div>
-      </div>
-    </div>
-    <div class="timer" id="timer">03:00</div>
-    <div class="round" id="round">ROUND 1</div>
-    <div class="score" id="score">0 - 0</div>
-    <div class="effects">
-      <div class="top-banner" id="bannerBlue"></div>
-      <div class="top-banner red" id="bannerRed"></div>
-      <div class="hit blue" id="hitBlue"></div>
-      <div class="hit red" id="hitRed"></div>
-    </div>
+  <div id="connection-status" class="connection-status"></div>
+  <div id="scoreboard-container">
+    <object id="scoreboard-svg" data="/assets/scoreboard/arcade/arcade_scoreboard.svg" type="image/svg+xml">
+      <div style="width: 1920px; height: 1080px; background: #000; color: white; display: flex; align-items: center; justify-content: center; font-size: 48px;">Scoreboard Overlay Loading...</div>
+    </object>
   </div>
-  <script src="./shared.js"></script>
+
+  <script src="/assets/scoreboard/scoreboard-name-utils.js"></script>
+  <script src="/assets/scoreboard/scoreboard-utils.js"></script>
   <script>
-    const { OverlayBus, mapEvent } = window.__ARCADE_OVERLAY__;
-    let sfxOn = true; const sfx = new (window.AudioContext||window.webkitAudioContext)();
-    function blip(freq=880, dur=0.08){ if(!sfxOn) return; const o=sfx.createOscillator(); const g=sfx.createGain(); o.type='square'; o.frequency.value=freq; g.gain.value=0.08; o.connect(g); g.connect(sfx.destination); const t=sfx.currentTime; o.start(t); o.stop(t+dur); }
-    const el = {
-      nameBlue: document.getElementById('nameBlue'),
-      nameRed: document.getElementById('nameRed'),
-      flagBlue: document.getElementById('flagBlue'),
-      flagRed: document.getElementById('flagRed'),
-      score: document.getElementById('score'),
-      timer: document.getElementById('timer'),
-      round: document.getElementById('round'),
-      hitBlue: document.getElementById('hitBlue'),
-      hitRed: document.getElementById('hitRed'),
-      bannerBlue: document.getElementById('bannerBlue'),
-      bannerRed: document.getElementById('bannerRed'),
-    };
-    document.getElementById('sfx').addEventListener('change', (e)=>{ sfxOn = e.target.checked; if(sfxOn) sfx.resume(); });
-    document.getElementById('theme').addEventListener('change', (e)=>{
-      const dark = e.target.checked;
-      document.querySelectorAll('.panel.blue').forEach(p=>p.style.background = dark?'linear-gradient(135deg, #0b1222, #1b3355)':'linear-gradient(135deg, #0b3a8b, #2770ff)');
-      document.querySelectorAll('.panel.red').forEach(p=>p.style.background = dark?'linear-gradient(135deg, #220b0b, #551b1b)':'linear-gradient(135deg, #8b0b1a, #ff2740)');
-    });
-    let scores = { blue: 0, red: 0 };
-    let athletes = { blue: { long: 'BLUE' }, red: { long: 'RED' } };
-    function setFlag(img, code) {
-      if (!code) return;
-      img.src = `../../assets/flags/svg/${code.toUpperCase()}.svg`;
-    }
-    function updateNames() {
-      el.nameBlue.textContent = (athletes.blue.long || athletes.blue.short || 'BLUE').toUpperCase();
-      el.nameRed.textContent = (athletes.red.long || athletes.red.short || 'RED').toUpperCase();
-    }
-    function updateScores() {
-      el.score.textContent = `${scores.blue} - ${scores.red}`;
-      el.score.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.08)' }, { transform: 'scale(1)' }], { duration: 260, easing: 'ease-out' });
-    }
-    function pulse(elm) {
-      elm.classList.remove('show');
-      void elm.offsetWidth; // reflow
-      elm.classList.add('show');
-    }
-    OverlayBus.subscribe((raw) => {
-      const e = mapEvent(raw);
-      switch (e.kind) {
-        case 'athletes':
-          athletes = { blue: e.blue || athletes.blue, red: e.red || athletes.red };
-          updateNames();
-          setFlag(el.flagBlue, e.blue?.country || e.blue?.iocCode);
-          setFlag(el.flagRed, e.red?.country || e.red?.iocCode);
-          break;
-        case 'scores':
-          scores = { blue: e.blue, red: e.red }; updateScores(); break;
-        case 'clock':
-          el.timer.textContent = e.time || '00:00'; el.round.textContent = `ROUND ${e.round || 1}`; break;
-        case 'points':
-          if (e.athlete === 'athlete1' || e.athlete === 1 || e.athlete === 'blue') { scores.blue += e.points || 1; updateScores(); pulse(el.bannerBlue); pulse(el.hitBlue); blip(660); }
-          else { scores.red += e.points || 1; updateScores(); pulse(el.bannerRed); pulse(el.hitRed); blip(440); }
-          break;
-        case 'hit':
-          if (e.athlete === 1 || e.athlete === 'blue') pulse(el.hitBlue); else pulse(el.hitRed); break;
-        case 'warning':
-          // Could add a warning banner here
-          break;
-        case 'winner':
-          // future: trigger winner animation
-          break;
-      }
-    });
+    let scoreboardInstance=null; let roundDuration=120;
+    function updateConnectionStatus(c){const e=document.getElementById('connection-status'); if(c)e.classList.add('connected'); else e.classList.remove('connected');}
+    function initialize(){ const o=document.getElementById('scoreboard-svg'); const d=o.contentDocument||o.contentWindow?.document; if(d&&d.querySelector('svg')){ if(typeof ScoreboardOverlay==='undefined'){ setTimeout(initialize,1000); return;} scoreboardInstance=new ScoreboardOverlay(d.querySelector('svg')); updateConnectionStatus(false);} else { setTimeout(initialize,1000);} }
+    function handle(ev){ if(!scoreboardInstance) return; switch(ev.type){ case 'athletes': if(ev.athlete1?.long) scoreboardInstance.updatePlayerName('blue', ev.athlete1.long); if(ev.athlete2?.long) scoreboardInstance.updatePlayerName('red', ev.athlete2.long); if(ev.athlete1?.country) scoreboardInstance.updateCountry('blue', ev.athlete1.country); if(ev.athlete2?.country) scoreboardInstance.updateCountry('red', ev.athlete2.country); break; case 'match_config': const d=ev.raw_data?JSON.parse(ev.raw_data):(ev.structured_data||ev); if(d.round_duration!==undefined&&d.round_duration!==null) roundDuration=parseInt(d.round_duration); if(d.weight||d.division||d.category) scoreboardInstance.updateMatchInfo(d.weight,d.division,d.category); if(d.number){ const el=scoreboardInstance.svg.getElementById('matchNumber'); if(el) el.textContent=`#${d.number}`;} break; case 'current_scores': const sc=ev.raw_data?JSON.parse(ev.raw_data):ev; const b=sc.athlete1_score??sc?.athlete1?.score??0; const r=sc.athlete2_score??sc?.athlete2?.score??0; scoreboardInstance.updateScore('blue', b); scoreboardInstance.updateScore('red', r); break; case 'clock': if(ev.time){ let m=0,s=0; if(ev.time.includes(':')){const p=ev.time.split(':'); m=parseInt(p[0])||0; s=parseInt(p[1])||0;} else { s=parseInt(ev.time)||0;} scoreboardInstance.updateTimer(m,s);} break; case 'round': const rn=ev.current_round??ev.round??null; if(rn!==null){ scoreboardInstance.updateRound(rn); const m=Math.floor(roundDuration/60), s=roundDuration%60; scoreboardInstance.updateTimer(m,s);} break; }}
+    let ws=null, tries=0; const max=5, delay=2000; function connect(){ try{ const h=window.location.hostname; const w=(h==='localhost'||h==='127.0.0.1')?'127.0.0.1':h; const url=`ws://${w}:3001`; ws=new WebSocket(url); ws.onopen=()=>{updateConnectionStatus(true); tries=0;}; ws.onmessage=(ev)=>{ try{ const d=JSON.parse(ev.data); if(d.type==='pss_event') handle(d.data);}catch(_){}}; ws.onclose=()=>{updateConnectionStatus(false); if(tries<max){tries++; setTimeout(connect,delay);} }; ws.onerror=()=>updateConnectionStatus(false);}catch(_){updateConnectionStatus(false);} }
+    document.addEventListener('DOMContentLoaded',()=>{ const o=document.getElementById('scoreboard-svg'); o.addEventListener('load', initialize); connect(); if(o.contentDocument) initialize(); });
+    window.ArcadeScoreboard={handle};
   </script>
 </body>
 </html>
-
 
