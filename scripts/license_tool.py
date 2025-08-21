@@ -114,8 +114,8 @@ def cmd_issue(args):
         "version": 1,
     }
 
-    # Sign compact canonical JSON
-    payload_bytes = json.dumps(payload, separators=(',', ':'), sort_keys=True).encode('utf-8')
+    # Sign compact JSON preserving insertion order to match Rust serde field order
+    payload_bytes = json.dumps(payload, separators=(',', ':')).encode('utf-8')
     sk = signing.SigningKey(b64d(sk_b64))
     sig = sk.sign(payload_bytes).signature
     token = {
