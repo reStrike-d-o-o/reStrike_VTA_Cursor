@@ -42,6 +42,20 @@ async fn main() -> AppResult<()> {
     // Initialize plugins
     re_strike_vta::plugins::init().await?;
     
+    // Validate license before starting services
+    {
+        let status = app.license_plugin().validate(app.config_manager()).await?;
+        match status.state {
+            re_strike_vta::plugins::plugin_license::LicenseState::Valid | re_strike_vta::plugins::plugin_license::LicenseState::Trial => {
+                log::info!("License OK: {:?}, days remaining: {:?}", status.state, status.days_remaining);
+            }
+            _ => {
+                log::error!("License check failed: {:?} ({:?})", status.state, status.reason);
+                // Proceed to build UI so user can activate, but avoid auto-start services
+            }
+        }
+    }
+
     // Start the application (this will auto-start UDP if configured)
     app.start().await?;
     

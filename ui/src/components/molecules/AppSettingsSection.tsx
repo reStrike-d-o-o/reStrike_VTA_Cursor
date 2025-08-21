@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Button from '../atoms/Button';
 import Input from '../atoms/Input';
 import { useAppStore } from '../../stores';
@@ -8,6 +8,7 @@ import { useEnvironment } from '../../hooks/useEnvironment';
 import { logger, setLogLevel, LogLevel, applyConsolePatch } from '../../utils/logger';
 import { useI18n } from '../../i18n/index';
 import LanguageSelect from '../atoms/LanguageSelect';
+import { licenseCommands } from '../../utils/tauriCommands';
 
 const AppSettingsSection: React.FC = () => {
   const { locale, setLocale, t } = useI18n();
@@ -20,6 +21,10 @@ const AppSettingsSection: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [logLevel, setLevel] = useState<LogLevel>('info');
+  const [licenseKey, setLicenseKey] = useState('');
+  const [licenseStatus, setLicenseStatus] = useState<any>(null);
+  const [machineUid, setMachineUid] = useState<string>('');
+  const [machineHash, setMachineHash] = useState<string>('');
   const theme = useSettingsStore((s) => s.theme);
   const setTheme = useSettingsStore((s) => s.setTheme);
   const sharp = useSettingsStore((s)=> (s as any).sharp);
@@ -61,6 +66,48 @@ const AppSettingsSection: React.FC = () => {
     logger.info('Log level set to', lvl);
   };
 
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await licenseCommands.getStatus();
+        if (res.success) setLicenseStatus(res.data);
+        const mi = await licenseCommands.getMachineIdentity();
+        if (mi.success && mi.data) {
+          setMachineUid(mi.data.uid);
+          setMachineHash(mi.data.machine_hash);
+        }
+      } catch {}
+    })();
+  }, []);
+
+  const handleActivate = async () => {
+    try {
+      const res = await licenseCommands.activate(licenseKey.trim());
+      if (res.success) {
+        setLicenseStatus(res.data);
+        setMessage('License activated.');
+      } else {
+        setMessage(res.error || 'Activation failed');
+      }
+    } catch (e) {
+      setMessage(String(e));
+    }
+  };
+
+  const handleValidate = async () => {
+    try {
+      const res = await licenseCommands.validate();
+      if (res.success) {
+        setLicenseStatus(res.data);
+        setMessage('License validated.');
+      } else {
+        setMessage(res.error || 'Validation failed');
+      }
+    } catch (e) {
+      setMessage(String(e));
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Language */}
@@ -73,6 +120,46 @@ const AppSettingsSection: React.FC = () => {
             value={locale}
             onChange={(code) => { console.log('[AppSettings] setLocale requested:', code); setLocale(code); }}
           />
+        </div>
+      </div>
+
+      {/* Licensing */}
+      <div className="space-y-3">
+        <h3 className="text-lg font-semibold text-white">{t('settings.license.title', 'License')}</h3>
+        <div className="text-sm text-gray-300">
+          <div>{t('settings.license.status', 'Status')}: <span className="font-semibold">{licenseStatus?.state ?? 'Unknown'}</span></div>
+          {licenseStatus?.plan && (
+            <div>{t('settings.license.plan', 'Plan')}: <span className="font-semibold">{licenseStatus.plan}</span></div>
+          )}
+          {typeof licenseStatus?.days_remaining === 'number' && (
+            <div>{t('settings.license.days_remaining', 'Days remaining')}: <span className="font-semibold">{licenseStatus.days_remaining}</span></div>
+          )}
+          {licenseStatus?.reason && (
+            <div className="text-red-300">{t('settings.license.reason', 'Reason')}: {licenseStatus.reason}</div>
+          )}
+        </div>
+        {/* Machine Identity */}
+        <div className="bg-gray-700/50 border border-gray-600 rounded p-3 space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-sm text-gray-300">{t('settings.license.machine_uid', 'Machine UID')}</span>
+            <span className="text-sm font-mono text-gray-100 truncate max-w-[60%]" title={machineUid}>{machineUid || '...'}</span>
+            <Button size="sm" variant="secondary" onClick={() => { navigator.clipboard?.writeText(machineUid); }}>{t('settings.copy', 'Copy')}</Button>
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-sm text-gray-300">{t('settings.license.machine_hash', 'Machine Hash')}</span>
+            <span className="text-sm font-mono text-gray-100 truncate max-w-[60%]" title={machineHash}>{machineHash || '...'}</span>
+            <Button size="sm" variant="secondary" onClick={() => { navigator.clipboard?.writeText(machineHash); }}>{t('settings.copy', 'Copy')}</Button>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Input
+            placeholder={t('settings.license.enter_key', 'Enter license key')}
+            value={licenseKey}
+            onChange={(e) => setLicenseKey(e.target.value)}
+            className="flex-1"
+          />
+          <Button variant="primary" onClick={handleActivate}>{t('settings.license.activate', 'Activate')}</Button>
+          <Button variant="secondary" onClick={handleValidate}>{t('settings.license.validate', 'Validate')}</Button>
         </div>
       </div>
       <div>
