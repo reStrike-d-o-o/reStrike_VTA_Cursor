@@ -1,5 +1,6 @@
 import path from 'path';
 import { fileURLToPath } from 'url';
+import ForkTsCheckerWebpackPlugin from 'fork-ts-checker-webpack-plugin';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -41,6 +42,31 @@ export default {
           '@public': path.resolve(__dirname, 'public')
         }
       };
+
+      // Increase TypeScript checker memory to prevent OOM in large projects
+      try {
+        const ftcIndex = (webpackConfig.plugins || []).findIndex(
+          (p) => p && p.constructor && p.constructor.name === 'ForkTsCheckerWebpackPlugin'
+        );
+        const newOptions = (old) => ({
+          ...(old && old.options ? old.options : {}),
+          typescript: {
+            ...((old && old.options && old.options.typescript) || {}),
+            memoryLimit: 4096,
+          },
+        });
+        if (ftcIndex !== -1) {
+          const old = webpackConfig.plugins[ftcIndex];
+          webpackConfig.plugins[ftcIndex] = new ForkTsCheckerWebpackPlugin(newOptions(old));
+        } else {
+          (webpackConfig.plugins = webpackConfig.plugins || []).push(
+            new ForkTsCheckerWebpackPlugin(newOptions(null))
+          );
+        }
+      } catch (e) {
+        // Non-fatal if plugin structure changes; proceed with defaults
+        console.warn('[craco] Failed to adjust ForkTsCheckerWebpackPlugin memoryLimit:', e?.message || e);
+      }
       
       return webpackConfig;
     },
