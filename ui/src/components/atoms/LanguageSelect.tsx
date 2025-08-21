@@ -20,6 +20,12 @@ const defaultOptions: LanguageOption[] = [
   { code: 'hr', label: 'Hrvatski', flag: 'CRO' },
   { code: 'de', label: 'Deutsch', flag: 'GER' },
   { code: 'fr', label: 'Français', flag: 'FRA' },
+  // New languages
+  { code: 'es', label: 'Español (ES)', flag: 'ESP' },
+  { code: 'it', label: 'Italiano', flag: 'ITA' },
+  { code: 'bs', label: 'Bosanski', flag: 'BIH' },
+  { code: 'zh', label: '中文', flag: 'CHN' },
+  { code: 'ru', label: 'Русский', flag: 'RUS' },
 ];
 
 const LanguageSelect: React.FC<LanguageSelectProps> = ({ value, onChange, options = defaultOptions, className = '' }) => {
@@ -37,7 +43,15 @@ const LanguageSelect: React.FC<LanguageSelectProps> = ({ value, onChange, option
     return () => document.removeEventListener('mousedown', onDocClick);
   }, []);
 
-  const current = options.find(o => o.code === value) || options[0];
+  const sortedOptions = React.useMemo(() => {
+    try {
+      return [...options].sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' }));
+    } catch {
+      return options;
+    }
+  }, [options]);
+
+  const current = sortedOptions.find(o => o.code === value) || sortedOptions[0];
   useEffect(() => {
     console.log('[LanguageSelect] mount', { value, current, options: options.map(o => o.code) });
   }, []);
@@ -78,7 +92,7 @@ const LanguageSelect: React.FC<LanguageSelectProps> = ({ value, onChange, option
           aria-label={t('settings.available_languages', 'Available languages')}
           className="absolute z-20 mt-1 w-44 max-h-64 overflow-auto rounded border border-gray-600 bg-gray-800 shadow-lg"
         >
-          {options.map(opt => (
+          {sortedOptions.map(opt => (
             <li
               key={opt.code}
               role="option"
