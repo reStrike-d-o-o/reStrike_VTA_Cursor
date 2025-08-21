@@ -5,6 +5,8 @@ use sha2::{Digest, Sha256};
 use std::fs;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
+use aes_gcm::{Aes256Gcm, aead::{Aead, KeyInit}};
+use rand::rngs::OsRng;
 
 use crate::types::{AppError, AppResult};
 
@@ -192,21 +194,49 @@ impl LicensePlugin {
         fs::write(&path, blob).map_err(|e| AppError::ConfigError(format!("Failed to write license: {}", e)))
     }
 
-    /// Encrypt a plaintext token using AES-256-GCM via existing SecureConfig
-    fn encrypt_token(&self, token: &str) -> AppResult<String> {
-        let master = format!("license_store:{}", self.compute_machine_hash()?);
-        let sc = crate::security::SecureConfig::new(master)?;
-        let enc = sc.encrypt_value(token)?;
-        Ok(serde_json::to_string(&enc)?)
+    fn derive_store_key(&self) -> AppResult<[u8;32]> {
+        let mh = self.compute_machine_hash()?;
+        let mut hasher = Sha256::new();
+        hasher.update(mh.as_bytes());
+        hasher.update(b"license_store_v1");
+        let out = hasher.finalize();
+        let mut key = [0u8;32];
+        key.copy_from_slice(&out[..32]);
+        Ok(key)
     }
 
-    /// Decrypt to plaintext token
+    /// Encrypt a plaintext token using AES-256-GCM with a key derived from machine hash
+    fn encrypt_token(&self, token: &str) -> AppResult<String> {
+        let key_bytes = self.derive_store_key()?;
+        let cipher = Aes256Gcm::new_from_slice(&key_bytes).map_err(|e| AppError::ConfigError(format!("Cipher init failed: {:?}", e)))?;
+        let mut nonce = [0u8;12];
+        OsRng.fill(&mut nonce);
+        let ct = cipher.encrypt(&nonce.into(), token.as_bytes()).map_err(|e| AppError::ConfigError(format!("Encrypt failed: {:?}", e)))?;
+        #[derive(Serialize)]
+        struct Stored { v: u8, n: String, c: String }
+        let s = Stored { v: 1, n: base64::engine::general_purpose::STANDARD.encode(&nonce), c: base64::engine::general_purpose::STANDARD.encode(&ct) };
+        Ok(serde_json::to_string(&s)?)
+    }
+
+    /// Decrypt to plaintext token. Supports current AES-GCM format; falls back to legacy SecureConfig format if needed.
     fn decrypt_token(&self, blob: &str) -> AppResult<String> {
+        // Try current format
+        #[derive(Deserialize)]
+        struct Stored { v: u8, n: String, c: String }
+        if let Ok(stored) = serde_json::from_str::<Stored>(blob) {
+            let key_bytes = self.derive_store_key()?;
+            let cipher = Aes256Gcm::new_from_slice(&key_bytes).map_err(|e| AppError::ConfigError(format!("Cipher init failed: {:?}", e)))?;
+            let nonce_bytes = base64::engine::general_purpose::STANDARD.decode(stored.n).map_err(|e| AppError::ConfigError(format!("Invalid nonce: {}", e)))?;
+            let ct_bytes = base64::engine::general_purpose::STANDARD.decode(stored.c).map_err(|e| AppError::ConfigError(format!("Invalid ciphertext: {}", e)))?;
+            let nonce = aes_gcm::Nonce::from_slice(&nonce_bytes);
+            let pt = cipher.decrypt(nonce, ct_bytes.as_ref()).map_err(|e| AppError::ConfigError(format!("Decrypt failed: {:?}", e)))?;
+            return String::from_utf8(pt).map_err(|e| AppError::ConfigError(format!("Invalid UTF-8: {}", e)));
+        }
+        // Fallback to legacy SecureConfig format for backward compatibility
         let master = format!("license_store:{}", self.compute_machine_hash()?);
         let sc = crate::security::SecureConfig::new(master)?;
         let enc: crate::security::encryption::EncryptedData = serde_json::from_str(blob)?;
-        sc.decrypt_value(&enc)
-            .map_err(|e| AppError::ConfigError(format!("Failed to decrypt license: {}", e)))
+        sc.decrypt_value(&enc).map_err(|e| AppError::ConfigError(format!("Failed to decrypt legacy license: {}", e)))
     }
 
     /// Verify Ed25519 signature and semantics.
