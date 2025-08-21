@@ -32,7 +32,7 @@ const localeToGoogle = {
 	zh: 'zh-CN', // Simplified Chinese
 	ru: 'ru',
 	hr: 'hr',
-	sr: 'sr',
+	sr: 'sr-Cyrl', // force Cyrillic for Serbian
 	de: 'de',
 	fr: 'fr'
 };
