@@ -64,7 +64,7 @@ pub async fn overlays_populate_from_files(app: State<'_, Arc<crate::App>>) -> Re
             animation_type: Some("fade".to_string()),
             duration_ms: Some(3000),
             is_active: Some(true),
-            url: Some("assets/scoreboard/scoreboard-overlay.svg".to_string()),
+            url: Some("overlays/olympic/scoreboard.html".to_string()),
         },
         OverlayTemplatePayload {
             id: None,
@@ -75,7 +75,7 @@ pub async fn overlays_populate_from_files(app: State<'_, Arc<crate::App>>) -> Re
             animation_type: Some("slide".to_string()),
             duration_ms: Some(5000),
             is_active: Some(true),
-            url: Some("assets/scoreboard/player-introduction-overlay.svg".to_string()),
+            url: Some("overlays/olympic/intro.html".to_string()),
         },
         OverlayTemplatePayload {
             id: None,
@@ -86,7 +86,7 @@ pub async fn overlays_populate_from_files(app: State<'_, Arc<crate::App>>) -> Re
             animation_type: Some("zoom".to_string()),
             duration_ms: Some(4000),
             is_active: Some(true),
-            url: Some("assets/scoreboard/winner-announcement-overlay.svg".to_string()),
+            url: Some("overlays/olympic/intro.html".to_string()),
         },
         OverlayTemplatePayload {
             id: None,
@@ -97,7 +97,7 @@ pub async fn overlays_populate_from_files(app: State<'_, Arc<crate::App>>) -> Re
             animation_type: Some("fade".to_string()),
             duration_ms: Some(3000),
             is_active: Some(true),
-            url: Some("assets/scoreboard/previous-results-overlay.svg".to_string()),
+            url: Some("overlays/olympic/scoreboard.html".to_string()),
         },
         OverlayTemplatePayload {
             id: None,
@@ -108,7 +108,7 @@ pub async fn overlays_populate_from_files(app: State<'_, Arc<crate::App>>) -> Re
             animation_type: Some("reveal".to_string()),
             duration_ms: Some(6000),
             is_active: Some(true),
-            url: Some("assets/scoreboard/victory-ceremony-overlay.svg".to_string()),
+            url: Some("overlays/olympic/intro.html".to_string()),
         },
     ];
 

@@ -1037,16 +1037,24 @@ The scoreboard overlay system provides real-time display of match information fo
 
 ### Architecture
 
-#### **File Structure**
+#### **File Structure (standardized)**
 ```
 ui/public/
-├── scoreboard-overlay.html          # Main scoreboard overlay
-├── player-introduction-overlay.html # Player introduction overlay
-├── websocket-debug.html            # WebSocket debugging tool
+├── overlays/
+│   ├── olympic/
+│   │   ├── scoreboard.html                 # embeds /assets/scoreboard/olympic/olympic_scoreboard.svg
+│   │   └── intro.html                      # embeds /assets/scoreboard/olympic/olympic_players_overlay.svg
+│   ├── modern/
+│   │   ├── scoreboard.html                 # embeds /assets/scoreboard/modern/modern_scoreboard.svg
+│   │   └── intro.html                      # embeds /assets/scoreboard/modern/modern_players_overlay.svg
+│   └── arcade/
+│       ├── scoreboard.html                 # embeds /assets/scoreboard/arcade/arcade_scoreboard.svg
+│       └── intro.html                      # embeds /assets/scoreboard/arcade/arcade_players_overlay.svg
+├── websocket-debug.html
 └── assets/scoreboard/
-    ├── scoreboard-overlay.svg      # Scoreboard SVG template
-    ├── scoreboard-utils.js         # Scoreboard utility functions
-    └── scoreboard-name-utils.js    # Name management utilities
+    ├── olympic/*, modern/*, arcade/*       # themed SVGs
+    ├── scoreboard-utils.js                 # utilities
+    └── scoreboard-name-utils.js
 ```
 
 #### **Core Components**
