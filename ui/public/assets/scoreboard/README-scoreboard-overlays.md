@@ -34,16 +34,12 @@ ui/public/overlays/
 - **Adjustable transparency** levels for overlay customization
 
 ### Typography
-- **Arial font family** for maximum compatibility
-- **Bold weights** for scores and important information
-- **Scalable text** that remains crisp at any resolution
+- SVG uses original artwork classes and injected webfonts. We inject `assets/fonts/fonts.css` into embedded SVGs via `scoreboard-font-injector.js` so the original Fixel/Bebas families render correctly in Browser Sources.
+- Do not override fonts in HTML/CSS; preserve the SVG `class`-based styles.
+- Scores, rounds, timer, and match info are centered with `text-anchor="middle"` and `dominant-baseline="central"` in the SVG.
 
 ### Animations
-- **Score update animations** with scale effects
-- **Timer warning** for last 10 seconds
-- **Recording status** with pulse animation
-- **Winner reveal** with glow effects
-- **Smooth transitions** between overlay states
+- Minimal animations. Score updates may apply brief scale/flash in SVG/CSS. Avoid heavy animations to keep OBS render stable.
 
 ## 🚀 Usage Instructions
 
@@ -94,8 +90,8 @@ playerIntro.setRedLeft();   // Red player on left
 // Update scores with animation
 scoreboard.updateScores(12, 8);
 
-// Update timer
-scoreboard.updateTimer('02:45', 2);
+// Update timer (mm:ss, round)
+scoreboard.updateTimer(2, 45);
 
 // Update match status
 scoreboard.updateMatchStatus('FIGHTING');
@@ -117,22 +113,7 @@ scoreboard.updateRecordingStatus(true);
 
 ### 3. PSS Protocol Integration
 
-The overlays automatically listen for PSS events:
-
-```javascript
-// PSS events are automatically handled
-window.__TAURI__.event.emit('pss-event', {
-  type: 'score_update',
-  blueScore: 12,
-  redScore: 8
-});
-
-window.__TAURI__.event.emit('pss-event', {
-  type: 'timer_update',
-  time: '02:45',
-  round: 2
-});
-```
+Overlays are driven by PSS UDP/WebSocket events. Olympic overlay parses IOC codes and flags from `event.raw_data` JSON where present and falls back to structured fields.
 
 ### 4. Overlay Type Switching
 
@@ -182,7 +163,19 @@ victoryCeremony.updateCeremony({
 });
 ```
 
-### 7. Color Themes and Transparency
+### 7. Olympic Overlay Specifics (Finalized)
+
+- Font rendering: injected `fonts.css` into SVG documents.
+- Match info shortening: SEN/U21/JUN/CAD/MAS/KID; stages F, SF, QF, `R of N`, REP, Bronze/BMD; weight labels normalized (e.g., `M-78kg`).
+- Centering: current scores, rounds won, round label, and match info centered both horizontally and vertically in their background rects.
+- Match number: leading zeros stripped and centered in its tile.
+- Warnings: always visible; values reset on new round; centered in background.
+- Injury time: defaults to 1:00 hidden; `setInjuryVisible(true/false)` toggles visibility only. Logo positions swap by visibility with no size math.
+- Logo: use SVG `logo_x5F_position1/2` authored dimensions; no JS sizing. `tournament_x5F_logo` remains untouched.
+- Flags: injected `<image>` into `player1Flag`/`player2Flag`; `preserveAspectRatio="xMidYMid meet"`; player1 flag uses a clipPath and is rendered behind its frame to prevent bleed and stretching.
+- Element IDs: prefer `athlete*` aliases but keep backward-compatible `player*` IDs (`player1Score`, `player2Score`, `player1Fouls`, `player2Fouls`, `currentRound`, `matchTimer`, `matchInfo`, `match`).
+
+### 8. Color Themes and Transparency
 
 ```javascript
 // Set color theme

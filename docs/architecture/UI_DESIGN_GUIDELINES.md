@@ -837,3 +837,13 @@ const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 **Last Updated**: 2025-01-29  
 **Design System Version**: 2.0  
 **Status**: Production Ready with Comprehensive Guidelines
+
+---
+
+## 📺 Overlay Design Addendum (Olympic Scoreboard)
+
+- See `ui/public/assets/scoreboard/README-scoreboard-overlays.md` for implementation details.
+- Fonts are injected into embedded SVGs; do not override in HTML/CSS.
+- Text centering is authored in the SVG using `text-anchor="middle"` and `dominant-baseline="central"` to avoid JS drift.
+- Flags are `<image>` elements with `preserveAspectRatio="xMidYMid meet"` and clipPaths to avoid stretching; render flags beneath frame elements.
+- Logo positions are authored in SVG; JS only toggles visibility based on injury time.
