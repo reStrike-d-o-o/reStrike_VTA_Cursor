@@ -163,11 +163,11 @@
         <rect id="injury_x5F_time_x5F_bg" class="cls-36" x="301.805193" y="71.211027" width="97.344844" height="35.330959"/>
         <text id="injuryTime" class="cls-10" transform="translate(322.360777 97.863102)"><tspan x="0" y="0">0:33</tspan></text>
         <rect id="time_x5F_bg" class="cls-21" x="181.746552" y="71.211027" width="120.058641" height="35.330959"/>
-        <text id="matchTimer" class="cls-8" transform="translate(217.246519 97.7215)"><tspan x="0" y="0">1:54</tspan></text>
+        <text id="matchTimer" class="cls-8" text-anchor="middle" dominant-baseline="middle" transform="translate(241.775872 88.876507)"><tspan x="0" y="0">1:54</tspan></text>
         <rect id="round_x5F_bg" class="cls-25" x="125.367663" y="71.211027" width="56.378889" height="35.330959"/>
-        <text id="currentRound" class="cls-19" transform="translate(138.622496 97.278629)"><tspan x="0" y="0">1st</tspan></text>
+        <text id="currentRound" class="cls-19" text-anchor="middle" dominant-baseline="middle" transform="translate(153.557107 88.876507)"><tspan x="0" y="0">1st</tspan></text>
         <rect id="tournament_x5F_name_x5F_bg" class="cls-25" x="125.367663" y="229.493164" width="225.109952" height="35.330959"/>
-        <text id="matchInfo" class="cls-20" transform="translate(134.92523 254.078434)"><tspan class="cls-9" x="0" y="0">Men’s under</tspan><tspan class="cls-22" x="117.598633" y="0" xml:space="preserve"> 68kg</tspan></text>
+        <text id="matchInfo" class="cls-20" text-anchor="middle" dominant-baseline="middle" transform="translate(237.922639 247.159644)"><tspan class="cls-9" x="0" y="0">Men’s under 68kg</tspan></text>
         <rect id="match_x5F_bg" class="cls-21" x="350.477615" y="229.493164" width="97.344844" height="35.330959"/>
         <text id="match" class="cls-8" transform="translate(360.913984 256.003239)"><tspan x="0" y="0">00123</tspan></text>
         <g id="tournament_x5F_logo">
@@ -208,10 +208,8 @@
           <rect class="cls-21" x="350.477615" y="168.017575" width="48.672422" height="48.672422"/>
           <rect class="cls-36" x="399.150037" y="168.017575" width="48.672422" height="48.672422"/>
           <text id="player2Fouls" class="cls-18" transform="translate(418.756529 201.853092)"><tspan x="0" y="0">1</tspan></text>
-          <text id="player2Rounds" class="cls-13" transform="translate(367.117369 201.853092)"><tspan x="0" y="0">0</tspan></text>
-          <g id="player2Score">
-            <text class="cls-6" transform="translate(316.961607 204.853092)"><tspan x="0" y="0">2</tspan></text>
-          </g>
+          <text id="player2Rounds" class="cls-13" text-anchor="middle" dominant-baseline="middle" transform="translate(374.45358 192.353786)"><tspan x="0" y="0">0</tspan></text>
+          <g id="player2Score"><text class="cls-6" text-anchor="middle" dominant-baseline="middle" transform="translate(326.141804 192.353786)"><tspan x="0" y="0">2</tspan></text></g>
           <text id="player2Name" class="cls-11" transform="translate(203.027525 204.853092)"><tspan x="0" y="0">CRO</tspan></text>
           <g>
             <rect class="cls-24" x="134.674864" y="176.496952" width="47.321777" height="31.713867"/>
@@ -504,8 +502,8 @@
           <rect class="cls-21" x="350.477615" y="119.345153" width="48.672422" height="48.672422"/>
           <rect class="cls-36" x="399.150037" y="119.345153" width="48.672422" height="48.672422"/>
           <text id="player1Fouls" class="cls-18" transform="translate(414.510923 153.072208)"><tspan x="0" y="0">3</tspan></text>
-          <text id="player1Rounds" class="cls-13" transform="translate(366.101744 153.180607)"><tspan x="0" y="0">0</tspan></text>
-          <text id="player1Score" class="cls-7" transform="translate(314.464048 156.180607)"><tspan x="0" y="0">0</tspan></text>
+          <text id="player1Rounds" class="cls-13" text-anchor="middle" dominant-baseline="middle" transform="translate(374.142846 143.681364)"><tspan x="0" y="0">0</tspan></text>
+          <text id="player1Score" class="cls-7" text-anchor="middle" dominant-baseline="middle" transform="translate(323.959404 143.681364)"><tspan x="0" y="0">0</tspan></text>
           <text id="player1Name" class="cls-11" transform="translate(206.788267 155.966251)"><tspan x="0" y="0">AUT</tspan></text>
           <g id="flag1_x5F_placeholder">
             <rect class="cls-24" x="134.674864" y="127.8241" width="47.321777" height="31.714355"/>
