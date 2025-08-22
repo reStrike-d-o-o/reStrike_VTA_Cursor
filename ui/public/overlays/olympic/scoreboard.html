@@ -69,30 +69,73 @@
             if (!scoreboardInstance) return;
             try {
                 updateConnectionStatus(true);
-                switch (event.type) {
+                const typeLower = (event && event.type ? String(event.type).toLowerCase() : '');
+                switch (typeLower) {
                     case 'athletes':
-                        if (event.athlete1?.long) { scoreboardInstance.updatePlayerName('blue', event.athlete1.long); document.getElementById('debug-blue').textContent = event.athlete1.long; }
-                        if (event.athlete2?.long) { scoreboardInstance.updatePlayerName('red', event.athlete2.long); document.getElementById('debug-red').textContent = event.athlete2.long; }
-                        if (event.athlete1?.country) { scoreboardInstance.updateCountry('blue', event.athlete1.country); }
-                        if (event.athlete2?.country) { scoreboardInstance.updateCountry('red', event.athlete2.country); }
+                        // Display country codes and flags in Olympic layout
+                        if (event.athlete1?.country) { scoreboardInstance.updateAthleteName('blue', event.athlete1.country); scoreboardInstance.updateAthleteFlag('blue', event.athlete1.country); document.getElementById('debug-blue').textContent = event.athlete1.country; }
+                        if (event.athlete2?.country) { scoreboardInstance.updateAthleteName('red', event.athlete2.country); scoreboardInstance.updateAthleteFlag('red', event.athlete2.country); document.getElementById('debug-red').textContent = event.athlete2.country; }
                         break;
                     case 'match_config':
                         const data = event.raw_data ? JSON.parse(event.raw_data) : (event.structured_data || event);
                         if (data.round_duration !== undefined && data.round_duration !== null) { roundDuration = parseInt(data.round_duration); }
                         if (data.weight || data.division || data.category) { scoreboardInstance.updateMatchInfo(data.weight, data.division, data.category); }
-                        if (data.number) {
-                            const matchNumberElement = scoreboardInstance.svg.getElementById('matchNumber');
-                            if (matchNumberElement) matchNumberElement.textContent = `#${data.number}`;
-                        }
+                        if (data.number) { scoreboardInstance.updateMatchNumber(data.number); }
+                        // Injury initial state: hidden with 1:00 countdown baseline (visual only until event arrives)
+                        scoreboardInstance.setInjuryTime(1, 0);
+                        scoreboardInstance.setInjuryVisible(false);
+                        // Ensure logo uses app image instead of placeholder
+                        scoreboardInstance.setLogoImage('/assets/img/logo.png');
                         break;
                     case 'current_scores':
                         const sc = event.raw_data ? JSON.parse(event.raw_data) : event;
                         const blue = sc.athlete1_score ?? sc?.athlete1?.score ?? 0;
                         const red = sc.athlete2_score ?? sc?.athlete2?.score ?? 0;
-                        scoreboardInstance.updateScore('blue', blue);
-                        scoreboardInstance.updateScore('red', red);
+                        scoreboardInstance.updateAthleteScore('blue', blue);
+                        scoreboardInstance.updateAthleteScore('red', red);
                         document.getElementById('debug-blue-score').textContent = blue;
                         document.getElementById('debug-red-score').textContent = red;
+                        break;
+                    case 'warnings':
+                    case 'gamjeom':
+                    case 'gam_jeom':
+                    case 'wg':
+                        if (event.athlete1_warnings !== undefined || event.athlete2_warnings !== undefined) {
+                            if (event.athlete1_warnings !== undefined) scoreboardInstance.updateAthleteWarnings('blue', event.athlete1_warnings);
+                            if (event.athlete2_warnings !== undefined) scoreboardInstance.updateAthleteWarnings('red', event.athlete2_warnings);
+                        } else if (event.raw_data && typeof event.raw_data === 'string') {
+                            const m = event.raw_data.match(/wg1;(\d+);wg2;(\d+)/i);
+                            if (m) {
+                                scoreboardInstance.updateAthleteWarnings('blue', parseInt(m[1]));
+                                scoreboardInstance.updateAthleteWarnings('red', parseInt(m[2]));
+                            }
+                        }
+                        break;
+                    case 'injury':
+                    case 'injury_time':
+                    case 'ij':
+                        {
+                            const t = event.time || (event.raw_data && String(event.raw_data).split(';')[1]) || null;
+                            const raw = event.raw_data ? String(event.raw_data).toLowerCase() : '';
+                            const action = (event.action || (raw.includes('show') ? 'show' : (raw.includes('hide') ? 'hide' : '')) || '').toLowerCase();
+                            if (t && t.includes(':')) {
+                                const parts = t.split(':');
+                                const minutes = parseInt(parts[0]) || 0;
+                                const seconds = parseInt(parts[1]) || 0;
+                                scoreboardInstance.setInjuryTime(minutes, seconds);
+                            }
+                            if (action === 'show') scoreboardInstance.setInjuryVisible(true);
+                            else if (action === 'hide') scoreboardInstance.setInjuryVisible(false);
+                            else if (t) scoreboardInstance.setInjuryVisible(true);
+                        }
+                        break;
+                    case 'winner_rounds':
+                        // Compute round wins from per-round winners if provided; keep zero by default
+                        const r1 = event.round1_winner||0, r2 = event.round2_winner||0, r3 = event.round3_winner||0;
+                        const blueWins = [r1,r2,r3].filter(v=>v===1).length;
+                        const redWins = [r1,r2,r3].filter(v=>v===2).length;
+                        scoreboardInstance.updateAthleteRounds('blue', blueWins);
+                        scoreboardInstance.updateAthleteRounds('red', redWins);
                         break;
                     case 'clock':
                         if (event.time) {
@@ -108,6 +151,30 @@
                             scoreboardInstance.updateRound(roundNumber);
                             const m = Math.floor(roundDuration / 60), s = roundDuration % 60;
                             scoreboardInstance.updateTimer(m, s);
+                        }
+                        break;
+                    default:
+                        // Try to parse raw strings that encode warnings or injury
+                        if (event && event.raw_data && typeof event.raw_data === 'string') {
+                            const raw = event.raw_data.toLowerCase();
+                            const mw = raw.match(/wg1;(\d+);wg2;(\d+)/);
+                            if (mw) {
+                                scoreboardInstance.updateAthleteWarnings('blue', parseInt(mw[1]));
+                                scoreboardInstance.updateAthleteWarnings('red', parseInt(mw[2]));
+                                break;
+                            }
+                            const mi = raw.match(/ij[012];(\d+:\d+)(?:;(show|hide|reset))?/);
+                            if (mi) {
+                                const parts = mi[1].split(':');
+                                const minutes = parseInt(parts[0])||0;
+                                const seconds = parseInt(parts[1])||0;
+                                scoreboardInstance.setInjuryTime(minutes, seconds);
+                                const act = mi[2]||'';
+                                if (act==='show') scoreboardInstance.setInjuryVisible(true);
+                                else if (act==='hide') scoreboardInstance.setInjuryVisible(false);
+                                else scoreboardInstance.setInjuryVisible(true);
+                                break;
+                            }
                         }
                         break;
                 }
