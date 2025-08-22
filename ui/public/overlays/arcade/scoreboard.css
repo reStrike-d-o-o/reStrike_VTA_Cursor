@@ -1,0 +1,12 @@
+.scoreboard-fallback {
+  width: 1920px;
+  height: 1080px;
+  background: #000;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48px;
+}
+
+

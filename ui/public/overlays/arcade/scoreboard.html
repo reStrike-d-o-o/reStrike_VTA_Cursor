@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Arcade Scoreboard Overlay</title>
   <link rel="stylesheet" href="/assets/fonts/fonts.css" />
+  <link rel="stylesheet" href="/overlays/arcade/scoreboard.css" />
   <style>
     html, body { margin: 0; padding: 0; width: 1920px; height: 1080px; overflow: hidden; background: transparent; font-family: 'Fixel Display', 'Fixel Text', Arial, sans-serif; }
     #scoreboard-container { width: 1920px; height: 1080px; position: relative; }
@@ -17,7 +18,7 @@
   <div id="connection-status" class="connection-status"></div>
   <div id="scoreboard-container">
     <object id="scoreboard-svg" data="/assets/scoreboard/arcade/arcade_scoreboard.svg" type="image/svg+xml">
-      <div style="width: 1920px; height: 1080px; background: #000; color: white; display: flex; align-items: center; justify-content: center; font-size: 48px;">Scoreboard Overlay Loading...</div>
+      <div class="scoreboard-fallback">Scoreboard Overlay Loading...</div>
     </object>
   </div>
 
