@@ -72,9 +72,11 @@
                 const typeLower = (event && event.type ? String(event.type).toLowerCase() : '');
                 switch (typeLower) {
                     case 'athletes':
-                        // Display country codes and flags in Olympic layout
-                        if (event.athlete1?.country) { scoreboardInstance.updateAthleteName('blue', event.athlete1.country); scoreboardInstance.updateAthleteFlag('blue', event.athlete1.country); document.getElementById('debug-blue').textContent = event.athlete1.country; }
-                        if (event.athlete2?.country) { scoreboardInstance.updateAthleteName('red', event.athlete2.country); scoreboardInstance.updateAthleteFlag('red', event.athlete2.country); document.getElementById('debug-red').textContent = event.athlete2.country; }
+                        // Support both flattened and nested athlete structures
+                        const a1c = event.athlete1_country || event.country1 || event.athlete1?.country || event.athlete1?.code;
+                        const a2c = event.athlete2_country || event.country2 || event.athlete2?.country || event.athlete2?.code;
+                        if (a1c) { scoreboardInstance.updateAthleteName('blue', a1c); scoreboardInstance.updateAthleteFlag('blue', a1c); document.getElementById('debug-blue').textContent = a1c; }
+                        if (a2c) { scoreboardInstance.updateAthleteName('red', a2c); scoreboardInstance.updateAthleteFlag('red', a2c); document.getElementById('debug-red').textContent = a2c; }
                         break;
                     case 'match_config':
                         const data = event.raw_data ? JSON.parse(event.raw_data) : (event.structured_data || event);
@@ -101,8 +103,8 @@
                     case 'gam_jeom':
                     case 'wg':
                         if (event.athlete1_warnings !== undefined || event.athlete2_warnings !== undefined) {
-                            if (event.athlete1_warnings !== undefined) scoreboardInstance.updateAthleteWarnings('blue', event.athlete1_warnings);
-                            if (event.athlete2_warnings !== undefined) scoreboardInstance.updateAthleteWarnings('red', event.athlete2_warnings);
+                            if (event.athlete1_warnings !== undefined) scoreboardInstance.updateAthleteWarnings('blue', parseInt(event.athlete1_warnings));
+                            if (event.athlete2_warnings !== undefined) scoreboardInstance.updateAthleteWarnings('red', parseInt(event.athlete2_warnings));
                         } else if (event.raw_data && typeof event.raw_data === 'string') {
                             const m = event.raw_data.match(/wg1;(\d+);wg2;(\d+)/i);
                             if (m) {

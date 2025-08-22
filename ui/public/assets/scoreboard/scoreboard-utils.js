@@ -148,7 +148,11 @@ class ScoreboardOverlay {
     }
   }
 
-  updateAthleteFlag(side, country) { this.updateCountry(side, country); }
+  updateAthleteFlag(side, country) {
+    // Normalize to IOC uppercase
+    const code = (country || '').toString().trim().toUpperCase();
+    this.updateCountry(side, code);
+  }
 
   // Update player seeds
   updateSeed(player, seed) {
