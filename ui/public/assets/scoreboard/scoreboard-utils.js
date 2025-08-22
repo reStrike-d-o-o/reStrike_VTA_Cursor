@@ -526,45 +526,7 @@ class ScoreboardOverlay {
     }
   }
 
-  // Inject or update logo image within known logo groups (including reStrike positions)
-  setLogoImage(imagePath) {
-    try {
-      const candidates = [
-        'restrike_logo',
-        'logo_x5F_position2',
-        'logo_x5F_position1',
-        'logo'
-      ];
-      candidates.forEach(id => {
-        const group = this.getSvgElementAny([id]);
-        if (!group || !group.getBBox) return;
-        // First compute bbox while original vectors are still visible
-        const bb = group.getBBox();
-        // Hide existing vector shapes so the image is visible (keep nested groups)
-        group.querySelectorAll('path, rect').forEach(n => { n.style.display = 'none'; });
-        let img = group.querySelector('image[data-injected-logo="true"]');
-        if (!img) {
-          img = document.createElementNS('http://www.w3.org/2000/svg', 'image');
-          img.setAttribute('data-injected-logo', 'true');
-          img.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-          group.appendChild(img);
-        }
-        // Enlarge image around the group's center (can be tuned per group via data-logo-scale)
-        const groupScaleAttr = group.getAttribute('data-logo-scale');
-        const scale = groupScaleAttr ? parseFloat(groupScaleAttr) || 1.5 : 1.5;
-        const newW = bb.width * scale;
-        const newH = bb.height * scale;
-        const newX = bb.x - (newW - bb.width) / 2;
-        const newY = bb.y - (newH - bb.height) / 2;
-        img.setAttribute('x', String(newX));
-        img.setAttribute('y', String(newY));
-        img.setAttribute('width', String(newW));
-        img.setAttribute('height', String(newH));
-        img.setAttribute('href', imagePath);
-        img.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', imagePath);
-      });
-    } catch (_) { /* ignore */ }
-  }
+  // (Removed) setLogoImage: Logo is now authored directly in SVG; no JS sizing/positioning
 
   // Injury helpers
   setInjuryTime(minutes, seconds) {
@@ -576,11 +538,6 @@ class ScoreboardOverlay {
     const bg = this.getSvgElementAny(['injury_x5F_time_x5F_bg','injuryBg']);
     if (t) t.style.display = visible ? 'block' : 'none';
     if (bg) bg.style.display = visible ? 'block' : 'none';
-    // Toggle logo positions: position2 when injury visible, position1 when hidden
-    const logoPos1 = this.getSvgElementAny(['logo_x5F_position1']);
-    const logoPos2 = this.getSvgElementAny(['logo_x5F_position2']);
-    if (logoPos1) logoPos1.style.display = visible ? 'block' : 'none';
-    if (logoPos2) logoPos2.style.display = visible ? 'none' : 'block';
   }
 
   // Update match category (for backward compatibility)

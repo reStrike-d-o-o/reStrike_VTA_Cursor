@@ -70,7 +70,7 @@
                         const d = cacheMatchConfig; roundDuration = d.round_duration ? parseInt(d.round_duration) : roundDuration;
                         if (d.weight || d.division || d.category) scoreboardInstance.updateMatchInfo(d.weight, d.division, d.category);
                         if (d.number) scoreboardInstance.updateMatchNumber(d.number);
-                        scoreboardInstance.setInjuryTime(1,0); scoreboardInstance.setInjuryVisible(false); scoreboardInstance.setLogoImage('/assets/img/logo.png');
+                        scoreboardInstance.setInjuryTime(1,0); scoreboardInstance.setInjuryVisible(false);
                         scoreboardInstance.updateAthleteWarnings('blue', 0); scoreboardInstance.updateAthleteWarnings('red', 0);
                     }
                     if (cacheAthletes) {
@@ -156,8 +156,6 @@
                         // Injury initial state: hidden with 1:00 countdown baseline (visual only until event arrives)
                         scoreboardInstance.setInjuryTime(1, 0);
                         scoreboardInstance.setInjuryVisible(false);
-                        // Ensure logo uses app image instead of placeholder
-                        scoreboardInstance.setLogoImage('/assets/img/logo.png');
                         // Initialize fouls to zero on match load
                         scoreboardInstance.updateAthleteWarnings('blue', 0);
                         scoreboardInstance.updateAthleteWarnings('red', 0);
