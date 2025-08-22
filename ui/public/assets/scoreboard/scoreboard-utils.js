@@ -57,10 +57,31 @@ class ScoreboardOverlay {
     return this.svg.getElementById(id);
   }
 
+  // Resolve the first existing element from a list of candidate IDs
+  getSvgElementAny(ids) {
+    const list = Array.isArray(ids) ? ids : [ids];
+    for (const cand of list) {
+      if (!cand) continue;
+      const el = this.svg.getElementById(cand);
+      if (el) return el;
+    }
+    return null;
+  }
+
+  // If element is a group, set text of its first <text> child, else set its own text
+  setTextForElementOrGroup(el, value) {
+    if (!el) return;
+    if (el.tagName && el.tagName.toLowerCase() === 'g') {
+      const textChild = el.querySelector('text');
+      if (textChild) { textChild.textContent = value; return; }
+    }
+    el.textContent = value;
+  }
+
   // Update player names
   updatePlayerName(player, name) {
     // Map player colors to SVG element IDs (support legacy and new schemas)
-    const nameElement = this.getSvgElement(player === 'blue' ? 'player1Name' : 'player2Name');
+    const nameElement = this.getSvgElementAny(player === 'blue' ? ['athlete1Name', 'player1Name'] : ['athlete2Name', 'player2Name']);
     if (nameElement) {
       // Apply proper capitalization (first letter of each word)
       const capitalizedName = capitalizeName(name);
@@ -71,6 +92,9 @@ class ScoreboardOverlay {
     }
   }
 
+  // Preferred API using "athlete" terminology (backward compatible)
+  updateAthleteName(side, name) { this.updatePlayerName(side, name); }
+
   // Update player scores
   updateScore(player, score) {
     // Map player colors to SVG element IDs (support legacy and new schemas)
@@ -78,11 +102,11 @@ class ScoreboardOverlay {
     console.log(`🎯 Updating score for ${player} player, id: ${elementId}, score: ${score}`);
     console.log(`🎯 SVG element:`, this.svg);
     
-    const scoreElement = this.getSvgElement(elementId);
+    const scoreElement = this.getSvgElementAny([elementId, elementId.replace('player', 'athlete')]);
     console.log(`🎯 Found score element:`, scoreElement);
     
     if (scoreElement) {
-      scoreElement.textContent = score;
+      this.setTextForElementOrGroup(scoreElement, score);
       scoreElement.classList.add('score-update');
       setTimeout(() => scoreElement.classList.remove('score-update'), 500);
       console.log(`✅ Updated ${player} player score: ${score}`);
@@ -92,18 +116,39 @@ class ScoreboardOverlay {
     }
   }
 
+  updateAthleteScore(side, score) { this.updateScore(side, score); }
+
   // Update player countries (flags)
   updateCountry(player, country) {
     // Map player colors to SVG element IDs (support legacy and new schemas)
-    const flagElement = this.getSvgElement(player === 'blue' ? 'player1Flag' : 'player2Flag');
+    const flagElement = this.getSvgElementAny(player === 'blue' ? ['athlete1Flag', 'player1Flag'] : ['athlete2Flag', 'player2Flag']);
     if (flagElement) {
-      // Update the flag image source (use absolute path for consistency)
-      flagElement.setAttribute('href', `/assets/flags/svg/${country}.svg`);
+      // Prefer an <image> inside the group; create one if needed
+      let imageEl = (flagElement.tagName && flagElement.tagName.toLowerCase() === 'image') ? flagElement : flagElement.querySelector('image');
+      if (!imageEl) {
+        try {
+          const bbox = flagElement.getBBox();
+          imageEl = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+          imageEl.setAttribute('x', String(bbox.x));
+          imageEl.setAttribute('y', String(bbox.y));
+          imageEl.setAttribute('width', String(bbox.width));
+          imageEl.setAttribute('height', String(bbox.height));
+          imageEl.setAttribute('preserveAspectRatio', 'xMidYMid slice');
+          flagElement.appendChild(imageEl);
+        } catch (_) { /* ignore */ }
+      }
+      if (imageEl) {
+        const url = `/assets/flags/svg/${country}.svg`;
+        imageEl.setAttribute('href', url);
+        imageEl.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', url);
+      }
       console.log(`✅ Updated ${player} player country flag: ${country}`);
     } else {
       console.warn(`⚠️ Could not find flag element for ${player}`);
     }
   }
+
+  updateAthleteFlag(side, country) { this.updateCountry(side, country); }
 
   // Update player seeds
   updateSeed(player, seed) {
@@ -114,22 +159,35 @@ class ScoreboardOverlay {
   // Update penalties and warnings
   updatePenalties(player, penalties, warnings) {
     // Map player colors to SVG element IDs (support legacy and new schemas)
-    const penaltiesElement = this.getSvgElement(player === 'blue' ? 'player1Fouls' : 'player2Fouls');
+    const penaltiesElement = this.getSvgElementAny(player === 'blue' ? ['athlete1Warnings', 'player1Fouls'] : ['athlete2Warnings', 'player2Fouls']);
     if (penaltiesElement) {
-      penaltiesElement.textContent = warnings || penalties || 0;
+      const value = (warnings != null ? warnings : penalties) || 0;
+      // Update text content robustly (handles <text><tspan>..</tspan></text>)
+      const tspan = penaltiesElement.querySelector('tspan');
+      if (tspan) tspan.textContent = String(value);
+      else this.setTextForElementOrGroup(penaltiesElement, String(value));
+      // Hide/show warnings background tile and number when zero
+      const sideGroup = this.getSvgElementAny(player === 'blue' ? ['player1_x5F_blue', 'athlete1Group'] : ['player2_x5F_red', 'athlete2Group']);
+      if (sideGroup) {
+        const warnBg = sideGroup.querySelector('rect.cls-36');
+        if (warnBg) warnBg.style.display = 'block';
+      }
+      penaltiesElement.style.display = 'block';
       // Apply pop-out animation
       penaltiesElement.classList.add('update');
       setTimeout(() => penaltiesElement.classList.remove('update'), 500);
-      console.log(`✅ Updated ${player} player warnings: ${warnings || penalties || 0}`);
+      console.log(`✅ Updated ${player} player warnings: ${value}`);
     } else {
       console.warn(`⚠️ Could not find ${elementId} element`);
     }
   }
 
+  updateAthleteWarnings(side, value) { this.updatePenalties(side, null, value); }
+
   // Update round wins
   updateRoundWins(player, wins) {
     // Map player colors to SVG element IDs (support legacy and new schemas)
-    const winsElement = this.getSvgElement(player === 'blue' ? 'player1Rounds' : 'player2Rounds');
+    const winsElement = this.getSvgElementAny(player === 'blue' ? ['athlete1Rounds', 'player1Rounds'] : ['athlete2Rounds', 'player2Rounds']);
     if (winsElement) {
       winsElement.textContent = wins || 0;
       // Apply pop-out animation
@@ -140,6 +198,8 @@ class ScoreboardOverlay {
       console.warn(`⚠️ Could not find ${elementId} element`);
     }
   }
+
+  updateAthleteRounds(side, wins) { this.updateRoundWins(side, wins); }
 
   // Update match timer
   updateTimer(minutes, seconds) {
@@ -154,7 +214,7 @@ class ScoreboardOverlay {
 
   // Update current round
   updateRound(round) {
-    const roundElement = this.getSvgElement('currentRound');
+    const roundElement = this.getSvgElementAny(['currentRound']);
     if (roundElement) {
       roundElement.textContent = this.getOrdinalSuffix(round);
       console.log(`✅ Updated current round: ${this.getOrdinalSuffix(round)}`);
@@ -272,10 +332,12 @@ class ScoreboardOverlay {
     if (/finals?$/.test(c) || c === 'final') return 'F';
     if (/(semi\s*finals?|semifinal)/.test(c)) return 'SF';
     if (/(quarter\s*finals?|quarterfinal)/.test(c)) return 'QF';
-    if (/round of 32|ro32|r32/.test(c)) return 'R32';
-    if (/round of 16|ro16|r16/.test(c)) return 'R16';
-    if (/round of 8|ro8|r8/.test(c)) return 'R8';
-    if (/round of 4|ro4|r4/.test(c)) return 'R4';
+    // Generic round-of detection: "round of N", "roN", or "rN"
+    const roundMatch = c.match(/(?:round of\s*(\d+))|(?:r(?:o)?\s*(\d+))/);
+    if (roundMatch) {
+      const n = roundMatch[1] || roundMatch[2];
+      return `R of ${n}`;
+    }
     if (/prelim|preliminary/.test(c)) return 'Prelim';
     return categoryRaw; // default unchanged
   }
@@ -288,11 +350,12 @@ class ScoreboardOverlay {
     if (/finals?$/.test(c) || c === 'final') return 'F';
     if (/(semi\s*finals?|semifinal)/.test(c)) return 'SF';
     if (/(quarter\s*finals?|quarterfinal)/.test(c)) return 'QF';
-    if (/round of 64|ro64|r64/.test(c)) return 'R64';
-    if (/round of 32|ro32|r32/.test(c)) return 'R32';
-    if (/round of 16|ro16|r16/.test(c)) return 'R16';
-    if (/round of 8|ro8|r8/.test(c)) return 'R8';
-    if (/round of 4|ro4|r4/.test(c)) return 'R4';
+    // Generic round-of detection: "round of N", "roN", or "rN"
+    const roundMatch = c.match(/(?:round of\s*(\d+))|(?:r(?:o)?\s*(\d+))/);
+    if (roundMatch) {
+      const n = roundMatch[1] || roundMatch[2];
+      return `R of ${n}`;
+    }
     if (/repechage/.test(c)) return 'REP';
     return categoryRaw;
   }
@@ -316,11 +379,23 @@ class ScoreboardOverlay {
     return d;
   }
 
+  // Normalize weight label formatting (e.g., "M -78kg" -> "M-78kg", "W +73kg" -> "W+73kg")
+  normalizeWeightLabel(weightRaw) {
+    if (!weightRaw) return '';
+    let s = String(weightRaw).trim().replace(/\s+/g, ' ');
+    // Ensure "kg" has no preceding space
+    s = s.replace(/\s*kg\b/i, 'kg');
+    // Remove spaces between gender and sign, and between sign and number
+    s = s.replace(/^([mMwW])\s*([+-])\s*/, (match, g, sign) => `${g.toUpperCase()}${sign}`);
+    s = s.replace(/([+-])\s*(\d)/, '$1$2');
+    return s;
+  }
+
   // Update combined match info (weight, division, category)
   updateMatchInfo(weight, division, category) {
     // Normalize/abbreviate
     const shortCategory = this.abbreviateCategory(category);
-    const segWeight = (weight || '').trim();
+    const segWeight = this.normalizeWeightLabel((weight || '').trim());
     const segDivision = this.abbreviateDivision((division || '').trim());
     const segCategory = (shortCategory || '').trim();
 
@@ -328,7 +403,7 @@ class ScoreboardOverlay {
     const leftSegment = [segWeight, segDivision].filter(Boolean).join(' | ');
     const rightSegment = segCategory ? ` | ${segCategory}` : '';
 
-    const matchInfoElement = this.getSvgElement('matchInfo');
+    const matchInfoElement = this.getSvgElementAny(['matchInfo']);
     if (!matchInfoElement) { console.warn('⚠️ Could not find matchInfo element'); return; }
 
     const tspans = matchInfoElement.querySelectorAll('tspan');
@@ -348,7 +423,7 @@ class ScoreboardOverlay {
         // Force layout
         const bbox = tspans[0].getBBox();
         const measuredWidth = bbox ? bbox.width : 0;
-        const padding = rightSegment ? 4 : 0; // small gap
+        const padding = 0; // rely on leading space in second tspan (" | ...")
         const newX = isNaN(baseX) ? (bbox.x + measuredWidth + padding) : (baseX + measuredWidth + padding);
         tspans[1].setAttribute('x', String(newX));
         // Keep same y as first unless explicitly defined
@@ -394,6 +469,89 @@ class ScoreboardOverlay {
       matchInfoElement.textContent = `${leftSegment}${rightSegment}`.trim();
     }
     console.log('✅ Updated match info');
+  }
+
+  // Update match number (strip leading zeros)
+  updateMatchNumber(num) {
+    const raw = (num == null) ? '' : String(num).trim();
+    const normalized = raw.replace(/^0+/, '') || '0';
+    const target = this.getSvgElementAny(['matchNumber', 'match']);
+    if (target) {
+      this.setTextForElementOrGroup(target, normalized);
+      try {
+        // Center the match number within its background rect if available
+        const bg = this.getSvgElementAny(['match_x5F_bg', 'match_bg']);
+        if (bg && bg.getBBox) {
+          const bb = bg.getBBox();
+          const centerX = bb.x + (bb.width / 2);
+          // Extract current translateY from transform
+          const tr = target.getAttribute('transform');
+          let y = 0;
+          if (tr && /translate\(([^,\s]+)[,\s]+([^\)]+)\)/.test(tr)) {
+            y = parseFloat(RegExp.$2) || 0;
+          }
+          target.setAttribute('text-anchor', 'middle');
+          target.setAttribute('transform', `translate(${centerX} ${y})`);
+        }
+      } catch (_) { /* ignore alignment errors */ }
+    }
+  }
+
+  // Inject or update logo image within known logo groups (including reStrike positions)
+  setLogoImage(imagePath) {
+    try {
+      const candidates = [
+        'restrike_logo',
+        'logo_x5F_position2',
+        'logo_x5F_position1',
+        'logo'
+      ];
+      candidates.forEach(id => {
+        const group = this.getSvgElementAny([id]);
+        if (!group || !group.getBBox) return;
+        // First compute bbox while original vectors are still visible
+        const bb = group.getBBox();
+        // Hide existing vector shapes so the image is visible (keep nested groups)
+        group.querySelectorAll('path, rect').forEach(n => { n.style.display = 'none'; });
+        let img = group.querySelector('image[data-injected-logo="true"]');
+        if (!img) {
+          img = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+          img.setAttribute('data-injected-logo', 'true');
+          img.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+          group.appendChild(img);
+        }
+        // Enlarge image around the group's center (can be tuned per group via data-logo-scale)
+        const groupScaleAttr = group.getAttribute('data-logo-scale');
+        const scale = groupScaleAttr ? parseFloat(groupScaleAttr) || 1.5 : 1.5;
+        const newW = bb.width * scale;
+        const newH = bb.height * scale;
+        const newX = bb.x - (newW - bb.width) / 2;
+        const newY = bb.y - (newH - bb.height) / 2;
+        img.setAttribute('x', String(newX));
+        img.setAttribute('y', String(newY));
+        img.setAttribute('width', String(newW));
+        img.setAttribute('height', String(newH));
+        img.setAttribute('href', imagePath);
+        img.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', imagePath);
+      });
+    } catch (_) { /* ignore */ }
+  }
+
+  // Injury helpers
+  setInjuryTime(minutes, seconds) {
+    const t = this.getSvgElementAny(['injuryTime']);
+    if (t) this.setTextForElementOrGroup(t, `${minutes}:${String(seconds).padStart(2,'0')}`);
+  }
+  setInjuryVisible(visible) {
+    const t = this.getSvgElementAny(['injuryTime']);
+    const bg = this.getSvgElementAny(['injury_x5F_time_x5F_bg','injuryBg']);
+    if (t) t.style.display = visible ? 'block' : 'none';
+    if (bg) bg.style.display = visible ? 'block' : 'none';
+    // Toggle logo positions: position2 when injury visible, position1 when hidden
+    const logoPos1 = this.getSvgElementAny(['logo_x5F_position1']);
+    const logoPos2 = this.getSvgElementAny(['logo_x5F_position2']);
+    if (logoPos1) logoPos1.style.display = visible ? 'block' : 'none';
+    if (logoPos2) logoPos2.style.display = visible ? 'none' : 'block';
   }
 
   // Update match category (for backward compatibility)
