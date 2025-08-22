@@ -124,37 +124,36 @@ class ScoreboardOverlay {
     // Map player colors to SVG element IDs (support legacy and new schemas)
     const flagElement = this.getSvgElementAny(player === 'blue' ? ['athlete1Flag', 'player1Flag'] : ['athlete2Flag', 'player2Flag']);
     if (flagElement) {
-      // Replace any placeholder shapes with a single image sized to the original bbox
+      // Add or update a single image sized to the first inner rect (stable frame)
       try {
-        const bbox = flagElement.getBBox();
-        // Clear existing children to avoid overlay artifacts
-        while (flagElement.firstChild) { flagElement.removeChild(flagElement.firstChild); }
-        const imageEl = document.createElementNS('http://www.w3.org/2000/svg', 'image');
-        imageEl.setAttribute('x', String(bbox.x));
-        imageEl.setAttribute('y', String(bbox.y));
-        imageEl.setAttribute('width', String(Math.max(1, bbox.width)));
-        imageEl.setAttribute('height', String(Math.max(1, bbox.height)));
+        const r = flagElement.querySelector('rect');
+        let x = 0, y = 0, w = 60, h = 40;
+        if (r) {
+          x = parseFloat(r.getAttribute('x')) || 0;
+          y = parseFloat(r.getAttribute('y')) || 0;
+          w = parseFloat(r.getAttribute('width')) || 60;
+          h = parseFloat(r.getAttribute('height')) || 40;
+        } else {
+          const bb = flagElement.getBBox();
+          x = bb.x; y = bb.y; w = bb.width; h = bb.height;
+        }
+        let imageEl = flagElement.querySelector('image[data-flag="true"]');
+        if (!imageEl) {
+          imageEl = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+          imageEl.setAttribute('data-flag', 'true');
+          flagElement.appendChild(imageEl);
+        }
+        imageEl.setAttribute('x', String(x));
+        imageEl.setAttribute('y', String(y));
+        imageEl.setAttribute('width', String(Math.max(1, w)));
+        imageEl.setAttribute('height', String(Math.max(1, h)));
         imageEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
         imageEl.style.pointerEvents = 'none';
         const url = `/assets/flags/svg/${country}.svg`;
         imageEl.setAttribute('href', url);
         imageEl.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', url);
-        flagElement.appendChild(imageEl);
       } catch (_) {
-        // Fallback: append image without clearing
-        let imageEl = flagElement.querySelector('image');
-        if (!imageEl) {
-          imageEl = document.createElementNS('http://www.w3.org/2000/svg', 'image');
-          imageEl.setAttribute('x', '0');
-          imageEl.setAttribute('y', '0');
-          imageEl.setAttribute('width', '60');
-          imageEl.setAttribute('height', '40');
-          imageEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-          flagElement.appendChild(imageEl);
-        }
-        const url = `/assets/flags/svg/${country}.svg`;
-        imageEl.setAttribute('href', url);
-        imageEl.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', url);
+        // ignore
       }
       console.log(`✅ Updated ${player} player country flag: ${country}`);
     } else {
