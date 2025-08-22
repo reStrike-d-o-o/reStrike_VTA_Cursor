@@ -31,6 +31,11 @@
     <script>
         let scoreboardInstance = null;
         let nameManager = null;
+        // Simple event caches to avoid losing early events before SVG loads
+        let cacheAthletes = null;
+        let cacheWarnings = null;
+        let cacheMatchConfig = null;
+        let cacheScores = null;
         let isConnected = false;
         let lastUpdateTime = null;
         let roundDuration = 120;
@@ -60,13 +65,60 @@
                     nameManager = new ScoreboardNameManager();
                     updateConnectionStatus(false); updateDebugInfo();
                     if (DEBUG_MODE) { document.getElementById('debug-panel').classList.add('show'); }
+                    // Apply cached events if any
+                    if (cacheMatchConfig) {
+                        const d = cacheMatchConfig; roundDuration = d.round_duration ? parseInt(d.round_duration) : roundDuration;
+                        if (d.weight || d.division || d.category) scoreboardInstance.updateMatchInfo(d.weight, d.division, d.category);
+                        if (d.number) scoreboardInstance.updateMatchNumber(d.number);
+                        scoreboardInstance.setInjuryTime(1,0); scoreboardInstance.setInjuryVisible(false); scoreboardInstance.setLogoImage('/assets/img/logo.png');
+                        scoreboardInstance.updateAthleteWarnings('blue', 0); scoreboardInstance.updateAthleteWarnings('red', 0);
+                    }
+                    if (cacheAthletes) {
+                        if (cacheAthletes.a1) { scoreboardInstance.updateAthleteName('blue', cacheAthletes.a1); scoreboardInstance.updateAthleteFlag('blue', cacheAthletes.a1); }
+                        if (cacheAthletes.a2) { scoreboardInstance.updateAthleteName('red', cacheAthletes.a2); scoreboardInstance.updateAthleteFlag('red', cacheAthletes.a2); }
+                    }
+                    if (cacheScores) {
+                        scoreboardInstance.updateAthleteScore('blue', cacheScores.b);
+                        scoreboardInstance.updateAthleteScore('red', cacheScores.r);
+                    }
+                    if (cacheWarnings) {
+                        scoreboardInstance.updateAthleteWarnings('blue', cacheWarnings.b);
+                        scoreboardInstance.updateAthleteWarnings('red', cacheWarnings.r);
+                        try {
+                            const e1 = scoreboardInstance.svg.getElementById('player1Fouls'); const e2 = scoreboardInstance.svg.getElementById('player2Fouls');
+                            if (e1) { const t=e1.querySelector('tspan'); if (t) t.textContent=String(cacheWarnings.b); else e1.textContent=String(cacheWarnings.b); }
+                            if (e2) { const t=e2.querySelector('tspan'); if (t) t.textContent=String(cacheWarnings.r); else e2.textContent=String(cacheWarnings.r); }
+                        } catch(_) {}
+                    }
                 } catch (error) { console.error('❌ Error initializing scoreboard:', error); setTimeout(initializeScoreboard, 1000); }
             } else { setTimeout(initializeScoreboard, 1000); }
         }
 
         function handlePssEvent(event) {
             lastUpdateTime = new Date();
-            if (!scoreboardInstance) return;
+            if (!scoreboardInstance) {
+                // Populate caches and return until initialized
+                if (event && event.type) {
+                    const t = String(event.type).toLowerCase();
+                    if (t==='athletes') {
+                        const a1 = event.athlete1_country || event.country1 || event.athlete1?.country || event.athlete1?.code || null;
+                        const a2 = event.athlete2_country || event.country2 || event.athlete2?.country || event.athlete2?.code || null;
+                        cacheAthletes = { a1, a2 };
+                    } else if (t==='warnings' || t==='gamjeom' || t==='gam_jeom' || t==='wg') {
+                        if (event.athlete1_warnings!=null || event.athlete2_warnings!=null) {
+                            cacheWarnings = { b: parseInt(event.athlete1_warnings||0), r: parseInt(event.athlete2_warnings||0) };
+                        } else if (event.raw_data && /wg1;(\d+);wg2;(\d+)/i.test(event.raw_data)) {
+                            const m = event.raw_data.match(/wg1;(\d+);wg2;(\d+)/i); cacheWarnings = { b: parseInt(m[1]), r: parseInt(m[2]) };
+                        }
+                    } else if (t==='match_config') {
+                        const d = event.raw_data ? JSON.parse(event.raw_data) : (event.structured_data || event);
+                        cacheMatchConfig = d;
+                    } else if (t==='current_scores') {
+                        const sc = event.raw_data ? JSON.parse(event.raw_data) : event; cacheScores = { b: sc.athlete1_score ?? sc?.athlete1?.score ?? 0, r: sc.athlete2_score ?? sc?.athlete2?.score ?? 0 };
+                    }
+                }
+                return;
+            }
             try {
                 updateConnectionStatus(true);
                 const typeLower = (event && event.type ? String(event.type).toLowerCase() : '');
@@ -75,8 +127,24 @@
                         // Support both flattened and nested athlete structures
                         const a1c = event.athlete1_country || event.country1 || event.athlete1?.country || event.athlete1?.code;
                         const a2c = event.athlete2_country || event.country2 || event.athlete2?.country || event.athlete2?.code;
-                        if (a1c) { scoreboardInstance.updateAthleteName('blue', a1c); scoreboardInstance.updateAthleteFlag('blue', a1c); document.getElementById('debug-blue').textContent = a1c; }
-                        if (a2c) { scoreboardInstance.updateAthleteName('red', a2c); scoreboardInstance.updateAthleteFlag('red', a2c); document.getElementById('debug-red').textContent = a2c; }
+                        if (a1c) {
+                            scoreboardInstance.updateAthleteName('blue', a1c);
+                            scoreboardInstance.updateAthleteFlag('blue', a1c);
+                            try {
+                                const n1 = scoreboardInstance.svg.getElementById('player1Name'); if (n1) n1.textContent = a1c.toUpperCase();
+                                const f1 = scoreboardInstance.svg.getElementById('player1Flag'); if (f1){ let img=f1.querySelector('image'); if(!img){ img=document.createElementNS('http://www.w3.org/2000/svg','image'); const bb=f1.getBBox(); img.setAttribute('x',bb.x); img.setAttribute('y',bb.y); img.setAttribute('width',bb.width); img.setAttribute('height',bb.height); img.setAttribute('preserveAspectRatio','xMidYMid slice'); f1.appendChild(img);} img.setAttribute('href', `/assets/flags/svg/${a1c.toUpperCase()}.svg`); img.setAttributeNS('http://www.w3.org/1999/xlink','xlink:href', `/assets/flags/svg/${a1c.toUpperCase()}.svg`);} 
+                            } catch(_) {}
+                            document.getElementById('debug-blue').textContent = a1c;
+                        }
+                        if (a2c) {
+                            scoreboardInstance.updateAthleteName('red', a2c);
+                            scoreboardInstance.updateAthleteFlag('red', a2c);
+                            try {
+                                const n2 = scoreboardInstance.svg.getElementById('player2Name'); if (n2) n2.textContent = a2c.toUpperCase();
+                                const f2 = scoreboardInstance.svg.getElementById('player2Flag'); if (f2){ let img=f2.querySelector('image'); if(!img){ img=document.createElementNS('http://www.w3.org/2000/svg','image'); const bb=f2.getBBox(); img.setAttribute('x',bb.x); img.setAttribute('y',bb.y); img.setAttribute('width',bb.width); img.setAttribute('height',bb.height); img.setAttribute('preserveAspectRatio','xMidYMid slice'); f2.appendChild(img);} img.setAttribute('href', `/assets/flags/svg/${a2c.toUpperCase()}.svg`); img.setAttributeNS('http://www.w3.org/1999/xlink','xlink:href', `/assets/flags/svg/${a2c.toUpperCase()}.svg`);} 
+                            } catch(_) {}
+                            document.getElementById('debug-red').textContent = a2c;
+                        }
                         break;
                     case 'match_config':
                         const data = event.raw_data ? JSON.parse(event.raw_data) : (event.structured_data || event);
@@ -88,6 +156,17 @@
                         scoreboardInstance.setInjuryVisible(false);
                         // Ensure logo uses app image instead of placeholder
                         scoreboardInstance.setLogoImage('/assets/img/logo.png');
+                        // Initialize fouls to zero on match load
+                        scoreboardInstance.updateAthleteWarnings('blue', 0);
+                        scoreboardInstance.updateAthleteWarnings('red', 0);
+                        try {
+                            const e1 = scoreboardInstance.svg.getElementById('player1Fouls');
+                            const e2 = scoreboardInstance.svg.getElementById('player2Fouls');
+                            if (e1) { const t=e1.querySelector('tspan'); if (t) t.textContent='0'; else e1.textContent='0'; e1.style.display='block'; }
+                            if (e2) { const t=e2.querySelector('tspan'); if (t) t.textContent='0'; else e2.textContent='0'; e2.style.display='block'; }
+                            const g1 = scoreboardInstance.svg.getElementById('player1_x5F_blue'); if (g1){ const bg=g1.querySelector('rect.cls-36'); if (bg) bg.style.display='block'; }
+                            const g2 = scoreboardInstance.svg.getElementById('player2_x5F_red'); if (g2){ const bg=g2.querySelector('rect.cls-36'); if (bg) bg.style.display='block'; }
+                        } catch(_) {}
                         break;
                     case 'current_scores':
                         const sc = event.raw_data ? JSON.parse(event.raw_data) : event;

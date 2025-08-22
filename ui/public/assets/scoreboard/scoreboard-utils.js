@@ -124,21 +124,34 @@ class ScoreboardOverlay {
     // Map player colors to SVG element IDs (support legacy and new schemas)
     const flagElement = this.getSvgElementAny(player === 'blue' ? ['athlete1Flag', 'player1Flag'] : ['athlete2Flag', 'player2Flag']);
     if (flagElement) {
-      // Prefer an <image> inside the group; create one if needed
-      let imageEl = (flagElement.tagName && flagElement.tagName.toLowerCase() === 'image') ? flagElement : flagElement.querySelector('image');
-      if (!imageEl) {
-        try {
-          const bbox = flagElement.getBBox();
+      // Replace any placeholder shapes with a single image sized to the original bbox
+      try {
+        const bbox = flagElement.getBBox();
+        // Clear existing children to avoid overlay artifacts
+        while (flagElement.firstChild) { flagElement.removeChild(flagElement.firstChild); }
+        const imageEl = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+        imageEl.setAttribute('x', String(bbox.x));
+        imageEl.setAttribute('y', String(bbox.y));
+        imageEl.setAttribute('width', String(Math.max(1, bbox.width)));
+        imageEl.setAttribute('height', String(Math.max(1, bbox.height)));
+        imageEl.setAttribute('preserveAspectRatio', 'xMidYMid slice');
+        imageEl.style.pointerEvents = 'none';
+        const url = `/assets/flags/svg/${country}.svg`;
+        imageEl.setAttribute('href', url);
+        imageEl.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', url);
+        flagElement.appendChild(imageEl);
+      } catch (_) {
+        // Fallback: append image without clearing
+        let imageEl = flagElement.querySelector('image');
+        if (!imageEl) {
           imageEl = document.createElementNS('http://www.w3.org/2000/svg', 'image');
-          imageEl.setAttribute('x', String(bbox.x));
-          imageEl.setAttribute('y', String(bbox.y));
-          imageEl.setAttribute('width', String(bbox.width));
-          imageEl.setAttribute('height', String(bbox.height));
+          imageEl.setAttribute('x', '0');
+          imageEl.setAttribute('y', '0');
+          imageEl.setAttribute('width', '60');
+          imageEl.setAttribute('height', '40');
           imageEl.setAttribute('preserveAspectRatio', 'xMidYMid slice');
           flagElement.appendChild(imageEl);
-        } catch (_) { /* ignore */ }
-      }
-      if (imageEl) {
+        }
         const url = `/assets/flags/svg/${country}.svg`;
         imageEl.setAttribute('href', url);
         imageEl.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', url);
@@ -171,6 +184,17 @@ class ScoreboardOverlay {
       const tspan = penaltiesElement.querySelector('tspan');
       if (tspan) tspan.textContent = String(value);
       else this.setTextForElementOrGroup(penaltiesElement, String(value));
+      // Also update by strict IDs to avoid selector drift
+      try {
+        const strictId = player === 'blue' ? 'player1Fouls' : 'player2Fouls';
+        const strictEl = this.svg.getElementById(strictId);
+        if (strictEl) {
+          const ts = strictEl.querySelector('tspan');
+          if (ts) ts.textContent = String(value);
+          else strictEl.textContent = String(value);
+          strictEl.style.display = 'block';
+        }
+      } catch(_) {}
       // Hide/show warnings background tile and number when zero
       const sideGroup = this.getSvgElementAny(player === 'blue' ? ['player1_x5F_blue', 'athlete1Group'] : ['player2_x5F_red', 'athlete2Group']);
       if (sideGroup) {
