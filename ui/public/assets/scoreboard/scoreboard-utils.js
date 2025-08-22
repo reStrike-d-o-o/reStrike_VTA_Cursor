@@ -538,6 +538,11 @@ class ScoreboardOverlay {
     const bg = this.getSvgElementAny(['injury_x5F_time_x5F_bg','injuryBg']);
     if (t) t.style.display = visible ? 'block' : 'none';
     if (bg) bg.style.display = visible ? 'block' : 'none';
+    // Toggle logo positions only by visibility (no geometry changes)
+    const logoPos1 = this.getSvgElementAny(['logo_x5F_position1']);
+    const logoPos2 = this.getSvgElementAny(['logo_x5F_position2']);
+    if (logoPos1) logoPos1.style.display = visible ? 'block' : 'none';
+    if (logoPos2) logoPos2.style.display = visible ? 'none' : 'block';
   }
 
   // Update match category (for backward compatibility)
