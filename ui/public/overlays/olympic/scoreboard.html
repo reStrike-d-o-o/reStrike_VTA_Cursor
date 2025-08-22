@@ -124,9 +124,11 @@
                 const typeLower = (event && event.type ? String(event.type).toLowerCase() : '');
                 switch (typeLower) {
                     case 'athletes':
-                        // Support both flattened and nested athlete structures
-                        const a1c = event.athlete1_country || event.country1 || event.athlete1?.country || event.athlete1?.code;
-                        const a2c = event.athlete2_country || event.country2 || event.athlete2?.country || event.athlete2?.code;
+                        // Parse IOC codes strictly from raw JSON string
+                        let a1c = null, a2c = null;
+                        if (typeof event.raw_data === 'string' && event.raw_data.trim().startsWith('{')) {
+                            try { const rd = JSON.parse(event.raw_data); a1c = rd?.athlete1?.country || null; a2c = rd?.athlete2?.country || null; } catch(_) {}
+                        }
                         if (a1c) {
                             scoreboardInstance.updateAthleteName('blue', a1c);
                             scoreboardInstance.updateAthleteFlag('blue', a1c);
