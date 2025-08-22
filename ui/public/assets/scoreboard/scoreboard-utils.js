@@ -27,8 +27,29 @@ class ScoreboardOverlay {
     // Apply default theme
     this.applyTheme(this.currentTheme);
     
+    // Ensure we have a resolvable match info element for overlays lacking explicit id
+    this.ensureMatchInfoElement();
+
     // Ensure injury section is hidden by default
     this.hideInjurySection();
+  }
+
+  // Try to locate the match info <text> element and assign id="matchInfo" if missing
+  ensureMatchInfoElement() {
+    if (this.getSvgElement('matchInfo')) return;
+    try {
+      const candidates = Array.from(this.svg.querySelectorAll('text'));
+      // Heuristic: two or more tspans and initially contains kg/Under/Men/Women
+      const target = candidates.find(el => {
+        const tspans = el.querySelectorAll('tspan');
+        if (tspans.length < 1) return false;
+        const content = (el.textContent || '').toLowerCase();
+        return /kg|under|men|women|\+|−|-/.test(content);
+      });
+      if (target && !target.id) {
+        target.id = 'matchInfo';
+      }
+    } catch (_) { /* noop */ }
   }
 
   // Internal: try multiple candidate IDs and return the first element found
@@ -243,16 +264,136 @@ class ScoreboardOverlay {
     console.log('✅ New match effect applied');
   }
 
+  // Abbreviate long competition phases
+  abbreviateCategory(categoryRaw) {
+    if (!categoryRaw) return '';
+    const c = String(categoryRaw).trim().toLowerCase().replace(/[-_]+/g, ' ').replace(/\s+/g, ' ');
+    if (/(bronze.*contest|bronze)/.test(c)) return 'Bronze'; // or 'BMD'
+    if (/finals?$/.test(c) || c === 'final') return 'F';
+    if (/(semi\s*finals?|semifinal)/.test(c)) return 'SF';
+    if (/(quarter\s*finals?|quarterfinal)/.test(c)) return 'QF';
+    if (/round of 32|ro32|r32/.test(c)) return 'R32';
+    if (/round of 16|ro16|r16/.test(c)) return 'R16';
+    if (/round of 8|ro8|r8/.test(c)) return 'R8';
+    if (/round of 4|ro4|r4/.test(c)) return 'R4';
+    if (/prelim|preliminary/.test(c)) return 'Prelim';
+    return categoryRaw; // default unchanged
+  }
+
+  // Aggressive abbreviations used when text would overflow
+  abbreviateCategoryStrict(categoryRaw) {
+    if (!categoryRaw) return '';
+    const c = String(categoryRaw).trim().toLowerCase();
+    if (/(bronze.*contest|bronze)/.test(c)) return 'BMD';
+    if (/finals?$/.test(c) || c === 'final') return 'F';
+    if (/(semi\s*finals?|semifinal)/.test(c)) return 'SF';
+    if (/(quarter\s*finals?|quarterfinal)/.test(c)) return 'QF';
+    if (/round of 64|ro64|r64/.test(c)) return 'R64';
+    if (/round of 32|ro32|r32/.test(c)) return 'R32';
+    if (/round of 16|ro16|r16/.test(c)) return 'R16';
+    if (/round of 8|ro8|r8/.test(c)) return 'R8';
+    if (/round of 4|ro4|r4/.test(c)) return 'R4';
+    if (/repechage/.test(c)) return 'REP';
+    return categoryRaw;
+  }
+
+  // Abbreviate common division labels (e.g., "Under 21" -> "U21")
+  abbreviateDivision(divisionRaw) {
+    if (!divisionRaw) return '';
+    const d = String(divisionRaw).trim();
+    // Normalize to lower for checks
+    const dl = d.toLowerCase().replace(/[-_]+/g, ' ').replace(/\s+/g, ' ');
+    // Under N patterns
+    let m = dl.match(/^under\s*(\d{1,2})$/);
+    if (!m) m = dl.match(/^u\s*-?\s*(\d{1,2})$/);
+    if (m) return `U${m[1]}`;
+    // Explicit mappings per user rules
+    if (/^senior[s]?$/.test(dl)) return 'SEN';
+    if (/^(junior|juniors|u18|under 18|u 18|u-18)$/.test(dl)) return 'JUN';
+    if (/^(cadet|cadets|u15|under 15|u 15|u-15)$/.test(dl)) return 'CAD';
+    if (/^masters?$/.test(dl) || /^veterans?$/.test(dl)) return 'MAS';
+    if (/^(kids?|children)$/.test(dl)) return 'KID';
+    return d;
+  }
+
   // Update combined match info (weight, division, category)
   updateMatchInfo(weight, division, category) {
+    // Normalize/abbreviate
+    const shortCategory = this.abbreviateCategory(category);
+    const segWeight = (weight || '').trim();
+    const segDivision = this.abbreviateDivision((division || '').trim());
+    const segCategory = (shortCategory || '').trim();
+
+    // Build display with separators
+    const leftSegment = [segWeight, segDivision].filter(Boolean).join(' | ');
+    const rightSegment = segCategory ? ` | ${segCategory}` : '';
+
     const matchInfoElement = this.getSvgElement('matchInfo');
-    if (matchInfoElement) {
-      const combinedText = `${weight || ''} ${division || ''} ${category || ''}`.trim();
-      matchInfoElement.textContent = combinedText;
-      console.log(`✅ Updated match info: ${combinedText}`);
+    if (!matchInfoElement) { console.warn('⚠️ Could not find matchInfo element'); return; }
+
+    const tspans = matchInfoElement.querySelectorAll('tspan');
+    if (tspans.length >= 2) {
+      // Update texts
+      tspans[0].textContent = leftSegment || '';
+      tspans[1].textContent = rightSegment || '';
+
+      // Ensure consistent styling (bold) across both tspans
+      const cls0 = tspans[0].getAttribute('class');
+      if (cls0) { tspans[1].setAttribute('class', cls0); }
+
+      // Recalculate x for the second tspan to avoid overlap
+      try {
+        // Ensure rendering applies before measuring
+        const baseX = parseFloat(tspans[0].getAttribute('x') || '0');
+        // Force layout
+        const bbox = tspans[0].getBBox();
+        const measuredWidth = bbox ? bbox.width : 0;
+        const padding = rightSegment ? 4 : 0; // small gap
+        const newX = isNaN(baseX) ? (bbox.x + measuredWidth + padding) : (baseX + measuredWidth + padding);
+        tspans[1].setAttribute('x', String(newX));
+        // Keep same y as first unless explicitly defined
+        if (!tspans[1].getAttribute('y') && tspans[0].getAttribute('y')) {
+          tspans[1].setAttribute('y', tspans[0].getAttribute('y'));
+        }
+
+        // Ensure combined text does not overflow its background
+        const bg = this.svg.getElementById('tournament_x5F_name_x5F_bg') || this.svg.getElementById('tournamentNameBg') || this.svg.getElementById('tournament_bg') || this.svg.getElementById('BG');
+        if (bg) {
+          const bgBox = bg.getBBox();
+          const span2Box = tspans[1].getBBox();
+          const rightEdge = span2Box.x + span2Box.width;
+          const allowedRight = bgBox.x + bgBox.width - 2; // small padding
+
+          if (rightEdge > allowedRight && segCategory) {
+            // Try stricter abbreviation for category (e.g., Bronze -> BMD)
+            const strict = this.abbreviateCategoryStrict(segCategory);
+            const newRightText = ` | ${strict}`;
+            tspans[1].textContent = newRightText;
+            if (cls0) { tspans[1].setAttribute('class', cls0); }
+            // Re-measure after update
+            const span2Box2 = tspans[1].getBBox();
+            if (span2Box2.x + span2Box2.width > allowedRight) {
+              // Remove separator
+              const tighter = strict;
+              tspans[1].textContent = ` ${tighter}`;
+              if (cls0) { tspans[1].setAttribute('class', cls0); }
+              const span2Box3 = tspans[1].getBBox();
+              if (span2Box3.x + span2Box3.width > allowedRight) {
+                // Drop category entirely as last resort
+                tspans[1].textContent = '';
+              }
+            }
+          }
+        }
+      } catch (_) {
+        // Fallback: leave original positioning
+      }
+    } else if (tspans.length === 1) {
+      tspans[0].textContent = `${leftSegment}${rightSegment}`.trim();
     } else {
-      console.warn(`⚠️ Could not find matchInfo element`);
+      matchInfoElement.textContent = `${leftSegment}${rightSegment}`.trim();
     }
+    console.log('✅ Updated match info');
   }
 
   // Update match category (for backward compatibility)

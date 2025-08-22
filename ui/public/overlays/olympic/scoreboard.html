@@ -41,6 +41,7 @@
     </div>
 
     <script src="/assets/scoreboard/scoreboard-name-utils.js"></script>
+    <script src="/assets/scoreboard/scoreboard-font-injector.js"></script>
     <script src="/assets/scoreboard/scoreboard-utils.js"></script>
 
     <script>
@@ -144,6 +145,7 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             const svgObject = document.getElementById('scoreboard-svg');
+            if (window.ScoreboardFontInjector) { window.ScoreboardFontInjector.initForObject('#scoreboard-svg'); }
             svgObject.addEventListener('load', initializeScoreboard);
             setupWebSocketConnection();
             if (svgObject.contentDocument) { initializeScoreboard(); }

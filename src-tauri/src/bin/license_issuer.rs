@@ -1,6 +1,5 @@
 use base64::{engine::general_purpose, Engine as _};
 use chrono::Utc;
-use rand::rngs::OsRng;
 use ring::signature::{self, KeyPair};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
