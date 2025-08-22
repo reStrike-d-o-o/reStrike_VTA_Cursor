@@ -134,7 +134,7 @@ class ScoreboardOverlay {
         imageEl.setAttribute('y', String(bbox.y));
         imageEl.setAttribute('width', String(Math.max(1, bbox.width)));
         imageEl.setAttribute('height', String(Math.max(1, bbox.height)));
-        imageEl.setAttribute('preserveAspectRatio', 'xMidYMid slice');
+        imageEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
         imageEl.style.pointerEvents = 'none';
         const url = `/assets/flags/svg/${country}.svg`;
         imageEl.setAttribute('href', url);
@@ -149,7 +149,7 @@ class ScoreboardOverlay {
           imageEl.setAttribute('y', '0');
           imageEl.setAttribute('width', '60');
           imageEl.setAttribute('height', '40');
-          imageEl.setAttribute('preserveAspectRatio', 'xMidYMid slice');
+          imageEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
           flagElement.appendChild(imageEl);
         }
         const url = `/assets/flags/svg/${country}.svg`;
@@ -614,15 +614,15 @@ class ScoreboardOverlay {
     const j = num % 10;
     const k = num % 100;
     if (j == 1 && k != 11) {
-      return num + "ST";
+      return num + "st";
     }
     if (j == 2 && k != 12) {
-      return num + "ND";
+      return num + "nd";
     }
     if (j == 3 && k != 13) {
-      return num + "RD";
+      return num + "rd";
     }
-    return num + "TH";
+    return num + "th";
   }
 
   // Set transparency level

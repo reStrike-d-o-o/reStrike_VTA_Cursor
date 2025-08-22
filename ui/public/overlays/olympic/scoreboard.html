@@ -134,7 +134,7 @@
                             scoreboardInstance.updateAthleteFlag('blue', a1c);
                             try {
                                 const n1 = scoreboardInstance.svg.getElementById('player1Name'); if (n1) n1.textContent = a1c.toUpperCase();
-                                const f1 = scoreboardInstance.svg.getElementById('player1Flag'); if (f1){ let img=f1.querySelector('image'); if(!img){ img=document.createElementNS('http://www.w3.org/2000/svg','image'); const bb=f1.getBBox(); img.setAttribute('x',bb.x); img.setAttribute('y',bb.y); img.setAttribute('width',bb.width); img.setAttribute('height',bb.height); img.setAttribute('preserveAspectRatio','xMidYMid slice'); f1.appendChild(img);} img.setAttribute('href', `/assets/flags/svg/${a1c.toUpperCase()}.svg`); img.setAttributeNS('http://www.w3.org/1999/xlink','xlink:href', `/assets/flags/svg/${a1c.toUpperCase()}.svg`);} 
+                                const f1 = scoreboardInstance.svg.getElementById('player1Flag'); if (f1){ let img=f1.querySelector('image'); if(!img){ img=document.createElementNS('http://www.w3.org/2000/svg','image'); const bb=f1.getBBox(); img.setAttribute('x',bb.x); img.setAttribute('y',bb.y); img.setAttribute('width',bb.width); img.setAttribute('height',bb.height); img.setAttribute('preserveAspectRatio','xMidYMid meet'); f1.appendChild(img);} img.setAttribute('href', `/assets/flags/svg/${a1c.toUpperCase()}.svg`); img.setAttributeNS('http://www.w3.org/1999/xlink','xlink:href', `/assets/flags/svg/${a1c.toUpperCase()}.svg`);} 
                             } catch(_) {}
                             document.getElementById('debug-blue').textContent = a1c;
                         }
@@ -143,7 +143,7 @@
                             scoreboardInstance.updateAthleteFlag('red', a2c);
                             try {
                                 const n2 = scoreboardInstance.svg.getElementById('player2Name'); if (n2) n2.textContent = a2c.toUpperCase();
-                                const f2 = scoreboardInstance.svg.getElementById('player2Flag'); if (f2){ let img=f2.querySelector('image'); if(!img){ img=document.createElementNS('http://www.w3.org/2000/svg','image'); const bb=f2.getBBox(); img.setAttribute('x',bb.x); img.setAttribute('y',bb.y); img.setAttribute('width',bb.width); img.setAttribute('height',bb.height); img.setAttribute('preserveAspectRatio','xMidYMid slice'); f2.appendChild(img);} img.setAttribute('href', `/assets/flags/svg/${a2c.toUpperCase()}.svg`); img.setAttributeNS('http://www.w3.org/1999/xlink','xlink:href', `/assets/flags/svg/${a2c.toUpperCase()}.svg`);} 
+                                const f2 = scoreboardInstance.svg.getElementById('player2Flag'); if (f2){ let img=f2.querySelector('image'); if(!img){ img=document.createElementNS('http://www.w3.org/2000/svg','image'); const bb=f2.getBBox(); img.setAttribute('x',bb.x); img.setAttribute('y',bb.y); img.setAttribute('width',bb.width); img.setAttribute('height',bb.height); img.setAttribute('preserveAspectRatio','xMidYMid meet'); f2.appendChild(img);} img.setAttribute('href', `/assets/flags/svg/${a2c.toUpperCase()}.svg`); img.setAttributeNS('http://www.w3.org/1999/xlink','xlink:href', `/assets/flags/svg/${a2c.toUpperCase()}.svg`);} 
                             } catch(_) {}
                             document.getElementById('debug-red').textContent = a2c;
                         }
