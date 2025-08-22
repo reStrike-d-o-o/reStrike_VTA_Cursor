@@ -183,6 +183,7 @@
                     case 'gamjeom':
                     case 'gam_jeom':
                     case 'wg':
+                        // 1) Structured numeric fields
                         if (event.athlete1_warnings !== undefined || event.athlete2_warnings !== undefined) {
                             if (event.athlete1_warnings !== undefined) scoreboardInstance.updateAthleteWarnings('blue', parseInt(event.athlete1_warnings));
                             if (event.athlete2_warnings !== undefined) scoreboardInstance.updateAthleteWarnings('red', parseInt(event.athlete2_warnings));
@@ -196,18 +197,33 @@
                                 const g2 = scoreboardInstance.svg.getElementById('player2_x5F_red'); if (g2){ const bg=g2.querySelector('rect.cls-36'); if (bg) bg.style.display='block'; }
                             } catch(_) {}
                         } else if (event.raw_data && typeof event.raw_data === 'string') {
+                            // 2) Raw string packet format wg1;X;wg2;Y
+                            let parsedB = null, parsedR = null;
                             const m = event.raw_data.match(/wg1;(\d+);wg2;(\d+)/i);
-                            if (m) {
-                                scoreboardInstance.updateAthleteWarnings('blue', parseInt(m[1]));
-                                scoreboardInstance.updateAthleteWarnings('red', parseInt(m[2]));
-                                // Fallback by IDs
+                            if (m) { parsedB = parseInt(m[1]); parsedR = parseInt(m[2]); }
+                            // 3) Raw JSON string
+                            if ((parsedB===null || parsedR===null) && event.raw_data.trim().startsWith('{')) {
+                                try {
+                                    const rd = JSON.parse(event.raw_data);
+                                    parsedB = (rd.athlete1_warnings ?? rd.a1 ?? rd.wg1 ?? rd.athlete1 ?? null);
+                                    parsedR = (rd.athlete2_warnings ?? rd.a2 ?? rd.wg2 ?? rd.athlete2 ?? null);
+                                    if (typeof parsedB === 'string') parsedB = parseInt(parsedB);
+                                    if (typeof parsedR === 'string') parsedR = parseInt(parsedR);
+                                } catch(_) {}
+                            }
+                            // 4) Description text
+                            if ((parsedB===null || parsedR===null) && event.description) {
+                                const md = String(event.description).match(/Athlete1:\s*(\d+).*Athlete2:\s*(\d+)/i);
+                                if (md) { parsedB = parseInt(md[1]); parsedR = parseInt(md[2]); }
+                            }
+                            if (parsedB!=null && parsedR!=null) {
+                                scoreboardInstance.updateAthleteWarnings('blue', parsedB);
+                                scoreboardInstance.updateAthleteWarnings('red', parsedR);
                                 try {
                                     const e1 = scoreboardInstance.svg.getElementById('player1Fouls');
                                     const e2 = scoreboardInstance.svg.getElementById('player2Fouls');
-                                    if (e1) { const t=e1.querySelector('tspan'); if (t) t.textContent=String(parseInt(m[1])); else e1.textContent=String(parseInt(m[1])); e1.style.display='block'; }
-                                    if (e2) { const t=e2.querySelector('tspan'); if (t) t.textContent=String(parseInt(m[2])); else e2.textContent=String(parseInt(m[2])); e2.style.display='block'; }
-                                    const g1 = scoreboardInstance.svg.getElementById('player1_x5F_blue'); if (g1){ const bg=g1.querySelector('rect.cls-36'); if (bg) bg.style.display='block'; }
-                                    const g2 = scoreboardInstance.svg.getElementById('player2_x5F_red'); if (g2){ const bg=g2.querySelector('rect.cls-36'); if (bg) bg.style.display='block'; }
+                                    if (e1) { const t=e1.querySelector('tspan'); if (t) t.textContent=String(parsedB); else e1.textContent=String(parsedB); e1.style.display='block'; }
+                                    if (e2) { const t=e2.querySelector('tspan'); if (t) t.textContent=String(parsedR); else e2.textContent=String(parsedR); e2.style.display='block'; }
                                 } catch(_) {}
                             }
                         }
@@ -231,8 +247,12 @@
                         }
                         break;
                     case 'winner_rounds':
+                    case 'winnerrounds':
                         // Compute round wins from per-round winners if provided; keep zero by default
-                        const r1 = event.round1_winner||0, r2 = event.round2_winner||0, r3 = event.round3_winner||0;
+                        let r1 = event.round1_winner||0, r2 = event.round2_winner||0, r3 = event.round3_winner||0;
+                        if (event.raw_data && typeof event.raw_data === 'string' && event.raw_data.trim().startsWith('{')) {
+                            try { const rd = JSON.parse(event.raw_data); r1 = rd.round1_winner ?? r1; r2 = rd.round2_winner ?? r2; r3 = rd.round3_winner ?? r3; } catch(_) {}
+                        }
                         const blueWins = [r1,r2,r3].filter(v=>v===1).length;
                         const redWins = [r1,r2,r3].filter(v=>v===2).length;
                         scoreboardInstance.updateAthleteRounds('blue', blueWins);
@@ -252,6 +272,17 @@
                             scoreboardInstance.updateRound(roundNumber);
                             const m = Math.floor(roundDuration / 60), s = roundDuration % 60;
                             scoreboardInstance.updateTimer(m, s);
+                            // Reset current scores and warnings on new round start
+                            scoreboardInstance.updateAthleteScore('blue', 0);
+                            scoreboardInstance.updateAthleteScore('red', 0);
+                            scoreboardInstance.updateAthleteWarnings('blue', 0);
+                            scoreboardInstance.updateAthleteWarnings('red', 0);
+                            try {
+                                const e1 = scoreboardInstance.svg.getElementById('player1Fouls');
+                                const e2 = scoreboardInstance.svg.getElementById('player2Fouls');
+                                if (e1) { const t=e1.querySelector('tspan'); if (t) t.textContent='0'; else e1.textContent='0'; }
+                                if (e2) { const t=e2.querySelector('tspan'); if (t) t.textContent='0'; else e2.textContent='0'; }
+                            } catch(_) {}
                         }
                         break;
                     default:
