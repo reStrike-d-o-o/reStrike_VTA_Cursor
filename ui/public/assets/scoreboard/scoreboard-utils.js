@@ -83,10 +83,11 @@ class ScoreboardOverlay {
     // Map player colors to SVG element IDs (support legacy and new schemas)
     const nameElement = this.getSvgElementAny(player === 'blue' ? ['athlete1Name', 'player1Name'] : ['athlete2Name', 'player2Name']);
     if (nameElement) {
-      // Apply proper capitalization (first letter of each word)
-      const capitalizedName = capitalizeName(name);
-      nameElement.textContent = capitalizedName;
-      console.log(`✅ Updated ${player} player name: ${capitalizedName}`);
+      const raw = (name == null ? '' : String(name));
+      // Preserve case for IOC/country codes (2-4 uppercase letters/digits)
+      const display = /^[A-Z0-9]{2,4}$/.test(raw.trim()) ? raw.trim().toUpperCase() : capitalizeName(raw);
+      nameElement.textContent = display;
+      console.log(`✅ Updated ${player} player name: ${display}`);
     } else {
       console.warn(`⚠️ Could not find ${elementId} element`);
     }
