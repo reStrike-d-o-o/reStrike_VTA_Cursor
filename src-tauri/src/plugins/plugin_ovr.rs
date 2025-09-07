@@ -4,6 +4,7 @@ use crate::database::DatabaseConnection;
 use crate::database::models::{OvrProvider, OvrTournament};
 use sha2::{Sha256, Digest};
 use chrono::Utc;
+use regex::Regex;
 
 #[derive(Clone)]
 pub struct OvrScraperPlugin {
@@ -45,13 +46,15 @@ impl OvrScraperPlugin {
         };
         let name_lc = provider.name.to_lowercase();
 
-        // Minimal adapters: fetch public tournament lists where possible (placeholder endpoints)
+        // Adapters: scrape specific sites
         let tournaments: Vec<OvrTournament> = if name_lc.contains("simply") {
             self.fetch_simplycompete(provider.id.unwrap(), provider.base_url.clone()).await?
         } else if name_lc.contains("tpss") {
             self.fetch_tpss(provider.id.unwrap(), provider.base_url.clone()).await?
         } else if name_lc.contains("martial") {
             self.fetch_martial_events(provider.id.unwrap(), provider.base_url.clone()).await?
+        } else if name_lc.contains("etu") || name_lc.contains("europe") {
+            self.fetch_etu(provider.id.unwrap(), provider.base_url.clone()).await?
         } else {
             Vec::new()
         };
@@ -67,81 +70,49 @@ impl OvrScraperPlugin {
         Ok(())
     }
 
-    async fn fetch_simplycompete(&self, _provider_id: i64, _base_url: Option<String>) -> Result<Vec<OvrTournament>, String> {
-        let url = _base_url.unwrap_or_else(|| "https://worldtkd.simplycompete.com".to_string());
-        self.fetch_from_jsonld_page(_provider_id, &url).await
+    async fn fetch_simplycompete(&self, provider_id: i64, base_url: Option<String>) -> Result<Vec<OvrTournament>, String> {
+        let url = base_url.unwrap_or_else(|| "https://worldtkd.simplycompete.com/events?eventType=Tournament&invitationStatus=all&da&isArchived=false&pageNumber=1&itemsPerPage=1000".to_string());
+        let html = self.fetch_html(&url).await?;
+        let mut items = self.parse_jsonld_block(provider_id, &html);
+        if items.is_empty() {
+            items.extend(self.parse_generic_anchors(provider_id, &html, &url));
+        }
+        Ok(items)
     }
 
-    async fn fetch_tpss(&self, _provider_id: i64, _base_url: Option<String>) -> Result<Vec<OvrTournament>, String> {
-        let url = _base_url.unwrap_or_else(|| "https://www.tpss.eu".to_string());
-        self.fetch_from_jsonld_page(_provider_id, &url).await
-    }
-
-    async fn fetch_martial_events(&self, _provider_id: i64, _base_url: Option<String>) -> Result<Vec<OvrTournament>, String> {
-        let url = _base_url.unwrap_or_else(|| "https://www.martial.events".to_string());
-        // First try a known JSON API endpoint; fall back to JSON-LD
-        if let Ok(list) = self.fetch_martial_events_api(_provider_id).await { return Ok(list); }
-        self.fetch_from_jsonld_page(_provider_id, &url).await
-    }
-
-    async fn fetch_martial_events_api(&self, provider_id: i64) -> Result<Vec<OvrTournament>, String> {
-        // Speculative public API; if it fails, caller falls back
-        let client = reqwest::Client::new();
-        let resp = client
-            .get("https://www.martial.events/api/events")
-            .header("User-Agent", "reStrike-VTA/1.0")
-            .send().await.map_err(|e| e.to_string())?;
-        if !resp.status().is_success() { return Err(format!("status {}", resp.status())); }
-        let json: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
-        let now = Utc::now();
+    async fn fetch_tpss(&self, provider_id: i64, base_url: Option<String>) -> Result<Vec<OvrTournament>, String> {
+        let base = base_url.unwrap_or_else(|| "https://www.tpss.eu".to_string());
         let mut out: Vec<OvrTournament> = Vec::new();
-        if let Some(arr) = json.as_array() {
-            for item in arr {
-                let name = item.get("name").and_then(|v| v.as_str()).unwrap_or("").to_string();
-                if name.is_empty() { continue; }
-                let start = item.get("startDate").or_else(|| item.get("start"))
-                    .and_then(|v| v.as_str())
-                    .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
-                    .map(|dt| dt.with_timezone(&Utc));
-                let end = item.get("endDate").or_else(|| item.get("end"))
-                    .and_then(|v| v.as_str())
-                    .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
-                    .map(|dt| dt.with_timezone(&Utc));
-                let city = item.get("city").or_else(|| item.get("location").and_then(|l| l.get("addressLocality"))).and_then(|v| v.as_str()).map(|s| s.to_string());
-                let country = item.get("country").or_else(|| item.get("location").and_then(|l| l.get("addressCountry"))).and_then(|v| v.as_str()).map(|s| s.to_string());
-                let url = item.get("url").and_then(|v| v.as_str()).map(|s| s.to_string());
-                let status = item.get("status").and_then(|v| v.as_str()).map(|s| s.to_string());
-                let key = Self::stable_key(&name, start.as_ref().map(|d| d.to_rfc3339()));
-                out.push(OvrTournament {
-                    id: None,
-                    provider_id,
-                    provider_tournament_id: key,
-                    name,
-                    start_date: start,
-                    end_date: end,
-                    city,
-                    country,
-                    url,
-                    status,
-                    last_seen_at: Some(now),
-                    hash: None,
-                    etag: None,
-                    created_at: now,
-                    updated_at: now,
-                });
+        for path in ["/liveresults.asp?AR=1", "/liveresults.asp?AR=2", "/Results.asp?YR=All"] {
+            let url = format!("{}{}", base, path);
+            if let Ok(html) = self.fetch_html(&url).await {
+                let parsed = self.parse_tpss_html(provider_id, &html, &base);
+                out.extend(parsed);
             }
         }
         Ok(out)
     }
 
-    async fn fetch_from_jsonld_page(&self, provider_id: i64, url: &str) -> Result<Vec<OvrTournament>, String> {
-        let client = reqwest::Client::new();
-        let resp = client
-            .get(url)
-            .header("User-Agent", "reStrike-VTA/1.0")
-            .send().await.map_err(|e| e.to_string())?;
+    async fn fetch_martial_events(&self, provider_id: i64, base_url: Option<String>) -> Result<Vec<OvrTournament>, String> {
+        let url = base_url.unwrap_or_else(|| "https://www.martial.events/en".to_string());
+        let html = self.fetch_html(&url).await?;
+        let mut items = self.parse_jsonld_block(provider_id, &html);
+        if items.is_empty() {
+            items.extend(self.parse_martial_events_html(provider_id, &html, &url));
+        }
+        Ok(items)
+    }
+    async fn fetch_html(&self, url: &str) -> Result<String, String> {
+        let client = reqwest::Client::builder()
+            .user_agent("reStrike-VTA/1.0")
+            .build().map_err(|e| e.to_string())?;
+        let resp = client.get(url).send().await.map_err(|e| e.to_string())?;
         if !resp.status().is_success() { return Err(format!("status {}", resp.status())); }
         let body = resp.text().await.map_err(|e| e.to_string())?;
+        Ok(body)
+    }
+
+    fn parse_jsonld_block(&self, provider_id: i64, body: &str) -> Vec<OvrTournament> {
         let jsons = Self::extract_jsonld(&body);
         let now = Utc::now();
         let mut out: Vec<OvrTournament> = Vec::new();
@@ -158,7 +129,7 @@ impl OvrScraperPlugin {
                 Err(_) => { /* skip invalid json */ }
             }
         }
-        Ok(out)
+        out
     }
 
     fn extract_jsonld(html: &str) -> Vec<String> {
@@ -227,6 +198,87 @@ impl OvrScraperPlugin {
         if let Some(s) = start_iso { hasher.update(s.as_bytes()); }
         let bytes = hasher.finalize();
         hex::encode(&bytes[..16]) // short key
+    }
+
+    fn absolute_url(base: &str, href: &str) -> String {
+        if href.starts_with("http://") || href.starts_with("https://") { return href.to_string(); }
+        let sep = if href.starts_with('/') { "" } else { "/" };
+        format!("{}{}{}", base.trim_end_matches('/'), sep, href)
+    }
+
+    fn make_simple_tournament(&self, provider_id: i64, name: &str, url: Option<String>) -> OvrTournament {
+        let now = Utc::now();
+        OvrTournament {
+            id: None,
+            provider_id,
+            provider_tournament_id: Self::stable_key(name, None),
+            name: name.to_string(),
+            start_date: None,
+            end_date: None,
+            city: None,
+            country: None,
+            url,
+            status: None,
+            last_seen_at: Some(now),
+            hash: None,
+            etag: None,
+            created_at: now,
+            updated_at: now,
+        }
+    }
+
+    fn parse_generic_anchors(&self, provider_id: i64, html: &str, base_url: &str) -> Vec<OvrTournament> {
+        let re = Regex::new(r#"<a[^>]+href=\"([^\"]+)\"[^>]*>([^<]{3,})</a>"#).unwrap();
+        let mut out = Vec::new();
+        for cap in re.captures_iter(html) {
+            let href = cap.get(1).map(|m| m.as_str()).unwrap_or("");
+            let text = cap.get(2).map(|m| m.as_str()).unwrap_or("").trim();
+            let h = href.to_lowercase();
+            if !(h.contains("event") || h.contains("tourn") || h.contains("checktournament.asp")) { continue; }
+            if text.is_empty() { continue; }
+            let url = Some(Self::absolute_url(base_url, href));
+            out.push(self.make_simple_tournament(provider_id, text, url));
+        }
+        out
+    }
+
+    fn parse_tpss_html(&self, provider_id: i64, html: &str, base_url: &str) -> Vec<OvrTournament> {
+        let re = Regex::new(r#"<a[^>]+href=\"(CheckTournament\.asp\?Code=[^\"]+)\"[^>]*>\s*([^<][^<]+?)\s*</a>"#).unwrap();
+        let mut out = Vec::new();
+        for cap in re.captures_iter(html) {
+            let href = cap.get(1).map(|m| m.as_str()).unwrap_or("");
+            let name = cap.get(2).map(|m| m.as_str()).unwrap_or("").trim();
+            if name.is_empty() { continue; }
+            let full = Self::absolute_url(base_url, href);
+            out.push(self.make_simple_tournament(provider_id, name, Some(full)));
+        }
+        out
+    }
+
+    fn parse_martial_events_html(&self, provider_id: i64, html: &str, base_url: &str) -> Vec<OvrTournament> {
+        let re = Regex::new(r#"<a[^>]+href=\"(/en/[^\"]+)\"[^>]*>\s*<[^>]*>\s*([^<][^<]+?)\s*</[^>]*>"#).unwrap();
+        let mut out = Vec::new();
+        for cap in re.captures_iter(html) {
+            let href = cap.get(1).map(|m| m.as_str()).unwrap_or("");
+            let name = cap.get(2).map(|m| m.as_str()).unwrap_or("").trim();
+            if name.is_empty() { continue; }
+            let full = Self::absolute_url(base_url, href);
+            out.push(self.make_simple_tournament(provider_id, name, Some(full)));
+        }
+        if out.is_empty() {
+            out = self.parse_generic_anchors(provider_id, html, base_url);
+        }
+        out
+    }
+
+    async fn fetch_etu(&self, provider_id: i64, base_url: Option<String>) -> Result<Vec<OvrTournament>, String> {
+        let url = base_url.unwrap_or_else(|| "https://europetaekwondo.org/events/list/".to_string());
+        let html = self.fetch_html(&url).await?;
+        let mut items = self.parse_jsonld_block(provider_id, &html);
+        if items.is_empty() {
+            items.extend(self.parse_generic_anchors(provider_id, &html, &url));
+        }
+        Ok(items)
     }
 }
 
