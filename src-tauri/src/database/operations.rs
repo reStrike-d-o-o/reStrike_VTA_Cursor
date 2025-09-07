@@ -8,7 +8,7 @@ use crate::database::{
         UdpClientConnection, PssEventType, PssMatch, PssAthlete, PssMatchAthlete, PssEventV2, PssEventDetail, 
         PssScore, PssWarning, PssUnknownEvent, PssEventValidationRule, PssEventValidationResult, 
         PssEventStatistics, PssEventRecognitionHistory, ObsScene, OverlayTemplate, EventTrigger,
-        ObsConnection, ObsRecordingConfig, ObsRecordingSession
+        ObsConnection, ObsRecordingConfig, ObsRecordingSession, OvrProvider, OvrTournament, OvrCategory, OvrToLocalTournament
     },
 };
 
@@ -3121,3 +3121,211 @@ impl ObsRecordingOperations {
         Ok(sessions)
     }
 } 
+
+// OVR Operations for external providers and scraped data
+pub struct OvrOperations;
+
+impl OvrOperations {
+	// Providers
+	pub fn get_providers(conn: &Connection) -> DatabaseResult<Vec<OvrProvider>> {
+		let mut stmt = conn.prepare("SELECT * FROM ovr_providers ORDER BY name")?;
+		let res = stmt.query_map([], |row| OvrProvider::from_row(row))?
+			.collect::<Result<Vec<_>, _>>()?;
+		Ok(res)
+	}
+
+	pub fn upsert_provider(conn: &mut Connection, p: &OvrProvider) -> DatabaseResult<i64> {
+		let tx = conn.transaction()?;
+		let id_opt: Option<i64> = tx.query_row(
+			"SELECT id FROM ovr_providers WHERE name = ?",
+			params![p.name],
+			|r| r.get(0)
+		).optional()?;
+		let now = Utc::now().to_rfc3339();
+		let id = if let Some(id) = id_opt {
+			tx.execute(
+				"UPDATE ovr_providers SET base_url = ?, enabled = ?, rate_limit_ms = ?, updated_at = ? WHERE id = ?",
+				params![p.base_url, p.enabled, p.rate_limit_ms, now, id]
+			)?;
+			id
+		} else {
+			tx.execute(
+				"INSERT INTO ovr_providers (name, base_url, enabled, rate_limit_ms, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+				params![p.name, p.base_url, p.enabled, p.rate_limit_ms, now, now]
+			)?;
+			tx.last_insert_rowid()
+		};
+		tx.commit()?;
+		Ok(id)
+	}
+
+	pub fn remove_provider(conn: &mut Connection, id: i64) -> DatabaseResult<()> {
+		conn.execute("DELETE FROM ovr_providers WHERE id = ?", params![id])?;
+		Ok(())
+	}
+
+	pub fn set_provider_refresh_status(conn: &mut Connection, id: i64, status: Option<&str>, err: Option<&str>) -> DatabaseResult<()> {
+		conn.execute(
+			"UPDATE ovr_providers SET last_refreshed_at = ?, last_status = ?, last_error = ?, updated_at = ? WHERE id = ?",
+			params![
+				Some(Utc::now().to_rfc3339()),
+				status,
+				err,
+				Utc::now().to_rfc3339(),
+				id
+			]
+		)?;
+		Ok(())
+	}
+
+	// Tournaments
+	pub fn upsert_tournament(conn: &mut Connection, t: &OvrTournament) -> DatabaseResult<i64> {
+		let tx = conn.transaction()?;
+		let id_opt: Option<i64> = tx.query_row(
+			"SELECT id FROM ovr_tournaments WHERE provider_id = ? AND provider_tournament_id = ?",
+			params![t.provider_id, t.provider_tournament_id],
+			|r| r.get(0)
+		).optional()?;
+		let now = Utc::now().to_rfc3339();
+		let id = if let Some(id) = id_opt {
+			tx.execute(
+				"UPDATE ovr_tournaments SET name = ?, start_date = ?, end_date = ?, city = ?, country = ?, url = ?, status = ?, last_seen_at = ?, hash = ?, etag = ?, updated_at = ? WHERE id = ?",
+				params![
+					t.name,
+					t.start_date.map(|d| d.to_rfc3339()),
+					t.end_date.map(|d| d.to_rfc3339()),
+					t.city,
+					t.country,
+					t.url,
+					t.status,
+					Some(now.clone()),
+					t.hash,
+					t.etag,
+					now,
+					id
+				]
+			)?;
+			id
+		} else {
+			tx.execute(
+				"INSERT INTO ovr_tournaments (provider_id, provider_tournament_id, name, start_date, end_date, city, country, url, status, last_seen_at, hash, etag, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+				params![
+					t.provider_id,
+					t.provider_tournament_id,
+					t.name,
+					t.start_date.map(|d| d.to_rfc3339()),
+					t.end_date.map(|d| d.to_rfc3339()),
+					t.city,
+					t.country,
+					t.url,
+					t.status,
+					Some(now.clone()),
+					t.hash,
+					t.etag,
+					now,
+					now
+				]
+			)?;
+			tx.last_insert_rowid()
+		};
+		tx.commit()?;
+		Ok(id)
+	}
+
+	pub fn list_tournaments(
+		conn: &Connection,
+		provider_id: Option<i64>,
+		q: Option<&str>,
+		from: Option<&str>,
+		to: Option<&str>,
+		country: Option<&str>,
+		limit: Option<i64>,
+		offset: Option<i64>,
+	) -> DatabaseResult<Vec<OvrTournament>> {
+		let mut sql = String::from("SELECT * FROM ovr_tournaments WHERE 1=1");
+		let mut args: Vec<rusqlite::types::Value> = Vec::new();
+		if let Some(pid) = provider_id { sql.push_str(" AND provider_id = ?"); args.push(rusqlite::types::Value::from(pid)); }
+		if let Some(qq) = q { sql.push_str(" AND name LIKE ?"); args.push(rusqlite::types::Value::from(format!("%{}%", qq))); }
+		if let Some(f) = from { sql.push_str(" AND start_date >= ?"); args.push(rusqlite::types::Value::from(f)); }
+		if let Some(t_) = to { sql.push_str(" AND end_date <= ?"); args.push(rusqlite::types::Value::from(t_)); }
+		if let Some(cty) = country { sql.push_str(" AND country = ?"); args.push(rusqlite::types::Value::from(cty)); }
+		sql.push_str(" ORDER BY start_date DESC, created_at DESC");
+		if let Some(lim) = limit { sql.push_str(" LIMIT ?"); args.push(rusqlite::types::Value::from(lim)); }
+		if let Some(off) = offset { sql.push_str(" OFFSET ?"); args.push(rusqlite::types::Value::from(off)); }
+		let mut stmt = conn.prepare(&sql)?;
+		let rows = stmt.query_map(rusqlite::params_from_iter(args.iter()), |row| OvrTournament::from_row(row))?;
+		let mut out = Vec::new();
+		for r in rows { out.push(r?); }
+		Ok(out)
+	}
+
+	// Categories
+	pub fn replace_categories(conn: &mut Connection, tournament_id: i64, categories: &[OvrCategory]) -> DatabaseResult<()> {
+		let tx = conn.transaction()?;
+		tx.execute("DELETE FROM ovr_categories WHERE tournament_id = ?", params![tournament_id])?;
+		for c in categories {
+			tx.execute(
+				"INSERT INTO ovr_categories (tournament_id, discipline, age_group, gender, division, weight_class, bracket_stage, provider_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+				params![
+					tournament_id,
+					c.discipline,
+					c.age_group,
+					c.gender,
+					c.division,
+					c.weight_class,
+					c.bracket_stage,
+					c.provider_raw,
+					Utc::now().to_rfc3339(),
+					Utc::now().to_rfc3339(),
+				]
+			)?;
+		}
+		tx.commit()?;
+		Ok(())
+	}
+
+	pub fn get_categories(conn: &Connection, tournament_id: i64) -> DatabaseResult<Vec<OvrCategory>> {
+		let mut stmt = conn.prepare("SELECT * FROM ovr_categories WHERE tournament_id = ? ORDER BY id")?;
+		let res = stmt.query_map(params![tournament_id], |row| OvrCategory::from_row(row))?
+			.collect::<Result<Vec<_>, _>>()?;
+		Ok(res)
+	}
+
+	// Promotion bridge: adopt OVR tournament into local curated tournament
+	pub fn promote_to_local(conn: &mut Connection, ovr_tournament_id: i64, local_name: Option<&str>) -> DatabaseResult<i64> {
+		let tx = conn.transaction()?;
+		let ovr: OvrTournament = tx.query_row("SELECT * FROM ovr_tournaments WHERE id = ?", params![ovr_tournament_id], |r| OvrTournament::from_row(r))?;
+		let t_name = local_name.unwrap_or(&ovr.name);
+		let t = Tournament::new(t_name.to_string(), 1, ovr.city.clone().unwrap_or_default(), ovr.country.clone().unwrap_or_default(), None);
+		let local_id = super::operations::TournamentOperations::create_tournament(&mut tx.unchecked_transaction()?, &t).unwrap_or_else(|_| 0);
+		// Fallback if unchecked_transaction path is problematic: insert on tx directly
+		let local_id = if local_id == 0 {
+			tx.execute(
+				"INSERT INTO tournaments (name, duration_days, city, country, status, start_date, end_date, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+				params![
+					t_name,
+					1,
+					overv(ovr.city),
+					overv(ovr.country),
+					"pending",
+					overv_dt(ovr.start_date.clone()),
+					overv_dt(ovr.end_date.clone()),
+					Utc::now().to_rfc3339(),
+					Utc::now().to_rfc3339()
+				]
+			)?;
+			tx.last_insert_rowid()
+		} else { local_id };
+		// Bridge
+		tx.execute(
+			"INSERT OR REPLACE INTO ovr_to_local_tournament (ovr_tournament_id, local_tournament_id, created_at) VALUES (?, ?, ?)",
+			params![ovr_tournament_id, local_id, Utc::now().to_rfc3339()]
+		)?;
+		tx.commit()?;
+		Ok(local_id)
+	}
+}
+
+// Small helpers for optional values
+fn overv<T: ToString>(v: Option<T>) -> Option<String> { v.map(|x| x.to_string()) }
+fn overv_dt(v: Option<chrono::DateTime<chrono::Utc>>) -> Option<String> { v.map(|d| d.to_rfc3339()) }

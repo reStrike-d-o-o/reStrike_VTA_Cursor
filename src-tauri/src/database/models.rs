@@ -1891,3 +1891,135 @@ impl EventTrigger {
         })
     }
 } 
+
+/// OVR Provider model
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OvrProvider {
+    pub id: Option<i64>,
+    pub name: String,
+    pub base_url: Option<String>,
+    pub enabled: bool,
+    pub rate_limit_ms: i64,
+    pub last_refreshed_at: Option<DateTime<Utc>>,
+    pub last_status: Option<String>,
+    pub last_error: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+impl OvrProvider {
+    pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
+        Ok(Self {
+            id: row.get("id")?,
+            name: row.get("name")?,
+            base_url: row.get("base_url")?,
+            enabled: row.get("enabled")?,
+            rate_limit_ms: row.get::<_, i64>("rate_limit_ms").unwrap_or(1000),
+            last_refreshed_at: row.get::<_, Option<String>>("last_refreshed_at")?
+                .and_then(|s| DateTime::parse_from_rfc3339(&s).ok().map(|dt| dt.with_timezone(&Utc))),
+            last_status: row.get("last_status")?,
+            last_error: row.get("last_error")?,
+            created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
+            updated_at: parse_datetime_from_db(&row.get::<_, String>("updated_at")?, "updated_at")?,
+        })
+    }
+}
+
+/// OVR Tournament model
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OvrTournament {
+    pub id: Option<i64>,
+    pub provider_id: i64,
+    pub provider_tournament_id: String,
+    pub name: String,
+    pub start_date: Option<DateTime<Utc>>,
+    pub end_date: Option<DateTime<Utc>>,
+    pub city: Option<String>,
+    pub country: Option<String>,
+    pub url: Option<String>,
+    pub status: Option<String>,
+    pub last_seen_at: Option<DateTime<Utc>>,
+    pub hash: Option<String>,
+    pub etag: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+impl OvrTournament {
+    pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
+        Ok(Self {
+            id: row.get("id")?,
+            provider_id: row.get("provider_id")?,
+            provider_tournament_id: row.get("provider_tournament_id")?,
+            name: row.get("name")?,
+            start_date: row.get::<_, Option<String>>("start_date")?
+                .and_then(|s| DateTime::parse_from_rfc3339(&s).ok().map(|dt| dt.with_timezone(&Utc))),
+            end_date: row.get::<_, Option<String>>("end_date")?
+                .and_then(|s| DateTime::parse_from_rfc3339(&s).ok().map(|dt| dt.with_timezone(&Utc))),
+            city: row.get("city")?,
+            country: row.get("country")?,
+            url: row.get("url")?,
+            status: row.get("status")?,
+            last_seen_at: row.get::<_, Option<String>>("last_seen_at")?
+                .and_then(|s| DateTime::parse_from_rfc3339(&s).ok().map(|dt| dt.with_timezone(&Utc))),
+            hash: row.get("hash")?,
+            etag: row.get("etag")?,
+            created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
+            updated_at: parse_datetime_from_db(&row.get::<_, String>("updated_at")?, "updated_at")?,
+        })
+    }
+}
+
+/// OVR Category model
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OvrCategory {
+    pub id: Option<i64>,
+    pub tournament_id: i64,
+    pub discipline: Option<String>,
+    pub age_group: Option<String>,
+    pub gender: Option<String>,
+    pub division: Option<String>,
+    pub weight_class: Option<String>,
+    pub bracket_stage: Option<String>,
+    pub provider_raw: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+impl OvrCategory {
+    pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
+        Ok(Self {
+            id: row.get("id")?,
+            tournament_id: row.get("tournament_id")?,
+            discipline: row.get("discipline")?,
+            age_group: row.get("age_group")?,
+            gender: row.get("gender")?,
+            division: row.get("division")?,
+            weight_class: row.get("weight_class")?,
+            bracket_stage: row.get("bracket_stage")?,
+            provider_raw: row.get("provider_raw")?,
+            created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
+            updated_at: parse_datetime_from_db(&row.get::<_, String>("updated_at")?, "updated_at")?,
+        })
+    }
+}
+
+/// OVR to local tournament mapping
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OvrToLocalTournament {
+    pub id: Option<i64>,
+    pub ovr_tournament_id: i64,
+    pub local_tournament_id: i64,
+    pub created_at: DateTime<Utc>,
+}
+
+impl OvrToLocalTournament {
+    pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
+        Ok(Self {
+            id: row.get("id")?,
+            ovr_tournament_id: row.get("ovr_tournament_id")?,
+            local_tournament_id: row.get("local_tournament_id")?,
+            created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
+        })
+    }
+}
