@@ -13,6 +13,7 @@ import { GoogleDriveBackupRestore } from '../molecules/GoogleDriveBackupRestore'
 import DatabaseMigrationPanel from '../molecules/DatabaseMigrationPanel';
 import FlagManagementPanel from '../molecules/FlagManagementPanel';
 import TournamentManagementPanel from '../molecules/TournamentManagementPanel';
+import ExternalSourcesPanel from '../ovr/ExternalSourcesPanel';
 import ScoreboardManager from '../molecules/ScoreboardManager';
 import ObsWebSocketManager from '../organisms/ObsWebSocketManager';
 import ObsIntegrationPanel from '../molecules/ObsIntegrationPanel';
@@ -38,7 +39,7 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
   // OBS horizontal drawer state
   const [obsTab, setObsTab] = useState('websocket');
   // OVR horizontal drawer state
-  const [ovrTab, setOvrTab] = useState('integration');
+  const [ovrTab, setOvrTab] = useState('external');
   // IVR horizontal drawer state
   const [ivrTab, setIvrTab] = useState('history');
   
@@ -145,6 +146,12 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
         {drawer?.key === 'ovr' && (
           <TabGroup
             tabs={[
+              {
+                id: 'external',
+                label: t('ovr.tabs.external', 'External sources'),
+                icon: <LottieIcon animationData={businessAnimation} size={32} />,
+                content: <ExternalSourcesPanel />
+              },
               {
                 id: 'integration',
                 label: t('ovr.tabs.integration', 'Integration'),

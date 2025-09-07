@@ -499,6 +499,13 @@ async fn main() -> AppResult<()> {
             tauri_commands::tournament_update_logo,
             tauri_commands::tournament_verify_location,
             tauri_commands::get_tournament_statistics,
+            // OVR commands
+            tauri_commands::ovr_get_providers,
+            tauri_commands::ovr_upsert_provider,
+            tauri_commands::ovr_remove_provider,
+            tauri_commands::ovr_list_tournaments,
+            tauri_commands::ovr_get_categories,
+            tauri_commands::ovr_promote_tournament,
         tauri_commands::database_run_vacuum,
         tauri_commands::database_run_integrity_check,
         tauri_commands::database_run_analyze,

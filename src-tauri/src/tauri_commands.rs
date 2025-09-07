@@ -6162,3 +6162,90 @@ pub async fn control_room_logout(
 ) -> Result<serde_json::Value, TauriError> {
     Ok(serde_json::json!({ "success": true }))
 }
+
+// ================= OVR Commands =================
+#[tauri::command]
+pub async fn ovr_get_providers(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    let conn = app.database_plugin().get_connection().await?;
+    use crate::database::operations::OvrOperations as Ops;
+    match Ops::get_providers(&*conn) {
+        Ok(items) => Ok(serde_json::json!({"success": true, "providers": items})),
+        Err(e) => Ok(serde_json::json!({"success": false, "error": e.to_string()})),
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct OvrProviderPayload { pub id: Option<i64>, pub name: String, pub base_url: Option<String>, pub enabled: bool, pub rate_limit_ms: Option<i64> }
+
+#[tauri::command]
+pub async fn ovr_upsert_provider(payload: OvrProviderPayload, app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    use crate::database::models::OvrProvider;
+    let mut conn = app.database_plugin().get_connection().await?;
+    let now = chrono::Utc::now();
+    let model = OvrProvider {
+        id: payload.id,
+        name: payload.name,
+        base_url: payload.base_url,
+        enabled: payload.enabled,
+        rate_limit_ms: payload.rate_limit_ms.unwrap_or(1000),
+        last_refreshed_at: None,
+        last_status: None,
+        last_error: None,
+        created_at: now,
+        updated_at: now,
+    };
+    use crate::database::operations::OvrOperations as Ops;
+    match Ops::upsert_provider(&mut *conn, &model) {
+        Ok(id) => Ok(serde_json::json!({"success": true, "id": id})),
+        Err(e) => Ok(serde_json::json!({"success": false, "error": e.to_string()})),
+    }
+}
+
+#[tauri::command]
+pub async fn ovr_remove_provider(id: i64, app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    let mut conn = app.database_plugin().get_connection().await?;
+    use crate::database::operations::OvrOperations as Ops;
+    match Ops::remove_provider(&mut *conn, id) {
+        Ok(_) => Ok(serde_json::json!({"success": true})),
+        Err(e) => Ok(serde_json::json!({"success": false, "error": e.to_string()})),
+    }
+}
+
+#[tauri::command]
+pub async fn ovr_list_tournaments(
+    app: State<'_, Arc<App>>,
+    provider_id: Option<i64>,
+    q: Option<String>,
+    from: Option<String>,
+    to: Option<String>,
+    country: Option<String>,
+    limit: Option<i64>,
+    offset: Option<i64>,
+) -> Result<serde_json::Value, TauriError> {
+    let conn = app.database_plugin().get_connection().await?;
+    use crate::database::operations::OvrOperations as Ops;
+    match Ops::list_tournaments(&*conn, provider_id, q.as_deref(), from.as_deref(), to.as_deref(), country.as_deref(), limit, offset) {
+        Ok(rows) => Ok(serde_json::json!({"success": true, "tournaments": rows})),
+        Err(e) => Ok(serde_json::json!({"success": false, "error": e.to_string()})),
+    }
+}
+
+#[tauri::command]
+pub async fn ovr_get_categories(app: State<'_, Arc<App>>, tournament_id: i64) -> Result<serde_json::Value, TauriError> {
+    let conn = app.database_plugin().get_connection().await?;
+    use crate::database::operations::OvrOperations as Ops;
+    match Ops::get_categories(&*conn, tournament_id) {
+        Ok(rows) => Ok(serde_json::json!({"success": true, "categories": rows})),
+        Err(e) => Ok(serde_json::json!({"success": false, "error": e.to_string()})),
+    }
+}
+
+#[tauri::command]
+pub async fn ovr_promote_tournament(app: State<'_, Arc<App>>, ovr_tournament_id: i64, local_name: Option<String>) -> Result<serde_json::Value, TauriError> {
+    let mut conn = app.database_plugin().get_connection().await?;
+    use crate::database::operations::OvrOperations as Ops;
+    match Ops::promote_to_local(&mut *conn, ovr_tournament_id, local_name.as_deref()) {
+        Ok(local_id) => Ok(serde_json::json!({"success": true, "local_tournament_id": local_id})),
+        Err(e) => Ok(serde_json::json!({"success": false, "error": e.to_string()})),
+    }
+}

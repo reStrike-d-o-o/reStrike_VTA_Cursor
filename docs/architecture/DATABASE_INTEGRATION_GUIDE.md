@@ -13,10 +13,12 @@ This document provides a comprehensive guide to the database structure, models, 
 - **Error Handling**: Custom `AppError` and `DatabaseResult` types
 - **Integration**: Tauri v2 plugin architecture with frontend exposure
 
-### **Current Schema Version**: 21
+### **Current Schema Version**: 23
 - **Migration 19**: Remove UNIQUE from `pss_matches.match_id`
 - **Migration 20**: `recorded_videos` table for linking videos to matches/events
 - **Migration 21**: `recorded_video_events(recorded_video_id, event_id, offset_ms)` and `file_size`, `checksum` on `recorded_videos`
+- **Migration 22**: Manual lookups (`look_genders`, `look_disciplines`, `look_age_groups`, `look_divisions`, `look_weight_classes`, `look_round_configs`) and `pss_matches` extensions (`discipline_id`, `age_group_id`, `gender_id`, `division_id`, `weight_class_id`, `bracket_stage`)
+- **Migration 23**: OVR ingestion schema (`ovr_providers`, `ovr_tournaments`, `ovr_categories`, `ovr_to_local_tournament`) with indexes and seeded providers
 
 #### Recording/Replay Tables
 - `recorded_videos`: id, match_id, event_id?, tournament_id?, tournament_day_id?, video_type, file_path?, record_directory?, start_time, duration_seconds?, file_size?, checksum?, created_at

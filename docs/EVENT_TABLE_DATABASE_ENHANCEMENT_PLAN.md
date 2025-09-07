@@ -1,4 +1,31 @@
 # Event Table Database Enhancement Plan - reStrike VTA
+## Recent Enhancements (2025-09)
+
+- Database schema extended with manual match lookups:
+  - look_genders, look_disciplines, look_age_groups, look_divisions, look_weight_classes, look_round_configs
+  - Added indexes for hot paths; seeded core WT-based entries (disciplines, genders, baseline age groups)
+- `pss_matches` extended for manual creation support:
+  - Added: discipline_id, age_group_id, gender_id, division_id, weight_class_id, bracket_stage; preserves legacy fields for compatibility
+- OVR ingestion schema added:
+  - `ovr_providers`, `ovr_tournaments`, `ovr_categories`, `ovr_to_local_tournament` (bridge to curated tournaments)
+  - Seeded providers: simplycompete, tpss, martial.events
+- Frontend UI:
+  - Advanced panel → OVR → External sources (new): manage providers; manual refresh/update hooks prepared via backend commands
+  - Advanced panel → OVR → Tournament management: displays scraped/managed tournaments (existing panel kept)
+- Event Table UI changes:
+  - Removed header label and review dropdown; review of older matches is accessible only through Advanced panel as requested
+
+### Tauri Commands (new)
+- ovr_get_providers, ovr_upsert_provider, ovr_remove_provider
+- ovr_list_tournaments, ovr_get_categories, ovr_promote_tournament
+
+### Migrations
+- Migration 22: manual lookups + pss_matches extensions
+- Migration 23: OVR tables + indexes + provider seeds
+
+### Notes
+- All PKs are autoincrement integers; FKs constrained where applicable
+- WAL mode and indices tuned; no legacy PSS data is imported on reset (seed-only)
 
 ## Overview
 This document outlines the comprehensive plan to enhance the PSS events database schema and create a database-driven Event table with real-time updates. The goal is to replace the current in-memory event storage with a robust database solution that supports advanced filtering, analytics, and real-time updates.

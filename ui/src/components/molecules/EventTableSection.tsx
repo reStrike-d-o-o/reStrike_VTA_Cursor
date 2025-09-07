@@ -300,33 +300,7 @@ const EventTableSection: React.FC = () => {
     <div className="flex flex-col space-y-4 overflow-hidden pt-4">
       {/* Section Title */}
       <div className="flex-shrink-0 flex items-center justify-between">
-        <div className="text-lg font-semibold text-gray-200 flex items-center gap-2">
-          <span>{t('live.event_table', 'Event Table')}</span>
-          {/* Current match dropdown (display only) */}
-          <select
-            ref={selectRef}
-            aria-label={t('live.select_match', 'Select match')}
-            className={`text-xs bg-gray-800 border border-gray-600 rounded px-2 py-1 text-gray-200 ${selectWidthPx != null ? 'pss-fixed-select-width' : ''}`}
-            value={reviewMatchId ?? String(matchNumber ?? '')}
-            disabled={!!isLoaded && !isReviewMode}
-            onChange={(e) => {
-              const v = e.target.value;
-              if (v && v !== String(matchNumber ?? '')) {
-                loadMatchEventsForReview(v);
-              } else {
-                // Back to current: do nothing special; live stream will keep filling
-                setReviewMatchId(null);
-                // Exit review mode when switching back to current
-                usePssMatchStore.getState().setReviewMode(false);
-              }
-            }}
-          >
-            <option value={String(matchNumber ?? '')}>{t('live.current_match', 'Current')} {matchNumber ? `#${matchNumber}` : ''}</option>
-            {recentMatchesRef.current.map((m) => (
-              <option key={m.id} value={String(m.id)}>{m.label}</option>
-            ))}
-          </select>
-        </div>
+        <div className="text-lg font-semibold text-gray-200 flex items-center gap-2" />
         <div className="flex items-center space-x-2">
           {isManualModeEnabled && (
             <span className="text-xs text-yellow-400 bg-yellow-900/20 px-2 py-1 rounded">
