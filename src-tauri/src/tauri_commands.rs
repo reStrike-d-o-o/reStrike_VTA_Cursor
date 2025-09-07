@@ -6223,6 +6223,24 @@ pub async fn ovr_get_providers(app: State<'_, Arc<App>>) -> Result<serde_json::V
     }
 }
 
+#[tauri::command]
+pub async fn ovr_refresh_all(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    let plugin = crate::plugins::plugin_ovr::OvrScraperPlugin::new(app.database_plugin().get_database_connection());
+    match plugin.refresh_all().await {
+        Ok(n) => Ok(serde_json::json!({"success": true, "providers_processed": n})),
+        Err(e) => Ok(serde_json::json!({"success": false, "error": e})),
+    }
+}
+
+#[tauri::command]
+pub async fn ovr_refresh_provider(app: State<'_, Arc<App>>, provider_id: i64) -> Result<serde_json::Value, TauriError> {
+    let plugin = crate::plugins::plugin_ovr::OvrScraperPlugin::new(app.database_plugin().get_database_connection());
+    match plugin.refresh_provider(provider_id).await {
+        Ok(_) => Ok(serde_json::json!({"success": true})),
+        Err(e) => Ok(serde_json::json!({"success": false, "error": e})),
+    }
+}
+
 #[derive(Debug, Deserialize)]
 pub struct OvrProviderPayload { pub id: Option<i64>, pub name: String, pub base_url: Option<String>, pub enabled: bool, pub rate_limit_ms: Option<i64> }
 

@@ -7,6 +7,7 @@ import Label from '../atoms/Label';
 import StatusDot from '../atoms/StatusDot';
 import Icon from '../atoms/Icon';
 import { useI18n } from '../../i18n/index';
+import { invoke } from '@tauri-apps/api/core';
 
 interface Tournament {
   id: number;
@@ -107,15 +108,9 @@ const TournamentManagementPanel: React.FC = () => {
     try {
       setIsLoading(true);
       setError(null);
-      
-      const result = await invoke('tournament_get_all');
-      const data = result as any;
-      
-      if (data.success) {
-        setTournaments(data.tournaments);
-      } else {
-        setError(data.error || 'Failed to load tournaments');
-      }
+      const data: any = await invoke('ovr_list_tournaments', { providerId: null, q: null, from: null, to: null, country: null, limit: 100, offset: 0 });
+      if (data?.success) setTournaments(data.tournaments || []);
+      else setError(data?.error || 'Failed to load tournaments');
     } catch (err) {
       setError(`Error loading tournaments: ${err}`);
     } finally {
@@ -555,13 +550,9 @@ const TournamentManagementPanel: React.FC = () => {
       <div className="theme-card p-6">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold text-gray-100">{t('tournament.title', 'Tournaments')}</h3>
-          <Button
-            onClick={() => setShowAddForm(true)}
-            disabled={isLoading}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
-          >
-            {t('tournament.add', 'Add Tournament')}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button onClick={() => loadTournaments()} disabled={isLoading} className="bg-gray-600 hover:bg-gray-700 text-white">{t('common.refresh','Refresh')}</Button>
+          </div>
         </div>
 
         {/* Filters */}
@@ -585,8 +576,8 @@ const TournamentManagementPanel: React.FC = () => {
         ) : (
           <div className="space-y-3">
             {tournaments
-              .filter(t => statusFilter === 'all' ? true : t.status === statusFilter)
-              .map((tournament) => (
+              .filter(t => statusFilter === 'all' ? true : (t.status as any) === statusFilter)
+              .map((tournament: any) => (
               <div
                 key={tournament.id}
                 className={`p-4 rounded-lg border transition-colors cursor-pointer ${
@@ -607,15 +598,23 @@ const TournamentManagementPanel: React.FC = () => {
                     )}
                     <div>
                       <h4 className="font-medium text-gray-100">{tournament.name}</h4>
-                      <p className="text-sm text-gray-400">
-                        {tournament.city}, {tournament.country} • {tournament.duration_days} {tournament.duration_days !== 1 ? t('days') : t('day')}
-                      </p>
+                      <p className="text-sm text-gray-400">{tournament.city || ''}{tournament.city && tournament.country ? ', ' : ''}{tournament.country || ''}</p>
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <StatusDot color={getStatusColor(tournament.status)} />
-                    <span className="text-sm text-gray-400">{getStatusText(tournament.status)}</span>
+                    <StatusDot color={getStatusColor(tournament.status || 'pending')} />
+                    <span className="text-sm text-gray-400">{getStatusText(tournament.status || 'pending')}</span>
                     <div className="flex space-x-1">
+                      <Button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          invoke('ovr_promote_tournament', { ovrTournamentId: tournament.id, localName: tournament.name });
+                        }}
+                        size="sm"
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                      >
+                        {t('ovr.promote','Promote')}
+                      </Button>
                       <Button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -626,26 +625,6 @@ const TournamentManagementPanel: React.FC = () => {
                         disabled={isLoadingOverview}
                       >
                         {isLoadingOverview ? t('common.loading', 'Loading...') : t('tournament.overview', 'Overview')}
-                      </Button>
-                      <Button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openEditForm(tournament);
-                        }}
-                        size="sm"
-                        className="bg-gray-600 hover:bg-gray-700 text-white"
-                      >
-                        {t('common.edit', 'Edit')}
-                      </Button>
-                      <Button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteTournament(tournament.id);
-                        }}
-                        size="sm"
-                        className="bg-red-600 hover:bg-red-700 text-white"
-                      >
-                        {t('common.delete', 'Delete')}
                       </Button>
                     </div>
                   </div>

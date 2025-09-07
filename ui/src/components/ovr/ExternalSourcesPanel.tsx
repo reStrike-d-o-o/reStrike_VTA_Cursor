@@ -44,6 +44,25 @@ const ExternalSourcesPanel: React.FC = () => {
     } catch (e) { /* ignore */ }
   };
 
+  const refreshProvider = async (id?: number) => {
+    if (id == null) return;
+    try {
+      setLoading(true);
+      await invoke('ovr_refresh_provider', { providerId: id });
+      await load();
+    } catch (_) {
+    } finally { setLoading(false); }
+  };
+
+  const refreshAll = async () => {
+    try {
+      setLoading(true);
+      await invoke('ovr_refresh_all');
+      await load();
+    } catch (_) {
+    } finally { setLoading(false); }
+  };
+
   const remove = async (id?: number) => {
     if (id == null) return;
     try { await invoke('ovr_remove_provider', { id }); await load(); } catch (_) {}
@@ -56,6 +75,7 @@ const ExternalSourcesPanel: React.FC = () => {
           <h3 className="text-lg font-semibold text-gray-100">{t('ovr.external.title', 'External OVR Sources')}</h3>
           <div className="flex items-center gap-2">
             <Button variant="secondary" onClick={load} disabled={loading}>{t('common.refresh', 'Refresh')}</Button>
+            <Button variant="primary" onClick={refreshAll} disabled={loading}>{t('common.update_all','Update all')}</Button>
           </div>
         </div>
         {error && <div className="text-red-400 text-sm mb-3">{error}</div>}
@@ -77,6 +97,7 @@ const ExternalSourcesPanel: React.FC = () => {
                   onChange={(e)=>toggleEnabled(p, e.currentTarget.checked)}
                   aria-label={t('common.enabled','Enabled')}
                 />
+                <Button variant="secondary" onClick={() => refreshProvider(p.id)}>{t('common.update','Update')}</Button>
                 <Button variant="secondary" onClick={() => remove(p.id)}>{t('common.remove','Remove')}</Button>
               </div>
             </div>

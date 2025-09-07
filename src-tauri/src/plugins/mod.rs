@@ -12,6 +12,7 @@ pub mod plugin_drive;
 pub mod plugin_license;
 pub mod plugin_cpu_monitor;
 pub mod plugin_protocol_manager;
+pub mod plugin_ovr;
 // Old plugin_obs removed - using modular obs system
 pub mod load_balancer;
 pub mod advanced_analytics;
@@ -146,6 +147,7 @@ pub use plugin_drive::DrivePlugin;
 pub use plugin_license::LicensePlugin;
 pub use plugin_cpu_monitor::{CpuMonitorPlugin, CpuMonitorConfig}; // Added CpuMonitorConfig
 pub use plugin_protocol_manager::ProtocolManager; // Fixed: was ProtocolManagerPlugin
+pub use plugin_ovr as OvrPlugin;
 // Old ObsPlugin removed - using ObsPluginManager
 pub use load_balancer::{EventDistributor, LoadBalancer, LoadBalancerConfig, LoadDistributionStrategy, ServerHealth, ServerStatistics, DistributorStatistics, UdpServerInstance};
 pub use advanced_analytics::{AdvancedAnalytics, AnalyticsConfig, TournamentAnalytics, PerformanceAnalytics, AthleteAnalytics, MatchAnalytics, AnalyticsSnapshot, AthletePerformance, SystemPerformance, EventProcessingPerformance, DatabasePerformance, CachePerformance, NetworkPerformance, MatchPerformance, PerformancePoint, MatchPerformancePoint};
