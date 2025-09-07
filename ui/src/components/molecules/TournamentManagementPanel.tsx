@@ -7,7 +7,6 @@ import Label from '../atoms/Label';
 import StatusDot from '../atoms/StatusDot';
 import Icon from '../atoms/Icon';
 import { useI18n } from '../../i18n/index';
-import { invoke } from '@tauri-apps/api/core';
 
 interface Tournament {
   id: number;
