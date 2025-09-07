@@ -674,30 +674,50 @@ const TournamentManagementPanel: React.FC = () => {
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold text-gray-100">{t('ovr.scraped.title', 'External OVR Tournaments')}</h3>
           <div className="flex items-center gap-2">
-            <Input placeholder={t('common.search','Search')} value={ovrQ} onChange={(e)=>setOvrQ(e.target.value)} />
-            <Input placeholder={t('common.country','Country')} value={ovrCountry} onChange={(e)=>setOvrCountry(e.target.value)} />
+            <Input aria-label={t('common.search','Search')} placeholder={t('common.search','Search')} value={ovrQ} onChange={(e)=>setOvrQ(e.target.value)} />
+            <Input aria-label={t('common.country','Country')} placeholder={t('common.country','Country')} value={ovrCountry} onChange={(e)=>setOvrCountry(e.target.value)} />
             <Button onClick={loadOvrTournaments} className="bg-gray-600 hover:bg-gray-700 text-white">{t('common.refresh','Refresh')}</Button>
           </div>
         </div>
-        <div className="space-y-3">
-          {ovrTournaments.length === 0 ? (
-            <div className="text-center py-8 text-gray-400">{t('ovr.scraped.none','No external tournaments loaded yet. Use External sources to update.')}</div>
-          ) : (
-            ovrTournaments.map((ot: any) => (
-              <div key={ot.id} className="p-4 rounded-lg border border-gray-600/30 bg-gray-700/30">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="font-medium text-gray-100">{ot.name}</h4>
-                    <p className="text-sm text-gray-400">{ot.city || ''}{ot.city && ot.country ? ', ' : ''}{ot.country || ''}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={()=>invoke('ovr_promote_tournament', { ovrTournamentId: ot.id, localName: ot.name })}>{t('ovr.promote','Promote')}</Button>
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
+
+        {ovrTournaments.length === 0 ? (
+          <div className="text-center py-8 text-gray-400">{t('ovr.scraped.none','No external tournaments loaded yet. Use External sources to update.')}</div>
+        ) : (
+          <div className="max-h-[480px] overflow-auto border border-gray-700 rounded">
+            <table className="min-w-full text-left text-sm text-gray-200">
+              <thead className="theme-surface-2 sticky top-0 z-10">
+                <tr>
+                  <th className="px-3 py-2 font-semibold">{t('common.name','Name')}</th>
+                  <th className="px-3 py-2 font-semibold">{t('common.city','City')}</th>
+                  <th className="px-3 py-2 font-semibold">{t('common.country','Country')}</th>
+                  <th className="px-3 py-2 font-semibold">{t('common.start','Start')}</th>
+                  <th className="px-3 py-2 font-semibold">{t('common.end','End')}</th>
+                  <th className="px-3 py-2 font-semibold">URL</th>
+                  <th className="px-3 py-2 font-semibold">{t('common.actions','Actions')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ovrTournaments.map((ot: any) => (
+                  <tr key={ot.id} className="hover:bg-blue-900/10">
+                    <td className="px-3 py-2 whitespace-nowrap">{ot.name}</td>
+                    <td className="px-3 py-2 whitespace-nowrap">{ot.city || ''}</td>
+                    <td className="px-3 py-2 whitespace-nowrap">{ot.country || ''}</td>
+                    <td className="px-3 py-2 whitespace-nowrap">{ot.start_date ? formatDate(ot.start_date) : ''}</td>
+                    <td className="px-3 py-2 whitespace-nowrap">{ot.end_date ? formatDate(ot.end_date) : ''}</td>
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      {ot.url ? (
+                        <a className="text-blue-400 hover:text-blue-300 underline" href={ot.url} target="_blank" rel="noreferrer">{t('common.open','Open')}</a>
+                      ) : ''}
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={()=>invoke('ovr_promote_tournament', { ovr_tournament_id: ot.id, local_name: ot.name })}>{t('ovr.promote','Promote')}</Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Tournament Days */}
