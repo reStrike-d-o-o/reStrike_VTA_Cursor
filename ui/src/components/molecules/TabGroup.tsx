@@ -24,8 +24,6 @@ export const TabGroup: React.FC<TabGroupProps> = ({
   onTabChange,
   className = '',
 }) => {
-  const activeTabContent = tabs.find(tab => tab.id === activeTab)?.content;
-
   return (
     <div className={`${className}`}>
       {/* Tab Navigation */}
@@ -43,9 +41,13 @@ export const TabGroup: React.FC<TabGroupProps> = ({
         ))}
       </div>
       
-      {/* Tab Content */}
+      {/* Tab Content - keep all mounted to preserve state across tab switches */}
       <div className="min-h-0">
-        {activeTabContent}
+        {tabs.map(tab => (
+          <div key={tab.id} className={activeTab === tab.id ? '' : 'hidden'}>
+            {tab.content}
+          </div>
+        ))}
       </div>
     </div>
   );

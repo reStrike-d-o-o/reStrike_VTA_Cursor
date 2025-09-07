@@ -20,6 +20,7 @@ const ExternalSourcesPanel: React.FC = () => {
   const [providers, setProviders] = React.useState<Provider[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [editing, setEditing] = React.useState<Record<number, Provider>>({});
 
   const load = async () => {
     try {
@@ -68,6 +69,26 @@ const ExternalSourcesPanel: React.FC = () => {
     try { await invoke('ovr_remove_provider', { id }); await load(); } catch (_) {}
   };
 
+  const startEdit = (p: Provider) => {
+    if (p.id == null) return;
+    setEditing(prev => ({ ...prev, [p.id as number]: { ...p } }));
+  };
+
+  const cancelEdit = (id?: number) => {
+    if (id == null) return;
+    setEditing(prev => { const n = { ...prev }; delete n[id]; return n; });
+  };
+
+  const saveEdit = async (id?: number) => {
+    if (id == null) return;
+    const p = editing[id];
+    if (!p) return;
+    try {
+      await invoke('ovr_upsert_provider', { payload: { id, name: p.name, base_url: p.base_url ?? null, enabled: p.enabled, rate_limit_ms: p.rate_limit_ms } });
+      cancelEdit(id); await load();
+    } catch (_) {}
+  };
+
   return (
     <div className="space-y-6">
       <div className="theme-card p-6 shadow-lg">
@@ -84,7 +105,19 @@ const ExternalSourcesPanel: React.FC = () => {
             <div key={p.name} className="flex items-center justify-between bg-gray-800/50 rounded px-4 py-3 border border-gray-700">
               <div className="flex flex-col">
                 <span className="text-gray-100 font-medium">{p.name}</span>
-                <span className="text-xs text-gray-400">{p.base_url || ''}</span>
+                {p.id != null && editing[p.id] ? (
+                  <div className="flex items-center gap-2 mt-1">
+                    <input aria-label={t('ovr.external.base_url','Base URL')} className="text-xs bg-gray-900 border border-gray-700 rounded px-2 py-1 text-gray-200 w-80" value={editing[p.id].base_url || ''} onChange={(e)=>setEditing(prev=>({ ...prev, [p.id as number]: { ...prev[p.id as number], base_url: e.target.value } }))} placeholder="https://..." />
+                    <input aria-label={t('ovr.external.rate_limit','Rate limit (ms)')} className="text-xs bg-gray-900 border border-gray-700 rounded px-2 py-1 text-gray-200 w-28" value={editing[p.id].rate_limit_ms} onChange={(e)=>{
+                      const v = parseInt(e.target.value)||0; setEditing(prev=>({ ...prev, [p.id as number]: { ...prev[p.id as number], rate_limit_ms: v } }));
+                    }} />
+                  </div>
+                ) : (
+                  <>
+                    <span className="text-xs text-gray-400">{p.base_url || ''}</span>
+                    <span className="text-xs text-gray-500">{t('common.rate_limit','Rate limit')}: {p.rate_limit_ms}ms</span>
+                  </>
+                )}
                 <div className="text-xs text-gray-500 mt-1">
                   {p.last_status && <span className="mr-3">{t('ovr.external.last_status', 'Status')}: {p.last_status}</span>}
                   {p.last_refreshed_at && <span className="mr-3">{t('ovr.external.last_refresh', 'Last refresh')}: {p.last_refreshed_at}</span>}
@@ -97,6 +130,14 @@ const ExternalSourcesPanel: React.FC = () => {
                   onChange={(e)=>toggleEnabled(p, e.currentTarget.checked)}
                   aria-label={t('common.enabled','Enabled')}
                 />
+                {p.id != null && editing[p.id] ? (
+                  <>
+                    <Button variant="secondary" onClick={() => saveEdit(p.id)}>{t('common.save','Save')}</Button>
+                    <Button variant="secondary" onClick={() => cancelEdit(p.id)}>{t('common.cancel','Cancel')}</Button>
+                  </>
+                ) : (
+                  <Button variant="secondary" onClick={() => startEdit(p)}>{t('common.edit','Edit')}</Button>
+                )}
                 <Button variant="secondary" onClick={() => refreshProvider(p.id)}>{t('common.update','Update')}</Button>
                 <Button variant="secondary" onClick={() => remove(p.id)}>{t('common.remove','Remove')}</Button>
               </div>
