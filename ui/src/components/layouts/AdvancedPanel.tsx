@@ -147,12 +147,6 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
           <TabGroup
             tabs={[
               {
-                id: 'external',
-                label: t('ovr.tabs.external', 'External sources'),
-                icon: <LottieIcon animationData={businessAnimation} size={32} />,
-                content: <ExternalSourcesPanel />
-              },
-              {
                 id: 'integration',
                 label: t('ovr.tabs.integration', 'Integration'),
                 icon: <LottieIcon animationData={businessAnimation} size={32} />,
@@ -167,6 +161,12 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
                 label: t('ovr.tabs.tournament', 'Tournament Management'),
                 icon: <LottieIcon animationData={tournamentAnimation} size={32} />,
                 content: <TournamentManagementPanel />
+              },
+              {
+                id: 'external',
+                label: t('ovr.tabs.external', 'External sources'),
+                icon: <LottieIcon animationData={businessAnimation} size={32} />,
+                content: <ExternalSourcesPanel />
               }
             ]}
             activeTab={ovrTab}

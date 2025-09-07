@@ -64,6 +64,10 @@ const TournamentManagementPanel: React.FC = () => {
 	const [isLoadingOverview, setIsLoadingOverview] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'active' | 'ended'>('all');
+  // OVR scraped list and filters
+  const [ovrTournaments, setOvrTournaments] = useState<any[]>([]);
+  const [ovrQ, setOvrQ] = useState('');
+  const [ovrCountry, setOvrCountry] = useState('');
   
   // Form states
   const [showAddForm, setShowAddForm] = useState(false);
@@ -107,14 +111,34 @@ const TournamentManagementPanel: React.FC = () => {
     try {
       setIsLoading(true);
       setError(null);
-      const data: any = await invoke('ovr_list_tournaments', { providerId: null, q: null, from: null, to: null, country: null, limit: 100, offset: 0 });
-      if (data?.success) setTournaments(data.tournaments || []);
-      else setError(data?.error || 'Failed to load tournaments');
+      const result = await invoke('tournament_get_all');
+      const data = result as any;
+      if (data.success) {
+        setTournaments(data.tournaments);
+      } else {
+        setError(data.error || 'Failed to load tournaments');
+      }
     } catch (err) {
       setError(`Error loading tournaments: ${err}`);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const loadOvrTournaments = async () => {
+    try {
+      const params: any = {
+        providerId: null,
+        q: ovrQ ? ovrQ : null,
+        from: null,
+        to: null,
+        country: ovrCountry ? ovrCountry : null,
+        limit: 100,
+        offset: 0,
+      };
+      const data: any = await invoke('ovr_list_tournaments', params);
+      if (data?.success) setOvrTournaments(data.tournaments || []);
+    } catch (_) {}
   };
 
   const loadTournamentDays = async (tournamentId: number) => {
@@ -550,6 +574,7 @@ const TournamentManagementPanel: React.FC = () => {
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold text-gray-100">{t('tournament.title', 'Tournaments')}</h3>
           <div className="flex items-center gap-2">
+            <Button onClick={() => setShowAddForm(true)} disabled={isLoading} className="bg-blue-600 hover:bg-blue-700 text-white">{t('tournament.add', 'Add Tournament')}</Button>
             <Button onClick={() => loadTournaments()} disabled={isLoading} className="bg-gray-600 hover:bg-gray-700 text-white">{t('common.refresh','Refresh')}</Button>
           </div>
         </div>
@@ -607,16 +632,6 @@ const TournamentManagementPanel: React.FC = () => {
                       <Button
                         onClick={(e) => {
                           e.stopPropagation();
-                          invoke('ovr_promote_tournament', { ovrTournamentId: tournament.id, localName: tournament.name });
-                        }}
-                        size="sm"
-                        className="bg-green-600 hover:bg-green-700 text-white"
-                      >
-                        {t('ovr.promote','Promote')}
-                      </Button>
-                      <Button
-                        onClick={(e) => {
-                          e.stopPropagation();
                           loadTournamentOverview(tournament.id);
                         }}
                         size="sm"
@@ -625,6 +640,26 @@ const TournamentManagementPanel: React.FC = () => {
                       >
                         {isLoadingOverview ? t('common.loading', 'Loading...') : t('tournament.overview', 'Overview')}
                       </Button>
+                      <Button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openEditForm(tournament);
+                        }}
+                        size="sm"
+                        className="bg-gray-600 hover:bg-gray-700 text-white"
+                      >
+                        {t('common.edit', 'Edit')}
+                      </Button>
+                      <Button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteTournament(tournament.id);
+                        }}
+                        size="sm"
+                        className="bg-red-600 hover:bg-red-700 text-white"
+                      >
+                        {t('common.delete', 'Delete')}
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -632,6 +667,37 @@ const TournamentManagementPanel: React.FC = () => {
             ))}
           </div>
         )}
+      </div>
+
+      {/* External OVR Tournaments (scraped) */}
+      <div className="theme-card p-6">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold text-gray-100">{t('ovr.scraped.title', 'External OVR Tournaments')}</h3>
+          <div className="flex items-center gap-2">
+            <Input placeholder={t('common.search','Search')} value={ovrQ} onChange={(e)=>setOvrQ(e.target.value)} />
+            <Input placeholder={t('common.country','Country')} value={ovrCountry} onChange={(e)=>setOvrCountry(e.target.value)} />
+            <Button onClick={loadOvrTournaments} className="bg-gray-600 hover:bg-gray-700 text-white">{t('common.refresh','Refresh')}</Button>
+          </div>
+        </div>
+        <div className="space-y-3">
+          {ovrTournaments.length === 0 ? (
+            <div className="text-center py-8 text-gray-400">{t('ovr.scraped.none','No external tournaments loaded yet. Use External sources to update.')}</div>
+          ) : (
+            ovrTournaments.map((ot: any) => (
+              <div key={ot.id} className="p-4 rounded-lg border border-gray-600/30 bg-gray-700/30">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-medium text-gray-100">{ot.name}</h4>
+                    <p className="text-sm text-gray-400">{ot.city || ''}{ot.city && ot.country ? ', ' : ''}{ot.country || ''}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={()=>invoke('ovr_promote_tournament', { ovrTournamentId: ot.id, localName: ot.name })}>{t('ovr.promote','Promote')}</Button>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       </div>
 
       {/* Tournament Days */}
