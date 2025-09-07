@@ -2280,6 +2280,282 @@ impl Migration for Migration21 {
     }
 }
 
+/// Migration 22: Manual match lookups (gender, discipline, age, division, weight, round) and pss_matches extensions
+pub struct Migration22;
+
+impl Migration for Migration22 {
+    fn version(&self) -> u32 { 22 }
+
+    fn description(&self) -> &str {
+        "Add lookup tables for manual match creation and extend pss_matches with lookup FKs"
+    }
+
+    fn up(&self, conn: &Connection) -> SqliteResult<()> {
+        // Lookups: genders
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS look_genders (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                code TEXT NOT NULL UNIQUE,
+                name TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            )",
+            [],
+        )?;
+
+        // Lookups: disciplines (kyorugi, poomsae, ...)
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS look_disciplines (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                code TEXT NOT NULL UNIQUE,
+                name TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            )",
+            [],
+        )?;
+
+        // Lookups: age groups with authority and validity windows
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS look_age_groups (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                code TEXT NOT NULL UNIQUE,
+                name TEXT NOT NULL,
+                min_age INTEGER,
+                max_age INTEGER,
+                authority TEXT,
+                effective_from TEXT,
+                effective_to TEXT,
+                created_at TEXT NOT NULL
+            )",
+            [],
+        )?;
+
+        // Lookups: divisions (e.g., belt grades or poomsae divisions)
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS look_divisions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                code TEXT NOT NULL UNIQUE,
+                name TEXT NOT NULL,
+                division_type TEXT, -- belt|poomsae|other
+                authority TEXT,
+                created_at TEXT NOT NULL
+            )",
+            [],
+        )?;
+
+        // Lookups: weight classes scoped by discipline+gender+age_group
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS look_weight_classes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                discipline_id INTEGER NOT NULL,
+                gender_id INTEGER NOT NULL,
+                age_group_id INTEGER NOT NULL,
+                code TEXT NOT NULL,
+                name TEXT NOT NULL,
+                min_kg REAL,
+                max_kg REAL,
+                authority TEXT,
+                effective_from TEXT,
+                effective_to TEXT,
+                created_at TEXT NOT NULL,
+                UNIQUE(discipline_id, gender_id, age_group_id, code),
+                FOREIGN KEY (discipline_id) REFERENCES look_disciplines(id),
+                FOREIGN KEY (gender_id) REFERENCES look_genders(id),
+                FOREIGN KEY (age_group_id) REFERENCES look_age_groups(id)
+            )",
+            [],
+        )?;
+
+        // Lookups: round configurations (presets)
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS look_round_configs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL UNIQUE,
+                rounds INTEGER NOT NULL,
+                round_duration INTEGER,
+                rest_duration INTEGER,
+                golden_round BOOLEAN NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL
+            )",
+            [],
+        )?;
+
+        // Indexes for lookups
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_lg_code ON look_genders(code)", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_ld_code ON look_disciplines(code)", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_lag_code ON look_age_groups(code)", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_ldv_code ON look_divisions(code)", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_lwc_scopes ON look_weight_classes(discipline_id, gender_id, age_group_id)", [])?;
+
+        // Seed minimal lookup data if empty
+        let now = chrono::Utc::now().to_rfc3339();
+        let gcount: i64 = conn.query_row("SELECT COUNT(1) FROM look_genders", [], |r| r.get(0)).unwrap_or(0);
+        if gcount == 0 {
+            let _ = conn.execute(
+                "INSERT OR IGNORE INTO look_genders(code, name, created_at) VALUES
+                 ('M','Male',?),('F','Female',?)",
+                [&now, &now],
+            );
+        }
+        let dcount: i64 = conn.query_row("SELECT COUNT(1) FROM look_disciplines", [], |r| r.get(0)).unwrap_or(0);
+        if dcount == 0 {
+            let _ = conn.execute(
+                "INSERT OR IGNORE INTO look_disciplines(code, name, created_at) VALUES
+                 ('KY','Kyorugi',?),('PO','Poomsae',?)",
+                [&now, &now],
+            );
+        }
+        let agcount: i64 = conn.query_row("SELECT COUNT(1) FROM look_age_groups", [], |r| r.get(0)).unwrap_or(0);
+        if agcount == 0 {
+            let _ = conn.execute(
+                "INSERT OR IGNORE INTO look_age_groups(code, name, min_age, max_age, authority, created_at) VALUES
+                 ('SR','Senior',17,NULL,'WT',?),
+                 ('JR','Junior',15,17,'WT',?),
+                 ('CD','Cadet',12,14,'WT',?),
+                 ('U21','U21',18,20,'WT',?),
+                 ('MS','Masters',30,NULL,'WT',?)",
+                [&now, &now, &now, &now, &now],
+            );
+        }
+
+        // Extend pss_matches with lookup FKs and optional bracket stage
+        let _ = conn.execute("ALTER TABLE pss_matches ADD COLUMN discipline_id INTEGER REFERENCES look_disciplines(id)", [])?;
+        let _ = conn.execute("ALTER TABLE pss_matches ADD COLUMN age_group_id INTEGER REFERENCES look_age_groups(id)", [])?;
+        let _ = conn.execute("ALTER TABLE pss_matches ADD COLUMN gender_id INTEGER REFERENCES look_genders(id)", [])?;
+        let _ = conn.execute("ALTER TABLE pss_matches ADD COLUMN division_id INTEGER REFERENCES look_divisions(id)", [])?;
+        let _ = conn.execute("ALTER TABLE pss_matches ADD COLUMN weight_class_id INTEGER REFERENCES look_weight_classes(id)", [])?;
+        let _ = conn.execute("ALTER TABLE pss_matches ADD COLUMN bracket_stage TEXT", [])?;
+
+        Ok(())
+    }
+
+    fn down(&self, _conn: &Connection) -> SqliteResult<()> {
+        // SQLite cannot drop columns; best-effort rollback for lookup tables only
+        // Note: pss_matches added columns remain (no harmful effect)
+        // Drop created lookup tables in reverse order
+        // Ignoring errors intentionally to be resilient
+        let _ = _conn.execute("DROP TABLE IF EXISTS look_round_configs", []);
+        let _ = _conn.execute("DROP TABLE IF EXISTS look_weight_classes", []);
+        let _ = _conn.execute("DROP TABLE IF EXISTS look_divisions", []);
+        let _conn = _conn;
+        _conn.execute("DROP TABLE IF EXISTS look_age_groups", [])?;
+        _conn.execute("DROP TABLE IF EXISTS look_disciplines", [])?;
+        _conn.execute("DROP TABLE IF EXISTS look_genders", [])?;
+        Ok(())
+    }
+}
+
+/// Migration 23: OVR provider/tournament/category ingestion tables
+pub struct Migration23;
+
+impl Migration for Migration23 {
+    fn version(&self) -> u32 { 23 }
+
+    fn description(&self) -> &str {
+        "Add OVR provider, tournament, and category tables with indexes and linking bridge"
+    }
+
+    fn up(&self, conn: &Connection) -> SqliteResult<()> {
+        // Providers
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS ovr_providers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL UNIQUE,
+                base_url TEXT,
+                enabled BOOLEAN NOT NULL DEFAULT 1,
+                rate_limit_ms INTEGER NOT NULL DEFAULT 1000,
+                last_refreshed_at TEXT,
+                last_status TEXT,
+                last_error TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )",
+            [],
+        )?;
+
+        // Tournaments from provider
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS ovr_tournaments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                provider_id INTEGER NOT NULL,
+                provider_tournament_id TEXT NOT NULL,
+                name TEXT NOT NULL,
+                start_date TEXT,
+                end_date TEXT,
+                city TEXT,
+                country TEXT,
+                url TEXT,
+                status TEXT,
+                last_seen_at TEXT,
+                hash TEXT,
+                etag TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                UNIQUE(provider_id, provider_tournament_id),
+                FOREIGN KEY (provider_id) REFERENCES ovr_providers(id) ON DELETE CASCADE
+            )",
+            [],
+        )?;
+
+        // Categories under a tournament
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS ovr_categories (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tournament_id INTEGER NOT NULL,
+                discipline TEXT,
+                age_group TEXT,
+                gender TEXT,
+                division TEXT,
+                weight_class TEXT,
+                bracket_stage TEXT,
+                provider_raw TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY (tournament_id) REFERENCES ovr_tournaments(id) ON DELETE CASCADE
+            )",
+            [],
+        )?;
+
+        // Bridge mapping OVR tournament to local curated tournament
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS ovr_to_local_tournament (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ovr_tournament_id INTEGER NOT NULL UNIQUE,
+                local_tournament_id INTEGER NOT NULL,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (ovr_tournament_id) REFERENCES ovr_tournaments(id) ON DELETE CASCADE,
+                FOREIGN KEY (local_tournament_id) REFERENCES tournaments(id) ON DELETE CASCADE
+            )",
+            [],
+        )?;
+
+        // Indexes
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_ovr_tournaments_provider ON ovr_tournaments(provider_id)", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_ovr_tournaments_name ON ovr_tournaments(name)", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_ovr_tournaments_start ON ovr_tournaments(start_date)", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_ovr_categories_tournament ON ovr_categories(tournament_id)", [])?;
+
+        // Seed known providers
+        let now = chrono::Utc::now().to_rfc3339();
+        let _ = conn.execute(
+            "INSERT OR IGNORE INTO ovr_providers(name, base_url, enabled, created_at, updated_at) VALUES
+             ('simplycompete','https://www.simplycompete.com',1,?,?),
+             ('tpss','https://www.tpss.eu',1,?,?),
+             ('martial.events','https://martial.events',1,?,?)",
+            [&now, &now, &now, &now, &now, &now],
+        );
+
+        Ok(())
+    }
+
+    fn down(&self, conn: &Connection) -> SqliteResult<()> {
+        conn.execute("DROP TABLE IF EXISTS ovr_to_local_tournament", [])?;
+        conn.execute("DROP TABLE IF EXISTS ovr_categories", [])?;
+        conn.execute("DROP TABLE IF EXISTS ovr_tournaments", [])?;
+        conn.execute("DROP TABLE IF EXISTS ovr_providers", [])?;
+        Ok(())
+    }
+}
+
 impl MigrationManager {
     /// Create a new migration manager
     pub fn new() -> Self {
@@ -2305,6 +2581,8 @@ impl MigrationManager {
         migrations.push(Box::new(Migration19)); // Remove UNIQUE from pss_matches.match_id
         migrations.push(Box::new(Migration20)); // Recorded videos table for IVR playback
         migrations.push(Box::new(Migration21)); // recorded_video_events + file metadata
+        migrations.push(Box::new(Migration22)); // Manual match lookups and pss_matches extensions
+        migrations.push(Box::new(Migration23)); // OVR provider/tournament/category
         
         Self { migrations }
     }
