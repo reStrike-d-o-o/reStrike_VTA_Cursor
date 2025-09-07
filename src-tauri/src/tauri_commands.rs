@@ -2589,6 +2589,55 @@ pub async fn restore_from_backup(
     }
 }
 
+// === SQLite DB Backup (reuse existing DatabaseConnection helpers; no duplication) ===
+#[derive(serde::Serialize)]
+pub struct SqliteBackupInfo { pub name: String, pub path: String, pub size: u64, pub modified: String }
+
+#[tauri::command]
+pub async fn db_create_sqlite_backup(app: State<'_, Arc<App>>, name: Option<String>) -> Result<serde_json::Value, TauriError> {
+    let conn = app.database_plugin().get_database_connection();
+    match conn.create_backup(name.as_deref()) {
+        Ok(path) => Ok(serde_json::json!({ "success": true, "path": path.to_string_lossy().to_string() })),
+        Err(e) => Ok(serde_json::json!({ "success": false, "error": e.to_string() })),
+    }
+}
+
+#[tauri::command]
+pub async fn db_list_sqlite_backups(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    let conn = app.database_plugin().get_database_connection();
+    match conn.list_backups() {
+        Ok(paths) => {
+            let mut items: Vec<SqliteBackupInfo> = Vec::new();
+            for p in paths {
+                let md = std::fs::metadata(&p).ok();
+                let size = md.as_ref().map(|m| m.len()).unwrap_or(0);
+                let modified = md
+                    .and_then(|m| m.modified().ok())
+                    .map(|t| chrono::DateTime::<chrono::Local>::from(t).format("%Y-%m-%d %H:%M:%S").to_string())
+                    .unwrap_or_default();
+                items.push(SqliteBackupInfo {
+                    name: p.file_name().and_then(|s| s.to_str()).unwrap_or("").to_string(),
+                    path: p.to_string_lossy().to_string(),
+                    size,
+                    modified,
+                });
+            }
+            Ok(serde_json::json!({ "success": true, "backups": items }))
+        }
+        Err(e) => Ok(serde_json::json!({ "success": false, "error": e.to_string() })),
+    }
+}
+
+#[tauri::command]
+pub async fn db_restore_sqlite_backup(app: State<'_, Arc<App>>, backup_path: String) -> Result<serde_json::Value, TauriError> {
+    let conn = app.database_plugin().get_database_connection();
+    let pb = std::path::PathBuf::from(backup_path);
+    match conn.restore_from_backup(&pb).await {
+        Ok(_) => Ok(serde_json::json!({ "success": true })),
+        Err(e) => Ok(serde_json::json!({ "success": false, "error": e.to_string() })),
+    }
+}
+
 #[tauri::command]
 pub async fn get_migration_status(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting migration status");

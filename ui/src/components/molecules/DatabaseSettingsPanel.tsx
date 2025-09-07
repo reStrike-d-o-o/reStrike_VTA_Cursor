@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDatabaseSettings } from '../../hooks/useDatabaseSettings';
 import Button from '../atoms/Button';
 import Input from '../atoms/Input';
 import Label from '../atoms/Label';
 import StatusDot from '../atoms/StatusDot';
 import Icon from '../atoms/Icon';
+import { invoke } from '@tauri-apps/api/core';
 
 
 export const DatabaseSettingsPanel: React.FC = () => {
@@ -22,6 +23,10 @@ export const DatabaseSettingsPanel: React.FC = () => {
   const [newKey, setNewKey] = useState('');
   const [newValue, setNewValue] = useState('');
   const [databaseInfo, setDatabaseInfo] = useState<{ is_accessible: boolean; file_size: number | null } | null>(null);
+  const [sqliteBackups, setSqliteBackups] = useState<Array<{ name: string; path: string; size: number; modified: string }>>([]);
+  const [sqliteLoading, setSqliteLoading] = useState(false);
+  const [sqliteError, setSqliteError] = useState<string | null>(null);
+  const [sqliteSuccess, setSqliteSuccess] = useState<string | null>(null);
 
   const handleAddSetting = async () => {
     if (!newKey.trim() || !newValue.trim()) return;
@@ -64,6 +69,64 @@ export const DatabaseSettingsPanel: React.FC = () => {
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
+
+  const loadSqliteBackups = async () => {
+    try {
+      setSqliteLoading(true);
+      setSqliteError(null);
+      const res: any = await invoke('db_list_sqlite_backups');
+      if (res?.success) {
+        setSqliteBackups(res.backups || []);
+      } else {
+        setSqliteError(res?.error || 'Failed to list SQLite backups');
+      }
+    } catch (e: any) {
+      setSqliteError(typeof e === 'string' ? e : (e?.message || 'Failed to list SQLite backups'));
+    } finally {
+      setSqliteLoading(false);
+    }
+  };
+
+  const createSqliteBackup = async () => {
+    try {
+      setSqliteLoading(true);
+      setSqliteError(null);
+      setSqliteSuccess(null);
+      const res: any = await invoke('db_create_sqlite_backup', { name: null });
+      if (res?.success) {
+        setSqliteSuccess('SQLite backup created');
+        await loadSqliteBackups();
+      } else {
+        setSqliteError(res?.error || 'Failed to create SQLite backup');
+      }
+    } catch (e: any) {
+      setSqliteError(typeof e === 'string' ? e : (e?.message || 'Failed to create SQLite backup'));
+    } finally {
+      setSqliteLoading(false);
+    }
+  };
+
+  const restoreSqliteBackup = async (path: string) => {
+    const confirmed = window.confirm('Restore this SQLite backup? This will overwrite the current database.');
+    if (!confirmed) return;
+    try {
+      setSqliteLoading(true);
+      setSqliteError(null);
+      setSqliteSuccess(null);
+      const res: any = await invoke('db_restore_sqlite_backup', { backupPath: path });
+      if (res?.success) {
+        setSqliteSuccess('SQLite backup restored');
+      } else {
+        setSqliteError(res?.error || 'Failed to restore SQLite backup');
+      }
+    } catch (e: any) {
+      setSqliteError(typeof e === 'string' ? e : (e?.message || 'Failed to restore SQLite backup'));
+    } finally {
+      setSqliteLoading(false);
+    }
+  };
+
+  useEffect(() => { loadSqliteBackups(); }, []);
 
   return (
   <div className="space-y-6 p-6 theme-card shadow-lg">
@@ -133,6 +196,53 @@ export const DatabaseSettingsPanel: React.FC = () => {
             <div className="text-2xl font-bold text-green-400">{settings?.database_settings_count || 0}</div>
             <div className="text-sm text-gray-400">Database Settings</div>
           </div>
+        </div>
+      </div>
+
+      {/* SQLite Backups */}
+      <div className="theme-surface-2 rounded-lg p-4 shadow-lg">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-lg font-semibold text-blue-300">SQLite Backups</h3>
+          <div className="flex items-center gap-2">
+            <Button onClick={createSqliteBackup} disabled={sqliteLoading} variant="primary" size="sm">
+              {sqliteLoading ? 'Working…' : 'Create Backup'}
+            </Button>
+            <Button onClick={loadSqliteBackups} disabled={sqliteLoading} variant="secondary" size="sm">
+              Refresh
+            </Button>
+          </div>
+        </div>
+        {sqliteError && <div className="bg-red-900/20 border border-red-500/50 rounded p-2 text-red-300 text-sm mb-2">{sqliteError}</div>}
+        {sqliteSuccess && <div className="bg-green-900/20 border border-green-500/50 rounded p-2 text-green-300 text-sm mb-2">{sqliteSuccess}</div>}
+        <div className="max-h-56 overflow-y-auto border border-gray-700 rounded">
+          <table className="min-w-full text-left text-sm text-gray-200">
+            <thead className="theme-surface-2 sticky top-0 z-10">
+              <tr>
+                <th className="px-3 py-2 font-semibold">File</th>
+                <th className="px-3 py-2 font-semibold">Size</th>
+                <th className="px-3 py-2 font-semibold">Modified</th>
+                <th className="px-3 py-2 font-semibold">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sqliteBackups.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-3 py-2 text-gray-400 text-center">No backups found</td>
+                </tr>
+              ) : (
+                sqliteBackups.map((b) => (
+                  <tr key={b.path} className="hover:bg-blue-900/20">
+                    <td className="px-3 py-2 whitespace-nowrap">{b.name}</td>
+                    <td className="px-3 py-2 whitespace-nowrap">{formatFileSize(b.size)}</td>
+                    <td className="px-3 py-2 whitespace-nowrap">{b.modified}</td>
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      <Button onClick={() => restoreSqliteBackup(b.path)} variant="ghost" size="sm" disabled={sqliteLoading}>Restore</Button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 
