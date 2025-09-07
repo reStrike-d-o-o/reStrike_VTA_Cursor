@@ -453,15 +453,15 @@ xl: 1280px  /* Extra large screens */
 
 ### **Responsive Patterns**
 ```tsx
-// Responsive sidebar
+// DockBar (single column) responsive width
 <div className={`
-  ${isAdvancedMode ? 'w-64' : 'w-[350px]'}
+  w-[var(--dock-width)]
   flex-shrink-0
-  bg-gray-700/90
+  bg-gradient-to-r from-gray-900/95 to-gray-800/90
+  border-r border-gray-700/50 shadow-2xl
   transition-all duration-300
-  ${isCollapsed ? 'w-16' : ''}
 `}>
-  {isAdvancedMode ? <SidebarBig /> : <SidebarSmall />}
+  <DockBar />
 </div>
 
 // Responsive grid

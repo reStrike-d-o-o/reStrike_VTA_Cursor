@@ -509,147 +509,39 @@ PssEvent::Points { athlete, point_type } => {
    frontend_store.update_events(event_data);
    ```
 
-### OBS Integration and Dual Protocol Support
+### OBS Integration (obws v5 only)
 
-#### OBS WebSocket Dual-Protocol Architecture
+#### Architecture
 
-The system supports both OBS WebSocket v4 and v5 protocols simultaneously:
+All OBS interactions use the native Rust `obws` client (v5 protocol only):
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    OBS Integration Layer                    │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐          │
-│  │   OBS v4    │  │   OBS v5    │  │  Protocol   │          │
-│  │  Protocol   │  │  Protocol   │  │  Detector   │          │
-│  └─────────────┘  └─────────────┘  └─────────────┘          │
+│  ┌─────────────┐  ┌──────────────────────────────────────┐  │
+│  │  obws v5    │  │   obs_obws plugin (Rust, Tauri v2)   │  │
+│  │  Client     │  │   client.rs, manager.rs, operations  │  │
+│  └─────────────┘  └──────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────┘
                               │
 ┌─────────────────────────────────────────────────────────────┐
-│                   Unified OBS Interface                     │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐          │
-│  │ Connection  │  │   Scene     │  │ Recording   │          │
-│  │ Management  │  │  Control    │  │  Control    │          │
-│  └─────────────┘  └─────────────┘  └─────────────┘          │
+│                       Tauri Command Layer                   │
+│  ┌─────────────┐  ┌──────────────────────────────────────┐  │
+│  │  Frontend   │  │  tauri_commands_obws.rs (where used) │  │
+│  │  invoke()   │  │  tauri_commands.rs (Control Room)    │  │
+│  └─────────────┘  └──────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-#### Protocol Differences Handled
+#### Operations
+- Recording: `client.recording().start() | stop()`
+- Streaming: `client.streaming().start() | stop()`
+- Scenes: `client.scenes().current() | set_current(...)`
+- Replay Buffer: `client.replay_buffer().status() | save()`
 
-**OBS WebSocket v4**
-```json
-// Request Format
-{
-  "request-type": "GetCurrentScene",
-  "message-id": "uuid-here"
-}
-
-// Response Format
-{
-  "scene-name": "Scene Name",
-  "is-recording": true
-}
-```
-
-**OBS WebSocket v5**
-```json
-// Request Format
-{
-  "op": 6,
-  "d": {
-    "requestType": "GetCurrentProgramScene",
-    "requestId": "uuid-here"
-  }
-}
-
-// Response Format
-{
-  "requestStatus": {
-    "result": true,
-    "code": 100
-  },
-  "responseData": {
-    "sceneName": "Scene Name",
-    "outputActive": true
-  }
-}
-```
-
-#### Dual-Protocol Implementation
-
-```rust
-// Protocol-agnostic OBS operations (Modular Implementation)
-impl ObsPluginManager {
-    pub async fn get_current_scene(&self, connection_name: &str) -> AppResult<String> {
-        self.scenes_plugin.get_current_scene(connection_name).await
-    }
-
-    pub async fn set_current_scene(&self, connection_name: &str, scene: &str) -> AppResult<()> {
-        self.scenes_plugin.set_current_scene(connection_name, scene).await
-    }
-
-    pub async fn start_recording(&self, connection_name: &str) -> AppResult<()> {
-        self.recording_plugin.start_recording(connection_name).await
-    }
-}
-```
-
-#### Multiple OBS Instance Support
-
-```rust
-// Support for multiple OBS instances (Modular Implementation)
-pub struct ObsPluginManager {
-    core_plugin: ObsCorePlugin,
-    recording_plugin: ObsRecordingPlugin,
-    streaming_plugin: ObsStreamingPlugin,
-    scenes_plugin: ObsScenesPlugin,
-    settings_plugin: ObsSettingsPlugin,
-    events_plugin: ObsEventsPlugin,
-    status_plugin: ObsStatusPlugin,
-    context: ObsPluginContext,
-}
-
-impl ObsPluginManager {
-    pub async fn add_connection(&mut self, config: ObsConnectionConfig) -> AppResult<()> {
-        self.core_plugin.add_connection(config).await
-    }
-
-    pub async fn connect_obs(&mut self, connection_name: &str) -> AppResult<()> {
-        self.core_plugin.connect_obs(connection_name).await
-    }
-}
-```
-
-#### OBS Event Handling
-
-```rust
-// Handle events from modular OBS system
-async fn handle_obs_events(plugin_manager: &ObsPluginManager) {
-    while let Some(event) = event_rx.recv().await {
-        match event {
-            ObsEvent::ConnectionStatusChanged { connection_name, status } => {
-                log::info!("{}: {:?}", connection_name, status);
-                // Update UI with connection status
-                frontend_store.update_obs_connection_status(connection_name, status);
-            }
-            ObsEvent::SceneChanged { connection_name, scene_name } => {
-                log::info!("{} switched to scene: {}", connection_name, scene_name);
-                // Update UI with scene change
-                frontend_store.update_current_scene(connection_name, scene_name);
-            }
-            ObsEvent::RecordingStateChanged { connection_name, is_recording } => {
-                log::info!("{} recording: {}", connection_name, is_recording);
-                // Update UI with recording status
-                frontend_store.update_recording_status(connection_name, is_recording);
-            }
-            ObsEvent::Error { connection_name, error } => {
-                log::error!("{} error: {}", connection_name, error);
-                // Show error in UI
-                frontend_store.add_error_notification(connection_name, error);
-            }
-        }
-    }
-}
-```
+#### Control Room
+- Commands live in `src-tauri/src/tauri_commands.rs` (e.g., `control_room_connect_obs`, `control_room_disconnect_obs`, `control_room_get_obs_connections*`).
+- Per-source audio mute/unmute is currently stubbed; wire-up will follow when obws adds per-source controls.
 
 ---
 

@@ -179,7 +179,7 @@
 
 ### Control Room Status Synchronization Fix ✅ **LATEST COMPLETION**
 **Status**: COMPLETED  
-**Files**: `src-tauri/src/plugins/obs/control_room_async.rs`, `src-tauri/src/plugins/obs/manager.rs`, `src-tauri/src/tauri_commands.rs`, `src-tauri/src/main.rs`, `ui/src/components/molecules/ControlRoom.tsx`
+**Files**: `src-tauri/src/tauri_commands.rs`, `src-tauri/src/main.rs`, `ui/src/components/molecules/ControlRoom.tsx`
 
 **Key Features**:
 - **Real-time Status Updates**: Fixed status indicators to properly reflect actual connection state after bulk operations
@@ -197,7 +197,7 @@
 
 ### Control Room Bulk Operations Implementation ✅
 **Status**: COMPLETED  
-**Files**: `src-tauri/src/plugins/obs/control_room_async.rs`, `src-tauri/src/plugins/obs/manager.rs`, `src-tauri/src/tauri_commands.rs`, `src-tauri/src/main.rs`, `ui/src/components/molecules/ControlRoom.tsx`
+**Files**: `src-tauri/src/tauri_commands.rs`, `src-tauri/src/main.rs`, `ui/src/components/molecules/ControlRoom.tsx`
 
 **Key Features**:
 - **Connect All/Disconnect All**: Implemented bulk connect/disconnect operations with state checking
@@ -215,7 +215,7 @@
 
 ### Control Room Edit Functionality ✅
 **Status**: COMPLETED  
-**Files**: `src-tauri/src/plugins/obs/control_room_async.rs`, `src-tauri/src/plugins/obs/manager.rs`, `src-tauri/src/tauri_commands.rs`, `src-tauri/src/main.rs`, `ui/src/components/molecules/ControlRoom.tsx`
+**Files**: `src-tauri/src/tauri_commands.rs`, `src-tauri/src/main.rs`, `ui/src/components/molecules/ControlRoom.tsx`
 
 **Key Features**:
 - **Edit Button**: Added edit button for each connection in the Control Room UI
@@ -233,7 +233,7 @@
 
 ### Control Room Connection Fixes ✅
 **Status**: COMPLETED  
-**Files**: `src-tauri/src/plugins/obs/control_room_async.rs`, `src-tauri/src/plugins/obs/manager.rs`
+**Files**: `src-tauri/src/tauri_commands.rs`
 
 **Key Features**:
 - **Real Connection Establishment**: Fixed connect/disconnect buttons to actually establish WebSocket connections
@@ -250,7 +250,7 @@
 
 ### Control Room "STR" to "OBS" Renaming ✅
 **Status**: COMPLETED  
-**Files**: `src-tauri/config/app_config.json`, `src-tauri/src/config/types.rs`, `src-tauri/src/plugins/obs/control_room_async.rs`, `src-tauri/src/plugins/obs/manager.rs`, `src-tauri/src/tauri_commands.rs`, `src-tauri/src/main.rs`, `ui/src/components/molecules/ControlRoom.tsx`
+**Files**: `src-tauri/config/app_config.json`, `src-tauri/src/config/types.rs`, `src-tauri/src/tauri_commands.rs`, `src-tauri/src/main.rs`, `ui/src/components/molecules/ControlRoom.tsx`
 
 **Key Features**:
 - **Configuration Files**: Renamed "OBS_STR" to "OBS" in app_config.json and types.rs
@@ -268,7 +268,7 @@
 
 ### Control Room Security Enhancement ✅ **PRODUCTION READY**
 **Status**: COMPLETED - PRODUCTION READY  
-**Files**: `src-tauri/src/plugins/obs/control_room_async.rs`, `src-tauri/Cargo.toml`, `src-tauri/src/tauri_commands.rs`, `src-tauri/src/plugins/obs/manager.rs`, `src-tauri/src/main.rs`
+**Files**: `src-tauri/Cargo.toml`, `src-tauri/src/tauri_commands.rs`, `src-tauri/src/main.rs`
 
 **Key Security Features**:
 - **Production Authentication**: Complete bcrypt password hashing with DEFAULT_COST (12 rounds) enterprise-grade security
@@ -295,10 +295,8 @@
 **Overview**: Complete implementation of centralized OBS management with secure authentication, real-time status monitoring, and bulk operations.
 
 #### **Phase 1: Backend Infrastructure ✅**
-**Files**: 
+**Files**:
 - `src-tauri/src/database/async_connection.rs` (NEW)
-- `src-tauri/src/plugins/obs/control_room_async.rs` (NEW)
-- `src-tauri/src/plugins/obs/manager.rs`
 - `src-tauri/src/tauri_commands.rs`
 - `src-tauri/src/main.rs`
 
@@ -398,9 +396,9 @@
 - ✅ Efficient event-driven system implemented
 - ✅ Status indicators properly reflect connection state
 
-### OBS Events Plugin Completion ✅
+### OBS Events (obws) ✅
 **Status**: COMPLETED  
-**Files**: `src-tauri/src/plugins/obs/events.rs`, `src-tauri/src/plugins/obs/core.rs`, `src-tauri/src/plugins/obs/manager.rs`
+**Files**: `src-tauri/src/plugins/obs_obws/operations.rs`, `src-tauri/src/tauri_commands_obws.rs` (where applicable)
 
 **Key Features**:
 - **Real Event Processing**: Integrated events plugin with core plugin WebSocket handling
@@ -425,9 +423,9 @@
 - ✅ Frontend event emission implemented
 - ✅ Error handling and logging complete
 
-### OBS Status Plugin Enhancement ✅
+### OBS Status (obws) ✅
 **Status**: COMPLETED  
-**Files**: `src-tauri/src/plugins/obs/status.rs`, `src-tauri/src/tauri_commands.rs`, `src-tauri/src/main.rs`
+**Files**: `src-tauri/src/plugins/obs_obws/operations.rs`, `src-tauri/src/tauri_commands_obws.rs`
 
 **Key Features**:
 - **Real System Metrics**: Enhanced CPU monitoring with real system calls using WMIC
@@ -484,9 +482,9 @@
 - ✅ Command registration successful
 - ✅ Ready for frontend integration
 
-### OBS Scenes Plugin Implementation ✅
+### OBS Scenes (obws) ✅
 **Status**: COMPLETED  
-**Files**: `src-tauri/src/plugins/obs/scenes.rs`, `src-tauri/src/tauri_commands.rs`
+**Files**: `src-tauri/src/plugins/obs_obws/operations.rs`, `src-tauri/src/tauri_commands_obws.rs`
 
 **Key Features**:
 - **Real OBS Integration**: Replaced placeholder with real WebSocket communication
@@ -508,9 +506,9 @@
 - ✅ Source management functional
 - ✅ Core plugin integration successful
 
-### OBS Settings Plugin Implementation ✅
+### OBS Settings (obws) ✅
 **Status**: COMPLETED  
-**Files**: `src-tauri/src/plugins/obs/settings.rs`, `src-tauri/src/tauri_commands.rs`
+**Files**: `src-tauri/src/plugins/obs_obws/operations.rs`, `src-tauri/src/tauri_commands_obws.rs`
 
 **Key Features**:
 - **Real OBS Integration**: Replaced placeholder with real WebSocket communication
@@ -536,7 +534,7 @@
 
 ### YouTube Streaming Integration ✅
 **Status**: COMPLETED  
-**Files**: `src-tauri/src/plugins/obs/settings.rs`, `src-tauri/src/tauri_commands.rs`
+**Files**: `src-tauri/src/tauri_commands.rs`, `src-tauri/src/main.rs`
 
 **Key Features**:
 - **Multi-Platform Support**: YouTube, Twitch, Facebook, Instagram, TikTok, Custom RTMP
@@ -589,7 +587,7 @@
 
 ### OBS Plugin Modularization ✅
 **Status**: COMPLETED  
-**Files**: `src-tauri/src/plugins/obs/`
+Replace this legacy section with obws-based plugin structure or mark as archived. (Legacy paths removed from code.)
 
 **Key Features**:
 - **Modular Architecture**: Split monolithic `plugin_obs.rs` into 8 focused modules

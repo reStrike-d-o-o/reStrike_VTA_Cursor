@@ -6,7 +6,7 @@ This document outlines the comprehensive plan to enhance the PSS events database
 ## Current Issues Identified
 
 ### 1. Event Table Not Populated
-- **Problem**: Event table in DockBar/SidebarBig shows no events
+- **Problem**: Event table in DockBar shows no events
 - **Root Cause**: `useLiveDataEvents` hook not used in main App component
 - **Current Flow**: PSS Events → Backend WebSocket (port 3001) → ❌ NO FRONTEND CONNECTION ❌ → Event Table (empty)
 - **Expected Flow**: PSS Events → Backend WebSocket (port 3001) → useLiveDataEvents hook → liveDataStore → Event Table

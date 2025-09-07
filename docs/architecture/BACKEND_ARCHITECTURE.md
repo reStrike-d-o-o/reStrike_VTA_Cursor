@@ -46,25 +46,14 @@ src-tauri/
 │   │   └── mod.rs           # Logging module
 │   ├── plugins/             # Plugin modules
 │   │   ├── mod.rs           # Plugin module registration
-│   │   ├── obs/             # Legacy OBS WebSocket integration (removed)
-│   │   │   ├── mod.rs       # OBS module registration
-│   │   │   ├── types.rs     # Shared types and data structures
-│   │   │   ├── manager.rs   # Plugin coordination
-│   │   │   ├── core.rs      # Connection management
-│   │   │   ├── recording.rs # Recording control
-│   │   │   ├── streaming.rs # Streaming control
-│   │   │   ├── scenes.rs    # Scene management
-│   │   │   ├── settings.rs  # Settings management
-│   │   │   ├── events.rs    # Event processing
-│   │   │   ├── status.rs    # Status aggregation
-│   │   │   ├── control_room.rs      # Legacy Control Room (rusqlite)
-│   │   │   └── control_room_async.rs # Async Control Room (sqlx)
-│   │   ├── obs_obws/        # NEW: OBS WebSocket integration using obws crate
-│   │   │   ├── mod.rs       # OBS obws module registration
-│   │   │   ├── types.rs     # OBS obws types and data structures
-│   │   │   ├── client.rs    # OBS obws client implementation
-│   │   │   ├── manager.rs   # OBS obws manager implementation
-│   │   │   └── operations.rs # OBS obws operations
+│   │   ├── obs_obws/        # OBS WebSocket integration using obws crate
+│   │   │   ├── mod.rs               # OBS obws module registration
+│   │   │   ├── types.rs             # OBS obws types and data structures
+│   │   │   ├── client.rs            # OBS obws client implementation
+│   │   │   ├── manager.rs           # OBS obws manager implementation
+│   │   │   ├── operations.rs        # OBS obws operations
+│   │   │   ├── path_generator.rs    # Recording path generator (Windows Videos, tournament/day)
+│   │   │   └── recording_events.rs  # PSS-driven recording event handler
 │   │   ├── plugin_udp.rs    # UDP protocol handling
 │   │   ├── plugin_database.rs # Database operations
 │   │   ├── plugin_cpu_monitor.rs # System monitoring
@@ -128,20 +117,13 @@ The OBS plugin system has been successfully modularized to improve maintainabili
 
 ### Implemented Modular Structure
 
-#### **Core Infrastructure**
-- **`obs/types.rs`**: Shared types, enums, and data structures
-- **`obs/manager.rs`**: Plugin coordination and cross-plugin communication
-- **`obs/core.rs`**: Connection management and WebSocket infrastructure
-
-#### **Feature Plugins**
-- **`obs/recording.rs`**: Recording start/stop, replay buffer, recording status
-- **`obs/streaming.rs`**: Streaming start/stop, streaming status monitoring
-- **`obs/scenes.rs`**: Scene management, switching, source manipulation ✅ **COMPLETED**
-
-#### **Support Plugins**
-- **`obs/settings.rs`**: OBS Studio settings, profile management, output settings ✅ **COMPLETED**
-- **`obs/events.rs`**: Event handling, routing, filtering, frontend broadcasting ⚠️ **PARTIALLY COMPLETED**
-- **`obs/status.rs`**: Status aggregation, monitoring, health checks ⚠️ **PARTIALLY COMPLETED**
+#### **obs_obws Structure**
+- **`obs_obws/types.rs`**: Shared types, enums, and data structures
+- **`obs_obws/manager.rs`**: Connection management and coordination
+- **`obs_obws/client.rs`**: Obws client wrapper and helpers
+- **`obs_obws/operations.rs`**: Operations (recording, streaming, scenes, settings)
+- **`obs_obws/path_generator.rs`**: Windows path generation, tournament/day folders
+- **`obs_obws/recording_events.rs`**: PSS-driven recording event handling
 
 ### OBS Scenes Plugin ✅ **COMPLETED**
 
@@ -152,8 +134,8 @@ The OBS plugin system has been successfully modularized to improve maintainabili
 - **Studio Mode Support**: `get_studio_mode()` and `set_studio_mode()` functionality
 - **Source Management**: `get_sources()`, `set_source_visibility()`, `get_source_visibility()`
 
-#### **Core Plugin Integration**
-- **WebSocket Communication**: All methods use `core_plugin.send_request()` for real OBS communication
+#### **Integration**
+- **WebSocket Communication**: All methods use obws client APIs
 - **Error Handling**: Comprehensive error handling for all scene operations
 - **Logging**: Detailed logging for debugging and monitoring
 - **Tauri Commands**: All scene-related Tauri commands implemented and registered

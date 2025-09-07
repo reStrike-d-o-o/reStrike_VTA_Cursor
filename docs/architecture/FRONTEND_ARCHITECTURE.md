@@ -285,8 +285,9 @@ ui/
 │   │   │   └── TabGroup.tsx # Tab group component
 │   │   ├── molecules/       # Compound components
 │   │   │   ├── EventTableSection.tsx # Event table section
+│   │   │   ├── MatchDetailsSection.tsx # Match information
 │   │   │   ├── LiveDataPanel.tsx # Live data display
-│   │   │   │   ├── CpuMonitoringSection.tsx # CPU monitoring
+│   │   │   ├── CpuMonitoringSection.tsx # CPU monitoring
 │   │   │   ├── LogDownloadList.tsx # Log download interface
 │   │   │   ├── FlagManagementPanel.tsx # Flag management interface
 │   │   │   ├── PasswordDialog.tsx # Authentication dialog
@@ -294,13 +295,17 @@ ui/
 │   │   │   ├── WebSocketManager.tsx # OBS WebSocket connection management
 │   │   │   ├── ControlRoom.tsx # Control Room STR management interface
 │   │   │   ├── PssDrawer.tsx # PSS drawer with tabs
-│   │   │   └── ObsDrawer.tsx # OBS drawer with tabs
+│   │   │   ├── ObsIntegrationPanel.tsx # OBS integration settings
+│   │   │   ├── IvrReplaySettings.tsx # IVR replay settings
+│   │   │   └── SettingsDrawerTabs.tsx # Settings drawer tabs
 │   │   ├── organisms/       # Complex components
+│   │   │   ├── AnalyticsDrawer.tsx # Analytics drawer
 │   │   │   ├── EventTable.tsx # Event table organism
-│   │   │   ├── MatchInfoSection.tsx # Match information
 │   │   │   ├── ObsWebSocketManager.tsx # OBS manager
-│   │   │   ├── SidebarSmall.tsx # Small sidebar
-│   │   │   └── SidebarBig.tsx # Large sidebar
+│   │   │   ├── Overlay.tsx # Overlay container
+│   │   │   ├── Settings.tsx # Settings panel
+│   │   │   ├── SidebarTest.tsx # Experimental sidebar
+│   │   │   └── VideoClips.tsx # Video clips browser
 │   │   └── layouts/         # Layout components
 │   │       ├── DockBar.tsx  # Main sidebar layout
 │   │       ├── AdvancedPanel.tsx # Advanced panel layout
@@ -315,7 +320,11 @@ ui/
 │   │   ├── index.ts         # Store exports
 │   │   ├── liveDataStore.ts # Live data state
 │   │   ├── obsStore.ts      # OBS state management
-│   │   └── pssMatchStore.ts # PSS match state
+│   │   ├── pssMatchStore.ts # PSS match state
+│   │   ├── settingsStore.ts # App/UI settings
+│   │   ├── simulationStore.ts # Simulation state
+│   │   ├── triggersStore.ts # Triggers state
+│   │   └── messageCenter.ts # Message/notifications
 │   ├── types/               # TypeScript types
 │   │   ├── index.ts         # Type exports
 │   │   └── tauri.d.ts       # Tauri type definitions
@@ -405,31 +414,39 @@ font-family: 'Inter', 'Segoe UI', 'Roboto', system-ui, sans-serif;
 
 #### Main Application Layout
 ```tsx
-// Main app layout with responsive design
+// Main app layout with single DockBar and AdvancedPanel toggle
 <div className="h-screen flex flex-col bg-gray-900">
   <div className="flex flex-1 min-h-0">
-    <div className="w-[350px] flex-shrink-0"> {/* DockBar */}
-      <DockBar />
+    {/* DockBar (left) - dynamic width from CSS var) */}
+    <div className="flex-shrink-0 relative z-20 w-[var(--dock-width)]">
+      <div className="absolute inset-0 w-[var(--dock-width)] bg-gradient-to-r from-gray-900/95 to-gray-800/90 backdrop-blur-sm border-r border-gray-700/50 shadow-2xl"></div>
+      <div className="relative z-10 h-full w-[var(--dock-width)]">
+        <DockBar />
+      </div>
     </div>
-    <div className="flex-1 min-h-0"> {/* Advanced Panel */}
-      <AdvancedPanel />
+    {/* AdvancedPanel (right) */}
+    <div className="flex-1 min-h-0 relative z-10">
+      {isAdvancedPanelOpen ? (
+        <>
+          <div className="absolute inset-0 bg-gradient-to-br from-gray-800/90 to-gray-900/95 backdrop-blur-sm shadow-inner"></div>
+          <div className="relative z-10 h-full">
+            <AdvancedPanel className="h-full" />
+          </div>
+        </>
+      ) : (
+        <div className="h-full flex items-center justify-center text-gray-500">
+          <div className="text-center">
+            <div className="text-2xl mb-2">Click "Advanced" to open settings</div>
+            <div className="text-sm">WebSocket connections, protocol settings, and more</div>
+          </div>
+        </div>
+      )}
     </div>
   </div>
 </div>
 ```
 
-#### DockBar Layout (Two-Column Design)
-```tsx
-// DockBar with SidebarSmall and SidebarBig
-<div className="flex flex-row h-full bg-black/60">
-  <div className="w-24 flex-shrink-0"> {/* SidebarSmall */}
-    <SidebarSmall />
-  </div>
-  <div className="flex-1 min-h-0"> {/* SidebarBig */}
-    <SidebarBig />
-  </div>
-</div>
-```
+<!-- Two-column DockBar design (SidebarSmall/SidebarBig) has been removed from the codebase and documentation. -->
 
 #### Advanced Panel Layout
 ```tsx

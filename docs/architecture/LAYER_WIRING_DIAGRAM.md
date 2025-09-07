@@ -69,14 +69,14 @@ This document provides a comprehensive wiring diagram showing the connections, d
 │                              REACT COMPONENT HIERARCHY                          │
 │                                                                                 │
 │  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐             │
-│  │   App.tsx       │───▶│   DockBar       │───▶│   SidebarSmall  │             │
-│  │   (Root)        │    │   (Layout)      │    │   (Organism)    │             │
+│  │   App.tsx       │───▶│   DockBar       │───▶│   EventTable    │             │
+│  │   (Root)        │    │   (Layout)      │    │   (Molecule)    │             │
 │  └─────────────────┘    └─────────────────┘    └─────────────────┘             │
-│           │                       │                       │                    │
-│           ▼                       ▼                       ▼                    │
-│  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐             │
-│  │ AdvancedPanel   │───▶│   SidebarBig    │───▶│   EventTable    │             │
-│  │   (Layout)      │    │   (Organism)    │    │   (Organism)    │             │
+│           │                       │                                            │
+│           ▼                       ▼                                            │
+│  ┌─────────────────┐    ┌─────────────────┐                                     │
+│  │ AdvancedPanel   │    │ MatchDetails    │                                     │
+│  │   (Layout)      │    │   Section       │                                     │
 │  └─────────────────┘    └─────────────────┘    └─────────────────┘             │
 │           │                       │                       │                    │
 │           ▼                       ▼                       ▼                    │
