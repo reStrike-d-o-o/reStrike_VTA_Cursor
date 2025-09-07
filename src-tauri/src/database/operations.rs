@@ -8,7 +8,7 @@ use crate::database::{
         UdpClientConnection, PssEventType, PssMatch, PssAthlete, PssMatchAthlete, PssEventV2, PssEventDetail, 
         PssScore, PssWarning, PssUnknownEvent, PssEventValidationRule, PssEventValidationResult, 
         PssEventStatistics, PssEventRecognitionHistory, ObsScene, OverlayTemplate, EventTrigger,
-        ObsConnection, ObsRecordingConfig, ObsRecordingSession, OvrProvider, OvrTournament, OvrCategory, OvrToLocalTournament
+        ObsConnection, ObsRecordingConfig, ObsRecordingSession, OvrProvider, OvrTournament, OvrCategory
     },
 };
 
@@ -3246,9 +3246,9 @@ impl OvrOperations {
 		let mut args: Vec<rusqlite::types::Value> = Vec::new();
 		if let Some(pid) = provider_id { sql.push_str(" AND provider_id = ?"); args.push(rusqlite::types::Value::from(pid)); }
 		if let Some(qq) = q { sql.push_str(" AND name LIKE ?"); args.push(rusqlite::types::Value::from(format!("%{}%", qq))); }
-		if let Some(f) = from { sql.push_str(" AND start_date >= ?"); args.push(rusqlite::types::Value::from(f)); }
-		if let Some(t_) = to { sql.push_str(" AND end_date <= ?"); args.push(rusqlite::types::Value::from(t_)); }
-		if let Some(cty) = country { sql.push_str(" AND country = ?"); args.push(rusqlite::types::Value::from(cty)); }
+		if let Some(f) = from { sql.push_str(" AND start_date >= ?"); args.push(rusqlite::types::Value::from(String::from(f))); }
+		if let Some(t_) = to { sql.push_str(" AND end_date <= ?"); args.push(rusqlite::types::Value::from(String::from(t_))); }
+		if let Some(cty) = country { sql.push_str(" AND country = ?"); args.push(rusqlite::types::Value::from(String::from(cty))); }
 		sql.push_str(" ORDER BY start_date DESC, created_at DESC");
 		if let Some(lim) = limit { sql.push_str(" LIMIT ?"); args.push(rusqlite::types::Value::from(lim)); }
 		if let Some(off) = offset { sql.push_str(" OFFSET ?"); args.push(rusqlite::types::Value::from(off)); }
@@ -3296,10 +3296,8 @@ impl OvrOperations {
 		let tx = conn.transaction()?;
 		let ovr: OvrTournament = tx.query_row("SELECT * FROM ovr_tournaments WHERE id = ?", params![ovr_tournament_id], |r| OvrTournament::from_row(r))?;
 		let t_name = local_name.unwrap_or(&ovr.name);
-		let t = Tournament::new(t_name.to_string(), 1, ovr.city.clone().unwrap_or_default(), ovr.country.clone().unwrap_or_default(), None);
-		let local_id = super::operations::TournamentOperations::create_tournament(&mut tx.unchecked_transaction()?, &t).unwrap_or_else(|_| 0);
-		// Fallback if unchecked_transaction path is problematic: insert on tx directly
-		let local_id = if local_id == 0 {
+		// Insert directly within this transaction to avoid connection borrowing issues
+		let local_id = {
 			tx.execute(
 				"INSERT INTO tournaments (name, duration_days, city, country, status, start_date, end_date, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
 				params![
@@ -3315,7 +3313,7 @@ impl OvrOperations {
 				]
 			)?;
 			tx.last_insert_rowid()
-		} else { local_id };
+		};
 		// Bridge
 		tx.execute(
 			"INSERT OR REPLACE INTO ovr_to_local_tournament (ovr_tournament_id, local_tournament_id, created_at) VALUES (?, ?, ?)",

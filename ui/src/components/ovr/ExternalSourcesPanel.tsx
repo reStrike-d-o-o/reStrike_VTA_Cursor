@@ -72,7 +72,11 @@ const ExternalSourcesPanel: React.FC = () => {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Toggle checked={p.enabled} onChange={(v)=>toggleEnabled(p, v)} aria-label={t('common.enabled','Enabled')} />
+                <Toggle
+                  checked={p.enabled}
+                  onChange={(e)=>toggleEnabled(p, e.currentTarget.checked)}
+                  aria-label={t('common.enabled','Enabled')}
+                />
                 <Button variant="secondary" onClick={() => remove(p.id)}>{t('common.remove','Remove')}</Button>
               </div>
             </div>
