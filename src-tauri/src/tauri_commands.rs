@@ -6234,8 +6234,9 @@ fn get_ovr_refresh_state() -> Arc<AsyncMutex<OvrRefreshStatus>> {
 
 #[tauri::command]
 pub async fn ovr_get_providers(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
-    let conn = app.database_plugin().get_connection().await?;
+    let mut conn = app.database_plugin().get_connection().await?;
     use crate::database::operations::OvrOperations as Ops;
+    let _ = Ops::ensure_default_providers(&mut *conn);
     match Ops::get_providers(&*conn) {
         Ok(items) => Ok(serde_json::json!({"success": true, "providers": items})),
         Err(e) => Ok(serde_json::json!({"success": false, "error": e.to_string()})),

@@ -29,7 +29,10 @@ const ExternalSourcesPanel: React.FC = () => {
       setLoading(true);
       setError(null);
       const res: any = await invoke('ovr_get_providers');
-      if (res?.success) setProviders(res.providers || []);
+      if (res?.success) {
+        setProviders(res.providers || []);
+        try { (window as any).ovrProviders = res.providers || []; } catch(_) {}
+      }
       else setError(res?.error || 'Failed to load providers');
     } catch (e: any) {
       setError(typeof e === 'string' ? e : (e?.message || 'Failed to load providers'));

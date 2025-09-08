@@ -3127,6 +3127,27 @@ pub struct OvrOperations;
 
 impl OvrOperations {
 	// Providers
+	pub fn ensure_default_providers(conn: &mut Connection) -> DatabaseResult<()> {
+		let now = Utc::now().to_rfc3339();
+		conn.execute(
+			"INSERT OR IGNORE INTO ovr_providers(name, base_url, enabled, created_at, updated_at) VALUES(?, ?, 1, ?, ?)",
+			params!["simplycompete", "https://www.simplycompete.com", &now, &now],
+		)?;
+		conn.execute(
+			"INSERT OR IGNORE INTO ovr_providers(name, base_url, enabled, created_at, updated_at) VALUES(?, ?, 1, ?, ?)",
+			params!["tpss", "https://www.tpss.eu", &now, &now],
+		)?;
+		conn.execute(
+			"INSERT OR IGNORE INTO ovr_providers(name, base_url, enabled, created_at, updated_at) VALUES(?, ?, 1, ?, ?)",
+			params!["martial.events", "https://martial.events", &now, &now],
+		)?;
+		conn.execute(
+			"INSERT OR IGNORE INTO ovr_providers(name, base_url, enabled, created_at, updated_at) VALUES(?, ?, 1, ?, ?)",
+			params!["etu", "https://europetaekwondo.org", &now, &now],
+		)?;
+		Ok(())
+	}
+
 	pub fn get_providers(conn: &Connection) -> DatabaseResult<Vec<OvrProvider>> {
 		let mut stmt = conn.prepare("SELECT * FROM ovr_providers ORDER BY name")?;
 		let res = stmt.query_map([], |row| OvrProvider::from_row(row))?

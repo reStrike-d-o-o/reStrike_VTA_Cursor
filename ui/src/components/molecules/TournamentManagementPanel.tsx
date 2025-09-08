@@ -693,11 +693,10 @@ const TournamentManagementPanel: React.FC = () => {
               <label className="text-xs text-gray-400" htmlFor="ovr-provider">{t('common.provider','Provider')}</label>
               <select id="ovr-provider" aria-label={t('common.provider','Provider')} className="text-xs bg-gray-900 border border-gray-700 rounded px-2 py-1 text-gray-200" value={ovrProvider} onChange={(e)=>setOvrProvider(e.target.value)}>
                 <option value="all">{t('common.all','All providers')}</option>
-                {/* Provider IDs will be numeric; we leave dynamic provider list to future enhancement */}
-                <option value="1">SimplyCompete</option>
-                <option value="2">TPSS</option>
-                <option value="3">Martial.Events</option>
-                <option value="4">ETU</option>
+                {/* Dynamically map providers if available via window cache populated by ExternalSourcesPanel load */}
+                {(window as any)?.ovrProviders?.map?.((p: any) => (
+                  <option key={p.id} value={String(p.id)}>{p.name}</option>
+                ))}
               </select>
             </div>
             <Button onClick={loadOvrTournaments} className="bg-gray-600 hover:bg-gray-700 text-white">{t('common.refresh','Refresh')}</Button>

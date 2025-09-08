@@ -87,7 +87,16 @@ impl OvrScraperPlugin {
         let html = self.fetch_html(&url).await?;
         let mut items = self.parse_jsonld_block(provider_id, &html);
         if items.is_empty() {
-            items.extend(self.parse_generic_anchors(provider_id, &html, &url));
+            // Also probe detail links for richer data
+            let anchors = self.parse_generic_anchors(provider_id, &html, &url);
+            for a in anchors.into_iter().take(50) {
+                if let Some(detail_url) = a.url.clone() {
+                    if let Ok(detail_html) = self.fetch_html(&detail_url).await {
+                        let mut enriched = self.parse_jsonld_block(provider_id, &detail_html);
+                        if !enriched.is_empty() { items.extend(enriched); }
+                    }
+                }
+            }
         }
         Ok(items)
     }
@@ -110,18 +119,38 @@ impl OvrScraperPlugin {
         let html = self.fetch_html(&url).await?;
         let mut items = self.parse_jsonld_block(provider_id, &html);
         if items.is_empty() {
-            items.extend(self.parse_martial_events_html(provider_id, &html, &url));
+            let anchors = self.parse_martial_events_html(provider_id, &html, &url);
+            // Optionally follow a few detail pages to enrich
+            for a in anchors.iter().take(30) {
+                if let Some(detail_url) = a.url.clone() {
+                    if let Ok(detail_html) = self.fetch_html(&detail_url).await {
+                        let mut enriched = self.parse_jsonld_block(provider_id, &detail_html);
+                        if !enriched.is_empty() { items.extend(enriched); }
+                    }
+                }
+            }
+            if items.is_empty() { items.extend(anchors); }
         }
         Ok(items)
     }
     async fn fetch_html(&self, url: &str) -> Result<String, String> {
         let client = reqwest::Client::builder()
-            .user_agent("reStrike-VTA/1.0")
+            .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
             .connect_timeout(Duration::from_secs(10))
             .timeout(Duration::from_secs(20))
             .redirect(reqwest::redirect::Policy::limited(10))
             .build().map_err(|e| e.to_string())?;
-        let resp = client.get(url).send().await.map_err(|e| e.to_string())?;
+        let resp = client
+            .get(url)
+            .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8")
+            .header("Accept-Language", "en-US,en;q=0.9")
+            .header("Cache-Control", "no-cache")
+            .header("Pragma", "no-cache")
+            .header("Upgrade-Insecure-Requests", "1")
+            .header("Referer", url)
+            .send()
+            .await
+            .map_err(|e| e.to_string())?;
         if !resp.status().is_success() { return Err(format!("status {}", resp.status())); }
         let body = resp.text().await.map_err(|e| e.to_string())?;
         Ok(body)
@@ -181,9 +210,19 @@ impl OvrScraperPlugin {
             .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
             .map(|dt| dt.with_timezone(&Utc));
         let (city, country) = if let Some(loc) = v.get("location") {
-            let city = loc.get("addressLocality").and_then(|s| s.as_str()).map(|s| s.to_string());
-            let country = loc.get("addressCountry").and_then(|s| s.as_str()).map(|s| s.to_string());
-            (city, country)
+            if let Some(obj) = loc.as_object() {
+                // Try direct fields
+                let city = obj.get("addressLocality").and_then(|s| s.as_str()).map(|s| s.to_string());
+                let country = obj.get("addressCountry").and_then(|s| s.as_str()).map(|s| s.to_string());
+                if city.is_some() || country.is_some() { (city, country) } else {
+                    // Try nested address object
+                    if let Some(addr) = obj.get("address").and_then(|a| a.as_object()) {
+                        let city = addr.get("addressLocality").and_then(|s| s.as_str()).map(|s| s.to_string());
+                        let country = addr.get("addressCountry").and_then(|s| s.as_str()).map(|s| s.to_string());
+                        (city, country)
+                    } else { (None, None) }
+                }
+            } else { (None, None) }
         } else { (None, None) };
         let url = v.get("url").and_then(|s| s.as_str()).map(|s| s.to_string());
         let status = v.get("eventStatus").or_else(|| v.get("status")).and_then(|s| s.as_str()).map(|s| s.to_string());
