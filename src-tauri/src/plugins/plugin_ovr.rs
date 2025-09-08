@@ -119,7 +119,8 @@ impl OvrScraperPlugin {
     }
 
     async fn fetch_tpss(&self, provider_id: i64, base_url: Option<String>, rate_limit_ms: i64) -> Result<Vec<OvrTournament>, String> {
-        let base = base_url.unwrap_or_else(|| "https://www.tpss.eu".to_string());
+        let base_in = base_url.unwrap_or_else(|| "https://www.tpss.eu".to_string());
+        let base = Self::base_origin(&base_in);
         let mut out: Vec<OvrTournament> = Vec::new();
         for path in ["/liveresults.asp?AR=1", "/liveresults.asp?AR=2", "/Results.asp?YR=All"] {
             let url = format!("{}{}", base, path);
@@ -347,6 +348,20 @@ impl OvrScraperPlugin {
         if href.starts_with("http://") || href.starts_with("https://") { return href.to_string(); }
         let sep = if href.starts_with('/') { "" } else { "/" };
         format!("{}{}{}", base.trim_end_matches('/'), sep, href)
+    }
+
+    fn base_origin(url: &str) -> String {
+        // Extract scheme://host from provided URL
+        if let Some(pos) = url.find("://") {
+            let rest = &url[pos+3..];
+            if let Some(slash) = rest.find('/') {
+                format!("{}://{}", &url[..pos], &rest[..slash])
+            } else {
+                url.to_string()
+            }
+        } else {
+            url.to_string()
+        }
     }
 
     fn make_simple_tournament(&self, provider_id: i64, name: &str, url: Option<String>) -> OvrTournament {

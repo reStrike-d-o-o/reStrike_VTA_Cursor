@@ -6337,19 +6337,24 @@ pub async fn ovr_start_refresh_all(app: State<'_, Arc<App>>) -> Result<serde_jso
                 let mut guard = task_store.lock().await;
                 *guard = Some(handle);
             }
-            // Await completion or cancellation
-            let finished = {
-                let task_store = get_ovr_refresh_task();
-                let mut guard = task_store.lock().await;
-                if let Some(h) = guard.take() { h.await.is_ok() } else { true }
-            };
-            if !finished {
-                // Cancelled
-                break;
+            // Poll for cancellation while waiting
+            loop {
+                {
+                    let st = state.lock().await;
+                    if st.cancelled { break; }
+                }
+                let is_done = {
+                    let task_store = get_ovr_refresh_task();
+                    let guard = task_store.lock().await;
+                    if let Some(h) = guard.as_ref() { h.is_finished() } else { true }
+                };
+                if is_done { break; }
+                tokio::time::sleep(std::time::Duration::from_millis(150)).await;
             }
             {
                 let mut st = state.lock().await;
                 st.processed = st.processed.saturating_add(1);
+                if st.cancelled { st.active = false; st.current_provider = None; break; }
             }
         }
         {
