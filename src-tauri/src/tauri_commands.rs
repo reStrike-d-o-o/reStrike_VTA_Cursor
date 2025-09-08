@@ -6437,6 +6437,16 @@ pub async fn ovr_remove_provider(id: i64, app: State<'_, Arc<App>>) -> Result<se
 }
 
 #[tauri::command]
+pub async fn ovr_clear_all_tournaments(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    let mut conn = app.database_plugin().get_connection().await?;
+    use crate::database::operations::OvrOperations as Ops;
+    match Ops::clear_all_tournaments(&mut *conn) {
+        Ok(_) => Ok(serde_json::json!({"success": true})),
+        Err(e) => Ok(serde_json::json!({"success": false, "error": e.to_string()})),
+    }
+}
+
+#[tauri::command]
 pub async fn ovr_list_tournaments(
     app: State<'_, Arc<App>>,
     provider_id: Option<i64>,

@@ -508,6 +508,7 @@ async fn main() -> AppResult<()> {
             tauri_commands::ovr_promote_tournament,
             tauri_commands::ovr_refresh_all,
             tauri_commands::ovr_refresh_provider,
+            tauri_commands::ovr_clear_all_tournaments,
             tauri_commands::ovr_start_refresh_all,
             tauri_commands::ovr_start_refresh_provider,
             tauri_commands::ovr_get_refresh_status,

@@ -3185,6 +3185,13 @@ impl OvrOperations {
 		Ok(())
 	}
 
+	pub fn clear_all_tournaments(conn: &mut Connection) -> DatabaseResult<()> {
+		conn.execute("DELETE FROM ovr_categories", [])?;
+		conn.execute("DELETE FROM ovr_to_local_tournament", [])?;
+		conn.execute("DELETE FROM ovr_tournaments", [])?;
+		Ok(())
+	}
+
 	pub fn set_provider_refresh_status(conn: &mut Connection, id: i64, status: Option<&str>, err: Option<&str>) -> DatabaseResult<()> {
 		conn.execute(
 			"UPDATE ovr_providers SET last_refreshed_at = ?, last_status = ?, last_error = ?, updated_at = ? WHERE id = ?",

@@ -71,6 +71,7 @@ const TournamentManagementPanel: React.FC = () => {
   const [ovrFrom, setOvrFrom] = useState('');
   const [ovrTo, setOvrTo] = useState('');
   const [ovrProvider, setOvrProvider] = useState<string>('all');
+  const [providers, setProviders] = useState<any[]>([]);
   
   // Form states
   const [showAddForm, setShowAddForm] = useState(false);
@@ -101,6 +102,13 @@ const TournamentManagementPanel: React.FC = () => {
   // Load tournaments on component mount
   useEffect(() => {
     loadTournaments();
+    // Load providers for dynamic filter
+    (async () => {
+      try {
+        const res: any = await invoke('ovr_get_providers');
+        if (res?.success) setProviders(res.providers || []);
+      } catch (_) {}
+    })();
   }, []);
 
   // Load tournament days when a tournament is selected
@@ -693,13 +701,13 @@ const TournamentManagementPanel: React.FC = () => {
               <label className="text-xs text-gray-400" htmlFor="ovr-provider">{t('common.provider','Provider')}</label>
               <select id="ovr-provider" aria-label={t('common.provider','Provider')} className="text-xs bg-gray-900 border border-gray-700 rounded px-2 py-1 text-gray-200" value={ovrProvider} onChange={(e)=>setOvrProvider(e.target.value)}>
                 <option value="all">{t('common.all','All providers')}</option>
-                {/* Dynamically map providers if available via window cache populated by ExternalSourcesPanel load */}
-                {(window as any)?.ovrProviders?.map?.((p: any) => (
+                {providers.map((p: any) => (
                   <option key={p.id} value={String(p.id)}>{p.name}</option>
                 ))}
               </select>
             </div>
             <Button onClick={loadOvrTournaments} className="bg-gray-600 hover:bg-gray-700 text-white">{t('common.refresh','Refresh')}</Button>
+            <Button onClick={async ()=>{ try { const res: any = await invoke('ovr_clear_all_tournaments'); if (res?.success) { setOvrTournaments([]); try { window.dispatchEvent(new CustomEvent('ovr:refreshed')); } catch(_) {} } } catch(_) {} }} className="bg-red-600 hover:bg-red-700 text-white">{t('ovr.clear_all','Clear imported')}</Button>
           </div>
         </div>
 

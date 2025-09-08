@@ -84,7 +84,23 @@ impl OvrScraperPlugin {
 
     async fn fetch_simplycompete(&self, provider_id: i64, base_url: Option<String>) -> Result<Vec<OvrTournament>, String> {
         let url = base_url.unwrap_or_else(|| "https://worldtkd.simplycompete.com/events?eventType=Tournament&invitationStatus=all&da&isArchived=false&pageNumber=1&itemsPerPage=1000".to_string());
-        let html = self.fetch_html(&url).await?;
+        // Try with main URL; if forbidden, attempt without some query flags and with alternate path
+        let html = match self.fetch_html(&url).await {
+            Ok(h) => h,
+            Err(e) if e.contains("403") => {
+                // Fallback URL variants commonly used on SimplyCompete
+                let variants = [
+                    "https://worldtkd.simplycompete.com/events",
+                    "https://worldtkd.simplycompete.com/",
+                ];
+                let mut ok: Option<String> = None;
+                for v in variants.iter() {
+                    if let Ok(h) = self.fetch_html(v).await { ok = Some(h); break; }
+                }
+                ok.ok_or_else(|| e)?
+            }
+            Err(e) => return Err(e),
+        };
         let mut items = self.parse_jsonld_block(provider_id, &html);
         if items.is_empty() {
             // Also probe detail links for richer data
@@ -92,7 +108,7 @@ impl OvrScraperPlugin {
             for a in anchors.into_iter().take(50) {
                 if let Some(detail_url) = a.url.clone() {
                     if let Ok(detail_html) = self.fetch_html(&detail_url).await {
-                        let mut enriched = self.parse_jsonld_block(provider_id, &detail_html);
+                        let enriched = self.parse_jsonld_block(provider_id, &detail_html);
                         if !enriched.is_empty() { items.extend(enriched); }
                     }
                 }
@@ -124,7 +140,7 @@ impl OvrScraperPlugin {
             for a in anchors.iter().take(30) {
                 if let Some(detail_url) = a.url.clone() {
                     if let Ok(detail_html) = self.fetch_html(&detail_url).await {
-                        let mut enriched = self.parse_jsonld_block(provider_id, &detail_html);
+                        let enriched = self.parse_jsonld_block(provider_id, &detail_html);
                         if !enriched.is_empty() { items.extend(enriched); }
                     }
                 }
