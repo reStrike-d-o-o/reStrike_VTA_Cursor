@@ -144,7 +144,7 @@ const TournamentManagementPanel: React.FC = () => {
         from: ovrFrom ? ovrFrom : null,
         to: ovrTo ? ovrTo : null,
         country: ovrCountry ? ovrCountry : null,
-        limit: 100,
+        limit: 1000,
         offset: 0,
       };
       const data: any = await invoke('ovr_list_tournaments', params);
@@ -714,39 +714,47 @@ const TournamentManagementPanel: React.FC = () => {
         {ovrTournaments.length === 0 ? (
           <div className="text-center py-8 text-gray-400">{t('ovr.scraped.none','No external tournaments loaded yet. Use External sources to update.')}</div>
         ) : (
-          <div className="max-h-[480px] overflow-auto border border-gray-700 rounded">
-            <table className="min-w-full text-left text-sm text-gray-200">
-              <thead className="theme-surface-2 sticky top-0 z-10">
-                <tr>
-                  <th className="px-3 py-2 font-semibold">{t('common.name','Name')}</th>
-                  <th className="px-3 py-2 font-semibold">{t('common.city','City')}</th>
-                  <th className="px-3 py-2 font-semibold">{t('common.country','Country')}</th>
-                  <th className="px-3 py-2 font-semibold">{t('common.start','Start')}</th>
-                  <th className="px-3 py-2 font-semibold">{t('common.end','End')}</th>
-                  <th className="px-3 py-2 font-semibold">URL</th>
-                  <th className="px-3 py-2 font-semibold">{t('common.actions','Actions')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {ovrTournaments.map((ot: any) => (
-                  <tr key={ot.id} className="hover:bg-blue-900/10">
-                    <td className="px-3 py-2 whitespace-nowrap">{ot.name}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{ot.city || ''}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{ot.country || ''}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{ot.start_date ? formatDate(ot.start_date) : ''}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{ot.end_date ? formatDate(ot.end_date) : ''}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      {ot.url ? (
-                        <a className="text-blue-400 hover:text-blue-300 underline" href={ot.url} target="_blank" rel="noreferrer">{t('common.open','Open')}</a>
-                      ) : ''}
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={()=>invoke('ovr_promote_tournament', { ovr_tournament_id: ot.id, local_name: ot.name })}>{t('ovr.promote','Promote')}</Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="w-full">
+            <div className="w-[1360px] border border-gray-700 rounded overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-left text-sm text-gray-200">
+                  <thead className="bg-[#101820] sticky top-0 z-10">
+                    <tr>
+                      <th className="px-3 py-2 font-semibold whitespace-nowrap border-b border-gray-700">{t('common.name','Name')}</th>
+                      <th className="px-3 py-2 font-semibold whitespace-nowrap border-b border-gray-700">{t('common.city','City')}</th>
+                      <th className="px-3 py-2 font-semibold whitespace-nowrap border-b border-gray-700">{t('common.country','Country')}</th>
+                      <th className="px-3 py-2 font-semibold whitespace-nowrap border-b border-gray-700">{t('common.start','Start')}</th>
+                      <th className="px-3 py-2 font-semibold whitespace-nowrap border-b border-gray-700">{t('common.end','End')}</th>
+                      <th className="px-3 py-2 font-semibold whitespace-nowrap border-b border-gray-700">URL</th>
+                      <th className="px-3 py-2 font-semibold whitespace-nowrap border-b border-gray-700">{t('common.actions','Actions')}</th>
+                    </tr>
+                  </thead>
+                </table>
+              </div>
+              <div className="max-h-64 overflow-y-auto overflow-x-auto">
+                <table className="min-w-full text-left text-sm text-gray-200">
+                  <tbody>
+                    {ovrTournaments.map((ot: any) => (
+                      <tr key={ot.id} className="hover:bg-blue-900/10">
+                        <td className="px-3 py-2 whitespace-nowrap border-b border-gray-700/30">{ot.name}</td>
+                        <td className="px-3 py-2 whitespace-nowrap border-b border-gray-700/30">{ot.city || ''}</td>
+                        <td className="px-3 py-2 whitespace-nowrap border-b border-gray-700/30">{ot.country || ''}</td>
+                        <td className="px-3 py-2 whitespace-nowrap border-b border-gray-700/30">{ot.start_date ? formatDate(ot.start_date) : ''}</td>
+                        <td className="px-3 py-2 whitespace-nowrap border-b border-gray-700/30">{ot.end_date ? formatDate(ot.end_date) : ''}</td>
+                        <td className="px-3 py-2 whitespace-nowrap border-b border-gray-700/30">
+                          {ot.url ? (
+                            <a className="text-blue-400 hover:text-blue-300 underline" href={ot.url} target="_blank" rel="noreferrer">{t('common.open','Open')}</a>
+                          ) : ''}
+                        </td>
+                        <td className="px-3 py-2 whitespace-nowrap border-b border-gray-700/30">
+                          <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={()=>invoke('ovr_promote_tournament', { ovr_tournament_id: ot.id, local_name: ot.name })}>{t('ovr.promote','Promote')}</Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         )}
       </div>

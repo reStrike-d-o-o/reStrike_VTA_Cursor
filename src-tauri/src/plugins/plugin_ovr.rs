@@ -57,16 +57,17 @@ impl OvrScraperPlugin {
                 .map_err(|e| e.to_string())?;
         }
         let name_lc = provider.name.to_lowercase();
+        let rate_limit_ms = provider.rate_limit_ms;
 
         // Adapters: scrape specific sites
         let tournaments: Vec<OvrTournament> = if name_lc.contains("simply") {
-            self.fetch_simplycompete(provider.id.unwrap(), provider.base_url.clone()).await?
+            self.fetch_simplycompete(provider.id.unwrap(), provider.base_url.clone(), rate_limit_ms).await?
         } else if name_lc.contains("tpss") {
-            self.fetch_tpss(provider.id.unwrap(), provider.base_url.clone()).await?
+            self.fetch_tpss(provider.id.unwrap(), provider.base_url.clone(), rate_limit_ms).await?
         } else if name_lc.contains("martial") {
-            self.fetch_martial_events(provider.id.unwrap(), provider.base_url.clone()).await?
+            self.fetch_martial_events(provider.id.unwrap(), provider.base_url.clone(), rate_limit_ms).await?
         } else if name_lc.contains("etu") || name_lc.contains("europe") {
-            self.fetch_etu(provider.id.unwrap(), provider.base_url.clone()).await?
+            self.fetch_etu(provider.id.unwrap(), provider.base_url.clone(), rate_limit_ms).await?
         } else {
             Vec::new()
         };
@@ -82,10 +83,10 @@ impl OvrScraperPlugin {
         Ok(())
     }
 
-    async fn fetch_simplycompete(&self, provider_id: i64, base_url: Option<String>) -> Result<Vec<OvrTournament>, String> {
+    async fn fetch_simplycompete(&self, provider_id: i64, base_url: Option<String>, rate_limit_ms: i64) -> Result<Vec<OvrTournament>, String> {
         let url = base_url.unwrap_or_else(|| "https://worldtkd.simplycompete.com/events?eventType=Tournament&invitationStatus=all&da&isArchived=false&pageNumber=1&itemsPerPage=1000".to_string());
         // Try with main URL; if forbidden, attempt without some query flags and with alternate path
-        let html = match self.fetch_html(&url).await {
+        let html = match self.fetch_html_rl(&url, rate_limit_ms).await {
             Ok(h) => h,
             Err(e) if e.contains("403") => {
                 // Fallback URL variants commonly used on SimplyCompete
@@ -95,7 +96,7 @@ impl OvrScraperPlugin {
                 ];
                 let mut ok: Option<String> = None;
                 for v in variants.iter() {
-                    if let Ok(h) = self.fetch_html(v).await { ok = Some(h); break; }
+                    if let Ok(h) = self.fetch_html_rl(v, rate_limit_ms).await { ok = Some(h); break; }
                 }
                 ok.ok_or_else(|| e)?
             }
@@ -107,7 +108,7 @@ impl OvrScraperPlugin {
             let anchors = self.parse_generic_anchors(provider_id, &html, &url);
             for a in anchors.into_iter().take(50) {
                 if let Some(detail_url) = a.url.clone() {
-                    if let Ok(detail_html) = self.fetch_html(&detail_url).await {
+                    if let Ok(detail_html) = self.fetch_html_rl(&detail_url, rate_limit_ms).await {
                         let enriched = self.parse_jsonld_block(provider_id, &detail_html);
                         if !enriched.is_empty() { items.extend(enriched); }
                     }
@@ -117,29 +118,42 @@ impl OvrScraperPlugin {
         Ok(items)
     }
 
-    async fn fetch_tpss(&self, provider_id: i64, base_url: Option<String>) -> Result<Vec<OvrTournament>, String> {
+    async fn fetch_tpss(&self, provider_id: i64, base_url: Option<String>, rate_limit_ms: i64) -> Result<Vec<OvrTournament>, String> {
         let base = base_url.unwrap_or_else(|| "https://www.tpss.eu".to_string());
         let mut out: Vec<OvrTournament> = Vec::new();
         for path in ["/liveresults.asp?AR=1", "/liveresults.asp?AR=2", "/Results.asp?YR=All"] {
             let url = format!("{}{}", base, path);
-            if let Ok(html) = self.fetch_html(&url).await {
+            if let Ok(html) = self.fetch_html_rl(&url, rate_limit_ms).await {
                 let parsed = self.parse_tpss_html(provider_id, &html, &base);
-                out.extend(parsed);
+                // Enrich from detail page
+                for mut t in parsed {
+                    if let Some(ref detail) = t.url {
+                        if let Ok(dhtml) = self.fetch_html_rl(detail, rate_limit_ms).await {
+                            if let Some((city, country, start, end)) = Self::parse_tpss_detail(&dhtml) {
+                                if city.is_some() { t.city = city; }
+                                if country.is_some() { t.country = country; }
+                                if start.is_some() { t.start_date = start; }
+                                if end.is_some() { t.end_date = end; }
+                            }
+                        }
+                    }
+                    out.push(t);
+                }
             }
         }
         Ok(out)
     }
 
-    async fn fetch_martial_events(&self, provider_id: i64, base_url: Option<String>) -> Result<Vec<OvrTournament>, String> {
+    async fn fetch_martial_events(&self, provider_id: i64, base_url: Option<String>, rate_limit_ms: i64) -> Result<Vec<OvrTournament>, String> {
         let url = base_url.unwrap_or_else(|| "https://www.martial.events/en".to_string());
-        let html = self.fetch_html(&url).await?;
+        let html = self.fetch_html_rl(&url, rate_limit_ms).await?;
         let mut items = self.parse_jsonld_block(provider_id, &html);
         if items.is_empty() {
             let anchors = self.parse_martial_events_html(provider_id, &html, &url);
             // Optionally follow a few detail pages to enrich
             for a in anchors.iter().take(30) {
                 if let Some(detail_url) = a.url.clone() {
-                    if let Ok(detail_html) = self.fetch_html(&detail_url).await {
+                    if let Ok(detail_html) = self.fetch_html_rl(&detail_url, rate_limit_ms).await {
                         let enriched = self.parse_jsonld_block(provider_id, &detail_html);
                         if !enriched.is_empty() { items.extend(enriched); }
                     }
@@ -170,6 +184,11 @@ impl OvrScraperPlugin {
         if !resp.status().is_success() { return Err(format!("status {}", resp.status())); }
         let body = resp.text().await.map_err(|e| e.to_string())?;
         Ok(body)
+    }
+
+    async fn fetch_html_rl(&self, url: &str, delay_ms: i64) -> Result<String, String> {
+        if delay_ms > 0 { tokio::time::sleep(Duration::from_millis(delay_ms as u64)).await; }
+        self.fetch_html(url).await
     }
 
     fn parse_jsonld_block(&self, provider_id: i64, body: &str) -> Vec<OvrTournament> {
@@ -395,14 +414,48 @@ impl OvrScraperPlugin {
         out
     }
 
-    async fn fetch_etu(&self, provider_id: i64, base_url: Option<String>) -> Result<Vec<OvrTournament>, String> {
-        let url = base_url.unwrap_or_else(|| "https://europetaekwondo.org/events/list/".to_string());
-        let html = self.fetch_html(&url).await?;
-        let mut items = self.parse_jsonld_block(provider_id, &html);
-        if items.is_empty() {
-            items.extend(self.parse_generic_anchors(provider_id, &html, &url));
+    fn parse_tpss_detail(html: &str) -> Option<(Option<String>, Option<String>, Option<chrono::DateTime<Utc>>, Option<chrono::DateTime<Utc>>)> {
+        let city = Regex::new(r"City[^\[]*\[([^\(\]]+)(?:\(([^\)]+)\))?").ok()
+            .and_then(|re| re.captures(html).map(|c| (c.get(1).map(|m| m.as_str().trim().to_string()), c.get(2).map(|m| m.as_str().trim().to_string()))));
+        let (city_val, country_val) = match city { Some((c, cn)) => (c, cn), None => (None, None) };
+        let date_cap = Regex::new(r"Eventdate\s*(\d{2}-\d{2}-\d{4})(?:\s*[-–]\s*(\d{2}-\d{2}-\d{4}))?").ok()
+            .and_then(|re| re.captures(html));
+        let (start, end) = if let Some(dc) = date_cap { let sd = dc.get(1).map(|m| m.as_str()); let ed = dc.get(2).map(|m| m.as_str()); (Self::parse_dmy_to_utc(sd), Self::parse_dmy_to_utc(ed)) } else { (None, None) };
+        if city_val.is_none() && country_val.is_none() && start.is_none() && end.is_none() { None } else { Some((city_val, country_val, start, end)) }
+    }
+
+    fn parse_dmy_to_utc(s: Option<&str>) -> Option<chrono::DateTime<Utc>> {
+        if let Some(src) = s { if let Ok(nd) = chrono::NaiveDate::parse_from_str(src, "%d-%m-%Y") { let dt = nd.and_hms_opt(0, 0, 0)?.and_utc(); return Some(dt); } }
+        None
+    }
+
+    fn find_next_page_url(html: &str, current_url: &str) -> Option<String> {
+        let re = Regex::new(r#"<a[^>]+rel=\"next\"[^>]+href=\"([^\"]+)\""#).ok()?;
+        if let Some(c) = re.captures(html) { return Some(Self::absolute_url(current_url, c.get(1)?.as_str())); }
+        let re2 = Regex::new(r#"<a[^>]+class=\"[^\"]*next[^\"]*\"[^>]+href=\"([^\"]+)\""#).ok()?;
+        if let Some(c) = re2.captures(html) { return Some(Self::absolute_url(current_url, c.get(1)?.as_str())); }
+        None
+    }
+
+    async fn fetch_etu(&self, provider_id: i64, base_url: Option<String>, rate_limit_ms: i64) -> Result<Vec<OvrTournament>, String> {
+        let base = base_url.unwrap_or_else(|| "https://europetaekwondo.org/events/".to_string());
+        let mut collected: Vec<OvrTournament> = Vec::new();
+        let mut page_url = base.clone();
+        for _ in 0..10 {
+            let html = self.fetch_html_rl(&page_url, rate_limit_ms).await?;
+            let anchors = self.parse_generic_anchors(provider_id, &html, &page_url);
+            let mut added = false;
+            for a in anchors.iter().take(50) {
+                if let Some(detail_url) = a.url.clone() {
+                    if let Ok(detail_html) = self.fetch_html_rl(&detail_url, rate_limit_ms).await {
+                        let enriched = self.parse_jsonld_block(provider_id, &detail_html);
+                        if !enriched.is_empty() { collected.extend(enriched); added = true; }
+                    }
+                }
+            }
+            if let Some(next) = Self::find_next_page_url(&html, &page_url) { page_url = next; if !added { break; } } else { break; }
         }
-        Ok(items)
+        Ok(collected)
     }
 }
 
