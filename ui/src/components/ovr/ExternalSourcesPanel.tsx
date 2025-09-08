@@ -21,6 +21,8 @@ const ExternalSourcesPanel: React.FC = () => {
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [editing, setEditing] = React.useState<Record<number, Provider>>({});
+  const [progress, setProgress] = React.useState<{active:boolean; total:number; processed:number; current?:string|null; cancelled:boolean; last_error?:string|null}>({active:false,total:0,processed:0,current:null,cancelled:false,last_error:null});
+  const [showProgress, setShowProgress] = React.useState(false);
 
   const load = async () => {
     try {
@@ -48,22 +50,55 @@ const ExternalSourcesPanel: React.FC = () => {
   const refreshProvider = async (id?: number) => {
     if (id == null) return;
     try {
-      setLoading(true);
-      await invoke('ovr_refresh_provider', { provider_id: id });
-      await load();
-      try { window.dispatchEvent(new CustomEvent('ovr:refreshed')); } catch (_) {}
+      setShowProgress(true);
+      setProgress({active:true,total:1,processed:0,current:null,cancelled:false,last_error:null});
+      await invoke('ovr_start_refresh_provider', { provider_id: id });
+      pollProgress();
     } catch (_) {
-    } finally { setLoading(false); }
+    }
   };
 
   const refreshAll = async () => {
     try {
-      setLoading(true);
-      await invoke('ovr_refresh_all');
-      await load();
-      try { window.dispatchEvent(new CustomEvent('ovr:refreshed')); } catch (_) {}
+      setShowProgress(true);
+      setProgress({active:true,total:0,processed:0,current:null,cancelled:false,last_error:null});
+      await invoke('ovr_start_refresh_all');
+      pollProgress();
     } catch (_) {
-    } finally { setLoading(false); }
+    }
+  };
+
+  const pollProgress = async () => {
+    let cancelled = false;
+    const tick = async () => {
+      try {
+        const res: any = await invoke('ovr_get_refresh_status');
+        const st = res?.status || {};
+        setProgress({
+          active: !!st.active,
+          total: st.total ?? 0,
+          processed: st.processed ?? 0,
+          current: st.current_provider ?? null,
+          cancelled: !!st.cancelled,
+          last_error: st.last_error ?? null
+        });
+        if (!st.active) {
+          setShowProgress(false);
+          await load();
+          try { window.dispatchEvent(new CustomEvent('ovr:refreshed')); } catch (_) {}
+          return;
+        }
+        if (!cancelled) setTimeout(tick, 800);
+      } catch (_) {
+        if (!cancelled) setTimeout(tick, 1000);
+      }
+    };
+    tick();
+    return () => { cancelled = true; };
+  };
+
+  const cancelRefresh = async () => {
+    try { await invoke('ovr_cancel_refresh'); } catch(_) {}
   };
 
   const remove = async (id?: number) => {
@@ -101,6 +136,21 @@ const ExternalSourcesPanel: React.FC = () => {
             <Button variant="primary" onClick={refreshAll} disabled={loading}>{t('common.update_all','Update all')}</Button>
           </div>
         </div>
+        {showProgress && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/60" />
+            <div className="relative theme-card p-6 w-full max-w-md">
+              <div className="text-gray-100 font-semibold mb-2">{t('ovr.refresh.title','Refreshing external sources')}</div>
+              <div className="text-sm text-gray-300 mb-3">{progress.current ? t('ovr.refresh.current','Current') + ': ' + progress.current : t('ovr.refresh.preparing','Preparing...')}</div>
+              <progress className="w-full h-2 mb-2" max={Math.max(1, progress.total || 1)} value={Math.min(progress.processed || 0, progress.total || 1)} />
+              <div className="text-xs text-gray-400 mb-4">{progress.processed}/{progress.total}</div>
+              {progress.last_error && <div className="text-xs text-red-400 mb-2">{t('common.error','Error')}: {progress.last_error}</div>}
+              <div className="flex justify-end gap-2">
+                <Button variant="secondary" onClick={cancelRefresh}>{t('common.cancel','Cancel')}</Button>
+              </div>
+            </div>
+          </div>
+        )}
         {error && <div className="text-red-400 text-sm mb-3">{error}</div>}
         <div className="grid grid-cols-1 gap-3">
           {providers.map((p) => (

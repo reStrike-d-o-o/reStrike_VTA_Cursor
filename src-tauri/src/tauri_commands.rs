@@ -5,6 +5,8 @@ use crate::core::app::App;
 use crate::logging::archival::{AutoArchiveConfig, ArchiveSchedule};
 use dirs;
 use crate::utils::simulation_env::ensure_simulation_env;
+use once_cell::sync::OnceCell;
+use tokio::sync::Mutex as AsyncMutex;
 
 
 
@@ -485,7 +487,6 @@ pub async fn activate_license(key: String, app: State<'_, Arc<App>>) -> Result<s
         "days_remaining": status.days_remaining,
     }))
 }
-
 #[tauri::command]
 pub async fn validate_license(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     let lp = app.license_plugin();
@@ -1297,7 +1298,6 @@ pub async fn download_archive(
         Err(e) => Err(TauriError::from(anyhow::anyhow!("Failed to read archive: {}", e)))
     }
 }
-
 #[tauri::command]
 pub async fn set_live_data_streaming(
     subsystem: String,
@@ -1792,7 +1792,6 @@ pub async fn protocol_delete_version(
         }))
     }
 }
-
 #[tauri::command]
 pub async fn protocol_export_file(
     version: String,
@@ -2194,7 +2193,6 @@ pub async fn pss_setup_event_listener(_window: tauri::Window) -> Result<(), Taur
     
     Ok(())
 } 
-
 #[tauri::command]
 pub async fn obs_setup_status_listener(window: tauri::Window, app: State<'_, Arc<App>>) -> Result<(), TauriError> {
     log::info!("🔧 Setting up OBS status listener for frontend - COMMAND CALLED");
@@ -2290,7 +2288,6 @@ pub async fn set_window_compact(width: Option<f64>, height: Option<f64>, window:
     ))).map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
     Ok(())
 }
-
 #[tauri::command]
 pub async fn set_window_custom_size(width: f64, height: f64, window: tauri::Window) -> Result<(), TauriError> {
     log::info!("Setting window to custom size: {}x{}", width, height);
@@ -2784,7 +2781,6 @@ pub async fn get_database_tables(app: State<'_, Arc<App>>) -> Result<serde_json:
         "tables": tables
     }))
 }
-
 #[tauri::command]
 pub async fn get_table_data(
     app: State<'_, Arc<App>>,
@@ -4204,7 +4200,6 @@ pub async fn tournament_verify_location(
         }))
     }
 }
-
 #[tauri::command]
 pub async fn get_tournament_statistics(
     tournament_id: i64,
@@ -4518,7 +4513,6 @@ pub async fn set_udp_tournament_context(
     app.udp_plugin().set_tournament_context(tournament_id, tournament_day_id).await
         .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))
 }
-
 /// Get current tournament context from UDP server
 #[tauri::command]
 pub async fn get_udp_tournament_context(
@@ -4704,7 +4698,6 @@ pub async fn get_server_statistics(app: tauri::State<'_, crate::core::app::App>)
     serde_json::to_value(server_stats)
         .map_err(|e| tauri::Error::from(anyhow::anyhow!("Failed to serialize server statistics: {}", e)))
 }
-
 #[tauri::command]
 pub async fn add_server(app: tauri::State<'_, crate::core::app::App>, server_id: String, bind_address: String, port: u16) -> Result<(), tauri::Error> {
     app.event_distributor().add_server(server_id, bind_address, port).await
@@ -5566,7 +5559,6 @@ pub async fn obs_regenerate_youtube_stream_key(app: State<'_, Arc<App>>, channel
 }
 #[cfg(not(feature = "youtube"))]
 pub async fn obs_regenerate_youtube_stream_key(_app: State<'_, Arc<App>>, _channel_id: String) -> Result<serde_json::Value, TauriError> { Ok(serde_json::json!({ "disabled": true })) }
-
 #[cfg(feature = "youtube")]
 pub async fn obs_get_youtube_streaming_analytics(app: State<'_, Arc<App>>, channel_id: String) -> Result<serde_json::Value, TauriError> {
     let connection_name = app.get_default_connection_name().await?;
@@ -6213,6 +6205,33 @@ pub async fn control_room_logout(
 }
 
 // ================= OVR Commands =================
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OvrRefreshStatus {
+    pub active: bool,
+    pub total: usize,
+    pub processed: usize,
+    pub current_provider: Option<String>,
+    pub cancelled: bool,
+    pub last_error: Option<String>,
+}
+
+static OVR_REFRESH_STATE: OnceCell<Arc<AsyncMutex<OvrRefreshStatus>>> = OnceCell::new();
+
+fn get_ovr_refresh_state() -> Arc<AsyncMutex<OvrRefreshStatus>> {
+    OVR_REFRESH_STATE
+        .get_or_init(|| {
+            Arc::new(AsyncMutex::new(OvrRefreshStatus {
+                active: false,
+                total: 0,
+                processed: 0,
+                current_provider: None,
+                cancelled: false,
+                last_error: None,
+            }))
+        })
+        .clone()
+}
+
 #[tauri::command]
 pub async fn ovr_get_providers(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     let conn = app.database_plugin().get_connection().await?;
@@ -6245,6 +6264,138 @@ pub async fn ovr_refresh_provider(app: State<'_, Arc<App>>, provider_id: i64) ->
             Ok(serde_json::json!({"success": false, "error": e}))
         },
     }
+}
+
+#[tauri::command]
+pub async fn ovr_start_refresh_all(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    let state = get_ovr_refresh_state();
+    {
+        let mut st = state.lock().await;
+        if st.active {
+            return Ok(serde_json::json!({"success": false, "error": "already_running"}));
+        }
+        let conn = app.database_plugin().get_connection().await?;
+        use crate::database::operations::OvrOperations as Ops;
+        let providers = Ops::get_providers(&*conn).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+        let total = providers.iter().filter(|p| p.enabled).count();
+        st.active = true;
+        st.cancelled = false;
+        st.total = total;
+        st.processed = 0;
+        st.current_provider = None;
+        st.last_error = None;
+    }
+
+    let app_arc = app.inner().clone();
+    tokio::spawn(async move {
+        let state = get_ovr_refresh_state();
+        let providers = {
+            match app_arc.database_plugin().get_connection().await {
+                Ok(conn) => {
+                    use crate::database::operations::OvrOperations as Ops;
+                    Ops::get_providers(&*conn).unwrap_or_default()
+                }
+                Err(_) => vec![],
+            }
+        };
+        let plugin = crate::plugins::plugin_ovr::OvrScraperPlugin::new(app_arc.database_plugin().get_database_connection());
+        for p in providers.into_iter().filter(|p| p.enabled) {
+            {
+                let st = state.lock().await;
+                if st.cancelled { break; }
+            }
+            {
+                let mut st = state.lock().await;
+                st.current_provider = Some(p.name.clone());
+            }
+            let id = p.id.unwrap_or_default();
+            if let Err(e) = plugin.refresh_provider(id).await {
+                if let Ok(mut conn) = app_arc.database_plugin().get_connection().await {
+                    let _ = crate::database::operations::OvrOperations::set_provider_refresh_status(&mut *conn, id, Some("error"), Some(&e));
+                }
+                let mut st = state.lock().await;
+                st.last_error = Some(e);
+            }
+            {
+                let mut st = state.lock().await;
+                st.processed = st.processed.saturating_add(1);
+            }
+        }
+        {
+            let mut st = state.lock().await;
+            st.active = false;
+            st.current_provider = None;
+        }
+    });
+
+    Ok(serde_json::json!({"success": true}))
+}
+
+#[tauri::command]
+pub async fn ovr_start_refresh_provider(app: State<'_, Arc<App>>, provider_id: i64) -> Result<serde_json::Value, TauriError> {
+    let state = get_ovr_refresh_state();
+    {
+        let mut st = state.lock().await;
+        if st.active {
+            return Ok(serde_json::json!({"success": false, "error": "already_running"}));
+        }
+        st.active = true;
+        st.cancelled = false;
+        st.total = 1;
+        st.processed = 0;
+        st.current_provider = None;
+        st.last_error = None;
+    }
+
+    let app_arc = app.inner().clone();
+    tokio::spawn(async move {
+        let state = get_ovr_refresh_state();
+        let provider_name: Option<String> = match app_arc.database_plugin().get_connection().await {
+            Ok(conn) => {
+                let mut stmt = conn.prepare("SELECT name FROM ovr_providers WHERE id = ?").ok();
+                match stmt.as_mut().and_then(|s| s.query_row([provider_id], |r| r.get::<_, String>(0)).ok()) {
+                    Some(n) => Some(n),
+                    None => None,
+                }
+            }
+            Err(_) => None,
+        };
+        {
+            let mut st = state.lock().await;
+            st.current_provider = provider_name;
+        }
+        let plugin = crate::plugins::plugin_ovr::OvrScraperPlugin::new(app_arc.database_plugin().get_database_connection());
+        if let Err(e) = plugin.refresh_provider(provider_id).await {
+            if let Ok(mut conn) = app_arc.database_plugin().get_connection().await {
+                let _ = crate::database::operations::OvrOperations::set_provider_refresh_status(&mut *conn, provider_id, Some("error"), Some(&e));
+            }
+            let mut st = state.lock().await;
+            st.last_error = Some(e);
+        }
+        {
+            let mut st = state.lock().await;
+            st.processed = 1;
+            st.active = false;
+            st.current_provider = None;
+        }
+    });
+
+    Ok(serde_json::json!({"success": true}))
+}
+
+#[tauri::command]
+pub async fn ovr_get_refresh_status() -> Result<serde_json::Value, TauriError> {
+    let st = get_ovr_refresh_state();
+    let s = st.lock().await.clone();
+    Ok(serde_json::json!({"success": true, "status": s}))
+}
+
+#[tauri::command]
+pub async fn ovr_cancel_refresh() -> Result<serde_json::Value, TauriError> {
+    let st = get_ovr_refresh_state();
+    let mut s = st.lock().await;
+    s.cancelled = true;
+    Ok(serde_json::json!({"success": true}))
 }
 
 #[derive(Debug, Deserialize)]

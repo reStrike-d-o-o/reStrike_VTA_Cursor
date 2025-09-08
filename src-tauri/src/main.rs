@@ -508,6 +508,10 @@ async fn main() -> AppResult<()> {
             tauri_commands::ovr_promote_tournament,
             tauri_commands::ovr_refresh_all,
             tauri_commands::ovr_refresh_provider,
+            tauri_commands::ovr_start_refresh_all,
+            tauri_commands::ovr_start_refresh_provider,
+            tauri_commands::ovr_get_refresh_status,
+            tauri_commands::ovr_cancel_refresh,
             // DB backup commands (reuse existing helpers)
             tauri_commands::db_create_sqlite_backup,
             tauri_commands::db_list_sqlite_backups,
