@@ -68,6 +68,9 @@ const TournamentManagementPanel: React.FC = () => {
   const [ovrTournaments, setOvrTournaments] = useState<any[]>([]);
   const [ovrQ, setOvrQ] = useState('');
   const [ovrCountry, setOvrCountry] = useState('');
+  const [ovrFrom, setOvrFrom] = useState('');
+  const [ovrTo, setOvrTo] = useState('');
+  const [ovrProvider, setOvrProvider] = useState<string>('all');
   
   // Form states
   const [showAddForm, setShowAddForm] = useState(false);
@@ -128,10 +131,10 @@ const TournamentManagementPanel: React.FC = () => {
   const loadOvrTournaments = async () => {
     try {
       const params: any = {
-        providerId: null,
+        providerId: ovrProvider !== 'all' ? Number(ovrProvider) : null,
         q: ovrQ ? ovrQ : null,
-        from: null,
-        to: null,
+        from: ovrFrom ? ovrFrom : null,
+        to: ovrTo ? ovrTo : null,
         country: ovrCountry ? ovrCountry : null,
         limit: 100,
         offset: 0,
@@ -140,6 +143,12 @@ const TournamentManagementPanel: React.FC = () => {
       if (data?.success) setOvrTournaments(data.tournaments || []);
     } catch (_) {}
   };
+
+  useEffect(() => {
+    const handler = () => { loadOvrTournaments(); };
+    window.addEventListener('ovr:refreshed', handler as any);
+    return () => { window.removeEventListener('ovr:refreshed', handler as any); };
+  }, [ovrQ, ovrCountry, ovrFrom, ovrTo, ovrProvider]);
 
   const loadTournamentDays = async (tournamentId: number) => {
     try {
@@ -673,9 +682,24 @@ const TournamentManagementPanel: React.FC = () => {
       <div className="theme-card p-6">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold text-gray-100">{t('ovr.scraped.title', 'External OVR Tournaments')}</h3>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Input aria-label={t('common.search','Search')} placeholder={t('common.search','Search')} value={ovrQ} onChange={(e)=>setOvrQ(e.target.value)} />
             <Input aria-label={t('common.country','Country')} placeholder={t('common.country','Country')} value={ovrCountry} onChange={(e)=>setOvrCountry(e.target.value)} />
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-gray-400" htmlFor="ovr-from">{t('common.from','From')}</label>
+              <input id="ovr-from" type="date" aria-label={t('common.from','From')} className="text-xs bg-gray-900 border border-gray-700 rounded px-2 py-1 text-gray-200" value={ovrFrom} onChange={(e)=>setOvrFrom(e.target.value)} />
+              <label className="text-xs text-gray-400" htmlFor="ovr-to">{t('common.to','To')}</label>
+              <input id="ovr-to" type="date" aria-label={t('common.to','To')} className="text-xs bg-gray-900 border border-gray-700 rounded px-2 py-1 text-gray-200" value={ovrTo} onChange={(e)=>setOvrTo(e.target.value)} />
+              <label className="text-xs text-gray-400" htmlFor="ovr-provider">{t('common.provider','Provider')}</label>
+              <select id="ovr-provider" aria-label={t('common.provider','Provider')} className="text-xs bg-gray-900 border border-gray-700 rounded px-2 py-1 text-gray-200" value={ovrProvider} onChange={(e)=>setOvrProvider(e.target.value)}>
+                <option value="all">{t('common.all','All providers')}</option>
+                {/* Provider IDs will be numeric; we leave dynamic provider list to future enhancement */}
+                <option value="1">SimplyCompete</option>
+                <option value="2">TPSS</option>
+                <option value="3">Martial.Events</option>
+                <option value="4">ETU</option>
+              </select>
+            </div>
             <Button onClick={loadOvrTournaments} className="bg-gray-600 hover:bg-gray-700 text-white">{t('common.refresh','Refresh')}</Button>
           </div>
         </div>

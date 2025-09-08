@@ -51,6 +51,7 @@ const ExternalSourcesPanel: React.FC = () => {
       setLoading(true);
       await invoke('ovr_refresh_provider', { providerId: id });
       await load();
+      try { window.dispatchEvent(new CustomEvent('ovr:refreshed')); } catch (_) {}
     } catch (_) {
     } finally { setLoading(false); }
   };
@@ -60,6 +61,7 @@ const ExternalSourcesPanel: React.FC = () => {
       setLoading(true);
       await invoke('ovr_refresh_all');
       await load();
+      try { window.dispatchEvent(new CustomEvent('ovr:refreshed')); } catch (_) {}
     } catch (_) {
     } finally { setLoading(false); }
   };
