@@ -227,6 +227,7 @@ impl OvrScraperPlugin {
         let url = v.get("url").and_then(|s| s.as_str()).map(|s| s.to_string());
         let status = v.get("eventStatus").or_else(|| v.get("status")).and_then(|s| s.as_str()).map(|s| s.to_string());
         let key = Self::stable_key(&name, start.as_ref().map(|d| d.to_rfc3339()));
+        let dedupe_hash = Self::stable_dedupe_key(&name, start.as_ref().map(|d| d.to_rfc3339()), city.as_deref(), country.as_deref());
         Some(OvrTournament {
             id: None,
             provider_id,
@@ -239,7 +240,7 @@ impl OvrScraperPlugin {
             url,
             status,
             last_seen_at: Some(now),
-            hash: None,
+            hash: dedupe_hash,
             etag: None,
             created_at: now,
             updated_at: now,
@@ -252,6 +253,22 @@ impl OvrScraperPlugin {
         if let Some(s) = start_iso { hasher.update(s.as_bytes()); }
         let bytes = hasher.finalize();
         hex::encode(&bytes[..16]) // short key
+    }
+
+    fn normalize_text(s: &str) -> String {
+        s.trim().to_lowercase()
+    }
+
+    fn stable_dedupe_key(name: &str, start_iso: Option<String>, city: Option<&str>, country: Option<&str>) -> Option<String> {
+        // Require at least name + start for cross-provider dedupe to avoid false positives
+        if start_iso.is_none() { return None; }
+        let mut hasher = Sha256::new();
+        hasher.update(Self::normalize_text(name).as_bytes());
+        if let Some(s) = &start_iso { hasher.update(s.as_bytes()); }
+        if let Some(c) = city { hasher.update(Self::normalize_text(c).as_bytes()); }
+        if let Some(cn) = country { hasher.update(Self::normalize_text(cn).as_bytes()); }
+        let bytes = hasher.finalize();
+        Some(hex::encode(&bytes[..16]))
     }
 
     fn absolute_url(base: &str, href: &str) -> String {

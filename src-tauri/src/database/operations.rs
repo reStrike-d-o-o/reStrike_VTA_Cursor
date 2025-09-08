@@ -3202,13 +3202,24 @@ impl OvrOperations {
 	// Tournaments
 	pub fn upsert_tournament(conn: &mut Connection, t: &OvrTournament) -> DatabaseResult<i64> {
 		let tx = conn.transaction()?;
+		// First, try exact provider match
 		let id_opt: Option<i64> = tx.query_row(
 			"SELECT id FROM ovr_tournaments WHERE provider_id = ? AND provider_tournament_id = ?",
 			params![t.provider_id, t.provider_tournament_id],
 			|r| r.get(0)
 		).optional()?;
+		// If not found, attempt cross-provider dedupe by hash
+		let cross_id_opt: Option<i64> = if id_opt.is_none() {
+			if let Some(ref h) = t.hash {
+				tx.query_row(
+					"SELECT id FROM ovr_tournaments WHERE hash = ?",
+					params![h],
+					|r| r.get(0)
+				).optional()?
+			} else { None }
+		} else { None };
 		let now = Utc::now().to_rfc3339();
-		let id = if let Some(id) = id_opt {
+		let id = if let Some(id) = id_opt.or(cross_id_opt) {
 			tx.execute(
 				"UPDATE ovr_tournaments SET name = ?, start_date = ?, end_date = ?, city = ?, country = ?, url = ?, status = ?, last_seen_at = ?, hash = ?, etag = ?, updated_at = ? WHERE id = ?",
 				params![
