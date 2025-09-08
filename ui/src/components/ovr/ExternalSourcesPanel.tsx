@@ -101,7 +101,7 @@ const ExternalSourcesPanel: React.FC = () => {
   };
 
   const cancelRefresh = async () => {
-    try { await invoke('ovr_cancel_refresh'); } catch(_) {}
+    try { await invoke('ovr_cancel_refresh'); setShowProgress(false); } catch(_) { setShowProgress(false); }
   };
 
   const remove = async (id?: number) => {

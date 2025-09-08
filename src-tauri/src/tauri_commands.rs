@@ -6446,6 +6446,9 @@ pub async fn ovr_cancel_refresh() -> Result<serde_json::Value, TauriError> {
     let task_store = get_ovr_refresh_task();
     let mut guard = task_store.lock().await;
     if let Some(h) = guard.take() { h.abort(); }
+    // Immediately mark inactive for UI responsiveness
+    s.active = false;
+    s.current_provider = None;
     Ok(serde_json::json!({"success": true}))
 }
 
