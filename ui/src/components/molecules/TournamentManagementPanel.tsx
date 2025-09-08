@@ -131,7 +131,7 @@ const TournamentManagementPanel: React.FC = () => {
   const loadOvrTournaments = async () => {
     try {
       const params: any = {
-        providerId: ovrProvider !== 'all' ? Number(ovrProvider) : null,
+        provider_id: ovrProvider !== 'all' ? Number(ovrProvider) : null,
         q: ovrQ ? ovrQ : null,
         from: ovrFrom ? ovrFrom : null,
         to: ovrTo ? ovrTo : null,

@@ -49,7 +49,7 @@ const ExternalSourcesPanel: React.FC = () => {
     if (id == null) return;
     try {
       setLoading(true);
-      await invoke('ovr_refresh_provider', { providerId: id });
+      await invoke('ovr_refresh_provider', { provider_id: id });
       await load();
       try { window.dispatchEvent(new CustomEvent('ovr:refreshed')); } catch (_) {}
     } catch (_) {

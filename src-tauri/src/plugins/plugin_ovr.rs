@@ -5,6 +5,7 @@ use crate::database::models::{OvrProvider, OvrTournament};
 use sha2::{Sha256, Digest};
 use chrono::Utc;
 use regex::Regex;
+use std::time::Duration;
 
 #[derive(Clone)]
 pub struct OvrScraperPlugin {
@@ -21,8 +22,11 @@ impl OvrScraperPlugin {
 
     /// Refresh all enabled providers
     pub async fn refresh_all(&self) -> Result<usize, String> {
-        let conn = self.database.get_connection().await.map_err(|e| e.to_string())?;
-        let providers = crate::database::operations::OvrOperations::get_providers(&*conn).map_err(|e| e.to_string())?;
+        // Load providers in a short scope so the DB lock is released before per-provider refresh
+        let providers = {
+            let conn = self.database.get_connection().await.map_err(|e| e.to_string())?;
+            crate::database::operations::OvrOperations::get_providers(&*conn).map_err(|e| e.to_string())?
+        };
         let mut updated = 0usize;
         for p in providers.into_iter().filter(|p| p.enabled) {
             match self.refresh_provider(p.id.unwrap_or_default()).await {
@@ -39,11 +43,19 @@ impl OvrScraperPlugin {
 
     /// Refresh single provider by basic adapter selection
     pub async fn refresh_provider(&self, provider_id: i64) -> Result<(), String> {
-        let conn = self.database.get_connection().await.map_err(|e| e.to_string())?;
+        // Read provider in a short scope so the DB lock is released before network calls
         let provider = {
+            let conn = self.database.get_connection().await.map_err(|e| e.to_string())?;
             let mut stmt = conn.prepare("SELECT * FROM ovr_providers WHERE id = ?").map_err(|e| e.to_string())?;
             stmt.query_row([provider_id], |row| OvrProvider::from_row(row)).map_err(|e| e.to_string())?
         };
+
+        // Mark provider as fetching
+        {
+            let mut connw = self.database.get_connection().await.map_err(|e| e.to_string())?;
+            let _ = crate::database::operations::OvrOperations::set_provider_refresh_status(&mut *connw, provider_id, Some("fetching"), None)
+                .map_err(|e| e.to_string())?;
+        }
         let name_lc = provider.name.to_lowercase();
 
         // Adapters: scrape specific sites
@@ -59,7 +71,7 @@ impl OvrScraperPlugin {
             Vec::new()
         };
 
-        // Persist tournaments
+        // Persist tournaments (obtain a fresh DB lock now)
         let mut connw = self.database.get_connection().await.map_err(|e| e.to_string())?;
         for t in tournaments {
             let _ = crate::database::operations::OvrOperations::upsert_tournament(&mut *connw, &t)
@@ -105,6 +117,9 @@ impl OvrScraperPlugin {
     async fn fetch_html(&self, url: &str) -> Result<String, String> {
         let client = reqwest::Client::builder()
             .user_agent("reStrike-VTA/1.0")
+            .connect_timeout(Duration::from_secs(10))
+            .timeout(Duration::from_secs(20))
+            .redirect(reqwest::redirect::Policy::limited(10))
             .build().map_err(|e| e.to_string())?;
         let resp = client.get(url).send().await.map_err(|e| e.to_string())?;
         if !resp.status().is_success() { return Err(format!("status {}", resp.status())); }

@@ -6237,7 +6237,13 @@ pub async fn ovr_refresh_provider(app: State<'_, Arc<App>>, provider_id: i64) ->
     let plugin = crate::plugins::plugin_ovr::OvrScraperPlugin::new(app.database_plugin().get_database_connection());
     match plugin.refresh_provider(provider_id).await {
         Ok(_) => Ok(serde_json::json!({"success": true})),
-        Err(e) => Ok(serde_json::json!({"success": false, "error": e})),
+        Err(e) => {
+            // Persist error status for direct refresh calls as well
+            if let Ok(mut conn) = app.database_plugin().get_connection().await {
+                let _ = crate::database::operations::OvrOperations::set_provider_refresh_status(&mut *conn, provider_id, Some("error"), Some(&e));
+            }
+            Ok(serde_json::json!({"success": false, "error": e}))
+        },
     }
 }
 
