@@ -6232,6 +6232,15 @@ fn get_ovr_refresh_state() -> Arc<AsyncMutex<OvrRefreshStatus>> {
         .clone()
 }
 
+// Track currently running refresh task to allow cancellation
+static OVR_REFRESH_TASK: OnceCell<Arc<AsyncMutex<Option<tokio::task::JoinHandle<()>>>>> = OnceCell::new();
+
+fn get_ovr_refresh_task() -> Arc<AsyncMutex<Option<tokio::task::JoinHandle<()>>>> {
+    OVR_REFRESH_TASK
+        .get_or_init(|| Arc::new(AsyncMutex::new(None)))
+        .clone()
+}
+
 #[tauri::command]
 pub async fn ovr_get_providers(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     let mut conn = app.database_plugin().get_connection().await?;
@@ -6310,12 +6319,33 @@ pub async fn ovr_start_refresh_all(app: State<'_, Arc<App>>) -> Result<serde_jso
                 st.current_provider = Some(p.name.clone());
             }
             let id = p.id.unwrap_or_default();
-            if let Err(e) = plugin.refresh_provider(id).await {
-                if let Ok(mut conn) = app_arc.database_plugin().get_connection().await {
-                    let _ = crate::database::operations::OvrOperations::set_provider_refresh_status(&mut *conn, id, Some("error"), Some(&e));
+            // Spawn a cancellable subtask for this provider
+            let app_clone = app_arc.clone();
+            let state_clone = get_ovr_refresh_state();
+            let plugin_clone = plugin.clone();
+            let handle = tokio::spawn(async move {
+                if let Err(e) = plugin_clone.refresh_provider(id).await {
+                    if let Ok(mut conn) = app_clone.database_plugin().get_connection().await {
+                        let _ = crate::database::operations::OvrOperations::set_provider_refresh_status(&mut *conn, id, Some("error"), Some(&e));
+                    }
+                    let mut st = state_clone.lock().await;
+                    st.last_error = Some(e);
                 }
-                let mut st = state.lock().await;
-                st.last_error = Some(e);
+            });
+            {
+                let task_store = get_ovr_refresh_task();
+                let mut guard = task_store.lock().await;
+                *guard = Some(handle);
+            }
+            // Await completion or cancellation
+            let finished = {
+                let task_store = get_ovr_refresh_task();
+                let mut guard = task_store.lock().await;
+                if let Some(h) = guard.take() { h.await.is_ok() } else { true }
+            };
+            if !finished {
+                // Cancelled
+                break;
             }
             {
                 let mut st = state.lock().await;
@@ -6366,12 +6396,28 @@ pub async fn ovr_start_refresh_provider(app: State<'_, Arc<App>>, provider_id: i
             st.current_provider = provider_name;
         }
         let plugin = crate::plugins::plugin_ovr::OvrScraperPlugin::new(app_arc.database_plugin().get_database_connection());
-        if let Err(e) = plugin.refresh_provider(provider_id).await {
-            if let Ok(mut conn) = app_arc.database_plugin().get_connection().await {
-                let _ = crate::database::operations::OvrOperations::set_provider_refresh_status(&mut *conn, provider_id, Some("error"), Some(&e));
+        // Spawn cancellable task
+        let app_clone = app_arc.clone();
+        let state_clone = get_ovr_refresh_state();
+        let handle = tokio::spawn(async move {
+            if let Err(e) = plugin.refresh_provider(provider_id).await {
+                if let Ok(mut conn) = app_clone.database_plugin().get_connection().await {
+                    let _ = crate::database::operations::OvrOperations::set_provider_refresh_status(&mut *conn, provider_id, Some("error"), Some(&e));
+                }
+                let mut st = state_clone.lock().await;
+                st.last_error = Some(e);
             }
-            let mut st = state.lock().await;
-            st.last_error = Some(e);
+        });
+        {
+            let task_store = get_ovr_refresh_task();
+            let mut guard = task_store.lock().await;
+            *guard = Some(handle);
+        }
+        // Await completion or cancellation
+        {
+            let task_store = get_ovr_refresh_task();
+            let mut guard = task_store.lock().await;
+            if let Some(h) = guard.take() { let _ = h.await; }
         }
         {
             let mut st = state.lock().await;
@@ -6396,6 +6442,10 @@ pub async fn ovr_cancel_refresh() -> Result<serde_json::Value, TauriError> {
     let st = get_ovr_refresh_state();
     let mut s = st.lock().await;
     s.cancelled = true;
+    // Abort running task if any
+    let task_store = get_ovr_refresh_task();
+    let mut guard = task_store.lock().await;
+    if let Some(h) = guard.take() { h.abort(); }
     Ok(serde_json::json!({"success": true}))
 }
 

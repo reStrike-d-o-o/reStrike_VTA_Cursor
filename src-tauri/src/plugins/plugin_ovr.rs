@@ -177,16 +177,34 @@ impl OvrScraperPlugin {
         let now = Utc::now();
         let mut out: Vec<OvrTournament> = Vec::new();
         for js in jsons {
-            match serde_json::from_str::<serde_json::Value>(&js) {
-                Ok(val) => {
-                    // Could be a single Event or an array
-                    if let Some(arr) = val.as_array() {
-                        for item in arr { if let Some(t) = Self::jsonld_to_tournament(provider_id, item, now) { out.push(t); } }
-                    } else if let Some(obj) = val.as_object() {
-                        if let Some(t) = Self::jsonld_to_tournament(provider_id, &serde_json::Value::Object(obj.clone()), now) { out.push(t); }
+            if let Ok(val) = serde_json::from_str::<serde_json::Value>(&js) {
+                // Flatten common JSON-LD containers: @graph, ItemList.itemListElement[].item
+                let mut candidates: Vec<serde_json::Value> = Vec::new();
+                match &val {
+                    serde_json::Value::Array(arr) => {
+                        for v in arr { candidates.push(v.clone()); }
                     }
+                    serde_json::Value::Object(map) => {
+                        // @graph
+                        if let Some(graph) = map.get("@graph").and_then(|g| g.as_array()) {
+                            for v in graph { candidates.push(v.clone()); }
+                        } else if map.get("@type").is_some() || map.get("name").is_some() {
+                            candidates.push(val.clone());
+                        }
+                        // ItemList -> itemListElement -> item
+                        if let Some(items) = map.get("itemListElement").and_then(|e| e.as_array()) {
+                            for it in items {
+                                if let Some(item) = it.get("item") {
+                                    candidates.push(item.clone());
+                                }
+                            }
+                        }
+                    }
+                    _ => {}
                 }
-                Err(_) => { /* skip invalid json */ }
+                for cand in candidates {
+                    if let Some(t) = Self::jsonld_to_tournament(provider_id, &cand, now) { out.push(t); }
+                }
             }
         }
         out
@@ -226,19 +244,38 @@ impl OvrScraperPlugin {
             .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
             .map(|dt| dt.with_timezone(&Utc));
         let (city, country) = if let Some(loc) = v.get("location") {
-            if let Some(obj) = loc.as_object() {
-                // Try direct fields
-                let city = obj.get("addressLocality").and_then(|s| s.as_str()).map(|s| s.to_string());
-                let country = obj.get("addressCountry").and_then(|s| s.as_str()).map(|s| s.to_string());
-                if city.is_some() || country.is_some() { (city, country) } else {
-                    // Try nested address object
-                    if let Some(addr) = obj.get("address").and_then(|a| a.as_object()) {
-                        let city = addr.get("addressLocality").and_then(|s| s.as_str()).map(|s| s.to_string());
-                        let country = addr.get("addressCountry").and_then(|s| s.as_str()).map(|s| s.to_string());
-                        (city, country)
+            match loc {
+                serde_json::Value::String(s) => {
+                    // Try to split "City, Country"
+                    let parts: Vec<&str> = s.split(',').map(|x| x.trim()).collect();
+                    if parts.len() >= 2 {
+                        (Some(parts[0].to_string()), Some(parts[parts.len()-1].to_string()))
                     } else { (None, None) }
                 }
-            } else { (None, None) }
+                serde_json::Value::Object(obj) => {
+                    // location.name may contain "City, Country"
+                    if let Some(name_s) = obj.get("name").and_then(|s| s.as_str()) {
+                        let parts: Vec<&str> = name_s.split(',').map(|x| x.trim()).collect();
+                        if parts.len() >= 2 {
+                            (Some(parts[0].to_string()), Some(parts[parts.len()-1].to_string()))
+                        } else {
+                            (None, None)
+                        }
+                    } else {
+                        // Direct fields or nested address
+                        let city = obj.get("addressLocality").and_then(|s| s.as_str()).map(|s| s.to_string())
+                            .or_else(|| obj.get("address").and_then(|a| a.get("addressLocality")).and_then(|s| s.as_str()).map(|s| s.to_string()));
+                        let country_val = obj.get("addressCountry").or_else(|| obj.get("address").and_then(|a| a.get("addressCountry")));
+                        let country = match country_val {
+                            Some(serde_json::Value::String(s)) => Some(s.to_string()),
+                            Some(serde_json::Value::Object(o)) => o.get("name").and_then(|s| s.as_str()).map(|s| s.to_string()),
+                            _ => None,
+                        };
+                        (city, country)
+                    }
+                }
+                _ => (None, None)
+            }
         } else { (None, None) };
         let url = v.get("url").and_then(|s| s.as_str()).map(|s| s.to_string());
         let status = v.get("eventStatus").or_else(|| v.get("status")).and_then(|s| s.as_str()).map(|s| s.to_string());
