@@ -55,7 +55,7 @@ const ExternalSourcesPanel: React.FC = () => {
     try {
       setShowProgress(true);
       setProgress({active:true,total:1,processed:0,current:null,cancelled:false,last_error:null});
-      await invoke('ovr_start_refresh_provider', { provider_id: id });
+      await invoke('ovr_start_refresh_provider', { providerId: id });
       pollProgress();
     } catch (_) {
     }
