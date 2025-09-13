@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { formatDate, formatDateTime } from '../../utils/format';
 import { invoke } from '@tauri-apps/api/core';
 import Button from '../atoms/Button';
@@ -72,6 +72,19 @@ const TournamentManagementPanel: React.FC = () => {
   const [ovrTo, setOvrTo] = useState('');
   const [ovrProvider, setOvrProvider] = useState<string>('all');
   const [providers, setProviders] = useState<any[]>([]);
+  // Scroll sync refs for OVR table (match Data Preview styling)
+  const ovrHeaderScrollRef = useRef<HTMLDivElement | null>(null);
+  const ovrBodyScrollRef = useRef<HTMLDivElement | null>(null);
+  const onOvrHeaderScroll = () => {
+    if (ovrBodyScrollRef.current && ovrHeaderScrollRef.current) {
+      ovrBodyScrollRef.current.scrollLeft = ovrHeaderScrollRef.current.scrollLeft;
+    }
+  };
+  const onOvrBodyScroll = () => {
+    if (ovrHeaderScrollRef.current && ovrBodyScrollRef.current) {
+      ovrHeaderScrollRef.current.scrollLeft = ovrBodyScrollRef.current.scrollLeft;
+    }
+  };
   
   // Form states
   const [showAddForm, setShowAddForm] = useState(false);
@@ -716,37 +729,37 @@ const TournamentManagementPanel: React.FC = () => {
         ) : (
           <div className="w-full">
             <div className="w-[1360px] border border-gray-700 rounded overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-left text-sm text-gray-200">
+              <div className="overflow-x-auto" ref={ovrHeaderScrollRef} onScroll={onOvrHeaderScroll}>
+                <table className="min-w-full table-fixed text-sm text-gray-200">
                   <thead className="bg-[#101820] sticky top-0 z-10">
                     <tr>
-                      <th className="px-3 py-2 font-semibold whitespace-nowrap border-b border-gray-700">{t('common.name','Name')}</th>
-                      <th className="px-3 py-2 font-semibold whitespace-nowrap border-b border-gray-700">{t('common.city','City')}</th>
-                      <th className="px-3 py-2 font-semibold whitespace-nowrap border-b border-gray-700">{t('common.country','Country')}</th>
-                      <th className="px-3 py-2 font-semibold whitespace-nowrap border-b border-gray-700">{t('common.start','Start')}</th>
-                      <th className="px-3 py-2 font-semibold whitespace-nowrap border-b border-gray-700">{t('common.end','End')}</th>
-                      <th className="px-3 py-2 font-semibold whitespace-nowrap border-b border-gray-700">URL</th>
-                      <th className="px-3 py-2 font-semibold whitespace-nowrap border-b border-gray-700">{t('common.actions','Actions')}</th>
+                      <th className="px-3 py-2 font-semibold whitespace-nowrap border-b border-gray-700 text-center w-[40%]">{t('common.name','Name')}</th>
+                      <th className="px-3 py-2 font-semibold whitespace-nowrap border-b border-gray-700 text-center w-[12%]">{t('common.city','City')}</th>
+                      <th className="px-3 py-2 font-semibold whitespace-nowrap border-b border-gray-700 text-center w-[12%]">{t('common.country','Country')}</th>
+                      <th className="px-3 py-2 font-semibold whitespace-nowrap border-b border-gray-700 text-center w-[10%]">{t('common.start','Start')}</th>
+                      <th className="px-3 py-2 font-semibold whitespace-nowrap border-b border-gray-700 text-center w-[10%]">{t('common.end','End')}</th>
+                      <th className="px-3 py-2 font-semibold whitespace-nowrap border-b border-gray-700 text-center w-[8%]">URL</th>
+                      <th className="px-3 py-2 font-semibold whitespace-nowrap border-b border-gray-700 text-center w-[8%]">{t('common.actions','Actions')}</th>
                     </tr>
                   </thead>
                 </table>
               </div>
-              <div className="max-h-64 overflow-y-auto overflow-x-auto">
-                <table className="min-w-full text-left text-sm text-gray-200">
+              <div className="max-h-64 overflow-y-auto overflow-x-auto" ref={ovrBodyScrollRef} onScroll={onOvrBodyScroll}>
+                <table className="min-w-full table-fixed text-sm text-gray-200">
                   <tbody>
                     {ovrTournaments.map((ot: any) => (
                       <tr key={ot.id} className="hover:bg-blue-900/10">
-                        <td className="px-3 py-2 whitespace-nowrap border-b border-gray-700/30">{ot.name}</td>
-                        <td className="px-3 py-2 whitespace-nowrap border-b border-gray-700/30">{ot.city || ''}</td>
-                        <td className="px-3 py-2 whitespace-nowrap border-b border-gray-700/30">{ot.country || ''}</td>
-                        <td className="px-3 py-2 whitespace-nowrap border-b border-gray-700/30">{ot.start_date ? formatDate(ot.start_date) : ''}</td>
-                        <td className="px-3 py-2 whitespace-nowrap border-b border-gray-700/30">{ot.end_date ? formatDate(ot.end_date) : ''}</td>
-                        <td className="px-3 py-2 whitespace-nowrap border-b border-gray-700/30">
+                        <td className="px-3 py-2 whitespace-nowrap border-b border-gray-700/30 w-[40%]">{ot.name}</td>
+                        <td className="px-3 py-2 whitespace-nowrap border-b border-gray-700/30 w-[12%]">{ot.city || ''}</td>
+                        <td className="px-3 py-2 whitespace-nowrap border-b border-gray-700/30 w-[12%]">{ot.country || ''}</td>
+                        <td className="px-3 py-2 whitespace-nowrap border-b border-gray-700/30 text-center w-[10%]">{ot.start_date ? formatDate(ot.start_date) : ''}</td>
+                        <td className="px-3 py-2 whitespace-nowrap border-b border-gray-700/30 text-center w-[10%]">{ot.end_date ? formatDate(ot.end_date) : ''}</td>
+                        <td className="px-3 py-2 whitespace-nowrap border-b border-gray-700/30 text-center w-[8%]">
                           {ot.url ? (
                             <a className="text-blue-400 hover:text-blue-300 underline" href={ot.url} target="_blank" rel="noreferrer">{t('common.open','Open')}</a>
                           ) : ''}
                         </td>
-                        <td className="px-3 py-2 whitespace-nowrap border-b border-gray-700/30">
+                        <td className="px-3 py-2 whitespace-nowrap border-b border-gray-700/30 text-center w-[8%]">
                           <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={()=>invoke('ovr_promote_tournament', { ovr_tournament_id: ot.id, local_name: ot.name })}>{t('ovr.promote','Promote')}</Button>
                         </td>
                       </tr>
