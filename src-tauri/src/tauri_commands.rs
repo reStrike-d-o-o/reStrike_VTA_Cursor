@@ -2234,6 +2234,20 @@ pub async fn pss_setup_event_listener(_window: tauri::Window) -> Result<(), Taur
     Ok(())
 } 
 #[tauri::command]
+pub async fn websocket_broadcast_pss_event(
+    event_data: serde_json::Value,
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("Broadcasting PSS event via WebSocket: {:?}", event_data);
+    
+    let _websocket_plugin = app.websocket_plugin().lock().await;
+    // For now, return success since the WebSocket server handles broadcasting internally
+    Ok(serde_json::json!({
+        "success": true,
+        "message": "PSS event broadcasted successfully"
+    }))
+}
+#[tauri::command]
 pub async fn obs_setup_status_listener(window: tauri::Window, app: State<'_, Arc<App>>) -> Result<(), TauriError> {
     log::info!("🔧 Setting up OBS status listener for frontend - COMMAND CALLED");
 
@@ -3225,19 +3239,19 @@ pub async fn get_flag_mappings_data(app: State<'_, Arc<App>>) -> Result<serde_js
     
     // Get the data from flag_mappings table
     let mappings: Vec<serde_json::Value> = match conn.prepare(
-        "SELECT id, pss_code, ioc_code, country_name, is_custom, created_at, updated_at FROM flag_mappings ORDER BY pss_code"
+        "SELECT id, pss_code, ioc_code, country_name, is_custom, created, updated FROM flag_mappings ORDER BY pss_code"
     ) {
         Ok(mut stmt) => {
             let mut mapping_data = Vec::new();
             let rows = stmt.query_map([], |row| {
                 Ok(serde_json::json!({
-                    "id": row.get::<_, i64>(0)?,
-                    "pss_code": row.get::<_, String>(1)?,
-                    "ioc_code": row.get::<_, String>(2)?,
-                    "country_name": row.get::<_, String>(3)?,
+                    "id": row.get::<_, String>(0)?,
+                    "pss_code": row.get::<_, Option<String>>(1)?,
+                    "ioc_code": row.get::<_, Option<String>>(2)?,
+                    "country_name": row.get::<_, Option<String>>(3)?,
                     "is_custom": row.get::<_, bool>(4)?,
-                    "created_at": row.get::<_, String>(5)?,
-                    "updated_at": row.get::<_, String>(6)?
+                    "created": row.get::<_, Option<i64>>(5)?,
+                    "updated": row.get::<_, Option<i64>>(6)?
                 }))
             }).map_err(|e| TauriError::from(anyhow::anyhow!("Failed to query flag mappings: {}", e)))?;
             
@@ -3739,20 +3753,6 @@ pub async fn websocket_get_status(app: State<'_, Arc<App>>) -> Result<serde_json
     }))
 }
 
-#[tauri::command]
-pub async fn websocket_broadcast_pss_event(
-    event_data: serde_json::Value,
-    app: State<'_, Arc<App>>,
-) -> Result<serde_json::Value, TauriError> {
-    log::info!("Broadcasting PSS event via WebSocket: {:?}", event_data);
-    
-    let _websocket_plugin = app.websocket_plugin().lock().await;
-    // For now, return success since the WebSocket server handles broadcasting internally
-    Ok(serde_json::json!({
-        "success": true,
-        "message": "PSS event broadcasted successfully"
-    }))
-}
 #[tauri::command]
 pub async fn store_pss_event(
     event_data: serde_json::Value,

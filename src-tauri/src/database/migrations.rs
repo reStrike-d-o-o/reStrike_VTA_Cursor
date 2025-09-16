@@ -1,6 +1,4 @@
 use rusqlite::{Connection, Result as SqliteResult};
-use rusqlite::params;
-use crate::utils::{new_uuid, now_unix};
 use crate::database::{DatabaseError, DatabaseResult, CURRENT_SCHEMA_VERSION, SchemaVersion};
 
 /// Migration trait for database schema updates
@@ -2781,6 +2779,7 @@ impl MigrationManager {
         migrations.push(Box::new(Migration23)); // OVR provider/tournament/category
         migrations.push(Box::new(Migration24)); // Settings tables: created/updated unix ints
         migrations.push(Box::new(Migration25)); // Rename FKs to table_id convention (settings)
+        migrations.push(Box::new(Migration26)); // Flag mappings: UUID TEXT id + int timestamps
         
         Self { migrations }
     }
@@ -3284,6 +3283,53 @@ impl Migration for Migration18 {
     fn down(&self, _conn: &Connection) -> SqliteResult<()> {
         // SQLite cannot drop columns; no-op
         log::warn!("⚠️ Migration 18 rollback: cannot drop added columns due to SQLite limitations");
+        Ok(())
+    }
+}
+
+/// Migration 26: flag_mappings -> UUID TEXT id and integer timestamps
+pub struct Migration26;
+
+impl Migration for Migration26 {
+    fn version(&self) -> u32 { 26 }
+
+    fn description(&self) -> &str {
+        "Convert flag_mappings to UUID TEXT id and add integer created/updated with legacy backfill"
+    }
+
+    fn up(&self, conn: &Connection) -> SqliteResult<()> {
+        // Create new table with TEXT id and integer timestamps
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS _tmp_flag_mappings (
+                id TEXT PRIMARY KEY,
+                pss_code TEXT,
+                ioc_code TEXT,
+                country_name TEXT,
+                is_custom BOOLEAN DEFAULT 0,
+                created INTEGER,
+                updated INTEGER
+            )",
+            [],
+        )?;
+
+        // Migrate data from old table if exists
+        let _ = conn.execute(
+            "INSERT INTO _tmp_flag_mappings (id, pss_code, ioc_code, country_name, is_custom, created, updated)
+             SELECT COALESCE(id, printf('%s', hex(randomblob(16)))), pss_code, ioc_code, country_name, is_custom,
+                    COALESCE(created, strftime('%s', created_at)), COALESCE(updated, strftime('%s', updated_at))
+             FROM flag_mappings",
+            [],
+        );
+
+        // Replace old table
+        let _ = conn.execute("DROP TABLE IF EXISTS flag_mappings", []);
+        conn.execute("ALTER TABLE _tmp_flag_mappings RENAME TO flag_mappings", [])?;
+
+        Ok(())
+    }
+
+    fn down(&self, _conn: &Connection) -> SqliteResult<()> {
+        // No-op safe down; we keep the modern schema
         Ok(())
     }
 }
