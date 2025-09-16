@@ -151,6 +151,20 @@ pub struct UdpServer {
 
 #### Tauri Commands for Tournament Management
 #### Match Storage with Tournament Context
+
+### Backfill Utilities
+
+#### Overview
+Use the built-in backfill operations to align historical data:
+- Fill `pss_matches.tournament_*` from `recorded_videos` where missing.
+- Fill `pss_events_v2.tournament_*` from `pss_matches` where missing.
+- Optional: set `pss_events_v2.tournament_day_id` by date overlap with `tournament_days` when still missing.
+
+#### Tauri command
+```typescript
+await invoke('db_backfill_tournament_context')
+// returns: { updated_matches, updated_events_from_matches, updated_events_by_date }
+```
 - New matches created automatically during ingestion inherit the current UDP tournament context.
 - When `FightLoaded` triggers a fresh match row, the backend assigns `tournament_id` and `tournament_day_id` to that `pss_matches` record.
 - On `MatchConfig`, the current match row is updated (metadata) and the tournament context is ensured on the match if present.

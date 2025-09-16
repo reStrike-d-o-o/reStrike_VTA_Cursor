@@ -1212,6 +1212,84 @@ impl PssUdpOperations {
         Ok(conn.last_insert_rowid())
     }
 
+    /// Backfill pss_matches.tournament_id/day from recorded_videos for matches missing context
+    pub fn backfill_matches_tournament_from_recorded_videos(conn: &mut Connection) -> DatabaseResult<usize> {
+        let sql = r#"
+            UPDATE pss_matches AS m
+            SET 
+                tournament_id = COALESCE(
+                    m.tournament_id,
+                    (
+                        SELECT rv.tournament_id FROM recorded_videos rv
+                        WHERE rv.match_id = m.id AND rv.tournament_id IS NOT NULL
+                        ORDER BY rv.created_at DESC
+                        LIMIT 1
+                    )
+                ),
+                tournament_day_id = COALESCE(
+                    m.tournament_day_id,
+                    (
+                        SELECT rv.tournament_day_id FROM recorded_videos rv
+                        WHERE rv.match_id = m.id AND rv.tournament_day_id IS NOT NULL
+                        ORDER BY rv.created_at DESC
+                        LIMIT 1
+                    )
+                ),
+                updated_at = ?
+            WHERE (m.tournament_id IS NULL OR m.tournament_day_id IS NULL)
+              AND EXISTS (
+                SELECT 1 FROM recorded_videos rv
+                WHERE rv.match_id = m.id AND (rv.tournament_id IS NOT NULL OR rv.tournament_day_id IS NOT NULL)
+              )
+        "#;
+        let n = conn.execute(sql, [Utc::now().to_rfc3339()])?;
+        Ok(n)
+    }
+
+    /// Backfill pss_events_v2.tournament_id/day from their match rows for missing context
+    pub fn backfill_events_tournament_from_matches(conn: &mut Connection) -> DatabaseResult<usize> {
+        let sql = r#"
+            UPDATE pss_events_v2 AS e
+            SET 
+                tournament_id = COALESCE(
+                    e.tournament_id,
+                    (
+                        SELECT m.tournament_id FROM pss_matches m
+                        WHERE m.id = e.match_id
+                    )
+                ),
+                tournament_day_id = COALESCE(
+                    e.tournament_day_id,
+                    (
+                        SELECT m.tournament_day_id FROM pss_matches m
+                        WHERE m.id = e.match_id
+                    )
+                )
+            WHERE (e.tournament_id IS NULL OR e.tournament_day_id IS NULL)
+              AND e.match_id IS NOT NULL
+        "#;
+        let n = conn.execute(sql, [])?;
+        Ok(n)
+    }
+
+    /// Optional fallback: infer tournament_day by timestamp/date overlap with tournament_days when still missing
+    pub fn backfill_events_tournament_by_day_overlap(conn: &mut Connection) -> DatabaseResult<usize> {
+        // Set tournament_day_id by matching event timestamp to day date when tournament_id known but day missing
+        let sql_day = r#"
+            UPDATE pss_events_v2 AS e
+            SET tournament_day_id = (
+                SELECT td.id FROM tournament_days td
+                WHERE td.tournament_id = e.tournament_id
+                  AND DATE(e.timestamp) = DATE(td.date)
+                LIMIT 1
+            )
+            WHERE e.tournament_id IS NOT NULL
+              AND e.tournament_day_id IS NULL
+        "#;
+        let n1 = conn.execute(sql_day, [])?;
+        Ok(n1)
+    }
+
     /// Get athletes for a specific match with their details
     pub fn get_pss_match_athletes(conn: &Connection, match_id: i64) -> DatabaseResult<Vec<(PssMatchAthlete, PssAthlete)>> {
         let mut stmt = conn.prepare(

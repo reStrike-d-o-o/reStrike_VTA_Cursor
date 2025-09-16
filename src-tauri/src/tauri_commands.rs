@@ -1,4 +1,30 @@
-﻿use serde::{Deserialize, Serialize};
+﻿#[tauri::command]
+pub async fn db_backfill_tournament_context(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    let mut conn = app.database_plugin().get_connection().await
+        .map_err(|e| TauriError::from(anyhow::anyhow!(format!("DB connection error: {}", e))))?;
+
+    use crate::database::operations::PssUdpOperations as Ops;
+
+    let mut updated_matches = 0usize;
+    let mut updated_events_from_matches = 0usize;
+    let mut updated_events_by_date = 0usize;
+
+    // Backfill matches from recorded_videos
+    if let Ok(n) = Ops::backfill_matches_tournament_from_recorded_videos(&mut *conn) { updated_matches = n as usize; }
+
+    // Backfill events from matches
+    if let Ok(n) = Ops::backfill_events_tournament_from_matches(&mut *conn) { updated_events_from_matches = n as usize; }
+
+    // Optional date overlap pass
+    if let Ok(n) = Ops::backfill_events_tournament_by_day_overlap(&mut *conn) { updated_events_by_date = n as usize; }
+
+    Ok(serde_json::json!({
+        "updated_matches": updated_matches,
+        "updated_events_from_matches": updated_events_from_matches,
+        "updated_events_by_date": updated_events_by_date
+    }))
+}
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tauri::{State, Emitter, Error as TauriError};
 use crate::core::app::App;
