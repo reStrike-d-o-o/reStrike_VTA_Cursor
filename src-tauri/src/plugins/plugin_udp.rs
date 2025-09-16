@@ -737,6 +737,18 @@ impl UdpServer {
                         *guard = Some(new_id);
                         websocket_server.set_current_match_db_id(Some(new_id));
                         log::info!("✅ ensure_current_match: created match {} (db id {})", auto_match_key, new_id);
+
+                        // Apply tournament context if available
+                        let tid_opt = { current_tournament_id.lock().unwrap().clone() };
+                        let day_opt = { current_tournament_day_id.lock().unwrap().clone() };
+                        if tid_opt.is_some() || day_opt.is_some() {
+                            let _ = crate::database::operations::PssUdpOperations::set_pss_match_tournament_context(
+                                conn,
+                                new_id,
+                                tid_opt,
+                                day_opt,
+                            );
+                        }
                     }
                 }
             }
@@ -759,6 +771,18 @@ impl UdpServer {
                             *guard = Some(db_match_id);
                             websocket_server.set_current_match_db_id(Some(db_match_id));
                             log::info!("✅ FightLoaded: started new match {} (db id {})", auto_match_key, db_match_id);
+
+                            // Apply tournament context if available
+                            let tid_opt = { current_tournament_id.lock().unwrap().clone() };
+                            let day_opt = { current_tournament_day_id.lock().unwrap().clone() };
+                            if tid_opt.is_some() || day_opt.is_some() {
+                                let _ = crate::database::operations::PssUdpOperations::set_pss_match_tournament_context(
+                                    conn,
+                                    db_match_id,
+                                    tid_opt,
+                                    day_opt,
+                                );
+                            }
                         }
                         Err(e) => log::warn!("⚠️ FightLoaded: failed to insert match {}: {}", auto_match_key, e),
                     }
@@ -830,6 +854,21 @@ impl UdpServer {
                 } else {
                     log::info!("✅ Current match set: {} (db id {})", effective_match_id, db_match_id);
                     println!("✅ Current match set: {} (db id {})", effective_match_id, db_match_id);
+
+                    // Ensure tournament context is present on the match
+                    if let Ok(conn_guard) = database.get_connection().await {
+                        let conn = &*conn_guard;
+                        let tid_opt = { current_tournament_id.lock().unwrap().clone() };
+                        let day_opt = { current_tournament_day_id.lock().unwrap().clone() };
+                        if tid_opt.is_some() || day_opt.is_some() {
+                            let _ = crate::database::operations::PssUdpOperations::set_pss_match_tournament_context(
+                                conn,
+                                db_match_id,
+                                tid_opt,
+                                day_opt,
+                            );
+                        }
+                    }
                 }
 
                 // Attempt to link any pending athletes captured before match was configured

@@ -150,6 +150,11 @@ pub struct UdpServer {
 - Events can be queried by tournament, day, or both
 
 #### Tauri Commands for Tournament Management
+#### Match Storage with Tournament Context
+- New matches created automatically during ingestion inherit the current UDP tournament context.
+- When `FightLoaded` triggers a fresh match row, the backend assigns `tournament_id` and `tournament_day_id` to that `pss_matches` record.
+- On `MatchConfig`, the current match row is updated (metadata) and the tournament context is ensured on the match if present.
+
 ```typescript
 // Frontend can now:
 await invoke('set_udp_tournament_context', { 

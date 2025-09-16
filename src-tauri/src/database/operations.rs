@@ -1162,6 +1162,25 @@ impl PssUdpOperations {
         Ok(conn.last_insert_rowid())
     }
 
+    /// Set tournament context on an existing PSS match (id refers to DB id)
+    pub fn set_pss_match_tournament_context(
+        conn: &Connection,
+        match_db_id: i64,
+        tournament_id: Option<i64>,
+        tournament_day_id: Option<i64>,
+    ) -> DatabaseResult<()> {
+        conn.execute(
+            "UPDATE pss_matches SET tournament_id = COALESCE(?, tournament_id), tournament_day_id = COALESCE(?, tournament_day_id), updated_at = ? WHERE id = ?",
+            params![
+                tournament_id,
+                tournament_day_id,
+                Utc::now().to_rfc3339(),
+                match_db_id
+            ],
+        )?;
+        Ok(())
+    }
+
     pub fn insert_pss_athlete(conn: &Connection, athlete: &PssAthlete) -> DatabaseResult<i64> {
         conn.execute(
             "INSERT INTO pss_athletes (athlete_code, short_name, long_name, country_code, flag_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
