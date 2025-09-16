@@ -174,11 +174,43 @@ impl ObsRecordingEventHandler {
                     let mut m = self.pending_match_number.lock().unwrap();
                     *m = Some(number.clone());
                 }
-                // Optionally update current session's match number early
+                // Optionally update current session's match info early (no awaits while holding the lock)
+                let effective_mid = format!("mch:{}", number);
                 {
                     let mut session_guard = self.current_session.lock().unwrap();
                     if let Some(ref mut session) = *session_guard {
                         session.match_number = Some(number.to_string());
+                        session.match_id = effective_mid.clone();
+                        session.updated_at = Utc::now();
+                    }
+                }
+                // Resolve numeric match id outside the lock
+                let resolved_dbid: Option<i64> = if let Ok(conn) = self.database.get_connection().await {
+                    let conn_ref = &*conn;
+                    conn_ref
+                        .query_row(
+                            "SELECT id FROM pss_matches WHERE match_id = ? ORDER BY updated_at DESC LIMIT 1",
+                            rusqlite::params![ &effective_mid ],
+                            |r| r.get::<_, i64>(0),
+                        )
+                        .ok()
+                } else { None };
+                if let Some(dbid) = resolved_dbid { if dbid > 0 {
+                    let mut session_guard = self.current_session.lock().unwrap();
+                    if let Some(ref mut session) = *session_guard { session.match_db_id = Some(dbid); }
+                }}
+                // Ensure tournament/day context is present (fallback to active) outside lock, then write
+                let (tid_opt, day_opt) = if let Ok(conn2) = self.database.get_connection().await {
+                    let conn_ref2 = &*conn2;
+                    let t = TournamentOperations::get_active_tournament(conn_ref2).ok().flatten();
+                    let d = t.as_ref().and_then(|tt| TournamentOperations::get_active_tournament_day(conn_ref2, tt.id.unwrap()).ok().flatten());
+                    (t.and_then(|tt| tt.id), d.and_then(|dd| dd.id))
+                } else { (None, None) };
+                if tid_opt.is_some() || day_opt.is_some() {
+                    let mut session_guard = self.current_session.lock().unwrap();
+                    if let Some(ref mut session) = *session_guard {
+                        if session.tournament_id.is_none() { session.tournament_id = tid_opt; }
+                        if session.tournament_day_id.is_none() { session.tournament_day_id = day_opt; }
                         session.updated_at = Utc::now();
                     }
                 }
@@ -480,6 +512,30 @@ impl ObsRecordingEventHandler {
                 }
             }
             if let Some(mut session) = self.get_current_session() {
+                log::info!(
+                    "🧩 FightReady session snapshot: match_id={} match_db_id={:?} number={:?} p1={:?}/{:?} p2={:?}/{:?} path={:?} file={:?}",
+                    session.match_id,
+                    session.match_db_id,
+                    session.match_number,
+                    session.player1_name,
+                    session.player1_flag,
+                    session.player2_name,
+                    session.player2_flag,
+                    session.recording_path,
+                    session.recording_filename
+                );
+                println!(
+                    "🧩 FightReady session snapshot: match_id={} match_db_id={:?} number={:?} p1={:?}/{:?} p2={:?}/{:?} path={:?} file={:?}",
+                    session.match_id,
+                    session.match_db_id,
+                    session.match_number,
+                    session.player1_name,
+                    session.player1_flag,
+                    session.player2_name,
+                    session.player2_flag,
+                    session.recording_path,
+                    session.recording_filename
+                );
                 // Apply directory (normalize separators) to be sure OBS accepts formatting update
                 if let Some(dir) = session.recording_path.clone() {
                     let dir_norm = dir.replace('\\', "/");
@@ -556,6 +612,17 @@ impl ObsRecordingEventHandler {
                     Ok(()) => { log::info!("🎬 Recording started for connection: {}", connection_name); println!("🎬 Recording started for connection: {}", connection_name); },
                     Err(e) => { log::error!("Failed to start recording via obws: {}", e); println!("Failed to start recording via obws: {}", e); },
                 }
+
+                // Start a lightweight monitor to detect RecordingStopped and index deterministically
+                let mgr = self.obs_manager.clone();
+                let db_arc = self.database.clone();
+                let session_arc = self.current_session.clone();
+                let conn_clone = connection_name.clone();
+                tokio::spawn(async move {
+                    let _ = ObsRecordingEventHandler::wait_until_recording_stopped(mgr.clone(), conn_clone.clone(), 120).await; // up to 120s
+                    let session_snapshot = { session_arc.lock().unwrap().clone() };
+                    let _ = ObsRecordingEventHandler::index_after_stop_with_snapshot(db_arc.clone(), session_snapshot).await;
+                });
             } else {
                 log::info!("🎬 Auto-start recording disabled by UI setting; not starting recording on FightReady");
             }
@@ -660,6 +727,22 @@ impl ObsRecordingEventHandler {
             let fname_opt = session.recording_filename.clone();
             let mid = session.match_id.clone();
             let created = chrono::Utc::now();
+            log::info!(
+                "🧩 index_recording_after_stop: session snapshot match_id={} match_db_id={:?} start={:?} dir={:?} file={:?}",
+                mid,
+                session.match_db_id,
+                start_opt,
+                dir_opt,
+                fname_opt
+            );
+            println!(
+                "🧩 index_recording_after_stop: session snapshot match_id={} match_db_id={:?} start={:?} dir={:?} file={:?}",
+                mid,
+                session.match_db_id,
+                start_opt,
+                dir_opt,
+                fname_opt
+            );
             if let (Some(start_time), Some(record_dir)) = (start_opt, dir_opt) {
                 let file_path: Option<String> = fname_opt.map(|f| std::path::PathBuf::from(&record_dir).join(f).to_string_lossy().to_string());
                 if let Ok(conn_guard) = self.database.get_connection().await {
@@ -671,21 +754,23 @@ impl ObsRecordingEventHandler {
                         let d = t.as_ref().and_then(|tt| TournamentOperations::get_active_tournament_day(&*conn_ref, tt.id.unwrap()).ok().flatten());
                         (t.and_then(|tt| tt.id), d.and_then(|dd| dd.id))
                     };
+                    log::info!("🧩 index_recording_after_stop: active tournament_id={:?} day_id={:?}", tid_opt, day_opt);
+                    println!("🧩 index_recording_after_stop: active tournament_id={:?} day_id={:?}", tid_opt, day_opt);
                     // Resolve match DB id robustly: try by match_id string, then by match_number, else most recent
                     let match_db_id: i64 = {
-                        let by_mid = conn_ref
-                            .query_row(
-                                "SELECT id FROM pss_matches WHERE match_id = ? ORDER BY updated_at DESC LIMIT 1",
-                                rusqlite::params![ mid ],
-                                |r| r.get::<_, i64>(0),
-                            )
-                            .ok();
-                        if let Some(id) = by_mid { id } else {
-                            // Try by match_number from session
-                            let maybe_num: Option<String> = {
-                                let s = self.get_current_session();
-                                s.and_then(|ss| ss.match_number.clone())
-                            };
+                        // 1) Prefer session.match_db_id if present
+                        if let Some(ss) = self.get_current_session() { if let Some(dbid) = ss.match_db_id { if dbid > 0 { dbid } else { 0 } } else { 0 } } else { 0 }
+                    };
+                    let match_db_id: i64 = if match_db_id > 0 { match_db_id } else {
+                        log::info!("🧩 index_recording_after_stop: resolving match_db_id via match_id={} then match_number...", mid);
+                        println!("🧩 index_recording_after_stop: resolving match_db_id via match_id={} then match_number...", mid);
+                        // 2) Try by effective match_id ("mch:<number>"), else 3) by match_number, else 4) most recent
+                        if let Ok(id) = conn_ref.query_row(
+                            "SELECT id FROM pss_matches WHERE match_id = ? ORDER BY updated_at DESC LIMIT 1",
+                            rusqlite::params![ mid ],
+                            |r| r.get::<_, i64>(0),
+                        ) { id } else {
+                            let maybe_num: Option<String> = { self.get_current_session().and_then(|ss| ss.match_number.clone()) };
                             if let Some(mnum) = maybe_num {
                                 if let Ok(id2) = conn_ref.query_row(
                                     "SELECT id FROM pss_matches WHERE match_number = ? ORDER BY updated_at DESC LIMIT 1",
@@ -707,11 +792,15 @@ impl ObsRecordingEventHandler {
                             }
                         }
                     };
+                    log::info!("🧩 index_recording_after_stop: resolved match_db_id={}", match_db_id);
+                    println!("🧩 index_recording_after_stop: resolved match_db_id={}", match_db_id);
                     if match_db_id > 0 {
-                        let _ = conn_ref.execute(
+                        let rows = conn_ref.execute(
                             "INSERT INTO recorded_videos (match_id, event_id, tournament_id, tournament_day_id, video_type, file_path, record_directory, filename_formatting, start_time, duration_seconds, created_at) VALUES (?, NULL, ?, ?, 'recording', ?, ?, NULL, ?, ?, ?)",
                             rusqlite::params![ match_db_id, tid_opt, day_opt, file_path, record_dir, start_time.to_rfc3339(), duration, created.to_rfc3339() ]
-                        );
+                        ).unwrap_or(0);
+                        log::info!("🧩 index_recording_after_stop: recorded_videos insert rows={}", rows);
+                        println!("🧩 index_recording_after_stop: recorded_videos insert rows={}", rows);
                     }
                     // Resolve recorded_video_id for this recording window
                     let rvid: i64 = conn_ref
@@ -721,13 +810,17 @@ impl ObsRecordingEventHandler {
                             |r| r.get(0),
                         )
                         .unwrap_or_else(|_| conn_ref.last_insert_rowid());
+                    log::info!("🧩 index_recording_after_stop: resolved recorded_video_id={}", rvid);
+                    println!("🧩 index_recording_after_stop: resolved recorded_video_id={}", rvid);
                     // Bulk-link events inside window with offset_ms
                     let end_time = start_time + chrono::Duration::seconds(duration as i64);
                     // Link only important events (K,P,H,TH,TB,R) for this recording window
-                    let _ = conn_ref.execute(
+                    let rows2 = conn_ref.execute(
                         "INSERT OR IGNORE INTO recorded_video_events (recorded_video_id, event_id, offset_ms, created_at)\n                         SELECT ?, e.id, CAST((julianday(e.timestamp) - julianday(?)) * 86400000 AS INTEGER), ?\n                         FROM pss_events_v2 e\n                         JOIN pss_event_types t ON t.id = e.event_type_id\n                         WHERE e.match_id = ?\n                           AND e.timestamp >= ? AND e.timestamp <= ?\n                           AND (e.tournament_id IS NULL OR EXISTS (SELECT 1 FROM recorded_videos rv2 WHERE rv2.id = ? AND (rv2.tournament_id IS NULL OR rv2.tournament_id = e.tournament_id)))\n                           AND (e.tournament_day_id IS NULL OR EXISTS (SELECT 1 FROM recorded_videos rv2 WHERE rv2.id = ? AND (rv2.tournament_day_id IS NULL OR rv2.tournament_day_id = e.tournament_day_id)))\n                           AND t.event_code IN ('K','P','H','TH','TB','R')\n                         ORDER BY e.timestamp ASC",
                         rusqlite::params![ rvid, start_time.to_rfc3339(), chrono::Utc::now().to_rfc3339(), match_db_id, start_time.to_rfc3339(), end_time.to_rfc3339(), rvid, rvid ]
-                    );
+                    ).unwrap_or(0);
+                    log::info!("🧩 index_recording_after_stop: linked events rows={}", rows2);
+                    println!("🧩 index_recording_after_stop: linked events rows={}", rows2);
                 }
             }
         }
@@ -764,12 +857,30 @@ impl ObsRecordingEventHandler {
         Ok(())
     }
 
+    
+
     /// Minimal indexing using only shared handles (used from background tasks)
     async fn index_after_stop_with_snapshot(
         database: Arc<crate::plugins::plugin_database::DatabasePlugin>,
         session_opt: Option<RecordingSession>,
     ) -> AppResult<()> {
         if let Some(session) = session_opt {
+            log::info!(
+                "🧩 index_after_stop_with_snapshot: session snapshot match_id={} match_db_id={:?} start={:?} dir={:?} file={:?}",
+                session.match_id,
+                session.match_db_id,
+                session.start_time,
+                session.recording_path,
+                session.recording_filename
+            );
+            println!(
+                "🧩 index_after_stop_with_snapshot: session snapshot match_id={} match_db_id={:?} start={:?} dir={:?} file={:?}",
+                session.match_id,
+                session.match_db_id,
+                session.start_time,
+                session.recording_path,
+                session.recording_filename
+            );
             let start_opt = session.start_time;
             let dir_opt = session.recording_path.clone();
             let fname_opt = session.recording_filename.clone();
@@ -786,23 +897,46 @@ impl ObsRecordingEventHandler {
                         let d = t.as_ref().and_then(|tt| TournamentOperations::get_active_tournament_day(&*conn_ref, tt.id.unwrap()).ok().flatten());
                         (t.and_then(|tt| tt.id), d.and_then(|dd| dd.id))
                     };
-                    // Resolve match DB id robustly as in main path
-                    let match_db_id: i64 = conn_ref
-                        .query_row(
+                    log::info!("🧩 index_after_stop_with_snapshot: active tournament_id={:?} day_id={:?}", tid_opt, day_opt);
+                    println!("🧩 index_after_stop_with_snapshot: active tournament_id={:?} day_id={:?}", tid_opt, day_opt);
+                    // Resolve match DB id robustly: 1) session.match_db_id, 2) by match_id, 3) by match_number, 4) most recent
+                    let mut match_db_id: i64 = session.match_db_id.unwrap_or(0);
+                    if match_db_id == 0 {
+                        log::info!("🧩 index_after_stop_with_snapshot: resolving match_db_id via match_id={} then match_number...", mid);
+                        println!("🧩 index_after_stop_with_snapshot: resolving match_db_id via match_id={} then match_number...", mid);
+                        if let Ok(id) = conn_ref.query_row(
                             "SELECT id FROM pss_matches WHERE match_id = ? ORDER BY updated_at DESC LIMIT 1",
                             rusqlite::params![ mid ],
                             |r| r.get::<_, i64>(0),
-                        )
-                        .unwrap_or_else(|_| conn_ref.query_row(
-                            "SELECT id FROM pss_matches ORDER BY created_at DESC LIMIT 1",
-                            [],
-                            |r| r.get::<_, i64>(0),
-                        ).unwrap_or(0));
+                        ) { match_db_id = id; } else if let Some(mnum) = session.match_number.clone() {
+                            if let Ok(id2) = conn_ref.query_row(
+                                "SELECT id FROM pss_matches WHERE match_number = ? ORDER BY updated_at DESC LIMIT 1",
+                                rusqlite::params![ mnum ],
+                                |r| r.get::<_, i64>(0),
+                            ) { match_db_id = id2; } else {
+                                match_db_id = conn_ref.query_row(
+                                    "SELECT id FROM pss_matches ORDER BY created_at DESC LIMIT 1",
+                                    [],
+                                    |r| r.get::<_, i64>(0),
+                                ).unwrap_or(0);
+                            }
+                        } else {
+                            match_db_id = conn_ref.query_row(
+                                "SELECT id FROM pss_matches ORDER BY created_at DESC LIMIT 1",
+                                [],
+                                |r| r.get::<_, i64>(0),
+                            ).unwrap_or(0);
+                        }
+                    }
+                    log::info!("🧩 index_after_stop_with_snapshot: resolved match_db_id={}", match_db_id);
+                    println!("🧩 index_after_stop_with_snapshot: resolved match_db_id={}", match_db_id);
                     if match_db_id > 0 {
-                        let _ = conn_ref.execute(
+                        let rows = conn_ref.execute(
                             "INSERT INTO recorded_videos (match_id, event_id, tournament_id, tournament_day_id, video_type, file_path, record_directory, filename_formatting, start_time, duration_seconds, created_at) VALUES (?, NULL, ?, ?, 'recording', ?, ?, NULL, ?, ?, ?)",
                             rusqlite::params![ match_db_id, tid_opt, day_opt, file_path, record_dir, start_time.to_rfc3339(), duration, created.to_rfc3339() ]
-                        );
+                        ).unwrap_or(0);
+                        log::info!("🧩 index_after_stop_with_snapshot: recorded_videos insert rows={}", rows);
+                        println!("🧩 index_after_stop_with_snapshot: recorded_videos insert rows={}", rows);
                         // Link events inside window
                         let rvid: i64 = conn_ref
                             .query_row(
@@ -811,11 +945,15 @@ impl ObsRecordingEventHandler {
                                 |r| r.get(0),
                             )
                             .unwrap_or_else(|_| conn_ref.last_insert_rowid());
+                        log::info!("🧩 index_after_stop_with_snapshot: resolved recorded_video_id={}", rvid);
+                        println!("🧩 index_after_stop_with_snapshot: resolved recorded_video_id={}", rvid);
                         let end_time = start_time + chrono::Duration::seconds(duration as i64);
-                        let _ = conn_ref.execute(
+                        let rows2 = conn_ref.execute(
                             "INSERT OR IGNORE INTO recorded_video_events (recorded_video_id, event_id, offset_ms, created_at)\n                         SELECT ?, e.id, CAST((julianday(e.timestamp) - julianday(?)) * 86400000 AS INTEGER), ?\n                         FROM pss_events_v2 e\n                         JOIN pss_event_types t ON t.id = e.event_type_id\n                         WHERE e.match_id = ?\n                           AND e.timestamp >= ? AND e.timestamp <= ?\n                           AND t.event_code IN ('K','P','H','TH','TB','R')\n                         ORDER BY e.timestamp ASC",
                             rusqlite::params![ rvid, start_time.to_rfc3339(), chrono::Utc::now().to_rfc3339(), match_db_id, start_time.to_rfc3339(), end_time.to_rfc3339() ]
-                        );
+                        ).unwrap_or(0);
+                        log::info!("🧩 index_after_stop_with_snapshot: linked events rows={}", rows2);
+                        println!("🧩 index_after_stop_with_snapshot: linked events rows={}", rows2);
                     }
                 }
             }
