@@ -9,6 +9,71 @@ pub trait Migration: Send + Sync {
     fn down(&self, conn: &Connection) -> SqliteResult<()>;
 }
 
+/// Migration 24: Settings tables - add integer created/updated timestamps
+pub struct Migration24;
+
+impl Migration for Migration24 {
+    fn version(&self) -> u32 { 24 }
+
+    fn description(&self) -> &str {
+        "Settings tables: add created/updated INTEGER unix timestamps; backfill from ISO"
+    }
+
+    fn up(&self, conn: &Connection) -> SqliteResult<()> {
+        // Helper: safely add integer columns if missing
+        let add_col_if_missing = |table: &str, col: &str| -> SqliteResult<()> {
+            let sql = format!(
+                "ALTER TABLE {table} ADD COLUMN {col} INTEGER",
+            );
+            let _ = conn.execute(&sql, []); // ignore error if exists
+            Ok(())
+        };
+
+        // settings_categories: created INTEGER from created_at TEXT
+        add_col_if_missing("settings_categories", "created")?;
+        // Backfill from existing created_at (RFC3339) if present
+        let _ = conn.execute(
+            "UPDATE settings_categories SET created = (strftime('%s', created_at)) WHERE created IS NULL AND created_at IS NOT NULL",
+            [],
+        );
+
+        // settings_keys: created INTEGER from created_at TEXT
+        add_col_if_missing("settings_keys", "created")?;
+        let _ = conn.execute(
+            "UPDATE settings_keys SET created = (strftime('%s', created_at)) WHERE created IS NULL AND created_at IS NOT NULL",
+            [],
+        );
+
+        // settings_values: created, updated INTEGER from created_at/updated_at TEXT
+        add_col_if_missing("settings_values", "created")?;
+        add_col_if_missing("settings_values", "updated")?;
+        let _ = conn.execute(
+            "UPDATE settings_values SET created = (strftime('%s', created_at)) WHERE created IS NULL AND created_at IS NOT NULL",
+            [],
+        );
+        let _ = conn.execute(
+            "UPDATE settings_values SET updated = (strftime('%s', updated_at)) WHERE updated IS NULL AND updated_at IS NOT NULL",
+            [],
+        );
+
+        // settings_history: created INTEGER from created_at TEXT
+        add_col_if_missing("settings_history", "created")?;
+        let _ = conn.execute(
+            "UPDATE settings_history SET created = (strftime('%s', created_at)) WHERE created IS NULL AND created_at IS NOT NULL",
+            [],
+        );
+
+        Ok(())
+    }
+
+    fn down(&self, conn: &Connection) -> SqliteResult<()> {
+        // SQLite cannot drop columns; no-op safe down
+        // We won't remove integer columns to avoid data loss
+        let _ = conn;
+        Ok(())
+    }
+}
+
 /// Migration 1: Initial schema
 pub struct Migration1;
 
@@ -2583,6 +2648,7 @@ impl MigrationManager {
         migrations.push(Box::new(Migration21)); // recorded_video_events + file metadata
         migrations.push(Box::new(Migration22)); // Manual match lookups and pss_matches extensions
         migrations.push(Box::new(Migration23)); // OVR provider/tournament/category
+        migrations.push(Box::new(Migration24)); // Settings tables: created/updated unix ints
         
         Self { migrations }
     }

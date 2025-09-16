@@ -460,7 +460,7 @@ pub struct SettingsCategory {
     pub name: String,
     pub description: Option<String>,
     pub display_order: i32,
-    pub created_at: DateTime<Utc>,
+    pub created: i64,
 }
 
 impl SettingsCategory {
@@ -471,7 +471,7 @@ impl SettingsCategory {
             name,
             description,
             display_order,
-            created_at: Utc::now(),
+            created: crate::utils::now_unix(),
         }
     }
     
@@ -482,9 +482,7 @@ impl SettingsCategory {
             name: row.get("name")?,
             description: row.get("description")?,
             display_order: row.get("display_order")?,
-            created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
-                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "created_at".to_string(), rusqlite::types::Type::Text))?
-                .with_timezone(&Utc),
+            created: row.get("created")?,
         })
     }
 }
@@ -502,7 +500,7 @@ pub struct SettingsKey {
     pub validation_rules: Option<String>, // JSON validation rules
     pub is_required: bool,
     pub is_sensitive: bool,
-    pub created_at: DateTime<Utc>,
+    pub created: i64,
 }
 
 impl SettingsKey {
@@ -529,7 +527,7 @@ impl SettingsKey {
             validation_rules,
             is_required,
             is_sensitive,
-            created_at: Utc::now(),
+            created: crate::utils::now_unix(),
         }
     }
     
@@ -546,9 +544,7 @@ impl SettingsKey {
             validation_rules: row.get("validation_rules")?,
             is_required: row.get("is_required")?,
             is_sensitive: row.get("is_sensitive")?,
-            created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
-                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "created_at".to_string(), rusqlite::types::Type::Text))?
-                .with_timezone(&Utc),
+            created: row.get("created")?,
         })
     }
 }
@@ -559,20 +555,20 @@ pub struct SettingsValue {
     pub id: Option<i64>,
     pub key_id: i64,
     pub value: String,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+    pub created: i64,
+    pub updated: i64,
 }
 
 impl SettingsValue {
     /// Create a new settings value
     pub fn new(key_id: i64, value: String) -> Self {
-        let now = Utc::now();
+        let now = crate::utils::now_unix();
         Self {
             id: None,
             key_id,
             value,
-            created_at: now,
-            updated_at: now,
+            created: now,
+            updated: now,
         }
     }
     
@@ -582,12 +578,8 @@ impl SettingsValue {
             id: row.get("id")?,
             key_id: row.get("key_id")?,
             value: row.get("value")?,
-            created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
-                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "created_at".to_string(), rusqlite::types::Type::Text))?
-                .with_timezone(&Utc),
-            updated_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("updated_at")?)
-                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "updated_at".to_string(), rusqlite::types::Type::Text))?
-                .with_timezone(&Utc),
+            created: row.get("created")?,
+            updated: row.get("updated")?,
         })
     }
 }
@@ -601,7 +593,7 @@ pub struct SettingsHistory {
     pub new_value: Option<String>,
     pub changed_by: String, // 'user', 'system', 'migration'
     pub change_reason: Option<String>,
-    pub created_at: DateTime<Utc>,
+    pub created: i64,
 }
 
 impl SettingsHistory {
@@ -620,7 +612,7 @@ impl SettingsHistory {
             new_value,
             changed_by,
             change_reason,
-            created_at: Utc::now(),
+            created: crate::utils::now_unix(),
         }
     }
     
@@ -633,9 +625,7 @@ impl SettingsHistory {
             new_value: row.get("new_value")?,
             changed_by: row.get("changed_by")?,
             change_reason: row.get("change_reason")?,
-            created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
-                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "created_at".to_string(), rusqlite::types::Type::Text))?
-                .with_timezone(&Utc),
+            created: row.get("created")?,
         })
     }
 } 

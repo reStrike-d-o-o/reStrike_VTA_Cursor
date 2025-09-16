@@ -92,12 +92,15 @@ impl UiSettingsOperations {
             );
             
             let category_id = conn.execute(
-                "INSERT INTO settings_categories (name, description, display_order, created_at) VALUES (?, ?, ?, ?)",
+                "INSERT INTO settings_categories (name, description, display_order, created, created_at) VALUES (?, ?, ?, ?, COALESCE(?, datetime('unixepoch', ?)))",
                 params![
                     category.name,
                     category.description,
                     category.display_order,
-                    category.created_at.to_rfc3339()
+                    category.created,
+                    // Keep legacy created_at for backward compatibility
+                    None::<String>,
+                    category.created,
                 ]
             )?;
             
@@ -137,7 +140,7 @@ impl UiSettingsOperations {
             );
             
             let key_id = conn.execute(
-                "INSERT INTO settings_keys (category_id, key_name, display_name, description, data_type, default_value, validation_rules, is_required, is_sensitive, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO settings_keys (category_id, key_name, display_name, description, data_type, default_value, validation_rules, is_required, is_sensitive, created, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, datetime('unixepoch', ?)))",
                 params![
                     setting_key.category_id,
                     setting_key.key_name,
@@ -148,7 +151,9 @@ impl UiSettingsOperations {
                     setting_key.validation_rules,
                     setting_key.is_required,
                     setting_key.is_sensitive,
-                    setting_key.created_at.to_rfc3339()
+                    setting_key.created,
+                    None::<String>,
+                    setting_key.created,
                 ]
             )?;
             
@@ -157,12 +162,14 @@ impl UiSettingsOperations {
                 let setting_value = SettingsValue::new(key_id as i64, default_val.to_string());
                 
                 conn.execute(
-                    "INSERT INTO settings_values (key_id, value, created_at, updated_at) VALUES (?, ?, ?, ?)",
+                    "INSERT INTO settings_values (key_id, value, created, updated, created_at, updated_at) VALUES (?, ?, ?, ?, datetime('unixepoch', ?), datetime('unixepoch', ?))",
                     params![
                         setting_value.key_id,
                         setting_value.value,
-                        setting_value.created_at.to_rfc3339(),
-                        setting_value.updated_at.to_rfc3339()
+                        setting_value.created,
+                        setting_value.updated,
+                        setting_value.created,
+                        setting_value.updated,
                     ]
                 )?;
             }
@@ -232,9 +239,10 @@ impl UiSettingsOperations {
             // Update existing value
             let old_value = existing.value.clone();
             
+            let now_unix = crate::utils::now_unix();
             tx.execute(
-                "UPDATE settings_values SET value = ?, updated_at = ? WHERE id = ?",
-                params![value, Utc::now().to_rfc3339(), existing.id.unwrap()]
+                "UPDATE settings_values SET value = ?, updated = ?, updated_at = datetime('unixepoch', ?) WHERE id = ?",
+                params![value, now_unix, now_unix, existing.id.unwrap()]
             )?;
             
             // Record history
@@ -247,14 +255,15 @@ impl UiSettingsOperations {
             );
             
             tx.execute(
-                "INSERT INTO settings_history (key_id, old_value, new_value, changed_by, change_reason, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+                "INSERT INTO settings_history (key_id, old_value, new_value, changed_by, change_reason, created, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime('unixepoch', ?))",
                 params![
                     history.key_id,
                     history.old_value,
                     history.new_value,
                     history.changed_by,
                     history.change_reason,
-                    history.created_at.to_rfc3339()
+                    history.created,
+                    history.created,
                 ]
             )?;
         } else {
@@ -265,12 +274,14 @@ impl UiSettingsOperations {
             );
             
             tx.execute(
-                "INSERT INTO settings_values (key_id, value, created_at, updated_at) VALUES (?, ?, ?, ?)",
+                "INSERT INTO settings_values (key_id, value, created, updated, created_at, updated_at) VALUES (?, ?, ?, ?, datetime('unixepoch', ?), datetime('unixepoch', ?))",
                 params![
                     setting_value.key_id,
                     setting_value.value,
-                    setting_value.created_at.to_rfc3339(),
-                    setting_value.updated_at.to_rfc3339()
+                    setting_value.created,
+                    setting_value.updated,
+                    setting_value.created,
+                    setting_value.updated,
                 ]
             )?;
             
@@ -284,14 +295,15 @@ impl UiSettingsOperations {
             );
             
             tx.execute(
-                "INSERT INTO settings_history (key_id, old_value, new_value, changed_by, change_reason, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+                "INSERT INTO settings_history (key_id, old_value, new_value, changed_by, change_reason, created, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime('unixepoch', ?))",
                 params![
                     history.key_id,
                     history.old_value,
                     history.new_value,
                     history.changed_by,
                     history.change_reason,
-                    history.created_at.to_rfc3339()
+                    history.created,
+                    history.created,
                 ]
             )?;
         }
