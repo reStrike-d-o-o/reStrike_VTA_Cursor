@@ -456,7 +456,7 @@ impl SchemaVersion {
 /// Settings category model
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SettingsCategory {
-    pub id: Option<i64>,
+    pub id: Option<String>,
     pub name: String,
     pub description: Option<String>,
     pub display_order: i32,
@@ -490,8 +490,8 @@ impl SettingsCategory {
 /// Settings key model
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SettingsKey {
-    pub id: Option<i64>,
-    pub category_id: i64,
+    pub id: Option<String>,
+    pub category_id: String,
     pub key_name: String,
     pub display_name: String,
     pub description: Option<String>,
@@ -506,7 +506,7 @@ pub struct SettingsKey {
 impl SettingsKey {
     /// Create a new settings key
     pub fn new(
-        category_id: i64,
+        category_id: String,
         key_name: String,
         display_name: String,
         description: Option<String>,
@@ -552,8 +552,8 @@ impl SettingsKey {
 /// Settings value model
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SettingsValue {
-    pub id: Option<i64>,
-    pub key_id: i64,
+    pub id: Option<String>,
+    pub key_id: String,
     pub value: String,
     pub created: i64,
     pub updated: i64,
@@ -561,7 +561,7 @@ pub struct SettingsValue {
 
 impl SettingsValue {
     /// Create a new settings value
-    pub fn new(key_id: i64, value: String) -> Self {
+    pub fn new(key_id: String, value: String) -> Self {
         let now = crate::utils::now_unix();
         Self {
             id: None,
@@ -587,8 +587,8 @@ impl SettingsValue {
 /// Settings history model for audit trail
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SettingsHistory {
-    pub id: Option<i64>,
-    pub key_id: i64,
+    pub id: Option<String>,
+    pub key_id: String,
     pub old_value: Option<String>,
     pub new_value: Option<String>,
     pub changed_by: String, // 'user', 'system', 'migration'
@@ -599,7 +599,7 @@ pub struct SettingsHistory {
 impl SettingsHistory {
     /// Create a new settings history entry
     pub fn new(
-        key_id: i64,
+        key_id: String,
         old_value: Option<String>,
         new_value: Option<String>,
         changed_by: String,

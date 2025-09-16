@@ -92,8 +92,9 @@ impl UiSettingsOperations {
             );
             
             let category_id = conn.execute(
-                "INSERT INTO settings_categories (name, description, display_order, created, created_at) VALUES (?, ?, ?, ?, COALESCE(?, datetime('unixepoch', ?)))",
+                "INSERT INTO settings_categories (id, name, description, display_order, created, created_at) VALUES (COALESCE(?, printf('%s', hex(randomblob(16)))), ?, ?, ?, ?, COALESCE(?, datetime('unixepoch', ?)))",
                 params![
+                    category.id,
                     category.name,
                     category.description,
                     category.display_order,
@@ -128,7 +129,7 @@ impl UiSettingsOperations {
         if exists == 0 {
             // Create new setting key
             let setting_key = SettingsKey::new(
-                category_id,
+                category_id.to_string(),
                 key_name.to_string(),
                 display_name.to_string(),
                 Some(format!("UI setting for {}", display_name)),
@@ -140,7 +141,7 @@ impl UiSettingsOperations {
             );
             
             let key_id = conn.execute(
-                "INSERT INTO settings_keys (category_id, key_name, display_name, description, data_type, default_value, validation_rules, is_required, is_sensitive, created, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, datetime('unixepoch', ?)))",
+                "INSERT INTO settings_keys (id, category_id, key_name, display_name, description, data_type, default_value, validation_rules, is_required, is_sensitive, created, created_at) VALUES (printf('%s', hex(randomblob(16))), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, datetime('unixepoch', ?)))",
                 params![
                     setting_key.category_id,
                     setting_key.key_name,
@@ -159,10 +160,10 @@ impl UiSettingsOperations {
             
             // Set default value if provided
             if let Some(default_val) = default_value {
-                let setting_value = SettingsValue::new(key_id as i64, default_val.to_string());
+                let setting_value = SettingsValue::new(key_id.to_string(), default_val.to_string());
                 
                 conn.execute(
-                    "INSERT INTO settings_values (key_id, value, created, updated, created_at, updated_at) VALUES (?, ?, ?, ?, datetime('unixepoch', ?), datetime('unixepoch', ?))",
+                    "INSERT INTO settings_values (id, key_id, value, created, updated, created_at, updated_at) VALUES (printf('%s', hex(randomblob(16))), ?, ?, ?, ?, datetime('unixepoch', ?), datetime('unixepoch', ?))",
                     params![
                         setting_value.key_id,
                         setting_value.value,
@@ -231,7 +232,7 @@ impl UiSettingsOperations {
         // Check if setting value exists
         let existing_value: Option<SettingsValue> = tx.query_row(
             "SELECT * FROM settings_values WHERE key_id = ?",
-            params![setting_key.id.unwrap()],
+            params![setting_key.id.clone().unwrap()],
             |row| SettingsValue::from_row(row)
         ).optional()?;
         
@@ -247,7 +248,7 @@ impl UiSettingsOperations {
             
             // Record history
             let history = SettingsHistory::new(
-                setting_key.id.unwrap(),
+                setting_key.id.clone().unwrap(),
                 Some(old_value),
                 Some(value.to_string()),
                 changed_by.to_string(),
@@ -269,7 +270,7 @@ impl UiSettingsOperations {
         } else {
             // Create new value
             let setting_value = SettingsValue::new(
-                setting_key.id.unwrap(),
+                setting_key.id.clone().unwrap(),
                 value.to_string(),
             );
             
@@ -287,7 +288,7 @@ impl UiSettingsOperations {
             
             // Record history for new setting
             let history = SettingsHistory::new(
-                setting_key.id.unwrap(),
+                setting_key.id.clone().unwrap(),
                 None,
                 Some(value.to_string()),
                 changed_by.to_string(),

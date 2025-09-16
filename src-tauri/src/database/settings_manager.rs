@@ -80,7 +80,7 @@ impl SettingsManager {
             
             // Record history
             let history = SettingsHistory::new(
-                setting_key.id.unwrap(),
+                setting_key.id.clone().unwrap(),
                 Some(old_value),
                 Some(value.to_string()),
                 changed_by.to_string(),
@@ -120,7 +120,7 @@ impl SettingsManager {
             
             // Record history for new setting
             let history = SettingsHistory::new(
-                setting_key.id.unwrap(),
+                setting_key.id.clone().unwrap(),
                 None,
                 Some(value.to_string()),
                 changed_by.to_string(),
@@ -210,7 +210,7 @@ impl SettingsManager {
         let tx = conn.transaction()?;
         
         // Get category ID
-        let category_id: i64 = tx.query_row(
+        let category_id: String = tx.query_row(
             "SELECT id FROM settings_categories WHERE name = ?",
             params![category_name],
             |row| row.get(0)
@@ -248,15 +248,17 @@ impl SettingsManager {
         
         // Set default value if provided
         if let Some(default_val) = default_value {
-            let setting_value = SettingsValue::new(key_id as i64, default_val.to_string());
+            let setting_value = SettingsValue::new(key_id.to_string(), default_val.to_string());
             
             tx.execute(
-                "INSERT INTO settings_values (key_id, value, created_at, updated_at) VALUES (?, ?, ?, ?)",
+                "INSERT INTO settings_values (id, key_id, value, created, updated, created_at, updated_at) VALUES (printf('%s', hex(randomblob(16))), ?, ?, ?, ?, datetime('unixepoch', ?), datetime('unixepoch', ?))",
                 params![
                     setting_value.key_id,
                     setting_value.value,
-                    setting_value.created_at.to_rfc3339(),
-                    setting_value.updated_at.to_rfc3339()
+                    setting_value.created,
+                    setting_value.updated,
+                    setting_value.created,
+                    setting_value.updated,
                 ]
             )?;
         }

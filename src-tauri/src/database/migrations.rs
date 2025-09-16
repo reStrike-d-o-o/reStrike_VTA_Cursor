@@ -1,4 +1,6 @@
 use rusqlite::{Connection, Result as SqliteResult};
+use rusqlite::params;
+use crate::utils::{new_uuid, now_unix};
 use crate::database::{DatabaseError, DatabaseResult, CURRENT_SCHEMA_VERSION, SchemaVersion};
 
 /// Migration trait for database schema updates
@@ -31,6 +33,27 @@ impl Migration for Migration24 {
 
         // settings_categories: created INTEGER from created_at TEXT
         add_col_if_missing("settings_categories", "created")?;
+        // switch id to TEXT UUID v4 if currently INTEGER AUTOINCREMENT
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS _tmp_settings_categories (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL UNIQUE,
+                description TEXT,
+                display_order INTEGER DEFAULT 0,
+                created INTEGER
+            )",
+            [],
+        )?;
+        // migrate data
+        conn.execute(
+            "INSERT INTO _tmp_settings_categories (id, name, description, display_order, created)
+             SELECT COALESCE(id, printf('%s', hex(randomblob(16)))), name, description, display_order,
+                    COALESCE(created, strftime('%s', created_at))
+             FROM settings_categories",
+            [],
+        )?;
+        conn.execute("DROP TABLE IF EXISTS settings_categories", [])?;
+        conn.execute("ALTER TABLE _tmp_settings_categories RENAME TO settings_categories", [])?;
         // Backfill from existing created_at (RFC3339) if present
         let _ = conn.execute(
             "UPDATE settings_categories SET created = (strftime('%s', created_at)) WHERE created IS NULL AND created_at IS NOT NULL",
@@ -39,6 +62,34 @@ impl Migration for Migration24 {
 
         // settings_keys: created INTEGER from created_at TEXT
         add_col_if_missing("settings_keys", "created")?;
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS _tmp_settings_keys (
+                id TEXT PRIMARY KEY,
+                category_id TEXT NOT NULL,
+                key_name TEXT NOT NULL UNIQUE,
+                display_name TEXT NOT NULL,
+                description TEXT,
+                data_type TEXT NOT NULL,
+                default_value TEXT,
+                validation_rules TEXT,
+                is_required BOOLEAN DEFAULT 0,
+                is_sensitive BOOLEAN DEFAULT 0,
+                created INTEGER
+            )",
+            [],
+        )?;
+        conn.execute(
+            "INSERT INTO _tmp_settings_keys (
+                id, category_id, key_name, display_name, description, data_type, default_value, validation_rules, is_required, is_sensitive, created
+            )
+            SELECT COALESCE(id, printf('%s', hex(randomblob(16)))),
+                   CAST(category_id AS TEXT), key_name, display_name, description, data_type, default_value, validation_rules, is_required, is_sensitive,
+                   COALESCE(created, strftime('%s', created_at))
+            FROM settings_keys",
+            [],
+        )?;
+        conn.execute("DROP TABLE IF EXISTS settings_keys", [])?;
+        conn.execute("ALTER TABLE _tmp_settings_keys RENAME TO settings_keys", [])?;
         let _ = conn.execute(
             "UPDATE settings_keys SET created = (strftime('%s', created_at)) WHERE created IS NULL AND created_at IS NOT NULL",
             [],
@@ -47,6 +98,25 @@ impl Migration for Migration24 {
         // settings_values: created, updated INTEGER from created_at/updated_at TEXT
         add_col_if_missing("settings_values", "created")?;
         add_col_if_missing("settings_values", "updated")?;
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS _tmp_settings_values (
+                id TEXT PRIMARY KEY,
+                key_id TEXT NOT NULL,
+                value TEXT NOT NULL,
+                created INTEGER,
+                updated INTEGER
+            )",
+            [],
+        )?;
+        conn.execute(
+            "INSERT INTO _tmp_settings_values (id, key_id, value, created, updated)
+             SELECT COALESCE(id, printf('%s', hex(randomblob(16)))), CAST(key_id AS TEXT), value,
+                    COALESCE(created, strftime('%s', created_at)), COALESCE(updated, strftime('%s', updated_at))
+             FROM settings_values",
+            [],
+        )?;
+        conn.execute("DROP TABLE IF EXISTS settings_values", [])?;
+        conn.execute("ALTER TABLE _tmp_settings_values RENAME TO settings_values", [])?;
         let _ = conn.execute(
             "UPDATE settings_values SET created = (strftime('%s', created_at)) WHERE created IS NULL AND created_at IS NOT NULL",
             [],
@@ -58,6 +128,27 @@ impl Migration for Migration24 {
 
         // settings_history: created INTEGER from created_at TEXT
         add_col_if_missing("settings_history", "created")?;
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS _tmp_settings_history (
+                id TEXT PRIMARY KEY,
+                key_id TEXT NOT NULL,
+                old_value TEXT,
+                new_value TEXT,
+                changed_by TEXT NOT NULL,
+                change_reason TEXT,
+                created INTEGER
+            )",
+            [],
+        )?;
+        conn.execute(
+            "INSERT INTO _tmp_settings_history (id, key_id, old_value, new_value, changed_by, change_reason, created)
+             SELECT COALESCE(id, printf('%s', hex(randomblob(16)))), CAST(key_id AS TEXT), old_value, new_value, changed_by, change_reason,
+                    COALESCE(created, strftime('%s', created_at))
+             FROM settings_history",
+            [],
+        )?;
+        conn.execute("DROP TABLE IF EXISTS settings_history", [])?;
+        conn.execute("ALTER TABLE _tmp_settings_history RENAME TO settings_history", [])?;
         let _ = conn.execute(
             "UPDATE settings_history SET created = (strftime('%s', created_at)) WHERE created IS NULL AND created_at IS NOT NULL",
             [],
