@@ -1290,6 +1290,28 @@ impl PssUdpOperations {
         Ok(n1)
     }
 
+    /// Rebuild recorded_video_events for historical videos using tournament-aware filters
+    pub fn backfill_recorded_video_events(conn: &mut Connection) -> DatabaseResult<usize> {
+        // For each recorded video, link matching events within its window using tournament constraints
+        let sql = r#"
+            INSERT OR IGNORE INTO recorded_video_events (recorded_video_id, event_id, offset_ms, created_at)
+            SELECT rv.id,
+                   e.id,
+                   CAST((julianday(e.timestamp) - julianday(rv.start_time)) * 86400000 AS INTEGER) AS offset_ms,
+                   ?
+            FROM recorded_videos rv
+            JOIN pss_events_v2 e ON e.match_id = rv.match_id
+            JOIN pss_event_types t ON t.id = e.event_type_id
+            WHERE e.timestamp >= rv.start_time
+              AND e.timestamp <= datetime(rv.start_time, printf('+%d seconds', COALESCE(rv.duration_seconds, 0)))
+              AND (rv.tournament_id IS NULL OR e.tournament_id = rv.tournament_id)
+              AND (rv.tournament_day_id IS NULL OR e.tournament_day_id = rv.tournament_day_id)
+              AND t.event_code IN ('K','P','H','TH','TB','R')
+        "#;
+        let n = conn.execute(sql, [Utc::now().to_rfc3339()])?;
+        Ok(n)
+    }
+
     /// Get athletes for a specific match with their details
     pub fn get_pss_match_athletes(conn: &Connection, match_id: i64) -> DatabaseResult<Vec<(PssMatchAthlete, PssAthlete)>> {
         let mut stmt = conn.prepare(

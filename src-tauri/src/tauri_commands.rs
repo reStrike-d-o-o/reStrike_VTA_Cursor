@@ -1,4 +1,12 @@
 ﻿#[tauri::command]
+pub async fn db_backfill_recorded_video_events(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    let mut conn = app.database_plugin().get_connection().await
+        .map_err(|e| TauriError::from(anyhow::anyhow!(format!("DB connection error: {}", e))))?;
+    use crate::database::operations::PssUdpOperations as Ops;
+    let n = Ops::backfill_recorded_video_events(&mut *conn).unwrap_or(0);
+    Ok(serde_json::json!({ "inserted_links": n }))
+}
+#[tauri::command]
 pub async fn db_backfill_tournament_context(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     let mut conn = app.database_plugin().get_connection().await
         .map_err(|e| TauriError::from(anyhow::anyhow!(format!("DB connection error: {}", e))))?;

@@ -165,6 +165,20 @@ Use the built-in backfill operations to align historical data:
 await invoke('db_backfill_tournament_context')
 // returns: { updated_matches, updated_events_from_matches, updated_events_by_date }
 ```
+
+### Recorded Video ↔ Event Linking (Tournament-aware)
+
+#### Runtime Linking
+- When inserting `recorded_video_events`, the backend now filters by tournament context where available:
+  - `e.tournament_id = rv.tournament_id` when both present
+  - `e.tournament_day_id = rv.tournament_day_id` when both present
+  - Time window and event types remain enforced.
+
+#### Backfill Linking
+```typescript
+await invoke('db_backfill_recorded_video_events')
+// returns: { inserted_links }
+```
 - New matches created automatically during ingestion inherit the current UDP tournament context.
 - When `FightLoaded` triggers a fresh match row, the backend assigns `tournament_id` and `tournament_day_id` to that `pss_matches` record.
 - On `MatchConfig`, the current match row is updated (metadata) and the tournament context is ensured on the match if present.
