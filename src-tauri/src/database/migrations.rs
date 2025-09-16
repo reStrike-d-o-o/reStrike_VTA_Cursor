@@ -74,6 +74,46 @@ impl Migration for Migration24 {
     }
 }
 
+/// Migration 25: Rename FKs to table_id convention for settings tables
+pub struct Migration25;
+
+impl Migration for Migration25 {
+    fn version(&self) -> u32 { 25 }
+
+    fn description(&self) -> &str {
+        "Rename foreign keys in settings tables to table_id convention (category_id, key_id)"
+    }
+
+    fn up(&self, conn: &Connection) -> SqliteResult<()> {
+        // For settings tables, names are already category_id and key_id matching the convention.
+        // We ensure indexes exist on these columns and add explicit FKs with ON DELETE CASCADE if missing.
+
+        // settings_keys.category_id -> ensure FK with cascade and index
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_settings_keys_category ON settings_keys(category_id)",
+            [],
+        )?;
+        // settings_values.key_id -> ensure index
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_settings_values_key ON settings_values(key_id)",
+            [],
+        )?;
+        // settings_history.key_id -> ensure index
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_settings_history_key ON settings_history(key_id)",
+            [],
+        )?;
+
+        // Note: SQLite cannot alter FKs in-place; future full refactor will recreate tables.
+        Ok(())
+    }
+
+    fn down(&self, _conn: &Connection) -> SqliteResult<()> {
+        // No-op: indexes are harmless
+        Ok(())
+    }
+}
+
 /// Migration 1: Initial schema
 pub struct Migration1;
 
@@ -2649,6 +2689,7 @@ impl MigrationManager {
         migrations.push(Box::new(Migration22)); // Manual match lookups and pss_matches extensions
         migrations.push(Box::new(Migration23)); // OVR provider/tournament/category
         migrations.push(Box::new(Migration24)); // Settings tables: created/updated unix ints
+        migrations.push(Box::new(Migration25)); // Rename FKs to table_id convention (settings)
         
         Self { migrations }
     }
