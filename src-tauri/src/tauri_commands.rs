@@ -1,30 +1,33 @@
-﻿// (removed) db_backfill_recorded_video_events in favor of purge strategy
-#[tauri::command]
-pub async fn db_backfill_tournament_context(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
-    let mut conn = app.database_plugin().get_connection().await
+﻿#[tauri::command]
+pub async fn validate_tournament_pss_integrity(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    let conn = app.database_plugin().get_connection().await
         .map_err(|e| TauriError::from(anyhow::anyhow!(format!("DB connection error: {}", e))))?;
-
-    use crate::database::operations::PssUdpOperations as Ops;
-
-    let mut updated_matches = 0usize;
-    let mut updated_events_from_matches = 0usize;
-    let mut updated_events_by_date = 0usize;
-
-    // Backfill matches from recorded_videos
-    if let Ok(n) = Ops::backfill_matches_tournament_from_recorded_videos(&mut *conn) { updated_matches = n as usize; }
-
-    // Backfill events from matches
-    if let Ok(n) = Ops::backfill_events_tournament_from_matches(&mut *conn) { updated_events_from_matches = n as usize; }
-
-    // Optional date overlap pass
-    if let Ok(n) = Ops::backfill_events_tournament_by_day_overlap(&mut *conn) { updated_events_by_date = n as usize; }
-
+    let conn_ref = &*conn;
+    // Counts
+    let counts = |sql: &str| -> i64 { conn_ref.query_row(sql, [], |r| r.get::<_, i64>(0)).unwrap_or(0) };
+    let c_tournaments = counts("SELECT COUNT(*) FROM tournaments");
+    let c_days = counts("SELECT COUNT(*) FROM tournament_days");
+    let c_matches = counts("SELECT COUNT(*) FROM pss_matches");
+    let c_events = counts("SELECT COUNT(*) FROM pss_events_v2");
+    let c_vids = counts("SELECT COUNT(*) FROM recorded_videos");
+    let c_links = counts("SELECT COUNT(*) FROM recorded_video_events");
+    // Orphans
+    let orphan_matches = counts("SELECT COUNT(*) FROM pss_matches m LEFT JOIN tournaments t ON t.id = m.tournament_id WHERE m.tournament_id IS NOT NULL AND t.id IS NULL");
+    let orphan_events = counts("SELECT COUNT(*) FROM pss_events_v2 e LEFT JOIN pss_matches m ON m.id = e.match_id WHERE e.match_id IS NOT NULL AND m.id IS NULL");
+    let orphan_vids = counts("SELECT COUNT(*) FROM recorded_videos rv LEFT JOIN pss_matches m ON m.id = rv.match_id WHERE rv.match_id IS NOT NULL AND m.id IS NULL");
+    // Missing context
+    let events_missing_ctx = counts("SELECT COUNT(*) FROM pss_events_v2 WHERE tournament_id IS NULL OR tournament_day_id IS NULL");
+    let matches_missing_ctx = counts("SELECT COUNT(*) FROM pss_matches WHERE tournament_id IS NULL OR tournament_day_id IS NULL");
     Ok(serde_json::json!({
-        "updated_matches": updated_matches,
-        "updated_events_from_matches": updated_events_from_matches,
-        "updated_events_by_date": updated_events_by_date
+        "counts": {"tournaments": c_tournaments, "days": c_days, "matches": c_matches, "events": c_events, "videos": c_vids, "video_links": c_links},
+        "orphans": {"matches": orphan_matches, "events": orphan_events, "videos": orphan_vids},
+        "missing_context": {"events": events_missing_ctx, "matches": matches_missing_ctx}
     }))
 }
+
+// set_udp_tournament_context defined elsewhere in this module
+// (removed) db_backfill_recorded_video_events in favor of purge strategy
+// (removed) db_backfill_tournament_context in favor of purge strategy
 
 #[tauri::command]
 pub async fn db_purge_all_tournament_pss_data(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
