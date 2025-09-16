@@ -879,8 +879,10 @@ impl PssUdpOperations {
         conn.execute(
             "INSERT INTO pss_events_v2 (
                 session_id, match_id, round_id, event_type_id, timestamp, raw_data,
-                parsed_data, event_sequence, processing_time_ms, is_valid, error_message, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                parsed_data, event_sequence, processing_time_ms, is_valid, error_message,
+                recognition_status, protocol_version, parser_confidence, validation_errors,
+                tournament_id, tournament_day_id, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             params![
                 event.session_id,
                 event.match_id,
@@ -893,6 +895,12 @@ impl PssUdpOperations {
                 event.processing_time_ms,
                 event.is_valid,
                 event.error_message,
+                event.recognition_status,
+                event.protocol_version,
+                event.parser_confidence,
+                event.validation_errors,
+                event.tournament_id,
+                event.tournament_day_id,
                 event.created_at.to_rfc3339()
             ]
         )?;
@@ -1516,8 +1524,9 @@ impl PssEventStatusOperations {
             "INSERT INTO pss_events_v2 (
                 session_id, match_id, round_id, event_type_id, timestamp, raw_data, 
                 parsed_data, event_sequence, processing_time_ms, is_valid, error_message,
-                recognition_status, protocol_version, parser_confidence, validation_errors, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                recognition_status, protocol_version, parser_confidence, validation_errors,
+                tournament_id, tournament_day_id, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             params![
                 event.session_id,
                 event.match_id,
@@ -1534,6 +1543,8 @@ impl PssEventStatusOperations {
                 event.protocol_version,
                 event.parser_confidence,
                 event.validation_errors,
+                event.tournament_id,
+                event.tournament_day_id,
                 event.created_at.to_rfc3339()
             ]
         )?;

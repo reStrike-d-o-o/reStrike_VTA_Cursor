@@ -20,7 +20,8 @@ This document provides a comprehensive guide to the database structure, models, 
 - **Migration 22**: Manual lookups (`look_genders`, `look_disciplines`, `look_age_groups`, `look_divisions`, `look_weight_classes`, `look_round_configs`) and `pss_matches` extensions (`discipline_id`, `age_group_id`, `gender_id`, `division_id`, `weight_class_id`, `bracket_stage`)
 - **Migration 23**: OVR ingestion schema (`ovr_providers`, `ovr_tournaments`, `ovr_categories`, `ovr_to_local_tournament`) with indexes and seeded providers
 
-#### Recording/Replay Tables
+#### Event and Recording Tables
+- `pss_events_v2`: now persists tournament context for every event: `tournament_id`, `tournament_day_id` (along with `recognition_status`, `protocol_version`, `parser_confidence`, `validation_errors`). These fields are set by the UDP ingestion pipeline when tournament context is active.
 - `recorded_videos`: id, match_id, event_id?, tournament_id?, tournament_day_id?, video_type, file_path?, record_directory?, start_time, duration_seconds?, file_size?, checksum?, created_at
 - `recorded_video_events`: id, recorded_video_id, event_id, offset_ms, created_at (UNIQUE on recorded_video_id+event_id)
 

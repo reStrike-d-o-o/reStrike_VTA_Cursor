@@ -752,6 +752,7 @@ Replace this legacy section with obws-based plugin structure or mark as archived
   - `recorded_videos` table used to persist match-linked recordings and replays.
   - On immediate stop and on next FightLoaded (delayed stop), rows are inserted with `match_id`, `tournament_id`, `tournament_day_id`, `file_path`, `record_directory`, `start_time`, `duration_seconds`. NOT EXISTS guard prevents duplicates.
   - Best‑effort `event_id` linkage for an event inside the recording window.
+  - Phase 1 (2025-09-16): `pss_events_v2` now persists `tournament_id` and `tournament_day_id` on insert. This enables reliable tournament/day queries and more accurate event→video linking.
 
 - Backend
   - `ivr_open_event_video(event_id)`: resolves correct recording and opens at exact offset.
