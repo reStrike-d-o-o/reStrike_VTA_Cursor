@@ -3752,7 +3752,6 @@ pub async fn websocket_get_status(app: State<'_, Arc<App>>) -> Result<serde_json
         "status": "running"
     }))
 }
-
 #[tauri::command]
 pub async fn store_pss_event(
     event_data: serde_json::Value,
@@ -4019,6 +4018,8 @@ pub async fn tournament_update(
         end_date: end_date_parsed,
         created_at: chrono::Utc::now(), // This will be ignored in update
         updated_at: chrono::Utc::now(),
+        created: None,
+        updated: None,
     };
     
     match app.tournament_plugin().update_tournament(tournament_id, tournament).await {

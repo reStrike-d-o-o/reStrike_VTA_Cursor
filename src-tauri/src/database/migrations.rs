@@ -3335,155 +3335,31 @@ impl Migration for Migration26 {
     }
 }
 
-/// Migration 28: tournaments & tournament_days -> UUID TEXT + integer created/updated
+/// Migration 28: tournaments & tournament_days -> add integer created/updated (keep INTEGER PKs for now)
 pub struct Migration28;
 
 impl Migration for Migration28 {
     fn version(&self) -> u32 { 28 }
 
     fn description(&self) -> &str {
-        "Convert tournaments and tournament_days to UUID TEXT ids and add integer created/updated; adjust FKs"
+        "Add integer created/updated to tournaments and tournament_days; keep existing PKs/FKs"
     }
 
     fn up(&self, conn: &Connection) -> SqliteResult<()> {
-        // Create new tournaments table
-        conn.execute(
-            "CREATE TABLE IF NOT EXISTS _tmp_tournaments (
-                id TEXT PRIMARY KEY,
-                name TEXT NOT NULL UNIQUE,
-                duration_days INTEGER NOT NULL DEFAULT 1,
-                city TEXT NOT NULL,
-                country TEXT NOT NULL,
-                country_code TEXT,
-                logo_path TEXT,
-                status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'active', 'ended')),
-                start_date TEXT,
-                end_date TEXT,
-                created INTEGER,
-                updated INTEGER
-            )",
-            [],
-        )?;
-        // Migrate tournaments
+        // Add created/updated INTEGER to tournaments and backfill
+        let _ = conn.execute("ALTER TABLE tournaments ADD COLUMN created INTEGER", []);
+        let _ = conn.execute("ALTER TABLE tournaments ADD COLUMN updated INTEGER", []);
         let _ = conn.execute(
-            "INSERT INTO _tmp_tournaments (id, name, duration_days, city, country, country_code, logo_path, status, start_date, end_date, created, updated)
-             SELECT COALESCE(id, printf('%s', hex(randomblob(16)))), name, duration_days, city, country, country_code, logo_path, status, start_date, end_date,
-                    COALESCE(strftime('%s', created_at), strftime('%s','now')),
-                    COALESCE(strftime('%s', updated_at), strftime('%s','now'))
-             FROM tournaments",
+            "UPDATE tournaments SET created = COALESCE(created, strftime('%s', created_at)), updated = COALESCE(updated, strftime('%s', updated_at))",
             [],
         );
-        conn.execute("DROP TABLE IF EXISTS tournaments", [])?;
-        conn.execute("ALTER TABLE _tmp_tournaments RENAME TO tournaments", [])?;
-
-        // Create new tournament_days table
-        conn.execute(
-            "CREATE TABLE IF NOT EXISTS _tmp_tournament_days (
-                id TEXT PRIMARY KEY,
-                tournament_id TEXT NOT NULL,
-                day_number INTEGER NOT NULL,
-                date TEXT NOT NULL,
-                status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'active', 'completed')),
-                start_time TEXT,
-                end_time TEXT,
-                created INTEGER,
-                updated INTEGER,
-                UNIQUE(tournament_id, day_number)
-            )",
-            [],
-        )?;
-        // Migrate tournament_days
+        // Add created/updated INTEGER to tournament_days and backfill
+        let _ = conn.execute("ALTER TABLE tournament_days ADD COLUMN created INTEGER", []);
+        let _ = conn.execute("ALTER TABLE tournament_days ADD COLUMN updated INTEGER", []);
         let _ = conn.execute(
-            "INSERT INTO _tmp_tournament_days (id, tournament_id, day_number, date, status, start_time, end_time, created, updated)
-             SELECT COALESCE(td.id, printf('%s', hex(randomblob(16)))), CAST(td.tournament_id AS TEXT), td.day_number, td.date, td.status, td.start_time, td.end_time,
-                    COALESCE(strftime('%s', td.created_at), strftime('%s','now')),
-                    COALESCE(strftime('%s', td.updated_at), strftime('%s','now'))
-             FROM tournament_days td",
+            "UPDATE tournament_days SET created = COALESCE(created, strftime('%s', created_at)), updated = COALESCE(updated, strftime('%s', updated_at))",
             [],
         );
-        conn.execute("DROP TABLE IF EXISTS tournament_days", [])?;
-        conn.execute("ALTER TABLE _tmp_tournament_days RENAME TO tournament_days", [])?;
-
-        // Adjust FKs in pss_matches and pss_events_v2 to TEXT
-        let _ = conn.execute(
-            "CREATE TABLE IF NOT EXISTS pss_matches_new (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                match_id TEXT,
-                match_number TEXT,
-                round TEXT,
-                weight_class TEXT,
-                category TEXT,
-                red_athlete TEXT,
-                blue_athlete TEXT,
-                winner TEXT,
-                decided_by TEXT,
-                red_score INTEGER,
-                blue_score INTEGER,
-                is_completed BOOLEAN DEFAULT 0,
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL,
-                tournament_id TEXT,
-                tournament_day_id TEXT,
-                creation_mode TEXT,
-                discipline_id INTEGER,
-                age_group_id INTEGER,
-                gender_id INTEGER,
-                division_id INTEGER,
-                weight_class_id INTEGER,
-                bracket_stage TEXT
-            )",
-            [],
-        );
-        let _ = conn.execute(
-            "INSERT INTO pss_matches_new (
-                id, match_id, match_number, round, weight_class, category, red_athlete, blue_athlete, winner, decided_by, red_score, blue_score, is_completed, created_at, updated_at, tournament_id, tournament_day_id, creation_mode, discipline_id, age_group_id, gender_id, division_id, weight_class_id, bracket_stage
-            )
-            SELECT id, match_id, match_number, round, weight_class, category, red_athlete, blue_athlete, winner, decided_by, red_score, blue_score, is_completed, created_at, updated_at,
-                   CAST(tournament_id AS TEXT), CAST(tournament_day_id AS TEXT), creation_mode, discipline_id, age_group_id, gender_id, division_id, weight_class_id, bracket_stage
-            FROM pss_matches",
-            [],
-        );
-        let _ = conn.execute("DROP TABLE IF EXISTS pss_matches", []);
-        let _ = conn.execute("ALTER TABLE pss_matches_new RENAME TO pss_matches", []);
-
-        let _ = conn.execute(
-            "CREATE TABLE IF NOT EXISTS pss_events_v2_new AS SELECT *, CAST(tournament_id AS TEXT) AS tournament_id_text, CAST(tournament_day_id AS TEXT) AS tournament_day_id_text FROM pss_events_v2",
-            [],
-        );
-        let _ = conn.execute("DROP TABLE IF EXISTS pss_events_v2", []);
-        let _ = conn.execute(
-            "CREATE TABLE pss_events_v2 (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                session_id INTEGER NOT NULL,
-                match_id INTEGER,
-                round_id INTEGER,
-                event_type_id INTEGER NOT NULL,
-                timestamp TEXT NOT NULL,
-                raw_data TEXT NOT NULL,
-                parsed_data TEXT,
-                event_sequence INTEGER NOT NULL DEFAULT 0,
-                processing_time_ms INTEGER,
-                is_valid BOOLEAN NOT NULL DEFAULT 1,
-                error_message TEXT,
-                recognition_status TEXT,
-                protocol_version TEXT,
-                parser_confidence REAL,
-                validation_errors TEXT,
-                tournament_id TEXT,
-                tournament_day_id TEXT,
-                created_at TEXT NOT NULL
-            )",
-            [],
-        );
-        let _ = conn.execute(
-            "INSERT INTO pss_events_v2 (
-                id, session_id, match_id, round_id, event_type_id, timestamp, raw_data, parsed_data, event_sequence, processing_time_ms, is_valid, error_message, recognition_status, protocol_version, parser_confidence, validation_errors, tournament_id, tournament_day_id, created_at
-            )
-            SELECT id, session_id, match_id, round_id, event_type_id, timestamp, raw_data, parsed_data, event_sequence, processing_time_ms, is_valid, error_message, recognition_status, protocol_version, parser_confidence, validation_errors, tournament_id_text, tournament_day_id_text, created_at
-            FROM pss_events_v2_new",
-            [],
-        );
-        let _ = conn.execute("DROP TABLE IF EXISTS pss_events_v2_new", []);
 
         Ok(())
     }

@@ -1,7 +1,7 @@
 {
   "app": {
     "version": "0.1.0",
-    "last_save": "2025-09-13T12:50:57.626009100+00:00",
+    "last_save": "2025-09-16T17:20:28.303935200+00:00",
     "startup": {
       "auto_start_udp": false,
       "auto_connect_obs": false,
@@ -58,7 +58,7 @@
   "udp": {
     "listener": {
       "port": 8888,
-      "bind_address": "192.168.1.117",
+      "bind_address": "10.23.184.192",
       "enabled": true,
       "buffer_size": 8192,
       "timeout_seconds": 30,
@@ -205,7 +205,7 @@
     "expiration_date": null,
     "auto_renewal": false,
     "offline_grace_days": 7,
-    "last_validation": "2025-09-13T12:50:57.625390+00:00"
+    "last_validation": "2025-09-16T17:20:28.302795900+00:00"
   },
   "flags": {
     "storage": {

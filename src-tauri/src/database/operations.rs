@@ -1442,7 +1442,7 @@ impl TournamentOperations {
         }
 
         conn.execute(
-            "INSERT INTO tournaments (name, duration_days, city, country, country_code, logo_path, status, start_date, end_date, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO tournaments (name, duration_days, city, country, country_code, logo_path, status, start_date, end_date, created_at, updated_at, created, updated) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             params![
                 tournament.name,
                 tournament.duration_days,
@@ -1455,6 +1455,8 @@ impl TournamentOperations {
                 tournament.end_date.map(|d| d.to_rfc3339()),
                 tournament.created_at.to_rfc3339(),
                 tournament.updated_at.to_rfc3339(),
+                tournament.created,
+                tournament.updated,
             ]
         )?;
         // Return the actual inserted row id, not affected rows count
@@ -1464,7 +1466,7 @@ impl TournamentOperations {
     /// Get all tournaments
     pub fn get_tournaments(conn: &Connection) -> DatabaseResult<Vec<Tournament>> {
         let mut stmt = conn.prepare(
-            "SELECT id, name, duration_days, city, country, country_code, logo_path, status, start_date, end_date, created_at, updated_at FROM tournaments ORDER BY created_at DESC"
+            "SELECT id, name, duration_days, city, country, country_code, logo_path, status, start_date, end_date, created_at, updated_at, created, updated FROM tournaments ORDER BY created_at DESC"
         )?;
         
         let rows = stmt.query_map([], |row| Tournament::from_row(row))?;
@@ -1480,7 +1482,7 @@ impl TournamentOperations {
     /// Get tournament by ID
     pub fn get_tournament(conn: &Connection, tournament_id: i64) -> DatabaseResult<Option<Tournament>> {
         let tournament = conn.query_row(
-            "SELECT id, name, duration_days, city, country, country_code, logo_path, status, start_date, end_date, created_at, updated_at FROM tournaments WHERE id = ?",
+            "SELECT id, name, duration_days, city, country, country_code, logo_path, status, start_date, end_date, created_at, updated_at, created, updated FROM tournaments WHERE id = ?",
             params![tournament_id],
             |row| Tournament::from_row(row)
         ).optional()?;
@@ -1491,7 +1493,7 @@ impl TournamentOperations {
     /// Update tournament
     pub fn update_tournament(conn: &mut Connection, tournament_id: i64, tournament: &Tournament) -> DatabaseResult<()> {
         conn.execute(
-            "UPDATE tournaments SET name = ?, duration_days = ?, city = ?, country = ?, country_code = ?, logo_path = ?, status = ?, start_date = ?, end_date = ?, updated_at = ? WHERE id = ?",
+            "UPDATE tournaments SET name = ?, duration_days = ?, city = ?, country = ?, country_code = ?, logo_path = ?, status = ?, start_date = ?, end_date = ?, updated_at = ?, updated = strftime('%s','now') WHERE id = ?",
             params![
                 tournament.name,
                 tournament.duration_days,
@@ -1525,7 +1527,7 @@ impl TournamentOperations {
             let tournament_day = TournamentDay::new(tournament_id, day_number, day_date);
             
             tx.execute(
-                "INSERT INTO tournament_days (tournament_id, day_number, date, status, start_time, end_time, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO tournament_days (tournament_id, day_number, date, status, start_time, end_time, created_at, updated_at, created, updated) VALUES (?, ?, ?, ?, ?, ?, ?, ?, strftime('%s','now'), strftime('%s','now'))",
                 params![
                     tournament_day.tournament_id,
                     tournament_day.day_number,

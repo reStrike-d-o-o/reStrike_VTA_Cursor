@@ -690,12 +690,8 @@ impl NetworkInterface {
             mtu: row.get("mtu")?,
             mac_address: row.get("mac_address")?,
             interface_type: row.get("interface_type")?,
-            created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
-                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "created_at".to_string(), rusqlite::types::Type::Text))?
-                .with_timezone(&Utc),
-            updated_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("updated_at")?)
-                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "updated_at".to_string(), rusqlite::types::Type::Text))?
-                .with_timezone(&Utc),
+            created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
+            updated_at: parse_datetime_from_db(&row.get::<_, String>("updated_at")?, "updated_at")?,
         })
     }
 }
@@ -748,12 +744,8 @@ impl UdpServerConfig {
             max_packet_size: row.get("max_packet_size")?,
             buffer_size: row.get("buffer_size")?,
             timeout_ms: row.get("timeout_ms")?,
-            created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
-                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "created_at".to_string(), rusqlite::types::Type::Text))?
-                .with_timezone(&Utc),
-            updated_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("updated_at")?)
-                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "updated_at".to_string(), rusqlite::types::Type::Text))?
-                .with_timezone(&Utc),
+            created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
+            updated_at: parse_datetime_from_db(&row.get::<_, String>("updated_at")?, "updated_at")?,
         })
     }
 }
@@ -1187,9 +1179,7 @@ impl PssEventV2 {
             validation_errors: row.get("validation_errors")?,
             tournament_id: row.get("tournament_id")?,
             tournament_day_id: row.get("tournament_day_id")?,
-            created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
-                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "created_at".to_string(), rusqlite::types::Type::Text))?
-                .with_timezone(&Utc),
+            created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
         })
     }
 }
@@ -1484,9 +1474,7 @@ impl PssEventDetail {
             detail_key: row.get("detail_key")?,
             detail_value: row.get("detail_value")?,
             detail_type: row.get("detail_type")?,
-            created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
-                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "created_at".to_string(), rusqlite::types::Type::Text))?
-                .with_timezone(&Utc),
+            created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
         })
     }
 }
@@ -1596,6 +1584,8 @@ pub struct Tournament {
     pub end_date: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    pub created: Option<i64>,
+    pub updated: Option<i64>,
 }
 
 impl Tournament {
@@ -1621,6 +1611,8 @@ impl Tournament {
             end_date: None,
             created_at: now,
             updated_at: now,
+            created: Some(crate::utils::now_unix()),
+            updated: Some(crate::utils::now_unix()),
         }
     }
     
@@ -1643,6 +1635,8 @@ impl Tournament {
                 .transpose()?,
             created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
             updated_at: parse_datetime_from_db(&row.get::<_, String>("updated_at")?, "updated_at")?,
+            created: row.get("created")?,
+            updated: row.get("updated")?,
         })
     }
 }
@@ -1659,6 +1653,8 @@ pub struct TournamentDay {
     pub end_time: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    pub created: Option<i64>,
+    pub updated: Option<i64>,
 }
 
 impl TournamentDay {
@@ -1675,6 +1671,8 @@ impl TournamentDay {
             end_time: None,
             created_at: now,
             updated_at: now,
+            created: Some(crate::utils::now_unix()),
+            updated: Some(crate::utils::now_unix()),
         }
     }
     
@@ -1694,6 +1692,8 @@ impl TournamentDay {
                 .transpose()?,
             created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
             updated_at: parse_datetime_from_db(&row.get::<_, String>("updated_at")?, "updated_at")?,
+            created: row.get("created")?,
+            updated: row.get("updated")?,
         })
     }
 } 
