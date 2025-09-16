@@ -627,7 +627,8 @@ class AutomatedSimulator:
         start_time = time.time()
         event_index = 0
         
-        while time.time() - start_time < duration and event_index < len(events):
+        # Execute all scheduled events, including conclusion (winner) events
+        while event_index < len(events):
             event = events[event_index]
             event_time = event["time"]
             

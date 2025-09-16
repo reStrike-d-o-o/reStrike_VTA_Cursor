@@ -616,20 +616,22 @@ impl ObsRecordingEventHandler {
             // Respect stop delay seconds, but allow cancellation by new match
             let delay_secs = config.stop_delay_seconds as u64;
             if delay_secs == 0 {
-                // Stop immediately
+                // Stop immediately, then wait for OBS to fully stop before indexing
                 if let Err(e) = self.obs_manager.stop_recording(Some(&connection_name)).await {
                     log::error!("Failed to stop recording via obws: {}", e);
                 } else {
-                    log::info!("🎬 Recording stopped for connection: {}", connection_name);
-                    // Index the recording synchronously (best-effort)
+                    log::info!("🎬 Recording stop requested for connection: {}", connection_name);
+                    // Wait until OBS reports Stopped (up to 30s), then index
+                    let _ = Self::wait_until_recording_stopped(self.obs_manager.clone(), connection_name.clone(), 30).await;
                     let _ = self.index_recording_after_stop().await;
                 }
             } else {
                 log::info!("⏳ Scheduling stop in {}s (will cancel if new match loads)", delay_secs);
                 let mgr = self.obs_manager.clone();
                 let conn = connection_name.clone();
-                let _app_db = self.database.clone(); // reserved for future richer indexing
-                let _session_before = self.get_current_session();
+                let db = self.database.clone();
+                // Take a snapshot of the session before spawning to avoid holding a MutexGuard across await
+                let session_snapshot = { self.current_session.lock().unwrap().clone() };
                 // Abort any previous pending stop
                 if let Some(handle) = self.pending_stop_task.lock().unwrap().take() { handle.abort(); }
                 let handle = tokio::spawn(async move {
@@ -637,7 +639,10 @@ impl ObsRecordingEventHandler {
                     if let Err(e) = mgr.stop_recording(Some(&conn)).await {
                         log::error!("Delayed stop: failed to stop recording via obws: {}", e);
                     } else {
-                        log::info!("🎬 Delayed stop: recording stopped for connection: {}", conn);
+                        log::info!("🎬 Delayed stop: stop requested for connection: {}", conn);
+                        // Wait until OBS fully stops, then try to index using session handles
+                        let _ = Self::wait_until_recording_stopped(mgr.clone(), conn.clone(), 30).await;
+                        let _ = Self::index_after_stop_with_snapshot(db.clone(), session_snapshot.clone()).await;
                     }
                 });
                 *self.pending_stop_task.lock().unwrap() = Some(handle);
@@ -723,6 +728,95 @@ impl ObsRecordingEventHandler {
                         "INSERT OR IGNORE INTO recorded_video_events (recorded_video_id, event_id, offset_ms, created_at)\n                         SELECT ?, e.id, CAST((julianday(e.timestamp) - julianday(?)) * 86400000 AS INTEGER), ?\n                         FROM pss_events_v2 e\n                         JOIN pss_event_types t ON t.id = e.event_type_id\n                         WHERE e.match_id = ?\n                           AND e.timestamp >= ? AND e.timestamp <= ?\n                           AND (e.tournament_id IS NULL OR EXISTS (SELECT 1 FROM recorded_videos rv2 WHERE rv2.id = ? AND (rv2.tournament_id IS NULL OR rv2.tournament_id = e.tournament_id)))\n                           AND (e.tournament_day_id IS NULL OR EXISTS (SELECT 1 FROM recorded_videos rv2 WHERE rv2.id = ? AND (rv2.tournament_day_id IS NULL OR rv2.tournament_day_id = e.tournament_day_id)))\n                           AND t.event_code IN ('K','P','H','TH','TB','R')\n                         ORDER BY e.timestamp ASC",
                         rusqlite::params![ rvid, start_time.to_rfc3339(), chrono::Utc::now().to_rfc3339(), match_db_id, start_time.to_rfc3339(), end_time.to_rfc3339(), rvid, rvid ]
                     );
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Utility: wait until OBS recording state becomes Stopped (or timeout)
+    async fn wait_until_recording_stopped(mgr: Arc<ObsManager>, connection_name: String, timeout_secs: u64) -> AppResult<()> {
+        use crate::plugins::obs_obws::types::ObsRecordingStatus;
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(timeout_secs);
+        loop {
+            match mgr.get_recording_status(Some(&connection_name)).await {
+                Ok(ObsRecordingStatus::Stopped) => {
+                    log::info!("✅ OBS reports recording Stopped");
+                    break;
+                }
+                Ok(ObsRecordingStatus::Error(e)) => {
+                    log::warn!("⚠️ OBS recording status error: {}", e);
+                    break;
+                }
+                Ok(state) => {
+                    log::debug!("⏳ Waiting for OBS to stop, current state: {:?}", state);
+                }
+                Err(e) => {
+                    log::warn!("⚠️ Failed to get recording status: {}", e);
+                }
+            }
+            if std::time::Instant::now() >= deadline {
+                log::warn!("⏰ Timed out waiting for OBS to stop ({}s)", timeout_secs);
+                break;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+        }
+        Ok(())
+    }
+
+    /// Minimal indexing using only shared handles (used from background tasks)
+    async fn index_after_stop_with_snapshot(
+        database: Arc<crate::plugins::plugin_database::DatabasePlugin>,
+        session_opt: Option<RecordingSession>,
+    ) -> AppResult<()> {
+        if let Some(session) = session_opt {
+            let start_opt = session.start_time;
+            let dir_opt = session.recording_path.clone();
+            let fname_opt = session.recording_filename.clone();
+            let mid = session.match_id.clone();
+            let created = chrono::Utc::now();
+            if let (Some(start_time), Some(record_dir)) = (start_opt, dir_opt) {
+                let file_path: Option<String> = fname_opt.map(|f| std::path::PathBuf::from(&record_dir).join(f).to_string_lossy().to_string());
+                if let Ok(conn_guard) = database.get_connection().await {
+                    let conn_ref = &*conn_guard;
+                    let duration = (created - start_time).num_seconds().max(0) as i32;
+                    // Resolve active tournament/day IDs for better indexing
+                    let (tid_opt, day_opt) = {
+                        let t = TournamentOperations::get_active_tournament(&*conn_ref).ok().flatten();
+                        let d = t.as_ref().and_then(|tt| TournamentOperations::get_active_tournament_day(&*conn_ref, tt.id.unwrap()).ok().flatten());
+                        (t.and_then(|tt| tt.id), d.and_then(|dd| dd.id))
+                    };
+                    // Resolve match DB id robustly as in main path
+                    let match_db_id: i64 = conn_ref
+                        .query_row(
+                            "SELECT id FROM pss_matches WHERE match_id = ? ORDER BY updated_at DESC LIMIT 1",
+                            rusqlite::params![ mid ],
+                            |r| r.get::<_, i64>(0),
+                        )
+                        .unwrap_or_else(|_| conn_ref.query_row(
+                            "SELECT id FROM pss_matches ORDER BY created_at DESC LIMIT 1",
+                            [],
+                            |r| r.get::<_, i64>(0),
+                        ).unwrap_or(0));
+                    if match_db_id > 0 {
+                        let _ = conn_ref.execute(
+                            "INSERT INTO recorded_videos (match_id, event_id, tournament_id, tournament_day_id, video_type, file_path, record_directory, filename_formatting, start_time, duration_seconds, created_at) VALUES (?, NULL, ?, ?, 'recording', ?, ?, NULL, ?, ?, ?)",
+                            rusqlite::params![ match_db_id, tid_opt, day_opt, file_path, record_dir, start_time.to_rfc3339(), duration, created.to_rfc3339() ]
+                        );
+                        // Link events inside window
+                        let rvid: i64 = conn_ref
+                            .query_row(
+                                "SELECT id FROM recorded_videos WHERE match_id = ? AND start_time = ?",
+                                rusqlite::params![ match_db_id, start_time.to_rfc3339() ],
+                                |r| r.get(0),
+                            )
+                            .unwrap_or_else(|_| conn_ref.last_insert_rowid());
+                        let end_time = start_time + chrono::Duration::seconds(duration as i64);
+                        let _ = conn_ref.execute(
+                            "INSERT OR IGNORE INTO recorded_video_events (recorded_video_id, event_id, offset_ms, created_at)\n                         SELECT ?, e.id, CAST((julianday(e.timestamp) - julianday(?)) * 86400000 AS INTEGER), ?\n                         FROM pss_events_v2 e\n                         JOIN pss_event_types t ON t.id = e.event_type_id\n                         WHERE e.match_id = ?\n                           AND e.timestamp >= ? AND e.timestamp <= ?\n                           AND t.event_code IN ('K','P','H','TH','TB','R')\n                         ORDER BY e.timestamp ASC",
+                            rusqlite::params![ rvid, start_time.to_rfc3339(), chrono::Utc::now().to_rfc3339(), match_db_id, start_time.to_rfc3339(), end_time.to_rfc3339() ]
+                        );
+                    }
                 }
             }
         }
