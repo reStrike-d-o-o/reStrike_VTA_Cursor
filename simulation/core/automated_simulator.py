@@ -674,45 +674,45 @@ class AutomatedSimulator:
                 source = data.get("source", 1)
                 accepted = data.get("accepted", True)
                 won = data.get("won", True)
-                self.simulator.event_generator.challenge(source, accepted, won)
+                self.simulator.send_message(self.simulator.event_generator.challenge(source, accepted, won))
             elif event_type == "round":
                 self.simulator.change_round(data["round"])
             elif event_type == "clock":
-                self.simulator.event_generator.clock(data["time"], data.get("action"))
+                self.simulator.send_message(self.simulator.event_generator.clock(data["time"], data.get("action")))
             elif event_type == "winner":
-                self.simulator.event_generator.winner(f"Athlete {data['winner']}")
+                self.simulator.send_message(self.simulator.event_generator.winner(f"Athlete {data['winner']}"))
             elif event_type == "winner_final":
-                self.simulator.event_generator.winner_final(f"Athlete {data['winner']}")
+                self.simulator.send_message(self.simulator.event_generator.winner_final(f"Athlete {data['winner']}"))
             elif event_type == "winner_rounds":
                 # Handle round winner events
                 round_num = data.get("round", 1)
                 winner = data.get("winner", 1)
-                self.simulator.event_generator.winner_rounds(
+                self.simulator.send_message(self.simulator.event_generator.winner_rounds(
                     round1_winner=winner if round_num == 1 else 0,
                     round2_winner=winner if round_num == 2 else 0,
                     round3_winner=winner if round_num == 3 else 0
-                )
+                ))
             elif event_type == "fight_loaded":
-                self.simulator.event_generator.fight_loaded()
+                self.simulator.send_message(self.simulator.event_generator.fight_loaded())
             elif event_type == "athletes":
                 # Send athlete data using the stored athlete information
                 if hasattr(self, 'current_athlete1') and hasattr(self, 'current_athlete2'):
-                    self.simulator.event_generator.athletes(self.current_athlete1, self.current_athlete2)
+                    self.simulator.send_message(self.simulator.event_generator.athletes(self.current_athlete1, self.current_athlete2))
                 else:
                     # Generate random athletes if not set
                     athlete1 = AthleteGenerator.generate_athlete()
                     athlete2 = AthleteGenerator.generate_athlete()
-                    self.simulator.event_generator.athletes(athlete1, athlete2)
+                    self.simulator.send_message(self.simulator.event_generator.athletes(athlete1, athlete2))
             elif event_type == "match_config":
                 # Send match config data using the stored config information
                 if hasattr(self, 'current_match_config'):
-                    self.simulator.event_generator.match_config(self.current_match_config)
+                    self.simulator.send_message(self.simulator.event_generator.match_config(self.current_match_config))
                 else:
                     # Generate random config if not set
                     config = MatchConfigGenerator.generate_config()
-                    self.simulator.event_generator.match_config(config)
+                    self.simulator.send_message(self.simulator.event_generator.match_config(config))
             elif event_type == "fight_ready":
-                self.simulator.event_generator.fight_ready()
+                self.simulator.send_message(self.simulator.event_generator.fight_ready())
             
             self._update_status(f"Executed {event_type} event")
             
