@@ -1,6 +1,5 @@
 use rusqlite::{Result as SqliteResult, params, OptionalExtension};
 use serde_json::Value;
-use chrono::Utc;
 use crate::database::{
     DatabaseError, DatabaseResult,
     models::{SettingsKey, SettingsValue, SettingsHistory, SettingsCategory},
@@ -73,9 +72,10 @@ impl SettingsManager {
             // Update existing value
             let old_value = existing.value.clone();
             
+            let now_unix = crate::utils::now_unix();
             tx.execute(
-                "UPDATE settings_values SET value = ?, updated_at = ? WHERE id = ?",
-                params![value, Utc::now().to_rfc3339(), existing.id.unwrap()]
+                "UPDATE settings_values SET value = ?, updated = ?, updated_at = datetime('unixepoch', ?) WHERE id = ?",
+                params![value, now_unix, now_unix, existing.id.unwrap()]
             )?;
             
             // Record history
@@ -88,14 +88,15 @@ impl SettingsManager {
             );
             
             tx.execute(
-                "INSERT INTO settings_history (key_id, old_value, new_value, changed_by, change_reason, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+                "INSERT INTO settings_history (key_id, old_value, new_value, changed_by, change_reason, created, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime('unixepoch', ?))",
                 params![
                     history.key_id,
                     history.old_value,
                     history.new_value,
                     history.changed_by,
                     history.change_reason,
-                    history.created_at.to_rfc3339()
+                    history.created,
+                    history.created,
                 ]
             )?;
         } else {
@@ -106,12 +107,14 @@ impl SettingsManager {
             );
             
             let _value_id = tx.execute(
-                "INSERT INTO settings_values (key_id, value, created_at, updated_at) VALUES (?, ?, ?, ?)",
+                "INSERT INTO settings_values (key_id, value, created, updated, created_at, updated_at) VALUES (?, ?, ?, ?, datetime('unixepoch', ?), datetime('unixepoch', ?))",
                 params![
                     setting_value.key_id,
                     setting_value.value,
-                    setting_value.created_at.to_rfc3339(),
-                    setting_value.updated_at.to_rfc3339()
+                    setting_value.created,
+                    setting_value.updated,
+                    setting_value.created,
+                    setting_value.updated,
                 ]
             )?;
             
@@ -125,14 +128,15 @@ impl SettingsManager {
             );
             
             tx.execute(
-                "INSERT INTO settings_history (key_id, old_value, new_value, changed_by, change_reason, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+                "INSERT INTO settings_history (key_id, old_value, new_value, changed_by, change_reason, created, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime('unixepoch', ?))",
                 params![
                     history.key_id,
                     history.old_value,
                     history.new_value,
                     history.changed_by,
                     history.change_reason,
-                    history.created_at.to_rfc3339()
+                    history.created,
+                    history.created,
                 ]
             )?;
         }
@@ -175,7 +179,7 @@ impl SettingsManager {
             "SELECT sh.* FROM settings_history sh 
              JOIN settings_keys sk ON sh.key_id = sk.id 
              WHERE sk.key_name = ? 
-             ORDER BY sh.created_at DESC 
+             ORDER BY sh.created DESC 
              LIMIT ?"
         )?;
         
@@ -226,7 +230,7 @@ impl SettingsManager {
         );
         
         let key_id = tx.execute(
-            "INSERT INTO settings_keys (category_id, key_name, display_name, description, data_type, default_value, validation_rules, is_required, is_sensitive, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO settings_keys (category_id, key_name, display_name, description, data_type, default_value, validation_rules, is_required, is_sensitive, created, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('unixepoch', ?))",
             params![
                 setting_key.category_id,
                 setting_key.key_name,
@@ -237,7 +241,8 @@ impl SettingsManager {
                 setting_key.validation_rules,
                 setting_key.is_required,
                 setting_key.is_sensitive,
-                setting_key.created_at.to_rfc3339()
+                setting_key.created,
+                setting_key.created,
             ]
         )?;
         
