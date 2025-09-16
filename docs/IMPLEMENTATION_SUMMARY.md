@@ -754,8 +754,9 @@ Replace this legacy section with obws-based plugin structure or mark as archived
   - Best‑effort `event_id` linkage for an event inside the recording window.
   - Phase 1 (2025-09-16): `pss_events_v2` now persists `tournament_id` and `tournament_day_id` on insert. This enables reliable tournament/day queries and more accurate event→video linking.
   - Phase 2 (2025-09-16): `pss_matches` now receives `tournament_id` and `tournament_day_id` automatically on new match creation (ensure_current_match and FightLoaded) and ensured during `MatchConfig` updates.
-  - Phase 3 (2025-09-16): Backfill utilities added (`db_backfill_tournament_context`) to align historical matches/events with tournament context and optional day inference by date.
-  - Phase 4 (2025-09-16): Tournament-aware `recorded_video_events` linking at runtime and a `db_backfill_recorded_video_events` command to rebuild links for historical recordings.
+  - Phase 3 (2025-09-16): Added backfill utilities (now deprecated in favor of purge).
+  - Phase 4 (2025-09-16): Tournament-aware `recorded_video_events` linking at runtime. Prefer purge-and-reingest over backfilling.
+  - Phase 5 (2025-09-16): Purge strategy implemented via `db_purge_all_tournament_pss_data` to clean old tournaments/matches/events/recordings and start fresh.
 
 - Backend
   - `ivr_open_event_video(event_id)`: resolves correct recording and opens at exact offset.

@@ -1212,7 +1212,7 @@ impl PssUdpOperations {
         Ok(conn.last_insert_rowid())
     }
 
-    /// Backfill pss_matches.tournament_id/day from recorded_videos for matches missing context
+    // (removed) Backfill pss_matches from recorded_videos; prefer purge strategy
     pub fn backfill_matches_tournament_from_recorded_videos(conn: &mut Connection) -> DatabaseResult<usize> {
         let sql = r#"
             UPDATE pss_matches AS m
@@ -1246,7 +1246,7 @@ impl PssUdpOperations {
         Ok(n)
     }
 
-    /// Backfill pss_events_v2.tournament_id/day from their match rows for missing context
+    // (removed) Backfill pss_events_v2 from matches; prefer purge strategy
     pub fn backfill_events_tournament_from_matches(conn: &mut Connection) -> DatabaseResult<usize> {
         let sql = r#"
             UPDATE pss_events_v2 AS e
@@ -1272,7 +1272,7 @@ impl PssUdpOperations {
         Ok(n)
     }
 
-    /// Optional fallback: infer tournament_day by timestamp/date overlap with tournament_days when still missing
+    // (removed) Optional fallback by date overlap; prefer purge strategy
     pub fn backfill_events_tournament_by_day_overlap(conn: &mut Connection) -> DatabaseResult<usize> {
         // Set tournament_day_id by matching event timestamp to day date when tournament_id known but day missing
         let sql_day = r#"
@@ -1290,7 +1290,7 @@ impl PssUdpOperations {
         Ok(n1)
     }
 
-    /// Rebuild recorded_video_events for historical videos using tournament-aware filters
+    // (removed) Rebuild recorded_video_events; prefer purge strategy
     pub fn backfill_recorded_video_events(conn: &mut Connection) -> DatabaseResult<usize> {
         // For each recorded video, link matching events within its window using tournament constraints
         let sql = r#"
@@ -1310,6 +1310,29 @@ impl PssUdpOperations {
         "#;
         let n = conn.execute(sql, [Utc::now().to_rfc3339()])?;
         Ok(n)
+    }
+
+    /// Purge all tournament-related and PSS historical data for a clean start
+    pub fn purge_all_tournament_pss_data(conn: &mut Connection) -> DatabaseResult<()> {
+        let tx = conn.transaction()?;
+        // Order matters due to FKs
+        tx.execute("DELETE FROM recorded_video_events", [])?;
+        tx.execute("DELETE FROM recorded_videos", [])?;
+        tx.execute("DELETE FROM pss_event_details", [])?;
+        tx.execute("DELETE FROM pss_events_v2", [])?;
+        tx.execute("DELETE FROM pss_scores", [])?;
+        tx.execute("DELETE FROM pss_warnings", [])?;
+        tx.execute("DELETE FROM pss_match_athletes", [])?;
+        tx.execute("DELETE FROM pss_rounds", [])?;
+        tx.execute("DELETE FROM pss_athletes", [])?;
+        tx.execute("DELETE FROM pss_matches", [])?;
+        tx.execute("DELETE FROM tournament_days", [])?;
+        tx.execute("DELETE FROM tournaments", [])?;
+        // Optional archives if present
+        let _ = tx.execute("DELETE FROM pss_events_v2_archive", []);
+        let _ = tx.execute("DELETE FROM pss_event_details_archive", []);
+        tx.commit()?;
+        Ok(())
     }
 
     /// Get athletes for a specific match with their details
