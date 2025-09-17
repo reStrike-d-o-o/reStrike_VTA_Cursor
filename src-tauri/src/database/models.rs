@@ -907,8 +907,8 @@ impl PssEventType {
 pub struct PssMatch {
     pub id: Option<i64>,
     pub uuid: Option<String>,
-    pub tournament_uuid: Option<String>,
-    pub tournament_day_uuid: Option<String>,
+    pub tournament_id: Option<String>,
+    pub tournament_day_id: Option<String>,
     pub match_id: String,
     pub match_number: Option<String>, // Changed from i32 to String to support non-integer match numbers
     pub category: Option<String>,
@@ -932,8 +932,8 @@ impl PssMatch {
         Self {
             id: None,
             uuid: None,
-            tournament_uuid: None,
-            tournament_day_uuid: None,
+            tournament_id: None,
+            tournament_day_id: None,
             match_id,
             match_number: None,
             category: None,
@@ -955,8 +955,8 @@ impl PssMatch {
         Ok(Self {
             id: row.get("id")?,
             uuid: row.get("uuid").ok(),
-            tournament_uuid: row.get("tournament_uuid").ok(),
-            tournament_day_uuid: row.get("tournament_day_uuid").ok(),
+            tournament_id: row.get("tournament_id").ok(),
+            tournament_day_id: row.get("tournament_day_id").ok(),
             match_id: row.get("match_id")?,
             match_number: row.get("match_number")?,
             category: row.get("category")?,

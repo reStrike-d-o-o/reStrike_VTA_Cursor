@@ -1244,8 +1244,8 @@ pub async fn pss_get_match_details(app: State<'_, Arc<App>>, match_id: String) -
         "match": {
             "id": info.id,
             "uuid": info.uuid,
-            "tournament_id": info.tournament_uuid,
-            "tournament_day_id": info.tournament_day_uuid,
+            "tournament_id": info.tournament_id,
+            "tournament_day_id": info.tournament_day_id,
             "tournament_id_int": tid_int,
             "tournament_day_id_int": day_int,
             "match_id": info.match_id,
