@@ -2782,6 +2782,7 @@ impl MigrationManager {
         migrations.push(Box::new(Migration26)); // Flag mappings: UUID TEXT id + int timestamps
         migrations.push(Box::new(Migration28)); // Add integer created/updated to many tables
         migrations.push(Box::new(Migration29)); // DB triggers for created/updated auto-population
+        migrations.push(Box::new(Migration30)); // Add uuid columns to tournaments and tournament_days
         
         Self { migrations }
     }
@@ -3591,6 +3592,33 @@ impl Migration for Migration29 {
             "DROP TRIGGER IF EXISTS trg_tournaments_updated_int",
         ];
         for sql in drop_list.iter() { let _ = conn.execute(sql, []); }
+        Ok(())
+    }
+}
+
+/// Migration 30: Add UUID columns to tournaments and tournament_days
+pub struct Migration30;
+
+impl Migration for Migration30 {
+    fn version(&self) -> u32 { 30 }
+    fn description(&self) -> &str { "Add uuid TEXT columns to tournaments and tournament_days and backfill" }
+    fn up(&self, conn: &Connection) -> SqliteResult<()> {
+        // Add uuid to tournaments
+        let _ = conn.execute("ALTER TABLE tournaments ADD COLUMN uuid TEXT", []);
+        // Add uuid to tournament_days
+        let _ = conn.execute("ALTER TABLE tournament_days ADD COLUMN uuid TEXT", []);
+        // Backfill with generated UUIDs where NULL
+        let _ = conn.execute("UPDATE tournaments SET uuid = COALESCE(uuid, lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-4'||substr(hex(randomblob(2)),2)||'-'||substr('AB89',abs(random())%4+1,1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))))", []);
+        let _ = conn.execute("UPDATE tournament_days SET uuid = COALESCE(uuid, lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-4'||substr(hex(randomblob(2)),2)||'-'||substr('AB89',abs(random())%4+1,1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))))", []);
+        // Ensure uniqueness indexes
+        let _ = conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_tournaments_uuid ON tournaments(uuid)", []);
+        let _ = conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_tournament_days_uuid ON tournament_days(uuid)", []);
+        Ok(())
+    }
+    fn down(&self, conn: &Connection) -> SqliteResult<()> {
+        // SQLite does not support DROP COLUMN; keep index cleanup only
+        let _ = conn.execute("DROP INDEX IF EXISTS idx_tournaments_uuid", []);
+        let _ = conn.execute("DROP INDEX IF EXISTS idx_tournament_days_uuid", []);
         Ok(())
     }
 }

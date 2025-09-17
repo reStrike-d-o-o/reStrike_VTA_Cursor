@@ -1442,8 +1442,9 @@ impl TournamentOperations {
         }
 
         conn.execute(
-            "INSERT INTO tournaments (name, duration_days, city, country, country_code, logo_path, status, start_date, end_date, created_at, updated_at, created, updated) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO tournaments (uuid, name, duration_days, city, country, country_code, logo_path, status, start_date, end_date, created_at, updated_at, created, updated) VALUES (COALESCE(?, lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-4'||substr(hex(randomblob(2)),2)||'-'||substr('AB89',abs(random())%4+1,1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6)))), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             params![
+                tournament.uuid,
                 tournament.name,
                 tournament.duration_days,
                 tournament.city,
@@ -1527,8 +1528,9 @@ impl TournamentOperations {
             let tournament_day = TournamentDay::new(tournament_id, day_number, day_date);
             
             tx.execute(
-                "INSERT INTO tournament_days (tournament_id, day_number, date, status, start_time, end_time, created_at, updated_at, created, updated) VALUES (?, ?, ?, ?, ?, ?, ?, ?, strftime('%s','now'), strftime('%s','now'))",
+                "INSERT INTO tournament_days (uuid, tournament_id, day_number, date, status, start_time, end_time, created_at, updated_at, created, updated) VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-4'||substr(hex(randomblob(2)),2)||'-'||substr('AB89',abs(random())%4+1,1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), ?, ?, ?, ?, ?, ?, ?, ?, strftime('%s','now'), strftime('%s','now'))",
                 params![
+                    
                     tournament_day.tournament_id,
                     tournament_day.day_number,
                     tournament_day.date.to_rfc3339(),

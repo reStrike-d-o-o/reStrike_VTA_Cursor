@@ -4008,6 +4008,7 @@ pub async fn tournament_update(
     
     let tournament = crate::database::models::Tournament {
         id: Some(tournament_id),
+        uuid: None,
         name,
         duration_days,
         city,

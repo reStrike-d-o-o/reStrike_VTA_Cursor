@@ -1585,6 +1585,7 @@ impl PssWarning {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Tournament {
     pub id: Option<i64>,
+    pub uuid: Option<String>,
     pub name: String,
     pub duration_days: i32,
     pub city: String,
@@ -1612,6 +1613,7 @@ impl Tournament {
         let now = Utc::now();
         Self {
             id: None,
+            uuid: None,
             name,
             duration_days,
             city,
@@ -1632,6 +1634,7 @@ impl Tournament {
     pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
         Ok(Self {
             id: row.get("id")?,
+            uuid: row.get("uuid").ok(),
             name: row.get("name")?,
             duration_days: row.get("duration_days")?,
             city: row.get("city")?,
@@ -1657,6 +1660,7 @@ impl Tournament {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TournamentDay {
     pub id: Option<i64>,
+    pub uuid: Option<String>,
     pub tournament_id: i64,
     pub day_number: i32,
     pub date: DateTime<Utc>,
@@ -1675,6 +1679,7 @@ impl TournamentDay {
         let now = Utc::now();
         Self {
             id: None,
+            uuid: None,
             tournament_id,
             day_number,
             date,
@@ -1692,6 +1697,7 @@ impl TournamentDay {
     pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
         Ok(Self {
             id: row.get("id")?,
+            uuid: row.get("uuid").ok(),
             tournament_id: row.get("tournament_id")?,
             day_number: row.get("day_number")?,
             date: parse_datetime_from_db(&row.get::<_, String>("date")?, "date")?,
