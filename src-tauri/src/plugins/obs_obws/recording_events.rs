@@ -439,7 +439,7 @@ impl ObsRecordingEventHandler {
                     } else { None };
                     if let Some(match_db_id) = match_db_id_opt {
                         let _ = conn_ref.execute(
-                            "INSERT INTO recorded_videos (match_id, event_id, tournament_id, tournament_day_id, video_type, file_path, record_directory, filename_formatting, start_time, duration_seconds, created_at)\n                             SELECT ?, NULL, ?, ?, 'recording', ?, ?, NULL, ?, ?, ?\n                             WHERE NOT EXISTS (SELECT 1 FROM recorded_videos rv WHERE rv.match_id = ? AND rv.start_time = ?)",
+                            "INSERT INTO recorded_videos (match_id, event_id, tournament_id, tournament_day_id, video_type, file_path, record_directory, filename_formatting, start_time, duration_seconds, created_at, created)\n                             SELECT ?, NULL, ?, ?, 'recording', ?, ?, NULL, ?, ?, ?, strftime('%s','now')\n                             WHERE NOT EXISTS (SELECT 1 FROM recorded_videos rv WHERE rv.match_id = ? AND rv.start_time = ?)",
                             rusqlite::params![
                                 match_db_id,
                                 tid_opt,
@@ -455,7 +455,7 @@ impl ObsRecordingEventHandler {
                         );
                         // Link only important events (K,P,H,TH,TB,R) within window
                         let _ = conn_ref.execute(
-                            "INSERT OR IGNORE INTO recorded_video_events (recorded_video_id, event_id, offset_ms, created_at)\n                             SELECT rv.id, e.id, CAST((julianday(e.timestamp) - julianday(?)) * 86400000 AS INTEGER), ?\n                             FROM recorded_videos rv\n                             JOIN pss_events_v2 e ON e.match_id = rv.match_id\n                             JOIN pss_event_types t ON t.id = e.event_type_id\n                             WHERE rv.file_path = ? AND e.timestamp >= ? AND e.timestamp <= ?\n                               AND (rv.tournament_id IS NULL OR e.tournament_id = rv.tournament_id)\n                               AND (rv.tournament_day_id IS NULL OR e.tournament_day_id = rv.tournament_day_id)\n                               AND t.event_code IN ('K','P','H','TH','TB','R')\n                             ORDER BY e.timestamp ASC",
+                            "INSERT OR IGNORE INTO recorded_video_events (recorded_video_id, event_id, offset_ms, created_at, created)\n                             SELECT rv.id, e.id, CAST((julianday(e.timestamp) - julianday(?)) * 86400000 AS INTEGER), ?, strftime('%s','now')\n                             FROM recorded_videos rv\n                             JOIN pss_events_v2 e ON e.match_id = rv.match_id\n                             JOIN pss_event_types t ON t.id = e.event_type_id\n                             WHERE rv.file_path = ? AND e.timestamp >= ? AND e.timestamp <= ?\n                               AND (rv.tournament_id IS NULL OR e.tournament_id = rv.tournament_id)\n                               AND (rv.tournament_day_id IS NULL OR e.tournament_day_id = rv.tournament_day_id)\n                               AND t.event_code IN ('K','P','H','TH','TB','R')\n                             ORDER BY e.timestamp ASC",
                             rusqlite::params![ start_time.to_rfc3339(), chrono::Utc::now().to_rfc3339(), full_path, start_time.to_rfc3339(), (prev.end_time.unwrap_or(created)).to_rfc3339() ]
                         );
                     } else {
@@ -796,8 +796,8 @@ impl ObsRecordingEventHandler {
                     println!("🧩 index_recording_after_stop: resolved match_db_id={}", match_db_id);
                     if match_db_id > 0 {
                         let rows = conn_ref.execute(
-                            "INSERT INTO recorded_videos (match_id, event_id, tournament_id, tournament_day_id, video_type, file_path, record_directory, filename_formatting, start_time, duration_seconds, created_at) VALUES (?, NULL, ?, ?, 'recording', ?, ?, NULL, ?, ?, ?)",
-                            rusqlite::params![ match_db_id, tid_opt, day_opt, file_path, record_dir, start_time.to_rfc3339(), duration, created.to_rfc3339() ]
+                            "INSERT INTO recorded_videos (match_id, event_id, tournament_id, tournament_day_id, video_type, file_path, record_directory, filename_formatting, start_time, duration_seconds, created_at, created) VALUES (?, NULL, ?, ?, 'recording', ?, ?, NULL, ?, ?, ?, strftime('%s','now'))",
+                            rusqlite::params![ match_db_id, tid_opt, day_opt, file_path, record_dir, start_time.to_rfc3339(), duration, created.to_rfc3339(), match_db_id, start_time.to_rfc3339() ]
                         ).unwrap_or(0);
                         log::info!("🧩 index_recording_after_stop: recorded_videos insert rows={}", rows);
                         println!("🧩 index_recording_after_stop: recorded_videos insert rows={}", rows);
@@ -816,7 +816,7 @@ impl ObsRecordingEventHandler {
                     let end_time = start_time + chrono::Duration::seconds(duration as i64);
                     // Link only important events (K,P,H,TH,TB,R) for this recording window
                     let rows2 = conn_ref.execute(
-                        "INSERT OR IGNORE INTO recorded_video_events (recorded_video_id, event_id, offset_ms, created_at)\n                         SELECT ?, e.id, CAST((julianday(e.timestamp) - julianday(?)) * 86400000 AS INTEGER), ?\n                         FROM pss_events_v2 e\n                         JOIN pss_event_types t ON t.id = e.event_type_id\n                         WHERE e.match_id = ?\n                           AND e.timestamp >= ? AND e.timestamp <= ?\n                           AND (e.tournament_id IS NULL OR EXISTS (SELECT 1 FROM recorded_videos rv2 WHERE rv2.id = ? AND (rv2.tournament_id IS NULL OR rv2.tournament_id = e.tournament_id)))\n                           AND (e.tournament_day_id IS NULL OR EXISTS (SELECT 1 FROM recorded_videos rv2 WHERE rv2.id = ? AND (rv2.tournament_day_id IS NULL OR rv2.tournament_day_id = e.tournament_day_id)))\n                           AND t.event_code IN ('K','P','H','TH','TB','R')\n                         ORDER BY e.timestamp ASC",
+                        "INSERT OR IGNORE INTO recorded_video_events (recorded_video_id, event_id, offset_ms, created_at, created)\n                         SELECT ?, e.id, CAST((julianday(e.timestamp) - julianday(?)) * 86400000 AS INTEGER), ?, strftime('%s','now')\n                         FROM pss_events_v2 e\n                         JOIN pss_event_types t ON t.id = e.event_type_id\n                         WHERE e.match_id = ?\n                           AND e.timestamp >= ? AND e.timestamp <= ?\n                           AND (e.tournament_id IS NULL OR EXISTS (SELECT 1 FROM recorded_videos rv2 WHERE rv2.id = ? AND (rv2.tournament_id IS NULL OR rv2.tournament_id = e.tournament_id)))\n                           AND (e.tournament_day_id IS NULL OR EXISTS (SELECT 1 FROM recorded_videos rv2 WHERE rv2.id = ? AND (rv2.tournament_day_id IS NULL OR rv2.tournament_day_id = e.tournament_day_id)))\n                           AND t.event_code IN ('K','P','H','TH','TB','R')\n                         ORDER BY e.timestamp ASC",
                         rusqlite::params![ rvid, start_time.to_rfc3339(), chrono::Utc::now().to_rfc3339(), match_db_id, start_time.to_rfc3339(), end_time.to_rfc3339(), rvid, rvid ]
                     ).unwrap_or(0);
                     log::info!("🧩 index_recording_after_stop: linked events rows={}", rows2);
@@ -932,8 +932,8 @@ impl ObsRecordingEventHandler {
                     println!("🧩 index_after_stop_with_snapshot: resolved match_db_id={}", match_db_id);
                     if match_db_id > 0 {
                         let rows = conn_ref.execute(
-                            "INSERT INTO recorded_videos (match_id, event_id, tournament_id, tournament_day_id, video_type, file_path, record_directory, filename_formatting, start_time, duration_seconds, created_at) VALUES (?, NULL, ?, ?, 'recording', ?, ?, NULL, ?, ?, ?)",
-                            rusqlite::params![ match_db_id, tid_opt, day_opt, file_path, record_dir, start_time.to_rfc3339(), duration, created.to_rfc3339() ]
+                            "INSERT INTO recorded_videos (match_id, event_id, tournament_id, tournament_day_id, video_type, file_path, record_directory, filename_formatting, start_time, duration_seconds, created_at, created) VALUES (?, NULL, ?, ?, 'recording', ?, ?, NULL, ?, ?, ?, strftime('%s','now'))",
+                            rusqlite::params![ match_db_id, tid_opt, day_opt, file_path, record_dir, start_time.to_rfc3339(), duration, created.to_rfc3339(), match_db_id, start_time.to_rfc3339() ]
                         ).unwrap_or(0);
                         log::info!("🧩 index_after_stop_with_snapshot: recorded_videos insert rows={}", rows);
                         println!("🧩 index_after_stop_with_snapshot: recorded_videos insert rows={}", rows);
@@ -949,8 +949,8 @@ impl ObsRecordingEventHandler {
                         println!("🧩 index_after_stop_with_snapshot: resolved recorded_video_id={}", rvid);
                         let end_time = start_time + chrono::Duration::seconds(duration as i64);
                         let rows2 = conn_ref.execute(
-                            "INSERT OR IGNORE INTO recorded_video_events (recorded_video_id, event_id, offset_ms, created_at)\n                         SELECT ?, e.id, CAST((julianday(e.timestamp) - julianday(?)) * 86400000 AS INTEGER), ?\n                         FROM pss_events_v2 e\n                         JOIN pss_event_types t ON t.id = e.event_type_id\n                         WHERE e.match_id = ?\n                           AND e.timestamp >= ? AND e.timestamp <= ?\n                           AND t.event_code IN ('K','P','H','TH','TB','R')\n                         ORDER BY e.timestamp ASC",
-                            rusqlite::params![ rvid, start_time.to_rfc3339(), chrono::Utc::now().to_rfc3339(), match_db_id, start_time.to_rfc3339(), end_time.to_rfc3339() ]
+                            "INSERT OR IGNORE INTO recorded_video_events (recorded_video_id, event_id, offset_ms, created_at, created)\n                         SELECT ?, e.id, CAST((julianday(e.timestamp) - julianday(?)) * 86400000 AS INTEGER), ?, strftime('%s','now')\n                         FROM pss_events_v2 e\n                         JOIN pss_event_types t ON t.id = e.event_type_id\n                         WHERE e.match_id = ?\n                           AND e.timestamp >= ? AND e.timestamp <= ?\n                           AND (e.tournament_id IS NULL OR EXISTS (SELECT 1 FROM recorded_videos rv2 WHERE rv2.id = ? AND (rv2.tournament_id IS NULL OR rv2.tournament_id = e.tournament_id)))\n                           AND (e.tournament_day_id IS NULL OR EXISTS (SELECT 1 FROM recorded_videos rv2 WHERE rv2.id = ? AND (rv2.tournament_day_id IS NULL OR rv2.tournament_day_id = e.tournament_day_id)))\n                           AND t.event_code IN ('K','P','H','TH','TB','R')\n                         ORDER BY e.timestamp ASC",
+                            rusqlite::params![ rvid, start_time.to_rfc3339(), chrono::Utc::now().to_rfc3339(), match_db_id, start_time.to_rfc3339(), end_time.to_rfc3339(), rvid, rvid ]
                         ).unwrap_or(0);
                         log::info!("🧩 index_after_stop_with_snapshot: linked events rows={}", rows2);
                         println!("🧩 index_after_stop_with_snapshot: linked events rows={}", rows2);

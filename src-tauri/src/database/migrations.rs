@@ -3376,6 +3376,146 @@ impl Migration for Migration28 {
             [],
         );
 
+        // Add created to recorded_videos and recorded_video_events and backfill
+        let _ = conn.execute("ALTER TABLE recorded_videos ADD COLUMN created INTEGER", []);
+        let _ = conn.execute(
+            "UPDATE recorded_videos SET created = COALESCE(created, strftime('%s', created_at))",
+            [],
+        );
+        let _ = conn.execute("ALTER TABLE recorded_video_events ADD COLUMN created INTEGER", []);
+        let _ = conn.execute(
+            "UPDATE recorded_video_events SET created = COALESCE(created, strftime('%s', created_at))",
+            [],
+        );
+
+        // Add integer timestamps to various remaining tables
+        // obs_connections
+        let _ = conn.execute("ALTER TABLE obs_connections ADD COLUMN created INTEGER", []);
+        let _ = conn.execute("ALTER TABLE obs_connections ADD COLUMN updated INTEGER", []);
+        let _ = conn.execute("UPDATE obs_connections SET created = strftime('%s', created_at), updated = strftime('%s', updated_at)", []);
+        // app_config
+        let _ = conn.execute("ALTER TABLE app_config ADD COLUMN created INTEGER", []);
+        let _ = conn.execute("ALTER TABLE app_config ADD COLUMN updated INTEGER", []);
+        let _ = conn.execute("UPDATE app_config SET created = strftime('%s', created_at), updated = strftime('%s', updated_at)", []);
+        // network_interfaces
+        let _ = conn.execute("ALTER TABLE network_interfaces ADD COLUMN created INTEGER", []);
+        let _ = conn.execute("ALTER TABLE network_interfaces ADD COLUMN updated INTEGER", []);
+        let _ = conn.execute("UPDATE network_interfaces SET created = strftime('%s', created_at), updated = strftime('%s', updated_at)", []);
+        // udp_server_configs
+        let _ = conn.execute("ALTER TABLE udp_server_configs ADD COLUMN created INTEGER", []);
+        let _ = conn.execute("ALTER TABLE udp_server_configs ADD COLUMN updated INTEGER", []);
+        let _ = conn.execute("UPDATE udp_server_configs SET created = strftime('%s', created_at), updated = strftime('%s', updated_at)", []);
+        // udp_server_sessions
+        let _ = conn.execute("ALTER TABLE udp_server_sessions ADD COLUMN created INTEGER", []);
+        let _ = conn.execute("ALTER TABLE udp_server_sessions ADD COLUMN updated INTEGER", []);
+        let _ = conn.execute("UPDATE udp_server_sessions SET created = strftime('%s', created_at), updated = strftime('%s', updated_at)", []);
+        // udp_client_connections
+        let _ = conn.execute("ALTER TABLE udp_client_connections ADD COLUMN created INTEGER", []);
+        let _ = conn.execute("UPDATE udp_client_connections SET created = strftime('%s', created_at)", []);
+        // pss_event_types
+        let _ = conn.execute("ALTER TABLE pss_event_types ADD COLUMN created INTEGER", []);
+        let _ = conn.execute("UPDATE pss_event_types SET created = strftime('%s', created_at)", []);
+        // pss_athletes
+        let _ = conn.execute("ALTER TABLE pss_athletes ADD COLUMN created INTEGER", []);
+        let _ = conn.execute("ALTER TABLE pss_athletes ADD COLUMN updated INTEGER", []);
+        let _ = conn.execute("UPDATE pss_athletes SET created = strftime('%s', created_at), updated = strftime('%s', updated_at)", []);
+        // pss_match_athletes
+        let _ = conn.execute("ALTER TABLE pss_match_athletes ADD COLUMN created INTEGER", []);
+        let _ = conn.execute("UPDATE pss_match_athletes SET created = strftime('%s', created_at)", []);
+        // pss_rounds
+        let _ = conn.execute("ALTER TABLE pss_rounds ADD COLUMN created INTEGER", []);
+        let _ = conn.execute("UPDATE pss_rounds SET created = strftime('%s', created_at)", []);
+        // pss_event_details
+        let _ = conn.execute("ALTER TABLE pss_event_details ADD COLUMN created INTEGER", []);
+        let _ = conn.execute("UPDATE pss_event_details SET created = strftime('%s', created_at)", []);
+        // pss_scores
+        let _ = conn.execute("ALTER TABLE pss_scores ADD COLUMN created INTEGER", []);
+        let _ = conn.execute("UPDATE pss_scores SET created = strftime('%s', created_at)", []);
+        // pss_warnings
+        let _ = conn.execute("ALTER TABLE pss_warnings ADD COLUMN created INTEGER", []);
+        let _ = conn.execute("UPDATE pss_warnings SET created = strftime('%s', created_at)", []);
+        // pss_event_recognition_history
+        let _ = conn.execute("ALTER TABLE pss_event_recognition_history ADD COLUMN created INTEGER", []);
+        let _ = conn.execute("UPDATE pss_event_recognition_history SET created = strftime('%s', created_at)", []);
+        // pss_unknown_events
+        let _ = conn.execute("ALTER TABLE pss_unknown_events ADD COLUMN created INTEGER", []);
+        let _ = conn.execute("ALTER TABLE pss_unknown_events ADD COLUMN updated INTEGER", []);
+        let _ = conn.execute("UPDATE pss_unknown_events SET created = strftime('%s', created_at), updated = strftime('%s', updated_at)", []);
+        // pss_event_validation_rules
+        let _ = conn.execute("ALTER TABLE pss_event_validation_rules ADD COLUMN created INTEGER", []);
+        let _ = conn.execute("ALTER TABLE pss_event_validation_rules ADD COLUMN updated INTEGER", []);
+        let _ = conn.execute("UPDATE pss_event_validation_rules SET created = strftime('%s', created_at), updated = strftime('%s', updated_at)", []);
+        // pss_event_validation_results
+        let _ = conn.execute("ALTER TABLE pss_event_validation_results ADD COLUMN created INTEGER", []);
+        let _ = conn.execute("UPDATE pss_event_validation_results SET created = strftime('%s', created_at)", []);
+        // pss_event_statistics
+        let _ = conn.execute("ALTER TABLE pss_event_statistics ADD COLUMN created INTEGER", []);
+        let _ = conn.execute("ALTER TABLE pss_event_statistics ADD COLUMN updated INTEGER", []);
+        let _ = conn.execute("UPDATE pss_event_statistics SET created = strftime('%s', created_at), updated = strftime('%s', updated_at)", []);
+        // obs_scenes
+        let _ = conn.execute("ALTER TABLE obs_scenes ADD COLUMN created INTEGER", []);
+        let _ = conn.execute("ALTER TABLE obs_scenes ADD COLUMN updated INTEGER", []);
+        let _ = conn.execute("UPDATE obs_scenes SET created = strftime('%s', created_at), updated = strftime('%s', updated_at)", []);
+        // overlay_templates
+        let _ = conn.execute("ALTER TABLE overlay_templates ADD COLUMN created INTEGER", []);
+        let _ = conn.execute("ALTER TABLE overlay_templates ADD COLUMN updated INTEGER", []);
+        let _ = conn.execute("UPDATE overlay_templates SET created = strftime('%s', created_at), updated = strftime('%s', updated_at)", []);
+        // event_triggers
+        let _ = conn.execute("ALTER TABLE event_triggers ADD COLUMN created INTEGER", []);
+        let _ = conn.execute("ALTER TABLE event_triggers ADD COLUMN updated INTEGER", []);
+        let _ = conn.execute("UPDATE event_triggers SET created = strftime('%s', created_at), updated = strftime('%s', updated_at)", []);
+        // ovr_providers
+        let _ = conn.execute("ALTER TABLE ovr_providers ADD COLUMN created INTEGER", []);
+        let _ = conn.execute("ALTER TABLE ovr_providers ADD COLUMN updated INTEGER", []);
+        let _ = conn.execute("UPDATE ovr_providers SET created = strftime('%s', created_at), updated = strftime('%s', updated_at)", []);
+        // ovr_tournaments
+        let _ = conn.execute("ALTER TABLE ovr_tournaments ADD COLUMN created INTEGER", []);
+        let _ = conn.execute("ALTER TABLE ovr_tournaments ADD COLUMN updated INTEGER", []);
+        let _ = conn.execute("UPDATE ovr_tournaments SET created = strftime('%s', created_at), updated = strftime('%s', updated_at)", []);
+        // ovr_categories
+        let _ = conn.execute("ALTER TABLE ovr_categories ADD COLUMN created INTEGER", []);
+        let _ = conn.execute("ALTER TABLE ovr_categories ADD COLUMN updated INTEGER", []);
+        let _ = conn.execute("UPDATE ovr_categories SET created = strftime('%s', created_at), updated = strftime('%s', updated_at)", []);
+        // ovr_to_local_tournament
+        let _ = conn.execute("ALTER TABLE ovr_to_local_tournament ADD COLUMN created INTEGER", []);
+        let _ = conn.execute("UPDATE ovr_to_local_tournament SET created = strftime('%s', created_at)", []);
+
+        // flags
+        let _ = conn.execute("ALTER TABLE flags ADD COLUMN created INTEGER", []);
+        let _ = conn.execute("UPDATE flags SET created = strftime('%s', created_at)", []);
+        // lookups
+        let _ = conn.execute("ALTER TABLE look_genders ADD COLUMN created INTEGER", []);
+        let _ = conn.execute("UPDATE look_genders SET created = strftime('%s', created_at)", []);
+        let _ = conn.execute("ALTER TABLE look_disciplines ADD COLUMN created INTEGER", []);
+        let _ = conn.execute("UPDATE look_disciplines SET created = strftime('%s', created_at)", []);
+        let _ = conn.execute("ALTER TABLE look_age_groups ADD COLUMN created INTEGER", []);
+        let _ = conn.execute("UPDATE look_age_groups SET created = strftime('%s', created_at)", []);
+        let _ = conn.execute("ALTER TABLE look_divisions ADD COLUMN created INTEGER", []);
+        let _ = conn.execute("UPDATE look_divisions SET created = strftime('%s', created_at)", []);
+        let _ = conn.execute("ALTER TABLE look_weight_classes ADD COLUMN created INTEGER", []);
+        let _ = conn.execute("UPDATE look_weight_classes SET created = strftime('%s', created_at)", []);
+        let _ = conn.execute("ALTER TABLE look_round_configs ADD COLUMN created INTEGER", []);
+        let _ = conn.execute("UPDATE look_round_configs SET created = strftime('%s', created_at)", []);
+
+        // security/config tables
+        let _ = conn.execute("ALTER TABLE secure_config ADD COLUMN created INTEGER", []);
+        let _ = conn.execute("ALTER TABLE secure_config ADD COLUMN updated INTEGER", []);
+        let _ = conn.execute("UPDATE secure_config SET created = strftime('%s', created_at), updated = strftime('%s', updated_at)", []);
+        let _ = conn.execute("ALTER TABLE config_audit ADD COLUMN created INTEGER", []);
+        let _ = conn.execute("UPDATE config_audit SET created = strftime('%s', timestamp)", []);
+        let _ = conn.execute("ALTER TABLE security_sessions ADD COLUMN created INTEGER", []);
+        let _ = conn.execute("UPDATE security_sessions SET created = strftime('%s', created_at)", []);
+        let _ = conn.execute("ALTER TABLE config_categories ADD COLUMN created INTEGER", []);
+        let _ = conn.execute("ALTER TABLE config_categories ADD COLUMN updated INTEGER", []);
+        let _ = conn.execute("UPDATE config_categories SET created = strftime('%s', created_at), updated = strftime('%s', updated_at)", []);
+        // obs recording tables
+        let _ = conn.execute("ALTER TABLE obs_recording_config ADD COLUMN created INTEGER", []);
+        let _ = conn.execute("ALTER TABLE obs_recording_config ADD COLUMN updated INTEGER", []);
+        let _ = conn.execute("UPDATE obs_recording_config SET created = strftime('%s', created_at), updated = strftime('%s', updated_at)", []);
+        let _ = conn.execute("ALTER TABLE obs_recording_sessions ADD COLUMN created INTEGER", []);
+        let _ = conn.execute("ALTER TABLE obs_recording_sessions ADD COLUMN updated INTEGER", []);
+        let _ = conn.execute("UPDATE obs_recording_sessions SET created = strftime('%s', created_at), updated = strftime('%s', updated_at)", []);
+
         Ok(())
     }
 

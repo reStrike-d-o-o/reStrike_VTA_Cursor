@@ -545,13 +545,13 @@ impl App {
                 let conn_ref2 = &*conn2;
                 let _ = if let Some(dbid) = match_id_db {
                     conn_ref2.execute(
-                        "INSERT INTO recorded_videos (match_id, event_id, tournament_id, tournament_day_id, video_type, file_path, record_directory, filename_formatting, start_time, duration_seconds, created_at) VALUES (?, NULL, ?, ?, 'replay', ?, ?, NULL, ?, ?, ?)",
+                        "INSERT INTO recorded_videos (match_id, event_id, tournament_id, tournament_day_id, video_type, file_path, record_directory, filename_formatting, start_time, duration_seconds, created_at, created) VALUES (?, NULL, ?, ?, 'replay', ?, ?, NULL, ?, ?, ?, strftime('%s','now'))",
                         rusqlite::params![ dbid, tid_opt, day_opt, file_path_str, directory, start_time.to_rfc3339(), seconds_from_end as i32, created.to_rfc3339() ]
                     )
                 } else {
                     // Fallback: map pss_matches by most recent created_at
                     conn_ref2.execute(
-                        "INSERT INTO recorded_videos (match_id, event_id, tournament_id, tournament_day_id, video_type, file_path, record_directory, filename_formatting, start_time, duration_seconds, created_at) VALUES ((SELECT id FROM pss_matches ORDER BY created_at DESC LIMIT 1), NULL, ?, ?, 'replay', ?, ?, NULL, ?, ?, ?)",
+                        "INSERT INTO recorded_videos (match_id, event_id, tournament_id, tournament_day_id, video_type, file_path, record_directory, filename_formatting, start_time, duration_seconds, created_at, created) VALUES ((SELECT id FROM pss_matches ORDER BY created_at DESC LIMIT 1), NULL, ?, ?, 'replay', ?, ?, NULL, ?, ?, ?, strftime('%s','now'))",
                         rusqlite::params![ tid_opt, day_opt, file_path_str, directory, start_time.to_rfc3339(), seconds_from_end as i32, created.to_rfc3339() ]
                     )
                 };
