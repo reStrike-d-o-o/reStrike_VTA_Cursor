@@ -3807,6 +3807,8 @@ pub async fn store_pss_event(
         match_id: Some(db_match_id),
         round_id,
         event_type_id,
+        tournament_uuid: None,
+        tournament_day_uuid: None,
         timestamp,
         raw_data: raw_data.to_string(),
         parsed_data,

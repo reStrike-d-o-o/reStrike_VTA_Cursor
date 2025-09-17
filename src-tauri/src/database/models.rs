@@ -906,6 +906,8 @@ impl PssEventType {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PssMatch {
     pub id: Option<i64>,
+    pub tournament_uuid: Option<String>,
+    pub tournament_day_uuid: Option<String>,
     pub match_id: String,
     pub match_number: Option<String>, // Changed from i32 to String to support non-integer match numbers
     pub category: Option<String>,
@@ -928,6 +930,8 @@ impl PssMatch {
         let now_unix = crate::utils::now_unix();
         Self {
             id: None,
+            tournament_uuid: None,
+            tournament_day_uuid: None,
             match_id,
             match_number: None,
             category: None,
@@ -948,6 +952,8 @@ impl PssMatch {
     pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
         Ok(Self {
             id: row.get("id")?,
+            tournament_uuid: row.get("tournament_uuid").ok(),
+            tournament_day_uuid: row.get("tournament_day_uuid").ok(),
             match_id: row.get("match_id")?,
             match_number: row.get("match_number")?,
             category: row.get("category")?,
@@ -1115,6 +1121,8 @@ pub struct PssEventV2 {
     pub match_id: Option<i64>,
     pub round_id: Option<i64>,
     pub event_type_id: i64,
+    pub tournament_uuid: Option<String>,
+    pub tournament_day_uuid: Option<String>,
     pub timestamp: DateTime<Utc>,
     pub raw_data: String,
     pub parsed_data: Option<String>, // JSON serialized parsed event data
@@ -1148,6 +1156,8 @@ impl PssEventV2 {
             match_id: None,
             round_id: None,
             event_type_id,
+            tournament_uuid: None,
+            tournament_day_uuid: None,
             timestamp,
             raw_data,
             parsed_data: None,
@@ -1173,6 +1183,8 @@ impl PssEventV2 {
             match_id: row.get("match_id")?,
             round_id: row.get("round_id")?,
             event_type_id: row.get("event_type_id")?,
+            tournament_uuid: row.get("tournament_uuid").ok(),
+            tournament_day_uuid: row.get("tournament_day_uuid").ok(),
             timestamp: DateTime::parse_from_rfc3339(&row.get::<_, String>("timestamp")?)
                 .map_err(|_| rusqlite::Error::InvalidColumnType(0, "timestamp".to_string(), rusqlite::types::Type::Text))?
                 .with_timezone(&Utc),

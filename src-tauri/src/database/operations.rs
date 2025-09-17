@@ -894,8 +894,13 @@ impl PssUdpOperations {
                 session_id, match_id, round_id, event_type_id, timestamp, raw_data,
                 parsed_data, event_sequence, processing_time_ms, is_valid, error_message,
                 recognition_status, protocol_version, parser_confidence, validation_errors,
-                tournament_id, tournament_day_id, created_at, created
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, strftime('%s','now'))",
+                tournament_id, tournament_day_id, tournament_uuid, tournament_day_uuid, created_at, created
+            ) VALUES (
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                (SELECT uuid FROM tournaments WHERE id = ?),
+                (SELECT uuid FROM tournament_days WHERE id = ?),
+                ?, strftime('%s','now')
+            )",
             params![
                 event.session_id,
                 event.match_id,
@@ -912,6 +917,8 @@ impl PssUdpOperations {
                 event.protocol_version,
                 event.parser_confidence,
                 event.validation_errors,
+                event.tournament_id,
+                event.tournament_day_id,
                 event.tournament_id,
                 event.tournament_day_id,
                 event.created_at.to_rfc3339()
@@ -1183,8 +1190,13 @@ impl PssUdpOperations {
         tournament_day_id: Option<i64>,
     ) -> DatabaseResult<()> {
         conn.execute(
-            "UPDATE pss_matches SET tournament_id = COALESCE(?, tournament_id), tournament_day_id = COALESCE(?, tournament_day_id), updated_at = ? WHERE id = ?",
+            "UPDATE pss_matches SET tournament_id = COALESCE(?, tournament_id), tournament_day_id = COALESCE(?, tournament_day_id),
+               tournament_uuid = (SELECT uuid FROM tournaments WHERE id = COALESCE(?, tournament_id)),
+               tournament_day_uuid = (SELECT uuid FROM tournament_days WHERE id = COALESCE(?, tournament_day_id)),
+               updated_at = ? WHERE id = ?",
             params![
+                tournament_id,
+                tournament_day_id,
                 tournament_id,
                 tournament_day_id,
                 Utc::now().to_rfc3339(),
