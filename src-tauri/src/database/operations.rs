@@ -751,8 +751,8 @@ impl PssUdpOperations {
             let match_obj = PssMatch::new(match_id.to_string());
             tx.execute(
                 "INSERT INTO pss_matches (
-                    match_id, total_rounds, created_at, updated_at
-                ) VALUES (?, ?, ?, ?)",
+                    match_id, total_rounds, created_at, updated_at, created, updated
+                ) VALUES (?, ?, ?, ?, strftime('%s','now'), strftime('%s','now'))",
                 params![
                     match_obj.match_id,
                     match_obj.total_rounds,
@@ -772,7 +772,7 @@ impl PssUdpOperations {
         conn.execute(
             "UPDATE pss_matches SET 
                 match_number = ?, category = ?, weight_class = ?, division = ?,
-                total_rounds = ?, round_duration = ?, countdown_type = ?, format_type = ?, updated_at = ?
+                total_rounds = ?, round_duration = ?, countdown_type = ?, format_type = ?, updated_at = ?, updated = strftime('%s','now')
             WHERE id = ?",
             params![
                 match_data.match_number,
@@ -816,7 +816,7 @@ impl PssUdpOperations {
     /// Rename the match_id string for an existing PSS match
     pub fn rename_pss_match_id(conn: &mut Connection, id: i64, new_match_id: &str) -> DatabaseResult<()> {
         conn.execute(
-            "UPDATE pss_matches SET match_id = ?, updated_at = ? WHERE id = ?",
+            "UPDATE pss_matches SET match_id = ?, updated_at = ?, updated = strftime('%s','now') WHERE id = ?",
             params![new_match_id, Utc::now().to_rfc3339(), id],
         )?;
         Ok(())
@@ -894,8 +894,8 @@ impl PssUdpOperations {
                 session_id, match_id, round_id, event_type_id, timestamp, raw_data,
                 parsed_data, event_sequence, processing_time_ms, is_valid, error_message,
                 recognition_status, protocol_version, parser_confidence, validation_errors,
-                tournament_id, tournament_day_id, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                tournament_id, tournament_day_id, created_at, created
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, strftime('%s','now'))",
             params![
                 event.session_id,
                 event.match_id,
@@ -1682,8 +1682,8 @@ impl PssEventStatusOperations {
                 session_id, match_id, round_id, event_type_id, timestamp, raw_data, 
                 parsed_data, event_sequence, processing_time_ms, is_valid, error_message,
                 recognition_status, protocol_version, parser_confidence, validation_errors,
-                tournament_id, tournament_day_id, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                tournament_id, tournament_day_id, created_at, created
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, strftime('%s','now'))",
             params![
                 event.session_id,
                 event.match_id,

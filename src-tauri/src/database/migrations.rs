@@ -3361,6 +3361,21 @@ impl Migration for Migration28 {
             [],
         );
 
+        // Add created/updated to pss_matches and backfill from created_at/updated_at
+        let _ = conn.execute("ALTER TABLE pss_matches ADD COLUMN created INTEGER", []);
+        let _ = conn.execute("ALTER TABLE pss_matches ADD COLUMN updated INTEGER", []);
+        let _ = conn.execute(
+            "UPDATE pss_matches SET created = COALESCE(created, strftime('%s', created_at)), updated = COALESCE(updated, strftime('%s', updated_at))",
+            [],
+        );
+
+        // Add created to pss_events_v2 and backfill from created_at
+        let _ = conn.execute("ALTER TABLE pss_events_v2 ADD COLUMN created INTEGER", []);
+        let _ = conn.execute(
+            "UPDATE pss_events_v2 SET created = COALESCE(created, strftime('%s', created_at))",
+            [],
+        );
+
         Ok(())
     }
 

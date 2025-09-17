@@ -918,11 +918,14 @@ pub struct PssMatch {
     pub creation_mode: String, // 'Automatic' or 'Manual'
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    pub created: Option<i64>,
+    pub updated: Option<i64>,
 }
 
 impl PssMatch {
     pub fn new(match_id: String) -> Self {
         let now = Utc::now();
+        let now_unix = crate::utils::now_unix();
         Self {
             id: None,
             match_id,
@@ -937,6 +940,8 @@ impl PssMatch {
             creation_mode: "Automatic".to_string(),
             created_at: now,
             updated_at: now,
+            created: Some(now_unix),
+            updated: Some(now_unix),
         }
     }
     
@@ -959,6 +964,8 @@ impl PssMatch {
             updated_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("updated_at")?)
                 .map_err(|_| rusqlite::Error::InvalidColumnType(0, "updated_at".to_string(), rusqlite::types::Type::Text))?
                 .with_timezone(&Utc),
+            created: row.get("created")?,
+            updated: row.get("updated")?,
         })
     }
 }
@@ -1124,6 +1131,7 @@ pub struct PssEventV2 {
     pub tournament_id: Option<i64>,
     pub tournament_day_id: Option<i64>,
     pub created_at: DateTime<Utc>,
+    pub created: Option<i64>,
 }
 
 impl PssEventV2 {
@@ -1154,6 +1162,7 @@ impl PssEventV2 {
             tournament_id: None,
             tournament_day_id: None,
             created_at: Utc::now(),
+            created: Some(crate::utils::now_unix()),
         }
     }
     
@@ -1179,7 +1188,10 @@ impl PssEventV2 {
             validation_errors: row.get("validation_errors")?,
             tournament_id: row.get("tournament_id")?,
             tournament_day_id: row.get("tournament_day_id")?,
-            created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
+            created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
+                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "created_at".to_string(), rusqlite::types::Type::Text))?
+                .with_timezone(&Utc),
+            created: row.get("created")?,
         })
     }
 }

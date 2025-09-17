@@ -3821,6 +3821,7 @@ pub async fn store_pss_event(
         tournament_id: None,
         tournament_day_id: None,
         created_at: chrono::Utc::now(),
+        created: Some(crate::utils::now_unix()),
     };
 
     match app.database_plugin().store_pss_event(&event_model).await {
