@@ -2783,6 +2783,7 @@ impl MigrationManager {
         migrations.push(Box::new(Migration28)); // Add integer created/updated to many tables
         migrations.push(Box::new(Migration29)); // DB triggers for created/updated auto-population
         migrations.push(Box::new(Migration30)); // Add uuid columns to tournaments and tournament_days
+        migrations.push(Box::new(Migration31)); // Add *_uuid FKs for tournament context and backfill
         
         Self { migrations }
     }
@@ -3619,6 +3620,70 @@ impl Migration for Migration30 {
         // SQLite does not support DROP COLUMN; keep index cleanup only
         let _ = conn.execute("DROP INDEX IF EXISTS idx_tournaments_uuid", []);
         let _ = conn.execute("DROP INDEX IF EXISTS idx_tournament_days_uuid", []);
+        Ok(())
+    }
+}
+
+/// Migration 31: Add *_uuid foreign keys for tournament context and backfill
+pub struct Migration31;
+
+impl Migration for Migration31 {
+    fn version(&self) -> u32 { 31 }
+    fn description(&self) -> &str { "Add tournament_uuid and tournament_day_uuid FKs and backfill" }
+    fn up(&self, conn: &Connection) -> SqliteResult<()> {
+        // Add uuid FKs to pss_matches
+        let _ = conn.execute("ALTER TABLE pss_matches ADD COLUMN tournament_uuid TEXT", []);
+        let _ = conn.execute("ALTER TABLE pss_matches ADD COLUMN tournament_day_uuid TEXT", []);
+        // Add uuid FKs to pss_events_v2
+        let _ = conn.execute("ALTER TABLE pss_events_v2 ADD COLUMN tournament_uuid TEXT", []);
+        let _ = conn.execute("ALTER TABLE pss_events_v2 ADD COLUMN tournament_day_uuid TEXT", []);
+        // Add uuid FKs to recorded_videos
+        let _ = conn.execute("ALTER TABLE recorded_videos ADD COLUMN tournament_uuid TEXT", []);
+        let _ = conn.execute("ALTER TABLE recorded_videos ADD COLUMN tournament_day_uuid TEXT", []);
+
+        // Backfill from int FKs
+        let _ = conn.execute(
+            "UPDATE pss_matches SET tournament_uuid = (
+                 SELECT t.uuid FROM tournaments t WHERE t.id = pss_matches.tournament_id
+             ) WHERE tournament_id IS NOT NULL AND (tournament_uuid IS NULL OR tournament_uuid = '')",
+            []);
+        let _ = conn.execute(
+            "UPDATE pss_matches SET tournament_day_uuid = (
+                 SELECT td.uuid FROM tournament_days td WHERE td.id = pss_matches.tournament_day_id
+             ) WHERE tournament_day_id IS NOT NULL AND (tournament_day_uuid IS NULL OR tournament_day_uuid = '')",
+            []);
+
+        let _ = conn.execute(
+            "UPDATE pss_events_v2 SET tournament_uuid = (
+                 SELECT t.uuid FROM tournaments t WHERE t.id = pss_events_v2.tournament_id
+             ) WHERE tournament_id IS NOT NULL AND (tournament_uuid IS NULL OR tournament_uuid = '')",
+            []);
+        let _ = conn.execute(
+            "UPDATE pss_events_v2 SET tournament_day_uuid = (
+                 SELECT td.uuid FROM tournament_days td WHERE td.id = pss_events_v2.tournament_day_id
+             ) WHERE tournament_day_id IS NOT NULL AND (tournament_day_uuid IS NULL OR tournament_day_uuid = '')",
+            []);
+
+        let _ = conn.execute(
+            "UPDATE recorded_videos SET tournament_uuid = (
+                 SELECT t.uuid FROM tournaments t WHERE t.id = recorded_videos.tournament_id
+             ) WHERE tournament_id IS NOT NULL AND (tournament_uuid IS NULL OR tournament_uuid = '')",
+            []);
+        let _ = conn.execute(
+            "UPDATE recorded_videos SET tournament_day_uuid = (
+                 SELECT td.uuid FROM tournament_days td WHERE td.id = recorded_videos.tournament_day_id
+             ) WHERE tournament_day_id IS NOT NULL AND (tournament_day_uuid IS NULL OR tournament_day_uuid = '')",
+            []);
+
+        // Helpful indexes
+        let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_matches_tournament_uuid ON pss_matches(tournament_uuid)", []);
+        let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_events_v2_tournament_uuid ON pss_events_v2(tournament_uuid)", []);
+        let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_recorded_videos_tournament_uuid ON recorded_videos(tournament_uuid)", []);
+
+        Ok(())
+    }
+    fn down(&self, _conn: &Connection) -> SqliteResult<()> {
+        // No-op (SQLite cannot drop columns)
         Ok(())
     }
 }
