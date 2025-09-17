@@ -2787,6 +2787,7 @@ impl MigrationManager {
         migrations.push(Box::new(Migration32)); // Add *_uuid to rounds/scores/warnings/match_athletes/event_details
         migrations.push(Box::new(Migration33)); // Add uuid to pss_matches and re-backfill match_uuid
         migrations.push(Box::new(Migration34)); // Rename int FKs to *_int and add TEXT *_id from UUIDs
+        migrations.push(Box::new(Migration35)); // Recreate core tables with TEXT *_id and drop legacy *_uuid/*_int/*_text
         
         Self { migrations }
     }
@@ -3813,6 +3814,138 @@ impl Migration for Migration34 {
         let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_matches_tournament_id_text ON pss_matches(tournament_id_text)", []);
         let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_events_v2_tournament_id_text ON pss_events_v2(tournament_id_text)", []);
         let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_recorded_videos_tournament_id_text ON recorded_videos(tournament_id_text)", []);
+        Ok(())
+    }
+    fn down(&self, _conn: &Connection) -> SqliteResult<()> { Ok(()) }
+}
+
+/// Migration 35: Finalize UUID transition - canonical TEXT *_id, remove legacy columns
+pub struct Migration35;
+
+impl Migration for Migration35 {
+    fn version(&self) -> u32 { 35 }
+    fn description(&self) -> &str { "Recreate core tables to use TEXT *_id columns and drop legacy *_uuid/*_int/*_text" }
+    fn up(&self, conn: &Connection) -> SqliteResult<()> {
+        // Helper to recreate a table with new schema and copy data
+        // pss_matches: keep id (rowid), uuid, and canonical TEXT tournament_id/tournament_day_id
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS _tmp_pss_matches AS
+             SELECT id, uuid,
+                    COALESCE(tournament_id_text, tournament_uuid) AS tournament_id,
+                    COALESCE(tournament_day_id_text, tournament_day_uuid) AS tournament_day_id,
+                    match_id, match_number, category, weight_class, division, total_rounds, round_duration, countdown_type, format_type, creation_mode, created_at, updated_at, created, updated
+             FROM pss_matches",
+            [],
+        )?;
+        conn.execute("DROP TABLE IF EXISTS pss_matches", [])?;
+        conn.execute(
+            "CREATE TABLE pss_matches (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                uuid TEXT UNIQUE,
+                tournament_id TEXT,
+                tournament_day_id TEXT,
+                match_id TEXT NOT NULL,
+                match_number TEXT,
+                category TEXT,
+                weight_class TEXT,
+                division TEXT,
+                total_rounds INTEGER,
+                round_duration INTEGER,
+                countdown_type TEXT,
+                format_type INTEGER,
+                creation_mode TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                created INTEGER,
+                updated INTEGER
+            )",
+            [],
+        )?;
+        conn.execute(
+            "INSERT INTO pss_matches SELECT * FROM _tmp_pss_matches",
+            [],
+        )?;
+        conn.execute("DROP TABLE IF EXISTS _tmp_pss_matches", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_matches_tournament_id ON pss_matches(tournament_id)", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_matches_tournament_day_id ON pss_matches(tournament_day_id)", [])?;
+
+        // pss_events_v2: canonical TEXT tournament_id/tournament_day_id
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS _tmp_pss_events_v2 AS
+             SELECT id, session_id, match_id, round_id, event_type_id, timestamp, raw_data, parsed_data, event_sequence, processing_time_ms, is_valid, error_message, recognition_status, protocol_version, parser_confidence, validation_errors,
+                    COALESCE(tournament_id_text, tournament_uuid) AS tournament_id,
+                    COALESCE(tournament_day_id_text, tournament_day_uuid) AS tournament_day_id,
+                    created_at, created
+             FROM pss_events_v2",
+            [],
+        )?;
+        conn.execute("DROP TABLE IF EXISTS pss_events_v2", [])?;
+        conn.execute(
+            "CREATE TABLE pss_events_v2 (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id INTEGER NOT NULL,
+                match_id INTEGER,
+                round_id INTEGER,
+                event_type_id INTEGER NOT NULL,
+                timestamp TEXT NOT NULL,
+                raw_data TEXT NOT NULL,
+                parsed_data TEXT,
+                event_sequence INTEGER,
+                processing_time_ms INTEGER,
+                is_valid BOOLEAN NOT NULL,
+                error_message TEXT,
+                recognition_status TEXT,
+                protocol_version TEXT,
+                parser_confidence REAL,
+                validation_errors TEXT,
+                tournament_id TEXT,
+                tournament_day_id TEXT,
+                created_at TEXT NOT NULL,
+                created INTEGER
+            )",
+            [],
+        )?;
+        conn.execute("INSERT INTO pss_events_v2 SELECT * FROM _tmp_pss_events_v2", [])?;
+        conn.execute("DROP TABLE IF EXISTS _tmp_pss_events_v2", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_events_v2_tournament_id ON pss_events_v2(tournament_id)", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_events_v2_tournament_day_id ON pss_events_v2(tournament_day_id)", [])?;
+
+        // recorded_videos: canonical TEXT tournament_id/tournament_day_id
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS _tmp_recorded_videos AS
+             SELECT id, match_id, event_id,
+                    COALESCE(tournament_id_text, tournament_uuid) AS tournament_id,
+                    COALESCE(tournament_day_id_text, tournament_day_uuid) AS tournament_day_id,
+                    video_type, file_path, record_directory, filename_formatting, start_time, duration_seconds, file_size, checksum, created_at, created
+             FROM recorded_videos",
+            [],
+        )?;
+        conn.execute("DROP TABLE IF EXISTS recorded_videos", [])?;
+        conn.execute(
+            "CREATE TABLE recorded_videos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                match_id INTEGER NOT NULL,
+                event_id INTEGER,
+                tournament_id TEXT,
+                tournament_day_id TEXT,
+                video_type TEXT NOT NULL,
+                file_path TEXT,
+                record_directory TEXT,
+                filename_formatting TEXT,
+                start_time TEXT NOT NULL,
+                duration_seconds INTEGER,
+                file_size INTEGER,
+                checksum TEXT,
+                created_at TEXT NOT NULL,
+                created INTEGER
+            )",
+            [],
+        )?;
+        conn.execute("INSERT INTO recorded_videos SELECT * FROM _tmp_recorded_videos", [])?;
+        conn.execute("DROP TABLE IF EXISTS _tmp_recorded_videos", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_recorded_videos_tournament_id ON recorded_videos(tournament_id)", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_recorded_videos_tournament_day_id ON recorded_videos(tournament_day_id)", [])?;
+
         Ok(())
     }
     fn down(&self, _conn: &Connection) -> SqliteResult<()> { Ok(()) }
