@@ -1048,8 +1048,7 @@ pub async fn pss_get_events_for_match(app: State<'_, Arc<App>>, match_id: String
                 "description": row.parsed_data,
                 "tournament_id": row.tournament_id,
                 "tournament_day_id": row.tournament_day_id,
-                "tournament_id_int": row.tournament_id,
-                "tournament_day_id_int": row.tournament_day_id
+                
             }));
         }
     }
@@ -1232,7 +1231,7 @@ pub async fn pss_get_match_details(app: State<'_, Arc<App>>, match_id: String) -
             |r| Ok((r.get::<_, Option<i64>>(0)?, r.get::<_, Option<i64>>(1)?))
         )
         .ok();
-    let (tid_int, day_int) = ints.unwrap_or((None, None));
+    let (_tid_int, _day_int) = ints.unwrap_or((None, None));
 
     Ok(serde_json::json!({
         "match": {
@@ -1240,8 +1239,7 @@ pub async fn pss_get_match_details(app: State<'_, Arc<App>>, match_id: String) -
             "uuid": info.uuid,
             "tournament_id": info.tournament_id,
             "tournament_day_id": info.tournament_day_id,
-            "tournament_id_int": tid_int,
-            "tournament_day_id_int": day_int,
+            
             "match_id": info.match_id,
             "number": info.match_number,
             "category": info.category,
