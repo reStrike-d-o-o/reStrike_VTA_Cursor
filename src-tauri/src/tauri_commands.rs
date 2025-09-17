@@ -1230,12 +1230,24 @@ pub async fn pss_get_match_details(app: State<'_, Arc<App>>, match_id: String) -
         });
         if ma.athlete_position == 1 { a1 = obj; } else if ma.athlete_position == 2 { a2 = obj; }
     }
+    // Fetch legacy integer tournament ids for transition
+    let ints: Option<(Option<i64>, Option<i64>)> = conn
+        .query_row(
+            "SELECT tournament_id, tournament_day_id FROM pss_matches WHERE id = ?",
+            rusqlite::params![ dbid ],
+            |r| Ok((r.get::<_, Option<i64>>(0)?, r.get::<_, Option<i64>>(1)?))
+        )
+        .ok();
+    let (tid_int, day_int) = ints.unwrap_or((None, None));
+
     Ok(serde_json::json!({
         "match": {
             "id": info.id,
             "uuid": info.uuid,
-            "tournament_uuid": info.tournament_uuid,
-            "tournament_day_uuid": info.tournament_day_uuid,
+            "tournament_id": info.tournament_uuid,
+            "tournament_day_id": info.tournament_day_uuid,
+            "tournament_id_int": tid_int,
+            "tournament_day_id_int": day_int,
             "match_id": info.match_id,
             "number": info.match_number,
             "category": info.category,
