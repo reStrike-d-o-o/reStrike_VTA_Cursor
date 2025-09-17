@@ -1031,14 +1031,13 @@ impl PssUdpOperations {
     pub fn store_pss_score(conn: &mut Connection, score: &PssScore) -> DatabaseResult<i64> {
         let score_id = conn.execute(
             "INSERT INTO pss_scores (
-                match_id, match_uuid, round_id, athlete_position, score_type, score_value, timestamp, created_at, tournament_uuid, tournament_day_uuid
+                match_id, round_id, athlete_position, score_type, score_value, timestamp, created_at, tournament_id, tournament_day_id
             ) VALUES (
-                ?, (SELECT tournament_uuid FROM pss_matches WHERE id = ?), ?, ?, ?, ?, ?, ?,
-                (SELECT tournament_uuid FROM pss_matches WHERE id = ?),
-                (SELECT tournament_day_uuid FROM pss_matches WHERE id = ?)
+                (SELECT uuid FROM pss_matches WHERE id = ?), ?, ?, ?, ?, ?, ?,
+                (SELECT tournament_id FROM pss_matches WHERE id = ?),
+                (SELECT tournament_day_id FROM pss_matches WHERE id = ?)
             )",
             params![
-                score.match_id,
                 score.match_id,
                 score.round_id,
                 score.athlete_position,
@@ -1074,14 +1073,13 @@ impl PssUdpOperations {
     pub fn store_pss_warning(conn: &mut Connection, warning: &PssWarning) -> DatabaseResult<i64> {
         let warning_id = conn.execute(
             "INSERT INTO pss_warnings (
-                match_id, match_uuid, round_id, athlete_position, warning_type, warning_count, timestamp, created_at, tournament_uuid, tournament_day_uuid
+                match_id, round_id, athlete_position, warning_type, warning_count, timestamp, created_at, tournament_id, tournament_day_id
             ) VALUES (
-                ?, (SELECT tournament_uuid FROM pss_matches WHERE id = ?), ?, ?, ?, ?, ?, ?,
-                (SELECT tournament_uuid FROM pss_matches WHERE id = ?),
-                (SELECT tournament_day_uuid FROM pss_matches WHERE id = ?)
+                (SELECT uuid FROM pss_matches WHERE id = ?), ?, ?, ?, ?, ?, ?,
+                (SELECT tournament_id FROM pss_matches WHERE id = ?),
+                (SELECT tournament_day_id FROM pss_matches WHERE id = ?)
             )",
             params![
-                warning.match_id,
                 warning.match_id,
                 warning.round_id,
                 warning.athlete_position,
