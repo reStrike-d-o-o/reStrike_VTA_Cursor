@@ -219,13 +219,13 @@ pub async fn ivr_list_recorded_videos(
     let conn = app.database_plugin().get_connection().await?;
     let (query, params): (&str, Vec<rusqlite::types::Value>) = if let Some(mid) = match_id {
         (
-            "SELECT id, match_id, event_id, tournament_id, tournament_day_id, video_type, file_path, record_directory, start_time, duration_seconds, created_at
+            "SELECT id, match_id, event_id, tournament_id, tournament_day_id, tournament_uuid, tournament_day_uuid, video_type, file_path, record_directory, start_time, duration_seconds, created_at, created
              FROM recorded_videos WHERE tournament_day_id = ? AND match_id = ? ORDER BY start_time DESC",
             vec![rusqlite::types::Value::from(tournament_day_id), rusqlite::types::Value::from(mid)]
         )
     } else {
         (
-            "SELECT id, match_id, event_id, tournament_id, tournament_day_id, video_type, file_path, record_directory, start_time, duration_seconds, created_at
+            "SELECT id, match_id, event_id, tournament_id, tournament_day_id, tournament_uuid, tournament_day_uuid, video_type, file_path, record_directory, start_time, duration_seconds, created_at, created
              FROM recorded_videos WHERE tournament_day_id = ? ORDER BY start_time DESC",
             vec![rusqlite::types::Value::from(tournament_day_id)]
         )

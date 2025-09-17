@@ -3939,6 +3939,7 @@ pub async fn tournament_get(
         Ok(Some(tournament)) => {
             let tournament_json = serde_json::json!({
                 "id": tournament.id,
+                "uuid": tournament.uuid,
                 "name": tournament.name,
                 "duration_days": tournament.duration_days,
                 "city": tournament.city,
@@ -4069,6 +4070,7 @@ pub async fn tournament_get_days(
                 .into_iter()
                 .map(|d| serde_json::json!({
                     "id": d.id,
+                    "uuid": d.uuid,
                     "tournament_id": d.tournament_id,
                     "day_number": d.day_number,
                     "date": d.date.to_rfc3339(),
