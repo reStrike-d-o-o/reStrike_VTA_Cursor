@@ -439,7 +439,7 @@ impl ObsRecordingEventHandler {
                     } else { None };
                     if let Some(match_db_id) = match_db_id_opt {
                         let _ = conn_ref.execute(
-                            "INSERT INTO recorded_videos (match_id, event_id, tournament_id, tournament_day_id, tournament_uuid, tournament_day_uuid, tournament_id_text, tournament_day_id_text, video_type, file_path, record_directory, filename_formatting, start_time, duration_seconds, created_at, created)\n                             SELECT ?, NULL, ?, ?, (SELECT uuid FROM tournaments WHERE id = ?), (SELECT uuid FROM tournament_days WHERE id = ?), (SELECT uuid FROM tournaments WHERE id = ?), (SELECT uuid FROM tournament_days WHERE id = ?), 'recording', ?, ?, NULL, ?, ?, ?, strftime('%s','now')\n                             WHERE NOT EXISTS (SELECT 1 FROM recorded_videos rv WHERE rv.match_id = ? AND rv.start_time = ?)",
+                            "INSERT INTO recorded_videos (match_id, event_id, tournament_id, tournament_day_id, video_type, file_path, record_directory, filename_formatting, start_time, duration_seconds, created_at, created)\n                             SELECT ?, NULL, (SELECT uuid FROM tournaments WHERE id = ?), (SELECT uuid FROM tournament_days WHERE id = ?), 'recording', ?, ?, NULL, ?, ?, ?, strftime('%s','now')\n                             WHERE NOT EXISTS (SELECT 1 FROM recorded_videos rv WHERE rv.match_id = ? AND rv.start_time = ?)",
                             rusqlite::params![
                                 match_db_id,
                                 tid_opt,
@@ -800,7 +800,7 @@ impl ObsRecordingEventHandler {
                     println!("🧩 index_recording_after_stop: resolved match_db_id={}", match_db_id);
                     if match_db_id > 0 {
                         let rows = conn_ref.execute(
-                            "INSERT INTO recorded_videos (match_id, event_id, tournament_id, tournament_day_id, tournament_uuid, tournament_day_uuid, tournament_id_text, tournament_day_id_text, video_type, file_path, record_directory, filename_formatting, start_time, duration_seconds, created_at, created) VALUES (?, NULL, ?, ?, (SELECT uuid FROM tournaments WHERE id = ?), (SELECT uuid FROM tournament_days WHERE id = ?), (SELECT uuid FROM tournaments WHERE id = ?), (SELECT uuid FROM tournament_days WHERE id = ?), 'recording', ?, ?, NULL, ?, ?, ?, strftime('%s','now'))",
+                            "INSERT INTO recorded_videos (match_id, event_id, tournament_id, tournament_day_id, video_type, file_path, record_directory, filename_formatting, start_time, duration_seconds, created_at, created) VALUES (?, NULL, (SELECT uuid FROM tournaments WHERE id = ?), (SELECT uuid FROM tournament_days WHERE id = ?), 'recording', ?, ?, NULL, ?, ?, ?, strftime('%s','now'))",
                             rusqlite::params![ match_db_id, tid_opt, day_opt, tid_opt, day_opt, tid_opt, day_opt, file_path, record_dir, start_time.to_rfc3339(), duration, created.to_rfc3339(), match_db_id, start_time.to_rfc3339() ]
                         ).unwrap_or(0);
                         log::info!("🧩 index_recording_after_stop: recorded_videos insert rows={}", rows);
@@ -936,7 +936,7 @@ impl ObsRecordingEventHandler {
                     println!("🧩 index_after_stop_with_snapshot: resolved match_db_id={}", match_db_id);
                     if match_db_id > 0 {
                         let rows = conn_ref.execute(
-                            "INSERT INTO recorded_videos (match_id, event_id, tournament_id, tournament_day_id, tournament_uuid, tournament_day_uuid, tournament_id_text, tournament_day_id_text, video_type, file_path, record_directory, filename_formatting, start_time, duration_seconds, created_at, created) VALUES (?, NULL, ?, ?, (SELECT uuid FROM tournaments WHERE id = ?), (SELECT uuid FROM tournament_days WHERE id = ?), (SELECT uuid FROM tournaments WHERE id = ?), (SELECT uuid FROM tournament_days WHERE id = ?), 'recording', ?, ?, NULL, ?, ?, ?, strftime('%s','now'))",
+                            "INSERT INTO recorded_videos (match_id, event_id, tournament_id, tournament_day_id, video_type, file_path, record_directory, filename_formatting, start_time, duration_seconds, created_at, created) VALUES (?, NULL, (SELECT uuid FROM tournaments WHERE id = ?), (SELECT uuid FROM tournament_days WHERE id = ?), 'recording', ?, ?, NULL, ?, ?, ?, strftime('%s','now'))",
                             rusqlite::params![ match_db_id, tid_opt, day_opt, tid_opt, day_opt, tid_opt, day_opt, file_path, record_dir, start_time.to_rfc3339(), duration, created.to_rfc3339(), match_db_id, start_time.to_rfc3339() ]
                         ).unwrap_or(0);
                         log::info!("🧩 index_after_stop_with_snapshot: recorded_videos insert rows={}", rows);

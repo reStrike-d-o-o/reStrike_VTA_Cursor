@@ -266,28 +266,28 @@ impl TournamentPlugin {
         
         // Get total matches
         let total_matches: i64 = conn.query_row(
-            "SELECT COUNT(*) FROM pss_matches WHERE COALESCE(tournament_id_text, tournament_uuid) = (SELECT uuid FROM tournaments WHERE id = ?)",
+            "SELECT COUNT(*) FROM pss_matches WHERE tournament_id = (SELECT uuid FROM tournaments WHERE id = ?)",
             params![tournament_id],
             |row| row.get(0)
         ).unwrap_or(0);
         
         // Get total events
         let total_events: i64 = conn.query_row(
-            "SELECT COUNT(*) FROM pss_events_v2 WHERE COALESCE(tournament_id_text, tournament_uuid) = (SELECT uuid FROM tournaments WHERE id = ?)",
+            "SELECT COUNT(*) FROM pss_events_v2 WHERE tournament_id = (SELECT uuid FROM tournaments WHERE id = ?)",
             params![tournament_id],
             |row| row.get(0)
         ).unwrap_or(0);
         
         // Get total scores
         let total_scores: i64 = conn.query_row(
-            "SELECT COUNT(*) FROM pss_scores WHERE tournament_uuid = (SELECT uuid FROM tournaments WHERE id = ?)",
+            "SELECT COUNT(*) FROM pss_scores WHERE tournament_id = (SELECT uuid FROM tournaments WHERE id = ?)",
             params![tournament_id],
             |row| row.get(0)
         ).unwrap_or(0);
         
         // Get total warnings
         let total_warnings: i64 = conn.query_row(
-            "SELECT COUNT(*) FROM pss_warnings WHERE tournament_uuid = (SELECT uuid FROM tournaments WHERE id = ?)",
+            "SELECT COUNT(*) FROM pss_warnings WHERE tournament_id = (SELECT uuid FROM tournaments WHERE id = ?)",
             params![tournament_id],
             |row| row.get(0)
         ).unwrap_or(0);

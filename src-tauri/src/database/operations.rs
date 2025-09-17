@@ -1200,17 +1200,12 @@ impl PssUdpOperations {
         tournament_day_id: Option<i64>,
     ) -> DatabaseResult<()> {
         conn.execute(
-            "UPDATE pss_matches SET tournament_id = COALESCE(?, tournament_id), tournament_day_id = COALESCE(?, tournament_day_id),
-               tournament_uuid = (SELECT uuid FROM tournaments WHERE id = COALESCE(?, tournament_id)),
-               tournament_day_uuid = (SELECT uuid FROM tournament_days WHERE id = COALESCE(?, tournament_day_id)),
-               tournament_id_text = (SELECT uuid FROM tournaments WHERE id = COALESCE(?, tournament_id)),
-               tournament_day_id_text = (SELECT uuid FROM tournament_days WHERE id = COALESCE(?, tournament_day_id)),
-               updated_at = ? WHERE id = ?",
+            "UPDATE pss_matches SET 
+                tournament_id = COALESCE((SELECT uuid FROM tournaments WHERE id = ?), tournament_id),
+                tournament_day_id = COALESCE((SELECT uuid FROM tournament_days WHERE id = ?), tournament_day_id),
+                updated_at = ?
+             WHERE id = ?",
             params![
-                tournament_id,
-                tournament_day_id,
-                tournament_id,
-                tournament_day_id,
                 tournament_id,
                 tournament_day_id,
                 Utc::now().to_rfc3339(),

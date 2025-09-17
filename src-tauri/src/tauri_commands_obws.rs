@@ -220,9 +220,8 @@ pub async fn ivr_list_recorded_videos(
     let (query, params): (&str, Vec<rusqlite::types::Value>) = if let Some(mid) = match_id {
         (
             "SELECT id, match_id, event_id,
-                    COALESCE(tournament_id_text, tournament_uuid) AS tournament_id,
-                    COALESCE(tournament_day_id_text, tournament_day_uuid) AS tournament_day_id,
-                    tournament_id_int, tournament_day_id_int,
+                    tournament_id,
+                    tournament_day_id,
                     video_type, file_path, record_directory, start_time, duration_seconds, created_at, created
              FROM recorded_videos WHERE tournament_day_id = ? AND match_id = ? ORDER BY start_time DESC",
             vec![rusqlite::types::Value::from(tournament_day_id), rusqlite::types::Value::from(mid)]
@@ -230,9 +229,8 @@ pub async fn ivr_list_recorded_videos(
     } else {
         (
             "SELECT id, match_id, event_id,
-                    COALESCE(tournament_id_text, tournament_uuid) AS tournament_id,
-                    COALESCE(tournament_day_id_text, tournament_day_uuid) AS tournament_day_id,
-                    tournament_id_int, tournament_day_id_int,
+                    tournament_id,
+                    tournament_day_id,
                     video_type, file_path, record_directory, start_time, duration_seconds, created_at, created
              FROM recorded_videos WHERE tournament_day_id = ? ORDER BY start_time DESC",
             vec![rusqlite::types::Value::from(tournament_day_id)]
@@ -246,15 +244,13 @@ pub async fn ivr_list_recorded_videos(
             "event_id": row.get::<_, Option<i64>>(2)?,
             "tournament_id": row.get::<_, Option<String>>(3)?,
             "tournament_day_id": row.get::<_, Option<String>>(4)?,
-            "tournament_id_int": row.get::<_, Option<i64>>(5)?,
-            "tournament_day_id_int": row.get::<_, Option<i64>>(6)?,
-            "video_type": row.get::<_, String>(7)?,
-            "file_path": row.get::<_, Option<String>>(8)?,
-            "record_directory": row.get::<_, Option<String>>(9)?,
-            "start_time": row.get::<_, String>(10)?,
-            "duration_seconds": row.get::<_, Option<i32>>(11)?,
-            "created_at": row.get::<_, String>(12)?,
-            "created": row.get::<_, Option<i64>>(13)?,
+            "video_type": row.get::<_, String>(5)?,
+            "file_path": row.get::<_, Option<String>>(6)?,
+            "record_directory": row.get::<_, Option<String>>(7)?,
+            "start_time": row.get::<_, String>(8)?,
+            "duration_seconds": row.get::<_, Option<i32>>(9)?,
+            "created_at": row.get::<_, String>(10)?,
+            "created": row.get::<_, Option<i64>>(11)?,
         }))
     }).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?
     .collect::<Result<Vec<_>, _>>()
