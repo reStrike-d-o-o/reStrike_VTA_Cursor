@@ -13,16 +13,15 @@ This document provides a comprehensive guide to the database structure, models, 
 - **Error Handling**: Custom `AppError` and `DatabaseResult` types
 - **Integration**: Tauri v2 plugin architecture with frontend exposure
 
-### **Current Schema Version**: 23
-- **Migration 19**: Remove UNIQUE from `pss_matches.match_id`
-- **Migration 20**: `recorded_videos` table for linking videos to matches/events
-- **Migration 21**: `recorded_video_events(recorded_video_id, event_id, offset_ms)` and `file_size`, `checksum` on `recorded_videos`
-- **Migration 22**: Manual lookups (`look_genders`, `look_disciplines`, `look_age_groups`, `look_divisions`, `look_weight_classes`, `look_round_configs`) and `pss_matches` extensions (`discipline_id`, `age_group_id`, `gender_id`, `division_id`, `weight_class_id`, `bracket_stage`)
-- **Migration 23**: OVR ingestion schema (`ovr_providers`, `ovr_tournaments`, `ovr_categories`, `ovr_to_local_tournament`) with indexes and seeded providers
+### **Current Schema Version**: 36
+- Migration 30–33: Introduced UUID v4 (`uuid` TEXT) for `tournaments`, `tournament_days`, and `pss_matches`, backfilled child references
+- Migration 34: Added canonical TEXT UUID FKs (`tournament_id`, `tournament_day_id`) alongside legacy columns for transition
+- Migration 35: Recreated `pss_matches`, `pss_events_v2`, `recorded_videos` with canonical TEXT UUID FKs; dropped legacy `*_uuid`, `*_id_text`, `*_id_int`
+- Migration 36: Recreated `pss_scores`, `pss_warnings`, `pss_rounds`, `pss_match_athletes` with TEXT `match_id` and TEXT tournament FKs (where applicable); dropped legacy columns
 
 #### Event and Recording Tables
-- `pss_events_v2`: now persists tournament context for every event: `tournament_id`, `tournament_day_id` (along with `recognition_status`, `protocol_version`, `parser_confidence`, `validation_errors`). These fields are set by the UDP ingestion pipeline when tournament context is active.
-- `recorded_videos`: id, match_id, event_id?, tournament_id?, tournament_day_id?, video_type, file_path?, record_directory?, start_time, duration_seconds?, file_size?, checksum?, created_at
+- `pss_events_v2`: stores canonical tournament context as UUID strings: `tournament_id` (TEXT), `tournament_day_id` (TEXT). Includes `recognition_status`, `protocol_version`, `parser_confidence`, `validation_errors`, and integer `created` (UNIX seconds). These IDs are set by ingestion/match context.
+- `recorded_videos`: id, match_id (INTEGER → DB id of `pss_matches`), event_id?, `tournament_id` (TEXT UUID), `tournament_day_id` (TEXT UUID), video_type, file_path?, record_directory?, start_time, duration_seconds?, file_size?, checksum?, created_at (ISO), created (INTEGER UNIX seconds)
 - `recorded_video_events`: id, recorded_video_id, event_id, offset_ms, created_at (UNIQUE on recorded_video_id+event_id)
 
 ## Performance Optimizations
@@ -138,16 +137,15 @@ The tournament integration system provides comprehensive tournament management w
 #### UDP Server Tournament Context Tracking
 ```rust
 pub struct UdpServer {
-    // ... existing fields ...
-    current_tournament_id: Arc<Mutex<Option<i64>>>,
+    // Canonical context is TEXT UUID; runtime selection still via numeric DB ids
+    current_tournament_id: Arc<Mutex<Option<i64>>>, // DB id, resolved to TEXT uuid at write time
     current_tournament_day_id: Arc<Mutex<Option<i64>>>,
 }
 ```
 
 #### Event Storage with Tournament Context
-- All events automatically include tournament and tournament day relationships
-- Context is maintained throughout the UDP session
-- Events can be queried by tournament, day, or both
+- All events include tournament and tournament day UUIDs in `pss_events_v2.tournament_id` and `pss_events_v2.tournament_day_id`.
+- When a match row is created/updated, `pss_matches.tournament_id`/`tournament_day_id` are set to the parent TEXT UUIDs.
 
 #### Tauri Commands for Tournament Management
 #### Match Storage with Tournament Context
@@ -164,10 +162,13 @@ await invoke('db_purge_all_tournament_pss_data')
 ### Recorded Video ↔ Event Linking (Tournament-aware)
 
 #### Runtime Linking
-- When inserting `recorded_video_events`, the backend now filters by tournament context where available:
-  - `e.tournament_id = rv.tournament_id` when both present
-  - `e.tournament_day_id = rv.tournament_day_id` when both present
+- When inserting `recorded_video_events`, the backend filters by tournament context if present:
+  - `e.tournament_id = rv.tournament_id` (TEXT)
+  - `e.tournament_day_id = rv.tournament_day_id` (TEXT)
   - Time window and event types remain enforced.
+
+#### Clean Start Guidance
+- Prefer purging and re-ingesting. Backfilling legacy integer/uuid columns has been removed. Canonical IDs are TEXT UUIDs across all relations.
 
 #### Backfill Linking
 Not recommended in clean start mode. Prefer purging and re-ingesting with the new model.
@@ -317,25 +318,16 @@ pss_events_v2
 ├── session_id → udp_server_sessions.id
 ├── match_id → pss_matches.id
 ├── round_id → pss_rounds.id
-└── event_type_id → pss_event_types.id
-
-pss_event_details
-└── event_id → pss_events_v2.id
-
-pss_match_athletes
-├── match_id → pss_matches.id
-└── athlete_id → pss_athletes.id
-
-pss_rounds
-└── match_id → pss_matches.id
+├── tournament_id → tournaments.uuid (TEXT)
+└── tournament_day_id → tournament_days.uuid (TEXT)
 
 pss_scores
-├── match_id → pss_matches.id
-└── round_id → pss_rounds.id
+├── match_id → pss_matches.uuid (TEXT)
+└── tournament_id → tournaments.uuid (TEXT), tournament_day_id → tournament_days.uuid (TEXT)
 
 pss_warnings
-├── match_id → pss_matches.id
-└── round_id → pss_rounds.id
+├── match_id → pss_matches.uuid (TEXT)
+└── tournament_id → tournaments.uuid (TEXT), tournament_day_id → tournament_days.uuid (TEXT)
 ```
 
 ### **UDP Server System Relationships**
@@ -375,17 +367,23 @@ pss_athletes
 
 ## 🗃️ Data Models
 
+### Canonical ID and Timestamp Rules
+- All primary keys `id`: auto-generated UUID v4 TEXT for new tables where applicable; existing `id` INTEGER kept where it represents DB row id (e.g., `pss_matches`).
+- All foreign keys use canonical UUID v4 TEXT fields named `table_id` (e.g., `tournament_id`, `tournament_day_id`).
+- All timestamp fields prefer integer UNIX seconds: `created` (INTEGER), `updated` (INTEGER). ISO `created_at`/`updated_at` present for legacy/trigger support and human readability. Database triggers auto-populate `created`/`updated` on insert/update.
+
 ### **Core Models**
 
 #### **PSS Event System**
 ```rust
-// Enhanced PSS Event with normalized relationships
 pub struct PssEventV2 {
     pub id: Option<i64>,
     pub session_id: i64,
     pub match_id: Option<i64>,
     pub round_id: Option<i64>,
     pub event_type_id: i64,
+    pub tournament_id: Option<String>,          // TEXT UUID
+    pub tournament_day_id: Option<String>,      // TEXT UUID
     pub timestamp: DateTime<Utc>,
     pub raw_data: String,
     pub parsed_data: Option<String>,
@@ -393,7 +391,12 @@ pub struct PssEventV2 {
     pub processing_time_ms: Option<i32>,
     pub is_valid: bool,
     pub error_message: Option<String>,
+    pub recognition_status: String,
+    pub protocol_version: Option<String>,
+    pub parser_confidence: Option<f64>,
+    pub validation_errors: Option<String>,
     pub created_at: DateTime<Utc>,
+    pub created: Option<i64>,                   // UNIX seconds
 }
 
 // PSS Match information
@@ -847,7 +850,7 @@ pub fn rollback(&self, conn: &Connection, target_version: u32) -> DatabaseResult
 
 ---
 
-## 📚 Best Practices
+## 📚 Best Practices (Updated)
 
 ### **Development Guidelines**
 
