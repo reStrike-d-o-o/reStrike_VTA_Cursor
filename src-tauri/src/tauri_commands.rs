@@ -1046,8 +1046,10 @@ pub async fn pss_get_events_for_match(app: State<'_, Arc<App>>, match_id: String
                 "timestamp": row.timestamp.to_rfc3339(),
                 "raw_data": row.raw_data,
                 "description": row.parsed_data,
-                "tournament_uuid": row.tournament_uuid,
-                "tournament_day_uuid": row.tournament_day_uuid
+                "tournament_id": row.tournament_uuid,
+                "tournament_day_id": row.tournament_day_uuid,
+                "tournament_id_int": row.tournament_id,
+                "tournament_day_id_int": row.tournament_day_id
             }));
         }
     }
