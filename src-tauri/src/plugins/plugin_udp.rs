@@ -1173,12 +1173,12 @@ impl UdpServer {
         };
 
         // Get tournament context if available
-        let tournament_id = {
+        let _tournament_id = {
             let tournament_guard = current_tournament_id.lock().unwrap();
             *tournament_guard
         };
 
-        let tournament_day_id = {
+        let _tournament_day_id = {
             let tournament_day_guard = current_tournament_day_id.lock().unwrap();
             *tournament_day_guard
         };
@@ -1196,8 +1196,9 @@ impl UdpServer {
         let mut db_event = db_event;
         db_event.match_id = match_id;
         db_event.round_id = None; // TODO: Track current round
-        db_event.tournament_id = tournament_id;
-        db_event.tournament_day_id = tournament_day_id;
+        // Defer tournament UUID binding; match context will set it, and events can be updated downstream if needed
+        db_event.tournament_id = None;
+        db_event.tournament_day_id = None;
 
         // Set parsed data as JSON
         if let Ok(json_data) = serde_json::to_string(event) {

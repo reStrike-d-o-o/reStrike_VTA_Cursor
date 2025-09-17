@@ -1046,8 +1046,8 @@ pub async fn pss_get_events_for_match(app: State<'_, Arc<App>>, match_id: String
                 "timestamp": row.timestamp.to_rfc3339(),
                 "raw_data": row.raw_data,
                 "description": row.parsed_data,
-                "tournament_id": row.tournament_uuid,
-                "tournament_day_id": row.tournament_day_uuid,
+                "tournament_id": row.tournament_id,
+                "tournament_day_id": row.tournament_day_id,
                 "tournament_id_int": row.tournament_id,
                 "tournament_day_id_int": row.tournament_day_id
             }));
@@ -3837,8 +3837,7 @@ pub async fn store_pss_event(
         match_id: Some(db_match_id),
         round_id,
         event_type_id,
-        tournament_uuid: None,
-        tournament_day_uuid: None,
+        
         timestamp,
         raw_data: raw_data.to_string(),
         parsed_data,

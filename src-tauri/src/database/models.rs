@@ -1124,8 +1124,8 @@ pub struct PssEventV2 {
     pub match_id: Option<i64>,
     pub round_id: Option<i64>,
     pub event_type_id: i64,
-    pub tournament_uuid: Option<String>,
-    pub tournament_day_uuid: Option<String>,
+    pub tournament_id: Option<String>,
+    pub tournament_day_id: Option<String>,
     pub timestamp: DateTime<Utc>,
     pub raw_data: String,
     pub parsed_data: Option<String>, // JSON serialized parsed event data
@@ -1138,9 +1138,7 @@ pub struct PssEventV2 {
     pub protocol_version: Option<String>,
     pub parser_confidence: Option<f64>,
     pub validation_errors: Option<String>,
-    // Tournament context fields
-    pub tournament_id: Option<i64>,
-    pub tournament_day_id: Option<i64>,
+    // Tournament context fields (UUID strings)
     pub created_at: DateTime<Utc>,
     pub created: Option<i64>,
 }
@@ -1159,8 +1157,8 @@ impl PssEventV2 {
             match_id: None,
             round_id: None,
             event_type_id,
-            tournament_uuid: None,
-            tournament_day_uuid: None,
+            tournament_id: None,
+            tournament_day_id: None,
             timestamp,
             raw_data,
             parsed_data: None,
@@ -1172,8 +1170,6 @@ impl PssEventV2 {
             protocol_version: Some("2.3".to_string()),
             parser_confidence: Some(1.0),
             validation_errors: None,
-            tournament_id: None,
-            tournament_day_id: None,
             created_at: Utc::now(),
             created: Some(crate::utils::now_unix()),
         }
@@ -1186,8 +1182,8 @@ impl PssEventV2 {
             match_id: row.get("match_id")?,
             round_id: row.get("round_id")?,
             event_type_id: row.get("event_type_id")?,
-            tournament_uuid: row.get("tournament_uuid").ok(),
-            tournament_day_uuid: row.get("tournament_day_uuid").ok(),
+            tournament_id: row.get("tournament_id").ok(),
+            tournament_day_id: row.get("tournament_day_id").ok(),
             timestamp: DateTime::parse_from_rfc3339(&row.get::<_, String>("timestamp")?)
                 .map_err(|_| rusqlite::Error::InvalidColumnType(0, "timestamp".to_string(), rusqlite::types::Type::Text))?
                 .with_timezone(&Utc),
@@ -1201,8 +1197,7 @@ impl PssEventV2 {
             protocol_version: row.get("protocol_version")?,
             parser_confidence: row.get("parser_confidence")?,
             validation_errors: row.get("validation_errors")?,
-            tournament_id: row.get("tournament_id")?,
-            tournament_day_id: row.get("tournament_day_id")?,
+            // integer tournament ids no longer exist post-migration
             created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
                 .map_err(|_| rusqlite::Error::InvalidColumnType(0, "created_at".to_string(), rusqlite::types::Type::Text))?
                 .with_timezone(&Utc),
