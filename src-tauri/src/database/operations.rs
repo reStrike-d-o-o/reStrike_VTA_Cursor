@@ -897,9 +897,13 @@ impl PssUdpOperations {
                 session_id, match_id, round_id, event_type_id, timestamp, raw_data,
                 parsed_data, event_sequence, processing_time_ms, is_valid, error_message,
                 recognition_status, protocol_version, parser_confidence, validation_errors,
-                tournament_id, tournament_day_id, tournament_uuid, tournament_day_uuid, created_at, created
+                tournament_id, tournament_day_id, tournament_uuid, tournament_day_uuid,
+                tournament_id_text, tournament_day_id_text,
+                created_at, created
             ) VALUES (
                 ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                (SELECT uuid FROM tournaments WHERE id = ?),
+                (SELECT uuid FROM tournament_days WHERE id = ?),
                 (SELECT uuid FROM tournaments WHERE id = ?),
                 (SELECT uuid FROM tournament_days WHERE id = ?),
                 ?, strftime('%s','now')
@@ -920,6 +924,8 @@ impl PssUdpOperations {
                 event.protocol_version,
                 event.parser_confidence,
                 event.validation_errors,
+                event.tournament_id,
+                event.tournament_day_id,
                 event.tournament_id,
                 event.tournament_day_id,
                 event.tournament_id,
@@ -1210,8 +1216,12 @@ impl PssUdpOperations {
             "UPDATE pss_matches SET tournament_id = COALESCE(?, tournament_id), tournament_day_id = COALESCE(?, tournament_day_id),
                tournament_uuid = (SELECT uuid FROM tournaments WHERE id = COALESCE(?, tournament_id)),
                tournament_day_uuid = (SELECT uuid FROM tournament_days WHERE id = COALESCE(?, tournament_day_id)),
+               tournament_id_text = (SELECT uuid FROM tournaments WHERE id = COALESCE(?, tournament_id)),
+               tournament_day_id_text = (SELECT uuid FROM tournament_days WHERE id = COALESCE(?, tournament_day_id)),
                updated_at = ? WHERE id = ?",
             params![
+                tournament_id,
+                tournament_day_id,
                 tournament_id,
                 tournament_day_id,
                 tournament_id,

@@ -1060,7 +1060,7 @@ pub async fn pss_list_recent_matches(app: State<'_, Arc<App>>, limit: Option<i64
     // Return only matches that have at least one event; newest first
     let max = limit.unwrap_or(50);
     let mut stmt = conn.prepare(
-        "SELECT m.id, m.match_id, m.match_number, m.category, m.weight_class, m.division, m.created_at, m.updated_at
+        "SELECT m.id, m.uuid, m.tournament_uuid, m.tournament_day_uuid, m.match_id, m.match_number, m.category, m.weight_class, m.division, m.created_at, m.updated_at
          FROM pss_matches m
          WHERE EXISTS (SELECT 1 FROM pss_events_v2 e WHERE e.match_id = m.id)
          ORDER BY m.created_at DESC
@@ -1069,13 +1069,16 @@ pub async fn pss_list_recent_matches(app: State<'_, Arc<App>>, limit: Option<i64
     let rows = stmt.query_map([max], |row| {
         Ok(serde_json::json!({
             "id": row.get::<_, i64>(0)?,
-            "match_id": row.get::<_, String>(1)?,
-            "match_number": row.get::<_, Option<String>>(2)?,
-            "category": row.get::<_, Option<String>>(3)?,
-            "weight_class": row.get::<_, Option<String>>(4)?,
-            "division": row.get::<_, Option<String>>(5)?,
-            "created_at": row.get::<_, String>(6)?,
-            "updated_at": row.get::<_, String>(7)?,
+            "uuid": row.get::<_, Option<String>>(1)?,
+            "tournament_uuid": row.get::<_, Option<String>>(2)?,
+            "tournament_day_uuid": row.get::<_, Option<String>>(3)?,
+            "match_id": row.get::<_, String>(4)?,
+            "match_number": row.get::<_, Option<String>>(5)?,
+            "category": row.get::<_, Option<String>>(6)?,
+            "weight_class": row.get::<_, Option<String>>(7)?,
+            "division": row.get::<_, Option<String>>(8)?,
+            "created_at": row.get::<_, String>(9)?,
+            "updated_at": row.get::<_, String>(10)?,
         }))
     }).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?
     .collect::<Result<Vec<_>, _>>()

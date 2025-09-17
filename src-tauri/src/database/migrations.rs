@@ -2786,6 +2786,7 @@ impl MigrationManager {
         migrations.push(Box::new(Migration31)); // Add *_uuid FKs for tournament context and backfill
         migrations.push(Box::new(Migration32)); // Add *_uuid to rounds/scores/warnings/match_athletes/event_details
         migrations.push(Box::new(Migration33)); // Add uuid to pss_matches and re-backfill match_uuid
+        migrations.push(Box::new(Migration34)); // Rename int FKs to *_int and add TEXT *_id from UUIDs
         
         Self { migrations }
     }
@@ -3762,6 +3763,56 @@ impl Migration for Migration33 {
         let _ = conn.execute("UPDATE pss_scores SET match_uuid = (SELECT m.uuid FROM pss_matches m WHERE m.id = pss_scores.match_id)", []);
         let _ = conn.execute("UPDATE pss_warnings SET match_uuid = (SELECT m.uuid FROM pss_matches m WHERE m.id = pss_warnings.match_id)", []);
         let _ = conn.execute("UPDATE pss_match_athletes SET match_uuid = (SELECT m.uuid FROM pss_matches m WHERE m.id = pss_match_athletes.match_id)", []);
+        Ok(())
+    }
+    fn down(&self, _conn: &Connection) -> SqliteResult<()> { Ok(()) }
+}
+
+/// Migration 34: Transition FKs to TEXT UUID `table_id` with preserved int columns as *_int
+pub struct Migration34;
+
+impl Migration for Migration34 {
+    fn version(&self) -> u32 { 34 }
+    fn description(&self) -> &str { "Rename int FKs to *_int and add TEXT *_id from UUIDs for core tables" }
+    fn up(&self, conn: &Connection) -> SqliteResult<()> {
+        // pss_matches: tournament_id INTEGER -> tournament_id TEXT; keep old as tournament_id_int
+        let _ = conn.execute("ALTER TABLE pss_matches ADD COLUMN tournament_id_text TEXT", []);
+        let _ = conn.execute("UPDATE pss_matches SET tournament_id_text = tournament_uuid", []);
+        // Keep original integer under *_int via view approach (SQLite lacks rename column). We'll duplicate value into a new *_int column.
+        let _ = conn.execute("ALTER TABLE pss_matches ADD COLUMN tournament_id_int INTEGER", []);
+        let _ = conn.execute("UPDATE pss_matches SET tournament_id_int = tournament_id", []);
+
+        let _ = conn.execute("ALTER TABLE pss_matches ADD COLUMN tournament_day_id_text TEXT", []);
+        let _ = conn.execute("UPDATE pss_matches SET tournament_day_id_text = tournament_day_uuid", []);
+        let _ = conn.execute("ALTER TABLE pss_matches ADD COLUMN tournament_day_id_int INTEGER", []);
+        let _ = conn.execute("UPDATE pss_matches SET tournament_day_id_int = tournament_day_id", []);
+
+        // pss_events_v2
+        let _ = conn.execute("ALTER TABLE pss_events_v2 ADD COLUMN tournament_id_text TEXT", []);
+        let _ = conn.execute("UPDATE pss_events_v2 SET tournament_id_text = tournament_uuid", []);
+        let _ = conn.execute("ALTER TABLE pss_events_v2 ADD COLUMN tournament_id_int INTEGER", []);
+        let _ = conn.execute("UPDATE pss_events_v2 SET tournament_id_int = tournament_id", []);
+
+        let _ = conn.execute("ALTER TABLE pss_events_v2 ADD COLUMN tournament_day_id_text TEXT", []);
+        let _ = conn.execute("UPDATE pss_events_v2 SET tournament_day_id_text = tournament_day_uuid", []);
+        let _ = conn.execute("ALTER TABLE pss_events_v2 ADD COLUMN tournament_day_id_int INTEGER", []);
+        let _ = conn.execute("UPDATE pss_events_v2 SET tournament_day_id_int = tournament_day_id", []);
+
+        // recorded_videos
+        let _ = conn.execute("ALTER TABLE recorded_videos ADD COLUMN tournament_id_text TEXT", []);
+        let _ = conn.execute("UPDATE recorded_videos SET tournament_id_text = tournament_uuid", []);
+        let _ = conn.execute("ALTER TABLE recorded_videos ADD COLUMN tournament_id_int INTEGER", []);
+        let _ = conn.execute("UPDATE recorded_videos SET tournament_id_int = tournament_id", []);
+
+        let _ = conn.execute("ALTER TABLE recorded_videos ADD COLUMN tournament_day_id_text TEXT", []);
+        let _ = conn.execute("UPDATE recorded_videos SET tournament_day_id_text = tournament_day_uuid", []);
+        let _ = conn.execute("ALTER TABLE recorded_videos ADD COLUMN tournament_day_id_int INTEGER", []);
+        let _ = conn.execute("UPDATE recorded_videos SET tournament_day_id_int = tournament_day_id", []);
+
+        // Indexes for new TEXT ids
+        let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_matches_tournament_id_text ON pss_matches(tournament_id_text)", []);
+        let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_events_v2_tournament_id_text ON pss_events_v2(tournament_id_text)", []);
+        let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_recorded_videos_tournament_id_text ON recorded_videos(tournament_id_text)", []);
         Ok(())
     }
     fn down(&self, _conn: &Connection) -> SqliteResult<()> { Ok(()) }

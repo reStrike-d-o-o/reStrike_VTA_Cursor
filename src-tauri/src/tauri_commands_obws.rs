@@ -2145,9 +2145,13 @@ pub async fn ivr_import_recorded_videos(
         let record_directory = target_dir.to_string_lossy().to_string();
         let file_path_str = out_path.to_string_lossy().to_string();
         conn.execute(
-            "INSERT INTO recorded_videos (match_id, event_id, tournament_id, tournament_day_id, tournament_uuid, tournament_day_uuid, video_type, file_path, record_directory, filename_formatting, start_time, duration_seconds, file_size, checksum, created_at, created)
-             VALUES (?, NULL, ?, ?, (SELECT uuid FROM tournaments WHERE id = ?), (SELECT uuid FROM tournament_days WHERE id = ?), 'recording', ?, ?, NULL, ?, NULL, ?, ?, ?, strftime('%s','now'))",
-            rusqlite::params![ match_id, tournament_id, tournament_day_id, tournament_id, tournament_day_id, file_path_str, record_directory, start_time.to_rfc3339(), file_size, checksum, chrono::Utc::now().to_rfc3339() ]
+            "INSERT INTO recorded_videos (match_id, event_id, tournament_id, tournament_day_id, tournament_uuid, tournament_day_uuid, tournament_id_text, tournament_day_id_text, video_type, file_path, record_directory, filename_formatting, start_time, duration_seconds, file_size, checksum, created_at, created)
+             VALUES (
+                ?, NULL, ?, ?,
+                (SELECT uuid FROM tournaments WHERE id = ?), (SELECT uuid FROM tournament_days WHERE id = ?),
+                (SELECT uuid FROM tournaments WHERE id = ?), (SELECT uuid FROM tournament_days WHERE id = ?),
+                'recording', ?, ?, NULL, ?, NULL, ?, ?, ?, strftime('%s','now'))",
+            rusqlite::params![ match_id, tournament_id, tournament_day_id, tournament_id, tournament_day_id, tournament_id, tournament_day_id, file_path_str, record_directory, start_time.to_rfc3339(), file_size, checksum, chrono::Utc::now().to_rfc3339() ]
         ).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
         let rvid = conn.last_insert_rowid();
 
