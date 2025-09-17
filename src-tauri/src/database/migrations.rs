@@ -2784,6 +2784,8 @@ impl MigrationManager {
         migrations.push(Box::new(Migration29)); // DB triggers for created/updated auto-population
         migrations.push(Box::new(Migration30)); // Add uuid columns to tournaments and tournament_days
         migrations.push(Box::new(Migration31)); // Add *_uuid FKs for tournament context and backfill
+        migrations.push(Box::new(Migration32)); // Add *_uuid to rounds/scores/warnings/match_athletes/event_details
+        migrations.push(Box::new(Migration33)); // Add uuid to pss_matches and re-backfill match_uuid
         
         Self { migrations }
     }
@@ -3686,6 +3688,83 @@ impl Migration for Migration31 {
         // No-op (SQLite cannot drop columns)
         Ok(())
     }
+}
+
+/// Migration 32: Add UUID columns to PSS child tables and backfill from parents
+pub struct Migration32;
+
+impl Migration for Migration32 {
+    fn version(&self) -> u32 { 32 }
+    fn description(&self) -> &str { "Add match_uuid and tournament UUIDs to rounds/scores/warnings/match_athletes/event_details" }
+    fn up(&self, conn: &Connection) -> SqliteResult<()> {
+        // Add match_uuid to pss_rounds, pss_scores, pss_warnings, pss_match_athletes
+        let _ = conn.execute("ALTER TABLE pss_rounds ADD COLUMN match_uuid TEXT", []);
+        let _ = conn.execute("ALTER TABLE pss_scores ADD COLUMN match_uuid TEXT", []);
+        let _ = conn.execute("ALTER TABLE pss_warnings ADD COLUMN match_uuid TEXT", []);
+        let _ = conn.execute("ALTER TABLE pss_match_athletes ADD COLUMN match_uuid TEXT", []);
+        // Add tournament context UUIDs where tables already carry int ids
+        let _ = conn.execute("ALTER TABLE pss_scores ADD COLUMN tournament_uuid TEXT", []);
+        let _ = conn.execute("ALTER TABLE pss_scores ADD COLUMN tournament_day_uuid TEXT", []);
+        let _ = conn.execute("ALTER TABLE pss_warnings ADD COLUMN tournament_uuid TEXT", []);
+        let _ = conn.execute("ALTER TABLE pss_warnings ADD COLUMN tournament_day_uuid TEXT", []);
+        // Event details link to events; no direct match/tournament, skip
+
+        // Backfill match_uuid via pss_matches
+        let _ = conn.execute(
+            "UPDATE pss_rounds SET match_uuid = (SELECT m.tournament_uuid FROM pss_matches m WHERE m.id = pss_rounds.match_id) WHERE match_id IS NOT NULL AND (match_uuid IS NULL OR match_uuid = '')",
+            []);
+        let _ = conn.execute(
+            "UPDATE pss_scores SET match_uuid = (SELECT m.tournament_uuid FROM pss_matches m WHERE m.id = pss_scores.match_id) WHERE match_id IS NOT NULL AND (match_uuid IS NULL OR match_uuid = '')",
+            []);
+        let _ = conn.execute(
+            "UPDATE pss_warnings SET match_uuid = (SELECT m.tournament_uuid FROM pss_matches m WHERE m.id = pss_warnings.match_id) WHERE match_id IS NOT NULL AND (match_uuid IS NULL OR match_uuid = '')",
+            []);
+        let _ = conn.execute(
+            "UPDATE pss_match_athletes SET match_uuid = (SELECT m.tournament_uuid FROM pss_matches m WHERE m.id = pss_match_athletes.match_id) WHERE match_id IS NOT NULL AND (match_uuid IS NULL OR match_uuid = '')",
+            []);
+        // Backfill tournament UUIDs via match
+        let _ = conn.execute(
+            "UPDATE pss_scores SET tournament_uuid = (SELECT m.tournament_uuid FROM pss_matches m WHERE m.id = pss_scores.match_id) WHERE tournament_uuid IS NULL OR tournament_uuid = ''",
+            []);
+        let _ = conn.execute(
+            "UPDATE pss_scores SET tournament_day_uuid = (SELECT m.tournament_day_uuid FROM pss_matches m WHERE m.id = pss_scores.match_id) WHERE tournament_day_uuid IS NULL OR tournament_day_uuid = ''",
+            []);
+        let _ = conn.execute(
+            "UPDATE pss_warnings SET tournament_uuid = (SELECT m.tournament_uuid FROM pss_matches m WHERE m.id = pss_warnings.match_id) WHERE tournament_uuid IS NULL OR tournament_uuid = ''",
+            []);
+        let _ = conn.execute(
+            "UPDATE pss_warnings SET tournament_day_uuid = (SELECT m.tournament_day_uuid FROM pss_matches m WHERE m.id = pss_warnings.match_id) WHERE tournament_day_uuid IS NULL OR tournament_day_uuid = ''",
+            []);
+
+        // Indexes
+        let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_rounds_match_uuid ON pss_rounds(match_uuid)", []);
+        let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_scores_match_uuid ON pss_scores(match_uuid)", []);
+        let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_warnings_match_uuid ON pss_warnings(match_uuid)", []);
+        Ok(())
+    }
+    fn down(&self, _conn: &Connection) -> SqliteResult<()> { Ok(()) }
+}
+
+/// Migration 33: Add uuid to pss_matches and backfill child match_uuid from it
+pub struct Migration33;
+
+impl Migration for Migration33 {
+    fn version(&self) -> u32 { 33 }
+    fn description(&self) -> &str { "Add uuid TEXT to pss_matches and backfill match_uuid in child tables" }
+    fn up(&self, conn: &Connection) -> SqliteResult<()> {
+        // Add uuid to pss_matches
+        let _ = conn.execute("ALTER TABLE pss_matches ADD COLUMN uuid TEXT", []);
+        // Backfill
+        let _ = conn.execute("UPDATE pss_matches SET uuid = COALESCE(uuid, lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-4'||substr(hex(randomblob(2)),2)||'-'||substr('AB89',abs(random())%4+1,1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))))", []);
+        let _ = conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_pss_matches_uuid ON pss_matches(uuid)", []);
+        // Re-backfill child match_uuid from pss_matches.uuid
+        let _ = conn.execute("UPDATE pss_rounds SET match_uuid = (SELECT m.uuid FROM pss_matches m WHERE m.id = pss_rounds.match_id)", []);
+        let _ = conn.execute("UPDATE pss_scores SET match_uuid = (SELECT m.uuid FROM pss_matches m WHERE m.id = pss_scores.match_id)", []);
+        let _ = conn.execute("UPDATE pss_warnings SET match_uuid = (SELECT m.uuid FROM pss_matches m WHERE m.id = pss_warnings.match_id)", []);
+        let _ = conn.execute("UPDATE pss_match_athletes SET match_uuid = (SELECT m.uuid FROM pss_matches m WHERE m.id = pss_match_athletes.match_id)", []);
+        Ok(())
+    }
+    fn down(&self, _conn: &Connection) -> SqliteResult<()> { Ok(()) }
 }
 
 // Removed duplicate stray implementation block (cleaned)

@@ -906,6 +906,7 @@ impl PssEventType {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PssMatch {
     pub id: Option<i64>,
+    pub uuid: Option<String>,
     pub tournament_uuid: Option<String>,
     pub tournament_day_uuid: Option<String>,
     pub match_id: String,
@@ -930,6 +931,7 @@ impl PssMatch {
         let now_unix = crate::utils::now_unix();
         Self {
             id: None,
+            uuid: None,
             tournament_uuid: None,
             tournament_day_uuid: None,
             match_id,
@@ -952,6 +954,7 @@ impl PssMatch {
     pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
         Ok(Self {
             id: row.get("id")?,
+            uuid: row.get("uuid").ok(),
             tournament_uuid: row.get("tournament_uuid").ok(),
             tournament_day_uuid: row.get("tournament_day_uuid").ok(),
             match_id: row.get("match_id")?,
@@ -1508,12 +1511,15 @@ impl PssEventDetail {
 pub struct PssScore {
     pub id: Option<i64>,
     pub match_id: i64,
+    pub match_uuid: Option<String>,
     pub round_id: Option<i64>,
     pub athlete_position: i32, // 1 or 2
     pub score_type: String, // current, round1, round2, round3, total
     pub score_value: i32,
     pub timestamp: DateTime<Utc>,
     pub created_at: DateTime<Utc>,
+    pub tournament_uuid: Option<String>,
+    pub tournament_day_uuid: Option<String>,
 }
 
 impl PssScore {
@@ -1521,12 +1527,15 @@ impl PssScore {
         Self {
             id: None,
             match_id,
+            match_uuid: None,
             round_id: None,
             athlete_position,
             score_type,
             score_value,
             timestamp: Utc::now(),
             created_at: Utc::now(),
+            tournament_uuid: None,
+            tournament_day_uuid: None,
         }
     }
     
@@ -1534,6 +1543,7 @@ impl PssScore {
         Ok(Self {
             id: row.get("id")?,
             match_id: row.get("match_id")?,
+            match_uuid: row.get("match_uuid").ok(),
             round_id: row.get("round_id")?,
             athlete_position: row.get("athlete_position")?,
             score_type: row.get("score_type")?,
@@ -1544,6 +1554,8 @@ impl PssScore {
             created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
                 .map_err(|_| rusqlite::Error::InvalidColumnType(0, "created_at".to_string(), rusqlite::types::Type::Text))?
                 .with_timezone(&Utc),
+            tournament_uuid: row.get("tournament_uuid").ok(),
+            tournament_day_uuid: row.get("tournament_day_uuid").ok(),
         })
     }
 }
@@ -1553,12 +1565,15 @@ impl PssScore {
 pub struct PssWarning {
     pub id: Option<i64>,
     pub match_id: i64,
+    pub match_uuid: Option<String>,
     pub round_id: Option<i64>,
     pub athlete_position: i32, // 1 or 2
     pub warning_type: String, // warning, gam_jeom
     pub warning_count: i32,
     pub timestamp: DateTime<Utc>,
     pub created_at: DateTime<Utc>,
+    pub tournament_uuid: Option<String>,
+    pub tournament_day_uuid: Option<String>,
 }
 
 impl PssWarning {
@@ -1566,12 +1581,15 @@ impl PssWarning {
         Self {
             id: None,
             match_id,
+            match_uuid: None,
             round_id: None,
             athlete_position,
             warning_type,
             warning_count,
             timestamp: Utc::now(),
             created_at: Utc::now(),
+            tournament_uuid: None,
+            tournament_day_uuid: None,
         }
     }
     
@@ -1579,6 +1597,7 @@ impl PssWarning {
         Ok(Self {
             id: row.get("id")?,
             match_id: row.get("match_id")?,
+            match_uuid: row.get("match_uuid").ok(),
             round_id: row.get("round_id")?,
             athlete_position: row.get("athlete_position")?,
             warning_type: row.get("warning_type")?,
@@ -1589,6 +1608,8 @@ impl PssWarning {
             created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
                 .map_err(|_| rusqlite::Error::InvalidColumnType(0, "created_at".to_string(), rusqlite::types::Type::Text))?
                 .with_timezone(&Utc),
+            tournament_uuid: row.get("tournament_uuid").ok(),
+            tournament_day_uuid: row.get("tournament_day_uuid").ok(),
         })
     }
 } 

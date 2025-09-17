@@ -751,8 +751,11 @@ impl PssUdpOperations {
             let match_obj = PssMatch::new(match_id.to_string());
             tx.execute(
                 "INSERT INTO pss_matches (
-                    match_id, total_rounds, created_at, updated_at, created, updated
-                ) VALUES (?, ?, ?, ?, strftime('%s','now'), strftime('%s','now'))",
+                    uuid, match_id, total_rounds, created_at, updated_at, created, updated
+                ) VALUES (
+                    lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-4'||substr(hex(randomblob(2)),2)||'-'||substr('AB89',abs(random())%4+1,1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))),
+                    ?, ?, ?, ?, strftime('%s','now'), strftime('%s','now')
+                )",
                 params![
                     match_obj.match_id,
                     match_obj.total_rounds,
@@ -1022,16 +1025,23 @@ impl PssUdpOperations {
     pub fn store_pss_score(conn: &mut Connection, score: &PssScore) -> DatabaseResult<i64> {
         let score_id = conn.execute(
             "INSERT INTO pss_scores (
-                match_id, round_id, athlete_position, score_type, score_value, timestamp, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                match_id, match_uuid, round_id, athlete_position, score_type, score_value, timestamp, created_at, tournament_uuid, tournament_day_uuid
+            ) VALUES (
+                ?, (SELECT tournament_uuid FROM pss_matches WHERE id = ?), ?, ?, ?, ?, ?, ?,
+                (SELECT tournament_uuid FROM pss_matches WHERE id = ?),
+                (SELECT tournament_day_uuid FROM pss_matches WHERE id = ?)
+            )",
             params![
+                score.match_id,
                 score.match_id,
                 score.round_id,
                 score.athlete_position,
                 score.score_type,
                 score.score_value,
                 score.timestamp.to_rfc3339(),
-                score.created_at.to_rfc3339()
+                score.created_at.to_rfc3339(),
+                score.match_id,
+                score.match_id,
             ]
         )?;
         
@@ -1058,16 +1068,23 @@ impl PssUdpOperations {
     pub fn store_pss_warning(conn: &mut Connection, warning: &PssWarning) -> DatabaseResult<i64> {
         let warning_id = conn.execute(
             "INSERT INTO pss_warnings (
-                match_id, round_id, athlete_position, warning_type, warning_count, timestamp, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                match_id, match_uuid, round_id, athlete_position, warning_type, warning_count, timestamp, created_at, tournament_uuid, tournament_day_uuid
+            ) VALUES (
+                ?, (SELECT tournament_uuid FROM pss_matches WHERE id = ?), ?, ?, ?, ?, ?, ?,
+                (SELECT tournament_uuid FROM pss_matches WHERE id = ?),
+                (SELECT tournament_day_uuid FROM pss_matches WHERE id = ?)
+            )",
             params![
+                warning.match_id,
                 warning.match_id,
                 warning.round_id,
                 warning.athlete_position,
                 warning.warning_type,
                 warning.warning_count,
                 warning.timestamp.to_rfc3339(),
-                warning.created_at.to_rfc3339()
+                warning.created_at.to_rfc3339(),
+                warning.match_id,
+                warning.match_id,
             ]
         )?;
         
