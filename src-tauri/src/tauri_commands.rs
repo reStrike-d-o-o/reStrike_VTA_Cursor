@@ -1045,7 +1045,9 @@ pub async fn pss_get_events_for_match(app: State<'_, Arc<App>>, match_id: String
                 "time": time,
                 "timestamp": row.timestamp.to_rfc3339(),
                 "raw_data": row.raw_data,
-                "description": row.parsed_data
+                "description": row.parsed_data,
+                "tournament_uuid": row.tournament_uuid,
+                "tournament_day_uuid": row.tournament_day_uuid
             }));
         }
     }
@@ -1221,6 +1223,9 @@ pub async fn pss_get_match_details(app: State<'_, Arc<App>>, match_id: String) -
     Ok(serde_json::json!({
         "match": {
             "id": info.id,
+            "uuid": info.uuid,
+            "tournament_uuid": info.tournament_uuid,
+            "tournament_day_uuid": info.tournament_day_uuid,
             "match_id": info.match_id,
             "number": info.match_number,
             "category": info.category,
