@@ -897,16 +897,9 @@ impl PssUdpOperations {
                 session_id, match_id, round_id, event_type_id, timestamp, raw_data,
                 parsed_data, event_sequence, processing_time_ms, is_valid, error_message,
                 recognition_status, protocol_version, parser_confidence, validation_errors,
-                tournament_id, tournament_day_id, tournament_uuid, tournament_day_uuid,
-                tournament_id_text, tournament_day_id_text,
-                created_at, created
+                tournament_id, tournament_day_id, created_at, created
             ) VALUES (
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                (SELECT uuid FROM tournaments WHERE id = ?),
-                (SELECT uuid FROM tournament_days WHERE id = ?),
-                (SELECT uuid FROM tournaments WHERE id = ?),
-                (SELECT uuid FROM tournament_days WHERE id = ?),
-                ?, strftime('%s','now')
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, strftime('%s','now')
             )",
             params![
                 event.session_id,
@@ -924,10 +917,6 @@ impl PssUdpOperations {
                 event.protocol_version,
                 event.parser_confidence,
                 event.validation_errors,
-                event.tournament_id,
-                event.tournament_day_id,
-                event.tournament_id,
-                event.tournament_day_id,
                 event.tournament_id,
                 event.tournament_day_id,
                 event.created_at.to_rfc3339()
@@ -1056,7 +1045,7 @@ impl PssUdpOperations {
     /// Get current scores for a match
     pub fn get_current_scores_for_match(conn: &Connection, match_id: i64) -> DatabaseResult<Vec<PssScore>> {
         let mut stmt = conn.prepare(
-            "SELECT * FROM pss_scores WHERE match_id = ? AND score_type = 'current' ORDER BY timestamp DESC LIMIT 2"
+            "SELECT * FROM pss_scores WHERE match_id = (SELECT uuid FROM pss_matches WHERE id = ?) AND score_type = 'current' ORDER BY timestamp DESC LIMIT 2"
         )?;
         
         let scores = stmt.query_map(params![match_id], |row| {
@@ -1098,7 +1087,7 @@ impl PssUdpOperations {
     /// Get current warnings for a match
     pub fn get_current_warnings_for_match(conn: &Connection, match_id: i64) -> DatabaseResult<Vec<PssWarning>> {
         let mut stmt = conn.prepare(
-            "SELECT * FROM pss_warnings WHERE match_id = ? ORDER BY timestamp DESC"
+            "SELECT * FROM pss_warnings WHERE match_id = (SELECT uuid FROM pss_matches WHERE id = ?) ORDER BY timestamp DESC"
         )?;
         
         let warnings = stmt.query_map(params![match_id], |row| {
