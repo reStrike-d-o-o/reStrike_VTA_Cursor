@@ -1062,7 +1062,11 @@ pub async fn pss_list_recent_matches(app: State<'_, Arc<App>>, limit: Option<i64
     // Return only matches that have at least one event; newest first
     let max = limit.unwrap_or(50);
     let mut stmt = conn.prepare(
-        "SELECT m.id, m.uuid, m.tournament_uuid, m.tournament_day_uuid, m.match_id, m.match_number, m.category, m.weight_class, m.division, m.created_at, m.updated_at
+        "SELECT m.id, m.uuid,
+                m.tournament_uuid, m.tournament_day_uuid,
+                m.tournament_id_text, m.tournament_day_id_text,
+                m.tournament_id_int, m.tournament_day_id_int,
+                m.match_id, m.match_number, m.category, m.weight_class, m.division, m.created_at, m.updated_at
          FROM pss_matches m
          WHERE EXISTS (SELECT 1 FROM pss_events_v2 e WHERE e.match_id = m.id)
          ORDER BY m.created_at DESC
@@ -1074,13 +1078,17 @@ pub async fn pss_list_recent_matches(app: State<'_, Arc<App>>, limit: Option<i64
             "uuid": row.get::<_, Option<String>>(1)?,
             "tournament_uuid": row.get::<_, Option<String>>(2)?,
             "tournament_day_uuid": row.get::<_, Option<String>>(3)?,
-            "match_id": row.get::<_, String>(4)?,
-            "match_number": row.get::<_, Option<String>>(5)?,
-            "category": row.get::<_, Option<String>>(6)?,
-            "weight_class": row.get::<_, Option<String>>(7)?,
-            "division": row.get::<_, Option<String>>(8)?,
-            "created_at": row.get::<_, String>(9)?,
-            "updated_at": row.get::<_, String>(10)?,
+            "tournament_id": row.get::<_, Option<String>>(4)?,
+            "tournament_day_id": row.get::<_, Option<String>>(5)?,
+            "tournament_id_int": row.get::<_, Option<i64>>(6)?,
+            "tournament_day_id_int": row.get::<_, Option<i64>>(7)?,
+            "match_id": row.get::<_, String>(8)?,
+            "match_number": row.get::<_, Option<String>>(9)?,
+            "category": row.get::<_, Option<String>>(10)?,
+            "weight_class": row.get::<_, Option<String>>(11)?,
+            "division": row.get::<_, Option<String>>(12)?,
+            "created_at": row.get::<_, String>(13)?,
+            "updated_at": row.get::<_, String>(14)?,
         }))
     }).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?
     .collect::<Result<Vec<_>, _>>()
