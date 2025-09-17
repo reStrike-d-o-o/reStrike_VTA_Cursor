@@ -21,6 +21,8 @@ interface Tournament {
   end_date?: string;
   created_at: string;
   updated_at: string;
+  created?: number;
+  updated?: number;
 }
 
 interface TournamentDay {
@@ -33,6 +35,8 @@ interface TournamentDay {
   end_time?: string;
   created_at: string;
   updated_at: string;
+  created?: number;
+  updated?: number;
 }
 
 interface TournamentOverview {
@@ -975,9 +979,11 @@ const TournamentManagementPanel: React.FC = () => {
                   <div className="w-3 h-3 bg-green-400 rounded-full"></div>
                   <div>
                     <div className="text-gray-100">{t('tournament.created', 'Created')}</div>
-                    <div className="text-sm text-gray-400">
-                      {formatDateTime(tournamentOverview.tournament.created_at)}
-                    </div>
+						<div className="text-sm text-gray-400">
+							{tournamentOverview.tournament.created != null
+								? new Date(tournamentOverview.tournament.created * 1000).toLocaleString()
+								: formatDateTime(tournamentOverview.tournament.created_at)}
+						</div>
                   </div>
                 </div>
                 {tournamentOverview.tournament.start_date && (

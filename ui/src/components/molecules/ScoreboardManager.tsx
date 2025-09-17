@@ -46,6 +46,8 @@ interface OverlayTemplate {
   url?: string;
   created_at: string;
   updated_at: string;
+  created?: number;
+  updated?: number;
 }
 
 const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' }) => {

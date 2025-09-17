@@ -5,6 +5,7 @@ interface LoadTemplate {
   id: number;
   name: string;
   created_at: string;
+  created?: number;
 }
 
 interface LoadModalProps {
@@ -30,10 +31,17 @@ export const LoadModal: React.FC<LoadModalProps> = ({ templates, onSelect, onClo
               </tr>
             </thead>
             <tbody>
-              {templates.map(t => (
+              {templates
+                .slice()
+                .sort((a, b) => {
+                  const av = (a.created ?? (a.created_at ? Date.parse(a.created_at)/1000 : 0));
+                  const bv = (b.created ?? (b.created_at ? Date.parse(b.created_at)/1000 : 0));
+                  return bv - av;
+                })
+                .map(t => (
                 <tr key={t.id} className="hover:bg-blue-900 cursor-pointer" onClick={() => onSelect(t)}>
                   <td className="px-3 py-2 whitespace-nowrap">{t.name}</td>
-                  <td className="px-3 py-2 whitespace-nowrap text-gray-400">{t.created_at}</td>
+                  <td className="px-3 py-2 whitespace-nowrap text-gray-400">{t.created ? new Date(t.created * 1000).toLocaleString() : t.created_at}</td>
                 </tr>
               ))}
               {templates.length === 0 && (

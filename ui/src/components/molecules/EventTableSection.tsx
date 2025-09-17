@@ -70,10 +70,28 @@ const EventTableSection: React.FC = () => {
               s = s.replace(/finals?/i, 'F');
               return s;
             })();
-            const when = m.updated_at || m.created_at;
-            const whenMs = when ? new Date(when).getTime() : 0;
-            const dt = when
-              ? new Date(when).toLocaleString(undefined, {
+            const whenIso = m.updated_at || m.created_at;
+            const whenMs = m.updated != null ? (m.updated as number) * 1000
+              : m.created != null ? (m.created as number) * 1000
+              : whenIso ? new Date(whenIso).getTime() : 0;
+            const dt = m.updated != null
+              ? new Date((m.updated as number) * 1000).toLocaleString(undefined, {
+                  year: 'numeric',
+                  month: '2-digit',
+                  day: '2-digit',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })
+              : m.created != null
+              ? new Date((m.created as number) * 1000).toLocaleString(undefined, {
+                  year: 'numeric',
+                  month: '2-digit',
+                  day: '2-digit',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })
+              : whenIso
+              ? new Date(whenIso).toLocaleString(undefined, {
                   year: 'numeric',
                   month: '2-digit',
                   day: '2-digit',
