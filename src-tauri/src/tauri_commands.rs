@@ -3774,6 +3774,7 @@ pub async fn websocket_get_status(app: State<'_, Arc<App>>) -> Result<serde_json
         "status": "running"
     }))
 }
+#[tauri::command]
 pub async fn store_pss_event_cmd(
     event_data: serde_json::Value,
     app: State<'_, Arc<App>>,
