@@ -2089,11 +2089,15 @@ pub async fn ivr_import_recorded_videos(
 ) -> Result<ObsObwsConnectionResponse, TauriError> {
     let jid = job_id.unwrap_or_else(|| format!("job_{}", chrono::Utc::now().timestamp_millis()));
     let conn = app.database_plugin().get_connection().await?;
-    let (tournament_id, day_number): (i64, i32) = conn.query_row(
-        "SELECT tournament_id, day_number FROM tournament_days WHERE id = ?",
-        rusqlite::params![tournament_day_id],
-        |r| Ok((r.get(0)?, r.get(1)?))
-    ).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    // tournament_days removed; resolve tournament id via active tournament or parameterization
+    let tournament_id: i64 = conn
+        .query_row(
+            "SELECT id FROM tournaments WHERE status = 'active' ORDER BY created_at DESC LIMIT 1",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap_or(1);
+    let day_number: i32 = 1;
     let tournament_name: String = conn.query_row(
         "SELECT name FROM tournaments WHERE id = ?",
         rusqlite::params![tournament_id],

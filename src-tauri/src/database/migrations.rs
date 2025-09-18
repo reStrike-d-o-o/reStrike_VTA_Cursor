@@ -2790,6 +2790,7 @@ impl MigrationManager {
         migrations.push(Box::new(Migration35)); // Recreate core tables with TEXT *_id and drop legacy *_uuid/*_int/*_text
         migrations.push(Box::new(Migration36)); // Add TEXT *_id columns to scores/warnings (staged)
         migrations.push(Box::new(Migration37)); // Rename pss_events_v2 to pss_events and drop legacy pss_events
+        migrations.push(Box::new(Migration38)); // Drop tournament_days and remove tournament_day_id columns
         
         Self { migrations }
     }
@@ -4157,3 +4158,171 @@ impl Migration for Migration37 {
         Ok(())
     }
 }
+
+/// Migration 38: Drop tournament_days and remove tournament_day_id columns from referencing tables
+pub struct Migration38;
+
+impl Migration for Migration38 {
+    fn version(&self) -> u32 { 38 }
+    fn description(&self) -> &str { "Drop tournament_days and remove tournament_day_id columns from pss_matches, pss_events, pss_scores, pss_warnings, recorded_videos" }
+    fn up(&self, conn: &Connection) -> SqliteResult<()> {
+        // pss_matches: recreate without tournament_day_id
+        let _ = conn.execute(
+            "CREATE TABLE IF NOT EXISTS _tmp_pss_matches2 AS
+             SELECT id, uuid, tournament_id, match_id, match_number, category, weight_class, division, total_rounds, round_duration, countdown_type, format_type, creation_mode, created_at, updated_at, created, updated
+             FROM pss_matches",
+            [],
+        );
+        let _ = conn.execute("DROP TABLE IF EXISTS pss_matches", []);
+        conn.execute(
+            "CREATE TABLE pss_matches (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                uuid TEXT UNIQUE,
+                tournament_id TEXT,
+                match_id TEXT NOT NULL,
+                match_number TEXT,
+                category TEXT,
+                weight_class TEXT,
+                division TEXT,
+                total_rounds INTEGER,
+                round_duration INTEGER,
+                countdown_type TEXT,
+                format_type INTEGER,
+                creation_mode TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                created INTEGER,
+                updated INTEGER
+            )",
+            [],
+        )?;
+        conn.execute("INSERT INTO pss_matches SELECT * FROM _tmp_pss_matches2", [])?;
+        conn.execute("DROP TABLE IF EXISTS _tmp_pss_matches2", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_matches_tournament_id ON pss_matches(tournament_id)", [])?;
+
+        // pss_events: recreate without tournament_day_id
+        let _ = conn.execute(
+            "CREATE TABLE IF NOT EXISTS _tmp_pss_events2 AS
+             SELECT id, session_id, match_id, round_id, event_type_id, timestamp, raw_data, parsed_data, event_sequence, processing_time_ms, is_valid, error_message, recognition_status, protocol_version, parser_confidence, validation_errors, tournament_id, created_at, created
+             FROM pss_events",
+            [],
+        );
+        let _ = conn.execute("DROP TABLE IF EXISTS pss_events", []);
+        conn.execute(
+            "CREATE TABLE pss_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id INTEGER NOT NULL,
+                match_id INTEGER,
+                round_id INTEGER,
+                event_type_id INTEGER NOT NULL,
+                timestamp TEXT NOT NULL,
+                raw_data TEXT NOT NULL,
+                parsed_data TEXT,
+                event_sequence INTEGER,
+                processing_time_ms INTEGER,
+                is_valid BOOLEAN NOT NULL,
+                error_message TEXT,
+                recognition_status TEXT NOT NULL,
+                protocol_version TEXT,
+                parser_confidence REAL,
+                validation_errors TEXT,
+                tournament_id TEXT,
+                created_at TEXT NOT NULL,
+                created INTEGER
+            )",
+            [],
+        )?;
+        conn.execute("INSERT INTO pss_events SELECT * FROM _tmp_pss_events2", [])?;
+        conn.execute("DROP TABLE IF EXISTS _tmp_pss_events2", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_events_tournament_id ON pss_events(tournament_id)", [])?;
+
+        // pss_scores: recreate without tournament_day_id
+        let _ = conn.execute(
+            "CREATE TABLE IF NOT EXISTS _tmp_pss_scores2 AS
+             SELECT id, match_id, round_id, athlete_position, score_type, score_value, timestamp, tournament_id, created_at, created
+             FROM pss_scores",
+            [],
+        );
+        let _ = conn.execute("DROP TABLE IF EXISTS pss_scores", []);
+        conn.execute(
+            "CREATE TABLE pss_scores (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                match_id TEXT,
+                round_id INTEGER,
+                athlete_position INTEGER,
+                score_type TEXT,
+                score_value INTEGER,
+                timestamp TEXT,
+                tournament_id TEXT,
+                created_at TEXT,
+                created INTEGER
+            )",
+            [],
+        )?;
+        conn.execute("INSERT INTO pss_scores SELECT * FROM _tmp_pss_scores2", [])?;
+        conn.execute("DROP TABLE IF EXISTS _tmp_pss_scores2", [])?;
+
+        // pss_warnings: recreate without tournament_day_id
+        let _ = conn.execute(
+            "CREATE TABLE IF NOT EXISTS _tmp_pss_warnings2 AS
+             SELECT id, match_id, round_id, athlete_position, warning_type, warning_count, timestamp, tournament_id, created_at, created
+             FROM pss_warnings",
+            [],
+        );
+        let _ = conn.execute("DROP TABLE IF EXISTS pss_warnings", []);
+        conn.execute(
+            "CREATE TABLE pss_warnings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                match_id TEXT,
+                round_id INTEGER,
+                athlete_position INTEGER,
+                warning_type TEXT,
+                warning_count INTEGER,
+                timestamp TEXT,
+                tournament_id TEXT,
+                created_at TEXT,
+                created INTEGER
+            )",
+            [],
+        )?;
+        conn.execute("INSERT INTO pss_warnings SELECT * FROM _tmp_pss_warnings2", [])?;
+        conn.execute("DROP TABLE IF EXISTS _tmp_pss_warnings2", [])?;
+
+        // recorded_videos: recreate without tournament_day_id
+        let _ = conn.execute(
+            "CREATE TABLE IF NOT EXISTS _tmp_recorded_videos2 AS
+             SELECT id, match_id, event_id, tournament_id, video_type, file_path, record_directory, filename_formatting, start_time, duration_seconds, file_size, checksum, created_at, created
+             FROM recorded_videos",
+            [],
+        );
+        let _ = conn.execute("DROP TABLE IF EXISTS recorded_videos", []);
+        conn.execute(
+            "CREATE TABLE recorded_videos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                match_id INTEGER NOT NULL,
+                event_id INTEGER,
+                tournament_id TEXT,
+                video_type TEXT NOT NULL,
+                file_path TEXT,
+                record_directory TEXT,
+                filename_formatting TEXT,
+                start_time TEXT NOT NULL,
+                duration_seconds INTEGER,
+                file_size INTEGER,
+                checksum TEXT,
+                created_at TEXT NOT NULL,
+                created INTEGER
+            )",
+            [],
+        )?;
+        conn.execute("INSERT INTO recorded_videos SELECT * FROM _tmp_recorded_videos2", [])?;
+        conn.execute("DROP TABLE IF EXISTS _tmp_recorded_videos2", [])?;
+
+        // Finally drop tournament_days
+        let _ = conn.execute("DROP TABLE IF EXISTS tournament_days", []);
+        Ok(())
+    }
+    fn down(&self, _conn: &Connection) -> SqliteResult<()> { Ok(()) }
+}
+
+// (removed duplicate Migration38 minimal drop version; replaced by comprehensive recreate above)

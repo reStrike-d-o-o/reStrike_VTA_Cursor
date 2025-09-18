@@ -16,8 +16,8 @@ pub async fn validate_tournament_pss_integrity(app: State<'_, Arc<App>>) -> Resu
     let orphan_events = counts("SELECT COUNT(*) FROM pss_events e LEFT JOIN pss_matches m ON m.id = e.match_id WHERE e.match_id IS NOT NULL AND m.id IS NULL");
     let orphan_vids = counts("SELECT COUNT(*) FROM recorded_videos rv LEFT JOIN pss_matches m ON m.id = rv.match_id WHERE rv.match_id IS NOT NULL AND m.id IS NULL");
     // Missing context
-    let events_missing_ctx = counts("SELECT COUNT(*) FROM pss_events WHERE tournament_id IS NULL OR tournament_day_id IS NULL");
-    let matches_missing_ctx = counts("SELECT COUNT(*) FROM pss_matches WHERE tournament_id IS NULL OR tournament_day_id IS NULL");
+    let events_missing_ctx = counts("SELECT COUNT(*) FROM pss_events WHERE tournament_id IS NULL");
+    let matches_missing_ctx = counts("SELECT COUNT(*) FROM pss_matches WHERE tournament_id IS NULL");
     Ok(serde_json::json!({
         "counts": {"tournaments": c_tournaments, "days": c_days, "matches": c_matches, "events": c_events, "videos": c_vids, "video_links": c_links},
         "orphans": {"matches": orphan_matches, "events": orphan_events, "videos": orphan_vids},
