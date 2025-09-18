@@ -13,7 +13,7 @@ This document provides a comprehensive guide to the database structure, models, 
 - **Error Handling**: Custom `AppError` and `DatabaseResult` types
 - **Integration**: Tauri v2 plugin architecture with frontend exposure
 
-### **Current Schema Version**: 38
+### **Current Schema Version**: 39
 - Migration 30–33: Introduced UUID v4 (`uuid` TEXT) for `tournaments`, `tournament_days`, and `pss_matches`, backfilled child references
 - Migration 34: Added canonical TEXT UUID FKs (`tournament_id`, `tournament_day_id`) alongside legacy columns for transition
 - Migration 35: Recreated `pss_matches`, `pss_events`, `recorded_videos` with canonical TEXT UUID FKs; dropped legacy `*_uuid`, `*_id_text`, `*_id_int`
