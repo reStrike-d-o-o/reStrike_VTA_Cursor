@@ -1019,11 +1019,10 @@ impl PssUdpOperations {
     pub fn store_pss_score(conn: &mut Connection, score: &PssScore) -> DatabaseResult<i64> {
         let score_id = conn.execute(
             "INSERT INTO pss_scores (
-                match_id, round_id, athlete_position, score_type, score_value, timestamp, created_at, tournament_id, tournament_day_id
+                match_id, round_id, athlete_position, score_type, score_value, timestamp, created_at, tournament_id
             ) VALUES (
                 (SELECT uuid FROM pss_matches WHERE id = ?), ?, ?, ?, ?, ?, ?,
-                (SELECT tournament_id FROM pss_matches WHERE id = ?),
-                (SELECT tournament_day_id FROM pss_matches WHERE id = ?)
+                (SELECT tournament_id FROM pss_matches WHERE id = ?)
             )",
             params![
                 score.match_id,
@@ -1034,7 +1033,7 @@ impl PssUdpOperations {
                 score.timestamp.to_rfc3339(),
                 score.created_at.to_rfc3339(),
                 score.match_id,
-                score.match_id,
+                score.match_id
             ]
         )?;
         
@@ -1061,11 +1060,10 @@ impl PssUdpOperations {
     pub fn store_pss_warning(conn: &mut Connection, warning: &PssWarning) -> DatabaseResult<i64> {
         let warning_id = conn.execute(
             "INSERT INTO pss_warnings (
-                match_id, round_id, athlete_position, warning_type, warning_count, timestamp, created_at, tournament_id, tournament_day_id
+                match_id, round_id, athlete_position, warning_type, warning_count, timestamp, created_at, tournament_id
             ) VALUES (
                 (SELECT uuid FROM pss_matches WHERE id = ?), ?, ?, ?, ?, ?, ?,
-                (SELECT tournament_id FROM pss_matches WHERE id = ?),
-                (SELECT tournament_day_id FROM pss_matches WHERE id = ?)
+                (SELECT tournament_id FROM pss_matches WHERE id = ?)
             )",
             params![
                 warning.match_id,
@@ -1076,7 +1074,7 @@ impl PssUdpOperations {
                 warning.timestamp.to_rfc3339(),
                 warning.created_at.to_rfc3339(),
                 warning.match_id,
-                warning.match_id,
+                warning.match_id
             ]
         )?;
         
@@ -1196,17 +1194,15 @@ impl PssUdpOperations {
         conn: &Connection,
         match_db_id: i64,
         tournament_id: Option<i64>,
-        tournament_day_id: Option<i64>,
+        _tournament_day_id: Option<i64>,
     ) -> DatabaseResult<()> {
         conn.execute(
             "UPDATE pss_matches SET 
                 tournament_id = COALESCE((SELECT uuid FROM tournaments WHERE id = ?), tournament_id),
-                tournament_day_id = COALESCE((SELECT uuid FROM tournament_days WHERE id = ?), tournament_day_id),
                 updated_at = ?
              WHERE id = ?",
             params![
                 tournament_id,
-                tournament_day_id,
                 Utc::now().to_rfc3339(),
                 match_db_id
             ],
@@ -1259,20 +1255,11 @@ impl PssUdpOperations {
                         LIMIT 1
                     )
                 ),
-                tournament_day_id = COALESCE(
-                    m.tournament_day_id,
-                    (
-                        SELECT rv.tournament_day_id FROM recorded_videos rv
-                        WHERE rv.match_id = m.id AND rv.tournament_day_id IS NOT NULL
-                        ORDER BY rv.created_at DESC
-                        LIMIT 1
-                    )
-                ),
                 updated_at = ?
-            WHERE (m.tournament_id IS NULL OR m.tournament_day_id IS NULL)
+            WHERE (m.tournament_id IS NULL)
               AND EXISTS (
                 SELECT 1 FROM recorded_videos rv
-                WHERE rv.match_id = m.id AND (rv.tournament_id IS NOT NULL OR rv.tournament_day_id IS NOT NULL)
+                WHERE rv.match_id = m.id AND (rv.tournament_id IS NOT NULL)
               )
         "#;
         let n = conn.execute(sql, [Utc::now().to_rfc3339()])?;
@@ -1290,15 +1277,8 @@ impl PssUdpOperations {
                         SELECT m.tournament_id FROM pss_matches m
                         WHERE m.id = e.match_id
                     )
-                ),
-                tournament_day_id = COALESCE(
-                    e.tournament_day_id,
-                    (
-                        SELECT m.tournament_day_id FROM pss_matches m
-                        WHERE m.id = e.match_id
-                    )
                 )
-            WHERE (e.tournament_id IS NULL OR e.tournament_day_id IS NULL)
+            WHERE (e.tournament_id IS NULL)
               AND e.match_id IS NOT NULL
         "#;
         let n = conn.execute(sql, [])?;
@@ -1308,19 +1288,7 @@ impl PssUdpOperations {
     // (removed) Optional fallback by date overlap; prefer purge strategy
     pub fn backfill_events_tournament_by_day_overlap(conn: &mut Connection) -> DatabaseResult<usize> {
         // Set tournament_day_id by matching event timestamp to day date when tournament_id known but day missing
-        let sql_day = r#"
-            UPDATE pss_events_v2 AS e
-            SET tournament_day_id = (
-                SELECT td.id FROM tournament_days td
-                WHERE td.tournament_id = e.tournament_id
-                  AND DATE(e.timestamp) = DATE(td.date)
-                LIMIT 1
-            )
-            WHERE e.tournament_id IS NOT NULL
-              AND e.tournament_day_id IS NULL
-        "#;
-        let n1 = conn.execute(sql_day, [])?;
-        Ok(n1)
+        Ok(0)
     }
 
     // (removed) Rebuild recorded_video_events; prefer purge strategy
@@ -1333,12 +1301,11 @@ impl PssUdpOperations {
                    CAST((julianday(e.timestamp) - julianday(rv.start_time)) * 86400000 AS INTEGER) AS offset_ms,
                    ?
             FROM recorded_videos rv
-            JOIN pss_events_v2 e ON e.match_id = rv.match_id
+            JOIN pss_events e ON e.match_id = rv.match_id
             JOIN pss_event_types t ON t.id = e.event_type_id
             WHERE e.timestamp >= rv.start_time
               AND e.timestamp <= datetime(rv.start_time, printf('+%d seconds', COALESCE(rv.duration_seconds, 0)))
               AND (rv.tournament_id IS NULL OR e.tournament_id = rv.tournament_id)
-              AND (rv.tournament_day_id IS NULL OR e.tournament_day_id = rv.tournament_day_id)
               AND t.event_code IN ('K','P','H','TH','TB','R')
         "#;
         let n = conn.execute(sql, [Utc::now().to_rfc3339()])?;
@@ -1722,7 +1689,7 @@ impl PssEventStatusOperations {
                 event.parser_confidence,
                 event.validation_errors,
                 event.tournament_id,
-                event.tournament_day_id,
+                event.tournament_id,
                 event.created_at.to_rfc3339()
             ]
         )?;
@@ -1743,14 +1710,14 @@ impl PssEventStatusOperations {
         
         // Get current status
         let current_status: String = tx.query_row(
-            "SELECT recognition_status FROM pss_events_v2 WHERE id = ?",
+            "SELECT recognition_status FROM pss_events WHERE id = ?",
             params![event_id],
             |row| row.get(0)
         )?;
         
         // Update event status
         tx.execute(
-            "UPDATE pss_events_v2 SET recognition_status = ? WHERE id = ?",
+            "UPDATE pss_events SET recognition_status = ? WHERE id = ?",
             params![new_status, event_id]
         )?;
         

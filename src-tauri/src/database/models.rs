@@ -1125,7 +1125,6 @@ pub struct PssEventV2 {
     pub round_id: Option<i64>,
     pub event_type_id: i64,
     pub tournament_id: Option<String>,
-    pub tournament_day_id: Option<String>,
     pub timestamp: DateTime<Utc>,
     pub raw_data: String,
     pub parsed_data: Option<String>, // JSON serialized parsed event data
@@ -1158,7 +1157,6 @@ impl PssEventV2 {
             round_id: None,
             event_type_id,
             tournament_id: None,
-            tournament_day_id: None,
             timestamp,
             raw_data,
             parsed_data: None,
@@ -1183,7 +1181,6 @@ impl PssEventV2 {
             round_id: row.get("round_id")?,
             event_type_id: row.get("event_type_id")?,
             tournament_id: row.get("tournament_id").ok(),
-            tournament_day_id: row.get("tournament_day_id").ok(),
             timestamp: DateTime::parse_from_rfc3339(&row.get::<_, String>("timestamp")?)
                 .map_err(|_| rusqlite::Error::InvalidColumnType(0, "timestamp".to_string(), rusqlite::types::Type::Text))?
                 .with_timezone(&Utc),

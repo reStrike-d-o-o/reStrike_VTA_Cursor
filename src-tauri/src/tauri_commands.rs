@@ -3842,7 +3842,6 @@ pub async fn store_pss_event_cmd(
         parser_confidence: Some(1.0),
         validation_errors: None,
         tournament_id: None,
-        tournament_day_id: None,
         
         created_at: chrono::Utc::now(),
         created: Some(crate::utils::now_unix()),

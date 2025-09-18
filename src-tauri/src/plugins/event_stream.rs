@@ -3,7 +3,7 @@ use std::sync::Arc;
 use tokio::sync::{mpsc, RwLock, broadcast};
 use tokio::time::{Duration, interval};
 use serde::{Serialize, Deserialize};
-use crate::database::models::PssEventV2;
+use crate::database::models::PssEvent as PssEvent;
 use crate::plugins::event_cache::{EventCache, AthleteStatistics, TournamentStatistics, MatchStatistics};
 use crate::AppResult;
 
@@ -31,9 +31,9 @@ impl Default for EventStreamConfig {
 
 /// Event stream processor for real-time event handling
 pub struct EventStreamProcessor {
-    event_tx: mpsc::UnboundedSender<PssEventV2>,
-    event_rx: Option<mpsc::UnboundedReceiver<PssEventV2>>,
-    broadcast_tx: broadcast::Sender<PssEventV2>,
+    event_tx: mpsc::UnboundedSender<PssEvent>,
+    event_rx: Option<mpsc::UnboundedReceiver<PssEvent>>,
+    broadcast_tx: broadcast::Sender<PssEvent>,
     cache: Arc<EventCache>,
     config: EventStreamConfig,
     processors: Arc<RwLock<Vec<tokio::task::JoinHandle<()>>>>,
@@ -164,14 +164,14 @@ impl EventStreamProcessor {
     }
 
     /// Send an event to the stream
-    pub async fn send_event(&self, event: PssEventV2) -> AppResult<()> {
+    pub async fn send_event(&self, event: PssEvent) -> AppResult<()> {
         self.event_tx.send(event)
             .map_err(|e| crate::AppError::ConfigError(format!("Failed to send event to stream: {}", e)))?;
         Ok(())
     }
 
     /// Subscribe to event stream
-    pub fn subscribe(&self) -> broadcast::Receiver<PssEventV2> {
+    pub fn subscribe(&self) -> broadcast::Receiver<PssEvent> {
         self.broadcast_tx.subscribe()
     }
 
@@ -182,8 +182,8 @@ impl EventStreamProcessor {
 
     /// Main event processing loop
     async fn event_processing_loop(
-        mut event_rx: mpsc::UnboundedReceiver<PssEventV2>,
-        broadcast_tx: broadcast::Sender<PssEventV2>,
+        mut event_rx: mpsc::UnboundedReceiver<PssEvent>,
+        broadcast_tx: broadcast::Sender<PssEvent>,
         cache: Arc<EventCache>,
         config: EventStreamConfig,
         statistics: Arc<RwLock<StreamStatistics>>,
@@ -238,8 +238,8 @@ impl EventStreamProcessor {
 
     /// Process a batch of events
     async fn process_event_batch(
-        events: &[PssEventV2],
-        broadcast_tx: &broadcast::Sender<PssEventV2>,
+        events: &[PssEvent],
+        broadcast_tx: &broadcast::Sender<PssEvent>,
         cache: &Arc<EventCache>,
     ) {
         for event in events {
@@ -258,7 +258,7 @@ impl EventStreamProcessor {
     /// Event processor worker
     async fn event_processor_worker(
         worker_id: usize,
-        mut broadcast_rx: broadcast::Receiver<PssEventV2>,
+        mut broadcast_rx: broadcast::Receiver<PssEvent>,
         cache: Arc<EventCache>,
         statistics: Arc<RwLock<StreamStatistics>>,
     ) {
@@ -305,7 +305,7 @@ impl EventStreamProcessor {
     }
 
     /// Update cache for a specific event
-    async fn update_cache_for_event(cache: &Arc<EventCache>, event: &PssEventV2) -> AppResult<()> {
+    async fn update_cache_for_event(cache: &Arc<EventCache>, event: &PssEvent) -> AppResult<()> {
         // Invalidate relevant caches when new events arrive
         if let Some(tournament_id) = event.tournament_id {
             cache.invalidate_tournament(tournament_id).await?;
@@ -323,7 +323,7 @@ impl EventStreamProcessor {
     }
 
     /// Process a single event
-    async fn process_single_event(cache: &Arc<EventCache>, event: &PssEventV2) -> AppResult<()> {
+    async fn process_single_event(cache: &Arc<EventCache>, event: &PssEvent) -> AppResult<()> {
         // Update match statistics if match_id is present
         if let Some(match_id) = event.match_id {
             Self::update_match_statistics(cache, match_id, event).await?;

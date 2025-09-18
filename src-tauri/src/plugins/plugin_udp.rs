@@ -9,7 +9,7 @@ use crate::plugins::plugin_database::DatabasePlugin;
 use crate::plugins::performance_monitor::PerformanceMonitor;
 use crate::plugins::plugin_websocket::WebSocketServer;
 use crate::database::models::{
-    UdpServerConfig as DbUdpServerConfig, PssEventV2,
+    UdpServerConfig as DbUdpServerConfig, PssEventV2 as DbPssEvent,
 };
 use chrono::Utc;
 use std::time::{Duration, Instant};
@@ -1129,7 +1129,7 @@ impl UdpServer {
         database: &DatabasePlugin,
         current_tournament_id: &Arc<Mutex<Option<i64>>>,
         current_tournament_day_id: &Arc<Mutex<Option<i64>>>,
-    ) -> AppResult<PssEventV2> {
+    ) -> AppResult<DbPssEvent> {
         // Get event type ID
         let event_code = Self::get_event_code(event);
         // Check cache first without holding the lock across await
@@ -1184,7 +1184,7 @@ impl UdpServer {
         };
 
         // Create database event model
-        let db_event = PssEventV2::new(
+        let db_event = DbPssEvent::new(
             session_id,
             event_type_id,
             Utc::now(),
@@ -1198,7 +1198,6 @@ impl UdpServer {
         db_event.round_id = None; // TODO: Track current round
         // Defer tournament UUID binding; match context will set it, and events can be updated downstream if needed
         db_event.tournament_id = None;
-        db_event.tournament_day_id = None;
 
         // Set parsed data as JSON
         if let Ok(json_data) = serde_json::to_string(event) {
