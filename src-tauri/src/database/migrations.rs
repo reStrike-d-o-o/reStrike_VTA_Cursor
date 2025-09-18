@@ -3415,10 +3415,14 @@ impl Migration for Migration28 {
         let _ = conn.execute("ALTER TABLE udp_server_configs ADD COLUMN created INTEGER", []);
         let _ = conn.execute("ALTER TABLE udp_server_configs ADD COLUMN updated INTEGER", []);
         let _ = conn.execute("UPDATE udp_server_configs SET created = strftime('%s', created_at), updated = strftime('%s', updated_at)", []);
-        // udp_server_sessions
+        // udp_server_sessions (derive integer timestamps from start_time/end_time since created_at/updated_at don't exist)
         let _ = conn.execute("ALTER TABLE udp_server_sessions ADD COLUMN created INTEGER", []);
         let _ = conn.execute("ALTER TABLE udp_server_sessions ADD COLUMN updated INTEGER", []);
-        let _ = conn.execute("UPDATE udp_server_sessions SET created = strftime('%s', created_at), updated = strftime('%s', updated_at)", []);
+        let _ = conn.execute(
+            "UPDATE udp_server_sessions SET 
+                created = COALESCE(created, strftime('%s', start_time)),
+                updated = COALESCE(updated, strftime('%s', COALESCE(end_time, start_time)))",
+            []);
         // udp_client_connections
         let _ = conn.execute("ALTER TABLE udp_client_connections ADD COLUMN created INTEGER", []);
         let _ = conn.execute("UPDATE udp_client_connections SET created = strftime('%s', created_at)", []);
@@ -3508,6 +3512,10 @@ impl Migration for Migration29 {
     }
 
     fn up(&self, conn: &Connection) -> SqliteResult<()> {
+        // Explicitly drop legacy udp_server_sessions triggers that referenced created_at/updated_at
+        let _ = conn.execute("DROP TRIGGER IF EXISTS trg_udp_server_sessions_created_int", []);
+        let _ = conn.execute("DROP TRIGGER IF EXISTS trg_udp_server_sessions_updated_int", []);
+
         // Helper to create triggers for a table with created_at/updated_at
         let with_updated = [
             "tournaments",
@@ -3532,21 +3540,9 @@ impl Migration for Migration29 {
         ];
 
         for table in with_updated.iter() {
-            let trg_created = format!(
-                "CREATE TRIGGER IF NOT EXISTS trg_{table}_created_int AFTER INSERT ON {table} \
-                 BEGIN \
-                   UPDATE {table} SET created = COALESCE(NEW.created, strftime('%s', NEW.created_at)) WHERE rowid = NEW.rowid; \
-                 END;"
-            );
-            conn.execute(&trg_created, [])?;
-
-            let trg_updated = format!(
-                "CREATE TRIGGER IF NOT EXISTS trg_{table}_updated_int AFTER UPDATE ON {table} \
-                 BEGIN \
-                   UPDATE {table} SET updated = COALESCE(NEW.updated, strftime('%s', NEW.updated_at)) WHERE rowid = NEW.rowid; \
-                 END;"
-            );
-            conn.execute(&trg_updated, [])?;
+            // Remove legacy triggers; do not recreate (we set created/updated from code/migrations now)
+            let _ = conn.execute(&format!("DROP TRIGGER IF EXISTS trg_{table}_created_int"), []);
+            let _ = conn.execute(&format!("DROP TRIGGER IF EXISTS trg_{table}_updated_int"), []);
         }
 
         // Helper for tables with only created_at
@@ -3579,13 +3575,8 @@ impl Migration for Migration29 {
         ];
 
         for table in with_created_only.iter() {
-            let trg_created = format!(
-                "CREATE TRIGGER IF NOT EXISTS trg_{table}_created_int AFTER INSERT ON {table} \
-                 BEGIN \
-                   UPDATE {table} SET created = COALESCE(NEW.created, strftime('%s', NEW.created_at)) WHERE rowid = NEW.rowid; \
-                 END;"
-            );
-            conn.execute(&trg_created, [])?;
+            // Drop old created trigger if present; do not recreate
+            let _ = conn.execute(&format!("DROP TRIGGER IF EXISTS trg_{table}_created_int"), []);
         }
 
         Ok(())
@@ -4108,6 +4099,27 @@ impl Migration for Migration37 {
     fn version(&self) -> u32 { 37 }
     fn description(&self) -> &str { "Rename pss_events_v2 to pss_events and drop legacy pss_events" }
     fn up(&self, conn: &Connection) -> SqliteResult<()> {
+        // Safety: drop legacy triggers that may reference removed created_at/updated_at or NEW.created
+        let _ = conn.execute("DROP TRIGGER IF EXISTS trg_udp_server_sessions_created_int", []);
+        let _ = conn.execute("DROP TRIGGER IF EXISTS trg_udp_server_sessions_updated_int", []);
+        let _ = conn.execute("DROP TRIGGER IF EXISTS trg_obs_recording_config_created_int", []);
+        let _ = conn.execute("DROP TRIGGER IF EXISTS trg_obs_recording_config_updated_int", []);
+        let _ = conn.execute("DROP TRIGGER IF EXISTS trg_obs_recording_sessions_created_int", []);
+        let _ = conn.execute("DROP TRIGGER IF EXISTS trg_obs_recording_sessions_updated_int", []);
+        let _ = conn.execute("DROP TRIGGER IF EXISTS trg_pss_events_v2_created_int", []);
+        let _ = conn.execute("DROP TRIGGER IF EXISTS trg_pss_events_created_int", []);
+        let _ = conn.execute("DROP TRIGGER IF EXISTS trg_pss_events_updated_int", []);
+        // Drop any remaining *_created_int/*_updated_int triggers generically
+        {
+            let mut stmt = conn.prepare("SELECT name FROM sqlite_master WHERE type='trigger' AND (name LIKE 'trg_%_created_int' OR name LIKE 'trg_%_updated_int')")?;
+            let mut rows = stmt.query([])?;
+            while let Some(row) = rows.next()? {
+                let trg_name: String = row.get(0)?;
+                let sql = format!("DROP TRIGGER IF EXISTS {trg_name}");
+                let _ = conn.execute(&sql, []);
+            }
+        }
+
         // Idempotent rename logic: if v2 exists, make it canonical; otherwise leave existing table as-is
         let _ = conn.execute("DROP TABLE IF EXISTS pss_events_legacy_backup", []);
 
