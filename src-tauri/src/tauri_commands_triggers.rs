@@ -68,7 +68,7 @@ pub async fn triggers_list_active_overlays(app: State<'_, Arc<App>>) -> Result<V
 pub async fn triggers_get(app: State<'_, Arc<App>>, tournament_id: Option<i64>, day_id: Option<i64>) -> Result<Vec<EventTrigger>, TauriError> {
     let conn = app.database_plugin().get_database_connection();
     let res = match (tournament_id, day_id) {
-        (Some(_tid), Some(did)) => conn.get_event_triggers_for_tournament_day(did).await,
+        (Some(tid), Some(_did)) => conn.get_event_triggers_for_tournament(tid).await,
         (Some(tid), None) => conn.get_event_triggers_for_tournament(tid).await,
         _ => conn.get_event_triggers().await,
     };
@@ -80,7 +80,6 @@ pub async fn triggers_get(app: State<'_, Arc<App>>, tournament_id: Option<i64>, 
 pub struct EventTriggerPayload {
     pub id: Option<i64>,
     pub tournament_id: Option<i64>,
-    pub tournament_day_id: Option<i64>,
     pub event_type: String,
     pub action: String, // show / hide
     pub target_type: String, // scene / overlay
@@ -109,7 +108,6 @@ pub async fn triggers_save(app: State<'_, Arc<App>>, payload: Vec<EventTriggerPa
             delay_ms: p.delay_ms.unwrap_or(0),
             id: p.id,
             tournament_id: p.tournament_id,
-            tournament_day_id: p.tournament_day_id,
             event_type: p.event_type.clone(),
             trigger_type: p.target_type.clone(), // legacy field still required elsewhere
             obs_scene_id: p.obs_scene_id,
@@ -170,7 +168,6 @@ pub async fn triggers_preview_evaluate(
         delay_ms: trigger.delay_ms.unwrap_or(0),
         id: trigger.id,
         tournament_id: trigger.tournament_id,
-        tournament_day_id: trigger.tournament_day_id,
         event_type: trigger.event_type.clone(),
         trigger_type: trigger.target_type.clone(),
         obs_scene_id: trigger.obs_scene_id,

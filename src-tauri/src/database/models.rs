@@ -1841,7 +1841,6 @@ pub struct EventTrigger {
     pub delay_ms: i64,
     pub id: Option<i64>,
     pub tournament_id: Option<i64>,
-    pub tournament_day_id: Option<i64>,
     pub event_type: String, // PSS event type (e.g., 'pt1', 'wg1', 'mch', etc.)
     pub trigger_type: String, // 'scene', 'overlay', 'both'
     pub obs_scene_id: Option<i64>,
@@ -1861,7 +1860,6 @@ pub struct EventTrigger {
 impl EventTrigger {
     pub fn new(
         tournament_id: Option<i64>,
-        tournament_day_id: Option<i64>,
         event_type: String,
         trigger_type: String,
         obs_scene_id: Option<i64>,
@@ -1875,7 +1873,6 @@ impl EventTrigger {
             delay_ms: 0,
             id: None,
             tournament_id,
-            tournament_day_id,
             event_type,
             trigger_type,
             obs_scene_id,
@@ -1897,10 +1894,9 @@ impl EventTrigger {
         Ok(Self {
             id: row.get("id")?,
             tournament_id: row.get("tournament_id")?,
-            tournament_day_id: row.get("tournament_day_id")?,
-            action: row.get("action")?,
-            target_type: row.get("target_type")?,
-            delay_ms: row.get("delay_ms")?,
+            action: row.get("action").unwrap_or_else(|_| "show".to_string()),
+            target_type: row.get("target_type").unwrap_or_else(|_| "scene".to_string()),
+            delay_ms: row.get("delay_ms").unwrap_or(0),
             event_type: row.get("event_type")?,
             trigger_type: row.get("trigger_type")?,
             obs_scene_id: row.get("obs_scene_id")?,

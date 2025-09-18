@@ -15,7 +15,6 @@ pub struct TriggerPlugin {
     obs_plugin_manager: Arc<ObsManager>,
     enabled_triggers: Arc<RwLock<HashMap<String, Vec<EventTrigger>>>>,
     current_tournament_id: Arc<RwLock<Option<i64>>>,
-    current_tournament_day_id: Arc<RwLock<Option<i64>>>,
     paused: std::sync::Arc<std::sync::atomic::AtomicBool>,
     buffered_rdy: Arc<RwLock<Option<String>>>,
     resume_delay_ms: std::sync::Arc<std::sync::atomic::AtomicU64>,
@@ -144,7 +143,6 @@ impl Clone for TriggerPlugin {
             obs_plugin_manager: self.obs_plugin_manager.clone(),
             enabled_triggers: self.enabled_triggers.clone(),
             current_tournament_id: self.current_tournament_id.clone(),
-            current_tournament_day_id: self.current_tournament_day_id.clone(),
             paused: self.paused.clone(),
             buffered_rdy: self.buffered_rdy.clone(),
             resume_delay_ms: self.resume_delay_ms.clone(),
@@ -164,7 +162,6 @@ impl TriggerPlugin {
             obs_plugin_manager,
             enabled_triggers: Arc::new(RwLock::new(HashMap::new())),
             current_tournament_id: Arc::new(RwLock::new(None)),
-            current_tournament_day_id: Arc::new(RwLock::new(None)),
             paused: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
             buffered_rdy: Arc::new(RwLock::new(None)),
             resume_delay_ms: std::sync::Arc::new(std::sync::atomic::AtomicU64::new(2000)),
@@ -236,18 +233,7 @@ impl TriggerPlugin {
             }
         }
         
-        // Load tournament day-specific triggers
-        let tournament_day_id = *self.current_tournament_day_id.read().await;
-        if let Some(tdid) = tournament_day_id {
-            let day_triggers = self.db.get_event_triggers_for_tournament_day(tdid).await?;
-            for trigger in day_triggers {
-                if trigger.is_enabled {
-                    triggers.entry(trigger.event_type.clone())
-                        .or_insert_with(Vec::new)
-                        .push(trigger);
-                }
-            }
-        }
+        // Day-specific triggers removed
         
         log::info!("📋 Loaded {} trigger types with {} total triggers", triggers.len(), triggers.values().map(|v| v.len()).sum::<usize>());
         Ok(())
@@ -746,10 +732,8 @@ impl TriggerPlugin {
     /// Set current tournament context
     pub async fn set_tournament_context(&self, tournament_id: Option<i64>) -> AppResult<()> {
         let mut current_tournament = self.current_tournament_id.write().await;
-        let mut current_day = self.current_tournament_day_id.write().await;
         
         *current_tournament = tournament_id;
-        *current_day = None; // Clear day when tournament changes
         
         // Reload triggers for new context
         self.load_enabled_triggers().await?;
@@ -784,7 +768,7 @@ impl TriggerPlugin {
             "disabled_triggers": disabled_count,
             "trigger_types": trigger_counts,
             "current_tournament_id": *self.current_tournament_id.read().await,
-            "current_tournament_day_id": *self.current_tournament_day_id.read().await,
+            "current_tournament_day_id": serde_json::Value::Null,
         });
         
         Ok(stats)

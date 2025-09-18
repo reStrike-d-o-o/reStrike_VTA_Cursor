@@ -2774,24 +2774,11 @@ impl DatabaseConnection {
         Ok(triggers)
     }
     
-    /// Get event triggers for a specific tournament day
-    pub async fn get_event_triggers_for_tournament_day(&self, tournament_day_id: i64) -> DatabaseResult<Vec<EventTrigger>> {
-        let conn = self.get_connection().await?;
-        let mut stmt = conn.prepare(
-            "SELECT * FROM event_triggers WHERE tournament_day_id = ? ORDER BY priority DESC, event_type"
-        )?;
-        
-        let triggers = stmt.query_map([tournament_day_id], |row| EventTrigger::from_row(row))?
-            .collect::<Result<Vec<_>, _>>()?;
-        
-        Ok(triggers)
-    }
-    
     /// Get global event triggers (no tournament/day specified)
     pub async fn get_global_event_triggers(&self) -> DatabaseResult<Vec<EventTrigger>> {
         let conn = self.get_connection().await?;
         let mut stmt = conn.prepare(
-            "SELECT * FROM event_triggers WHERE tournament_id IS NULL AND tournament_day_id IS NULL ORDER BY priority DESC, event_type"
+            "SELECT * FROM event_triggers WHERE tournament_id IS NULL ORDER BY priority DESC, event_type"
         )?;
         
         let triggers = stmt.query_map([], |row| EventTrigger::from_row(row))?
@@ -2801,7 +2788,7 @@ impl DatabaseConnection {
     }
     
     /// Get enabled event triggers for a specific event type
-    pub async fn get_enabled_triggers_for_event(&self, event_type: &str, tournament_id: Option<i64>, tournament_day_id: Option<i64>) -> DatabaseResult<Vec<EventTrigger>> {
+    pub async fn get_enabled_triggers_for_event(&self, event_type: &str, tournament_id: Option<i64>) -> DatabaseResult<Vec<EventTrigger>> {
         let conn = self.get_connection().await?;
         
         let mut query = String::from(
@@ -2812,11 +2799,6 @@ impl DatabaseConnection {
         if let Some(tid) = tournament_id {
             query.push_str(" AND (tournament_id = ? OR tournament_id IS NULL)");
             params.push(Box::new(tid));
-        }
-        
-        if let Some(tdid) = tournament_day_id {
-            query.push_str(" AND (tournament_day_id = ? OR tournament_day_id IS NULL)");
-            params.push(Box::new(tdid));
         }
         
         query.push_str(" ORDER BY priority DESC");
@@ -2836,15 +2818,14 @@ impl DatabaseConnection {
         use rusqlite::params;
         let id = conn.execute(
             "INSERT INTO event_triggers (
-                tournament_id, tournament_day_id, event_type, trigger_type,
+                tournament_id, event_type, trigger_type,
                 obs_scene_id, overlay_template_id,
                 action_kind, obs_connection_name,
                 condition_round, condition_once_per, debounce_ms, cooldown_ms,
                 is_enabled, priority, created_at, updated_at
-             ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
+             ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
             params![
                 trigger.tournament_id,
-                trigger.tournament_day_id,
                 trigger.event_type,
                 trigger.trigger_type,
                 trigger.obs_scene_id,
@@ -2873,7 +2854,7 @@ impl DatabaseConnection {
         use rusqlite::params;
         conn.execute(
             "UPDATE event_triggers SET 
-                tournament_id = ?, tournament_day_id = ?, event_type = ?, trigger_type = ?,
+                tournament_id = ?, event_type = ?, trigger_type = ?,
                 obs_scene_id = ?, overlay_template_id = ?,
                 action_kind = ?, obs_connection_name = ?,
                 condition_round = ?, condition_once_per = ?, debounce_ms = ?, cooldown_ms = ?,
@@ -2881,7 +2862,6 @@ impl DatabaseConnection {
              WHERE id = ?",
             params![
                 trigger.tournament_id,
-                trigger.tournament_day_id,
                 trigger.event_type,
                 trigger.trigger_type,
                 trigger.obs_scene_id,
@@ -2930,9 +2910,9 @@ impl DatabaseConnection {
         let now = chrono::Utc::now().to_rfc3339();
         
         conn.execute(
-            "INSERT INTO event_triggers (tournament_id, tournament_day_id, event_type, trigger_type, obs_scene_id, overlay_template_id, is_enabled, priority, created_at, updated_at)
-             SELECT ?, tournament_day_id, event_type, trigger_type, obs_scene_id, overlay_template_id, is_enabled, priority, ?, ?
-             FROM event_triggers WHERE tournament_id = ?",
+            "INSERT INTO event_triggers (tournament_id, event_type, trigger_type, obs_scene_id, overlay_template_id, is_enabled, priority, created_at, updated_at)
+             SELECT ?, event_type, trigger_type, obs_scene_id, overlay_template_id, is_enabled, priority, ?, ?
+              FROM event_triggers WHERE tournament_id = ?",
             [&target_tournament_id.to_string(), &now, &now, &source_tournament_id.to_string()],
         )?;
         
@@ -2946,9 +2926,9 @@ impl DatabaseConnection {
         
         // Create a special template trigger with the template name
         conn.execute(
-            "INSERT INTO event_triggers (tournament_id, tournament_day_id, event_type, trigger_type, obs_scene_id, overlay_template_id, is_enabled, priority, created_at, updated_at)
-             SELECT NULL, NULL, event_type, trigger_type, obs_scene_id, overlay_template_id, is_enabled, priority, ?, ?
-             FROM event_triggers WHERE tournament_id = ?",
+            "INSERT INTO event_triggers (tournament_id, event_type, trigger_type, obs_scene_id, overlay_template_id, is_enabled, priority, created_at, updated_at)
+             SELECT NULL, event_type, trigger_type, obs_scene_id, overlay_template_id, is_enabled, priority, ?, ?
+              FROM event_triggers WHERE tournament_id = ?",
             [&now, &now, &tournament_id.to_string()],
         )?;
         
