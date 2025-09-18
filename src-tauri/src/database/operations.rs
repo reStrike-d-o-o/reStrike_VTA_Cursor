@@ -893,13 +893,13 @@ impl PssUdpOperations {
     /// Store PSS event
     pub fn store_pss_event(conn: &mut Connection, event: &PssEventV2) -> DatabaseResult<i64> {
         conn.execute(
-            "INSERT INTO pss_events_v2 (
+            "INSERT INTO pss_events (
                 session_id, match_id, round_id, event_type_id, timestamp, raw_data,
                 parsed_data, event_sequence, processing_time_ms, is_valid, error_message,
                 recognition_status, protocol_version, parser_confidence, validation_errors,
-                tournament_id, tournament_day_id, created_at, created
+                tournament_id, created_at, created
             ) VALUES (
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, strftime('%s','now')
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, strftime('%s','now')
             )",
             params![
                 event.session_id,
@@ -918,7 +918,6 @@ impl PssUdpOperations {
                 event.parser_confidence,
                 event.validation_errors,
                 event.tournament_id,
-                event.tournament_day_id,
                 event.created_at.to_rfc3339()
             ]
         )?;
@@ -929,7 +928,7 @@ impl PssUdpOperations {
     pub fn get_pss_events_for_session(conn: &Connection, session_id: i64, limit: Option<i64>) -> DatabaseResult<Vec<PssEventV2>> {
         let limit = limit.unwrap_or(100);
         let mut stmt = conn.prepare(
-            "SELECT * FROM pss_events_v2 WHERE session_id = ? ORDER BY event_sequence DESC LIMIT ?"
+            "SELECT * FROM pss_events WHERE session_id = ? ORDER BY event_sequence DESC LIMIT ?"
         )?;
         
         let events = stmt.query_map(params![session_id, limit], |row| {
@@ -944,7 +943,7 @@ impl PssUdpOperations {
     pub fn get_pss_events_for_match(conn: &Connection, match_id: i64, limit: Option<i64>) -> DatabaseResult<Vec<PssEventV2>> {
         let limit = limit.unwrap_or(100);
         let mut stmt = conn.prepare(
-            "SELECT * FROM pss_events_v2 WHERE match_id = ? ORDER BY timestamp DESC LIMIT ?"
+            "SELECT * FROM pss_events WHERE match_id = ? ORDER BY timestamp DESC LIMIT ?"
         )?;
         
         let events = stmt.query_map(params![match_id, limit], |row| {
@@ -962,7 +961,7 @@ impl PssUdpOperations {
         // Defensive: ensure referenced event exists to avoid FK errors in edge cases
         let exists: i32 = conn
             .query_row(
-                "SELECT COUNT(1) FROM pss_events_v2 WHERE id = ?",
+                "SELECT COUNT(1) FROM pss_events WHERE id = ?",
                 params![event_id],
                 |row| row.get(0),
             )
@@ -1118,7 +1117,7 @@ impl PssUdpOperations {
         
         // Get total events
         let total_events: i64 = conn.query_row(
-            "SELECT COUNT(*) FROM pss_events_v2",
+            "SELECT COUNT(*) FROM pss_events",
             [],
             |row| row.get(0)
         )?;
@@ -1132,7 +1131,7 @@ impl PssUdpOperations {
         
         // Get recent activity (last 24 hours)
         let recent_events: i64 = conn.query_row(
-            "SELECT COUNT(*) FROM pss_events_v2 WHERE created_at > datetime('now', '-1 day')",
+            "SELECT COUNT(*) FROM pss_events WHERE created_at > datetime('now', '-1 day')",
             [],
             |row| row.get(0)
         )?;
