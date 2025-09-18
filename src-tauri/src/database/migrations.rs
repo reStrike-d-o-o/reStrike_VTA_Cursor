@@ -3828,6 +3828,18 @@ impl Migration for Migration35 {
     fn version(&self) -> u32 { 35 }
     fn description(&self) -> &str { "Recreate core tables to use TEXT *_id columns and drop legacy *_uuid/*_int/*_text" }
     fn up(&self, conn: &Connection) -> SqliteResult<()> {
+        // Ensure integer timestamps exist before selecting them (idempotent best-effort)
+        let _ = conn.execute("ALTER TABLE pss_matches ADD COLUMN created INTEGER", []);
+        let _ = conn.execute("UPDATE pss_matches SET created = strftime('%s', created_at) WHERE created IS NULL", []);
+        let _ = conn.execute("ALTER TABLE pss_matches ADD COLUMN updated INTEGER", []);
+        let _ = conn.execute("UPDATE pss_matches SET updated = strftime('%s', updated_at) WHERE updated IS NULL", []);
+
+        let _ = conn.execute("ALTER TABLE pss_events_v2 ADD COLUMN created INTEGER", []);
+        let _ = conn.execute("UPDATE pss_events_v2 SET created = strftime('%s', created_at) WHERE created IS NULL", []);
+
+        let _ = conn.execute("ALTER TABLE recorded_videos ADD COLUMN created INTEGER", []);
+        let _ = conn.execute("UPDATE recorded_videos SET created = strftime('%s', created_at) WHERE created IS NULL", []);
+
         // Helper to recreate a table with new schema and copy data
         // pss_matches: keep id (rowid), uuid, and canonical TEXT tournament_id/tournament_day_id
         conn.execute(
@@ -3960,6 +3972,11 @@ impl Migration for Migration36 {
     fn version(&self) -> u32 { 36 }
     fn description(&self) -> &str { "Recreate pss_scores, pss_warnings, pss_rounds, pss_match_athletes with TEXT match_id and TEXT tournament_id fields where applicable" }
     fn up(&self, conn: &Connection) -> SqliteResult<()> {
+        // Ensure created integer columns exist before selecting them into temp tables (idempotent)
+        let _ = conn.execute("ALTER TABLE pss_scores ADD COLUMN created INTEGER", []);
+        let _ = conn.execute("UPDATE pss_scores SET created = strftime('%s', created_at) WHERE created IS NULL", []);
+        let _ = conn.execute("ALTER TABLE pss_warnings ADD COLUMN created INTEGER", []);
+        let _ = conn.execute("UPDATE pss_warnings SET created = strftime('%s', created_at) WHERE created IS NULL", []);
         // pss_scores
         conn.execute(
             "CREATE TABLE IF NOT EXISTS _tmp_pss_scores AS
