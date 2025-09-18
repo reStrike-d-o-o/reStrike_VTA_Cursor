@@ -744,17 +744,17 @@ impl TriggerPlugin {
     }
     
     /// Set current tournament context
-    pub async fn set_tournament_context(&self, tournament_id: Option<i64>, tournament_day_id: Option<i64>) -> AppResult<()> {
+    pub async fn set_tournament_context(&self, tournament_id: Option<i64>) -> AppResult<()> {
         let mut current_tournament = self.current_tournament_id.write().await;
         let mut current_day = self.current_tournament_day_id.write().await;
         
         *current_tournament = tournament_id;
-        *current_day = tournament_day_id;
+        *current_day = None; // Clear day when tournament changes
         
         // Reload triggers for new context
         self.load_enabled_triggers().await?;
         
-        log::info!("🎯 Set tournament context: tournament_id={:?}, day_id={:?}", tournament_id, tournament_day_id);
+        log::info!("🎯 Set tournament context: tournament_id={:?}", tournament_id);
         Ok(())
     }
     

@@ -1186,7 +1186,7 @@ pub async fn tournament_progress_context(
     }
 
     // Set UDP context so events inherit these IDs
-    app.udp_plugin().set_tournament_context(tournament_id, None).await
+    app.udp_plugin().set_tournament_context(tournament_id).await
         .map_err(|e| TauriError::from(anyhow::anyhow!(format!("set_tournament_context: {}", e))))?;
 
     Ok(serde_json::json!({
@@ -4580,7 +4580,7 @@ pub async fn set_udp_tournament_context(
 ) -> Result<(), TauriError> {
     log::info!("Setting UDP tournament context: tournament_id={:?}", tournament_id);
     
-    app.udp_plugin().set_tournament_context(tournament_id, None).await
+    app.udp_plugin().set_tournament_context(tournament_id).await
         .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))
 }
 /// Get current tournament context from UDP server
@@ -4588,7 +4588,7 @@ pub async fn set_udp_tournament_context(
 pub async fn get_udp_tournament_context(
     app: tauri::State<'_, crate::core::app::App>,
 ) -> Result<serde_json::Value, TauriError> {
-    let (tournament_id, _tournament_day_id) = app.udp_plugin().get_tournament_context();
+    let tournament_id = app.udp_plugin().get_tournament_context();
     
     Ok(serde_json::json!({
         "tournament_id": tournament_id,

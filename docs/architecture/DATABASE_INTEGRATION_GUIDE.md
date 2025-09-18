@@ -13,14 +13,14 @@ This document provides a comprehensive guide to the database structure, models, 
 - **Error Handling**: Custom `AppError` and `DatabaseResult` types
 - **Integration**: Tauri v2 plugin architecture with frontend exposure
 
-### **Current Schema Version**: 36
+### **Current Schema Version**: 38
 - Migration 30–33: Introduced UUID v4 (`uuid` TEXT) for `tournaments`, `tournament_days`, and `pss_matches`, backfilled child references
 - Migration 34: Added canonical TEXT UUID FKs (`tournament_id`, `tournament_day_id`) alongside legacy columns for transition
-- Migration 35: Recreated `pss_matches`, `pss_events_v2`, `recorded_videos` with canonical TEXT UUID FKs; dropped legacy `*_uuid`, `*_id_text`, `*_id_int`
+- Migration 35: Recreated `pss_matches`, `pss_events`, `recorded_videos` with canonical TEXT UUID FKs; dropped legacy `*_uuid`, `*_id_text`, `*_id_int`
 - Migration 36: Recreated `pss_scores`, `pss_warnings`, `pss_rounds`, `pss_match_athletes` with TEXT `match_id` and TEXT tournament FKs (where applicable); dropped legacy columns
 
 #### Event and Recording Tables
-- `pss_events_v2`: stores canonical tournament context as UUID strings: `tournament_id` (TEXT), `tournament_day_id` (TEXT). Includes `recognition_status`, `protocol_version`, `parser_confidence`, `validation_errors`, and integer `created` (UNIX seconds). These IDs are set by ingestion/match context.
+- `pss_events`: stores canonical tournament context as UUID strings: `tournament_id` (TEXT). Includes `recognition_status`, `protocol_version`, `parser_confidence`, `validation_errors`, and integer `created` (UNIX seconds). These IDs are set by ingestion/match context.
 - `recorded_videos`: id, match_id (INTEGER → DB id of `pss_matches`), event_id?, `tournament_id` (TEXT UUID), `tournament_day_id` (TEXT UUID), video_type, file_path?, record_directory?, start_time, duration_seconds?, file_size?, checksum?, created_at (ISO), created (INTEGER UNIX seconds)
 - `recorded_video_events`: id, recorded_video_id, event_id, offset_ms, created_at (UNIQUE on recorded_video_id+event_id)
 

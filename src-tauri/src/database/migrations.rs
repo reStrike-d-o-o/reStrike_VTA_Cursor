@@ -4109,29 +4109,34 @@ impl Migration for Migration37 {
     fn version(&self) -> u32 { 37 }
     fn description(&self) -> &str { "Rename pss_events_v2 to pss_events and drop legacy pss_events" }
     fn up(&self, conn: &Connection) -> SqliteResult<()> {
-        // If legacy pss_events exists and pss_events_v2 exists, prefer v2 as canonical
-        // 1) Drop legacy pss_events if exists and is different table
+        // Idempotent rename logic: if v2 exists, make it canonical; otherwise leave existing table as-is
         let _ = conn.execute("DROP TABLE IF EXISTS pss_events_legacy_backup", []);
-        // If a legacy pss_events exists, back it up then drop
-        let legacy_exists: bool = conn
+
+        let pss_events_exists: bool = conn
             .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='pss_events'")?
             .exists([])?;
-        if legacy_exists {
-            let _ = conn.execute("ALTER TABLE pss_events RENAME TO pss_events_legacy_backup", []);
-        }
-        // 2) Rename pss_events_v2 -> pss_events
         let v2_exists: bool = conn
             .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='pss_events_v2'")?
             .exists([])?;
-        if v2_exists {
+
+        if v2_exists && pss_events_exists {
+            // Backup legacy then promote v2
+            let _ = conn.execute("ALTER TABLE pss_events RENAME TO pss_events_legacy_backup", []);
+            let _ = conn.execute("DROP TABLE IF EXISTS pss_events", []);
+            let _ = conn.execute("DROP VIEW IF EXISTS pss_events", []);
             conn.execute("ALTER TABLE pss_events_v2 RENAME TO pss_events", [])?;
+        } else if v2_exists && !pss_events_exists {
+            // No conflict, just rename
+            conn.execute("ALTER TABLE pss_events_v2 RENAME TO pss_events", [])?;
+        } else {
+            // Neither needs renaming; proceed to ensure indexes only
         }
-        // 3) Recreate indexes referencing the new table name (best-effort)
+
+        // Best-effort index creation on common columns; avoid tournament_day_id here to support future schema
         let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_events_timestamp ON pss_events(timestamp)", []);
         let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_events_match ON pss_events(match_id, round_id)", []);
         let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_events_session ON pss_events(session_id, event_sequence)", []);
         let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_events_created_at ON pss_events(created_at)", []);
-        let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_events_tournament ON pss_events(tournament_id, tournament_day_id)", []);
         Ok(())
     }
     fn down(&self, conn: &Connection) -> SqliteResult<()> {

@@ -1194,7 +1194,6 @@ impl PssUdpOperations {
         conn: &Connection,
         match_db_id: i64,
         tournament_id: Option<i64>,
-        _tournament_day_id: Option<i64>,
     ) -> DatabaseResult<()> {
         conn.execute(
             "UPDATE pss_matches SET 
@@ -1266,10 +1265,10 @@ impl PssUdpOperations {
         Ok(n)
     }
 
-    // (removed) Backfill pss_events_v2 from matches; prefer purge strategy
+    // (removed) Backfill pss_events from matches; prefer purge strategy
     pub fn backfill_events_tournament_from_matches(conn: &mut Connection) -> DatabaseResult<usize> {
         let sql = r#"
-            UPDATE pss_events_v2 AS e
+            UPDATE pss_events AS e
             SET 
                 tournament_id = COALESCE(
                     e.tournament_id,
@@ -1666,12 +1665,12 @@ impl PssEventStatusOperations {
         let tx = conn.transaction()?;
         
         let event_id = tx.execute(
-            "INSERT INTO pss_events_v2 (
+            "INSERT INTO pss_events (
                 session_id, match_id, round_id, event_type_id, timestamp, raw_data, 
                 parsed_data, event_sequence, processing_time_ms, is_valid, error_message,
                 recognition_status, protocol_version, parser_confidence, validation_errors,
-                tournament_id, tournament_day_id, created_at, created
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, strftime('%s','now'))",
+                tournament_id, created_at, created
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, strftime('%s','now'))",
             params![
                 event.session_id,
                 event.match_id,
@@ -1688,7 +1687,6 @@ impl PssEventStatusOperations {
                 event.protocol_version,
                 event.parser_confidence,
                 event.validation_errors,
-                event.tournament_id,
                 event.tournament_id,
                 event.created_at.to_rfc3339()
             ]
@@ -2058,7 +2056,7 @@ impl PssEventStatusOperations {
             "SELECT id, session_id, match_id, round_id, event_type_id, timestamp, raw_data,
                     parsed_data, event_sequence, processing_time_ms, is_valid, error_message,
                     recognition_status, protocol_version, parser_confidence, validation_errors, created_at
-             FROM pss_events_v2 
+             FROM pss_events 
              WHERE session_id = ? AND recognition_status = ?
              ORDER BY created_at DESC
              LIMIT ?"
@@ -2093,7 +2091,7 @@ impl PssEventStatusOperations {
                 AVG(processing_time_ms) as avg_processing_time,
                 MIN(processing_time_ms) as min_processing_time,
                 MAX(processing_time_ms) as max_processing_time
-            FROM pss_events_v2 
+            FROM pss_events 
             WHERE session_id = ?",
             params![session_id],
             |row| {
@@ -2122,7 +2120,7 @@ impl PssEventStatusOperations {
                 SUM(CASE WHEN e.recognition_status = 'partial' THEN 1 ELSE 0 END) as partial,
                 AVG(e.parser_confidence) as avg_confidence,
                 AVG(e.processing_time_ms) as avg_processing_time
-            FROM pss_events_v2 e
+            FROM pss_events e
             JOIN pss_event_types et ON e.event_type_id = et.id
             WHERE e.session_id = ?
             GROUP BY et.id, et.event_code, et.event_name
@@ -2152,7 +2150,7 @@ impl PssEventStatusOperations {
             "SELECT 
                 validation_errors,
                 COUNT(*) as count
-            FROM pss_events_v2 
+            FROM pss_events 
             WHERE session_id = ? AND validation_errors IS NOT NULL
             GROUP BY validation_errors
             ORDER BY count DESC
@@ -2311,53 +2309,53 @@ impl DataArchivalOperations {
     pub fn archive_old_events(conn: &mut rusqlite::Connection, days_old: i64) -> DatabaseResult<usize> {
         let start_time = std::time::Instant::now();
         
-        // Create archive table if it doesn't exist
+        // Create archive table if it doesn't exist (schema mirrors pss_events)
         conn.execute(
-            "CREATE TABLE IF NOT EXISTS pss_events_v2_archive (
+            "CREATE TABLE IF NOT EXISTS pss_events_archive (
                 id INTEGER PRIMARY KEY,
                 session_id INTEGER NOT NULL,
                 match_id INTEGER,
+                round_id INTEGER,
                 event_type_id INTEGER NOT NULL,
-                event_code TEXT NOT NULL,
-                event_data TEXT,
-                raw_data TEXT,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                tournament_id INTEGER,
-                tournament_day_id INTEGER,
-                recognition_status TEXT DEFAULT 'recognized',
-                protocol_version TEXT DEFAULT '2.3',
-                parser_confidence INTEGER DEFAULT 100,
+                timestamp TEXT NOT NULL,
+                raw_data TEXT NOT NULL,
+                parsed_data TEXT,
+                event_sequence INTEGER,
+                processing_time_ms INTEGER,
+                is_valid BOOLEAN NOT NULL,
+                error_message TEXT,
+                recognition_status TEXT NOT NULL,
+                protocol_version TEXT,
+                parser_confidence REAL,
                 validation_errors TEXT,
-                processing_time_ms INTEGER
+                tournament_id TEXT,
+                created_at TEXT,
+                created INTEGER
             )",
             [],
         )?;
 
         // Create indices for archive table
         conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_archive_session_id ON pss_events_v2_archive(session_id)",
+            "CREATE INDEX IF NOT EXISTS idx_archive_session_id ON pss_events_archive(session_id)",
             [],
         )?;
         conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_archive_created_at ON pss_events_v2_archive(created_at)",
-            [],
-        )?;
-        conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_archive_tournament ON pss_events_v2_archive(tournament_id, tournament_day_id)",
+            "CREATE INDEX IF NOT EXISTS idx_archive_created_at ON pss_events_archive(created_at)",
             [],
         )?;
 
         // Archive events older than specified days
         let archived_count = conn.execute(
-            "INSERT INTO pss_events_v2_archive 
-             SELECT * FROM pss_events_v2 
+            "INSERT INTO pss_events_archive 
+             SELECT * FROM pss_events 
              WHERE created_at < datetime('now', '-{} days')",
             [days_old],
         )?;
 
         // Delete archived events from main table
         let deleted_count = conn.execute(
-            "DELETE FROM pss_events_v2 
+            "DELETE FROM pss_events 
              WHERE created_at < datetime('now', '-{} days')",
             [days_old],
         )?;
@@ -2367,7 +2365,7 @@ impl DataArchivalOperations {
             "INSERT INTO pss_event_details_archive 
              SELECT * FROM pss_event_details 
              WHERE event_id IN (
-                 SELECT id FROM pss_events_v2_archive 
+                 SELECT id FROM pss_events_archive 
                  WHERE created_at < datetime('now', '-{} days')
              )",
             [days_old],
@@ -2377,7 +2375,7 @@ impl DataArchivalOperations {
         let deleted_details = conn.execute(
             "DELETE FROM pss_event_details 
              WHERE event_id IN (
-                 SELECT id FROM pss_events_v2_archive 
+                 SELECT id FROM pss_events_archive 
                  WHERE created_at < datetime('now', '-{} days')
              )",
             [days_old],
@@ -2399,7 +2397,7 @@ impl DataArchivalOperations {
     /// Get archive statistics
     pub fn get_archive_statistics(conn: &rusqlite::Connection) -> DatabaseResult<ArchiveStatistics> {
         let archived_events = conn.query_row(
-            "SELECT COUNT(*) FROM pss_events_v2_archive",
+            "SELECT COUNT(*) FROM pss_events_archive",
             [],
             |row| row.get(0),
         )?;
@@ -2411,19 +2409,19 @@ impl DataArchivalOperations {
         )?;
 
         let oldest_archived = conn.query_row(
-            "SELECT MIN(created_at) FROM pss_events_v2_archive",
+            "SELECT MIN(created_at) FROM pss_events_archive",
             [],
             |row| row.get::<_, Option<String>>(0),
         )?;
 
         let newest_archived = conn.query_row(
-            "SELECT MAX(created_at) FROM pss_events_v2_archive",
+            "SELECT MAX(created_at) FROM pss_events_archive",
             [],
             |row| row.get::<_, Option<String>>(0),
         )?;
 
         let archive_size = conn.query_row(
-            "SELECT SUM(length(raw_data)) FROM pss_events_v2_archive",
+            "SELECT SUM(length(raw_data)) FROM pss_events_archive",
             [],
             |row| row.get::<_, Option<i64>>(0),
         )?;
@@ -2447,8 +2445,8 @@ impl DataArchivalOperations {
 
         // Restore events from archive
         let restored_events = conn.execute(
-            "INSERT INTO pss_events_v2 
-             SELECT * FROM pss_events_v2_archive 
+            "INSERT INTO pss_events 
+             SELECT * FROM pss_events_archive 
              WHERE created_at BETWEEN ? AND ?",
             [start_date, end_date],
         )?;
@@ -2466,7 +2464,7 @@ impl DataArchivalOperations {
 
         // Remove restored events from archive
         let _removed_from_archive = conn.execute(
-            "DELETE FROM pss_events_v2_archive 
+            "DELETE FROM pss_events_archive 
              WHERE created_at BETWEEN ? AND ?",
             [start_date, end_date],
         )?;
@@ -2488,7 +2486,7 @@ impl DataArchivalOperations {
 
         // Delete old archived events
         let deleted_events = conn.execute(
-            "DELETE FROM pss_events_v2_archive 
+            "DELETE FROM pss_events_archive 
              WHERE created_at < datetime('now', '-{} days')",
             [days_old],
         )?;
@@ -2496,7 +2494,7 @@ impl DataArchivalOperations {
         // Delete old archived event details
         let deleted_details = conn.execute(
             "DELETE FROM pss_event_details_archive 
-             WHERE event_id NOT IN (SELECT id FROM pss_events_v2_archive)",
+             WHERE event_id NOT IN (SELECT id FROM pss_events_archive)",
             [],
         )?;
 
@@ -2516,15 +2514,15 @@ impl DataArchivalOperations {
         log::info!("🔧 Optimizing archive tables...");
 
         // VACUUM archive tables
-        conn.execute("VACUUM pss_events_v2_archive", [])?;
+        conn.execute("VACUUM pss_events_archive", [])?;
         conn.execute("VACUUM pss_event_details_archive", [])?;
 
         // Analyze tables for better query planning
-        conn.execute("ANALYZE pss_events_v2_archive", [])?;
+        conn.execute("ANALYZE pss_events_archive", [])?;
         conn.execute("ANALYZE pss_event_details_archive", [])?;
 
         // Optimize indices
-        conn.execute("REINDEX pss_events_v2_archive", [])?;
+        conn.execute("REINDEX pss_events_archive", [])?;
         conn.execute("REINDEX pss_event_details_archive", [])?;
 
         log::info!("✅ Archive tables optimized successfully");

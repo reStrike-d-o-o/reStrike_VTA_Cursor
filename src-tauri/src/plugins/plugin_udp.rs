@@ -189,7 +189,7 @@ pub struct UdpServer {
     recent_hit_levels: Arc<Mutex<std::collections::HashMap<u8, Vec<(u8, std::time::SystemTime)>>>>, // athlete -> [(level, timestamp)]
     // Tournament context tracking
     current_tournament_id: Arc<Mutex<Option<i64>>>,
-    current_tournament_day_id: Arc<Mutex<Option<i64>>>,
+    
     // Phase 1 Optimization: Event batching for high-volume processing
     event_batch: Arc<Mutex<Vec<PssEvent>>>,
     batch_processor_task: Arc<Mutex<Option<tokio::task::JoinHandle<()>>>>,
@@ -244,7 +244,7 @@ impl UdpServer {
             listener_task: Arc::new(Mutex::new(None)),
             recent_hit_levels: Arc::new(Mutex::new(std::collections::HashMap::new())),
             current_tournament_id: Arc::new(Mutex::new(None)),
-            current_tournament_day_id: Arc::new(Mutex::new(None)),
+            
             event_batch: Arc::new(Mutex::new(Vec::new())),
             batch_processor_task: Arc::new(Mutex::new(None)),
             batch_tx,
@@ -281,7 +281,7 @@ impl UdpServer {
             listener_task: self.listener_task.clone(),
             recent_hit_levels: self.recent_hit_levels.clone(),
             current_tournament_id: self.current_tournament_id.clone(),
-            current_tournament_day_id: self.current_tournament_day_id.clone(),
+            
             event_batch: self.event_batch.clone(),
             batch_processor_task: self.batch_processor_task.clone(),
             batch_tx: mpsc::unbounded_channel().0, // Dummy channel for clone
@@ -351,7 +351,7 @@ impl UdpServer {
         let event_type_cache = server.event_type_cache.clone();
         let recent_hit_levels = server.recent_hit_levels.clone();
         let current_tournament_id = server.current_tournament_id.clone();
-        let current_tournament_day_id = server.current_tournament_day_id.clone();
+        
         
         // Process events in parallel within the batch
         let mut tasks = Vec::new();
@@ -363,7 +363,7 @@ impl UdpServer {
             let event_type_clone = event_type_cache.clone();
             let hit_levels_clone = recent_hit_levels.clone();
             let tournament_clone = current_tournament_id.clone();
-            let tournament_day_clone = current_tournament_day_id.clone();
+            
             let websocket_server_clone = server.websocket_server.clone();
             
             let task = tokio::spawn(async move {
@@ -376,7 +376,6 @@ impl UdpServer {
                     &event,
                     &hit_levels_clone,
                     &tournament_clone,
-                    &tournament_day_clone,
                     &websocket_server_clone,
                 ).await
             });
@@ -551,7 +550,7 @@ impl UdpServer {
         let event_type_cache_clone = self.event_type_cache.clone();
         let recent_hit_levels_clone = self.recent_hit_levels.clone();
         let tournament_id_clone = self.current_tournament_id.clone();
-        let tournament_day_id_clone = self.current_tournament_day_id.clone();
+        
         let websocket_server_clone = self.websocket_server.clone();
 
         let listener_task = tokio::spawn(async move {
@@ -569,7 +568,6 @@ impl UdpServer {
                 event_type_cache_clone,
                 recent_hit_levels_clone,
                 tournament_id_clone,
-                tournament_day_id_clone,
                 websocket_server_clone,
             ).await;
         });
@@ -707,7 +705,6 @@ impl UdpServer {
         event: &PssEvent,
         recent_hit_levels: &Arc<Mutex<std::collections::HashMap<u8, Vec<(u8, std::time::SystemTime)>>>>,
         current_tournament_id: &Arc<Mutex<Option<i64>>>,
-        current_tournament_day_id: &Arc<Mutex<Option<i64>>>,
         websocket_server: &Arc<WebSocketServer>,
     ) -> AppResult<()> {
         let start_time = Instant::now();
@@ -740,13 +737,11 @@ impl UdpServer {
 
                         // Apply tournament context if available
                         let tid_opt = { current_tournament_id.lock().unwrap().clone() };
-                        let day_opt = { current_tournament_day_id.lock().unwrap().clone() };
-                        if tid_opt.is_some() || day_opt.is_some() {
+                        if tid_opt.is_some() {
                             let _ = crate::database::operations::PssUdpOperations::set_pss_match_tournament_context(
                                 conn,
                                 new_id,
                                 tid_opt,
-                                day_opt,
                             );
                         }
                     }
@@ -774,13 +769,11 @@ impl UdpServer {
 
                             // Apply tournament context if available
                             let tid_opt = { current_tournament_id.lock().unwrap().clone() };
-                            let day_opt = { current_tournament_day_id.lock().unwrap().clone() };
-                            if tid_opt.is_some() || day_opt.is_some() {
+                            if tid_opt.is_some() {
                                 let _ = crate::database::operations::PssUdpOperations::set_pss_match_tournament_context(
                                     conn,
                                     db_match_id,
                                     tid_opt,
-                                    day_opt,
                                 );
                             }
                         }
@@ -859,13 +852,11 @@ impl UdpServer {
                     if let Ok(conn_guard) = database.get_connection().await {
                         let conn = &*conn_guard;
                         let tid_opt = { current_tournament_id.lock().unwrap().clone() };
-                        let day_opt = { current_tournament_day_id.lock().unwrap().clone() };
-                        if tid_opt.is_some() || day_opt.is_some() {
+                        if tid_opt.is_some() {
                             let _ = crate::database::operations::PssUdpOperations::set_pss_match_tournament_context(
                                 conn,
                                 db_match_id,
                                 tid_opt,
-                                day_opt,
                             );
                         }
                     }
@@ -1037,7 +1028,6 @@ impl UdpServer {
             event_type_cache,
             database,
             current_tournament_id,
-            current_tournament_day_id,
         ).await?;
         
         // Store event in database only when session and match context are valid
@@ -1128,7 +1118,6 @@ impl UdpServer {
         event_type_cache: &Arc<Mutex<std::collections::HashMap<String, i64>>>,
         database: &DatabasePlugin,
         current_tournament_id: &Arc<Mutex<Option<i64>>>,
-        current_tournament_day_id: &Arc<Mutex<Option<i64>>>,
     ) -> AppResult<DbPssEvent> {
         // Get event type ID
         let event_code = Self::get_event_code(event);
@@ -1176,11 +1165,6 @@ impl UdpServer {
         let _tournament_id = {
             let tournament_guard = current_tournament_id.lock().unwrap();
             *tournament_guard
-        };
-
-        let _tournament_day_id = {
-            let tournament_day_guard = current_tournament_day_id.lock().unwrap();
-            *tournament_day_guard
         };
 
         // Create database event model
@@ -1571,7 +1555,6 @@ impl UdpServer {
         event_type_cache: Arc<Mutex<std::collections::HashMap<String, i64>>>,
         recent_hit_levels: Arc<Mutex<std::collections::HashMap<u8, Vec<(u8, std::time::SystemTime)>>>>,
         tournament_id: Arc<Mutex<Option<i64>>>,
-        tournament_day_id: Arc<Mutex<Option<i64>>>,
         websocket_server: Arc<WebSocketServer>,
     ) {
         println!("🎯 UDP PSS Server listening loop started (async)");
@@ -1666,7 +1649,6 @@ impl UdpServer {
                             let event_type_cache_clone = event_type_cache.clone();
                             let recent_hit_levels_clone = recent_hit_levels.clone();
                             let tournament_id_clone = tournament_id.clone();
-                            let tournament_day_id_clone = tournament_day_id.clone();
                             let websocket_server_clone = websocket_server.clone();
                             tokio::spawn(async move {
                                 if let Err(e) = Self::store_event_in_database(
@@ -1678,8 +1660,6 @@ impl UdpServer {
                                     &event_clone,
                                     &recent_hit_levels_clone,
                                     &tournament_id_clone,
-                                    &tournament_day_id_clone,
-                                    // Note: WebSocket broadcast already done
                                     &websocket_server_clone,
                                 ).await {
                                     log::error!("Failed to store event in database: {}", e);
@@ -2402,39 +2382,29 @@ impl UdpServer {
     }
 
     /// Set the current tournament context for event tracking
-    pub async fn set_tournament_context(&self, tournament_id: Option<i64>, tournament_day_id: Option<i64>) -> AppResult<()> {
+    pub async fn set_tournament_context(&self, tournament_id: Option<i64>) -> AppResult<()> {
         {
             let mut tournament_guard = self.current_tournament_id.lock().unwrap();
             *tournament_guard = tournament_id;
         }
         
-        {
-            let mut tournament_day_guard = self.current_tournament_day_id.lock().unwrap();
-            *tournament_day_guard = tournament_day_id;
-        }
-        
-        log::info!("🎯 Tournament context set: tournament_id={:?}, tournament_day_id={:?}", tournament_id, tournament_day_id);
+        log::info!("🎯 Tournament context set: tournament_id={:?}", tournament_id);
         Ok(())
     }
 
     /// Get the current tournament context
-    pub fn get_tournament_context(&self) -> (Option<i64>, Option<i64>) {
+    pub fn get_tournament_context(&self) -> Option<i64> {
         let tournament_id = {
             let guard = self.current_tournament_id.lock().unwrap();
             *guard
         };
         
-        let tournament_day_id = {
-            let guard = self.current_tournament_day_id.lock().unwrap();
-            *guard
-        };
-        
-        (tournament_id, tournament_day_id)
+        tournament_id
     }
 
     /// Clear tournament context
     pub async fn clear_tournament_context(&self) -> AppResult<()> {
-        self.set_tournament_context(None, None).await
+        self.set_tournament_context(None).await
     }
 }
 

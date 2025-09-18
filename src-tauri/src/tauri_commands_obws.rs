@@ -1498,7 +1498,7 @@ pub async fn obs_obws_apply_path_decision(
             .map_err(|e| TauriError::from(anyhow::anyhow!(format!("start_tournament_day: {}", e))))?;
         // Update UDP/tournament context so subsequent events carry these IDs
         app.udp_plugin()
-            .set_tournament_context(Some(tid), Some(day_id))
+            .set_tournament_context(Some(tid))
             .await
             .map_err(|e| TauriError::from(anyhow::anyhow!(format!("set_tournament_context: {}", e))))?;
     }
