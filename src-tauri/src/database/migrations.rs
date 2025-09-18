@@ -1004,7 +1004,7 @@ impl Migration for Migration4 {
         
         // Enhanced pss_events table with normalized relationships
         conn.execute(
-            "CREATE TABLE IF NOT EXISTS pss_events_v2 (
+            "CREATE TABLE IF NOT EXISTS pss_events (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 session_id INTEGER NOT NULL,
                 match_id INTEGER,
@@ -1035,7 +1035,7 @@ impl Migration for Migration4 {
                 detail_value TEXT,
                 detail_type TEXT NOT NULL, -- string, integer, float, boolean, json
                 created_at TEXT NOT NULL,
-                FOREIGN KEY (event_id) REFERENCES pss_events_v2(id),
+                FOREIGN KEY (event_id) REFERENCES pss_events(id),
                 UNIQUE(event_id, detail_key)
             )",
             [],
@@ -1097,17 +1097,17 @@ impl Migration for Migration4 {
         )?;
         
         conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_pss_events_v2_timestamp ON pss_events_v2(timestamp)",
+            "CREATE INDEX IF NOT EXISTS idx_pss_events_timestamp ON pss_events(timestamp)",
             [],
         )?;
         
         conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_pss_events_v2_match ON pss_events_v2(match_id, round_id)",
+            "CREATE INDEX IF NOT EXISTS idx_pss_events_match ON pss_events(match_id, round_id)",
             [],
         )?;
         
         conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_pss_events_v2_session ON pss_events_v2(session_id, event_sequence)",
+            "CREATE INDEX IF NOT EXISTS idx_pss_events_session ON pss_events(session_id, event_sequence)",
             [],
         )?;
         
@@ -1198,7 +1198,7 @@ impl Migration for Migration4 {
         conn.execute("DROP TABLE IF EXISTS pss_warnings", [])?;
         conn.execute("DROP TABLE IF EXISTS pss_scores", [])?;
         conn.execute("DROP TABLE IF EXISTS pss_event_details", [])?;
-        conn.execute("DROP TABLE IF EXISTS pss_events_v2", [])?;
+        conn.execute("DROP TABLE IF EXISTS pss_events", [])?;
         conn.execute("DROP TABLE IF EXISTS pss_rounds", [])?;
         conn.execute("DROP TABLE IF EXISTS pss_match_athletes", [])?;
         conn.execute("DROP TABLE IF EXISTS pss_athletes", [])?;
@@ -1270,7 +1270,7 @@ impl Migration for Migration5 {
         )?;
         
         conn.execute(
-            "ALTER TABLE pss_events_v2 ADD COLUMN tournament_id INTEGER REFERENCES tournaments(id)",
+            "ALTER TABLE pss_events ADD COLUMN tournament_id INTEGER REFERENCES tournaments(id)",
             [],
         )?;
         
@@ -1291,7 +1291,7 @@ impl Migration for Migration5 {
         )?;
         
         conn.execute(
-            "ALTER TABLE pss_events_v2 ADD COLUMN tournament_day_id INTEGER REFERENCES tournament_days(id)",
+            "ALTER TABLE pss_events ADD COLUMN tournament_day_id INTEGER REFERENCES tournament_days(id)",
             [],
         )?;
         
@@ -1332,7 +1332,7 @@ impl Migration for Migration5 {
         )?;
         
         conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_pss_events_v2_tournament ON pss_events_v2(tournament_id)",
+            "CREATE INDEX IF NOT EXISTS idx_pss_events_tournament ON pss_events(tournament_id)",
             [],
         )?;
         
@@ -1362,7 +1362,7 @@ impl Migration for Migration5 {
         conn.execute("DROP INDEX IF EXISTS idx_tournament_days_tournament", [])?;
         conn.execute("DROP INDEX IF EXISTS idx_tournament_days_status", [])?;
         conn.execute("DROP INDEX IF EXISTS idx_pss_matches_tournament", [])?;
-        conn.execute("DROP INDEX IF EXISTS idx_pss_events_v2_tournament", [])?;
+        conn.execute("DROP INDEX IF EXISTS idx_pss_events_tournament", [])?;
         conn.execute("DROP INDEX IF EXISTS idx_pss_scores_tournament", [])?;
         conn.execute("DROP INDEX IF EXISTS idx_pss_warnings_tournament", [])?;
         
@@ -1493,11 +1493,11 @@ impl Migration for Migration7 {
 
     fn up(&self, conn: &Connection) -> SqliteResult<()> {
         // PSS Events indexes
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_events_v2_session_id ON pss_events_v2(session_id)", [])?;
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_events_v2_match_id ON pss_events_v2(match_id)", [])?;
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_events_v2_event_type_id ON pss_events_v2(event_type_id)", [])?;
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_events_v2_timestamp ON pss_events_v2(timestamp)", [])?;
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_events_v2_created_at ON pss_events_v2(created_at)", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_events_session_id ON pss_events(session_id)", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_events_match_id ON pss_events(match_id)", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_events_event_type_id ON pss_events(event_type_id)", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_events_timestamp ON pss_events(timestamp)", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_events_created_at ON pss_events(created_at)", [])?;
 
         // PSS Event Types indexes
         conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_event_types_event_code ON pss_event_types(event_code)", [])?;
@@ -1577,8 +1577,8 @@ impl Migration for Migration7 {
     fn down(&self, conn: &Connection) -> SqliteResult<()> {
         // Drop all indexes
         let indexes = [
-            "idx_pss_events_v2_session_id", "idx_pss_events_v2_match_id", "idx_pss_events_v2_event_type_id",
-            "idx_pss_events_v2_timestamp", "idx_pss_events_v2_created_at", "idx_pss_event_types_event_code",
+            "idx_pss_events_session_id", "idx_pss_events_match_id", "idx_pss_events_event_type_id",
+            "idx_pss_events_timestamp", "idx_pss_events_created_at", "idx_pss_event_types_event_code",
             "idx_pss_event_types_category", "idx_pss_event_types_is_active", "idx_pss_matches_match_id",
             "idx_pss_matches_created_at", "idx_pss_athletes_athlete_code", "idx_pss_athletes_created_at",
             "idx_pss_scores_match_id", "idx_pss_scores_athlete_position", "idx_pss_scores_timestamp",
@@ -1620,25 +1620,25 @@ impl Migration for Migration8 {
     fn up(&self, conn: &Connection) -> SqliteResult<()> {
         // Add recognition_status field to pss_events_v2 table
         conn.execute(
-            "ALTER TABLE pss_events_v2 ADD COLUMN recognition_status TEXT NOT NULL DEFAULT 'recognized' CHECK (recognition_status IN ('recognized', 'unknown', 'partial', 'deprecated'))",
+            "ALTER TABLE pss_events ADD COLUMN recognition_status TEXT NOT NULL DEFAULT 'recognized' CHECK (recognition_status IN ('recognized', 'unknown', 'partial', 'deprecated'))",
             [],
         )?;
 
         // Add protocol_version field to track which protocol version was used for parsing
         conn.execute(
-            "ALTER TABLE pss_events_v2 ADD COLUMN protocol_version TEXT DEFAULT '2.3'",
+            "ALTER TABLE pss_events ADD COLUMN protocol_version TEXT DEFAULT '2.3'",
             [],
         )?;
 
         // Add parser_confidence field to store confidence scores
         conn.execute(
-            "ALTER TABLE pss_events_v2 ADD COLUMN parser_confidence REAL DEFAULT 1.0 CHECK (parser_confidence >= 0.0 AND parser_confidence <= 1.0)",
+            "ALTER TABLE pss_events ADD COLUMN parser_confidence REAL DEFAULT 1.0 CHECK (parser_confidence >= 0.0 AND parser_confidence <= 1.0)",
             [],
         )?;
 
         // Add validation_errors field to store validation error details
         conn.execute(
-            "ALTER TABLE pss_events_v2 ADD COLUMN validation_errors TEXT",
+            "ALTER TABLE pss_events ADD COLUMN validation_errors TEXT",
             [],
         )?;
 
@@ -1655,7 +1655,7 @@ impl Migration for Migration8 {
                 raw_data TEXT NOT NULL,
                 parsed_data TEXT,
                 created_at TEXT NOT NULL,
-                FOREIGN KEY (event_id) REFERENCES pss_events_v2(id) ON DELETE CASCADE
+                FOREIGN KEY (event_id) REFERENCES pss_events(id) ON DELETE CASCADE
             )",
             [],
         )?;
@@ -1707,7 +1707,7 @@ impl Migration for Migration8 {
                 error_message TEXT,
                 validation_time_ms INTEGER,
                 created_at TEXT NOT NULL,
-                FOREIGN KEY (event_id) REFERENCES pss_events_v2(id) ON DELETE CASCADE,
+                FOREIGN KEY (event_id) REFERENCES pss_events(id) ON DELETE CASCADE,
                 FOREIGN KEY (rule_id) REFERENCES pss_event_validation_rules(id) ON DELETE CASCADE
             )",
             [],
@@ -1739,17 +1739,17 @@ impl Migration for Migration8 {
 
         // Create indices for performance
         conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_pss_events_v2_recognition_status ON pss_events_v2(recognition_status)",
+            "CREATE INDEX IF NOT EXISTS idx_pss_events_recognition_status ON pss_events(recognition_status)",
             [],
         )?;
 
         conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_pss_events_v2_protocol_version ON pss_events_v2(protocol_version)",
+            "CREATE INDEX IF NOT EXISTS idx_pss_events_protocol_version ON pss_events(protocol_version)",
             [],
         )?;
 
         conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_pss_events_v2_parser_confidence ON pss_events_v2(parser_confidence)",
+            "CREATE INDEX IF NOT EXISTS idx_pss_events_parser_confidence ON pss_events(parser_confidence)",
             [],
         )?;
 

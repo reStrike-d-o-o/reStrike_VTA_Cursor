@@ -1286,7 +1286,7 @@ impl PssUdpOperations {
     }
 
     // (removed) Optional fallback by date overlap; prefer purge strategy
-    pub fn backfill_events_tournament_by_day_overlap(conn: &mut Connection) -> DatabaseResult<usize> {
+    pub fn backfill_events_tournament_by_day_overlap(_conn: &mut Connection) -> DatabaseResult<usize> {
         // Set tournament_day_id by matching event timestamp to day date when tournament_id known but day missing
         Ok(0)
     }
