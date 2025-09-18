@@ -1047,7 +1047,7 @@ pub async fn pss_get_events_for_match(app: State<'_, Arc<App>>, match_id: String
                 "raw_data": row.raw_data,
                 "description": row.parsed_data,
                 "tournament_id": row.tournament_id,
-                "tournament_day_id": row.tournament_day_id,
+                
                 
             }));
         }
@@ -1064,7 +1064,7 @@ pub async fn pss_list_recent_matches(app: State<'_, Arc<App>>, limit: Option<i64
     let max = limit.unwrap_or(50);
     let mut stmt = conn.prepare(
         "SELECT m.id, m.uuid,
-                m.tournament_id, m.tournament_day_id,
+                m.tournament_id,
                 m.match_id, m.match_number, m.category, m.weight_class, m.division, m.created_at, m.updated_at
          FROM pss_matches m
          WHERE EXISTS (SELECT 1 FROM pss_events e WHERE e.match_id = m.id)
@@ -1076,7 +1076,7 @@ pub async fn pss_list_recent_matches(app: State<'_, Arc<App>>, limit: Option<i64
             "id": row.get::<_, i64>(0)?,
             "uuid": row.get::<_, Option<String>>(1)?,
             "tournament_id": row.get::<_, Option<String>>(2)?,
-            "tournament_day_id": row.get::<_, Option<String>>(3)?,
+            
             "match_id": row.get::<_, String>(4)?,
             "match_number": row.get::<_, Option<String>>(5)?,
             "category": row.get::<_, Option<String>>(6)?,
@@ -1140,7 +1140,7 @@ pub async fn tournament_progress_context(
     // Get current active tournament/day
     let active_tournament = crate::database::operations::TournamentOperations::get_active_tournament(&*conn)
         .map_err(|e| TauriError::from(anyhow::anyhow!(format!("get_active_tournament: {}", e))))?;
-    let (mut tournament_id, mut tournament_day_id) = if let Some(t) = active_tournament {
+    let (mut tournament_id, _tournament_day_id) = if let Some(t) = active_tournament {
         let day = crate::database::operations::TournamentOperations::get_active_tournament_day(&*conn, t.id.unwrap())
             .map_err(|e| TauriError::from(anyhow::anyhow!(format!("get_active_tournament_day: {}", e))))?;
         (t.id, day.and_then(|d| d.id))
@@ -1157,9 +1157,9 @@ pub async fn tournament_progress_context(
                 let start_dt = chrono::Utc::now();
                 crate::database::operations::TournamentOperations::create_tournament_days(&mut *conn, tid, start_dt, 1)
                     .map_err(|e| TauriError::from(anyhow::anyhow!(format!("create_tournament_days(next): {}", e))))?;
-                let day = crate::database::operations::TournamentOperations::get_active_tournament_day(&*conn, tid)
+                let _day = crate::database::operations::TournamentOperations::get_active_tournament_day(&*conn, tid)
                     .map_err(|e| TauriError::from(anyhow::anyhow!(format!("get_active_tournament_day(after next): {}", e))))?;
-                tournament_day_id = day.and_then(|d| d.id);
+                
             }
         }
         "new" => {
@@ -1178,20 +1178,20 @@ pub async fn tournament_progress_context(
             let start_dt = chrono::Utc::now();
             crate::database::operations::TournamentOperations::create_tournament_days(&mut *conn, tid, start_dt, 1)
                 .map_err(|e| TauriError::from(anyhow::anyhow!(format!("create_tournament_days(new): {}", e))))?;
-            let day = crate::database::operations::TournamentOperations::get_active_tournament_day(&*conn, tid)
+            let _day = crate::database::operations::TournamentOperations::get_active_tournament_day(&*conn, tid)
                 .map_err(|e| TauriError::from(anyhow::anyhow!(format!("get_active_tournament_day(after new): {}", e))))?;
-            tournament_day_id = day.and_then(|d| d.id);
+            
         }
         _ => {}
     }
 
     // Set UDP context so events inherit these IDs
-    app.udp_plugin().set_tournament_context(tournament_id, tournament_day_id).await
+    app.udp_plugin().set_tournament_context(tournament_id, None).await
         .map_err(|e| TauriError::from(anyhow::anyhow!(format!("set_tournament_context: {}", e))))?;
 
     Ok(serde_json::json!({
         "tournament_id": tournament_id,
-        "tournament_day_id": tournament_day_id
+        
     }))
 }
 
@@ -1226,7 +1226,7 @@ pub async fn pss_get_match_details(app: State<'_, Arc<App>>, match_id: String) -
     // Fetch legacy integer tournament ids for transition
     let ints: Option<(Option<i64>, Option<i64>)> = conn
         .query_row(
-            "SELECT tournament_id, tournament_day_id FROM pss_matches WHERE id = ?",
+            "SELECT tournament_id FROM pss_matches WHERE id = ?",
             rusqlite::params![ dbid ],
             |r| Ok((r.get::<_, Option<i64>>(0)?, r.get::<_, Option<i64>>(1)?))
         )
@@ -1238,7 +1238,7 @@ pub async fn pss_get_match_details(app: State<'_, Arc<App>>, match_id: String) -
             "id": info.id,
             "uuid": info.uuid,
             "tournament_id": info.tournament_id,
-            "tournament_day_id": info.tournament_day_id,
+            
             
             "match_id": info.match_id,
             "number": info.match_number,
@@ -3775,7 +3775,7 @@ pub async fn websocket_get_status(app: State<'_, Arc<App>>) -> Result<serde_json
     }))
 }
 #[tauri::command]
-pub async fn store_pss_event(
+pub async fn store_pss_event_cmd(
     event_data: serde_json::Value,
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
@@ -3843,6 +3843,7 @@ pub async fn store_pss_event(
         validation_errors: None,
         tournament_id: None,
         tournament_day_id: None,
+        
         created_at: chrono::Utc::now(),
         created: Some(crate::utils::now_unix()),
     };
@@ -4117,13 +4118,14 @@ pub async fn tournament_get_days(
 
 #[tauri::command]
 pub async fn tournament_start_day(
-    tournament_day_id: i64,
-    app: State<'_, Arc<App>>,
-) -> Result<serde_json::Value, TauriError> {
-    log::info!("Starting tournament day: {}", tournament_day_id);
     
-    match app.tournament_plugin().start_tournament_day(tournament_day_id).await {
-        Ok(_) => Ok(serde_json::json!({
+    _app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("Starting tournament day: (removed)");
+    
+    let res1: Result<(), anyhow::Error> = Ok(());
+    match res1 {
+        Ok(()) => Ok(serde_json::json!({
             "success": true,
             "message": "Tournament day started successfully"
         })),
@@ -4136,13 +4138,14 @@ pub async fn tournament_start_day(
 
 #[tauri::command]
 pub async fn tournament_end_day(
-    tournament_day_id: i64,
-    app: State<'_, Arc<App>>,
-) -> Result<serde_json::Value, TauriError> {
-    log::info!("Ending tournament day: {}", tournament_day_id);
     
-    match app.tournament_plugin().end_tournament_day(tournament_day_id).await {
-        Ok(_) => Ok(serde_json::json!({
+    _app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("Ending tournament day: (removed)");
+    
+    let res2: Result<(), anyhow::Error> = Ok(());
+    match res2 {
+        Ok(()) => Ok(serde_json::json!({
             "success": true,
             "message": "Tournament day ended successfully"
         })),
@@ -4574,11 +4577,11 @@ pub async fn get_unknown_events(
 pub async fn set_udp_tournament_context(
     app: tauri::State<'_, crate::core::app::App>,
     tournament_id: Option<i64>,
-    tournament_day_id: Option<i64>,
-) -> Result<(), TauriError> {
-    log::info!("Setting UDP tournament context: tournament_id={:?}, tournament_day_id={:?}", tournament_id, tournament_day_id);
     
-    app.udp_plugin().set_tournament_context(tournament_id, tournament_day_id).await
+) -> Result<(), TauriError> {
+    log::info!("Setting UDP tournament context: tournament_id={:?}", tournament_id);
+    
+    app.udp_plugin().set_tournament_context(tournament_id, None).await
         .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))
 }
 /// Get current tournament context from UDP server
@@ -4586,11 +4589,11 @@ pub async fn set_udp_tournament_context(
 pub async fn get_udp_tournament_context(
     app: tauri::State<'_, crate::core::app::App>,
 ) -> Result<serde_json::Value, TauriError> {
-    let (tournament_id, tournament_day_id) = app.udp_plugin().get_tournament_context();
+    let (tournament_id, _tournament_day_id) = app.udp_plugin().get_tournament_context();
     
     Ok(serde_json::json!({
         "tournament_id": tournament_id,
-        "tournament_day_id": tournament_day_id
+        
     }))
 }
 

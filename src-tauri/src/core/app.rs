@@ -524,7 +524,7 @@ impl App {
                 ws.get_current_match_db_id()
             };
             // Resolve active tournament/day IDs for better indexing
-            let (tid_opt, day_opt) = {
+            let (tid_opt, _day_opt) = {
                 match self.database_plugin().get_connection().await {
                     Ok(conn2) => {
                         use crate::database::operations::TournamentOperations as TOps;
