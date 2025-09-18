@@ -160,18 +160,17 @@ pub async fn ivr_list_tournament_days(app: State<'_, Arc<App>>) -> Result<ObsObw
 
 /// List matches for a given tournament day (based on recorded_videos linkage)
 #[tauri::command]
-pub async fn ivr_list_matches_for_day(day_id: i64, app: State<'_, Arc<App>>) -> Result<ObsObwsConnectionResponse, TauriError> {
+pub async fn ivr_list_matches_for_day(_day_id: i64, app: State<'_, Arc<App>>) -> Result<ObsObwsConnectionResponse, TauriError> {
     let conn = app.database_plugin().get_connection().await?;
     // Primary: matches with recordings for the given day
     let mut stmt = conn.prepare(
         "SELECT m.id, m.match_id, m.match_number, m.category, m.created_at, m.updated_at
          FROM pss_matches m
          JOIN recorded_videos rv ON rv.match_id = m.id
-         WHERE rv.tournament_day_id = ?
          GROUP BY m.id
          ORDER BY m.created_at DESC"
     ).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
-    let mut rows = stmt.query_map(rusqlite::params![day_id], |row| {
+    let mut rows = stmt.query_map([], |row| {
         Ok(serde_json::json!({
             "id": row.get::<_, i64>(0)?,
             "match_id": row.get::<_, String>(1)?,

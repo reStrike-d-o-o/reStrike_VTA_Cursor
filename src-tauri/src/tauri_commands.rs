@@ -1140,11 +1140,11 @@ pub async fn tournament_progress_context(
     // Get current active tournament/day
     let active_tournament = crate::database::operations::TournamentOperations::get_active_tournament(&*conn)
         .map_err(|e| TauriError::from(anyhow::anyhow!(format!("get_active_tournament: {}", e))))?;
-    let (mut tournament_id, _tournament_day_id) = if let Some(t) = active_tournament {
-        let day = crate::database::operations::TournamentOperations::get_active_tournament_day(&*conn, t.id.unwrap())
-            .map_err(|e| TauriError::from(anyhow::anyhow!(format!("get_active_tournament_day: {}", e))))?;
-        (t.id, day.and_then(|d| d.id))
-    } else { (None, None) };
+    let mut tournament_id = if let Some(t) = active_tournament {
+        Some(t.id.unwrap_or_default())
+    } else {
+        None
+    };
 
     match mode.to_lowercase().as_str() {
         "continue" => {
@@ -3774,7 +3774,6 @@ pub async fn websocket_get_status(app: State<'_, Arc<App>>) -> Result<serde_json
         "status": "running"
     }))
 }
-#[tauri::command]
 pub async fn store_pss_event_cmd(
     event_data: serde_json::Value,
     app: State<'_, Arc<App>>,
@@ -4576,7 +4575,6 @@ pub async fn get_unknown_events(
 pub async fn set_udp_tournament_context(
     app: tauri::State<'_, crate::core::app::App>,
     tournament_id: Option<i64>,
-    
 ) -> Result<(), TauriError> {
     log::info!("Setting UDP tournament context: tournament_id={:?}", tournament_id);
     
