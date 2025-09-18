@@ -273,7 +273,7 @@ impl TournamentPlugin {
         
         // Get total events
         let total_events: i64 = conn.query_row(
-            "SELECT COUNT(*) FROM pss_events_v2 WHERE tournament_id = (SELECT uuid FROM tournaments WHERE id = ?)",
+            "SELECT COUNT(*) FROM pss_events WHERE tournament_id = (SELECT uuid FROM tournaments WHERE id = ?)",
             params![tournament_id],
             |row| row.get(0)
         ).unwrap_or(0);

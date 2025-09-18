@@ -8,15 +8,15 @@ pub async fn validate_tournament_pss_integrity(app: State<'_, Arc<App>>) -> Resu
     let c_tournaments = counts("SELECT COUNT(*) FROM tournaments");
     let c_days = counts("SELECT COUNT(*) FROM tournament_days");
     let c_matches = counts("SELECT COUNT(*) FROM pss_matches");
-    let c_events = counts("SELECT COUNT(*) FROM pss_events_v2");
+    let c_events = counts("SELECT COUNT(*) FROM pss_events");
     let c_vids = counts("SELECT COUNT(*) FROM recorded_videos");
     let c_links = counts("SELECT COUNT(*) FROM recorded_video_events");
     // Orphans
     let orphan_matches = counts("SELECT COUNT(*) FROM pss_matches m LEFT JOIN tournaments t ON t.id = m.tournament_id WHERE m.tournament_id IS NOT NULL AND t.id IS NULL");
-    let orphan_events = counts("SELECT COUNT(*) FROM pss_events_v2 e LEFT JOIN pss_matches m ON m.id = e.match_id WHERE e.match_id IS NOT NULL AND m.id IS NULL");
+    let orphan_events = counts("SELECT COUNT(*) FROM pss_events e LEFT JOIN pss_matches m ON m.id = e.match_id WHERE e.match_id IS NOT NULL AND m.id IS NULL");
     let orphan_vids = counts("SELECT COUNT(*) FROM recorded_videos rv LEFT JOIN pss_matches m ON m.id = rv.match_id WHERE rv.match_id IS NOT NULL AND m.id IS NULL");
     // Missing context
-    let events_missing_ctx = counts("SELECT COUNT(*) FROM pss_events_v2 WHERE tournament_id IS NULL OR tournament_day_id IS NULL");
+    let events_missing_ctx = counts("SELECT COUNT(*) FROM pss_events WHERE tournament_id IS NULL OR tournament_day_id IS NULL");
     let matches_missing_ctx = counts("SELECT COUNT(*) FROM pss_matches WHERE tournament_id IS NULL OR tournament_day_id IS NULL");
     Ok(serde_json::json!({
         "counts": {"tournaments": c_tournaments, "days": c_days, "matches": c_matches, "events": c_events, "videos": c_vids, "video_links": c_links},
@@ -1067,7 +1067,7 @@ pub async fn pss_list_recent_matches(app: State<'_, Arc<App>>, limit: Option<i64
                 m.tournament_id, m.tournament_day_id,
                 m.match_id, m.match_number, m.category, m.weight_class, m.division, m.created_at, m.updated_at
          FROM pss_matches m
-         WHERE EXISTS (SELECT 1 FROM pss_events_v2 e WHERE e.match_id = m.id)
+         WHERE EXISTS (SELECT 1 FROM pss_events e WHERE e.match_id = m.id)
          ORDER BY m.created_at DESC
          LIMIT ?"
     ).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
@@ -1101,7 +1101,7 @@ pub async fn pss_clear_all_data(app: State<'_, Arc<App>>) -> Result<serde_json::
     // Delete in child->parent order
     tx.execute("DELETE FROM pss_event_details", [])
         .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
-    tx.execute("DELETE FROM pss_events_v2", [])
+    tx.execute("DELETE FROM pss_events", [])
         .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
     tx.execute("DELETE FROM pss_scores", [])
         .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;

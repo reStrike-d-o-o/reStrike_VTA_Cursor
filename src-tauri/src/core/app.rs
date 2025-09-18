@@ -587,7 +587,7 @@ impl App {
             let conn_ref = &*conn_guard;
             let row: (i64, String) = conn_ref
                 .query_row(
-                    "SELECT match_id, timestamp FROM pss_events_v2 WHERE id = ?",
+                    "SELECT match_id, timestamp FROM pss_events WHERE id = ?",
                     rusqlite::params![event_id],
                     |row| Ok((row.get(0)?, row.get(1)?)),
                 )

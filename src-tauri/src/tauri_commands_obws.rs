@@ -296,14 +296,14 @@ pub async fn ivr_open_recorded_video(
     let chosen_event_id = event_id.or(stored_event_id_opt);
     let event_time_opt: Option<chrono::DateTime<chrono::Utc>> = if let Some(eid) = chosen_event_id {
         conn.query_row(
-            "SELECT timestamp FROM pss_events_v2 WHERE id = ?",
+            "SELECT timestamp FROM pss_events WHERE id = ?",
             rusqlite::params![eid],
             |r| r.get::<_, String>(0)
         ).ok().and_then(|s: String| chrono::DateTime::parse_from_rfc3339(&s).ok().map(|dt| dt.with_timezone(&chrono::Utc)))
     } else {
         // Fallback: first event after start_time for this match
         conn.query_row(
-            "SELECT timestamp FROM pss_events_v2 WHERE match_id = ? AND timestamp >= ? ORDER BY timestamp ASC LIMIT 1",
+            "SELECT timestamp FROM pss_events WHERE match_id = ? AND timestamp >= ? ORDER BY timestamp ASC LIMIT 1",
             rusqlite::params![match_id_db, start_time.to_rfc3339()],
             |r| r.get::<_, String>(0)
         ).ok().and_then(|s: String| chrono::DateTime::parse_from_rfc3339(&s).ok().map(|dt| dt.with_timezone(&chrono::Utc)))
@@ -2167,7 +2167,7 @@ pub async fn ivr_import_recorded_videos(
         let _ = conn.execute(
             "INSERT OR IGNORE INTO recorded_video_events (recorded_video_id, event_id, offset_ms, created_at)
              SELECT ?, e.id, CAST((julianday(e.timestamp) - julianday(?)) * 86400000 AS INTEGER), ?
-             FROM pss_events_v2 e WHERE e.match_id = ? AND e.timestamp >= ? AND e.timestamp <= ? ORDER BY e.timestamp ASC",
+             FROM pss_events e WHERE e.match_id = ? AND e.timestamp >= ? AND e.timestamp <= ? ORDER BY e.timestamp ASC",
             rusqlite::params![ rvid, start_time.to_rfc3339(), chrono::Utc::now().to_rfc3339(), match_id, start_time.to_rfc3339(), end_time.to_rfc3339() ]
         );
     }

@@ -828,7 +828,7 @@ impl PssUdpOperations {
     /// Reassign all events from one match to another
     pub fn reassign_events_between_matches(conn: &mut Connection, from_match_id: i64, to_match_id: i64) -> DatabaseResult<usize> {
         let updated = conn.execute(
-            "UPDATE pss_events_v2 SET match_id = ? WHERE match_id = ?",
+            "UPDATE pss_events SET match_id = ? WHERE match_id = ?",
             params![to_match_id, from_match_id],
         )? as usize;
         Ok(updated)
