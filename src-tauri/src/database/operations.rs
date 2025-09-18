@@ -1353,17 +1353,16 @@ impl PssUdpOperations {
         tx.execute("DELETE FROM recorded_video_events", [])?;
         tx.execute("DELETE FROM recorded_videos", [])?;
         tx.execute("DELETE FROM pss_event_details", [])?;
-        tx.execute("DELETE FROM pss_events_v2", [])?;
+        tx.execute("DELETE FROM pss_events", [])?;
         tx.execute("DELETE FROM pss_scores", [])?;
         tx.execute("DELETE FROM pss_warnings", [])?;
         tx.execute("DELETE FROM pss_match_athletes", [])?;
         tx.execute("DELETE FROM pss_rounds", [])?;
         tx.execute("DELETE FROM pss_athletes", [])?;
         tx.execute("DELETE FROM pss_matches", [])?;
-        tx.execute("DELETE FROM tournament_days", [])?;
         tx.execute("DELETE FROM tournaments", [])?;
         // Optional archives if present
-        let _ = tx.execute("DELETE FROM pss_events_v2_archive", []);
+        let _ = tx.execute("DELETE FROM pss_events_archive", []);
         let _ = tx.execute("DELETE FROM pss_event_details_archive", []);
         tx.commit()?;
         Ok(())
