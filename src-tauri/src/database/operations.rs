@@ -3139,17 +3139,16 @@ impl ObsRecordingOperations {
     pub fn create_recording_session(conn: &mut Connection, session: &ObsRecordingSession) -> DatabaseResult<i64> {
         let session_id = conn.execute(
             "INSERT INTO obs_recording_sessions (
-                obs_connection_name, tournament_id, tournament_day_id, match_id, match_number,
+                obs_connection_name, tournament_id, match_id, match_number,
                 player1_name, player1_flag, player2_name, player2_flag, recording_path,
                 recording_filename, recording_start_time, recording_end_time, recording_duration,
                 recording_size_bytes, replay_buffer_start_time, replay_buffer_end_time,
                 replay_buffer_saved, replay_buffer_filename, status, error_message,
                 created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             [
                 &session.obs_connection_name,
                 &session.tournament_id.map(|id| id.to_string()).unwrap_or_default(),
-                &session.tournament_day_id.map(|id| id.to_string()).unwrap_or_default(),
                 &session.match_id.as_deref().unwrap_or("").to_string(),
                 &session.match_number.as_deref().unwrap_or("").to_string(),
                 &session.player1_name.as_deref().unwrap_or("").to_string(),
@@ -3180,7 +3179,7 @@ impl ObsRecordingOperations {
     pub fn update_recording_session(conn: &mut Connection, session_id: i64, session: &ObsRecordingSession) -> DatabaseResult<()> {
         conn.execute(
             "UPDATE obs_recording_sessions SET
-                obs_connection_name = ?, tournament_id = ?, tournament_day_id = ?, match_id = ?, match_number = ?,
+                obs_connection_name = ?, tournament_id = ?, match_id = ?, match_number = ?,
                 player1_name = ?, player1_flag = ?, player2_name = ?, player2_flag = ?, recording_path = ?,
                 recording_filename = ?, recording_start_time = ?, recording_end_time = ?, recording_duration = ?,
                 recording_size_bytes = ?, replay_buffer_start_time = ?, replay_buffer_end_time = ?,
@@ -3189,7 +3188,6 @@ impl ObsRecordingOperations {
             [
                 &session.obs_connection_name,
                 &session.tournament_id.map(|id| id.to_string()).unwrap_or_default(),
-                &session.tournament_day_id.map(|id| id.to_string()).unwrap_or_default(),
                 &session.match_id.as_deref().unwrap_or("").to_string(),
                 &session.match_number.as_deref().unwrap_or("").to_string(),
                 &session.player1_name.as_deref().unwrap_or("").to_string(),
