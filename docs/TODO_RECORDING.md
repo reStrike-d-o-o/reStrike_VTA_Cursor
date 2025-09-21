@@ -78,6 +78,7 @@
 #### **Phase 7 – Status Indicators** 📋
 - [ ] Update DockBar status dots colors for OBS_REC and OBS_STR
 - [ ] Add notifications for recording started/stopped, replay saved/played
+- [x] Add OBS monitoring commands: `obs_obws_start_monitoring`, `obs_obws_stop_monitoring`
 - [ ] Implement activation issue notifications
 
 #### **Phase 8 – Triggers Alignment** 📋

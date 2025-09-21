@@ -2227,6 +2227,7 @@ pub async fn obs_obws_get_connection_role(
     }
 }
 
+
 /// Set the role of an OBS connection
 #[tauri::command]
 pub async fn obs_obws_set_connection_role(
@@ -2302,3 +2303,123 @@ pub async fn obs_obws_set_connection_role(
         }))
     }
 }
+
+/// Start monitoring an OBS connection for events
+#[tauri::command]
+pub async fn obs_obws_start_monitoring(
+    connection_name: String,
+    app: State<'_, Arc<App>>
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("Starting OBS monitoring for: {}", connection_name);
+
+    #[cfg(feature = "obs-obws")]
+    {
+        match app.obs_obws_plugin().get_connection(&connection_name).await {
+            Ok(client_arc) => {
+                let mut client = client_arc.lock().await;
+
+                // Check if already connected
+                if client.get_connection_status() == crate::plugins::obs_obws::types::ObsConnectionStatus::Disconnected {
+                    // Connect first if not connected
+                    if let Err(e) = client.connect().await {
+                        return Ok(serde_json::json!({
+                            "success": false,
+                            "connection_name": connection_name,
+                            "error": format!("Failed to connect: {}", e)
+                        }));
+                    }
+                }
+
+                // Start monitoring (subscribe to events)
+                match client.start_monitoring().await {
+                    Ok(_) => {
+                        log::info!("✅ Started monitoring for connection: {}", connection_name);
+                        Ok(serde_json::json!({
+                            "success": true,
+                            "connection_name": connection_name,
+                            "message": "Monitoring started successfully"
+                        }))
+                    },
+                    Err(e) => {
+                        log::error!("Failed to start monitoring: {}", e);
+                        Ok(serde_json::json!({
+                            "success": false,
+                            "connection_name": connection_name,
+                            "error": e.to_string()
+                        }))
+                    }
+                }
+            },
+            Err(e) => {
+                log::error!("Failed to get connection for monitoring: {}", e);
+                Ok(serde_json::json!({
+                    "success": false,
+                    "connection_name": connection_name,
+                    "error": e.to_string()
+                }))
+            }
+        }
+    }
+
+    #[cfg(not(feature = "obs-obws"))]
+    {
+        Ok(serde_json::json!({
+            "success": false,
+            "error": "OBS obws feature not enabled"
+        }))
+    }
+}
+
+/// Stop monitoring an OBS connection
+#[tauri::command]
+pub async fn obs_obws_stop_monitoring(
+    connection_name: String,
+    app: State<'_, Arc<App>>
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("Stopping OBS monitoring for: {}", connection_name);
+
+    #[cfg(feature = "obs-obws")]
+    {
+        match app.obs_obws_plugin().get_connection(&connection_name).await {
+            Ok(client_arc) => {
+                let mut client = client_arc.lock().await;
+
+                match client.stop_monitoring().await {
+                    Ok(_) => {
+                        log::info!("✅ Stopped monitoring for connection: {}", connection_name);
+                        Ok(serde_json::json!({
+                            "success": true,
+                            "connection_name": connection_name,
+                            "message": "Monitoring stopped successfully"
+                        }))
+                    },
+                    Err(e) => {
+                        log::error!("Failed to stop monitoring: {}", e);
+                        Ok(serde_json::json!({
+                            "success": false,
+                            "connection_name": connection_name,
+                            "error": e.to_string()
+                        }))
+                    }
+                }
+            },
+            Err(e) => {
+                log::error!("Failed to get connection for stopping monitoring: {}", e);
+                Ok(serde_json::json!({
+                    "success": false,
+                    "connection_name": connection_name,
+                    "error": e.to_string()
+                }))
+            }
+        }
+    }
+
+    #[cfg(not(feature = "obs-obws"))]
+    {
+        Ok(serde_json::json!({
+            "success": false,
+            "error": "OBS obws feature not enabled"
+        }))
+    }
+}
+

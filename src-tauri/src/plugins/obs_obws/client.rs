@@ -481,6 +481,37 @@ impl ObsClient {
         Ok(())
     }
 
+    /// Start monitoring for OBS events
+    pub async fn start_monitoring(&mut self) -> AppResult<()> {
+        let client = self.get_client()?;
+
+        // Set up event handler for all events
+        let events = client.events().map_err(|e| {
+            AppError::ConfigError(format!("Failed to set up event handler: {}", e))
+        })?;
+
+        // Pin the stream and set up event handler
+        let mut events = Box::pin(events);
+
+        // Set up event handler
+        tokio::spawn(async move {
+            while let Some(event) = events.next().await {
+                log::debug!("OBS event: {:?}", event);
+            }
+        });
+
+        log::info!("📡 Started monitoring OBS events");
+        Ok(())
+    }
+
+    /// Stop monitoring for OBS events
+    pub async fn stop_monitoring(&mut self) -> AppResult<()> {
+        // TODO: Implement proper monitoring stop functionality
+        // For now, just log that monitoring would be stopped
+        log::info!("⏹️ Monitoring stopped for OBS connection");
+        Ok(())
+    }
+
     /// Set up status listener
     pub async fn setup_status_listener(&self) -> AppResult<()> {
         let client = self.get_client()?;

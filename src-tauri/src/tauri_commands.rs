@@ -5856,15 +5856,27 @@ pub async fn control_room_get_obs_connections_with_details(
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Control Room: Getting OBS connections with full details for session {}", session_id);
     // TODO: Validate session
-    
-    let names = app.obs_obws_plugin().get_connection_names().await;
-    let mut connections_data = Vec::new();
-    for name in names {
-        let status = app.obs_obws_plugin().get_connection_status(&name).await;
-        let status_str = match status { Ok(s) => format!("{:?}", s), Err(e) => format!("Error: {}", e) };
-        connections_data.push(serde_json::json!({"name": name, "status": status_str}));
+
+    match app.obs_obws_plugin().get_connections().await {
+        Ok(connections) => {
+            let connections_data: Vec<serde_json::Value> = connections.into_iter().map(|conn| {
+                serde_json::json!({
+                    "name": conn.name,
+                    "host": conn.host,
+                    "port": conn.port,
+                    "status": format!("{:?}", conn.status),
+                    "role": format!("{:?}", conn.role),
+                    "last_activity": conn.last_activity.map(|dt| dt.to_rfc3339()).unwrap_or_else(|| "Never".to_string())
+                })
+            }).collect();
+
+            Ok(serde_json::json!({"success": true, "connections": connections_data}))
+        },
+        Err(e) => {
+            log::error!("Failed to get OBS connections with details: {}", e);
+            Ok(serde_json::json!({"success": false, "error": e.to_string(), "connections": []}))
+        }
     }
-    Ok(serde_json::json!({"success": true, "connections": connections_data}))
 }
 
 /// Bulk mute all OBS streams
