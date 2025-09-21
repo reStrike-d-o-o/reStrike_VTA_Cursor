@@ -449,10 +449,10 @@ impl ObsManager {
         let client_guard = client.lock().await;
 
         // Get the underlying obws client
-        let obws_client = client_guard.get_client()?;
+        let _obws_client = client_guard.get_client()?;
         // TODO: Implement audio sources functionality when obws supports it
         // For now, return empty list as audio control is not yet supported by obws
-        let sources = Vec::<()>::new();
+        let _sources = Vec::<()>::new();
 
         // Return empty list as audio control is not yet supported by obws
         let obs_sources = Vec::new();

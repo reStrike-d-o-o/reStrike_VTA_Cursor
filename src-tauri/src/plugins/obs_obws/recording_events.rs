@@ -1603,7 +1603,7 @@ impl ObsRecordingEventHandler {
     }
 
     /// Stop recording session (update DB session with end time and duration)
-    async fn stop_recording_session(&self, session_id: i64) -> AppResult<()> {
+    async fn _stop_recording_session(&self, session_id: i64) -> AppResult<()> {
         let mut conn = self.database.get_connection().await?;
         crate::database::operations::ObsRecordingOperations::stop_recording_session(&mut conn, session_id, "completed")?;
 

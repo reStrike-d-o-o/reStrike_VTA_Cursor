@@ -4442,44 +4442,83 @@ impl Migration for Migration40 {
     fn version(&self) -> u32 { 40 }
     fn description(&self) -> &str { "Drop created_at/updated_at TEXT columns from obs_recording_sessions; keep only INTEGER" }
     fn up(&self, conn: &Connection) -> SqliteResult<()> {
-        // Recreate obs_recording_sessions without created_at/updated_at TEXT columns
-        let _ = conn.execute(
-            "CREATE TABLE IF NOT EXISTS _tmp_obs_recording_sessions AS
-             SELECT id, obs_connection_name, tournament_id, match_id, match_number, player1_name, player1_flag, player2_name, player2_flag, recording_path, recording_filename, recording_start_time, recording_end_time, recording_duration, recording_size_bytes, replay_buffer_start_time, replay_buffer_end_time, replay_buffer_saved, replay_buffer_filename, status, error_message, created, updated
-             FROM obs_recording_sessions",
+        // Check if obs_recording_sessions table exists
+        let table_exists: i32 = conn.query_row(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='obs_recording_sessions'",
             [],
-        );
-        let _ = conn.execute("DROP TABLE IF EXISTS obs_recording_sessions", []);
-        conn.execute(
-            "CREATE TABLE obs_recording_sessions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                obs_connection_name TEXT NOT NULL,
-                tournament_id INTEGER,
-                match_id TEXT,
-                match_number TEXT,
-                player1_name TEXT,
-                player1_flag TEXT,
-                player2_name TEXT,
-                player2_flag TEXT,
-                recording_path TEXT NOT NULL,
-                recording_filename TEXT NOT NULL,
-                recording_start_time TEXT,
-                recording_end_time TEXT,
-                recording_duration INTEGER,
-                recording_size_bytes INTEGER,
-                replay_buffer_start_time TEXT,
-                replay_buffer_end_time TEXT,
-                replay_buffer_saved BOOLEAN NOT NULL DEFAULT 0,
-                replay_buffer_filename TEXT,
-                status TEXT NOT NULL DEFAULT 'pending',
-                error_message TEXT,
-                created INTEGER NOT NULL DEFAULT (strftime('%s','now')),
-                updated INTEGER NOT NULL DEFAULT (strftime('%s','now'))
-            )",
-            [],
-        )?;
-        conn.execute("INSERT INTO obs_recording_sessions SELECT * FROM _tmp_obs_recording_sessions", [])?;
-        conn.execute("DROP TABLE IF EXISTS _tmp_obs_recording_sessions", [])?;
+            |row| row.get(0),
+        ).unwrap_or(0);
+
+        if table_exists > 0 {
+            // Recreate obs_recording_sessions without created_at/updated_at TEXT columns
+            let _ = conn.execute(
+                "CREATE TABLE IF NOT EXISTS _tmp_obs_recording_sessions AS
+                 SELECT id, obs_connection_name, tournament_id, match_id, match_number, player1_name, player1_flag, player2_name, player2_flag, recording_path, recording_filename, recording_start_time, recording_end_time, recording_duration, recording_size_bytes, replay_buffer_start_time, replay_buffer_end_time, replay_buffer_saved, replay_buffer_filename, status, error_message, created, updated
+                 FROM obs_recording_sessions",
+                [],
+            );
+            let _ = conn.execute("DROP TABLE IF EXISTS obs_recording_sessions", []);
+            conn.execute(
+                "CREATE TABLE obs_recording_sessions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    obs_connection_name TEXT NOT NULL,
+                    tournament_id INTEGER,
+                    match_id TEXT,
+                    match_number TEXT,
+                    player1_name TEXT,
+                    player1_flag TEXT,
+                    player2_name TEXT,
+                    player2_flag TEXT,
+                    recording_path TEXT NOT NULL,
+                    recording_filename TEXT NOT NULL,
+                    recording_start_time TEXT,
+                    recording_end_time TEXT,
+                    recording_duration INTEGER,
+                    recording_size_bytes INTEGER,
+                    replay_buffer_start_time TEXT,
+                    replay_buffer_end_time TEXT,
+                    replay_buffer_saved BOOLEAN NOT NULL DEFAULT 0,
+                    replay_buffer_filename TEXT,
+                    status TEXT NOT NULL DEFAULT 'pending',
+                    error_message TEXT,
+                    created INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+                    updated INTEGER NOT NULL DEFAULT (strftime('%s','now'))
+                )",
+                [],
+            )?;
+            conn.execute("INSERT INTO obs_recording_sessions SELECT * FROM _tmp_obs_recording_sessions", [])?;
+            conn.execute("DROP TABLE IF EXISTS _tmp_obs_recording_sessions", [])?;
+        } else {
+            // Table doesn't exist, just create it with the new structure
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS obs_recording_sessions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    obs_connection_name TEXT NOT NULL,
+                    tournament_id INTEGER,
+                    match_id TEXT,
+                    match_number TEXT,
+                    player1_name TEXT,
+                    player1_flag TEXT,
+                    player2_name TEXT,
+                    player2_flag TEXT,
+                    recording_path TEXT NOT NULL,
+                    recording_filename TEXT NOT NULL,
+                    recording_start_time TEXT,
+                    recording_end_time TEXT,
+                    recording_duration INTEGER,
+                    recording_size_bytes INTEGER,
+                    replay_buffer_start_time TEXT,
+                    replay_buffer_end_time TEXT,
+                    replay_buffer_saved BOOLEAN NOT NULL DEFAULT 0,
+                    replay_buffer_filename TEXT,
+                    status TEXT NOT NULL DEFAULT 'pending',
+                    error_message TEXT,
+                    created INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+                    updated INTEGER NOT NULL DEFAULT (strftime('%s','now'))
+                )",
+                [],
+            )?;
+        }
 
         // Create index on created for ordering
         conn.execute(
