@@ -1718,6 +1718,7 @@ pub async fn obs_obws_manual_start_recording(
     // Create a manual recording session
     let session = crate::plugins::obs_obws::RecordingSession {
         id: None,
+        db_session_id: None,
         match_id: match_id.clone(),
         match_db_id: None,
         tournament_name: None,

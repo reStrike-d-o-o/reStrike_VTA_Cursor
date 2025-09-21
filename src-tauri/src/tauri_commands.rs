@@ -5906,6 +5906,8 @@ pub async fn control_room_unmute_all_obs(
     // Not supported via obws yet. Return empty results.
     Ok(serde_json::json!({ "success": true, "results": [] }))
 }
+/// Change all OBS scenes to specified scene
+#[tauri::command]
 pub async fn control_room_change_all_obs_scenes(
     session_id: String,
     scene_name: String,

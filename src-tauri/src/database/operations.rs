@@ -1,5 +1,5 @@
 use rusqlite::{Connection, Result as SqliteResult, params, OptionalExtension};
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use crate::database::{
     DatabaseResult,
     DatabaseConnection,
@@ -3235,6 +3235,61 @@ impl ObsRecordingOperations {
             ],
         )?;
 
+        Ok(())
+    }
+
+    /// Start a recording session (set start time and status to recording)
+    pub fn start_recording_session(conn: &mut Connection, session_id: i64) -> DatabaseResult<()> {
+        let now = Utc::now();
+        conn.execute(
+            "UPDATE obs_recording_sessions SET recording_start_time = ?, status = ?, updated = ? WHERE id = ?",
+            [
+                &now.to_rfc3339(),
+                "recording",
+                &crate::utils::now_unix().to_string(),
+                &session_id.to_string(),
+            ],
+        )?;
+
+        log::info!("🎬 Started recording session {} at {}", session_id, now);
+        Ok(())
+    }
+
+    /// Stop a recording session (set end time, calculate duration, and update status)
+    pub fn stop_recording_session(conn: &mut Connection, session_id: i64, status: &str) -> DatabaseResult<()> {
+        let now = Utc::now();
+
+        // First get the start time to calculate duration
+        let start_time: Option<String> = conn.query_row(
+            "SELECT recording_start_time FROM obs_recording_sessions WHERE id = ?",
+            [&session_id.to_string()],
+            |row| row.get(0),
+        ).optional()?;
+
+        let duration_seconds = if let Some(start_time_str) = start_time {
+            if let Ok(start_time) = DateTime::parse_from_rfc3339(&start_time_str) {
+                let start_utc = start_time.with_timezone(&Utc);
+                let duration = now.signed_duration_since(start_utc);
+                duration.num_seconds() as i32
+            } else {
+                0
+            }
+        } else {
+            0
+        };
+
+        conn.execute(
+            "UPDATE obs_recording_sessions SET recording_end_time = ?, recording_duration = ?, status = ?, updated = ? WHERE id = ?",
+            [
+                &now.to_rfc3339(),
+                &duration_seconds.to_string(),
+                status,
+                &crate::utils::now_unix().to_string(),
+                &session_id.to_string(),
+            ],
+        )?;
+
+        log::info!("⏹️ Stopped recording session {} at {} (duration: {}s)", session_id, now, duration_seconds);
         Ok(())
     }
     

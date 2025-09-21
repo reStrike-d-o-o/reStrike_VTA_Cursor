@@ -75,16 +75,16 @@
 #### **Phase 6.2 – Round tracking accuracy** ✅
 - [x] Fix Event Table RND/round counter to avoid regression on clock events; backend stamps `current_round`
 
-#### **Phase 7 – Status Indicators** 📋
-- [ ] Update DockBar status dots colors for OBS_REC and OBS_STR
-- [ ] Add notifications for recording started/stopped, replay saved/played
+#### **Phase 7 – Status Indicators** ✅
+- [x] Update DockBar status dots colors for OBS_REC and OBS_STR
+- [x] Add notifications for recording started/stopped, replay saved/played
 - [x] Add OBS monitoring commands: `obs_obws_start_monitoring`, `obs_obws_stop_monitoring`
 - [ ] Implement activation issue notifications
 
-#### **Phase 8 – Triggers Alignment** 📋
-- [ ] Ensure trigger actions call obws Tauri commands
-- [ ] Remove legacy `plugins::obs` duplicates
-- [ ] Build to confirm compilation success
+#### **Phase 8 – Triggers Alignment** ✅
+- [x] Ensure trigger actions call obws Tauri commands
+- [x] Remove legacy `plugins::obs` duplicates
+- [x] Build to confirm compilation success
 
 #### **Phase 9 – Cleanup + Documentation** 📋
 - [ ] Delete remaining legacy OBS code paths

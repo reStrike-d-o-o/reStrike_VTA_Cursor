@@ -2,6 +2,7 @@
 
 use crate::types::{AppResult, AppState, AppView};
 use crate::plugins::{PlaybackPlugin, UdpPlugin, StorePlugin, LicensePlugin, CpuMonitorPlugin, ProtocolManager, DatabasePlugin, WebSocketPlugin, TournamentPlugin, EventCache, EventStreamProcessor, EventDistributor, AdvancedAnalytics};
+use crate::plugins::plugin_triggers::TriggerPlugin;
 #[cfg(feature = "youtube")]
 use crate::plugins::YouTubeApiPlugin;
 // Legacy ObsPluginManager removed
@@ -43,6 +44,7 @@ pub struct App {
     database_plugin: DatabasePlugin,
     websocket_plugin: Arc<Mutex<WebSocketPlugin>>,
     tournament_plugin: TournamentPlugin,
+    trigger_plugin: Arc<TriggerPlugin>, // Trigger system for PSS events
     log_manager: Arc<Mutex<LogManager>>,
     app_handle: Option<tauri::AppHandle>, // Store app handle for real-time emission
     udp_event_rx: Arc<Mutex<Option<tokio::sync::mpsc::UnboundedReceiver<crate::plugins::plugin_udp::PssEvent>>>>, // Store UDP event receiver
@@ -118,12 +120,22 @@ impl App {
             log::warn!("⚠️ Warning: Failed to initialize protocol manager: {}", e);
         }
         log::info!("✅ Protocol manager plugin initialized");
-        
-        // Initialize database plugin first (needed for UDP plugin)
+
+        // Initialize database plugin first (needed for UDP plugin and trigger plugin)
         let database_plugin = DatabasePlugin::new().await
             .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to initialize database plugin: {}", e)))?;
         log::info!("✅ Database plugin initialized");
-        
+
+        // Initialize trigger plugin (after database plugin)
+        let trigger_plugin = Arc::new(TriggerPlugin::new(
+            database_plugin.get_database_connection(),
+            obs_obws_manager.clone(),
+        ));
+        if let Err(e) = trigger_plugin.initialize().await {
+            log::warn!("⚠️ Warning: Failed to initialize trigger plugin: {}", e);
+        }
+        log::info!("✅ Trigger plugin initialized");
+
         // Initialize recording event handler (after database plugin)
         #[cfg(feature = "obs-obws")]
         let recording_event_handler = Arc::new(ObsRecordingEventHandler::new(
@@ -233,6 +245,7 @@ impl App {
             database_plugin,
             websocket_plugin,
             tournament_plugin,
+            trigger_plugin,
             log_manager,
             app_handle: None, // Will be set when app handle is available
             udp_event_rx: Arc::new(Mutex::new(Some(udp_event_rx))), // Store UDP event receiver for later use
@@ -387,6 +400,11 @@ impl App {
     /// Get tournament plugin reference
     pub fn tournament_plugin(&self) -> &TournamentPlugin {
         &self.tournament_plugin
+    }
+
+    /// Get trigger plugin reference
+    pub fn trigger_plugin(&self) -> &Arc<TriggerPlugin> {
+        &self.trigger_plugin
     }
     
     /// Get log manager reference

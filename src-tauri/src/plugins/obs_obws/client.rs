@@ -172,7 +172,15 @@ impl ObsClient {
         client.replay_buffer().start().await.map_err(|e| {
             AppError::ConfigError(format!("Failed to start replay buffer: {}", e))
         })?;
+
         log::info!("🔄 Replay buffer started");
+
+        // Emit notification for replay started
+        println!("NOTIFICATION:replay_started:{}", serde_json::json!({
+            "connection_name": self.config.name,
+            "timestamp": chrono::Utc::now().to_rfc3339()
+        }));
+
         Ok(())
     }
 
@@ -182,7 +190,15 @@ impl ObsClient {
         client.replay_buffer().stop().await.map_err(|e| {
             AppError::ConfigError(format!("Failed to stop replay buffer: {}", e))
         })?;
+
         log::info!("⏹️ Replay buffer stopped");
+
+        // Emit notification for replay stopped
+        println!("NOTIFICATION:replay_stopped:{}", serde_json::json!({
+            "connection_name": self.config.name,
+            "timestamp": chrono::Utc::now().to_rfc3339()
+        }));
+
         Ok(())
     }
 
@@ -192,7 +208,15 @@ impl ObsClient {
         client.replay_buffer().save().await.map_err(|e| {
             AppError::ConfigError(format!("Failed to save replay buffer: {}", e))
         })?;
+
         log::info!("💾 Replay buffer saved");
+
+        // Emit notification for replay saved
+        println!("NOTIFICATION:replay_saved:{}", serde_json::json!({
+            "connection_name": self.config.name,
+            "timestamp": chrono::Utc::now().to_rfc3339()
+        }));
+
         Ok(())
     }
 

@@ -1,0 +1,2 @@
+"use strict";(self.webpackChunkrestrike_vta_ui=self.webpackChunkrestrike_vta_ui||[]).push([[511],{511:(e,t,i)=>{i.d(t,{open:()=>o});var n=i(133);async function o(){let e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:{};return"object"===typeof e&&Object.freeze(e),await(0,n.invoke)("plugin:dialog|open",{options:e})}}}]);
+//# sourceMappingURL=511.cc4f4cc1.chunk.js.map

@@ -26,6 +26,7 @@ pub enum RecordingState {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RecordingSession {
     pub id: Option<i64>,
+    pub db_session_id: Option<i64>, // Database recording session ID
     pub match_id: String,
     pub match_db_id: Option<i64>,
     pub tournament_name: Option<String>,
@@ -330,6 +331,7 @@ impl ObsRecordingEventHandler {
 
             // Create new recording session
             let session = RecordingSession {
+                db_session_id: None,
                 id: None,
                 match_id: match_id.clone(),
                 match_db_id: None,
@@ -618,7 +620,27 @@ impl ObsRecordingEventHandler {
                 log::info!("🎬 Starting OBS recording...");
                 println!("🎬 Starting OBS recording...");
                 match self.obs_manager.start_recording(Some(&connection_name)).await {
-                    Ok(()) => { log::info!("🎬 Recording started for connection: {}", connection_name); println!("🎬 Recording started for connection: {}", connection_name); },
+                    Ok(()) => {
+                        log::info!("🎬 Recording started for connection: {}", connection_name);
+                        println!("🎬 Recording started for connection: {}", connection_name);
+
+                // Persist recording session start
+                if let Some(session) = self.get_current_session() {
+                    if let Err(e) = self.start_recording_session(&session).await {
+                        log::error!("Failed to persist recording session start: {}", e);
+                    }
+
+                    // Emit notification for recording started
+                    log::info!("📢 Emitting recording_started notification for match {}", session.match_id);
+                    // Note: Window access would need to be passed through or use a different approach
+                    // For now, we'll use println which can be captured by the frontend
+                    println!("NOTIFICATION:recording_started:{}", serde_json::json!({
+                        "match_id": session.match_id,
+                        "connection_name": connection_name,
+                        "timestamp": chrono::Utc::now().to_rfc3339()
+                    }));
+                }
+                    },
                     Err(e) => { log::error!("Failed to start recording via obws: {}", e); println!("Failed to start recording via obws: {}", e); },
                 }
 
@@ -697,6 +719,22 @@ impl ObsRecordingEventHandler {
                     log::error!("Failed to stop recording via obws: {}", e);
                 } else {
                     log::info!("🎬 Recording stop requested for connection: {}", connection_name);
+
+                    // Persist recording session stop
+                    if let Some(session) = self.get_current_session() {
+                        if let Err(e) = self.stop_recording_session_by_match_id(&session.match_id).await {
+                            log::error!("Failed to persist recording session stop: {}", e);
+                        }
+
+                        // Emit notification for recording stopped
+                        log::info!("📢 Emitting recording_stopped notification for match {}", session.match_id);
+                        println!("NOTIFICATION:recording_stopped:{}", serde_json::json!({
+                            "match_id": session.match_id,
+                            "connection_name": connection_name,
+                            "timestamp": chrono::Utc::now().to_rfc3339()
+                        }));
+                    }
+
                     // Wait until OBS reports Stopped (up to 30s), then index
                     let _ = Self::wait_until_recording_stopped(self.obs_manager.clone(), connection_name.clone(), 30).await;
                     let _ = self.index_recording_after_stop().await;
@@ -708,6 +746,7 @@ impl ObsRecordingEventHandler {
                 let db = self.database.clone();
                 // Take a snapshot of the session before spawning to avoid holding a MutexGuard across await
                 let session_snapshot = { self.current_session.lock().unwrap().clone() };
+                let match_id_for_stop = session_snapshot.as_ref().map(|s| s.match_id.clone()).unwrap_or_default();
                 // Abort any previous pending stop
                 if let Some(handle) = self.pending_stop_task.lock().unwrap().take() { handle.abort(); }
                 let handle = tokio::spawn(async move {
@@ -716,6 +755,14 @@ impl ObsRecordingEventHandler {
                         log::error!("Delayed stop: failed to stop recording via obws: {}", e);
                     } else {
                         log::info!("🎬 Delayed stop: stop requested for connection: {}", conn);
+
+                        // Persist recording session stop
+                        if !match_id_for_stop.is_empty() {
+                            if let Err(e) = Self::stop_recording_session_by_match_id_static(db.clone(), &match_id_for_stop).await {
+                                log::error!("Failed to persist delayed recording session stop: {}", e);
+                            }
+                        }
+
                         // Wait until OBS fully stops, then try to index using session handles
                         let _ = Self::wait_until_recording_stopped(mgr.clone(), conn.clone(), 30).await;
                         let _ = Self::index_after_stop_with_snapshot(db.clone(), session_snapshot.clone()).await;
@@ -1478,6 +1525,108 @@ impl ObsRecordingEventHandler {
     pub fn get_current_session(&self) -> Option<RecordingSession> {
         let session_guard = self.current_session.lock().unwrap();
         session_guard.clone()
+    }
+
+    /// Create or update database recording session
+    async fn create_or_update_db_session(&self, session: &RecordingSession) -> AppResult<i64> {
+        let mut conn = self.database.get_connection().await?;
+
+        // Check if session already exists in database
+        let existing_sessions = crate::database::operations::ObsRecordingOperations::get_recording_sessions_for_match(&*conn, &session.match_id)?;
+        let existing_session = existing_sessions.into_iter().next();
+
+        if let Some(db_session) = existing_session {
+            // Update existing session
+            let mut updated_session = db_session.clone();
+
+            // Update fields from in-memory session
+            updated_session.obs_connection_name = session.obs_connection_name.clone().unwrap_or_default();
+            updated_session.tournament_id = session.tournament_id;
+            updated_session.match_id = Some(session.match_id.clone());
+            updated_session.match_number = session.match_number.clone();
+            updated_session.player1_name = session.player1_name.clone();
+            updated_session.player1_flag = session.player1_flag.clone();
+            updated_session.player2_name = session.player2_name.clone();
+            updated_session.player2_flag = session.player2_flag.clone();
+            updated_session.recording_path = session.recording_path.clone().unwrap_or_default();
+            updated_session.recording_filename = session.recording_filename.clone().unwrap_or_default();
+
+            crate::database::operations::ObsRecordingOperations::update_recording_session(&mut conn, db_session.id.unwrap(), &updated_session)?;
+
+            // Store the database session ID in the in-memory session
+            let session_id = db_session.id.unwrap();
+
+            // Update the in-memory session with the database session ID
+            // This would require mutable access to session, but since we can't modify it here,
+            // we'll return the ID and handle it in the calling function
+            Ok(session_id)
+        } else {
+            // Create new session
+            let new_session = crate::database::models::ObsRecordingSession::new(
+                session.obs_connection_name.clone().unwrap_or_default(),
+                session.recording_path.clone().unwrap_or_default(),
+                session.recording_filename.clone().unwrap_or_default(),
+            );
+            let session_id = crate::database::operations::ObsRecordingOperations::create_recording_session(&mut conn, &new_session)?;
+            Ok(session_id)
+        }
+    }
+
+    /// Start recording session (create/update DB session and set start time)
+    async fn start_recording_session(&self, session: &RecordingSession) -> AppResult<i64> {
+        let session_id = self.create_or_update_db_session(session).await?;
+
+        // Set start time in database
+        let mut conn = self.database.get_connection().await?;
+        crate::database::operations::ObsRecordingOperations::start_recording_session(&mut conn, session_id)?;
+
+        log::info!("🎬 Started recording session {} for match {}", session_id, session.match_id);
+        Ok(session_id)
+    }
+
+    /// Stop recording session by match_id (update DB session with end time and duration)
+    async fn stop_recording_session_by_match_id(&self, match_id: &str) -> AppResult<()> {
+        let mut conn = self.database.get_connection().await?;
+
+        // Find the database session by match_id
+        let existing_sessions = crate::database::operations::ObsRecordingOperations::get_recording_sessions_for_match(&*conn, match_id)?;
+        if let Some(db_session) = existing_sessions.into_iter().next() {
+            let session_id = db_session.id.unwrap();
+            crate::database::operations::ObsRecordingOperations::stop_recording_session(&mut conn, session_id, "completed")?;
+
+            log::info!("⏹️ Stopped recording session {} for match {}", session_id, match_id);
+            Ok(())
+        } else {
+            log::warn!("⚠️ No database session found for match {}", match_id);
+            Ok(())
+        }
+    }
+
+    /// Stop recording session (update DB session with end time and duration)
+    async fn stop_recording_session(&self, session_id: i64) -> AppResult<()> {
+        let mut conn = self.database.get_connection().await?;
+        crate::database::operations::ObsRecordingOperations::stop_recording_session(&mut conn, session_id, "completed")?;
+
+        log::info!("⏹️ Stopped recording session {}", session_id);
+        Ok(())
+    }
+
+    /// Stop recording session by match_id (static version for use in async closures)
+    async fn stop_recording_session_by_match_id_static(database: Arc<crate::plugins::plugin_database::DatabasePlugin>, match_id: &str) -> AppResult<()> {
+        let mut conn = database.get_connection().await?;
+
+        // Find the database session by match_id
+        let existing_sessions = crate::database::operations::ObsRecordingOperations::get_recording_sessions_for_match(&*conn, match_id)?;
+        if let Some(db_session) = existing_sessions.into_iter().next() {
+            let session_id = db_session.id.unwrap();
+            crate::database::operations::ObsRecordingOperations::stop_recording_session(&mut conn, session_id, "completed")?;
+
+            log::info!("⏹️ Stopped recording session {} for match {}", session_id, match_id);
+            Ok(())
+        } else {
+            log::warn!("⚠️ No database session found for match {}", match_id);
+            Ok(())
+        }
     }
 
     /// Clear current session

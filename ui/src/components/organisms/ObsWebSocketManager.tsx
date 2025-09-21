@@ -617,7 +617,29 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
     deleteConnection(name);
   };
 
-  const getStatusColor = (status: ObsConnection['status']) => {
+  const getStatusColor = (status: ObsConnection['status'], connectionName?: string) => {
+    // Check for role-specific colors based on connection name
+    if (connectionName) {
+      if (connectionName.includes('OBS_REC') || connectionName.includes('recording')) {
+        // Recording connections: red for active recording
+        switch (status) {
+          case 'connected': return 'bg-red-500';
+          case 'connecting': return 'bg-yellow-500';
+          case 'error': return 'bg-red-700';
+          default: return 'bg-gray-500';
+        }
+      } else if (connectionName.includes('OBS_STR') || connectionName.includes('streaming')) {
+        // Streaming connections: blue/purple for streaming
+        switch (status) {
+          case 'connected': return 'bg-blue-500';
+          case 'connecting': return 'bg-yellow-500';
+          case 'error': return 'bg-red-700';
+          default: return 'bg-gray-500';
+        }
+      }
+    }
+
+    // Default colors for other connections
     switch (status) {
       case 'connected': return 'bg-green-500';
       case 'connecting': return 'bg-yellow-500';
@@ -631,6 +653,9 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
       case 'connected': return t('common.connected', 'Connected');
       case 'connecting': return t('common.connecting', 'Connecting...');
       case 'error': return t('common.error', 'Error');
+      case 'disconnected': return t('common.disconnected', 'Disconnected');
+      case 'authenticating': return t('obs.status.authenticating', 'Authenticating...');
+      case 'authenticated': return t('obs.status.authenticated', 'Authenticated');
       default: return t('common.disconnected', 'Disconnected');
     }
   };
@@ -869,12 +894,7 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
                   <div className="flex items-center space-x-2">
-                    <StatusDot color={
-                      connection.status === 'connected' ? 'bg-green-500' :
-                      connection.status === 'error' ? 'bg-red-500' :
-                      connection.status === 'connecting' ? 'bg-yellow-500' :
-                      'bg-gray-500'
-                    } />
+                    <StatusDot color={getStatusColor(connection.status, connection.name)} />
                     <span className="text-white font-medium">{connection.name}</span>
                   </div>
                   <span className="text-gray-400">

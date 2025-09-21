@@ -250,12 +250,34 @@ const ControlRoom: React.FC = () => {
     }
   };
 
-  const getStatusColor = (status: ObsConnection['status']) => {
+  const getStatusColor = (status: ObsConnection['status'], connectionName?: string) => {
+    // Check for role-specific colors based on connection name
+    if (connectionName) {
+      if (connectionName.includes('OBS_REC') || connectionName.includes('recording')) {
+        // Recording connections: red for active recording
+        switch (status) {
+          case 'Connected': return 'bg-red-500';
+          case 'Connecting': return 'bg-yellow-500';
+          case 'Error': return 'bg-red-700';
+          default: return 'bg-gray-500';
+        }
+      } else if (connectionName.includes('OBS_STR') || connectionName.includes('streaming')) {
+        // Streaming connections: blue/purple for streaming
+        switch (status) {
+          case 'Connected': return 'bg-blue-500';
+          case 'Connecting': return 'bg-yellow-500';
+          case 'Error': return 'bg-red-700';
+          default: return 'bg-gray-500';
+        }
+      }
+    }
+
+    // Default colors for other connections
     switch (status) {
-      case 'Connected': return 'green';
-      case 'Connecting': return 'yellow';
-      case 'Error': return 'red';
-      default: return 'gray';
+      case 'Connected': return 'bg-green-500';
+      case 'Connecting': return 'bg-yellow-500';
+      case 'Error': return 'bg-red-700';
+      default: return 'bg-gray-500';
     }
   };
 
@@ -906,7 +928,7 @@ const ControlRoom: React.FC = () => {
               <div key={index} className="p-4 bg-gray-700/30 rounded-lg border border-gray-600/20">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center space-x-2">
-                    <StatusDot color={getStatusColor(connection.status)} />
+                    <StatusDot color={getStatusColor(connection.status, connection.name)} />
                     <div>
                       <h4 className="font-medium text-gray-200 text-sm">{connection.name}</h4>
                       <p className="text-xs text-gray-400">

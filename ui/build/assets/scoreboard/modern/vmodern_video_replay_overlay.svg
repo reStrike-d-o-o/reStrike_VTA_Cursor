@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 500.476074 55.500504">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #0f223c;
+        font-family: FixelDisplay-SemiBold, 'Fixel Display';
+        font-size: 38.66642px;
+        font-weight: 600;
+        letter-spacing: .01999em;
+      }
+
+      .cls-2 {
+        fill: #fff;
+      }
+    </style>
+  </defs>
+  <!-- Generator: Adobe Illustrator 28.7.5, SVG Export Plug-In . SVG Version: 1.2.0 Build 176)  -->
+  <g>
+    <g id="Layer_2">
+      <g id="video_x5F_overlay">
+        <path class="cls-2" d="M485.370603.000126H15.105471C6.762697.000126.000002,6.763066.000002,15.105595v37.589844h500.47607V15.105595C500.476072,6.763066,493.713377.000126,485.370603.000126Z"/>
+        <text class="cls-1" transform="translate(28.292053 39.647461)"><tspan x="0" y="0">INSTANT VIDEO REPLAY</tspan></text>
+      </g>
+    </g>
+  </g>
+</svg>
