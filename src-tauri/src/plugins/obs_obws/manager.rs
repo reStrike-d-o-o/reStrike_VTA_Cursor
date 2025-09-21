@@ -165,6 +165,15 @@ impl ObsManager {
         }
     }
 
+    /// Get a specific connection client
+    pub async fn get_connection(&self, name: &str) -> AppResult<Arc<Mutex<ObsClient>>> {
+        let clients = self.clients.lock().await;
+        match clients.get(name) {
+            Some(client) => Ok(client.clone()),
+            None => Err(AppError::ConfigError(format!("Connection '{}' not found", name))),
+        }
+    }
+
     /// Get all connection information
     pub async fn get_connections(&self) -> AppResult<Vec<ObsConnectionInfo>> {
         let clients = self.clients.lock().await;
@@ -178,6 +187,7 @@ impl ObsManager {
                 host: client.get_config().host.clone(),
                 port: client.get_config().port,
                 status: client.get_connection_status(),
+                role: client.get_config().role.clone(),
                 last_activity: None, // TODO: Track last activity
             });
         }

@@ -362,13 +362,14 @@ pub async fn obs_obws_add_connection(
     app: State<'_, Arc<App>>,
 ) -> Result<ObsObwsConnectionResponse, TauriError> {
     log::info!("OBS obws add connection called: {}@{}:{}", connection.name, connection.host, connection.port);
-    
+
     let config = ObsConnectionConfig {
         name: connection.name,
         host: connection.host,
         port: connection.port,
         password: connection.password,
         timeout_seconds: 30,
+        role: crate::plugins::obs_obws::ObsConnectionRole::None,
     };
     
     match app.obs_obws_plugin().add_connection(config).await {
@@ -395,13 +396,14 @@ pub async fn obs_obws_update_connection(
     app: State<'_, Arc<App>>,
 ) -> Result<ObsObwsConnectionResponse, TauriError> {
     log::info!("OBS obws update connection called: {} -> {}@{}:{}", old_name, connection.name, connection.host, connection.port);
-    
+
     let config = ObsConnectionConfig {
         name: connection.name,
         host: connection.host,
         port: connection.port,
         password: connection.password,
         timeout_seconds: 30,
+        role: crate::plugins::obs_obws::ObsConnectionRole::None,
     };
     
     match app.obs_obws_plugin().update_connection(&old_name, config).await {
@@ -2180,3 +2182,123 @@ pub async fn ivr_import_recorded_videos(
 }
 
 // Backfill command removed per user request (feature did not meet expectations)
+
+// =============================================================================
+// OBS CONNECTION ROLES - Get/Set connection roles (recording, streaming, none)
+// =============================================================================
+
+/// Get the role of an OBS connection
+#[tauri::command]
+pub async fn obs_obws_get_connection_role(
+    connection_name: String,
+    app: State<'_, Arc<App>>
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("Getting OBS connection role for: {}", connection_name);
+
+    #[cfg(feature = "obs-obws")]
+    {
+        match app.obs_obws_plugin().get_connection(&connection_name).await {
+            Ok(client_arc) => {
+                let client = client_arc.lock().await;
+                let config = client.get_config().clone();
+                Ok(serde_json::json!({
+                    "success": true,
+                    "connection_name": connection_name,
+                    "role": config.role
+                }))
+            },
+            Err(e) => {
+                log::error!("Failed to get connection role: {}", e);
+                Ok(serde_json::json!({
+                    "success": false,
+                    "connection_name": connection_name,
+                    "error": e.to_string()
+                }))
+            }
+        }
+    }
+
+    #[cfg(not(feature = "obs-obws"))]
+    {
+        Ok(serde_json::json!({
+            "success": false,
+            "error": "OBS obws feature not enabled"
+        }))
+    }
+}
+
+/// Set the role of an OBS connection
+#[tauri::command]
+pub async fn obs_obws_set_connection_role(
+    connection_name: String,
+    role: String,
+    app: State<'_, Arc<App>>
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("Setting OBS connection role for {} to {}", connection_name, role);
+
+    #[cfg(feature = "obs-obws")]
+    {
+        use crate::plugins::obs_obws::ObsConnectionRole;
+
+        // Parse the role string
+        let new_role = match role.as_str() {
+            "recording" => ObsConnectionRole::Recording,
+            "streaming" => ObsConnectionRole::Streaming,
+            "none" => ObsConnectionRole::None,
+            _ => {
+                return Ok(serde_json::json!({
+                    "success": false,
+                    "connection_name": connection_name,
+                    "error": format!("Invalid role: {}. Valid roles are: recording, streaming, none", role)
+                }));
+            }
+        };
+
+        match app.obs_obws_plugin().get_connection(&connection_name).await {
+            Ok(client_arc) => {
+                let client = client_arc.lock().await;
+                // Get current config and update role
+                let mut config = client.get_config().clone();
+                let old_role = config.role.clone();
+                config.role = new_role.clone();
+
+                // Update the connection
+                match app.obs_obws_plugin().update_connection(&connection_name, config).await {
+                    Ok(_) => {
+                        log::info!("Successfully updated connection role from {:?} to {:?}", old_role, new_role);
+                        Ok(serde_json::json!({
+                            "success": true,
+                            "connection_name": connection_name,
+                            "old_role": old_role,
+                            "new_role": new_role
+                        }))
+                    },
+                    Err(e) => {
+                        log::error!("Failed to update connection role: {}", e);
+                        Ok(serde_json::json!({
+                            "success": false,
+                            "connection_name": connection_name,
+                            "error": e.to_string()
+                        }))
+                    }
+                }
+            },
+            Err(e) => {
+                log::error!("Failed to get connection for role update: {}", e);
+                Ok(serde_json::json!({
+                    "success": false,
+                    "connection_name": connection_name,
+                    "error": e.to_string()
+                }))
+            }
+        }
+    }
+
+    #[cfg(not(feature = "obs-obws"))]
+    {
+        Ok(serde_json::json!({
+            "success": false,
+            "error": "OBS obws feature not enabled"
+        }))
+    }
+}

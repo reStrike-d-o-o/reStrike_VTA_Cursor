@@ -5981,7 +5981,7 @@ pub async fn control_room_add_obs_connection(
     log::info!("Control Room: Adding OBS connection '{}' at {}:{} for session {}", name, host, port, session_id);
     // TODO: Validate session
     
-    let config = crate::plugins::obs_obws::types::ObsConnectionConfig { name: name.clone(), host, port, password, timeout_seconds: 30 };
+    let config = crate::plugins::obs_obws::types::ObsConnectionConfig { name: name.clone(), host, port, password, timeout_seconds: 30, role: crate::plugins::obs_obws::ObsConnectionRole::None };
     match app.obs_obws_plugin().add_connection(config).await {
         Ok(_) => {
             log::info!("Control Room: Successfully added OBS connection '{}'", name);
@@ -6106,7 +6106,7 @@ pub async fn control_room_update_obs_connection(
     // TODO: Validate session
     
     let _ = app.obs_obws_plugin().remove_connection(&obs_name).await;
-    let cfg = crate::plugins::obs_obws::types::ObsConnectionConfig { name: obs_name.clone(), host, port, password, timeout_seconds: 30 };
+    let cfg = crate::plugins::obs_obws::types::ObsConnectionConfig { name: obs_name.clone(), host, port, password, timeout_seconds: 30, role: crate::plugins::obs_obws::ObsConnectionRole::None };
     match app.obs_obws_plugin().add_connection(cfg).await {
         Ok(_) => {
             log::info!("Control Room: Successfully updated OBS connection '{}'", obs_name);

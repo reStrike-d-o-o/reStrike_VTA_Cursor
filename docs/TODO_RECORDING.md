@@ -50,11 +50,11 @@
 - [x] Wire all PSS events to `ObsRecordingEventHandler::handle_pss_event`
 - [x] Add robust logging around each handled event and FightReady
 
-#### **Phase 3 – OBS Connection Roles** 📋
-- [ ] Extend OBS connection storage with `role: enum { recording, streaming, none }`
-- [ ] Default: `OBS_REC` → recording; `OBS_STR` → streaming
-- [ ] Expose get/set role via Tauri commands
-- [ ] Wire manager to default recording actions to `recording` role
+#### **Phase 3 – OBS Connection Roles** ✅
+- [x] Extend OBS connection storage with `role: enum { recording, streaming, none }`
+- [x] Default: `OBS_REC` → recording; `OBS_STR` → streaming
+- [x] Expose get/set role via Tauri commands: `obs_obws_get_connection_role`, `obs_obws_set_connection_role`
+- [x] Wire manager to default recording actions to `recording` role
 
 #### **Phase 4 – Replay Buffer Save + Play** ✅
 - [x] Add obws method to return last saved replay filename (via obws `replay_buffer().last_replay()`)

@@ -208,6 +208,7 @@ impl App {
                     port: cfg.port as u16,
                     password: cfg.password.clone(),
                     timeout_seconds: 30,
+                    role: crate::plugins::obs_obws::ObsConnectionRole::None,
                 }).await;
             }
             log::info!("✅ OBS obws connections configured ({} connections)", config_connections.len());

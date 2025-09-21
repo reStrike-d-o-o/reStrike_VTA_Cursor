@@ -3,6 +3,20 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+/// OBS connection role
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum ObsConnectionRole {
+    Recording,
+    Streaming,
+    None,
+}
+
+impl Default for ObsConnectionRole {
+    fn default() -> Self {
+        ObsConnectionRole::None
+    }
+}
+
 /// OBS connection configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ObsConnectionConfig {
@@ -11,6 +25,7 @@ pub struct ObsConnectionConfig {
     pub port: u16,
     pub password: Option<String>,
     pub timeout_seconds: u64,
+    pub role: ObsConnectionRole,
 }
 
 impl Default for ObsConnectionConfig {
@@ -21,6 +36,7 @@ impl Default for ObsConnectionConfig {
             port: 4455,
             password: None,
             timeout_seconds: 30,
+            role: ObsConnectionRole::None,
         }
     }
 }
@@ -234,6 +250,7 @@ pub struct ObsConnectionInfo {
     pub host: String,
     pub port: u16,
     pub status: ObsConnectionStatus,
+    pub role: ObsConnectionRole,
     pub last_activity: Option<chrono::DateTime<chrono::Utc>>,
 }
 

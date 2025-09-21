@@ -251,6 +251,10 @@ async fn main() -> AppResult<()> {
             #[cfg(feature = "obs-obws")]
             tauri_commands_obws::obs_obws_create_recording_session,
             #[cfg(feature = "obs-obws")]
+            tauri_commands_obws::obs_obws_get_connection_role,
+            #[cfg(feature = "obs-obws")]
+            tauri_commands_obws::obs_obws_set_connection_role,
+            #[cfg(feature = "obs-obws")]
             tauri_commands_obws::obs_obws_update_recording_session_status,
             #[cfg(feature = "obs-obws")]
             tauri_commands_obws::obs_obws_generate_recording_path,

@@ -492,13 +492,18 @@ impl ObsRecordingEventHandler {
             log::info!("⏸️ Path decision pending, proceeding with current/default path to avoid blocking recording");
         }
 
-        // Resolve connection name: config -> session -> default "OBS_REC"
+        // Resolve connection name: config -> session -> recording role -> default "OBS_REC"
         let connection_name = config
             .obs_connection_name
             .clone()
             .or_else(|| self.get_current_session().and_then(|s| s.obs_connection_name.clone()))
+            .or_else(|| {
+                // Use the default connection name for now - this will be resolved later
+                // when we actually need to connect to OBS
+                log::warn!("⚠️ No connection name in config/session; will resolve recording role connection at runtime");
+                None
+            })
             .unwrap_or_else(|| {
-                log::warn!("⚠️ No connection name in config/session; defaulting to 'OBS_REC'");
                 "OBS_REC".to_string()
             });
 
@@ -977,7 +982,12 @@ impl ObsRecordingEventHandler {
             // Resolve connection name from auto-config
             let conn_name = {
                 let cfg = self.config.lock().unwrap();
-                cfg.obs_connection_name.clone().unwrap_or_else(|| "OBS_REC".to_string())
+                cfg.obs_connection_name.clone().or_else(|| {
+                    // Use the default connection name for now - this will be resolved later
+                    // when we actually need to connect to OBS
+                    log::warn!("⚠️ No connection name in config for replay; will resolve recording role connection at runtime");
+                    None
+                }).unwrap_or_else(|| "OBS_REC".to_string())
             };
             if let Ok(Some(cfg)) = RecOps::get_recording_config(&*conn, &conn_name) {
                 (std::path::PathBuf::from(cfg.recording_root_path), cfg.recording_format, Some(cfg.folder_pattern))
@@ -1247,7 +1257,12 @@ impl ObsRecordingEventHandler {
             use crate::database::operations::ObsRecordingOperations as RecOps;
             let conn_name = {
                 let cfg = self.config.lock().unwrap();
-                cfg.obs_connection_name.clone().unwrap_or_else(|| "OBS_REC".to_string())
+                cfg.obs_connection_name.clone().or_else(|| {
+                    // Use the default connection name for now - this will be resolved later
+                    // when we actually need to connect to OBS
+                    log::warn!("⚠️ No connection name in config for manual recording; will resolve recording role connection at runtime");
+                    None
+                }).unwrap_or_else(|| "OBS_REC".to_string())
             };
             if let Ok(Some(cfg)) = RecOps::get_recording_config(&*conn, &conn_name) {
                 (std::path::PathBuf::from(cfg.recording_root_path), cfg.recording_format, Some(cfg.folder_pattern))
@@ -1347,7 +1362,12 @@ impl ObsRecordingEventHandler {
         // Default to OBS_REC if unspecified
         let config_name = {
             let cfg = self.config.lock().unwrap();
-            cfg.obs_connection_name.clone().unwrap_or_else(|| "OBS_REC".to_string())
+            cfg.obs_connection_name.clone().or_else(|| {
+                // Use the default connection name for now - this will be resolved later
+                // when we actually need to connect to OBS
+                log::warn!("⚠️ No connection name in config for filename template; will resolve recording role connection at runtime");
+                None
+            }).unwrap_or_else(|| "OBS_REC".to_string())
         };
         let config = crate::database::operations::ObsRecordingOperations::get_recording_config(&*conn, &config_name).ok().flatten();
         Ok(config.map(|c| c.filename_template))

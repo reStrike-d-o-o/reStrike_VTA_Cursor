@@ -17,6 +17,7 @@ pub async fn test_obs_obws_plugin() -> AppResult<()> {
         port: 4455,
         password: None,
         timeout_seconds: 10,
+        role: crate::plugins::obs_obws::ObsConnectionRole::None,
     };
     
     manager.add_connection(config).await?;
@@ -48,6 +49,7 @@ pub async fn test_obs_obws_with_real_obs() -> AppResult<()> {
         port: 4455,
         password: None,
         timeout_seconds: 10,
+        role: crate::plugins::obs_obws::ObsConnectionRole::None,
     };
     
     manager.add_connection(config).await?;
