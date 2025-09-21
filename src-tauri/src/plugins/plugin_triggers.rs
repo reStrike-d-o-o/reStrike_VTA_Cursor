@@ -12,7 +12,7 @@ pub static TRIGGER_PLUGIN_GLOBAL: OnceCell<std::sync::Arc<TriggerPlugin>> = Once
 
 pub struct TriggerPlugin {
     db: Arc<DatabaseConnection>,
-    obs_plugin_manager: Arc<ObsManager>,
+    obs_manager: Arc<ObsManager>,
     enabled_triggers: Arc<RwLock<HashMap<String, Vec<EventTrigger>>>>,
     current_tournament_id: Arc<RwLock<Option<i64>>>,
     paused: std::sync::Arc<std::sync::atomic::AtomicBool>,
@@ -140,7 +140,7 @@ impl Clone for TriggerPlugin {
     fn clone(&self) -> Self {
         Self {
             db: self.db.clone(),
-            obs_plugin_manager: self.obs_plugin_manager.clone(),
+            obs_manager: self.obs_manager.clone(),
             enabled_triggers: self.enabled_triggers.clone(),
             current_tournament_id: self.current_tournament_id.clone(),
             paused: self.paused.clone(),
@@ -156,10 +156,10 @@ impl Clone for TriggerPlugin {
 
 impl TriggerPlugin {
     /// Create a new trigger plugin
-    pub fn new(db: Arc<DatabaseConnection>, obs_plugin_manager: Arc<ObsManager>) -> Self {
+    pub fn new(db: Arc<DatabaseConnection>, obs_manager: Arc<ObsManager>) -> Self {
         Self {
             db,
-            obs_plugin_manager,
+            obs_manager,
             enabled_triggers: Arc::new(RwLock::new(HashMap::new())),
             current_tournament_id: Arc::new(RwLock::new(None)),
             paused: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
@@ -657,7 +657,7 @@ impl TriggerPlugin {
         
         // Use targeted connection if provided; fallback to default
         let conn_name = trigger.obs_connection_name.as_deref().unwrap_or("default");
-        self.obs_plugin_manager.set_current_scene(&scene.scene_name, Some(conn_name)).await?;
+        self.obs_manager.set_current_scene(&scene.scene_name, Some(conn_name)).await?;
         
         log::info!("🎬 Changed OBS scene to: {}", scene.scene_name);
         Ok(())
@@ -666,10 +666,10 @@ impl TriggerPlugin {
     async fn execute_record_action(&self, trigger: &EventTrigger, start: bool) -> AppResult<()> {
         let conn_name = trigger.obs_connection_name.as_deref().unwrap_or("OBS_REC");
         if start {
-            self.obs_plugin_manager.start_recording(Some(conn_name)).await?;
+            self.obs_manager.start_recording(Some(conn_name)).await?;
             log::info!("🎥 Started recording on {}", conn_name);
         } else {
-            self.obs_plugin_manager.stop_recording(Some(conn_name)).await?;
+            self.obs_manager.stop_recording(Some(conn_name)).await?;
             log::info!("🛑 Stopped recording on {}", conn_name);
         }
         Ok(())
@@ -678,7 +678,7 @@ impl TriggerPlugin {
     async fn execute_replay_save(&self, trigger: &EventTrigger) -> AppResult<()> {
         let conn_name = trigger.obs_connection_name.as_deref().unwrap_or("OBS_REC");
         // Use obws manager to save replay buffer
-        if let Err(e) = self.obs_plugin_manager.save_replay_buffer(Some(conn_name)).await {
+        if let Err(e) = self.obs_manager.save_replay_buffer(Some(conn_name)).await {
             log::warn!("Failed to save replay buffer on {}: {}", conn_name, e);
             return Err(e);
         }

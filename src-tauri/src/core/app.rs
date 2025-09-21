@@ -229,7 +229,6 @@ impl App {
         Ok(Self {
             state,
             config_manager,
-            // legacy obs_plugin_manager removed,
             #[cfg(feature = "obs-obws")]
             obs_obws_manager,
             #[cfg(feature = "obs-obws")]

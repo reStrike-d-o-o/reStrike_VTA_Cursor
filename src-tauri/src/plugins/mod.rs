@@ -200,7 +200,6 @@ pub async fn shutdown() -> Result<(), Box<dyn std::error::Error>> {
     #[cfg(feature = "obs-obws")]
     obs_obws::shutdown().await?;
     // Note: Individual plugin shutdown methods may not exist yet
-    // plugin_obs::shutdown()?;       // Shutdown old OBS plugin
     // plugin_protocol_manager::shutdown()?;
     // plugin_cpu_monitor::shutdown()?;
     // plugin_license::shutdown()?;

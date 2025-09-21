@@ -14,11 +14,14 @@ This document provides a comprehensive guide to the database structure, models, 
 - **Integration**: Tauri v2 plugin architecture with frontend exposure
 
 ### **Current Schema Version**: 40
-- Migration 30–33: Introduced UUID v4 (`uuid` TEXT) for `tournaments`, `tournament_days`, and `pss_matches`, backfilled child references
-- Migration 34: Added canonical TEXT UUID FKs (`tournament_id`, `tournament_day_id`) alongside legacy columns for transition
-- Migration 35: Recreated `pss_matches`, `pss_events`, `recorded_videos` with canonical TEXT UUID FKs; dropped legacy `*_uuid`, `*_id_text`, `*_id_int`
-- Migration 36: Recreated `pss_scores`, `pss_warnings`, `pss_rounds`, `pss_match_athletes` with TEXT `match_id` and TEXT tournament FKs (where applicable); dropped legacy columns
-- Migration 40: Dropped `created_at`/`updated_at` TEXT columns from `obs_recording_sessions`; now uses only INTEGER timestamps
+- **Migration 30–33**: Introduced UUID v4 (`uuid` TEXT) for `tournaments`, `tournament_days`, and `pss_matches`, backfilled child references
+- **Migration 34**: Added canonical TEXT UUID FKs (`tournament_id`, `tournament_day_id`) alongside legacy columns for transition
+- **Migration 35**: Recreated `pss_matches`, `pss_events`, `recorded_videos` with canonical TEXT UUID FKs; dropped legacy `*_uuid`, `*_id_text`, `*_id_int`
+- **Migration 36**: Recreated `pss_scores`, `pss_warnings`, `pss_rounds`, `pss_match_athletes` with TEXT `match_id` and TEXT tournament FKs (where applicable); dropped legacy columns
+- **Migration 37**: Renamed `pss_events_v2` to `pss_events` with idempotent handling; removed `tournament_day_id` dependencies
+- **Migration 38**: Removed `tournament_days` table and `tournament_day_id` columns from related tables
+- **Migration 39**: Removed `tournament_day_id` from `event_triggers` and `obs_recording_sessions`
+- **Migration 40**: Dropped `created_at`/`updated_at` TEXT columns from `obs_recording_sessions`; now uses only INTEGER timestamps
 
 #### Event and Recording Tables
 - `pss_events`: stores canonical tournament context as UUID strings: `tournament_id` (TEXT). Includes `recognition_status`, `protocol_version`, `parser_confidence`, `validation_errors`, and integer `created` (UNIX seconds). These IDs are set by ingestion/match context.
