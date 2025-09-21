@@ -112,8 +112,8 @@ pub struct ObsRecordingSession {
     pub replay_buffer_filename: Option<String>,
     pub status: String, // 'pending', 'recording', 'completed', 'error', 'cancelled'
     pub error_message: Option<String>,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+    pub created: i64,
+    pub updated: i64,
 }
 
 impl ObsRecordingSession {
@@ -123,6 +123,7 @@ impl ObsRecordingSession {
         recording_path: String,
         recording_filename: String,
     ) -> Self {
+        let now_unix = crate::utils::now_unix();
         Self {
             id: None,
             obs_connection_name,
@@ -145,8 +146,8 @@ impl ObsRecordingSession {
             replay_buffer_filename: None,
             status: "pending".to_string(),
             error_message: None,
-            created_at: Utc::now(),
-            updated_at: Utc::now(),
+            created: now_unix,
+            updated: now_unix,
         }
     }
     
@@ -178,8 +179,22 @@ impl ObsRecordingSession {
             replay_buffer_filename: row.get("replay_buffer_filename")?,
             status: row.get("status")?,
             error_message: row.get("error_message")?,
-            created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
-            updated_at: parse_datetime_from_db(&row.get::<_, String>("updated_at")?, "updated_at")?,
+            created: row.get("created").unwrap_or_else(|_| {
+                // Fallback to parsing created_at if created doesn't exist
+                row.get::<_, Option<String>>("created_at")
+                    .ok()
+                    .flatten()
+                    .and_then(|s| parse_datetime_from_db(&s, "created_at").ok().map(|dt| dt.timestamp()))
+                    .unwrap_or_else(|| crate::utils::now_unix())
+            }),
+            updated: row.get("updated").unwrap_or_else(|_| {
+                // Fallback to parsing updated_at if updated doesn't exist
+                row.get::<_, Option<String>>("updated_at")
+                    .ok()
+                    .flatten()
+                    .and_then(|s| parse_datetime_from_db(&s, "updated_at").ok().map(|dt| dt.timestamp()))
+                    .unwrap_or_else(|| crate::utils::now_unix())
+            }),
         })
     }
 }

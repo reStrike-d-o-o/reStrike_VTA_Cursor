@@ -13,11 +13,12 @@ This document provides a comprehensive guide to the database structure, models, 
 - **Error Handling**: Custom `AppError` and `DatabaseResult` types
 - **Integration**: Tauri v2 plugin architecture with frontend exposure
 
-### **Current Schema Version**: 39
+### **Current Schema Version**: 40
 - Migration 30–33: Introduced UUID v4 (`uuid` TEXT) for `tournaments`, `tournament_days`, and `pss_matches`, backfilled child references
 - Migration 34: Added canonical TEXT UUID FKs (`tournament_id`, `tournament_day_id`) alongside legacy columns for transition
 - Migration 35: Recreated `pss_matches`, `pss_events`, `recorded_videos` with canonical TEXT UUID FKs; dropped legacy `*_uuid`, `*_id_text`, `*_id_int`
 - Migration 36: Recreated `pss_scores`, `pss_warnings`, `pss_rounds`, `pss_match_athletes` with TEXT `match_id` and TEXT tournament FKs (where applicable); dropped legacy columns
+- Migration 40: Dropped `created_at`/`updated_at` TEXT columns from `obs_recording_sessions`; now uses only INTEGER timestamps
 
 #### Event and Recording Tables
 - `pss_events`: stores canonical tournament context as UUID strings: `tournament_id` (TEXT). Includes `recognition_status`, `protocol_version`, `parser_confidence`, `validation_errors`, and integer `created` (UNIX seconds). These IDs are set by ingestion/match context.
@@ -370,7 +371,7 @@ pss_athletes
 ### Canonical ID and Timestamp Rules
 - All primary keys `id`: auto-generated UUID v4 TEXT for new tables where applicable; existing `id` INTEGER kept where it represents DB row id (e.g., `pss_matches`).
 - All foreign keys use canonical UUID v4 TEXT fields named `table_id` (e.g., `tournament_id`, `tournament_day_id`).
-- All timestamp fields prefer integer UNIX seconds: `created` (INTEGER), `updated` (INTEGER). ISO `created_at`/`updated_at` present for legacy/trigger support and human readability. Database triggers auto-populate `created`/`updated` on insert/update.
+- All timestamp fields use integer UNIX seconds: `created` (INTEGER), `updated` (INTEGER). ISO `created_at`/`updated_at` TEXT fields have been removed from new tables to simplify the schema and improve performance.
 
 ### **Core Models**
 
@@ -855,7 +856,7 @@ pub fn rollback(&self, conn: &Connection, target_version: u32) -> DatabaseResult
 ### **Development Guidelines**
 
 #### **1. Model Design**
-- Always include `created_at` and `updated_at` timestamps
+- Always include `created` and `updated` integer timestamps (UNIX seconds)
 - Use `Option<T>` for nullable fields
 - Implement `from_row` methods for database mapping
 - Use proper foreign key relationships
@@ -1344,8 +1345,8 @@ impl ObsSessionOperations {
 
 ---
 
-**Last Updated**: 2025-01-29  
-**Schema Version**: 4  
+**Last Updated**: 2025-01-29
+**Schema Version**: 40
 **Status**: Production Ready with Comprehensive Integration
 
 ## Flag Management System Integration

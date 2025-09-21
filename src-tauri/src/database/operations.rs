@@ -92,15 +92,12 @@ impl UiSettingsOperations {
             );
             
             let category_id = conn.execute(
-                "INSERT INTO settings_categories (id, name, description, display_order, created, created_at) VALUES (COALESCE(?, printf('%s', hex(randomblob(16)))), ?, ?, ?, ?, COALESCE(?, datetime('unixepoch', ?)))",
+                "INSERT INTO settings_categories (id, name, description, display_order, created) VALUES (COALESCE(?, printf('%s', hex(randomblob(16)))), ?, ?, ?, ?)",
                 params![
                     category.id,
                     category.name,
                     category.description,
                     category.display_order,
-                    category.created,
-                    // Keep legacy created_at for backward compatibility
-                    None::<String>,
                     category.created,
                 ]
             )?;
@@ -141,7 +138,7 @@ impl UiSettingsOperations {
             );
             
             let key_id = conn.execute(
-                "INSERT INTO settings_keys (id, category_id, key_name, display_name, description, data_type, default_value, validation_rules, is_required, is_sensitive, created, created_at) VALUES (printf('%s', hex(randomblob(16))), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, datetime('unixepoch', ?)))",
+                "INSERT INTO settings_keys (id, category_id, key_name, display_name, description, data_type, default_value, validation_rules, is_required, is_sensitive, created) VALUES (printf('%s', hex(randomblob(16))), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 params![
                     setting_key.category_id,
                     setting_key.key_name,
@@ -153,8 +150,6 @@ impl UiSettingsOperations {
                     setting_key.is_required,
                     setting_key.is_sensitive,
                     setting_key.created,
-                    None::<String>,
-                    setting_key.created,
                 ]
             )?;
             
@@ -163,12 +158,10 @@ impl UiSettingsOperations {
                 let setting_value = SettingsValue::new(key_id.to_string(), default_val.to_string());
                 
                 conn.execute(
-                    "INSERT INTO settings_values (id, key_id, value, created, updated, created_at, updated_at) VALUES (printf('%s', hex(randomblob(16))), ?, ?, ?, ?, datetime('unixepoch', ?), datetime('unixepoch', ?))",
+                    "INSERT INTO settings_values (id, key_id, value, created, updated) VALUES (printf('%s', hex(randomblob(16))), ?, ?, ?, ?)",
                     params![
                         setting_value.key_id,
                         setting_value.value,
-                        setting_value.created,
-                        setting_value.updated,
                         setting_value.created,
                         setting_value.updated,
                     ]
@@ -242,8 +235,8 @@ impl UiSettingsOperations {
             
             let now_unix = crate::utils::now_unix();
             tx.execute(
-                "UPDATE settings_values SET value = ?, updated = ?, updated_at = datetime('unixepoch', ?) WHERE id = ?",
-                params![value, now_unix, now_unix, existing.id.unwrap()]
+                "UPDATE settings_values SET value = ?, updated = ? WHERE id = ?",
+                params![value, now_unix, existing.id.unwrap()]
             )?;
             
             // Record history
@@ -254,16 +247,15 @@ impl UiSettingsOperations {
                 changed_by.to_string(),
                 change_reason.map(|s| s.to_string()),
             );
-            
+
             tx.execute(
-                "INSERT INTO settings_history (key_id, old_value, new_value, changed_by, change_reason, created, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime('unixepoch', ?))",
+                "INSERT INTO settings_history (key_id, old_value, new_value, changed_by, change_reason, created) VALUES (?, ?, ?, ?, ?, ?)",
                 params![
                     history.key_id,
                     history.old_value,
                     history.new_value,
                     history.changed_by,
                     history.change_reason,
-                    history.created,
                     history.created,
                 ]
             )?;
@@ -275,12 +267,10 @@ impl UiSettingsOperations {
             );
             
             tx.execute(
-                "INSERT INTO settings_values (key_id, value, created, updated, created_at, updated_at) VALUES (?, ?, ?, ?, datetime('unixepoch', ?), datetime('unixepoch', ?))",
+                "INSERT INTO settings_values (key_id, value, created, updated) VALUES (?, ?, ?, ?)",
                 params![
                     setting_value.key_id,
                     setting_value.value,
-                    setting_value.created,
-                    setting_value.updated,
                     setting_value.created,
                     setting_value.updated,
                 ]
@@ -294,16 +284,15 @@ impl UiSettingsOperations {
                 changed_by.to_string(),
                 change_reason.map(|s| s.to_string()),
             );
-            
+
             tx.execute(
-                "INSERT INTO settings_history (key_id, old_value, new_value, changed_by, change_reason, created, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime('unixepoch', ?))",
+                "INSERT INTO settings_history (key_id, old_value, new_value, changed_by, change_reason, created) VALUES (?, ?, ?, ?, ?, ?)",
                 params![
                     history.key_id,
                     history.old_value,
                     history.new_value,
                     history.changed_by,
                     history.change_reason,
-                    history.created,
                     history.created,
                 ]
             )?;
@@ -1129,7 +1118,7 @@ impl PssUdpOperations {
         
         // Get recent activity (last 24 hours)
         let recent_events: i64 = conn.query_row(
-            "SELECT COUNT(*) FROM pss_events WHERE created_at > datetime('now', '-1 day')",
+            "SELECT COUNT(*) FROM pss_events WHERE created > strftime('%s','now','-1 day')",
             [],
             |row| row.get(0)
         )?;
@@ -1146,7 +1135,7 @@ impl PssUdpOperations {
     pub fn get_pss_matches(conn: &Connection, limit: Option<i64>) -> DatabaseResult<Vec<PssMatch>> {
         let limit_clause = limit.map(|l| format!(" LIMIT {}", l)).unwrap_or_default();
         let query = format!(
-            "SELECT * FROM pss_matches ORDER BY created_at DESC{}",
+            "SELECT * FROM pss_matches ORDER BY created DESC{}",
             limit_clause
         );
         
@@ -1159,7 +1148,7 @@ impl PssUdpOperations {
 
     pub fn get_pss_matches_by_creation_mode(conn: &Connection, creation_mode: &str) -> DatabaseResult<Vec<PssMatch>> {
         let mut stmt = conn.prepare(
-            "SELECT * FROM pss_matches WHERE creation_mode = ? ORDER BY created_at DESC"
+            "SELECT * FROM pss_matches WHERE creation_mode = ? ORDER BY created DESC"
         )?;
         
         let matches = stmt.query_map([creation_mode], |row| PssMatch::from_row(row))?
@@ -1170,7 +1159,7 @@ impl PssUdpOperations {
 
     pub fn insert_pss_match(conn: &Connection, pss_match: &PssMatch) -> DatabaseResult<i64> {
         conn.execute(
-            "INSERT INTO pss_matches (match_id, match_number, category, weight_class, division, total_rounds, round_duration, countdown_type, format_type, creation_mode, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO pss_matches (match_id, match_number, category, weight_class, division, total_rounds, round_duration, countdown_type, format_type, creation_mode, created_at, updated_at, created, updated) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             params![
                 pss_match.match_id,
                 pss_match.match_number,
@@ -1184,6 +1173,8 @@ impl PssUdpOperations {
                 pss_match.creation_mode,
                 pss_match.created_at.to_rfc3339(),
                 pss_match.updated_at.to_rfc3339(),
+                pss_match.created.unwrap_or_else(|| crate::utils::now_unix()),
+                pss_match.updated.unwrap_or_else(|| crate::utils::now_unix()),
             ],
         )?;
         Ok(conn.last_insert_rowid())
@@ -1211,7 +1202,7 @@ impl PssUdpOperations {
 
     pub fn insert_pss_athlete(conn: &Connection, athlete: &PssAthlete) -> DatabaseResult<i64> {
         conn.execute(
-            "INSERT INTO pss_athletes (athlete_code, short_name, long_name, country_code, flag_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO pss_athletes (athlete_code, short_name, long_name, country_code, flag_id, created_at, updated_at, created, updated) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             params![
                 athlete.athlete_code,
                 athlete.short_name,
@@ -1220,6 +1211,8 @@ impl PssUdpOperations {
                 athlete.flag_id,
                 athlete.created_at.to_rfc3339(),
                 athlete.updated_at.to_rfc3339(),
+                crate::utils::now_unix(),
+                crate::utils::now_unix(),
             ],
         )?;
         Ok(conn.last_insert_rowid())
@@ -1227,7 +1220,7 @@ impl PssUdpOperations {
 
     pub fn insert_pss_match_athlete(conn: &Connection, match_athlete: &PssMatchAthlete) -> DatabaseResult<i64> {
         conn.execute(
-            "INSERT INTO pss_match_athletes (match_id, athlete_id, athlete_position, bg_color, fg_color, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+            "INSERT INTO pss_match_athletes (match_id, athlete_id, athlete_position, bg_color, fg_color, created_at, created) VALUES (?, ?, ?, ?, ?, ?, ?)",
             params![
                 match_athlete.match_id,
                 match_athlete.athlete_id,
@@ -1235,6 +1228,7 @@ impl PssUdpOperations {
                 match_athlete.bg_color,
                 match_athlete.fg_color,
                 match_athlete.created_at.to_rfc3339(),
+                crate::utils::now_unix(),
             ],
         )?;
         Ok(conn.last_insert_rowid())
@@ -1452,7 +1446,7 @@ impl TournamentOperations {
     /// Get all tournaments
     pub fn get_tournaments(conn: &Connection) -> DatabaseResult<Vec<Tournament>> {
         let mut stmt = conn.prepare(
-            "SELECT id, name, duration_days, city, country, country_code, logo_path, status, start_date, end_date, created_at, updated_at, created, updated FROM tournaments ORDER BY created_at DESC"
+            "SELECT id, name, duration_days, city, country, country_code, logo_path, status, start_date, end_date, created_at, updated_at, created, updated FROM tournaments ORDER BY created DESC"
         )?;
         
         let rows = stmt.query_map([], |row| Tournament::from_row(row))?;
@@ -1623,7 +1617,7 @@ impl TournamentOperations {
     /// Get active tournament
     pub fn get_active_tournament(conn: &Connection) -> DatabaseResult<Option<Tournament>> {
         let tournament = conn.query_row(
-            "SELECT id, name, duration_days, city, country, country_code, logo_path, status, start_date, end_date, created_at, updated_at FROM tournaments WHERE status = 'active' ORDER BY created_at DESC LIMIT 1",
+            "SELECT id, name, duration_days, city, country, country_code, logo_path, status, start_date, end_date, created_at, updated_at FROM tournaments WHERE status = 'active' ORDER BY created DESC LIMIT 1",
             [],
             |row| Tournament::from_row(row)
         ).optional()?;
@@ -2028,7 +2022,7 @@ impl PssEventStatusOperations {
                     protocol_version, raw_data, parsed_data, created_at
              FROM pss_event_recognition_history 
              WHERE event_id = ?
-             ORDER BY created_at DESC"
+             ORDER BY created DESC"
         )?;
         
         let rows = stmt.query_map(params![event_id], |row| {
@@ -2058,7 +2052,7 @@ impl PssEventStatusOperations {
                     recognition_status, protocol_version, parser_confidence, validation_errors, created_at
              FROM pss_events 
              WHERE session_id = ? AND recognition_status = ?
-             ORDER BY created_at DESC
+             ORDER BY created DESC
              LIMIT ?"
         )?;
         
@@ -2252,15 +2246,16 @@ impl PssEventOperations {
         } else {
             // Insert new event type
             tx.execute(
-                "INSERT INTO pss_event_types (event_code, event_name, description, category, is_active, created_at) 
-                 VALUES (?, ?, ?, ?, ?, ?)",
+                "INSERT INTO pss_event_types (event_code, event_name, description, category, is_active, created_at, created)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)",
                 params![
                     event_type.event_code,
                     event_type.event_name,
                     event_type.description,
                     event_type.category,
                     event_type.is_active,
-                    event_type.created_at.to_rfc3339()
+                    event_type.created_at.to_rfc3339(),
+                    crate::utils::now_unix()
                 ]
             )?;
             tx.last_insert_rowid()
@@ -2694,8 +2689,8 @@ impl DatabaseConnection {
         let now = chrono::Utc::now().to_rfc3339();
         
         let id = conn.execute(
-            "INSERT INTO overlay_templates (name, description, theme, colors, animation_type, duration_ms, is_active, url, created_at, updated_at) 
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO overlay_templates (name, description, theme, colors, animation_type, duration_ms, is_active, url, created_at, updated_at, created, updated)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             [
                 &template.name,
                 &template.description.as_deref().unwrap_or("").to_string(),
@@ -2707,6 +2702,8 @@ impl DatabaseConnection {
                 &template.url.as_deref().unwrap_or("").to_string(),
                 &template.created_at.to_rfc3339(),
                 &now,
+                &crate::utils::now_unix().to_string(),
+                &crate::utils::now_unix().to_string(),
             ],
         )?;
         
@@ -2910,10 +2907,10 @@ impl DatabaseConnection {
         let now = chrono::Utc::now().to_rfc3339();
         
         conn.execute(
-            "INSERT INTO event_triggers (tournament_id, event_type, trigger_type, obs_scene_id, overlay_template_id, is_enabled, priority, created_at, updated_at)
-             SELECT ?, event_type, trigger_type, obs_scene_id, overlay_template_id, is_enabled, priority, ?, ?
+            "INSERT INTO event_triggers (tournament_id, event_type, trigger_type, obs_scene_id, overlay_template_id, is_enabled, priority, created_at, updated_at, created, updated)
+             SELECT ?, event_type, trigger_type, obs_scene_id, overlay_template_id, is_enabled, priority, ?, ?, ?, ?
               FROM event_triggers WHERE tournament_id = ?",
-            [&target_tournament_id.to_string(), &now, &now, &source_tournament_id.to_string()],
+            [&target_tournament_id.to_string(), &now, &now, &crate::utils::now_unix().to_string(), &crate::utils::now_unix().to_string(), &source_tournament_id.to_string()],
         )?;
         
         Ok(())
@@ -2926,10 +2923,10 @@ impl DatabaseConnection {
         
         // Create a special template trigger with the template name
         conn.execute(
-            "INSERT INTO event_triggers (tournament_id, event_type, trigger_type, obs_scene_id, overlay_template_id, is_enabled, priority, created_at, updated_at)
-             SELECT NULL, event_type, trigger_type, obs_scene_id, overlay_template_id, is_enabled, priority, ?, ?
+            "INSERT INTO event_triggers (tournament_id, event_type, trigger_type, obs_scene_id, overlay_template_id, is_enabled, priority, created_at, updated_at, created, updated)
+             SELECT NULL, event_type, trigger_type, obs_scene_id, overlay_template_id, is_enabled, priority, ?, ?, ?, ?
               FROM event_triggers WHERE tournament_id = ?",
-            [&now, &now, &tournament_id.to_string()],
+            [&now, &now, &crate::utils::now_unix().to_string(), &crate::utils::now_unix().to_string(), &tournament_id.to_string()],
         )?;
         
         Ok(())
@@ -3102,7 +3099,7 @@ impl ObsRecordingOperations {
     /// Get active recording sessions
     pub fn get_active_recording_sessions(conn: &Connection) -> DatabaseResult<Vec<ObsRecordingSession>> {
         let mut stmt = conn.prepare(
-            "SELECT * FROM obs_recording_sessions WHERE status IN ('pending', 'recording') ORDER BY created_at DESC"
+            "SELECT * FROM obs_recording_sessions WHERE status IN ('pending', 'recording') ORDER BY created DESC"
         )?;
         
         let sessions = stmt.query_map([], |row| ObsRecordingSession::from_row(row))?
@@ -3114,7 +3111,7 @@ impl ObsRecordingOperations {
     /// Get recording sessions for a specific OBS connection
     pub fn get_recording_sessions_for_connection(conn: &Connection, obs_connection_name: &str) -> DatabaseResult<Vec<ObsRecordingSession>> {
         let mut stmt = conn.prepare(
-            "SELECT * FROM obs_recording_sessions WHERE obs_connection_name = ? ORDER BY created_at DESC"
+            "SELECT * FROM obs_recording_sessions WHERE obs_connection_name = ? ORDER BY created DESC"
         )?;
         
         let sessions = stmt.query_map([obs_connection_name], |row| ObsRecordingSession::from_row(row))?
@@ -3126,7 +3123,7 @@ impl ObsRecordingOperations {
     /// Get recording sessions for a specific match
     pub fn get_recording_sessions_for_match(conn: &Connection, match_id: &str) -> DatabaseResult<Vec<ObsRecordingSession>> {
         let mut stmt = conn.prepare(
-            "SELECT * FROM obs_recording_sessions WHERE match_id = ? ORDER BY created_at DESC"
+            "SELECT * FROM obs_recording_sessions WHERE match_id = ? ORDER BY created DESC"
         )?;
         
         let sessions = stmt.query_map([match_id], |row| ObsRecordingSession::from_row(row))?
@@ -3144,8 +3141,8 @@ impl ObsRecordingOperations {
                 recording_filename, recording_start_time, recording_end_time, recording_duration,
                 recording_size_bytes, replay_buffer_start_time, replay_buffer_end_time,
                 replay_buffer_saved, replay_buffer_filename, status, error_message,
-                created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                created, updated
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             [
                 &session.obs_connection_name,
                 &session.tournament_id.map(|id| id.to_string()).unwrap_or_default(),
@@ -3167,8 +3164,8 @@ impl ObsRecordingOperations {
                 &session.replay_buffer_filename.as_deref().unwrap_or("").to_string(),
                 &session.status,
                 &session.error_message.as_deref().unwrap_or("").to_string(),
-                &session.created_at.to_rfc3339(),
-                &Utc::now().to_rfc3339(),
+                &session.created.to_string(),
+                &session.updated.to_string(),
             ],
         )?;
         
@@ -3183,7 +3180,7 @@ impl ObsRecordingOperations {
                 player1_name = ?, player1_flag = ?, player2_name = ?, player2_flag = ?, recording_path = ?,
                 recording_filename = ?, recording_start_time = ?, recording_end_time = ?, recording_duration = ?,
                 recording_size_bytes = ?, replay_buffer_start_time = ?, replay_buffer_end_time = ?,
-                replay_buffer_saved = ?, replay_buffer_filename = ?, status = ?, error_message = ?, updated_at = ?
+                replay_buffer_saved = ?, replay_buffer_filename = ?, status = ?, error_message = ?, updated = ?
             WHERE id = ?",
             [
                 &session.obs_connection_name,
@@ -3206,7 +3203,7 @@ impl ObsRecordingOperations {
                 &session.replay_buffer_filename.as_deref().unwrap_or("").to_string(),
                 &session.status,
                 &session.error_message.as_deref().unwrap_or("").to_string(),
-                &Utc::now().to_rfc3339(),
+                &crate::utils::now_unix().to_string(),
                 &session_id.to_string(),
             ],
         )?;
@@ -3229,22 +3226,22 @@ impl ObsRecordingOperations {
     /// Update recording session status
     pub fn update_recording_session_status(conn: &mut Connection, session_id: i64, status: &str, error_message: Option<&str>) -> DatabaseResult<()> {
         conn.execute(
-            "UPDATE obs_recording_sessions SET status = ?, error_message = ?, updated_at = ? WHERE id = ?",
+            "UPDATE obs_recording_sessions SET status = ?, error_message = ?, updated = ? WHERE id = ?",
             [
                 status,
                 &error_message.unwrap_or(""),
-                &Utc::now().to_rfc3339(),
+                &crate::utils::now_unix().to_string(),
                 &session_id.to_string(),
             ],
         )?;
-        
+
         Ok(())
     }
     
     /// Get recent recording sessions
     pub fn get_recent_recording_sessions(conn: &Connection, limit: i64) -> DatabaseResult<Vec<ObsRecordingSession>> {
         let mut stmt = conn.prepare(
-            "SELECT * FROM obs_recording_sessions ORDER BY created_at DESC LIMIT ?"
+            "SELECT * FROM obs_recording_sessions ORDER BY created DESC LIMIT ?"
         )?;
         
         let sessions = stmt.query_map([limit], |row| ObsRecordingSession::from_row(row))?
@@ -3303,8 +3300,8 @@ impl OvrOperations {
 			id
 		} else {
 			tx.execute(
-				"INSERT INTO ovr_providers (name, base_url, enabled, rate_limit_ms, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
-				params![p.name, p.base_url, p.enabled, p.rate_limit_ms, now, now]
+				"INSERT INTO ovr_providers (name, base_url, enabled, rate_limit_ms, created_at, updated_at, created, updated) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+				params![p.name, p.base_url, p.enabled, p.rate_limit_ms, now, now, crate::utils::now_unix(), crate::utils::now_unix()]
 			)?;
 			tx.last_insert_rowid()
 		};
@@ -3379,7 +3376,7 @@ impl OvrOperations {
 			id
 		} else {
 			tx.execute(
-				"INSERT INTO ovr_tournaments (provider_id, provider_tournament_id, name, start_date, end_date, city, country, url, status, last_seen_at, hash, etag, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+				"INSERT INTO ovr_tournaments (provider_id, provider_tournament_id, name, start_date, end_date, city, country, url, status, last_seen_at, hash, etag, created_at, updated_at, created, updated) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 				params![
 					t.provider_id,
 					t.provider_tournament_id,
@@ -3394,7 +3391,9 @@ impl OvrOperations {
 					t.hash,
 					t.etag,
 					now,
-					now
+					now,
+					crate::utils::now_unix(),
+					crate::utils::now_unix()
 				]
 			)?;
 			tx.last_insert_rowid()
@@ -3436,7 +3435,7 @@ impl OvrOperations {
 		tx.execute("DELETE FROM ovr_categories WHERE tournament_id = ?", params![tournament_id])?;
 		for c in categories {
 			tx.execute(
-				"INSERT INTO ovr_categories (tournament_id, discipline, age_group, gender, division, weight_class, bracket_stage, provider_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+				"INSERT INTO ovr_categories (tournament_id, discipline, age_group, gender, division, weight_class, bracket_stage, provider_raw, created_at, updated_at, created, updated) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 				params![
 					tournament_id,
 					c.discipline,
@@ -3448,6 +3447,8 @@ impl OvrOperations {
 					c.provider_raw,
 					Utc::now().to_rfc3339(),
 					Utc::now().to_rfc3339(),
+					crate::utils::now_unix(),
+					crate::utils::now_unix(),
 				]
 			)?;
 		}
@@ -3470,7 +3471,7 @@ impl OvrOperations {
 		// Insert directly within this transaction to avoid connection borrowing issues
 		let local_id = {
 			tx.execute(
-				"INSERT INTO tournaments (name, duration_days, city, country, status, start_date, end_date, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+				"INSERT INTO tournaments (name, duration_days, city, country, status, start_date, end_date, created_at, updated_at, created, updated) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 				params![
 					t_name,
 					1,
@@ -3480,7 +3481,9 @@ impl OvrOperations {
 					overv_dt(ovr.start_date.clone()),
 					overv_dt(ovr.end_date.clone()),
 					Utc::now().to_rfc3339(),
-					Utc::now().to_rfc3339()
+					Utc::now().to_rfc3339(),
+					crate::utils::now_unix(),
+					crate::utils::now_unix()
 				]
 			)?;
 			tx.last_insert_rowid()

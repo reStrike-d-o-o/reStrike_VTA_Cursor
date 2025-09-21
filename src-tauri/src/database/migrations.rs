@@ -2792,6 +2792,7 @@ impl MigrationManager {
         migrations.push(Box::new(Migration37)); // Rename pss_events_v2 to pss_events and drop legacy pss_events
         migrations.push(Box::new(Migration38)); // Drop tournament_days and remove tournament_day_id columns
         migrations.push(Box::new(Migration39)); // Drop tournament_day_id from event_triggers and obs_recording_sessions
+        migrations.push(Box::new(Migration40)); // Add integer created/updated to obs_recording_sessions and backfill
         
         Self { migrations }
     }
@@ -4428,6 +4429,63 @@ impl Migration for Migration39 {
         )?;
         conn.execute("INSERT INTO obs_recording_sessions SELECT * FROM _tmp_obs_recording_sessions", [])?;
         conn.execute("DROP TABLE IF EXISTS _tmp_obs_recording_sessions", [])?;
+
+        Ok(())
+    }
+    fn down(&self, _conn: &Connection) -> SqliteResult<()> { Ok(()) }
+}
+
+/// Migration 40: Add integer created/updated to obs_recording_sessions and backfill from created_at/updated_at
+pub struct Migration40;
+
+impl Migration for Migration40 {
+    fn version(&self) -> u32 { 40 }
+    fn description(&self) -> &str { "Drop created_at/updated_at TEXT columns from obs_recording_sessions; keep only INTEGER" }
+    fn up(&self, conn: &Connection) -> SqliteResult<()> {
+        // Recreate obs_recording_sessions without created_at/updated_at TEXT columns
+        let _ = conn.execute(
+            "CREATE TABLE IF NOT EXISTS _tmp_obs_recording_sessions AS
+             SELECT id, obs_connection_name, tournament_id, match_id, match_number, player1_name, player1_flag, player2_name, player2_flag, recording_path, recording_filename, recording_start_time, recording_end_time, recording_duration, recording_size_bytes, replay_buffer_start_time, replay_buffer_end_time, replay_buffer_saved, replay_buffer_filename, status, error_message, created, updated
+             FROM obs_recording_sessions",
+            [],
+        );
+        let _ = conn.execute("DROP TABLE IF EXISTS obs_recording_sessions", []);
+        conn.execute(
+            "CREATE TABLE obs_recording_sessions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                obs_connection_name TEXT NOT NULL,
+                tournament_id INTEGER,
+                match_id TEXT,
+                match_number TEXT,
+                player1_name TEXT,
+                player1_flag TEXT,
+                player2_name TEXT,
+                player2_flag TEXT,
+                recording_path TEXT NOT NULL,
+                recording_filename TEXT NOT NULL,
+                recording_start_time TEXT,
+                recording_end_time TEXT,
+                recording_duration INTEGER,
+                recording_size_bytes INTEGER,
+                replay_buffer_start_time TEXT,
+                replay_buffer_end_time TEXT,
+                replay_buffer_saved BOOLEAN NOT NULL DEFAULT 0,
+                replay_buffer_filename TEXT,
+                status TEXT NOT NULL DEFAULT 'pending',
+                error_message TEXT,
+                created INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+                updated INTEGER NOT NULL DEFAULT (strftime('%s','now'))
+            )",
+            [],
+        )?;
+        conn.execute("INSERT INTO obs_recording_sessions SELECT * FROM _tmp_obs_recording_sessions", [])?;
+        conn.execute("DROP TABLE IF EXISTS _tmp_obs_recording_sessions", [])?;
+
+        // Create index on created for ordering
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_obs_recording_sessions_created_int ON obs_recording_sessions(created)",
+            [],
+        )?;
 
         Ok(())
     }
