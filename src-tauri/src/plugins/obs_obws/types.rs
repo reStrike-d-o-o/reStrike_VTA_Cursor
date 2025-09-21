@@ -122,7 +122,7 @@ pub struct ObsScene {
 }
 
 /// OBS bounds for sources
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ObsBounds {
     pub x: f64,
     pub y: f64,
@@ -131,7 +131,7 @@ pub struct ObsBounds {
 }
 
 /// OBS transform for sources
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ObsTransform {
     pub position_x: f64,
     pub position_y: f64,

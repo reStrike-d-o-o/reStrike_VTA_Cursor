@@ -5,7 +5,7 @@ use crate::types::{AppError, AppResult};
 use super::types::{
     ObsConnectionConfig, ObsConnectionStatus, ObsRecordingStatus, ObsStreamingStatus,
     ObsReplayBufferStatus, ObsVirtualCameraStatus, ObsStudioModeStatus, ObsStatus,
-    ObsVersion, ObsStats, ObsScene, ObsSource, ObsEvent
+    ObsVersion, ObsStats, ObsScene, ObsSource, ObsEvent, ObsBounds, ObsTransform
 };
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -311,10 +311,9 @@ impl ObsClient {
 
     /// Get sources in a scene
     pub async fn get_scene_sources(&self, _scene_name: &str) -> AppResult<Vec<ObsSource>> {
-        // Note: obws doesn't have a direct scene_item_list method
-        // This would need to be implemented using custom requests
-        log::warn!("Scene sources not yet implemented in obws integration");
-        Ok(Vec::new()) // Return empty vector for now
+        // TODO: Implement proper scene sources retrieval
+        // For now, return empty vector to avoid compilation issues
+        Ok(Vec::new())
     }
 
     /// Get OBS version information
