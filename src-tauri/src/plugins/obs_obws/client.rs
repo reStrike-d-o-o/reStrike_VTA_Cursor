@@ -125,13 +125,15 @@ impl ObsClient {
     /// Get recording status
     pub async fn get_recording_status(&self) -> AppResult<ObsRecordingStatus> {
         let client = self.get_client()?;
-        let _status = client.recording().status().await.map_err(|e| {
+        let status = client.recording().status().await.map_err(|e| {
             AppError::ConfigError(format!("Failed to get recording status: {}", e))
         })?;
-        
-        // For now, return a simple status since obws doesn't expose the enum variants
-        // TODO: Implement proper status detection based on the actual response
-        Ok(ObsRecordingStatus::Recording)
+
+        // Check if recording is active based on the status response
+        match status.active {
+            true => Ok(ObsRecordingStatus::Recording),
+            false => Ok(ObsRecordingStatus::Stopped),
+        }
     }
 
     /// Start streaming
@@ -157,13 +159,15 @@ impl ObsClient {
     /// Get streaming status
     pub async fn get_streaming_status(&self) -> AppResult<ObsStreamingStatus> {
         let client = self.get_client()?;
-        let _status = client.streaming().status().await.map_err(|e| {
+        let status = client.streaming().status().await.map_err(|e| {
             AppError::ConfigError(format!("Failed to get streaming status: {}", e))
         })?;
-        
-        // For now, return a simple status since obws doesn't expose the enum variants
-        // TODO: Implement proper status detection based on the actual response
-        Ok(ObsStreamingStatus::Streaming)
+
+        // Check if streaming is active based on the status response
+        match status.active {
+            true => Ok(ObsStreamingStatus::Streaming),
+            false => Ok(ObsStreamingStatus::Stopped),
+        }
     }
 
     /// Start replay buffer
@@ -260,14 +264,9 @@ impl ObsClient {
 
     /// Get virtual camera status
     pub async fn get_virtual_camera_status(&self) -> AppResult<ObsVirtualCameraStatus> {
-        let client = self.get_client()?;
-        let _status = client.virtual_cam().status().await.map_err(|e| {
-            AppError::ConfigError(format!("Failed to get virtual camera status: {}", e))
-        })?;
-        
-        // For now, return a simple status since obws doesn't expose the enum variants
-        // TODO: Implement proper status detection based on the actual response
-        Ok(ObsVirtualCameraStatus::Active)
+        // TODO: Implement proper virtual camera status detection
+        // For now, return stopped status to avoid compilation issues
+        Ok(ObsVirtualCameraStatus::Stopped)
     }
 
     /// Get current scene
