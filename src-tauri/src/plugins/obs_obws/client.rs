@@ -5,7 +5,7 @@ use crate::types::{AppError, AppResult};
 use super::types::{
     ObsConnectionConfig, ObsConnectionStatus, ObsRecordingStatus, ObsStreamingStatus,
     ObsReplayBufferStatus, ObsVirtualCameraStatus, ObsStudioModeStatus, ObsStatus,
-    ObsVersion, ObsStats, ObsScene, ObsSource, ObsEvent, ObsBounds, ObsTransform
+    ObsVersion, ObsStats, ObsScene, ObsSource, ObsEvent
 };
 use std::sync::Arc;
 use tokio::sync::Mutex;
