@@ -919,6 +919,22 @@ pub fn rollback(&self, conn: &Connection, target_version: u32) -> DatabaseResult
 
 ## 🎥 OBS Session Management Integration
 
+### **OBS Connection Role System**
+
+**Connection Role Management**: Each OBS connection can be assigned a specific role to optimize functionality:
+- **Recording Role**: Connections optimized for recording operations
+- **Streaming Role**: Connections optimized for streaming operations
+- **None Role**: General-purpose connections
+
+**Smart Connection Selection**: The system automatically selects the most appropriate connection based on the operation:
+- Recording operations prefer connections with `Recording` role
+- Streaming operations prefer connections with `Streaming` role
+- Falls back to default naming convention (OBS_REC/OBS_STR) if no roles are set
+
+**Tauri Commands**:
+- `obs_obws_get_connection_role(connection_name)` - Get current role of a connection
+- `obs_obws_set_connection_role(connection_name, role)` - Set role of a connection
+
 ### **Unified OBS Sessions Table**
 
 The database now includes a comprehensive OBS session management system that handles recording, streaming, and replay buffer sessions in a unified manner:
