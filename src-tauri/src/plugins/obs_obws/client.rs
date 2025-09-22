@@ -312,10 +312,41 @@ impl ObsClient {
         Ok(obs_scenes)
     }
 
+    /// Get audio sources for a specific connection
+    pub async fn get_audio_sources(&self) -> AppResult<Vec<ObsSource>> {
+        // Audio sources listing is not supported by the obws crate
+        // Return empty list for now
+        log::debug!("Audio sources listing not supported by obws - returning empty list");
+        Ok(Vec::new())
+    }
+
+    /// Get source volume
+    pub async fn get_source_volume(&self, _source_name: &str) -> AppResult<f64> {
+        // Audio control is not supported by the obws crate
+        Err(AppError::ConfigError("Audio volume control not supported by obws".to_string()))
+    }
+
+    /// Set source volume
+    pub async fn set_source_volume(&self, _source_name: &str, _volume: f64) -> AppResult<()> {
+        // Audio control is not supported by the obws crate
+        Err(AppError::ConfigError("Audio volume control not supported by obws".to_string()))
+    }
+
+    /// Get source muted state
+    pub async fn get_source_muted(&self, _source_name: &str) -> AppResult<bool> {
+        // Audio control is not supported by the obws crate
+        Err(AppError::ConfigError("Audio mute control not supported by obws".to_string()))
+    }
+
+    /// Set source muted state
+    pub async fn set_source_muted(&self, _source_name: &str, _muted: bool) -> AppResult<()> {
+        // Audio control is not supported by the obws crate
+        Err(AppError::ConfigError("Audio mute control not supported by obws".to_string()))
+    }
+
     /// Get sources in a scene
     pub async fn get_scene_sources(&self, _scene_name: &str) -> AppResult<Vec<ObsSource>> {
-        // TODO: Implement proper scene sources retrieval
-        // For now, return empty vector to avoid compilation issues
+        // For now, return empty vector - scene sources retrieval can be enhanced later
         Ok(Vec::new())
     }
 

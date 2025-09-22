@@ -5914,8 +5914,12 @@ pub async fn control_room_mute_all_obs(
     // Validate session before proceeding
     validate_session(&session_id)?;
 
-    // Not supported via obws yet. Return empty results.
-    Ok(serde_json::json!({ "success": true, "results": [] }))
+    // Audio control is not supported by obws
+    Ok(serde_json::json!({
+        "success": false,
+        "error": "Audio control not supported by obws",
+        "results": []
+    }))
 }
 
 /// Bulk unmute all OBS streams
@@ -5930,8 +5934,12 @@ pub async fn control_room_unmute_all_obs(
     // Validate session before proceeding
     validate_session(&session_id)?;
 
-    // Not supported via obws yet. Return empty results.
-    Ok(serde_json::json!({ "success": true, "results": [] }))
+    // Audio control is not supported by obws
+    Ok(serde_json::json!({
+        "success": false,
+        "error": "Audio control not supported by obws",
+        "results": []
+    }))
 }
 /// Change all OBS scenes to specified scene
 #[tauri::command]
@@ -6265,15 +6273,36 @@ pub async fn control_room_disconnect_all_obs(
 pub async fn control_room_get_audio_sources(
     session_id: String,
     obs_name: String,
-    _app: State<'_, Arc<App>>
+    app: State<'_, Arc<App>>
 ) -> Result<serde_json::Value, TauriError> {
     log::debug!("Control Room: Getting audio sources for OBS '{}' session {}", obs_name, session_id);
 
     // Validate session before proceeding
     validate_session(&session_id)?;
 
-    // Not implemented with obws yet
-    Ok(serde_json::json!({ "success": true, "sources": [] }))
+    // Get audio sources from OBS connection
+    match app.obs_obws_plugin().get_audio_sources(Some(&obs_name)).await {
+        Ok(sources) => {
+            let sources_data: Vec<serde_json::Value> = sources.into_iter().map(|source| {
+                serde_json::json!({
+                    "name": source.name,
+                    "type": source.type_name,
+                    "enabled": source.enabled,
+                    "muted": source.muted,
+                    "volume": source.volume
+                })
+            }).collect();
+
+            Ok(serde_json::json!({
+                "success": true,
+                "sources": sources_data
+            }))
+        }
+        Err(e) => {
+            log::error!("Failed to get audio sources for OBS '{}': {}", obs_name, e);
+            Err(TauriError::from(anyhow::anyhow!("Failed to get audio sources: {}", e)))
+        }
+    }
 }
 
 /// Get scenes for a Control Room OBS connection

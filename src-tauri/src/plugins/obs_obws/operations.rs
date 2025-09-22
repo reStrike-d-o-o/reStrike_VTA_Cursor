@@ -117,39 +117,31 @@ impl ObsOperations {
     }
 
     /// Get source volume
-    pub async fn get_source_volume(_client: &ObsClient, _source_name: &str) -> AppResult<f64> {
-        // TODO: Implement proper source volume retrieval
-        // For now, return default volume
-        Ok(1.0)
+    pub async fn get_source_volume(client: &ObsClient, source_name: &str) -> AppResult<f64> {
+        client.get_source_volume(source_name).await
     }
 
     /// Set source volume
     pub async fn set_source_volume(
-        _client: &ObsClient,
-        _source_name: &str,
-        _volume: f64,
+        client: &ObsClient,
+        source_name: &str,
+        volume: f64,
     ) -> AppResult<()> {
-        // TODO: Implement proper source volume setting
-        // For now, do nothing
-        Ok(())
+        client.set_source_volume(source_name, volume).await
     }
 
     /// Get source muted state
-    pub async fn get_source_muted(_client: &ObsClient, _source_name: &str) -> AppResult<bool> {
-        // TODO: Implement proper source mute state retrieval
-        // For now, return false (not muted)
-        Ok(false)
+    pub async fn get_source_muted(client: &ObsClient, source_name: &str) -> AppResult<bool> {
+        client.get_source_muted(source_name).await
     }
 
     /// Set source muted state
     pub async fn set_source_muted(
-        _client: &ObsClient,
-        _source_name: &str,
-        _muted: bool,
+        client: &ObsClient,
+        source_name: &str,
+        muted: bool,
     ) -> AppResult<()> {
-        // TODO: Implement proper source mute state setting
-        // For now, do nothing
-        Ok(())
+        client.set_source_muted(source_name, muted).await
     }
 
     /// Get transitions

@@ -448,28 +448,19 @@ impl ObsManager {
         let client = self.get_client_ref(connection_name).await?;
         let client_guard = client.lock().await;
 
-        // Get the underlying obws client
-        let _obws_client = client_guard.get_client()?;
-        // TODO: Implement audio sources functionality when obws supports it
-        // For now, return empty list as audio control is not yet supported by obws
-        let _sources = Vec::<()>::new();
-
-        // Return empty list as audio control is not yet supported by obws
-        let obs_sources = Vec::new();
-
-        Ok(obs_sources)
+        client_guard.get_audio_sources().await
     }
 
     /// Set mute status for a source on a specific connection
     pub async fn set_source_mute(&self, _source_name: &str, _muted: bool, _connection_name: Option<&str>) -> AppResult<()> {
-        // TODO: Implement audio mute functionality when obws supports it
-        Err(AppError::ConfigError("Audio mute functionality not yet supported by obws".to_string()))
+        // Audio control is not supported by the obws crate
+        Err(AppError::ConfigError("Audio mute control not supported by obws".to_string()))
     }
 
     /// Set volume for a source on a specific connection
     pub async fn set_source_volume(&self, _source_name: &str, _volume: f64, _connection_name: Option<&str>) -> AppResult<()> {
-        // TODO: Implement audio volume functionality when obws supports it
-        Err(AppError::ConfigError("Audio volume functionality not yet supported by obws".to_string()))
+        // Audio control is not supported by the obws crate
+        Err(AppError::ConfigError("Audio volume control not supported by obws".to_string()))
     }
 
     /// Set up status listener for all connections
