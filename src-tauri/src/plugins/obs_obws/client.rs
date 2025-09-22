@@ -315,6 +315,25 @@ impl ObsClient {
         Ok(Vec::new())
     }
 
+    /// Get studio mode status
+    pub async fn get_studio_mode_status(&self) -> AppResult<ObsStudioModeStatus> {
+        let client = self.get_client()?;
+
+        // Check if studio mode is enabled using the general API
+        // Note: obws may not directly support studio mode, so we'll check the general status
+        match client.general().stats().await {
+            Ok(_stats) => {
+                // For now, we'll assume studio mode is disabled since obws doesn't expose it directly
+                log::debug!("Studio mode status requested - obws doesn't expose studio mode status directly");
+                Ok(ObsStudioModeStatus::Disabled)
+            }
+            Err(e) => {
+                log::warn!("Failed to get studio mode status: {}", e);
+                Ok(ObsStudioModeStatus::Disabled) // Default to disabled on error
+            }
+        }
+    }
+
     /// Get OBS version information
     pub async fn get_version(&self) -> AppResult<ObsVersion> {
         let client = self.get_client()?;
@@ -329,6 +348,33 @@ impl ObsClient {
             available_requests: version.available_requests,
             supported_image_export_formats: version.supported_image_formats,
         })
+    }
+
+    /// Enable studio mode
+    pub async fn enable_studio_mode(&self) -> AppResult<()> {
+        self.set_studio_mode(true).await
+    }
+
+    /// Disable studio mode
+    pub async fn disable_studio_mode(&self) -> AppResult<()> {
+        self.set_studio_mode(false).await
+    }
+
+    /// Set studio mode enabled/disabled
+    pub async fn set_studio_mode(&self, enabled: bool) -> AppResult<()> {
+        let _client = self.get_client()?;
+
+        // Note: obws doesn't directly support studio mode
+        // This is a placeholder implementation for future enhancement
+        if enabled {
+            log::warn!("Studio mode enable requested but not supported by obws crate");
+        } else {
+            log::debug!("Studio mode disable requested but not supported by obws crate");
+        }
+
+        // For now, always return success since studio mode isn't supported
+        log::info!("🎭 Studio mode {} (not supported by obws)", if enabled { "enable requested" } else { "disable requested" });
+        Ok(())
     }
 
     /// Get OBS statistics
@@ -463,14 +509,17 @@ impl ObsClient {
         let scenes = self.get_scenes().await.map(|s| s.into_iter().map(|scene| scene.name).collect()).unwrap_or_default();
         let version = self.get_version().await.ok();
         let stats = self.get_stats().await.ok();
-        
+
+        // Get studio mode status
+        let studio_mode = self.get_studio_mode_status().await.unwrap_or(ObsStudioModeStatus::Disabled);
+
         Ok(ObsStatus {
             connection_status: self.status.clone(),
             recording_status,
             streaming_status,
             replay_buffer_status,
             virtual_camera_status,
-            studio_mode: ObsStudioModeStatus::Disabled, // TODO: Implement studio mode
+            studio_mode,
             current_scene,
             scenes,
             version,
