@@ -5907,18 +5907,35 @@ pub async fn control_room_get_obs_connections_with_details(
 pub async fn control_room_mute_all_obs(
     session_id: String,
     source_name: String,
-    _app: State<'_, Arc<App>>
+    app: State<'_, Arc<App>>
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Control Room: Bulk mute all OBS with source '{}' for session {}", source_name, session_id);
 
     // Validate session before proceeding
     validate_session(&session_id)?;
 
-    // Audio control is not supported by obws
+    // Individual audio control is not supported by obws
+    // Bulk operations would require OBS Studio API calls or external tools
+    // For now, return an informational response
+    let names = app.obs_obws_plugin().get_connection_names().await;
+    let results: Vec<serde_json::Value> = names.into_iter().map(|name| {
+        serde_json::json!({
+            "connection": name,
+            "success": false,
+            "error": "Individual audio control not supported by obws - consider using scene switching or OBS Studio API"
+        })
+    }).collect();
+
     Ok(serde_json::json!({
         "success": false,
-        "error": "Audio control not supported by obws",
-        "results": []
+        "error": "Individual audio control not supported by obws",
+        "results": results,
+        "summary": {
+            "total": results.len(),
+            "successful": 0,
+            "failed": results.len(),
+            "note": "Audio control requires individual source management or OBS Studio API integration"
+        }
     }))
 }
 
@@ -5927,18 +5944,35 @@ pub async fn control_room_mute_all_obs(
 pub async fn control_room_unmute_all_obs(
     session_id: String,
     source_name: String,
-    _app: State<'_, Arc<App>>
+    app: State<'_, Arc<App>>
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Control Room: Bulk unmute all OBS with source '{}' for session {}", source_name, session_id);
 
     // Validate session before proceeding
     validate_session(&session_id)?;
 
-    // Audio control is not supported by obws
+    // Individual audio control is not supported by obws
+    // Bulk operations would require OBS Studio API calls or external tools
+    // For now, return an informational response
+    let names = app.obs_obws_plugin().get_connection_names().await;
+    let results: Vec<serde_json::Value> = names.into_iter().map(|name| {
+        serde_json::json!({
+            "connection": name,
+            "success": false,
+            "error": "Individual audio control not supported by obws - consider using scene switching or OBS Studio API"
+        })
+    }).collect();
+
     Ok(serde_json::json!({
         "success": false,
-        "error": "Audio control not supported by obws",
-        "results": []
+        "error": "Individual audio control not supported by obws",
+        "results": results,
+        "summary": {
+            "total": results.len(),
+            "successful": 0,
+            "failed": results.len(),
+            "note": "Audio control requires individual source management or OBS Studio API integration"
+        }
     }))
 }
 /// Change all OBS scenes to specified scene

@@ -453,14 +453,14 @@ impl ObsManager {
 
     /// Set mute status for a source on a specific connection
     pub async fn set_source_mute(&self, _source_name: &str, _muted: bool, _connection_name: Option<&str>) -> AppResult<()> {
-        // Audio control is not supported by the obws crate
-        Err(AppError::ConfigError("Audio mute control not supported by obws".to_string()))
+        // Individual input mute control is not available in obws
+        Err(AppError::ConfigError("Individual input mute control not supported by obws".to_string()))
     }
 
     /// Set volume for a source on a specific connection
     pub async fn set_source_volume(&self, _source_name: &str, _volume: f64, _connection_name: Option<&str>) -> AppResult<()> {
-        // Audio control is not supported by the obws crate
-        Err(AppError::ConfigError("Audio volume control not supported by obws".to_string()))
+        // Individual input volume control is not available in obws
+        Err(AppError::ConfigError("Individual input volume control not supported by obws".to_string()))
     }
 
     /// Set up status listener for all connections
