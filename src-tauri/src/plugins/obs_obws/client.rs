@@ -19,6 +19,8 @@ pub struct ObsClient {
     config: ObsConnectionConfig,
     status: ObsConnectionStatus,
     event_handlers: Arc<Mutex<HashMap<String, Box<dyn Fn(ObsEvent) + Send + Sync>>>>,
+    monitoring_task: Option<tokio::task::JoinHandle<()>>,
+    monitoring_shutdown: Arc<tokio::sync::Notify>,
 }
 
 impl ObsClient {
@@ -29,6 +31,8 @@ impl ObsClient {
             config,
             status: ObsConnectionStatus::Disconnected,
             event_handlers: Arc::new(Mutex::new(HashMap::new())),
+            monitoring_task: None,
+            monitoring_shutdown: Arc::new(tokio::sync::Notify::new()),
         }
     }
 
@@ -610,19 +614,33 @@ impl ObsClient {
 
         // Pin the stream and set up event handler
         let mut events = Box::pin(events);
+        let shutdown_notify = Arc::clone(&self.monitoring_shutdown);
 
-        // Set up event handler
-        tokio::spawn(async move {
-            while let Some(event) = events.next().await {
-                log::debug!("OBS event: {:?}", event);
+        // Set up event handler task
+        let monitoring_task = tokio::spawn(async move {
+            loop {
+                tokio::select! {
+                    // Handle incoming events
+                    Some(event) = events.next() => {
+                        log::debug!("OBS event: {:?}", event);
 
-                // Convert obws event to our ObsEvent and trigger it
-                if let Ok(obs_event) = ObsClient::convert_obws_event(event) {
-                    // TODO: For now, just log the event - event triggering needs proper client reference
-                    log::debug!("Converted OBS event: {:?}", obs_event);
+                        // Convert obws event to our ObsEvent and trigger it
+                        if let Ok(obs_event) = ObsClient::convert_obws_event(event) {
+                            // TODO: For now, just log the event - event triggering needs proper client reference
+                            log::debug!("Converted OBS event: {:?}", obs_event);
+                        }
+                    }
+                    // Handle shutdown signal
+                    _ = shutdown_notify.notified() => {
+                        log::debug!("📡 Monitoring task received shutdown signal");
+                        break;
+                    }
                 }
             }
         });
+
+        // Store the task handle
+        self.monitoring_task = Some(monitoring_task);
 
         log::info!("📡 Started monitoring OBS events");
         Ok(())
@@ -630,9 +648,23 @@ impl ObsClient {
 
     /// Stop monitoring for OBS events
     pub async fn stop_monitoring(&mut self) -> AppResult<()> {
-        // TODO: Implement proper monitoring stop functionality
-        // For now, just log that monitoring would be stopped
-        log::info!("⏹️ Monitoring stopped for OBS connection");
+        if let Some(task) = self.monitoring_task.take() {
+            log::info!("⏹️ Stopping monitoring for OBS connection");
+
+            // Signal the monitoring task to stop
+            self.monitoring_shutdown.notify_waiters();
+
+            // Abort the monitoring task
+            task.abort();
+
+            // Give the task a moment to clean up
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+
+            log::info!("✅ Monitoring task stopped");
+        } else {
+            log::debug!("📡 No monitoring task was running");
+        }
+
         Ok(())
     }
 
@@ -657,5 +689,22 @@ impl ObsClient {
         
         log::info!("✅ Status listener set up successfully");
         Ok(())
+    }
+}
+
+impl Drop for ObsClient {
+    fn drop(&mut self) {
+        // Clean up any resources when the client is dropped
+        log::debug!("🧹 Dropping ObsClient");
+
+        // Stop monitoring if it's still running
+        if self.monitoring_task.is_some() {
+            log::debug!("📡 Stopping monitoring task during client drop");
+            // Signal shutdown and abort the task
+            self.monitoring_shutdown.notify_waiters();
+            if let Some(task) = self.monitoring_task.take() {
+                task.abort();
+            }
+        }
     }
 }
