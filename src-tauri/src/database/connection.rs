@@ -143,6 +143,20 @@ pub struct PooledConnection {
     max_connections: usize,
 }
 
+impl std::ops::Deref for PooledConnection {
+    type Target = rusqlite::Connection;
+
+    fn deref(&self) -> &Self::Target {
+        self.connection.as_ref().unwrap()
+    }
+}
+
+impl std::ops::DerefMut for PooledConnection {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.connection.as_mut().unwrap()
+    }
+}
+
 impl PooledConnection {
     /// Get a reference to the underlying connection
     pub fn connection(&self) -> &rusqlite::Connection {
@@ -180,6 +194,7 @@ pub struct PoolStats {
 #[derive(Clone)]
 pub struct DatabaseConnection {
     connection: Arc<TokioMutex<Connection>>,
+    connection_pool: Option<Arc<DatabaseConnectionPool>>,
 }
 
 impl DatabaseConnection {
@@ -201,7 +216,22 @@ impl DatabaseConnection {
         
         Ok(Self {
             connection: Arc::new(TokioMutex::new(connection)),
+            connection_pool: None,
         })
+    }
+
+    /// Create a new DatabaseConnection using an existing connection pool
+    pub fn new_from_pool(connection_pool: Arc<DatabaseConnectionPool>) -> Self {
+        // Create a dummy connection - this will be replaced by the pool when used
+        let dummy_connection = Connection::open_in_memory()
+            .expect("Failed to create dummy connection");
+        Self::configure_connection(&dummy_connection)
+            .expect("Failed to configure dummy connection");
+
+        Self {
+            connection: Arc::new(TokioMutex::new(dummy_connection)),
+            connection_pool: Some(connection_pool),
+        }
     }
     
     /// Configure SQLite connection with safety and performance optimizations
@@ -290,6 +320,22 @@ impl DatabaseConnection {
     
     /// Get a reference to the underlying connection
     pub async fn get_connection(&self) -> DatabaseResult<tokio::sync::MutexGuard<'_, Connection>> {
+        // If we have a connection pool, get a connection from it
+        if let Some(pool) = &self.connection_pool {
+            // Get a connection from the pool
+            let pooled_conn = pool.get_connection()
+                .map_err(|e| DatabaseError::Connection(format!("Failed to get connection from pool: {}", e)))?;
+
+            // Replace our internal connection with the pooled one
+            // This is a bit hacky but allows backward compatibility
+            // We need to take the connection from the pooled connection
+            let mut pooled_conn_mut = pooled_conn;
+            if let Some(conn) = pooled_conn_mut.connection.take() {
+                let mut conn_guard = self.connection.lock().await;
+                *conn_guard = conn;
+            }
+        }
+
         Ok(self.connection.lock().await)
     }
     

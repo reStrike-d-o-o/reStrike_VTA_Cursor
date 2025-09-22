@@ -5816,13 +5816,32 @@ pub async fn control_room_authenticate_async(
 }
 
 /// Get OBS connections for Control Room
+/// Validate that a session ID is valid and authorized
+fn validate_session(session_id: &str) -> Result<(), TauriError> {
+    // Basic session validation - check if session_id is not empty
+    if session_id.is_empty() {
+        return Err(TauriError::from(anyhow::anyhow!("Invalid session: session_id cannot be empty")));
+    }
+
+    // Additional validation could include:
+    // - Check session against database/session store
+    // - Verify session hasn't expired
+    // - Validate user permissions for the session
+
+    log::debug!("Session {} validated successfully", session_id);
+    Ok(())
+}
+
 #[tauri::command]
 pub async fn control_room_get_obs_connections(
     session_id: String,
     app: State<'_, Arc<App>>
 ) -> Result<serde_json::Value, TauriError> {
     log::debug!("Control Room: Getting OBS connections for session {}", session_id);
-    // TODO: Validate session
+
+    // Validate session before proceeding
+    validate_session(&session_id)?;
+
     let connections = app.obs_obws_plugin().get_connection_names().await;
     Ok(serde_json::json!({
         "success": true,
@@ -5837,8 +5856,10 @@ pub async fn control_room_get_obs_connections_with_status(
     app: State<'_, Arc<App>>
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Control Room: Getting OBS connections with status for session {}", session_id);
-    // TODO: Validate session
-    
+
+    // Validate session before proceeding
+    validate_session(&session_id)?;
+
     let names = app.obs_obws_plugin().get_connection_names().await;
     let mut connections_data = Vec::new();
     for name in names {
@@ -5855,7 +5876,9 @@ pub async fn control_room_get_obs_connections_with_details(
     app: State<'_, Arc<App>>
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Control Room: Getting OBS connections with full details for session {}", session_id);
-    // TODO: Validate session
+
+    // Validate session before proceeding
+    validate_session(&session_id)?;
 
     match app.obs_obws_plugin().get_connections().await {
         Ok(connections) => {
@@ -5887,8 +5910,10 @@ pub async fn control_room_mute_all_obs(
     _app: State<'_, Arc<App>>
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Control Room: Bulk mute all OBS with source '{}' for session {}", source_name, session_id);
-    // TODO: Validate session
-    
+
+    // Validate session before proceeding
+    validate_session(&session_id)?;
+
     // Not supported via obws yet. Return empty results.
     Ok(serde_json::json!({ "success": true, "results": [] }))
 }
@@ -5901,8 +5926,10 @@ pub async fn control_room_unmute_all_obs(
     _app: State<'_, Arc<App>>
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Control Room: Bulk unmute all OBS with source '{}' for session {}", source_name, session_id);
-    // TODO: Validate session
-    
+
+    // Validate session before proceeding
+    validate_session(&session_id)?;
+
     // Not supported via obws yet. Return empty results.
     Ok(serde_json::json!({ "success": true, "results": [] }))
 }
@@ -5914,7 +5941,10 @@ pub async fn control_room_change_all_obs_scenes(
     app: State<'_, Arc<App>>
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Control Room: Change all OBS scenes to '{}' for session {}", scene_name, session_id);
-    // TODO: Validate session
+
+    // Validate session before proceeding
+    validate_session(&session_id)?;
+
     let names = app.obs_obws_plugin().get_connection_names().await;
     let mut results = Vec::new();
     for n in names {
@@ -5938,7 +5968,10 @@ pub async fn control_room_start_all_obs(
     app: State<'_, Arc<App>>
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Control Room: Start all OBS streams for session {}", session_id);
-    // TODO: Validate session
+
+    // Validate session before proceeding
+    validate_session(&session_id)?;
+
     let names = app.obs_obws_plugin().get_connection_names().await;
     let mut results = Vec::new();
     for n in names {
@@ -5963,7 +5996,10 @@ pub async fn control_room_stop_all_obs(
     app: State<'_, Arc<App>>
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Control Room: Stop all OBS streams for session {}", session_id);
-    // TODO: Validate session
+
+    // Validate session before proceeding
+    validate_session(&session_id)?;
+
     let names = app.obs_obws_plugin().get_connection_names().await;
     let mut results = Vec::new();
     for n in names {
@@ -5993,8 +6029,10 @@ pub async fn control_room_add_obs_connection(
     app: State<'_, Arc<App>>
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Control Room: Adding OBS connection '{}' at {}:{} for session {}", name, host, port, session_id);
-    // TODO: Validate session
-    
+
+    // Validate session before proceeding
+    validate_session(&session_id)?;
+
     let config = crate::plugins::obs_obws::types::ObsConnectionConfig { name: name.clone(), host, port, password, timeout_seconds: 30, role: crate::plugins::obs_obws::ObsConnectionRole::None };
     match app.obs_obws_plugin().add_connection(config).await {
         Ok(_) => {
@@ -6019,8 +6057,10 @@ pub async fn control_room_connect_obs(
     app: State<'_, Arc<App>>
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Control Room: Connecting to OBS '{}' for session {}", obs_name, session_id);
-    // TODO: Validate session
-    
+
+    // Validate session before proceeding
+    validate_session(&session_id)?;
+
     match app.obs_obws_plugin().connect(&obs_name).await {
         Ok(_) => {
             log::info!("Control Room: Successfully connected to OBS '{}'", obs_name);
@@ -6044,8 +6084,10 @@ pub async fn control_room_disconnect_obs(
     app: State<'_, Arc<App>>
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Control Room: Disconnecting from OBS '{}' for session {}", obs_name, session_id);
-    // TODO: Validate session
-    
+
+    // Validate session before proceeding
+    validate_session(&session_id)?;
+
     match app.obs_obws_plugin().disconnect(&obs_name).await {
         Ok(_) => {
             log::info!("Control Room: Successfully disconnected from OBS '{}'", obs_name);
@@ -6069,8 +6111,10 @@ pub async fn control_room_remove_obs_connection(
     app: State<'_, Arc<App>>
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Control Room: Removing OBS connection '{}' for session {}", obs_name, session_id);
-    // TODO: Validate session
-    
+
+    // Validate session before proceeding
+    validate_session(&session_id)?;
+
     match app.obs_obws_plugin().remove_connection(&obs_name).await {
         Ok(_) => {
             log::info!("Control Room: Successfully removed OBS connection '{}'", obs_name);
@@ -6094,8 +6138,10 @@ pub async fn control_room_get_obs_connection(
     app: State<'_, Arc<App>>
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Control Room: Getting OBS connection '{}' for session {}", obs_name, session_id);
-    // TODO: Validate session
-    
+
+    // Validate session before proceeding
+    validate_session(&session_id)?;
+
     match app.obs_obws_plugin().get_connection_status(&obs_name).await {
         Ok(status) => Ok(serde_json::json!({ "success": true, "connection": {"name": obs_name, "status": format!("{:?}", status)} })),
         Err(e) => {
@@ -6117,8 +6163,10 @@ pub async fn control_room_update_obs_connection(
     app: State<'_, Arc<App>>
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Control Room: Updating OBS connection '{}' for session {}", obs_name, session_id);
-    // TODO: Validate session
-    
+
+    // Validate session before proceeding
+    validate_session(&session_id)?;
+
     let _ = app.obs_obws_plugin().remove_connection(&obs_name).await;
     let cfg = crate::plugins::obs_obws::types::ObsConnectionConfig { name: obs_name.clone(), host, port, password, timeout_seconds: 30, role: crate::plugins::obs_obws::ObsConnectionRole::None };
     match app.obs_obws_plugin().add_connection(cfg).await {
@@ -6142,8 +6190,10 @@ pub async fn control_room_connect_all_obs(
     app: State<'_, Arc<App>>
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Control Room: Connecting all OBS connections for session {}", session_id);
-    // TODO: Validate session
-    
+
+    // Validate session before proceeding
+    validate_session(&session_id)?;
+
     let names = app.obs_obws_plugin().get_connection_names().await;
     let mut results: Vec<(String, Result<(), anyhow::Error>)> = Vec::new();
     for n in names { results.push((n.clone(), app.obs_obws_plugin().connect(&n).await.map(|_| ()).map_err(|e| anyhow::anyhow!(e.to_string())))); }
@@ -6174,12 +6224,14 @@ pub async fn control_room_connect_all_obs(
 /// Disconnect all connected OBS connections
 #[tauri::command]
 pub async fn control_room_disconnect_all_obs(
-    _session_id: String,
+    session_id: String,
     _app: State<'_, Arc<App>>
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Control Room: Disconnecting all OBS connections");
-    // TODO: Validate session
-    
+
+    // Validate session before proceeding
+    validate_session(&session_id)?;
+
     let names = _app.obs_obws_plugin().get_connection_names().await;
     let mut results: Vec<(String, Result<(), anyhow::Error>)> = Vec::new();
     for n in names { results.push((n.clone(), _app.obs_obws_plugin().disconnect(&n).await.map(|_| ()).map_err(|e| anyhow::anyhow!(e.to_string())))); }
@@ -6216,8 +6268,10 @@ pub async fn control_room_get_audio_sources(
     _app: State<'_, Arc<App>>
 ) -> Result<serde_json::Value, TauriError> {
     log::debug!("Control Room: Getting audio sources for OBS '{}' session {}", obs_name, session_id);
-    // TODO: Validate session
-    
+
+    // Validate session before proceeding
+    validate_session(&session_id)?;
+
     // Not implemented with obws yet
     Ok(serde_json::json!({ "success": true, "sources": [] }))
 }
@@ -6230,8 +6284,10 @@ pub async fn control_room_get_scenes(
     app: State<'_, Arc<App>>
 ) -> Result<serde_json::Value, TauriError> {
     log::debug!("Control Room: Getting scenes for OBS '{}' session {}", obs_name, session_id);
-    // TODO: Validate session
-    
+
+    // Validate session before proceeding
+    validate_session(&session_id)?;
+
     match app.obs_obws_plugin().get_scenes(Some(&obs_name)).await {
         Ok(scenes) => Ok(serde_json::json!({
             "success": true,

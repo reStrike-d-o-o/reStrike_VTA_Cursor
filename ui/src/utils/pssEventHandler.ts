@@ -115,7 +115,7 @@ export const handlePssEvent = (event: any) => {
       // Parse raw match config (mch;) lines to update match config
       if (event.message && event.message.startsWith('mch;')) {
         logger.debug('🎯 Parsing raw match config message', event.message);
-        // TODO: Parse raw match config message
+        parseRawMatchConfig(event.message, store);
       }
   }
   
@@ -404,6 +404,60 @@ const handleRoundEvent = (event: any, store: any) => {
     logger.debug('📊 Updated current round from round event', currentRound);
   } catch (error) {
     console.error('Error handling round event:', error);
+  }
+};
+
+/**
+ * Parse raw match config message from PSS protocol
+ * Handles messages in format: 'mch;number;category;gender;weight;rounds;duration;countdown_type;format'
+ */
+const parseRawMatchConfig = (message: string, store: any) => {
+  try {
+    logger.debug('🎯 parseRawMatchConfig called with', message);
+
+    // Remove the 'mch;' prefix and split by semicolon
+    const parts = message.substring(4).split(';');
+
+    if (parts.length < 8) {
+      logger.warn('⚠️ Invalid match config message format - insufficient parts', { parts, message });
+      return;
+    }
+
+    const [
+      numberStr,
+      category,
+      gender,
+      weight,
+      roundsStr,
+      durationStr,
+      countdownType,
+      formatStr
+    ] = parts;
+
+    // Parse numeric values
+    const number = parseInt(numberStr) || 0;
+    const totalRounds = parseInt(roundsStr) || 3;
+    const roundDuration = parseInt(durationStr) || 120;
+    const format = parseInt(formatStr) || 1;
+
+    // Create match config object
+    const matchConfig: PssMatchConfig = {
+      number,
+      category: `${category} ${gender}`.trim(), // Combine category and gender
+      weight: weight,
+      division: category, // Use category as division
+      totalRounds,
+      roundDuration,
+      countdownType: countdownType,
+      format
+    };
+
+    logger.debug('🎯 Parsed raw match config', matchConfig);
+    store.updateMatchConfig(matchConfig);
+    logger.info('✅ Updated match config from raw message');
+
+  } catch (error) {
+    logger.error('❌ Error parsing raw match config message', { message, error });
   }
 };
 

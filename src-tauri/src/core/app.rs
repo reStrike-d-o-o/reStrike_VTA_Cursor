@@ -149,7 +149,7 @@ impl App {
             log::info!("✅ Recording event handler initialized");
             // Load persisted automatic recording config from DB into handler so it works after restart
             use crate::database::operations::UiSettingsOperations as UIOps;
-            if let Ok(conn) = database_plugin.get_connection().await {
+            if let Ok(conn) = database_plugin.get_pooled_connection() {
                 let enabled = UIOps::get_ui_setting(&*conn, "obs.auto.enabled").ok().flatten().map(|v| v=="true").unwrap_or(false);
                 let obs_name = UIOps::get_ui_setting(&*conn, "obs.auto.connection").ok().flatten().filter(|s| !s.is_empty()).unwrap_or_else(|| "OBS_REC".to_string());
                 let stop_on_end = UIOps::get_ui_setting(&*conn, "obs.auto.stop_on_match_end").ok().flatten().map(|v| v=="true").unwrap_or(true);
@@ -451,7 +451,7 @@ impl App {
         }
         // Read IVR settings
         use crate::database::operations::UiSettingsOperations as UIOps;
-        let conn = self.database_plugin().get_connection().await?;
+        let conn = self.database_plugin().get_pooled_connection()?;
         let mpv_path = UIOps::get_ui_setting(&*conn, "ivr.replay.mpv_path").ok().flatten()
             .unwrap_or_else(|| "C:/Program Files/mpv/mpv.exe".to_string());
         let seconds_from_end: u32 = UIOps::get_ui_setting(&*conn, "ivr.replay.seconds_from_end").ok().flatten()
@@ -543,7 +543,7 @@ impl App {
             };
             // Resolve active tournament/day IDs for better indexing
             let (tid_opt, _day_opt) = {
-                match self.database_plugin().get_connection().await {
+                match self.database_plugin().get_pooled_connection() {
                     Ok(conn2) => {
                         use crate::database::operations::TournamentOperations as TOps;
                         let t = TOps::get_active_tournament(&*conn2).ok().flatten();
@@ -559,7 +559,7 @@ impl App {
             };
             let file_path_str = std::path::PathBuf::from(&directory).join(name_owned).to_string_lossy().to_string();
             // Acquire a fresh short-lived connection only for DB writes to avoid holding across await
-            if let Ok(conn2) = self.database_plugin().get_connection().await {
+            if let Ok(conn2) = self.database_plugin().get_pooled_connection() {
                 let conn_ref2 = &*conn2;
                 let _ = if let Some(dbid) = match_id_db {
                     conn_ref2.execute(
@@ -601,7 +601,7 @@ impl App {
     pub async fn open_event_video(&self, event_id: i64) -> AppResult<()> {
         // Query event (match_id, timestamp) without holding connection across await boundaries
         let (match_db_id, event_time_str) = {
-            let conn_guard = self.database_plugin().get_connection().await.map_err(|e| crate::types::AppError::ConfigError(e.to_string()))?;
+            let conn_guard = self.database_plugin().get_pooled_connection().map_err(|e| crate::types::AppError::ConfigError(e.to_string()))?;
             let conn_ref = &*conn_guard;
             let row: (i64, String) = conn_ref
                 .query_row(
@@ -620,7 +620,7 @@ impl App {
 
         // Prefer recording that started before event_time; fallback to the earliest after
         let (record_path_opt, _record_dir_opt, record_start_str_opt) = {
-            let conn_guard = self.database_plugin().get_connection().await.map_err(|e| crate::types::AppError::ConfigError(e.to_string()))?;
+            let conn_guard = self.database_plugin().get_pooled_connection().map_err(|e| crate::types::AppError::ConfigError(e.to_string()))?;
             let conn_ref = &*conn_guard;
             let before: Option<(Option<String>, Option<String>, Option<String>)> = conn_ref
                 .query_row(
@@ -649,7 +649,7 @@ impl App {
         if file_path.as_ref().map(|p| p.is_file()).unwrap_or(false) == false {
             // Try to find a replay near the event time
             let (rp_opt, _rd_opt): (Option<String>, Option<String>) = {
-                let conn_guard = self.database_plugin().get_connection().await.map_err(|e| crate::types::AppError::ConfigError(e.to_string()))?;
+                let conn_guard = self.database_plugin().get_pooled_connection().map_err(|e| crate::types::AppError::ConfigError(e.to_string()))?;
                 let conn_ref = &*conn_guard;
                 // Prefer replay started before event
                 let before: Option<(Option<String>, Option<String>)> = conn_ref
@@ -691,7 +691,7 @@ impl App {
         // Resolve mpv path
         let mpv_path: String = {
             use crate::database::operations::UiSettingsOperations as UIOps;
-            let conn_guard = self.database_plugin().get_connection().await.map_err(|e| crate::types::AppError::ConfigError(e.to_string()))?;
+            let conn_guard = self.database_plugin().get_pooled_connection().map_err(|e| crate::types::AppError::ConfigError(e.to_string()))?;
             let conn_ref = &*conn_guard;
             UIOps::get_ui_setting(conn_ref, "ivr.replay.mpv_path")
                 .ok()
@@ -760,7 +760,7 @@ impl App {
         // Resolve mpv path from settings
         let mpv_path: String = {
             use crate::database::operations::UiSettingsOperations as UIOps;
-            let conn_guard = self.database_plugin().get_connection().await.map_err(|e| crate::types::AppError::ConfigError(e.to_string()))?;
+            let conn_guard = self.database_plugin().get_pooled_connection().map_err(|e| crate::types::AppError::ConfigError(e.to_string()))?;
             let conn_ref = &*conn_guard;
             UIOps::get_ui_setting(conn_ref, "ivr.replay.mpv_path")
                 .ok()
@@ -919,7 +919,7 @@ impl App {
                         // IVR: Auto round replay on challenge if enabled
                         if let crate::plugins::plugin_udp::PssEvent::Challenge { .. } = event {
                             use crate::database::operations::UiSettingsOperations as UIOps;
-                            match app.database_plugin().get_connection().await {
+                            match app.database_plugin().get_pooled_connection() {
                                 Ok(conn) => {
                                     let enabled = UIOps::get_ui_setting(&*conn, "ivr.replay.auto_on_challenge")
                                         .ok().flatten().map(|s| s == "true").unwrap_or(false);

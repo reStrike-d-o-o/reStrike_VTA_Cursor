@@ -15,6 +15,7 @@ use tokio::sync::Mutex;
 use std::path::Path;
 
 /// Phase 2 Optimization: Enhanced Database Plugin with Connection Pooling
+/// Thread-safe database operations using connection pooling
 #[derive(Clone)]
 pub struct DatabasePlugin {
     connection_pool: Arc<DatabaseConnectionPool>,
@@ -26,17 +27,18 @@ pub struct DatabasePlugin {
 impl DatabasePlugin {
     /// Create a new database plugin with connection pooling
     pub async fn new() -> AppResult<Self> {
-        let connection = Arc::new(DatabaseConnection::new()?);
-        
         // Phase 2: Initialize connection pool with 10 connections for high-volume operations
         let connection_pool = Arc::new(DatabaseConnectionPool::new(10));
-        
+
         // Initialize config manager with default config directory
         let config_dir = Path::new("config");
         let config_manager = ConfigManager::new(config_dir)?;
-        
+
         let migration_strategy = MigrationStrategy::new(config_manager.clone());
         let hybrid_provider = Arc::new(Mutex::new(HybridSettingsProvider::new(config_manager.clone())));
+
+        // Create a database connection that uses the pool
+        let connection = Arc::new(DatabaseConnection::new_from_pool(connection_pool.clone()));
 
         let plugin = Self {
             connection_pool,
@@ -45,13 +47,25 @@ impl DatabasePlugin {
             hybrid_provider,
         };
 
-        // Run database migrations synchronously to ensure they complete before any database operations
-        if let Err(e) = Self::run_migrations_internal(plugin.connection.clone()).await {
+        // Run database migrations using the connection pool
+        if let Err(e) = Self::run_migrations_with_pool(plugin.connection_pool.clone()).await {
             log::error!("Failed to run database migrations: {}", e);
             return Err(crate::types::AppError::ConfigError(format!("Database migration failed: {}", e)));
         }
 
         Ok(plugin)
+    }
+
+    /// Run database migrations using the connection pool
+    async fn run_migrations_with_pool(connection_pool: Arc<DatabaseConnectionPool>) -> AppResult<()> {
+        let mut conn = connection_pool
+            .get_connection()
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection for migrations: {}", e)))?;
+
+        // Run migrations using the pooled connection
+        Self::run_migrations_internal_with_pooled(&mut conn).await?;
+
+        Ok(())
     }
 
     /// Get a pooled connection for high-performance operations
@@ -71,9 +85,10 @@ impl DatabasePlugin {
         self.connection_pool.cleanup_old_connections();
     }
 
+
     /// Initialize UI settings in database
     pub async fn initialize_ui_settings(&self) -> AppResult<()> {
-        let mut conn = self.connection.get_connection().await
+        let mut conn = self.get_pooled_connection()
             .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
         UiSettingsOperations::initialize_ui_settings(&mut *conn)
             .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to initialize UI settings: {}", e)))
@@ -81,7 +96,7 @@ impl DatabasePlugin {
 
     /// Get UI setting from database
     pub async fn get_ui_setting(&self, key: &str) -> AppResult<Option<String>> {
-        let conn = self.connection.get_connection().await
+        let conn = self.get_pooled_connection()
             .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
         UiSettingsOperations::get_ui_setting(&*conn, key)
             .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get UI setting: {}", e)))
@@ -89,7 +104,7 @@ impl DatabasePlugin {
 
     /// Set UI setting in database
     pub async fn set_ui_setting(&self, key: &str, value: &str, changed_by: &str, change_reason: Option<&str>) -> AppResult<()> {
-        let mut conn = self.connection.get_connection().await
+        let mut conn = self.get_pooled_connection()
             .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
         UiSettingsOperations::set_ui_setting(&mut *conn, key, value, changed_by, change_reason)
             .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to set UI setting: {}", e)))
@@ -97,7 +112,7 @@ impl DatabasePlugin {
 
     /// Get all UI settings from database
     pub async fn get_all_ui_settings(&self) -> AppResult<std::collections::HashMap<String, String>> {
-        let conn = self.connection.get_connection().await
+        let conn = self.get_pooled_connection()
             .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
         let settings_vec = UiSettingsOperations::get_all_ui_settings(&*conn)
             .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get all UI settings: {}", e)))?;
@@ -109,16 +124,18 @@ impl DatabasePlugin {
 
     /// Check if database is accessible
     pub async fn is_accessible(&self) -> bool {
-        self.connection.is_accessible().await
+        self.get_connection().await.is_ok()
     }
 
     /// Get database connection for other plugins
+    /// Returns the thread-safe database connection that uses connection pooling
     pub fn get_database_connection(&self) -> Arc<DatabaseConnection> {
         self.connection.clone()
     }
-    
+
     /// Get database file size
     pub fn get_file_size(&self) -> AppResult<u64> {
+        // Use the connection pool to get database statistics
         self.connection.get_file_size()
             .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to get database file size: {}", e)))
     }
@@ -640,6 +657,19 @@ impl DatabasePlugin {
         migration_manager.migrate(&mut *conn)
             .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to run database migrations: {}", e)))?;
         
+        log::info!("Database migrations completed successfully");
+        Ok(())
+    }
+
+    /// Internal method to run database migrations using a pooled connection
+    async fn run_migrations_internal_with_pooled(conn: &mut PooledConnection) -> AppResult<()> {
+        // Import the migration manager
+        use crate::database::migrations::MigrationManager;
+
+        let migration_manager = MigrationManager::new();
+        migration_manager.migrate(conn)
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to run database migrations: {}", e)))?;
+
         log::info!("Database migrations completed successfully");
         Ok(())
     }
