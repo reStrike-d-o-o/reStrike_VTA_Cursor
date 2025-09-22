@@ -397,6 +397,18 @@ impl ObsClient {
         })
     }
 
+    /// Convert obws event to our ObsEvent enum
+    fn convert_obws_event(event: obws::events::Event) -> AppResult<ObsEvent> {
+        // For now, convert to a generic custom event since the obws event structure
+        // may be different than expected. This can be enhanced later.
+        Ok(ObsEvent::Custom {
+            event_type: format!("{:?}", event),
+            data: serde_json::json!({
+                "raw_event": format!("{:?}", event)
+            })
+        })
+    }
+
     /// Set recording directory (Output -> Recording -> Recording path)
     pub async fn set_record_directory(&self, directory: &str) -> AppResult<()> {
         let client = self.get_client()?;
@@ -546,8 +558,43 @@ impl ObsClient {
 
     /// Trigger event
     pub async fn trigger_event(&self, event: ObsEvent) -> AppResult<()> {
-        let _handlers = self.event_handlers.lock().await;
-        // TODO: Implement event triggering based on event type
+        let handlers = self.event_handlers.lock().await;
+
+        // Determine event type string based on the event variant
+        let event_type = match &event {
+            ObsEvent::ConnectionEstablished => "ConnectionEstablished",
+            ObsEvent::ConnectionLost => "ConnectionLost",
+            ObsEvent::RecordingStarted => "RecordingStarted",
+            ObsEvent::RecordingStopped => "RecordingStopped",
+            ObsEvent::StreamingStarted => "StreamingStarted",
+            ObsEvent::StreamingStopped => "StreamingStopped",
+            ObsEvent::ReplayBufferStarted => "ReplayBufferStarted",
+            ObsEvent::ReplayBufferStopped => "ReplayBufferStopped",
+            ObsEvent::ReplayBufferSaved => "ReplayBufferSaved",
+            ObsEvent::VirtualCameraStarted => "VirtualCameraStarted",
+            ObsEvent::VirtualCameraStopped => "VirtualCameraStopped",
+            ObsEvent::SceneChanged { .. } => "SceneChanged",
+            ObsEvent::SourceCreated { .. } => "SourceCreated",
+            ObsEvent::SourceRemoved { .. } => "SourceRemoved",
+            ObsEvent::SourceRenamed { .. } => "SourceRenamed",
+            ObsEvent::StudioModeSwitched { .. } => "StudioModeSwitched",
+            ObsEvent::Custom { event_type, .. } => event_type,
+        };
+
+        // Call handlers for this event type
+        if let Some(handler) = handlers.get(event_type) {
+            handler(event.clone());
+            log::debug!("Event '{}' handler executed", event_type);
+        } else {
+            log::debug!("No handler registered for event type: {}", event_type);
+        }
+
+        // Also call wildcard handlers for "all" events
+        if let Some(handler) = handlers.get("all") {
+            handler(event.clone());
+            log::debug!("Wildcard event handler executed for '{}'", event_type);
+        }
+
         log::debug!("Event triggered: {:?}", event);
         Ok(())
     }
@@ -568,6 +615,12 @@ impl ObsClient {
         tokio::spawn(async move {
             while let Some(event) = events.next().await {
                 log::debug!("OBS event: {:?}", event);
+
+                // Convert obws event to our ObsEvent and trigger it
+                if let Ok(obs_event) = ObsClient::convert_obws_event(event) {
+                    // TODO: For now, just log the event - event triggering needs proper client reference
+                    log::debug!("Converted OBS event: {:?}", obs_event);
+                }
             }
         });
 
