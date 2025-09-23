@@ -40,6 +40,7 @@ pub async fn db_purge_all_tournament_pss_data(app: State<'_, Arc<App>>) -> Resul
 }
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+use std::collections::HashMap;
 use tauri::{State, Emitter, Error as TauriError};
 use crate::core::app::App;
 use crate::logging::archival::{AutoArchiveConfig, ArchiveSchedule};
@@ -47,6 +48,7 @@ use dirs;
 use crate::utils::simulation_env::ensure_simulation_env;
 use once_cell::sync::OnceCell;
 use tokio::sync::Mutex as AsyncMutex;
+use crate::plugins::obs_obws::types::ObsOperationRequest;
 
 
 
@@ -6335,6 +6337,79 @@ pub async fn control_room_get_audio_sources(
         Err(e) => {
             log::error!("Failed to get audio sources for OBS '{}': {}", obs_name, e);
             Err(TauriError::from(anyhow::anyhow!("Failed to get audio sources: {}", e)))
+        }
+    }
+}
+
+/// Execute custom operation on Control Room OBS connection
+#[tauri::command]
+pub async fn control_room_execute_custom_operation(
+    session_id: String,
+    obs_name: String,
+    operation: String,
+    parameters: serde_json::Value,
+    app: State<'_, Arc<App>>
+) -> Result<serde_json::Value, TauriError> {
+    log::debug!("Control Room: Executing custom operation '{}' on OBS '{}' for session {}", operation, obs_name, session_id);
+
+    // Validate session before proceeding
+    validate_session(&session_id)?;
+
+    // Parse parameters into HashMap
+    let params: HashMap<String, serde_json::Value> = match parameters {
+        serde_json::Value::Object(map) => map.into_iter().collect(),
+        _ => HashMap::new(),
+    };
+
+    let request = ObsOperationRequest {
+        operation,
+        parameters: params,
+    };
+
+    // Execute custom operation
+    match app.obs_obws_plugin().execute_custom_operation(request, Some(&obs_name)).await {
+        Ok(response) => {
+            Ok(serde_json::json!({
+                "success": true,
+                "request_id": response.request_id,
+                "status": response.status,
+                "data": response.data,
+                "error": response.error
+            }))
+        }
+        Err(e) => {
+            log::error!("Failed to execute custom operation on OBS '{}': {}", obs_name, e);
+            Err(TauriError::from(anyhow::anyhow!("Failed to execute custom operation: {}", e)))
+        }
+    }
+}
+
+/// Execute raw OBS WebSocket request on Control Room OBS connection
+#[tauri::command]
+pub async fn control_room_execute_raw_request(
+    session_id: String,
+    obs_name: String,
+    request_type: String,
+    request_data: serde_json::Value,
+    app: State<'_, Arc<App>>
+) -> Result<serde_json::Value, TauriError> {
+    log::debug!("Control Room: Executing raw request '{}' on OBS '{}' for session {}", request_type, obs_name, session_id);
+
+    // Validate session before proceeding
+    validate_session(&session_id)?;
+
+    // Execute raw request
+    match app.obs_obws_plugin().execute_raw_request(&request_type, request_data, Some(&obs_name)).await {
+        Ok(result) => {
+            Ok(serde_json::json!({
+                "success": true,
+                "requestType": request_type,
+                "result": result
+            }))
+        }
+        Err(e) => {
+            log::error!("Failed to execute raw request '{}' on OBS '{}': {}", request_type, obs_name, e);
+            Err(TauriError::from(anyhow::anyhow!("Failed to execute raw request: {}", e)))
         }
     }
 }

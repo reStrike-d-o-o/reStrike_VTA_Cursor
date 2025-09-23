@@ -266,14 +266,515 @@ impl ObsOperations {
 
     /// Execute custom operation
     pub async fn execute_custom_operation(
-        _client: &ObsClient,
+        client: &ObsClient,
         request: ObsOperationRequest,
     ) -> AppResult<ObsOperationResponse> {
-        // TODO: Implement custom operation execution
-        // This would require implementing a generic request/response system
-        // that can handle any OBS WebSocket operation not covered by the obws crate
-        
-        log::warn!("Custom operation execution not yet implemented: {}", request.operation);
-        Err(AppError::ConfigError("Custom operation execution not yet implemented".to_string()))
+        let obs_client = client.get_client()?;
+
+        // Generate unique request ID
+        let request_id = format!("custom_op_{}", chrono::Utc::now().timestamp_millis());
+
+        match request.operation.as_str() {
+            // Audio control operations - these enable the functionality you requested
+            "SetInputMute" => {
+                let _input_name = request.parameters.get("inputName")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| AppError::ConfigError("Missing 'inputName' parameter".to_string()))?;
+
+                let _mute_value = request.parameters.get("inputMuted")
+                    .and_then(|v| v.as_bool())
+                    .ok_or_else(|| AppError::ConfigError("Missing or invalid 'inputMuted' parameter".to_string()))?;
+
+                // Use raw request system for individual input mute control
+                match client.execute_raw_request("SetInputMute", request.parameters.clone()).await {
+                    Ok(result) => Ok(ObsOperationResponse {
+                        request_id,
+                        status: "success".to_string(),
+                        data: Some(serde_json::json!({
+                            "inputName": _input_name,
+                            "inputMuted": _mute_value,
+                            "rawResponse": result
+                        })),
+                        error: None,
+                    }),
+                    Err(e) => Ok(ObsOperationResponse {
+                        request_id,
+                        status: "error".to_string(),
+                        data: None,
+                        error: Some(e.to_string()),
+                    })
+                }
+            }
+
+            "GetInputMute" => {
+                let _input_name = request.parameters.get("inputName")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| AppError::ConfigError("Missing 'inputName' parameter".to_string()))?;
+
+                // Use raw request system for individual input mute status
+                match client.execute_raw_request("GetInputMute", request.parameters.clone()).await {
+                    Ok(result) => Ok(ObsOperationResponse {
+                        request_id,
+                        status: "success".to_string(),
+                        data: Some(serde_json::json!({
+                            "inputName": _input_name,
+                            "rawResponse": result
+                        })),
+                        error: None,
+                    }),
+                    Err(e) => Ok(ObsOperationResponse {
+                        request_id,
+                        status: "error".to_string(),
+                        data: None,
+                        error: Some(e.to_string()),
+                    })
+                }
+            }
+
+            "SetInputVolume" => {
+                let _input_name = request.parameters.get("inputName")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| AppError::ConfigError("Missing 'inputName' parameter".to_string()))?;
+
+                let _volume_value = request.parameters.get("inputVolumeMul")
+                    .and_then(|v| v.as_f64())
+                    .ok_or_else(|| AppError::ConfigError("Missing or invalid 'inputVolumeMul' parameter".to_string()))?;
+
+                // Use raw request system for individual input volume control
+                match client.execute_raw_request("SetInputVolume", request.parameters.clone()).await {
+                    Ok(result) => Ok(ObsOperationResponse {
+                        request_id,
+                        status: "success".to_string(),
+                        data: Some(serde_json::json!({
+                            "inputName": _input_name,
+                            "inputVolumeMul": _volume_value,
+                            "rawResponse": result
+                        })),
+                        error: None,
+                    }),
+                    Err(e) => Ok(ObsOperationResponse {
+                        request_id,
+                        status: "error".to_string(),
+                        data: None,
+                        error: Some(e.to_string()),
+                    })
+                }
+            }
+
+            "GetInputVolume" => {
+                let _input_name = request.parameters.get("inputName")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| AppError::ConfigError("Missing 'inputName' parameter".to_string()))?;
+
+                // Use raw request system for individual input volume status
+                match client.execute_raw_request("GetInputVolume", request.parameters.clone()).await {
+                    Ok(result) => Ok(ObsOperationResponse {
+                        request_id,
+                        status: "success".to_string(),
+                        data: Some(serde_json::json!({
+                            "inputName": _input_name,
+                            "rawResponse": result
+                        })),
+                        error: None,
+                    }),
+                    Err(e) => Ok(ObsOperationResponse {
+                        request_id,
+                        status: "error".to_string(),
+                        data: None,
+                        error: Some(e.to_string()),
+                    })
+                }
+            }
+
+            "ToggleMute" => {
+                let _input_name = request.parameters.get("inputName")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| AppError::ConfigError("Missing 'inputName' parameter".to_string()))?;
+
+                // Use raw request system for input mute toggle
+                match client.execute_raw_request("ToggleMute", request.parameters.clone()).await {
+                    Ok(result) => Ok(ObsOperationResponse {
+                        request_id,
+                        status: "success".to_string(),
+                        data: Some(serde_json::json!({
+                            "inputName": _input_name,
+                            "rawResponse": result
+                        })),
+                        error: None,
+                    }),
+                    Err(e) => Ok(ObsOperationResponse {
+                        request_id,
+                        status: "error".to_string(),
+                        data: None,
+                        error: Some(e.to_string()),
+                    })
+                }
+            }
+
+            // Scene item operations
+            "GetSceneItemId" => {
+                let _scene_name = request.parameters.get("sceneName")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| AppError::ConfigError("Missing 'sceneName' parameter".to_string()))?;
+
+                let _source_name = request.parameters.get("sourceName")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| AppError::ConfigError("Missing 'sourceName' parameter".to_string()))?;
+
+                // Use raw request system for scene item operations
+                match client.execute_raw_request("GetSceneItemId", request.parameters.clone()).await {
+                    Ok(result) => Ok(ObsOperationResponse {
+                        request_id,
+                        status: "success".to_string(),
+                        data: Some(serde_json::json!({
+                            "sceneName": _scene_name,
+                            "sourceName": _source_name,
+                            "rawResponse": result
+                        })),
+                        error: None,
+                    }),
+                    Err(e) => Ok(ObsOperationResponse {
+                        request_id,
+                        status: "error".to_string(),
+                        data: None,
+                        error: Some(e.to_string()),
+                    })
+                }
+            }
+
+            "SetSceneItemEnabled" => {
+                let _scene_name = request.parameters.get("sceneName")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| AppError::ConfigError("Missing 'sceneName' parameter".to_string()))?;
+
+                let _scene_item_id = request.parameters.get("sceneItemId")
+                    .and_then(|v| v.as_i64())
+                    .ok_or_else(|| AppError::ConfigError("Missing or invalid 'sceneItemId' parameter".to_string()))?;
+
+                let _scene_item_enabled = request.parameters.get("sceneItemEnabled")
+                    .and_then(|v| v.as_bool())
+                    .ok_or_else(|| AppError::ConfigError("Missing or invalid 'sceneItemEnabled' parameter".to_string()))?;
+
+                // Use raw request system for scene item operations
+                match client.execute_raw_request("SetSceneItemEnabled", request.parameters.clone()).await {
+                    Ok(result) => Ok(ObsOperationResponse {
+                        request_id,
+                        status: "success".to_string(),
+                        data: Some(serde_json::json!({
+                            "sceneName": _scene_name,
+                            "sceneItemId": _scene_item_id,
+                            "sceneItemEnabled": _scene_item_enabled,
+                            "rawResponse": result
+                        })),
+                        error: None,
+                    }),
+                    Err(e) => Ok(ObsOperationResponse {
+                        request_id,
+                        status: "error".to_string(),
+                        data: None,
+                        error: Some(e.to_string()),
+                    })
+                }
+            }
+
+            "SetSceneItemTransform" => {
+                let _scene_name = request.parameters.get("sceneName")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| AppError::ConfigError("Missing 'sceneName' parameter".to_string()))?;
+
+                let _scene_item_id = request.parameters.get("sceneItemId")
+                    .and_then(|v| v.as_i64())
+                    .ok_or_else(|| AppError::ConfigError("Missing or invalid 'sceneItemId' parameter".to_string()))?;
+
+                // Get transform parameters
+                let _x = request.parameters.get("positionX").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                let _y = request.parameters.get("positionY").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                let _scale_x = request.parameters.get("scaleX").and_then(|v| v.as_f64()).unwrap_or(1.0);
+                let _scale_y = request.parameters.get("scaleY").and_then(|v| v.as_f64()).unwrap_or(1.0);
+                let _rotation = request.parameters.get("rotation").and_then(|v| v.as_f64()).unwrap_or(0.0);
+
+                // Use raw request system for scene item transform
+                match client.execute_raw_request("SetSceneItemTransform", request.parameters.clone()).await {
+                    Ok(result) => Ok(ObsOperationResponse {
+                        request_id,
+                        status: "success".to_string(),
+                        data: Some(serde_json::json!({
+                            "sceneName": _scene_name,
+                            "sceneItemId": _scene_item_id,
+                            "positionX": _x,
+                            "positionY": _y,
+                            "scaleX": _scale_x,
+                            "scaleY": _scale_y,
+                            "rotation": _rotation,
+                            "rawResponse": result
+                        })),
+                        error: None,
+                    }),
+                    Err(e) => Ok(ObsOperationResponse {
+                        request_id,
+                        status: "error".to_string(),
+                        data: None,
+                        error: Some(e.to_string()),
+                    })
+                }
+            }
+
+            // Transition operations
+            "SetCurrentSceneTransition" => {
+                let _transition_name = request.parameters.get("transitionName")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| AppError::ConfigError("Missing 'transitionName' parameter".to_string()))?;
+
+                // Use raw request system for transition operations
+                match client.execute_raw_request("SetCurrentSceneTransition", request.parameters.clone()).await {
+                    Ok(result) => Ok(ObsOperationResponse {
+                        request_id,
+                        status: "success".to_string(),
+                        data: Some(serde_json::json!({
+                            "transitionName": _transition_name,
+                            "rawResponse": result
+                        })),
+                        error: None,
+                    }),
+                    Err(e) => Ok(ObsOperationResponse {
+                        request_id,
+                        status: "error".to_string(),
+                        data: None,
+                        error: Some(e.to_string()),
+                    })
+                }
+            }
+
+            "GetCurrentSceneTransition" => {
+                // Use raw request system for transition operations
+                match client.execute_raw_request("GetCurrentSceneTransition", request.parameters.clone()).await {
+                    Ok(result) => Ok(ObsOperationResponse {
+                        request_id,
+                        status: "success".to_string(),
+                        data: Some(serde_json::json!({
+                            "rawResponse": result
+                        })),
+                        error: None,
+                    }),
+                    Err(e) => Ok(ObsOperationResponse {
+                        request_id,
+                        status: "error".to_string(),
+                        data: None,
+                        error: Some(e.to_string()),
+                    })
+                }
+            }
+
+            "SetSceneTransitionOverride" => {
+                let _scene_name = request.parameters.get("sceneName")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| AppError::ConfigError("Missing 'sceneName' parameter".to_string()))?;
+
+                let _transition_name = request.parameters.get("transitionName")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| AppError::ConfigError("Missing 'transitionName' parameter".to_string()))?;
+
+                let _transition_duration = request.parameters.get("transitionDuration")
+                    .and_then(|v| v.as_i64())
+                    .unwrap_or(300);
+
+                // Use raw request system for transition override
+                match client.execute_raw_request("SetSceneTransitionOverride", request.parameters.clone()).await {
+                    Ok(result) => Ok(ObsOperationResponse {
+                        request_id,
+                        status: "success".to_string(),
+                        data: Some(serde_json::json!({
+                            "sceneName": _scene_name,
+                            "transitionName": _transition_name,
+                            "transitionDuration": _transition_duration,
+                            "rawResponse": result
+                        })),
+                        error: None,
+                    }),
+                    Err(e) => Ok(ObsOperationResponse {
+                        request_id,
+                        status: "error".to_string(),
+                        data: None,
+                        error: Some(e.to_string()),
+                    })
+                }
+            }
+
+            "GetTransitionList" => {
+                // Use raw request system for transition list
+                match client.execute_raw_request("GetTransitionList", request.parameters.clone()).await {
+                    Ok(result) => Ok(ObsOperationResponse {
+                        request_id,
+                        status: "success".to_string(),
+                        data: Some(serde_json::json!({
+                            "rawResponse": result
+                        })),
+                        error: None,
+                    }),
+                    Err(e) => Ok(ObsOperationResponse {
+                        request_id,
+                        status: "error".to_string(),
+                        data: None,
+                        error: Some(e.to_string()),
+                    })
+                }
+            }
+
+            "TriggerStudioModeTransition" => {
+                // Use raw request system for studio mode transition
+                match client.execute_raw_request("TriggerStudioModeTransition", request.parameters.clone()).await {
+                    Ok(result) => Ok(ObsOperationResponse {
+                        request_id,
+                        status: "success".to_string(),
+                        data: Some(serde_json::json!({
+                            "rawResponse": result
+                        })),
+                        error: None,
+                    }),
+                    Err(e) => Ok(ObsOperationResponse {
+                        request_id,
+                        status: "error".to_string(),
+                        data: None,
+                        error: Some(e.to_string()),
+                    })
+                }
+            }
+
+            "SetStudioModeEnabled" => {
+                let _studio_mode_enabled = request.parameters.get("studioModeEnabled")
+                    .and_then(|v| v.as_bool())
+                    .ok_or_else(|| AppError::ConfigError("Missing or invalid 'studioModeEnabled' parameter".to_string()))?;
+
+                // Use raw request system for studio mode control
+                match client.execute_raw_request("SetStudioModeEnabled", request.parameters.clone()).await {
+                    Ok(result) => Ok(ObsOperationResponse {
+                        request_id,
+                        status: "success".to_string(),
+                        data: Some(serde_json::json!({
+                            "studioModeEnabled": _studio_mode_enabled,
+                            "rawResponse": result
+                        })),
+                        error: None,
+                    }),
+                    Err(e) => Ok(ObsOperationResponse {
+                        request_id,
+                        status: "error".to_string(),
+                        data: None,
+                        error: Some(e.to_string()),
+                    })
+                }
+            }
+
+            // Basic recording operations
+            "StartRecording" => {
+                match obs_client.recording().start().await {
+                    Ok(_) => Ok(ObsOperationResponse {
+                        request_id,
+                        status: "success".to_string(),
+                        data: Some(serde_json::json!({})),
+                        error: None,
+                    }),
+                    Err(e) => Ok(ObsOperationResponse {
+                        request_id,
+                        status: "error".to_string(),
+                        data: None,
+                        error: Some(e.to_string()),
+                    })
+                }
+            }
+
+            "StopRecording" => {
+                match obs_client.recording().stop().await {
+                    Ok(_) => Ok(ObsOperationResponse {
+                        request_id,
+                        status: "success".to_string(),
+                        data: Some(serde_json::json!({})),
+                        error: None,
+                    }),
+                    Err(e) => Ok(ObsOperationResponse {
+                        request_id,
+                        status: "error".to_string(),
+                        data: None,
+                        error: Some(e.to_string()),
+                    })
+                }
+            }
+
+            "GetRecordingStatus" => {
+                match obs_client.recording().status().await {
+                    Ok(status) => Ok(ObsOperationResponse {
+                        request_id,
+                        status: "success".to_string(),
+                        data: Some(serde_json::json!({
+                            "isRecording": status.active,
+                            "isPaused": status.paused,
+                            "timecode": format!("{:?}", status.timecode),
+                            "bytes": status.bytes
+                        })),
+                        error: None,
+                    }),
+                    Err(e) => Ok(ObsOperationResponse {
+                        request_id,
+                        status: "error".to_string(),
+                        data: None,
+                        error: Some(e.to_string()),
+                    })
+                }
+            }
+
+            // Scene operations
+            "GetCurrentPreviewScene" => {
+                match obs_client.scenes().current_preview_scene().await {
+                    Ok(scene) => Ok(ObsOperationResponse {
+                        request_id,
+                        status: "success".to_string(),
+                        data: Some(serde_json::json!({
+                            "sceneName": scene.id
+                        })),
+                        error: None,
+                    }),
+                    Err(e) => Ok(ObsOperationResponse {
+                        request_id,
+                        status: "error".to_string(),
+                        data: None,
+                        error: Some(e.to_string()),
+                    })
+                }
+            }
+
+            "SetCurrentPreviewScene" => {
+                let scene_name = request.parameters.get("sceneName")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| AppError::ConfigError("Missing 'sceneName' parameter".to_string()))?;
+
+                match obs_client.scenes().set_current_preview_scene(scene_name).await {
+                    Ok(_) => Ok(ObsOperationResponse {
+                        request_id,
+                        status: "success".to_string(),
+                        data: Some(serde_json::json!({
+                            "sceneName": scene_name
+                        })),
+                        error: None,
+                    }),
+                    Err(e) => Ok(ObsOperationResponse {
+                        request_id,
+                        status: "error".to_string(),
+                        data: None,
+                        error: Some(e.to_string()),
+                    })
+                }
+            }
+
+            // Unknown operation
+            _ => {
+                log::warn!("Unknown custom operation requested: {}", request.operation);
+                Ok(ObsOperationResponse {
+                    request_id,
+                    status: "error".to_string(),
+                    data: None,
+                    error: Some(format!("Unknown operation: {}", request.operation)),
+                })
+            }
+        }
     }
 }

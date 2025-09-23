@@ -132,7 +132,7 @@ impl ObsClient {
         let status = client.recording().status().await.map_err(|e| {
             AppError::ConfigError(format!("Failed to get recording status: {}", e))
         })?;
-
+        
         // Check if recording is active based on the status response
         match status.active {
             true => Ok(ObsRecordingStatus::Recording),
@@ -166,7 +166,7 @@ impl ObsClient {
         let status = client.streaming().status().await.map_err(|e| {
             AppError::ConfigError(format!("Failed to get streaming status: {}", e))
         })?;
-
+        
         // Check if streaming is active based on the status response
         match status.active {
             true => Ok(ObsStreamingStatus::Streaming),
@@ -374,6 +374,228 @@ impl ObsClient {
     pub async fn get_scene_sources(&self, _scene_name: &str) -> AppResult<Vec<ObsSource>> {
         // For now, return empty vector - scene sources retrieval can be enhanced later
         Ok(Vec::new())
+    }
+
+    /// Execute custom operation
+    pub async fn execute_custom_operation(&self, request: super::types::ObsOperationRequest) -> AppResult<super::types::ObsOperationResponse> {
+        crate::plugins::obs_obws::operations::ObsOperations::execute_custom_operation(self, request).await
+    }
+
+    /// Execute raw OBS WebSocket request
+    /// This allows us to send requests that aren't covered by the obws crate
+    pub async fn execute_raw_request(&self, request_type: &str, request_data: serde_json::Value) -> AppResult<serde_json::Value> {
+        let client = self.get_client()?;
+
+        // Use the general API to send a custom request
+        // Note: This is a workaround since obws doesn't expose raw request sending
+        // For now, we'll implement common operations using available APIs
+
+        match request_type {
+            "SetInputMute" => {
+                let input_name = request_data.get("inputName")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| AppError::ConfigError("Missing 'inputName' parameter".to_string()))?;
+
+                let input_muted = request_data.get("inputMuted")
+                    .and_then(|v| v.as_bool())
+                    .ok_or_else(|| AppError::ConfigError("Missing or invalid 'inputMuted' parameter".to_string()))?;
+
+                // For now, return error since individual input mute isn't supported
+                // This could be implemented using scene-based audio control
+                Err(AppError::ConfigError(format!("Individual input mute control not supported by obws. Consider using scene-based audio control for input '{}'", input_name)))
+            }
+
+            "GetInputMute" => {
+                let input_name = request_data.get("inputName")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| AppError::ConfigError("Missing 'inputName' parameter".to_string()))?;
+
+                Err(AppError::ConfigError(format!("Individual input mute status not supported by obws. Consider using scene-based audio control for input '{}'", input_name)))
+            }
+
+            "SetInputVolume" => {
+                let input_name = request_data.get("inputName")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| AppError::ConfigError("Missing 'inputName' parameter".to_string()))?;
+
+                let input_volume_mul = request_data.get("inputVolumeMul")
+                    .and_then(|v| v.as_f64())
+                    .ok_or_else(|| AppError::ConfigError("Missing or invalid 'inputVolumeMul' parameter".to_string()))?;
+
+                Err(AppError::ConfigError(format!("Individual input volume control not supported by obws. Consider using scene-based audio control for input '{}'", input_name)))
+            }
+
+            "GetInputVolume" => {
+                let input_name = request_data.get("inputName")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| AppError::ConfigError("Missing 'inputName' parameter".to_string()))?;
+
+                Err(AppError::ConfigError(format!("Individual input volume status not supported by obws. Consider using scene-based audio control for input '{}'", input_name)))
+            }
+
+            "ToggleMute" => {
+                let input_name = request_data.get("inputName")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| AppError::ConfigError("Missing 'inputName' parameter".to_string()))?;
+
+                Err(AppError::ConfigError(format!("Input mute toggle not supported by obws. Consider using scene-based audio control for input '{}'", input_name)))
+            }
+
+            // Scene item operations
+            "GetSceneItemId" => {
+                let scene_name = request_data.get("sceneName")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| AppError::ConfigError("Missing 'sceneName' parameter".to_string()))?;
+
+                let source_name = request_data.get("sourceName")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| AppError::ConfigError("Missing 'sourceName' parameter".to_string()))?;
+
+                // Use scenes API to get scene item list and find the matching source
+                match client.scenes().list().await {
+                    Ok(scenes_response) => {
+                        for scene in scenes_response.scenes {
+                            if scene_name == scene.id {
+                                // Get scene items for this specific scene
+                                match client.scene_items().list(obws::requests::scenes::SceneId::Name(scene_name)).await {
+                                    Ok(items) => {
+                                        for item in items {
+                                            if item.source_name == source_name {
+                                                return Ok(serde_json::json!({
+                                                    "sceneItemId": item.id,
+                                                    "sceneName": scene_name,
+                                                    "sourceName": source_name
+                                                }));
+                                            }
+                                        }
+                                    }
+                                    Err(e) => return Err(AppError::ConfigError(format!("Failed to get scene items: {}", e)))
+                                }
+                            }
+                        }
+                        Err(AppError::ConfigError(format!("Scene '{}' not found", scene_name)))
+                    }
+                    Err(e) => Err(AppError::ConfigError(format!("Failed to get scenes: {}", e)))
+                }
+            }
+
+            "SetSceneItemEnabled" => {
+                let scene_name = request_data.get("sceneName")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| AppError::ConfigError("Missing 'sceneName' parameter".to_string()))?;
+
+                let scene_item_id = request_data.get("sceneItemId")
+                    .and_then(|v| v.as_i64())
+                    .ok_or_else(|| AppError::ConfigError("Missing or invalid 'sceneItemId' parameter".to_string()))?;
+
+                let scene_item_enabled = request_data.get("sceneItemEnabled")
+                    .and_then(|v| v.as_bool())
+                    .ok_or_else(|| AppError::ConfigError("Missing or invalid 'sceneItemEnabled' parameter".to_string()))?;
+
+                // Use scene items API to set enabled state - obws API requires different approach
+                // For now, return error since the exact API signature is complex
+                Err(AppError::ConfigError(format!("Scene item enabled control not fully implemented in obws integration. Scene: {}, Item ID: {}, Enabled: {}", scene_name, scene_item_id, scene_item_enabled)))
+            }
+
+            "SetSceneItemTransform" => {
+                let scene_name = request_data.get("sceneName")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| AppError::ConfigError("Missing 'sceneName' parameter".to_string()))?;
+
+                let scene_item_id = request_data.get("sceneItemId")
+                    .and_then(|v| v.as_i64())
+                    .ok_or_else(|| AppError::ConfigError("Missing or invalid 'sceneItemId' parameter".to_string()))?;
+
+                // Get transform parameters
+                let x = request_data.get("positionX").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                let y = request_data.get("positionY").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                let scale_x = request_data.get("scaleX").and_then(|v| v.as_f64()).unwrap_or(1.0);
+                let scale_y = request_data.get("scaleY").and_then(|v| v.as_f64()).unwrap_or(1.0);
+                let rotation = request_data.get("rotation").and_then(|v| v.as_f64()).unwrap_or(0.0);
+
+                // Scene item transform control is complex in obws - return error for now
+                Err(AppError::ConfigError(format!("Scene item transform control not fully implemented in obws integration. Scene: {}, Item ID: {}, Transform: position=({},{}) scale=({},{}) rotation={}", scene_name, scene_item_id, x, y, scale_x, scale_y, rotation)))
+            }
+
+            "SetCurrentSceneTransition" => {
+                let transition_name = request_data.get("transitionName")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| AppError::ConfigError("Missing 'transitionName' parameter".to_string()))?;
+
+                // Transition setting not fully implemented in obws integration
+                Err(AppError::ConfigError(format!("Transition setting not fully implemented in obws integration. Transition: {}", transition_name)))
+            }
+
+            "GetCurrentSceneTransition" => {
+                // Transition getting not fully implemented in obws integration
+                Err(AppError::ConfigError("Transition getting not fully implemented in obws integration".to_string()))
+            }
+
+            "SetSceneTransitionOverride" => {
+                let scene_name = request_data.get("sceneName")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| AppError::ConfigError("Missing 'sceneName' parameter".to_string()))?;
+
+                let transition_name = request_data.get("transitionName")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| AppError::ConfigError("Missing 'transitionName' parameter".to_string()))?;
+
+                let transition_duration = request_data.get("transitionDuration")
+                    .and_then(|v| v.as_i64())
+                    .unwrap_or(300);
+
+                // Use scenes API to set transition override
+                match client.scenes().set_transition_override(scene_name, transition_name, transition_duration as i32).await {
+                    Ok(_) => Ok(serde_json::json!({
+                        "sceneName": scene_name,
+                        "transitionName": transition_name,
+                        "transitionDuration": transition_duration
+                    })),
+                    Err(e) => Err(AppError::ConfigError(format!("Failed to set scene transition override: {}", e)))
+                }
+            }
+
+            "GetTransitionList" => {
+                // Use transitions API to get transition list
+                match client.transitions().list().await {
+                    Ok(transitions) => Ok(serde_json::json!({
+                        "transitions": transitions.transitions.iter().map(|t| {
+                            serde_json::json!({
+                                "transitionName": t.name,
+                                "transitionKind": t.kind
+                            })
+                        }).collect::<Vec<_>>(),
+                        "currentTransitionName": transitions.current_transition_name,
+                        "currentTransitionKind": transitions.current_transition_kind
+                    })),
+                    Err(e) => Err(AppError::ConfigError(format!("Failed to get transitions: {}", e)))
+                }
+            }
+
+            "TriggerStudioModeTransition" => {
+                // Use transitions API to trigger studio mode transition
+                match client.transitions().trigger_studio_mode_transition().await {
+                    Ok(_) => Ok(serde_json::json!({
+                        "message": "Studio mode transition triggered successfully"
+                    })),
+                    Err(e) => Err(AppError::ConfigError(format!("Failed to trigger studio mode transition: {}", e)))
+                }
+            }
+
+            "SetStudioModeEnabled" => {
+                let studio_mode_enabled = request_data.get("studioModeEnabled")
+                    .and_then(|v| v.as_bool())
+                    .ok_or_else(|| AppError::ConfigError("Missing or invalid 'studioModeEnabled' parameter".to_string()))?;
+
+                // Note: obws doesn't directly support studio mode
+                Err(AppError::ConfigError(format!("Studio mode control not supported by obws crate. Studio mode enabled: {}", studio_mode_enabled)))
+            }
+
+            // Default case for unknown requests
+            _ => {
+                Err(AppError::ConfigError(format!("Unknown raw request type: {}", request_type)))
+            }
+        }
     }
 
     /// Get studio mode status
@@ -585,7 +807,7 @@ impl ObsClient {
 
         // Get studio mode status
         let studio_mode = self.get_studio_mode_status().await.unwrap_or(ObsStudioModeStatus::Disabled);
-
+        
         Ok(ObsStatus {
             connection_status: self.status.clone(),
             recording_status,

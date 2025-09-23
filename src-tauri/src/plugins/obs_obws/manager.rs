@@ -463,6 +463,22 @@ impl ObsManager {
         Err(AppError::ConfigError("Individual input volume control not supported by obws".to_string()))
     }
 
+    /// Execute custom operation on a specific connection
+    pub async fn execute_custom_operation(&self, request: super::types::ObsOperationRequest, connection_name: Option<&str>) -> AppResult<super::types::ObsOperationResponse> {
+        let client = self.get_client_ref(connection_name).await?;
+        let client_guard = client.lock().await;
+
+        client_guard.execute_custom_operation(request).await
+    }
+
+    /// Execute raw OBS WebSocket request on a specific connection
+    pub async fn execute_raw_request(&self, request_type: &str, request_data: serde_json::Value, connection_name: Option<&str>) -> AppResult<serde_json::Value> {
+        let client = self.get_client_ref(connection_name).await?;
+        let client_guard = client.lock().await;
+
+        client_guard.execute_raw_request(request_type, request_data).await
+    }
+
     /// Set up status listener for all connections
     pub async fn setup_status_listener(&self) -> AppResult<()> {
         let clients = self.clients.lock().await;

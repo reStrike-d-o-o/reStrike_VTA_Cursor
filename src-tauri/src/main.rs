@@ -112,6 +112,8 @@ tauri_commands::control_room_start_all_obs,
 tauri_commands::control_room_stop_all_obs,
             tauri_commands::control_room_get_audio_sources,
             tauri_commands::control_room_get_scenes,
+            tauri_commands::control_room_execute_custom_operation,
+            tauri_commands::control_room_execute_raw_request,
             
             // YouTube Streaming Management Commands (feature-gated)
             #[cfg(feature = "youtube")]
@@ -315,6 +317,8 @@ tauri_commands::control_room_start_all_obs,
 tauri_commands::control_room_stop_all_obs,
             tauri_commands::control_room_get_audio_sources,
             tauri_commands::control_room_get_scenes,
+            tauri_commands::control_room_execute_custom_operation,
+            tauri_commands::control_room_execute_raw_request,
             
             // YouTube Streaming Management Commands
             #[cfg(feature = "youtube")]
