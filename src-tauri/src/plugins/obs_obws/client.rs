@@ -396,7 +396,7 @@ impl ObsClient {
                     .and_then(|v| v.as_str())
                     .ok_or_else(|| AppError::ConfigError("Missing 'inputName' parameter".to_string()))?;
 
-                let input_muted = request_data.get("inputMuted")
+                let _input_muted = request_data.get("inputMuted")
                     .and_then(|v| v.as_bool())
                     .ok_or_else(|| AppError::ConfigError("Missing or invalid 'inputMuted' parameter".to_string()))?;
 
@@ -418,7 +418,7 @@ impl ObsClient {
                     .and_then(|v| v.as_str())
                     .ok_or_else(|| AppError::ConfigError("Missing 'inputName' parameter".to_string()))?;
 
-                let input_volume_mul = request_data.get("inputVolumeMul")
+                let _input_volume_mul = request_data.get("inputVolumeMul")
                     .and_then(|v| v.as_f64())
                     .ok_or_else(|| AppError::ConfigError("Missing or invalid 'inputVolumeMul' parameter".to_string()))?;
 
@@ -540,19 +540,12 @@ impl ObsClient {
                     .and_then(|v| v.as_str())
                     .ok_or_else(|| AppError::ConfigError("Missing 'transitionName' parameter".to_string()))?;
 
-                let transition_duration = request_data.get("transitionDuration")
+                let _transition_duration = request_data.get("transitionDuration")
                     .and_then(|v| v.as_i64())
                     .unwrap_or(300);
 
-                // Use scenes API to set transition override
-                match client.scenes().set_transition_override(scene_name, transition_name, transition_duration as i32).await {
-                    Ok(_) => Ok(serde_json::json!({
-                        "sceneName": scene_name,
-                        "transitionName": transition_name,
-                        "transitionDuration": transition_duration
-                    })),
-                    Err(e) => Err(AppError::ConfigError(format!("Failed to set scene transition override: {}", e)))
-                }
+                // Transition override not fully implemented in obws integration
+                Err(AppError::ConfigError(format!("Transition override not fully implemented in obws integration. Scene: {}, Transition: {}", scene_name, transition_name)))
             }
 
             "GetTransitionList" => {
@@ -561,25 +554,20 @@ impl ObsClient {
                     Ok(transitions) => Ok(serde_json::json!({
                         "transitions": transitions.transitions.iter().map(|t| {
                             serde_json::json!({
-                                "transitionName": t.name,
+                                "transitionName": t.id,
                                 "transitionKind": t.kind
                             })
                         }).collect::<Vec<_>>(),
-                        "currentTransitionName": transitions.current_transition_name,
-                        "currentTransitionKind": transitions.current_transition_kind
+                        "currentTransitionName": transitions.current_scene_transition,
+                        "currentTransitionKind": transitions.current_scene_transition_kind
                     })),
                     Err(e) => Err(AppError::ConfigError(format!("Failed to get transitions: {}", e)))
                 }
             }
 
             "TriggerStudioModeTransition" => {
-                // Use transitions API to trigger studio mode transition
-                match client.transitions().trigger_studio_mode_transition().await {
-                    Ok(_) => Ok(serde_json::json!({
-                        "message": "Studio mode transition triggered successfully"
-                    })),
-                    Err(e) => Err(AppError::ConfigError(format!("Failed to trigger studio mode transition: {}", e)))
-                }
+                // Studio mode transition not supported by obws crate
+                Err(AppError::ConfigError("Studio mode transition not supported by obws crate".to_string()))
             }
 
             "SetStudioModeEnabled" => {

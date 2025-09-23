@@ -286,7 +286,7 @@ impl ObsOperations {
                     .ok_or_else(|| AppError::ConfigError("Missing or invalid 'inputMuted' parameter".to_string()))?;
 
                 // Use raw request system for individual input mute control
-                match client.execute_raw_request("SetInputMute", request.parameters.clone()).await {
+                match client.execute_raw_request("SetInputMute", serde_json::to_value(&request.parameters).unwrap_or_default()).await {
                     Ok(result) => Ok(ObsOperationResponse {
                         request_id,
                         status: "success".to_string(),
@@ -312,7 +312,7 @@ impl ObsOperations {
                     .ok_or_else(|| AppError::ConfigError("Missing 'inputName' parameter".to_string()))?;
 
                 // Use raw request system for individual input mute status
-                match client.execute_raw_request("GetInputMute", request.parameters.clone()).await {
+                match client.execute_raw_request("GetInputMute", serde_json::to_value(&request.parameters).unwrap_or_default()).await {
                     Ok(result) => Ok(ObsOperationResponse {
                         request_id,
                         status: "success".to_string(),
@@ -341,7 +341,7 @@ impl ObsOperations {
                     .ok_or_else(|| AppError::ConfigError("Missing or invalid 'inputVolumeMul' parameter".to_string()))?;
 
                 // Use raw request system for individual input volume control
-                match client.execute_raw_request("SetInputVolume", request.parameters.clone()).await {
+                match client.execute_raw_request("SetInputVolume", serde_json::to_value(&request.parameters).unwrap_or_default()).await {
                     Ok(result) => Ok(ObsOperationResponse {
                         request_id,
                         status: "success".to_string(),
@@ -367,7 +367,7 @@ impl ObsOperations {
                     .ok_or_else(|| AppError::ConfigError("Missing 'inputName' parameter".to_string()))?;
 
                 // Use raw request system for individual input volume status
-                match client.execute_raw_request("GetInputVolume", request.parameters.clone()).await {
+                match client.execute_raw_request("GetInputVolume", serde_json::to_value(&request.parameters).unwrap_or_default()).await {
                     Ok(result) => Ok(ObsOperationResponse {
                         request_id,
                         status: "success".to_string(),
@@ -392,7 +392,7 @@ impl ObsOperations {
                     .ok_or_else(|| AppError::ConfigError("Missing 'inputName' parameter".to_string()))?;
 
                 // Use raw request system for input mute toggle
-                match client.execute_raw_request("ToggleMute", request.parameters.clone()).await {
+                match client.execute_raw_request("ToggleMute", serde_json::to_value(&request.parameters).unwrap_or_default()).await {
                     Ok(result) => Ok(ObsOperationResponse {
                         request_id,
                         status: "success".to_string(),
@@ -422,7 +422,7 @@ impl ObsOperations {
                     .ok_or_else(|| AppError::ConfigError("Missing 'sourceName' parameter".to_string()))?;
 
                 // Use raw request system for scene item operations
-                match client.execute_raw_request("GetSceneItemId", request.parameters.clone()).await {
+                match client.execute_raw_request("GetSceneItemId", serde_json::to_value(&request.parameters).unwrap_or_default()).await {
                     Ok(result) => Ok(ObsOperationResponse {
                         request_id,
                         status: "success".to_string(),
@@ -456,7 +456,7 @@ impl ObsOperations {
                     .ok_or_else(|| AppError::ConfigError("Missing or invalid 'sceneItemEnabled' parameter".to_string()))?;
 
                 // Use raw request system for scene item operations
-                match client.execute_raw_request("SetSceneItemEnabled", request.parameters.clone()).await {
+                match client.execute_raw_request("SetSceneItemEnabled", serde_json::to_value(&request.parameters).unwrap_or_default()).await {
                     Ok(result) => Ok(ObsOperationResponse {
                         request_id,
                         status: "success".to_string(),
@@ -494,7 +494,7 @@ impl ObsOperations {
                 let _rotation = request.parameters.get("rotation").and_then(|v| v.as_f64()).unwrap_or(0.0);
 
                 // Use raw request system for scene item transform
-                match client.execute_raw_request("SetSceneItemTransform", request.parameters.clone()).await {
+                match client.execute_raw_request("SetSceneItemTransform", serde_json::to_value(&request.parameters).unwrap_or_default()).await {
                     Ok(result) => Ok(ObsOperationResponse {
                         request_id,
                         status: "success".to_string(),
@@ -526,7 +526,7 @@ impl ObsOperations {
                     .ok_or_else(|| AppError::ConfigError("Missing 'transitionName' parameter".to_string()))?;
 
                 // Use raw request system for transition operations
-                match client.execute_raw_request("SetCurrentSceneTransition", request.parameters.clone()).await {
+                match client.execute_raw_request("SetCurrentSceneTransition", serde_json::to_value(&request.parameters).unwrap_or_default()).await {
                     Ok(result) => Ok(ObsOperationResponse {
                         request_id,
                         status: "success".to_string(),
@@ -547,7 +547,7 @@ impl ObsOperations {
 
             "GetCurrentSceneTransition" => {
                 // Use raw request system for transition operations
-                match client.execute_raw_request("GetCurrentSceneTransition", request.parameters.clone()).await {
+                match client.execute_raw_request("GetCurrentSceneTransition", serde_json::to_value(&request.parameters).unwrap_or_default()).await {
                     Ok(result) => Ok(ObsOperationResponse {
                         request_id,
                         status: "success".to_string(),
@@ -579,7 +579,7 @@ impl ObsOperations {
                     .unwrap_or(300);
 
                 // Use raw request system for transition override
-                match client.execute_raw_request("SetSceneTransitionOverride", request.parameters.clone()).await {
+                match client.execute_raw_request("SetSceneTransitionOverride", serde_json::to_value(&request.parameters).unwrap_or_default()).await {
                     Ok(result) => Ok(ObsOperationResponse {
                         request_id,
                         status: "success".to_string(),
@@ -602,7 +602,7 @@ impl ObsOperations {
 
             "GetTransitionList" => {
                 // Use raw request system for transition list
-                match client.execute_raw_request("GetTransitionList", request.parameters.clone()).await {
+                match client.execute_raw_request("GetTransitionList", serde_json::to_value(&request.parameters).unwrap_or_default()).await {
                     Ok(result) => Ok(ObsOperationResponse {
                         request_id,
                         status: "success".to_string(),
@@ -622,7 +622,7 @@ impl ObsOperations {
 
             "TriggerStudioModeTransition" => {
                 // Use raw request system for studio mode transition
-                match client.execute_raw_request("TriggerStudioModeTransition", request.parameters.clone()).await {
+                match client.execute_raw_request("TriggerStudioModeTransition", serde_json::to_value(&request.parameters).unwrap_or_default()).await {
                     Ok(result) => Ok(ObsOperationResponse {
                         request_id,
                         status: "success".to_string(),
@@ -646,7 +646,7 @@ impl ObsOperations {
                     .ok_or_else(|| AppError::ConfigError("Missing or invalid 'studioModeEnabled' parameter".to_string()))?;
 
                 // Use raw request system for studio mode control
-                match client.execute_raw_request("SetStudioModeEnabled", request.parameters.clone()).await {
+                match client.execute_raw_request("SetStudioModeEnabled", serde_json::to_value(&request.parameters).unwrap_or_default()).await {
                     Ok(result) => Ok(ObsOperationResponse {
                         request_id,
                         status: "success".to_string(),
