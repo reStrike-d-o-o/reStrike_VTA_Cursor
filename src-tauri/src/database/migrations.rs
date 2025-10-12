@@ -247,8 +247,22 @@ impl Migration for Migration1 {
             [],
         )?;
         
-        // Add session_id column for compatibility with later migrations
-        let _ = conn.execute("ALTER TABLE pss_events ADD COLUMN session_id INTEGER", []);
+        // Add session_id column if missing for compatibility with later migrations
+        let mut has_session_id = false;
+        {
+            let mut stmt = conn.prepare("PRAGMA table_info('pss_events')")?;
+            let mut rows = stmt.query([])?;
+            while let Some(row) = rows.next()? {
+                let column: String = row.get(1)?;
+                if column == "session_id" {
+                    has_session_id = true;
+                    break;
+                }
+            }
+        }
+        if !has_session_id {
+            let _ = conn.execute("ALTER TABLE pss_events ADD COLUMN session_id INTEGER", []);
+        }
         
         // Create index on timestamp for efficient querying
         conn.execute(
