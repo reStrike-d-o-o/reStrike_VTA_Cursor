@@ -38,7 +38,7 @@ impl DatabaseConnectionPool {
             // Try to get an existing connection
             if let Some(conn) = connections.pop_front() {
                 // Check if connection is still valid
-                if conn.query_row("SELECT 1", [], |_| Ok(())).is_ok() {
+                if let Ok(_) = conn.execute("SELECT 1", []) {
                     return Ok(PooledConnection {
                         connection: Some(conn),
                         pool: self.connections.clone(),
