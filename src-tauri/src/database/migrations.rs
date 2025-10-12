@@ -840,8 +840,22 @@ impl Migration for Migration4 {
     }
     
     fn up(&self, conn: &Connection) -> SqliteResult<()> {
-        // Ensure legacy installations have session_id column before normalization
-        let _ = conn.execute("ALTER TABLE pss_events ADD COLUMN session_id INTEGER", []);
+        // Ensure legacy installs have session_id column before normalization/index creation
+        let mut has_session_id = false;
+        {
+            let mut stmt = conn.prepare("PRAGMA table_info('pss_events')")?;
+            let mut rows = stmt.query([])?;
+            while let Some(row) = rows.next()? {
+                let column: String = row.get(1)?;
+                if column == "session_id" {
+                    has_session_id = true;
+                    break;
+                }
+            }
+        }
+        if !has_session_id {
+            let _ = conn.execute("ALTER TABLE pss_events ADD COLUMN session_id INTEGER", []);
+        }
         
         // Create network_interfaces table for UDP server configuration
         conn.execute(
