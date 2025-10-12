@@ -840,6 +840,9 @@ impl Migration for Migration4 {
     }
     
     fn up(&self, conn: &Connection) -> SqliteResult<()> {
+        // Ensure legacy installations have session_id column before normalization
+        let _ = conn.execute("ALTER TABLE pss_events ADD COLUMN session_id INTEGER", []);
+        
         // Create network_interfaces table for UDP server configuration
         conn.execute(
             "CREATE TABLE IF NOT EXISTS network_interfaces (
