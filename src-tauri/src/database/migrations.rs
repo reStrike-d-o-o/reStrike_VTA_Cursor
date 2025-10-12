@@ -3236,7 +3236,7 @@ impl Migration for Migration17 {
 
         // Copy data from old table if exists
         conn.execute(
-            "INSERT OR REPLACE INTO obs_recording_config_new (
+            "INSERT INTO obs_recording_config_new (
                 id, obs_connection_name, recording_root_path, recording_format,
                 replay_buffer_enabled, replay_buffer_duration, auto_start_recording, auto_start_replay_buffer,
                 filename_template, folder_pattern, is_active, created_at, updated_at

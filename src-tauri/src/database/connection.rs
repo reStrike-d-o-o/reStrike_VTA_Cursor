@@ -38,7 +38,7 @@ impl DatabaseConnectionPool {
             // Try to get an existing connection
             if let Some(conn) = connections.pop_front() {
                 // Check if connection is still valid
-                if let Ok(_) = conn.execute("SELECT 1", []) {
+                if conn.query_row("SELECT 1", [], |_| Ok(())).is_ok() {
                     return Ok(PooledConnection {
                         connection: Some(conn),
                         pool: self.connections.clone(),
@@ -73,31 +73,31 @@ impl DatabaseConnectionPool {
     /// Configure a connection with performance optimizations
     fn configure_connection(&self, conn: &rusqlite::Connection) -> SqliteResult<()> {
         // Phase 1 optimizations (already implemented)
-        conn.execute("PRAGMA journal_mode = WAL", [])?;
-        conn.execute("PRAGMA synchronous = NORMAL", [])?;
-        conn.execute("PRAGMA cache_size = -65536", [])?; // 64MB cache
-        conn.execute("PRAGMA temp_store = MEMORY", [])?;
+        conn.pragma_update(None, "journal_mode", &"WAL")?;
+        conn.pragma_update(None, "synchronous", &"NORMAL")?;
+        conn.pragma_update(None, "cache_size", &(-65536))?; // 64MB cache
+        conn.pragma_update(None, "temp_store", &"MEMORY")?;
         
         // Optional mmap size setting (may not be supported in all SQLite builds)
-        if let Err(e) = conn.execute("PRAGMA mmap_size = 134217728", []) { // 128MB mmap
+        if let Err(e) = conn.pragma_update(None, "mmap_size", &134217728i64) { // 128MB mmap
             log::warn!("Failed to set mmap size (this is optional): {}", e);
         }
         
-        conn.execute("PRAGMA recursive_triggers = ON", [])?;
-        conn.execute("PRAGMA busy_timeout = 30000", [])?;
+        conn.pragma_update(None, "recursive_triggers", &1i64)?;
+        conn.busy_timeout(Duration::from_secs(30))?;
         conn.execute("PRAGMA optimize", [])?;
-        conn.execute("PRAGMA page_size = 4096", [])?;
+        conn.pragma_update(None, "page_size", &4096i64)?;
 
         // Phase 2 optimizations
-        conn.execute("PRAGMA auto_vacuum = INCREMENTAL", [])?; // Better space management
+        conn.pragma_update(None, "auto_vacuum", &"INCREMENTAL")?; // Better space management
         
         // Optional WAL autocheckpoint setting
-        if let Err(e) = conn.execute("PRAGMA wal_autocheckpoint = 1000", []) { // Checkpoint every 1000 pages
+        if let Err(e) = conn.pragma_update(None, "wal_autocheckpoint", &1000i64) { // Checkpoint every 1000 pages
             log::warn!("Failed to set WAL autocheckpoint (this is optional): {}", e);
         }
         
-        conn.execute("PRAGMA checkpoint_fullfsync = OFF", [])?; // Faster checkpoints
-        conn.execute("PRAGMA locking_mode = NORMAL", [])?; // Balance between concurrency and safety
+        conn.pragma_update(None, "checkpoint_fullfsync", &0i64)?; // Faster checkpoints
+        conn.pragma_update(None, "locking_mode", &"NORMAL")?; // Balance between concurrency and safety
 
         Ok(())
     }
@@ -237,11 +237,11 @@ impl DatabaseConnection {
     /// Configure SQLite connection with safety and performance optimizations
     fn configure_connection(conn: &Connection) -> DatabaseResult<()> {
         // Enable foreign keys for referential integrity
-        conn.execute("PRAGMA foreign_keys = ON", [])
+        conn.pragma_update(None, "foreign_keys", &1i64)
             .map_err(|e| DatabaseError::Initialization(format!("Failed to enable foreign keys: {}", e)))?;
         
         // Set UTF-8 encoding for international text support
-        conn.execute("PRAGMA encoding = 'UTF-8'", [])
+        conn.pragma_update(None, "encoding", &"UTF-8")
             .map_err(|e| DatabaseError::Initialization(format!("Failed to set UTF-8 encoding: {}", e)))?;
         
         // Enable WAL mode for better concurrency and crash recovery
@@ -249,24 +249,24 @@ impl DatabaseConnection {
             .map_err(|e| DatabaseError::Initialization(format!("Failed to enable WAL mode: {}", e)))?;
         
         // Set synchronous mode to FULL for maximum durability (slower but safer)
-        conn.execute("PRAGMA synchronous = FULL", [])
+        conn.pragma_update(None, "synchronous", &"FULL")
             .map_err(|e| DatabaseError::Initialization(format!("Failed to set synchronous mode: {}", e)))?;
         
         // Phase 1 Optimization: Enhanced cache size to 64MB for high-volume performance
-        conn.execute("PRAGMA cache_size = -65536", []) // Negative value means KB, so -65536 = 64MB
+        conn.pragma_update(None, "cache_size", &(-65536)) // Negative value means KB, so -65536 = 64MB
             .map_err(|e| DatabaseError::Initialization(format!("Failed to set cache size: {}", e)))?;
         
         // Set temp store to memory for better performance
-        conn.execute("PRAGMA temp_store = MEMORY", [])
+        conn.pragma_update(None, "temp_store", &"MEMORY")
             .map_err(|e| DatabaseError::Initialization(format!("Failed to set temp store: {}", e)))?;
         
         // Phase 1 Optimization: Enhanced mmap size to 128MB for high-volume performance (optional)
-        if let Err(e) = conn.execute("PRAGMA mmap_size = 134217728", []) { // 128MB in bytes
+        if let Err(e) = conn.pragma_update(None, "mmap_size", &134217728i64) { // 128MB in bytes
             log::warn!("Failed to set mmap size (this is optional): {}", e);
         }
         
         // Enable recursive triggers
-        conn.execute("PRAGMA recursive_triggers = ON", [])
+        conn.pragma_update(None, "recursive_triggers", &1i64)
             .map_err(|e| DatabaseError::Initialization(format!("Failed to enable recursive triggers: {}", e)))?;
         
         // Set busy timeout to 30 seconds to handle concurrent access
@@ -279,11 +279,11 @@ impl DatabaseConnection {
             .map_err(|e| DatabaseError::Initialization(format!("Failed to optimize database: {}", e)))?;
         
         // Set page size to 4KB for better performance
-        conn.execute("PRAGMA page_size = 4096", [])
+        conn.pragma_update(None, "page_size", &4096i64)
             .map_err(|e| DatabaseError::Initialization(format!("Failed to set page size: {}", e)))?;
         
         // Set WAL auto-checkpoint to 1000 pages for better performance (optional)
-        if let Err(e) = conn.execute("PRAGMA wal_autocheckpoint = 1000", []) {
+        if let Err(e) = conn.pragma_update(None, "wal_autocheckpoint", &1000i64) {
             log::warn!("Failed to set WAL autocheckpoint (this is optional): {}", e);
         }
         
