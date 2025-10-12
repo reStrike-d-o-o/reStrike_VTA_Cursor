@@ -1542,6 +1542,23 @@ impl Migration for Migration7 {
     }
 
     fn up(&self, conn: &Connection) -> SqliteResult<()> {
+        // Ensure required columns exist on legacy installations before indexing
+        let mut has_event_type_id = false;
+        {
+            let mut stmt = conn.prepare("PRAGMA table_info('pss_events')")?;
+            let mut rows = stmt.query([])?;
+            while let Some(row) = rows.next()? {
+                let column: String = row.get(1)?;
+                if column == "event_type_id" {
+                    has_event_type_id = true;
+                    break;
+                }
+            }
+        }
+        if !has_event_type_id {
+            let _ = conn.execute("ALTER TABLE pss_events ADD COLUMN event_type_id INTEGER", []);
+        }
+
         // PSS Events indexes
         conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_events_session_id ON pss_events(session_id)", [])?;
         conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_events_match_id ON pss_events(match_id)", [])?;
