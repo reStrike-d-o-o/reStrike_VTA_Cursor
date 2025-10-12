@@ -247,6 +247,9 @@ impl Migration for Migration1 {
             [],
         )?;
         
+        // Add session_id column for compatibility with later migrations
+        let _ = conn.execute("ALTER TABLE pss_events ADD COLUMN session_id INTEGER", []);
+        
         // Create index on timestamp for efficient querying
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_pss_events_timestamp ON pss_events(timestamp)",
@@ -1102,12 +1105,12 @@ impl Migration for Migration4 {
         )?;
         
         conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_pss_events_match ON pss_events(match_id, round_id)",
+            "CREATE INDEX IF NOT EXISTS idx_pss_events_match_id ON pss_events(match_id)",
             [],
         )?;
         
         conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_pss_events_session ON pss_events(session_id, event_sequence)",
+            "CREATE INDEX IF NOT EXISTS idx_pss_events_session_id ON pss_events(session_id)",
             [],
         )?;
         
@@ -4147,8 +4150,8 @@ impl Migration for Migration37 {
 
         // Best-effort index creation on common columns; avoid tournament_day_id here to support future schema
         let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_events_timestamp ON pss_events(timestamp)", []);
-        let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_events_match ON pss_events(match_id, round_id)", []);
-        let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_events_session ON pss_events(session_id, event_sequence)", []);
+        let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_events_match_id ON pss_events(match_id)", []);
+        let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_events_session_id ON pss_events(session_id)", [])?;
         let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_events_created_at ON pss_events(created_at)", []);
         Ok(())
     }
