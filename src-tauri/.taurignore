@@ -17,6 +17,14 @@ logs/
 *.log
 *.log.*
 
+# Ignore SQLite database files generated during development
+restrike_vta.db
+restrike_vta.db-shm
+restrike_vta.db-wal
+**/restrike_vta.db
+**/restrike_vta.db-shm
+**/restrike_vta.db-wal
+
 # Ignore temporary files
 *.tmp
 *.temp
