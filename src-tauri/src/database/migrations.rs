@@ -4085,6 +4085,13 @@ impl Migration for Migration35 {
         add_column_if_missing(conn, "pss_events_v2", "tournament_day_id_text", "TEXT")?;
         add_column_if_missing(conn, "pss_events_v2", "tournament_id_int", "INTEGER")?;
         add_column_if_missing(conn, "pss_events_v2", "tournament_day_id_int", "INTEGER")?;
+        add_column_if_missing(conn, "pss_events_v2", "round_id", "INTEGER")?;
+        add_column_if_missing(conn, "pss_events_v2", "parsed_data", "TEXT")?;
+        add_column_if_missing(conn, "pss_events_v2", "event_sequence", "INTEGER DEFAULT 0")?;
+        add_column_if_missing(conn, "pss_events_v2", "processing_time_ms", "INTEGER")?;
+        add_column_if_missing(conn, "pss_events_v2", "is_valid", "BOOLEAN NOT NULL DEFAULT 1")?;
+        add_column_if_missing(conn, "pss_events_v2", "error_message", "TEXT")?;
+        add_column_if_missing(conn, "pss_events_v2", "match_id", "INTEGER")?;
         if column_exists(conn, "pss_events_v2", "tournament_id_text")?
             && column_exists(conn, "pss_events_v2", "tournament_uuid")?
         {
@@ -4132,13 +4139,46 @@ impl Migration for Migration35 {
 
         // Helper to recreate a table with new schema and copy data
         // pss_matches: keep id (rowid), uuid, and canonical TEXT tournament_id/tournament_day_id
-        conn.execute(
+        let matches_tournament_id_expr = if column_exists(conn, "pss_matches", "tournament_id_text")? {
+            "COALESCE(tournament_id_text, tournament_uuid, CAST(tournament_id AS TEXT))".to_string()
+        } else if column_exists(conn, "pss_matches", "tournament_uuid")? {
+            "COALESCE(tournament_uuid, CAST(tournament_id AS TEXT))".to_string()
+        } else if column_exists(conn, "pss_matches", "tournament_id")? {
+            "CAST(tournament_id AS TEXT)".to_string()
+        } else {
+            "NULL".to_string()
+        };
+
+        let matches_tournament_day_expr =
+            if column_exists(conn, "pss_matches", "tournament_day_id_text")? {
+                "COALESCE(tournament_day_id_text, tournament_day_uuid, CAST(tournament_day_id AS TEXT))"
+                    .to_string()
+            } else if column_exists(conn, "pss_matches", "tournament_day_uuid")? {
+                "COALESCE(tournament_day_uuid, CAST(tournament_day_id AS TEXT))".to_string()
+            } else if column_exists(conn, "pss_matches", "tournament_day_id")? {
+                "CAST(tournament_day_id AS TEXT)".to_string()
+            } else {
+                "NULL".to_string()
+            };
+
+        let matches_select = format!(
             "CREATE TABLE IF NOT EXISTS _tmp_pss_matches AS
-             SELECT id, uuid,
-                    COALESCE(tournament_id_text, tournament_uuid) AS tournament_id,
-                    COALESCE(tournament_day_id_text, tournament_day_uuid) AS tournament_day_id,
+             SELECT id, {uuid_col},
+                    {tournament_id_expr} AS tournament_id,
+                    {tournament_day_expr} AS tournament_day_id,
                     match_id, match_number, category, weight_class, division, total_rounds, round_duration, countdown_type, format_type, creation_mode, created_at, updated_at, created, updated
              FROM pss_matches",
+            uuid_col = if column_exists(conn, "pss_matches", "uuid")? {
+                "uuid"
+            } else {
+                "NULL AS uuid"
+            },
+            tournament_id_expr = matches_tournament_id_expr,
+            tournament_day_expr = matches_tournament_day_expr
+        );
+
+        conn.execute(
+            &matches_select,
             [],
         )?;
         conn.execute("DROP TABLE IF EXISTS pss_matches", [])?;
@@ -4174,13 +4214,41 @@ impl Migration for Migration35 {
         conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_matches_tournament_day_id ON pss_matches(tournament_day_id)", [])?;
 
         // pss_events_v2: canonical TEXT tournament_id/tournament_day_id
-        conn.execute(
+        let events_tournament_id_expr = if column_exists(conn, "pss_events_v2", "tournament_id_text")? {
+            "COALESCE(tournament_id_text, tournament_uuid, CAST(tournament_id AS TEXT))".to_string()
+        } else if column_exists(conn, "pss_events_v2", "tournament_uuid")? {
+            "COALESCE(tournament_uuid, CAST(tournament_id AS TEXT))".to_string()
+        } else if column_exists(conn, "pss_events_v2", "tournament_id")? {
+            "CAST(tournament_id AS TEXT)".to_string()
+        } else {
+            "NULL".to_string()
+        };
+
+        let events_tournament_day_expr =
+            if column_exists(conn, "pss_events_v2", "tournament_day_id_text")? {
+                "COALESCE(tournament_day_id_text, tournament_day_uuid, CAST(tournament_day_id AS TEXT))"
+                    .to_string()
+            } else if column_exists(conn, "pss_events_v2", "tournament_day_uuid")? {
+                "COALESCE(tournament_day_uuid, CAST(tournament_day_id AS TEXT))".to_string()
+            } else if column_exists(conn, "pss_events_v2", "tournament_day_id")? {
+                "CAST(tournament_day_id AS TEXT)".to_string()
+            } else {
+                "NULL".to_string()
+            };
+
+        let events_select = format!(
             "CREATE TABLE IF NOT EXISTS _tmp_pss_events_v2 AS
              SELECT id, session_id, match_id, round_id, event_type_id, timestamp, raw_data, parsed_data, event_sequence, processing_time_ms, is_valid, error_message, recognition_status, protocol_version, parser_confidence, validation_errors,
-                    COALESCE(tournament_id_text, tournament_uuid) AS tournament_id,
-                    COALESCE(tournament_day_id_text, tournament_day_uuid) AS tournament_day_id,
+                    {tournament_id_expr} AS tournament_id,
+                    {tournament_day_expr} AS tournament_day_id,
                     created_at, created
              FROM pss_events_v2",
+            tournament_id_expr = events_tournament_id_expr,
+            tournament_day_expr = events_tournament_day_expr
+        );
+
+        conn.execute(
+            &events_select,
             [],
         )?;
         conn.execute("DROP TABLE IF EXISTS pss_events_v2", [])?;
@@ -4215,15 +4283,42 @@ impl Migration for Migration35 {
         conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_events_v2_tournament_day_id ON pss_events_v2(tournament_day_id)", [])?;
 
         // recorded_videos: canonical TEXT tournament_id/tournament_day_id
-        conn.execute(
+        let recorded_tournament_id_expr =
+            if column_exists(conn, "recorded_videos", "tournament_id_text")? {
+                "COALESCE(tournament_id_text, tournament_uuid, CAST(tournament_id AS TEXT))"
+                    .to_string()
+            } else if column_exists(conn, "recorded_videos", "tournament_uuid")? {
+                "COALESCE(tournament_uuid, CAST(tournament_id AS TEXT))".to_string()
+            } else if column_exists(conn, "recorded_videos", "tournament_id")? {
+                "CAST(tournament_id AS TEXT)".to_string()
+            } else {
+                "NULL".to_string()
+            };
+
+        let recorded_tournament_day_expr =
+            if column_exists(conn, "recorded_videos", "tournament_day_id_text")? {
+                "COALESCE(tournament_day_id_text, tournament_day_uuid, CAST(tournament_day_id AS TEXT))"
+                    .to_string()
+            } else if column_exists(conn, "recorded_videos", "tournament_day_uuid")? {
+                "COALESCE(tournament_day_uuid, CAST(tournament_day_id AS TEXT))".to_string()
+            } else if column_exists(conn, "recorded_videos", "tournament_day_id")? {
+                "CAST(tournament_day_id AS TEXT)".to_string()
+            } else {
+                "NULL".to_string()
+            };
+
+        let recorded_select = format!(
             "CREATE TABLE IF NOT EXISTS _tmp_recorded_videos AS
              SELECT id, match_id, event_id,
-                    COALESCE(tournament_id_text, tournament_uuid) AS tournament_id,
-                    COALESCE(tournament_day_id_text, tournament_day_uuid) AS tournament_day_id,
+                    {tournament_id_expr} AS tournament_id,
+                    {tournament_day_expr} AS tournament_day_id,
                     video_type, file_path, record_directory, filename_formatting, start_time, duration_seconds, file_size, checksum, created_at, created
              FROM recorded_videos",
-            [],
-        )?;
+            tournament_id_expr = recorded_tournament_id_expr,
+            tournament_day_expr = recorded_tournament_day_expr
+        );
+
+        conn.execute(&recorded_select, [])?;
         conn.execute("DROP TABLE IF EXISTS recorded_videos", [])?;
         conn.execute(
             "CREATE TABLE recorded_videos (
@@ -4747,13 +4842,24 @@ impl Migration for Migration40 {
         ).unwrap_or(0);
 
         if table_exists > 0 {
+            // If legacy TEXT columns no longer exist, table is already in target shape.
+            let has_created_at = column_exists(conn, "obs_recording_sessions", "created_at")?;
+            let has_updated_at = column_exists(conn, "obs_recording_sessions", "updated_at")?;
+            if !has_created_at && !has_updated_at {
+                conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_obs_recording_sessions_created_int ON obs_recording_sessions(created)",
+                    [],
+                )?;
+                return Ok(());
+            }
+
             // Recreate obs_recording_sessions without created_at/updated_at TEXT columns
-            let _ = conn.execute(
+            conn.execute(
                 "CREATE TABLE IF NOT EXISTS _tmp_obs_recording_sessions AS
                  SELECT id, obs_connection_name, tournament_id, match_id, match_number, player1_name, player1_flag, player2_name, player2_flag, recording_path, recording_filename, recording_start_time, recording_end_time, recording_duration, recording_size_bytes, replay_buffer_start_time, replay_buffer_end_time, replay_buffer_saved, replay_buffer_filename, status, error_message, created, updated
                  FROM obs_recording_sessions",
                 [],
-            );
+            )?;
             let _ = conn.execute("DROP TABLE IF EXISTS obs_recording_sessions", []);
             conn.execute(
                 "CREATE TABLE obs_recording_sessions (
