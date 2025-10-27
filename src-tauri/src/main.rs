@@ -1,8 +1,8 @@
 // Prevents additional console window on Windows in release
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use env_logger::fmt::Color;
-use log::Level;
+use env_logger::{fmt::Color, WriteStyle};
+use log::{Level, LevelFilter};
 use re_strike_vta::core::app::App;
 use re_strike_vta::tauri_commands;
 #[cfg(feature = "obs-obws")]
@@ -32,30 +32,74 @@ async fn main() -> AppResult<()> {
 
     // Initialize logging
     let mut logger_builder = env_logger::Builder::from_env(env_logger::Env::default());
+    logger_builder.write_style(WriteStyle::Always);
+    if std::env::var("RUST_LOG").is_err() {
+        logger_builder.filter_level(LevelFilter::Info);
+    }
     logger_builder.format(|buf, record| {
         use std::io::Write;
 
         let timestamp = chrono::Local::now().format("%Y-%m-%d %H:%M:%S%.3f");
         let level_code = re_strike_vta::logging::level_code(record.level());
-        let prefix = format!("[{}] [{}] - ", timestamp, level_code);
+        let prefix_len = format!("[{}] [{}] - ", timestamp, level_code).len();
 
         let message = format!("{}", record.args());
         let sanitized = re_strike_vta::logging::sanitize_message(&message);
         let formatted_message =
-            re_strike_vta::logging::align_multiline(prefix.len(), sanitized.as_ref());
+            re_strike_vta::logging::align_multiline(prefix_len, sanitized.as_ref());
 
-        let mut style = buf.style();
+        let mut level_style = buf.style();
         match record.level() {
-            Level::Error => style.set_color(Color::Red),
-            Level::Warn => style.set_color(Color::Yellow),
-            Level::Info => style.set_color(Color::Green),
-            Level::Debug => style.set_color(Color::Cyan),
-            Level::Trace => style.set_color(Color::Magenta),
-        };
-
-        writeln!(buf, "{}{}", prefix, style.value(formatted_message))
+            Level::Error => {
+                level_style.set_color(Color::Red);
+                level_style.set_intense(true);
+            }
+            Level::Warn => {
+                level_style.set_color(Color::Yellow);
+                level_style.set_intense(true);
+            }
+            Level::Info => {
+                level_style.set_color(Color::Green);
+                level_style.set_intense(true);
+            }
+            Level::Debug => {
+                level_style.set_color(Color::Cyan);
+            }
+            Level::Trace => {
+                level_style.set_color(Color::Magenta);
+            }
+        }
+        match record.level() {
+            Level::Warn | Level::Error => {
+                let mut message_style = buf.style();
+                if record.level() == Level::Error {
+                    message_style.set_color(Color::White);
+                    message_style.set_intense(true);
+                    message_style.set_bg(Color::Red);
+                } else {
+                    message_style.set_color(Color::Yellow);
+                    message_style.set_intense(true);
+                }
+                writeln!(
+                    buf,
+                    "[{}] [{}] - {}",
+                    timestamp,
+                    level_style.value(level_code),
+                    message_style.value(formatted_message)
+                )
+            }
+            _ => writeln!(
+                buf,
+                "[{}] [{}] - {}",
+                timestamp,
+                level_style.value(level_code),
+                formatted_message
+            ),
+        }
     });
     logger_builder.init();
+    
+    log::error!("Demo error log to verify styling");
     
     log::info!("Starting reStrike VTA Tauri Application");
     
