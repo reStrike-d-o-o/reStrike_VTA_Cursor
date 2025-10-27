@@ -3888,6 +3888,66 @@ impl Migration for Migration35 {
     fn version(&self) -> u32 { 35 }
     fn description(&self) -> &str { "Recreate core tables to use TEXT *_id columns and drop legacy *_uuid/*_int/*_text" }
     fn up(&self, conn: &Connection) -> SqliteResult<()> {
+        // Legacy installations may still have data under the original `pss_events` table name.
+        // Ensure we have a `pss_events_v2` table to work with before the migration logic runs.
+        let has_pss_events_v2: bool = conn
+            .query_row(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='pss_events_v2'",
+                [],
+                |row| row.get::<_, i32>(0),
+            )?
+            > 0;
+
+        if !has_pss_events_v2 {
+            let has_pss_events: bool = conn
+                .query_row(
+                    "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='pss_events'",
+                    [],
+                    |row| row.get::<_, i32>(0),
+                )?
+                > 0;
+
+            if has_pss_events {
+                log::info!(
+                    "Migration 35: Renaming legacy `pss_events` table to `pss_events_v2` before UUID transition"
+                );
+                conn.execute("ALTER TABLE pss_events RENAME TO pss_events_v2", [])?;
+            } else {
+                log::warn!(
+                    "Migration 35: Neither `pss_events_v2` nor `pss_events` tables exist; creating empty `pss_events_v2` table"
+                );
+                conn.execute(
+                    "CREATE TABLE IF NOT EXISTS pss_events_v2 (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        session_id INTEGER NOT NULL,
+                        match_id INTEGER,
+                        round_id INTEGER,
+                        event_type_id INTEGER NOT NULL,
+                        timestamp TEXT NOT NULL,
+                        raw_data TEXT NOT NULL,
+                        parsed_data TEXT,
+                        event_sequence INTEGER,
+                        processing_time_ms INTEGER,
+                        is_valid BOOLEAN NOT NULL DEFAULT 1,
+                        error_message TEXT,
+                        recognition_status TEXT,
+                        protocol_version TEXT,
+                        parser_confidence REAL,
+                        validation_errors TEXT,
+                        tournament_id INTEGER,
+                        tournament_day_id INTEGER,
+                        tournament_uuid TEXT,
+                        tournament_day_uuid TEXT,
+                        tournament_id_text TEXT,
+                        tournament_day_id_text TEXT,
+                        created_at TEXT NOT NULL,
+                        created INTEGER
+                    )",
+                    [],
+                )?;
+            }
+        }
+
         // Ensure integer timestamps exist before selecting them (idempotent best-effort)
         let _ = conn.execute("ALTER TABLE pss_matches ADD COLUMN created INTEGER", []);
         let _ = conn.execute("UPDATE pss_matches SET created = strftime('%s', created_at) WHERE created IS NULL", []);
