@@ -37,11 +37,11 @@ pub const APP_NAME: &str = "reStrike VTA";
 
 /// Initialize the application library
 pub fn init() -> Result<(), Box<dyn std::error::Error>> {
-    println!("🚀 Initializing {} v{}", APP_NAME, VERSION);
+    log::info!("Initializing {} v{}", APP_NAME, VERSION);
 
     // Initialize core systems
     core::init()?;
 
-    println!("✅ {} library initialized successfully", APP_NAME);
+    log::info!("{} library initialized successfully", APP_NAME);
     Ok(())
 }

@@ -1,9 +1,11 @@
 use std::fs;
+use std::borrow::Cow;
 use std::io;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::time::UNIX_EPOCH;
 use chrono::{DateTime, Utc};
+use log::Level;
 use serde::{Deserialize, Serialize};
 
 pub mod logger;
@@ -13,6 +15,69 @@ pub mod archival;
 use logger::Logger;
 use rotation::LogRotator;
 use archival::{LogArchiver, AutoArchiveConfig, ArchiveInfo};
+
+pub fn level_code(level: Level) -> &'static str {
+    match level {
+        Level::Error => "ERR",
+        Level::Warn => "WAR",
+        Level::Info => "INF",
+        Level::Debug => "DBG",
+        Level::Trace => "TRC",
+    }
+}
+
+pub fn level_code_from_str(level: &str) -> &'static str {
+    match level.to_ascii_uppercase().as_str() {
+        "ERROR" | "ERR" => "ERR",
+        "WARN" | "WARNING" | "WAR" => "WAR",
+        "INFO" | "INF" => "INF",
+        "DEBUG" | "DBG" => "DBG",
+        "TRACE" | "TRC" => "TRC",
+        _ => "INF",
+    }
+}
+
+pub fn align_multiline(prefix_len: usize, message: &str) -> String {
+    if !message.contains('\n') {
+        return message.to_string();
+    }
+
+    let indent = " ".repeat(prefix_len);
+    message
+        .lines()
+        .enumerate()
+        .map(|(idx, line)| if idx == 0 { line.to_string() } else { format!("{}{}", indent, line) })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+pub fn sanitize_message(message: &str) -> Cow<'_, str> {
+    let mut sanitized = String::with_capacity(message.len());
+    let mut changed = false;
+
+    for ch in message.chars() {
+        if ch.is_ascii()
+            || ch.is_alphanumeric()
+            || ch.is_whitespace()
+            || matches!(
+                ch,
+                '-' | '_' | '.' | ',' | ':' | ';' | '/' | '\\' | '(' | ')' | '[' | ']' | '{' | '}'
+                    | '!' | '?' | '\'' | '"' | '@' | '#' | '$' | '%' | '^' | '&' | '*' | '+' | '='
+                    | '<' | '>' | '|'
+            )
+        {
+            sanitized.push(ch);
+        } else {
+            changed = true;
+        }
+    }
+
+    if changed {
+        Cow::Owned(sanitized)
+    } else {
+        Cow::Borrowed(message)
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LogConfig {

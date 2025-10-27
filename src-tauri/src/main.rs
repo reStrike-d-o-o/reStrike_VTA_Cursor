@@ -1,6 +1,8 @@
 // Prevents additional console window on Windows in release
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use env_logger::fmt::Color;
+use log::Level;
 use re_strike_vta::core::app::App;
 use re_strike_vta::tauri_commands;
 #[cfg(feature = "obs-obws")]
@@ -29,7 +31,34 @@ async fn main() -> AppResult<()> {
     }));
 
     // Initialize logging
-    env_logger::init();
+    let mut logger_builder = env_logger::Builder::from_env(env_logger::Env::default());
+    logger_builder.format(|buf, record| {
+        use std::io::Write;
+
+        let timestamp = chrono::Local::now().format("%Y-%m-%d %H:%M:%S%.3f");
+        let level_code = re_strike_vta::logging::level_code(record.level());
+        let prefix = format!("{} [{}] ", timestamp, level_code);
+
+        let message = format!("{}", record.args());
+        let sanitized = re_strike_vta::logging::sanitize_message(&message);
+        let formatted_message =
+            re_strike_vta::logging::align_multiline(prefix.len(), sanitized.as_ref());
+
+        match record.level() {
+            Level::Warn => {
+                let mut style = buf.style();
+                style.set_color(Color::Yellow);
+                writeln!(buf, "{}{}", prefix, style.value(formatted_message))
+            }
+            Level::Error => {
+                let mut style = buf.style();
+                style.set_color(Color::Red);
+                writeln!(buf, "{}{}", prefix, style.value(formatted_message))
+            }
+            _ => writeln!(buf, "{}{}", prefix, formatted_message),
+        }
+    });
+    logger_builder.init();
     
     log::info!("Starting reStrike VTA Tauri Application");
     

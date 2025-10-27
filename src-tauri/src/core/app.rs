@@ -258,75 +258,69 @@ impl App {
     
     /// Initialize the application
     pub async fn init(&self) -> AppResult<()> {
-        println!("🔧 Initializing application...");
-        
+        log::info!("Initializing application...");
+
         // Initialize all subsystems
         // Note: Plugins are already initialized in the plugins::init() function
         // called from lib.rs init()
-        
-        println!("✅ Application initialized successfully");
+
+        log::info!("Application initialized successfully");
         Ok(())
     }
-    
+
     /// Start the application
     pub async fn start(&self) -> AppResult<()> {
-        println!("▶️ Starting application...");
-        
+        log::info!("Starting application...");
+
         // Start WebSocket server for HTML overlays
-        println!("🔗 Starting WebSocket server for HTML overlays...");
+        log::info!("Starting WebSocket server for HTML overlays...");
         let websocket_plugin = self.websocket_plugin().lock().await;
         if let Err(e) = websocket_plugin.start(3001).await {
-            println!("⚠️ Failed to start WebSocket server: {}", e);
+            log::warn!("Failed to start WebSocket server: {}", e);
         } else {
-            println!("✅ WebSocket server started successfully");
-            
-            // Connect WebSocket plugin to PSS event broadcaster for real-time overlays
+            log::info!("WebSocket server started successfully");
+
             if let Some(pss_receiver) = Self::subscribe_to_pss_events() {
                 let websocket_plugin_clone = self.websocket_plugin().clone();
-                // This task does not capture any non-Send types
                 tokio::task::spawn(async move {
                     Self::handle_pss_to_websocket(pss_receiver, websocket_plugin_clone).await;
                 });
-                println!("✅ WebSocket plugin connected to PSS event broadcaster");
+                log::info!("WebSocket plugin connected to PSS event broadcaster");
             }
         }
-        
-        // Check if UDP should auto-start
+
         let config = self.config_manager.get_config().await;
         if config.app.startup.auto_start_udp {
-            println!("🎯 Auto-starting UDP server...");
+            log::info!("Auto-starting UDP server...");
             if let Err(e) = self.udp_plugin().start(&config).await {
-                println!("⚠️ Failed to auto-start UDP server: {}", e);
+                log::warn!("Failed to auto-start UDP server: {}", e);
             } else {
-                println!("✅ UDP server auto-started successfully");
-                
-                // Start UDP event handler when UDP server starts
+                log::info!("UDP server auto-started successfully");
+
                 if let Some(udp_event_rx) = self.udp_event_rx.lock().await.take() {
                     let log_manager_clone = self.log_manager().clone();
-                    // This task does not capture any non-Send types
                     tokio::task::spawn(async move {
                         Self::handle_udp_events(udp_event_rx, log_manager_clone).await;
                     });
-                    println!("✅ UDP event handler started");
+                    log::info!("UDP event handler started");
                 }
             }
         }
-        
-        println!("✅ Application started successfully");
+
+        log::info!("Application started successfully");
         Ok(())
     }
-    
+
     /// Stop the application
     pub async fn stop(&self) -> AppResult<()> {
-        println!("⏹️ Stopping application...");
-        
-        // Stop all subsystems
+        log::info!("Stopping application...");
+
         self.udp_plugin.stop().await?;
-        
-        println!("✅ Application stopped successfully");
+
+        log::info!("Application stopped successfully");
         Ok(())
     }
-    
+
     /// Get application state
     pub async fn get_state(&self) -> AppState {
         self.state.read().await.clone()
