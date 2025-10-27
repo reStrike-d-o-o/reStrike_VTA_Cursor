@@ -1,10 +1,10 @@
-use crate::types::AppResult;
 use crate::config::manager::ConfigManager;
 use crate::database::operations::UiSettingsOperations;
+use crate::types::AppResult;
 use rusqlite::Connection;
 use std::collections::HashMap;
-use std::path::Path;
 use std::io::Write;
+use std::path::Path;
 
 /// Migration strategy for transitioning from JSON to database settings
 #[derive(Clone)]
@@ -18,9 +18,12 @@ impl MigrationStrategy {
     }
 
     /// Perform complete migration from JSON to database
-    pub async fn migrate_json_to_database(&self, conn: &mut Connection) -> AppResult<MigrationResult> {
+    pub async fn migrate_json_to_database(
+        &self,
+        conn: &mut Connection,
+    ) -> AppResult<MigrationResult> {
         log::info!("Starting JSON to database migration...");
-        
+
         let mut result = MigrationResult {
             total_settings: 0,
             migrated_settings: 0,
@@ -31,8 +34,11 @@ impl MigrationStrategy {
         // Step 1: Load existing JSON settings
         let json_settings = self.load_json_settings().await?;
         result.total_settings = json_settings.len();
-        
-        log::info!("Found {} settings in JSON configuration", result.total_settings);
+
+        log::info!(
+            "Found {} settings in JSON configuration",
+            result.total_settings
+        );
 
         // Step 2: Initialize database settings table
         UiSettingsOperations::initialize_ui_settings(conn)?;
@@ -47,7 +53,9 @@ impl MigrationStrategy {
                 }
                 Err(e) => {
                     result.failed_settings += 1;
-                    result.errors.push(format!("Failed to migrate '{}': {}", key, e));
+                    result
+                        .errors
+                        .push(format!("Failed to migrate '{}': {}", key, e));
                     log::warn!("Failed to migrate setting '{}': {}", key, e);
                 }
             }
@@ -68,32 +76,74 @@ impl MigrationStrategy {
     /// Load existing JSON settings from config manager
     async fn load_json_settings(&self) -> AppResult<HashMap<String, String>> {
         let mut settings = HashMap::new();
-        
+
         // Load UI settings - UiSettings is a struct, not a HashMap
         let ui_settings = self.config_manager.get_ui_settings().await;
-        settings.insert("ui.overlay.visible".to_string(), ui_settings.overlay.visible.to_string());
-        settings.insert("ui.overlay.opacity".to_string(), ui_settings.overlay.opacity.to_string());
-        settings.insert("ui.overlay.position".to_string(), ui_settings.overlay.position.clone());
-        settings.insert("ui.overlay.scale".to_string(), ui_settings.overlay.scale.to_string());
-        settings.insert("ui.theme.current".to_string(), ui_settings.theme.current.clone());
-        settings.insert("ui.layout.sidebar_position".to_string(), ui_settings.layout.sidebar_position.clone());
-        settings.insert("ui.layout.sidebar_width".to_string(), ui_settings.layout.sidebar_width.to_string());
+        settings.insert(
+            "ui.overlay.visible".to_string(),
+            ui_settings.overlay.visible.to_string(),
+        );
+        settings.insert(
+            "ui.overlay.opacity".to_string(),
+            ui_settings.overlay.opacity.to_string(),
+        );
+        settings.insert(
+            "ui.overlay.position".to_string(),
+            ui_settings.overlay.position.clone(),
+        );
+        settings.insert(
+            "ui.overlay.scale".to_string(),
+            ui_settings.overlay.scale.to_string(),
+        );
+        settings.insert(
+            "ui.theme.current".to_string(),
+            ui_settings.theme.current.clone(),
+        );
+        settings.insert(
+            "ui.layout.sidebar_position".to_string(),
+            ui_settings.layout.sidebar_position.clone(),
+        );
+        settings.insert(
+            "ui.layout.sidebar_width".to_string(),
+            ui_settings.layout.sidebar_width.to_string(),
+        );
 
         // Load UDP settings
         let udp_settings = self.config_manager.get_udp_settings().await;
-        settings.insert("udp.listener.port".to_string(), udp_settings.listener.port.to_string());
-        settings.insert("udp.listener.enabled".to_string(), udp_settings.listener.enabled.to_string());
+        settings.insert(
+            "udp.listener.port".to_string(),
+            udp_settings.listener.port.to_string(),
+        );
+        settings.insert(
+            "udp.listener.enabled".to_string(),
+            udp_settings.listener.enabled.to_string(),
+        );
 
         // Load flag settings
         let flag_settings = self.config_manager.get_flag_settings().await;
-        settings.insert("flags.storage.auto_download".to_string(), flag_settings.storage.auto_download.to_string());
-        settings.insert("flags.storage.directory".to_string(), flag_settings.storage.directory.clone());
+        settings.insert(
+            "flags.storage.auto_download".to_string(),
+            flag_settings.storage.auto_download.to_string(),
+        );
+        settings.insert(
+            "flags.storage.directory".to_string(),
+            flag_settings.storage.directory.clone(),
+        );
 
         // Load logging settings
         let logging_settings = self.config_manager.get_logging_settings().await;
-        settings.insert("logging.global.level".to_string(), logging_settings.global.level.clone());
-        settings.insert("logging.files.max_size_mb".to_string(), logging_settings.files.max_size_mb.to_string());
-        settings.insert("logging.files.max_files".to_string(), logging_settings.files.max_files.to_string());
+        settings.insert(
+            "logging.global.level".to_string(),
+            logging_settings.global.level.clone(),
+        );
+        settings.insert(
+            "logging.files.max_size_mb".to_string(),
+            logging_settings.files.max_size_mb.to_string(),
+        );
+        settings.insert(
+            "logging.files.max_files".to_string(),
+            logging_settings.files.max_files.to_string(),
+        );
 
         Ok(settings)
     }
@@ -107,7 +157,7 @@ impl MigrationStrategy {
     ) -> AppResult<()> {
         // Check if setting already exists in database
         let existing = UiSettingsOperations::get_ui_setting(conn, key)?;
-        
+
         if existing.is_none() {
             // Setting doesn't exist, migrate it
             UiSettingsOperations::set_ui_setting(
@@ -134,7 +184,7 @@ impl MigrationStrategy {
 
         let json_settings = self.load_json_settings().await?;
         let db_settings_vec = UiSettingsOperations::get_all_ui_settings(conn)?;
-        
+
         // Convert Vec<(String, String)> to HashMap<String, String>
         let db_settings: HashMap<String, String> = db_settings_vec.into_iter().collect();
 
@@ -154,7 +204,10 @@ impl MigrationStrategy {
         }
 
         if !validation_errors.is_empty() {
-            log::warn!("Migration validation found {} issues:", validation_errors.len());
+            log::warn!(
+                "Migration validation found {} issues:",
+                validation_errors.len()
+            );
             for error in &validation_errors {
                 log::warn!(" - {}", error);
             }
@@ -171,39 +224,44 @@ impl MigrationStrategy {
     /// Create backup of JSON settings before migration
     pub async fn create_json_backup(&self) -> AppResult<String> {
         let settings = self.load_json_settings().await?;
-        let backup_data = serde_json::to_string_pretty(&settings)
-            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to serialize backup: {}", e)))?;
+        let backup_data = serde_json::to_string_pretty(&settings).map_err(|e| {
+            crate::types::AppError::ConfigError(format!("Failed to serialize backup: {}", e))
+        })?;
 
         // Create backups directory in external data directory (same as list_backup_files)
         let backup_dir = match dirs::data_dir() {
             Some(data_dir) => data_dir.join("reStrikeVTA").join("backups"),
             None => std::path::PathBuf::from("backups"),
         };
-        
+
         if !backup_dir.exists() {
-            std::fs::create_dir_all(&backup_dir)
-                .map_err(|e| crate::types::AppError::IoError(e))?;
+            std::fs::create_dir_all(&backup_dir).map_err(|e| crate::types::AppError::IoError(e))?;
         }
 
-        let backup_filename = format!("json_settings_backup_{}.zip", chrono::Utc::now().timestamp());
+        let backup_filename = format!(
+            "json_settings_backup_{}.zip",
+            chrono::Utc::now().timestamp()
+        );
         let backup_path = backup_dir.join(&backup_filename);
-        
+
         // Create a ZIP archive with the JSON data
-        let file = std::fs::File::create(&backup_path)
-            .map_err(|e| crate::types::AppError::IoError(e))?;
+        let file =
+            std::fs::File::create(&backup_path).map_err(|e| crate::types::AppError::IoError(e))?;
         let mut zip = zip::ZipWriter::new(file);
-        
+
         let options = zip::write::FileOptions::default()
             .compression_method(zip::CompressionMethod::Deflated)
             .unix_permissions(0o644);
-        
-        zip.start_file("settings.json", options)
-            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to create ZIP entry: {}", e)))?;
+
+        zip.start_file("settings.json", options).map_err(|e| {
+            crate::types::AppError::ConfigError(format!("Failed to create ZIP entry: {}", e))
+        })?;
         zip.write_all(backup_data.as_bytes())
             .map_err(|e| crate::types::AppError::IoError(e))?;
-        
-        zip.finish()
-            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to finalize ZIP: {}", e)))?;
+
+        zip.finish().map_err(|e| {
+            crate::types::AppError::ConfigError(format!("Failed to finalize ZIP: {}", e))
+        })?;
 
         log::info!("JSON settings backup created: {}", backup_path.display());
         Ok(backup_path.to_string_lossy().to_string())
@@ -218,11 +276,13 @@ impl MigrationStrategy {
             )));
         }
 
-        let backup_data = std::fs::read_to_string(backup_path)
-            .map_err(|e| crate::types::AppError::IoError(e))?;
+        let backup_data =
+            std::fs::read_to_string(backup_path).map_err(|e| crate::types::AppError::IoError(e))?;
 
-        let settings: HashMap<String, String> = serde_json::from_str(&backup_data)
-            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to parse backup: {}", e)))?;
+        let settings: HashMap<String, String> =
+            serde_json::from_str(&backup_data).map_err(|e| {
+                crate::types::AppError::ConfigError(format!("Failed to parse backup: {}", e))
+            })?;
 
         log::info!("Restoring {} settings from backup...", settings.len());
 
@@ -278,7 +338,11 @@ impl HybridSettingsProvider {
             match self.get_from_database(key).await {
                 Ok(value) => Ok(value),
                 Err(e) => {
-                    log::warn!("Database lookup failed for '{}', falling back to JSON: {}", key, e);
+                    log::warn!(
+                        "Database lookup failed for '{}', falling back to JSON: {}",
+                        key,
+                        e
+                    );
                     self.get_from_json(key).await
                 }
             }
@@ -322,6 +386,9 @@ impl HybridSettingsProvider {
     /// Enable/disable database mode
     pub fn set_database_mode(&mut self, enabled: bool) {
         self.use_database = enabled;
-        log::info!("Database mode {}", if enabled { "enabled" } else { "disabled" });
+        log::info!(
+            "Database mode {}",
+            if enabled { "enabled" } else { "disabled" }
+        );
     }
-} 
+}

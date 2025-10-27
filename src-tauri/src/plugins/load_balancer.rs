@@ -1,11 +1,11 @@
-use std::collections::HashMap;
-use std::sync::Arc;
-use std::hash::{Hash, Hasher};
-use tokio::sync::RwLock;
-use tokio::time::{Duration, interval};
-use serde::{Serialize, Deserialize};
 use crate::database::models::PssEventV2;
 use crate::plugins::event_cache::EventCache;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::hash::{Hash, Hasher};
+use std::sync::Arc;
+use tokio::sync::RwLock;
+use tokio::time::{interval, Duration};
 // use crate::plugins::event_stream::{EventStreamProcessor, EventStreamConfig};
 use crate::AppResult;
 
@@ -126,7 +126,7 @@ impl EventDistributor {
 
     pub fn with_config(cache: Arc<EventCache>, config: LoadBalancerConfig) -> Self {
         let load_balancer = Arc::new(LoadBalancer::new(config.load_distribution_strategy.clone()));
-        
+
         Self {
             servers: Arc::new(RwLock::new(HashMap::new())),
             load_balancer,
@@ -140,11 +140,11 @@ impl EventDistributor {
     /// Start the event distributor
     pub async fn start(&mut self) -> AppResult<()> {
         log::info!("Starting Event Distributor...");
-        
+
         // Start health check task
         let servers = self.servers.clone();
         let health_check_interval = Duration::from_millis(self.config.health_check_interval_ms);
-        
+
         let health_check_handle = tokio::spawn(async move {
             Self::health_check_loop(servers, health_check_interval).await;
         });
@@ -159,7 +159,7 @@ impl EventDistributor {
     /// Stop the event distributor
     pub async fn stop(&self) -> AppResult<()> {
         log::info!("Stopping Event Distributor...");
-        
+
         // Stop health check task
         if let Some(health_check_handle) = self.health_check_task.write().await.take() {
             health_check_handle.abort();
@@ -176,13 +176,19 @@ impl EventDistributor {
     }
 
     /// Add a new UDP server instance
-    pub async fn add_server(&self, server_id: String, bind_address: String, port: u16) -> AppResult<()> {
+    pub async fn add_server(
+        &self,
+        server_id: String,
+        bind_address: String,
+        port: u16,
+    ) -> AppResult<()> {
         let mut servers = self.servers.write().await;
-        
+
         if servers.len() >= self.config.max_servers {
-            return Err(crate::AppError::ConfigError(
-                format!("Maximum number of servers ({}) reached", self.config.max_servers)
-            ));
+            return Err(crate::AppError::ConfigError(format!(
+                "Maximum number of servers ({}) reached",
+                self.config.max_servers
+            )));
         }
 
         let server_instance = UdpServerInstance {
@@ -213,10 +219,10 @@ impl EventDistributor {
         };
 
         servers.insert(server_id.clone(), server_instance);
-        
+
         // Update load balancer
         self.load_balancer.add_server(server_id).await;
-        
+
         log::info!("Added UDP server: {}:{}", bind_address.clone(), port);
         Ok(())
     }
@@ -224,51 +230,57 @@ impl EventDistributor {
     /// Remove a UDP server instance
     pub async fn remove_server(&self, server_id: &str) -> AppResult<()> {
         let mut servers = self.servers.write().await;
-        
+
         if let Some(mut server) = servers.remove(server_id) {
             server.is_active = false;
-            
+
             // Update load balancer
             self.load_balancer.remove_server(server_id).await;
-            
+
             log::info!("Removed UDP server: {}", server_id);
             Ok(())
         } else {
-            Err(crate::AppError::ConfigError(
-                format!("Server {} not found", server_id)
-            ))
+            Err(crate::AppError::ConfigError(format!(
+                "Server {} not found",
+                server_id
+            )))
         }
     }
 
     /// Distribute an event to the appropriate server
     pub async fn distribute_event(&self, event: PssEventV2) -> AppResult<()> {
         let start_time = std::time::Instant::now();
-        
+
         // Get the best server based on load balancing strategy
-        let server_id = self.load_balancer.get_next_server().await
+        let server_id = self
+            .load_balancer
+            .get_next_server()
+            .await
             .ok_or_else(|| crate::AppError::ConfigError("No available servers".to_string()))?;
-        
+
         // Send event to the selected server
         if let Some(server) = self.servers.read().await.get(&server_id) {
             if server.is_active && server.health.is_healthy {
                 // In a real implementation, you would send the event to the actual server
                 // For now, we'll just update statistics
                 self.update_server_statistics(&server_id, &event).await?;
-                
+
                 let distribution_time = start_time.elapsed();
                 self.update_distributor_statistics(distribution_time).await;
-                
+
                 log::debug!("Distributed event to server: {}", server_id);
                 Ok(())
             } else {
-                Err(crate::AppError::ConfigError(
-                    format!("Server {} is not available", server_id)
-                ))
+                Err(crate::AppError::ConfigError(format!(
+                    "Server {} is not available",
+                    server_id
+                )))
             }
         } else {
-            Err(crate::AppError::ConfigError(
-                format!("Server {} not found", server_id)
-            ))
+            Err(crate::AppError::ConfigError(format!(
+                "Server {} not found",
+                server_id
+            )))
         }
     }
 
@@ -280,7 +292,8 @@ impl EventDistributor {
     /// Get all server statistics
     pub async fn get_server_statistics(&self) -> Vec<ServerStatistics> {
         let servers = self.servers.read().await;
-        servers.values()
+        servers
+            .values()
             .map(|server| server.statistics.clone())
             .collect()
     }
@@ -291,20 +304,24 @@ impl EventDistributor {
         interval_duration: Duration,
     ) {
         let mut interval_timer = interval(interval_duration);
-        
+
         loop {
             interval_timer.tick().await;
-            
+
             let mut servers_guard = servers.write().await;
             for (server_id, server) in servers_guard.iter_mut() {
                 // Perform health check
                 let health_status = Self::perform_health_check(server).await;
                 server.health = health_status;
-                
+
                 // Update server status based on health
                 server.is_active = server.health.is_healthy;
-                
-                log::debug!("Health check for server {}: {}", server_id, server.health.is_healthy);
+
+                log::debug!(
+                    "Health check for server {}: {}",
+                    server_id,
+                    server.health.is_healthy
+                );
             }
         }
     }
@@ -312,14 +329,14 @@ impl EventDistributor {
     /// Perform health check for a server
     async fn perform_health_check(server: &UdpServerInstance) -> ServerHealth {
         let start_time = std::time::Instant::now();
-        
+
         // In a real implementation, you would actually ping the server
         // For now, we'll simulate a health check
         let response_time = start_time.elapsed().as_millis() as u64;
-        
+
         // Simulate health status (90% success rate)
         let is_healthy = rand::random::<u8>() > 25; // Use u8 instead of f64
-        
+
         ServerHealth {
             server_id: server.server_id.clone(),
             is_healthy,
@@ -334,36 +351,45 @@ impl EventDistributor {
     /// Update server statistics
     async fn update_server_statistics(&self, server_id: &str, event: &PssEventV2) -> AppResult<()> {
         let mut servers = self.servers.write().await;
-        
+
         if let Some(server) = servers.get_mut(server_id) {
             server.statistics.total_events_processed += 1;
             server.statistics.last_updated = std::time::SystemTime::now();
-            
+
             // Update events per second (simplified calculation)
             let elapsed = server.created_at.elapsed().unwrap_or_default();
             if elapsed.as_secs() > 0 {
-                server.statistics.events_per_second = 
+                server.statistics.events_per_second =
                     server.statistics.total_events_processed as f64 / elapsed.as_secs() as f64;
             }
-            
+
             // Cache the distributed event for quick access
             if let Some(match_id) = event.match_id {
-                let _ = self.cache.set_match_stats(match_id.to_string(), crate::plugins::event_cache::MatchStatistics {
-                    match_id: match_id.to_string(),
-                    event_count: 1,
-                    duration_seconds: 0,
-                    athlete1_score: 0,
-                    athlete2_score: 0,
-                    last_updated: std::time::SystemTime::now(),
-                });
+                let _ = self.cache.set_match_stats(
+                    match_id.to_string(),
+                    crate::plugins::event_cache::MatchStatistics {
+                        match_id: match_id.to_string(),
+                        event_count: 1,
+                        duration_seconds: 0,
+                        athlete1_score: 0,
+                        athlete2_score: 0,
+                        last_updated: std::time::SystemTime::now(),
+                    },
+                );
             }
-            
+
             // Cache match events for quick access
             if let Some(match_id) = event.match_id {
-                let _ = self.cache.set_match_events(match_id.to_string(), vec![serde_json::to_value(event.clone()).unwrap_or_default()]).await;
+                let _ = self
+                    .cache
+                    .set_match_events(
+                        match_id.to_string(),
+                        vec![serde_json::to_value(event.clone()).unwrap_or_default()],
+                    )
+                    .await;
             }
         }
-        
+
         Ok(())
     }
 
@@ -373,13 +399,15 @@ impl EventDistributor {
         stats.total_events_distributed += 1;
         stats.average_distribution_time_ms = distribution_time.as_millis() as f64;
         stats.last_updated = std::time::SystemTime::now();
-        
+
         // Update events per second
-        let elapsed = stats.last_updated.duration_since(
-            std::time::SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(1)
-        ).unwrap_or_default();
+        let elapsed = stats
+            .last_updated
+            .duration_since(std::time::SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(1))
+            .unwrap_or_default();
         if elapsed.as_secs() > 0 {
-            stats.events_per_second = stats.total_events_distributed as f64 / elapsed.as_secs() as f64;
+            stats.events_per_second =
+                stats.total_events_distributed as f64 / elapsed.as_secs() as f64;
         }
     }
 }
@@ -396,32 +424,35 @@ impl LoadBalancer {
     /// Add a server to the load balancer
     pub async fn add_server(&self, server_id: String) {
         let mut servers = self.servers.write().await;
-        servers.insert(server_id, UdpServerInstance {
-            server_id: String::new(),
-            bind_address: String::new(),
-            port: 0,
-            health: ServerHealth {
+        servers.insert(
+            server_id,
+            UdpServerInstance {
                 server_id: String::new(),
-                is_healthy: true,
-                last_health_check: std::time::SystemTime::now(),
-                response_time_ms: 0,
-                active_connections: 0,
-                events_per_second: 0.0,
-                error_rate: 0.0,
+                bind_address: String::new(),
+                port: 0,
+                health: ServerHealth {
+                    server_id: String::new(),
+                    is_healthy: true,
+                    last_health_check: std::time::SystemTime::now(),
+                    response_time_ms: 0,
+                    active_connections: 0,
+                    events_per_second: 0.0,
+                    error_rate: 0.0,
+                },
+                statistics: ServerStatistics {
+                    server_id: String::new(),
+                    total_events_processed: 0,
+                    events_per_second: 0.0,
+                    average_processing_time_ms: 0.0,
+                    active_connections: 0,
+                    memory_usage_mb: 0,
+                    cpu_usage_percent: 0.0,
+                    last_updated: std::time::SystemTime::now(),
+                },
+                is_active: true,
+                created_at: std::time::SystemTime::now(),
             },
-            statistics: ServerStatistics {
-                server_id: String::new(),
-                total_events_processed: 0,
-                events_per_second: 0.0,
-                average_processing_time_ms: 0.0,
-                active_connections: 0,
-                memory_usage_mb: 0,
-                cpu_usage_percent: 0.0,
-                last_updated: std::time::SystemTime::now(),
-            },
-            is_active: true,
-            created_at: std::time::SystemTime::now(),
-        });
+        );
     }
 
     /// Remove a server from the load balancer
@@ -434,7 +465,7 @@ impl LoadBalancer {
     pub async fn get_next_server(&self) -> Option<String> {
         let servers = self.servers.read().await;
         let server_ids: Vec<String> = servers.keys().cloned().collect();
-        
+
         if server_ids.is_empty() {
             return None;
         }
@@ -450,7 +481,7 @@ impl LoadBalancer {
                 // Find server with least active connections
                 let mut least_connections = u32::MAX;
                 let mut selected_server = None;
-                
+
                 for (server_id, server) in servers.iter() {
                     if server.is_active && server.health.is_healthy {
                         if server.statistics.active_connections < least_connections {
@@ -459,7 +490,7 @@ impl LoadBalancer {
                         }
                     }
                 }
-                
+
                 selected_server
             }
             LoadDistributionStrategy::WeightedRoundRobin => {
@@ -486,16 +517,16 @@ impl LoadBalancer {
 mod rand {
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
-    
-    pub fn random<T>() -> T 
-    where 
+
+    pub fn random<T>() -> T
+    where
         T: Hash + Default,
     {
         let mut hasher = DefaultHasher::new();
         std::time::SystemTime::now().hash(&mut hasher);
         let _hash = hasher.finish();
-        
+
         // Convert hash to T (simplified)
         T::default()
     }
-} 
+}

@@ -1,11 +1,14 @@
-use crate::database::{DatabaseConnection, models::{OverlayTemplate, EventTrigger}};
-use once_cell::sync::OnceCell;
+use crate::database::{
+    models::{EventTrigger, OverlayTemplate},
+    DatabaseConnection,
+};
 use crate::plugins::obs_obws::manager::ObsManager;
 use crate::types::AppResult;
+use once_cell::sync::OnceCell;
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use serde::{Serialize, Deserialize};
 
 /// Trigger system plugin for handling PSS event-driven automation
 pub static TRIGGER_PLUGIN_GLOBAL: OnceCell<std::sync::Arc<TriggerPlugin>> = OnceCell::new();
@@ -31,40 +34,40 @@ pub enum PssEventType {
     // Points
     Pt1(String), // pt1;point_value;
     Pt2(String), // pt2;point_value;
-    
+
     // Hit Levels
     Hl1(String), // hl1;hit_level;
     Hl2(String), // hl2;hit_level;
-    
+
     // Warnings
     Wg1(String), // wg1;warning_count;
     Wg2(String), // wg2;warning_count;
-    
+
     // Injury
     Ij0(String), // ij0;time;
     Ij1(String), // ij1;time;
     Ij2(String), // ij2;time;
-    
+
     // Challenges
     Ch0(String), // ch0;result;
     Ch1(String), // ch1;result;
     Ch2(String), // ch2;result;
-    
+
     // Break
     Brk(String), // brk;time;
-    
+
     // Winner Rounds
     Wrd(String), // wrd;rd1;winner1;rd2;winner2;rd3;winner3;
-    
+
     // Winner
     Wmh(String), // wmh;winner_name;classification;
-    
+
     // Athletes
     At1(String), // at1;short_name;long_name;country;at2;short_name2;long_name2;country2;
-    
+
     // Match Configuration
     Mch(String), // mch;match_number;category;weight_class;...
-    
+
     // Scores
     S11(String), // s11;score;
     S21(String), // s21;score;
@@ -72,26 +75,26 @@ pub enum PssEventType {
     S22(String), // s22;score;
     S13(String), // s13;score;
     S23(String), // s23;score;
-    
+
     // Current Scores
     Sc1(String), // sc1;current_score;
     Sc2(String), // sc2;current_score;
-    
+
     // Athlete Video Time
     Avt(String), // avt;video_time;
-    
+
     // Clock
     Clk(String), // clk;time;
-    
+
     // Round
     Rnd(String), // rnd;round_number;
-    
+
     // Fight Ready
     Rdy(String), // rdy;FightReady;
-    
+
     // Fight Loaded
     Pre(String), // pre;FightLoaded;
-    
+
     // Winner
     Win(String), // win;BLUE/RED;
 }
@@ -171,7 +174,7 @@ impl TriggerPlugin {
             executed_once_match: Arc::new(RwLock::new(std::collections::HashSet::new())),
         }
     }
-    
+
     /// Initialize the trigger plugin
     pub async fn initialize(&self) -> AppResult<()> {
         log::info!("Initializing Trigger Plugin");
@@ -185,69 +188,83 @@ impl TriggerPlugin {
             if let Some(app_handle) = tauri::AppHandle::try_get() {
                 let plugin_clone = self.clone();
                 // Pause shortcut
-                let _ = tauri_plugin_global_shortcut::register(&app_handle, "Ctrl+Shift+P", move || {
-                    plugin_clone.set_paused(true);
-                });
+                let _ = tauri_plugin_global_shortcut::register(
+                    &app_handle,
+                    "Ctrl+Shift+P",
+                    move || {
+                        plugin_clone.set_paused(true);
+                    },
+                );
                 let plugin_clone2 = self.clone();
-                let _ = tauri_plugin_global_shortcut::register(&app_handle, "Ctrl+Shift+R", move || {
-                    plugin_clone2.set_paused(false);
-                });
+                let _ = tauri_plugin_global_shortcut::register(
+                    &app_handle,
+                    "Ctrl+Shift+R",
+                    move || {
+                        plugin_clone2.set_paused(false);
+                    },
+                );
             }
         }
-        
+
         // Load all enabled triggers
         self.load_enabled_triggers().await?;
-        
+
         // Initialize default overlay templates if none exist
         self.initialize_default_overlay_templates().await?;
-        
+
         log::info!("Trigger Plugin initialized successfully");
         Ok(())
     }
-    
+
     /// Load all enabled triggers into memory
     async fn load_enabled_triggers(&self) -> AppResult<()> {
         let mut triggers = self.enabled_triggers.write().await;
         triggers.clear();
-        
+
         // Load global triggers
         let global_triggers = self.db.get_global_event_triggers().await?;
         for trigger in global_triggers {
             if trigger.is_enabled {
-                triggers.entry(trigger.event_type.clone())
+                triggers
+                    .entry(trigger.event_type.clone())
                     .or_insert_with(Vec::new)
                     .push(trigger);
             }
         }
-        
+
         // Load tournament-specific triggers
         let tournament_id = *self.current_tournament_id.read().await;
         if let Some(tid) = tournament_id {
             let tournament_triggers = self.db.get_event_triggers_for_tournament(tid).await?;
             for trigger in tournament_triggers {
                 if trigger.is_enabled {
-                    triggers.entry(trigger.event_type.clone())
+                    triggers
+                        .entry(trigger.event_type.clone())
                         .or_insert_with(Vec::new)
                         .push(trigger);
                 }
             }
         }
-        
+
         // Day-specific triggers removed
-        
-        log::info!("Loaded {} trigger types with {} total triggers", triggers.len(), triggers.values().map(|v| v.len()).sum::<usize>());
+
+        log::info!(
+            "Loaded {} trigger types with {} total triggers",
+            triggers.len(),
+            triggers.values().map(|v| v.len()).sum::<usize>()
+        );
         Ok(())
     }
-    
+
     /// Initialize default overlay templates
     async fn initialize_default_overlay_templates(&self) -> AppResult<()> {
         let existing_templates = self.db.get_overlay_templates().await?;
         if !existing_templates.is_empty() {
             return Ok(());
         }
-        
+
         log::info!("Creating default overlay templates");
-        
+
         let default_templates = vec![
             OverlayTemplate {
                 id: None,
@@ -315,33 +332,41 @@ impl TriggerPlugin {
                 updated_at: chrono::Utc::now(),
             },
         ];
-        
+
         for template in &default_templates {
             self.db.insert_overlay_template(template).await?;
         }
-        
-        log::info!("Created {} default overlay templates", default_templates.len());
+
+        log::info!(
+            "Created {} default overlay templates",
+            default_templates.len()
+        );
         Ok(())
     }
-    
+
     /// Public setter to pause/resume system; emits Tauri event and handles buffered rdy replay
     pub fn set_resume_delay(&self, ms: u64) {
-        self.resume_delay_ms.store(ms, std::sync::atomic::Ordering::SeqCst);
+        self.resume_delay_ms
+            .store(ms, std::sync::atomic::Ordering::SeqCst);
     }
 
     pub fn set_paused(&self, paused: bool) {
-        let was = self.paused.swap(paused, std::sync::atomic::Ordering::SeqCst);
+        let was = self
+            .paused
+            .swap(paused, std::sync::atomic::Ordering::SeqCst);
         if was == paused {
             return;
         }
         // Emit tauri event on state change
-                #[cfg(feature = "custom-protocol")]
+        #[cfg(feature = "custom-protocol")]
         if let Some(app) = tauri::AppHandle::try_get() {
             let _ = app.emit_all("triggers_paused_changed", paused);
         }
         if !paused {
             // resumed – spawn task to process buffered event after delay
-            let delay_ms = self.resume_delay_ms.load(std::sync::atomic::Ordering::SeqCst);
+            let delay_ms = self
+                .resume_delay_ms
+                .load(std::sync::atomic::Ordering::SeqCst);
             let plugin = self.clone();
             tokio::spawn(async move {
                 tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
@@ -360,10 +385,10 @@ impl TriggerPlugin {
         if parts.is_empty() {
             return None;
         }
-        
+
         let event_code = parts[0];
         let args = parts.get(1..).unwrap_or(&[]).join(";");
-        
+
         match event_code {
             "pt1" => Some(PssEventType::Pt1(args)),
             "pt2" => Some(PssEventType::Pt2(args)),
@@ -399,12 +424,12 @@ impl TriggerPlugin {
             _ => None,
         }
     }
-    
+
     /// Process PSS event and execute triggers
     pub async fn process_pss_event(&self, message: &str) -> AppResult<Vec<TriggerExecutionResult>> {
         let start_time = std::time::Instant::now();
         let mut results = Vec::new();
-        
+
         // Parse the PSS message
         let event_type = match self.parse_pss_message(message) {
             Some(event) => event,
@@ -413,7 +438,7 @@ impl TriggerPlugin {
                 return Ok(results);
             }
         };
-        
+
         // capture round/context updates & resets
         match &event_type {
             PssEventType::Rnd(args) => {
@@ -473,19 +498,23 @@ impl TriggerPlugin {
             PssEventType::Pre(_) => "pre",
             PssEventType::Win(_) => "win",
         };
-        
+
         // Get triggers for this event type
         let triggers = self.enabled_triggers.read().await;
         let event_triggers = triggers.get(event_type_str).cloned().unwrap_or_default();
         drop(triggers);
-        
+
         if event_triggers.is_empty() {
             log::debug!("No triggers found for event type: {}", event_type_str);
             return Ok(results);
         }
-        
-        log::info!("Processing {} triggers for event: {}", event_triggers.len(), event_type_str);
-        
+
+        log::info!(
+            "Processing {} triggers for event: {}",
+            event_triggers.len(),
+            event_type_str
+        );
+
         // Execute each trigger
         for trigger in event_triggers {
             // Simple condition matcher (round/once-per/debounce/cooldown)
@@ -502,12 +531,14 @@ impl TriggerPlugin {
                 error_message: None,
                 execution_time_ms: 0,
             };
-            
+
             match self.execute_trigger(&trigger, &event_type).await {
                 Ok(_) => {
                     result.success = true;
                     // mark fired
-                    if let Some(id) = trigger.id { self.mark_fired(id).await; }
+                    if let Some(id) = trigger.id {
+                        self.mark_fired(id).await;
+                    }
                     log::info!("Trigger {} executed successfully", trigger.id.unwrap_or(0));
                 }
                 Err(e) => {
@@ -515,34 +546,46 @@ impl TriggerPlugin {
                     log::error!("Trigger {} failed: {}", trigger.id.unwrap_or(0), e);
                 }
             }
-            
+
             result.execution_time_ms = trigger_start.elapsed().as_millis() as u64;
             results.push(result);
         }
-        
+
         let total_time = start_time.elapsed();
         log::info!("Processed {} triggers in {:?}", results.len(), total_time);
-        
+
         Ok(results)
     }
 
     /// Evaluate basic Triggers v2 conditions and rate limits
     async fn should_fire(&self, trigger: &EventTrigger) -> bool {
-        let id = match trigger.id { Some(v) => v, None => return true };
+        let id = match trigger.id {
+            Some(v) => v,
+            None => return true,
+        };
         // Round condition
         if let Some(req_round) = trigger.condition_round {
             let cr = *self.current_round.read().await;
-            if cr != Some(req_round) { return false; }
+            if cr != Some(req_round) {
+                return false;
+            }
         }
         // Once-per scope
         if let Some(scope) = trigger.condition_once_per.as_deref() {
             match scope {
                 "match" => {
-                    if self.executed_once_match.read().await.contains(&id) { return false; }
+                    if self.executed_once_match.read().await.contains(&id) {
+                        return false;
+                    }
                 }
                 "round" => {
-                    if let (Some(cr), Some(last_r)) = (*self.current_round.read().await, self.last_fired_round.read().await.get(&id).cloned()) {
-                        if last_r == cr { return false; }
+                    if let (Some(cr), Some(last_r)) = (
+                        *self.current_round.read().await,
+                        self.last_fired_round.read().await.get(&id).cloned(),
+                    ) {
+                        if last_r == cr {
+                            return false;
+                        }
                     }
                 }
                 _ => {}
@@ -552,8 +595,13 @@ impl TriggerPlugin {
         let now = std::time::Instant::now();
         if let Some(prev) = self.last_fired_at.read().await.get(&id).cloned() {
             let elapsed_ms = now.duration_since(prev).as_millis() as i64;
-            let need_gap = trigger.cooldown_ms.unwrap_or(0).max(trigger.debounce_ms.unwrap_or(0));
-            if need_gap > 0 && elapsed_ms < need_gap { return false; }
+            let need_gap = trigger
+                .cooldown_ms
+                .unwrap_or(0)
+                .max(trigger.debounce_ms.unwrap_or(0));
+            if need_gap > 0 && elapsed_ms < need_gap {
+                return false;
+            }
         }
         true
     }
@@ -563,7 +611,9 @@ impl TriggerPlugin {
         // Round check
         if let Some(req_round) = trigger.condition_round {
             let cr = *self.current_round.read().await;
-            if cr != Some(req_round) { return false; }
+            if cr != Some(req_round) {
+                return false;
+            }
         }
         if consider_limits {
             // Once-per and rate limits similar to live path, but do not mutate
@@ -571,11 +621,18 @@ impl TriggerPlugin {
                 if let Some(id) = trigger.id {
                     match scope {
                         "match" => {
-                            if self.executed_once_match.read().await.contains(&id) { return false; }
+                            if self.executed_once_match.read().await.contains(&id) {
+                                return false;
+                            }
                         }
                         "round" => {
-                            if let (Some(cr), Some(last_r)) = (*self.current_round.read().await, self.last_fired_round.read().await.get(&id).cloned()) {
-                                if last_r == cr { return false; }
+                            if let (Some(cr), Some(last_r)) = (
+                                *self.current_round.read().await,
+                                self.last_fired_round.read().await.get(&id).cloned(),
+                            ) {
+                                if last_r == cr {
+                                    return false;
+                                }
                             }
                         }
                         _ => {}
@@ -584,9 +641,15 @@ impl TriggerPlugin {
             }
             if let Some(id) = trigger.id {
                 if let Some(prev) = self.last_fired_at.read().await.get(&id).cloned() {
-                    let elapsed_ms = std::time::Instant::now().duration_since(prev).as_millis() as i64;
-                    let need_gap = trigger.cooldown_ms.unwrap_or(0).max(trigger.debounce_ms.unwrap_or(0));
-                    if need_gap > 0 && elapsed_ms < need_gap { return false; }
+                    let elapsed_ms =
+                        std::time::Instant::now().duration_since(prev).as_millis() as i64;
+                    let need_gap = trigger
+                        .cooldown_ms
+                        .unwrap_or(0)
+                        .max(trigger.debounce_ms.unwrap_or(0));
+                    if need_gap > 0 && elapsed_ms < need_gap {
+                        return false;
+                    }
                 }
             }
         }
@@ -595,7 +658,10 @@ impl TriggerPlugin {
 
     /// Mark trigger as fired for rate limits
     async fn mark_fired(&self, id: i64) {
-        self.last_fired_at.write().await.insert(id, std::time::Instant::now());
+        self.last_fired_at
+            .write()
+            .await
+            .insert(id, std::time::Instant::now());
         if let Some(cr) = *self.current_round.read().await {
             self.last_fired_round.write().await.insert(id, cr);
         }
@@ -607,25 +673,41 @@ impl TriggerPlugin {
         // Minimal stub until recent_executions queue is introduced
         vec![]
     }
-    
+
     /// Execute a single trigger
     async fn execute_trigger(&self, trigger: &EventTrigger, event: &PssEventType) -> AppResult<()> {
         let trigger_type: TriggerType = trigger.trigger_type.clone().into();
-        
+
         // Action-kind aware executor (v2). Falls back to legacy trigger_type.
         if let Some(kind) = trigger.action_kind.clone() {
             match kind.as_str() {
-                "scene" => { self.execute_scene_trigger(trigger).await?; }
-                "overlay" => { self.execute_overlay_trigger(trigger, event).await?; }
-                "record_start" => { self.execute_record_action(trigger, true).await?; }
-                "record_stop" => { self.execute_record_action(trigger, false).await?; }
-                "replay_save" => { self.execute_replay_save(trigger).await?; }
-                _ => { self.execute_scene_trigger(trigger).await?; }
+                "scene" => {
+                    self.execute_scene_trigger(trigger).await?;
+                }
+                "overlay" => {
+                    self.execute_overlay_trigger(trigger, event).await?;
+                }
+                "record_start" => {
+                    self.execute_record_action(trigger, true).await?;
+                }
+                "record_stop" => {
+                    self.execute_record_action(trigger, false).await?;
+                }
+                "replay_save" => {
+                    self.execute_replay_save(trigger).await?;
+                }
+                _ => {
+                    self.execute_scene_trigger(trigger).await?;
+                }
             }
         } else {
             match trigger_type {
-                TriggerType::Scene => { self.execute_scene_trigger(trigger).await?; }
-                TriggerType::Overlay => { self.execute_overlay_trigger(trigger, event).await?; }
+                TriggerType::Scene => {
+                    self.execute_scene_trigger(trigger).await?;
+                }
+                TriggerType::Overlay => {
+                    self.execute_overlay_trigger(trigger, event).await?;
+                }
                 TriggerType::Both => {
                     self.execute_scene_trigger(trigger).await?;
                     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
@@ -633,32 +715,46 @@ impl TriggerPlugin {
                 }
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// Execute scene change trigger
     async fn execute_scene_trigger(&self, trigger: &EventTrigger) -> AppResult<()> {
         let scene_id = match trigger.obs_scene_id {
             Some(id) => id,
             None => {
-                return Err(crate::types::AppError::ConfigError("No OBS scene ID specified for trigger".to_string()));
+                return Err(crate::types::AppError::ConfigError(
+                    "No OBS scene ID specified for trigger".to_string(),
+                ));
             }
         };
-        
+
         // Get scene details from database
         let scenes = self.db.get_obs_scenes().await?;
-        let scene = scenes.iter().find(|s| s.id == Some(scene_id))
-            .ok_or_else(|| crate::types::AppError::ConfigError(format!("OBS scene with ID {} not found", scene_id)))?;
-        
+        let scene = scenes
+            .iter()
+            .find(|s| s.id == Some(scene_id))
+            .ok_or_else(|| {
+                crate::types::AppError::ConfigError(format!(
+                    "OBS scene with ID {} not found",
+                    scene_id
+                ))
+            })?;
+
         if !scene.is_active {
-            return Err(crate::types::AppError::ConfigError(format!("OBS scene '{}' is not active", scene.scene_name)));
+            return Err(crate::types::AppError::ConfigError(format!(
+                "OBS scene '{}' is not active",
+                scene.scene_name
+            )));
         }
-        
+
         // Use targeted connection if provided; fallback to default
         let conn_name = trigger.obs_connection_name.as_deref().unwrap_or("default");
-        self.obs_manager.set_current_scene(&scene.scene_name, Some(conn_name)).await?;
-        
+        self.obs_manager
+            .set_current_scene(&scene.scene_name, Some(conn_name))
+            .await?;
+
         log::info!("Changed OBS scene to: {}", scene.scene_name);
         Ok(())
     }
@@ -685,83 +781,104 @@ impl TriggerPlugin {
         log::info!("Save Replay Buffer executed on {}", conn_name);
         Ok(())
     }
-    
+
     /// Execute overlay animation trigger
-    async fn execute_overlay_trigger(&self, trigger: &EventTrigger, event: &PssEventType) -> AppResult<()> {
+    async fn execute_overlay_trigger(
+        &self,
+        trigger: &EventTrigger,
+        event: &PssEventType,
+    ) -> AppResult<()> {
         let template_id = match trigger.overlay_template_id {
             Some(id) => id,
             None => {
-                return Err(crate::types::AppError::ConfigError("No overlay template ID specified for trigger".to_string()));
+                return Err(crate::types::AppError::ConfigError(
+                    "No overlay template ID specified for trigger".to_string(),
+                ));
             }
         };
-        
+
         // Get overlay template from database
         let templates = self.db.get_overlay_templates().await?;
-        let template = templates.iter().find(|t| t.id == Some(template_id))
-            .ok_or_else(|| crate::types::AppError::ConfigError(format!("Overlay template with ID {} not found", template_id)))?;
-        
+        let template = templates
+            .iter()
+            .find(|t| t.id == Some(template_id))
+            .ok_or_else(|| {
+                crate::types::AppError::ConfigError(format!(
+                    "Overlay template with ID {} not found",
+                    template_id
+                ))
+            })?;
+
         if !template.is_active {
-            return Err(crate::types::AppError::ConfigError(format!("Overlay template '{}' is not active", template.name)));
+            return Err(crate::types::AppError::ConfigError(format!(
+                "Overlay template '{}' is not active",
+                template.name
+            )));
         }
-        
+
         // Execute overlay animation
         self.execute_overlay_animation(template, event).await?;
-        
+
         log::info!("Executed overlay animation: {}", template.name);
         Ok(())
     }
-    
+
     /// Execute overlay animation
-    async fn execute_overlay_animation(&self, template: &OverlayTemplate, _event: &PssEventType) -> AppResult<()> {
+    async fn execute_overlay_animation(
+        &self,
+        template: &OverlayTemplate,
+        _event: &PssEventType,
+    ) -> AppResult<()> {
         // This would integrate with the existing overlay system
         // For now, we'll log the animation details
-        log::info!("Overlay Animation: {} ({}) - Duration: {}ms", 
-            template.name, 
-            template.animation_type, 
+        log::info!(
+            "Overlay Animation: {} ({}) - Duration: {}ms",
+            template.name,
+            template.animation_type,
             template.duration_ms
         );
-        
+
         // TODO: Integrate with existing overlay system
         // - Send WebSocket message to overlay HTML pages
         // - Apply theme and color configurations
         // - Handle animation timing and effects
-        
+
         Ok(())
     }
-    
+
     /// Set current tournament context
     pub async fn set_tournament_context(&self, tournament_id: Option<i64>) -> AppResult<()> {
         let mut current_tournament = self.current_tournament_id.write().await;
-        
+
         *current_tournament = tournament_id;
-        
+
         // Reload triggers for new context
         self.load_enabled_triggers().await?;
-        
+
         log::info!("Set tournament context: tournament_id={:?}", tournament_id);
         Ok(())
     }
-    
+
     /// Sync OBS scenes from WebSocket connection
     pub async fn sync_obs_scenes(&self, scene_names: Vec<String>) -> AppResult<()> {
         // Update database with current OBS scenes
         self.db.sync_obs_scenes(&scene_names).await?;
-        
+
         log::info!("Synced {} OBS scenes", scene_names.len());
         Ok(())
     }
-    
+
     /// Get trigger statistics
     pub async fn get_trigger_statistics(&self) -> AppResult<serde_json::Value> {
         let triggers = self.db.get_event_triggers().await?;
         let enabled_count = triggers.iter().filter(|t| t.is_enabled).count();
         let disabled_count = triggers.len() - enabled_count;
-        
+
         let mut trigger_counts = std::collections::HashMap::new();
         for trigger in &triggers {
             *trigger_counts.entry(&trigger.event_type).or_insert(0) += 1;
         }
-        
+
         let stats = serde_json::json!({
             "total_triggers": triggers.len(),
             "enabled_triggers": enabled_count,
@@ -770,7 +887,7 @@ impl TriggerPlugin {
             "current_tournament_id": *self.current_tournament_id.read().await,
             "current_tournament_day_id": serde_json::Value::Null,
         });
-        
+
         Ok(stats)
     }
 }
@@ -780,4 +897,4 @@ pub fn init() -> Result<(), Box<dyn std::error::Error>> {
     log::info!("Initializing Trigger Plugin");
     // The actual initialization happens when the plugin is created
     Ok(())
-} 
+}

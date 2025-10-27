@@ -1,6 +1,6 @@
-use rusqlite::Row;
-use serde::{Serialize, Deserialize};
 use chrono::{DateTime, Utc};
+use rusqlite::Row;
+use serde::{Deserialize, Serialize};
 
 /// OBS Recording Configuration model
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -14,7 +14,7 @@ pub struct ObsRecordingConfig {
     pub auto_start_recording: bool,
     pub auto_start_replay_buffer: bool,
     pub filename_template: String, // Template for recording filenames
-    pub folder_pattern: String, // Pattern for folder structure
+    pub folder_pattern: String,    // Pattern for folder structure
     pub is_active: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -45,7 +45,7 @@ impl ObsRecordingConfig {
             updated_at: Utc::now(),
         }
     }
-    
+
     /// Create from database row
     pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
         // Tolerant getters to handle legacy TEXT-in-BOOLEAN/INTEGER entries
@@ -63,7 +63,9 @@ impl ObsRecordingConfig {
                 Ok(v) => Ok(v),
                 Err(_) => {
                     // Try integer then string
-                    if let Ok(i) = row.get::<_, i64>(col) { return Ok(i != 0); }
+                    if let Ok(i) = row.get::<_, i64>(col) {
+                        return Ok(i != 0);
+                    }
                     let s: String = row.get(col).unwrap_or_else(|_| "false".to_string());
                     let sl = s.to_lowercase();
                     Ok(sl == "1" || sl == "true" || sl == "yes")
@@ -150,7 +152,7 @@ impl ObsRecordingSession {
             updated: now_unix,
         }
     }
-    
+
     /// Create from database row
     pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
         Ok(Self {
@@ -165,15 +167,19 @@ impl ObsRecordingSession {
             player2_flag: row.get("player2_flag")?,
             recording_path: row.get("recording_path")?,
             recording_filename: row.get("recording_filename")?,
-            recording_start_time: row.get::<_, Option<String>>("recording_start_time")?
+            recording_start_time: row
+                .get::<_, Option<String>>("recording_start_time")?
                 .and_then(|s| parse_datetime_from_db(&s, "recording_start_time").ok()),
-            recording_end_time: row.get::<_, Option<String>>("recording_end_time")?
+            recording_end_time: row
+                .get::<_, Option<String>>("recording_end_time")?
                 .and_then(|s| parse_datetime_from_db(&s, "recording_end_time").ok()),
             recording_duration: row.get("recording_duration")?,
             recording_size_bytes: row.get("recording_size_bytes")?,
-            replay_buffer_start_time: row.get::<_, Option<String>>("replay_buffer_start_time")?
+            replay_buffer_start_time: row
+                .get::<_, Option<String>>("replay_buffer_start_time")?
                 .and_then(|s| parse_datetime_from_db(&s, "replay_buffer_start_time").ok()),
-            replay_buffer_end_time: row.get::<_, Option<String>>("replay_buffer_end_time")?
+            replay_buffer_end_time: row
+                .get::<_, Option<String>>("replay_buffer_end_time")?
                 .and_then(|s| parse_datetime_from_db(&s, "replay_buffer_end_time").ok()),
             replay_buffer_saved: row.get("replay_buffer_saved")?,
             replay_buffer_filename: row.get("replay_buffer_filename")?,
@@ -184,7 +190,11 @@ impl ObsRecordingSession {
                 row.get::<_, Option<String>>("created_at")
                     .ok()
                     .flatten()
-                    .and_then(|s| parse_datetime_from_db(&s, "created_at").ok().map(|dt| dt.timestamp()))
+                    .and_then(|s| {
+                        parse_datetime_from_db(&s, "created_at")
+                            .ok()
+                            .map(|dt| dt.timestamp())
+                    })
                     .unwrap_or_else(|| crate::utils::now_unix())
             }),
             updated: row.get("updated").unwrap_or_else(|_| {
@@ -192,7 +202,11 @@ impl ObsRecordingSession {
                 row.get::<_, Option<String>>("updated_at")
                     .ok()
                     .flatten()
-                    .and_then(|s| parse_datetime_from_db(&s, "updated_at").ok().map(|dt| dt.timestamp()))
+                    .and_then(|s| {
+                        parse_datetime_from_db(&s, "updated_at")
+                            .ok()
+                            .map(|dt| dt.timestamp())
+                    })
                     .unwrap_or_else(|| crate::utils::now_unix())
             }),
         })
@@ -219,7 +233,13 @@ fn parse_datetime_from_db(date_str: &str, field_name: &str) -> rusqlite::Result<
             chrono::NaiveDate::parse_from_str(date_str, "%Y-%m-%d")
                 .map(|nd| nd.and_hms_opt(0, 0, 0).unwrap().and_utc())
         })
-        .map_err(|_| rusqlite::Error::InvalidColumnType(0, field_name.to_string(), rusqlite::types::Type::Text))
+        .map_err(|_| {
+            rusqlite::Error::InvalidColumnType(
+                0,
+                field_name.to_string(),
+                rusqlite::types::Type::Text,
+            )
+        })
 }
 
 /// PSS Event model for storing raw PSS events
@@ -242,11 +262,7 @@ pub struct PssEvent {
 
 impl PssEvent {
     /// Create a new PSS event
-    pub fn new(
-        event_type: String,
-        timestamp: DateTime<Utc>,
-        raw_data: String,
-    ) -> Self {
+    pub fn new(event_type: String, timestamp: DateTime<Utc>, raw_data: String) -> Self {
         Self {
             id: None,
             event_type,
@@ -263,14 +279,20 @@ impl PssEvent {
             created_at: Utc::now(),
         }
     }
-    
+
     /// Create from database row
     pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
         Ok(Self {
             id: row.get("id")?,
             event_type: row.get("event_type")?,
             timestamp: DateTime::parse_from_rfc3339(&row.get::<_, String>("timestamp")?)
-                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "timestamp".to_string(), rusqlite::types::Type::Text))?
+                .map_err(|_| {
+                    rusqlite::Error::InvalidColumnType(
+                        0,
+                        "timestamp".to_string(),
+                        rusqlite::types::Type::Text,
+                    )
+                })?
                 .with_timezone(&Utc),
             match_id: row.get("match_id")?,
             athlete1_code: row.get("athlete1_code")?,
@@ -282,7 +304,13 @@ impl PssEvent {
             category: row.get("category")?,
             raw_data: row.get("raw_data")?,
             created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
-                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "created_at".to_string(), rusqlite::types::Type::Text))?
+                .map_err(|_| {
+                    rusqlite::Error::InvalidColumnType(
+                        0,
+                        "created_at".to_string(),
+                        rusqlite::types::Type::Text,
+                    )
+                })?
                 .with_timezone(&Utc),
         })
     }
@@ -320,7 +348,7 @@ impl ObsConnection {
             updated_at: now,
         }
     }
-    
+
     /// Create from database row
     pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
         Ok(Self {
@@ -333,10 +361,22 @@ impl ObsConnection {
             status: row.get("status")?,
             error: row.get("error")?,
             created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
-                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "created_at".to_string(), rusqlite::types::Type::Text))?
+                .map_err(|_| {
+                    rusqlite::Error::InvalidColumnType(
+                        0,
+                        "created_at".to_string(),
+                        rusqlite::types::Type::Text,
+                    )
+                })?
                 .with_timezone(&Utc),
             updated_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("updated_at")?)
-                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "updated_at".to_string(), rusqlite::types::Type::Text))?
+                .map_err(|_| {
+                    rusqlite::Error::InvalidColumnType(
+                        0,
+                        "updated_at".to_string(),
+                        rusqlite::types::Type::Text,
+                    )
+                })?
                 .with_timezone(&Utc),
         })
     }
@@ -368,7 +408,7 @@ impl AppConfig {
             updated_at: now,
         }
     }
-    
+
     /// Create from database row
     pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
         Ok(Self {
@@ -378,10 +418,22 @@ impl AppConfig {
             category: row.get("category")?,
             description: row.get("description")?,
             created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
-                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "created_at".to_string(), rusqlite::types::Type::Text))?
+                .map_err(|_| {
+                    rusqlite::Error::InvalidColumnType(
+                        0,
+                        "created_at".to_string(),
+                        rusqlite::types::Type::Text,
+                    )
+                })?
                 .with_timezone(&Utc),
             updated_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("updated_at")?)
-                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "updated_at".to_string(), rusqlite::types::Type::Text))?
+                .map_err(|_| {
+                    rusqlite::Error::InvalidColumnType(
+                        0,
+                        "updated_at".to_string(),
+                        rusqlite::types::Type::Text,
+                    )
+                })?
                 .with_timezone(&Utc),
         })
     }
@@ -413,7 +465,7 @@ impl FlagMapping {
             updated_at: now,
         }
     }
-    
+
     /// Create from database row
     pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
         Ok(Self {
@@ -423,10 +475,22 @@ impl FlagMapping {
             country_name: row.get("country_name")?,
             is_custom: row.get("is_custom")?,
             created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
-                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "created_at".to_string(), rusqlite::types::Type::Text))?
+                .map_err(|_| {
+                    rusqlite::Error::InvalidColumnType(
+                        0,
+                        "created_at".to_string(),
+                        rusqlite::types::Type::Text,
+                    )
+                })?
                 .with_timezone(&Utc),
             updated_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("updated_at")?)
-                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "updated_at".to_string(), rusqlite::types::Type::Text))?
+                .map_err(|_| {
+                    rusqlite::Error::InvalidColumnType(
+                        0,
+                        "updated_at".to_string(),
+                        rusqlite::types::Type::Text,
+                    )
+                })?
                 .with_timezone(&Utc),
         })
     }
@@ -451,19 +515,25 @@ impl SchemaVersion {
             description,
         }
     }
-    
+
     /// Create from database row
     pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
         Ok(Self {
             id: row.get("id")?,
             version: row.get("version")?,
             applied_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("applied_at")?)
-                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "applied_at".to_string(), rusqlite::types::Type::Text))?
+                .map_err(|_| {
+                    rusqlite::Error::InvalidColumnType(
+                        0,
+                        "applied_at".to_string(),
+                        rusqlite::types::Type::Text,
+                    )
+                })?
                 .with_timezone(&Utc),
             description: row.get("description")?,
         })
     }
-} 
+}
 
 /// Settings category model
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -486,7 +556,7 @@ impl SettingsCategory {
             created: crate::utils::now_unix(),
         }
     }
-    
+
     /// Create from database row
     pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
         Ok(Self {
@@ -542,7 +612,7 @@ impl SettingsKey {
             created: crate::utils::now_unix(),
         }
     }
-    
+
     /// Create from database row
     pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
         Ok(Self {
@@ -583,7 +653,7 @@ impl SettingsValue {
             updated: now,
         }
     }
-    
+
     /// Create from database row
     pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
         Ok(Self {
@@ -627,7 +697,7 @@ impl SettingsHistory {
             created: crate::utils::now_unix(),
         }
     }
-    
+
     /// Create from database row
     pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
         Ok(Self {
@@ -640,7 +710,7 @@ impl SettingsHistory {
             created: row.get("created")?,
         })
     }
-} 
+}
 
 /// Network Interface model for UDP server configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -687,7 +757,7 @@ impl NetworkInterface {
             updated_at: now,
         }
     }
-    
+
     pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
         Ok(Self {
             id: row.get("id")?,
@@ -743,7 +813,7 @@ impl UdpServerConfig {
             updated_at: now,
         }
     }
-    
+
     pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
         Ok(Self {
             id: row.get("id")?,
@@ -800,18 +870,33 @@ impl UdpServerSession {
             error_message: None,
         }
     }
-    
+
     pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
         Ok(Self {
             id: row.get("id")?,
             server_config_id: row.get("server_config_id")?,
             start_time: DateTime::parse_from_rfc3339(&row.get::<_, String>("start_time")?)
-                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "start_time".to_string(), rusqlite::types::Type::Text))?
+                .map_err(|_| {
+                    rusqlite::Error::InvalidColumnType(
+                        0,
+                        "start_time".to_string(),
+                        rusqlite::types::Type::Text,
+                    )
+                })?
                 .with_timezone(&Utc),
-            end_time: row.get::<_, Option<String>>("end_time")?
-                .map(|s| DateTime::parse_from_rfc3339(&s)
-                    .map_err(|_| rusqlite::Error::InvalidColumnType(0, "end_time".to_string(), rusqlite::types::Type::Text))
-                    .map(|dt| dt.with_timezone(&Utc)))
+            end_time: row
+                .get::<_, Option<String>>("end_time")?
+                .map(|s| {
+                    DateTime::parse_from_rfc3339(&s)
+                        .map_err(|_| {
+                            rusqlite::Error::InvalidColumnType(
+                                0,
+                                "end_time".to_string(),
+                                rusqlite::types::Type::Text,
+                            )
+                        })
+                        .map(|dt| dt.with_timezone(&Utc))
+                })
                 .transpose()?,
             status: row.get("status")?,
             packets_received: row.get("packets_received")?,
@@ -856,7 +941,7 @@ impl UdpClientConnection {
             is_active: true,
         }
     }
-    
+
     pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
         Ok(Self {
             id: row.get("id")?,
@@ -864,10 +949,22 @@ impl UdpClientConnection {
             client_address: row.get("client_address")?,
             client_port: row.get("client_port")?,
             first_seen: DateTime::parse_from_rfc3339(&row.get::<_, String>("first_seen")?)
-                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "first_seen".to_string(), rusqlite::types::Type::Text))?
+                .map_err(|_| {
+                    rusqlite::Error::InvalidColumnType(
+                        0,
+                        "first_seen".to_string(),
+                        rusqlite::types::Type::Text,
+                    )
+                })?
                 .with_timezone(&Utc),
             last_seen: DateTime::parse_from_rfc3339(&row.get::<_, String>("last_seen")?)
-                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "last_seen".to_string(), rusqlite::types::Type::Text))?
+                .map_err(|_| {
+                    rusqlite::Error::InvalidColumnType(
+                        0,
+                        "last_seen".to_string(),
+                        rusqlite::types::Type::Text,
+                    )
+                })?
                 .with_timezone(&Utc),
             packets_received: row.get("packets_received")?,
             total_bytes_received: row.get("total_bytes_received")?,
@@ -889,7 +986,12 @@ pub struct PssEventType {
 }
 
 impl PssEventType {
-    pub fn new(event_code: String, event_name: String, category: String, description: Option<String>) -> Self {
+    pub fn new(
+        event_code: String,
+        event_name: String,
+        category: String,
+        description: Option<String>,
+    ) -> Self {
         Self {
             id: None,
             event_code,
@@ -900,7 +1002,7 @@ impl PssEventType {
             created_at: Utc::now(),
         }
     }
-    
+
     pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
         Ok(Self {
             id: row.get("id")?,
@@ -962,7 +1064,7 @@ impl PssMatch {
             updated: Some(now_unix),
         }
     }
-    
+
     pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
         Ok(Self {
             id: row.get("id")?,
@@ -980,10 +1082,22 @@ impl PssMatch {
             format_type: row.get("format_type")?,
             creation_mode: row.get("creation_mode")?,
             created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
-                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "created_at".to_string(), rusqlite::types::Type::Text))?
+                .map_err(|_| {
+                    rusqlite::Error::InvalidColumnType(
+                        0,
+                        "created_at".to_string(),
+                        rusqlite::types::Type::Text,
+                    )
+                })?
                 .with_timezone(&Utc),
             updated_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("updated_at")?)
-                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "updated_at".to_string(), rusqlite::types::Type::Text))?
+                .map_err(|_| {
+                    rusqlite::Error::InvalidColumnType(
+                        0,
+                        "updated_at".to_string(),
+                        rusqlite::types::Type::Text,
+                    )
+                })?
                 .with_timezone(&Utc),
             created: row.get("created")?,
             updated: row.get("updated")?,
@@ -1018,7 +1132,7 @@ impl PssAthlete {
             updated_at: now,
         }
     }
-    
+
     pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
         Ok(Self {
             id: row.get("id")?,
@@ -1028,10 +1142,22 @@ impl PssAthlete {
             country_code: row.get("country_code")?,
             flag_id: row.get("flag_id")?,
             created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
-                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "created_at".to_string(), rusqlite::types::Type::Text))?
+                .map_err(|_| {
+                    rusqlite::Error::InvalidColumnType(
+                        0,
+                        "created_at".to_string(),
+                        rusqlite::types::Type::Text,
+                    )
+                })?
                 .with_timezone(&Utc),
             updated_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("updated_at")?)
-                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "updated_at".to_string(), rusqlite::types::Type::Text))?
+                .map_err(|_| {
+                    rusqlite::Error::InvalidColumnType(
+                        0,
+                        "updated_at".to_string(),
+                        rusqlite::types::Type::Text,
+                    )
+                })?
                 .with_timezone(&Utc),
         })
     }
@@ -1061,7 +1187,7 @@ impl PssMatchAthlete {
             created_at: Utc::now(),
         }
     }
-    
+
     pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
         Ok(Self {
             id: row.get("id")?,
@@ -1071,7 +1197,13 @@ impl PssMatchAthlete {
             bg_color: row.get("bg_color")?,
             fg_color: row.get("fg_color")?,
             created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
-                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "created_at".to_string(), rusqlite::types::Type::Text))?
+                .map_err(|_| {
+                    rusqlite::Error::InvalidColumnType(
+                        0,
+                        "created_at".to_string(),
+                        rusqlite::types::Type::Text,
+                    )
+                })?
                 .with_timezone(&Utc),
         })
     }
@@ -1085,7 +1217,7 @@ pub struct PssRound {
     pub round_number: i32,
     pub start_time: Option<DateTime<Utc>>,
     pub end_time: Option<DateTime<Utc>>,
-    pub duration: Option<i32>, // in seconds
+    pub duration: Option<i32>,                // in seconds
     pub winner_athlete_position: Option<i32>, // 1, 2, or None for draw
     pub created_at: DateTime<Utc>,
 }
@@ -1103,26 +1235,50 @@ impl PssRound {
             created_at: Utc::now(),
         }
     }
-    
+
     pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
         Ok(Self {
             id: row.get("id")?,
             match_id: row.get("match_id")?,
             round_number: row.get("round_number")?,
-            start_time: row.get::<_, Option<String>>("start_time")?
-                .map(|s| DateTime::parse_from_rfc3339(&s)
-                    .map_err(|_| rusqlite::Error::InvalidColumnType(0, "start_time".to_string(), rusqlite::types::Type::Text))
-                    .map(|dt| dt.with_timezone(&Utc)))
+            start_time: row
+                .get::<_, Option<String>>("start_time")?
+                .map(|s| {
+                    DateTime::parse_from_rfc3339(&s)
+                        .map_err(|_| {
+                            rusqlite::Error::InvalidColumnType(
+                                0,
+                                "start_time".to_string(),
+                                rusqlite::types::Type::Text,
+                            )
+                        })
+                        .map(|dt| dt.with_timezone(&Utc))
+                })
                 .transpose()?,
-            end_time: row.get::<_, Option<String>>("end_time")?
-                .map(|s| DateTime::parse_from_rfc3339(&s)
-                    .map_err(|_| rusqlite::Error::InvalidColumnType(0, "end_time".to_string(), rusqlite::types::Type::Text))
-                    .map(|dt| dt.with_timezone(&Utc)))
+            end_time: row
+                .get::<_, Option<String>>("end_time")?
+                .map(|s| {
+                    DateTime::parse_from_rfc3339(&s)
+                        .map_err(|_| {
+                            rusqlite::Error::InvalidColumnType(
+                                0,
+                                "end_time".to_string(),
+                                rusqlite::types::Type::Text,
+                            )
+                        })
+                        .map(|dt| dt.with_timezone(&Utc))
+                })
                 .transpose()?,
             duration: row.get("duration")?,
             winner_athlete_position: row.get("winner_athlete_position")?,
             created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
-                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "created_at".to_string(), rusqlite::types::Type::Text))?
+                .map_err(|_| {
+                    rusqlite::Error::InvalidColumnType(
+                        0,
+                        "created_at".to_string(),
+                        rusqlite::types::Type::Text,
+                    )
+                })?
                 .with_timezone(&Utc),
         })
     }
@@ -1184,7 +1340,7 @@ impl PssEventV2 {
             created: Some(crate::utils::now_unix()),
         }
     }
-    
+
     pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
         Ok(Self {
             id: row.get("id")?,
@@ -1194,7 +1350,13 @@ impl PssEventV2 {
             event_type_id: row.get("event_type_id")?,
             tournament_id: row.get("tournament_id").ok(),
             timestamp: DateTime::parse_from_rfc3339(&row.get::<_, String>("timestamp")?)
-                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "timestamp".to_string(), rusqlite::types::Type::Text))?
+                .map_err(|_| {
+                    rusqlite::Error::InvalidColumnType(
+                        0,
+                        "timestamp".to_string(),
+                        rusqlite::types::Type::Text,
+                    )
+                })?
                 .with_timezone(&Utc),
             raw_data: row.get("raw_data")?,
             parsed_data: row.get("parsed_data")?,
@@ -1208,7 +1370,13 @@ impl PssEventV2 {
             validation_errors: row.get("validation_errors")?,
             // integer tournament ids no longer exist post-migration
             created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
-                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "created_at".to_string(), rusqlite::types::Type::Text))?
+                .map_err(|_| {
+                    rusqlite::Error::InvalidColumnType(
+                        0,
+                        "created_at".to_string(),
+                        rusqlite::types::Type::Text,
+                    )
+                })?
                 .with_timezone(&Utc),
             created: row.get("created")?,
         })
@@ -1251,7 +1419,7 @@ impl PssEventRecognitionHistory {
             created_at: Utc::now(),
         }
     }
-    
+
     pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
         Ok(Self {
             id: row.get("id")?,
@@ -1301,7 +1469,7 @@ impl PssUnknownEvent {
             updated_at: now,
         }
     }
-    
+
     pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
         Ok(Self {
             id: row.get("id")?,
@@ -1357,7 +1525,7 @@ impl PssEventValidationRule {
             updated_at: now,
         }
     }
-    
+
     pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
         Ok(Self {
             id: row.get("id")?,
@@ -1398,7 +1566,7 @@ impl PssEventValidationResult {
             created_at: Utc::now(),
         }
     }
-    
+
     pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
         Ok(Self {
             id: row.get("id")?,
@@ -1453,7 +1621,7 @@ impl PssEventStatistics {
             updated_at: now,
         }
     }
-    
+
     pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
         Ok(Self {
             id: row.get("id")?,
@@ -1487,7 +1655,12 @@ pub struct PssEventDetail {
 }
 
 impl PssEventDetail {
-    pub fn new(event_id: i64, detail_key: String, detail_value: Option<String>, detail_type: String) -> Self {
+    pub fn new(
+        event_id: i64,
+        detail_key: String,
+        detail_value: Option<String>,
+        detail_type: String,
+    ) -> Self {
         Self {
             id: None,
             event_id,
@@ -1497,7 +1670,7 @@ impl PssEventDetail {
             created_at: Utc::now(),
         }
     }
-    
+
     pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
         Ok(Self {
             id: row.get("id")?,
@@ -1517,7 +1690,7 @@ pub struct PssScore {
     pub match_id: String,
     pub round_id: Option<i64>,
     pub athlete_position: i32, // 1 or 2
-    pub score_type: String, // current, round1, round2, round3, total
+    pub score_type: String,    // current, round1, round2, round3, total
     pub score_value: i32,
     pub timestamp: DateTime<Utc>,
     pub created_at: DateTime<Utc>,
@@ -1526,7 +1699,12 @@ pub struct PssScore {
 }
 
 impl PssScore {
-    pub fn new(match_id: String, athlete_position: i32, score_type: String, score_value: i32) -> Self {
+    pub fn new(
+        match_id: String,
+        athlete_position: i32,
+        score_type: String,
+        score_value: i32,
+    ) -> Self {
         Self {
             id: None,
             match_id,
@@ -1540,7 +1718,7 @@ impl PssScore {
             tournament_day_id: None,
         }
     }
-    
+
     pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
         Ok(Self {
             id: row.get("id")?,
@@ -1550,10 +1728,22 @@ impl PssScore {
             score_type: row.get("score_type")?,
             score_value: row.get("score_value")?,
             timestamp: DateTime::parse_from_rfc3339(&row.get::<_, String>("timestamp")?)
-                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "timestamp".to_string(), rusqlite::types::Type::Text))?
+                .map_err(|_| {
+                    rusqlite::Error::InvalidColumnType(
+                        0,
+                        "timestamp".to_string(),
+                        rusqlite::types::Type::Text,
+                    )
+                })?
                 .with_timezone(&Utc),
             created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
-                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "created_at".to_string(), rusqlite::types::Type::Text))?
+                .map_err(|_| {
+                    rusqlite::Error::InvalidColumnType(
+                        0,
+                        "created_at".to_string(),
+                        rusqlite::types::Type::Text,
+                    )
+                })?
                 .with_timezone(&Utc),
             tournament_id: row.get("tournament_id").ok(),
             tournament_day_id: row.get("tournament_day_id").ok(),
@@ -1568,7 +1758,7 @@ pub struct PssWarning {
     pub match_id: String,
     pub round_id: Option<i64>,
     pub athlete_position: i32, // 1 or 2
-    pub warning_type: String, // warning, gam_jeom
+    pub warning_type: String,  // warning, gam_jeom
     pub warning_count: i32,
     pub timestamp: DateTime<Utc>,
     pub created_at: DateTime<Utc>,
@@ -1577,7 +1767,12 @@ pub struct PssWarning {
 }
 
 impl PssWarning {
-    pub fn new(match_id: String, athlete_position: i32, warning_type: String, warning_count: i32) -> Self {
+    pub fn new(
+        match_id: String,
+        athlete_position: i32,
+        warning_type: String,
+        warning_count: i32,
+    ) -> Self {
         Self {
             id: None,
             match_id,
@@ -1591,7 +1786,7 @@ impl PssWarning {
             tournament_day_id: None,
         }
     }
-    
+
     pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
         Ok(Self {
             id: row.get("id")?,
@@ -1601,16 +1796,28 @@ impl PssWarning {
             warning_type: row.get("warning_type")?,
             warning_count: row.get("warning_count")?,
             timestamp: DateTime::parse_from_rfc3339(&row.get::<_, String>("timestamp")?)
-                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "timestamp".to_string(), rusqlite::types::Type::Text))?
+                .map_err(|_| {
+                    rusqlite::Error::InvalidColumnType(
+                        0,
+                        "timestamp".to_string(),
+                        rusqlite::types::Type::Text,
+                    )
+                })?
                 .with_timezone(&Utc),
             created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
-                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "created_at".to_string(), rusqlite::types::Type::Text))?
+                .map_err(|_| {
+                    rusqlite::Error::InvalidColumnType(
+                        0,
+                        "created_at".to_string(),
+                        rusqlite::types::Type::Text,
+                    )
+                })?
                 .with_timezone(&Utc),
             tournament_id: row.get("tournament_id").ok(),
             tournament_day_id: row.get("tournament_day_id").ok(),
         })
     }
-} 
+}
 
 /// Tournament model for database storage
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1660,7 +1867,7 @@ impl Tournament {
             updated: Some(crate::utils::now_unix()),
         }
     }
-    
+
     /// Create from database row
     pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
         Ok(Self {
@@ -1673,10 +1880,12 @@ impl Tournament {
             country_code: row.get("country_code")?,
             logo_path: row.get("logo_path")?,
             status: row.get("status")?,
-            start_date: row.get::<_, Option<String>>("start_date")?
+            start_date: row
+                .get::<_, Option<String>>("start_date")?
                 .map(|s| parse_datetime_from_db(&s, "start_date"))
                 .transpose()?,
-            end_date: row.get::<_, Option<String>>("end_date")?
+            end_date: row
+                .get::<_, Option<String>>("end_date")?
                 .map(|s| parse_datetime_from_db(&s, "end_date"))
                 .transpose()?,
             created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
@@ -1723,7 +1932,7 @@ impl TournamentDay {
             updated: Some(crate::utils::now_unix()),
         }
     }
-    
+
     /// Create from database row
     pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
         Ok(Self {
@@ -1733,10 +1942,12 @@ impl TournamentDay {
             day_number: row.get("day_number")?,
             date: parse_datetime_from_db(&row.get::<_, String>("date")?, "date")?,
             status: row.get("status")?,
-            start_time: row.get::<_, Option<String>>("start_time")?
+            start_time: row
+                .get::<_, Option<String>>("start_time")?
                 .map(|s| parse_datetime_from_db(&s, "start_time"))
                 .transpose()?,
-            end_time: row.get::<_, Option<String>>("end_time")?
+            end_time: row
+                .get::<_, Option<String>>("end_time")?
                 .map(|s| parse_datetime_from_db(&s, "end_time"))
                 .transpose()?,
             created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
@@ -1745,7 +1956,7 @@ impl TournamentDay {
             updated: row.get("updated")?,
         })
     }
-} 
+}
 
 /// OBS Scene model for managing OBS scenes
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1779,7 +1990,10 @@ impl ObsScene {
             scene_name: row.get("scene_name")?,
             scene_id: row.get("scene_id")?,
             is_active: row.get("is_active")?,
-            last_seen_at: parse_datetime_from_db(&row.get::<_, String>("last_seen_at")?, "last_seen_at")?,
+            last_seen_at: parse_datetime_from_db(
+                &row.get::<_, String>("last_seen_at")?,
+                "last_seen_at",
+            )?,
             created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
             updated_at: parse_datetime_from_db(&row.get::<_, String>("updated_at")?, "updated_at")?,
         })
@@ -1907,7 +2121,9 @@ impl EventTrigger {
             id: row.get("id")?,
             tournament_id: row.get("tournament_id")?,
             action: row.get("action").unwrap_or_else(|_| "show".to_string()),
-            target_type: row.get("target_type").unwrap_or_else(|_| "scene".to_string()),
+            target_type: row
+                .get("target_type")
+                .unwrap_or_else(|_| "scene".to_string()),
             delay_ms: row.get("delay_ms").unwrap_or(0),
             event_type: row.get("event_type")?,
             trigger_type: row.get("trigger_type")?,
@@ -1925,7 +2141,7 @@ impl EventTrigger {
             updated_at: parse_datetime_from_db(&row.get::<_, String>("updated_at")?, "updated_at")?,
         })
     }
-} 
+}
 
 /// OVR Provider model
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1950,8 +2166,13 @@ impl OvrProvider {
             base_url: row.get("base_url")?,
             enabled: row.get("enabled")?,
             rate_limit_ms: row.get::<_, i64>("rate_limit_ms").unwrap_or(1000),
-            last_refreshed_at: row.get::<_, Option<String>>("last_refreshed_at")?
-                .and_then(|s| DateTime::parse_from_rfc3339(&s).ok().map(|dt| dt.with_timezone(&Utc))),
+            last_refreshed_at: row
+                .get::<_, Option<String>>("last_refreshed_at")?
+                .and_then(|s| {
+                    DateTime::parse_from_rfc3339(&s)
+                        .ok()
+                        .map(|dt| dt.with_timezone(&Utc))
+                }),
             last_status: row.get("last_status")?,
             last_error: row.get("last_error")?,
             created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
@@ -1987,16 +2208,25 @@ impl OvrTournament {
             provider_id: row.get("provider_id")?,
             provider_tournament_id: row.get("provider_tournament_id")?,
             name: row.get("name")?,
-            start_date: row.get::<_, Option<String>>("start_date")?
-                .and_then(|s| DateTime::parse_from_rfc3339(&s).ok().map(|dt| dt.with_timezone(&Utc))),
-            end_date: row.get::<_, Option<String>>("end_date")?
-                .and_then(|s| DateTime::parse_from_rfc3339(&s).ok().map(|dt| dt.with_timezone(&Utc))),
+            start_date: row.get::<_, Option<String>>("start_date")?.and_then(|s| {
+                DateTime::parse_from_rfc3339(&s)
+                    .ok()
+                    .map(|dt| dt.with_timezone(&Utc))
+            }),
+            end_date: row.get::<_, Option<String>>("end_date")?.and_then(|s| {
+                DateTime::parse_from_rfc3339(&s)
+                    .ok()
+                    .map(|dt| dt.with_timezone(&Utc))
+            }),
             city: row.get("city")?,
             country: row.get("country")?,
             url: row.get("url")?,
             status: row.get("status")?,
-            last_seen_at: row.get::<_, Option<String>>("last_seen_at")?
-                .and_then(|s| DateTime::parse_from_rfc3339(&s).ok().map(|dt| dt.with_timezone(&Utc))),
+            last_seen_at: row.get::<_, Option<String>>("last_seen_at")?.and_then(|s| {
+                DateTime::parse_from_rfc3339(&s)
+                    .ok()
+                    .map(|dt| dt.with_timezone(&Utc))
+            }),
             hash: row.get("hash")?,
             etag: row.get("etag")?,
             created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,

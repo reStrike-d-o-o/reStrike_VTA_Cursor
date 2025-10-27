@@ -20,12 +20,12 @@ async fn main() -> AppResult<()> {
             panic_info,
             std::backtrace::Backtrace::capture()
         );
-        
+
         // Log to app.log
         if let Err(write_err) = std::fs::write("logs/app.log", &panic_msg) {
             eprintln!("Failed to write panic log: {}", write_err);
         }
-        
+
         // Also log to stderr
         eprintln!("{}", panic_msg);
     }));
@@ -98,29 +98,38 @@ async fn main() -> AppResult<()> {
         }
     });
     logger_builder.init();
-    
+
     log::error!("Demo error log to verify styling");
-    
+
     log::info!("Starting reStrike VTA Tauri Application");
-    
+
     // Create the main application instance
     let app: Arc<App> = Arc::new(App::new().await?);
-    
+
     // Initialize the application
     app.init().await?;
-    
+
     // Initialize plugins
     re_strike_vta::plugins::init().await?;
-    
+
     // Validate license before starting services
     {
         let status = app.license_plugin().validate(app.config_manager()).await?;
         match status.state {
-            re_strike_vta::plugins::plugin_license::LicenseState::Valid | re_strike_vta::plugins::plugin_license::LicenseState::Trial => {
-                log::info!("License OK: {:?}, days remaining: {:?}", status.state, status.days_remaining);
+            re_strike_vta::plugins::plugin_license::LicenseState::Valid
+            | re_strike_vta::plugins::plugin_license::LicenseState::Trial => {
+                log::info!(
+                    "License OK: {:?}, days remaining: {:?}",
+                    status.state,
+                    status.days_remaining
+                );
             }
             _ => {
-                log::error!("License check failed: {:?} ({:?})", status.state, status.reason);
+                log::error!(
+                    "License check failed: {:?} ({:?})",
+                    status.state,
+                    status.reason
+                );
                 // Proceed to build UI so user can activate, but avoid auto-start services
             }
         }
@@ -128,11 +137,11 @@ async fn main() -> AppResult<()> {
 
     // Start the application (this will auto-start UDP if configured)
     app.start().await?;
-    
+
     // Start OBS event listener to forward events to frontend
     let _app_clone = app.clone();
     // Optional: legacy status poller removed to avoid mixing APIs
-    
+
     // Create Tauri app builder
     tauri::Builder::default()
         .manage(app)
@@ -142,49 +151,49 @@ async fn main() -> AppResult<()> {
             // Core app commands
             tauri_commands::get_app_status,
             tauri_commands::shutdown_app,
-            
             // UDP commands
             tauri_commands::start_udp_server,
             tauri_commands::stop_udp_server,
             tauri_commands::get_udp_status,
             tauri_commands::update_udp_settings,
-            
+            // OpenAPI management
+            re_strike_vta::tauri_commands_openapi::openapi_get_state,
+            re_strike_vta::tauri_commands_openapi::openapi_save_schema,
+            re_strike_vta::tauri_commands_openapi::openapi_validate_schema,
+            re_strike_vta::tauri_commands_openapi::openapi_upload_schema,
+            re_strike_vta::tauri_commands_openapi::openapi_export_schema,
             // OBS commands - Fixed names
             tauri_commands::obs_connect,
             tauri_commands::obs_disconnect,
             tauri_commands::obs_remove_connection,
             tauri_commands::obs_get_obs_version,
-            
-            
-            
             // Control Room Commands - Using new async implementation
             tauri_commands::control_room_authenticate_async,
-                    tauri_commands::control_room_get_obs_connections,
-                tauri_commands::control_room_get_obs_connections_with_status,
-                tauri_commands::control_room_get_obs_connections_with_details,
-        tauri_commands::control_room_add_obs_connection,
-        tauri_commands::control_room_connect_obs,
-        tauri_commands::control_room_disconnect_obs,
-        tauri_commands::control_room_remove_obs_connection,
-        tauri_commands::control_room_get_obs_connection,
-        tauri_commands::control_room_update_obs_connection,
-        tauri_commands::control_room_connect_all_obs,
-        tauri_commands::control_room_disconnect_all_obs,
+            tauri_commands::control_room_get_obs_connections,
+            tauri_commands::control_room_get_obs_connections_with_status,
+            tauri_commands::control_room_get_obs_connections_with_details,
+            tauri_commands::control_room_add_obs_connection,
+            tauri_commands::control_room_connect_obs,
+            tauri_commands::control_room_disconnect_obs,
+            tauri_commands::control_room_remove_obs_connection,
+            tauri_commands::control_room_get_obs_connection,
+            tauri_commands::control_room_update_obs_connection,
+            tauri_commands::control_room_connect_all_obs,
+            tauri_commands::control_room_disconnect_all_obs,
             tauri_commands::control_room_change_password,
             tauri_commands::control_room_get_audit_log,
             tauri_commands::control_room_get_session_info,
             tauri_commands::control_room_refresh_session,
             tauri_commands::control_room_logout,
-tauri_commands::control_room_mute_all_obs,
-tauri_commands::control_room_unmute_all_obs,
-tauri_commands::control_room_change_all_obs_scenes,
-tauri_commands::control_room_start_all_obs,
-tauri_commands::control_room_stop_all_obs,
+            tauri_commands::control_room_mute_all_obs,
+            tauri_commands::control_room_unmute_all_obs,
+            tauri_commands::control_room_change_all_obs_scenes,
+            tauri_commands::control_room_start_all_obs,
+            tauri_commands::control_room_stop_all_obs,
             tauri_commands::control_room_get_audio_sources,
             tauri_commands::control_room_get_scenes,
             tauri_commands::control_room_execute_custom_operation,
             tauri_commands::control_room_execute_raw_request,
-            
             // YouTube Streaming Management Commands (feature-gated)
             #[cfg(feature = "youtube")]
             tauri_commands::obs_get_youtube_accounts,
@@ -210,7 +219,6 @@ tauri_commands::control_room_stop_all_obs,
             tauri_commands::obs_get_youtube_streaming_schedule,
             #[cfg(feature = "youtube")]
             tauri_commands::obs_create_youtube_streaming_schedule,
-            
             // YouTube API commands (feature-gated)
             #[cfg(feature = "youtube")]
             tauri_commands::youtube_get_auth_url,
@@ -244,12 +252,8 @@ tauri_commands::control_room_stop_all_obs,
             tauri_commands::youtube_get_video_analytics,
             #[cfg(feature = "youtube")]
             tauri_commands::youtube_initialize,
-            
             // Other Streaming Destinations Commands (removed)
-            
-            
             tauri_commands::obs_command,
-            
             // OBS obws commands - New obws-based implementation
             #[cfg(feature = "obs-obws")]
             tauri_commands_obws::obs_obws_add_connection,
@@ -293,7 +297,6 @@ tauri_commands::control_room_stop_all_obs,
             tauri_commands_obws::obs_obws_test_connection,
             #[cfg(feature = "obs-obws")]
             tauri_commands_obws::obs_obws_setup_status_listener,
-            
             // OBS obws Replay Buffer Commands
             #[cfg(feature = "obs-obws")]
             tauri_commands_obws::obs_obws_start_replay_buffer,
@@ -303,7 +306,6 @@ tauri_commands::control_room_stop_all_obs,
             tauri_commands_obws::obs_obws_save_replay_buffer,
             #[cfg(feature = "obs-obws")]
             tauri_commands_obws::obs_obws_get_replay_buffer_status,
-            
             // OBS obws Path Configuration Commands
             #[cfg(feature = "obs-obws")]
             tauri_commands_obws::obs_obws_get_recording_path_settings,
@@ -313,7 +315,6 @@ tauri_commands::control_room_stop_all_obs,
             tauri_commands_obws::obs_obws_get_replay_buffer_path_settings,
             #[cfg(feature = "obs-obws")]
             tauri_commands_obws::obs_obws_set_replay_buffer_path,
-            
             // OBS obws Recording Configuration Commands
             // unified config
             #[cfg(feature = "obs-obws")]
@@ -380,16 +381,15 @@ tauri_commands::control_room_stop_all_obs,
             tauri_commands::control_room_get_session_info,
             tauri_commands::control_room_refresh_session,
             tauri_commands::control_room_logout,
-tauri_commands::control_room_mute_all_obs,
-tauri_commands::control_room_unmute_all_obs,
-tauri_commands::control_room_change_all_obs_scenes,
-tauri_commands::control_room_start_all_obs,
-tauri_commands::control_room_stop_all_obs,
+            tauri_commands::control_room_mute_all_obs,
+            tauri_commands::control_room_unmute_all_obs,
+            tauri_commands::control_room_change_all_obs_scenes,
+            tauri_commands::control_room_start_all_obs,
+            tauri_commands::control_room_stop_all_obs,
             tauri_commands::control_room_get_audio_sources,
             tauri_commands::control_room_get_scenes,
             tauri_commands::control_room_execute_custom_operation,
             tauri_commands::control_room_execute_raw_request,
-            
             // YouTube Streaming Management Commands
             #[cfg(feature = "youtube")]
             tauri_commands::obs_get_youtube_accounts,
@@ -415,10 +415,7 @@ tauri_commands::control_room_stop_all_obs,
             tauri_commands::obs_get_youtube_streaming_schedule,
             #[cfg(feature = "youtube")]
             tauri_commands::obs_create_youtube_streaming_schedule,
-            
             // Other Streaming Destinations Commands (removed)
-            
-            
             tauri_commands::obs_command,
             tauri_commands::obs_connect_to_connection,
             tauri_commands::obs_get_connection_status,
@@ -426,29 +423,25 @@ tauri_commands::control_room_stop_all_obs,
             tauri_commands::obs_emit_event,
             tauri_commands::obs_setup_status_listener,
             tauri_commands::cpu_setup_stats_listener,
-            
             // Recording Path and Filename Commands (obws-backed where applicable)
             tauri_commands::obs_get_recording_path_settings,
             tauri_commands::obs_set_recording_path,
             tauri_commands::obs_set_recording_filename,
-            
             // Replay Buffer Settings Commands (legacy removed)
-            
+
             // Advanced Replay Buffer Commands (legacy removed)
-            
+
             // Replay Buffer Options Commands (legacy removed)
-            
+
             // WebSocket commands for HTML overlays
             tauri_commands::websocket_get_status,
             tauri_commands::websocket_broadcast_pss_event,
             tauri_commands::store_pss_event_cmd,
-            
             // Video commands - Fixed names
             tauri_commands::video_play,
             tauri_commands::video_stop,
             tauri_commands::video_get_info,
             tauri_commands::extract_clip,
-            
             // PSS commands
             tauri_commands::pss_start_listener,
             tauri_commands::pss_stop_listener,
@@ -461,24 +454,20 @@ tauri_commands::control_room_stop_all_obs,
             tauri_commands::pss_emit_event,
             tauri_commands::pss_emit_pending_events,
             tauri_commands::pss_setup_event_listener,
-            
             // System commands
             tauri_commands::system_get_info,
-                    tauri_commands::get_network_interfaces,
-        tauri_commands::get_best_network_interface,
-        tauri_commands::get_best_ip_address_for_interface,
-            
+            tauri_commands::get_network_interfaces,
+            tauri_commands::get_best_network_interface,
+            tauri_commands::get_best_ip_address_for_interface,
             // Store commands
             tauri_commands::save_event,
             tauri_commands::get_events,
             tauri_commands::clear_events,
-            
             // License commands
             tauri_commands::activate_license,
             tauri_commands::validate_license,
             tauri_commands::get_license_status,
             tauri_commands::get_machine_identity,
-            
             // Settings commands
             tauri_commands::get_settings,
             tauri_commands::update_settings,
@@ -487,11 +476,9 @@ tauri_commands::control_room_stop_all_obs,
             tauri_commands::export_settings,
             tauri_commands::import_settings,
             tauri_commands::restore_settings_backup,
-            
             // Flag commands
             tauri_commands::get_flag_url,
             tauri_commands::download_flags,
-            
             // Diagnostics & Logs commands - Fixed names
             tauri_commands::list_log_files,
             tauri_commands::download_log_file,
@@ -499,7 +486,6 @@ tauri_commands::control_room_stop_all_obs,
             tauri_commands::extract_archive,
             tauri_commands::download_archive,
             tauri_commands::set_live_data_streaming,
-            
             // New Log Archive & Google Drive commands
             tauri_commands::create_complete_log_archive,
             tauri_commands::create_and_upload_log_archive,
@@ -509,7 +495,6 @@ tauri_commands::control_room_stop_all_obs,
             tauri_commands::check_auto_archive_status,
             tauri_commands::perform_auto_archive,
             tauri_commands::delete_log_archive,
-            
             // Legacy commands for backward compatibility
             tauri_commands::start_live_data,
             tauri_commands::stop_live_data,
@@ -519,17 +504,14 @@ tauri_commands::control_room_stop_all_obs,
             tauri_commands::obs_get_full_events_setting,
             tauri_commands::obs_emit_event_to_frontend,
             tauri_commands::obs_get_recent_events,
-            
             // CPU Monitoring commands
             tauri_commands::cpu_get_process_data,
             tauri_commands::cpu_get_system_data,
             tauri_commands::cpu_get_obs_usage,
             tauri_commands::cpu_update_config,
-
             tauri_commands::cpu_enable_monitoring,
             tauri_commands::cpu_disable_monitoring,
             tauri_commands::cpu_get_monitoring_status,
-            
             // Protocol Management commands
             tauri_commands::protocol_get_versions,
             tauri_commands::protocol_set_active_version,
@@ -537,7 +519,6 @@ tauri_commands::control_room_stop_all_obs,
             tauri_commands::protocol_delete_version,
             tauri_commands::protocol_export_file,
             tauri_commands::protocol_get_current,
-            
             // Window Management commands
             tauri_commands::set_window_fullscreen,
             tauri_commands::set_window_compact,
@@ -547,7 +528,6 @@ tauri_commands::control_room_stop_all_obs,
             tauri_commands::save_window_settings,
             tauri_commands::load_window_settings,
             tauri_commands::get_screen_size,
-            
             // Database commands
             tauri_commands::initialize_ui_settings_database,
             tauri_commands::db_initialize_ui_settings,
@@ -567,7 +547,6 @@ tauri_commands::control_room_stop_all_obs,
             tauri_commands::get_database_tables,
             tauri_commands::get_table_data,
             tauri_commands::get_flag_mappings_data,
-            
             // Tournament Management commands
             tauri_commands::tournament_create,
             tauri_commands::tournament_get_all,
@@ -600,26 +579,23 @@ tauri_commands::control_room_stop_all_obs,
             tauri_commands::db_create_sqlite_backup,
             tauri_commands::db_list_sqlite_backups,
             tauri_commands::db_restore_sqlite_backup,
-        tauri_commands::database_run_vacuum,
-        tauri_commands::database_run_integrity_check,
-        tauri_commands::database_run_analyze,
-        tauri_commands::database_run_optimize,
-        tauri_commands::database_run_full_maintenance,
-        tauri_commands::database_get_info,
-                    tauri_commands::database_get_maintenance_status,
-            
+            tauri_commands::database_run_vacuum,
+            tauri_commands::database_run_integrity_check,
+            tauri_commands::database_run_analyze,
+            tauri_commands::database_run_optimize,
+            tauri_commands::database_run_full_maintenance,
+            tauri_commands::database_get_info,
+            tauri_commands::database_get_maintenance_status,
             // Event Status Analysis commands
             tauri_commands::get_comprehensive_event_statistics,
             tauri_commands::get_events_by_status,
             tauri_commands::get_unknown_events,
-            
             // Tournament Context Management commands
-                    tauri_commands::set_udp_tournament_context,
-        tauri_commands::get_udp_tournament_context,
-        tauri_commands::clear_udp_tournament_context,
-                    tauri_commands::get_udp_performance_metrics,
+            tauri_commands::set_udp_tournament_context,
+            tauri_commands::get_udp_tournament_context,
+            tauri_commands::clear_udp_tournament_context,
+            tauri_commands::get_udp_performance_metrics,
             tauri_commands::get_udp_memory_usage,
-            
             // Phase 2 Optimization - Data Archival commands
             tauri_commands::archive_old_events,
             tauri_commands::get_archive_statistics,
@@ -628,12 +604,10 @@ tauri_commands::control_room_stop_all_obs,
             tauri_commands::optimize_archive_tables,
             tauri_commands::get_database_pool_stats,
             tauri_commands::cleanup_database_pool,
-            
             // Flag management commands
             tauri_commands::scan_and_populate_flags,
             tauri_commands::get_flags_data,
             tauri_commands::clear_flags_table,
-            
             // Google Drive commands
             tauri_commands::drive_request_auth_url,
             tauri_commands::drive_complete_auth,
@@ -650,17 +624,14 @@ tauri_commands::control_room_stop_all_obs,
             tauri_commands::drive_create_folder,
             tauri_commands::drive_list_children,
             tauri_commands::drive_upload_zip_to_folder,
-            
             // Phase 3: Advanced Caching Commands
             tauri_commands::get_cache_statistics,
             tauri_commands::clear_cache,
             tauri_commands::invalidate_tournament_cache,
             tauri_commands::invalidate_match_cache,
-            
             // Phase 3: Event Stream Commands
             tauri_commands::get_stream_statistics,
             tauri_commands::send_event_to_stream,
-            
             // Trigger system commands
             re_strike_vta::tauri_commands_triggers::triggers_list_pss_events,
             re_strike_vta::tauri_commands_triggers::triggers_list_obs_scenes,
@@ -689,26 +660,24 @@ tauri_commands::control_room_stop_all_obs,
             tauri_commands::get_server_statistics,
             tauri_commands::add_server,
             tauri_commands::remove_server,
-            
             // Phase 3: Advanced Analytics Commands
             tauri_commands::get_tournament_analytics,
             tauri_commands::get_performance_analytics,
             tauri_commands::get_athlete_analytics,
             tauri_commands::get_match_analytics,
             tauri_commands::get_analytics_history,
-            
-                            // Simulation commands
-                tauri_commands::simulation_start,
-                tauri_commands::simulation_stop,
-                tauri_commands::simulation_get_status,
-                tauri_commands::simulation_send_event,
-                tauri_commands::simulation_get_scenarios,
-                tauri_commands::simulation_run_automated,
-                tauri_commands::simulation_get_detailed_status,
-                tauri_commands::simulation_run_self_test,
-                tauri_commands::simulation_get_self_test_report,
-                tauri_commands::simulation_get_self_test_categories,
-                tauri_commands::simulation_run_selective_self_test,
+            // Simulation commands
+            tauri_commands::simulation_start,
+            tauri_commands::simulation_stop,
+            tauri_commands::simulation_get_status,
+            tauri_commands::simulation_send_event,
+            tauri_commands::simulation_get_scenarios,
+            tauri_commands::simulation_run_automated,
+            tauri_commands::simulation_get_detailed_status,
+            tauri_commands::simulation_run_self_test,
+            tauri_commands::simulation_get_self_test_report,
+            tauri_commands::simulation_get_self_test_categories,
+            tauri_commands::simulation_run_selective_self_test,
             // YouTube API commands
             tauri_commands::youtube_get_auth_url,
             tauri_commands::youtube_authenticate,
@@ -742,16 +711,14 @@ tauri_commands::control_room_stop_all_obs,
         ])
         .setup(|app| {
             log::info!("Tauri application setup complete");
-            
+
             // Set the global app handle for frontend event emission
             re_strike_vta::core::app::App::set_global_app_handle(app.handle().clone());
-            
+
             Ok(())
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
-    
+
     Ok(())
 }
-
-

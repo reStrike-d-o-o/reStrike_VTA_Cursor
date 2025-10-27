@@ -1,13 +1,16 @@
+use aes_gcm::{
+    aead::{Aead, KeyInit},
+    Aes256Gcm,
+};
 use base64::{engine::general_purpose, Engine as _};
+use rand::rngs::OsRng;
+use rand::RngCore;
 use ring::signature;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::fs;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
-use aes_gcm::{Aes256Gcm, aead::{Aead, KeyInit}};
-use rand::rngs::OsRng;
-use rand::RngCore;
 
 use crate::types::{AppError, AppResult};
 
@@ -33,7 +36,7 @@ const ANCHOR_DIR_NAME: &str = "re-strike-vta/.anchors";
 const ANCHOR_FILE_NAME: &str = "license_anchor.json";
 const ANCHOR_TOUCH_NAME: &str = "anchor.touch";
 const BACKWARD_TOLERANCE_SECS: i64 = 300; // 5 minutes tolerance
-const FUTURE_TOLERANCE_SECS: i64 = 300;   // 5 minutes tolerance
+const FUTURE_TOLERANCE_SECS: i64 = 300; // 5 minutes tolerance
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 struct LicenseAnchor {
@@ -89,7 +92,8 @@ impl LicensePlugin {
 
     /// Returns a stable per-machine hash used to bind licenses to a PC.
     pub fn compute_machine_hash(&self) -> AppResult<String> {
-        let uid = machine_uid::get().map_err(|e| AppError::ConfigError(format!("Failed to get machine UID: {}", e)))?;
+        let uid = machine_uid::get()
+            .map_err(|e| AppError::ConfigError(format!("Failed to get machine UID: {}", e)))?;
         let mut hasher = Sha256::new();
         hasher.update(uid.as_bytes());
         hasher.update(LICENSE_STORAGE_SALT.as_bytes());
@@ -184,23 +188,27 @@ impl LicensePlugin {
 
     /// Load raw encrypted license blob from disk (if any)
     pub fn load_encrypted(&self) -> Option<String> {
-        let path = match Self::storage_path() { Ok(p) => p, Err(_) => return None };
+        let path = match Self::storage_path() {
+            Ok(p) => p,
+            Err(_) => return None,
+        };
         fs::read_to_string(&path).ok()
     }
 
     /// Save raw encrypted license blob to disk
     pub fn save_encrypted(&self, blob: &str) -> AppResult<()> {
         let path = Self::storage_path()?;
-        fs::write(&path, blob).map_err(|e| AppError::ConfigError(format!("Failed to write license: {}", e)))
+        fs::write(&path, blob)
+            .map_err(|e| AppError::ConfigError(format!("Failed to write license: {}", e)))
     }
 
-    fn derive_store_key(&self) -> AppResult<[u8;32]> {
+    fn derive_store_key(&self) -> AppResult<[u8; 32]> {
         let mh = self.compute_machine_hash()?;
         let mut hasher = Sha256::new();
         hasher.update(mh.as_bytes());
         hasher.update(b"license_store_v1");
         let out = hasher.finalize();
-        let mut key = [0u8;32];
+        let mut key = [0u8; 32];
         key.copy_from_slice(&out[..32]);
         Ok(key)
     }
@@ -208,14 +216,25 @@ impl LicensePlugin {
     /// Encrypt a plaintext token using AES-256-GCM with a key derived from machine hash
     fn encrypt_token(&self, token: &str) -> AppResult<String> {
         let key_bytes = self.derive_store_key()?;
-        let cipher = Aes256Gcm::new_from_slice(&key_bytes).map_err(|e| AppError::ConfigError(format!("Cipher init failed: {:?}", e)))?;
-        let mut nonce = [0u8;12];
+        let cipher = Aes256Gcm::new_from_slice(&key_bytes)
+            .map_err(|e| AppError::ConfigError(format!("Cipher init failed: {:?}", e)))?;
+        let mut nonce = [0u8; 12];
         let mut rng = OsRng;
         rng.fill_bytes(&mut nonce);
-        let ct = cipher.encrypt(&nonce.into(), token.as_bytes()).map_err(|e| AppError::ConfigError(format!("Encrypt failed: {:?}", e)))?;
+        let ct = cipher
+            .encrypt(&nonce.into(), token.as_bytes())
+            .map_err(|e| AppError::ConfigError(format!("Encrypt failed: {:?}", e)))?;
         #[derive(Serialize)]
-        struct Stored { _v: u8, n: String, c: String }
-        let s = Stored { _v: 1, n: base64::engine::general_purpose::STANDARD.encode(&nonce), c: base64::engine::general_purpose::STANDARD.encode(&ct) };
+        struct Stored {
+            _v: u8,
+            n: String,
+            c: String,
+        }
+        let s = Stored {
+            _v: 1,
+            n: base64::engine::general_purpose::STANDARD.encode(&nonce),
+            c: base64::engine::general_purpose::STANDARD.encode(&ct),
+        };
         Ok(serde_json::to_string(&s)?)
     }
 
@@ -223,16 +242,26 @@ impl LicensePlugin {
     fn decrypt_token(&self, blob: &str) -> AppResult<String> {
         // Try current format
         #[derive(Deserialize)]
-        struct Stored { _v: u8, n: String, c: String }
+        struct Stored {
+            _v: u8,
+            n: String,
+            c: String,
+        }
         if let Ok(stored) = serde_json::from_str::<Stored>(blob) {
             let key_bytes = self.derive_store_key()?;
-            let cipher = Aes256Gcm::new_from_slice(&key_bytes).map_err(|e| AppError::ConfigError(format!("Cipher init failed: {:?}", e)))?;
-            let nonce_bytes = base64::engine::general_purpose::STANDARD.decode(stored.n).map_err(|e| AppError::ConfigError(format!("Invalid nonce: {}", e)))?;
-            let ct_bytes = base64::engine::general_purpose::STANDARD.decode(stored.c).map_err(|e| AppError::ConfigError(format!("Invalid ciphertext: {}", e)))?;
+            let cipher = Aes256Gcm::new_from_slice(&key_bytes)
+                .map_err(|e| AppError::ConfigError(format!("Cipher init failed: {:?}", e)))?;
+            let nonce_bytes = base64::engine::general_purpose::STANDARD
+                .decode(stored.n)
+                .map_err(|e| AppError::ConfigError(format!("Invalid nonce: {}", e)))?;
+            let ct_bytes = base64::engine::general_purpose::STANDARD
+                .decode(stored.c)
+                .map_err(|e| AppError::ConfigError(format!("Invalid ciphertext: {}", e)))?;
             let nonce = aes_gcm::Nonce::from_slice(&nonce_bytes);
             match cipher.decrypt(nonce, ct_bytes.as_ref()) {
                 Ok(pt) => {
-                    return String::from_utf8(pt).map_err(|e| AppError::ConfigError(format!("Invalid UTF-8: {}", e)));
+                    return String::from_utf8(pt)
+                        .map_err(|e| AppError::ConfigError(format!("Invalid UTF-8: {}", e)));
                 }
                 Err(_e) => {
                     // Fallback to legacy format if AES decryption fails (e.g., file from previous version)
@@ -244,7 +273,8 @@ impl LicensePlugin {
         let sc = crate::security::SecureConfig::new(master)?;
         let enc: crate::security::encryption::EncryptedData = serde_json::from_str(blob)
             .map_err(|e| AppError::ConfigError(format!("Failed to parse legacy license: {}", e)))?;
-        sc.decrypt_value(&enc).map_err(|e| AppError::ConfigError(format!("Failed to decrypt legacy license: {}", e)))
+        sc.decrypt_value(&enc)
+            .map_err(|e| AppError::ConfigError(format!("Failed to decrypt legacy license: {}", e)))
     }
 
     /// Verify Ed25519 signature and semantics.
@@ -252,60 +282,139 @@ impl LicensePlugin {
         // Parse
         let parsed: Result<LicenseToken, _> = serde_json::from_str(token);
         if parsed.is_err() {
-            return LicenseStatus { state: LicenseState::Invalid, plan: None, expires_at: None, machine_ok: false, reason: Some("Invalid token format".into()), days_remaining: None, in_grace: false };
+            return LicenseStatus {
+                state: LicenseState::Invalid,
+                plan: None,
+                expires_at: None,
+                machine_ok: false,
+                reason: Some("Invalid token format".into()),
+                days_remaining: None,
+                in_grace: false,
+            };
         }
         let token = parsed.unwrap();
 
         // Product check
         if token.payload.product_id != PRODUCT_ID {
-            return LicenseStatus { state: LicenseState::Invalid, plan: Some(token.payload.plan), expires_at: token.payload.expires_at, machine_ok: false, reason: Some("Product mismatch".into()), days_remaining: None, in_grace: false };
+            return LicenseStatus {
+                state: LicenseState::Invalid,
+                plan: Some(token.payload.plan),
+                expires_at: token.payload.expires_at,
+                machine_ok: false,
+                reason: Some("Product mismatch".into()),
+                days_remaining: None,
+                in_grace: false,
+            };
         }
 
         // Machine binding check
         let mh = self.compute_machine_hash().ok();
         let machine_ok = mh.as_deref() == Some(token.payload.machine_hash.as_str());
         if !machine_ok {
-            return LicenseStatus { state: LicenseState::Invalid, plan: Some(token.payload.plan), expires_at: token.payload.expires_at, machine_ok, reason: Some("Machine mismatch".into()), days_remaining: None, in_grace: false };
+            return LicenseStatus {
+                state: LicenseState::Invalid,
+                plan: Some(token.payload.plan),
+                expires_at: token.payload.expires_at,
+                machine_ok,
+                reason: Some("Machine mismatch".into()),
+                days_remaining: None,
+                in_grace: false,
+            };
         }
 
         // Signature check
         let pubkey = match general_purpose::STANDARD.decode(LICENSE_PUBKEY_B64) {
             Ok(bytes) => bytes,
             Err(_) => {
-                return LicenseStatus { state: LicenseState::Invalid, plan: Some(token.payload.plan), expires_at: token.payload.expires_at, machine_ok, reason: Some("Invalid embedded public key".into()), days_remaining: None, in_grace: false }
+                return LicenseStatus {
+                    state: LicenseState::Invalid,
+                    plan: Some(token.payload.plan),
+                    expires_at: token.payload.expires_at,
+                    machine_ok,
+                    reason: Some("Invalid embedded public key".into()),
+                    days_remaining: None,
+                    in_grace: false,
+                }
             }
         };
         let sig = match general_purpose::STANDARD.decode(&token.signature) {
             Ok(s) => s,
             Err(_) => {
-                return LicenseStatus { state: LicenseState::Invalid, plan: Some(token.payload.plan), expires_at: token.payload.expires_at, machine_ok, reason: Some("Invalid signature encoding".into()), days_remaining: None, in_grace: false }
+                return LicenseStatus {
+                    state: LicenseState::Invalid,
+                    plan: Some(token.payload.plan),
+                    expires_at: token.payload.expires_at,
+                    machine_ok,
+                    reason: Some("Invalid signature encoding".into()),
+                    days_remaining: None,
+                    in_grace: false,
+                }
             }
         };
         let payload_bytes = match serde_json::to_vec(&token.payload) {
             Ok(b) => b,
             Err(_) => {
-                return LicenseStatus { state: LicenseState::Invalid, plan: Some(token.payload.plan), expires_at: token.payload.expires_at, machine_ok, reason: Some("Payload serialization error".into()), days_remaining: None, in_grace: false }
+                return LicenseStatus {
+                    state: LicenseState::Invalid,
+                    plan: Some(token.payload.plan),
+                    expires_at: token.payload.expires_at,
+                    machine_ok,
+                    reason: Some("Payload serialization error".into()),
+                    days_remaining: None,
+                    in_grace: false,
+                }
             }
         };
         let verifier = signature::UnparsedPublicKey::new(&signature::ED25519, pubkey);
         if verifier.verify(&payload_bytes, &sig).is_err() {
-            return LicenseStatus { state: LicenseState::Invalid, plan: Some(token.payload.plan), expires_at: token.payload.expires_at, machine_ok, reason: Some("Signature verification failed".into()), days_remaining: None, in_grace: false };
+            return LicenseStatus {
+                state: LicenseState::Invalid,
+                plan: Some(token.payload.plan),
+                expires_at: token.payload.expires_at,
+                machine_ok,
+                reason: Some("Signature verification failed".into()),
+                days_remaining: None,
+                in_grace: false,
+            };
         }
 
         // Expiry check
         let now = chrono::Utc::now().timestamp();
         if let Some(exp) = token.payload.expires_at {
             if now > exp {
-                return LicenseStatus { state: LicenseState::Expired, plan: Some(token.payload.plan), expires_at: token.payload.expires_at, machine_ok, reason: Some("License expired".into()), days_remaining: Some(0), in_grace: false };
+                return LicenseStatus {
+                    state: LicenseState::Expired,
+                    plan: Some(token.payload.plan),
+                    expires_at: token.payload.expires_at,
+                    machine_ok,
+                    reason: Some("License expired".into()),
+                    days_remaining: Some(0),
+                    in_grace: false,
+                };
             }
         }
 
-        let days_remaining = token.payload.expires_at.map(|e| ((e - now) as f64 / 86_400.0).ceil() as i64);
-        LicenseStatus { state: LicenseState::Valid, plan: Some(token.payload.plan), expires_at: token.payload.expires_at, machine_ok, reason: None, days_remaining, in_grace: false }
+        let days_remaining = token
+            .payload
+            .expires_at
+            .map(|e| ((e - now) as f64 / 86_400.0).ceil() as i64);
+        LicenseStatus {
+            state: LicenseState::Valid,
+            plan: Some(token.payload.plan),
+            expires_at: token.payload.expires_at,
+            machine_ok,
+            reason: None,
+            days_remaining,
+            in_grace: false,
+        }
     }
 
     /// Activate a license: verify, then encrypt+persist and update config.
-    pub async fn activate(&self, key: &str, config: &crate::config::ConfigManager) -> AppResult<LicenseStatus> {
+    pub async fn activate(
+        &self,
+        key: &str,
+        config: &crate::config::ConfigManager,
+    ) -> AppResult<LicenseStatus> {
         let status = self.verify_token(key);
         match status.state {
             LicenseState::Valid | LicenseState::Trial => {
@@ -315,30 +424,59 @@ impl LicensePlugin {
                 Self::update_anchor_after_validation();
                 // Update config lightweight mirror
                 let mut settings = config.get_config().await;
-                settings.license.status = match status.state { LicenseState::Valid => "valid".into(), LicenseState::Trial => "trial".into(), _ => "invalid".into() };
+                settings.license.status = match status.state {
+                    LicenseState::Valid => "valid".into(),
+                    LicenseState::Trial => "trial".into(),
+                    _ => "invalid".into(),
+                };
                 settings.license.license_key = Some("[ENCRYPTED]".into());
-                settings.license.expiration_date = status.expires_at.map(|e| chrono::DateTime::from_timestamp(e, 0).unwrap().to_rfc3339());
+                settings.license.expiration_date = status
+                    .expires_at
+                    .map(|e| chrono::DateTime::from_timestamp(e, 0).unwrap().to_rfc3339());
                 settings.license.last_validation = Some(chrono::Utc::now().to_rfc3339());
                 config.update_config(settings).await?;
                 Ok(status)
             }
-            _ => Err(AppError::ConfigError(status.reason.unwrap_or_else(|| "Invalid license".into())))
+            _ => Err(AppError::ConfigError(
+                status.reason.unwrap_or_else(|| "Invalid license".into()),
+            )),
         }
     }
 
     /// Validate any stored license and return status
-    pub async fn validate(&self, config: &crate::config::ConfigManager) -> AppResult<LicenseStatus> {
+    pub async fn validate(
+        &self,
+        config: &crate::config::ConfigManager,
+    ) -> AppResult<LicenseStatus> {
         // Load
         let blob = match self.load_encrypted() {
             Some(b) => b,
             None => {
                 // trial as default if configured that way; here we signal invalid
-                return Ok(LicenseStatus { state: LicenseState::Invalid, plan: None, expires_at: None, machine_ok: false, reason: Some("No license installed".into()), days_remaining: None, in_grace: false });
+                return Ok(LicenseStatus {
+                    state: LicenseState::Invalid,
+                    plan: None,
+                    expires_at: None,
+                    machine_ok: false,
+                    reason: Some("No license installed".into()),
+                    days_remaining: None,
+                    in_grace: false,
+                });
             }
         };
         let token = match self.decrypt_token(&blob) {
             Ok(t) => t,
-            Err(e) => return Ok(LicenseStatus { state: LicenseState::Invalid, plan: None, expires_at: None, machine_ok: false, reason: Some(format!("{}", e)), days_remaining: None, in_grace: false }),
+            Err(e) => {
+                return Ok(LicenseStatus {
+                    state: LicenseState::Invalid,
+                    plan: None,
+                    expires_at: None,
+                    machine_ok: false,
+                    reason: Some(format!("{}", e)),
+                    days_remaining: None,
+                    in_grace: false,
+                })
+            }
         };
         let mut status = self.verify_token(&token);
 
@@ -374,4 +512,3 @@ impl LicensePlugin {
         Ok(status)
     }
 }
-

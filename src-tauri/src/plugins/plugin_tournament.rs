@@ -1,10 +1,10 @@
-use std::sync::Arc;
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
-use crate::database::{DatabaseConnection, operations::TournamentOperations};
 use crate::database::models::{Tournament, TournamentDay};
-use crate::types::{AppResult, AppError};
+use crate::database::{operations::TournamentOperations, DatabaseConnection};
+use crate::types::{AppError, AppResult};
+use chrono::{DateTime, Utc};
 use rusqlite::params;
+use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
 /// Initialize the tournament plugin
 pub fn init() -> Result<(), Box<dyn std::error::Error>> {
@@ -25,7 +25,7 @@ impl TournamentPlugin {
     pub fn new(database: Arc<DatabaseConnection>) -> Self {
         Self { database }
     }
-    
+
     /// Create a new tournament
     pub async fn create_tournament(
         &self,
@@ -36,55 +36,58 @@ impl TournamentPlugin {
         country_code: Option<String>,
         start_date: Option<DateTime<Utc>>,
     ) -> AppResult<i64> {
-        let mut conn = self.database.get_connection().await
-            .map_err(|e| AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
-        
-        let tournament = Tournament::new(
-            name,
-            duration_days,
-            city,
-            country,
-            country_code,
-        );
-        
+        let mut conn = self.database.get_connection().await.map_err(|e| {
+            AppError::ConfigError(format!("Failed to get database connection: {}", e))
+        })?;
+
+        let tournament = Tournament::new(name, duration_days, city, country, country_code);
+
         let tournament_id = TournamentOperations::create_tournament(&mut *conn, &tournament)
             .map_err(|e| AppError::ConfigError(format!("Failed to create tournament: {}", e)))?;
-        
+
         // Always create tournament days
         let start_date_for_days = start_date.unwrap_or_else(|| Utc::now());
-        TournamentOperations::create_tournament_days(&mut *conn, tournament_id, start_date_for_days, duration_days)
-            .map_err(|e| AppError::ConfigError(format!("Failed to create tournament days: {}", e)))?;
-        
+        TournamentOperations::create_tournament_days(
+            &mut *conn,
+            tournament_id,
+            start_date_for_days,
+            duration_days,
+        )
+        .map_err(|e| AppError::ConfigError(format!("Failed to create tournament days: {}", e)))?;
+
         Ok(tournament_id)
     }
-    
+
     /// Get all tournaments
     pub async fn get_tournaments(&self) -> AppResult<Vec<Tournament>> {
-        let conn = self.database.get_connection().await
-            .map_err(|e| AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
-        
+        let conn = self.database.get_connection().await.map_err(|e| {
+            AppError::ConfigError(format!("Failed to get database connection: {}", e))
+        })?;
+
         TournamentOperations::get_tournaments(&*conn)
             .map_err(|e| AppError::ConfigError(format!("Failed to get tournaments: {}", e)))
     }
-    
+
     /// Get tournament by ID
     pub async fn get_tournament(&self, tournament_id: i64) -> AppResult<Option<Tournament>> {
-        let conn = self.database.get_connection().await
-            .map_err(|e| AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
-        
+        let conn = self.database.get_connection().await.map_err(|e| {
+            AppError::ConfigError(format!("Failed to get database connection: {}", e))
+        })?;
+
         TournamentOperations::get_tournament(&*conn, tournament_id)
             .map_err(|e| AppError::ConfigError(format!("Failed to get tournament: {}", e)))
     }
-    
+
     /// Update tournament
     pub async fn update_tournament(
         &self,
         tournament_id: i64,
         tournament: Tournament,
     ) -> AppResult<()> {
-        let mut conn = self.database.get_connection().await
-            .map_err(|e| AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
-        
+        let mut conn = self.database.get_connection().await.map_err(|e| {
+            AppError::ConfigError(format!("Failed to get database connection: {}", e))
+        })?;
+
         // Fetch existing tournament to detect changes
         let existing = TournamentOperations::get_tournament(&*conn, tournament_id)
             .map_err(|e| AppError::ConfigError(format!("Failed to get tournament: {}", e)))?;
@@ -101,110 +104,159 @@ impl TournamentPlugin {
 
             if old_start != new_start || old_duration != new_duration {
                 // Remove existing days and recreate
-                conn.execute("DELETE FROM tournament_days WHERE tournament_id = ?", params![tournament_id])
-                    .map_err(|e| AppError::ConfigError(format!("Failed clearing tournament days: {}", e)))?;
+                conn.execute(
+                    "DELETE FROM tournament_days WHERE tournament_id = ?",
+                    params![tournament_id],
+                )
+                .map_err(|e| {
+                    AppError::ConfigError(format!("Failed clearing tournament days: {}", e))
+                })?;
 
                 let start_for_days = new_start.unwrap_or_else(|| Utc::now());
-                TournamentOperations::create_tournament_days(&mut *conn, tournament_id, start_for_days, new_duration)
-                    .map_err(|e| AppError::ConfigError(format!("Failed to recreate tournament days: {}", e)))?;
+                TournamentOperations::create_tournament_days(
+                    &mut *conn,
+                    tournament_id,
+                    start_for_days,
+                    new_duration,
+                )
+                .map_err(|e| {
+                    AppError::ConfigError(format!("Failed to recreate tournament days: {}", e))
+                })?;
             } else {
                 // Ensure days exist for older tournaments created before day generation logic
-                let existing_count: i64 = conn.query_row(
-                    "SELECT COUNT(*) FROM tournament_days WHERE tournament_id = ?",
-                    params![tournament_id],
-                    |row| row.get(0),
-                ).unwrap_or(0);
+                let existing_count: i64 = conn
+                    .query_row(
+                        "SELECT COUNT(*) FROM tournament_days WHERE tournament_id = ?",
+                        params![tournament_id],
+                        |row| row.get(0),
+                    )
+                    .unwrap_or(0);
 
                 if existing_count == 0 {
                     let start_for_days = new_start.unwrap_or_else(|| Utc::now());
-                    TournamentOperations::create_tournament_days(&mut *conn, tournament_id, start_for_days, new_duration)
-                        .map_err(|e| AppError::ConfigError(format!("Failed to create missing tournament days: {}", e)))?;
+                    TournamentOperations::create_tournament_days(
+                        &mut *conn,
+                        tournament_id,
+                        start_for_days,
+                        new_duration,
+                    )
+                    .map_err(|e| {
+                        AppError::ConfigError(format!(
+                            "Failed to create missing tournament days: {}",
+                            e
+                        ))
+                    })?;
                 }
             }
         }
 
         Ok(())
     }
-    
+
     /// Delete tournament
     pub async fn delete_tournament(&self, tournament_id: i64) -> AppResult<()> {
-        let mut conn = self.database.get_connection().await
-            .map_err(|e| AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
-        
+        let mut conn = self.database.get_connection().await.map_err(|e| {
+            AppError::ConfigError(format!("Failed to get database connection: {}", e))
+        })?;
+
         TournamentOperations::delete_tournament(&mut *conn, tournament_id)
             .map_err(|e| AppError::ConfigError(format!("Failed to delete tournament: {}", e)))
     }
-    
+
     /// Get tournament days for a tournament
     pub async fn get_tournament_days(&self, tournament_id: i64) -> AppResult<Vec<TournamentDay>> {
-        let conn = self.database.get_connection().await
-            .map_err(|e| AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
-        
+        let conn = self.database.get_connection().await.map_err(|e| {
+            AppError::ConfigError(format!("Failed to get database connection: {}", e))
+        })?;
+
         TournamentOperations::get_tournament_days(&*conn, tournament_id)
             .map_err(|e| AppError::ConfigError(format!("Failed to get tournament days: {}", e)))
     }
-    
+
     /// Start a tournament day
     pub async fn start_tournament_day(&self, tournament_day_id: i64) -> AppResult<()> {
-        let mut conn = self.database.get_connection().await
-            .map_err(|e| AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
-        
+        let mut conn = self.database.get_connection().await.map_err(|e| {
+            AppError::ConfigError(format!("Failed to get database connection: {}", e))
+        })?;
+
         TournamentOperations::start_tournament_day(&mut *conn, tournament_day_id)
             .map_err(|e| AppError::ConfigError(format!("Failed to start tournament day: {}", e)))
     }
-    
+
     /// End a tournament day
     pub async fn end_tournament_day(&self, tournament_day_id: i64) -> AppResult<()> {
-        let mut conn = self.database.get_connection().await
-            .map_err(|e| AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
-        
+        let mut conn = self.database.get_connection().await.map_err(|e| {
+            AppError::ConfigError(format!("Failed to get database connection: {}", e))
+        })?;
+
         TournamentOperations::end_tournament_day(&mut *conn, tournament_day_id)
             .map_err(|e| AppError::ConfigError(format!("Failed to end tournament day: {}", e)))
     }
-    
+
     /// Get active tournament
     pub async fn get_active_tournament(&self) -> AppResult<Option<Tournament>> {
-        let conn = self.database.get_connection().await
-            .map_err(|e| AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
-        
+        let conn = self.database.get_connection().await.map_err(|e| {
+            AppError::ConfigError(format!("Failed to get database connection: {}", e))
+        })?;
+
         TournamentOperations::get_active_tournament(&*conn)
             .map_err(|e| AppError::ConfigError(format!("Failed to get active tournament: {}", e)))
     }
-    
+
     /// Get active tournament day
-    pub async fn get_active_tournament_day(&self, tournament_id: i64) -> AppResult<Option<TournamentDay>> {
-        let conn = self.database.get_connection().await
-            .map_err(|e| AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
-        
-        TournamentOperations::get_active_tournament_day(&*conn, tournament_id)
-            .map_err(|e| AppError::ConfigError(format!("Failed to get active tournament day: {}", e)))
+    pub async fn get_active_tournament_day(
+        &self,
+        tournament_id: i64,
+    ) -> AppResult<Option<TournamentDay>> {
+        let conn = self.database.get_connection().await.map_err(|e| {
+            AppError::ConfigError(format!("Failed to get database connection: {}", e))
+        })?;
+
+        TournamentOperations::get_active_tournament_day(&*conn, tournament_id).map_err(|e| {
+            AppError::ConfigError(format!("Failed to get active tournament day: {}", e))
+        })
     }
-    
+
     /// Update tournament logo
-    pub async fn update_tournament_logo(&self, tournament_id: i64, logo_path: String) -> AppResult<()> {
-        let mut conn = self.database.get_connection().await
-            .map_err(|e| AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
-        
+    pub async fn update_tournament_logo(
+        &self,
+        tournament_id: i64,
+        logo_path: String,
+    ) -> AppResult<()> {
+        let mut conn = self.database.get_connection().await.map_err(|e| {
+            AppError::ConfigError(format!("Failed to get database connection: {}", e))
+        })?;
+
         TournamentOperations::update_tournament_logo(&mut *conn, tournament_id, &logo_path)
             .map_err(|e| AppError::ConfigError(format!("Failed to update tournament logo: {}", e)))
     }
-    
+
     /// Verify city and country using OpenStreetMap Nominatim API
-    pub async fn verify_city_country(&self, city: String, country: String) -> AppResult<LocationVerification> {
+    pub async fn verify_city_country(
+        &self,
+        city: String,
+        country: String,
+    ) -> AppResult<LocationVerification> {
         tokio::task::spawn_blocking(move || {
             let client = reqwest::blocking::Client::builder()
                 .timeout(std::time::Duration::from_secs(10))
                 .build()
-                .map_err(|e| AppError::ConfigError(format!("Failed to create HTTP client: {}", e)))?;
-            
+                .map_err(|e| {
+                    AppError::ConfigError(format!("Failed to create HTTP client: {}", e))
+                })?;
+
             let query = format!("{}, {}", city, country);
             let encoded_query = urlencoding::encode(&query);
-            let url = format!("https://nominatim.openstreetmap.org/search?q={}&format=json&limit=1", encoded_query);
-            
-            let response = client.get(&url)
+            let url = format!(
+                "https://nominatim.openstreetmap.org/search?q={}&format=json&limit=1",
+                encoded_query
+            );
+
+            let response = client
+                .get(&url)
                 .header("User-Agent", "reStrike-VTA-Tournament-Manager/1.0")
                 .send();
-            
+
             match response {
                 Ok(response) => {
                     if !response.status().is_success() {
@@ -214,7 +266,7 @@ impl TournamentPlugin {
                             display_name: None,
                         });
                     }
-                    
+
                     match response.json::<Vec<serde_json::Value>>() {
                         Ok(data) => {
                             if data.is_empty() {
@@ -224,17 +276,20 @@ impl TournamentPlugin {
                                     display_name: None,
                                 });
                             }
-                            
+
                             let result = &data[0];
-                            let display_name = result["display_name"].as_str().unwrap_or("").to_string();
-                            let country_code = result["address"]["country_code"].as_str().map(|s| s.to_uppercase());
-                            
+                            let display_name =
+                                result["display_name"].as_str().unwrap_or("").to_string();
+                            let country_code = result["address"]["country_code"]
+                                .as_str()
+                                .map(|s| s.to_uppercase());
+
                             Ok(LocationVerification {
                                 verified: true,
                                 country_code,
                                 display_name: Some(display_name),
                             })
-                        },
+                        }
                         Err(_) => {
                             // JSON parsing failed, return unverified
                             Ok(LocationVerification {
@@ -244,7 +299,7 @@ impl TournamentPlugin {
                             })
                         }
                     }
-                },
+                }
                 Err(e) => {
                     // Network error - return unverified instead of failing
                     log::warn!("Location verification failed for '{}': {}", query, e);
@@ -255,43 +310,48 @@ impl TournamentPlugin {
                     })
                 }
             }
-        }).await
+        })
+        .await
         .map_err(|e| AppError::ConfigError(format!("Task join error: {}", e)))?
     }
 
     /// Get tournament statistics from PSS tables
-    pub async fn get_tournament_statistics(&self, tournament_id: i64) -> AppResult<TournamentStatistics> {
-        let conn = self.database.get_connection().await
-            .map_err(|e| AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
-        
+    pub async fn get_tournament_statistics(
+        &self,
+        tournament_id: i64,
+    ) -> AppResult<TournamentStatistics> {
+        let conn = self.database.get_connection().await.map_err(|e| {
+            AppError::ConfigError(format!("Failed to get database connection: {}", e))
+        })?;
+
         // Get total matches
         let total_matches: i64 = conn.query_row(
             "SELECT COUNT(*) FROM pss_matches WHERE tournament_id = (SELECT uuid FROM tournaments WHERE id = ?)",
             params![tournament_id],
             |row| row.get(0)
         ).unwrap_or(0);
-        
+
         // Get total events
         let total_events: i64 = conn.query_row(
             "SELECT COUNT(*) FROM pss_events WHERE tournament_id = (SELECT uuid FROM tournaments WHERE id = ?)",
             params![tournament_id],
             |row| row.get(0)
         ).unwrap_or(0);
-        
+
         // Get total scores
         let total_scores: i64 = conn.query_row(
             "SELECT COUNT(*) FROM pss_scores WHERE tournament_id = (SELECT uuid FROM tournaments WHERE id = ?)",
             params![tournament_id],
             |row| row.get(0)
         ).unwrap_or(0);
-        
+
         // Get total warnings
         let total_warnings: i64 = conn.query_row(
             "SELECT COUNT(*) FROM pss_warnings WHERE tournament_id = (SELECT uuid FROM tournaments WHERE id = ?)",
             params![tournament_id],
             |row| row.get(0)
         ).unwrap_or(0);
-        
+
         Ok(TournamentStatistics {
             total_matches,
             total_events,

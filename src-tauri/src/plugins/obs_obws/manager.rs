@@ -1,13 +1,13 @@
 //! OBS Manager implementation for managing multiple OBS connections
 
+use super::client::ObsClient;
+use super::types::{
+    ObsConnectionConfig, ObsConnectionInfo, ObsConnectionStatus, ObsEvent, ObsStatus,
+};
+use crate::types::{AppError, AppResult};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use crate::types::{AppError, AppResult};
-use super::client::ObsClient;
-use super::types::{
-    ObsConnectionConfig, ObsConnectionStatus, ObsStatus, ObsConnectionInfo, ObsEvent
-};
 
 /// OBS Manager for handling multiple OBS connections
 pub struct ObsManager {
@@ -28,52 +28,66 @@ impl ObsManager {
     pub async fn add_connection(&self, config: ObsConnectionConfig) -> AppResult<()> {
         let mut clients = self.clients.lock().await;
         if clients.contains_key(&config.name) {
-            return Err(AppError::ConfigError(format!("Connection '{}' already exists", config.name)));
+            return Err(AppError::ConfigError(format!(
+                "Connection '{}' already exists",
+                config.name
+            )));
         }
-        
+
         let client = ObsClient::new(config.clone());
         clients.insert(config.name.clone(), Arc::new(Mutex::new(client)));
-        
+
         // Set as default if it's the first connection
         if clients.len() == 1 {
             let mut default = self.default_connection.lock().await;
             *default = Some(config.name.clone());
         }
-        
+
         log::info!("Added OBS connection: {}", config.name);
         Ok(())
     }
 
     /// Update an existing OBS connection configuration
-    pub async fn update_connection(&self, old_name: &str, new_config: ObsConnectionConfig) -> AppResult<()> {
+    pub async fn update_connection(
+        &self,
+        old_name: &str,
+        new_config: ObsConnectionConfig,
+    ) -> AppResult<()> {
         let mut clients = self.clients.lock().await;
-        
+
         // Check if the old connection exists
         if !clients.contains_key(old_name) {
-            return Err(AppError::ConfigError(format!("Connection '{}' not found", old_name)));
+            return Err(AppError::ConfigError(format!(
+                "Connection '{}' not found",
+                old_name
+            )));
         }
-        
+
         // If the name is being changed, check if the new name already exists
         if old_name != new_config.name && clients.contains_key(&new_config.name) {
-            return Err(AppError::ConfigError(format!("Connection '{}' already exists", new_config.name)));
+            return Err(AppError::ConfigError(format!(
+                "Connection '{}' already exists",
+                new_config.name
+            )));
         }
-        
+
         // Get the existing client to preserve its state
         let existing_client_arc = clients.remove(old_name).unwrap();
         let existing_client = existing_client_arc.lock().await;
-        let was_connected = existing_client.get_connection_status() == ObsConnectionStatus::Connected;
-        
+        let was_connected =
+            existing_client.get_connection_status() == ObsConnectionStatus::Connected;
+
         // Drop the lock to avoid deadlock
         drop(existing_client);
         drop(existing_client_arc);
-        
+
         // Create new client with updated configuration
         let new_client = ObsClient::new(new_config.clone());
         let new_client_arc = Arc::new(Mutex::new(new_client));
-        
+
         // Clone the Arc for later use
         let new_client_arc_clone = new_client_arc.clone();
-        
+
         // Insert the new client
         if old_name == new_config.name {
             // Same name, just update the configuration
@@ -81,7 +95,7 @@ impl ObsManager {
         } else {
             // Different name, insert with new name
             clients.insert(new_config.name.clone(), new_client_arc);
-            
+
             // Update default connection if this was the default
             let mut default = self.default_connection.lock().await;
             if let Some(ref default_name) = *default {
@@ -90,7 +104,7 @@ impl ObsManager {
                 }
             }
         }
-        
+
         // If the connection was connected, try to reconnect with new settings
         if was_connected {
             let mut new_client = new_client_arc_clone.lock().await;
@@ -98,8 +112,12 @@ impl ObsManager {
                 log::warn!("Warning: Failed to reconnect after update: {}", e);
             }
         }
-        
-        log::info!("Updated OBS connection: {} -> {}", old_name, new_config.name);
+
+        log::info!(
+            "Updated OBS connection: {} -> {}",
+            old_name,
+            new_config.name
+        );
         Ok(())
     }
 
@@ -112,7 +130,7 @@ impl ObsManager {
             if let Err(e) = client.disconnect().await {
                 log::warn!("Warning: Failed to disconnect client '{}': {}", name, e);
             }
-            
+
             // Update default connection if this was the default
             let mut default = self.default_connection.lock().await;
             if let Some(ref default_name) = *default {
@@ -120,11 +138,14 @@ impl ObsManager {
                     *default = clients.keys().next().cloned();
                 }
             }
-            
+
             log::info!("Removed OBS connection: {}", name);
             Ok(())
         } else {
-            Err(AppError::ConfigError(format!("Connection '{}' not found", name)))
+            Err(AppError::ConfigError(format!(
+                "Connection '{}' not found",
+                name
+            )))
         }
     }
 
@@ -137,7 +158,10 @@ impl ObsManager {
             log::info!("Connected to OBS: {}", name);
             Ok(())
         } else {
-            Err(AppError::ConfigError(format!("Connection '{}' not found", name)))
+            Err(AppError::ConfigError(format!(
+                "Connection '{}' not found",
+                name
+            )))
         }
     }
 
@@ -150,7 +174,10 @@ impl ObsManager {
             log::info!("Disconnected from OBS: {}", name);
             Ok(())
         } else {
-            Err(AppError::ConfigError(format!("Connection '{}' not found", name)))
+            Err(AppError::ConfigError(format!(
+                "Connection '{}' not found",
+                name
+            )))
         }
     }
 
@@ -161,7 +188,10 @@ impl ObsManager {
             let client = client_arc.lock().await;
             Ok(client.get_connection_status())
         } else {
-            Err(AppError::ConfigError(format!("Connection '{}' not found", name)))
+            Err(AppError::ConfigError(format!(
+                "Connection '{}' not found",
+                name
+            )))
         }
     }
 
@@ -170,7 +200,10 @@ impl ObsManager {
         let clients = self.clients.lock().await;
         match clients.get(name) {
             Some(client) => Ok(client.clone()),
-            None => Err(AppError::ConfigError(format!("Connection '{}' not found", name))),
+            None => Err(AppError::ConfigError(format!(
+                "Connection '{}' not found",
+                name
+            ))),
         }
     }
 
@@ -178,7 +211,7 @@ impl ObsManager {
     pub async fn get_connections(&self) -> AppResult<Vec<ObsConnectionInfo>> {
         let clients = self.clients.lock().await;
         let _default = self.default_connection.lock().await;
-        
+
         let mut connections = Vec::new();
         for (name, client_arc) in clients.iter() {
             let client = client_arc.lock().await;
@@ -191,7 +224,7 @@ impl ObsManager {
                 last_activity: None, // TODO: Track last activity
             });
         }
-        
+
         Ok(connections)
     }
 
@@ -199,9 +232,12 @@ impl ObsManager {
     pub async fn set_default_connection(&self, name: &str) -> AppResult<()> {
         let clients = self.clients.lock().await;
         if !clients.contains_key(name) {
-            return Err(AppError::ConfigError(format!("Connection '{}' not found", name)));
+            return Err(AppError::ConfigError(format!(
+                "Connection '{}' not found",
+                name
+            )));
         }
-        
+
         let mut default = self.default_connection.lock().await;
         *default = Some(name.to_string());
         log::info!("Set default OBS connection: {}", name);
@@ -220,12 +256,15 @@ impl ObsManager {
             Some(n) => n.to_string(),
             None => {
                 let default = self.default_connection.lock().await;
-                default.as_ref().ok_or_else(|| {
-                    AppError::ConfigError("No default OBS connection set".to_string())
-                })?.clone()
+                default
+                    .as_ref()
+                    .ok_or_else(|| {
+                        AppError::ConfigError("No default OBS connection set".to_string())
+                    })?
+                    .clone()
             }
         };
-        
+
         let clients = self.clients.lock().await;
         clients.get(&connection_name).cloned().ok_or_else(|| {
             AppError::ConfigError(format!("Connection '{}' not found", connection_name))
@@ -245,7 +284,10 @@ impl ObsManager {
         client.stop_recording().await
     }
 
-    pub async fn get_recording_status(&self, connection_name: Option<&str>) -> AppResult<super::types::ObsRecordingStatus> {
+    pub async fn get_recording_status(
+        &self,
+        connection_name: Option<&str>,
+    ) -> AppResult<super::types::ObsRecordingStatus> {
         let client_arc = self.get_client_ref(connection_name).await?;
         let client = client_arc.lock().await;
         client.get_recording_status().await
@@ -264,7 +306,10 @@ impl ObsManager {
         client.stop_streaming().await
     }
 
-    pub async fn get_streaming_status(&self, connection_name: Option<&str>) -> AppResult<super::types::ObsStreamingStatus> {
+    pub async fn get_streaming_status(
+        &self,
+        connection_name: Option<&str>,
+    ) -> AppResult<super::types::ObsStreamingStatus> {
         let client_arc = self.get_client_ref(connection_name).await?;
         let client = client_arc.lock().await;
         client.get_streaming_status().await
@@ -289,7 +334,10 @@ impl ObsManager {
         client.save_replay_buffer().await
     }
 
-    pub async fn get_replay_buffer_status(&self, connection_name: Option<&str>) -> AppResult<super::types::ObsReplayBufferStatus> {
+    pub async fn get_replay_buffer_status(
+        &self,
+        connection_name: Option<&str>,
+    ) -> AppResult<super::types::ObsReplayBufferStatus> {
         let client_arc = self.get_client_ref(connection_name).await?;
         let client = client_arc.lock().await;
         client.get_replay_buffer_status().await
@@ -308,7 +356,10 @@ impl ObsManager {
         client.stop_virtual_camera().await
     }
 
-    pub async fn get_virtual_camera_status(&self, connection_name: Option<&str>) -> AppResult<super::types::ObsVirtualCameraStatus> {
+    pub async fn get_virtual_camera_status(
+        &self,
+        connection_name: Option<&str>,
+    ) -> AppResult<super::types::ObsVirtualCameraStatus> {
         let client_arc = self.get_client_ref(connection_name).await?;
         let client = client_arc.lock().await;
         client.get_virtual_camera_status().await
@@ -321,13 +372,20 @@ impl ObsManager {
         client.get_current_scene().await
     }
 
-    pub async fn set_current_scene(&self, scene_name: &str, connection_name: Option<&str>) -> AppResult<()> {
+    pub async fn set_current_scene(
+        &self,
+        scene_name: &str,
+        connection_name: Option<&str>,
+    ) -> AppResult<()> {
         let client_arc = self.get_client_ref(connection_name).await?;
         let client = client_arc.lock().await;
         client.set_current_scene(scene_name).await
     }
 
-    pub async fn get_scenes(&self, connection_name: Option<&str>) -> AppResult<Vec<super::types::ObsScene>> {
+    pub async fn get_scenes(
+        &self,
+        connection_name: Option<&str>,
+    ) -> AppResult<Vec<super::types::ObsScene>> {
         let client_arc = self.get_client_ref(connection_name).await?;
         let client = client_arc.lock().await;
         client.get_scenes().await
@@ -340,33 +398,50 @@ impl ObsManager {
         client.get_status().await
     }
 
-    pub async fn get_version(&self, connection_name: Option<&str>) -> AppResult<super::types::ObsVersion> {
+    pub async fn get_version(
+        &self,
+        connection_name: Option<&str>,
+    ) -> AppResult<super::types::ObsVersion> {
         let client_arc = self.get_client_ref(connection_name).await?;
         let client = client_arc.lock().await;
         client.get_version().await
     }
 
-    pub async fn get_stats(&self, connection_name: Option<&str>) -> AppResult<super::types::ObsStats> {
+    pub async fn get_stats(
+        &self,
+        connection_name: Option<&str>,
+    ) -> AppResult<super::types::ObsStats> {
         let client_arc = self.get_client_ref(connection_name).await?;
         let client = client_arc.lock().await;
         client.get_stats().await
     }
 
     // Configuration operations
-    pub async fn set_record_directory(&self, directory: &str, connection_name: Option<&str>) -> AppResult<()> {
+    pub async fn set_record_directory(
+        &self,
+        directory: &str,
+        connection_name: Option<&str>,
+    ) -> AppResult<()> {
         let client_arc = self.get_client_ref(connection_name).await?;
         let client = client_arc.lock().await;
         client.set_record_directory(directory).await
     }
 
-    pub async fn set_filename_formatting(&self, formatting: &str, connection_name: Option<&str>) -> AppResult<()> {
+    pub async fn set_filename_formatting(
+        &self,
+        formatting: &str,
+        connection_name: Option<&str>,
+    ) -> AppResult<()> {
         let client_arc = self.get_client_ref(connection_name).await?;
         let client = client_arc.lock().await;
         client.set_filename_formatting(formatting).await
     }
 
     // Replay helpers
-    pub async fn get_last_replay_filename(&self, connection_name: Option<&str>) -> AppResult<String> {
+    pub async fn get_last_replay_filename(
+        &self,
+        connection_name: Option<&str>,
+    ) -> AppResult<String> {
         let client_arc = self.get_client_ref(connection_name).await?;
         let client = client_arc.lock().await;
         client.get_last_replay_filename().await
@@ -379,14 +454,22 @@ impl ObsManager {
         client.get_record_directory().await
     }
 
-    pub async fn get_filename_formatting(&self, connection_name: Option<&str>) -> AppResult<String> {
+    pub async fn get_filename_formatting(
+        &self,
+        connection_name: Option<&str>,
+    ) -> AppResult<String> {
         let client_arc = self.get_client_ref(connection_name).await?;
         let client = client_arc.lock().await;
         client.get_filename_formatting().await
     }
 
     // Event handling
-    pub async fn add_event_handler<F>(&self, event_type: String, handler: F, connection_name: Option<&str>) -> AppResult<()>
+    pub async fn add_event_handler<F>(
+        &self,
+        event_type: String,
+        handler: F,
+        connection_name: Option<&str>,
+    ) -> AppResult<()>
     where
         F: Fn(ObsEvent) + Send + Sync + 'static,
     {
@@ -395,7 +478,11 @@ impl ObsManager {
         client.add_event_handler(event_type, handler).await
     }
 
-    pub async fn remove_event_handler(&self, event_type: &str, connection_name: Option<&str>) -> AppResult<()> {
+    pub async fn remove_event_handler(
+        &self,
+        event_type: &str,
+        connection_name: Option<&str>,
+    ) -> AppResult<()> {
         let client_arc = self.get_client_ref(connection_name).await?;
         let client = client_arc.lock().await;
         client.remove_event_handler(event_type).await
@@ -411,10 +498,10 @@ impl ObsManager {
             }
         }
         clients.clear();
-        
+
         let mut default = self.default_connection.lock().await;
         *default = None;
-        
+
         log::info!("OBS Manager shutdown complete");
         Ok(())
     }
@@ -444,7 +531,10 @@ impl ObsManager {
     }
 
     /// Get audio sources for a specific connection
-    pub async fn get_audio_sources(&self, connection_name: Option<&str>) -> AppResult<Vec<super::types::ObsSource>> {
+    pub async fn get_audio_sources(
+        &self,
+        connection_name: Option<&str>,
+    ) -> AppResult<Vec<super::types::ObsSource>> {
         let client = self.get_client_ref(connection_name).await?;
         let client_guard = client.lock().await;
 
@@ -452,19 +542,37 @@ impl ObsManager {
     }
 
     /// Set mute status for a source on a specific connection
-    pub async fn set_source_mute(&self, _source_name: &str, _muted: bool, _connection_name: Option<&str>) -> AppResult<()> {
+    pub async fn set_source_mute(
+        &self,
+        _source_name: &str,
+        _muted: bool,
+        _connection_name: Option<&str>,
+    ) -> AppResult<()> {
         // Individual input mute control is not available in obws
-        Err(AppError::ConfigError("Individual input mute control not supported by obws".to_string()))
+        Err(AppError::ConfigError(
+            "Individual input mute control not supported by obws".to_string(),
+        ))
     }
 
     /// Set volume for a source on a specific connection
-    pub async fn set_source_volume(&self, _source_name: &str, _volume: f64, _connection_name: Option<&str>) -> AppResult<()> {
+    pub async fn set_source_volume(
+        &self,
+        _source_name: &str,
+        _volume: f64,
+        _connection_name: Option<&str>,
+    ) -> AppResult<()> {
         // Individual input volume control is not available in obws
-        Err(AppError::ConfigError("Individual input volume control not supported by obws".to_string()))
+        Err(AppError::ConfigError(
+            "Individual input volume control not supported by obws".to_string(),
+        ))
     }
 
     /// Execute custom operation on a specific connection
-    pub async fn execute_custom_operation(&self, request: super::types::ObsOperationRequest, connection_name: Option<&str>) -> AppResult<super::types::ObsOperationResponse> {
+    pub async fn execute_custom_operation(
+        &self,
+        request: super::types::ObsOperationRequest,
+        connection_name: Option<&str>,
+    ) -> AppResult<super::types::ObsOperationResponse> {
         let client = self.get_client_ref(connection_name).await?;
         let client_guard = client.lock().await;
 
@@ -472,11 +580,18 @@ impl ObsManager {
     }
 
     /// Execute raw OBS WebSocket request on a specific connection
-    pub async fn execute_raw_request(&self, request_type: &str, request_data: serde_json::Value, connection_name: Option<&str>) -> AppResult<serde_json::Value> {
+    pub async fn execute_raw_request(
+        &self,
+        request_type: &str,
+        request_data: serde_json::Value,
+        connection_name: Option<&str>,
+    ) -> AppResult<serde_json::Value> {
         let client = self.get_client_ref(connection_name).await?;
         let client_guard = client.lock().await;
 
-        client_guard.execute_raw_request(request_type, request_data).await
+        client_guard
+            .execute_raw_request(request_type, request_data)
+            .await
     }
 
     /// Set up status listener for all connections
@@ -485,7 +600,11 @@ impl ObsManager {
         for (name, client_arc) in clients.iter() {
             let client = client_arc.lock().await;
             if let Err(e) = client.setup_status_listener().await {
-                log::warn!("Warning: Failed to set up status listener for '{}': {}", name, e);
+                log::warn!(
+                    "Warning: Failed to set up status listener for '{}': {}",
+                    name,
+                    e
+                );
             }
         }
         Ok(())

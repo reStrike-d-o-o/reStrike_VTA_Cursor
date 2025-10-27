@@ -195,6 +195,56 @@ export interface TauriCommandResponse<T = any> {
 }
 
 // ============================================================================
+// OpenAPI Integration Types
+// ============================================================================
+
+export type SchemaFormat = 'json' | 'yaml';
+
+export interface SchemaValidationError {
+  message: string;
+  pointer?: string | null;
+  line?: number | null;
+  column?: number | null;
+}
+
+export interface SchemaValidationOutcome {
+  format: SchemaFormat;
+  valid: boolean;
+  errors: SchemaValidationError[];
+}
+
+export interface OpenApiEndpoints {
+  base_url: string;
+  json: string;
+  yaml: string;
+  health: string;
+}
+
+export interface OpenApiStateResponse {
+  schema: string;
+  format: SchemaFormat;
+  updated_at: string;
+  validation: SchemaValidationOutcome;
+  endpoints: OpenApiEndpoints;
+}
+
+export interface OpenApiSaveResponse {
+  format: SchemaFormat;
+  updated_at: string;
+  validation: SchemaValidationOutcome;
+}
+
+export interface OpenApiUploadResponse {
+  schema: string;
+  format: SchemaFormat;
+  validation: SchemaValidationOutcome;
+}
+
+export interface OpenApiValidateResponse {
+  validation: SchemaValidationOutcome;
+}
+
+// ============================================================================
 // Flag System Types
 // ============================================================================
 

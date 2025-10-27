@@ -1,8 +1,8 @@
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use tokio::time::{Duration, interval};
-use serde::{Serialize, Deserialize};
+use tokio::time::{interval, Duration};
 // use crate::database::models::PssEventV2;
 use crate::plugins::event_cache::{EventCache, MatchStatistics};
 use crate::AppResult;
@@ -286,7 +286,7 @@ impl AdvancedAnalytics {
     /// Start the analytics system
     pub async fn start(&mut self) -> AppResult<()> {
         log::info!("Starting Advanced Analytics...");
-        
+
         let cache = self.cache.clone();
         let config = self.config.clone();
         let tournament_analytics = self.tournament_analytics.clone();
@@ -294,9 +294,9 @@ impl AdvancedAnalytics {
         let athlete_analytics = self.athlete_analytics.clone();
         let match_analytics = self.match_analytics.clone();
         let analytics_history = self.analytics_history.clone();
-        
+
         let analytics_interval = Duration::from_millis(config.update_interval_ms);
-        
+
         let analytics_handle = tokio::spawn(async move {
             Self::analytics_update_loop(
                 cache,
@@ -307,7 +307,8 @@ impl AdvancedAnalytics {
                 match_analytics,
                 analytics_history,
                 analytics_interval,
-            ).await;
+            )
+            .await;
         });
 
         let mut analytics_task = self.analytics_task.write().await;
@@ -320,7 +321,7 @@ impl AdvancedAnalytics {
     /// Stop the analytics system
     pub async fn stop(&self) -> AppResult<()> {
         log::info!("Stopping Advanced Analytics...");
-        
+
         if let Some(analytics_handle) = self.analytics_task.write().await.take() {
             analytics_handle.abort();
         }
@@ -368,20 +369,24 @@ impl AdvancedAnalytics {
         interval_duration: Duration,
     ) {
         let mut interval_timer = interval(interval_duration);
-        
+
         loop {
             interval_timer.tick().await;
-            
+
             // Update tournament analytics
             if config.enable_tournament_analytics {
-                if let Err(e) = Self::update_tournament_analytics(&cache, &tournament_analytics).await {
+                if let Err(e) =
+                    Self::update_tournament_analytics(&cache, &tournament_analytics).await
+                {
                     log::warn!("Failed to update tournament analytics: {}", e);
                 }
             }
 
             // Update performance analytics
             if config.enable_performance_analytics {
-                if let Err(e) = Self::update_performance_analytics(&cache, &performance_analytics).await {
+                if let Err(e) =
+                    Self::update_performance_analytics(&cache, &performance_analytics).await
+                {
                     log::warn!("Failed to update performance analytics: {}", e);
                 }
             }
@@ -404,7 +409,9 @@ impl AdvancedAnalytics {
                 &match_analytics,
                 &analytics_history,
                 &config,
-            ).await {
+            )
+            .await
+            {
                 log::warn!("Failed to store analytics snapshot: {}", e);
             }
         }
@@ -416,10 +423,10 @@ impl AdvancedAnalytics {
         tournament_analytics: &Arc<RwLock<TournamentAnalytics>>,
     ) -> AppResult<()> {
         let mut analytics = tournament_analytics.write().await;
-        
+
         // Get cache statistics
         let _cache_stats = cache.get_cache_stats().await;
-        
+
         // Update performance metrics
         analytics.performance_metrics = PerformanceMetrics {
             events_per_second: 0.0, // Would be calculated from actual data
@@ -429,9 +436,9 @@ impl AdvancedAnalytics {
             memory_usage_mb: 0,
             cpu_usage_percent: 0.0,
         };
-        
+
         analytics.last_updated = std::time::SystemTime::now();
-        
+
         Ok(())
     }
 
@@ -441,10 +448,10 @@ impl AdvancedAnalytics {
         performance_analytics: &Arc<RwLock<PerformanceAnalytics>>,
     ) -> AppResult<()> {
         let mut analytics = performance_analytics.write().await;
-        
+
         // Get cache statistics
         let _cache_stats = cache.get_cache_stats().await;
-        
+
         // Update cache performance
         analytics.cache_performance = CachePerformance {
             hit_rate: 0.0, // Would be calculated from actual data
@@ -453,9 +460,9 @@ impl AdvancedAnalytics {
             memory_usage_mb: 0,
             total_entries: 0, // Placeholder value since cache_stats is a placeholder
         };
-        
+
         analytics.last_updated = std::time::SystemTime::now();
-        
+
         Ok(())
     }
 
@@ -465,11 +472,11 @@ impl AdvancedAnalytics {
         athlete_analytics: &Arc<RwLock<AthleteAnalytics>>,
     ) -> AppResult<()> {
         let mut analytics = athlete_analytics.write().await;
-        
+
         // This would be populated with actual athlete data from the cache
         // For now, we'll just update the timestamp
         analytics.last_updated = std::time::SystemTime::now();
-        
+
         Ok(())
     }
 
@@ -479,11 +486,11 @@ impl AdvancedAnalytics {
         match_analytics: &Arc<RwLock<MatchAnalytics>>,
     ) -> AppResult<()> {
         let mut analytics = match_analytics.write().await;
-        
+
         // This would be populated with actual match data from the cache
         // For now, we'll just update the timestamp
         analytics.last_updated = std::time::SystemTime::now();
-        
+
         Ok(())
     }
 
@@ -506,12 +513,12 @@ impl AdvancedAnalytics {
 
         let mut history = analytics_history.write().await;
         history.push(snapshot);
-        
+
         // Maintain history size limit
         if history.len() > config.max_analytics_history {
             history.remove(0);
         }
-        
+
         Ok(())
     }
-} 
+}

@@ -1,10 +1,10 @@
-use sqlx::{SqlitePool, Sqlite};
-use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode};
-use std::path::PathBuf;
-use std::time::Duration;
-use std::fs;
-use std::str::FromStr;
 use crate::database::{DatabaseError, DatabaseResult, DATABASE_FILE};
+use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode};
+use sqlx::{Sqlite, SqlitePool};
+use std::fs;
+use std::path::PathBuf;
+use std::str::FromStr;
+use std::time::Duration;
 
 /// Async database connection using sqlx for thread-safe operations
 /// This is specifically designed for use with Tauri commands and async operations
@@ -18,32 +18,30 @@ impl AsyncDatabaseConnection {
     /// Create a new async database connection
     pub async fn new(data_dir: &PathBuf) -> DatabaseResult<Self> {
         let db_path = data_dir.join(DATABASE_FILE);
-        
+
         // Ensure the directory exists
         if let Some(parent) = db_path.parent() {
             fs::create_dir_all(parent).map_err(DatabaseError::Io)?;
         }
 
         // Create connection options with optimizations
-        let connection_options = SqliteConnectOptions::from_str(&format!("sqlite:{}", db_path.display()))
-            .map_err(|e| DatabaseError::Connection(e.to_string()))?
-            .create_if_missing(true)
-            .journal_mode(SqliteJournalMode::Wal)
-            .synchronous(sqlx::sqlite::SqliteSynchronous::Normal)
-            .busy_timeout(Duration::from_secs(30))
-            .pragma("cache_size", "-65536") // 64MB cache
-            .pragma("temp_store", "memory")
-            .pragma("recursive_triggers", "on");
+        let connection_options =
+            SqliteConnectOptions::from_str(&format!("sqlite:{}", db_path.display()))
+                .map_err(|e| DatabaseError::Connection(e.to_string()))?
+                .create_if_missing(true)
+                .journal_mode(SqliteJournalMode::Wal)
+                .synchronous(sqlx::sqlite::SqliteSynchronous::Normal)
+                .busy_timeout(Duration::from_secs(30))
+                .pragma("cache_size", "-65536") // 64MB cache
+                .pragma("temp_store", "memory")
+                .pragma("recursive_triggers", "on");
 
         // Create connection pool
         let pool = SqlitePool::connect_with(connection_options)
             .await
             .map_err(DatabaseError::AsyncSqlite)?;
 
-        Ok(Self {
-            pool,
-            db_path,
-        })
+        Ok(Self { pool, db_path })
     }
 
     /// Get a reference to the connection pool
@@ -71,7 +69,8 @@ impl AsyncDatabaseConnection {
         for param in params {
             query = query.bind(param);
         }
-        let result = query.execute(&self.pool)
+        let result = query
+            .execute(&self.pool)
             .await
             .map_err(DatabaseError::AsyncSqlite)?;
         Ok(result.rows_affected())
@@ -87,7 +86,7 @@ impl AsyncDatabaseConnection {
             .fetch_optional(&self.pool)
             .await
             .map_err(DatabaseError::AsyncSqlite)?;
-            
+
         match row {
             Some(row) => Ok(Some(f(&row).map_err(DatabaseError::AsyncSqlite)?)),
             None => Ok(None),
@@ -114,7 +113,11 @@ impl AsyncDatabaseConnection {
 
     /// Begin a transaction
     pub async fn begin_transaction(&self) -> DatabaseResult<sqlx::Transaction<'_, Sqlite>> {
-        let tx = self.pool.begin().await.map_err(DatabaseError::AsyncSqlite)?;
+        let tx = self
+            .pool
+            .begin()
+            .await
+            .map_err(DatabaseError::AsyncSqlite)?;
         Ok(tx)
     }
 
@@ -124,12 +127,17 @@ impl AsyncDatabaseConnection {
     }
 
     /// Execute a prepared statement with string parameters
-    pub async fn execute_with_string_params(&self, sql: &str, params: Vec<String>) -> DatabaseResult<u64> {
+    pub async fn execute_with_string_params(
+        &self,
+        sql: &str,
+        params: Vec<String>,
+    ) -> DatabaseResult<u64> {
         let mut query = sqlx::query(sql);
         for param in params {
             query = query.bind(param);
         }
-        let result = query.execute(&self.pool)
+        let result = query
+            .execute(&self.pool)
             .await
             .map_err(DatabaseError::AsyncSqlite)?;
         Ok(result.rows_affected())

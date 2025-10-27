@@ -2,10 +2,10 @@
 // Provides comprehensive YouTube Data API v3 integration for playlist and stream management
 // Uses existing oauth2 and reqwest dependencies for authentication and HTTP requests
 
-use crate::types::{AppResult, AppError};
-use oauth2::{ClientId, ClientSecret, RedirectUrl, Scope, TokenResponse};
+use crate::types::{AppError, AppResult};
 use oauth2::basic::BasicClient;
 use oauth2::reqwest::async_http_client;
+use oauth2::{ClientId, ClientSecret, RedirectUrl, Scope, TokenResponse};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -23,7 +23,6 @@ pub struct YouTubeApiConfig {
 
 /// YouTube API client
 pub struct YouTubeApiClient {
-    
     oauth_client: BasicClient,
     http_client: Client,
     access_token: Arc<Mutex<Option<String>>>,
@@ -86,7 +85,8 @@ impl YouTubeApiClient {
         let oauth_client = BasicClient::new(
             ClientId::new(config.client_id.clone()),
             Some(ClientSecret::new(config.client_secret.clone())),
-            oauth2::AuthUrl::new("https://accounts.google.com/o/oauth2/v2/auth".to_string()).unwrap(),
+            oauth2::AuthUrl::new("https://accounts.google.com/o/oauth2/v2/auth".to_string())
+                .unwrap(),
             Some(oauth2::TokenUrl::new("https://oauth2.googleapis.com/token".to_string()).unwrap()),
         )
         .set_redirect_uri(RedirectUrl::new(config.redirect_url.clone()).unwrap());
@@ -103,11 +103,18 @@ impl YouTubeApiClient {
 
     /// Get OAuth authorization URL
     pub fn get_auth_url(&self) -> AppResult<String> {
-        let (auth_url, _csrf_token) = self.oauth_client
+        let (auth_url, _csrf_token) = self
+            .oauth_client
             .authorize_url(|| oauth2::CsrfToken::new_random())
-            .add_scope(Scope::new("https://www.googleapis.com/auth/youtube".to_string()))
-            .add_scope(Scope::new("https://www.googleapis.com/auth/youtube.force-ssl".to_string()))
-            .add_scope(Scope::new("https://www.googleapis.com/auth/youtube.readonly".to_string()))
+            .add_scope(Scope::new(
+                "https://www.googleapis.com/auth/youtube".to_string(),
+            ))
+            .add_scope(Scope::new(
+                "https://www.googleapis.com/auth/youtube.force-ssl".to_string(),
+            ))
+            .add_scope(Scope::new(
+                "https://www.googleapis.com/auth/youtube.readonly".to_string(),
+            ))
             .url();
 
         Ok(auth_url.to_string())
@@ -115,7 +122,8 @@ impl YouTubeApiClient {
 
     /// Exchange authorization code for access token
     pub async fn exchange_code(&self, code: &str) -> AppResult<()> {
-        let token_result = self.oauth_client
+        let token_result = self
+            .oauth_client
             .exchange_code(oauth2::AuthorizationCode::new(code.to_string()))
             .request_async(async_http_client)
             .await
@@ -135,18 +143,24 @@ impl YouTubeApiClient {
 
     /// Get access token
     async fn get_access_token(&self) -> AppResult<String> {
-        self.access_token.lock().await
-            .clone()
-            .ok_or_else(|| AppError::ConfigError("No access token available. Please authenticate first.".to_string()))
+        self.access_token.lock().await.clone().ok_or_else(|| {
+            AppError::ConfigError(
+                "No access token available. Please authenticate first.".to_string(),
+            )
+        })
     }
 
     /// Make authenticated request to YouTube API
-    async fn make_request<T>(&self, endpoint: &str, params: Option<HashMap<String, String>>) -> AppResult<T>
+    async fn make_request<T>(
+        &self,
+        endpoint: &str,
+        params: Option<HashMap<String, String>>,
+    ) -> AppResult<T>
     where
         T: for<'de> Deserialize<'de>,
     {
         let access_token = self.get_access_token().await?;
-        
+
         let mut url = format!("https://www.googleapis.com/youtube/v3/{}", endpoint);
         if let Some(mut params) = params {
             params.insert("access_token".to_string(), access_token);
@@ -160,7 +174,8 @@ impl YouTubeApiClient {
             url.push_str(&format!("?access_token={}", access_token));
         }
 
-        let response = self.http_client
+        let response = self
+            .http_client
             .get(&url)
             .send()
             .await
@@ -168,19 +183,28 @@ impl YouTubeApiClient {
 
         if !response.status().is_success() {
             let error_text = response.text().await.unwrap_or_default();
-            return Err(AppError::ConfigError(format!("YouTube API error: {}", error_text)));
+            return Err(AppError::ConfigError(format!(
+                "YouTube API error: {}",
+                error_text
+            )));
         }
 
-        let data: T = response.json().await
-            .map_err(|e| AppError::ConfigError(format!("Failed to parse YouTube API response: {}", e)))?;
+        let data: T = response.json().await.map_err(|e| {
+            AppError::ConfigError(format!("Failed to parse YouTube API response: {}", e))
+        })?;
 
         Ok(data)
     }
 
     /// Create a new YouTube playlist
-    pub async fn create_playlist(&self, title: &str, description: Option<&str>, privacy: &str) -> AppResult<YouTubePlaylist> {
+    pub async fn create_playlist(
+        &self,
+        title: &str,
+        description: Option<&str>,
+        privacy: &str,
+    ) -> AppResult<YouTubePlaylist> {
         let access_token = self.get_access_token().await?;
-        
+
         let playlist_data = serde_json::json!({
             "snippet": {
                 "title": title,
@@ -192,7 +216,8 @@ impl YouTubeApiClient {
             }
         });
 
-        let response = self.http_client
+        let response = self
+            .http_client
             .post("https://www.googleapis.com/youtube/v3/playlists?part=snippet,status")
             .header("Authorization", format!("Bearer {}", access_token))
             .header("Content-Type", "application/json")
@@ -203,45 +228,64 @@ impl YouTubeApiClient {
 
         if !response.status().is_success() {
             let error_text = response.text().await.unwrap_or_default();
-            return Err(AppError::ConfigError(format!("Failed to create playlist: {}", error_text)));
+            return Err(AppError::ConfigError(format!(
+                "Failed to create playlist: {}",
+                error_text
+            )));
         }
 
-        let playlist: YouTubePlaylist = response.json().await
-            .map_err(|e| AppError::ConfigError(format!("Failed to parse playlist response: {}", e)))?;
+        let playlist: YouTubePlaylist = response.json().await.map_err(|e| {
+            AppError::ConfigError(format!("Failed to parse playlist response: {}", e))
+        })?;
 
-        log::info!("Created YouTube playlist: {} ({})", playlist.title, playlist.id);
+        log::info!(
+            "Created YouTube playlist: {} ({})",
+            playlist.title,
+            playlist.id
+        );
         Ok(playlist)
     }
 
     /// Get user's playlists
     pub async fn get_playlists(&self, max_results: Option<u32>) -> AppResult<Vec<YouTubePlaylist>> {
         let mut params = HashMap::new();
-        params.insert("part".to_string(), "snippet,status,contentDetails".to_string());
+        params.insert(
+            "part".to_string(),
+            "snippet,status,contentDetails".to_string(),
+        );
         params.insert("mine".to_string(), "true".to_string());
         if let Some(max) = max_results {
             params.insert("maxResults".to_string(), max.to_string());
         }
 
-        let response: YouTubeApiResponse<YouTubePlaylist> = self.make_request("playlists", Some(params)).await?;
+        let response: YouTubeApiResponse<YouTubePlaylist> =
+            self.make_request("playlists", Some(params)).await?;
         Ok(response.items)
     }
 
     /// Get playlist by ID
     pub async fn get_playlist(&self, playlist_id: &str) -> AppResult<YouTubePlaylist> {
         let mut params = HashMap::new();
-        params.insert("part".to_string(), "snippet,status,contentDetails".to_string());
+        params.insert(
+            "part".to_string(),
+            "snippet,status,contentDetails".to_string(),
+        );
         params.insert("id".to_string(), playlist_id.to_string());
 
-        let response: YouTubeApiResponse<YouTubePlaylist> = self.make_request("playlists", Some(params)).await?;
-        
-        response.items.into_iter().next()
+        let response: YouTubeApiResponse<YouTubePlaylist> =
+            self.make_request("playlists", Some(params)).await?;
+
+        response
+            .items
+            .into_iter()
+            .next()
             .ok_or_else(|| AppError::ConfigError("Playlist not found".to_string()))
     }
 
     /// Add video to playlist
     pub async fn add_video_to_playlist(&self, playlist_id: &str, video_id: &str) -> AppResult<()> {
         let access_token = self.get_access_token().await?;
-        
+
         let playlist_item_data = serde_json::json!({
             "snippet": {
                 "playlistId": playlist_id,
@@ -252,18 +296,24 @@ impl YouTubeApiClient {
             }
         });
 
-        let response = self.http_client
+        let response = self
+            .http_client
             .post("https://www.googleapis.com/youtube/v3/playlistItems?part=snippet")
             .header("Authorization", format!("Bearer {}", access_token))
             .header("Content-Type", "application/json")
             .json(&playlist_item_data)
             .send()
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to add video to playlist: {}", e)))?;
+            .map_err(|e| {
+                AppError::ConfigError(format!("Failed to add video to playlist: {}", e))
+            })?;
 
         if !response.status().is_success() {
             let error_text = response.text().await.unwrap_or_default();
-            return Err(AppError::ConfigError(format!("Failed to add video to playlist: {}", error_text)));
+            return Err(AppError::ConfigError(format!(
+                "Failed to add video to playlist: {}",
+                error_text
+            )));
         }
 
         log::info!("Added video {} to playlist {}", video_id, playlist_id);
@@ -273,17 +323,26 @@ impl YouTubeApiClient {
     /// Remove video from playlist
     pub async fn remove_video_from_playlist(&self, playlist_item_id: &str) -> AppResult<()> {
         let access_token = self.get_access_token().await?;
-        
-        let response = self.http_client
-            .delete(format!("https://www.googleapis.com/youtube/v3/playlistItems?id={}", playlist_item_id))
+
+        let response = self
+            .http_client
+            .delete(format!(
+                "https://www.googleapis.com/youtube/v3/playlistItems?id={}",
+                playlist_item_id
+            ))
             .header("Authorization", format!("Bearer {}", access_token))
             .send()
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to remove video from playlist: {}", e)))?;
+            .map_err(|e| {
+                AppError::ConfigError(format!("Failed to remove video from playlist: {}", e))
+            })?;
 
         if !response.status().is_success() {
             let error_text = response.text().await.unwrap_or_default();
-            return Err(AppError::ConfigError(format!("Failed to remove video from playlist: {}", error_text)));
+            return Err(AppError::ConfigError(format!(
+                "Failed to remove video from playlist: {}",
+                error_text
+            )));
         }
 
         log::info!("Removed playlist item {}", playlist_item_id);
@@ -291,63 +350,91 @@ impl YouTubeApiClient {
     }
 
     /// Get live streams
-    pub async fn get_live_streams(&self, max_results: Option<u32>) -> AppResult<Vec<YouTubeStream>> {
+    pub async fn get_live_streams(
+        &self,
+        max_results: Option<u32>,
+    ) -> AppResult<Vec<YouTubeStream>> {
         let mut params = HashMap::new();
-        params.insert("part".to_string(), "snippet,status,contentDetails".to_string());
+        params.insert(
+            "part".to_string(),
+            "snippet,status,contentDetails".to_string(),
+        );
         params.insert("eventType".to_string(), "live".to_string());
         params.insert("type".to_string(), "video".to_string());
         if let Some(max) = max_results {
             params.insert("maxResults".to_string(), max.to_string());
         }
 
-        let response: YouTubeApiResponse<YouTubeStream> = self.make_request("search", Some(params)).await?;
+        let response: YouTubeApiResponse<YouTubeStream> =
+            self.make_request("search", Some(params)).await?;
         Ok(response.items)
     }
 
     /// Get scheduled streams
-    pub async fn get_scheduled_streams(&self, max_results: Option<u32>) -> AppResult<Vec<YouTubeStream>> {
+    pub async fn get_scheduled_streams(
+        &self,
+        max_results: Option<u32>,
+    ) -> AppResult<Vec<YouTubeStream>> {
         let mut params = HashMap::new();
-        params.insert("part".to_string(), "snippet,status,contentDetails".to_string());
+        params.insert(
+            "part".to_string(),
+            "snippet,status,contentDetails".to_string(),
+        );
         params.insert("eventType".to_string(), "upcoming".to_string());
         params.insert("type".to_string(), "video".to_string());
         if let Some(max) = max_results {
             params.insert("maxResults".to_string(), max.to_string());
         }
 
-        let response: YouTubeApiResponse<YouTubeStream> = self.make_request("search", Some(params)).await?;
+        let response: YouTubeApiResponse<YouTubeStream> =
+            self.make_request("search", Some(params)).await?;
         Ok(response.items)
     }
 
     /// Get completed streams
-    pub async fn get_completed_streams(&self, max_results: Option<u32>) -> AppResult<Vec<YouTubeStream>> {
+    pub async fn get_completed_streams(
+        &self,
+        max_results: Option<u32>,
+    ) -> AppResult<Vec<YouTubeStream>> {
         let mut params = HashMap::new();
-        params.insert("part".to_string(), "snippet,status,contentDetails".to_string());
+        params.insert(
+            "part".to_string(),
+            "snippet,status,contentDetails".to_string(),
+        );
         params.insert("eventType".to_string(), "completed".to_string());
         params.insert("type".to_string(), "video".to_string());
         if let Some(max) = max_results {
             params.insert("maxResults".to_string(), max.to_string());
         }
 
-        let response: YouTubeApiResponse<YouTubeStream> = self.make_request("search", Some(params)).await?;
+        let response: YouTubeApiResponse<YouTubeStream> =
+            self.make_request("search", Some(params)).await?;
         Ok(response.items)
     }
 
     /// Get stream details by ID
     pub async fn get_stream(&self, stream_id: &str) -> AppResult<YouTubeStream> {
         let mut params = HashMap::new();
-        params.insert("part".to_string(), "snippet,status,contentDetails,statistics".to_string());
+        params.insert(
+            "part".to_string(),
+            "snippet,status,contentDetails,statistics".to_string(),
+        );
         params.insert("id".to_string(), stream_id.to_string());
 
-        let response: YouTubeApiResponse<YouTubeStream> = self.make_request("videos", Some(params)).await?;
-        
-        response.items.into_iter().next()
+        let response: YouTubeApiResponse<YouTubeStream> =
+            self.make_request("videos", Some(params)).await?;
+
+        response
+            .items
+            .into_iter()
+            .next()
             .ok_or_else(|| AppError::ConfigError("Stream not found".to_string()))
     }
 
     /// End a live stream
     pub async fn end_stream(&self, stream_id: &str) -> AppResult<()> {
         let access_token = self.get_access_token().await?;
-        
+
         // To end a stream, we need to update its status
         let update_data = serde_json::json!({
             "id": stream_id,
@@ -356,7 +443,8 @@ impl YouTubeApiClient {
             }
         });
 
-        let response = self.http_client
+        let response = self
+            .http_client
             .put("https://www.googleapis.com/youtube/v3/videos?part=status")
             .header("Authorization", format!("Bearer {}", access_token))
             .header("Content-Type", "application/json")
@@ -367,7 +455,10 @@ impl YouTubeApiClient {
 
         if !response.status().is_success() {
             let error_text = response.text().await.unwrap_or_default();
-            return Err(AppError::ConfigError(format!("Failed to end stream: {}", error_text)));
+            return Err(AppError::ConfigError(format!(
+                "Failed to end stream: {}",
+                error_text
+            )));
         }
 
         log::info!("Ended stream {}", stream_id);
@@ -375,9 +466,14 @@ impl YouTubeApiClient {
     }
 
     /// Create a new scheduled stream
-    pub async fn create_scheduled_stream(&self, title: &str, description: Option<&str>, scheduled_time: &str) -> AppResult<YouTubeStream> {
+    pub async fn create_scheduled_stream(
+        &self,
+        title: &str,
+        description: Option<&str>,
+        scheduled_time: &str,
+    ) -> AppResult<YouTubeStream> {
         let access_token = self.get_access_token().await?;
-        
+
         let stream_data = serde_json::json!({
             "snippet": {
                 "title": title,
@@ -391,29 +487,40 @@ impl YouTubeApiClient {
             }
         });
 
-        let response = self.http_client
+        let response = self
+            .http_client
             .post("https://www.googleapis.com/youtube/v3/liveBroadcasts?part=snippet,status")
             .header("Authorization", format!("Bearer {}", access_token))
             .header("Content-Type", "application/json")
             .json(&stream_data)
             .send()
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to create scheduled stream: {}", e)))?;
+            .map_err(|e| {
+                AppError::ConfigError(format!("Failed to create scheduled stream: {}", e))
+            })?;
 
         if !response.status().is_success() {
             let error_text = response.text().await.unwrap_or_default();
-            return Err(AppError::ConfigError(format!("Failed to create scheduled stream: {}", error_text)));
+            return Err(AppError::ConfigError(format!(
+                "Failed to create scheduled stream: {}",
+                error_text
+            )));
         }
 
-        let stream: YouTubeStream = response.json().await
-            .map_err(|e| AppError::ConfigError(format!("Failed to parse stream response: {}", e)))?;
+        let stream: YouTubeStream = response.json().await.map_err(|e| {
+            AppError::ConfigError(format!("Failed to parse stream response: {}", e))
+        })?;
 
         log::info!("Created scheduled stream: {} ({})", stream.title, stream.id);
         Ok(stream)
     }
 
     /// Get videos in a playlist
-    pub async fn get_playlist_videos(&self, playlist_id: &str, max_results: Option<u32>) -> AppResult<Vec<YouTubeVideo>> {
+    pub async fn get_playlist_videos(
+        &self,
+        playlist_id: &str,
+        max_results: Option<u32>,
+    ) -> AppResult<Vec<YouTubeVideo>> {
         let mut params = HashMap::new();
         params.insert("part".to_string(), "snippet,contentDetails".to_string());
         params.insert("playlistId".to_string(), playlist_id.to_string());
@@ -421,24 +528,40 @@ impl YouTubeApiClient {
             params.insert("maxResults".to_string(), max.to_string());
         }
 
-        let response: YouTubeApiResponse<YouTubeVideo> = self.make_request("playlistItems", Some(params)).await?;
+        let response: YouTubeApiResponse<YouTubeVideo> =
+            self.make_request("playlistItems", Some(params)).await?;
         Ok(response.items)
     }
 
     /// Update playlist details
-    pub async fn update_playlist(&self, playlist_id: &str, title: Option<&str>, description: Option<&str>, privacy: Option<&str>) -> AppResult<YouTubePlaylist> {
+    pub async fn update_playlist(
+        &self,
+        playlist_id: &str,
+        title: Option<&str>,
+        description: Option<&str>,
+        privacy: Option<&str>,
+    ) -> AppResult<YouTubePlaylist> {
         let access_token = self.get_access_token().await?;
-        
+
         let mut update_data = serde_json::Map::new();
-        
+
         if let Some(title) = title {
-            update_data.insert("title".to_string(), serde_json::Value::String(title.to_string()));
+            update_data.insert(
+                "title".to_string(),
+                serde_json::Value::String(title.to_string()),
+            );
         }
         if let Some(description) = description {
-            update_data.insert("description".to_string(), serde_json::Value::String(description.to_string()));
+            update_data.insert(
+                "description".to_string(),
+                serde_json::Value::String(description.to_string()),
+            );
         }
         if let Some(privacy) = privacy {
-            update_data.insert("privacyStatus".to_string(), serde_json::Value::String(privacy.to_string()));
+            update_data.insert(
+                "privacyStatus".to_string(),
+                serde_json::Value::String(privacy.to_string()),
+            );
         }
 
         let playlist_data = serde_json::json!({
@@ -446,7 +569,8 @@ impl YouTubeApiClient {
             "snippet": update_data
         });
 
-        let response = self.http_client
+        let response = self
+            .http_client
             .put("https://www.googleapis.com/youtube/v3/playlists?part=snippet,status")
             .header("Authorization", format!("Bearer {}", access_token))
             .header("Content-Type", "application/json")
@@ -457,11 +581,15 @@ impl YouTubeApiClient {
 
         if !response.status().is_success() {
             let error_text = response.text().await.unwrap_or_default();
-            return Err(AppError::ConfigError(format!("Failed to update playlist: {}", error_text)));
+            return Err(AppError::ConfigError(format!(
+                "Failed to update playlist: {}",
+                error_text
+            )));
         }
 
-        let playlist: YouTubePlaylist = response.json().await
-            .map_err(|e| AppError::ConfigError(format!("Failed to parse playlist response: {}", e)))?;
+        let playlist: YouTubePlaylist = response.json().await.map_err(|e| {
+            AppError::ConfigError(format!("Failed to parse playlist response: {}", e))
+        })?;
 
         log::info!("Updated playlist: {} ({})", playlist.title, playlist.id);
         Ok(playlist)
@@ -470,9 +598,13 @@ impl YouTubeApiClient {
     /// Delete playlist
     pub async fn delete_playlist(&self, playlist_id: &str) -> AppResult<()> {
         let access_token = self.get_access_token().await?;
-        
-        let response = self.http_client
-            .delete(format!("https://www.googleapis.com/youtube/v3/playlists?id={}", playlist_id))
+
+        let response = self
+            .http_client
+            .delete(format!(
+                "https://www.googleapis.com/youtube/v3/playlists?id={}",
+                playlist_id
+            ))
             .header("Authorization", format!("Bearer {}", access_token))
             .send()
             .await
@@ -480,7 +612,10 @@ impl YouTubeApiClient {
 
         if !response.status().is_success() {
             let error_text = response.text().await.unwrap_or_default();
-            return Err(AppError::ConfigError(format!("Failed to delete playlist: {}", error_text)));
+            return Err(AppError::ConfigError(format!(
+                "Failed to delete playlist: {}",
+                error_text
+            )));
         }
 
         log::info!("Deleted playlist {}", playlist_id);
@@ -490,7 +625,10 @@ impl YouTubeApiClient {
     /// Get channel information
     pub async fn get_channel_info(&self) -> AppResult<serde_json::Value> {
         let mut params = HashMap::new();
-        params.insert("part".to_string(), "snippet,statistics,contentDetails".to_string());
+        params.insert(
+            "part".to_string(),
+            "snippet,statistics,contentDetails".to_string(),
+        );
         params.insert("mine".to_string(), "true".to_string());
 
         let response: serde_json::Value = self.make_request("channels", Some(params)).await?;
@@ -528,7 +666,8 @@ impl YouTubeApiPlugin {
 
     /// Get the YouTube API client
     fn get_client(&self) -> AppResult<&YouTubeApiClient> {
-        self.client.as_ref()
+        self.client
+            .as_ref()
             .ok_or_else(|| AppError::ConfigError("YouTube API client not initialized".to_string()))
     }
 
@@ -545,7 +684,12 @@ impl YouTubeApiPlugin {
     }
 
     /// Create a new playlist
-    pub async fn create_playlist(&self, title: &str, description: Option<&str>, privacy: &str) -> AppResult<YouTubePlaylist> {
+    pub async fn create_playlist(
+        &self,
+        title: &str,
+        description: Option<&str>,
+        privacy: &str,
+    ) -> AppResult<YouTubePlaylist> {
         let client = self.get_client()?;
         client.create_playlist(title, description, privacy).await
     }
@@ -569,39 +713,67 @@ impl YouTubeApiPlugin {
     }
 
     /// Create a new scheduled stream
-    pub async fn create_scheduled_stream(&self, title: &str, description: Option<&str>, scheduled_time: &str) -> AppResult<YouTubeStream> {
+    pub async fn create_scheduled_stream(
+        &self,
+        title: &str,
+        description: Option<&str>,
+        scheduled_time: &str,
+    ) -> AppResult<YouTubeStream> {
         let client = self.get_client()?;
-        client.create_scheduled_stream(title, description, scheduled_time).await
+        client
+            .create_scheduled_stream(title, description, scheduled_time)
+            .await
     }
 
     /// Get live streams
-    pub async fn get_live_streams(&self, max_results: Option<u32>) -> AppResult<Vec<YouTubeStream>> {
+    pub async fn get_live_streams(
+        &self,
+        max_results: Option<u32>,
+    ) -> AppResult<Vec<YouTubeStream>> {
         let client = self.get_client()?;
         client.get_live_streams(max_results).await
     }
 
     /// Get scheduled streams
-    pub async fn get_scheduled_streams(&self, max_results: Option<u32>) -> AppResult<Vec<YouTubeStream>> {
+    pub async fn get_scheduled_streams(
+        &self,
+        max_results: Option<u32>,
+    ) -> AppResult<Vec<YouTubeStream>> {
         let client = self.get_client()?;
         client.get_scheduled_streams(max_results).await
     }
 
     /// Get completed streams
-    pub async fn get_completed_streams(&self, max_results: Option<u32>) -> AppResult<Vec<YouTubeStream>> {
+    pub async fn get_completed_streams(
+        &self,
+        max_results: Option<u32>,
+    ) -> AppResult<Vec<YouTubeStream>> {
         let client = self.get_client()?;
         client.get_completed_streams(max_results).await
     }
 
     /// Get videos in a playlist
-    pub async fn get_playlist_videos(&self, playlist_id: &str, max_results: Option<u32>) -> AppResult<Vec<YouTubeVideo>> {
+    pub async fn get_playlist_videos(
+        &self,
+        playlist_id: &str,
+        max_results: Option<u32>,
+    ) -> AppResult<Vec<YouTubeVideo>> {
         let client = self.get_client()?;
         client.get_playlist_videos(playlist_id, max_results).await
     }
 
     /// Update playlist details
-    pub async fn update_playlist(&self, playlist_id: &str, title: Option<&str>, description: Option<&str>, privacy: Option<&str>) -> AppResult<YouTubePlaylist> {
+    pub async fn update_playlist(
+        &self,
+        playlist_id: &str,
+        title: Option<&str>,
+        description: Option<&str>,
+        privacy: Option<&str>,
+    ) -> AppResult<YouTubePlaylist> {
         let client = self.get_client()?;
-        client.update_playlist(playlist_id, title, description, privacy).await
+        client
+            .update_playlist(playlist_id, title, description, privacy)
+            .await
     }
 
     /// Delete playlist
@@ -621,4 +793,4 @@ impl YouTubeApiPlugin {
         let client = self.get_client()?;
         client.get_video_analytics(video_id).await
     }
-} 
+}

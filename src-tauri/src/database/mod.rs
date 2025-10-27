@@ -1,5 +1,5 @@
 //! Database module for reStrike VTA
-//! 
+//!
 //! This module provides SQLite database functionality for storing:
 //! - PSS events and match data
 //! - Application configuration and settings
@@ -7,19 +7,22 @@
 //! - Flag management data
 //! - User preferences and session data
 
-pub mod connection;
 pub mod async_connection;
+pub mod connection;
 pub mod maintenance;
-pub mod migrations;
-pub mod operations;
 pub mod migration_strategy;
+pub mod migrations;
 pub mod models;
+pub mod operations;
 
-pub use connection::DatabaseConnection;
 pub use async_connection::AsyncDatabaseConnection;
-pub use maintenance::{DatabaseMaintenance, MaintenanceConfig, MaintenanceStatistics, MaintenanceResult, MaintenanceNeeded, DatabaseInfo};
+pub use connection::DatabaseConnection;
+pub use maintenance::{
+    DatabaseInfo, DatabaseMaintenance, MaintenanceConfig, MaintenanceNeeded, MaintenanceResult,
+    MaintenanceStatistics,
+};
+pub use migration_strategy::{HybridSettingsProvider, MigrationResult, MigrationStrategy};
 pub use operations::UiSettingsOperations;
-pub use migration_strategy::{MigrationStrategy, MigrationResult, HybridSettingsProvider};
 
 /// Database error type
 #[derive(Debug, thiserror::Error)]
@@ -79,4 +82,4 @@ pub type DatabaseResult<T> = Result<T, DatabaseError>;
 pub const CURRENT_SCHEMA_VERSION: u32 = 40;
 
 /// Database file name
-pub const DATABASE_FILE: &str = "restrike_vta.db"; 
+pub const DATABASE_FILE: &str = "restrike_vta.db";

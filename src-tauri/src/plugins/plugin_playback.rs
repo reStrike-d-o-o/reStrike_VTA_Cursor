@@ -1,10 +1,10 @@
-use std::process::{Command, Child, Stdio};
+use crate::types::{AppError, AppResult};
+use serde::{Deserialize, Serialize};
+use std::process::{Child, Command, Stdio};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, SystemTime};
 use tokio::sync::mpsc;
-use serde::{Deserialize, Serialize};
-use crate::types::{AppError, AppResult};
 
 /// Initialize the playback plugin
 pub fn init() -> Result<(), Box<dyn std::error::Error>> {
@@ -20,7 +20,7 @@ pub struct VideoClip {
     pub id: String,
     pub name: String,
     pub path: String,
-    pub duration: f64,  // seconds
+    pub duration: f64, // seconds
     pub timestamp: SystemTime,
     pub tags: Vec<String>,
     pub metadata: VideoMetadata,
@@ -60,11 +60,11 @@ pub enum PlaybackStatus {
 #[derive(Debug, Clone)]
 pub struct PlaybackConfig {
     pub mpv_path: String,
-    pub video_output: String,  // vo driver
-    pub audio_output: String,  // ao driver
+    pub video_output: String, // vo driver
+    pub audio_output: String, // ao driver
     pub hardware_decoding: bool,
-    pub seek_step: f64,        // seconds
-    pub volume: f64,           // 0.0 - 1.0
+    pub seek_step: f64, // seconds
+    pub volume: f64,    // 0.0 - 1.0
     pub fullscreen: bool,
     pub window_scale: f64,
     pub keep_open: bool,
@@ -74,7 +74,7 @@ pub struct PlaybackConfig {
 impl Default for PlaybackConfig {
     fn default() -> Self {
         Self {
-            mpv_path: "mpv".to_string(),  // Assumes mpv is in PATH
+            mpv_path: "mpv".to_string(), // Assumes mpv is in PATH
             video_output: "gpu".to_string(),
             audio_output: "pulse".to_string(),
             hardware_decoding: true,
@@ -130,15 +130,15 @@ impl VideoPlayer {
 
         // Build mpv command
         let mut cmd = Command::new(&self.config.mpv_path);
-        
+
         // Basic options
         cmd.arg("--no-terminal")
-           .arg("--no-input-default-bindings")
-           .arg("--no-osc")
-           .arg("--no-border")
-           .arg("--geometry=50%:50%")
-           .arg("--autofit=30%")
-           .arg("--ontop");
+            .arg("--no-input-default-bindings")
+            .arg("--no-osc")
+            .arg("--no-border")
+            .arg("--geometry=50%:50%")
+            .arg("--autofit=30%")
+            .arg("--ontop");
 
         // Video output
         cmd.arg(format!("--vo={}", self.config.video_output));
@@ -168,7 +168,10 @@ impl VideoPlayer {
         if self.config.fullscreen {
             cmd.arg("--fullscreen");
         } else {
-            cmd.arg(format!("--autofit-larger={}%", (self.config.window_scale * 100.0) as u32));
+            cmd.arg(format!(
+                "--autofit-larger={}%",
+                (self.config.window_scale * 100.0) as u32
+            ));
         }
 
         // Window title
@@ -178,8 +181,7 @@ impl VideoPlayer {
         cmd.arg(&clip.path);
 
         // Set stdio
-        cmd.stdout(Stdio::piped())
-           .stderr(Stdio::piped());
+        cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
 
         // Launch mpv
         match cmd.spawn() {
@@ -197,7 +199,9 @@ impl VideoPlayer {
                 }
 
                 // Send event
-                let _ = self.event_tx.send(PlaybackEvent::Started { clip_id: clip.id.clone() });
+                let _ = self.event_tx.send(PlaybackEvent::Started {
+                    clip_id: clip.id.clone(),
+                });
 
                 // Start monitoring thread
                 self.start_monitor_thread(clip.id);
@@ -207,7 +211,7 @@ impl VideoPlayer {
             }
             Err(e) => {
                 let error_msg = format!("Failed to start mpv: {}", e);
-                
+
                 // Update status
                 {
                     let mut status = self.status.lock().unwrap();
@@ -215,9 +219,9 @@ impl VideoPlayer {
                 }
 
                 // Send error event
-                let _ = self.event_tx.send(PlaybackEvent::Error { 
-                    clip_id: clip.id, 
-                    error: error_msg.clone() 
+                let _ = self.event_tx.send(PlaybackEvent::Error {
+                    clip_id: clip.id,
+                    error: error_msg.clone(),
                 });
 
                 Err(AppError::ConfigError(error_msg))
@@ -253,7 +257,9 @@ impl VideoPlayer {
 
         // Send event if there was a current clip
         if let Some(clip) = self.get_current_clip() {
-            let _ = self.event_tx.send(PlaybackEvent::Stopped { clip_id: clip.id });
+            let _ = self
+                .event_tx
+                .send(PlaybackEvent::Stopped { clip_id: clip.id });
         }
 
         // Clear current clip
@@ -270,7 +276,7 @@ impl VideoPlayer {
         // For now, we'll implement basic pause by stopping
         // In a full implementation, you'd send IPC commands to mpv
         let current_clip = self.get_current_clip();
-        
+
         // Update status
         {
             let mut status = self.status.lock().unwrap();
@@ -278,7 +284,9 @@ impl VideoPlayer {
         }
 
         if let Some(clip) = current_clip {
-            let _ = self.event_tx.send(PlaybackEvent::Paused { clip_id: clip.id });
+            let _ = self
+                .event_tx
+                .send(PlaybackEvent::Paused { clip_id: clip.id });
             log::info!("Playback paused: {}", clip.name);
         }
 
@@ -287,7 +295,7 @@ impl VideoPlayer {
 
     pub fn resume(&self) -> AppResult<()> {
         let current_clip = self.get_current_clip();
-        
+
         // Update status
         {
             let mut status = self.status.lock().unwrap();
@@ -295,7 +303,9 @@ impl VideoPlayer {
         }
 
         if let Some(clip) = current_clip {
-            let _ = self.event_tx.send(PlaybackEvent::Resumed { clip_id: clip.id });
+            let _ = self
+                .event_tx
+                .send(PlaybackEvent::Resumed { clip_id: clip.id });
             log::info!("Playback resumed: {}", clip.name);
         }
 
@@ -304,7 +314,7 @@ impl VideoPlayer {
 
     pub fn set_volume(&self, volume: f64) -> AppResult<()> {
         let clamped_volume = volume.clamp(0.0, 1.0);
-        
+
         // Update internal volume
         {
             let mut vol = self.volume.lock().unwrap();
@@ -312,7 +322,9 @@ impl VideoPlayer {
         }
 
         // Send event
-        let _ = self.event_tx.send(PlaybackEvent::VolumeChanged { volume: clamped_volume });
+        let _ = self.event_tx.send(PlaybackEvent::VolumeChanged {
+            volume: clamped_volume,
+        });
 
         log::info!("Volume set to: {:.0}%", clamped_volume * 100.0);
         Ok(())
@@ -326,9 +338,9 @@ impl VideoPlayer {
         }
 
         if let Some(clip) = self.get_current_clip() {
-            let _ = self.event_tx.send(PlaybackEvent::PositionChanged { 
-                clip_id: clip.id, 
-                position 
+            let _ = self.event_tx.send(PlaybackEvent::PositionChanged {
+                clip_id: clip.id,
+                position,
             });
             log::info!("Seeked to: {:.1}s", position);
         }
@@ -341,7 +353,7 @@ impl VideoPlayer {
             let pos = self.position.lock().unwrap();
             *pos
         };
-        
+
         self.seek(current_pos + delta)
     }
 
@@ -385,7 +397,7 @@ impl VideoPlayer {
             // Wait for the process to finish
             loop {
                 thread::sleep(Duration::from_millis(500));
-                
+
                 let process_finished = {
                     let mut process_guard = process_arc.lock().unwrap();
                     if let Some(ref mut process) = *process_guard {
@@ -419,8 +431,10 @@ impl VideoPlayer {
                     }
 
                     // Send ended event
-                    let _ = event_tx.send(PlaybackEvent::ClipEnded { clip_id: clip_id.clone() });
-                    
+                    let _ = event_tx.send(PlaybackEvent::ClipEnded {
+                        clip_id: clip_id.clone(),
+                    });
+
                     log::info!("Playback ended for clip: {}", clip_id);
                     break;
                 }
@@ -445,12 +459,14 @@ impl VideoUtils {
             .map_err(AppError::IoError)?;
 
         if !output.status.success() {
-            return Err(AppError::ConfigError("mpv failed to get video info".to_string()));
+            return Err(AppError::ConfigError(
+                "mpv failed to get video info".to_string(),
+            ));
         }
 
         // Parse the output (simplified - in reality you'd parse the actual mpv output)
         let _stdout = String::from_utf8_lossy(&output.stdout);
-        
+
         // Default values (in a real implementation, parse from mpv output)
         Ok(VideoMetadata {
             width: 1920,
@@ -458,9 +474,7 @@ impl VideoUtils {
             fps: 30.0,
             codec: "h264".to_string(),
             bitrate: 5000000,
-            file_size: std::fs::metadata(path)
-                .map(|m| m.len())
-                .unwrap_or(0),
+            file_size: std::fs::metadata(path).map(|m| m.len()).unwrap_or(0),
         })
     }
 
@@ -479,7 +493,9 @@ impl VideoUtils {
         if output.status.success() {
             Ok(())
         } else {
-            Err(AppError::ConfigError("Failed to generate thumbnail".to_string()))
+            Err(AppError::ConfigError(
+                "Failed to generate thumbnail".to_string(),
+            ))
         }
     }
 
@@ -489,18 +505,26 @@ impl VideoUtils {
             return false;
         }
 
-        let valid_extensions = [".mp4", ".avi", ".mkv", ".mov", ".wmv", ".flv", ".webm", ".m4v"];
+        let valid_extensions = [
+            ".mp4", ".avi", ".mkv", ".mov", ".wmv", ".flv", ".webm", ".m4v",
+        ];
         let path_lower = path.to_lowercase();
-        
-        valid_extensions.iter().any(|&ext| path_lower.ends_with(ext))
+
+        valid_extensions
+            .iter()
+            .any(|&ext| path_lower.ends_with(ext))
     }
 
     pub fn has_valid_video_extension(path: &str) -> bool {
         // Only check extension, not file existence
-        let valid_extensions = [".mp4", ".avi", ".mkv", ".mov", ".wmv", ".flv", ".webm", ".m4v"];
+        let valid_extensions = [
+            ".mp4", ".avi", ".mkv", ".mov", ".wmv", ".flv", ".webm", ".m4v",
+        ];
         let path_lower = path.to_lowercase();
-        
-        valid_extensions.iter().any(|&ext| path_lower.ends_with(ext))
+
+        valid_extensions
+            .iter()
+            .any(|&ext| path_lower.ends_with(ext))
     }
 }
 
@@ -514,10 +538,13 @@ pub fn create_video_player() -> (VideoPlayer, mpsc::UnboundedReceiver<PlaybackEv
 
 pub fn playback_clip(clip_path: &str, clip_name: &str) -> AppResult<()> {
     log::info!("Starting playback of: {} ({})", clip_name, clip_path);
-    
+
     // Validate the video file
     if !VideoUtils::validate_video_file(clip_path) {
-        return Err(AppError::ConfigError(format!("Invalid video file: {}", clip_path)));
+        return Err(AppError::ConfigError(format!(
+            "Invalid video file: {}",
+            clip_path
+        )));
     }
 
     // Create a basic video clip
@@ -528,23 +555,22 @@ pub fn playback_clip(clip_path: &str, clip_name: &str) -> AppResult<()> {
         duration: 0.0, // Will be determined during playback
         timestamp: SystemTime::now(),
         tags: vec!["instant-replay".to_string()],
-        metadata: VideoUtils::get_video_info(clip_path)
-            .unwrap_or_else(|_| VideoMetadata {
-                width: 1920,
-                height: 1080,
-                fps: 30.0,
-                codec: "unknown".to_string(),
-                bitrate: 0,
-                file_size: 0,
-            }),
+        metadata: VideoUtils::get_video_info(clip_path).unwrap_or_else(|_| VideoMetadata {
+            width: 1920,
+            height: 1080,
+            fps: 30.0,
+            codec: "unknown".to_string(),
+            bitrate: 0,
+            file_size: 0,
+        }),
     };
 
     // Create player and start playback
     let (player, mut event_rx) = create_video_player();
-    
+
     // Start playback
     player.play_clip(clip)?;
-    
+
     // Handle events in a background task
     tokio::spawn(async move {
         while let Some(event) = event_rx.recv().await {
@@ -585,16 +611,18 @@ mod tests {
         assert!(VideoUtils::has_valid_video_extension("test.flv"));
         assert!(VideoUtils::has_valid_video_extension("test.webm"));
         assert!(VideoUtils::has_valid_video_extension("test.m4v"));
-        
+
         // Test invalid extensions
         assert!(!VideoUtils::has_valid_video_extension("test.txt"));
         assert!(!VideoUtils::has_valid_video_extension("test.pdf"));
         assert!(!VideoUtils::has_valid_video_extension("test.doc"));
-        
+
         // Test full validation (including file existence)
         // These should return false because the files don't exist
         assert!(!VideoUtils::validate_video_file("nonexistent.mp4"));
-        assert!(!VideoUtils::validate_video_file("/path/to/nonexistent/video.avi"));
+        assert!(!VideoUtils::validate_video_file(
+            "/path/to/nonexistent/video.avi"
+        ));
     }
 
     #[test]

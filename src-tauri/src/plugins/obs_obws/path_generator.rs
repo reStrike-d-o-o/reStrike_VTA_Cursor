@@ -1,6 +1,6 @@
-use std::path::{Path, PathBuf};
-use chrono::Local;
 use crate::types::AppResult;
+use chrono::Local;
+use std::path::{Path, PathBuf};
 
 /// Path generation configuration
 #[derive(Debug, Clone)]
@@ -32,7 +32,7 @@ impl PathGeneratorConfig {
                 return videos_folder;
             }
         }
-        
+
         // Fallback to default Windows path
         PathBuf::from("C:/Users/Damjan/Videos")
     }
@@ -61,7 +61,7 @@ impl ObsPathGenerator {
             config: config.unwrap_or_default(),
         }
     }
-    
+
     /// Generate recording path for a match
     pub fn generate_recording_path(
         &self,
@@ -83,16 +83,20 @@ impl ObsPathGenerator {
             player2_name,
             player2_flag,
         };
-        
+
         // Generate directory path
-        let directory = self.generate_directory_path(&tournament_name, &tournament_day, &match_info.match_number);
-        
+        let directory = self.generate_directory_path(
+            &tournament_name,
+            &tournament_day,
+            &match_info.match_number,
+        );
+
         // Generate filename
         let filename = self.generate_filename(&match_info, &tournament_name, &tournament_day);
-        
+
         // Create full path
         let full_path = directory.join(&filename);
-        
+
         Ok(GeneratedPath {
             full_path,
             directory,
@@ -102,7 +106,7 @@ impl ObsPathGenerator {
             match_number: match_info.match_number,
         })
     }
-    
+
     /// Generate directory path
     pub fn generate_directory_path(
         &self,
@@ -130,12 +134,14 @@ impl ObsPathGenerator {
                 "{tournamentDay}" => &t_day,
                 other => other,
             };
-            if seg_value.is_empty() { continue; }
+            if seg_value.is_empty() {
+                continue;
+            }
             path.push(self.sanitize_filename(seg_value));
         }
         path
     }
-    
+
     /// Generate filename
     pub fn generate_filename(
         &self,
@@ -150,15 +156,15 @@ impl ObsPathGenerator {
         } else {
             now.format("%H-%M").to_string()
         };
-        
+
         // Build filename components
         let mut components = Vec::new();
-        
+
         // Match number
         if let Some(match_num) = &match_info.match_number {
             components.push(match_num.clone());
         }
-        
+
         // Player 1
         if let Some(player1) = &match_info.player1_name {
             let player1_str = if let Some(flag1) = &match_info.player1_flag {
@@ -168,10 +174,10 @@ impl ObsPathGenerator {
             };
             components.push(player1_str);
         }
-        
+
         // vs
         components.push("vs".to_string());
-        
+
         // Player 2
         if let Some(player2) = &match_info.player2_name {
             let player2_str = if let Some(flag2) = &match_info.player2_flag {
@@ -181,18 +187,16 @@ impl ObsPathGenerator {
             };
             components.push(player2_str);
         }
-        
+
         // Date and time
         components.push(date_str);
         components.push(time_str);
-        
+
         // Join components and add extension
         let filename = components.join("_");
         format!("{}.{}", filename, self.config.default_format)
     }
-    
-    
-    
+
     /// Sanitize filename for Windows compatibility
     fn sanitize_filename(&self, filename: &str) -> String {
         filename
@@ -205,12 +209,11 @@ impl ObsPathGenerator {
             .trim()
             .to_string()
     }
-    
+
     /// Ensure directory exists
     pub fn ensure_directory_exists(&self, path: &Path) -> AppResult<()> {
         if !path.exists() {
-            std::fs::create_dir_all(path)
-                .map_err(|e| crate::types::AppError::IoError(e))?;
+            std::fs::create_dir_all(path).map_err(|e| crate::types::AppError::IoError(e))?;
         }
         Ok(())
     }
@@ -231,17 +234,17 @@ pub struct MatchInfo {
 mod tests {
     use super::*;
     use std::path::PathBuf;
-    
+
     #[test]
     fn test_sanitize_filename() {
         let generator = ObsPathGenerator::new(None);
-        
+
         assert_eq!(generator.sanitize_filename("Test:File"), "Test_File");
         assert_eq!(generator.sanitize_filename("Test/File"), "Test_File");
         assert_eq!(generator.sanitize_filename("Test*File"), "Test_File");
         assert_eq!(generator.sanitize_filename("Test File"), "Test File");
     }
-    
+
     #[test]
     fn test_generate_filename() {
         let config = PathGeneratorConfig {
@@ -250,9 +253,9 @@ mod tests {
             include_minutes_seconds: true,
             folder_pattern: Some("{tournament}/{tournamentDay}".to_string()),
         };
-        
+
         let generator = ObsPathGenerator::new(Some(config));
-        
+
         let match_info = MatchInfo {
             match_id: "101".to_string(),
             match_number: Some("101".to_string()),
@@ -261,9 +264,13 @@ mod tests {
             player2_name: Some("M. THIBAULT".to_string()),
             player2_flag: Some("SUI".to_string()),
         };
-        
-        let filename = generator.generate_filename(&match_info, &Some("Test Tournament".to_string()), &Some("Day 1".to_string()));
-        
+
+        let filename = generator.generate_filename(
+            &match_info,
+            &Some("Test Tournament".to_string()),
+            &Some("Day 1".to_string()),
+        );
+
         // Should contain match number, players, and date/time
         assert!(filename.contains("101"));
         assert!(filename.contains("N._DESMOND_MRN"));

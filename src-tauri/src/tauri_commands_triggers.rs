@@ -1,24 +1,30 @@
-use serde::{Serialize, Deserialize};
-use tauri::{State, Error as TauriError};
-use std::sync::Arc;
 use chrono::Utc;
+use serde::{Deserialize, Serialize};
+use std::sync::Arc;
+use tauri::{Error as TauriError, State};
 
 use crate::core::app::App;
-use crate::database::models::{ObsScene, OverlayTemplate, EventTrigger};
+use crate::database::models::{EventTrigger, ObsScene, OverlayTemplate};
 
 // ---------------- LIST PSS EVENTS ----------------
 #[tauri::command]
 pub async fn triggers_list_pss_events() -> Result<Vec<String>, TauriError> {
     // Reduced authoritative list agreed with user
-    Ok(vec!["pre", "rdy", "rnd", "sup", "wrd", "wmh"].into_iter().map(|s| s.to_string()).collect())
+    Ok(vec!["pre", "rdy", "rnd", "sup", "wrd", "wmh"]
+        .into_iter()
+        .map(|s| s.to_string())
+        .collect())
 }
 
 // ---------------- SCENES ----------------
 #[tauri::command]
-pub async fn triggers_list_obs_scenes(app: State<'_, Arc<App>>) -> Result<Vec<ObsScene>, TauriError> {
+pub async fn triggers_list_obs_scenes(
+    app: State<'_, Arc<App>>,
+) -> Result<Vec<ObsScene>, TauriError> {
     // 1) Try database – preferred source
     let scenes_db = app
-        .database_plugin().get_database_connection()
+        .database_plugin()
+        .get_database_connection()
         .get_active_obs_scenes()
         .await
         .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
@@ -54,9 +60,12 @@ pub async fn triggers_list_obs_scenes(app: State<'_, Arc<App>>) -> Result<Vec<Ob
 
 // ---------------- OVERLAYS ----------------
 #[tauri::command]
-pub async fn triggers_list_active_overlays(app: State<'_, Arc<App>>) -> Result<Vec<OverlayTemplate>, TauriError> {
+pub async fn triggers_list_active_overlays(
+    app: State<'_, Arc<App>>,
+) -> Result<Vec<OverlayTemplate>, TauriError> {
     let overlays = app
-        .database_plugin().get_database_connection()
+        .database_plugin()
+        .get_database_connection()
         .get_active_overlay_templates()
         .await
         .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
@@ -65,7 +74,11 @@ pub async fn triggers_list_active_overlays(app: State<'_, Arc<App>>) -> Result<V
 
 // ---------------- GET TRIGGERS ----------------
 #[tauri::command]
-pub async fn triggers_get(app: State<'_, Arc<App>>, tournament_id: Option<i64>, day_id: Option<i64>) -> Result<Vec<EventTrigger>, TauriError> {
+pub async fn triggers_get(
+    app: State<'_, Arc<App>>,
+    tournament_id: Option<i64>,
+    day_id: Option<i64>,
+) -> Result<Vec<EventTrigger>, TauriError> {
     let conn = app.database_plugin().get_database_connection();
     let res = match (tournament_id, day_id) {
         (Some(tid), Some(_did)) => conn.get_event_triggers_for_tournament(tid).await,
@@ -81,7 +94,7 @@ pub struct EventTriggerPayload {
     pub id: Option<i64>,
     pub tournament_id: Option<i64>,
     pub event_type: String,
-    pub action: String, // show / hide
+    pub action: String,      // show / hide
     pub target_type: String, // scene / overlay
     pub obs_scene_id: Option<i64>,
     pub overlay_template_id: Option<i64>,
@@ -98,7 +111,11 @@ pub struct EventTriggerPayload {
 }
 
 #[tauri::command]
-pub async fn triggers_save(app: State<'_, Arc<App>>, payload: Vec<EventTriggerPayload>, resume_delay_ms: Option<u64>) -> Result<(), TauriError> {
+pub async fn triggers_save(
+    app: State<'_, Arc<App>>,
+    payload: Vec<EventTriggerPayload>,
+    resume_delay_ms: Option<u64>,
+) -> Result<(), TauriError> {
     let conn = app.database_plugin().get_database_connection();
     for p in payload {
         let now = Utc::now();
@@ -125,9 +142,13 @@ pub async fn triggers_save(app: State<'_, Arc<App>>, payload: Vec<EventTriggerPa
             updated_at: now,
         };
         if row.id.is_some() {
-            conn.update_event_trigger(&row).await.map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+            conn.update_event_trigger(&row)
+                .await
+                .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
         } else {
-            conn.insert_event_trigger(&row).await.map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+            conn.insert_event_trigger(&row)
+                .await
+                .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
         }
     }
 
@@ -142,11 +163,16 @@ pub async fn triggers_save(app: State<'_, Arc<App>>, payload: Vec<EventTriggerPa
 
 // ---------------- RECENT EXECUTION LOGS ----------------
 #[tauri::command]
-pub async fn triggers_recent_logs(_app: State<'_, Arc<App>>, max: Option<usize>) -> Result<serde_json::Value, TauriError> {
+pub async fn triggers_recent_logs(
+    _app: State<'_, Arc<App>>,
+    max: Option<usize>,
+) -> Result<serde_json::Value, TauriError> {
     // SAFETY: keep interface stable; pull from global if available
     let logs = if let Some(p) = crate::plugins::plugin_triggers::TRIGGER_PLUGIN_GLOBAL.get() {
         p.get_recent_execution_logs(max.unwrap_or(50)).await
-    } else { vec![] };
+    } else {
+        vec![]
+    };
     Ok(serde_json::json!({
         "success": true,
         "logs": logs,
@@ -187,9 +213,13 @@ pub async fn triggers_preview_evaluate(
     let plugin = if let Some(p) = crate::plugins::plugin_triggers::TRIGGER_PLUGIN_GLOBAL.get() {
         p.clone()
     } else {
-        return Ok(serde_json::json!({ "success": false, "error": "Trigger plugin not initialized" }));
+        return Ok(
+            serde_json::json!({ "success": false, "error": "Trigger plugin not initialized" }),
+        );
     };
 
-    let ok = plugin.should_fire_preview(&row, consider_limits.unwrap_or(false)).await;
+    let ok = plugin
+        .should_fire_preview(&row, consider_limits.unwrap_or(false))
+        .await;
     Ok(serde_json::json!({ "success": true, "can_fire": ok }))
 }

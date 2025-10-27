@@ -1,20 +1,20 @@
 //! Encryption key management module for reStrike VTA
-//! 
+//!
 //! Provides secure key generation, rotation, and lifecycle management
 //! for encryption operations.
 
 use std::sync::Arc;
 
-use serde::{Serialize, Deserialize};
-use rusqlite::params;
+use base64::{engine::general_purpose, Engine as _};
 use chrono::{DateTime, Utc};
 use ring::rand::{SecureRandom, SystemRandom};
-use base64::{Engine as _, engine::general_purpose};
+use rusqlite::params;
+use serde::{Deserialize, Serialize};
 
-use crate::security::{SecureConfig, SecurityError, SecurityResult};
-use crate::security::encryption::EncryptedData;
-use crate::security::audit::{SecurityAudit, AuditAction};
 use crate::database::DatabaseConnection;
+use crate::security::audit::{AuditAction, SecurityAudit};
+use crate::security::encryption::EncryptedData;
+use crate::security::{SecureConfig, SecurityError, SecurityResult};
 
 /// Key rotation configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -33,9 +33,9 @@ impl Default for KeyRotationConfig {
     fn default() -> Self {
         Self {
             enabled: true,
-            interval_days: 90,    // Rotate every 3 months
-            max_age_days: 365,    // Force rotation after 1 year
-            retain_old_keys: 3,   // Keep last 3 keys for decryption
+            interval_days: 90,  // Rotate every 3 months
+            max_age_days: 365,  // Force rotation after 1 year
+            retain_old_keys: 3, // Keep last 3 keys for decryption
         }
     }
 }
@@ -67,20 +67,20 @@ impl KeyMetadata {
             rotation_reason: None,
         }
     }
-    
+
     pub fn age_days(&self) -> i64 {
         let now = Utc::now();
         (now - self.created_at).num_days()
     }
-    
+
     pub fn should_rotate(&self, config: &KeyRotationConfig) -> bool {
         if !config.enabled {
             return false;
         }
-        
+
         self.age_days() >= config.interval_days as i64
     }
-    
+
     pub fn is_expired(&self, config: &KeyRotationConfig) -> bool {
         self.age_days() >= config.max_age_days as i64
     }
@@ -90,7 +90,7 @@ impl KeyMetadata {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct EncryptedKeyEntry {
     metadata: KeyMetadata,
-    encrypted_key: String, // Base64-encoded encrypted key
+    encrypted_key: String,   // Base64-encoded encrypted key
     master_key_hash: String, // Hash of master key used for encryption
 }
 
@@ -110,7 +110,7 @@ impl KeyManager {
     ) -> SecurityResult<Self> {
         let audit = SecurityAudit::new(database.clone())?;
         let config = rotation_config.unwrap_or_default();
-        
+
         Ok(Self {
             database,
             audit,
@@ -118,7 +118,7 @@ impl KeyManager {
             rng: SystemRandom::new(),
         })
     }
-    
+
     /// Generate a new encryption key
     pub async fn generate_encryption_key(
         &self,
@@ -128,32 +128,41 @@ impl KeyManager {
     ) -> SecurityResult<String> {
         // Generate random key
         let mut key_bytes = vec![0u8; (key_size / 8) as usize];
-        self.rng.fill(&mut key_bytes)
-            .map_err(|e| SecurityError::RandomGeneration(format!("Failed to generate key: {:?}", e)))?;
-        
+        self.rng.fill(&mut key_bytes).map_err(|e| {
+            SecurityError::RandomGeneration(format!("Failed to generate key: {:?}", e))
+        })?;
+
         // Create metadata
         let metadata = KeyMetadata::new(algorithm.to_string(), key_size);
-        
+
         // Store the key securely
         self.store_key(&metadata, &key_bytes, user_context).await?;
-        
+
         // Log the key generation
-        self.audit.log_security_event(
-            AuditAction::EncryptionKeyRotation,
-            user_context,
-            &format!("Generated new {} encryption key ({})", algorithm, metadata.key_id),
-            true,
-            None,
-        ).await?;
-        
+        self.audit
+            .log_security_event(
+                AuditAction::EncryptionKeyRotation,
+                user_context,
+                &format!(
+                    "Generated new {} encryption key ({})",
+                    algorithm, metadata.key_id
+                ),
+                true,
+                None,
+            )
+            .await?;
+
         // Return base64-encoded key
         Ok(general_purpose::STANDARD.encode(&key_bytes))
     }
-    
+
     /// Get the current active encryption key
-    pub async fn get_active_key(&self, algorithm: &str) -> SecurityResult<Option<(String, KeyMetadata)>> {
+    pub async fn get_active_key(
+        &self,
+        algorithm: &str,
+    ) -> SecurityResult<Option<(String, KeyMetadata)>> {
         let conn = self.database.get_connection().await?;
-        
+
         let result = conn.query_row(
             "SELECT config_key, encrypted_value FROM secure_config 
              WHERE category = 'encryption_keys' AND config_key LIKE ? AND is_sensitive = 1 
@@ -165,28 +174,37 @@ impl KeyManager {
                 Ok((config_key, encrypted_value))
             },
         );
-        
+
         match result {
             Ok((_config_key, encrypted_value)) => {
-                let encrypted_json = String::from_utf8(encrypted_value)
-                    .map_err(|e| SecurityError::Decryption(format!("Invalid UTF-8 in key data: {}", e)))?;
-                
+                let encrypted_json = String::from_utf8(encrypted_value).map_err(|e| {
+                    SecurityError::Decryption(format!("Invalid UTF-8 in key data: {}", e))
+                })?;
+
                 let entry: EncryptedKeyEntry = serde_json::from_str(&encrypted_json)?;
-                
+
                 if entry.metadata.is_active && !entry.metadata.is_expired(&self.rotation_config) {
                     // Recreate the master key source used during storage
-                    let master_key_source = format!("key_storage_{}_{}", entry.metadata.algorithm, entry.metadata.key_id);
+                    let master_key_source = format!(
+                        "key_storage_{}_{}",
+                        entry.metadata.algorithm, entry.metadata.key_id
+                    );
                     let temp_config = SecureConfig::new(master_key_source)?;
-                    
+
                     // Decrypt the encrypted key data
-                    let encrypted_key_data: EncryptedData = serde_json::from_str(&entry.encrypted_key)
-                        .map_err(|e| SecurityError::Decryption(format!("Failed to parse encrypted key data: {}", e)))?;
-                    
+                    let encrypted_key_data: EncryptedData =
+                        serde_json::from_str(&entry.encrypted_key).map_err(|e| {
+                            SecurityError::Decryption(format!(
+                                "Failed to parse encrypted key data: {}",
+                                e
+                            ))
+                        })?;
+
                     let decrypted_key = temp_config.decrypt_value(&encrypted_key_data)?;
-                    
+
                     // Update usage statistics
                     self.update_key_usage(&entry.metadata.key_id).await?;
-                    
+
                     Ok(Some((decrypted_key, entry.metadata)))
                 } else {
                     Ok(None)
@@ -196,95 +214,111 @@ impl KeyManager {
             Err(e) => Err(SecurityError::Database(e)),
         }
     }
-    
+
     /// Rotate encryption keys
-    pub async fn rotate_keys(&self, user_context: &str, reason: Option<String>) -> SecurityResult<Vec<String>> {
+    pub async fn rotate_keys(
+        &self,
+        user_context: &str,
+        reason: Option<String>,
+    ) -> SecurityResult<Vec<String>> {
         let mut rotated_keys = Vec::new();
-        
+
         // Get all active keys that need rotation
         let keys_to_rotate = self.get_keys_needing_rotation().await?;
-        
+
         for (algorithm, mut metadata) in keys_to_rotate {
             // Generate new key
-            let new_key = self.generate_encryption_key(user_context, &algorithm, metadata.key_size).await?;
-            
+            let new_key = self
+                .generate_encryption_key(user_context, &algorithm, metadata.key_size)
+                .await?;
+
             // Mark old key as inactive
             metadata.is_active = false;
             metadata.rotation_reason = reason.clone();
             self.update_key_metadata(&metadata).await?;
-            
+
             rotated_keys.push(format!("{}:{}", algorithm, new_key));
-            
+
             // Log the rotation
-            self.audit.log_security_event(
-                AuditAction::EncryptionKeyRotation,
-                user_context,
-                &format!("Rotated {} encryption key: {}", algorithm, metadata.key_id),
-                true,
-                None,
-            ).await?;
+            self.audit
+                .log_security_event(
+                    AuditAction::EncryptionKeyRotation,
+                    user_context,
+                    &format!("Rotated {} encryption key: {}", algorithm, metadata.key_id),
+                    true,
+                    None,
+                )
+                .await?;
         }
-        
+
         // Clean up old keys
         self.cleanup_old_keys().await?;
-        
+
         Ok(rotated_keys)
     }
-    
+
     /// Force rotation of all keys
-    pub async fn force_rotate_all_keys(&self, user_context: &str, reason: &str) -> SecurityResult<u32> {
+    pub async fn force_rotate_all_keys(
+        &self,
+        user_context: &str,
+        reason: &str,
+    ) -> SecurityResult<u32> {
         let conn = self.database.get_connection().await?;
-        
+
         // Get all active keys
         let mut stmt = conn.prepare(
             "SELECT config_key, encrypted_value FROM secure_config 
-             WHERE category = 'encryption_keys' AND is_sensitive = 1"
+             WHERE category = 'encryption_keys' AND is_sensitive = 1",
         )?;
-        
+
         let rows = stmt.query_map([], |row| {
             let config_key: String = row.get(0)?;
             let encrypted_value: Vec<u8> = row.get(1)?;
             Ok((config_key, encrypted_value))
         })?;
-        
+
         let mut count = 0;
         for row in rows {
             let (_config_key, encrypted_value) = row?;
-            let encrypted_json = String::from_utf8(encrypted_value)
-                .map_err(|e| SecurityError::Decryption(format!("Invalid UTF-8 in key data: {}", e)))?;
-            
+            let encrypted_json = String::from_utf8(encrypted_value).map_err(|e| {
+                SecurityError::Decryption(format!("Invalid UTF-8 in key data: {}", e))
+            })?;
+
             let entry: EncryptedKeyEntry = serde_json::from_str(&encrypted_json)?;
-            
+
             if entry.metadata.is_active {
                 // Rotate this key
-                self.rotate_keys(user_context, Some(reason.to_string())).await?;
+                self.rotate_keys(user_context, Some(reason.to_string()))
+                    .await?;
                 count += 1;
             }
         }
-        
+
         // Log the mass rotation
-        self.audit.log_security_event(
-            AuditAction::EncryptionKeyRotation,
-            user_context,
-            &format!("Force rotated {} encryption keys: {}", count, reason),
-            true,
-            None,
-        ).await?;
-        
+        self.audit
+            .log_security_event(
+                AuditAction::EncryptionKeyRotation,
+                user_context,
+                &format!("Force rotated {} encryption keys: {}", count, reason),
+                true,
+                None,
+            )
+            .await?;
+
         Ok(count)
     }
-    
+
     /// Get key rotation status
     pub async fn get_rotation_status(&self) -> SecurityResult<KeyRotationStatus> {
         let conn = self.database.get_connection().await?;
-        
+
         // Count total keys
         let total_keys: i64 = conn.query_row(
             "SELECT COUNT(*) FROM secure_config WHERE category = 'encryption_keys'",
             [],
             |row| row.get(0),
         )?;
-        
+
         // Count active keys
         let active_keys: i64 = conn.query_row(
             "SELECT COUNT(*) FROM secure_config 
@@ -292,34 +326,37 @@ impl KeyManager {
             [],
             |row| row.get(0),
         )?;
-        
+
         // Get keys needing rotation
         let keys_needing_rotation = self.get_keys_needing_rotation().await?.len();
-        
+
         // Get oldest key age
-        let oldest_key_age = conn.query_row(
-            "SELECT MIN(created_at) FROM secure_config WHERE category = 'encryption_keys'",
-            [],
-            |row| {
-                let created_at_str: String = row.get(0)?;
-                Ok(created_at_str)
-            },
-        ).ok().and_then(|date_str| {
-            DateTime::parse_from_rfc3339(&date_str).ok().map(|dt| {
-                (Utc::now() - dt.with_timezone(&Utc)).num_days()
-            })
-        });
-        
+        let oldest_key_age = conn
+            .query_row(
+                "SELECT MIN(created_at) FROM secure_config WHERE category = 'encryption_keys'",
+                [],
+                |row| {
+                    let created_at_str: String = row.get(0)?;
+                    Ok(created_at_str)
+                },
+            )
+            .ok()
+            .and_then(|date_str| {
+                DateTime::parse_from_rfc3339(&date_str)
+                    .ok()
+                    .map(|dt| (Utc::now() - dt.with_timezone(&Utc)).num_days())
+            });
+
         Ok(KeyRotationStatus {
             total_keys: total_keys as u32,
             active_keys: active_keys as u32,
             keys_needing_rotation: keys_needing_rotation as u32,
             oldest_key_age_days: oldest_key_age.unwrap_or(0) as u32,
-            last_rotation: None, // Would need to track this separately
+            last_rotation: None,           // Would need to track this separately
             next_scheduled_rotation: None, // Would need to calculate based on config
         })
     }
-    
+
     /// Store an encryption key securely
     async fn store_key(
         &self,
@@ -330,43 +367,46 @@ impl KeyManager {
         // Derive a master key from system entropy and algorithm name
         let master_key_source = format!("key_storage_{}_{}", metadata.algorithm, metadata.key_id);
         let temp_config = SecureConfig::new(master_key_source.clone())?;
-        
+
         // Generate a proper salt for this key
         let mut salt = vec![0u8; 32];
-        ring::rand::SystemRandom::new().fill(&mut salt)
-            .map_err(|e| SecurityError::RandomGeneration(format!("Failed to generate salt: {:?}", e)))?;
-        
+        ring::rand::SystemRandom::new()
+            .fill(&mut salt)
+            .map_err(|e| {
+                SecurityError::RandomGeneration(format!("Failed to generate salt: {:?}", e))
+            })?;
+
         // Encrypt the key using proper encryption
         let key_b64 = general_purpose::STANDARD.encode(key_bytes);
         let encrypted_key_data = temp_config.encrypt_value(&key_b64)?;
-        
+
         // Calculate master key hash for integrity
         let master_key_hash = {
             use ring::digest;
             let digest = digest::digest(&digest::SHA256, master_key_source.as_bytes());
             general_purpose::STANDARD.encode(digest.as_ref())
         };
-        
+
         let entry = EncryptedKeyEntry {
             metadata: metadata.clone(),
             encrypted_key: serde_json::to_string(&encrypted_key_data)?,
             master_key_hash,
         };
-        
+
         let entry_json = serde_json::to_string(&entry)?;
         let config_key = format!("{}_{}", metadata.algorithm, metadata.key_id);
-        
+
         // Store in secure_config table with proper salt and parameters
         let conn = self.database.get_connection().await?;
         let now = Utc::now().to_rfc3339();
-        
+
         let kdf_params = serde_json::json!({
             "algorithm": "PBKDF2",
             "hash": "SHA256",
             "iterations": 100000,
             "salt_length": salt.len()
         });
-        
+
         conn.execute(
             "INSERT INTO secure_config 
             (config_key, encrypted_value, category, is_sensitive, salt, algorithm, kdf_params, created_at, updated_at, description)
@@ -384,50 +424,51 @@ impl KeyManager {
                 format!("Encryption key for {}", metadata.algorithm),
             ],
         )?;
-        
+
         log::debug!("Securely stored encryption key: {}", metadata.key_id);
         Ok(())
     }
-    
+
     /// Get keys that need rotation
     async fn get_keys_needing_rotation(&self) -> SecurityResult<Vec<(String, KeyMetadata)>> {
         let conn = self.database.get_connection().await?;
-        
+
         let mut stmt = conn.prepare(
             "SELECT config_key, encrypted_value FROM secure_config 
-             WHERE category = 'encryption_keys' AND is_sensitive = 1"
+             WHERE category = 'encryption_keys' AND is_sensitive = 1",
         )?;
-        
+
         let rows = stmt.query_map([], |row| {
             let config_key: String = row.get(0)?;
             let encrypted_value: Vec<u8> = row.get(1)?;
             Ok((config_key, encrypted_value))
         })?;
-        
+
         let mut keys_to_rotate = Vec::new();
-        
+
         for row in rows {
             let (_config_key, encrypted_value) = row?;
-            let encrypted_json = String::from_utf8(encrypted_value)
-                .map_err(|e| SecurityError::Decryption(format!("Invalid UTF-8 in key data: {}", e)))?;
-            
+            let encrypted_json = String::from_utf8(encrypted_value).map_err(|e| {
+                SecurityError::Decryption(format!("Invalid UTF-8 in key data: {}", e))
+            })?;
+
             let entry: EncryptedKeyEntry = serde_json::from_str(&encrypted_json)?;
-            
+
             if entry.metadata.is_active && entry.metadata.should_rotate(&self.rotation_config) {
                 keys_to_rotate.push((entry.metadata.algorithm.clone(), entry.metadata));
             }
         }
-        
+
         Ok(keys_to_rotate)
     }
-    
+
     /// Update key metadata
     async fn update_key_metadata(&self, metadata: &KeyMetadata) -> SecurityResult<()> {
         let conn = self.database.get_connection().await?;
-        
+
         // Find the config key for this metadata
         let config_key = format!("{}_{}", metadata.algorithm, metadata.key_id);
-        
+
         // Get existing encrypted entry
         let result = conn.query_row(
             "SELECT encrypted_value FROM secure_config WHERE config_key = ?",
@@ -437,39 +478,41 @@ impl KeyManager {
                 Ok(encrypted_value)
             },
         );
-        
+
         match result {
             Ok(encrypted_value_bytes) => {
-                let encrypted_json = String::from_utf8(encrypted_value_bytes)
-                    .map_err(|e| SecurityError::Decryption(format!("Invalid UTF-8 in key data: {}", e)))?;
-                
+                let encrypted_json = String::from_utf8(encrypted_value_bytes).map_err(|e| {
+                    SecurityError::Decryption(format!("Invalid UTF-8 in key data: {}", e))
+                })?;
+
                 let mut entry: EncryptedKeyEntry = serde_json::from_str(&encrypted_json)?;
-                
+
                 // Update metadata
                 entry.metadata = metadata.clone();
-                
+
                 // Re-encrypt and store
                 let updated_json = serde_json::to_string(&entry)?;
-                
+
                 conn.execute(
                     "UPDATE secure_config SET encrypted_value = ?, updated_at = ? WHERE config_key = ?",
                     params![updated_json.as_bytes(), Utc::now().to_rfc3339(), config_key],
                 )?;
-                
+
                 log::debug!("Updated metadata for key: {}", metadata.key_id);
                 Ok(())
             }
-            Err(rusqlite::Error::QueryReturnedNoRows) => {
-                Err(SecurityError::KeyNotFound(format!("Key not found: {}", metadata.key_id)))
-            }
+            Err(rusqlite::Error::QueryReturnedNoRows) => Err(SecurityError::KeyNotFound(format!(
+                "Key not found: {}",
+                metadata.key_id
+            ))),
             Err(e) => Err(SecurityError::Database(e)),
         }
     }
-    
+
     /// Update key usage statistics
     async fn update_key_usage(&self, key_id: &str) -> SecurityResult<()> {
         let conn = self.database.get_connection().await?;
-        
+
         // Find the config key for this key_id
         let result = conn.query_row(
             "SELECT config_key, encrypted_value FROM secure_config 
@@ -481,21 +524,22 @@ impl KeyManager {
                 Ok((config_key, encrypted_value))
             },
         );
-        
+
         match result {
             Ok((config_key, encrypted_value_bytes)) => {
-                let encrypted_json = String::from_utf8(encrypted_value_bytes)
-                    .map_err(|e| SecurityError::Decryption(format!("Invalid UTF-8 in key data: {}", e)))?;
-                
+                let encrypted_json = String::from_utf8(encrypted_value_bytes).map_err(|e| {
+                    SecurityError::Decryption(format!("Invalid UTF-8 in key data: {}", e))
+                })?;
+
                 let mut entry: EncryptedKeyEntry = serde_json::from_str(&encrypted_json)?;
-                
+
                 // Update usage statistics
                 entry.metadata.usage_count += 1;
                 entry.metadata.last_used = Utc::now();
-                
+
                 // Re-encrypt and store
                 let updated_json = serde_json::to_string(&entry)?;
-                
+
                 conn.execute(
                     "UPDATE secure_config SET encrypted_value = ?, updated_at = ?, access_count = ? WHERE config_key = ?",
                     params![
@@ -505,22 +549,24 @@ impl KeyManager {
                         config_key
                     ],
                 )?;
-                
+
                 log::trace!("Updated usage statistics for key: {}", key_id);
                 Ok(())
             }
-            Err(rusqlite::Error::QueryReturnedNoRows) => {
-                Err(SecurityError::KeyNotFound(format!("Key not found: {}", key_id)))
-            }
+            Err(rusqlite::Error::QueryReturnedNoRows) => Err(SecurityError::KeyNotFound(format!(
+                "Key not found: {}",
+                key_id
+            ))),
             Err(e) => Err(SecurityError::Database(e)),
         }
     }
-    
+
     /// Clean up old encryption keys
     async fn cleanup_old_keys(&self) -> SecurityResult<u32> {
         let conn = self.database.get_connection().await?;
-        let cutoff_date = Utc::now() - chrono::Duration::days(self.rotation_config.max_age_days as i64 * 2);
-        
+        let cutoff_date =
+            Utc::now() - chrono::Duration::days(self.rotation_config.max_age_days as i64 * 2);
+
         let deleted = conn.execute(
             "DELETE FROM secure_config 
              WHERE category = 'encryption_keys' 
@@ -528,41 +574,43 @@ impl KeyManager {
              AND config_key NOT LIKE '%_active'",
             [cutoff_date.to_rfc3339()],
         )?;
-        
+
         log::info!("Cleaned up {} old encryption keys", deleted);
         Ok(deleted as u32)
     }
-    
+
     /// Get key management statistics
     pub async fn get_key_statistics(&self) -> SecurityResult<KeyStatistics> {
         let conn = self.database.get_connection().await?;
-        
+
         // Total keys
         let total_keys: i64 = conn.query_row(
             "SELECT COUNT(*) FROM secure_config WHERE category = 'encryption_keys'",
             [],
             |row| row.get(0),
         )?;
-        
+
         // Active keys by algorithm
         let mut active_keys_by_algorithm = std::collections::HashMap::new();
         let mut stmt = conn.prepare(
             "SELECT config_key FROM secure_config 
-             WHERE category = 'encryption_keys' AND config_key LIKE '%_active'"
+             WHERE category = 'encryption_keys' AND config_key LIKE '%_active'",
         )?;
-        
+
         let rows = stmt.query_map([], |row| {
             let config_key: String = row.get(0)?;
             Ok(config_key)
         })?;
-        
+
         for row in rows {
             let config_key = row?;
             if let Some(algorithm) = config_key.split('_').next() {
-                *active_keys_by_algorithm.entry(algorithm.to_string()).or_insert(0) += 1;
+                *active_keys_by_algorithm
+                    .entry(algorithm.to_string())
+                    .or_insert(0) += 1;
             }
         }
-        
+
         Ok(KeyStatistics {
             total_keys: total_keys as u32,
             active_keys_by_algorithm,
@@ -595,49 +643,61 @@ mod tests {
     use super::*;
 
     use crate::database::DatabaseConnection;
-    
+
     async fn create_test_key_manager() -> KeyManager {
         // Use default database connection for testing
         let database = Arc::new(DatabaseConnection::new().unwrap());
-        
+
         KeyManager::new(database, None).await.unwrap()
     }
-    
+
     #[tokio::test]
     async fn test_key_generation() {
         let manager = create_test_key_manager().await;
-        
-        let key = manager.generate_encryption_key("test_user", "AES-256", 256).await.unwrap();
+
+        let key = manager
+            .generate_encryption_key("test_user", "AES-256", 256)
+            .await
+            .unwrap();
         assert!(!key.is_empty());
-        
+
         // Verify the key can be retrieved
         let (retrieved_key, metadata) = manager.get_active_key("AES-256").await.unwrap().unwrap();
         assert_eq!(key, retrieved_key);
         assert!(metadata.is_active);
     }
-    
+
     #[tokio::test]
     async fn test_key_rotation() {
         let manager = create_test_key_manager().await;
-        
+
         // Generate initial key
-        let _key1 = manager.generate_encryption_key("test_user", "AES-256", 256).await.unwrap();
-        
+        let _key1 = manager
+            .generate_encryption_key("test_user", "AES-256", 256)
+            .await
+            .unwrap();
+
         // Force rotation
-        let rotated = manager.rotate_keys("test_user", Some("Test rotation".to_string())).await.unwrap();
+        let rotated = manager
+            .rotate_keys("test_user", Some("Test rotation".to_string()))
+            .await
+            .unwrap();
         assert!(!rotated.is_empty());
     }
-    
+
     #[tokio::test]
     async fn test_rotation_status() {
         let manager = create_test_key_manager().await;
-        
+
         let status = manager.get_rotation_status().await.unwrap();
         assert_eq!(status.total_keys, 0); // No keys initially
-        
+
         // Generate a key
-        let _key = manager.generate_encryption_key("test_user", "AES-256", 256).await.unwrap();
-        
+        let _key = manager
+            .generate_encryption_key("test_user", "AES-256", 256)
+            .await
+            .unwrap();
+
         let status = manager.get_rotation_status().await.unwrap();
         assert!(status.total_keys > 0);
     }

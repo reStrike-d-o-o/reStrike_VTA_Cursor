@@ -1,6 +1,6 @@
 // Tauri command utilities for reStrike VTA
 
-import { TauriCommandResponse, ObsConnection, VideoClip, PssEvent } from '../types';
+import { TauriCommandResponse, ObsConnection, VideoClip, PssEvent, OpenApiStateResponse, OpenApiSaveResponse, OpenApiUploadResponse, OpenApiValidateResponse, SchemaFormat } from '../types';
 
 // Tauri v2 invoke function that uses the core module
 const safeInvoke = async (command: string, args?: any) => {
@@ -75,6 +75,44 @@ export const configCommands = {
    */
   async restoreSettingsBackup() {
     return executeTauriCommand('restore_settings_backup', {});
+  },
+};
+// OpenAPI Schema management commands
+export const openApiCommands = {
+  async getState(format?: SchemaFormat): Promise<OpenApiStateResponse> {
+    if (!isTauriAvailable()) {
+      throw new Error('Tauri not available');
+    }
+    const args = format ? { request: { format } } : {};
+    return await safeInvoke('openapi_get_state', args) as OpenApiStateResponse;
+  },
+
+  async saveSchema(schema: string, format: SchemaFormat): Promise<OpenApiSaveResponse> {
+    if (!isTauriAvailable()) {
+      throw new Error('Tauri not available');
+    }
+    return await safeInvoke('openapi_save_schema', { request: { schema, format } }) as OpenApiSaveResponse;
+  },
+
+  async validateSchema(schema: string, format: SchemaFormat): Promise<OpenApiValidateResponse> {
+    if (!isTauriAvailable()) {
+      throw new Error('Tauri not available');
+    }
+    return await safeInvoke('openapi_validate_schema', { request: { schema, format } }) as OpenApiValidateResponse;
+  },
+
+  async uploadSchema(path: string): Promise<OpenApiUploadResponse> {
+    if (!isTauriAvailable()) {
+      throw new Error('Tauri not available');
+    }
+    return await safeInvoke('openapi_upload_schema', { request: { path } }) as OpenApiUploadResponse;
+  },
+
+  async exportSchema(path: string, format: SchemaFormat): Promise<void> {
+    if (!isTauriAvailable()) {
+      throw new Error('Tauri not available');
+    }
+    await safeInvoke('openapi_export_schema', { request: { path, format } });
   },
 };
 
@@ -600,3 +638,4 @@ export const executeTauriCommand = async <T = any>(
     return { success: false, error: `Command failed: ${errorMessage}` };
   }
 }; 
+

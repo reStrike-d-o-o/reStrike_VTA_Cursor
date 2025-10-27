@@ -1,0 +1,52 @@
+{
+  "components": {
+    "schemas": {}
+  },
+  "info": {
+    "description": "Programmatic interface for reStrike VTA integrations. This schema can be edited from the desktop application. Validate every change before publishing to ensure interoperability.\n",
+    "title": "reStrike VTA External API",
+    "version": "1.0.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/health": {
+      "get": {
+        "description": "Returns a simple status payload that clients can use to verify connectivity.\n",
+        "operationId": "getHealth",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "example": "ok",
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "format": "date-time",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "timestamp"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Health status payload"
+          }
+        },
+        "summary": "API health check"
+      }
+    }
+  },
+  "servers": [
+    {
+      "description": "Local development server",
+      "url": "http://127.0.0.1:8787/api"
+    }
+  ]
+}

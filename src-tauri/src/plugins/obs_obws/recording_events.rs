@@ -1,25 +1,25 @@
-use std::sync::{Arc, Mutex};
-use tokio::sync::mpsc;
-use serde::{Deserialize, Serialize};
-use crate::types::{AppError, AppResult};
-use crate::plugins::plugin_udp::PssEvent;
-use crate::plugins::obs_obws::ObsPathGenerator;
-use crate::plugins::obs_obws::types::ObsReplayBufferStatus;
-use crate::plugins::obs_obws::PathGeneratorConfig;
+use crate::database::operations::{PssUdpOperations, TournamentOperations};
 use crate::plugins::obs_obws::manager::ObsManager;
-use crate::database::operations::{TournamentOperations, PssUdpOperations};
+use crate::plugins::obs_obws::types::ObsReplayBufferStatus;
+use crate::plugins::obs_obws::ObsPathGenerator;
+use crate::plugins::obs_obws::PathGeneratorConfig;
+use crate::plugins::plugin_udp::PssEvent;
+use crate::types::{AppError, AppResult};
 use chrono::Utc;
 use once_cell::sync::OnceCell;
+use serde::{Deserialize, Serialize};
 use std::sync::Mutex as StdMutex;
+use std::sync::{Arc, Mutex};
+use tokio::sync::mpsc;
 
 /// Recording session state
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum RecordingState {
     Idle,
-    Preparing,      // Generating path, setting up OBS
-    Recording,      // Actively recording
-    Stopping,       // Stopping recording
-    Error(String),  // Error state with message
+    Preparing,     // Generating path, setting up OBS
+    Recording,     // Actively recording
+    Stopping,      // Stopping recording
+    Error(String), // Error state with message
 }
 
 /// Recording session information
@@ -152,7 +152,10 @@ impl ObsRecordingEventHandler {
 
     /// Handle PSS events and trigger recording actions
     pub async fn handle_pss_event(&self, event: &PssEvent) -> AppResult<()> {
-        log::info!("ObsRecordingEventHandler::handle_pss_event called with: {:?}", event);
+        log::info!(
+            "ObsRecordingEventHandler::handle_pss_event called with: {:?}",
+            event
+        );
         println!(" ObsRecordingEventHandler::handle_pss_event: {:?}", event);
         let config = {
             let config_guard = self.config.lock().unwrap();
@@ -186,7 +189,9 @@ impl ObsRecordingEventHandler {
                     }
                 }
                 // Resolve numeric match id outside the lock
-                let resolved_dbid: Option<i64> = if let Ok(conn) = self.database.get_connection().await {
+                let resolved_dbid: Option<i64> = if let Ok(conn) =
+                    self.database.get_connection().await
+                {
                     let conn_ref = &*conn;
                     conn_ref
                         .query_row(
@@ -195,27 +200,49 @@ impl ObsRecordingEventHandler {
                             |r| r.get::<_, i64>(0),
                         )
                         .ok()
-                } else { None };
-                if let Some(dbid) = resolved_dbid { if dbid > 0 {
-                    let mut session_guard = self.current_session.lock().unwrap();
-                    if let Some(ref mut session) = *session_guard { session.match_db_id = Some(dbid); }
-                }}
+                } else {
+                    None
+                };
+                if let Some(dbid) = resolved_dbid {
+                    if dbid > 0 {
+                        let mut session_guard = self.current_session.lock().unwrap();
+                        if let Some(ref mut session) = *session_guard {
+                            session.match_db_id = Some(dbid);
+                        }
+                    }
+                }
                 // Ensure tournament/day context is present (fallback to active) outside lock, then write
                 let (tid_opt, day_opt) = if let Ok(conn2) = self.database.get_connection().await {
                     let conn_ref2 = &*conn2;
-                    let t = TournamentOperations::get_active_tournament(conn_ref2).ok().flatten();
-                    let d = t.as_ref().and_then(|tt| TournamentOperations::get_active_tournament_day(conn_ref2, tt.id.unwrap()).ok().flatten());
+                    let t = TournamentOperations::get_active_tournament(conn_ref2)
+                        .ok()
+                        .flatten();
+                    let d = t.as_ref().and_then(|tt| {
+                        TournamentOperations::get_active_tournament_day(conn_ref2, tt.id.unwrap())
+                            .ok()
+                            .flatten()
+                    });
                     (t.and_then(|tt| tt.id), d.and_then(|dd| dd.id))
-                } else { (None, None) };
+                } else {
+                    (None, None)
+                };
                 if tid_opt.is_some() || day_opt.is_some() {
                     let mut session_guard = self.current_session.lock().unwrap();
                     if let Some(ref mut session) = *session_guard {
-                        if session.tournament_id.is_none() { session.tournament_id = tid_opt; }
-                        if session.tournament_day_id.is_none() { session.tournament_day_id = day_opt; }
+                        if session.tournament_id.is_none() {
+                            session.tournament_id = tid_opt;
+                        }
+                        if session.tournament_day_id.is_none() {
+                            session.tournament_day_id = day_opt;
+                        }
                         session.updated_at = Utc::now();
                     }
                 }
-                log::info!("MatchConfig received - set current match_id=mch:{} number={}", number, number);
+                log::info!(
+                    "MatchConfig received - set current match_id=mch:{} number={}",
+                    number,
+                    number
+                );
 
                 // Ensure any pending delayed stop is cancelled and enforce immediate stop
                 let _ = self.cancel_pending_stop_and_stop_immediately().await;
@@ -226,7 +253,13 @@ impl ObsRecordingEventHandler {
                 }
             }
             // Capture athletes immediately to ensure filename uses current match names
-            PssEvent::Athletes { athlete1_short, athlete1_country, athlete2_short, athlete2_country, .. } => {
+            PssEvent::Athletes {
+                athlete1_short,
+                athlete1_country,
+                athlete2_short,
+                athlete2_country,
+                ..
+            } => {
                 // Store pending UDP names/flags (used when session does not exist yet)
                 {
                     *self.pending_p1_name.lock().unwrap() = Some(athlete1_short.clone());
@@ -259,13 +292,19 @@ impl ObsRecordingEventHandler {
             }
 
             // Clock start - ensure recording is active
-            PssEvent::Clock { action: Some(action), .. } if action == "start" => {
+            PssEvent::Clock {
+                action: Some(action),
+                ..
+            } if action == "start" => {
                 log::info!("Clock start event received - ensuring recording is active");
                 self.handle_clock_start().await?;
             }
 
             // Clock stop - consider stopping recording
-            PssEvent::Clock { action: Some(action), .. } if action == "stop" => {
+            PssEvent::Clock {
+                action: Some(action),
+                ..
+            } if action == "stop" => {
                 log::info!("Clock stop event received - considering recording stop");
                 self.handle_clock_stop().await?;
             }
@@ -300,10 +339,20 @@ impl ObsRecordingEventHandler {
         let config = { self.config.lock().unwrap().clone() };
         if let Some(connection_name) = config.obs_connection_name {
             // Attempt to stop recording immediately; ignore error if already stopped
-            if let Err(e) = self.obs_manager.stop_recording(Some(&connection_name)).await {
-                log::warn!("Stop recording on new match failed (may already be stopped): {}", e);
+            if let Err(e) = self
+                .obs_manager
+                .stop_recording(Some(&connection_name))
+                .await
+            {
+                log::warn!(
+                    "Stop recording on new match failed (may already be stopped): {}",
+                    e
+                );
             } else {
-                log::info!("Recording stopped immediately for connection: {}", connection_name);
+                log::info!(
+                    "Recording stopped immediately for connection: {}",
+                    connection_name
+                );
             }
         }
         Ok(())
@@ -322,7 +371,7 @@ impl ObsRecordingEventHandler {
             let latest = PssUdpOperations::get_pss_matches(&*conn, Some(1)).unwrap_or_default();
             match_id = latest.into_iter().next().map(|m| m.match_id);
         }
-        
+
         if let Some(match_id) = match_id {
             let config = {
                 let config_guard = self.config.lock().unwrap();
@@ -363,7 +412,8 @@ impl ObsRecordingEventHandler {
             // Generate recording path
             if let Err(e) = self.generate_recording_path(&match_id).await {
                 log::error!("Failed to generate recording path: {}", e);
-                self.update_session_state(RecordingState::Error(e.to_string())).await?;
+                self.update_session_state(RecordingState::Error(e.to_string()))
+                    .await?;
             }
 
             // Apply directory at the start of tournament day if changed
@@ -374,14 +424,28 @@ impl ObsRecordingEventHandler {
                     last.as_deref() != Some(&day_key)
                 };
                 if should_apply {
-                    if let (Some(dir), Some(conn_name)) = (session.recording_path.clone(), session.obs_connection_name.clone()) {
+                    if let (Some(dir), Some(conn_name)) = (
+                        session.recording_path.clone(),
+                        session.obs_connection_name.clone(),
+                    ) {
                         // Normalize path separators for OBS
                         let dir_norm = dir.replace('\\', "/");
                         // Print exactly what we're sending to OBS
-                        println!(" Sending to OBS '{}' record directory (day apply): {}", conn_name, dir_norm);
-                        log::info!("Sending to OBS '{}' record directory (day apply): {}", conn_name, dir_norm);
+                        println!(
+                            " Sending to OBS '{}' record directory (day apply): {}",
+                            conn_name, dir_norm
+                        );
+                        log::info!(
+                            "Sending to OBS '{}' record directory (day apply): {}",
+                            conn_name,
+                            dir_norm
+                        );
                         // Release the mutex before awaiting
-                        match self.obs_manager.set_record_directory(&dir_norm, Some(&conn_name)).await {
+                        match self
+                            .obs_manager
+                            .set_record_directory(&dir_norm, Some(&conn_name))
+                            .await
+                        {
                             Ok(()) => {
                                 let mut last = self.last_applied_directory_day.lock().unwrap();
                                 *last = Some(day_key);
@@ -422,8 +486,17 @@ impl ObsRecordingEventHandler {
                     let (tid_opt, day_opt) = match (prev.tournament_id, prev.tournament_day_id) {
                         (Some(tid), Some(did)) => (Some(tid), Some(did)),
                         _ => {
-                            let t = TournamentOperations::get_active_tournament(&*conn_ref).ok().flatten();
-                            let d = t.as_ref().and_then(|tt| TournamentOperations::get_active_tournament_day(&*conn_ref, tt.id.unwrap()).ok().flatten());
+                            let t = TournamentOperations::get_active_tournament(&*conn_ref)
+                                .ok()
+                                .flatten();
+                            let d = t.as_ref().and_then(|tt| {
+                                TournamentOperations::get_active_tournament_day(
+                                    &*conn_ref,
+                                    tt.id.unwrap(),
+                                )
+                                .ok()
+                                .flatten()
+                            });
                             (t.and_then(|tt| tt.id), d.and_then(|dd| dd.id))
                         }
                     };
@@ -438,7 +511,9 @@ impl ObsRecordingEventHandler {
                                 |r| r.get::<_, i64>(0),
                             )
                             .ok()
-                    } else { None };
+                    } else {
+                        None
+                    };
                     if let Some(match_db_id) = match_db_id_opt {
                         let _ = conn_ref.execute(
                             "INSERT INTO recorded_videos (match_id, event_id, tournament_id, tournament_day_id, video_type, file_path, record_directory, filename_formatting, start_time, duration_seconds, created_at, created)\n                             SELECT ?, NULL, (SELECT uuid FROM tournaments WHERE id = ?), (SELECT uuid FROM tournament_days WHERE id = ?), 'recording', ?, ?, NULL, ?, ?, ?, strftime('%s','now')\n                             WHERE NOT EXISTS (SELECT 1 FROM recorded_videos rv WHERE rv.match_id = ? AND rv.start_time = ?)",
@@ -516,7 +591,13 @@ impl ObsRecordingEventHandler {
             // If session is missing fields (athletes/match number), try a quick refresh
             if {
                 let s = self.get_current_session();
-                s.as_ref().map(|ss| ss.player1_name.is_none() || ss.player2_name.is_none() || ss.match_number.is_none()).unwrap_or(true)
+                s.as_ref()
+                    .map(|ss| {
+                        ss.player1_name.is_none()
+                            || ss.player2_name.is_none()
+                            || ss.match_number.is_none()
+                    })
+                    .unwrap_or(true)
             } {
                 if let Some(mid) = { self.get_current_session().map(|s| s.match_id) } {
                     let _ = self.generate_recording_path(&mid).await;
@@ -551,9 +632,20 @@ impl ObsRecordingEventHandler {
                 if let Some(dir) = session.recording_path.clone() {
                     let dir_norm = dir.replace('\\', "/");
                     // Print exactly what we're sending to OBS
-                    println!(" Sending to OBS '{}' record directory (pre-start): {}", connection_name, dir_norm);
-                    log::info!("Sending to OBS '{}' record directory (pre-start): {}", connection_name, dir_norm);
-                    if let Err(e) = self.obs_manager.set_record_directory(&dir_norm, Some(&connection_name)).await {
+                    println!(
+                        " Sending to OBS '{}' record directory (pre-start): {}",
+                        connection_name, dir_norm
+                    );
+                    log::info!(
+                        "Sending to OBS '{}' record directory (pre-start): {}",
+                        connection_name,
+                        dir_norm
+                    );
+                    if let Err(e) = self
+                        .obs_manager
+                        .set_record_directory(&dir_norm, Some(&connection_name))
+                        .await
+                    {
                         log::warn!("Failed to set record directory before start: {}", e);
                     } else {
                         log::info!("Record directory ensured before start: {}", dir_norm);
@@ -570,21 +662,46 @@ impl ObsRecordingEventHandler {
                 };
                 println!(" Active filename template: {}", effective_template);
                 // Ensure we use the most recent UDP values for formatting
-                if session.player1_name.is_none() { session.player1_name = self.pending_p1_name.lock().unwrap().clone(); }
-                if session.player1_flag.is_none() { session.player1_flag = self.pending_p1_flag.lock().unwrap().clone(); }
-                if session.player2_name.is_none() { session.player2_name = self.pending_p2_name.lock().unwrap().clone(); }
-                if session.player2_flag.is_none() { session.player2_flag = self.pending_p2_flag.lock().unwrap().clone(); }
-                if session.match_number.is_none() { session.match_number = self.pending_match_number.lock().unwrap().clone(); }
+                if session.player1_name.is_none() {
+                    session.player1_name = self.pending_p1_name.lock().unwrap().clone();
+                }
+                if session.player1_flag.is_none() {
+                    session.player1_flag = self.pending_p1_flag.lock().unwrap().clone();
+                }
+                if session.player2_name.is_none() {
+                    session.player2_name = self.pending_p2_name.lock().unwrap().clone();
+                }
+                if session.player2_flag.is_none() {
+                    session.player2_flag = self.pending_p2_flag.lock().unwrap().clone();
+                }
+                if session.match_number.is_none() {
+                    session.match_number = self.pending_match_number.lock().unwrap().clone();
+                }
                 let formatting = self.build_filename_formatting(&effective_template, &session);
                 // Print exactly what we're sending to OBS
-                println!(" Sending to OBS '{}' filename formatting: {}", connection_name, formatting);
-                log::info!("Sending to OBS '{}' filename formatting: {}", connection_name, formatting);
-                if let Err(e) = self.obs_manager.set_filename_formatting(&formatting, Some(&connection_name)).await {
+                println!(
+                    " Sending to OBS '{}' filename formatting: {}",
+                    connection_name, formatting
+                );
+                log::info!(
+                    "Sending to OBS '{}' filename formatting: {}",
+                    connection_name,
+                    formatting
+                );
+                if let Err(e) = self
+                    .obs_manager
+                    .set_filename_formatting(&formatting, Some(&connection_name))
+                    .await
+                {
                     log::warn!("Failed to set filename formatting: {}", e);
                 } else {
                     log::info!("Applied filename formatting to OBS: {}", formatting);
                     // Read-back verification
-                    match self.obs_manager.get_filename_formatting(Some(&connection_name)).await {
+                    match self
+                        .obs_manager
+                        .get_filename_formatting(Some(&connection_name))
+                        .await
+                    {
                         Ok(current) => println!(" OBS current filename formatting='{}'", current),
                         Err(err) => println!(" Failed to read back filename formatting: {}", err),
                     }
@@ -595,7 +712,11 @@ impl ObsRecordingEventHandler {
             tokio::time::sleep(std::time::Duration::from_millis(500)).await;
 
             // Ensure replay buffer is enabled and active before recording
-            match self.obs_manager.get_replay_buffer_status(Some(&connection_name)).await {
+            match self
+                .obs_manager
+                .get_replay_buffer_status(Some(&connection_name))
+                .await
+            {
                 Ok(ObsReplayBufferStatus::Active) => {
                     log::info!("Replay buffer already active");
                     println!(" Replay buffer already active");
@@ -603,7 +724,11 @@ impl ObsRecordingEventHandler {
                 _ => {
                     log::info!("Starting replay buffer before recording...");
                     println!(" Starting replay buffer before recording...");
-                    if let Err(e) = self.obs_manager.start_replay_buffer(Some(&connection_name)).await {
+                    if let Err(e) = self
+                        .obs_manager
+                        .start_replay_buffer(Some(&connection_name))
+                        .await
+                    {
                         log::warn!("Failed to start replay buffer: {}", e);
                         println!("Failed to start replay buffer: {}", e);
                     } else {
@@ -619,29 +744,42 @@ impl ObsRecordingEventHandler {
                 // Start recording immediately via obws manager (authoritative)
                 log::info!("Starting OBS recording...");
                 println!(" Starting OBS recording...");
-                match self.obs_manager.start_recording(Some(&connection_name)).await {
+                match self
+                    .obs_manager
+                    .start_recording(Some(&connection_name))
+                    .await
+                {
                     Ok(()) => {
                         log::info!("Recording started for connection: {}", connection_name);
                         println!(" Recording started for connection: {}", connection_name);
 
-                // Persist recording session start
-                if let Some(session) = self.get_current_session() {
-                    if let Err(e) = self.start_recording_session(&session).await {
-                        log::error!("Failed to persist recording session start: {}", e);
-                    }
+                        // Persist recording session start
+                        if let Some(session) = self.get_current_session() {
+                            if let Err(e) = self.start_recording_session(&session).await {
+                                log::error!("Failed to persist recording session start: {}", e);
+                            }
 
-                    // Emit notification for recording started
-                    log::info!("Emitting recording_started notification for match {}", session.match_id);
-                    // Note: Window access would need to be passed through or use a different approach
-                    // For now, we'll use println which can be captured by the frontend
-                    println!("NOTIFICATION:recording_started:{}", serde_json::json!({
-                        "match_id": session.match_id,
-                        "connection_name": connection_name,
-                        "timestamp": chrono::Utc::now().to_rfc3339()
-                    }));
-                }
-                    },
-                    Err(e) => { log::error!("Failed to start recording via obws: {}", e); println!("Failed to start recording via obws: {}", e); },
+                            // Emit notification for recording started
+                            log::info!(
+                                "Emitting recording_started notification for match {}",
+                                session.match_id
+                            );
+                            // Note: Window access would need to be passed through or use a different approach
+                            // For now, we'll use println which can be captured by the frontend
+                            println!(
+                                "NOTIFICATION:recording_started:{}",
+                                serde_json::json!({
+                                    "match_id": session.match_id,
+                                    "connection_name": connection_name,
+                                    "timestamp": chrono::Utc::now().to_rfc3339()
+                                })
+                            );
+                        }
+                    }
+                    Err(e) => {
+                        log::error!("Failed to start recording via obws: {}", e);
+                        println!("Failed to start recording via obws: {}", e);
+                    }
                 }
 
                 // Start a lightweight monitor to detect RecordingStopped and index deterministically
@@ -650,9 +788,18 @@ impl ObsRecordingEventHandler {
                 let session_arc = self.current_session.clone();
                 let conn_clone = connection_name.clone();
                 tokio::spawn(async move {
-                    let _ = ObsRecordingEventHandler::wait_until_recording_stopped(mgr.clone(), conn_clone.clone(), 120).await; // up to 120s
+                    let _ = ObsRecordingEventHandler::wait_until_recording_stopped(
+                        mgr.clone(),
+                        conn_clone.clone(),
+                        120,
+                    )
+                    .await; // up to 120s
                     let session_snapshot = { session_arc.lock().unwrap().clone() };
-                    let _ = ObsRecordingEventHandler::index_after_stop_with_snapshot(db_arc.clone(), session_snapshot).await;
+                    let _ = ObsRecordingEventHandler::index_after_stop_with_snapshot(
+                        db_arc.clone(),
+                        session_snapshot,
+                    )
+                    .await;
                 });
             } else {
                 log::info!("Auto-start recording disabled by UI setting; not starting recording on FightReady");
@@ -668,7 +815,10 @@ impl ObsRecordingEventHandler {
     async fn handle_clock_start(&self) -> AppResult<()> {
         let current_state = {
             let session_guard = self.current_session.lock().unwrap();
-            session_guard.as_ref().map(|s| s.state.clone()).unwrap_or(RecordingState::Idle)
+            session_guard
+                .as_ref()
+                .map(|s| s.state.clone())
+                .unwrap_or(RecordingState::Idle)
         };
 
         match current_state {
@@ -681,7 +831,10 @@ impl ObsRecordingEventHandler {
                 log::debug!("Already recording, clock start ignored");
             }
             _ => {
-                log::warn!("Clock start received but not in recording state: {:?}", current_state);
+                log::warn!(
+                    "Clock start received but not in recording state: {:?}",
+                    current_state
+                );
             }
         }
 
@@ -715,40 +868,69 @@ impl ObsRecordingEventHandler {
             let delay_secs = config.stop_delay_seconds as u64;
             if delay_secs == 0 {
                 // Stop immediately, then wait for OBS to fully stop before indexing
-                if let Err(e) = self.obs_manager.stop_recording(Some(&connection_name)).await {
+                if let Err(e) = self
+                    .obs_manager
+                    .stop_recording(Some(&connection_name))
+                    .await
+                {
                     log::error!("Failed to stop recording via obws: {}", e);
                 } else {
-                    log::info!("Recording stop requested for connection: {}", connection_name);
+                    log::info!(
+                        "Recording stop requested for connection: {}",
+                        connection_name
+                    );
 
                     // Persist recording session stop
                     if let Some(session) = self.get_current_session() {
-                        if let Err(e) = self.stop_recording_session_by_match_id(&session.match_id).await {
+                        if let Err(e) = self
+                            .stop_recording_session_by_match_id(&session.match_id)
+                            .await
+                        {
                             log::error!("Failed to persist recording session stop: {}", e);
                         }
 
                         // Emit notification for recording stopped
-                        log::info!("Emitting recording_stopped notification for match {}", session.match_id);
-                        println!("NOTIFICATION:recording_stopped:{}", serde_json::json!({
-                            "match_id": session.match_id,
-                            "connection_name": connection_name,
-                            "timestamp": chrono::Utc::now().to_rfc3339()
-                        }));
+                        log::info!(
+                            "Emitting recording_stopped notification for match {}",
+                            session.match_id
+                        );
+                        println!(
+                            "NOTIFICATION:recording_stopped:{}",
+                            serde_json::json!({
+                                "match_id": session.match_id,
+                                "connection_name": connection_name,
+                                "timestamp": chrono::Utc::now().to_rfc3339()
+                            })
+                        );
                     }
 
                     // Wait until OBS reports Stopped (up to 30s), then index
-                    let _ = Self::wait_until_recording_stopped(self.obs_manager.clone(), connection_name.clone(), 30).await;
+                    let _ = Self::wait_until_recording_stopped(
+                        self.obs_manager.clone(),
+                        connection_name.clone(),
+                        30,
+                    )
+                    .await;
                     let _ = self.index_recording_after_stop().await;
                 }
             } else {
-                log::info!("Scheduling stop in {}s (will cancel if new match loads)", delay_secs);
+                log::info!(
+                    "Scheduling stop in {}s (will cancel if new match loads)",
+                    delay_secs
+                );
                 let mgr = self.obs_manager.clone();
                 let conn = connection_name.clone();
                 let db = self.database.clone();
                 // Take a snapshot of the session before spawning to avoid holding a MutexGuard across await
                 let session_snapshot = { self.current_session.lock().unwrap().clone() };
-                let match_id_for_stop = session_snapshot.as_ref().map(|s| s.match_id.clone()).unwrap_or_default();
+                let match_id_for_stop = session_snapshot
+                    .as_ref()
+                    .map(|s| s.match_id.clone())
+                    .unwrap_or_default();
                 // Abort any previous pending stop
-                if let Some(handle) = self.pending_stop_task.lock().unwrap().take() { handle.abort(); }
+                if let Some(handle) = self.pending_stop_task.lock().unwrap().take() {
+                    handle.abort();
+                }
                 let handle = tokio::spawn(async move {
                     tokio::time::sleep(std::time::Duration::from_secs(delay_secs)).await;
                     if let Err(e) = mgr.stop_recording(Some(&conn)).await {
@@ -758,14 +940,27 @@ impl ObsRecordingEventHandler {
 
                         // Persist recording session stop
                         if !match_id_for_stop.is_empty() {
-                            if let Err(e) = Self::stop_recording_session_by_match_id_static(db.clone(), &match_id_for_stop).await {
-                                log::error!("Failed to persist delayed recording session stop: {}", e);
+                            if let Err(e) = Self::stop_recording_session_by_match_id_static(
+                                db.clone(),
+                                &match_id_for_stop,
+                            )
+                            .await
+                            {
+                                log::error!(
+                                    "Failed to persist delayed recording session stop: {}",
+                                    e
+                                );
                             }
                         }
 
                         // Wait until OBS fully stops, then try to index using session handles
-                        let _ = Self::wait_until_recording_stopped(mgr.clone(), conn.clone(), 30).await;
-                        let _ = Self::index_after_stop_with_snapshot(db.clone(), session_snapshot.clone()).await;
+                        let _ =
+                            Self::wait_until_recording_stopped(mgr.clone(), conn.clone(), 30).await;
+                        let _ = Self::index_after_stop_with_snapshot(
+                            db.clone(),
+                            session_snapshot.clone(),
+                        )
+                        .await;
                     }
                 });
                 *self.pending_stop_task.lock().unwrap() = Some(handle);
@@ -800,24 +995,59 @@ impl ObsRecordingEventHandler {
                 fname_opt
             );
             if let (Some(start_time), Some(record_dir)) = (start_opt, dir_opt) {
-                let file_path: Option<String> = fname_opt.map(|f| std::path::PathBuf::from(&record_dir).join(f).to_string_lossy().to_string());
+                let file_path: Option<String> = fname_opt.map(|f| {
+                    std::path::PathBuf::from(&record_dir)
+                        .join(f)
+                        .to_string_lossy()
+                        .to_string()
+                });
                 if let Ok(conn_guard) = self.database.get_connection().await {
                     let conn_ref = &*conn_guard;
                     let duration = (created - start_time).num_seconds().max(0) as i32;
                     // Resolve active tournament/day IDs for better indexing
                     let (tid_opt, day_opt) = {
-                        let t = TournamentOperations::get_active_tournament(&*conn_ref).ok().flatten();
-                        let d = t.as_ref().and_then(|tt| TournamentOperations::get_active_tournament_day(&*conn_ref, tt.id.unwrap()).ok().flatten());
+                        let t = TournamentOperations::get_active_tournament(&*conn_ref)
+                            .ok()
+                            .flatten();
+                        let d = t.as_ref().and_then(|tt| {
+                            TournamentOperations::get_active_tournament_day(
+                                &*conn_ref,
+                                tt.id.unwrap(),
+                            )
+                            .ok()
+                            .flatten()
+                        });
                         (t.and_then(|tt| tt.id), d.and_then(|dd| dd.id))
                     };
-                    log::info!("index_recording_after_stop: active tournament_id={:?} day_id={:?}", tid_opt, day_opt);
-                    println!(" index_recording_after_stop: active tournament_id={:?} day_id={:?}", tid_opt, day_opt);
+                    log::info!(
+                        "index_recording_after_stop: active tournament_id={:?} day_id={:?}",
+                        tid_opt,
+                        day_opt
+                    );
+                    println!(
+                        " index_recording_after_stop: active tournament_id={:?} day_id={:?}",
+                        tid_opt, day_opt
+                    );
                     // Resolve match DB id robustly: try by match_id string, then by match_number, else most recent
                     let match_db_id: i64 = {
                         // 1) Prefer session.match_db_id if present
-                        if let Some(ss) = self.get_current_session() { if let Some(dbid) = ss.match_db_id { if dbid > 0 { dbid } else { 0 } } else { 0 } } else { 0 }
+                        if let Some(ss) = self.get_current_session() {
+                            if let Some(dbid) = ss.match_db_id {
+                                if dbid > 0 {
+                                    dbid
+                                } else {
+                                    0
+                                }
+                            } else {
+                                0
+                            }
+                        } else {
+                            0
+                        }
                     };
-                    let match_db_id: i64 = if match_db_id > 0 { match_db_id } else {
+                    let match_db_id: i64 = if match_db_id > 0 {
+                        match_db_id
+                    } else {
                         log::info!("index_recording_after_stop: resolving match_db_id via match_id={} then match_number...", mid);
                         println!(" index_recording_after_stop: resolving match_db_id via match_id={} then match_number...", mid);
                         // 2) Try by effective match_id ("mch:<number>"), else 3) by match_number, else 4) most recent
@@ -848,26 +1078,44 @@ impl ObsRecordingEventHandler {
                             }
                         }
                     };
-                    log::info!("index_recording_after_stop: resolved match_db_id={}", match_db_id);
-                    println!(" index_recording_after_stop: resolved match_db_id={}", match_db_id);
+                    log::info!(
+                        "index_recording_after_stop: resolved match_db_id={}",
+                        match_db_id
+                    );
+                    println!(
+                        " index_recording_after_stop: resolved match_db_id={}",
+                        match_db_id
+                    );
                     if match_db_id > 0 {
                         let rows = conn_ref.execute(
                             "INSERT INTO recorded_videos (match_id, event_id, tournament_id, tournament_day_id, video_type, file_path, record_directory, filename_formatting, start_time, duration_seconds, created_at, created) VALUES (?, NULL, (SELECT uuid FROM tournaments WHERE id = ?), (SELECT uuid FROM tournament_days WHERE id = ?), 'recording', ?, ?, NULL, ?, ?, ?, strftime('%s','now'))",
                             rusqlite::params![ match_db_id, tid_opt, day_opt, tid_opt, day_opt, tid_opt, day_opt, file_path, record_dir, start_time.to_rfc3339(), duration, created.to_rfc3339(), match_db_id, start_time.to_rfc3339() ]
                         ).unwrap_or(0);
-                        log::info!("index_recording_after_stop: recorded_videos insert rows={}", rows);
-                        println!(" index_recording_after_stop: recorded_videos insert rows={}", rows);
+                        log::info!(
+                            "index_recording_after_stop: recorded_videos insert rows={}",
+                            rows
+                        );
+                        println!(
+                            " index_recording_after_stop: recorded_videos insert rows={}",
+                            rows
+                        );
                     }
                     // Resolve recorded_video_id for this recording window
                     let rvid: i64 = conn_ref
                         .query_row(
                             "SELECT id FROM recorded_videos WHERE match_id = ? AND start_time = ?",
-                            rusqlite::params![ match_db_id, start_time.to_rfc3339() ],
+                            rusqlite::params![match_db_id, start_time.to_rfc3339()],
                             |r| r.get(0),
                         )
                         .unwrap_or_else(|_| conn_ref.last_insert_rowid());
-                    log::info!("index_recording_after_stop: resolved recorded_video_id={}", rvid);
-                    println!(" index_recording_after_stop: resolved recorded_video_id={}", rvid);
+                    log::info!(
+                        "index_recording_after_stop: resolved recorded_video_id={}",
+                        rvid
+                    );
+                    println!(
+                        " index_recording_after_stop: resolved recorded_video_id={}",
+                        rvid
+                    );
                     // Bulk-link events inside window with offset_ms
                     let end_time = start_time + chrono::Duration::seconds(duration as i64);
                     // Link only important events (K,P,H,TH,TB,R) for this recording window
@@ -884,7 +1132,11 @@ impl ObsRecordingEventHandler {
     }
 
     /// Utility: wait until OBS recording state becomes Stopped (or timeout)
-    async fn wait_until_recording_stopped(mgr: Arc<ObsManager>, connection_name: String, timeout_secs: u64) -> AppResult<()> {
+    async fn wait_until_recording_stopped(
+        mgr: Arc<ObsManager>,
+        connection_name: String,
+        timeout_secs: u64,
+    ) -> AppResult<()> {
         use crate::plugins::obs_obws::types::ObsRecordingStatus;
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(timeout_secs);
         loop {
@@ -912,8 +1164,6 @@ impl ObsRecordingEventHandler {
         }
         Ok(())
     }
-
-    
 
     /// Minimal indexing using only shared handles (used from background tasks)
     async fn index_after_stop_with_snapshot(
@@ -943,18 +1193,39 @@ impl ObsRecordingEventHandler {
             let mid = session.match_id.clone();
             let created = chrono::Utc::now();
             if let (Some(start_time), Some(record_dir)) = (start_opt, dir_opt) {
-                let file_path: Option<String> = fname_opt.map(|f| std::path::PathBuf::from(&record_dir).join(f).to_string_lossy().to_string());
+                let file_path: Option<String> = fname_opt.map(|f| {
+                    std::path::PathBuf::from(&record_dir)
+                        .join(f)
+                        .to_string_lossy()
+                        .to_string()
+                });
                 if let Ok(conn_guard) = database.get_connection().await {
                     let conn_ref = &*conn_guard;
                     let duration = (created - start_time).num_seconds().max(0) as i32;
                     // Resolve active tournament/day IDs for better indexing
                     let (tid_opt, day_opt) = {
-                        let t = TournamentOperations::get_active_tournament(&*conn_ref).ok().flatten();
-                        let d = t.as_ref().and_then(|tt| TournamentOperations::get_active_tournament_day(&*conn_ref, tt.id.unwrap()).ok().flatten());
+                        let t = TournamentOperations::get_active_tournament(&*conn_ref)
+                            .ok()
+                            .flatten();
+                        let d = t.as_ref().and_then(|tt| {
+                            TournamentOperations::get_active_tournament_day(
+                                &*conn_ref,
+                                tt.id.unwrap(),
+                            )
+                            .ok()
+                            .flatten()
+                        });
                         (t.and_then(|tt| tt.id), d.and_then(|dd| dd.id))
                     };
-                    log::info!("index_after_stop_with_snapshot: active tournament_id={:?} day_id={:?}", tid_opt, day_opt);
-                    println!(" index_after_stop_with_snapshot: active tournament_id={:?} day_id={:?}", tid_opt, day_opt);
+                    log::info!(
+                        "index_after_stop_with_snapshot: active tournament_id={:?} day_id={:?}",
+                        tid_opt,
+                        day_opt
+                    );
+                    println!(
+                        " index_after_stop_with_snapshot: active tournament_id={:?} day_id={:?}",
+                        tid_opt, day_opt
+                    );
                     // Resolve match DB id robustly: 1) session.match_db_id, 2) by match_id, 3) by match_number, 4) most recent
                     let mut match_db_id: i64 = session.match_db_id.unwrap_or(0);
                     if match_db_id == 0 {
@@ -984,15 +1255,27 @@ impl ObsRecordingEventHandler {
                             ).unwrap_or(0);
                         }
                     }
-                    log::info!("index_after_stop_with_snapshot: resolved match_db_id={}", match_db_id);
-                    println!(" index_after_stop_with_snapshot: resolved match_db_id={}", match_db_id);
+                    log::info!(
+                        "index_after_stop_with_snapshot: resolved match_db_id={}",
+                        match_db_id
+                    );
+                    println!(
+                        " index_after_stop_with_snapshot: resolved match_db_id={}",
+                        match_db_id
+                    );
                     if match_db_id > 0 {
                         let rows = conn_ref.execute(
                             "INSERT INTO recorded_videos (match_id, event_id, tournament_id, tournament_day_id, video_type, file_path, record_directory, filename_formatting, start_time, duration_seconds, created_at, created) VALUES (?, NULL, (SELECT uuid FROM tournaments WHERE id = ?), (SELECT uuid FROM tournament_days WHERE id = ?), 'recording', ?, ?, NULL, ?, ?, ?, strftime('%s','now'))",
                             rusqlite::params![ match_db_id, tid_opt, day_opt, tid_opt, day_opt, tid_opt, day_opt, file_path, record_dir, start_time.to_rfc3339(), duration, created.to_rfc3339(), match_db_id, start_time.to_rfc3339() ]
                         ).unwrap_or(0);
-                        log::info!("index_after_stop_with_snapshot: recorded_videos insert rows={}", rows);
-                        println!(" index_after_stop_with_snapshot: recorded_videos insert rows={}", rows);
+                        log::info!(
+                            "index_after_stop_with_snapshot: recorded_videos insert rows={}",
+                            rows
+                        );
+                        println!(
+                            " index_after_stop_with_snapshot: recorded_videos insert rows={}",
+                            rows
+                        );
                         // Link events inside window
                         let rvid: i64 = conn_ref
                             .query_row(
@@ -1001,15 +1284,27 @@ impl ObsRecordingEventHandler {
                                 |r| r.get(0),
                             )
                             .unwrap_or_else(|_| conn_ref.last_insert_rowid());
-                        log::info!("index_after_stop_with_snapshot: resolved recorded_video_id={}", rvid);
-                        println!(" index_after_stop_with_snapshot: resolved recorded_video_id={}", rvid);
+                        log::info!(
+                            "index_after_stop_with_snapshot: resolved recorded_video_id={}",
+                            rvid
+                        );
+                        println!(
+                            " index_after_stop_with_snapshot: resolved recorded_video_id={}",
+                            rvid
+                        );
                         let end_time = start_time + chrono::Duration::seconds(duration as i64);
                         let rows2 = conn_ref.execute(
                             "INSERT OR IGNORE INTO recorded_video_events (recorded_video_id, event_id, offset_ms, created_at, created)\n                         SELECT ?, e.id, CAST((julianday(e.timestamp) - julianday(?)) * 86400000 AS INTEGER), ?, strftime('%s','now')\n                         FROM pss_events e\n                         JOIN pss_event_types t ON t.id = e.event_type_id\n                         WHERE e.match_id = ?\n                           AND e.timestamp >= ? AND e.timestamp <= ?\n                           AND (e.tournament_id IS NULL OR EXISTS (SELECT 1 FROM recorded_videos rv2 WHERE rv2.id = ? AND (rv2.tournament_id IS NULL OR rv2.tournament_id = e.tournament_id)))\n                           AND (e.tournament_day_id IS NULL OR EXISTS (SELECT 1 FROM recorded_videos rv2 WHERE rv2.id = ? AND (rv2.tournament_day_id IS NULL OR rv2.tournament_day_id = e.tournament_day_id)))\n                           AND t.event_code IN ('K','P','H','TH','TB','R')\n                         ORDER BY e.timestamp ASC",
                             rusqlite::params![ rvid, start_time.to_rfc3339(), chrono::Utc::now().to_rfc3339(), match_db_id, start_time.to_rfc3339(), end_time.to_rfc3339(), rvid, rvid ]
                         ).unwrap_or(0);
-                        log::info!("index_after_stop_with_snapshot: linked events rows={}", rows2);
-                        println!(" index_after_stop_with_snapshot: linked events rows={}", rows2);
+                        log::info!(
+                            "index_after_stop_with_snapshot: linked events rows={}",
+                            rows2
+                        );
+                        println!(
+                            " index_after_stop_with_snapshot: linked events rows={}",
+                            rows2
+                        );
                     }
                 }
             }
@@ -1037,10 +1332,18 @@ impl ObsRecordingEventHandler {
                 }).unwrap_or_else(|| "OBS_REC".to_string())
             };
             if let Ok(Some(cfg)) = RecOps::get_recording_config(&*conn, &conn_name) {
-                (std::path::PathBuf::from(cfg.recording_root_path), cfg.recording_format, Some(cfg.folder_pattern))
+                (
+                    std::path::PathBuf::from(cfg.recording_root_path),
+                    cfg.recording_format,
+                    Some(cfg.folder_pattern),
+                )
             } else {
                 // Fallback to default Videos folder
-                (PathGeneratorConfig::detect_windows_videos_folder(), "mp4".to_string(), Some("{tournament}/{tournamentDay}".to_string()))
+                (
+                    PathGeneratorConfig::detect_windows_videos_folder(),
+                    "mp4".to_string(),
+                    Some("{tournament}/{tournamentDay}".to_string()),
+                )
             }
         };
 
@@ -1048,12 +1351,18 @@ impl ObsRecordingEventHandler {
         let tournament = TournamentOperations::get_active_tournament(&*conn)?;
         let tournament_day = if let Some(ref t) = tournament {
             TournamentOperations::get_active_tournament_day(&*conn, t.id.unwrap()).ok()
-        } else { None };
+        } else {
+            None
+        };
 
         // Get match details (support both raw db IDs and mch:<number> keys)
         let matches = PssUdpOperations::get_pss_matches(&*conn, Some(200))?;
-        let match_info = matches.into_iter()
-            .find(|m| m.match_id == match_id || m.match_id == format!("mch:{}", m.match_number.clone().unwrap_or_default()))
+        let match_info = matches
+            .into_iter()
+            .find(|m| {
+                m.match_id == match_id
+                    || m.match_id == format!("mch:{}", m.match_number.clone().unwrap_or_default())
+            })
             .ok_or_else(|| AppError::ConfigError(format!("Match not found: {}", match_id)))?;
 
         // Get match athletes with a short retry window to allow UDP linking to persist
@@ -1062,7 +1371,8 @@ impl ObsRecordingEventHandler {
         let mut db_player1_flag: Option<String> = None;
         let mut db_player2_name: Option<String> = None;
         let mut db_player2_flag: Option<String> = None;
-        for _ in 0..20 { // up to ~3s
+        for _ in 0..20 {
+            // up to ~3s
             let match_athletes = PssUdpOperations::get_pss_match_athletes(&*conn, match_db_id)?;
             let mut found1 = false;
             let mut found2 = false;
@@ -1072,16 +1382,18 @@ impl ObsRecordingEventHandler {
                         db_player1_name = Some(athlete.short_name.clone());
                         db_player1_flag = athlete.country_code.clone(); // Option<String>
                         found1 = true;
-                    },
+                    }
                     2 => {
                         db_player2_name = Some(athlete.short_name.clone());
                         db_player2_flag = athlete.country_code.clone(); // Option<String>
                         found2 = true;
-                    },
+                    }
                     _ => {}
                 }
             }
-            if found1 && found2 { break; }
+            if found1 && found2 {
+                break;
+            }
             tokio::time::sleep(std::time::Duration::from_millis(150)).await;
         }
 
@@ -1106,11 +1418,21 @@ impl ObsRecordingEventHandler {
 
             // Overlay current session values if present
             if let Some(s) = self.current_session.lock().unwrap().clone() {
-                if p1n.is_none() { p1n = s.player1_name; }
-                if p1f.is_none() { p1f = s.player1_flag; }
-                if p2n.is_none() { p2n = s.player2_name; }
-                if p2f.is_none() { p2f = s.player2_flag; }
-                if mnum.is_none() { mnum = s.match_number; }
+                if p1n.is_none() {
+                    p1n = s.player1_name;
+                }
+                if p1f.is_none() {
+                    p1f = s.player1_flag;
+                }
+                if p2n.is_none() {
+                    p2n = s.player2_name;
+                }
+                if p2f.is_none() {
+                    p2f = s.player2_flag;
+                }
+                if mnum.is_none() {
+                    mnum = s.match_number;
+                }
             }
 
             // Finally fallback to DB-derived values
@@ -1127,63 +1449,77 @@ impl ObsRecordingEventHandler {
         // First prefer in-session memo to avoid recomputing Day from disk after we just created Day 1
         let memo_td = { self.active_tournament_day.lock().unwrap().clone() };
         let has_memo_td = memo_td.is_some();
-        let (tournament_name_resolved, tournament_day_resolved): (Option<String>, Option<String>) = if let Some((ref tn, ref td)) = memo_td {
-            (Some(tn.clone()), Some(td.clone()))
-        } else {
-            // Determine base tournament name by scanning root when none active
-            let tn: Option<String> = Some(match &tournament {
-                Some(t) => t.name.clone(),
-                None => {
-                    // Scan root for existing "Tournament N" directories
-                    let mut max_tournament = 0u32;
-                    if videos_root.is_dir() {
-                        if let Ok(entries) = std::fs::read_dir(&videos_root) {
-                            for e in entries.flatten() {
-                                if let Ok(md) = e.metadata() {
-                                    if md.is_dir() {
-                                        if let Some(name) = e.file_name().to_str() {
-                                            if let Some(rest) = name.strip_prefix("Tournament ") {
-                                                if let Ok(n) = rest.trim().parse::<u32>() { if n > max_tournament { max_tournament = n; } }
+        let (tournament_name_resolved, tournament_day_resolved): (Option<String>, Option<String>) =
+            if let Some((ref tn, ref td)) = memo_td {
+                (Some(tn.clone()), Some(td.clone()))
+            } else {
+                // Determine base tournament name by scanning root when none active
+                let tn: Option<String> = Some(match &tournament {
+                    Some(t) => t.name.clone(),
+                    None => {
+                        // Scan root for existing "Tournament N" directories
+                        let mut max_tournament = 0u32;
+                        if videos_root.is_dir() {
+                            if let Ok(entries) = std::fs::read_dir(&videos_root) {
+                                for e in entries.flatten() {
+                                    if let Ok(md) = e.metadata() {
+                                        if md.is_dir() {
+                                            if let Some(name) = e.file_name().to_str() {
+                                                if let Some(rest) = name.strip_prefix("Tournament ")
+                                                {
+                                                    if let Ok(n) = rest.trim().parse::<u32>() {
+                                                        if n > max_tournament {
+                                                            max_tournament = n;
+                                                        }
+                                                    }
+                                                }
                                             }
                                         }
                                     }
                                 }
                             }
                         }
+                        // If none exist, start at Tournament 1
+                        if max_tournament == 0 {
+                            "Tournament 1".to_string()
+                        } else {
+                            format!("Tournament {}", max_tournament)
+                        }
                     }
-                    // If none exist, start at Tournament 1
-                    if max_tournament == 0 { "Tournament 1".to_string() } else { format!("Tournament {}", max_tournament) }
-                }
-            });
-            // Determine default day when DB has none
-            let td: Option<String> = Some(match &tournament_day {
-                Some(td) => format!("Day {}", td.as_ref().map(|x| x.day_number).unwrap_or(1)),
-                None => {
-                    // Compute next Day N under the chosen tournament folder if exists; else Day 1
-                    let t_dir = videos_root.join(tn.clone().unwrap());
-                    let mut next_day_num = 1u32;
-                    if t_dir.is_dir() {
-                        if let Ok(entries) = std::fs::read_dir(&t_dir) {
-                            let mut max_day = 0u32;
-                            for e in entries.flatten() {
-                                if let Ok(md) = e.metadata() {
-                                    if md.is_dir() {
-                                        if let Some(name) = e.file_name().to_str() {
-                                            if let Some(rest) = name.strip_prefix("Day ") {
-                                                if let Ok(n) = rest.trim().parse::<u32>() { if n > max_day { max_day = n; } }
+                });
+                // Determine default day when DB has none
+                let td: Option<String> = Some(match &tournament_day {
+                    Some(td) => format!("Day {}", td.as_ref().map(|x| x.day_number).unwrap_or(1)),
+                    None => {
+                        // Compute next Day N under the chosen tournament folder if exists; else Day 1
+                        let t_dir = videos_root.join(tn.clone().unwrap());
+                        let mut next_day_num = 1u32;
+                        if t_dir.is_dir() {
+                            if let Ok(entries) = std::fs::read_dir(&t_dir) {
+                                let mut max_day = 0u32;
+                                for e in entries.flatten() {
+                                    if let Ok(md) = e.metadata() {
+                                        if md.is_dir() {
+                                            if let Some(name) = e.file_name().to_str() {
+                                                if let Some(rest) = name.strip_prefix("Day ") {
+                                                    if let Ok(n) = rest.trim().parse::<u32>() {
+                                                        if n > max_day {
+                                                            max_day = n;
+                                                        }
+                                                    }
+                                                }
                                             }
                                         }
                                     }
                                 }
+                                next_day_num = if max_day == 0 { 1 } else { max_day + 1 };
                             }
-                            next_day_num = if max_day == 0 { 1 } else { max_day + 1 };
                         }
+                        format!("Day {}", next_day_num)
                     }
-                    format!("Day {}", next_day_num)
-                }
-            });
-            (tn, td)
-        };
+                });
+                (tn, td)
+            };
 
         // If folders already exist on disk (returning user), emit a prompt; if not, create Tournament 1/Day 1 silently
         static ASKED_THIS_SESSION: OnceCell<StdMutex<bool>> = OnceCell::new();
@@ -1194,14 +1530,33 @@ impl ObsRecordingEventHandler {
         };
         let has_existing_tournaments = {
             let t_dir = &videos_root;
-            t_dir.is_dir() && std::fs::read_dir(t_dir).map(|mut it| it.any(|e| e.ok().and_then(|x| x.file_name().to_str().map(|s| s.starts_with("Tournament "))).unwrap_or(false))).unwrap_or(false)
+            t_dir.is_dir()
+                && std::fs::read_dir(t_dir)
+                    .map(|mut it| {
+                        it.any(|e| {
+                            e.ok()
+                                .and_then(|x| {
+                                    x.file_name().to_str().map(|s| s.starts_with("Tournament "))
+                                })
+                                .unwrap_or(false)
+                        })
+                    })
+                    .unwrap_or(false)
         };
         if should_prompt_this_session && has_existing_tournaments && !has_memo_td {
-            let tn = tournament_name_resolved.clone().unwrap_or_else(|| "Tournament 1".to_string());
+            let tn = tournament_name_resolved
+                .clone()
+                .unwrap_or_else(|| "Tournament 1".to_string());
             // Suggest next tournament as Tournament N+1
             let tn_suggest_new = if let Some(rest) = tn.strip_prefix("Tournament ") {
-                if let Ok(n) = rest.trim().parse::<u32>() { format!("Tournament {}", n+1) } else { "Tournament 2".to_string() }
-            } else { "Tournament 2".to_string() };
+                if let Ok(n) = rest.trim().parse::<u32>() {
+                    format!("Tournament {}", n + 1)
+                } else {
+                    "Tournament 2".to_string()
+                }
+            } else {
+                "Tournament 2".to_string()
+            };
             // Continue with the highest existing Day under current tournament (or Day 1 if none)
             let resolved_day = {
                 let t_dir = videos_root.join(&tn);
@@ -1213,15 +1568,25 @@ impl ObsRecordingEventHandler {
                                 if md.is_dir() {
                                     if let Some(name) = e.file_name().to_str() {
                                         if let Some(rest) = name.strip_prefix("Day ") {
-                                            if let Ok(n) = rest.trim().parse::<u32>() { if n > max_day { max_day = n; } }
+                                            if let Ok(n) = rest.trim().parse::<u32>() {
+                                                if n > max_day {
+                                                    max_day = n;
+                                                }
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
                     }
-                    if max_day == 0 { "Day 1".to_string() } else { format!("Day {}", max_day) }
-                } else { "Day 1".to_string() }
+                    if max_day == 0 {
+                        "Day 1".to_string()
+                    } else {
+                        format!("Day {}", max_day)
+                    }
+                } else {
+                    "Day 1".to_string()
+                }
             };
             let payload = serde_json::json!({
                 "type": "obs_path_decision_needed",
@@ -1233,11 +1598,15 @@ impl ObsRecordingEventHandler {
             crate::core::app::App::emit_custom_event("obs_path_decision_needed", payload.clone());
             println!(
                 " Emitted obs_path_decision_needed with options: Continue={}/{} New={}/{}",
-                payload["continue"]["tournament"], payload["continue"]["day"],
-                payload["new"]["tournament"], payload["new"]["day"],
+                payload["continue"]["tournament"],
+                payload["continue"]["day"],
+                payload["new"]["tournament"],
+                payload["new"]["day"],
             );
             // Mark asked for this session; do not block auto-start (we'll proceed with defaults)
-            if let Ok(mut asked) = asked_flag.lock() { *asked = true; }
+            if let Ok(mut asked) = asked_flag.lock() {
+                *asked = true;
+            }
         }
 
         // Generate path
@@ -1249,7 +1618,7 @@ impl ObsRecordingEventHandler {
             live_p1_name.clone(),
             live_p1_flag.clone(),
             live_p2_name.clone(),
-            live_p2_flag.clone()
+            live_p2_flag.clone(),
         )?;
 
         // Ensure directory exists. If we showed prompt, wait for user decision; if no prompt, create now
@@ -1257,10 +1626,20 @@ impl ObsRecordingEventHandler {
         if !waiting {
             path_generator.ensure_directory_exists(&generated_path.directory)?;
             // Suppress showing the modal later in the same session since we just created defaults
-            if let Ok(mut asked) = ASKED_THIS_SESSION.get_or_init(|| StdMutex::new(false)).lock() { *asked = true; }
+            if let Ok(mut asked) = ASKED_THIS_SESSION
+                .get_or_init(|| StdMutex::new(false))
+                .lock()
+            {
+                *asked = true;
+            }
             // Memoize the active tournament/day for this session to avoid recomputing Day from disk again
-            if let (Some(ref tn), Some(ref td)) = (&generated_path.tournament_name, &generated_path.tournament_day) {
-                if let Ok(mut memo) = self.active_tournament_day.lock() { *memo = Some((tn.clone(), td.clone())); }
+            if let (Some(ref tn), Some(ref td)) = (
+                &generated_path.tournament_name,
+                &generated_path.tournament_day,
+            ) {
+                if let Ok(mut memo) = self.active_tournament_day.lock() {
+                    *memo = Some((tn.clone(), td.clone()));
+                }
             }
         }
 
@@ -1268,14 +1647,19 @@ impl ObsRecordingEventHandler {
         {
             let mut session_guard = self.current_session.lock().unwrap();
             if let Some(ref mut session) = *session_guard {
-                session.recording_path = Some(generated_path.directory.to_string_lossy().to_string());
+                session.recording_path =
+                    Some(generated_path.directory.to_string_lossy().to_string());
                 session.recording_filename = Some(generated_path.filename);
                 session.tournament_name = generated_path.tournament_name;
                 session.tournament_day = generated_path.tournament_day;
                 session.match_db_id = Some(match_db_id);
                 // Store numeric tournament/day ids when available
-                if let Some(ref t) = tournament { session.tournament_id = t.id; }
-                if let Some(ref td_opt) = tournament_day { session.tournament_day_id = td_opt.as_ref().and_then(|td| td.id); }
+                if let Some(ref t) = tournament {
+                    session.tournament_id = t.id;
+                }
+                if let Some(ref td_opt) = tournament_day {
+                    session.tournament_day_id = td_opt.as_ref().and_then(|td| td.id);
+                }
                 // Preserve live values if already set; otherwise use resolved/live/db values
                 session.match_number = session.match_number.clone().or(live_match_number);
                 session.player1_name = session.player1_name.clone().or(live_p1_name);
@@ -1286,17 +1670,25 @@ impl ObsRecordingEventHandler {
             }
         }
 
-        log::info!("Generated recording path: {}", generated_path.full_path.to_string_lossy());
+        log::info!(
+            "Generated recording path: {}",
+            generated_path.full_path.to_string_lossy()
+        );
         Ok(())
     }
 
     /// Regenerate recording path with explicit tournament/day overrides and apply to OBS
-    pub async fn regenerate_path_with_overrides(&self, tournament_name: String, tournament_day: String) -> AppResult<()> {
+    pub async fn regenerate_path_with_overrides(
+        &self,
+        tournament_name: String,
+        tournament_day: String,
+    ) -> AppResult<()> {
         // Get current session and match_id
         let match_id = {
             let session_guard = self.current_session.lock().unwrap();
             session_guard.as_ref().map(|s| s.match_id.clone())
-        }.ok_or_else(|| AppError::ConfigError("No active recording session".to_string()))?;
+        }
+        .ok_or_else(|| AppError::ConfigError("No active recording session".to_string()))?;
 
         let conn = self.database.get_connection().await?;
         // Build generator from config
@@ -1312,27 +1704,62 @@ impl ObsRecordingEventHandler {
                 }).unwrap_or_else(|| "OBS_REC".to_string())
             };
             if let Ok(Some(cfg)) = RecOps::get_recording_config(&*conn, &conn_name) {
-                (std::path::PathBuf::from(cfg.recording_root_path), cfg.recording_format, Some(cfg.folder_pattern))
+                (
+                    std::path::PathBuf::from(cfg.recording_root_path),
+                    cfg.recording_format,
+                    Some(cfg.folder_pattern),
+                )
             } else {
-                (PathGeneratorConfig::detect_windows_videos_folder(), "mp4".to_string(), Some("{tournament}/{tournamentDay}".to_string()))
+                (
+                    PathGeneratorConfig::detect_windows_videos_folder(),
+                    "mp4".to_string(),
+                    Some("{tournament}/{tournamentDay}".to_string()),
+                )
             }
         };
-        let gen_cfg = PathGeneratorConfig { videos_root, default_format: recording_format, include_minutes_seconds: true, folder_pattern };
+        let gen_cfg = PathGeneratorConfig {
+            videos_root,
+            default_format: recording_format,
+            include_minutes_seconds: true,
+            folder_pattern,
+        };
         let path_generator = ObsPathGenerator::new(Some(gen_cfg));
 
         // Fetch match info for filename fields
         let matches = PssUdpOperations::get_pss_matches(&*conn, Some(100))?;
-        let match_info = matches.into_iter().find(|m| m.match_id == match_id).ok_or_else(|| AppError::ConfigError("Match not found for override".to_string()))?;
-        let match_athletes = PssUdpOperations::get_pss_match_athletes(&*conn, match_info.id.unwrap())?;
-        let mut player1_name = None; let mut player1_flag = None; let mut player2_name = None; let mut player2_flag = None;
-        for (match_athlete, athlete) in match_athletes { match match_athlete.athlete_position { 1 => { player1_name = Some(athlete.short_name); player1_flag = athlete.country_code; }, 2 => { player2_name = Some(athlete.short_name); player2_flag = athlete.country_code; }, _ => {} } }
+        let match_info = matches
+            .into_iter()
+            .find(|m| m.match_id == match_id)
+            .ok_or_else(|| AppError::ConfigError("Match not found for override".to_string()))?;
+        let match_athletes =
+            PssUdpOperations::get_pss_match_athletes(&*conn, match_info.id.unwrap())?;
+        let mut player1_name = None;
+        let mut player1_flag = None;
+        let mut player2_name = None;
+        let mut player2_flag = None;
+        for (match_athlete, athlete) in match_athletes {
+            match match_athlete.athlete_position {
+                1 => {
+                    player1_name = Some(athlete.short_name);
+                    player1_flag = athlete.country_code;
+                }
+                2 => {
+                    player2_name = Some(athlete.short_name);
+                    player2_flag = athlete.country_code;
+                }
+                _ => {}
+            }
+        }
 
         let generated_path = path_generator.generate_recording_path(
             &match_id,
             Some(tournament_name.clone()),
             Some(tournament_day.clone()),
             match_info.match_number.clone(),
-            player1_name.clone(), player1_flag.clone(), player2_name.clone(), player2_flag.clone()
+            player1_name.clone(),
+            player1_flag.clone(),
+            player2_name.clone(),
+            player2_flag.clone(),
         )?;
         path_generator.ensure_directory_exists(&generated_path.directory)?;
 
@@ -1340,13 +1767,16 @@ impl ObsRecordingEventHandler {
         {
             let mut session_guard = self.current_session.lock().unwrap();
             if let Some(ref mut session) = *session_guard {
-                session.recording_path = Some(generated_path.directory.to_string_lossy().to_string());
+                session.recording_path =
+                    Some(generated_path.directory.to_string_lossy().to_string());
                 session.recording_filename = Some(generated_path.filename);
                 session.tournament_name = Some(tournament_name);
                 session.tournament_day = Some(tournament_day);
                 session.match_number = match_info.match_number.clone();
-                session.player1_name = player1_name; session.player1_flag = player1_flag;
-                session.player2_name = player2_name; session.player2_flag = player2_flag;
+                session.player1_name = player1_name;
+                session.player1_flag = player1_flag;
+                session.player2_name = player2_name;
+                session.player2_flag = player2_flag;
                 session.updated_at = Utc::now();
             }
         }
@@ -1356,12 +1786,26 @@ impl ObsRecordingEventHandler {
 
         // Apply directory to OBS (re-evaluate day boundary) and release the wait flag
         if let Some(session) = self.get_current_session() {
-            if let (Some(dir), Some(conn_name)) = (session.recording_path.clone(), session.obs_connection_name.clone()) {
+            if let (Some(dir), Some(conn_name)) = (
+                session.recording_path.clone(),
+                session.obs_connection_name.clone(),
+            ) {
                 // Normalize path separators to forward slashes for OBS compatibility
                 let dir_norm = dir.replace('\\', "/");
-                println!(" Sending to OBS '{}' record directory (override): {}", conn_name, dir_norm);
-                log::info!("Sending to OBS '{}' record directory (override): {}", conn_name, dir_norm);
-                match self.obs_manager.set_record_directory(&dir_norm, Some(&conn_name)).await {
+                println!(
+                    " Sending to OBS '{}' record directory (override): {}",
+                    conn_name, dir_norm
+                );
+                log::info!(
+                    "Sending to OBS '{}' record directory (override): {}",
+                    conn_name,
+                    dir_norm
+                );
+                match self
+                    .obs_manager
+                    .set_record_directory(&dir_norm, Some(&conn_name))
+                    .await
+                {
                     Ok(()) => log::info!("Applied overridden recording directory to OBS: {}", dir),
                     Err(e) => log::warn!("Failed to set overridden record directory in OBS: {}", e),
                 }
@@ -1376,22 +1820,43 @@ impl ObsRecordingEventHandler {
                     }
                     Err(e) => {
                         let d = "{matchNumber} {player1} ({country1}) VS {player2} ({country2}) - {date} - {time}".to_string();
-                        println!(" Override: failed to get DB template ({}), using default: {}", e, d);
+                        println!(
+                            " Override: failed to get DB template ({}), using default: {}",
+                            e, d
+                        );
                         d
                     }
                 };
                 println!(" Override: active filename template: {}", eff_tmpl);
                 let formatting = self.build_filename_formatting(&eff_tmpl, &session);
-                println!(" Sending to OBS '{}' filename formatting (override): {}", conn_name, formatting);
-                log::info!("Sending to OBS '{}' filename formatting (override): {}", conn_name, formatting);
-                if let Err(e) = self.obs_manager.set_filename_formatting(&formatting, Some(&conn_name)).await {
+                println!(
+                    " Sending to OBS '{}' filename formatting (override): {}",
+                    conn_name, formatting
+                );
+                log::info!(
+                    "Sending to OBS '{}' filename formatting (override): {}",
+                    conn_name,
+                    formatting
+                );
+                if let Err(e) = self
+                    .obs_manager
+                    .set_filename_formatting(&formatting, Some(&conn_name))
+                    .await
+                {
                     log::warn!("Failed to set filename formatting after override: {}", e);
                 }
                 // Clear awaiting flag so FightReady will proceed next time
-                if let Ok(mut wait_flag) = self.awaiting_path_decision.lock() { *wait_flag = false; }
+                if let Ok(mut wait_flag) = self.awaiting_path_decision.lock() {
+                    *wait_flag = false;
+                }
                 // Memoize the user-selected tournament/day for this session
-                if let (Some(ref tn), Some(ref td)) = (session.tournament_name.clone(), session.tournament_day.clone()) {
-                    if let Ok(mut memo) = self.active_tournament_day.lock() { *memo = Some((tn.clone(), td.clone())); }
+                if let (Some(ref tn), Some(ref td)) = (
+                    session.tournament_name.clone(),
+                    session.tournament_day.clone(),
+                ) {
+                    if let Ok(mut memo) = self.active_tournament_day.lock() {
+                        *memo = Some((tn.clone(), td.clone()));
+                    }
                 }
             }
         }
@@ -1416,7 +1881,12 @@ impl ObsRecordingEventHandler {
                 None
             }).unwrap_or_else(|| "OBS_REC".to_string())
         };
-        let config = crate::database::operations::ObsRecordingOperations::get_recording_config(&*conn, &config_name).ok().flatten();
+        let config = crate::database::operations::ObsRecordingOperations::get_recording_config(
+            &*conn,
+            &config_name,
+        )
+        .ok()
+        .flatten();
         Ok(config.map(|c| c.filename_template))
     }
 
@@ -1437,8 +1907,12 @@ impl ObsRecordingEventHandler {
             fmt = fmt.replace("{matchNumber}_{player1}", &format!("{} {}", n, p1));
             fmt = fmt.replace("{matchNumber}", n);
         }
-        if let Some(ref f1) = session.player1_flag { fmt = fmt.replace("{player1Flag}", f1); }
-        if let Some(ref f2) = session.player2_flag { fmt = fmt.replace("{player2Flag}", f2); }
+        if let Some(ref f1) = session.player1_flag {
+            fmt = fmt.replace("{player1Flag}", f1);
+        }
+        if let Some(ref f2) = session.player2_flag {
+            fmt = fmt.replace("{player2Flag}", f2);
+        }
         fmt = fmt.replace("{player1}", &p1);
         fmt = fmt.replace("{player2}", &p2);
         // New country placeholders
@@ -1490,7 +1964,7 @@ impl ObsRecordingEventHandler {
             if let Some(ref mut session) = *session_guard {
                 session.state = state.clone();
                 session.updated_at = Utc::now();
-                
+
                 match state {
                     RecordingState::Recording => {
                         session.start_time = Some(Utc::now());
@@ -1532,7 +2006,11 @@ impl ObsRecordingEventHandler {
         let mut conn = self.database.get_connection().await?;
 
         // Check if session already exists in database
-        let existing_sessions = crate::database::operations::ObsRecordingOperations::get_recording_sessions_for_match(&*conn, &session.match_id)?;
+        let existing_sessions =
+            crate::database::operations::ObsRecordingOperations::get_recording_sessions_for_match(
+                &*conn,
+                &session.match_id,
+            )?;
         let existing_session = existing_sessions.into_iter().next();
 
         if let Some(db_session) = existing_session {
@@ -1540,7 +2018,8 @@ impl ObsRecordingEventHandler {
             let mut updated_session = db_session.clone();
 
             // Update fields from in-memory session
-            updated_session.obs_connection_name = session.obs_connection_name.clone().unwrap_or_default();
+            updated_session.obs_connection_name =
+                session.obs_connection_name.clone().unwrap_or_default();
             updated_session.tournament_id = session.tournament_id;
             updated_session.match_id = Some(session.match_id.clone());
             updated_session.match_number = session.match_number.clone();
@@ -1549,9 +2028,14 @@ impl ObsRecordingEventHandler {
             updated_session.player2_name = session.player2_name.clone();
             updated_session.player2_flag = session.player2_flag.clone();
             updated_session.recording_path = session.recording_path.clone().unwrap_or_default();
-            updated_session.recording_filename = session.recording_filename.clone().unwrap_or_default();
+            updated_session.recording_filename =
+                session.recording_filename.clone().unwrap_or_default();
 
-            crate::database::operations::ObsRecordingOperations::update_recording_session(&mut conn, db_session.id.unwrap(), &updated_session)?;
+            crate::database::operations::ObsRecordingOperations::update_recording_session(
+                &mut conn,
+                db_session.id.unwrap(),
+                &updated_session,
+            )?;
 
             // Store the database session ID in the in-memory session
             let session_id = db_session.id.unwrap();
@@ -1567,7 +2051,11 @@ impl ObsRecordingEventHandler {
                 session.recording_path.clone().unwrap_or_default(),
                 session.recording_filename.clone().unwrap_or_default(),
             );
-            let session_id = crate::database::operations::ObsRecordingOperations::create_recording_session(&mut conn, &new_session)?;
+            let session_id =
+                crate::database::operations::ObsRecordingOperations::create_recording_session(
+                    &mut conn,
+                    &new_session,
+                )?;
             Ok(session_id)
         }
     }
@@ -1578,9 +2066,15 @@ impl ObsRecordingEventHandler {
 
         // Set start time in database
         let mut conn = self.database.get_connection().await?;
-        crate::database::operations::ObsRecordingOperations::start_recording_session(&mut conn, session_id)?;
+        crate::database::operations::ObsRecordingOperations::start_recording_session(
+            &mut conn, session_id,
+        )?;
 
-        log::info!("Started recording session {} for match {}", session_id, session.match_id);
+        log::info!(
+            "Started recording session {} for match {}",
+            session_id,
+            session.match_id
+        );
         Ok(session_id)
     }
 
@@ -1589,12 +2083,23 @@ impl ObsRecordingEventHandler {
         let mut conn = self.database.get_connection().await?;
 
         // Find the database session by match_id
-        let existing_sessions = crate::database::operations::ObsRecordingOperations::get_recording_sessions_for_match(&*conn, match_id)?;
+        let existing_sessions =
+            crate::database::operations::ObsRecordingOperations::get_recording_sessions_for_match(
+                &*conn, match_id,
+            )?;
         if let Some(db_session) = existing_sessions.into_iter().next() {
             let session_id = db_session.id.unwrap();
-            crate::database::operations::ObsRecordingOperations::stop_recording_session(&mut conn, session_id, "completed")?;
+            crate::database::operations::ObsRecordingOperations::stop_recording_session(
+                &mut conn,
+                session_id,
+                "completed",
+            )?;
 
-            log::info!("Stopped recording session {} for match {}", session_id, match_id);
+            log::info!(
+                "Stopped recording session {} for match {}",
+                session_id,
+                match_id
+            );
             Ok(())
         } else {
             log::warn!("No database session found for match {}", match_id);
@@ -1605,23 +2110,41 @@ impl ObsRecordingEventHandler {
     /// Stop recording session (update DB session with end time and duration)
     async fn _stop_recording_session(&self, session_id: i64) -> AppResult<()> {
         let mut conn = self.database.get_connection().await?;
-        crate::database::operations::ObsRecordingOperations::stop_recording_session(&mut conn, session_id, "completed")?;
+        crate::database::operations::ObsRecordingOperations::stop_recording_session(
+            &mut conn,
+            session_id,
+            "completed",
+        )?;
 
         log::info!("Stopped recording session {}", session_id);
         Ok(())
     }
 
     /// Stop recording session by match_id (static version for use in async closures)
-    async fn stop_recording_session_by_match_id_static(database: Arc<crate::plugins::plugin_database::DatabasePlugin>, match_id: &str) -> AppResult<()> {
+    async fn stop_recording_session_by_match_id_static(
+        database: Arc<crate::plugins::plugin_database::DatabasePlugin>,
+        match_id: &str,
+    ) -> AppResult<()> {
         let mut conn = database.get_connection().await?;
 
         // Find the database session by match_id
-        let existing_sessions = crate::database::operations::ObsRecordingOperations::get_recording_sessions_for_match(&*conn, match_id)?;
+        let existing_sessions =
+            crate::database::operations::ObsRecordingOperations::get_recording_sessions_for_match(
+                &*conn, match_id,
+            )?;
         if let Some(db_session) = existing_sessions.into_iter().next() {
             let session_id = db_session.id.unwrap();
-            crate::database::operations::ObsRecordingOperations::stop_recording_session(&mut conn, session_id, "completed")?;
+            crate::database::operations::ObsRecordingOperations::stop_recording_session(
+                &mut conn,
+                session_id,
+                "completed",
+            )?;
 
-            log::info!("Stopped recording session {} for match {}", session_id, match_id);
+            log::info!(
+                "Stopped recording session {} for match {}",
+                session_id,
+                match_id
+            );
             Ok(())
         } else {
             log::warn!("No database session found for match {}", match_id);

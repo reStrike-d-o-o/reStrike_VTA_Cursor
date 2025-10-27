@@ -1,29 +1,29 @@
 //! OBS WebSocket integration using the obws crate
-//! 
+//!
 //! This module provides a native Rust implementation for OBS WebSocket integration
 //! using the obws crate, which offers type-safe API access to OBS Studio.
 
 pub mod client;
 pub mod manager;
-pub mod types;
 pub mod operations;
-pub mod test_implementation;
 pub mod path_generator;
 pub mod recording_events;
+pub mod test_implementation;
+pub mod types;
 
 use crate::types::AppResult;
-use std::sync::{Arc, Mutex};
 use std::sync::OnceLock;
+use std::sync::{Arc, Mutex};
 
 // Re-export main types for easier access
 pub use client::ObsClient;
-pub use manager::ObsManager;  // Re-export ObsManager for external use
-pub use types::*;
-pub use path_generator::{ObsPathGenerator, PathGeneratorConfig, GeneratedPath};
+pub use manager::ObsManager; // Re-export ObsManager for external use
+pub use path_generator::{GeneratedPath, ObsPathGenerator, PathGeneratorConfig};
 pub use recording_events::{
-    ObsRecordingEventHandler, RecordingSession, RecordingState, 
-    AutomaticRecordingConfig, RecordingEvent
+    AutomaticRecordingConfig, ObsRecordingEventHandler, RecordingEvent, RecordingSession,
+    RecordingState,
 };
+pub use types::*;
 
 /// Global OBS manager instance using thread-safe singleton pattern without unsafe
 static MANAGER: OnceLock<Arc<Mutex<ObsManager>>> = OnceLock::new();

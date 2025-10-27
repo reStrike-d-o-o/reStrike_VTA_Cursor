@@ -1,7 +1,7 @@
 use crate::database::models::OverlayTemplate;
 use chrono::Utc;
-use tauri::{State, command, Error as TauriError};
 use std::sync::Arc;
+use tauri::{command, Error as TauriError, State};
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct OverlayTemplatePayload {
@@ -17,7 +17,10 @@ pub struct OverlayTemplatePayload {
 }
 
 #[command]
-pub async fn overlays_sync_templates(app: State<'_, Arc<crate::App>>, templates: Vec<OverlayTemplatePayload>) -> Result<Vec<OverlayTemplate>, TauriError> {
+pub async fn overlays_sync_templates(
+    app: State<'_, Arc<crate::App>>,
+    templates: Vec<OverlayTemplatePayload>,
+) -> Result<Vec<OverlayTemplate>, TauriError> {
     let conn = app.database_plugin().get_database_connection();
 
     // Insert or update each template
@@ -50,7 +53,9 @@ pub async fn overlays_sync_templates(app: State<'_, Arc<crate::App>>, templates:
 }
 
 #[command]
-pub async fn overlays_populate_from_files(app: State<'_, Arc<crate::App>>) -> Result<Vec<OverlayTemplate>, TauriError> {
+pub async fn overlays_populate_from_files(
+    app: State<'_, Arc<crate::App>>,
+) -> Result<Vec<OverlayTemplate>, TauriError> {
     let conn = app.database_plugin().get_database_connection();
 
     // Define overlay templates based on existing SVG files
@@ -113,12 +118,15 @@ pub async fn overlays_populate_from_files(app: State<'_, Arc<crate::App>>) -> Re
     ];
 
     // Clear existing templates by getting all and deleting them
-    let existing_templates = conn.get_overlay_templates().await
+    let existing_templates = conn
+        .get_overlay_templates()
+        .await
         .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
-    
+
     for template in existing_templates {
         if let Some(id) = template.id {
-            conn.delete_overlay_template(id).await
+            conn.delete_overlay_template(id)
+                .await
                 .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
         }
     }

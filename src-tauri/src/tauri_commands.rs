@@ -1,10 +1,18 @@
-﻿#[tauri::command]
-pub async fn validate_tournament_pss_integrity(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
-    let conn = app.database_plugin().get_connection().await
-        .map_err(|e| TauriError::from(anyhow::anyhow!(format!("DB connection error: {}", e))))?;
+#[tauri::command]
+pub async fn validate_tournament_pss_integrity(
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
+    let conn =
+        app.database_plugin().get_connection().await.map_err(|e| {
+            TauriError::from(anyhow::anyhow!(format!("DB connection error: {}", e)))
+        })?;
     let conn_ref = &*conn;
     // Counts
-    let counts = |sql: &str| -> i64 { conn_ref.query_row(sql, [], |r| r.get::<_, i64>(0)).unwrap_or(0) };
+    let counts = |sql: &str| -> i64 {
+        conn_ref
+            .query_row(sql, [], |r| r.get::<_, i64>(0))
+            .unwrap_or(0)
+    };
     let c_tournaments = counts("SELECT COUNT(*) FROM tournaments");
     let c_days = counts("SELECT COUNT(*) FROM tournament_days");
     let c_matches = counts("SELECT COUNT(*) FROM pss_matches");
@@ -17,7 +25,8 @@ pub async fn validate_tournament_pss_integrity(app: State<'_, Arc<App>>) -> Resu
     let orphan_vids = counts("SELECT COUNT(*) FROM recorded_videos rv LEFT JOIN pss_matches m ON m.id = rv.match_id WHERE rv.match_id IS NOT NULL AND m.id IS NULL");
     // Missing context
     let events_missing_ctx = counts("SELECT COUNT(*) FROM pss_events WHERE tournament_id IS NULL");
-    let matches_missing_ctx = counts("SELECT COUNT(*) FROM pss_matches WHERE tournament_id IS NULL");
+    let matches_missing_ctx =
+        counts("SELECT COUNT(*) FROM pss_matches WHERE tournament_id IS NULL");
     Ok(serde_json::json!({
         "counts": {"tournaments": c_tournaments, "days": c_days, "matches": c_matches, "events": c_events, "videos": c_vids, "video_links": c_links},
         "orphans": {"matches": orphan_matches, "events": orphan_events, "videos": orphan_vids},
@@ -30,27 +39,29 @@ pub async fn validate_tournament_pss_integrity(app: State<'_, Arc<App>>) -> Resu
 // (removed) db_backfill_tournament_context in favor of purge strategy
 
 #[tauri::command]
-pub async fn db_purge_all_tournament_pss_data(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
-    let mut conn = app.database_plugin().get_connection().await
-        .map_err(|e| TauriError::from(anyhow::anyhow!(format!("DB connection error: {}", e))))?;
+pub async fn db_purge_all_tournament_pss_data(
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
+    let mut conn =
+        app.database_plugin().get_connection().await.map_err(|e| {
+            TauriError::from(anyhow::anyhow!(format!("DB connection error: {}", e)))
+        })?;
     use crate::database::operations::PssUdpOperations as Ops;
     Ops::purge_all_tournament_pss_data(&mut *conn)
         .map_err(|e| TauriError::from(anyhow::anyhow!(format!("purge failed: {}", e))))?;
     Ok(serde_json::json!({ "purged": true }))
 }
-use serde::{Deserialize, Serialize};
-use std::sync::Arc;
-use std::collections::HashMap;
-use tauri::{State, Emitter, Error as TauriError};
 use crate::core::app::App;
-use crate::logging::archival::{AutoArchiveConfig, ArchiveSchedule};
-use dirs;
-use crate::utils::simulation_env::ensure_simulation_env;
-use once_cell::sync::OnceCell;
-use tokio::sync::Mutex as AsyncMutex;
+use crate::logging::archival::{ArchiveSchedule, AutoArchiveConfig};
 use crate::plugins::obs_obws::types::ObsOperationRequest;
-
-
+use crate::utils::simulation_env::ensure_simulation_env;
+use dirs;
+use once_cell::sync::OnceCell;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::sync::Arc;
+use tauri::{Emitter, Error as TauriError, State};
+use tokio::sync::Mutex as AsyncMutex;
 
 async fn ensure_license_ok(app: &State<'_, Arc<App>>) -> Result<(), TauriError> {
     let status = app
@@ -58,7 +69,10 @@ async fn ensure_license_ok(app: &State<'_, Arc<App>>) -> Result<(), TauriError> 
         .validate(app.config_manager())
         .await
         .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
-    let allowed = matches!(status.state, crate::plugins::plugin_license::LicenseState::Valid);
+    let allowed = matches!(
+        status.state,
+        crate::plugins::plugin_license::LicenseState::Valid
+    );
     if allowed {
         Ok(())
     } else {
@@ -87,7 +101,9 @@ pub async fn get_app_status(_app: State<'_, Arc<App>>) -> Result<String, TauriEr
 #[tauri::command]
 pub async fn shutdown_app(app: State<'_, Arc<App>>) -> Result<(), TauriError> {
     log::info!("Shutting down app");
-    app.stop().await.map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
+    app.stop()
+        .await
+        .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
     Ok(())
 }
 
@@ -97,7 +113,10 @@ pub async fn start_udp_server(app: State<'_, Arc<App>>) -> Result<(), TauriError
     log::info!("Starting UDP server");
     ensure_license_ok(&app).await?;
     let config = app.config_manager().get_config().await;
-    app.udp_plugin().start(&config).await.map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
+    app.udp_plugin()
+        .start(&config)
+        .await
+        .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
     // Ensure UDP event handler is running so PSS events reach auto-recording
     app.inner().start_udp_event_handler().await;
     log::info!("UDP event handler started (manual start)");
@@ -108,7 +127,10 @@ pub async fn start_udp_server(app: State<'_, Arc<App>>) -> Result<(), TauriError
 #[tauri::command]
 pub async fn stop_udp_server(app: State<'_, Arc<App>>) -> Result<(), TauriError> {
     log::info!("Stopping UDP server");
-    app.udp_plugin().stop().await.map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
+    app.udp_plugin()
+        .stop()
+        .await
+        .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
     Ok(())
 }
 
@@ -120,44 +142,72 @@ pub async fn get_udp_status(app: State<'_, Arc<App>>) -> Result<String, TauriErr
         crate::plugins::plugin_udp::UdpServerStatus::Stopped => "Stopped",
         crate::plugins::plugin_udp::UdpServerStatus::Starting => "Starting",
         crate::plugins::plugin_udp::UdpServerStatus::Running => "Running",
-        crate::plugins::plugin_udp::UdpServerStatus::Error(e) => return Err(TauriError::from(anyhow::anyhow!("{}", e))),
+        crate::plugins::plugin_udp::UdpServerStatus::Error(e) => {
+            return Err(TauriError::from(anyhow::anyhow!("{}", e)))
+        }
     };
     Ok(status_str.to_string())
 }
 
 #[tauri::command]
-pub async fn update_udp_settings(settings: serde_json::Value, app: State<'_, Arc<App>>) -> Result<(), TauriError> {
+pub async fn update_udp_settings(
+    settings: serde_json::Value,
+    app: State<'_, Arc<App>>,
+) -> Result<(), TauriError> {
     log::info!("Updating UDP settings: {:?}", settings);
-    
+
     // Update the app configuration
-    app.config_manager().update_udp_settings_from_json(settings).await
+    app.config_manager()
+        .update_udp_settings_from_json(settings)
+        .await
         .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
-    
+
     // If UDP server is running, restart it with new settings
     let status = app.udp_plugin().get_status();
     if matches!(status, crate::plugins::plugin_udp::UdpServerStatus::Running) {
         log::info!("UDP server is running, restarting with new settings");
-        app.udp_plugin().stop().await.map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
+        app.udp_plugin()
+            .stop()
+            .await
+            .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
         let config = app.config_manager().get_config().await;
-        app.udp_plugin().start(&config).await.map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
+        app.udp_plugin()
+            .start(&config)
+            .await
+            .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
         // Re-ensure event handler is started after restart
         app.inner().start_udp_event_handler().await;
         log::info!("UDP event handler started (restart)");
         log::info!("UDP event handler started (restart)");
     }
-    
+
     Ok(())
 }
 
 // OBS commands - Fixed names to match frontend expectations
 #[tauri::command]
-pub async fn obs_connect(url: String, app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn obs_connect(
+    url: String,
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     log::info!("OBS connect called with URL: {}", url);
     ensure_license_ok(&app).await?;
     // Parse basic info
-    let host = url.replace("ws://", "").replace("wss://", "").split(':').next().unwrap_or("localhost").to_string();
+    let host = url
+        .replace("ws://", "")
+        .replace("wss://", "")
+        .split(':')
+        .next()
+        .unwrap_or("localhost")
+        .to_string();
     // Create connection via obws, name default to OBS_REC if not provided in UI
-    let req = crate::tauri_commands_obws::ObsObwsConnectionRequest { name: "OBS_REC".to_string(), host, port: 4455, password: None, enabled: true };
+    let req = crate::tauri_commands_obws::ObsObwsConnectionRequest {
+        name: "OBS_REC".to_string(),
+        host,
+        port: 4455,
+        password: None,
+        enabled: true,
+    };
     let _ = crate::tauri_commands_obws::obs_obws_add_connection(req, app.clone()).await;
     let _ = crate::tauri_commands_obws::obs_obws_connect("OBS_REC".to_string(), app.clone()).await;
     Ok(serde_json::json!({ "success": true, "message": "OBS connection initiated" }))
@@ -175,15 +225,36 @@ pub async fn obs_add_connection(
     log::info!("OBS add connection called: {}@{}:{}", name, host, port);
     ensure_license_ok(&app).await?;
     // Delegate to obws add_connection
-    let req = crate::tauri_commands_obws::ObsObwsConnectionRequest { name: name.clone(), host: host.clone(), port, password: password.clone(), enabled };
+    let req = crate::tauri_commands_obws::ObsObwsConnectionRequest {
+        name: name.clone(),
+        host: host.clone(),
+        port,
+        password: password.clone(),
+        enabled,
+    };
     let res = crate::tauri_commands_obws::obs_obws_add_connection(req, app.clone()).await;
-    if let Err(e) = res { return Err(e); }
+    if let Err(e) = res {
+        return Err(e);
+    }
     // Persist to config as before
-    let config_conn = crate::config::ObsConnectionConfig { name: name.clone(), host: host.clone(), port, password: password.clone(), protocol_version: "v5".to_string(), enabled, timeout_seconds: 30, auto_reconnect: true, max_reconnect_attempts: 5 };
+    let config_conn = crate::config::ObsConnectionConfig {
+        name: name.clone(),
+        host: host.clone(),
+        port,
+        password: password.clone(),
+        protocol_version: "v5".to_string(),
+        enabled,
+        timeout_seconds: 30,
+        auto_reconnect: true,
+        max_reconnect_attempts: 5,
+    };
     let mut connections = app.config_manager().get_obs_connections().await;
     connections.retain(|c| c.name != config_conn.name);
     connections.push(config_conn);
-    let _ = app.config_manager().update_obs_connections(connections).await;
+    let _ = app
+        .config_manager()
+        .update_obs_connections(connections)
+        .await;
     Ok(serde_json::json!({ "success": true, "message": "OBS connection added successfully" }))
 }
 
@@ -195,7 +266,10 @@ pub async fn obs_connect_to_connection(
     log::info!("OBS connect to connection called: {}", connection_name);
     ensure_license_ok(&app).await?;
     let res = crate::tauri_commands_obws::obs_obws_connect(connection_name, app.clone()).await;
-    match res { Ok(_) => Ok(serde_json::json!({ "success": true })), Err(e) => Err(e) }
+    match res {
+        Ok(_) => Ok(serde_json::json!({ "success": true })),
+        Err(e) => Err(e),
+    }
 }
 
 #[tauri::command]
@@ -204,33 +278,60 @@ pub async fn obs_get_connection_status(
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("OBS get connection status called: {}", connection_name);
-    let res = crate::tauri_commands_obws::obs_obws_get_connection_status(connection_name, app.clone()).await?;
+    let res =
+        crate::tauri_commands_obws::obs_obws_get_connection_status(connection_name, app.clone())
+            .await?;
     Ok(serde_json::json!({ "success": res.success, "data": res.data, "error": res.error }))
 }
 
 #[tauri::command]
-pub async fn obs_get_connections(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn obs_get_connections(
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     log::info!("OBS get connections called");
     let res = crate::tauri_commands_obws::obs_obws_get_connections(app.clone()).await?;
     Ok(serde_json::json!({ "success": res.success, "data": res.data, "error": res.error }))
 }
 
 #[tauri::command]
-pub async fn obs_disconnect(connection_name: String, app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
-    log::info!("OBS disconnect called for connection: '{}'", connection_name);
-    if connection_name.is_empty() { return Err(TauriError::from(anyhow::anyhow!("Connection name cannot be empty"))); }
+pub async fn obs_disconnect(
+    connection_name: String,
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
+    log::info!(
+        "OBS disconnect called for connection: '{}'",
+        connection_name
+    );
+    if connection_name.is_empty() {
+        return Err(TauriError::from(anyhow::anyhow!(
+            "Connection name cannot be empty"
+        )));
+    }
     let res = crate::tauri_commands_obws::obs_obws_disconnect(connection_name, app.clone()).await?;
     Ok(serde_json::json!({ "success": res.success, "data": res.data, "error": res.error }))
 }
 
 #[tauri::command]
-pub async fn obs_remove_connection(connection_name: String, app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
-    log::info!("OBS remove connection called for connection: {}", connection_name);
-    let _ = crate::tauri_commands_obws::obs_obws_remove_connection(connection_name.clone(), app.clone()).await?;
+pub async fn obs_remove_connection(
+    connection_name: String,
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
+    log::info!(
+        "OBS remove connection called for connection: {}",
+        connection_name
+    );
+    let _ = crate::tauri_commands_obws::obs_obws_remove_connection(
+        connection_name.clone(),
+        app.clone(),
+    )
+    .await?;
     // Remove from configuration manager
     let mut connections = app.config_manager().get_obs_connections().await;
     connections.retain(|c| c.name != connection_name);
-    let _ = app.config_manager().update_obs_connections(connections).await;
+    let _ = app
+        .config_manager()
+        .update_obs_connections(connections)
+        .await;
     Ok(serde_json::json!({ "success": true, "message": "OBS connection removed" }))
 }
 
@@ -242,7 +343,9 @@ pub async fn obs_get_status(app: State<'_, Arc<App>>) -> Result<serde_json::Valu
 }
 
 #[tauri::command]
-pub async fn obs_start_recording(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn obs_start_recording(
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     log::info!("OBS start recording called");
     ensure_license_ok(&app).await?;
     let res = crate::tauri_commands_obws::obs_obws_start_recording(None, app.clone()).await?;
@@ -259,7 +362,9 @@ pub async fn obs_stop_recording(app: State<'_, Arc<App>>) -> Result<serde_json::
 
 // Streaming Commands
 #[tauri::command]
-pub async fn obs_start_streaming(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn obs_start_streaming(
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     log::info!("OBS start streaming called");
     ensure_license_ok(&app).await?;
     let res = crate::tauri_commands_obws::obs_obws_start_streaming(None, app.clone()).await?;
@@ -275,7 +380,9 @@ pub async fn obs_stop_streaming(app: State<'_, Arc<App>>) -> Result<serde_json::
 }
 
 #[tauri::command]
-pub async fn obs_get_streaming_status(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn obs_get_streaming_status(
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     log::info!("OBS get streaming status called");
     let res = crate::tauri_commands_obws::obs_obws_get_streaming_status(None, app.clone()).await?;
     Ok(serde_json::json!({ "success": res.success, "data": res.data, "error": res.error }))
@@ -283,22 +390,30 @@ pub async fn obs_get_streaming_status(app: State<'_, Arc<App>>) -> Result<serde_
 
 // Scene Management Commands
 #[tauri::command]
-pub async fn obs_get_current_scene(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn obs_get_current_scene(
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     log::info!("OBS get current scene");
     let res = crate::tauri_commands_obws::obs_obws_get_current_scene(None, app.clone()).await?;
     Ok(serde_json::json!({ "success": res.success, "data": res.data, "error": res.error }))
 }
 
 #[tauri::command]
-pub async fn obs_set_current_scene(scene_name: String, app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn obs_set_current_scene(
+    scene_name: String,
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     log::info!("OBS set current scene: {}", scene_name);
-    let res = crate::tauri_commands_obws::obs_obws_set_current_scene(scene_name, None, app.clone()).await?;
+    let res = crate::tauri_commands_obws::obs_obws_set_current_scene(scene_name, None, app.clone())
+        .await?;
     Ok(serde_json::json!({ "success": res.success, "data": res.data, "error": res.error }))
 }
 
 // Settings Commands
 #[tauri::command]
-pub async fn obs_get_obs_version(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn obs_get_obs_version(
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     log::info!("OBS get version called");
     let res = crate::tauri_commands_obws::obs_obws_get_version(None, app.clone()).await?;
     Ok(serde_json::json!({ "success": res.success, "data": res.data, "error": res.error }))
@@ -306,14 +421,19 @@ pub async fn obs_get_obs_version(app: State<'_, Arc<App>>) -> Result<serde_json:
 
 // Advanced Commands
 #[tauri::command]
-pub async fn obs_get_replay_buffer_status(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn obs_get_replay_buffer_status(
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     log::info!("OBS get replay buffer status called");
-    let res = crate::tauri_commands_obws::obs_obws_get_replay_buffer_status(None, app.clone()).await?;
+    let res =
+        crate::tauri_commands_obws::obs_obws_get_replay_buffer_status(None, app.clone()).await?;
     Ok(serde_json::json!({ "success": res.success, "data": res.data, "error": res.error }))
 }
 
 #[tauri::command]
-pub async fn obs_start_replay_buffer(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn obs_start_replay_buffer(
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     log::info!("OBS start replay buffer called");
     ensure_license_ok(&app).await?;
     let res = crate::tauri_commands_obws::obs_obws_start_replay_buffer(None, app.clone()).await?;
@@ -321,7 +441,9 @@ pub async fn obs_start_replay_buffer(app: State<'_, Arc<App>>) -> Result<serde_j
 }
 
 #[tauri::command]
-pub async fn obs_stop_replay_buffer(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn obs_stop_replay_buffer(
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     log::info!("OBS stop replay buffer called");
     ensure_license_ok(&app).await?;
     let res = crate::tauri_commands_obws::obs_obws_stop_replay_buffer(None, app.clone()).await?;
@@ -329,7 +451,9 @@ pub async fn obs_stop_replay_buffer(app: State<'_, Arc<App>>) -> Result<serde_js
 }
 
 #[tauri::command]
-pub async fn obs_save_replay_buffer(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn obs_save_replay_buffer(
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     log::info!("OBS save replay buffer called");
     ensure_license_ok(&app).await?;
     let res = crate::tauri_commands_obws::obs_obws_save_replay_buffer(None, app.clone()).await?;
@@ -340,7 +464,10 @@ pub async fn obs_save_replay_buffer(app: State<'_, Arc<App>>) -> Result<serde_js
 
 // Source Management Commands (removed: legacy plugin not needed and no obws equivalent currently used)
 #[tauri::command]
-pub async fn obs_get_sources(scene_name: String, app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn obs_get_sources(
+    scene_name: String,
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     log::info!("OBS get sources called for scene: {}", scene_name);
     let res = crate::tauri_commands_obws::obs_obws_get_sources(scene_name, app.clone()).await?;
     Ok(serde_json::json!({ "success": res.success, "data": res.data, "error": res.error }))
@@ -348,13 +475,24 @@ pub async fn obs_get_sources(scene_name: String, app: State<'_, Arc<App>>) -> Re
 
 #[tauri::command]
 pub async fn obs_set_source_visibility(
-    scene_name: String, 
-    source_name: String, 
+    scene_name: String,
+    source_name: String,
     visible: bool,
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!("OBS set source visibility called: scene={}, source={}, visible={}", scene_name, source_name, visible);
-    let res = crate::tauri_commands_obws::obs_obws_set_source_visibility(scene_name, source_name, visible, app.clone()).await?;
+    log::info!(
+        "OBS set source visibility called: scene={}, source={}, visible={}",
+        scene_name,
+        source_name,
+        visible
+    );
+    let res = crate::tauri_commands_obws::obs_obws_set_source_visibility(
+        scene_name,
+        source_name,
+        visible,
+        app.clone(),
+    )
+    .await?;
     Ok(serde_json::json!({ "success": res.success, "data": res.data, "error": res.error }))
 }
 
@@ -362,20 +500,35 @@ pub async fn obs_set_source_visibility(
 
 // Recording Path and Filename Commands
 #[tauri::command]
-pub async fn obs_get_recording_path_settings(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
-    let res = crate::tauri_commands_obws::obs_obws_get_recording_path_settings(None, app.clone()).await?;
+pub async fn obs_get_recording_path_settings(
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
+    let res =
+        crate::tauri_commands_obws::obs_obws_get_recording_path_settings(None, app.clone()).await?;
     Ok(serde_json::json!({ "success": res.success, "data": res.data, "error": res.error }))
 }
 
 #[tauri::command]
-pub async fn obs_set_recording_path(app: State<'_, Arc<App>>, path: String) -> Result<serde_json::Value, TauriError> {
-    let res = crate::tauri_commands_obws::obs_obws_set_recording_path(path, None, app.clone()).await?;
+pub async fn obs_set_recording_path(
+    app: State<'_, Arc<App>>,
+    path: String,
+) -> Result<serde_json::Value, TauriError> {
+    let res =
+        crate::tauri_commands_obws::obs_obws_set_recording_path(path, None, app.clone()).await?;
     Ok(serde_json::json!({ "success": res.success, "data": res.data, "error": res.error }))
 }
 
 #[tauri::command]
-pub async fn obs_set_recording_filename(app: State<'_, Arc<App>>, filename_format: String) -> Result<serde_json::Value, TauriError> {
-    let res = crate::tauri_commands_obws::obs_obws_set_recording_filename(filename_format, None, app.clone()).await?;
+pub async fn obs_set_recording_filename(
+    app: State<'_, Arc<App>>,
+    filename_format: String,
+) -> Result<serde_json::Value, TauriError> {
+    let res = crate::tauri_commands_obws::obs_obws_set_recording_filename(
+        filename_format,
+        None,
+        app.clone(),
+    )
+    .await?;
     Ok(serde_json::json!({ "success": res.success, "data": res.data, "error": res.error }))
 }
 
@@ -412,12 +565,19 @@ pub async fn obs_set_recording_filename(app: State<'_, Arc<App>>, filename_forma
 // Unused legacy status/event commands removed
 
 #[tauri::command]
-pub async fn obs_command(_action: String, _params: serde_json::Value, _app: State<'_, Arc<App>>) -> Result<(), TauriError> {
+pub async fn obs_command(
+    _action: String,
+    _params: serde_json::Value,
+    _app: State<'_, Arc<App>>,
+) -> Result<(), TauriError> {
     Ok(())
 }
 
 #[tauri::command]
-pub async fn obs_emit_event(event_data: serde_json::Value, window: tauri::Window) -> Result<(), TauriError> {
+pub async fn obs_emit_event(
+    event_data: serde_json::Value,
+    window: tauri::Window,
+) -> Result<(), TauriError> {
     log::info!("Emitting OBS event to frontend: {:?}", event_data);
     if let Err(e) = window.emit("obs_event", event_data) {
         log::error!("Failed to emit OBS event: {}", e);
@@ -428,13 +588,20 @@ pub async fn obs_emit_event(event_data: serde_json::Value, window: tauri::Window
 
 // Video commands
 #[tauri::command]
-pub async fn video_play(path: String, app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn video_play(
+    path: String,
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Video play called with path: {}", path);
-    
+
     // Create a video clip from the path
     let clip = crate::plugins::plugin_playback::VideoClip {
         id: uuid::Uuid::new_v4().to_string(),
-        name: std::path::Path::new(&path).file_name().unwrap_or_default().to_string_lossy().to_string(),
+        name: std::path::Path::new(&path)
+            .file_name()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .to_string(),
         path: path.clone(),
         duration: 0.0,
         timestamp: std::time::SystemTime::now(),
@@ -448,7 +615,7 @@ pub async fn video_play(path: String, app: State<'_, Arc<App>>) -> Result<serde_
             file_size: 0,
         },
     };
-    
+
     match app.playback_plugin().play_clip(clip) {
         Ok(_) => Ok(serde_json::json!({
             "success": true,
@@ -457,7 +624,7 @@ pub async fn video_play(path: String, app: State<'_, Arc<App>>) -> Result<serde_
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": e.to_string()
-        }))
+        })),
     }
 }
 
@@ -472,12 +639,15 @@ pub async fn video_stop(app: State<'_, Arc<App>>) -> Result<serde_json::Value, T
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": e.to_string()
-        }))
+        })),
     }
 }
 
 #[tauri::command]
-pub async fn video_get_info(path: String, _app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn video_get_info(
+    path: String,
+    _app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Video get info called for path: {}", path);
     match crate::plugins::plugin_playback::VideoUtils::get_video_info(&path) {
         Ok(info) => Ok(serde_json::json!({
@@ -489,18 +659,24 @@ pub async fn video_get_info(path: String, _app: State<'_, Arc<App>>) -> Result<s
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": e.to_string()
-        }))
+        })),
     }
 }
 
 #[tauri::command]
-pub async fn extract_clip(_connection: String, _app: State<'_, Arc<App>>) -> Result<(), TauriError> {
+pub async fn extract_clip(
+    _connection: String,
+    _app: State<'_, Arc<App>>,
+) -> Result<(), TauriError> {
     Ok(())
 }
 
 // Store commands
 #[tauri::command]
-pub async fn save_event(_event: serde_json::Value, _app: State<'_, Arc<App>>) -> Result<(), TauriError> {
+pub async fn save_event(
+    _event: serde_json::Value,
+    _app: State<'_, Arc<App>>,
+) -> Result<(), TauriError> {
     Ok(())
 }
 
@@ -516,9 +692,14 @@ pub async fn clear_events(_app: State<'_, Arc<App>>) -> Result<(), TauriError> {
 
 // License commands
 #[tauri::command]
-pub async fn activate_license(key: String, app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn activate_license(
+    key: String,
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     let lp = app.license_plugin();
-    let status = lp.activate(&key, app.config_manager()).await
+    let status = lp
+        .activate(&key, app.config_manager())
+        .await
         .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
     Ok(serde_json::json!({
         "state": format!("{:?}", status.state),
@@ -532,7 +713,9 @@ pub async fn activate_license(key: String, app: State<'_, Arc<App>>) -> Result<s
 #[tauri::command]
 pub async fn validate_license(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     let lp = app.license_plugin();
-    let status = lp.validate(app.config_manager()).await
+    let status = lp
+        .validate(app.config_manager())
+        .await
         .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
     Ok(serde_json::json!({
         "state": format!("{:?}", status.state),
@@ -547,7 +730,9 @@ pub async fn validate_license(app: State<'_, Arc<App>>) -> Result<serde_json::Va
 #[tauri::command]
 pub async fn get_license_status(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     let lp = app.license_plugin();
-    let status = lp.validate(app.config_manager()).await
+    let status = lp
+        .validate(app.config_manager())
+        .await
         .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
     Ok(serde_json::json!({
         "state": format!("{:?}", status.state),
@@ -561,7 +746,9 @@ pub async fn get_license_status(app: State<'_, Arc<App>>) -> Result<serde_json::
 
 // Machine identity (raw UID + machine_hash) for vendor issuance
 #[tauri::command]
-pub async fn get_machine_identity(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn get_machine_identity(
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     let uid = machine_uid::get().unwrap_or_else(|_| "unknown".to_string());
     let mh = app
         .license_plugin()
@@ -577,7 +764,7 @@ pub async fn get_machine_identity(app: State<'_, Arc<App>>) -> Result<serde_json
 #[tauri::command]
 pub async fn get_settings(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting application settings");
-    
+
     let config = app.config_manager().get_config().await;
     let config_json = serde_json::to_value(config)
         .map_err(|e| TauriError::from(anyhow::anyhow!("Failed to serialize config: {}", e)))?;
@@ -585,67 +772,93 @@ pub async fn get_settings(app: State<'_, Arc<App>>) -> Result<serde_json::Value,
 }
 
 #[tauri::command]
-pub async fn update_settings(settings: serde_json::Value, app: State<'_, Arc<App>>) -> Result<(), TauriError> {
+pub async fn update_settings(
+    settings: serde_json::Value,
+    app: State<'_, Arc<App>>,
+) -> Result<(), TauriError> {
     log::info!("Updating application settings");
-    
+
     let config: crate::config::AppConfig = serde_json::from_value(settings)
         .map_err(|e| TauriError::from(anyhow::anyhow!("Failed to deserialize settings: {}", e)))?;
-    
-    app.config_manager().update_config(config).await
+
+    app.config_manager()
+        .update_config(config)
+        .await
         .map_err(|e| TauriError::from(anyhow::anyhow!("Failed to update settings: {}", e)))
 }
 
 #[tauri::command]
 pub async fn get_config_stats(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting configuration statistics");
-    
+
     match app.config_manager().get_config_stats().await {
         Ok(stats) => {
-            let stats_json = serde_json::to_value(stats)
-                .map_err(|e| TauriError::from(anyhow::anyhow!("Failed to serialize stats: {}", e)))?;
+            let stats_json = serde_json::to_value(stats).map_err(|e| {
+                TauriError::from(anyhow::anyhow!("Failed to serialize stats: {}", e))
+            })?;
             Ok(stats_json)
         }
-        Err(e) => Err(TauriError::from(anyhow::anyhow!("Failed to get config stats: {}", e)))
+        Err(e) => Err(TauriError::from(anyhow::anyhow!(
+            "Failed to get config stats: {}",
+            e
+        ))),
     }
 }
 
 #[tauri::command]
 pub async fn reset_settings(app: State<'_, Arc<App>>) -> Result<(), TauriError> {
     log::info!("Resetting settings to defaults");
-    
-    app.config_manager().reset_to_defaults().await
+
+    app.config_manager()
+        .reset_to_defaults()
+        .await
         .map_err(|e| TauriError::from(anyhow::anyhow!("Failed to reset settings: {}", e)))
 }
 
 #[tauri::command]
-pub async fn export_settings(export_path: String, app: State<'_, Arc<App>>) -> Result<(), TauriError> {
+pub async fn export_settings(
+    export_path: String,
+    app: State<'_, Arc<App>>,
+) -> Result<(), TauriError> {
     log::info!("Exporting settings to: {}", export_path);
-    
+
     let path = std::path::Path::new(&export_path);
-    app.config_manager().export_config(path).await
+    app.config_manager()
+        .export_config(path)
+        .await
         .map_err(|e| TauriError::from(anyhow::anyhow!("Failed to export settings: {}", e)))
 }
 
 #[tauri::command]
-pub async fn import_settings(import_path: String, app: State<'_, Arc<App>>) -> Result<(), TauriError> {
+pub async fn import_settings(
+    import_path: String,
+    app: State<'_, Arc<App>>,
+) -> Result<(), TauriError> {
     log::info!("Importing settings from: {}", import_path);
-    
+
     let path = std::path::Path::new(&import_path);
-    app.config_manager().import_config(path).await
+    app.config_manager()
+        .import_config(path)
+        .await
         .map_err(|e| TauriError::from(anyhow::anyhow!("Failed to import settings: {}", e)))
 }
 
 #[tauri::command]
 pub async fn restore_settings_backup(app: State<'_, Arc<App>>) -> Result<(), TauriError> {
     log::info!("Restoring settings from backup");
-    
-    app.config_manager().restore_from_backup().await
+
+    app.config_manager()
+        .restore_from_backup()
+        .await
         .map_err(|e| TauriError::from(anyhow::anyhow!("Failed to restore settings backup: {}", e)))
 }
 
 // Flag commands
 #[tauri::command]
-pub async fn get_flag_url(_ioc_code: String, _app: State<'_, Arc<App>>) -> Result<String, TauriError> {
+pub async fn get_flag_url(
+    _ioc_code: String,
+    _app: State<'_, Arc<App>>,
+) -> Result<String, TauriError> {
     Ok("".to_string())
 }
 
@@ -656,30 +869,35 @@ pub async fn download_flags(_app: State<'_, Arc<App>>) -> Result<(), TauriError>
 
 // PSS commands
 #[tauri::command]
-pub async fn pss_start_listener(port: u16, app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn pss_start_listener(
+    port: u16,
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     log::info!("PSS start listener called on port: {}", port);
-    
+
     // Update the UDP server configuration with the new port
     let mut config = app.config_manager().get_config().await;
     config.udp.listener.port = port;
-    
+
     // Update the UDP plugin's internal configuration
-    app.udp_plugin().update_config(port, "127.0.0.1".to_string()).await;
-    
+    app.udp_plugin()
+        .update_config(port, "127.0.0.1".to_string())
+        .await;
+
     match app.udp_plugin().start(&config).await {
         Ok(_) => {
             // Start UDP event handler when UDP server starts
             app.inner().start_udp_event_handler().await;
-            
+
             Ok(serde_json::json!({
                 "success": true,
                 "message": format!("PSS listener started on port {} with event handler", port)
             }))
-        },
+        }
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": e.to_string()
-        }))
+        })),
     }
 }
 
@@ -694,15 +912,17 @@ pub async fn pss_stop_listener(app: State<'_, Arc<App>>) -> Result<serde_json::V
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": e.to_string()
-        }))
+        })),
     }
 }
 #[tauri::command]
-pub async fn pss_get_events(app: State<'_, Arc<App>>) -> Result<Vec<serde_json::Value>, TauriError> {
+pub async fn pss_get_events(
+    app: State<'_, Arc<App>>,
+) -> Result<Vec<serde_json::Value>, TauriError> {
     log::info!("PSS get events called");
-    
+
     let events = app.udp_plugin().get_recent_events();
-    
+
     // Convert PssEvent enum to JSON
     let event_json: Vec<serde_json::Value> = events.into_iter().map(|event| {
         let event_code = crate::plugins::plugin_udp::UdpServer::get_event_code(&event);
@@ -901,11 +1121,14 @@ pub async fn pss_get_events(app: State<'_, Arc<App>>) -> Result<Vec<serde_json::
             }
         }
     }).collect();
-    
+
     Ok(event_json)
 }
 #[tauri::command]
-pub async fn pss_get_events_for_match(app: State<'_, Arc<App>>, match_id: String) -> Result<Vec<serde_json::Value>, TauriError> {
+pub async fn pss_get_events_for_match(
+    app: State<'_, Arc<App>>,
+    match_id: String,
+) -> Result<Vec<serde_json::Value>, TauriError> {
     log::info!("pss_get_events_for_match called for match_id={}", match_id);
     // Require numeric DB id only. Reject non-numeric inputs.
     let resolved_mid: i64 = match match_id.parse::<i64>() {
@@ -914,11 +1137,21 @@ pub async fn pss_get_events_for_match(app: State<'_, Arc<App>>, match_id: String
     };
 
     // Fetch events for resolved match id
-    let mut rows = app.database_plugin().get_pss_events_for_match(resolved_mid, Some(1000)).await
-        .map_err(|e| TauriError::from(anyhow::anyhow!(format!("DB fetch for match events failed: {}", e))))?;
+    let mut rows = app
+        .database_plugin()
+        .get_pss_events_for_match(resolved_mid, Some(1000))
+        .await
+        .map_err(|e| {
+            TauriError::from(anyhow::anyhow!(format!(
+                "DB fetch for match events failed: {}",
+                e
+            )))
+        })?;
 
     // If no rows found for this match, return empty (no fallback to live memory)
-    if rows.is_empty() { return Ok(vec![]); }
+    if rows.is_empty() {
+        return Ok(vec![]);
+    }
 
     // Build enriched event list with inferred round/time/athlete from parsed_data
     // Iterate oldest->newest to maintain running state
@@ -952,15 +1185,29 @@ pub async fn pss_get_events_for_match(app: State<'_, Arc<App>>, match_id: String
                         time = t;
                         ev_type = "clock".to_string();
                     }
-                    PssEvent::Points { athlete: a, point_type: _ } => {
-                        athlete = match a { 1 => "blue".to_string(), 2 => "red".to_string(), _ => "yellow".to_string() };
+                    PssEvent::Points {
+                        athlete: a,
+                        point_type: _,
+                    } => {
+                        athlete = match a {
+                            1 => "blue".to_string(),
+                            2 => "red".to_string(),
+                            _ => "yellow".to_string(),
+                        };
                         round = last_round as i64;
                         time = last_time.clone();
                         ev_type = "points".to_string();
                         // Optionally include point_type in description
                     }
-                    PssEvent::HitLevel { athlete: a, level: _ } => {
-                        athlete = match a { 1 => "blue".to_string(), 2 => "red".to_string(), _ => "yellow".to_string() };
+                    PssEvent::HitLevel {
+                        athlete: a,
+                        level: _,
+                    } => {
+                        athlete = match a {
+                            1 => "blue".to_string(),
+                            2 => "red".to_string(),
+                            _ => "yellow".to_string(),
+                        };
                         round = last_round as i64;
                         time = last_time.clone();
                         ev_type = "hit_level".to_string();
@@ -1009,17 +1256,31 @@ pub async fn pss_get_events_for_match(app: State<'_, Arc<App>>, match_id: String
                         athlete = "yellow".to_string();
                         ev_type = "match_config".to_string();
                     }
-                    PssEvent::FightLoaded => { athlete = "yellow".to_string(); ev_type = "fight_loaded".to_string(); }
-                    PssEvent::FightReady => { athlete = "yellow".to_string(); ev_type = "fight_ready".to_string(); }
+                    PssEvent::FightLoaded => {
+                        athlete = "yellow".to_string();
+                        ev_type = "fight_loaded".to_string();
+                    }
+                    PssEvent::FightReady => {
+                        athlete = "yellow".to_string();
+                        ev_type = "fight_ready".to_string();
+                    }
                     PssEvent::Challenge { .. } => {
                         athlete = "yellow".to_string();
                         round = last_round as i64;
                         time = last_time.clone();
                         ev_type = "challenge".to_string();
                     }
-                    PssEvent::Injury { time: t, athlete: a, .. } => {
+                    PssEvent::Injury {
+                        time: t,
+                        athlete: a,
+                        ..
+                    } => {
                         time = t.clone();
-                        athlete = match a { 1 => "blue".to_string(), 2 => "red".to_string(), _ => "yellow".to_string() };
+                        athlete = match a {
+                            1 => "blue".to_string(),
+                            2 => "red".to_string(),
+                            _ => "yellow".to_string(),
+                        };
                         round = last_round as i64;
                         ev_type = "injury".to_string();
                     }
@@ -1029,13 +1290,16 @@ pub async fn pss_get_events_for_match(app: State<'_, Arc<App>>, match_id: String
                         time = last_time.clone();
                         ev_type = "supremacy".to_string();
                     }
-                    PssEvent::Raw(_) => { athlete = "yellow".to_string(); ev_type = "raw".to_string(); }
+                    PssEvent::Raw(_) => {
+                        athlete = "yellow".to_string();
+                        ev_type = "raw".to_string();
+                    }
                 }
             }
         }
 
         // Only return important events to UI; keep others persisted for timing/state
-        let important = matches!(event_code.as_str(), "K"|"P"|"H"|"TH"|"TB"|"R");
+        let important = matches!(event_code.as_str(), "K" | "P" | "H" | "TH" | "TB" | "R");
         if important {
             out.push(serde_json::json!({
                 "id": row.id,
@@ -1049,8 +1313,8 @@ pub async fn pss_get_events_for_match(app: State<'_, Arc<App>>, match_id: String
                 "raw_data": row.raw_data,
                 "description": row.parsed_data,
                 "tournament_id": row.tournament_id,
-                
-                
+
+
             }));
         }
     }
@@ -1059,9 +1323,14 @@ pub async fn pss_get_events_for_match(app: State<'_, Arc<App>>, match_id: String
 }
 /// List recent PSS matches for review dropdown
 #[tauri::command]
-pub async fn pss_list_recent_matches(app: State<'_, Arc<App>>, limit: Option<i64>) -> Result<Vec<serde_json::Value>, TauriError> {
-    let conn = app.database_plugin().get_connection().await
-        .map_err(|e| TauriError::from(anyhow::anyhow!(format!("DB connection error: {}", e))))?;
+pub async fn pss_list_recent_matches(
+    app: State<'_, Arc<App>>,
+    limit: Option<i64>,
+) -> Result<Vec<serde_json::Value>, TauriError> {
+    let conn =
+        app.database_plugin().get_connection().await.map_err(|e| {
+            TauriError::from(anyhow::anyhow!(format!("DB connection error: {}", e)))
+        })?;
     // Return only matches that have at least one event; newest first
     let max = limit.unwrap_or(50);
     let mut stmt = conn.prepare(
@@ -1073,33 +1342,39 @@ pub async fn pss_list_recent_matches(app: State<'_, Arc<App>>, limit: Option<i64
          ORDER BY m.created_at DESC
          LIMIT ?"
     ).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
-    let rows = stmt.query_map([max], |row| {
-        Ok(serde_json::json!({
-            "id": row.get::<_, i64>(0)?,
-            "uuid": row.get::<_, Option<String>>(1)?,
-            "tournament_id": row.get::<_, Option<String>>(2)?,
-            
-            "match_id": row.get::<_, String>(4)?,
-            "match_number": row.get::<_, Option<String>>(5)?,
-            "category": row.get::<_, Option<String>>(6)?,
-            "weight_class": row.get::<_, Option<String>>(7)?,
-            "division": row.get::<_, Option<String>>(8)?,
-            "created_at": row.get::<_, String>(9)?,
-            "updated_at": row.get::<_, String>(10)?,
-        }))
-    }).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?
-    .collect::<Result<Vec<_>, _>>()
-    .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    let rows = stmt
+        .query_map([max], |row| {
+            Ok(serde_json::json!({
+                "id": row.get::<_, i64>(0)?,
+                "uuid": row.get::<_, Option<String>>(1)?,
+                "tournament_id": row.get::<_, Option<String>>(2)?,
+
+                "match_id": row.get::<_, String>(4)?,
+                "match_number": row.get::<_, Option<String>>(5)?,
+                "category": row.get::<_, Option<String>>(6)?,
+                "weight_class": row.get::<_, Option<String>>(7)?,
+                "division": row.get::<_, Option<String>>(8)?,
+                "created_at": row.get::<_, String>(9)?,
+                "updated_at": row.get::<_, String>(10)?,
+            }))
+        })
+        .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
     Ok(rows)
 }
 
 /// Danger: clear all PSS matches and events for a fresh start
 #[tauri::command]
 pub async fn pss_clear_all_data(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
-    let mut conn = app.database_plugin().get_connection().await
-        .map_err(|e| TauriError::from(anyhow::anyhow!(format!("DB connection error: {}", e))))?;
+    let mut conn =
+        app.database_plugin().get_connection().await.map_err(|e| {
+            TauriError::from(anyhow::anyhow!(format!("DB connection error: {}", e)))
+        })?;
     // Wrap in transaction for atomicity
-    let tx = conn.transaction().map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    let tx = conn
+        .transaction()
+        .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
     // Delete in child->parent order
     tx.execute("DELETE FROM pss_event_details", [])
         .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
@@ -1117,15 +1392,22 @@ pub async fn pss_clear_all_data(app: State<'_, Arc<App>>) -> Result<serde_json::
         .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
     tx.execute("DELETE FROM pss_matches", [])
         .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
-    tx.commit().map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    tx.commit()
+        .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
     Ok(serde_json::json!({"success": true}))
 }
 
 /// Get current live match DB id (if any)
 #[tauri::command]
-pub async fn pss_get_current_match(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn pss_get_current_match(
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     // Pull from WebSocket server's propagated current_match_db_id
-    let id_opt = app.websocket_plugin().lock().await.get_current_match_db_id();
+    let id_opt = app
+        .websocket_plugin()
+        .lock()
+        .await
+        .get_current_match_db_id();
     Ok(serde_json::json!({ "id": id_opt }))
 }
 
@@ -1136,12 +1418,16 @@ pub async fn tournament_progress_context(
     app: State<'_, Arc<App>>,
     mode: String,
 ) -> Result<serde_json::Value, TauriError> {
-    let mut conn = app.database_plugin().get_connection().await
-        .map_err(|e| TauriError::from(anyhow::anyhow!(format!("DB connection error: {}", e))))?;
+    let mut conn =
+        app.database_plugin().get_connection().await.map_err(|e| {
+            TauriError::from(anyhow::anyhow!(format!("DB connection error: {}", e)))
+        })?;
 
     // Get current active tournament/day
-    let active_tournament = crate::database::operations::TournamentOperations::get_active_tournament(&*conn)
-        .map_err(|e| TauriError::from(anyhow::anyhow!(format!("get_active_tournament: {}", e))))?;
+    let active_tournament =
+        crate::database::operations::TournamentOperations::get_active_tournament(&*conn).map_err(
+            |e| TauriError::from(anyhow::anyhow!(format!("get_active_tournament: {}", e))),
+        )?;
     let mut tournament_id = if let Some(t) = active_tournament {
         Some(t.id.unwrap_or_default())
     } else {
@@ -1157,51 +1443,92 @@ pub async fn tournament_progress_context(
             if let Some(tid) = tournament_id {
                 // Create a new day under same tournament (1 day duration) starting now
                 let start_dt = chrono::Utc::now();
-                crate::database::operations::TournamentOperations::create_tournament_days(&mut *conn, tid, start_dt, 1)
-                    .map_err(|e| TauriError::from(anyhow::anyhow!(format!("create_tournament_days(next): {}", e))))?;
-                let _day = crate::database::operations::TournamentOperations::get_active_tournament_day(&*conn, tid)
-                    .map_err(|e| TauriError::from(anyhow::anyhow!(format!("get_active_tournament_day(after next): {}", e))))?;
-                
+                crate::database::operations::TournamentOperations::create_tournament_days(
+                    &mut *conn, tid, start_dt, 1,
+                )
+                .map_err(|e| {
+                    TauriError::from(anyhow::anyhow!(format!(
+                        "create_tournament_days(next): {}",
+                        e
+                    )))
+                })?;
+                let _day =
+                    crate::database::operations::TournamentOperations::get_active_tournament_day(
+                        &*conn, tid,
+                    )
+                    .map_err(|e| {
+                        TauriError::from(anyhow::anyhow!(format!(
+                            "get_active_tournament_day(after next): {}",
+                            e
+                        )))
+                    })?;
             }
         }
         "new" => {
             // New tournament, new day
             let name = format!("Tournament {}", chrono::Utc::now().format("%Y-%m-%d"));
-            let tid = app.tournament_plugin().create_tournament(
-                name,
-                1, // duration_days
-                "".to_string(), // city
-                "".to_string(), // country
-                None, // country_code
-                Some(chrono::Utc::now()), // start_date
-            ).await.map_err(|e| TauriError::from(anyhow::anyhow!(format!("create_tournament: {}", e))))?;
+            let tid = app
+                .tournament_plugin()
+                .create_tournament(
+                    name,
+                    1,                        // duration_days
+                    "".to_string(),           // city
+                    "".to_string(),           // country
+                    None,                     // country_code
+                    Some(chrono::Utc::now()), // start_date
+                )
+                .await
+                .map_err(|e| {
+                    TauriError::from(anyhow::anyhow!(format!("create_tournament: {}", e)))
+                })?;
             tournament_id = Some(tid);
             // Auto create first day
             let start_dt = chrono::Utc::now();
-            crate::database::operations::TournamentOperations::create_tournament_days(&mut *conn, tid, start_dt, 1)
-                .map_err(|e| TauriError::from(anyhow::anyhow!(format!("create_tournament_days(new): {}", e))))?;
-            let _day = crate::database::operations::TournamentOperations::get_active_tournament_day(&*conn, tid)
-                .map_err(|e| TauriError::from(anyhow::anyhow!(format!("get_active_tournament_day(after new): {}", e))))?;
-            
+            crate::database::operations::TournamentOperations::create_tournament_days(
+                &mut *conn, tid, start_dt, 1,
+            )
+            .map_err(|e| {
+                TauriError::from(anyhow::anyhow!(format!(
+                    "create_tournament_days(new): {}",
+                    e
+                )))
+            })?;
+            let _day =
+                crate::database::operations::TournamentOperations::get_active_tournament_day(
+                    &*conn, tid,
+                )
+                .map_err(|e| {
+                    TauriError::from(anyhow::anyhow!(format!(
+                        "get_active_tournament_day(after new): {}",
+                        e
+                    )))
+                })?;
         }
         _ => {}
     }
 
     // Set UDP context so events inherit these IDs
-    app.udp_plugin().set_tournament_context(tournament_id).await
+    app.udp_plugin()
+        .set_tournament_context(tournament_id)
+        .await
         .map_err(|e| TauriError::from(anyhow::anyhow!(format!("set_tournament_context: {}", e))))?;
 
     Ok(serde_json::json!({
         "tournament_id": tournament_id,
-        
+
     }))
 }
 
 /// Provide details for a match, including athletes, for MatchDetailsSection
 #[tauri::command]
-pub async fn pss_get_match_details(app: State<'_, Arc<App>>, match_id: String) -> Result<serde_json::Value, TauriError> {
-    let conn = app.database_plugin().get_connection().await
-        .map_err(|e| TauriError::from(anyhow::anyhow!(format!("DB connection error: {}", e))))?;
+pub async fn pss_get_match_details(
+    app: State<'_, Arc<App>>,
+    match_id: String,
+) -> Result<serde_json::Value, TauriError> {
+    let conn =
+        app.database_plugin().get_connection().await.map_err(|e| {
+            TauriError::from(anyhow::anyhow!(format!("DB connection error: {}", e)))
+        })?;
 
     // ID-only resolution: accept only numeric DB id
     let dbid: i64 = match match_id.parse::<i64>() {
@@ -1213,8 +1540,11 @@ pub async fn pss_get_match_details(app: State<'_, Arc<App>>, match_id: String) -
     let info = list.into_iter().find(|m| m.id == Some(dbid));
 
     let info = info.ok_or_else(|| TauriError::from(anyhow::anyhow!("Match not found")))?;
-    let athletes = crate::database::operations::PssUdpOperations::get_pss_match_athletes(&*conn, info.id.unwrap())
-        .map_err(|e| TauriError::from(anyhow::anyhow!(format!("get_pss_match_athletes: {}", e))))?;
+    let athletes = crate::database::operations::PssUdpOperations::get_pss_match_athletes(
+        &*conn,
+        info.id.unwrap(),
+    )
+    .map_err(|e| TauriError::from(anyhow::anyhow!(format!("get_pss_match_athletes: {}", e))))?;
     let mut a1 = serde_json::json!({});
     let mut a2 = serde_json::json!({});
     for (ma, a) in athletes {
@@ -1223,14 +1553,18 @@ pub async fn pss_get_match_details(app: State<'_, Arc<App>>, match_id: String) -
             "long_name": a.long_name,
             "country_code": a.country_code,
         });
-        if ma.athlete_position == 1 { a1 = obj; } else if ma.athlete_position == 2 { a2 = obj; }
+        if ma.athlete_position == 1 {
+            a1 = obj;
+        } else if ma.athlete_position == 2 {
+            a2 = obj;
+        }
     }
     // Fetch legacy integer tournament ids for transition
     let ints: Option<(Option<i64>, Option<i64>)> = conn
         .query_row(
             "SELECT tournament_id FROM pss_matches WHERE id = ?",
-            rusqlite::params![ dbid ],
-            |r| Ok((r.get::<_, Option<i64>>(0)?, r.get::<_, Option<i64>>(1)?))
+            rusqlite::params![dbid],
+            |r| Ok((r.get::<_, Option<i64>>(0)?, r.get::<_, Option<i64>>(1)?)),
         )
         .ok();
     let (_tid_int, _day_int) = ints.unwrap_or((None, None));
@@ -1240,8 +1574,8 @@ pub async fn pss_get_match_details(app: State<'_, Arc<App>>, match_id: String) -
             "id": info.id,
             "uuid": info.uuid,
             "tournament_id": info.tournament_id,
-            
-            
+
+
             "match_id": info.match_id,
             "number": info.match_number,
             "category": info.category,
@@ -1267,7 +1601,9 @@ pub async fn system_get_info(_app: State<'_, Arc<App>>) -> Result<serde_json::Va
 #[tauri::command]
 pub async fn system_open_file_dialog() -> Result<String, TauriError> {
     // Placeholder for native file dialog - not implemented
-    Err(TauriError::from(anyhow::anyhow!("File dialog not available")))
+    Err(TauriError::from(anyhow::anyhow!(
+        "File dialog not available"
+    )))
 }
 
 #[tauri::command]
@@ -1284,7 +1620,7 @@ pub async fn list_log_files(
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Listing log files for subsystem: {:?}", subsystem);
-    
+
     let log_manager = app.log_manager().lock().await;
     match log_manager.list_log_files(subsystem.as_deref()) {
         Ok(files) => Ok(serde_json::json!({
@@ -1294,7 +1630,7 @@ pub async fn list_log_files(
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": format!("Failed to list log files: {}", e)
-        }))
+        })),
     }
 }
 
@@ -1304,18 +1640,21 @@ pub async fn download_log_file(
     app: State<'_, Arc<App>>,
 ) -> Result<Vec<u8>, TauriError> {
     log::info!("Downloading log file: {}", filename);
-    
+
     let log_manager = app.log_manager().lock().await;
     match log_manager.read_log_file(&filename) {
         Ok(contents) => Ok(contents),
-        Err(e) => Err(TauriError::from(anyhow::anyhow!("Failed to read log file: {}", e)))
+        Err(e) => Err(TauriError::from(anyhow::anyhow!(
+            "Failed to read log file: {}",
+            e
+        ))),
     }
 }
 
 #[tauri::command]
 pub async fn list_archives(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Listing archives");
-    
+
     let log_manager = app.log_manager().lock().await;
     match log_manager.list_archives() {
         Ok(archives) => Ok(serde_json::json!({
@@ -1325,7 +1664,7 @@ pub async fn list_archives(app: State<'_, Arc<App>>) -> Result<serde_json::Value
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": format!("Failed to list archives: {}", e)
-        }))
+        })),
     }
 }
 
@@ -1335,7 +1674,7 @@ pub async fn extract_archive(
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Extracting archive: {}", archive_name);
-    
+
     let log_manager = app.log_manager().lock().await;
     match log_manager.extract_archive(&archive_name) {
         Ok(_) => Ok(serde_json::json!({
@@ -1345,7 +1684,7 @@ pub async fn extract_archive(
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": format!("Failed to extract archive: {}", e)
-        }))
+        })),
     }
 }
 
@@ -1355,11 +1694,14 @@ pub async fn download_archive(
     app: State<'_, Arc<App>>,
 ) -> Result<Vec<u8>, TauriError> {
     log::info!("Downloading archive: {}", archive_name);
-    
+
     let log_manager = app.log_manager().lock().await;
     match log_manager.download_archive(&archive_name) {
         Ok(contents) => Ok(contents),
-        Err(e) => Err(TauriError::from(anyhow::anyhow!("Failed to read archive: {}", e)))
+        Err(e) => Err(TauriError::from(anyhow::anyhow!(
+            "Failed to read archive: {}",
+            e
+        ))),
     }
 }
 #[tauri::command]
@@ -1370,10 +1712,10 @@ pub async fn set_live_data_streaming(
     window: tauri::Window,
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Setting live data streaming for {}: {}", subsystem, enabled);
-    
+
     // Clone window once for emitting events (available throughout function)
     let app_handle = window.clone();
-    
+
     if enabled {
         log::info!("Live data streaming enabled for subsystem: {}", subsystem);
         // Emit initial message
@@ -1392,11 +1734,14 @@ pub async fn set_live_data_streaming(
                 loop {
                     match app_arc.obs_obws_plugin().get_status(None).await {
                         Ok(events) => {
-                            let _ = window.emit("live_data", serde_json::json!({
-                                "subsystem": "obs",
-                                "data": events,
-                                "timestamp": chrono::Utc::now().to_rfc3339()
-                            }));
+                            let _ = window.emit(
+                                "live_data",
+                                serde_json::json!({
+                                    "subsystem": "obs",
+                                    "data": events,
+                                    "timestamp": chrono::Utc::now().to_rfc3339()
+                                }),
+                            );
                         }
                         Err(_) => {}
                     }
@@ -1411,20 +1756,22 @@ pub async fn set_live_data_streaming(
                 loop {
                     let events = app_arc.udp_plugin().get_recent_events();
                     for ev in events {
-                        let _ = window.emit("live_data", serde_json::json!({
-                            "subsystem": "pss",
-                            "data": ev, // assuming string, adjust if structured
-                            "timestamp": chrono::Utc::now().to_rfc3339()
-                        }));
+                        let _ = window.emit(
+                            "live_data",
+                            serde_json::json!({
+                                "subsystem": "pss",
+                                "data": ev, // assuming string, adjust if structured
+                                "timestamp": chrono::Utc::now().to_rfc3339()
+                            }),
+                        );
                     }
                     tokio::time::sleep(tokio::time::Duration::from_millis(800)).await;
                 }
             });
         }
-        
     } else {
         log::info!("Live data streaming disabled for subsystem: {}", subsystem);
-        
+
         // Emit a final event to indicate streaming stopped
         if let Err(e) = app_handle.emit("live_data", serde_json::json!({
             "subsystem": subsystem,
@@ -1434,7 +1781,7 @@ pub async fn set_live_data_streaming(
             log::error!("Failed to emit live data stop event: {}", e);
         }
     }
-    
+
     Ok(serde_json::json!({
         "success": true,
         "message": format!("Live data streaming {} for {}", if enabled { "enabled" } else { "disabled" }, subsystem)
@@ -1443,71 +1790,98 @@ pub async fn set_live_data_streaming(
 
 // Legacy commands for backward compatibility
 #[tauri::command]
-pub async fn start_live_data(subsystem: String, app: State<'_, Arc<App>>, window: tauri::Window) -> Result<(), TauriError> {
+pub async fn start_live_data(
+    subsystem: String,
+    app: State<'_, Arc<App>>,
+    window: tauri::Window,
+) -> Result<(), TauriError> {
     set_live_data_streaming(subsystem, true, app, window).await?;
     Ok(())
 }
 
 #[tauri::command]
-pub async fn stop_live_data(subsystem: String, app: State<'_, Arc<App>>, window: tauri::Window) -> Result<(), TauriError> {
+pub async fn stop_live_data(
+    subsystem: String,
+    app: State<'_, Arc<App>>,
+    window: tauri::Window,
+) -> Result<(), TauriError> {
     set_live_data_streaming(subsystem, false, app, window).await?;
     Ok(())
 }
 
 #[tauri::command]
-pub async fn drive_create_folder(name: String, parent_id: Option<String>) -> Result<serde_json::Value, TauriError> {
-    let id = crate::plugins::drive_plugin().create_folder(&name, parent_id.as_deref())
-        .await.map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+pub async fn drive_create_folder(
+    name: String,
+    parent_id: Option<String>,
+) -> Result<serde_json::Value, TauriError> {
+    let id = crate::plugins::drive_plugin()
+        .create_folder(&name, parent_id.as_deref())
+        .await
+        .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
     Ok(serde_json::json!({"success": true, "id": id}))
 }
 
 #[tauri::command]
-pub async fn drive_list_children(parent_id: Option<String>) -> Result<serde_json::Value, TauriError> {
-    let files = crate::plugins::drive_plugin().list_children(parent_id.as_deref()).await
+pub async fn drive_list_children(
+    parent_id: Option<String>,
+) -> Result<serde_json::Value, TauriError> {
+    let files = crate::plugins::drive_plugin()
+        .list_children(parent_id.as_deref())
+        .await
         .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
     Ok(serde_json::json!({"success": true, "files": files}))
 }
 
 #[tauri::command]
-pub async fn drive_upload_zip_to_folder(zip_path: String, folder_id: Option<String>) -> Result<serde_json::Value, TauriError> {
+pub async fn drive_upload_zip_to_folder(
+    zip_path: String,
+    folder_id: Option<String>,
+) -> Result<serde_json::Value, TauriError> {
     let p = std::path::PathBuf::from(&zip_path);
-    if !p.is_file() { return Ok(serde_json::json!({"success": false, "error": "zip not found"})); }
-    let file_name = p.file_name().and_then(|s| s.to_str()).unwrap_or("archive.zip").to_string();
-    let id = crate::plugins::drive_plugin().upload_file_streaming_to_folder(&p, &file_name, folder_id.as_deref())
-        .await.map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    if !p.is_file() {
+        return Ok(serde_json::json!({"success": false, "error": "zip not found"}));
+    }
+    let file_name = p
+        .file_name()
+        .and_then(|s| s.to_str())
+        .unwrap_or("archive.zip")
+        .to_string();
+    let id = crate::plugins::drive_plugin()
+        .upload_file_streaming_to_folder(&p, &file_name, folder_id.as_deref())
+        .await
+        .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
     Ok(serde_json::json!({"success": true, "file_id": id}))
 }
 #[tauri::command]
-pub async fn get_live_data(subsystem: String, app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn get_live_data(
+    subsystem: String,
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting live data for subsystem: {}", subsystem);
-    
+
     match subsystem.as_str() {
         "obs" => {
             // Get OBS live data
             let obs_status = app.obs_obws_plugin().get_status(None).await;
             match obs_status {
-                Ok(status) => {
-                    Ok(serde_json::json!({
-                        "success": true,
-                        "data": {
-                            "subsystem": "obs",
-                            "timestamp": chrono::Utc::now().to_rfc3339(),
-                            "recording_status": format!("{:?}", status.recording_status),
-                            "streaming_status": format!("{:?}", status.streaming_status),
-                            "replay_buffer_status": format!("{:?}", status.replay_buffer_status),
-                            "virtual_camera_status": format!("{:?}", status.virtual_camera_status),
-                            "current_scene": status.current_scene,
-                            "scenes": status.scenes,
-                            "stats": status.stats
-                        }
-                    }))
-                }
-                Err(e) => {
-                    Ok(serde_json::json!({
-                        "success": false,
-                        "error": e.to_string()
-                    }))
-                }
+                Ok(status) => Ok(serde_json::json!({
+                    "success": true,
+                    "data": {
+                        "subsystem": "obs",
+                        "timestamp": chrono::Utc::now().to_rfc3339(),
+                        "recording_status": format!("{:?}", status.recording_status),
+                        "streaming_status": format!("{:?}", status.streaming_status),
+                        "replay_buffer_status": format!("{:?}", status.replay_buffer_status),
+                        "virtual_camera_status": format!("{:?}", status.virtual_camera_status),
+                        "current_scene": status.current_scene,
+                        "scenes": status.scenes,
+                        "stats": status.stats
+                    }
+                })),
+                Err(e) => Ok(serde_json::json!({
+                    "success": false,
+                    "error": e.to_string()
+                })),
             }
         }
         "pss" => {
@@ -1530,7 +1904,7 @@ pub async fn get_live_data(subsystem: String, app: State<'_, Arc<App>>) -> Resul
             // Get UDP live data
             let udp_status = app.udp_plugin().get_status();
             let udp_stats = app.udp_plugin().get_stats();
-            
+
             // Calculate uptime
             let uptime = if let Some(start_time) = udp_stats.server_start_time {
                 if let Ok(duration) = std::time::SystemTime::now().duration_since(start_time) {
@@ -1541,7 +1915,7 @@ pub async fn get_live_data(subsystem: String, app: State<'_, Arc<App>>) -> Resul
             } else {
                 "Not started".to_string()
             };
-            
+
             Ok(serde_json::json!({
                 "success": true,
                 "data": {
@@ -1560,20 +1934,25 @@ pub async fn get_live_data(subsystem: String, app: State<'_, Arc<App>>) -> Resul
                 }
             }))
         }
-        _ => {
-            Ok(serde_json::json!({
-                "success": false,
-                "error": format!("Unknown subsystem: {}", subsystem)
-            }))
-        }
+        _ => Ok(serde_json::json!({
+            "success": false,
+            "error": format!("Unknown subsystem: {}", subsystem)
+        })),
     }
 }
 
 #[tauri::command]
-pub async fn obs_get_debug_info(connection_name: String, app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn obs_get_debug_info(
+    connection_name: String,
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting OBS debug info for connection: {}", connection_name);
-    
-    match app.obs_obws_plugin().get_status(Some(&connection_name)).await {
+
+    match app
+        .obs_obws_plugin()
+        .get_status(Some(&connection_name))
+        .await
+    {
         Ok(debug_info) => Ok(serde_json::json!({
             "success": true,
             "data": debug_info
@@ -1581,16 +1960,19 @@ pub async fn obs_get_debug_info(connection_name: String, app: State<'_, Arc<App>
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": e.to_string()
-        }))
+        })),
     }
 }
 
 #[tauri::command]
-pub async fn obs_toggle_full_events(enabled: bool, _app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn obs_toggle_full_events(
+    enabled: bool,
+    _app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Toggling OBS full events display: {}", enabled);
-    
+
     // Legacy full-events toggle removed; no-op for obws
-    
+
     Ok(serde_json::json!({
         "success": true,
         "message": format!("Full OBS events display {}", if enabled { "enabled" } else { "disabled" })
@@ -1598,14 +1980,19 @@ pub async fn obs_toggle_full_events(enabled: bool, _app: State<'_, Arc<App>>) ->
 }
 
 #[tauri::command]
-pub async fn obs_get_full_events_setting(_app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn obs_get_full_events_setting(
+    _app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     Ok(serde_json::json!({ "enabled": false }))
 }
 
 #[tauri::command]
-pub async fn obs_emit_event_to_frontend(event_data: serde_json::Value, window: tauri::Window) -> Result<serde_json::Value, TauriError> {
+pub async fn obs_emit_event_to_frontend(
+    event_data: serde_json::Value,
+    window: tauri::Window,
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Emitting OBS event to frontend: {:?}", event_data);
-    
+
     match window.emit("obs_event", event_data) {
         Ok(_) => Ok(serde_json::json!({
             "success": true,
@@ -1614,12 +2001,14 @@ pub async fn obs_emit_event_to_frontend(event_data: serde_json::Value, window: t
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": e.to_string()
-        }))
+        })),
     }
 }
 
 #[tauri::command]
-pub async fn obs_get_recent_events(_app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn obs_get_recent_events(
+    _app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     Ok(serde_json::json!({
         "success": true,
         "events": []
@@ -1628,40 +2017,50 @@ pub async fn obs_get_recent_events(_app: State<'_, Arc<App>>) -> Result<serde_js
 
 // CPU Monitoring Commands
 #[tauri::command]
-pub async fn cpu_get_process_data(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn cpu_get_process_data(
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     // println!(" [CPU_CMD] ===== CPU GET PROCESS DATA CALLED =====");
     log::info!("[CPU_CMD] ===== CPU GET PROCESS DATA CALLED =====");
-    
+
     // println!(" [CPU_CMD] Triggering immediate data collection...");
     log::info!("[CPU_CMD] Triggering immediate data collection...");
-    
+
     match app.cpu_monitor_plugin().update_cpu_data().await {
         Ok(_) => {
             // println!(" [CPU_CMD] Data collection successful");
             log::info!("[CPU_CMD] Data collection successful");
-        },
+        }
         Err(e) => {
             // println!(" [CPU_CMD] Failed to update CPU data: {}", e);
             log::error!("[CPU_CMD] Failed to update CPU data: {}", e);
-        },
+        }
     }
-    
+
     let process_data = app.cpu_monitor_plugin().get_process_cpu_data().await;
-    
+
     // println!(" [CPU_CMD] Process data count: {}", process_data.len());
     log::info!("[CPU_CMD] Process data count: {}", process_data.len());
-    
+
     // Log first few processes for debugging
     for (i, process) in process_data.iter().take(3).enumerate() {
-        // println!(" [CPU_CMD] Process {}: {} - CPU: {:.1}%, Memory: {:.1}MB", 
+        // println!(" [CPU_CMD] Process {}: {} - CPU: {:.1}%, Memory: {:.1}MB",
         //     i, process.process_name, process.cpu_percent, process.memory_mb);
-        log::debug!("[CPU_CMD] Process {}: {} - CPU: {:.1}%, Memory: {:.1}MB", 
-            i, process.process_name, process.cpu_percent, process.memory_mb);
+        log::debug!(
+            "[CPU_CMD] Process {}: {} - CPU: {:.1}%, Memory: {:.1}MB",
+            i,
+            process.process_name,
+            process.cpu_percent,
+            process.memory_mb
+        );
     }
-    
+
     // println!(" [CPU_CMD] Returning result with {} processes", process_data.len());
-    log::info!("[CPU_CMD] Returning result with {} processes", process_data.len());
-    
+    log::info!(
+        "[CPU_CMD] Returning result with {} processes",
+        process_data.len()
+    );
+
     Ok(serde_json::json!({
         "success": true,
         "processes": process_data
@@ -1669,10 +2068,12 @@ pub async fn cpu_get_process_data(app: State<'_, Arc<App>>) -> Result<serde_json
 }
 
 #[tauri::command]
-pub async fn cpu_get_system_data(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn cpu_get_system_data(
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     // println!(" [CPU_CMD] ===== CPU GET SYSTEM DATA CALLED =====");
     log::info!("[CPU_CMD] ===== CPU GET SYSTEM DATA CALLED =====");
-    
+
     // Trigger immediate data collection
     // println!(" [CPU_CMD] Triggering immediate data collection...");
     log::info!("[CPU_CMD] Triggering immediate data collection...");
@@ -1680,22 +2081,22 @@ pub async fn cpu_get_system_data(app: State<'_, Arc<App>>) -> Result<serde_json:
         Ok(_) => {
             // println!(" [CPU_CMD] Data collection successful");
             log::info!("[CPU_CMD] Data collection successful");
-        },
+        }
         Err(e) => {
             // println!(" [CPU_CMD] Failed to update CPU data: {}", e);
             log::error!("[CPU_CMD] Failed to update CPU data: {}", e);
-        },
+        }
     }
-    
+
     let system_data = app.cpu_monitor_plugin().get_system_cpu_data().await;
     // println!(" [CPU_CMD] System data available: {}", system_data.is_some());
     log::info!("[CPU_CMD] System data available: {}", system_data.is_some());
-    
+
     let result = serde_json::json!({
         "success": true,
         "system": system_data
     });
-    
+
     // println!(" [CPU_CMD] Returning system data");
     log::info!("[CPU_CMD] Returning system data");
     Ok(result)
@@ -1703,7 +2104,7 @@ pub async fn cpu_get_system_data(app: State<'_, Arc<App>>) -> Result<serde_json:
 #[tauri::command]
 pub async fn cpu_get_obs_usage(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     let obs_cpu = app.cpu_monitor_plugin().get_obs_cpu_usage().await;
-    
+
     Ok(serde_json::json!({
         "success": true,
         "obs_cpu_percent": obs_cpu
@@ -1711,27 +2112,31 @@ pub async fn cpu_get_obs_usage(app: State<'_, Arc<App>>) -> Result<serde_json::V
 }
 
 #[tauri::command]
-pub async fn cpu_update_config(app: State<'_, Arc<App>>, config: crate::plugins::CpuMonitorConfig) -> Result<serde_json::Value, TauriError> {
+pub async fn cpu_update_config(
+    app: State<'_, Arc<App>>,
+    config: crate::plugins::CpuMonitorConfig,
+) -> Result<serde_json::Value, TauriError> {
     match app.cpu_monitor_plugin().update_config(config).await {
         Ok(_) => Ok(serde_json::json!({
             "success": true,
             "message": "CPU monitoring configuration updated"
         })),
-        Err(e) => Err(TauriError::from(anyhow::anyhow!("Failed to update CPU monitoring config: {}", e)))
+        Err(e) => Err(TauriError::from(anyhow::anyhow!(
+            "Failed to update CPU monitoring config: {}",
+            e
+        ))),
     }
-} 
-
- 
+}
 
 #[tauri::command]
 pub async fn cpu_enable_monitoring(app: State<'_, Arc<App>>) -> Result<(), TauriError> {
     log::info!("[CPU_CMD] ===== ENABLE CPU MONITORING CALLED =====");
-    
+
     match app.cpu_monitor_plugin().enable_monitoring().await {
         Ok(_) => {
             log::info!("[CPU_CMD] CPU monitoring enabled successfully");
             Ok(())
-        },
+        }
         Err(e) => {
             log::error!("[CPU_CMD] Failed to enable CPU monitoring: {}", e);
             Err(TauriError::from(anyhow::anyhow!("{}", e)))
@@ -1742,12 +2147,12 @@ pub async fn cpu_enable_monitoring(app: State<'_, Arc<App>>) -> Result<(), Tauri
 #[tauri::command]
 pub async fn cpu_disable_monitoring(app: State<'_, Arc<App>>) -> Result<(), TauriError> {
     log::info!("[CPU_CMD] ===== DISABLE CPU MONITORING CALLED =====");
-    
+
     match app.cpu_monitor_plugin().disable_monitoring().await {
         Ok(_) => {
             log::info!("[CPU_CMD] CPU monitoring disabled successfully");
             Ok(())
-        },
+        }
         Err(e) => {
             log::error!("[CPU_CMD] Failed to disable CPU monitoring: {}", e);
             Err(TauriError::from(anyhow::anyhow!("{}", e)))
@@ -1758,12 +2163,12 @@ pub async fn cpu_disable_monitoring(app: State<'_, Arc<App>>) -> Result<(), Taur
 #[tauri::command]
 pub async fn cpu_get_monitoring_status(app: State<'_, Arc<App>>) -> Result<bool, TauriError> {
     log::info!("[CPU_CMD] ===== GET CPU MONITORING STATUS CALLED =====");
-    
+
     match app.cpu_monitor_plugin().is_monitoring_enabled().await {
         Ok(enabled) => {
             log::info!("[CPU_CMD] CPU monitoring status: {}", enabled);
             Ok(enabled)
-        },
+        }
         Err(e) => {
             log::error!("[CPU_CMD] Failed to get CPU monitoring status: {}", e);
             Err(TauriError::from(anyhow::anyhow!("{}", e)))
@@ -1773,15 +2178,25 @@ pub async fn cpu_get_monitoring_status(app: State<'_, Arc<App>>) -> Result<bool,
 
 // Protocol Management Commands
 #[tauri::command]
-pub async fn protocol_get_versions(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn protocol_get_versions(
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     let log_manager = app.log_manager().lock().await;
     if let Err(e) = log_manager.log("pss", "INFO", "Getting protocol versions") {
         log::error!("Failed to log protocol get versions: {}", e);
     }
-    
-    let versions = app.protocol_manager().get_versions().await.map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
-    let current_protocol = app.protocol_manager().get_current_protocol().await.map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
-    
+
+    let versions = app
+        .protocol_manager()
+        .get_versions()
+        .await
+        .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
+    let current_protocol = app
+        .protocol_manager()
+        .get_current_protocol()
+        .await
+        .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
+
     Ok(serde_json::json!({
         "success": true,
         "versions": versions,
@@ -1795,10 +2210,14 @@ pub async fn protocol_set_active_version(
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
     let log_manager = app.log_manager().lock().await;
-    if let Err(e) = log_manager.log("pss", "INFO", &format!("Setting active protocol version: {}", version)) {
+    if let Err(e) = log_manager.log(
+        "pss",
+        "INFO",
+        &format!("Setting active protocol version: {}", version),
+    ) {
         log::error!("Failed to log protocol set active version: {}", e);
     }
-    
+
     match app.protocol_manager().set_active_version(&version).await {
         Ok(_) => Ok(serde_json::json!({
             "success": true,
@@ -1807,7 +2226,7 @@ pub async fn protocol_set_active_version(
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": e.to_string()
-        }))
+        })),
     }
 }
 
@@ -1818,11 +2237,19 @@ pub async fn protocol_upload_file(
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
     let log_manager = app.log_manager().lock().await;
-    if let Err(e) = log_manager.log("pss", "INFO", &format!("Uploading protocol file: {}", filename)) {
+    if let Err(e) = log_manager.log(
+        "pss",
+        "INFO",
+        &format!("Uploading protocol file: {}", filename),
+    ) {
         log::error!("Failed to log protocol upload: {}", e);
     }
-    
-    match app.protocol_manager().upload_protocol_file(file_content, &filename).await {
+
+    match app
+        .protocol_manager()
+        .upload_protocol_file(file_content, &filename)
+        .await
+    {
         Ok(protocol_version) => Ok(serde_json::json!({
             "success": true,
             "message": format!("Protocol file '{}' uploaded successfully", filename),
@@ -1831,7 +2258,7 @@ pub async fn protocol_upload_file(
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": e.to_string()
-        }))
+        })),
     }
 }
 
@@ -1841,10 +2268,14 @@ pub async fn protocol_delete_version(
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
     let log_manager = app.log_manager().lock().await;
-    if let Err(e) = log_manager.log("pss", "INFO", &format!("Deleting protocol version: {}", version)) {
+    if let Err(e) = log_manager.log(
+        "pss",
+        "INFO",
+        &format!("Deleting protocol version: {}", version),
+    ) {
         log::error!("Failed to log protocol delete: {}", e);
     }
-    
+
     match app.protocol_manager().delete_version(&version).await {
         Ok(_) => Ok(serde_json::json!({
             "success": true,
@@ -1853,7 +2284,7 @@ pub async fn protocol_delete_version(
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": e.to_string()
-        }))
+        })),
     }
 }
 #[tauri::command]
@@ -1862,21 +2293,29 @@ pub async fn protocol_export_file(
     app: State<'_, Arc<App>>,
 ) -> Result<Vec<u8>, TauriError> {
     let log_manager = app.log_manager().lock().await;
-    if let Err(e) = log_manager.log("pss", "INFO", &format!("Exporting protocol file: {}", version)) {
+    if let Err(e) = log_manager.log(
+        "pss",
+        "INFO",
+        &format!("Exporting protocol file: {}", version),
+    ) {
         log::error!("Failed to log protocol export: {}", e);
     }
-    
-    app.protocol_manager().export_protocol_file(&version).await
+
+    app.protocol_manager()
+        .export_protocol_file(&version)
+        .await
         .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))
 }
 
 #[tauri::command]
-pub async fn protocol_get_current(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn protocol_get_current(
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     let log_manager = app.log_manager().lock().await;
     if let Err(e) = log_manager.log("pss", "INFO", "Getting current protocol") {
         log::error!("Failed to log protocol get current: {}", e);
     }
-    
+
     match app.protocol_manager().get_current_protocol().await {
         Ok(Some(protocol)) => Ok(serde_json::json!({
             "success": true,
@@ -1889,9 +2328,9 @@ pub async fn protocol_get_current(app: State<'_, Arc<App>>) -> Result<serde_json
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": e.to_string()
-        }))
+        })),
     }
-} 
+}
 
 /// Get available network interfaces
 #[tauri::command]
@@ -1926,7 +2365,7 @@ pub async fn get_network_interfaces() -> Result<serde_json::Value, TauriError> {
                     })
                 })
                 .collect();
-            
+
             Ok(serde_json::json!({
                 "success": true,
                 "interfaces": interface_data
@@ -1935,7 +2374,7 @@ pub async fn get_network_interfaces() -> Result<serde_json::Value, TauriError> {
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": e.to_string()
-        }))
+        })),
     }
 }
 
@@ -1944,34 +2383,32 @@ pub async fn get_network_interfaces() -> Result<serde_json::Value, TauriError> {
 pub async fn get_best_network_interface() -> Result<serde_json::Value, TauriError> {
     let settings = crate::config::NetworkInterfaceSettings::default();
     match crate::utils::NetworkDetector::get_best_interface(&settings) {
-        Ok(Some(interface)) => {
-            Ok(serde_json::json!({
-                "success": true,
-                "interface": {
-                    "name": interface.name,
-                    "type": match interface.interface_type {
-                        crate::utils::InterfaceType::Ethernet => "ethernet",
-                        crate::utils::InterfaceType::WiFi => "wifi",
-                        crate::utils::InterfaceType::Loopback => "loopback",
-                        crate::utils::InterfaceType::Bluetooth => "bluetooth",
-                        crate::utils::InterfaceType::Virtual => "virtual",
-                        crate::utils::InterfaceType::Unknown => "unknown",
-                    },
-                    "ip_addresses": interface.ip_addresses.iter().map(|ip| ip.to_string()).collect::<Vec<_>>(),
-                    "subnet_masks": interface.subnet_masks,
-                    "default_gateway": interface.default_gateway,
-                    "dns_suffix": interface.dns_suffix,
-                    "media_state": match interface.media_state {
-                        crate::utils::MediaState::Connected => "connected",
-                        crate::utils::MediaState::Disconnected => "disconnected",
-                        crate::utils::MediaState::Unknown => "unknown",
-                    },
-                    "is_up": interface.is_up,
-                    "is_loopback": interface.is_loopback,
-                    "description": interface.description,
-                }
-            }))
-        }
+        Ok(Some(interface)) => Ok(serde_json::json!({
+            "success": true,
+            "interface": {
+                "name": interface.name,
+                "type": match interface.interface_type {
+                    crate::utils::InterfaceType::Ethernet => "ethernet",
+                    crate::utils::InterfaceType::WiFi => "wifi",
+                    crate::utils::InterfaceType::Loopback => "loopback",
+                    crate::utils::InterfaceType::Bluetooth => "bluetooth",
+                    crate::utils::InterfaceType::Virtual => "virtual",
+                    crate::utils::InterfaceType::Unknown => "unknown",
+                },
+                "ip_addresses": interface.ip_addresses.iter().map(|ip| ip.to_string()).collect::<Vec<_>>(),
+                "subnet_masks": interface.subnet_masks,
+                "default_gateway": interface.default_gateway,
+                "dns_suffix": interface.dns_suffix,
+                "media_state": match interface.media_state {
+                    crate::utils::MediaState::Connected => "connected",
+                    crate::utils::MediaState::Disconnected => "disconnected",
+                    crate::utils::MediaState::Unknown => "unknown",
+                },
+                "is_up": interface.is_up,
+                "is_loopback": interface.is_loopback,
+                "description": interface.description,
+            }
+        })),
         Ok(None) => Ok(serde_json::json!({
             "success": false,
             "error": "No suitable network interface found"
@@ -1979,20 +2416,27 @@ pub async fn get_best_network_interface() -> Result<serde_json::Value, TauriErro
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": e.to_string()
-        }))
+        })),
     }
 }
 
 /// Get the best IP address for a specific interface
 #[tauri::command]
-pub async fn get_best_ip_address_for_interface(interface_name: String) -> Result<serde_json::Value, TauriError> {
+pub async fn get_best_ip_address_for_interface(
+    interface_name: String,
+) -> Result<serde_json::Value, TauriError> {
     let _settings = crate::config::NetworkInterfaceSettings::default();
     match crate::utils::NetworkDetector::get_interfaces() {
         Ok(interfaces) => {
             // Find the specified interface
-            if let Some(interface) = interfaces.into_iter().find(|iface| iface.name == interface_name) {
+            if let Some(interface) = interfaces
+                .into_iter()
+                .find(|iface| iface.name == interface_name)
+            {
                 // Get the best IP address for this interface
-                let best_ip = interface.ip_addresses.iter()
+                let best_ip = interface
+                    .ip_addresses
+                    .iter()
                     .find(|ip| {
                         if let std::net::IpAddr::V4(ipv4) = ip {
                             // Prefer private addresses for UDP server binding
@@ -2001,14 +2445,15 @@ pub async fn get_best_ip_address_for_interface(interface_name: String) -> Result
                             false
                         }
                     })
-                    .or_else(|| interface.ip_addresses.iter()
-                        .find(|ip| {
+                    .or_else(|| {
+                        interface.ip_addresses.iter().find(|ip| {
                             if let std::net::IpAddr::V4(ipv4) = ip {
                                 !ipv4.is_loopback()
                             } else {
                                 false
                             }
-                        }))
+                        })
+                    })
                     .or_else(|| interface.ip_addresses.first());
 
                 if let Some(ip) = best_ip {
@@ -2032,47 +2477,56 @@ pub async fn get_best_ip_address_for_interface(interface_name: String) -> Result
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": e.to_string()
-        }))
+        })),
     }
-} 
+}
 
 // PSS Event Emission Command
 #[tauri::command]
-pub async fn pss_emit_event(event_data: serde_json::Value, window: tauri::Window) -> Result<(), TauriError> {
+pub async fn pss_emit_event(
+    event_data: serde_json::Value,
+    window: tauri::Window,
+) -> Result<(), TauriError> {
     log::info!("Emitting PSS event via hybrid approach: {:?}", event_data);
-    
+
     // HYBRID APPROACH: Real-time emission to both systems
     // 1. Emit to Tauri frontend (React components) - Real-time
     if let Err(e) = window.emit("pss_event", event_data.clone()) {
         log::error!("Failed to emit PSS event to Tauri frontend: {}", e);
         return Err(TauriError::from(anyhow::anyhow!("{}", e)));
     }
-    
+
     // 2. Broadcast to WebSocket overlays (HTML overlays) - Real-time
     crate::core::app::App::emit_pss_event(event_data);
-    
+
     log::info!("Successfully emitted PSS event via hybrid approach");
     Ok(())
 }
 
 // Get and emit PSS events to frontend
 #[tauri::command]
-pub async fn pss_emit_pending_events(window: tauri::Window, app: State<'_, Arc<App>>) -> Result<(), TauriError> {
+pub async fn pss_emit_pending_events(
+    window: tauri::Window,
+    app: State<'_, Arc<App>>,
+) -> Result<(), TauriError> {
     log::info!("Getting and emitting pending PSS events");
-    
+
     // Get events from the UDP plugin
     let events = app.udp_plugin().get_recent_events();
-    
+
     // Convert and emit each event
     for event in events {
         let event_code = crate::plugins::plugin_udp::UdpServer::get_event_code(&event);
-        
+
         let event_json = match event {
-            crate::plugins::plugin_udp::PssEvent::Points { athlete, point_type } => {
+            crate::plugins::plugin_udp::PssEvent::Points {
+                athlete,
+                point_type,
+            } => {
                 let athlete_str = match athlete {
                     1 => "blue",
                     2 => "red",
-                    _ => "unknown"
+                    _ => "unknown",
                 };
                 serde_json::json!({
                     "type": "points",
@@ -2088,7 +2542,7 @@ pub async fn pss_emit_pending_events(window: tauri::Window, app: State<'_, Arc<A
                 let athlete_str = match athlete {
                     1 => "blue",
                     2 => "red",
-                    _ => "unknown"
+                    _ => "unknown",
                 };
                 serde_json::json!({
                     "type": "hit_level",
@@ -2100,7 +2554,10 @@ pub async fn pss_emit_pending_events(window: tauri::Window, app: State<'_, Arc<A
                     "description": format!("Athlete {} hit level {}", athlete, level)
                 })
             }
-            crate::plugins::plugin_udp::PssEvent::Warnings { athlete1_warnings, athlete2_warnings } => {
+            crate::plugins::plugin_udp::PssEvent::Warnings {
+                athlete1_warnings,
+                athlete2_warnings,
+            } => {
                 serde_json::json!({
                     "type": "warnings",
                     "event_code": event_code,
@@ -2135,7 +2592,11 @@ pub async fn pss_emit_pending_events(window: tauri::Window, app: State<'_, Arc<A
                     "description": format!("Round {}", current_round)
                 })
             }
-            crate::plugins::plugin_udp::PssEvent::WinnerRounds { round1_winner, round2_winner, round3_winner } => {
+            crate::plugins::plugin_udp::PssEvent::WinnerRounds {
+                round1_winner,
+                round2_winner,
+                round3_winner,
+            } => {
                 serde_json::json!({
                     "type": "winner_rounds",
                     "event_code": event_code,
@@ -2148,7 +2609,14 @@ pub async fn pss_emit_pending_events(window: tauri::Window, app: State<'_, Arc<A
                     "description": format!("Winner Rounds - R1: {}, R2: {}, R3: {}", round1_winner, round2_winner, round3_winner)
                 })
             }
-            crate::plugins::plugin_udp::PssEvent::Scores { athlete1_r1, athlete2_r1, athlete1_r2, athlete2_r2, athlete1_r3, athlete2_r3 } => {
+            crate::plugins::plugin_udp::PssEvent::Scores {
+                athlete1_r1,
+                athlete2_r1,
+                athlete1_r2,
+                athlete2_r2,
+                athlete1_r3,
+                athlete2_r3,
+            } => {
                 serde_json::json!({
                     "type": "scores",
                     "event_code": event_code,
@@ -2161,11 +2629,14 @@ pub async fn pss_emit_pending_events(window: tauri::Window, app: State<'_, Arc<A
                     "athlete2_r3": athlete2_r3,
                     "round": 1, // Will be updated by WebSocket plugin
                     "time": "2:00", // Will be updated by WebSocket plugin
-                    "description": format!("Scores - A1: R1={}, R2={}, R3={} | A2: R1={}, R2={}, R3={}", 
+                    "description": format!("Scores - A1: R1={}, R2={}, R3={} | A2: R1={}, R2={}, R3={}",
                         athlete1_r1, athlete1_r2, athlete1_r3, athlete2_r1, athlete2_r2, athlete2_r3)
                 })
             }
-            crate::plugins::plugin_udp::PssEvent::CurrentScores { athlete1_score, athlete2_score } => {
+            crate::plugins::plugin_udp::PssEvent::CurrentScores {
+                athlete1_score,
+                athlete2_score,
+            } => {
                 serde_json::json!({
                     "type": "current_scores",
                     "event_code": event_code,
@@ -2177,7 +2648,14 @@ pub async fn pss_emit_pending_events(window: tauri::Window, app: State<'_, Arc<A
                     "description": format!("Current Scores - A1: {}, A2: {}", athlete1_score, athlete2_score)
                 })
             }
-            crate::plugins::plugin_udp::PssEvent::Athletes { athlete1_short, athlete1_long, athlete1_country, athlete2_short, athlete2_long, athlete2_country } => {
+            crate::plugins::plugin_udp::PssEvent::Athletes {
+                athlete1_short,
+                athlete1_long,
+                athlete1_country,
+                athlete2_short,
+                athlete2_long,
+                athlete2_country,
+            } => {
                 serde_json::json!({
                     "type": "athletes",
                     "athlete1_short": athlete1_short,
@@ -2189,7 +2667,20 @@ pub async fn pss_emit_pending_events(window: tauri::Window, app: State<'_, Arc<A
                     "description": format!("Athletes - {} ({}) vs {} ({})", athlete1_short, athlete1_country, athlete2_short, athlete2_country)
                 })
             }
-            crate::plugins::plugin_udp::PssEvent::MatchConfig { number, category, weight, rounds, colors, match_id, division, total_rounds, round_duration, countdown_type, count_up, format } => {
+            crate::plugins::plugin_udp::PssEvent::MatchConfig {
+                number,
+                category,
+                weight,
+                rounds,
+                colors,
+                match_id,
+                division,
+                total_rounds,
+                round_duration,
+                countdown_type,
+                count_up,
+                format,
+            } => {
                 serde_json::json!({
                     "type": "match_config",
                     "number": number,
@@ -2236,34 +2727,34 @@ pub async fn pss_emit_pending_events(window: tauri::Window, app: State<'_, Arc<A
                 })
             }
         };
-        
+
         log::info!("Emitting PSS event to frontend: {:?}", event_json);
         if let Err(e) = window.emit("pss_event", event_json) {
             log::error!("Failed to emit PSS event: {}", e);
             return Err(TauriError::from(anyhow::anyhow!("{}", e)));
         }
     }
-    
+
     Ok(())
-} 
+}
 // Set up PSS event listener that emits events to frontend
 #[tauri::command]
 pub async fn pss_setup_event_listener(_window: tauri::Window) -> Result<(), TauriError> {
     log::info!("Setting up PSS event listener for frontend");
-    
+
     // Note: This command is no longer needed since we're using the original working mechanism
     // The frontend will fetch events via pss_get_events or they will be emitted via pss_emit_event
     log::info!("PSS event listener setup complete (using original mechanism)");
-    
+
     Ok(())
-} 
+}
 #[tauri::command]
 pub async fn websocket_broadcast_pss_event(
     event_data: serde_json::Value,
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Broadcasting PSS event via WebSocket: {:?}", event_data);
-    
+
     let _websocket_plugin = app.websocket_plugin().lock().await;
     // For now, return success since the WebSocket server handles broadcasting internally
     Ok(serde_json::json!({
@@ -2272,7 +2763,10 @@ pub async fn websocket_broadcast_pss_event(
     }))
 }
 #[tauri::command]
-pub async fn obs_setup_status_listener(window: tauri::Window, app: State<'_, Arc<App>>) -> Result<(), TauriError> {
+pub async fn obs_setup_status_listener(
+    window: tauri::Window,
+    app: State<'_, Arc<App>>,
+) -> Result<(), TauriError> {
     log::info!("Setting up OBS status listener for frontend - COMMAND CALLED");
 
     let window_clone = window.clone();
@@ -2311,10 +2805,13 @@ pub async fn obs_setup_status_listener(window: tauri::Window, app: State<'_, Arc
     });
 
     Ok(())
-} 
+}
 
 #[tauri::command]
-pub async fn cpu_setup_stats_listener(window: tauri::Window, app: State<'_, Arc<App>>) -> Result<(), TauriError> {
+pub async fn cpu_setup_stats_listener(
+    window: tauri::Window,
+    app: State<'_, Arc<App>>,
+) -> Result<(), TauriError> {
     log::info!("Setting up CPU stats listener for frontend");
 
     let window_clone = window.clone();
@@ -2344,33 +2841,54 @@ pub async fn cpu_setup_stats_listener(window: tauri::Window, app: State<'_, Arc<
     });
 
     Ok(())
-} 
+}
 
 // Window Management Commands
 #[tauri::command]
 pub async fn set_window_fullscreen(window: tauri::Window) -> Result<(), TauriError> {
     log::info!("Setting window to fullscreen");
-    window.set_fullscreen(true).map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
+    window
+        .set_fullscreen(true)
+        .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
     Ok(())
 }
 #[tauri::command]
-pub async fn set_window_compact(width: Option<f64>, height: Option<f64>, window: tauri::Window) -> Result<(), TauriError> {
+pub async fn set_window_compact(
+    width: Option<f64>,
+    height: Option<f64>,
+    window: tauri::Window,
+) -> Result<(), TauriError> {
     let default_width = 350.0;
     let default_height = 1080.0;
-    
-    log::info!("Setting window to compact mode: {}x{}", width.unwrap_or(default_width), height.unwrap_or(default_height));
-    window.set_fullscreen(false).map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
-    window.set_size(tauri::Size::Logical(tauri::LogicalSize::new(
-        width.unwrap_or(default_width), 
+
+    log::info!(
+        "Setting window to compact mode: {}x{}",
+        width.unwrap_or(default_width),
         height.unwrap_or(default_height)
-    ))).map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
+    );
+    window
+        .set_fullscreen(false)
+        .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
+    window
+        .set_size(tauri::Size::Logical(tauri::LogicalSize::new(
+            width.unwrap_or(default_width),
+            height.unwrap_or(default_height),
+        )))
+        .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
     Ok(())
 }
 #[tauri::command]
-pub async fn set_window_custom_size(width: f64, height: f64, window: tauri::Window) -> Result<(), TauriError> {
+pub async fn set_window_custom_size(
+    width: f64,
+    height: f64,
+    window: tauri::Window,
+) -> Result<(), TauriError> {
     log::info!("Setting window to custom size: {}x{}", width, height);
-    window.set_fullscreen(false).map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
-    window.set_size(tauri::Size::Logical(tauri::LogicalSize::new(width, height)))
+    window
+        .set_fullscreen(false)
+        .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
+    window
+        .set_size(tauri::Size::Logical(tauri::LogicalSize::new(width, height)))
         .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
     Ok(())
 }
@@ -2378,7 +2896,8 @@ pub async fn set_window_custom_size(width: f64, height: f64, window: tauri::Wind
 #[tauri::command]
 pub async fn set_window_position(x: f64, y: f64, window: tauri::Window) -> Result<(), TauriError> {
     log::info!("Setting window position: x={}, y={}", x, y);
-    window.set_position(tauri::Position::Logical(tauri::LogicalPosition::new(x, y)))
+    window
+        .set_position(tauri::Position::Logical(tauri::LogicalPosition::new(x, y)))
         .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
     Ok(())
 }
@@ -2386,33 +2905,44 @@ pub async fn set_window_position(x: f64, y: f64, window: tauri::Window) -> Resul
 #[tauri::command]
 pub async fn set_window_startup_position(window: tauri::Window) -> Result<(), TauriError> {
     log::info!("Setting window to startup position: x=1, y=1");
-    
+
     // Set window to compact mode (350x1080)
-    window.set_fullscreen(false).map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
-    window.set_size(tauri::Size::Logical(tauri::LogicalSize::new(350.0, 1080.0)))
+    window
+        .set_fullscreen(false)
         .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
-    
+    window
+        .set_size(tauri::Size::Logical(tauri::LogicalSize::new(350.0, 1080.0)))
+        .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
+
     // Set position to x=1, y=1
-    window.set_position(tauri::Position::Logical(tauri::LogicalPosition::new(1.0, 1.0)))
+    window
+        .set_position(tauri::Position::Logical(tauri::LogicalPosition::new(
+            1.0, 1.0,
+        )))
         .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
-    
+
     Ok(())
 }
 
 #[tauri::command]
-pub async fn save_window_settings(settings: serde_json::Value, _app: State<'_, Arc<App>>) -> Result<(), TauriError> {
+pub async fn save_window_settings(
+    settings: serde_json::Value,
+    _app: State<'_, Arc<App>>,
+) -> Result<(), TauriError> {
     log::info!("Saving window settings: {:?}", settings);
-    
+
     // For now, just log the settings - we'll implement proper persistence later
     log::info!("Window settings would be saved: {:?}", settings);
-    
+
     Ok(())
 }
 
 #[tauri::command]
-pub async fn load_window_settings(_app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn load_window_settings(
+    _app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Loading window settings");
-    
+
     // Return default settings for now
     let window_settings = serde_json::json!({
         "compactWidth": 350,
@@ -2420,14 +2950,14 @@ pub async fn load_window_settings(_app: State<'_, Arc<App>>) -> Result<serde_jso
         "fullscreenWidth": 1920,
         "fullscreenHeight": 1080,
     });
-    
+
     Ok(window_settings)
 }
 
 #[tauri::command]
 pub async fn get_screen_size() -> Result<serde_json::Value, TauriError> {
     log::info!("Getting screen size");
-    
+
     // This would need to be implemented with proper screen detection
     // For now, return a default size
     Ok(serde_json::json!({
@@ -2440,7 +2970,7 @@ pub async fn get_screen_size() -> Result<serde_json::Value, TauriError> {
 #[tauri::command]
 pub async fn initialize_ui_settings_database() -> Result<serde_json::Value, TauriError> {
     log::info!("Initializing UI settings database");
-    
+
     // This command should initialize the database schema, not just UI settings
     // For now, we'll return a success message since the database plugin handles initialization
     Ok(serde_json::json!({
@@ -2451,9 +2981,11 @@ pub async fn initialize_ui_settings_database() -> Result<serde_json::Value, Taur
 
 // Database Plugin Commands
 #[tauri::command]
-pub async fn db_initialize_ui_settings(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn db_initialize_ui_settings(
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Initializing UI settings in database");
-    
+
     match app.database_plugin().initialize_ui_settings().await {
         Ok(_) => Ok(serde_json::json!({
             "success": true,
@@ -2462,14 +2994,17 @@ pub async fn db_initialize_ui_settings(app: State<'_, Arc<App>>) -> Result<serde
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": e.to_string()
-        }))
+        })),
     }
 }
 
 #[tauri::command]
-pub async fn db_get_ui_setting(key: String, app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn db_get_ui_setting(
+    key: String,
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting UI setting: {}", key);
-    
+
     match app.database_plugin().get_ui_setting(&key).await {
         Ok(value) => Ok(serde_json::json!({
             "success": true,
@@ -2479,21 +3014,25 @@ pub async fn db_get_ui_setting(key: String, app: State<'_, Arc<App>>) -> Result<
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": e.to_string()
-        }))
+        })),
     }
 }
 
 #[tauri::command]
 pub async fn db_set_ui_setting(
-    key: String, 
-    value: String, 
-    changed_by: String, 
-    change_reason: Option<String>, 
-    app: State<'_, Arc<App>>
+    key: String,
+    value: String,
+    changed_by: String,
+    change_reason: Option<String>,
+    app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Setting UI setting: {} = {}", key, value);
-    
-    match app.database_plugin().set_ui_setting(&key, &value, &changed_by, change_reason.as_deref()).await {
+
+    match app
+        .database_plugin()
+        .set_ui_setting(&key, &value, &changed_by, change_reason.as_deref())
+        .await
+    {
         Ok(_) => Ok(serde_json::json!({
             "success": true,
             "message": format!("UI setting '{}' set successfully", key)
@@ -2501,72 +3040,78 @@ pub async fn db_set_ui_setting(
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": e.to_string()
-        }))
+        })),
     }
 }
 #[tauri::command]
-pub async fn db_get_all_ui_settings(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn db_get_all_ui_settings(
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting all UI settings");
-    
+
     match app.database_plugin().get_all_ui_settings().await {
         Ok(settings) => {
-            let settings_map: std::collections::HashMap<String, String> = settings.into_iter().collect();
+            let settings_map: std::collections::HashMap<String, String> =
+                settings.into_iter().collect();
             Ok(serde_json::json!({
                 "success": true,
                 "settings": settings_map
             }))
-        },
+        }
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": e.to_string()
-        }))
+        })),
     }
 }
 
 #[tauri::command]
-pub async fn db_get_database_info(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn db_get_database_info(
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting database information");
-    
+
     let is_accessible = app.database_plugin().is_accessible().await;
     let file_size = app.database_plugin().get_file_size();
     let database_path = app.database_plugin().get_database_path();
-    let settings_count = app.database_plugin().get_all_ui_settings().await.map(|s| s.len()).unwrap_or(0);
-    
+    let settings_count = app
+        .database_plugin()
+        .get_all_ui_settings()
+        .await
+        .map(|s| s.len())
+        .unwrap_or(0);
+
     let file_size_value = match file_size {
         Ok(size) => serde_json::Value::Number(serde_json::Number::from(size)),
         Err(_) => serde_json::Value::Null,
     };
-    
+
     let path_value = match database_path {
         Ok(path) => serde_json::Value::String(path),
         Err(_) => serde_json::Value::String("Unknown".to_string()),
     };
-    
+
     // Get tables count
     let tables_count = match app.database_plugin().get_connection().await {
-        Ok(conn) => {
-            match conn.prepare("SELECT name FROM sqlite_master WHERE type='table'") {
-                Ok(mut stmt) => {
-                    match stmt.query_map([], |row| row.get::<_, String>(0)) {
-                        Ok(rows) => {
-                            let tables: Result<Vec<String>, _> = rows.collect();
-                            match tables {
-                                Ok(tables) => tables.len(),
-                                Err(_) => 0
-                            }
-                        },
-                        Err(_) => 0
+        Ok(conn) => match conn.prepare("SELECT name FROM sqlite_master WHERE type='table'") {
+            Ok(mut stmt) => match stmt.query_map([], |row| row.get::<_, String>(0)) {
+                Ok(rows) => {
+                    let tables: Result<Vec<String>, _> = rows.collect();
+                    match tables {
+                        Ok(tables) => tables.len(),
+                        Err(_) => 0,
                     }
-                },
-                Err(_) => 0
-            }
+                }
+                Err(_) => 0,
+            },
+            Err(_) => 0,
         },
-        Err(_) => 0
+        Err(_) => 0,
     };
-    
+
     let status = if is_accessible { "Active" } else { "Inactive" };
     let last_modified = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string();
-    
+
     Ok(serde_json::json!({
         "success": true,
         "path": path_value,
@@ -2581,9 +3126,11 @@ pub async fn db_get_database_info(app: State<'_, Arc<App>>) -> Result<serde_json
 
 // Database Migration Commands
 #[tauri::command]
-pub async fn migrate_json_to_database(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn migrate_json_to_database(
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Starting JSON to database migration");
-    
+
     match app.database_plugin().migrate_json_to_database().await {
         Ok(result) => Ok(serde_json::json!({
             "success": true,
@@ -2598,14 +3145,16 @@ pub async fn migrate_json_to_database(app: State<'_, Arc<App>>) -> Result<serde_
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": e.to_string()
-        }))
+        })),
     }
 }
 
 #[tauri::command]
 pub async fn db_run_migrations(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     match app.database_plugin().run_migrations().await {
-        Ok(_) => Ok(serde_json::json!({ "success": true, "message": "Database migrations ran successfully" })),
+        Ok(_) => Ok(
+            serde_json::json!({ "success": true, "message": "Database migrations ran successfully" }),
+        ),
         Err(e) => Ok(serde_json::json!({ "success": false, "error": e.to_string() })),
     }
 }
@@ -2613,7 +3162,7 @@ pub async fn db_run_migrations(app: State<'_, Arc<App>>) -> Result<serde_json::V
 #[tauri::command]
 pub async fn create_json_backup(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Creating JSON settings backup");
-    
+
     match app.database_plugin().create_json_backup().await {
         Ok(backup_path) => Ok(serde_json::json!({
             "success": true,
@@ -2622,18 +3171,22 @@ pub async fn create_json_backup(app: State<'_, Arc<App>>) -> Result<serde_json::
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": e.to_string()
-        }))
+        })),
     }
 }
 
 #[tauri::command]
 pub async fn restore_from_json_backup(
     app: State<'_, Arc<App>>,
-    backup_path: String
+    backup_path: String,
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Restoring from JSON backup: {}", backup_path);
-    
-    match app.database_plugin().restore_from_json_backup(&backup_path).await {
+
+    match app
+        .database_plugin()
+        .restore_from_json_backup(&backup_path)
+        .await
+    {
         Ok(_) => Ok(serde_json::json!({
             "success": true,
             "message": "Settings restored successfully"
@@ -2641,18 +3194,22 @@ pub async fn restore_from_json_backup(
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": e.to_string()
-        }))
+        })),
     }
 }
 
 #[tauri::command]
 pub async fn restore_from_backup(
     app: State<'_, Arc<App>>,
-    backup_path: String
+    backup_path: String,
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Restoring from backup: {}", backup_path);
-    
-    match app.database_plugin().restore_from_json_backup(&backup_path).await {
+
+    match app
+        .database_plugin()
+        .restore_from_json_backup(&backup_path)
+        .await
+    {
         Ok(_) => Ok(serde_json::json!({
             "success": true,
             "message": "Backup restored successfully"
@@ -2660,25 +3217,37 @@ pub async fn restore_from_backup(
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": e.to_string()
-        }))
+        })),
     }
 }
 
 // === SQLite DB Backup (reuse existing DatabaseConnection helpers; no duplication) ===
 #[derive(serde::Serialize)]
-pub struct SqliteBackupInfo { pub name: String, pub path: String, pub size: u64, pub modified: String }
+pub struct SqliteBackupInfo {
+    pub name: String,
+    pub path: String,
+    pub size: u64,
+    pub modified: String,
+}
 
 #[tauri::command]
-pub async fn db_create_sqlite_backup(app: State<'_, Arc<App>>, name: Option<String>) -> Result<serde_json::Value, TauriError> {
+pub async fn db_create_sqlite_backup(
+    app: State<'_, Arc<App>>,
+    name: Option<String>,
+) -> Result<serde_json::Value, TauriError> {
     let conn = app.database_plugin().get_database_connection();
     match conn.create_backup(name.as_deref()) {
-        Ok(path) => Ok(serde_json::json!({ "success": true, "path": path.to_string_lossy().to_string() })),
+        Ok(path) => {
+            Ok(serde_json::json!({ "success": true, "path": path.to_string_lossy().to_string() }))
+        }
         Err(e) => Ok(serde_json::json!({ "success": false, "error": e.to_string() })),
     }
 }
 
 #[tauri::command]
-pub async fn db_list_sqlite_backups(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn db_list_sqlite_backups(
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     let conn = app.database_plugin().get_database_connection();
     match conn.list_backups() {
         Ok(paths) => {
@@ -2688,10 +3257,18 @@ pub async fn db_list_sqlite_backups(app: State<'_, Arc<App>>) -> Result<serde_js
                 let size = md.as_ref().map(|m| m.len()).unwrap_or(0);
                 let modified = md
                     .and_then(|m| m.modified().ok())
-                    .map(|t| chrono::DateTime::<chrono::Local>::from(t).format("%Y-%m-%d %H:%M:%S").to_string())
+                    .map(|t| {
+                        chrono::DateTime::<chrono::Local>::from(t)
+                            .format("%Y-%m-%d %H:%M:%S")
+                            .to_string()
+                    })
                     .unwrap_or_default();
                 items.push(SqliteBackupInfo {
-                    name: p.file_name().and_then(|s| s.to_str()).unwrap_or("").to_string(),
+                    name: p
+                        .file_name()
+                        .and_then(|s| s.to_str())
+                        .unwrap_or("")
+                        .to_string(),
                     path: p.to_string_lossy().to_string(),
                     size,
                     modified,
@@ -2704,7 +3281,10 @@ pub async fn db_list_sqlite_backups(app: State<'_, Arc<App>>) -> Result<serde_js
 }
 
 #[tauri::command]
-pub async fn db_restore_sqlite_backup(app: State<'_, Arc<App>>, backup_path: String) -> Result<serde_json::Value, TauriError> {
+pub async fn db_restore_sqlite_backup(
+    app: State<'_, Arc<App>>,
+    backup_path: String,
+) -> Result<serde_json::Value, TauriError> {
     let conn = app.database_plugin().get_database_connection();
     let pb = std::path::PathBuf::from(backup_path);
     match conn.restore_from_backup(&pb).await {
@@ -2714,18 +3294,22 @@ pub async fn db_restore_sqlite_backup(app: State<'_, Arc<App>>, backup_path: Str
 }
 
 #[tauri::command]
-pub async fn get_migration_status(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn get_migration_status(
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting migration status");
-    
+
     // Get database status
     let db_status = match app.database_plugin().get_migration_status().await {
         Ok(status) => status,
-        Err(e) => return Ok(serde_json::json!({
-            "success": false,
-            "error": e.to_string()
-        }))
+        Err(e) => {
+            return Ok(serde_json::json!({
+                "success": false,
+                "error": e.to_string()
+            }))
+        }
     };
-    
+
     // Check for backup files in external directory
     let backup_dir = match dirs::data_dir() {
         Some(data_dir) => data_dir.join("reStrikeVTA").join("backups"),
@@ -2734,16 +3318,16 @@ pub async fn get_migration_status(app: State<'_, Arc<App>>) -> Result<serde_json
     let backup_files_exist = std::fs::read_dir(&backup_dir)
         .map(|entries| entries.filter_map(|entry| entry.ok()).count() > 0)
         .unwrap_or(false);
-    
+
     // Get actual database settings count
     let db_settings_count = match app.database_plugin().get_all_ui_settings().await {
         Ok(settings) => settings.len(),
-        Err(_) => 0
+        Err(_) => 0,
     };
-    
+
     // Get JSON settings count - simplified for now
     let json_settings_count = 0;
-    
+
     Ok(serde_json::json!({
         "success": true,
         "status": {
@@ -2762,10 +3346,10 @@ pub async fn get_migration_status(app: State<'_, Arc<App>>) -> Result<serde_json
 #[tauri::command]
 pub async fn enable_database_mode(
     app: State<'_, Arc<App>>,
-    enabled: bool
+    enabled: bool,
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Setting database mode to: {}", enabled);
-    
+
     match app.database_plugin().set_database_mode(enabled).await {
         Ok(_) => Ok(serde_json::json!({
             "success": true,
@@ -2774,43 +3358,53 @@ pub async fn enable_database_mode(
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": e.to_string()
-        }))
+        })),
     }
 }
 
 #[tauri::command]
-pub async fn get_database_preview(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn get_database_preview(
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting database preview");
-    
+
     // Get all UI settings from database
     let db_settings = match app.database_plugin().get_all_ui_settings().await {
         Ok(settings) => settings,
-        Err(e) => return Ok(serde_json::json!({
-            "success": false,
-            "error": format!("Failed to get database settings: {}", e)
-        }))
+        Err(e) => {
+            return Ok(serde_json::json!({
+                "success": false,
+                "error": format!("Failed to get database settings: {}", e)
+            }))
+        }
     };
-    
+
     // Get JSON settings for comparison - simplified for now
     let json_settings: std::collections::HashMap<String, String> = std::collections::HashMap::new();
-    
+
     // Convert settings to preview format
-    let db_preview: Vec<serde_json::Value> = db_settings.iter().map(|(key, value)| {
-        serde_json::json!({
-            "key": key,
-            "value": value,
-            "source": "database"
+    let db_preview: Vec<serde_json::Value> = db_settings
+        .iter()
+        .map(|(key, value)| {
+            serde_json::json!({
+                "key": key,
+                "value": value,
+                "source": "database"
+            })
         })
-    }).collect();
-    
-    let json_preview: Vec<serde_json::Value> = json_settings.iter().map(|(key, value)| {
-        serde_json::json!({
-            "key": key,
-            "value": value,
-            "source": "json"
+        .collect();
+
+    let json_preview: Vec<serde_json::Value> = json_settings
+        .iter()
+        .map(|(key, value)| {
+            serde_json::json!({
+                "key": key,
+                "value": value,
+                "source": "json"
+            })
         })
-    }).collect();
-    
+        .collect();
+
     Ok(serde_json::json!({
         "success": true,
         "database_settings": db_preview,
@@ -2821,39 +3415,47 @@ pub async fn get_database_preview(app: State<'_, Arc<App>>) -> Result<serde_json
 }
 
 #[tauri::command]
-pub async fn get_database_tables(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn get_database_tables(
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting database tables");
-    
+
     let conn = match app.database_plugin().get_connection().await {
         Ok(conn) => conn,
-        Err(e) => return Ok(serde_json::json!({
-            "success": false,
-            "error": format!("Failed to get database connection: {}", e)
-        }))
+        Err(e) => {
+            return Ok(serde_json::json!({
+                "success": false,
+                "error": format!("Failed to get database connection: {}", e)
+            }))
+        }
     };
-    
+
     // Query to get all table names
-    let tables: Vec<String> = match conn.prepare(
-        "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
-    ) {
+    let tables: Vec<String> = match conn
+        .prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
+    {
         Ok(mut stmt) => {
             let mut table_names = Vec::new();
-            let rows = stmt.query_map([], |row| {
-                Ok(row.get::<_, String>(0)?)
-            }).map_err(|e| TauriError::from(anyhow::anyhow!("Failed to query tables: {}", e)))?;
-            
+            let rows = stmt
+                .query_map([], |row| Ok(row.get::<_, String>(0)?))
+                .map_err(|e| TauriError::from(anyhow::anyhow!("Failed to query tables: {}", e)))?;
+
             for row in rows {
-                let table_name = row.map_err(|e| TauriError::from(anyhow::anyhow!("Failed to get table name: {}", e)))?;
+                let table_name = row.map_err(|e| {
+                    TauriError::from(anyhow::anyhow!("Failed to get table name: {}", e))
+                })?;
                 table_names.push(table_name);
             }
             table_names
-        },
-        Err(e) => return Ok(serde_json::json!({
-            "success": false,
-            "error": format!("Failed to prepare table query: {}", e)
-        }))
+        }
+        Err(e) => {
+            return Ok(serde_json::json!({
+                "success": false,
+                "error": format!("Failed to prepare table query: {}", e)
+            }))
+        }
     };
-    
+
     Ok(serde_json::json!({
         "success": true,
         "tables": tables
@@ -2862,80 +3464,103 @@ pub async fn get_database_tables(app: State<'_, Arc<App>>) -> Result<serde_json:
 #[tauri::command]
 pub async fn get_table_data(
     app: State<'_, Arc<App>>,
-    table_name: String
+    table_name: String,
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting data for table: {}", table_name);
-    
+
     let conn = match app.database_plugin().get_connection().await {
         Ok(conn) => conn,
-        Err(e) => return Ok(serde_json::json!({
-            "success": false,
-            "error": format!("Failed to get database connection: {}", e)
-        }))
+        Err(e) => {
+            return Ok(serde_json::json!({
+                "success": false,
+                "error": format!("Failed to get database connection: {}", e)
+            }))
+        }
     };
-    
+
     // First, get the table schema to understand the columns
     let schema_query = format!("PRAGMA table_info({})", table_name);
     let columns: Vec<serde_json::Value> = match conn.prepare(&schema_query) {
         Ok(mut stmt) => {
             let mut column_info = Vec::new();
-            let rows = stmt.query_map([], |row| {
-                Ok(serde_json::json!({
-                    "name": row.get::<_, String>(1)?,
-                    "type": row.get::<_, String>(2)?,
-                    "not_null": row.get::<_, i32>(3)? == 1,
-                    "primary_key": row.get::<_, i32>(5)? == 1
-                }))
-            }).map_err(|e| TauriError::from(anyhow::anyhow!("Failed to query schema: {}", e)))?;
-            
+            let rows = stmt
+                .query_map([], |row| {
+                    Ok(serde_json::json!({
+                        "name": row.get::<_, String>(1)?,
+                        "type": row.get::<_, String>(2)?,
+                        "not_null": row.get::<_, i32>(3)? == 1,
+                        "primary_key": row.get::<_, i32>(5)? == 1
+                    }))
+                })
+                .map_err(|e| TauriError::from(anyhow::anyhow!("Failed to query schema: {}", e)))?;
+
             for row in rows {
-                let column = row.map_err(|e| TauriError::from(anyhow::anyhow!("Failed to get column info: {}", e)))?;
+                let column = row.map_err(|e| {
+                    TauriError::from(anyhow::anyhow!("Failed to get column info: {}", e))
+                })?;
                 column_info.push(column);
             }
             column_info
-        },
-        Err(e) => return Ok(serde_json::json!({
-            "success": false,
-            "error": format!("Failed to prepare schema query: {}", e)
-        }))
+        }
+        Err(e) => {
+            return Ok(serde_json::json!({
+                "success": false,
+                "error": format!("Failed to prepare schema query: {}", e)
+            }))
+        }
     };
-    
+
     // Get the data from the table (no limit to show all rows)
     let data_query = format!("SELECT * FROM {}", table_name);
     let rows: Vec<serde_json::Value> = match conn.prepare(&data_query) {
         Ok(mut stmt) => {
             let mut table_data = Vec::new();
-            let rows = stmt.query_map([], |row| {
-                let mut row_data = serde_json::Map::new();
-                for (i, column) in columns.iter().enumerate() {
-                    let column_name = column["name"].as_str().unwrap_or("unknown");
-                    let value = match row.get::<_, rusqlite::types::Value>(i) {
-                        Ok(val) => match val {
-                            rusqlite::types::Value::Null => serde_json::Value::Null,
-                            rusqlite::types::Value::Integer(i) => serde_json::Value::Number(serde_json::Number::from(i)),
-                            rusqlite::types::Value::Real(f) => serde_json::Value::Number(serde_json::Number::from_f64(f).unwrap_or(serde_json::Number::from(0))),
-                            rusqlite::types::Value::Text(s) => serde_json::Value::String(s),
-                            rusqlite::types::Value::Blob(b) => serde_json::Value::String(format!("[BLOB: {} bytes]", b.len())),
-                        },
-                        Err(_) => serde_json::Value::Null,
-                    };
-                    row_data.insert(column_name.to_string(), value);
-                }
-                Ok(serde_json::Value::Object(row_data))
-            }).map_err(|e| TauriError::from(anyhow::anyhow!("Failed to query table data: {}", e)))?;
-            
+            let rows = stmt
+                .query_map([], |row| {
+                    let mut row_data = serde_json::Map::new();
+                    for (i, column) in columns.iter().enumerate() {
+                        let column_name = column["name"].as_str().unwrap_or("unknown");
+                        let value = match row.get::<_, rusqlite::types::Value>(i) {
+                            Ok(val) => match val {
+                                rusqlite::types::Value::Null => serde_json::Value::Null,
+                                rusqlite::types::Value::Integer(i) => {
+                                    serde_json::Value::Number(serde_json::Number::from(i))
+                                }
+                                rusqlite::types::Value::Real(f) => serde_json::Value::Number(
+                                    serde_json::Number::from_f64(f)
+                                        .unwrap_or(serde_json::Number::from(0)),
+                                ),
+                                rusqlite::types::Value::Text(s) => serde_json::Value::String(s),
+                                rusqlite::types::Value::Blob(b) => {
+                                    serde_json::Value::String(format!("[BLOB: {} bytes]", b.len()))
+                                }
+                            },
+                            Err(_) => serde_json::Value::Null,
+                        };
+                        row_data.insert(column_name.to_string(), value);
+                    }
+                    Ok(serde_json::Value::Object(row_data))
+                })
+                .map_err(|e| {
+                    TauriError::from(anyhow::anyhow!("Failed to query table data: {}", e))
+                })?;
+
             for row in rows {
-                let row_data = row.map_err(|e| TauriError::from(anyhow::anyhow!("Failed to get row data: {}", e)))?;
+                let row_data = row.map_err(|e| {
+                    TauriError::from(anyhow::anyhow!("Failed to get row data: {}", e))
+                })?;
                 table_data.push(row_data);
             }
             table_data
-        },
-        Err(e) => return Ok(serde_json::json!({
-            "success": false,
-            "error": format!("Failed to prepare data query: {}", e)
-        }))
+        }
+        Err(e) => {
+            return Ok(serde_json::json!({
+                "success": false,
+                "error": format!("Failed to prepare data query: {}", e)
+            }))
+        }
     };
-    
+
     Ok(serde_json::json!({
         "success": true,
         "table_name": table_name,
@@ -2978,12 +3603,12 @@ pub async fn list_backup_files() -> Result<Vec<BackupFileInfo>, TauriError> {
         Some(data_dir) => data_dir.join("reStrikeVTA").join("backups"),
         None => std::path::PathBuf::from("backups"),
     };
-    
+
     log::info!("=== LIST_BACKUP_FILES START ===");
     log::info!("Looking for backup files in: {}", backup_dir.display());
-    
+
     let mut backup_files = Vec::new();
-    
+
     if let Ok(entries) = std::fs::read_dir(&backup_dir) {
         for entry in entries {
             if let Ok(entry) = entry {
@@ -2991,7 +3616,8 @@ pub async fn list_backup_files() -> Result<Vec<BackupFileInfo>, TauriError> {
                 if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("zip") {
                     if let Ok(metadata) = entry.metadata() {
                         if let Ok(modified) = metadata.modified() {
-                            let modified_time: chrono::DateTime<chrono::Local> = chrono::DateTime::from(modified);
+                            let modified_time: chrono::DateTime<chrono::Local> =
+                                chrono::DateTime::from(modified);
                             backup_files.push(BackupFileInfo {
                                 name: path.file_name().unwrap().to_string_lossy().to_string(),
                                 path: path.to_string_lossy().to_string(),
@@ -3004,10 +3630,10 @@ pub async fn list_backup_files() -> Result<Vec<BackupFileInfo>, TauriError> {
             }
         }
     }
-    
+
     // Sort by modification time (newest first)
     backup_files.sort_by(|a, b| b.modified.cmp(&a.modified));
-    
+
     Ok(backup_files)
 }
 
@@ -3022,7 +3648,7 @@ pub struct BackupFileInfo {
 #[tauri::command]
 pub async fn drive_list_files() -> Result<serde_json::Value, TauriError> {
     log::info!("Listing Google Drive files");
-    
+
     match crate::plugins::drive_plugin().list_files().await {
         Ok(files) => Ok(serde_json::json!({
             "success": true,
@@ -3031,14 +3657,14 @@ pub async fn drive_list_files() -> Result<serde_json::Value, TauriError> {
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": e.to_string()
-        }))
+        })),
     }
 }
 #[tauri::command]
 pub async fn drive_upload_backup_archive() -> Result<serde_json::Value, TauriError> {
     log::info!("=== DRIVE_UPLOAD_BACKUP_ARCHIVE COMMAND START ===");
     log::info!("Creating and uploading backup archive to Google Drive");
-    
+
     // Log error to file immediately
     let log_error_to_file = |error_msg: &str| {
         let error_log = format!(
@@ -3050,7 +3676,7 @@ pub async fn drive_upload_backup_archive() -> Result<serde_json::Value, TauriErr
             log::error!("Failed to write error log: {}", write_err);
         }
     };
-    
+
     // Step 1: Call drive plugin upload method (which creates and uploads the archive)
     log::info!("Step 1: Calling drive_plugin().upload_backup_archive()...");
     match crate::plugins::drive_plugin().upload_backup_archive().await {
@@ -3061,13 +3687,13 @@ pub async fn drive_upload_backup_archive() -> Result<serde_json::Value, TauriErr
                 "success": true,
                 "message": message
             }))
-        },
+        }
         Err(e) => {
             let error_msg = format!("Failed to upload archive: {}", e);
             log::error!("=== DRIVE_UPLOAD_BACKUP_ARCHIVE COMMAND ERROR ===");
             log::error!("{}", error_msg);
             log_error_to_file(&error_msg);
-            
+
             Ok(serde_json::json!({
                 "success": false,
                 "error": error_msg
@@ -3077,11 +3703,16 @@ pub async fn drive_upload_backup_archive() -> Result<serde_json::Value, TauriErr
 }
 
 #[tauri::command]
-pub async fn drive_download_backup_archive(file_id: String) -> Result<serde_json::Value, TauriError> {
+pub async fn drive_download_backup_archive(
+    file_id: String,
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Downloading backup archive from Google Drive: {}", file_id);
-    
+
     // Use the new download_backup_archive method
-    match crate::plugins::drive_plugin().download_backup_archive(&file_id).await {
+    match crate::plugins::drive_plugin()
+        .download_backup_archive(&file_id)
+        .await
+    {
         Ok(message) => Ok(serde_json::json!({
             "success": true,
             "message": message
@@ -3089,14 +3720,17 @@ pub async fn drive_download_backup_archive(file_id: String) -> Result<serde_json
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": format!("Failed to download archive: {}", e)
-        }))
+        })),
     }
 }
 #[tauri::command]
 pub async fn drive_delete_backup_archive(file_id: String) -> Result<serde_json::Value, TauriError> {
     log::info!("Deleting backup archive from Google Drive: {}", file_id);
-    
-    match crate::plugins::drive_plugin().delete_backup_archive(&file_id).await {
+
+    match crate::plugins::drive_plugin()
+        .delete_backup_archive(&file_id)
+        .await
+    {
         Ok(_) => Ok(serde_json::json!({
             "success": true,
             "message": "Backup archive deleted successfully"
@@ -3104,13 +3738,13 @@ pub async fn drive_delete_backup_archive(file_id: String) -> Result<serde_json::
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": format!("Failed to delete archive: {}", e)
-        }))
+        })),
     }
 }
 #[tauri::command]
 pub async fn drive_get_connection_status() -> Result<serde_json::Value, TauriError> {
     log::info!("Checking Google Drive connection status");
-    
+
     log::info!("About to call drive_plugin().is_connected()");
     // Use the new is_connected method for better reliability
     match crate::plugins::drive_plugin().is_connected().await {
@@ -3129,15 +3763,15 @@ pub async fn drive_get_connection_status() -> Result<serde_json::Value, TauriErr
                     "file_count": 0,
                     "message": "Connected to Google Drive (file listing failed)",
                     "warning": e.to_string()
-                }))
+                })),
             }
-        },
+        }
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "connected": false,
             "error": e.to_string(),
             "message": "Failed to check connection status"
-        }))
+        })),
     }
 }
 
@@ -3158,15 +3792,18 @@ pub async fn drive_get_quota() -> Result<serde_json::Value, TauriError> {
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": e.to_string()
-        }))
+        })),
     }
 }
 
 #[tauri::command]
 pub async fn drive_restore_from_archive(file_id: String) -> Result<serde_json::Value, TauriError> {
     log::info!("Restoring from Google Drive archive: {}", file_id);
-    
-    match crate::plugins::drive_plugin().restore_from_archive(&file_id).await {
+
+    match crate::plugins::drive_plugin()
+        .restore_from_archive(&file_id)
+        .await
+    {
         Ok(message) => Ok(serde_json::json!({
             "success": true,
             "message": message
@@ -3174,14 +3811,14 @@ pub async fn drive_restore_from_archive(file_id: String) -> Result<serde_json::V
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": e.to_string()
-        }))
+        })),
     }
 }
 
 #[tauri::command]
 pub async fn drive_test_connection() -> Result<serde_json::Value, TauriError> {
     log::info!("Testing Google Drive connection");
-    
+
     // First check if connected
     match crate::plugins::drive_plugin().is_connected().await {
         Ok(_connected) => {
@@ -3192,12 +3829,14 @@ pub async fn drive_test_connection() -> Result<serde_json::Value, TauriError> {
                 }));
             }
         }
-        Err(e) => return Ok(serde_json::json!({
-            "success": false,
-            "error": format!("Connection check failed: {}", e)
-        }))
+        Err(e) => {
+            return Ok(serde_json::json!({
+                "success": false,
+                "error": format!("Connection check failed: {}", e)
+            }))
+        }
     }
-    
+
     // Try to list all files to test API access
     match crate::plugins::drive_plugin().list_all_files().await {
         Ok(files) => Ok(serde_json::json!({
@@ -3208,14 +3847,14 @@ pub async fn drive_test_connection() -> Result<serde_json::Value, TauriError> {
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": format!("API access failed: {}", e)
-        }))
+        })),
     }
 }
 
 #[tauri::command]
 pub async fn drive_list_all_files() -> Result<serde_json::Value, TauriError> {
     log::info!("Listing all Google Drive files");
-    
+
     match crate::plugins::drive_plugin().list_all_files().await {
         Ok(files) => Ok(serde_json::json!({
             "success": true,
@@ -3224,22 +3863,26 @@ pub async fn drive_list_all_files() -> Result<serde_json::Value, TauriError> {
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": e.to_string()
-        }))
+        })),
     }
 }
 
 #[tauri::command]
-pub async fn get_flag_mappings_data(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn get_flag_mappings_data(
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting flag mappings data");
-    
+
     let conn = match app.database_plugin().get_connection().await {
         Ok(conn) => conn,
-        Err(e) => return Ok(serde_json::json!({
-            "success": false,
-            "error": format!("Failed to get database connection: {}", e)
-        }))
+        Err(e) => {
+            return Ok(serde_json::json!({
+                "success": false,
+                "error": format!("Failed to get database connection: {}", e)
+            }))
+        }
     };
-    
+
     // Check if flag_mappings table exists and get its data
     let table_exists: i32 = match conn.query_row(
         "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='flag_mappings'",
@@ -3247,12 +3890,14 @@ pub async fn get_flag_mappings_data(app: State<'_, Arc<App>>) -> Result<serde_js
         |row| row.get(0),
     ) {
         Ok(count) => count,
-        Err(e) => return Ok(serde_json::json!({
-            "success": false,
-            "error": format!("Failed to check table existence: {}", e)
-        }))
+        Err(e) => {
+            return Ok(serde_json::json!({
+                "success": false,
+                "error": format!("Failed to check table existence: {}", e)
+            }))
+        }
     };
-    
+
     if table_exists == 0 {
         return Ok(serde_json::json!({
             "success": false,
@@ -3260,7 +3905,7 @@ pub async fn get_flag_mappings_data(app: State<'_, Arc<App>>) -> Result<serde_js
             "table_exists": false
         }));
     }
-    
+
     // Get the data from flag_mappings table
     let mappings: Vec<serde_json::Value> = match conn.prepare(
         "SELECT id, pss_code, ioc_code, country_name, is_custom, created, updated FROM flag_mappings ORDER BY pss_code"
@@ -3290,7 +3935,7 @@ pub async fn get_flag_mappings_data(app: State<'_, Arc<App>>) -> Result<serde_js
             "error": format!("Failed to prepare flag mappings query: {}", e)
         }))
     };
-    
+
     Ok(serde_json::json!({
         "success": true,
         "table_exists": true,
@@ -3299,42 +3944,48 @@ pub async fn get_flag_mappings_data(app: State<'_, Arc<App>>) -> Result<serde_js
     }))
 }
 #[tauri::command]
-pub async fn scan_and_populate_flags(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn scan_and_populate_flags(
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Scanning and populating flags table");
-    
+
     let conn = match app.database_plugin().get_connection().await {
         Ok(conn) => conn,
-        Err(e) => return Ok(serde_json::json!({
-            "success": false,
-            "error": format!("Failed to get database connection: {}", e)
-        }))
+        Err(e) => {
+            return Ok(serde_json::json!({
+                "success": false,
+                "error": format!("Failed to get database connection: {}", e)
+            }))
+        }
     };
-    
+
     // Path to the SVG flags directory (relative to project root)
     let flags_dir = std::path::Path::new("../ui/public/assets/flags/svg");
-    
+
     if !flags_dir.exists() {
         return Ok(serde_json::json!({
             "success": false,
             "error": "Flags directory does not exist: ../ui/public/assets/flags/svg"
         }));
     }
-    
+
     let mut processed_count = 0;
     let mut skipped_count = 0;
     let mut errors = Vec::new();
-    
+
     // Read directory entries
     let entries = match std::fs::read_dir(flags_dir) {
         Ok(entries) => entries,
-        Err(e) => return Ok(serde_json::json!({
-            "success": false,
-            "error": format!("Failed to read flags directory: {}", e)
-        }))
+        Err(e) => {
+            return Ok(serde_json::json!({
+                "success": false,
+                "error": format!("Failed to read flags directory: {}", e)
+            }))
+        }
     };
-    
+
     let current_time = chrono::Utc::now().to_rfc3339();
-    
+
     for entry in entries {
         let entry = match entry {
             Ok(entry) => entry,
@@ -3343,14 +3994,14 @@ pub async fn scan_and_populate_flags(app: State<'_, Arc<App>>) -> Result<serde_j
                 continue;
             }
         };
-        
+
         let path = entry.path();
-        
+
         // Only process SVG files
         if !path.is_file() || path.extension().and_then(|s| s.to_str()) != Some("svg") {
             continue;
         }
-        
+
         let filename = match path.file_name().and_then(|name| name.to_str()) {
             Some(name) => name,
             None => {
@@ -3358,16 +4009,16 @@ pub async fn scan_and_populate_flags(app: State<'_, Arc<App>>) -> Result<serde_j
                 continue;
             }
         };
-        
+
         // Skip report files
         if filename.contains("REPORT") || filename.contains("report") {
             skipped_count += 1;
             continue;
         }
-        
+
         // Extract IOC code from filename (e.g., "USA.svg" -> "USA")
         let ioc_code = filename.trim_end_matches(".svg").to_uppercase();
-        
+
         // Get file metadata
         let metadata = match std::fs::metadata(&path) {
             Ok(metadata) => metadata,
@@ -3376,33 +4027,39 @@ pub async fn scan_and_populate_flags(app: State<'_, Arc<App>>) -> Result<serde_j
                 continue;
             }
         };
-        
+
         let file_size = metadata.len() as i64;
         let file_path = path.to_string_lossy().to_string();
-        
+
         // Try to get country name from flag_mappings table
-        let country_name: Option<String> = conn.query_row(
-            "SELECT country_name FROM flag_mappings WHERE ioc_code = ? OR pss_code = ?",
-            [&ioc_code, &ioc_code],
-            |row| row.get(0),
-        ).unwrap_or(None);
-        
-        let recognition_status = if country_name.is_some() { "recognized" } else { "pending" };
+        let country_name: Option<String> = conn
+            .query_row(
+                "SELECT country_name FROM flag_mappings WHERE ioc_code = ? OR pss_code = ?",
+                [&ioc_code, &ioc_code],
+                |row| row.get(0),
+            )
+            .unwrap_or(None);
+
+        let recognition_status = if country_name.is_some() {
+            "recognized"
+        } else {
+            "pending"
+        };
         let is_recognized = country_name.is_some();
         let recognition_confidence = if is_recognized { Some(1.0) } else { None };
-        
+
         // Check if this flag already exists in the database
         let exists: i32 = conn.query_row(
             "SELECT COUNT(*) FROM flags WHERE filename = ? OR (ioc_code = ? AND ioc_code IS NOT NULL)",
             [filename, &ioc_code],
             |row| row.get(0),
         ).unwrap_or(0);
-        
+
         if exists > 0 {
             skipped_count += 1;
             continue;
         }
-        
+
         // Insert the flag into the database
         let result = conn.execute(
             "INSERT INTO flags (filename, ioc_code, country_name, recognition_status, recognition_confidence, upload_date, last_modified, file_size, file_path, is_recognized) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -3419,7 +4076,7 @@ pub async fn scan_and_populate_flags(app: State<'_, Arc<App>>) -> Result<serde_j
                 is_recognized
             ],
         );
-        
+
         match result {
             Ok(_) => {
                 processed_count += 1;
@@ -3430,9 +4087,14 @@ pub async fn scan_and_populate_flags(app: State<'_, Arc<App>>) -> Result<serde_j
             }
         }
     }
-    
-    log::info!("Flag scanning completed: {} processed, {} skipped, {} errors", processed_count, skipped_count, errors.len());
-    
+
+    log::info!(
+        "Flag scanning completed: {} processed, {} skipped, {} errors",
+        processed_count,
+        skipped_count,
+        errors.len()
+    );
+
     Ok(serde_json::json!({
         "success": true,
         "processed_count": processed_count,
@@ -3445,15 +4107,17 @@ pub async fn scan_and_populate_flags(app: State<'_, Arc<App>>) -> Result<serde_j
 #[tauri::command]
 pub async fn get_flags_data(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting flags data");
-    
+
     let conn = match app.database_plugin().get_connection().await {
         Ok(conn) => conn,
-        Err(e) => return Ok(serde_json::json!({
-            "success": false,
-            "error": format!("Failed to get database connection: {}", e)
-        }))
+        Err(e) => {
+            return Ok(serde_json::json!({
+                "success": false,
+                "error": format!("Failed to get database connection: {}", e)
+            }))
+        }
     };
-    
+
     // Get all flags from the database
     let flags: Vec<serde_json::Value> = match conn.prepare(
         "SELECT id, filename, ioc_code, country_name, recognition_status, recognition_confidence, upload_date, last_modified, file_size, file_path, is_recognized FROM flags ORDER BY filename"
@@ -3487,24 +4151,31 @@ pub async fn get_flags_data(app: State<'_, Arc<App>>) -> Result<serde_json::Valu
             "error": format!("Failed to prepare flags query: {}", e)
         }))
     };
-    
+
     // Get statistics
-    let stats = match conn.prepare("SELECT recognition_status, COUNT(*) FROM flags GROUP BY recognition_status") {
+    let stats = match conn
+        .prepare("SELECT recognition_status, COUNT(*) FROM flags GROUP BY recognition_status")
+    {
         Ok(mut stmt) => {
             let mut stats_map = std::collections::HashMap::new();
-            let rows = stmt.query_map([], |row| {
-                Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))
-            }).map_err(|e| TauriError::from(anyhow::anyhow!("Failed to query flag statistics: {}", e)))?;
-            
+            let rows = stmt
+                .query_map([], |row| {
+                    Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))
+                })
+                .map_err(|e| {
+                    TauriError::from(anyhow::anyhow!("Failed to query flag statistics: {}", e))
+                })?;
+
             for row in rows {
-                let (status, count) = row.map_err(|e| TauriError::from(anyhow::anyhow!("Failed to get stats: {}", e)))?;
+                let (status, count) = row
+                    .map_err(|e| TauriError::from(anyhow::anyhow!("Failed to get stats: {}", e)))?;
                 stats_map.insert(status, count);
             }
             stats_map
-        },
-        Err(_) => std::collections::HashMap::new()
+        }
+        Err(_) => std::collections::HashMap::new(),
     };
-    
+
     Ok(serde_json::json!({
         "success": true,
         "flags": flags,
@@ -3521,15 +4192,17 @@ pub async fn get_flags_data(app: State<'_, Arc<App>>) -> Result<serde_json::Valu
 #[tauri::command]
 pub async fn clear_flags_table(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Clearing flags table");
-    
+
     let conn = match app.database_plugin().get_connection().await {
         Ok(conn) => conn,
-        Err(e) => return Ok(serde_json::json!({
-            "success": false,
-            "error": format!("Failed to get database connection: {}", e)
-        }))
+        Err(e) => {
+            return Ok(serde_json::json!({
+                "success": false,
+                "error": format!("Failed to get database connection: {}", e)
+            }))
+        }
     };
-    
+
     match conn.execute("DELETE FROM flags", []) {
         Ok(deleted_count) => {
             log::info!("Cleared {} entries from flags table", deleted_count);
@@ -3538,11 +4211,11 @@ pub async fn clear_flags_table(app: State<'_, Arc<App>>) -> Result<serde_json::V
                 "deleted_count": deleted_count,
                 "message": format!("Cleared {} flag entries", deleted_count)
             }))
-        },
+        }
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": format!("Failed to clear flags table: {}", e)
-        }))
+        })),
     }
 }
 
@@ -3553,7 +4226,7 @@ pub async fn create_complete_log_archive(
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Creating complete log archive");
-    
+
     let log_manager = app.log_manager().lock().await;
     match log_manager.create_complete_archive() {
         Ok(archive_info) => Ok(serde_json::json!({
@@ -3568,7 +4241,7 @@ pub async fn create_complete_log_archive(
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": format!("Failed to create archive: {}", e)
-        }))
+        })),
     }
 }
 
@@ -3577,7 +4250,7 @@ pub async fn create_and_upload_log_archive(
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("=== CREATE_AND_UPLOAD_LOG_ARCHIVE COMMAND START ===");
-    
+
     // Add comprehensive error logging to app.log
     let log_error_to_file = |error_msg: &str| {
         let error_log = format!(
@@ -3585,14 +4258,14 @@ pub async fn create_and_upload_log_archive(
             chrono::Utc::now().format("%Y-%m-%d %H:%M:%S"),
             error_msg
         );
-        
+
         if let Err(write_err) = std::fs::write("logs/app.log", error_log) {
             log::error!("Failed to write error log: {}", write_err);
         }
     };
-    
+
     log::info!("Creating and uploading log archive to Google Drive");
-    
+
     let log_manager = app.log_manager().lock().await;
     match log_manager.create_and_upload_archive().await {
         Ok(message) => {
@@ -3602,13 +4275,13 @@ pub async fn create_and_upload_log_archive(
                 "success": true,
                 "message": message
             }))
-        },
+        }
         Err(e) => {
             let error_msg = format!("Failed to create and upload archive: {}", e);
             log::error!("=== CREATE_AND_UPLOAD_LOG_ARCHIVE COMMAND ERROR ===");
             log::error!("{}", error_msg);
             log_error_to_file(&error_msg);
-            
+
             Ok(serde_json::json!({
                 "success": false,
                 "error": error_msg
@@ -3622,7 +4295,7 @@ pub async fn create_upload_and_cleanup_log_archive(
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("=== CREATE_UPLOAD_AND_CLEANUP_LOG_ARCHIVE COMMAND START ===");
-    
+
     // Add comprehensive error logging to app.log
     let log_error_to_file = |error_msg: &str| {
         let error_log = format!(
@@ -3630,14 +4303,14 @@ pub async fn create_upload_and_cleanup_log_archive(
             chrono::Utc::now().format("%Y-%m-%d %H:%M:%S"),
             error_msg
         );
-        
+
         if let Err(write_err) = std::fs::write("logs/app.log", error_log) {
             log::error!("Failed to write error log: {}", write_err);
         }
     };
-    
+
     log::info!("Creating, uploading, and cleaning up log archive");
-    
+
     let log_manager = app.log_manager().lock().await;
     match log_manager.create_upload_and_cleanup_archive().await {
         Ok(message) => {
@@ -3647,13 +4320,13 @@ pub async fn create_upload_and_cleanup_log_archive(
                 "success": true,
                 "message": message
             }))
-        },
+        }
         Err(e) => {
             let error_msg = format!("Failed to create, upload and cleanup archive: {}", e);
             log::error!("=== CREATE_UPLOAD_AND_CLEANUP_LOG_ARCHIVE COMMAND ERROR ===");
             log::error!("{}", error_msg);
             log_error_to_file(&error_msg);
-            
+
             Ok(serde_json::json!({
                 "success": false,
                 "error": error_msg
@@ -3667,8 +4340,8 @@ pub async fn get_auto_archive_config(
     _app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting auto-archive configuration");
-    
-    // For now, return a default config. In a real implementation, 
+
+    // For now, return a default config. In a real implementation,
     // you would load this from a configuration file or database
     let default_config = AutoArchiveConfig {
         enabled: false,
@@ -3677,7 +4350,7 @@ pub async fn get_auto_archive_config(
         delete_after_upload: false,
         last_archive_time: None,
     };
-    
+
     Ok(serde_json::json!({
         "success": true,
         "data": default_config
@@ -3688,12 +4361,15 @@ pub async fn set_auto_archive_config(
     config: AutoArchiveConfig,
     _app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!("Setting auto-archive configuration: enabled={}, schedule={:?}", 
-               config.enabled, config.schedule);
-    
+    log::info!(
+        "Setting auto-archive configuration: enabled={}, schedule={:?}",
+        config.enabled,
+        config.schedule
+    );
+
     // In a real implementation, you would save this to a configuration file or database
     // For now, we'll just return success
-    
+
     Ok(serde_json::json!({
         "success": true,
         "message": "Auto-archive configuration updated successfully"
@@ -3706,11 +4382,11 @@ pub async fn check_auto_archive_status(
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Checking auto-archive status");
-    
+
     let log_manager = app.log_manager().lock().await;
     let should_archive = log_manager.should_auto_archive(&config);
     let next_archive_time = log_manager.get_next_archive_time(&config);
-    
+
     Ok(serde_json::json!({
         "success": true,
         "data": {
@@ -3728,7 +4404,7 @@ pub async fn perform_auto_archive(
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Performing auto-archive");
-    
+
     let log_manager = app.log_manager().lock().await;
     match log_manager.perform_auto_archive(&mut config).await {
         Ok(message) => Ok(serde_json::json!({
@@ -3739,7 +4415,7 @@ pub async fn perform_auto_archive(
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": format!("Auto-archive failed: {}", e)
-        }))
+        })),
     }
 }
 
@@ -3749,7 +4425,7 @@ pub async fn delete_log_archive(
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Deleting log archive: {}", archive_name);
-    
+
     let log_manager = app.log_manager().lock().await;
     match log_manager.delete_archive(&archive_name) {
         Ok(_) => Ok(serde_json::json!({
@@ -3759,18 +4435,20 @@ pub async fn delete_log_archive(
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": format!("Failed to delete archive: {}", e)
-        }))
+        })),
     }
 }
 
 // WebSocket commands for HTML overlays
 #[tauri::command]
-pub async fn websocket_get_status(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn websocket_get_status(
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting WebSocket server status");
-    
+
     let websocket_plugin = app.websocket_plugin().lock().await;
     let client_count = websocket_plugin.get_client_count();
-    
+
     Ok(serde_json::json!({
         "connected_clients": client_count,
         "status": "running"
@@ -3784,13 +4462,34 @@ pub async fn store_pss_event_cmd(
     log::info!("Storing PSS event to database: {:?}", event_data);
 
     // Extract basic fields expected from the UI store
-    let match_id_str = event_data.get("match_id").and_then(|v| v.as_str()).unwrap_or("");
-    let event_code = event_data.get("event_code").and_then(|v| v.as_str()).unwrap_or("");
-    let athlete = event_data.get("athlete").and_then(|v| v.as_str()).unwrap_or("");
-    let round_num = event_data.get("round").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
-    let time_str = event_data.get("time").and_then(|v| v.as_str()).unwrap_or("");
-    let timestamp_str = event_data.get("timestamp").and_then(|v| v.as_str()).unwrap_or("");
-    let raw_data = event_data.get("raw_data").and_then(|v| v.as_str()).unwrap_or("");
+    let match_id_str = event_data
+        .get("match_id")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+    let event_code = event_data
+        .get("event_code")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+    let athlete = event_data
+        .get("athlete")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+    let round_num = event_data
+        .get("round")
+        .and_then(|v| v.as_i64())
+        .unwrap_or(0) as i32;
+    let time_str = event_data
+        .get("time")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+    let timestamp_str = event_data
+        .get("timestamp")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+    let raw_data = event_data
+        .get("raw_data")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
 
     // Guard: require a match id and event_code
     if match_id_str.is_empty() || event_code.is_empty() {
@@ -3800,25 +4499,42 @@ pub async fn store_pss_event_cmd(
         }));
     }
 
-    let _conn = app.database_plugin().get_connection().await
+    let _conn = app
+        .database_plugin()
+        .get_connection()
+        .await
         .map_err(|e| TauriError::from(anyhow::anyhow!("Database connection error: {}", e)))?;
 
     // Resolve DB ids
-    let db_match_id = app.database_plugin().get_or_create_pss_match(match_id_str).await
+    let db_match_id = app
+        .database_plugin()
+        .get_or_create_pss_match(match_id_str)
+        .await
         .map_err(|e| TauriError::from(anyhow::anyhow!("Failed to get/create match: {}", e)))?;
 
     // Map event_code to event_type_id
-    let event_type = app.database_plugin().get_pss_event_type_by_code(event_code).await
+    let event_type = app
+        .database_plugin()
+        .get_pss_event_type_by_code(event_code)
+        .await
         .map_err(|e| TauriError::from(anyhow::anyhow!("Failed to resolve event type: {}", e)))?;
-    let event_type_id = if let Some(t) = event_type { t.id.unwrap_or(0) } else { 0 };
+    let event_type_id = if let Some(t) = event_type {
+        t.id.unwrap_or(0)
+    } else {
+        0
+    };
 
     // Current UDP session if available (fallback to 0)
     let session_id = 0i64;
 
     // Build model
     let timestamp = if !timestamp_str.is_empty() {
-        chrono::DateTime::parse_from_rfc3339(timestamp_str).map(|d| d.with_timezone(&chrono::Utc)).unwrap_or(chrono::Utc::now())
-    } else { chrono::Utc::now() };
+        chrono::DateTime::parse_from_rfc3339(timestamp_str)
+            .map(|d| d.with_timezone(&chrono::Utc))
+            .unwrap_or(chrono::Utc::now())
+    } else {
+        chrono::Utc::now()
+    };
 
     let round_id: Option<i64> = None;
     let parsed_data: Option<String> = None;
@@ -3831,7 +4547,7 @@ pub async fn store_pss_event_cmd(
         match_id: Some(db_match_id),
         round_id,
         event_type_id,
-        
+
         timestamp,
         raw_data: raw_data.to_string(),
         parsed_data,
@@ -3844,7 +4560,7 @@ pub async fn store_pss_event_cmd(
         parser_confidence: Some(1.0),
         validation_errors: None,
         tournament_id: None,
-        
+
         created_at: chrono::Utc::now(),
         created: Some(crate::utils::now_unix()),
     };
@@ -3853,11 +4569,26 @@ pub async fn store_pss_event_cmd(
         Ok(event_id) => {
             // Store a few details for convenience
             let details = vec![
-                ("round".to_string(), Some(round_num.to_string()), "i32".to_string()),
-                ("time".to_string(), Some(time_str.to_string()), "String".to_string()),
-                ("athlete".to_string(), Some(athlete.to_string()), "String".to_string()),
+                (
+                    "round".to_string(),
+                    Some(round_num.to_string()),
+                    "i32".to_string(),
+                ),
+                (
+                    "time".to_string(),
+                    Some(time_str.to_string()),
+                    "String".to_string(),
+                ),
+                (
+                    "athlete".to_string(),
+                    Some(athlete.to_string()),
+                    "String".to_string(),
+                ),
             ];
-            let _ = app.database_plugin().store_pss_event_details(event_id, &details).await;
+            let _ = app
+                .database_plugin()
+                .store_pss_event_details(event_id, &details)
+                .await;
 
             Ok(serde_json::json!({
                 "success": true,
@@ -3867,7 +4598,7 @@ pub async fn store_pss_event_cmd(
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": e.to_string()
-        }))
+        })),
     }
 }
 // Tournament Management Commands
@@ -3882,27 +4613,39 @@ pub async fn tournament_create(
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Creating tournament: {} in {}, {}", name, city, country);
-    
+
     let start_date_parsed = if let Some(date_str) = start_date {
         if date_str.trim().is_empty() {
             None
         } else {
-            Some(chrono::DateTime::parse_from_rfc3339(&date_str)
-                .map(|dt| dt.with_timezone(&chrono::Utc))
-                .map_err(|e| TauriError::from(anyhow::anyhow!("Invalid start date format '{}': {}", date_str, e)))?)
+            Some(
+                chrono::DateTime::parse_from_rfc3339(&date_str)
+                    .map(|dt| dt.with_timezone(&chrono::Utc))
+                    .map_err(|e| {
+                        TauriError::from(anyhow::anyhow!(
+                            "Invalid start date format '{}': {}",
+                            date_str,
+                            e
+                        ))
+                    })?,
+            )
         }
     } else {
         None
     };
-    
-    match app.tournament_plugin().create_tournament(
-        name,
-        duration_days,
-        city,
-        country,
-        country_code,
-        start_date_parsed,
-    ).await {
+
+    match app
+        .tournament_plugin()
+        .create_tournament(
+            name,
+            duration_days,
+            city,
+            country,
+            country_code,
+            start_date_parsed,
+        )
+        .await
+    {
         Ok(tournament_id) => Ok(serde_json::json!({
             "success": true,
             "tournament_id": tournament_id,
@@ -3911,43 +4654,45 @@ pub async fn tournament_create(
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": e.to_string()
-        }))
+        })),
     }
 }
 
 #[tauri::command]
 pub async fn tournament_get_all(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting all tournaments");
-    
+
     match app.tournament_plugin().get_tournaments().await {
         Ok(tournaments) => {
             let tournaments_json: Vec<serde_json::Value> = tournaments
                 .into_iter()
-                .map(|t| serde_json::json!({
-                    "id": t.id,
-                    "name": t.name,
-                    "duration_days": t.duration_days,
-                    "city": t.city,
-                    "country": t.country,
-                    "country_code": t.country_code,
-                    "logo_path": t.logo_path,
-                    "status": t.status,
-                    "start_date": t.start_date.map(|d| d.to_rfc3339()),
-                    "end_date": t.end_date.map(|d| d.to_rfc3339()),
-                    "created_at": t.created_at.to_rfc3339(),
-                    "updated_at": t.updated_at.to_rfc3339(),
-                }))
+                .map(|t| {
+                    serde_json::json!({
+                        "id": t.id,
+                        "name": t.name,
+                        "duration_days": t.duration_days,
+                        "city": t.city,
+                        "country": t.country,
+                        "country_code": t.country_code,
+                        "logo_path": t.logo_path,
+                        "status": t.status,
+                        "start_date": t.start_date.map(|d| d.to_rfc3339()),
+                        "end_date": t.end_date.map(|d| d.to_rfc3339()),
+                        "created_at": t.created_at.to_rfc3339(),
+                        "updated_at": t.updated_at.to_rfc3339(),
+                    })
+                })
                 .collect();
-            
+
             Ok(serde_json::json!({
                 "success": true,
                 "tournaments": tournaments_json
             }))
-        },
+        }
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": e.to_string()
-        }))
+        })),
     }
 }
 
@@ -3957,7 +4702,7 @@ pub async fn tournament_get(
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting tournament: {}", tournament_id);
-    
+
     match app.tournament_plugin().get_tournament(tournament_id).await {
         Ok(Some(tournament)) => {
             let tournament_json = serde_json::json!({
@@ -3975,12 +4720,12 @@ pub async fn tournament_get(
                 "created_at": tournament.created_at.to_rfc3339(),
                 "updated_at": tournament.updated_at.to_rfc3339(),
             });
-            
+
             Ok(serde_json::json!({
                 "success": true,
                 "tournament": tournament_json
             }))
-        },
+        }
         Ok(None) => Ok(serde_json::json!({
             "success": false,
             "error": "Tournament not found"
@@ -3988,7 +4733,7 @@ pub async fn tournament_get(
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": e.to_string()
-        }))
+        })),
     }
 }
 
@@ -4007,31 +4752,47 @@ pub async fn tournament_update(
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Updating tournament: {}", tournament_id);
-    
+
     let start_date_parsed = if let Some(date_str) = start_date {
         if date_str.trim().is_empty() {
             None
         } else {
-            Some(chrono::DateTime::parse_from_rfc3339(&date_str)
-                .map(|dt| dt.with_timezone(&chrono::Utc))
-                .map_err(|e| TauriError::from(anyhow::anyhow!("Invalid start date format '{}': {}", date_str, e)))?)
+            Some(
+                chrono::DateTime::parse_from_rfc3339(&date_str)
+                    .map(|dt| dt.with_timezone(&chrono::Utc))
+                    .map_err(|e| {
+                        TauriError::from(anyhow::anyhow!(
+                            "Invalid start date format '{}': {}",
+                            date_str,
+                            e
+                        ))
+                    })?,
+            )
         }
     } else {
         None
     };
-    
+
     let end_date_parsed = if let Some(date_str) = end_date {
         if date_str.trim().is_empty() {
             None
         } else {
-            Some(chrono::DateTime::parse_from_rfc3339(&date_str)
-                .map(|dt| dt.with_timezone(&chrono::Utc))
-                .map_err(|e| TauriError::from(anyhow::anyhow!("Invalid end date format '{}': {}", date_str, e)))?)
+            Some(
+                chrono::DateTime::parse_from_rfc3339(&date_str)
+                    .map(|dt| dt.with_timezone(&chrono::Utc))
+                    .map_err(|e| {
+                        TauriError::from(anyhow::anyhow!(
+                            "Invalid end date format '{}': {}",
+                            date_str,
+                            e
+                        ))
+                    })?,
+            )
         }
     } else {
         None
     };
-    
+
     let tournament = crate::database::models::Tournament {
         id: Some(tournament_id),
         uuid: None,
@@ -4049,8 +4810,12 @@ pub async fn tournament_update(
         created: None,
         updated: None,
     };
-    
-    match app.tournament_plugin().update_tournament(tournament_id, tournament).await {
+
+    match app
+        .tournament_plugin()
+        .update_tournament(tournament_id, tournament)
+        .await
+    {
         Ok(_) => Ok(serde_json::json!({
             "success": true,
             "message": "Tournament updated successfully"
@@ -4058,7 +4823,7 @@ pub async fn tournament_update(
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": e.to_string()
-        }))
+        })),
     }
 }
 
@@ -4068,8 +4833,12 @@ pub async fn tournament_delete(
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Deleting tournament: {}", tournament_id);
-    
-    match app.tournament_plugin().delete_tournament(tournament_id).await {
+
+    match app
+        .tournament_plugin()
+        .delete_tournament(tournament_id)
+        .await
+    {
         Ok(_) => Ok(serde_json::json!({
             "success": true,
             "message": "Tournament deleted successfully"
@@ -4077,7 +4846,7 @@ pub async fn tournament_delete(
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": e.to_string()
-        }))
+        })),
     }
 }
 #[tauri::command]
@@ -4086,44 +4855,49 @@ pub async fn tournament_get_days(
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting tournament days for tournament: {}", tournament_id);
-    
-    match app.tournament_plugin().get_tournament_days(tournament_id).await {
+
+    match app
+        .tournament_plugin()
+        .get_tournament_days(tournament_id)
+        .await
+    {
         Ok(days) => {
             let days_json: Vec<serde_json::Value> = days
                 .into_iter()
-                .map(|d| serde_json::json!({
-                    "id": d.id,
-                    "uuid": d.uuid,
-                    "tournament_id": d.tournament_id,
-                    "day_number": d.day_number,
-                    "date": d.date.to_rfc3339(),
-                    "status": d.status,
-                    "start_time": d.start_time.map(|t| t.to_rfc3339()),
-                    "end_time": d.end_time.map(|t| t.to_rfc3339()),
-                    "created_at": d.created_at.to_rfc3339(),
-                    "updated_at": d.updated_at.to_rfc3339(),
-                }))
+                .map(|d| {
+                    serde_json::json!({
+                        "id": d.id,
+                        "uuid": d.uuid,
+                        "tournament_id": d.tournament_id,
+                        "day_number": d.day_number,
+                        "date": d.date.to_rfc3339(),
+                        "status": d.status,
+                        "start_time": d.start_time.map(|t| t.to_rfc3339()),
+                        "end_time": d.end_time.map(|t| t.to_rfc3339()),
+                        "created_at": d.created_at.to_rfc3339(),
+                        "updated_at": d.updated_at.to_rfc3339(),
+                    })
+                })
                 .collect();
-            
+
             Ok(serde_json::json!({
                 "success": true,
                 "days": days_json
             }))
-        },
+        }
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": e.to_string()
-        }))
+        })),
     }
 }
 
 #[tauri::command]
 pub async fn tournament_start_day(
-    
     _app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Starting tournament day: (removed)");
-    
+
     let res1: Result<(), anyhow::Error> = Ok(());
     match res1 {
         Ok(()) => Ok(serde_json::json!({
@@ -4133,17 +4907,16 @@ pub async fn tournament_start_day(
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": e.to_string()
-        }))
+        })),
     }
 }
 
 #[tauri::command]
 pub async fn tournament_end_day(
-    
     _app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Ending tournament day: (removed)");
-    
+
     let res2: Result<(), anyhow::Error> = Ok(());
     match res2 {
         Ok(()) => Ok(serde_json::json!({
@@ -4153,14 +4926,16 @@ pub async fn tournament_end_day(
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": e.to_string()
-        }))
+        })),
     }
 }
 
 #[tauri::command]
-pub async fn tournament_get_active(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn tournament_get_active(
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting active tournament");
-    
+
     match app.tournament_plugin().get_active_tournament().await {
         Ok(Some(tournament)) => {
             let tournament_json = serde_json::json!({
@@ -4177,12 +4952,12 @@ pub async fn tournament_get_active(app: State<'_, Arc<App>>) -> Result<serde_jso
                 "created_at": tournament.created_at.to_rfc3339(),
                 "updated_at": tournament.updated_at.to_rfc3339(),
             });
-            
+
             Ok(serde_json::json!({
                 "success": true,
                 "tournament": tournament_json
             }))
-        },
+        }
         Ok(None) => Ok(serde_json::json!({
             "success": true,
             "tournament": null
@@ -4190,7 +4965,7 @@ pub async fn tournament_get_active(app: State<'_, Arc<App>>) -> Result<serde_jso
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": e.to_string()
-        }))
+        })),
     }
 }
 
@@ -4199,9 +4974,16 @@ pub async fn tournament_get_active_day(
     tournament_id: i64,
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!("Getting active tournament day for tournament: {}", tournament_id);
-    
-    match app.tournament_plugin().get_active_tournament_day(tournament_id).await {
+    log::info!(
+        "Getting active tournament day for tournament: {}",
+        tournament_id
+    );
+
+    match app
+        .tournament_plugin()
+        .get_active_tournament_day(tournament_id)
+        .await
+    {
         Ok(Some(day)) => {
             let day_json = serde_json::json!({
                 "id": day.id,
@@ -4214,12 +4996,12 @@ pub async fn tournament_get_active_day(
                 "created_at": day.created_at.to_rfc3339(),
                 "updated_at": day.updated_at.to_rfc3339(),
             });
-            
+
             Ok(serde_json::json!({
                 "success": true,
                 "day": day_json
             }))
-        },
+        }
         Ok(None) => Ok(serde_json::json!({
             "success": true,
             "day": null
@@ -4227,7 +5009,7 @@ pub async fn tournament_get_active_day(
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": e.to_string()
-        }))
+        })),
     }
 }
 
@@ -4238,8 +5020,12 @@ pub async fn tournament_update_logo(
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Updating tournament logo for tournament: {}", tournament_id);
-    
-    match app.tournament_plugin().update_tournament_logo(tournament_id, logo_path).await {
+
+    match app
+        .tournament_plugin()
+        .update_tournament_logo(tournament_id, logo_path)
+        .await
+    {
         Ok(_) => Ok(serde_json::json!({
             "success": true,
             "message": "Tournament logo updated successfully"
@@ -4247,7 +5033,7 @@ pub async fn tournament_update_logo(
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": e.to_string()
-        }))
+        })),
     }
 }
 
@@ -4258,8 +5044,12 @@ pub async fn tournament_verify_location(
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Verifying location: {}, {}", city, country);
-    
-    match app.tournament_plugin().verify_city_country(city, country).await {
+
+    match app
+        .tournament_plugin()
+        .verify_city_country(city, country)
+        .await
+    {
         Ok(verification) => Ok(serde_json::json!({
             "success": true,
             "verified": verification.verified,
@@ -4269,7 +5059,7 @@ pub async fn tournament_verify_location(
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": e.to_string()
-        }))
+        })),
     }
 }
 #[tauri::command]
@@ -4277,9 +5067,16 @@ pub async fn get_tournament_statistics(
     tournament_id: i64,
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!("Getting tournament statistics for tournament: {}", tournament_id);
-    
-    match app.tournament_plugin().get_tournament_statistics(tournament_id).await {
+    log::info!(
+        "Getting tournament statistics for tournament: {}",
+        tournament_id
+    );
+
+    match app
+        .tournament_plugin()
+        .get_tournament_statistics(tournament_id)
+        .await
+    {
         Ok(statistics) => Ok(serde_json::json!({
             "success": true,
             "statistics": statistics
@@ -4287,25 +5084,25 @@ pub async fn get_tournament_statistics(
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": e.to_string()
-        }))
+        })),
     }
 }
 
 // Database optimization commands
 #[tauri::command]
-pub async fn database_run_vacuum(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn database_run_vacuum(
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Running database VACUUM operation");
-    
+
     let db_conn = app.database_plugin().get_database_connection();
     let mut maintenance = crate::database::DatabaseMaintenance::new_default();
-    
+
     match maintenance.run_vacuum(&db_conn).await {
-        Ok(_) => {
-            Ok(serde_json::json!({
-                "success": true,
-                "message": "Database VACUUM completed successfully"
-            }))
-        }
+        Ok(_) => Ok(serde_json::json!({
+            "success": true,
+            "message": "Database VACUUM completed successfully"
+        })),
         Err(e) => {
             log::error!("Database VACUUM failed: {}", e);
             Ok(serde_json::json!({
@@ -4316,12 +5113,14 @@ pub async fn database_run_vacuum(app: State<'_, Arc<App>>) -> Result<serde_json:
     }
 }
 #[tauri::command]
-pub async fn database_run_integrity_check(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn database_run_integrity_check(
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Running database integrity check");
-    
+
     let db_conn = app.database_plugin().get_database_connection();
     let mut maintenance = crate::database::DatabaseMaintenance::new_default();
-    
+
     match maintenance.run_integrity_check(&db_conn).await {
         Ok(integrity_ok) => {
             if integrity_ok {
@@ -4349,19 +5148,19 @@ pub async fn database_run_integrity_check(app: State<'_, Arc<App>>) -> Result<se
 }
 
 #[tauri::command]
-pub async fn database_run_analyze(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn database_run_analyze(
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Running database ANALYZE operation");
-    
+
     let db_conn = app.database_plugin().get_database_connection();
     let mut maintenance = crate::database::DatabaseMaintenance::new_default();
-    
+
     match maintenance.run_analyze(&db_conn).await {
-        Ok(_) => {
-            Ok(serde_json::json!({
-                "success": true,
-                "message": "Database ANALYZE completed successfully"
-            }))
-        }
+        Ok(_) => Ok(serde_json::json!({
+            "success": true,
+            "message": "Database ANALYZE completed successfully"
+        })),
         Err(e) => {
             log::error!("Database ANALYZE failed: {}", e);
             Ok(serde_json::json!({
@@ -4373,19 +5172,19 @@ pub async fn database_run_analyze(app: State<'_, Arc<App>>) -> Result<serde_json
 }
 
 #[tauri::command]
-pub async fn database_run_optimize(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn database_run_optimize(
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Running database OPTIMIZE operation");
-    
+
     let db_conn = app.database_plugin().get_database_connection();
     let mut maintenance = crate::database::DatabaseMaintenance::new_default();
-    
+
     match maintenance.run_optimize(&db_conn).await {
-        Ok(_) => {
-            Ok(serde_json::json!({
-                "success": true,
-                "message": "Database OPTIMIZE completed successfully"
-            }))
-        }
+        Ok(_) => Ok(serde_json::json!({
+            "success": true,
+            "message": "Database OPTIMIZE completed successfully"
+        })),
         Err(e) => {
             log::error!("Database OPTIMIZE failed: {}", e);
             Ok(serde_json::json!({
@@ -4397,26 +5196,26 @@ pub async fn database_run_optimize(app: State<'_, Arc<App>>) -> Result<serde_jso
 }
 
 #[tauri::command]
-pub async fn database_run_full_maintenance(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn database_run_full_maintenance(
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Running full database maintenance");
-    
+
     let db_conn = app.database_plugin().get_database_connection();
     let mut maintenance = crate::database::DatabaseMaintenance::new_default();
-    
+
     match maintenance.run_full_maintenance(&db_conn).await {
-        Ok(result) => {
-            Ok(serde_json::json!({
-                "success": true,
-                "message": "Full database maintenance completed",
-                "result": {
-                    "integrity_check_passed": result.integrity_check_passed,
-                    "analyze_success": result.analyze_success,
-                    "optimize_success": result.optimize_success,
-                    "vacuum_success": result.vacuum_success,
-                    "total_duration_secs": result.total_duration.as_secs()
-                }
-            }))
-        }
+        Ok(result) => Ok(serde_json::json!({
+            "success": true,
+            "message": "Full database maintenance completed",
+            "result": {
+                "integrity_check_passed": result.integrity_check_passed,
+                "analyze_success": result.analyze_success,
+                "optimize_success": result.optimize_success,
+                "vacuum_success": result.vacuum_success,
+                "total_duration_secs": result.total_duration.as_secs()
+            }
+        })),
         Err(e) => {
             log::error!("Full database maintenance failed: {}", e);
             Ok(serde_json::json!({
@@ -4430,28 +5229,26 @@ pub async fn database_run_full_maintenance(app: State<'_, Arc<App>>) -> Result<s
 #[tauri::command]
 pub async fn database_get_info(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting database information");
-    
+
     let db_conn = app.database_plugin().get_database_connection();
     let maintenance = crate::database::DatabaseMaintenance::new_default();
-    
+
     match maintenance.get_database_info(&db_conn).await {
-        Ok(info) => {
-            Ok(serde_json::json!({
-                "success": true,
-                "info": {
-                    "total_size": info.total_size,
-                    "used_size": info.used_size,
-                    "free_size": info.free_size,
-                    "fragmentation_percentage": info.fragmentation_percentage,
-                    "page_count": info.page_count,
-                    "page_size": info.page_size,
-                    "freelist_count": info.freelist_count,
-                    "cache_size": info.cache_size,
-                    "journal_mode": info.journal_mode,
-                    "synchronous": info.synchronous
-                }
-            }))
-        }
+        Ok(info) => Ok(serde_json::json!({
+            "success": true,
+            "info": {
+                "total_size": info.total_size,
+                "used_size": info.used_size,
+                "free_size": info.free_size,
+                "fragmentation_percentage": info.fragmentation_percentage,
+                "page_count": info.page_count,
+                "page_size": info.page_size,
+                "freelist_count": info.freelist_count,
+                "cache_size": info.cache_size,
+                "journal_mode": info.journal_mode,
+                "synchronous": info.synchronous
+            }
+        })),
         Err(e) => {
             log::error!("Failed to get database info: {}", e);
             Ok(serde_json::json!({
@@ -4463,14 +5260,16 @@ pub async fn database_get_info(app: State<'_, Arc<App>>) -> Result<serde_json::V
 }
 
 #[tauri::command]
-pub async fn database_get_maintenance_status(_app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn database_get_maintenance_status(
+    _app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting database maintenance status");
-    
+
     let maintenance = crate::database::DatabaseMaintenance::new_default();
     let needed = maintenance.check_maintenance_needed();
     let stats = maintenance.get_statistics();
     let config = maintenance.get_config();
-    
+
     Ok(serde_json::json!({
         "success": true,
         "maintenance_needed": {
@@ -4508,13 +5307,23 @@ pub async fn get_comprehensive_event_statistics(
     session_id: i64,
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!("Getting comprehensive event statistics for session {}", session_id);
-    
-    match app.database_plugin().get_comprehensive_event_statistics(session_id).await {
+    log::info!(
+        "Getting comprehensive event statistics for session {}",
+        session_id
+    );
+
+    match app
+        .database_plugin()
+        .get_comprehensive_event_statistics(session_id)
+        .await
+    {
         Ok(stats) => Ok(stats),
         Err(e) => {
             log::error!("Failed to get comprehensive event statistics: {}", e);
-            Err(TauriError::from(anyhow::anyhow!("Failed to get event statistics: {}", e)))
+            Err(TauriError::from(anyhow::anyhow!(
+                "Failed to get event statistics: {}",
+                e
+            )))
         }
     }
 }
@@ -4527,11 +5336,20 @@ pub async fn get_events_by_status(
     limit: Option<i64>,
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!("Getting events by status: {} for session {}", recognition_status, session_id);
-    
-    match app.database_plugin().get_events_by_status(session_id, &recognition_status, limit).await {
+    log::info!(
+        "Getting events by status: {} for session {}",
+        recognition_status,
+        session_id
+    );
+
+    match app
+        .database_plugin()
+        .get_events_by_status(session_id, &recognition_status, limit)
+        .await
+    {
         Ok(events) => {
-            let events_json: Vec<serde_json::Value> = events.into_iter()
+            let events_json: Vec<serde_json::Value> = events
+                .into_iter()
                 .map(|event| serde_json::to_value(event).unwrap_or_default())
                 .collect();
             Ok(serde_json::json!({
@@ -4542,7 +5360,10 @@ pub async fn get_events_by_status(
         }
         Err(e) => {
             log::error!("Failed to get events by status: {}", e);
-            Err(TauriError::from(anyhow::anyhow!("Failed to get events by status: {}", e)))
+            Err(TauriError::from(anyhow::anyhow!(
+                "Failed to get events by status: {}",
+                e
+            )))
         }
     }
 }
@@ -4555,10 +5376,15 @@ pub async fn get_unknown_events(
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting unknown events");
-    
-    match app.database_plugin().get_unknown_events(session_id, limit).await {
+
+    match app
+        .database_plugin()
+        .get_unknown_events(session_id, limit)
+        .await
+    {
         Ok(events) => {
-            let events_json: Vec<serde_json::Value> = events.into_iter()
+            let events_json: Vec<serde_json::Value> = events
+                .into_iter()
                 .map(|event| serde_json::to_value(event).unwrap_or_default())
                 .collect();
             Ok(serde_json::json!({
@@ -4569,7 +5395,10 @@ pub async fn get_unknown_events(
         }
         Err(e) => {
             log::error!("Failed to get unknown events: {}", e);
-            Err(TauriError::from(anyhow::anyhow!("Failed to get unknown events: {}", e)))
+            Err(TauriError::from(anyhow::anyhow!(
+                "Failed to get unknown events: {}",
+                e
+            )))
         }
     }
 }
@@ -4579,9 +5408,14 @@ pub async fn set_udp_tournament_context(
     app: tauri::State<'_, crate::core::app::App>,
     tournament_id: Option<i64>,
 ) -> Result<(), TauriError> {
-    log::info!("Setting UDP tournament context: tournament_id={:?}", tournament_id);
-    
-    app.udp_plugin().set_tournament_context(tournament_id).await
+    log::info!(
+        "Setting UDP tournament context: tournament_id={:?}",
+        tournament_id
+    );
+
+    app.udp_plugin()
+        .set_tournament_context(tournament_id)
+        .await
         .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))
 }
 /// Get current tournament context from UDP server
@@ -4590,10 +5424,10 @@ pub async fn get_udp_tournament_context(
     app: tauri::State<'_, crate::core::app::App>,
 ) -> Result<serde_json::Value, TauriError> {
     let tournament_id = app.udp_plugin().get_tournament_context();
-    
+
     Ok(serde_json::json!({
         "tournament_id": tournament_id,
-        
+
     }))
 }
 
@@ -4603,8 +5437,10 @@ pub async fn clear_udp_tournament_context(
     app: tauri::State<'_, crate::core::app::App>,
 ) -> Result<(), TauriError> {
     log::info!("Clearing UDP tournament context");
-    
-    app.udp_plugin().clear_tournament_context().await
+
+    app.udp_plugin()
+        .clear_tournament_context()
+        .await
         .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))
 }
 
@@ -4615,8 +5451,12 @@ pub async fn get_udp_performance_metrics(
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting UDP performance metrics");
     let metrics = app.udp_plugin().get_performance_metrics();
-    serde_json::to_value(metrics)
-        .map_err(|e| TauriError::from(anyhow::anyhow!("Failed to serialize performance metrics: {}", e)))
+    serde_json::to_value(metrics).map_err(|e| {
+        TauriError::from(anyhow::anyhow!(
+            "Failed to serialize performance metrics: {}",
+            e
+        ))
+    })
 }
 
 /// Phase 1 Optimization: Get UDP server memory usage
@@ -4637,7 +5477,10 @@ pub async fn archive_old_events(
     days_old: i64,
 ) -> Result<usize, TauriError> {
     log::info!("Archiving events older than {} days", days_old);
-    let archived_count = app.database_plugin().archive_old_events(days_old).await
+    let archived_count = app
+        .database_plugin()
+        .archive_old_events(days_old)
+        .await
         .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
     log::info!("Archived {} events", archived_count);
     Ok(archived_count)
@@ -4649,10 +5492,17 @@ pub async fn get_archive_statistics(
     app: tauri::State<'_, crate::core::app::App>,
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting archive statistics");
-    let stats = app.database_plugin().get_archive_statistics().await
+    let stats = app
+        .database_plugin()
+        .get_archive_statistics()
+        .await
         .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
-    serde_json::to_value(stats)
-        .map_err(|e| TauriError::from(anyhow::anyhow!("Failed to serialize archive statistics: {}", e)))
+    serde_json::to_value(stats).map_err(|e| {
+        TauriError::from(anyhow::anyhow!(
+            "Failed to serialize archive statistics: {}",
+            e
+        ))
+    })
 }
 
 /// Phase 2 Optimization: Restore events from archive
@@ -4662,8 +5512,15 @@ pub async fn restore_from_archive(
     start_date: String,
     end_date: String,
 ) -> Result<usize, TauriError> {
-    log::info!("Restoring events from archive between {} and {}", start_date, end_date);
-    let restored_count = app.database_plugin().restore_from_archive(&start_date, &end_date).await
+    log::info!(
+        "Restoring events from archive between {} and {}",
+        start_date,
+        end_date
+    );
+    let restored_count = app
+        .database_plugin()
+        .restore_from_archive(&start_date, &end_date)
+        .await
         .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
     log::info!("Restored {} events from archive", restored_count);
     Ok(restored_count)
@@ -4675,7 +5532,10 @@ pub async fn cleanup_old_archive_data(
     days_old: i64,
 ) -> Result<usize, TauriError> {
     log::info!("Cleaning up archive data older than {} days", days_old);
-    let deleted_count = app.database_plugin().cleanup_old_archive_data(days_old).await
+    let deleted_count = app
+        .database_plugin()
+        .cleanup_old_archive_data(days_old)
+        .await
         .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
     log::info!("Cleaned up {} archived events", deleted_count);
     Ok(deleted_count)
@@ -4687,7 +5547,9 @@ pub async fn optimize_archive_tables(
     app: tauri::State<'_, crate::core::app::App>,
 ) -> Result<(), TauriError> {
     log::info!("Optimizing archive tables");
-    app.database_plugin().optimize_archive_tables().await
+    app.database_plugin()
+        .optimize_archive_tables()
+        .await
         .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
     log::info!("Archive tables optimized successfully");
     Ok(())
@@ -4700,8 +5562,12 @@ pub async fn get_database_pool_stats(
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting database pool statistics");
     let stats = app.database_plugin().get_pool_stats();
-    serde_json::to_value(stats)
-        .map_err(|e| TauriError::from(anyhow::anyhow!("Failed to serialize pool statistics: {}", e)))
+    serde_json::to_value(stats).map_err(|e| {
+        TauriError::from(anyhow::anyhow!(
+            "Failed to serialize pool statistics: {}",
+            e
+        ))
+    })
 }
 
 /// Phase 2 Optimization: Clean up database pool
@@ -4717,10 +5583,16 @@ pub async fn cleanup_database_pool(
 
 // Phase 3: Advanced Caching Commands
 #[tauri::command]
-pub async fn get_cache_statistics(app: tauri::State<'_, crate::core::app::App>) -> Result<serde_json::Value, tauri::Error> {
+pub async fn get_cache_statistics(
+    app: tauri::State<'_, crate::core::app::App>,
+) -> Result<serde_json::Value, tauri::Error> {
     let cache_stats = app.event_cache().get_cache_stats().await;
-    serde_json::to_value(cache_stats)
-        .map_err(|e| tauri::Error::from(anyhow::anyhow!("Failed to serialize cache statistics: {}", e)))
+    serde_json::to_value(cache_stats).map_err(|e| {
+        tauri::Error::from(anyhow::anyhow!(
+            "Failed to serialize cache statistics: {}",
+            e
+        ))
+    })
 }
 
 #[tauri::command]
@@ -4730,113 +5602,190 @@ pub async fn clear_cache(app: tauri::State<'_, crate::core::app::App>) -> Result
 }
 
 #[tauri::command]
-pub async fn invalidate_tournament_cache(app: tauri::State<'_, crate::core::app::App>, tournament_id: i64) -> Result<(), tauri::Error> {
+pub async fn invalidate_tournament_cache(
+    app: tauri::State<'_, crate::core::app::App>,
+    tournament_id: i64,
+) -> Result<(), tauri::Error> {
     app.event_cache().invalidate_tournament(tournament_id).await;
     Ok(())
 }
 
 #[tauri::command]
-pub async fn invalidate_match_cache(app: tauri::State<'_, crate::core::app::App>, match_id: i64) -> Result<(), tauri::Error> {
+pub async fn invalidate_match_cache(
+    app: tauri::State<'_, crate::core::app::App>,
+    match_id: i64,
+) -> Result<(), tauri::Error> {
     app.event_cache().invalidate_match(match_id).await;
     Ok(())
 }
 
 // Phase 3: Event Stream Commands
 #[tauri::command]
-pub async fn get_stream_statistics(app: tauri::State<'_, crate::core::app::App>) -> Result<serde_json::Value, tauri::Error> {
+pub async fn get_stream_statistics(
+    app: tauri::State<'_, crate::core::app::App>,
+) -> Result<serde_json::Value, tauri::Error> {
     let stream_stats = app.event_stream_processor().get_statistics().await;
-    serde_json::to_value(stream_stats)
-        .map_err(|e| tauri::Error::from(anyhow::anyhow!("Failed to serialize stream statistics: {}", e)))
+    serde_json::to_value(stream_stats).map_err(|e| {
+        tauri::Error::from(anyhow::anyhow!(
+            "Failed to serialize stream statistics: {}",
+            e
+        ))
+    })
 }
 
 #[tauri::command]
-pub async fn send_event_to_stream(app: tauri::State<'_, crate::core::app::App>, event: crate::database::models::PssEventV2) -> Result<(), tauri::Error> {
+pub async fn send_event_to_stream(
+    app: tauri::State<'_, crate::core::app::App>,
+    event: crate::database::models::PssEventV2,
+) -> Result<(), tauri::Error> {
     app.event_stream_processor().send_event(event).await;
     Ok(())
 }
 
 // Phase 3: Load Balancer Commands
 #[tauri::command]
-pub async fn get_distributor_statistics(app: tauri::State<'_, crate::core::app::App>) -> Result<serde_json::Value, tauri::Error> {
+pub async fn get_distributor_statistics(
+    app: tauri::State<'_, crate::core::app::App>,
+) -> Result<serde_json::Value, tauri::Error> {
     let distributor_stats = app.event_distributor().get_statistics().await;
-    serde_json::to_value(distributor_stats)
-        .map_err(|e| tauri::Error::from(anyhow::anyhow!("Failed to serialize distributor statistics: {}", e)))
+    serde_json::to_value(distributor_stats).map_err(|e| {
+        tauri::Error::from(anyhow::anyhow!(
+            "Failed to serialize distributor statistics: {}",
+            e
+        ))
+    })
 }
 
 #[tauri::command]
-pub async fn get_server_statistics(app: tauri::State<'_, crate::core::app::App>) -> Result<serde_json::Value, tauri::Error> {
+pub async fn get_server_statistics(
+    app: tauri::State<'_, crate::core::app::App>,
+) -> Result<serde_json::Value, tauri::Error> {
     let server_stats = app.event_distributor().get_server_statistics().await;
-    serde_json::to_value(server_stats)
-        .map_err(|e| tauri::Error::from(anyhow::anyhow!("Failed to serialize server statistics: {}", e)))
+    serde_json::to_value(server_stats).map_err(|e| {
+        tauri::Error::from(anyhow::anyhow!(
+            "Failed to serialize server statistics: {}",
+            e
+        ))
+    })
 }
 #[tauri::command]
-pub async fn add_server(app: tauri::State<'_, crate::core::app::App>, server_id: String, bind_address: String, port: u16) -> Result<(), tauri::Error> {
-    app.event_distributor().add_server(server_id, bind_address, port).await
+pub async fn add_server(
+    app: tauri::State<'_, crate::core::app::App>,
+    server_id: String,
+    bind_address: String,
+    port: u16,
+) -> Result<(), tauri::Error> {
+    app.event_distributor()
+        .add_server(server_id, bind_address, port)
+        .await
         .map_err(|e| tauri::Error::from(anyhow::anyhow!("Failed to add server: {}", e)))
 }
 
 #[tauri::command]
-pub async fn remove_server(app: tauri::State<'_, crate::core::app::App>, server_id: String) -> Result<(), tauri::Error> {
-    app.event_distributor().remove_server(&server_id).await
+pub async fn remove_server(
+    app: tauri::State<'_, crate::core::app::App>,
+    server_id: String,
+) -> Result<(), tauri::Error> {
+    app.event_distributor()
+        .remove_server(&server_id)
+        .await
         .map_err(|e| tauri::Error::from(anyhow::anyhow!("Failed to remove server: {}", e)))
 }
 
 // Phase 3: Advanced Analytics Commands
 #[tauri::command]
-pub async fn get_tournament_analytics(app: tauri::State<'_, crate::core::app::App>) -> Result<serde_json::Value, tauri::Error> {
+pub async fn get_tournament_analytics(
+    app: tauri::State<'_, crate::core::app::App>,
+) -> Result<serde_json::Value, tauri::Error> {
     let tournament_analytics = app.advanced_analytics().get_tournament_analytics().await;
-    serde_json::to_value(tournament_analytics)
-        .map_err(|e| tauri::Error::from(anyhow::anyhow!("Failed to serialize tournament analytics: {}", e)))
+    serde_json::to_value(tournament_analytics).map_err(|e| {
+        tauri::Error::from(anyhow::anyhow!(
+            "Failed to serialize tournament analytics: {}",
+            e
+        ))
+    })
 }
 
 #[tauri::command]
-pub async fn get_performance_analytics(app: tauri::State<'_, crate::core::app::App>) -> Result<serde_json::Value, tauri::Error> {
+pub async fn get_performance_analytics(
+    app: tauri::State<'_, crate::core::app::App>,
+) -> Result<serde_json::Value, tauri::Error> {
     let performance_analytics = app.advanced_analytics().get_performance_analytics().await;
-    serde_json::to_value(performance_analytics)
-        .map_err(|e| tauri::Error::from(anyhow::anyhow!("Failed to serialize performance analytics: {}", e)))
+    serde_json::to_value(performance_analytics).map_err(|e| {
+        tauri::Error::from(anyhow::anyhow!(
+            "Failed to serialize performance analytics: {}",
+            e
+        ))
+    })
 }
 
 #[tauri::command]
-pub async fn get_athlete_analytics(app: tauri::State<'_, crate::core::app::App>) -> Result<serde_json::Value, tauri::Error> {
+pub async fn get_athlete_analytics(
+    app: tauri::State<'_, crate::core::app::App>,
+) -> Result<serde_json::Value, tauri::Error> {
     let athlete_analytics = app.advanced_analytics().get_athlete_analytics().await;
-    serde_json::to_value(athlete_analytics)
-        .map_err(|e| tauri::Error::from(anyhow::anyhow!("Failed to serialize athlete analytics: {}", e)))
+    serde_json::to_value(athlete_analytics).map_err(|e| {
+        tauri::Error::from(anyhow::anyhow!(
+            "Failed to serialize athlete analytics: {}",
+            e
+        ))
+    })
 }
 
 #[tauri::command]
-pub async fn get_match_analytics(app: tauri::State<'_, crate::core::app::App>) -> Result<serde_json::Value, tauri::Error> {
+pub async fn get_match_analytics(
+    app: tauri::State<'_, crate::core::app::App>,
+) -> Result<serde_json::Value, tauri::Error> {
     let match_analytics = app.advanced_analytics().get_match_analytics().await;
-    serde_json::to_value(match_analytics)
-        .map_err(|e| tauri::Error::from(anyhow::anyhow!("Failed to serialize match analytics: {}", e)))
+    serde_json::to_value(match_analytics).map_err(|e| {
+        tauri::Error::from(anyhow::anyhow!(
+            "Failed to serialize match analytics: {}",
+            e
+        ))
+    })
 }
 
 #[tauri::command]
-pub async fn get_analytics_history(app: tauri::State<'_, crate::core::app::App>, limit: Option<usize>) -> Result<serde_json::Value, tauri::Error> {
+pub async fn get_analytics_history(
+    app: tauri::State<'_, crate::core::app::App>,
+    limit: Option<usize>,
+) -> Result<serde_json::Value, tauri::Error> {
     let analytics_history = app.advanced_analytics().get_analytics_history(limit).await;
-    serde_json::to_value(analytics_history)
-        .map_err(|e| tauri::Error::from(anyhow::anyhow!("Failed to serialize analytics history: {}", e)))
+    serde_json::to_value(analytics_history).map_err(|e| {
+        tauri::Error::from(anyhow::anyhow!(
+            "Failed to serialize analytics history: {}",
+            e
+        ))
+    })
 }
 
 #[tauri::command]
 pub async fn obs_list_scenes(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting scenes from all connected OBS instances");
-    
+
     let mut all_scenes = Vec::new();
     let connection_names = app.obs_obws_plugin().get_connection_names().await;
-    
+
     // Collect connection statuses first
     let mut connection_statuses = Vec::new();
     for connection_name in &connection_names {
-        let status = app.obs_obws_plugin().get_connection_status(connection_name).await;
+        let status = app
+            .obs_obws_plugin()
+            .get_connection_status(connection_name)
+            .await;
         connection_statuses.push((connection_name.clone(), status));
     }
-    
+
     for (connection_name, status) in &connection_statuses {
         // Check if connection is connected/authenticated
         let is_connected = status.is_ok();
-        
+
         if is_connected {
-            match app.obs_obws_plugin().get_scenes(Some(connection_name.as_str())).await {
+            match app
+                .obs_obws_plugin()
+                .get_scenes(Some(connection_name.as_str()))
+                .await
+            {
                 Ok(scene_names) => {
                     for (idx, scene_name) in scene_names.iter().enumerate() {
                         all_scenes.push(serde_json::json!({
@@ -4849,16 +5798,27 @@ pub async fn obs_list_scenes(app: State<'_, Arc<App>>) -> Result<serde_json::Val
                     }
                 }
                 Err(e) => {
-                    log::warn!("Failed to get scenes from connection '{}': {}", connection_name, e);
+                    log::warn!(
+                        "Failed to get scenes from connection '{}': {}",
+                        connection_name,
+                        e
+                    );
                 }
             }
         } else {
-            log::info!("Skipping connection '{}' - not connected (status: {:?})", connection_name, status);
+            log::info!(
+                "Skipping connection '{}' - not connected (status: {:?})",
+                connection_name,
+                status
+            );
         }
     }
-    
-    let connected_count = connection_statuses.iter().filter(|(_, status)| status.is_ok()).count();
-    
+
+    let connected_count = connection_statuses
+        .iter()
+        .filter(|(_, status)| status.is_ok())
+        .count();
+
     Ok(serde_json::json!({
         "scenes": all_scenes,
         "total_connections": connection_names.len(),
@@ -4873,15 +5833,20 @@ pub async fn simulation_start(
     duration: u32,
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!("Starting simulation: mode={}, scenario={}, duration={}", mode, scenario, duration);
-    
+    log::info!(
+        "Starting simulation: mode={}, scenario={}, duration={}",
+        mode,
+        scenario,
+        duration
+    );
+
     // Get the actual UDP settings from the app configuration
     let udp_settings = app.config_manager().get_udp_settings().await;
     let host = udp_settings.listener.bind_address.clone();
     let port = udp_settings.listener.port;
-    
+
     log::info!("Using UDP settings: host={}, port={}", host, port);
-    
+
     let (python_cmd, sim_main) = match ensure_simulation_env() {
         Ok(v) => v,
         Err(e) => {
@@ -4894,11 +5859,16 @@ pub async fn simulation_start(
     let result = std::process::Command::new(&python_cmd)
         .args(&[
             sim_main.to_str().unwrap(),
-            "--mode", &mode,
-            "--scenario", &scenario,
-            "--duration", &duration.to_string(),
-            "--host", &host,
-            "--port", &port.to_string()
+            "--mode",
+            &mode,
+            "--scenario",
+            &scenario,
+            "--duration",
+            &duration.to_string(),
+            "--host",
+            &host,
+            "--port",
+            &port.to_string(),
         ])
         .spawn();
     match result {
@@ -4909,18 +5879,18 @@ pub async fn simulation_start(
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": format!("Failed to start simulation: {}", e)
-        }))
+        })),
     }
 }
 
 #[tauri::command]
 pub async fn simulation_stop(_app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Stopping simulation");
-    
+
     let result = std::process::Command::new("taskkill")
         .args(&["/F", "/IM", "python.exe"])
         .output();
-    
+
     match result {
         Ok(_) => Ok(serde_json::json!({
             "success": true,
@@ -4929,25 +5899,27 @@ pub async fn simulation_stop(_app: State<'_, Arc<App>>) -> Result<serde_json::Va
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": format!("Failed to stop simulation: {}", e)
-        }))
+        })),
     }
 }
 #[tauri::command]
-pub async fn simulation_get_status(_app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn simulation_get_status(
+    _app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting simulation status");
-    
+
     let result = std::process::Command::new("tasklist")
         .args(&["/FI", "IMAGENAME eq python.exe"])
         .output();
-    
+
     let is_running = match result {
         Ok(output) => {
             let output_str = String::from_utf8_lossy(&output.stdout);
             output_str.contains("python.exe")
-        },
-        Err(_) => false
+        }
+        Err(_) => false,
     };
-    
+
     Ok(serde_json::json!({
         "success": true,
         "data": {
@@ -4967,15 +5939,19 @@ pub async fn simulation_send_event(
     params: serde_json::Value,
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!("Sending simulation event: type={}, params={:?}", event_type, params);
-    
+    log::info!(
+        "Sending simulation event: type={}, params={:?}",
+        event_type,
+        params
+    );
+
     // Get the actual UDP settings from the app configuration
     let udp_settings = app.config_manager().get_udp_settings().await;
     let host = udp_settings.listener.bind_address.clone();
     let port = udp_settings.listener.port;
-    
+
     log::info!("Using UDP settings: host={}, port={}", host, port);
-    
+
     let (python_cmd, sim_main) = match ensure_simulation_env() {
         Ok(v) => v,
         Err(e) => {
@@ -4985,22 +5961,27 @@ pub async fn simulation_send_event(
             }))
         }
     };
-    
+
     // Convert params to JSON string for command line
     let params_str = serde_json::to_string(&params).unwrap_or("{}".to_string());
-    
+
     let result = std::process::Command::new(&python_cmd)
         .args(&[
             sim_main.to_str().unwrap(),
-            "--mode", "interactive",
+            "--mode",
+            "interactive",
             "--send-event",
-            "--event-type", &event_type,
-            "--event-params", &params_str,
-            "--host", &host,
-            "--port", &port.to_string()
+            "--event-type",
+            &event_type,
+            "--event-params",
+            &params_str,
+            "--host",
+            &host,
+            "--port",
+            &port.to_string(),
         ])
         .spawn();
-    
+
     match result {
         Ok(_) => Ok(serde_json::json!({
             "success": true,
@@ -5009,15 +5990,17 @@ pub async fn simulation_send_event(
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": format!("Failed to send {} event: {}", event_type, e)
-        }))
+        })),
     }
 }
 
 // New automated simulation commands
 #[tauri::command]
-pub async fn simulation_get_scenarios(_app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn simulation_get_scenarios(
+    _app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting available automated scenarios");
-    
+
     let (python_cmd, sim_main) = match ensure_simulation_env() {
         Ok(v) => v,
         Err(e) => {
@@ -5025,19 +6008,20 @@ pub async fn simulation_get_scenarios(_app: State<'_, Arc<App>>) -> Result<serde
             return Ok(serde_json::json!({
                 "success": false,
                 "error": format!("Simulation environment error: {:?}", e)
-            }))
+            }));
         }
     };
-    
-    log::info!("Running command: {} {} --list-scenarios", python_cmd, sim_main.to_str().unwrap());
-    
+
+    log::info!(
+        "Running command: {} {} --list-scenarios",
+        python_cmd,
+        sim_main.to_str().unwrap()
+    );
+
     let result = std::process::Command::new(&python_cmd)
-        .args(&[
-            sim_main.to_str().unwrap(),
-            "--list-scenarios"
-        ])
+        .args(&[sim_main.to_str().unwrap(), "--list-scenarios"])
         .output();
-    
+
     match result {
         Ok(output) => {
             let output_str = String::from_utf8_lossy(&output.stdout);
@@ -5046,19 +6030,22 @@ pub async fn simulation_get_scenarios(_app: State<'_, Arc<App>>) -> Result<serde
             if !stderr_str.is_empty() {
                 log::warn!("Scenarios stderr: {}", stderr_str);
             }
-            
+
             if !output.status.success() {
-                log::error!("Command failed with exit code: {}", output.status.code().unwrap_or(-1));
+                log::error!(
+                    "Command failed with exit code: {}",
+                    output.status.code().unwrap_or(-1)
+                );
                 return Ok(serde_json::json!({
                     "success": false,
                     "error": format!("Failed to get scenarios: Command exited with code {}", output.status.code().unwrap_or(-1))
                 }));
             }
-            
+
             // Parse the scenarios from the output
             let scenarios = parse_scenarios_from_output(&output_str);
             log::info!("Parsed {} scenarios: {:?}", scenarios.len(), scenarios);
-            
+
             if scenarios.is_empty() {
                 log::warn!("No scenarios were parsed from the output");
                 return Ok(serde_json::json!({
@@ -5066,12 +6053,12 @@ pub async fn simulation_get_scenarios(_app: State<'_, Arc<App>>) -> Result<serde
                     "error": "No scenarios found in the output"
                 }));
             }
-            
+
             Ok(serde_json::json!({
                 "success": true,
                 "data": scenarios
             }))
-        },
+        }
         Err(e) => {
             log::error!("Failed to execute simulation command: {}", e);
             Ok(serde_json::json!({
@@ -5089,14 +6076,14 @@ pub async fn simulation_run_automated(
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Running automated simulation: scenario={}", scenario_name);
-    
+
     // Get the actual UDP settings from the app configuration
     let udp_settings = app.config_manager().get_udp_settings().await;
     let host = udp_settings.listener.bind_address.clone();
     let port = udp_settings.listener.port;
-    
+
     log::info!("Using UDP settings: host={}, port={}", host, port);
-    
+
     let (python_cmd, sim_main) = match ensure_simulation_env() {
         Ok(v) => v,
         Err(e) => {
@@ -5106,7 +6093,7 @@ pub async fn simulation_run_automated(
             }))
         }
     };
-    
+
     let mut args = vec![
         sim_main.to_str().unwrap().to_string(),
         "--mode".to_string(),
@@ -5118,18 +6105,16 @@ pub async fn simulation_run_automated(
         "--port".to_string(),
         port.to_string(),
     ];
-    
+
     // Add custom config if provided
     if let Some(config) = custom_config {
         if let Some(config_str) = config.as_str() {
             args.extend_from_slice(&["--config".to_string(), config_str.to_string()]);
         }
     }
-    
-    let result = std::process::Command::new(&python_cmd)
-        .args(&args)
-        .spawn();
-    
+
+    let result = std::process::Command::new(&python_cmd).args(&args).spawn();
+
     match result {
         Ok(_) => Ok(serde_json::json!({
             "success": true,
@@ -5138,288 +6123,296 @@ pub async fn simulation_run_automated(
         Err(e) => Ok(serde_json::json!({
             "success": false,
             "error": format!("Failed to start automated simulation: {}", e)
-        }))
+        })),
     }
 }
-            #[tauri::command]
-            pub async fn simulation_get_detailed_status(_app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
-                log::info!("Getting detailed simulation status");
-                
-                // Check if Python process is running
-                let process_result = std::process::Command::new("tasklist")
-                    .args(&["/FI", "IMAGENAME eq python.exe"])
-                    .output();
-                
-                let is_running = match process_result {
-                    Ok(output) => {
-                        let output_str = String::from_utf8_lossy(&output.stdout);
-                        output_str.contains("python.exe")
-                    },
-                    Err(_) => false
-                };
-                
-                // Always try to get scenarios
-                let scenarios = match ensure_simulation_env() {
-                    Ok((python_cmd, sim_main)) => {
-                        let scenarios_result = std::process::Command::new(&python_cmd)
-                            .args(&[sim_main.to_str().unwrap(), "--list-scenarios"])
-                            .output();
-                        
-                        match scenarios_result {
-                            Ok(output) => {
-                                let output_str = String::from_utf8_lossy(&output.stdout);
-                                parse_scenarios_from_output(&output_str)
-                            },
-                            Err(_) => vec![]
-                        }
-                    },
-                    Err(_) => vec![]
-                };
-                
+#[tauri::command]
+pub async fn simulation_get_detailed_status(
+    _app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("Getting detailed simulation status");
+
+    // Check if Python process is running
+    let process_result = std::process::Command::new("tasklist")
+        .args(&["/FI", "IMAGENAME eq python.exe"])
+        .output();
+
+    let is_running = match process_result {
+        Ok(output) => {
+            let output_str = String::from_utf8_lossy(&output.stdout);
+            output_str.contains("python.exe")
+        }
+        Err(_) => false,
+    };
+
+    // Always try to get scenarios
+    let scenarios = match ensure_simulation_env() {
+        Ok((python_cmd, sim_main)) => {
+            let scenarios_result = std::process::Command::new(&python_cmd)
+                .args(&[sim_main.to_str().unwrap(), "--list-scenarios"])
+                .output();
+
+            match scenarios_result {
+                Ok(output) => {
+                    let output_str = String::from_utf8_lossy(&output.stdout);
+                    parse_scenarios_from_output(&output_str)
+                }
+                Err(_) => vec![],
+            }
+        }
+        Err(_) => vec![],
+    };
+
+    Ok(serde_json::json!({
+        "success": true,
+        "data": {
+            "isRunning": is_running,
+            "isConnected": is_running,
+            "currentScenario": if is_running { "Running" } else { "None" },
+            "currentMode": if is_running { "Automated" } else { "None" },
+            "eventsSent": 0,
+            "lastEvent": if is_running { "Processing" } else { "None" },
+            "automatedScenarios": scenarios
+        }
+    }))
+}
+
+#[tauri::command]
+pub async fn simulation_run_self_test(
+    _app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("Running comprehensive self-test");
+
+    let (python_cmd, sim_main) = match ensure_simulation_env() {
+        Ok(v) => v,
+        Err(e) => {
+            return Ok(serde_json::json!({
+                "success": false,
+                "error": format!("Simulation environment error: {:?}", e)
+            }))
+        }
+    };
+
+    let result = std::process::Command::new(&python_cmd)
+        .args(&[sim_main.to_str().unwrap(), "--self-test"])
+        .output();
+
+    match result {
+        Ok(output) => {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            let stderr = String::from_utf8_lossy(&output.stderr);
+
+            if output.status.success() {
                 Ok(serde_json::json!({
                     "success": true,
                     "data": {
-                        "isRunning": is_running,
-                        "isConnected": is_running,
-                        "currentScenario": if is_running { "Running" } else { "None" },
-                        "currentMode": if is_running { "Automated" } else { "None" },
-                        "eventsSent": 0,
-                        "lastEvent": if is_running { "Processing" } else { "None" },
-                        "automatedScenarios": scenarios
+                        "output": stdout.to_string(),
+                        "error": stderr.to_string(),
+                        "exitCode": output.status.code().unwrap_or(0)
+                    }
+                }))
+            } else {
+                Ok(serde_json::json!({
+                    "success": false,
+                    "error": format!("Self-test failed: {}", stderr),
+                    "data": {
+                        "output": stdout.to_string(),
+                        "error": stderr.to_string(),
+                        "exitCode": output.status.code().unwrap_or(1)
                     }
                 }))
             }
-            
-            #[tauri::command]
-            pub async fn simulation_run_self_test(_app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
-                log::info!("Running comprehensive self-test");
-                
-                let (python_cmd, sim_main) = match ensure_simulation_env() {
-                    Ok(v) => v,
-                    Err(e) => {
-                        return Ok(serde_json::json!({
-                            "success": false,
-                            "error": format!("Simulation environment error: {:?}", e)
-                        }))
-                    }
-                };
-                
-                let result = std::process::Command::new(&python_cmd)
-                    .args(&[
-                        sim_main.to_str().unwrap(),
-                        "--self-test"
-                    ])
-                    .output();
-                
-                match result {
-                    Ok(output) => {
-                        let stdout = String::from_utf8_lossy(&output.stdout);
-                        let stderr = String::from_utf8_lossy(&output.stderr);
-                        
-                        if output.status.success() {
-                            Ok(serde_json::json!({
-                                "success": true,
-                                "data": {
-                                    "output": stdout.to_string(),
-                                    "error": stderr.to_string(),
-                                    "exitCode": output.status.code().unwrap_or(0)
-                                }
-                            }))
-                        } else {
-                            Ok(serde_json::json!({
-                                "success": false,
-                                "error": format!("Self-test failed: {}", stderr),
-                                "data": {
-                                    "output": stdout.to_string(),
-                                    "error": stderr.to_string(),
-                                    "exitCode": output.status.code().unwrap_or(1)
-                                }
-                            }))
-                        }
-                    },
-                    Err(e) => Ok(serde_json::json!({
-                        "success": false,
-                        "error": format!("Failed to run self-test: {}", e)
-                    }))
-                }
+        }
+        Err(e) => Ok(serde_json::json!({
+            "success": false,
+            "error": format!("Failed to run self-test: {}", e)
+        })),
+    }
+}
+
+#[tauri::command]
+pub async fn simulation_get_self_test_report(
+    _app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("Getting self-test report");
+
+    let report_path = match crate::utils::simulation_env::get_simulation_main_py() {
+        Ok(sim_main) => {
+            let sim_dir = sim_main.parent().unwrap();
+            sim_dir.join("self_test_report.md")
+        }
+        Err(e) => {
+            return Ok(serde_json::json!({
+                "success": false,
+                "error": format!("Failed to resolve simulation path: {:?}", e)
+            }))
+        }
+    };
+
+    let result = std::fs::read_to_string(&report_path);
+
+    match result {
+        Ok(content) => Ok(serde_json::json!({
+            "success": true,
+            "data": {
+                "report": content,
+                "path": report_path.to_str().unwrap_or("unknown")
             }
-            
-            #[tauri::command]
-            pub async fn simulation_get_self_test_report(_app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
-                log::info!("Getting self-test report");
-                
-                let report_path = match crate::utils::simulation_env::get_simulation_main_py() {
-                    Ok(sim_main) => {
-                        let sim_dir = sim_main.parent().unwrap();
-                        sim_dir.join("self_test_report.md")
-                    },
-                    Err(e) => {
-                        return Ok(serde_json::json!({
-                            "success": false,
-                            "error": format!("Failed to resolve simulation path: {:?}", e)
-                        }))
+        })),
+        Err(e) => Ok(serde_json::json!({
+            "success": false,
+            "error": format!("Failed to read self-test report: {}", e)
+        })),
+    }
+}
+
+#[tauri::command]
+pub async fn simulation_get_self_test_categories(
+    _app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("Getting self-test categories");
+
+    let (python_cmd, sim_main) = match ensure_simulation_env() {
+        Ok(v) => v,
+        Err(e) => {
+            return Ok(serde_json::json!({
+                "success": false,
+                "error": format!("Simulation environment error: {:?}", e)
+            }))
+        }
+    };
+
+    let result = std::process::Command::new(&python_cmd)
+        .args(&[sim_main.to_str().unwrap(), "--list-test-categories"])
+        .output();
+
+    match result {
+        Ok(output) => {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            let stderr = String::from_utf8_lossy(&output.stderr);
+
+            if output.status.success() {
+                // Parse categories from output
+                let categories: Vec<String> = stdout
+                    .lines()
+                    .filter(|line| line.trim().starts_with("• "))
+                    .map(|line| line.trim()[2..].to_string())
+                    .collect();
+
+                Ok(serde_json::json!({
+                    "success": true,
+                    "data": {
+                        "categories": categories,
+                        "output": stdout.to_string(),
+                        "error": stderr.to_string()
                     }
-                };
-                
-                let result = std::fs::read_to_string(&report_path);
-                
-                match result {
-                    Ok(content) => Ok(serde_json::json!({
-                        "success": true,
-                        "data": {
-                            "report": content,
-                            "path": report_path.to_str().unwrap_or("unknown")
-                        }
-                    })),
-                    Err(e) => Ok(serde_json::json!({
-                        "success": false,
-                        "error": format!("Failed to read self-test report: {}", e)
-                    }))
-                }
-            }
-            
-            #[tauri::command]
-            pub async fn simulation_get_self_test_categories(_app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
-                log::info!("Getting self-test categories");
-                
-                let (python_cmd, sim_main) = match ensure_simulation_env() {
-                    Ok(v) => v,
-                    Err(e) => {
-                        return Ok(serde_json::json!({
-                            "success": false,
-                            "error": format!("Simulation environment error: {:?}", e)
-                        }))
+                }))
+            } else {
+                Ok(serde_json::json!({
+                    "success": false,
+                    "error": format!("Failed to get categories: {}", stderr),
+                    "data": {
+                        "output": stdout.to_string(),
+                        "error": stderr.to_string()
                     }
-                };
-                
-                let result = std::process::Command::new(&python_cmd)
-                    .args(&[
-                        sim_main.to_str().unwrap(),
-                        "--list-test-categories"
-                    ])
-                    .output();
-                
-                match result {
-                    Ok(output) => {
-                        let stdout = String::from_utf8_lossy(&output.stdout);
-                        let stderr = String::from_utf8_lossy(&output.stderr);
-                        
-                        if output.status.success() {
-                            // Parse categories from output
-                            let categories: Vec<String> = stdout
-                                .lines()
-                                .filter(|line| line.trim().starts_with("• "))
-                                .map(|line| line.trim()[2..].to_string())
-                                .collect();
-                            
-                            Ok(serde_json::json!({
-                                "success": true,
-                                "data": {
-                                    "categories": categories,
-                                    "output": stdout.to_string(),
-                                    "error": stderr.to_string()
-                                }
-                            }))
-                        } else {
-                            Ok(serde_json::json!({
-                                "success": false,
-                                "error": format!("Failed to get categories: {}", stderr),
-                                "data": {
-                                    "output": stdout.to_string(),
-                                    "error": stderr.to_string()
-                                }
-                            }))
-                        }
-                    },
-                    Err(e) => Ok(serde_json::json!({
-                        "success": false,
-                        "error": format!("Failed to get categories: {}", e)
-                    }))
-                }
+                }))
             }
-            
-            #[tauri::command]
-            pub async fn simulation_run_selective_self_test(
-                selected_categories: Vec<String>,
-                _app: State<'_, Arc<App>>
-            ) -> Result<serde_json::Value, TauriError> {
-                log::info!("Running selective self-test for categories: {:?}", selected_categories);
-                
-                let (python_cmd, sim_main) = match ensure_simulation_env() {
-                    Ok(v) => v,
-                    Err(e) => {
-                        return Ok(serde_json::json!({
-                            "success": false,
-                            "error": format!("Simulation environment error: {:?}", e)
-                        }))
+        }
+        Err(e) => Ok(serde_json::json!({
+            "success": false,
+            "error": format!("Failed to get categories: {}", e)
+        })),
+    }
+}
+
+#[tauri::command]
+pub async fn simulation_run_selective_self_test(
+    selected_categories: Vec<String>,
+    _app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
+    log::info!(
+        "Running selective self-test for categories: {:?}",
+        selected_categories
+    );
+
+    let (python_cmd, sim_main) = match ensure_simulation_env() {
+        Ok(v) => v,
+        Err(e) => {
+            return Ok(serde_json::json!({
+                "success": false,
+                "error": format!("Simulation environment error: {:?}", e)
+            }))
+        }
+    };
+
+    let mut args = vec![sim_main.to_str().unwrap(), "--self-test"];
+    args.extend(selected_categories.iter().map(|s| s.as_str()));
+
+    let result = std::process::Command::new(&python_cmd).args(&args).output();
+
+    match result {
+        Ok(output) => {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            let stderr = String::from_utf8_lossy(&output.stderr);
+
+            if output.status.success() {
+                Ok(serde_json::json!({
+                    "success": true,
+                    "data": {
+                        "output": stdout.to_string(),
+                        "error": stderr.to_string(),
+                        "exitCode": output.status.code().unwrap_or(0)
                     }
-                };
-                
-                let mut args = vec![sim_main.to_str().unwrap(), "--self-test"];
-                args.extend(selected_categories.iter().map(|s| s.as_str()));
-                
-                let result = std::process::Command::new(&python_cmd)
-                    .args(&args)
-                    .output();
-                
-                match result {
-                    Ok(output) => {
-                        let stdout = String::from_utf8_lossy(&output.stdout);
-                        let stderr = String::from_utf8_lossy(&output.stderr);
-                        
-                        if output.status.success() {
-                            Ok(serde_json::json!({
-                                "success": true,
-                                "data": {
-                                    "output": stdout.to_string(),
-                                    "error": stderr.to_string(),
-                                    "exitCode": output.status.code().unwrap_or(0)
-                                }
-                            }))
-                        } else {
-                            Ok(serde_json::json!({
-                                "success": false,
-                                "error": format!("Selective self-test failed: {}", stderr),
-                                "data": {
-                                    "output": stdout.to_string(),
-                                    "error": stderr.to_string(),
-                                    "exitCode": output.status.code().unwrap_or(1)
-                                }
-                            }))
-                        }
-                    },
-                    Err(e) => Ok(serde_json::json!({
-                        "success": false,
-                        "error": format!("Failed to run selective self-test: {}", e)
-                    }))
-                }
+                }))
+            } else {
+                Ok(serde_json::json!({
+                    "success": false,
+                    "error": format!("Selective self-test failed: {}", stderr),
+                    "data": {
+                        "output": stdout.to_string(),
+                        "error": stderr.to_string(),
+                        "exitCode": output.status.code().unwrap_or(1)
+                    }
+                }))
             }
+        }
+        Err(e) => Ok(serde_json::json!({
+            "success": false,
+            "error": format!("Failed to run selective self-test: {}", e)
+        })),
+    }
+}
 // Helper function to parse scenarios from command output
 fn parse_scenarios_from_output(output: &str) -> Vec<serde_json::Value> {
     let mut scenarios = Vec::new();
     let lines: Vec<&str> = output.lines().collect();
-    
+
     log::info!("Parsing {} lines from output", lines.len());
     log::debug!("Raw output: {}", output);
-    
+
     let mut current_scenario = serde_json::Map::new();
     let mut in_scenario = false;
-    
+
     for (line_num, line) in lines.iter().enumerate() {
         let line = line.trim();
         log::debug!("Line {}: '{}'", line_num, line);
-        
+
         // Check for scenario start with multiple possible bullet characters
-        if line.starts_with("• ") || line.starts_with("- ") || line.starts_with("* ") || line.starts_with("  ") || line.starts_with("ò ") {
+        if line.starts_with("• ")
+            || line.starts_with("- ")
+            || line.starts_with("* ")
+            || line.starts_with("  ")
+            || line.starts_with("ò ")
+        {
             // New scenario
             if in_scenario && !current_scenario.is_empty() {
                 scenarios.push(serde_json::Value::Object(current_scenario.clone()));
                 log::debug!("Added scenario: {:?}", current_scenario);
             }
-            
+
             current_scenario.clear();
             in_scenario = true;
-            
+
             // Extract name after bullet point
             let name = if line.starts_with("• ") {
                 line[2..].trim()
@@ -5434,20 +6427,32 @@ fn parse_scenarios_from_output(output: &str) -> Vec<serde_json::Value> {
             } else {
                 line
             };
-            
+
             if !name.is_empty() {
-                current_scenario.insert("display_name".to_string(), serde_json::Value::String(name.to_string()));
-                current_scenario.insert("name".to_string(), serde_json::Value::String(name.to_lowercase().replace(" ", "_")));
+                current_scenario.insert(
+                    "display_name".to_string(),
+                    serde_json::Value::String(name.to_string()),
+                );
+                current_scenario.insert(
+                    "name".to_string(),
+                    serde_json::Value::String(name.to_lowercase().replace(" ", "_")),
+                );
                 log::debug!("Found scenario: {}", name);
             }
         } else if line.starts_with("  Description: ") && in_scenario {
             let description = line[14..].trim();
-            current_scenario.insert("description".to_string(), serde_json::Value::String(description.to_string()));
+            current_scenario.insert(
+                "description".to_string(),
+                serde_json::Value::String(description.to_string()),
+            );
             log::debug!("Added description: {}", description);
         } else if line.starts_with("  Matches: ") && in_scenario {
             let matches = line[10..].trim();
             if let Ok(count) = matches.parse::<i32>() {
-                current_scenario.insert("match_count".to_string(), serde_json::Value::Number(count.into()));
+                current_scenario.insert(
+                    "match_count".to_string(),
+                    serde_json::Value::Number(count.into()),
+                );
                 log::debug!("Added match count: {}", count);
             }
         } else if line.starts_with("  Est. Duration: ") && in_scenario {
@@ -5456,19 +6461,25 @@ fn parse_scenarios_from_output(output: &str) -> Vec<serde_json::Value> {
             let duration_parts: Vec<&str> = duration.split_whitespace().collect();
             if let Some(seconds_str) = duration_parts.first() {
                 if let Ok(seconds) = seconds_str.parse::<f64>() {
-                    current_scenario.insert("estimated_duration".to_string(), serde_json::Value::Number(serde_json::Number::from_f64(seconds).unwrap_or(serde_json::Number::from(0))));
+                    current_scenario.insert(
+                        "estimated_duration".to_string(),
+                        serde_json::Value::Number(
+                            serde_json::Number::from_f64(seconds)
+                                .unwrap_or(serde_json::Number::from(0)),
+                        ),
+                    );
                     log::debug!("Added duration: {}", seconds);
                 }
             }
         }
     }
-    
+
     // Add the last scenario
     if in_scenario && !current_scenario.is_empty() {
         scenarios.push(serde_json::Value::Object(current_scenario.clone()));
         log::debug!("Added final scenario: {:?}", current_scenario);
     }
-    
+
     log::info!("Parsed {} scenarios successfully", scenarios.len());
     scenarios
 }
@@ -5478,10 +6489,16 @@ fn parse_scenarios_from_output(output: &str) -> Vec<serde_json::Value> {
 // ===== YOUTUBE STREAMING MANAGEMENT COMMANDS =====
 
 #[cfg(feature = "youtube")]
-pub async fn obs_get_youtube_accounts(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn obs_get_youtube_accounts(
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     let connection_name = app.get_default_connection_name().await?;
-    
-    match app.obs_obws_plugin().get_status(Some(&connection_name)).await {
+
+    match app
+        .obs_obws_plugin()
+        .get_status(Some(&connection_name))
+        .await
+    {
         Ok(accounts) => Ok(serde_json::json!({
             "success": true,
             "data": accounts
@@ -5493,13 +6510,24 @@ pub async fn obs_get_youtube_accounts(app: State<'_, Arc<App>>) -> Result<serde_
     }
 }
 #[cfg(not(feature = "youtube"))]
-pub async fn obs_get_youtube_accounts(_app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> { Ok(serde_json::json!({ "disabled": true })) }
+pub async fn obs_get_youtube_accounts(
+    _app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
+    Ok(serde_json::json!({ "disabled": true }))
+}
 
 #[cfg(feature = "youtube")]
-pub async fn obs_get_youtube_channels(app: State<'_, Arc<App>>, account_id: String) -> Result<serde_json::Value, TauriError> {
+pub async fn obs_get_youtube_channels(
+    app: State<'_, Arc<App>>,
+    account_id: String,
+) -> Result<serde_json::Value, TauriError> {
     let connection_name = app.get_default_connection_name().await?;
-    
-    match app.obs_obws_plugin().get_status(Some(&connection_name)).await {
+
+    match app
+        .obs_obws_plugin()
+        .get_status(Some(&connection_name))
+        .await
+    {
         Ok(channels) => Ok(serde_json::json!({
             "success": true,
             "data": channels
@@ -5511,13 +6539,25 @@ pub async fn obs_get_youtube_channels(app: State<'_, Arc<App>>, account_id: Stri
     }
 }
 #[cfg(not(feature = "youtube"))]
-pub async fn obs_get_youtube_channels(_app: State<'_, Arc<App>>, _account_id: String) -> Result<serde_json::Value, TauriError> { Ok(serde_json::json!({ "disabled": true })) }
+pub async fn obs_get_youtube_channels(
+    _app: State<'_, Arc<App>>,
+    _account_id: String,
+) -> Result<serde_json::Value, TauriError> {
+    Ok(serde_json::json!({ "disabled": true }))
+}
 
 #[cfg(feature = "youtube")]
-pub async fn obs_get_youtube_stream_key(app: State<'_, Arc<App>>, channel_id: String) -> Result<serde_json::Value, TauriError> {
+pub async fn obs_get_youtube_stream_key(
+    app: State<'_, Arc<App>>,
+    channel_id: String,
+) -> Result<serde_json::Value, TauriError> {
     let connection_name = app.get_default_connection_name().await?;
-    
-    match app.obs_obws_plugin().get_status(Some(&connection_name)).await {
+
+    match app
+        .obs_obws_plugin()
+        .get_status(Some(&connection_name))
+        .await
+    {
         Ok(stream_key_info) => Ok(serde_json::json!({
             "success": true,
             "data": stream_key_info
@@ -5529,13 +6569,26 @@ pub async fn obs_get_youtube_stream_key(app: State<'_, Arc<App>>, channel_id: St
     }
 }
 #[cfg(not(feature = "youtube"))]
-pub async fn obs_get_youtube_stream_key(_app: State<'_, Arc<App>>, _channel_id: String) -> Result<serde_json::Value, TauriError> { Ok(serde_json::json!({ "disabled": true })) }
+pub async fn obs_get_youtube_stream_key(
+    _app: State<'_, Arc<App>>,
+    _channel_id: String,
+) -> Result<serde_json::Value, TauriError> {
+    Ok(serde_json::json!({ "disabled": true }))
+}
 
 #[cfg(feature = "youtube")]
-pub async fn obs_set_youtube_streaming_config(app: State<'_, Arc<App>>, channel_id: String, config: serde_json::Value) -> Result<serde_json::Value, TauriError> {
+pub async fn obs_set_youtube_streaming_config(
+    app: State<'_, Arc<App>>,
+    channel_id: String,
+    config: serde_json::Value,
+) -> Result<serde_json::Value, TauriError> {
     let connection_name = app.get_default_connection_name().await?;
-    
-    match app.obs_obws_plugin().get_status(Some(&connection_name)).await {
+
+    match app
+        .obs_obws_plugin()
+        .get_status(Some(&connection_name))
+        .await
+    {
         Ok(_) => Ok(serde_json::json!({
             "success": true,
             "message": "YouTube streaming configuration updated successfully"
@@ -5547,10 +6600,18 @@ pub async fn obs_set_youtube_streaming_config(app: State<'_, Arc<App>>, channel_
     }
 }
 #[cfg(not(feature = "youtube"))]
-pub async fn obs_set_youtube_streaming_config(_app: State<'_, Arc<App>>, _channel_id: String, _config: serde_json::Value) -> Result<serde_json::Value, TauriError> { Ok(serde_json::json!({ "disabled": true })) }
+pub async fn obs_set_youtube_streaming_config(
+    _app: State<'_, Arc<App>>,
+    _channel_id: String,
+    _config: serde_json::Value,
+) -> Result<serde_json::Value, TauriError> {
+    Ok(serde_json::json!({ "disabled": true }))
+}
 
 #[cfg(feature = "youtube")]
-pub async fn obs_get_youtube_categories(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn obs_get_youtube_categories(
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     match app.obs_obws_plugin().get_status(None).await {
         Ok(categories) => Ok(serde_json::json!({
             "success": true,
@@ -5563,10 +6624,16 @@ pub async fn obs_get_youtube_categories(app: State<'_, Arc<App>>) -> Result<serd
     }
 }
 #[cfg(not(feature = "youtube"))]
-pub async fn obs_get_youtube_categories(_app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> { Ok(serde_json::json!({ "disabled": true })) }
+pub async fn obs_get_youtube_categories(
+    _app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
+    Ok(serde_json::json!({ "disabled": true }))
+}
 
 #[cfg(feature = "youtube")]
-pub async fn obs_get_youtube_privacy_options(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn obs_get_youtube_privacy_options(
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     match app.obs_obws_plugin().get_status(None).await {
         Ok(privacy_options) => Ok(serde_json::json!({
             "success": true,
@@ -5579,10 +6646,16 @@ pub async fn obs_get_youtube_privacy_options(app: State<'_, Arc<App>>) -> Result
     }
 }
 #[cfg(not(feature = "youtube"))]
-pub async fn obs_get_youtube_privacy_options(_app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> { Ok(serde_json::json!({ "disabled": true })) }
+pub async fn obs_get_youtube_privacy_options(
+    _app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
+    Ok(serde_json::json!({ "disabled": true }))
+}
 
 #[cfg(feature = "youtube")]
-pub async fn obs_get_youtube_latency_options(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn obs_get_youtube_latency_options(
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     match app.obs_obws_plugin().get_status(None).await {
         Ok(latency_options) => Ok(serde_json::json!({
             "success": true,
@@ -5595,10 +6668,16 @@ pub async fn obs_get_youtube_latency_options(app: State<'_, Arc<App>>) -> Result
     }
 }
 #[cfg(not(feature = "youtube"))]
-pub async fn obs_get_youtube_latency_options(_app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> { Ok(serde_json::json!({ "disabled": true })) }
+pub async fn obs_get_youtube_latency_options(
+    _app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
+    Ok(serde_json::json!({ "disabled": true }))
+}
 
 #[cfg(feature = "youtube")]
-pub async fn obs_get_youtube_server_urls(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn obs_get_youtube_server_urls(
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     match app.obs_obws_plugin().get_status(None).await {
         Ok(server_urls) => Ok(serde_json::json!({
             "success": true,
@@ -5611,13 +6690,24 @@ pub async fn obs_get_youtube_server_urls(app: State<'_, Arc<App>>) -> Result<ser
     }
 }
 #[cfg(not(feature = "youtube"))]
-pub async fn obs_get_youtube_server_urls(_app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> { Ok(serde_json::json!({ "disabled": true })) }
+pub async fn obs_get_youtube_server_urls(
+    _app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
+    Ok(serde_json::json!({ "disabled": true }))
+}
 
 #[cfg(feature = "youtube")]
-pub async fn obs_regenerate_youtube_stream_key(app: State<'_, Arc<App>>, channel_id: String) -> Result<serde_json::Value, TauriError> {
+pub async fn obs_regenerate_youtube_stream_key(
+    app: State<'_, Arc<App>>,
+    channel_id: String,
+) -> Result<serde_json::Value, TauriError> {
     let connection_name = app.get_default_connection_name().await?;
-    
-    match app.obs_obws_plugin().get_status(Some(&connection_name)).await {
+
+    match app
+        .obs_obws_plugin()
+        .get_status(Some(&connection_name))
+        .await
+    {
         Ok(new_stream_key_info) => Ok(serde_json::json!({
             "success": true,
             "data": new_stream_key_info
@@ -5629,12 +6719,24 @@ pub async fn obs_regenerate_youtube_stream_key(app: State<'_, Arc<App>>, channel
     }
 }
 #[cfg(not(feature = "youtube"))]
-pub async fn obs_regenerate_youtube_stream_key(_app: State<'_, Arc<App>>, _channel_id: String) -> Result<serde_json::Value, TauriError> { Ok(serde_json::json!({ "disabled": true })) }
+pub async fn obs_regenerate_youtube_stream_key(
+    _app: State<'_, Arc<App>>,
+    _channel_id: String,
+) -> Result<serde_json::Value, TauriError> {
+    Ok(serde_json::json!({ "disabled": true }))
+}
 #[cfg(feature = "youtube")]
-pub async fn obs_get_youtube_streaming_analytics(app: State<'_, Arc<App>>, channel_id: String) -> Result<serde_json::Value, TauriError> {
+pub async fn obs_get_youtube_streaming_analytics(
+    app: State<'_, Arc<App>>,
+    channel_id: String,
+) -> Result<serde_json::Value, TauriError> {
     let connection_name = app.get_default_connection_name().await?;
-    
-    match app.obs_obws_plugin().get_status(Some(&connection_name)).await {
+
+    match app
+        .obs_obws_plugin()
+        .get_status(Some(&connection_name))
+        .await
+    {
         Ok(analytics) => Ok(serde_json::json!({
             "success": true,
             "data": analytics
@@ -5646,13 +6748,25 @@ pub async fn obs_get_youtube_streaming_analytics(app: State<'_, Arc<App>>, chann
     }
 }
 #[cfg(not(feature = "youtube"))]
-pub async fn obs_get_youtube_streaming_analytics(_app: State<'_, Arc<App>>, _channel_id: String) -> Result<serde_json::Value, TauriError> { Ok(serde_json::json!({ "disabled": true })) }
+pub async fn obs_get_youtube_streaming_analytics(
+    _app: State<'_, Arc<App>>,
+    _channel_id: String,
+) -> Result<serde_json::Value, TauriError> {
+    Ok(serde_json::json!({ "disabled": true }))
+}
 
 #[cfg(feature = "youtube")]
-pub async fn obs_get_youtube_streaming_schedule(app: State<'_, Arc<App>>, channel_id: String) -> Result<serde_json::Value, TauriError> {
+pub async fn obs_get_youtube_streaming_schedule(
+    app: State<'_, Arc<App>>,
+    channel_id: String,
+) -> Result<serde_json::Value, TauriError> {
     let connection_name = app.get_default_connection_name().await?;
-    
-    match app.obs_obws_plugin().get_status(Some(&connection_name)).await {
+
+    match app
+        .obs_obws_plugin()
+        .get_status(Some(&connection_name))
+        .await
+    {
         Ok(schedule) => Ok(serde_json::json!({
             "success": true,
             "data": schedule
@@ -5664,13 +6778,26 @@ pub async fn obs_get_youtube_streaming_schedule(app: State<'_, Arc<App>>, channe
     }
 }
 #[cfg(not(feature = "youtube"))]
-pub async fn obs_get_youtube_streaming_schedule(_app: State<'_, Arc<App>>, _channel_id: String) -> Result<serde_json::Value, TauriError> { Ok(serde_json::json!({ "disabled": true })) }
+pub async fn obs_get_youtube_streaming_schedule(
+    _app: State<'_, Arc<App>>,
+    _channel_id: String,
+) -> Result<serde_json::Value, TauriError> {
+    Ok(serde_json::json!({ "disabled": true }))
+}
 
 #[cfg(feature = "youtube")]
-pub async fn obs_create_youtube_streaming_schedule(app: State<'_, Arc<App>>, channel_id: String, schedule_data: serde_json::Value) -> Result<serde_json::Value, TauriError> {
+pub async fn obs_create_youtube_streaming_schedule(
+    app: State<'_, Arc<App>>,
+    channel_id: String,
+    schedule_data: serde_json::Value,
+) -> Result<serde_json::Value, TauriError> {
     let connection_name = app.get_default_connection_name().await?;
-    
-    match app.obs_obws_plugin().get_status(Some(&connection_name)).await {
+
+    match app
+        .obs_obws_plugin()
+        .get_status(Some(&connection_name))
+        .await
+    {
         Ok(created_schedule) => Ok(serde_json::json!({
             "success": true,
             "data": created_schedule
@@ -5682,93 +6809,127 @@ pub async fn obs_create_youtube_streaming_schedule(app: State<'_, Arc<App>>, cha
     }
 }
 #[cfg(not(feature = "youtube"))]
-pub async fn obs_create_youtube_streaming_schedule(_app: State<'_, Arc<App>>, _channel_id: String, _schedule_data: serde_json::Value) -> Result<serde_json::Value, TauriError> { Ok(serde_json::json!({ "disabled": true })) }
+pub async fn obs_create_youtube_streaming_schedule(
+    _app: State<'_, Arc<App>>,
+    _channel_id: String,
+    _schedule_data: serde_json::Value,
+) -> Result<serde_json::Value, TauriError> {
+    Ok(serde_json::json!({ "disabled": true }))
+}
 
 // (legacy streaming destination commands removed)
 
 // YouTube API Commands (disabled by default)
 #[tauri::command]
-pub async fn youtube_get_auth_url(_app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
-    Ok(serde_json::json!({ "success": true, "disabled": true }))
-}
-#[tauri::command]
-pub async fn youtube_authenticate(_app: State<'_, Arc<App>>, _code: String) -> Result<serde_json::Value, TauriError> {
-    Ok(serde_json::json!({ "success": true, "disabled": true }))
-}
-#[tauri::command]
-pub async fn youtube_create_playlist(
-    _app: State<'_, Arc<App>>, 
-    _title: String, 
-    _description: Option<String>, 
-    _privacy: String
+pub async fn youtube_get_auth_url(
+    _app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
     Ok(serde_json::json!({ "success": true, "disabled": true }))
 }
 #[tauri::command]
-pub async fn youtube_get_playlists(_app: State<'_, Arc<App>>, _max_results: Option<u32>) -> Result<serde_json::Value, TauriError> {
+pub async fn youtube_authenticate(
+    _app: State<'_, Arc<App>>,
+    _code: String,
+) -> Result<serde_json::Value, TauriError> {
+    Ok(serde_json::json!({ "success": true, "disabled": true }))
+}
+#[tauri::command]
+pub async fn youtube_create_playlist(
+    _app: State<'_, Arc<App>>,
+    _title: String,
+    _description: Option<String>,
+    _privacy: String,
+) -> Result<serde_json::Value, TauriError> {
+    Ok(serde_json::json!({ "success": true, "disabled": true }))
+}
+#[tauri::command]
+pub async fn youtube_get_playlists(
+    _app: State<'_, Arc<App>>,
+    _max_results: Option<u32>,
+) -> Result<serde_json::Value, TauriError> {
     Ok(serde_json::json!({ "success": true, "disabled": true }))
 }
 #[tauri::command]
 pub async fn youtube_add_video_to_playlist(
-    _app: State<'_, Arc<App>>, 
-    _playlist_id: String, 
-    _video_id: String
+    _app: State<'_, Arc<App>>,
+    _playlist_id: String,
+    _video_id: String,
 ) -> Result<serde_json::Value, TauriError> {
     Ok(serde_json::json!({ "success": true, "disabled": true }))
 }
 #[tauri::command]
 pub async fn youtube_get_playlist_videos(
-    _app: State<'_, Arc<App>>, 
-    _playlist_id: String, 
-    _max_results: Option<u32>
+    _app: State<'_, Arc<App>>,
+    _playlist_id: String,
+    _max_results: Option<u32>,
 ) -> Result<serde_json::Value, TauriError> {
     Ok(serde_json::json!({ "success": true, "disabled": true }))
 }
 #[tauri::command]
 pub async fn youtube_update_playlist(
-    _app: State<'_, Arc<App>>, 
-    _playlist_id: String, 
-    _title: Option<String>, 
-    _description: Option<String>, 
-    _privacy: Option<String>
+    _app: State<'_, Arc<App>>,
+    _playlist_id: String,
+    _title: Option<String>,
+    _description: Option<String>,
+    _privacy: Option<String>,
 ) -> Result<serde_json::Value, TauriError> {
     Ok(serde_json::json!({ "success": true, "disabled": true }))
 }
 #[tauri::command]
-pub async fn youtube_delete_playlist(_app: State<'_, Arc<App>>, _playlist_id: String) -> Result<serde_json::Value, TauriError> {
+pub async fn youtube_delete_playlist(
+    _app: State<'_, Arc<App>>,
+    _playlist_id: String,
+) -> Result<serde_json::Value, TauriError> {
     Ok(serde_json::json!({ "success": true, "disabled": true }))
 }
 #[tauri::command]
 pub async fn youtube_create_scheduled_stream(
-    _app: State<'_, Arc<App>>, 
-    _title: String, 
-    _description: Option<String>, 
-    _scheduled_time: String
+    _app: State<'_, Arc<App>>,
+    _title: String,
+    _description: Option<String>,
+    _scheduled_time: String,
 ) -> Result<serde_json::Value, TauriError> {
     Ok(serde_json::json!({ "success": true, "disabled": true }))
 }
 #[tauri::command]
-pub async fn youtube_get_live_streams(_app: State<'_, Arc<App>>, _max_results: Option<u32>) -> Result<serde_json::Value, TauriError> {
+pub async fn youtube_get_live_streams(
+    _app: State<'_, Arc<App>>,
+    _max_results: Option<u32>,
+) -> Result<serde_json::Value, TauriError> {
     Ok(serde_json::json!({ "success": true, "disabled": true }))
 }
 #[tauri::command]
-pub async fn youtube_get_scheduled_streams(_app: State<'_, Arc<App>>, _max_results: Option<u32>) -> Result<serde_json::Value, TauriError> {
+pub async fn youtube_get_scheduled_streams(
+    _app: State<'_, Arc<App>>,
+    _max_results: Option<u32>,
+) -> Result<serde_json::Value, TauriError> {
     Ok(serde_json::json!({ "success": true, "disabled": true }))
 }
 #[tauri::command]
-pub async fn youtube_get_completed_streams(_app: State<'_, Arc<App>>, _max_results: Option<u32>) -> Result<serde_json::Value, TauriError> {
+pub async fn youtube_get_completed_streams(
+    _app: State<'_, Arc<App>>,
+    _max_results: Option<u32>,
+) -> Result<serde_json::Value, TauriError> {
     Ok(serde_json::json!({ "success": true, "disabled": true }))
 }
 #[tauri::command]
-pub async fn youtube_end_stream(_app: State<'_, Arc<App>>, _stream_id: String) -> Result<serde_json::Value, TauriError> {
+pub async fn youtube_end_stream(
+    _app: State<'_, Arc<App>>,
+    _stream_id: String,
+) -> Result<serde_json::Value, TauriError> {
     Ok(serde_json::json!({ "success": true, "disabled": true }))
 }
 #[tauri::command]
-pub async fn youtube_get_channel_info(_app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn youtube_get_channel_info(
+    _app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     Ok(serde_json::json!({ "success": true, "disabled": true }))
 }
 #[tauri::command]
-pub async fn youtube_get_video_analytics(_app: State<'_, Arc<App>>, _video_id: String) -> Result<serde_json::Value, TauriError> {
+pub async fn youtube_get_video_analytics(
+    _app: State<'_, Arc<App>>,
+    _video_id: String,
+) -> Result<serde_json::Value, TauriError> {
     Ok(serde_json::json!({ "success": true, "disabled": true }))
 }
 #[tauri::command]
@@ -5789,14 +6950,14 @@ pub async fn youtube_initialize(
 #[tauri::command]
 pub async fn control_room_authenticate_async(
     _password: String,
-    _app: State<'_, Arc<App>>
+    _app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Control Room async authentication attempt");
-    
+
     // Create async database connection
     let app_data_dir = match dirs::data_dir() {
         Some(data_dir) => data_dir.join("reStrikeVTA"),
-        None => std::env::current_dir().unwrap_or_default().join("data")
+        None => std::env::current_dir().unwrap_or_default().join("data"),
     };
     let _async_db = match crate::database::AsyncDatabaseConnection::new(&app_data_dir).await {
         Ok(db) => Arc::new(db),
@@ -5808,7 +6969,7 @@ pub async fn control_room_authenticate_async(
             }));
         }
     };
-    
+
     // obws does not require separate authentication. Return a synthetic session.
     Ok(serde_json::json!({
         "success": true,
@@ -5822,7 +6983,9 @@ pub async fn control_room_authenticate_async(
 fn validate_session(session_id: &str) -> Result<(), TauriError> {
     // Basic session validation - check if session_id is not empty
     if session_id.is_empty() {
-        return Err(TauriError::from(anyhow::anyhow!("Invalid session: session_id cannot be empty")));
+        return Err(TauriError::from(anyhow::anyhow!(
+            "Invalid session: session_id cannot be empty"
+        )));
     }
 
     // Additional validation could include:
@@ -5837,9 +7000,12 @@ fn validate_session(session_id: &str) -> Result<(), TauriError> {
 #[tauri::command]
 pub async fn control_room_get_obs_connections(
     session_id: String,
-    app: State<'_, Arc<App>>
+    app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::debug!("Control Room: Getting OBS connections for session {}", session_id);
+    log::debug!(
+        "Control Room: Getting OBS connections for session {}",
+        session_id
+    );
 
     // Validate session before proceeding
     validate_session(&session_id)?;
@@ -5855,9 +7021,12 @@ pub async fn control_room_get_obs_connections(
 #[tauri::command]
 pub async fn control_room_get_obs_connections_with_status(
     session_id: String,
-    app: State<'_, Arc<App>>
+    app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!("Control Room: Getting OBS connections with status for session {}", session_id);
+    log::info!(
+        "Control Room: Getting OBS connections with status for session {}",
+        session_id
+    );
 
     // Validate session before proceeding
     validate_session(&session_id)?;
@@ -5866,7 +7035,10 @@ pub async fn control_room_get_obs_connections_with_status(
     let mut connections_data = Vec::new();
     for name in names {
         let status = app.obs_obws_plugin().get_connection_status(&name).await;
-        let status_str = match status { Ok(s) => format!("{:?}", s), Err(e) => format!("Error: {}", e) };
+        let status_str = match status {
+            Ok(s) => format!("{:?}", s),
+            Err(e) => format!("Error: {}", e),
+        };
         connections_data.push(serde_json::json!({"name": name, "status": status_str}));
     }
     Ok(serde_json::json!({"success": true, "connections": connections_data}))
@@ -5875,9 +7047,12 @@ pub async fn control_room_get_obs_connections_with_status(
 #[tauri::command]
 pub async fn control_room_get_obs_connections_with_details(
     session_id: String,
-    app: State<'_, Arc<App>>
+    app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!("Control Room: Getting OBS connections with full details for session {}", session_id);
+    log::info!(
+        "Control Room: Getting OBS connections with full details for session {}",
+        session_id
+    );
 
     // Validate session before proceeding
     validate_session(&session_id)?;
@@ -5896,7 +7071,7 @@ pub async fn control_room_get_obs_connections_with_details(
             }).collect();
 
             Ok(serde_json::json!({"success": true, "connections": connections_data}))
-        },
+        }
         Err(e) => {
             log::error!("Failed to get OBS connections with details: {}", e);
             Ok(serde_json::json!({"success": false, "error": e.to_string(), "connections": []}))
@@ -5909,9 +7084,13 @@ pub async fn control_room_get_obs_connections_with_details(
 pub async fn control_room_mute_all_obs(
     session_id: String,
     source_name: String,
-    app: State<'_, Arc<App>>
+    app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!("Control Room: Bulk mute all OBS with source '{}' for session {}", source_name, session_id);
+    log::info!(
+        "Control Room: Bulk mute all OBS with source '{}' for session {}",
+        source_name,
+        session_id
+    );
 
     // Validate session before proceeding
     validate_session(&session_id)?;
@@ -5946,9 +7125,13 @@ pub async fn control_room_mute_all_obs(
 pub async fn control_room_unmute_all_obs(
     session_id: String,
     source_name: String,
-    app: State<'_, Arc<App>>
+    app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!("Control Room: Bulk unmute all OBS with source '{}' for session {}", source_name, session_id);
+    log::info!(
+        "Control Room: Bulk unmute all OBS with source '{}' for session {}",
+        source_name,
+        session_id
+    );
 
     // Validate session before proceeding
     validate_session(&session_id)?;
@@ -5982,9 +7165,13 @@ pub async fn control_room_unmute_all_obs(
 pub async fn control_room_change_all_obs_scenes(
     session_id: String,
     scene_name: String,
-    app: State<'_, Arc<App>>
+    app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!("Control Room: Change all OBS scenes to '{}' for session {}", scene_name, session_id);
+    log::info!(
+        "Control Room: Change all OBS scenes to '{}' for session {}",
+        scene_name,
+        session_id
+    );
 
     // Validate session before proceeding
     validate_session(&session_id)?;
@@ -5992,16 +7179,21 @@ pub async fn control_room_change_all_obs_scenes(
     let names = app.obs_obws_plugin().get_connection_names().await;
     let mut results = Vec::new();
     for n in names {
-        let r = app.obs_obws_plugin().set_current_scene(&scene_name, Some(&n)).await;
+        let r = app
+            .obs_obws_plugin()
+            .set_current_scene(&scene_name, Some(&n))
+            .await;
         results.push((n, r.map(|_| ()).map_err(|e| anyhow::anyhow!(e.to_string()))));
     }
     let formatted_results: Vec<serde_json::Value> = results
         .into_iter()
-        .map(|(conn, result)| serde_json::json!({
-            "connection": conn,
-            "success": result.is_ok(),
-            "error": result.err().map(|e| e.to_string())
-        }))
+        .map(|(conn, result)| {
+            serde_json::json!({
+                "connection": conn,
+                "success": result.is_ok(),
+                "error": result.err().map(|e| e.to_string())
+            })
+        })
         .collect();
     Ok(serde_json::json!({ "success": true, "results": formatted_results }))
 }
@@ -6009,9 +7201,12 @@ pub async fn control_room_change_all_obs_scenes(
 #[tauri::command]
 pub async fn control_room_start_all_obs(
     session_id: String,
-    app: State<'_, Arc<App>>
+    app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!("Control Room: Start all OBS streams for session {}", session_id);
+    log::info!(
+        "Control Room: Start all OBS streams for session {}",
+        session_id
+    );
 
     // Validate session before proceeding
     validate_session(&session_id)?;
@@ -6024,11 +7219,13 @@ pub async fn control_room_start_all_obs(
     }
     let formatted_results: Vec<serde_json::Value> = results
         .into_iter()
-        .map(|(conn, result)| serde_json::json!({
-            "connection": conn,
-            "success": result.is_ok(),
-            "error": result.err().map(|e| e.to_string())
-        }))
+        .map(|(conn, result)| {
+            serde_json::json!({
+                "connection": conn,
+                "success": result.is_ok(),
+                "error": result.err().map(|e| e.to_string())
+            })
+        })
         .collect();
     Ok(serde_json::json!({ "success": true, "results": formatted_results }))
 }
@@ -6037,9 +7234,12 @@ pub async fn control_room_start_all_obs(
 #[tauri::command]
 pub async fn control_room_stop_all_obs(
     session_id: String,
-    app: State<'_, Arc<App>>
+    app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!("Control Room: Stop all OBS streams for session {}", session_id);
+    log::info!(
+        "Control Room: Stop all OBS streams for session {}",
+        session_id
+    );
 
     // Validate session before proceeding
     validate_session(&session_id)?;
@@ -6052,11 +7252,13 @@ pub async fn control_room_stop_all_obs(
     }
     let formatted_results: Vec<serde_json::Value> = results
         .into_iter()
-        .map(|(conn, result)| serde_json::json!({
-            "connection": conn,
-            "success": result.is_ok(),
-            "error": result.err().map(|e| e.to_string())
-        }))
+        .map(|(conn, result)| {
+            serde_json::json!({
+                "connection": conn,
+                "success": result.is_ok(),
+                "error": result.err().map(|e| e.to_string())
+            })
+        })
         .collect();
     Ok(serde_json::json!({ "success": true, "results": formatted_results }))
 }
@@ -6070,14 +7272,27 @@ pub async fn control_room_add_obs_connection(
     port: u16,
     password: Option<String>,
     _notes: Option<String>,
-    app: State<'_, Arc<App>>
+    app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!("Control Room: Adding OBS connection '{}' at {}:{} for session {}", name, host, port, session_id);
+    log::info!(
+        "Control Room: Adding OBS connection '{}' at {}:{} for session {}",
+        name,
+        host,
+        port,
+        session_id
+    );
 
     // Validate session before proceeding
     validate_session(&session_id)?;
 
-    let config = crate::plugins::obs_obws::types::ObsConnectionConfig { name: name.clone(), host, port, password, timeout_seconds: 30, role: crate::plugins::obs_obws::ObsConnectionRole::None };
+    let config = crate::plugins::obs_obws::types::ObsConnectionConfig {
+        name: name.clone(),
+        host,
+        port,
+        password,
+        timeout_seconds: 30,
+        role: crate::plugins::obs_obws::ObsConnectionRole::None,
+    };
     match app.obs_obws_plugin().add_connection(config).await {
         Ok(_) => {
             log::info!("Control Room: Successfully added OBS connection '{}'", name);
@@ -6088,7 +7303,10 @@ pub async fn control_room_add_obs_connection(
         }
         Err(e) => {
             log::error!("Failed to add OBS connection '{}': {}", name, e);
-            Err(TauriError::from(anyhow::anyhow!("Failed to add OBS connection: {}", e)))
+            Err(TauriError::from(anyhow::anyhow!(
+                "Failed to add OBS connection: {}",
+                e
+            )))
         }
     }
 }
@@ -6098,9 +7316,13 @@ pub async fn control_room_add_obs_connection(
 pub async fn control_room_connect_obs(
     session_id: String,
     obs_name: String,
-    app: State<'_, Arc<App>>
+    app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!("Control Room: Connecting to OBS '{}' for session {}", obs_name, session_id);
+    log::info!(
+        "Control Room: Connecting to OBS '{}' for session {}",
+        obs_name,
+        session_id
+    );
 
     // Validate session before proceeding
     validate_session(&session_id)?;
@@ -6115,7 +7337,10 @@ pub async fn control_room_connect_obs(
         }
         Err(e) => {
             log::error!("Failed to connect to OBS '{}': {}", obs_name, e);
-            Err(TauriError::from(anyhow::anyhow!("Failed to connect to OBS: {}", e)))
+            Err(TauriError::from(anyhow::anyhow!(
+                "Failed to connect to OBS: {}",
+                e
+            )))
         }
     }
 }
@@ -6125,16 +7350,23 @@ pub async fn control_room_connect_obs(
 pub async fn control_room_disconnect_obs(
     session_id: String,
     obs_name: String,
-    app: State<'_, Arc<App>>
+    app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!("Control Room: Disconnecting from OBS '{}' for session {}", obs_name, session_id);
+    log::info!(
+        "Control Room: Disconnecting from OBS '{}' for session {}",
+        obs_name,
+        session_id
+    );
 
     // Validate session before proceeding
     validate_session(&session_id)?;
 
     match app.obs_obws_plugin().disconnect(&obs_name).await {
         Ok(_) => {
-            log::info!("Control Room: Successfully disconnected from OBS '{}'", obs_name);
+            log::info!(
+                "Control Room: Successfully disconnected from OBS '{}'",
+                obs_name
+            );
             Ok(serde_json::json!({
                 "success": true,
                 "message": format!("Disconnected from OBS '{}'", obs_name)
@@ -6142,7 +7374,10 @@ pub async fn control_room_disconnect_obs(
         }
         Err(e) => {
             log::error!("Failed to disconnect from OBS '{}': {}", obs_name, e);
-            Err(TauriError::from(anyhow::anyhow!("Failed to disconnect from OBS: {}", e)))
+            Err(TauriError::from(anyhow::anyhow!(
+                "Failed to disconnect from OBS: {}",
+                e
+            )))
         }
     }
 }
@@ -6152,16 +7387,23 @@ pub async fn control_room_disconnect_obs(
 pub async fn control_room_remove_obs_connection(
     session_id: String,
     obs_name: String,
-    app: State<'_, Arc<App>>
+    app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!("Control Room: Removing OBS connection '{}' for session {}", obs_name, session_id);
+    log::info!(
+        "Control Room: Removing OBS connection '{}' for session {}",
+        obs_name,
+        session_id
+    );
 
     // Validate session before proceeding
     validate_session(&session_id)?;
 
     match app.obs_obws_plugin().remove_connection(&obs_name).await {
         Ok(_) => {
-            log::info!("Control Room: Successfully removed OBS connection '{}'", obs_name);
+            log::info!(
+                "Control Room: Successfully removed OBS connection '{}'",
+                obs_name
+            );
             Ok(serde_json::json!({
                 "success": true,
                 "message": format!("OBS connection '{}' removed successfully", obs_name)
@@ -6169,7 +7411,10 @@ pub async fn control_room_remove_obs_connection(
         }
         Err(e) => {
             log::error!("Failed to remove OBS connection '{}': {}", obs_name, e);
-            Err(TauriError::from(anyhow::anyhow!("Failed to remove OBS connection: {}", e)))
+            Err(TauriError::from(anyhow::anyhow!(
+                "Failed to remove OBS connection: {}",
+                e
+            )))
         }
     }
 }
@@ -6179,18 +7424,27 @@ pub async fn control_room_remove_obs_connection(
 pub async fn control_room_get_obs_connection(
     session_id: String,
     obs_name: String,
-    app: State<'_, Arc<App>>
+    app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!("Control Room: Getting OBS connection '{}' for session {}", obs_name, session_id);
+    log::info!(
+        "Control Room: Getting OBS connection '{}' for session {}",
+        obs_name,
+        session_id
+    );
 
     // Validate session before proceeding
     validate_session(&session_id)?;
 
     match app.obs_obws_plugin().get_connection_status(&obs_name).await {
-        Ok(status) => Ok(serde_json::json!({ "success": true, "connection": {"name": obs_name, "status": format!("{:?}", status)} })),
+        Ok(status) => Ok(
+            serde_json::json!({ "success": true, "connection": {"name": obs_name, "status": format!("{:?}", status)} }),
+        ),
         Err(e) => {
             log::error!("Failed to get OBS connection '{}': {}", obs_name, e);
-            Err(TauriError::from(anyhow::anyhow!("Failed to get OBS connection: {}", e)))
+            Err(TauriError::from(anyhow::anyhow!(
+                "Failed to get OBS connection: {}",
+                e
+            )))
         }
     }
 }
@@ -6204,18 +7458,32 @@ pub async fn control_room_update_obs_connection(
     port: u16,
     password: Option<String>,
     _notes: Option<String>,
-    app: State<'_, Arc<App>>
+    app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!("Control Room: Updating OBS connection '{}' for session {}", obs_name, session_id);
+    log::info!(
+        "Control Room: Updating OBS connection '{}' for session {}",
+        obs_name,
+        session_id
+    );
 
     // Validate session before proceeding
     validate_session(&session_id)?;
 
     let _ = app.obs_obws_plugin().remove_connection(&obs_name).await;
-    let cfg = crate::plugins::obs_obws::types::ObsConnectionConfig { name: obs_name.clone(), host, port, password, timeout_seconds: 30, role: crate::plugins::obs_obws::ObsConnectionRole::None };
+    let cfg = crate::plugins::obs_obws::types::ObsConnectionConfig {
+        name: obs_name.clone(),
+        host,
+        port,
+        password,
+        timeout_seconds: 30,
+        role: crate::plugins::obs_obws::ObsConnectionRole::None,
+    };
     match app.obs_obws_plugin().add_connection(cfg).await {
         Ok(_) => {
-            log::info!("Control Room: Successfully updated OBS connection '{}'", obs_name);
+            log::info!(
+                "Control Room: Successfully updated OBS connection '{}'",
+                obs_name
+            );
             Ok(serde_json::json!({
                 "success": true,
                 "message": format!("OBS connection '{}' updated successfully", obs_name)
@@ -6223,7 +7491,10 @@ pub async fn control_room_update_obs_connection(
         }
         Err(e) => {
             log::error!("Failed to update OBS connection '{}': {}", obs_name, e);
-            Err(TauriError::from(anyhow::anyhow!("Failed to update OBS connection: {}", e)))
+            Err(TauriError::from(anyhow::anyhow!(
+                "Failed to update OBS connection: {}",
+                e
+            )))
         }
     }
 }
@@ -6231,21 +7502,40 @@ pub async fn control_room_update_obs_connection(
 #[tauri::command]
 pub async fn control_room_connect_all_obs(
     session_id: String,
-    app: State<'_, Arc<App>>
+    app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!("Control Room: Connecting all OBS connections for session {}", session_id);
+    log::info!(
+        "Control Room: Connecting all OBS connections for session {}",
+        session_id
+    );
 
     // Validate session before proceeding
     validate_session(&session_id)?;
 
     let names = app.obs_obws_plugin().get_connection_names().await;
     let mut results: Vec<(String, Result<(), anyhow::Error>)> = Vec::new();
-    for n in names { results.push((n.clone(), app.obs_obws_plugin().connect(&n).await.map(|_| ()).map_err(|e| anyhow::anyhow!(e.to_string())))); }
+    for n in names {
+        results.push((
+            n.clone(),
+            app.obs_obws_plugin()
+                .connect(&n)
+                .await
+                .map(|_| ())
+                .map_err(|e| anyhow::anyhow!(e.to_string())),
+        ));
+    }
     {
         let success_count = results.iter().filter(|(_, r)| r.is_ok()).count();
         let total_count = results.len();
-        let failed_connections: Vec<String> = results.iter().filter_map(|(name, r)| r.as_ref().err().map(|e| format!("{}: {}", name, e))).collect();
-        log::info!("Control Room: Connected {} of {} OBS connections", success_count, total_count);
+        let failed_connections: Vec<String> = results
+            .iter()
+            .filter_map(|(name, r)| r.as_ref().err().map(|e| format!("{}: {}", name, e)))
+            .collect();
+        log::info!(
+            "Control Room: Connected {} of {} OBS connections",
+            success_count,
+            total_count
+        );
         if failed_connections.is_empty() {
             return Ok(serde_json::json!({
                 "success": true,
@@ -6269,7 +7559,7 @@ pub async fn control_room_connect_all_obs(
 #[tauri::command]
 pub async fn control_room_disconnect_all_obs(
     session_id: String,
-    _app: State<'_, Arc<App>>
+    _app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Control Room: Disconnecting all OBS connections");
 
@@ -6278,12 +7568,28 @@ pub async fn control_room_disconnect_all_obs(
 
     let names = _app.obs_obws_plugin().get_connection_names().await;
     let mut results: Vec<(String, Result<(), anyhow::Error>)> = Vec::new();
-    for n in names { results.push((n.clone(), _app.obs_obws_plugin().disconnect(&n).await.map(|_| ()).map_err(|e| anyhow::anyhow!(e.to_string())))); }
+    for n in names {
+        results.push((
+            n.clone(),
+            _app.obs_obws_plugin()
+                .disconnect(&n)
+                .await
+                .map(|_| ())
+                .map_err(|e| anyhow::anyhow!(e.to_string())),
+        ));
+    }
     {
         let success_count = results.iter().filter(|(_, r)| r.is_ok()).count();
         let total_count = results.len();
-        let failed_connections: Vec<String> = results.iter().filter_map(|(name, r)| r.as_ref().err().map(|e| format!("{}: {}", name, e))).collect();
-        log::info!("Control Room: Disconnected {} of {} OBS connections", success_count, total_count);
+        let failed_connections: Vec<String> = results
+            .iter()
+            .filter_map(|(name, r)| r.as_ref().err().map(|e| format!("{}: {}", name, e)))
+            .collect();
+        log::info!(
+            "Control Room: Disconnected {} of {} OBS connections",
+            success_count,
+            total_count
+        );
         if failed_connections.is_empty() {
             return Ok(serde_json::json!({
                 "success": true,
@@ -6309,25 +7615,36 @@ pub async fn control_room_disconnect_all_obs(
 pub async fn control_room_get_audio_sources(
     session_id: String,
     obs_name: String,
-    app: State<'_, Arc<App>>
+    app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::debug!("Control Room: Getting audio sources for OBS '{}' session {}", obs_name, session_id);
+    log::debug!(
+        "Control Room: Getting audio sources for OBS '{}' session {}",
+        obs_name,
+        session_id
+    );
 
     // Validate session before proceeding
     validate_session(&session_id)?;
 
     // Get audio sources from OBS connection
-    match app.obs_obws_plugin().get_audio_sources(Some(&obs_name)).await {
+    match app
+        .obs_obws_plugin()
+        .get_audio_sources(Some(&obs_name))
+        .await
+    {
         Ok(sources) => {
-            let sources_data: Vec<serde_json::Value> = sources.into_iter().map(|source| {
-                serde_json::json!({
-                    "name": source.name,
-                    "type": source.type_name,
-                    "enabled": source.enabled,
-                    "muted": source.muted,
-                    "volume": source.volume
+            let sources_data: Vec<serde_json::Value> = sources
+                .into_iter()
+                .map(|source| {
+                    serde_json::json!({
+                        "name": source.name,
+                        "type": source.type_name,
+                        "enabled": source.enabled,
+                        "muted": source.muted,
+                        "volume": source.volume
+                    })
                 })
-            }).collect();
+                .collect();
 
             Ok(serde_json::json!({
                 "success": true,
@@ -6336,7 +7653,10 @@ pub async fn control_room_get_audio_sources(
         }
         Err(e) => {
             log::error!("Failed to get audio sources for OBS '{}': {}", obs_name, e);
-            Err(TauriError::from(anyhow::anyhow!("Failed to get audio sources: {}", e)))
+            Err(TauriError::from(anyhow::anyhow!(
+                "Failed to get audio sources: {}",
+                e
+            )))
         }
     }
 }
@@ -6348,9 +7668,14 @@ pub async fn control_room_execute_custom_operation(
     obs_name: String,
     operation: String,
     parameters: serde_json::Value,
-    app: State<'_, Arc<App>>
+    app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::debug!("Control Room: Executing custom operation '{}' on OBS '{}' for session {}", operation, obs_name, session_id);
+    log::debug!(
+        "Control Room: Executing custom operation '{}' on OBS '{}' for session {}",
+        operation,
+        obs_name,
+        session_id
+    );
 
     // Validate session before proceeding
     validate_session(&session_id)?;
@@ -6367,19 +7692,28 @@ pub async fn control_room_execute_custom_operation(
     };
 
     // Execute custom operation
-    match app.obs_obws_plugin().execute_custom_operation(request, Some(&obs_name)).await {
-        Ok(response) => {
-            Ok(serde_json::json!({
-                "success": true,
-                "request_id": response.request_id,
-                "status": response.status,
-                "data": response.data,
-                "error": response.error
-            }))
-        }
+    match app
+        .obs_obws_plugin()
+        .execute_custom_operation(request, Some(&obs_name))
+        .await
+    {
+        Ok(response) => Ok(serde_json::json!({
+            "success": true,
+            "request_id": response.request_id,
+            "status": response.status,
+            "data": response.data,
+            "error": response.error
+        })),
         Err(e) => {
-            log::error!("Failed to execute custom operation on OBS '{}': {}", obs_name, e);
-            Err(TauriError::from(anyhow::anyhow!("Failed to execute custom operation: {}", e)))
+            log::error!(
+                "Failed to execute custom operation on OBS '{}': {}",
+                obs_name,
+                e
+            );
+            Err(TauriError::from(anyhow::anyhow!(
+                "Failed to execute custom operation: {}",
+                e
+            )))
         }
     }
 }
@@ -6391,25 +7725,40 @@ pub async fn control_room_execute_raw_request(
     obs_name: String,
     request_type: String,
     request_data: serde_json::Value,
-    app: State<'_, Arc<App>>
+    app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::debug!("Control Room: Executing raw request '{}' on OBS '{}' for session {}", request_type, obs_name, session_id);
+    log::debug!(
+        "Control Room: Executing raw request '{}' on OBS '{}' for session {}",
+        request_type,
+        obs_name,
+        session_id
+    );
 
     // Validate session before proceeding
     validate_session(&session_id)?;
 
     // Execute raw request
-    match app.obs_obws_plugin().execute_raw_request(&request_type, request_data, Some(&obs_name)).await {
-        Ok(result) => {
-            Ok(serde_json::json!({
-                "success": true,
-                "requestType": request_type,
-                "result": result
-            }))
-        }
+    match app
+        .obs_obws_plugin()
+        .execute_raw_request(&request_type, request_data, Some(&obs_name))
+        .await
+    {
+        Ok(result) => Ok(serde_json::json!({
+            "success": true,
+            "requestType": request_type,
+            "result": result
+        })),
         Err(e) => {
-            log::error!("Failed to execute raw request '{}' on OBS '{}': {}", request_type, obs_name, e);
-            Err(TauriError::from(anyhow::anyhow!("Failed to execute raw request: {}", e)))
+            log::error!(
+                "Failed to execute raw request '{}' on OBS '{}': {}",
+                request_type,
+                obs_name,
+                e
+            );
+            Err(TauriError::from(anyhow::anyhow!(
+                "Failed to execute raw request: {}",
+                e
+            )))
         }
     }
 }
@@ -6419,9 +7768,13 @@ pub async fn control_room_execute_raw_request(
 pub async fn control_room_get_scenes(
     session_id: String,
     obs_name: String,
-    app: State<'_, Arc<App>>
+    app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::debug!("Control Room: Getting scenes for OBS '{}' session {}", obs_name, session_id);
+    log::debug!(
+        "Control Room: Getting scenes for OBS '{}' session {}",
+        obs_name,
+        session_id
+    );
 
     // Validate session before proceeding
     validate_session(&session_id)?;
@@ -6433,7 +7786,10 @@ pub async fn control_room_get_scenes(
         })),
         Err(e) => {
             log::error!("Failed to get scenes for OBS '{}': {}", obs_name, e);
-            Err(TauriError::from(anyhow::anyhow!("Failed to get scenes: {}", e)))
+            Err(TauriError::from(anyhow::anyhow!(
+                "Failed to get scenes: {}",
+                e
+            )))
         }
     }
 }
@@ -6444,39 +7800,39 @@ pub async fn control_room_change_password(
     _session_id: String,
     _current_password: String,
     _new_password: String,
-    _app: State<'_, Arc<App>>
+    _app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Control Room password change attempt");
-    
+
     Ok(serde_json::json!({ "success": false, "error": "Not supported" }))
 }
 #[tauri::command]
 pub async fn control_room_get_audit_log(
     _session_id: String,
-    _app: State<'_, Arc<App>>
+    _app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Control Room audit log request");
-    
+
     Ok(serde_json::json!({ "success": true, "audit_entries": [] }))
 }
 
 #[tauri::command]
 pub async fn control_room_get_session_info(
-    _app: State<'_, Arc<App>>
+    _app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
     Ok(serde_json::json!({ "authenticated": false }))
 }
 
 #[tauri::command]
 pub async fn control_room_refresh_session(
-    _app: State<'_, Arc<App>>
+    _app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
     Ok(serde_json::json!({ "success": true }))
 }
 
 #[tauri::command]
 pub async fn control_room_logout(
-    _app: State<'_, Arc<App>>
+    _app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
     Ok(serde_json::json!({ "success": true }))
 }
@@ -6510,7 +7866,8 @@ fn get_ovr_refresh_state() -> Arc<AsyncMutex<OvrRefreshStatus>> {
 }
 
 // Track currently running refresh task to allow cancellation
-static OVR_REFRESH_TASK: OnceCell<Arc<AsyncMutex<Option<tokio::task::JoinHandle<()>>>>> = OnceCell::new();
+static OVR_REFRESH_TASK: OnceCell<Arc<AsyncMutex<Option<tokio::task::JoinHandle<()>>>>> =
+    OnceCell::new();
 
 fn get_ovr_refresh_task() -> Arc<AsyncMutex<Option<tokio::task::JoinHandle<()>>>> {
     OVR_REFRESH_TASK
@@ -6531,7 +7888,9 @@ pub async fn ovr_get_providers(app: State<'_, Arc<App>>) -> Result<serde_json::V
 
 #[tauri::command]
 pub async fn ovr_refresh_all(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
-    let plugin = crate::plugins::plugin_ovr::OvrScraperPlugin::new(app.database_plugin().get_database_connection());
+    let plugin = crate::plugins::plugin_ovr::OvrScraperPlugin::new(
+        app.database_plugin().get_database_connection(),
+    );
     match plugin.refresh_all().await {
         Ok(n) => Ok(serde_json::json!({"success": true, "providers_processed": n})),
         Err(e) => Ok(serde_json::json!({"success": false, "error": e})),
@@ -6539,22 +7898,34 @@ pub async fn ovr_refresh_all(app: State<'_, Arc<App>>) -> Result<serde_json::Val
 }
 
 #[tauri::command]
-pub async fn ovr_refresh_provider(app: State<'_, Arc<App>>, provider_id: i64) -> Result<serde_json::Value, TauriError> {
-    let plugin = crate::plugins::plugin_ovr::OvrScraperPlugin::new(app.database_plugin().get_database_connection());
+pub async fn ovr_refresh_provider(
+    app: State<'_, Arc<App>>,
+    provider_id: i64,
+) -> Result<serde_json::Value, TauriError> {
+    let plugin = crate::plugins::plugin_ovr::OvrScraperPlugin::new(
+        app.database_plugin().get_database_connection(),
+    );
     match plugin.refresh_provider(provider_id).await {
         Ok(_) => Ok(serde_json::json!({"success": true})),
         Err(e) => {
             // Persist error status for direct refresh calls as well
             if let Ok(mut conn) = app.database_plugin().get_connection().await {
-                let _ = crate::database::operations::OvrOperations::set_provider_refresh_status(&mut *conn, provider_id, Some("error"), Some(&e));
+                let _ = crate::database::operations::OvrOperations::set_provider_refresh_status(
+                    &mut *conn,
+                    provider_id,
+                    Some("error"),
+                    Some(&e),
+                );
             }
             Ok(serde_json::json!({"success": false, "error": e}))
-        },
+        }
     }
 }
 
 #[tauri::command]
-pub async fn ovr_start_refresh_all(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn ovr_start_refresh_all(
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     let state = get_ovr_refresh_state();
     {
         let mut st = state.lock().await;
@@ -6563,7 +7934,8 @@ pub async fn ovr_start_refresh_all(app: State<'_, Arc<App>>) -> Result<serde_jso
         }
         let conn = app.database_plugin().get_connection().await?;
         use crate::database::operations::OvrOperations as Ops;
-        let providers = Ops::get_providers(&*conn).map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+        let providers = Ops::get_providers(&*conn)
+            .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
         let total = providers.iter().filter(|p| p.enabled).count();
         st.active = true;
         st.cancelled = false;
@@ -6585,11 +7957,15 @@ pub async fn ovr_start_refresh_all(app: State<'_, Arc<App>>) -> Result<serde_jso
                 Err(_) => vec![],
             }
         };
-        let plugin = crate::plugins::plugin_ovr::OvrScraperPlugin::new(app_arc.database_plugin().get_database_connection());
+        let plugin = crate::plugins::plugin_ovr::OvrScraperPlugin::new(
+            app_arc.database_plugin().get_database_connection(),
+        );
         for p in providers.into_iter().filter(|p| p.enabled) {
             {
                 let st = state.lock().await;
-                if st.cancelled { break; }
+                if st.cancelled {
+                    break;
+                }
             }
             {
                 let mut st = state.lock().await;
@@ -6603,7 +7979,13 @@ pub async fn ovr_start_refresh_all(app: State<'_, Arc<App>>) -> Result<serde_jso
             let handle = tokio::spawn(async move {
                 if let Err(e) = plugin_clone.refresh_provider(id).await {
                     if let Ok(mut conn) = app_clone.database_plugin().get_connection().await {
-                        let _ = crate::database::operations::OvrOperations::set_provider_refresh_status(&mut *conn, id, Some("error"), Some(&e));
+                        let _ =
+                            crate::database::operations::OvrOperations::set_provider_refresh_status(
+                                &mut *conn,
+                                id,
+                                Some("error"),
+                                Some(&e),
+                            );
                     }
                     let mut st = state_clone.lock().await;
                     st.last_error = Some(e);
@@ -6618,20 +8000,32 @@ pub async fn ovr_start_refresh_all(app: State<'_, Arc<App>>) -> Result<serde_jso
             loop {
                 {
                     let st = state.lock().await;
-                    if st.cancelled { break; }
+                    if st.cancelled {
+                        break;
+                    }
                 }
                 let is_done = {
                     let task_store = get_ovr_refresh_task();
                     let guard = task_store.lock().await;
-                    if let Some(h) = guard.as_ref() { h.is_finished() } else { true }
+                    if let Some(h) = guard.as_ref() {
+                        h.is_finished()
+                    } else {
+                        true
+                    }
                 };
-                if is_done { break; }
+                if is_done {
+                    break;
+                }
                 tokio::time::sleep(std::time::Duration::from_millis(150)).await;
             }
             {
                 let mut st = state.lock().await;
                 st.processed = st.processed.saturating_add(1);
-                if st.cancelled { st.active = false; st.current_provider = None; break; }
+                if st.cancelled {
+                    st.active = false;
+                    st.current_provider = None;
+                    break;
+                }
             }
         }
         {
@@ -6645,7 +8039,10 @@ pub async fn ovr_start_refresh_all(app: State<'_, Arc<App>>) -> Result<serde_jso
 }
 
 #[tauri::command]
-pub async fn ovr_start_refresh_provider(app: State<'_, Arc<App>>, provider_id: i64) -> Result<serde_json::Value, TauriError> {
+pub async fn ovr_start_refresh_provider(
+    app: State<'_, Arc<App>>,
+    provider_id: i64,
+) -> Result<serde_json::Value, TauriError> {
     let state = get_ovr_refresh_state();
     {
         let mut st = state.lock().await;
@@ -6665,8 +8062,13 @@ pub async fn ovr_start_refresh_provider(app: State<'_, Arc<App>>, provider_id: i
         let state = get_ovr_refresh_state();
         let provider_name: Option<String> = match app_arc.database_plugin().get_connection().await {
             Ok(conn) => {
-                let mut stmt = conn.prepare("SELECT name FROM ovr_providers WHERE id = ?").ok();
-                match stmt.as_mut().and_then(|s| s.query_row([provider_id], |r| r.get::<_, String>(0)).ok()) {
+                let mut stmt = conn
+                    .prepare("SELECT name FROM ovr_providers WHERE id = ?")
+                    .ok();
+                match stmt
+                    .as_mut()
+                    .and_then(|s| s.query_row([provider_id], |r| r.get::<_, String>(0)).ok())
+                {
                     Some(n) => Some(n),
                     None => None,
                 }
@@ -6677,14 +8079,21 @@ pub async fn ovr_start_refresh_provider(app: State<'_, Arc<App>>, provider_id: i
             let mut st = state.lock().await;
             st.current_provider = provider_name;
         }
-        let plugin = crate::plugins::plugin_ovr::OvrScraperPlugin::new(app_arc.database_plugin().get_database_connection());
+        let plugin = crate::plugins::plugin_ovr::OvrScraperPlugin::new(
+            app_arc.database_plugin().get_database_connection(),
+        );
         // Spawn cancellable task
         let app_clone = app_arc.clone();
         let state_clone = get_ovr_refresh_state();
         let handle = tokio::spawn(async move {
             if let Err(e) = plugin.refresh_provider(provider_id).await {
                 if let Ok(mut conn) = app_clone.database_plugin().get_connection().await {
-                    let _ = crate::database::operations::OvrOperations::set_provider_refresh_status(&mut *conn, provider_id, Some("error"), Some(&e));
+                    let _ = crate::database::operations::OvrOperations::set_provider_refresh_status(
+                        &mut *conn,
+                        provider_id,
+                        Some("error"),
+                        Some(&e),
+                    );
                 }
                 let mut st = state_clone.lock().await;
                 st.last_error = Some(e);
@@ -6699,7 +8108,9 @@ pub async fn ovr_start_refresh_provider(app: State<'_, Arc<App>>, provider_id: i
         {
             let task_store = get_ovr_refresh_task();
             let mut guard = task_store.lock().await;
-            if let Some(h) = guard.take() { let _ = h.await; }
+            if let Some(h) = guard.take() {
+                let _ = h.await;
+            }
         }
         {
             let mut st = state.lock().await;
@@ -6727,7 +8138,9 @@ pub async fn ovr_cancel_refresh() -> Result<serde_json::Value, TauriError> {
     // Abort running task if any
     let task_store = get_ovr_refresh_task();
     let mut guard = task_store.lock().await;
-    if let Some(h) = guard.take() { h.abort(); }
+    if let Some(h) = guard.take() {
+        h.abort();
+    }
     // Immediately mark inactive for UI responsiveness
     s.active = false;
     s.current_provider = None;
@@ -6735,10 +8148,19 @@ pub async fn ovr_cancel_refresh() -> Result<serde_json::Value, TauriError> {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct OvrProviderPayload { pub id: Option<i64>, pub name: String, pub base_url: Option<String>, pub enabled: bool, pub rate_limit_ms: Option<i64> }
+pub struct OvrProviderPayload {
+    pub id: Option<i64>,
+    pub name: String,
+    pub base_url: Option<String>,
+    pub enabled: bool,
+    pub rate_limit_ms: Option<i64>,
+}
 
 #[tauri::command]
-pub async fn ovr_upsert_provider(payload: OvrProviderPayload, app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn ovr_upsert_provider(
+    payload: OvrProviderPayload,
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     use crate::database::models::OvrProvider;
     let mut conn = app.database_plugin().get_connection().await?;
     let now = chrono::Utc::now();
@@ -6762,7 +8184,10 @@ pub async fn ovr_upsert_provider(payload: OvrProviderPayload, app: State<'_, Arc
 }
 
 #[tauri::command]
-pub async fn ovr_remove_provider(id: i64, app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn ovr_remove_provider(
+    id: i64,
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     let mut conn = app.database_plugin().get_connection().await?;
     use crate::database::operations::OvrOperations as Ops;
     match Ops::remove_provider(&mut *conn, id) {
@@ -6772,7 +8197,9 @@ pub async fn ovr_remove_provider(id: i64, app: State<'_, Arc<App>>) -> Result<se
 }
 
 #[tauri::command]
-pub async fn ovr_clear_all_tournaments(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+pub async fn ovr_clear_all_tournaments(
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
     let mut conn = app.database_plugin().get_connection().await?;
     use crate::database::operations::OvrOperations as Ops;
     match Ops::clear_all_tournaments(&mut *conn) {
@@ -6794,14 +8221,26 @@ pub async fn ovr_list_tournaments(
 ) -> Result<serde_json::Value, TauriError> {
     let conn = app.database_plugin().get_connection().await?;
     use crate::database::operations::OvrOperations as Ops;
-    match Ops::list_tournaments(&*conn, provider_id, q.as_deref(), from.as_deref(), to.as_deref(), country.as_deref(), limit, offset) {
+    match Ops::list_tournaments(
+        &*conn,
+        provider_id,
+        q.as_deref(),
+        from.as_deref(),
+        to.as_deref(),
+        country.as_deref(),
+        limit,
+        offset,
+    ) {
         Ok(rows) => Ok(serde_json::json!({"success": true, "tournaments": rows})),
         Err(e) => Ok(serde_json::json!({"success": false, "error": e.to_string()})),
     }
 }
 
 #[tauri::command]
-pub async fn ovr_get_categories(app: State<'_, Arc<App>>, tournament_id: i64) -> Result<serde_json::Value, TauriError> {
+pub async fn ovr_get_categories(
+    app: State<'_, Arc<App>>,
+    tournament_id: i64,
+) -> Result<serde_json::Value, TauriError> {
     let conn = app.database_plugin().get_connection().await?;
     use crate::database::operations::OvrOperations as Ops;
     match Ops::get_categories(&*conn, tournament_id) {
@@ -6811,7 +8250,11 @@ pub async fn ovr_get_categories(app: State<'_, Arc<App>>, tournament_id: i64) ->
 }
 
 #[tauri::command]
-pub async fn ovr_promote_tournament(app: State<'_, Arc<App>>, ovr_tournament_id: i64, local_name: Option<String>) -> Result<serde_json::Value, TauriError> {
+pub async fn ovr_promote_tournament(
+    app: State<'_, Arc<App>>,
+    ovr_tournament_id: i64,
+    local_name: Option<String>,
+) -> Result<serde_json::Value, TauriError> {
     let mut conn = app.database_plugin().get_connection().await?;
     use crate::database::operations::OvrOperations as Ops;
     match Ops::promote_to_local(&mut *conn, ovr_tournament_id, local_name.as_deref()) {

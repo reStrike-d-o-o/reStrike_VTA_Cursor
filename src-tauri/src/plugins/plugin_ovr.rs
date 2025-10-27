@@ -1,10 +1,10 @@
-use std::sync::Arc;
-use serde::{Serialize, Deserialize};
-use crate::database::DatabaseConnection;
 use crate::database::models::{OvrProvider, OvrTournament};
-use sha2::{Sha256, Digest};
+use crate::database::DatabaseConnection;
 use chrono::Utc;
 use regex::Regex;
+use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
+use std::sync::Arc;
 use std::time::Duration;
 
 #[derive(Clone)]
@@ -18,23 +18,41 @@ pub fn init() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 impl OvrScraperPlugin {
-    pub fn new(database: Arc<DatabaseConnection>) -> Self { Self { database } }
+    pub fn new(database: Arc<DatabaseConnection>) -> Self {
+        Self { database }
+    }
 
     /// Refresh all enabled providers
     pub async fn refresh_all(&self) -> Result<usize, String> {
         // Load providers in a short scope so the DB lock is released before per-provider refresh
         let providers = {
-            let conn = self.database.get_connection().await.map_err(|e| e.to_string())?;
-            crate::database::operations::OvrOperations::get_providers(&*conn).map_err(|e| e.to_string())?
+            let conn = self
+                .database
+                .get_connection()
+                .await
+                .map_err(|e| e.to_string())?;
+            crate::database::operations::OvrOperations::get_providers(&*conn)
+                .map_err(|e| e.to_string())?
         };
         let mut updated = 0usize;
         for p in providers.into_iter().filter(|p| p.enabled) {
             match self.refresh_provider(p.id.unwrap_or_default()).await {
                 Ok(_) => updated += 1,
                 Err(e) => {
-                    let _ = self.database.get_connection().await
+                    let _ = self
+                        .database
+                        .get_connection()
+                        .await
                         .map_err(|_| ())
-                        .and_then(|mut c| crate::database::operations::OvrOperations::set_provider_refresh_status(&mut *c, p.id.unwrap_or_default(), Some("error"), Some(&e)).map_err(|_| ()));
+                        .and_then(|mut c| {
+                            crate::database::operations::OvrOperations::set_provider_refresh_status(
+                                &mut *c,
+                                p.id.unwrap_or_default(),
+                                Some("error"),
+                                Some(&e),
+                            )
+                            .map_err(|_| ())
+                        });
                 }
             }
         }
@@ -45,45 +63,95 @@ impl OvrScraperPlugin {
     pub async fn refresh_provider(&self, provider_id: i64) -> Result<(), String> {
         // Read provider in a short scope so the DB lock is released before network calls
         let provider = {
-            let conn = self.database.get_connection().await.map_err(|e| e.to_string())?;
-            let mut stmt = conn.prepare("SELECT * FROM ovr_providers WHERE id = ?").map_err(|e| e.to_string())?;
-            stmt.query_row([provider_id], |row| OvrProvider::from_row(row)).map_err(|e| e.to_string())?
+            let conn = self
+                .database
+                .get_connection()
+                .await
+                .map_err(|e| e.to_string())?;
+            let mut stmt = conn
+                .prepare("SELECT * FROM ovr_providers WHERE id = ?")
+                .map_err(|e| e.to_string())?;
+            stmt.query_row([provider_id], |row| OvrProvider::from_row(row))
+                .map_err(|e| e.to_string())?
         };
 
         // Mark provider as fetching
         {
-            let mut connw = self.database.get_connection().await.map_err(|e| e.to_string())?;
-            let _ = crate::database::operations::OvrOperations::set_provider_refresh_status(&mut *connw, provider_id, Some("fetching"), None)
+            let mut connw = self
+                .database
+                .get_connection()
+                .await
                 .map_err(|e| e.to_string())?;
+            let _ = crate::database::operations::OvrOperations::set_provider_refresh_status(
+                &mut *connw,
+                provider_id,
+                Some("fetching"),
+                None,
+            )
+            .map_err(|e| e.to_string())?;
         }
         let name_lc = provider.name.to_lowercase();
         let rate_limit_ms = provider.rate_limit_ms;
 
         // Adapters: scrape specific sites
         let tournaments: Vec<OvrTournament> = if name_lc.contains("simply") {
-            self.fetch_simplycompete(provider.id.unwrap(), provider.base_url.clone(), rate_limit_ms).await?
+            self.fetch_simplycompete(
+                provider.id.unwrap(),
+                provider.base_url.clone(),
+                rate_limit_ms,
+            )
+            .await?
         } else if name_lc.contains("tpss") {
-            self.fetch_tpss(provider.id.unwrap(), provider.base_url.clone(), rate_limit_ms).await?
+            self.fetch_tpss(
+                provider.id.unwrap(),
+                provider.base_url.clone(),
+                rate_limit_ms,
+            )
+            .await?
         } else if name_lc.contains("martial") {
-            self.fetch_martial_events(provider.id.unwrap(), provider.base_url.clone(), rate_limit_ms).await?
+            self.fetch_martial_events(
+                provider.id.unwrap(),
+                provider.base_url.clone(),
+                rate_limit_ms,
+            )
+            .await?
         } else if name_lc.contains("etu") || name_lc.contains("europe") {
-            self.fetch_etu(provider.id.unwrap(), provider.base_url.clone(), rate_limit_ms).await?
+            self.fetch_etu(
+                provider.id.unwrap(),
+                provider.base_url.clone(),
+                rate_limit_ms,
+            )
+            .await?
         } else {
             Vec::new()
         };
 
         // Persist tournaments (obtain a fresh DB lock now)
-        let mut connw = self.database.get_connection().await.map_err(|e| e.to_string())?;
+        let mut connw = self
+            .database
+            .get_connection()
+            .await
+            .map_err(|e| e.to_string())?;
         for t in tournaments {
             let _ = crate::database::operations::OvrOperations::upsert_tournament(&mut *connw, &t)
                 .map_err(|e| e.to_string())?;
         }
-        let _ = crate::database::operations::OvrOperations::set_provider_refresh_status(&mut *connw, provider_id, Some("ok"), None)
-            .map_err(|e| e.to_string())?;
+        let _ = crate::database::operations::OvrOperations::set_provider_refresh_status(
+            &mut *connw,
+            provider_id,
+            Some("ok"),
+            None,
+        )
+        .map_err(|e| e.to_string())?;
         Ok(())
     }
 
-    async fn fetch_simplycompete(&self, provider_id: i64, base_url: Option<String>, rate_limit_ms: i64) -> Result<Vec<OvrTournament>, String> {
+    async fn fetch_simplycompete(
+        &self,
+        provider_id: i64,
+        base_url: Option<String>,
+        rate_limit_ms: i64,
+    ) -> Result<Vec<OvrTournament>, String> {
         let url = base_url.unwrap_or_else(|| "https://worldtkd.simplycompete.com/events?eventType=Tournament&invitationStatus=all&da&isArchived=false&pageNumber=1&itemsPerPage=1000".to_string());
         // Try with main URL; if forbidden, attempt without some query flags and with alternate path
         let html = match self.fetch_html_rl(&url, rate_limit_ms).await {
@@ -96,7 +164,10 @@ impl OvrScraperPlugin {
                 ];
                 let mut ok: Option<String> = None;
                 for v in variants.iter() {
-                    if let Ok(h) = self.fetch_html_rl(v, rate_limit_ms).await { ok = Some(h); break; }
+                    if let Ok(h) = self.fetch_html_rl(v, rate_limit_ms).await {
+                        ok = Some(h);
+                        break;
+                    }
                 }
                 ok.ok_or_else(|| e)?
             }
@@ -110,7 +181,9 @@ impl OvrScraperPlugin {
                 if let Some(detail_url) = a.url.clone() {
                     if let Ok(detail_html) = self.fetch_html_rl(&detail_url, rate_limit_ms).await {
                         let enriched = self.parse_jsonld_block(provider_id, &detail_html);
-                        if !enriched.is_empty() { items.extend(enriched); }
+                        if !enriched.is_empty() {
+                            items.extend(enriched);
+                        }
                     }
                 }
             }
@@ -118,11 +191,20 @@ impl OvrScraperPlugin {
         Ok(items)
     }
 
-    async fn fetch_tpss(&self, provider_id: i64, base_url: Option<String>, rate_limit_ms: i64) -> Result<Vec<OvrTournament>, String> {
+    async fn fetch_tpss(
+        &self,
+        provider_id: i64,
+        base_url: Option<String>,
+        rate_limit_ms: i64,
+    ) -> Result<Vec<OvrTournament>, String> {
         let base_in = base_url.unwrap_or_else(|| "https://www.tpss.eu".to_string());
         let base = Self::base_origin(&base_in);
         let mut out: Vec<OvrTournament> = Vec::new();
-        for path in ["/liveresults.asp?AR=1", "/liveresults.asp?AR=2", "/Results.asp?YR=All"] {
+        for path in [
+            "/liveresults.asp?AR=1",
+            "/liveresults.asp?AR=2",
+            "/Results.asp?YR=All",
+        ] {
             let url = format!("{}{}", base, path);
             if let Ok(html) = self.fetch_html_rl(&url, rate_limit_ms).await {
                 let parsed = self.parse_tpss_html(provider_id, &html, &base);
@@ -130,11 +212,21 @@ impl OvrScraperPlugin {
                 for mut t in parsed {
                     if let Some(ref detail) = t.url {
                         if let Ok(dhtml) = self.fetch_html_rl(detail, rate_limit_ms).await {
-                            if let Some((city, country, start, end)) = Self::parse_tpss_detail(&dhtml) {
-                                if city.is_some() { t.city = city; }
-                                if country.is_some() { t.country = country; }
-                                if start.is_some() { t.start_date = start; }
-                                if end.is_some() { t.end_date = end; }
+                            if let Some((city, country, start, end)) =
+                                Self::parse_tpss_detail(&dhtml)
+                            {
+                                if city.is_some() {
+                                    t.city = city;
+                                }
+                                if country.is_some() {
+                                    t.country = country;
+                                }
+                                if start.is_some() {
+                                    t.start_date = start;
+                                }
+                                if end.is_some() {
+                                    t.end_date = end;
+                                }
                             }
                         }
                     }
@@ -145,7 +237,12 @@ impl OvrScraperPlugin {
         Ok(out)
     }
 
-    async fn fetch_martial_events(&self, provider_id: i64, base_url: Option<String>, rate_limit_ms: i64) -> Result<Vec<OvrTournament>, String> {
+    async fn fetch_martial_events(
+        &self,
+        provider_id: i64,
+        base_url: Option<String>,
+        rate_limit_ms: i64,
+    ) -> Result<Vec<OvrTournament>, String> {
         let url = base_url.unwrap_or_else(|| "https://www.martial.events/en".to_string());
         let html = self.fetch_html_rl(&url, rate_limit_ms).await?;
         let mut items = self.parse_jsonld_block(provider_id, &html);
@@ -156,11 +253,15 @@ impl OvrScraperPlugin {
                 if let Some(detail_url) = a.url.clone() {
                     if let Ok(detail_html) = self.fetch_html_rl(&detail_url, rate_limit_ms).await {
                         let enriched = self.parse_jsonld_block(provider_id, &detail_html);
-                        if !enriched.is_empty() { items.extend(enriched); }
+                        if !enriched.is_empty() {
+                            items.extend(enriched);
+                        }
                     }
                 }
             }
-            if items.is_empty() { items.extend(anchors); }
+            if items.is_empty() {
+                items.extend(anchors);
+            }
         }
         Ok(items)
     }
@@ -182,13 +283,17 @@ impl OvrScraperPlugin {
             .send()
             .await
             .map_err(|e| e.to_string())?;
-        if !resp.status().is_success() { return Err(format!("status {}", resp.status())); }
+        if !resp.status().is_success() {
+            return Err(format!("status {}", resp.status()));
+        }
         let body = resp.text().await.map_err(|e| e.to_string())?;
         Ok(body)
     }
 
     async fn fetch_html_rl(&self, url: &str, delay_ms: i64) -> Result<String, String> {
-        if delay_ms > 0 { tokio::time::sleep(Duration::from_millis(delay_ms as u64)).await; }
+        if delay_ms > 0 {
+            tokio::time::sleep(Duration::from_millis(delay_ms as u64)).await;
+        }
         self.fetch_html(url).await
     }
 
@@ -202,12 +307,16 @@ impl OvrScraperPlugin {
                 let mut candidates: Vec<serde_json::Value> = Vec::new();
                 match &val {
                     serde_json::Value::Array(arr) => {
-                        for v in arr { candidates.push(v.clone()); }
+                        for v in arr {
+                            candidates.push(v.clone());
+                        }
                     }
                     serde_json::Value::Object(map) => {
                         // @graph
                         if let Some(graph) = map.get("@graph").and_then(|g| g.as_array()) {
-                            for v in graph { candidates.push(v.clone()); }
+                            for v in graph {
+                                candidates.push(v.clone());
+                            }
                         } else if map.get("@type").is_some() || map.get("name").is_some() {
                             candidates.push(val.clone());
                         }
@@ -223,7 +332,9 @@ impl OvrScraperPlugin {
                     _ => {}
                 }
                 for cand in candidates {
-                    if let Some(t) = Self::jsonld_to_tournament(provider_id, &cand, now) { out.push(t); }
+                    if let Some(t) = Self::jsonld_to_tournament(provider_id, &cand, now) {
+                        out.push(t);
+                    }
                 }
             }
         }
@@ -237,7 +348,10 @@ impl OvrScraperPlugin {
         let mut pos = 0;
         while let Some(idx) = html[pos..].find(marker) {
             let start = pos + idx;
-            let tag_end = match html[start..].find('>') { Some(off) => start + off + 1, None => break };
+            let tag_end = match html[start..].find('>') {
+                Some(off) => start + off + 1,
+                None => break,
+            };
             let tag = &html[start..tag_end];
             if tag.to_lowercase().contains(ty) {
                 if let Some(close_idx) = html[tag_end..].find("</script>") {
@@ -252,15 +366,25 @@ impl OvrScraperPlugin {
         res
     }
 
-    fn jsonld_to_tournament(provider_id: i64, v: &serde_json::Value, now: chrono::DateTime<Utc>) -> Option<OvrTournament> {
+    fn jsonld_to_tournament(
+        provider_id: i64,
+        v: &serde_json::Value,
+        now: chrono::DateTime<Utc>,
+    ) -> Option<OvrTournament> {
         // Accept either @type == Event or objects with event-like fields
         let ty = v.get("@type").and_then(|s| s.as_str()).unwrap_or("");
-        if !(ty.eq_ignore_ascii_case("Event") || v.get("name").is_some()) { return None; }
+        if !(ty.eq_ignore_ascii_case("Event") || v.get("name").is_some()) {
+            return None;
+        }
         let name = v.get("name").and_then(|s| s.as_str())?.to_string();
-        let start = v.get("startDate").and_then(|s| s.as_str())
+        let start = v
+            .get("startDate")
+            .and_then(|s| s.as_str())
             .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
             .map(|dt| dt.with_timezone(&Utc));
-        let end = v.get("endDate").and_then(|s| s.as_str())
+        let end = v
+            .get("endDate")
+            .and_then(|s| s.as_str())
             .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
             .map(|dt| dt.with_timezone(&Utc));
         let (city, country) = if let Some(loc) = v.get("location") {
@@ -269,38 +393,70 @@ impl OvrScraperPlugin {
                     // Try to split "City, Country"
                     let parts: Vec<&str> = s.split(',').map(|x| x.trim()).collect();
                     if parts.len() >= 2 {
-                        (Some(parts[0].to_string()), Some(parts[parts.len()-1].to_string()))
-                    } else { (None, None) }
+                        (
+                            Some(parts[0].to_string()),
+                            Some(parts[parts.len() - 1].to_string()),
+                        )
+                    } else {
+                        (None, None)
+                    }
                 }
                 serde_json::Value::Object(obj) => {
                     // location.name may contain "City, Country"
                     if let Some(name_s) = obj.get("name").and_then(|s| s.as_str()) {
                         let parts: Vec<&str> = name_s.split(',').map(|x| x.trim()).collect();
                         if parts.len() >= 2 {
-                            (Some(parts[0].to_string()), Some(parts[parts.len()-1].to_string()))
+                            (
+                                Some(parts[0].to_string()),
+                                Some(parts[parts.len() - 1].to_string()),
+                            )
                         } else {
                             (None, None)
                         }
                     } else {
                         // Direct fields or nested address
-                        let city = obj.get("addressLocality").and_then(|s| s.as_str()).map(|s| s.to_string())
-                            .or_else(|| obj.get("address").and_then(|a| a.get("addressLocality")).and_then(|s| s.as_str()).map(|s| s.to_string()));
-                        let country_val = obj.get("addressCountry").or_else(|| obj.get("address").and_then(|a| a.get("addressCountry")));
+                        let city = obj
+                            .get("addressLocality")
+                            .and_then(|s| s.as_str())
+                            .map(|s| s.to_string())
+                            .or_else(|| {
+                                obj.get("address")
+                                    .and_then(|a| a.get("addressLocality"))
+                                    .and_then(|s| s.as_str())
+                                    .map(|s| s.to_string())
+                            });
+                        let country_val = obj
+                            .get("addressCountry")
+                            .or_else(|| obj.get("address").and_then(|a| a.get("addressCountry")));
                         let country = match country_val {
                             Some(serde_json::Value::String(s)) => Some(s.to_string()),
-                            Some(serde_json::Value::Object(o)) => o.get("name").and_then(|s| s.as_str()).map(|s| s.to_string()),
+                            Some(serde_json::Value::Object(o)) => o
+                                .get("name")
+                                .and_then(|s| s.as_str())
+                                .map(|s| s.to_string()),
                             _ => None,
                         };
                         (city, country)
                     }
                 }
-                _ => (None, None)
+                _ => (None, None),
             }
-        } else { (None, None) };
+        } else {
+            (None, None)
+        };
         let url = v.get("url").and_then(|s| s.as_str()).map(|s| s.to_string());
-        let status = v.get("eventStatus").or_else(|| v.get("status")).and_then(|s| s.as_str()).map(|s| s.to_string());
+        let status = v
+            .get("eventStatus")
+            .or_else(|| v.get("status"))
+            .and_then(|s| s.as_str())
+            .map(|s| s.to_string());
         let key = Self::stable_key(&name, start.as_ref().map(|d| d.to_rfc3339()));
-        let dedupe_hash = Self::stable_dedupe_key(&name, start.as_ref().map(|d| d.to_rfc3339()), city.as_deref(), country.as_deref());
+        let dedupe_hash = Self::stable_dedupe_key(
+            &name,
+            start.as_ref().map(|d| d.to_rfc3339()),
+            city.as_deref(),
+            country.as_deref(),
+        );
         Some(OvrTournament {
             id: None,
             provider_id,
@@ -323,7 +479,9 @@ impl OvrScraperPlugin {
     fn stable_key(name: &str, start_iso: Option<String>) -> String {
         let mut hasher = Sha256::new();
         hasher.update(name.as_bytes());
-        if let Some(s) = start_iso { hasher.update(s.as_bytes()); }
+        if let Some(s) = start_iso {
+            hasher.update(s.as_bytes());
+        }
         let bytes = hasher.finalize();
         hex::encode(&bytes[..16]) // short key
     }
@@ -332,20 +490,35 @@ impl OvrScraperPlugin {
         s.trim().to_lowercase()
     }
 
-    fn stable_dedupe_key(name: &str, start_iso: Option<String>, city: Option<&str>, country: Option<&str>) -> Option<String> {
+    fn stable_dedupe_key(
+        name: &str,
+        start_iso: Option<String>,
+        city: Option<&str>,
+        country: Option<&str>,
+    ) -> Option<String> {
         // Require at least name + start for cross-provider dedupe to avoid false positives
-        if start_iso.is_none() { return None; }
+        if start_iso.is_none() {
+            return None;
+        }
         let mut hasher = Sha256::new();
         hasher.update(Self::normalize_text(name).as_bytes());
-        if let Some(s) = &start_iso { hasher.update(s.as_bytes()); }
-        if let Some(c) = city { hasher.update(Self::normalize_text(c).as_bytes()); }
-        if let Some(cn) = country { hasher.update(Self::normalize_text(cn).as_bytes()); }
+        if let Some(s) = &start_iso {
+            hasher.update(s.as_bytes());
+        }
+        if let Some(c) = city {
+            hasher.update(Self::normalize_text(c).as_bytes());
+        }
+        if let Some(cn) = country {
+            hasher.update(Self::normalize_text(cn).as_bytes());
+        }
         let bytes = hasher.finalize();
         Some(hex::encode(&bytes[..16]))
     }
 
     fn absolute_url(base: &str, href: &str) -> String {
-        if href.starts_with("http://") || href.starts_with("https://") { return href.to_string(); }
+        if href.starts_with("http://") || href.starts_with("https://") {
+            return href.to_string();
+        }
         let sep = if href.starts_with('/') { "" } else { "/" };
         format!("{}{}{}", base.trim_end_matches('/'), sep, href)
     }
@@ -353,7 +526,7 @@ impl OvrScraperPlugin {
     fn base_origin(url: &str) -> String {
         // Extract scheme://host from provided URL
         if let Some(pos) = url.find("://") {
-            let rest = &url[pos+3..];
+            let rest = &url[pos + 3..];
             if let Some(slash) = rest.find('/') {
                 format!("{}://{}", &url[..pos], &rest[..slash])
             } else {
@@ -364,7 +537,12 @@ impl OvrScraperPlugin {
         }
     }
 
-    fn make_simple_tournament(&self, provider_id: i64, name: &str, url: Option<String>) -> OvrTournament {
+    fn make_simple_tournament(
+        &self,
+        provider_id: i64,
+        name: &str,
+        url: Option<String>,
+    ) -> OvrTournament {
         let now = Utc::now();
         OvrTournament {
             id: None,
@@ -385,15 +563,24 @@ impl OvrScraperPlugin {
         }
     }
 
-    fn parse_generic_anchors(&self, provider_id: i64, html: &str, base_url: &str) -> Vec<OvrTournament> {
+    fn parse_generic_anchors(
+        &self,
+        provider_id: i64,
+        html: &str,
+        base_url: &str,
+    ) -> Vec<OvrTournament> {
         let re = Regex::new(r#"<a[^>]+href=\"([^\"]+)\"[^>]*>([^<]{3,})</a>"#).unwrap();
         let mut out = Vec::new();
         for cap in re.captures_iter(html) {
             let href = cap.get(1).map(|m| m.as_str()).unwrap_or("");
             let text = cap.get(2).map(|m| m.as_str()).unwrap_or("").trim();
             let h = href.to_lowercase();
-            if !(h.contains("event") || h.contains("tourn") || h.contains("checktournament.asp")) { continue; }
-            if text.is_empty() { continue; }
+            if !(h.contains("event") || h.contains("tourn") || h.contains("checktournament.asp")) {
+                continue;
+            }
+            if text.is_empty() {
+                continue;
+            }
             let url = Some(Self::absolute_url(base_url, href));
             out.push(self.make_simple_tournament(provider_id, text, url));
         }
@@ -401,25 +588,39 @@ impl OvrScraperPlugin {
     }
 
     fn parse_tpss_html(&self, provider_id: i64, html: &str, base_url: &str) -> Vec<OvrTournament> {
-        let re = Regex::new(r#"<a[^>]+href=\"(CheckTournament\.asp\?Code=[^\"]+)\"[^>]*>\s*([^<][^<]+?)\s*</a>"#).unwrap();
+        let re = Regex::new(
+            r#"<a[^>]+href=\"(CheckTournament\.asp\?Code=[^\"]+)\"[^>]*>\s*([^<][^<]+?)\s*</a>"#,
+        )
+        .unwrap();
         let mut out = Vec::new();
         for cap in re.captures_iter(html) {
             let href = cap.get(1).map(|m| m.as_str()).unwrap_or("");
             let name = cap.get(2).map(|m| m.as_str()).unwrap_or("").trim();
-            if name.is_empty() { continue; }
+            if name.is_empty() {
+                continue;
+            }
             let full = Self::absolute_url(base_url, href);
             out.push(self.make_simple_tournament(provider_id, name, Some(full)));
         }
         out
     }
 
-    fn parse_martial_events_html(&self, provider_id: i64, html: &str, base_url: &str) -> Vec<OvrTournament> {
-        let re = Regex::new(r#"<a[^>]+href=\"(/en/[^\"]+)\"[^>]*>\s*<[^>]*>\s*([^<][^<]+?)\s*</[^>]*>"#).unwrap();
+    fn parse_martial_events_html(
+        &self,
+        provider_id: i64,
+        html: &str,
+        base_url: &str,
+    ) -> Vec<OvrTournament> {
+        let re =
+            Regex::new(r#"<a[^>]+href=\"(/en/[^\"]+)\"[^>]*>\s*<[^>]*>\s*([^<][^<]+?)\s*</[^>]*>"#)
+                .unwrap();
         let mut out = Vec::new();
         for cap in re.captures_iter(html) {
             let href = cap.get(1).map(|m| m.as_str()).unwrap_or("");
             let name = cap.get(2).map(|m| m.as_str()).unwrap_or("").trim();
-            if name.is_empty() { continue; }
+            if name.is_empty() {
+                continue;
+            }
             let full = Self::absolute_url(base_url, href);
             out.push(self.make_simple_tournament(provider_id, name, Some(full)));
         }
@@ -429,30 +630,74 @@ impl OvrScraperPlugin {
         out
     }
 
-    fn parse_tpss_detail(html: &str) -> Option<(Option<String>, Option<String>, Option<chrono::DateTime<Utc>>, Option<chrono::DateTime<Utc>>)> {
-        let city = Regex::new(r"City[^\[]*\[([^\(\]]+)(?:\(([^\)]+)\))?").ok()
-            .and_then(|re| re.captures(html).map(|c| (c.get(1).map(|m| m.as_str().trim().to_string()), c.get(2).map(|m| m.as_str().trim().to_string()))));
-        let (city_val, country_val) = match city { Some((c, cn)) => (c, cn), None => (None, None) };
-        let date_cap = Regex::new(r"Eventdate\s*(\d{2}-\d{2}-\d{4})(?:\s*[-–]\s*(\d{2}-\d{2}-\d{4}))?").ok()
-            .and_then(|re| re.captures(html));
-        let (start, end) = if let Some(dc) = date_cap { let sd = dc.get(1).map(|m| m.as_str()); let ed = dc.get(2).map(|m| m.as_str()); (Self::parse_dmy_to_utc(sd), Self::parse_dmy_to_utc(ed)) } else { (None, None) };
-        if city_val.is_none() && country_val.is_none() && start.is_none() && end.is_none() { None } else { Some((city_val, country_val, start, end)) }
+    fn parse_tpss_detail(
+        html: &str,
+    ) -> Option<(
+        Option<String>,
+        Option<String>,
+        Option<chrono::DateTime<Utc>>,
+        Option<chrono::DateTime<Utc>>,
+    )> {
+        let city = Regex::new(r"City[^\[]*\[([^\(\]]+)(?:\(([^\)]+)\))?")
+            .ok()
+            .and_then(|re| {
+                re.captures(html).map(|c| {
+                    (
+                        c.get(1).map(|m| m.as_str().trim().to_string()),
+                        c.get(2).map(|m| m.as_str().trim().to_string()),
+                    )
+                })
+            });
+        let (city_val, country_val) = match city {
+            Some((c, cn)) => (c, cn),
+            None => (None, None),
+        };
+        let date_cap =
+            Regex::new(r"Eventdate\s*(\d{2}-\d{2}-\d{4})(?:\s*[-–]\s*(\d{2}-\d{2}-\d{4}))?")
+                .ok()
+                .and_then(|re| re.captures(html));
+        let (start, end) = if let Some(dc) = date_cap {
+            let sd = dc.get(1).map(|m| m.as_str());
+            let ed = dc.get(2).map(|m| m.as_str());
+            (Self::parse_dmy_to_utc(sd), Self::parse_dmy_to_utc(ed))
+        } else {
+            (None, None)
+        };
+        if city_val.is_none() && country_val.is_none() && start.is_none() && end.is_none() {
+            None
+        } else {
+            Some((city_val, country_val, start, end))
+        }
     }
 
     fn parse_dmy_to_utc(s: Option<&str>) -> Option<chrono::DateTime<Utc>> {
-        if let Some(src) = s { if let Ok(nd) = chrono::NaiveDate::parse_from_str(src, "%d-%m-%Y") { let dt = nd.and_hms_opt(0, 0, 0)?.and_utc(); return Some(dt); } }
+        if let Some(src) = s {
+            if let Ok(nd) = chrono::NaiveDate::parse_from_str(src, "%d-%m-%Y") {
+                let dt = nd.and_hms_opt(0, 0, 0)?.and_utc();
+                return Some(dt);
+            }
+        }
         None
     }
 
     fn find_next_page_url(html: &str, current_url: &str) -> Option<String> {
         let re = Regex::new(r#"<a[^>]+rel=\"next\"[^>]+href=\"([^\"]+)\""#).ok()?;
-        if let Some(c) = re.captures(html) { return Some(Self::absolute_url(current_url, c.get(1)?.as_str())); }
+        if let Some(c) = re.captures(html) {
+            return Some(Self::absolute_url(current_url, c.get(1)?.as_str()));
+        }
         let re2 = Regex::new(r#"<a[^>]+class=\"[^\"]*next[^\"]*\"[^>]+href=\"([^\"]+)\""#).ok()?;
-        if let Some(c) = re2.captures(html) { return Some(Self::absolute_url(current_url, c.get(1)?.as_str())); }
+        if let Some(c) = re2.captures(html) {
+            return Some(Self::absolute_url(current_url, c.get(1)?.as_str()));
+        }
         None
     }
 
-    async fn fetch_etu(&self, provider_id: i64, base_url: Option<String>, rate_limit_ms: i64) -> Result<Vec<OvrTournament>, String> {
+    async fn fetch_etu(
+        &self,
+        provider_id: i64,
+        base_url: Option<String>,
+        rate_limit_ms: i64,
+    ) -> Result<Vec<OvrTournament>, String> {
         let base = base_url.unwrap_or_else(|| "https://europetaekwondo.org/events/".to_string());
         let mut collected: Vec<OvrTournament> = Vec::new();
         let mut page_url = base.clone();
@@ -464,17 +709,27 @@ impl OvrScraperPlugin {
                 if let Some(detail_url) = a.url.clone() {
                     if let Ok(detail_html) = self.fetch_html_rl(&detail_url, rate_limit_ms).await {
                         let enriched = self.parse_jsonld_block(provider_id, &detail_html);
-                        if !enriched.is_empty() { collected.extend(enriched); added = true; }
+                        if !enriched.is_empty() {
+                            collected.extend(enriched);
+                            added = true;
+                        }
                     }
                 }
             }
-            if let Some(next) = Self::find_next_page_url(&html, &page_url) { page_url = next; if !added { break; } } else { break; }
+            if let Some(next) = Self::find_next_page_url(&html, &page_url) {
+                page_url = next;
+                if !added {
+                    break;
+                }
+            } else {
+                break;
+            }
         }
         Ok(collected)
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct OvrRefreshResult { pub providers_processed: usize }
-
-
+pub struct OvrRefreshResult {
+    pub providers_processed: usize,
+}

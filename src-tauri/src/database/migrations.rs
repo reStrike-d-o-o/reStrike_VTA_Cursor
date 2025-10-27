@@ -1,5 +1,5 @@
+use crate::database::{DatabaseError, DatabaseResult, SchemaVersion, CURRENT_SCHEMA_VERSION};
 use rusqlite::{Connection, Result as SqliteResult};
-use crate::database::{DatabaseError, DatabaseResult, CURRENT_SCHEMA_VERSION, SchemaVersion};
 
 /// Migration trait for database schema updates
 pub trait Migration: Send + Sync {
@@ -47,7 +47,9 @@ fn add_column_if_missing(
 pub struct Migration24;
 
 impl Migration for Migration24 {
-    fn version(&self) -> u32 { 24 }
+    fn version(&self) -> u32 {
+        24
+    }
 
     fn description(&self) -> &str {
         "Settings tables: add created/updated INTEGER unix timestamps; backfill from ISO"
@@ -56,9 +58,7 @@ impl Migration for Migration24 {
     fn up(&self, conn: &Connection) -> SqliteResult<()> {
         // Helper: safely add integer columns if missing
         let add_col_if_missing = |table: &str, col: &str| -> SqliteResult<()> {
-            let sql = format!(
-                "ALTER TABLE {table} ADD COLUMN {col} INTEGER",
-            );
+            let sql = format!("ALTER TABLE {table} ADD COLUMN {col} INTEGER",);
             let _ = conn.execute(&sql, []); // ignore error if exists
             Ok(())
         };
@@ -85,7 +85,10 @@ impl Migration for Migration24 {
             [],
         )?;
         conn.execute("DROP TABLE IF EXISTS settings_categories", [])?;
-        conn.execute("ALTER TABLE _tmp_settings_categories RENAME TO settings_categories", [])?;
+        conn.execute(
+            "ALTER TABLE _tmp_settings_categories RENAME TO settings_categories",
+            [],
+        )?;
         // Backfill from existing created_at (RFC3339) if present
         let _ = conn.execute(
             "UPDATE settings_categories SET created = (strftime('%s', created_at)) WHERE created IS NULL AND created_at IS NOT NULL",
@@ -148,7 +151,10 @@ impl Migration for Migration24 {
             [],
         )?;
         conn.execute("DROP TABLE IF EXISTS settings_values", [])?;
-        conn.execute("ALTER TABLE _tmp_settings_values RENAME TO settings_values", [])?;
+        conn.execute(
+            "ALTER TABLE _tmp_settings_values RENAME TO settings_values",
+            [],
+        )?;
         let _ = conn.execute(
             "UPDATE settings_values SET created = (strftime('%s', created_at)) WHERE created IS NULL AND created_at IS NOT NULL",
             [],
@@ -180,7 +186,10 @@ impl Migration for Migration24 {
             [],
         )?;
         conn.execute("DROP TABLE IF EXISTS settings_history", [])?;
-        conn.execute("ALTER TABLE _tmp_settings_history RENAME TO settings_history", [])?;
+        conn.execute(
+            "ALTER TABLE _tmp_settings_history RENAME TO settings_history",
+            [],
+        )?;
         let _ = conn.execute(
             "UPDATE settings_history SET created = (strftime('%s', created_at)) WHERE created IS NULL AND created_at IS NOT NULL",
             [],
@@ -201,7 +210,9 @@ impl Migration for Migration24 {
 pub struct Migration25;
 
 impl Migration for Migration25 {
-    fn version(&self) -> u32 { 25 }
+    fn version(&self) -> u32 {
+        25
+    }
 
     fn description(&self) -> &str {
         "Rename foreign keys in settings tables to table_id convention (category_id, key_id)"
@@ -244,11 +255,11 @@ impl Migration for Migration1 {
     fn version(&self) -> u32 {
         1
     }
-    
+
     fn description(&self) -> &str {
         "Initial schema with PSS events, OBS connections, app config, and flag mappings"
     }
-    
+
     fn up(&self, conn: &Connection) -> SqliteResult<()> {
         // Create schema_version table
         conn.execute(
@@ -260,7 +271,7 @@ impl Migration for Migration1 {
             )",
             [],
         )?;
-        
+
         // Create pss_events table
         conn.execute(
             "CREATE TABLE IF NOT EXISTS pss_events (
@@ -280,7 +291,7 @@ impl Migration for Migration1 {
             )",
             [],
         )?;
-        
+
         // Add session_id column if missing for compatibility with later migrations
         let mut has_session_id = false;
         {
@@ -297,7 +308,7 @@ impl Migration for Migration1 {
         if !has_session_id {
             let _ = conn.execute("ALTER TABLE pss_events ADD COLUMN session_id INTEGER", []);
         }
-        
+
         let mut has_event_type_id = false;
         {
             let mut stmt = conn.prepare("PRAGMA table_info('pss_events')")?;
@@ -311,21 +322,24 @@ impl Migration for Migration1 {
             }
         }
         if !has_event_type_id {
-            let _ = conn.execute("ALTER TABLE pss_events ADD COLUMN event_type_id INTEGER", []);
+            let _ = conn.execute(
+                "ALTER TABLE pss_events ADD COLUMN event_type_id INTEGER",
+                [],
+            );
         }
-        
+
         // Create index on timestamp for efficient querying
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_pss_events_timestamp ON pss_events(timestamp)",
             [],
         )?;
-        
+
         // Create index on match_id for match-based queries
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_pss_events_match_id ON pss_events(match_id)",
             [],
         )?;
-        
+
         // Create obs_connections table
         conn.execute(
             "CREATE TABLE IF NOT EXISTS obs_connections (
@@ -340,7 +354,7 @@ impl Migration for Migration1 {
             )",
             [],
         )?;
-        
+
         // Create app_config table
         conn.execute(
             "CREATE TABLE IF NOT EXISTS app_config (
@@ -354,13 +368,13 @@ impl Migration for Migration1 {
             )",
             [],
         )?;
-        
+
         // Create index on category for efficient config queries
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_app_config_category ON app_config(category)",
             [],
         )?;
-        
+
         // Create flag_mappings table
         conn.execute(
             "CREATE TABLE IF NOT EXISTS flag_mappings (
@@ -374,22 +388,22 @@ impl Migration for Migration1 {
             )",
             [],
         )?;
-        
+
         // Create index on pss_code for efficient lookups
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_flag_mappings_pss_code ON flag_mappings(pss_code)",
             [],
         )?;
-        
+
         // Create index on ioc_code for reverse lookups
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_flag_mappings_ioc_code ON flag_mappings(ioc_code)",
             [],
         )?;
-        
+
         Ok(())
     }
-    
+
     fn down(&self, conn: &Connection) -> SqliteResult<()> {
         conn.execute("DROP TABLE IF EXISTS flag_mappings", [])?;
         conn.execute("DROP TABLE IF EXISTS app_config", [])?;
@@ -407,11 +421,11 @@ impl Migration for Migration2 {
     fn version(&self) -> u32 {
         2
     }
-    
+
     fn description(&self) -> &str {
         "Normalized settings schema with categories, keys, values, and history"
     }
-    
+
     fn up(&self, conn: &Connection) -> SqliteResult<()> {
         // Create settings_categories table
         conn.execute(
@@ -424,7 +438,7 @@ impl Migration for Migration2 {
             )",
             [],
         )?;
-        
+
         // Create settings_keys table
         conn.execute(
             "CREATE TABLE IF NOT EXISTS settings_keys (
@@ -443,7 +457,7 @@ impl Migration for Migration2 {
             )",
             [],
         )?;
-        
+
         // Create settings_values table
         conn.execute(
             "CREATE TABLE IF NOT EXISTS settings_values (
@@ -456,7 +470,7 @@ impl Migration for Migration2 {
             )",
             [],
         )?;
-        
+
         // Create settings_history table
         conn.execute(
             "CREATE TABLE IF NOT EXISTS settings_history (
@@ -471,33 +485,33 @@ impl Migration for Migration2 {
             )",
             [],
         )?;
-        
+
         // Create indices for performance
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_settings_keys_category ON settings_keys(category_id)",
             [],
         )?;
-        
+
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_settings_keys_name ON settings_keys(key_name)",
             [],
         )?;
-        
+
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_settings_values_key ON settings_values(key_id)",
             [],
         )?;
-        
+
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_settings_history_key ON settings_history(key_id)",
             [],
         )?;
-        
+
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_settings_history_created ON settings_history(created_at)",
             [],
         )?;
-        
+
         // Insert default categories
         let default_categories = vec![
             ("app", "Application Core Settings", 1),
@@ -510,17 +524,17 @@ impl Migration for Migration2 {
             ("flags", "Flag Management Settings", 8),
             ("advanced", "Advanced Features", 9),
         ];
-        
+
         for (name, description, order) in default_categories {
             conn.execute(
                 "INSERT OR IGNORE INTO settings_categories (name, description, display_order, created_at) VALUES (?, ?, ?, ?)",
                 [name, description, &order.to_string(), &chrono::Utc::now().to_rfc3339()],
             )?;
         }
-        
+
         Ok(())
     }
-    
+
     fn down(&self, conn: &Connection) -> SqliteResult<()> {
         conn.execute("DROP TABLE IF EXISTS settings_history", [])?;
         conn.execute("DROP TABLE IF EXISTS settings_values", [])?;
@@ -537,11 +551,11 @@ impl Migration for Migration3 {
     fn version(&self) -> u32 {
         3
     }
-    
+
     fn description(&self) -> &str {
         "Comprehensive flag management system with flags, recognition history, and IOC data population"
     }
-    
+
     fn up(&self, conn: &Connection) -> SqliteResult<()> {
         // Create flags table for individual flag files and metadata
         conn.execute(
@@ -560,7 +574,7 @@ impl Migration for Migration3 {
             )",
             [],
         )?;
-        
+
         // Create recognition_history table for tracking flag recognition attempts
         conn.execute(
             "CREATE TABLE IF NOT EXISTS recognition_history (
@@ -574,33 +588,31 @@ impl Migration for Migration3 {
             )",
             [],
         )?;
-        
+
         // Create indices for performance
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_flags_ioc_code ON flags(ioc_code)",
             [],
         )?;
-        
+
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_flags_recognition_status ON flags(recognition_status)",
             [],
         )?;
-        
+
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_recognition_history_flag_id ON recognition_history(flag_id)",
             [],
         )?;
-        
+
         // Populate flag_mappings table with IOC data if empty
-        let mapping_count: i32 = conn.query_row(
-            "SELECT COUNT(*) FROM flag_mappings",
-            [],
-            |row| row.get(0),
-        ).unwrap_or(0);
-        
+        let mapping_count: i32 = conn
+            .query_row("SELECT COUNT(*) FROM flag_mappings", [], |row| row.get(0))
+            .unwrap_or(0);
+
         if mapping_count == 0 {
             log::info!("Populating flag_mappings table with IOC data");
-            
+
             // IOC flag data from flagUtils.tsx
             let ioc_flags = vec![
                 // Current NOCs (Table 1) - Main Olympic countries
@@ -811,7 +823,6 @@ impl Migration for Migration3 {
                 ("YEM", "YEM", "Yemen"),
                 ("ZAM", "ZAM", "Zambia"),
                 ("ZIM", "ZIM", "Zimbabwe"),
-                
                 // Historic NOCs (Table 3)
                 ("URS", "URS", "Soviet Union"),
                 ("YUG", "YUG", "Yugoslavia"),
@@ -825,7 +836,6 @@ impl Migration for Migration3 {
                 ("EUN", "EUN", "Unified Team"),
                 ("RHO", "RHO", "Rhodesia"),
                 ("SAA", "SAA", "Saar"),
-                
                 // Historic Country Names (Table 4)
                 ("BIR", "BIR", "Burma"),
                 ("CEY", "CEY", "Ceylon"),
@@ -835,7 +845,6 @@ impl Migration for Migration3 {
                 ("YAR", "YAR", "North Yemen"),
                 ("YMD", "YMD", "South Yemen"),
                 ("ZAI", "ZAI", "Zaire"),
-                
                 // Special Olympic Codes (Table 5)
                 ("EOR", "EOR", "Refugee Olympic Team"),
                 ("IOP", "IOP", "Independent Olympic Participants"),
@@ -847,14 +856,12 @@ impl Migration for Migration3 {
                 ("NPA", "NPA", "Neutral Paralympic Athletes"),
                 ("RPC", "RPC", "Russian Paralympic Committee"),
                 ("MIX", "MIX", "Mixed Team"),
-                
                 // Special Paralympic Codes (Table 6)
                 ("IPP", "IPP", "Independent Paralympic Participants"),
                 ("NRH", "NRH", "Neutral Paralympic Team"),
                 ("AIN", "AIN", "Individual Neutral Athletes"),
                 ("COR", "COR", "Unified Korea"),
                 ("HBR", "HBR", "New Hebrides"),
-                
                 // Additional territories and special codes
                 ("FRO", "FRO", "Faroe Islands"),
                 ("GBS", "GBS", "Guinea-Bissau"),
@@ -864,25 +871,31 @@ impl Migration for Migration3 {
                 ("BOH", "BOH", "Bohemia"),
                 ("IOC", "IOC", "International Olympic Committee"),
             ];
-            
+
             let current_time = chrono::Utc::now().to_rfc3339();
             let ioc_flags_count = ioc_flags.len();
-            
+
             for (pss_code, ioc_code, country_name) in ioc_flags {
                 conn.execute(
                     "INSERT OR IGNORE INTO flag_mappings (pss_code, ioc_code, country_name, is_custom, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
                     [pss_code, ioc_code, country_name, "0", &current_time, &current_time],
                 )?;
             }
-            
-            log::info!("Successfully populated flag_mappings table with {} IOC entries", ioc_flags_count);
+
+            log::info!(
+                "Successfully populated flag_mappings table with {} IOC entries",
+                ioc_flags_count
+            );
         } else {
-            log::info!("flag_mappings table already contains {} entries, skipping population", mapping_count);
+            log::info!(
+                "flag_mappings table already contains {} entries, skipping population",
+                mapping_count
+            );
         }
-        
+
         Ok(())
     }
-    
+
     fn down(&self, conn: &Connection) -> SqliteResult<()> {
         conn.execute("DROP TABLE IF EXISTS recognition_history", [])?;
         conn.execute("DROP TABLE IF EXISTS flags", [])?;
@@ -898,11 +911,11 @@ impl Migration for Migration4 {
     fn version(&self) -> u32 {
         4
     }
-    
+
     fn description(&self) -> &str {
         "PSS and UDP subsystem integration with network interfaces, server statistics, enhanced events, and normalized relationships"
     }
-    
+
     fn up(&self, conn: &Connection) -> SqliteResult<()> {
         // Ensure legacy installs have session_id column before normalization/index creation
         let mut has_session_id = false;
@@ -920,7 +933,7 @@ impl Migration for Migration4 {
         if !has_session_id {
             let _ = conn.execute("ALTER TABLE pss_events ADD COLUMN session_id INTEGER", []);
         }
-        
+
         // Create network_interfaces table for UDP server configuration
         conn.execute(
             "CREATE TABLE IF NOT EXISTS network_interfaces (
@@ -942,7 +955,7 @@ impl Migration for Migration4 {
             )",
             [],
         )?;
-        
+
         // Create udp_server_configs table for UDP server settings
         conn.execute(
             "CREATE TABLE IF NOT EXISTS udp_server_configs (
@@ -962,7 +975,7 @@ impl Migration for Migration4 {
             )",
             [],
         )?;
-        
+
         // Create udp_server_sessions table for tracking server runtime sessions
         conn.execute(
             "CREATE TABLE IF NOT EXISTS udp_server_sessions (
@@ -984,7 +997,7 @@ impl Migration for Migration4 {
             )",
             [],
         )?;
-        
+
         // Create udp_client_connections table for tracking client connections
         conn.execute(
             "CREATE TABLE IF NOT EXISTS udp_client_connections (
@@ -1002,7 +1015,7 @@ impl Migration for Migration4 {
             )",
             [],
         )?;
-        
+
         // Create pss_event_types table for normalized event type definitions
         conn.execute(
             "CREATE TABLE IF NOT EXISTS pss_event_types (
@@ -1016,7 +1029,7 @@ impl Migration for Migration4 {
             )",
             [],
         )?;
-        
+
         // Create pss_matches table for match information
         conn.execute(
             "CREATE TABLE IF NOT EXISTS pss_matches (
@@ -1035,7 +1048,7 @@ impl Migration for Migration4 {
             )",
             [],
         )?;
-        
+
         // Create pss_athletes table for athlete information
         conn.execute(
             "CREATE TABLE IF NOT EXISTS pss_athletes (
@@ -1051,7 +1064,7 @@ impl Migration for Migration4 {
             )",
             [],
         )?;
-        
+
         // Create pss_match_athletes table for match-athlete relationships
         conn.execute(
             "CREATE TABLE IF NOT EXISTS pss_match_athletes (
@@ -1068,7 +1081,7 @@ impl Migration for Migration4 {
             )",
             [],
         )?;
-        
+
         // Create pss_rounds table for round information
         conn.execute(
             "CREATE TABLE IF NOT EXISTS pss_rounds (
@@ -1085,7 +1098,7 @@ impl Migration for Migration4 {
             )",
             [],
         )?;
-        
+
         // Enhanced pss_events table with normalized relationships
         conn.execute(
             "CREATE TABLE IF NOT EXISTS pss_events (
@@ -1109,7 +1122,7 @@ impl Migration for Migration4 {
             )",
             [],
         )?;
-        
+
         // Create pss_event_details table for event-specific data
         conn.execute(
             "CREATE TABLE IF NOT EXISTS pss_event_details (
@@ -1124,7 +1137,7 @@ impl Migration for Migration4 {
             )",
             [],
         )?;
-        
+
         // Create pss_scores table for score tracking
         conn.execute(
             "CREATE TABLE IF NOT EXISTS pss_scores (
@@ -1141,7 +1154,7 @@ impl Migration for Migration4 {
             )",
             [],
         )?;
-        
+
         // Create pss_warnings table for warning/gam-jeom tracking
         conn.execute(
             "CREATE TABLE IF NOT EXISTS pss_warnings (
@@ -1158,125 +1171,173 @@ impl Migration for Migration4 {
             )",
             [],
         )?;
-        
+
         // Create indices for performance
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_network_interfaces_active ON network_interfaces(is_active, is_recommended)",
             [],
         )?;
-        
+
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_udp_server_configs_enabled ON udp_server_configs(enabled)",
             [],
         )?;
-        
+
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_udp_server_sessions_status ON udp_server_sessions(status, start_time)",
             [],
         )?;
-        
+
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_udp_client_connections_session ON udp_client_connections(session_id, is_active)",
             [],
         )?;
-        
+
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_pss_events_timestamp ON pss_events(timestamp)",
             [],
         )?;
-        
+
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_pss_events_match_id ON pss_events(match_id)",
             [],
         )?;
-        
+
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_pss_events_session_id ON pss_events(session_id)",
             [],
         )?;
-        
+
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_pss_event_details_event ON pss_event_details(event_id)",
             [],
         )?;
-        
+
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_pss_scores_match ON pss_scores(match_id, round_id, athlete_position)",
             [],
         )?;
-        
+
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_pss_warnings_match ON pss_warnings(match_id, round_id, athlete_position)",
             [],
         )?;
-        
+
         // Populate pss_event_types with standard PSS event types
         let event_types = vec![
             // Points events
-            ("pt1", "Points Athlete 1", "Points scored by athlete 1", "points"),
-            ("pt2", "Points Athlete 2", "Points scored by athlete 2", "points"),
-            
+            (
+                "pt1",
+                "Points Athlete 1",
+                "Points scored by athlete 1",
+                "points",
+            ),
+            (
+                "pt2",
+                "Points Athlete 2",
+                "Points scored by athlete 2",
+                "points",
+            ),
             // Hit level events
-            ("hl1", "Hit Level Athlete 1", "Hit level for athlete 1", "hit_level"),
-            ("hl2", "Hit Level Athlete 2", "Hit level for athlete 2", "hit_level"),
-            
+            (
+                "hl1",
+                "Hit Level Athlete 1",
+                "Hit level for athlete 1",
+                "hit_level",
+            ),
+            (
+                "hl2",
+                "Hit Level Athlete 2",
+                "Hit level for athlete 2",
+                "hit_level",
+            ),
             // Warnings/Gam-jeom events
-            ("wg1", "Warnings Athlete 1", "Warnings for athlete 1", "warnings"),
-            ("wg2", "Warnings Athlete 2", "Warnings for athlete 2", "warnings"),
-            
+            (
+                "wg1",
+                "Warnings Athlete 1",
+                "Warnings for athlete 1",
+                "warnings",
+            ),
+            (
+                "wg2",
+                "Warnings Athlete 2",
+                "Warnings for athlete 2",
+                "warnings",
+            ),
             // Injury events
-            ("ij0", "Injury Unidentified", "Injury time for unidentified athlete", "injury"),
-            ("ij1", "Injury Athlete 1", "Injury time for athlete 1", "injury"),
-            ("ij2", "Injury Athlete 2", "Injury time for athlete 2", "injury"),
-            
+            (
+                "ij0",
+                "Injury Unidentified",
+                "Injury time for unidentified athlete",
+                "injury",
+            ),
+            (
+                "ij1",
+                "Injury Athlete 1",
+                "Injury time for athlete 1",
+                "injury",
+            ),
+            (
+                "ij2",
+                "Injury Athlete 2",
+                "Injury time for athlete 2",
+                "injury",
+            ),
             // Challenge/IVR events
-            ("ch0", "Challenge Referee", "Challenge initiated by referee", "challenge"),
-            ("ch1", "Challenge Athlete 1", "Challenge initiated by athlete 1", "challenge"),
-            ("ch2", "Challenge Athlete 2", "Challenge initiated by athlete 2", "challenge"),
-            
+            (
+                "ch0",
+                "Challenge Referee",
+                "Challenge initiated by referee",
+                "challenge",
+            ),
+            (
+                "ch1",
+                "Challenge Athlete 1",
+                "Challenge initiated by athlete 1",
+                "challenge",
+            ),
+            (
+                "ch2",
+                "Challenge Athlete 2",
+                "Challenge initiated by athlete 2",
+                "challenge",
+            ),
             // Break events
             ("br", "Break", "Match break time", "break"),
-            
             // Winner events
             ("wr", "Winner Rounds", "Round winners", "winner"),
             ("wn", "Winner", "Match winner", "winner"),
-            
             // Athlete events
             ("at", "Athletes", "Athlete information", "athletes"),
-            
             // Match configuration
             ("mc", "Match Config", "Match configuration", "match_config"),
-            
             // Scores
             ("sc", "Scores", "Current scores", "scores"),
-            
             // Clock events
             ("cl", "Clock", "Match clock", "clock"),
-            
             // Round events
             ("rd", "Round", "Round information", "round"),
-            
             // System events
             ("fl", "Fight Loaded", "Fight loaded event", "system"),
             ("fr", "Fight Ready", "Fight ready event", "system"),
         ];
-        
+
         for (code, name, description, category) in event_types {
             conn.execute(
                 "INSERT OR IGNORE INTO pss_event_types (event_code, event_name, description, category, created_at) VALUES (?, ?, ?, ?, datetime('now'))",
                 [code, name, description, category],
             )?;
         }
-        
+
         // Insert default UDP server configuration
         conn.execute(
             "INSERT OR IGNORE INTO udp_server_configs (name, port, bind_address, enabled, auto_start, created_at, updated_at) VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))",
             ["Default PSS Server", &6000.to_string(), "0.0.0.0", &1.to_string(), &0.to_string()],
         )?;
-        
+
         Ok(())
     }
-    
+
     fn down(&self, conn: &Connection) -> SqliteResult<()> {
         // Drop tables in reverse order
         conn.execute("DROP TABLE IF EXISTS pss_warnings", [])?;
@@ -1292,7 +1353,7 @@ impl Migration for Migration4 {
         conn.execute("DROP TABLE IF EXISTS udp_server_sessions", [])?;
         conn.execute("DROP TABLE IF EXISTS udp_server_configs", [])?;
         conn.execute("DROP TABLE IF EXISTS network_interfaces", [])?;
-        
+
         Ok(())
     }
 }
@@ -1304,11 +1365,11 @@ impl Migration for Migration5 {
     fn version(&self) -> u32 {
         5
     }
-    
+
     fn description(&self) -> &str {
         "Tournament management system with tournaments, tournament days, and PSS integration"
     }
-    
+
     fn up(&self, conn: &Connection) -> SqliteResult<()> {
         // Create tournaments table
         conn.execute(
@@ -1328,7 +1389,7 @@ impl Migration for Migration5 {
             )",
             [],
         )?;
-        
+
         // Create tournament_days table
         conn.execute(
             "CREATE TABLE IF NOT EXISTS tournament_days (
@@ -1346,99 +1407,99 @@ impl Migration for Migration5 {
             )",
             [],
         )?;
-        
+
         // Add tournament_id to existing PSS tables
         conn.execute(
             "ALTER TABLE pss_matches ADD COLUMN tournament_id INTEGER REFERENCES tournaments(id)",
             [],
         )?;
-        
+
         conn.execute(
             "ALTER TABLE pss_events ADD COLUMN tournament_id INTEGER REFERENCES tournaments(id)",
             [],
         )?;
-        
+
         conn.execute(
             "ALTER TABLE pss_scores ADD COLUMN tournament_id INTEGER REFERENCES tournaments(id)",
             [],
         )?;
-        
+
         conn.execute(
             "ALTER TABLE pss_warnings ADD COLUMN tournament_id INTEGER REFERENCES tournaments(id)",
             [],
         )?;
-        
+
         // Add tournament_day_id to PSS tables
         conn.execute(
             "ALTER TABLE pss_matches ADD COLUMN tournament_day_id INTEGER REFERENCES tournament_days(id)",
             [],
         )?;
-        
+
         conn.execute(
             "ALTER TABLE pss_events ADD COLUMN tournament_day_id INTEGER REFERENCES tournament_days(id)",
             [],
         )?;
-        
+
         conn.execute(
             "ALTER TABLE pss_scores ADD COLUMN tournament_day_id INTEGER REFERENCES tournament_days(id)",
             [],
         )?;
-        
+
         conn.execute(
             "ALTER TABLE pss_warnings ADD COLUMN tournament_day_id INTEGER REFERENCES tournament_days(id)",
             [],
         )?;
-        
+
         // Create indices for performance
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_tournaments_status ON tournaments(status)",
             [],
         )?;
-        
+
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_tournaments_city_country ON tournaments(city, country)",
             [],
         )?;
-        
+
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_tournament_days_tournament ON tournament_days(tournament_id)",
             [],
         )?;
-        
+
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_tournament_days_status ON tournament_days(status)",
             [],
         )?;
-        
+
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_pss_matches_tournament ON pss_matches(tournament_id)",
             [],
         )?;
-        
+
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_pss_events_tournament ON pss_events(tournament_id)",
             [],
         )?;
-        
+
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_pss_scores_tournament ON pss_scores(tournament_id)",
             [],
         )?;
-        
+
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_pss_warnings_tournament ON pss_warnings(tournament_id)",
             [],
         )?;
-        
+
         // Insert default tournament for testing
         conn.execute(
             "INSERT OR IGNORE INTO tournaments (name, duration_days, city, country, country_code, status, start_date, end_date, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))",
             ["Sample Tournament", &3.to_string(), "Seoul", "South Korea", "KOR", "pending", "2025-02-01 09:00:00", "2025-02-03 18:00:00"],
         )?;
-        
+
         Ok(())
     }
-    
+
     fn down(&self, conn: &Connection) -> SqliteResult<()> {
         // Remove indices
         conn.execute("DROP INDEX IF EXISTS idx_tournaments_status", [])?;
@@ -1449,12 +1510,12 @@ impl Migration for Migration5 {
         conn.execute("DROP INDEX IF EXISTS idx_pss_events_tournament", [])?;
         conn.execute("DROP INDEX IF EXISTS idx_pss_scores_tournament", [])?;
         conn.execute("DROP INDEX IF EXISTS idx_pss_warnings_tournament", [])?;
-        
+
         // Note: SQLite doesn't support DROP COLUMN, so we'll need to recreate tables
         // For now, we'll just drop the tournament tables
         conn.execute("DROP TABLE IF EXISTS tournament_days", [])?;
         conn.execute("DROP TABLE IF EXISTS tournaments", [])?;
-        
+
         Ok(())
     }
 }
@@ -1468,15 +1529,15 @@ impl Migration for Migration6 {
     fn version(&self) -> u32 {
         6
     }
-    
+
     fn description(&self) -> &str {
         "Fix date column types from DATETIME to TEXT for tournament tables"
     }
-    
+
     fn up(&self, conn: &Connection) -> SqliteResult<()> {
         // SQLite doesn't support ALTER COLUMN TYPE, so we need to recreate the tables
         // First, create new tables with correct column types
-        
+
         // Create new tournaments table with TEXT date columns
         conn.execute(
             "CREATE TABLE IF NOT EXISTS tournaments_new (
@@ -1495,7 +1556,7 @@ impl Migration for Migration6 {
             )",
             [],
         )?;
-        
+
         // Create new tournament_days table with TEXT date columns
         conn.execute(
             "CREATE TABLE IF NOT EXISTS tournament_days_new (
@@ -1513,50 +1574,55 @@ impl Migration for Migration6 {
             )",
             [],
         )?;
-        
+
         // Copy data from old tables to new tables (if they exist)
-        conn.execute(
-            "INSERT INTO tournaments_new SELECT * FROM tournaments",
-            [],
-        ).ok(); // Ignore error if old table doesn't exist
-        
+        conn.execute("INSERT INTO tournaments_new SELECT * FROM tournaments", [])
+            .ok(); // Ignore error if old table doesn't exist
+
         conn.execute(
             "INSERT INTO tournament_days_new SELECT * FROM tournament_days",
             [],
-        ).ok(); // Ignore error if old table doesn't exist
-        
+        )
+        .ok(); // Ignore error if old table doesn't exist
+
         // Drop old tables
-        conn.execute("DROP TABLE IF EXISTS tournament_days", []).ok();
+        conn.execute("DROP TABLE IF EXISTS tournament_days", [])
+            .ok();
         conn.execute("DROP TABLE IF EXISTS tournaments", []).ok();
-        
+
         // Rename new tables to original names
-        conn.execute("ALTER TABLE tournaments_new RENAME TO tournaments", []).ok();
-        conn.execute("ALTER TABLE tournament_days_new RENAME TO tournament_days", []).ok();
-        
+        conn.execute("ALTER TABLE tournaments_new RENAME TO tournaments", [])
+            .ok();
+        conn.execute(
+            "ALTER TABLE tournament_days_new RENAME TO tournament_days",
+            [],
+        )
+        .ok();
+
         // Recreate indices
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_tournaments_status ON tournaments(status)",
             [],
         )?;
-        
+
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_tournaments_city_country ON tournaments(city, country)",
             [],
         )?;
-        
+
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_tournament_days_tournament ON tournament_days(tournament_id)",
             [],
         )?;
-        
+
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_tournament_days_status ON tournament_days(status)",
             [],
         )?;
-        
+
         Ok(())
     }
-    
+
     fn down(&self, _conn: &Connection) -> SqliteResult<()> {
         // This migration is mostly about fixing column types
         // The down migration would be complex and not really needed
@@ -1590,41 +1656,86 @@ impl Migration for Migration7 {
             }
         }
         if !has_event_type_id {
-            let _ = conn.execute("ALTER TABLE pss_events ADD COLUMN event_type_id INTEGER", []);
+            let _ = conn.execute(
+                "ALTER TABLE pss_events ADD COLUMN event_type_id INTEGER",
+                [],
+            );
         }
 
         // PSS Events indexes
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_events_session_id ON pss_events(session_id)", [])?;
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_events_match_id ON pss_events(match_id)", [])?;
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_events_event_type_id ON pss_events(event_type_id)", [])?;
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_events_timestamp ON pss_events(timestamp)", [])?;
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_events_created_at ON pss_events(created_at)", [])?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_events_session_id ON pss_events(session_id)",
+            [],
+        )?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_events_match_id ON pss_events(match_id)",
+            [],
+        )?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_events_event_type_id ON pss_events(event_type_id)",
+            [],
+        )?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_events_timestamp ON pss_events(timestamp)",
+            [],
+        )?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_events_created_at ON pss_events(created_at)",
+            [],
+        )?;
 
         // PSS Event Types indexes
         conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_event_types_event_code ON pss_event_types(event_code)", [])?;
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_event_types_category ON pss_event_types(category)", [])?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_event_types_category ON pss_event_types(category)",
+            [],
+        )?;
         conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_event_types_is_active ON pss_event_types(is_active)", [])?;
 
         // PSS Matches indexes
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_matches_match_id ON pss_matches(match_id)", [])?;
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_matches_created_at ON pss_matches(created_at)", [])?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_matches_match_id ON pss_matches(match_id)",
+            [],
+        )?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_matches_created_at ON pss_matches(created_at)",
+            [],
+        )?;
 
         // PSS Athletes indexes
         conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_athletes_athlete_code ON pss_athletes(athlete_code)", [])?;
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_athletes_created_at ON pss_athletes(created_at)", [])?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_athletes_created_at ON pss_athletes(created_at)",
+            [],
+        )?;
 
         // PSS Scores indexes
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_scores_match_id ON pss_scores(match_id)", [])?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_scores_match_id ON pss_scores(match_id)",
+            [],
+        )?;
         conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_scores_athlete_position ON pss_scores(athlete_position)", [])?;
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_scores_timestamp ON pss_scores(timestamp)", [])?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_scores_timestamp ON pss_scores(timestamp)",
+            [],
+        )?;
 
         // PSS Warnings indexes
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_warnings_match_id ON pss_warnings(match_id)", [])?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_warnings_match_id ON pss_warnings(match_id)",
+            [],
+        )?;
         conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_warnings_athlete_position ON pss_warnings(athlete_position)", [])?;
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_warnings_timestamp ON pss_warnings(timestamp)", [])?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_warnings_timestamp ON pss_warnings(timestamp)",
+            [],
+        )?;
 
         // UDP Server Configs indexes
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_udp_server_configs_name ON udp_server_configs(name)", [])?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_udp_server_configs_name ON udp_server_configs(name)",
+            [],
+        )?;
         conn.execute("CREATE INDEX IF NOT EXISTS idx_udp_server_configs_enabled ON udp_server_configs(enabled)", [])?;
 
         // UDP Server Sessions indexes
@@ -1638,37 +1749,76 @@ impl Migration for Migration7 {
         conn.execute("CREATE INDEX IF NOT EXISTS idx_udp_client_connections_first_seen ON udp_client_connections(first_seen)", [])?;
 
         // Network Interfaces indexes
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_network_interfaces_name ON network_interfaces(name)", [])?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_network_interfaces_name ON network_interfaces(name)",
+            [],
+        )?;
         conn.execute("CREATE INDEX IF NOT EXISTS idx_network_interfaces_is_active ON network_interfaces(is_active)", [])?;
 
         // Tournaments indexes
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_tournaments_name ON tournaments(name)", [])?;
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_tournaments_status ON tournaments(status)", [])?;
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_tournaments_start_date ON tournaments(start_date)", [])?;
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_tournaments_created_at ON tournaments(created_at)", [])?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_tournaments_name ON tournaments(name)",
+            [],
+        )?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_tournaments_status ON tournaments(status)",
+            [],
+        )?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_tournaments_start_date ON tournaments(start_date)",
+            [],
+        )?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_tournaments_created_at ON tournaments(created_at)",
+            [],
+        )?;
 
         // Tournament Days indexes
         conn.execute("CREATE INDEX IF NOT EXISTS idx_tournament_days_tournament_id ON tournament_days(tournament_id)", [])?;
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_tournament_days_status ON tournament_days(status)", [])?;
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_tournament_days_date ON tournament_days(date)", [])?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_tournament_days_status ON tournament_days(status)",
+            [],
+        )?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_tournament_days_date ON tournament_days(date)",
+            [],
+        )?;
 
         // Settings indexes (from Migration2)
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_settings_keys_name ON settings_keys(key_name)", [])?;
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_settings_keys_category ON settings_keys(category_id)", [])?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_settings_keys_name ON settings_keys(key_name)",
+            [],
+        )?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_settings_keys_category ON settings_keys(category_id)",
+            [],
+        )?;
 
         // Settings Categories indexes
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_settings_categories_name ON settings_categories(name)", [])?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_settings_categories_name ON settings_categories(name)",
+            [],
+        )?;
         conn.execute("CREATE INDEX IF NOT EXISTS idx_settings_categories_display_order ON settings_categories(display_order)", [])?;
 
         // Settings Values indexes
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_settings_values_key ON settings_values(key_id)", [])?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_settings_values_key ON settings_values(key_id)",
+            [],
+        )?;
 
         // Settings History indexes
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_settings_history_key ON settings_history(key_id)", [])?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_settings_history_key ON settings_history(key_id)",
+            [],
+        )?;
         conn.execute("CREATE INDEX IF NOT EXISTS idx_settings_history_created ON settings_history(created_at)", [])?;
 
         // Schema Version indexes
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_schema_version_version ON schema_version(version)", [])?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_schema_version_version ON schema_version(version)",
+            [],
+        )?;
         conn.execute("CREATE INDEX IF NOT EXISTS idx_schema_version_applied_at ON schema_version(applied_at)", [])?;
 
         log::info!("Database indexes created successfully");
@@ -1678,21 +1828,50 @@ impl Migration for Migration7 {
     fn down(&self, conn: &Connection) -> SqliteResult<()> {
         // Drop all indexes
         let indexes = [
-            "idx_pss_events_session_id", "idx_pss_events_match_id", "idx_pss_events_event_type_id",
-            "idx_pss_events_timestamp", "idx_pss_events_created_at", "idx_pss_event_types_event_code",
-            "idx_pss_event_types_category", "idx_pss_event_types_is_active", "idx_pss_matches_match_id",
-            "idx_pss_matches_created_at", "idx_pss_athletes_athlete_code", "idx_pss_athletes_created_at",
-            "idx_pss_scores_match_id", "idx_pss_scores_athlete_position", "idx_pss_scores_timestamp",
-            "idx_pss_warnings_match_id", "idx_pss_warnings_athlete_position", "idx_pss_warnings_timestamp",
-            "idx_udp_server_configs_name", "idx_udp_server_configs_enabled", "idx_udp_server_sessions_config_id",
-            "idx_udp_server_sessions_status", "idx_udp_server_sessions_start_time", "idx_udp_client_connections_session_id",
-            "idx_udp_client_connections_client_address", "idx_udp_client_connections_first_seen", "idx_network_interfaces_name",
-            "idx_network_interfaces_is_active", 
-            "idx_tournaments_name", "idx_tournaments_status", "idx_tournaments_start_date", "idx_tournaments_created_at", 
-            "idx_tournament_days_tournament_id", "idx_tournament_days_status", "idx_tournament_days_date", 
-            "idx_settings_keys_name", "idx_settings_keys_category", "idx_settings_categories_name", 
-            "idx_settings_categories_display_order", "idx_settings_values_key", "idx_settings_history_key", "idx_settings_history_created", 
-            "idx_schema_version_version", "idx_schema_version_applied_at"
+            "idx_pss_events_session_id",
+            "idx_pss_events_match_id",
+            "idx_pss_events_event_type_id",
+            "idx_pss_events_timestamp",
+            "idx_pss_events_created_at",
+            "idx_pss_event_types_event_code",
+            "idx_pss_event_types_category",
+            "idx_pss_event_types_is_active",
+            "idx_pss_matches_match_id",
+            "idx_pss_matches_created_at",
+            "idx_pss_athletes_athlete_code",
+            "idx_pss_athletes_created_at",
+            "idx_pss_scores_match_id",
+            "idx_pss_scores_athlete_position",
+            "idx_pss_scores_timestamp",
+            "idx_pss_warnings_match_id",
+            "idx_pss_warnings_athlete_position",
+            "idx_pss_warnings_timestamp",
+            "idx_udp_server_configs_name",
+            "idx_udp_server_configs_enabled",
+            "idx_udp_server_sessions_config_id",
+            "idx_udp_server_sessions_status",
+            "idx_udp_server_sessions_start_time",
+            "idx_udp_client_connections_session_id",
+            "idx_udp_client_connections_client_address",
+            "idx_udp_client_connections_first_seen",
+            "idx_network_interfaces_name",
+            "idx_network_interfaces_is_active",
+            "idx_tournaments_name",
+            "idx_tournaments_status",
+            "idx_tournaments_start_date",
+            "idx_tournaments_created_at",
+            "idx_tournament_days_tournament_id",
+            "idx_tournament_days_status",
+            "idx_tournament_days_date",
+            "idx_settings_keys_name",
+            "idx_settings_keys_category",
+            "idx_settings_categories_name",
+            "idx_settings_categories_display_order",
+            "idx_settings_values_key",
+            "idx_settings_history_key",
+            "idx_settings_history_created",
+            "idx_schema_version_version",
+            "idx_schema_version_applied_at",
         ];
 
         for index in &indexes {
@@ -1927,41 +2106,155 @@ impl Migration for Migration8 {
         // Populate validation rules for PSS v2.3 protocol
         let validation_rules = vec![
             // Points events validation
-            ("pt1", "2.3", "point_type_range", "range", "1-5", "Point type must be between 1 and 5"),
-            ("pt2", "2.3", "point_type_range", "range", "1-5", "Point type must be between 1 and 5"),
-            
+            (
+                "pt1",
+                "2.3",
+                "point_type_range",
+                "range",
+                "1-5",
+                "Point type must be between 1 and 5",
+            ),
+            (
+                "pt2",
+                "2.3",
+                "point_type_range",
+                "range",
+                "1-5",
+                "Point type must be between 1 and 5",
+            ),
             // Hit level events validation
-            ("hl1", "2.3", "hit_level_range", "range", "1-100", "Hit level must be between 1 and 100"),
-            ("hl2", "2.3", "hit_level_range", "range", "1-100", "Hit level must be between 1 and 100"),
-            
+            (
+                "hl1",
+                "2.3",
+                "hit_level_range",
+                "range",
+                "1-100",
+                "Hit level must be between 1 and 100",
+            ),
+            (
+                "hl2",
+                "2.3",
+                "hit_level_range",
+                "range",
+                "1-100",
+                "Hit level must be between 1 and 100",
+            ),
             // Warnings events validation
-            ("wg1", "2.3", "warning_count_range", "range", "0-4", "Warning count must be between 0 and 4"),
-            ("wg2", "2.3", "warning_count_range", "range", "0-4", "Warning count must be between 0 and 4"),
-            
+            (
+                "wg1",
+                "2.3",
+                "warning_count_range",
+                "range",
+                "0-4",
+                "Warning count must be between 0 and 4",
+            ),
+            (
+                "wg2",
+                "2.3",
+                "warning_count_range",
+                "range",
+                "0-4",
+                "Warning count must be between 0 and 4",
+            ),
             // Injury time format validation
-            ("ij0", "2.3", "time_format", "format", "m:ss", "Time must be in m:ss format"),
-            ("ij1", "2.3", "time_format", "format", "m:ss", "Time must be in m:ss format"),
-            ("ij2", "2.3", "time_format", "format", "m:ss", "Time must be in m:ss format"),
-            
+            (
+                "ij0",
+                "2.3",
+                "time_format",
+                "format",
+                "m:ss",
+                "Time must be in m:ss format",
+            ),
+            (
+                "ij1",
+                "2.3",
+                "time_format",
+                "format",
+                "m:ss",
+                "Time must be in m:ss format",
+            ),
+            (
+                "ij2",
+                "2.3",
+                "time_format",
+                "format",
+                "m:ss",
+                "Time must be in m:ss format",
+            ),
             // Challenge events validation
-            ("ch0", "2.3", "challenge_status", "data_type", "integer", "Challenge status must be integer"),
-            ("ch1", "2.3", "challenge_status", "data_type", "integer", "Challenge status must be integer"),
-            ("ch2", "2.3", "challenge_status", "data_type", "integer", "Challenge status must be integer"),
-            
+            (
+                "ch0",
+                "2.3",
+                "challenge_status",
+                "data_type",
+                "integer",
+                "Challenge status must be integer",
+            ),
+            (
+                "ch1",
+                "2.3",
+                "challenge_status",
+                "data_type",
+                "integer",
+                "Challenge status must be integer",
+            ),
+            (
+                "ch2",
+                "2.3",
+                "challenge_status",
+                "data_type",
+                "integer",
+                "Challenge status must be integer",
+            ),
             // Clock events validation
-            ("clk", "2.3", "time_format", "format", "m:ss", "Time must be in m:ss format"),
-            
+            (
+                "clk",
+                "2.3",
+                "time_format",
+                "format",
+                "m:ss",
+                "Time must be in m:ss format",
+            ),
             // Round events validation
-            ("rnd", "2.3", "round_number_range", "range", "1-3", "Round number must be between 1 and 3"),
-            
+            (
+                "rnd",
+                "2.3",
+                "round_number_range",
+                "range",
+                "1-3",
+                "Round number must be between 1 and 3",
+            ),
             // Match config validation
-            ("mch", "2.3", "match_number_positive", "range", "1-9999", "Match number must be positive"),
-            ("mch", "2.3", "total_rounds_range", "range", "0-5", "Total rounds must be between 0 and 5"),
-            ("mch", "2.3", "round_duration_positive", "range", "1-9999", "Round duration must be positive"),
+            (
+                "mch",
+                "2.3",
+                "match_number_positive",
+                "range",
+                "1-9999",
+                "Match number must be positive",
+            ),
+            (
+                "mch",
+                "2.3",
+                "total_rounds_range",
+                "range",
+                "0-5",
+                "Total rounds must be between 0 and 5",
+            ),
+            (
+                "mch",
+                "2.3",
+                "round_duration_positive",
+                "range",
+                "1-9999",
+                "Round duration must be positive",
+            ),
         ];
 
         let current_time = chrono::Utc::now().to_rfc3339();
-        for (event_code, protocol_version, rule_name, rule_type, rule_definition, error_message) in validation_rules {
+        for (event_code, protocol_version, rule_name, rule_type, rule_definition, error_message) in
+            validation_rules
+        {
             conn.execute(
                 "INSERT OR IGNORE INTO pss_event_validation_rules (event_code, protocol_version, rule_name, rule_type, rule_definition, error_message, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 [event_code, protocol_version, rule_name, rule_type, rule_definition, error_message, &current_time, &current_time],
@@ -1983,7 +2276,7 @@ impl Migration for Migration8 {
         // Note: SQLite doesn't support DROP COLUMN, so we can't remove the added columns
         // The columns will remain but won't affect functionality
         log::warn!("Migration 8 rollback: New columns in pss_events_v2 table cannot be removed (SQLite limitation)");
-        
+
         Ok(())
     }
 }
@@ -2138,9 +2431,18 @@ impl Migration for Migration10 {
     fn up(&self, conn: &Connection) -> SqliteResult<()> {
         // Add new columns with default values if they do not already exist
         // Note: SQLite's ALTER TABLE ADD COLUMN only adds if the column does not exist
-        conn.execute("ALTER TABLE event_triggers ADD COLUMN action TEXT NOT NULL DEFAULT 'show'", [])?;
-        conn.execute("ALTER TABLE event_triggers ADD COLUMN target_type TEXT NOT NULL DEFAULT 'scene'", [])?;
-        conn.execute("ALTER TABLE event_triggers ADD COLUMN delay_ms INTEGER NOT NULL DEFAULT 0", [])?;
+        conn.execute(
+            "ALTER TABLE event_triggers ADD COLUMN action TEXT NOT NULL DEFAULT 'show'",
+            [],
+        )?;
+        conn.execute(
+            "ALTER TABLE event_triggers ADD COLUMN target_type TEXT NOT NULL DEFAULT 'scene'",
+            [],
+        )?;
+        conn.execute(
+            "ALTER TABLE event_triggers ADD COLUMN delay_ms INTEGER NOT NULL DEFAULT 0",
+            [],
+        )?;
 
         log::info!("Migration 10: Added action, target_type, delay_ms columns to event_triggers");
         Ok(())
@@ -2167,10 +2469,10 @@ impl Migration for Migration11 {
     fn up(&self, conn: &Connection) -> SqliteResult<()> {
         // Clear existing overlay_templates data
         conn.execute("DELETE FROM overlay_templates", [])?;
-        
+
         // Add url column to overlay_templates table
         conn.execute("ALTER TABLE overlay_templates ADD COLUMN url TEXT", [])?;
-        
+
         log::info!("Migration 11: Added url column to overlay_templates and cleared existing data");
         Ok(())
     }
@@ -2199,20 +2501,19 @@ impl Migration for Migration12 {
             "ALTER TABLE obs_connections ADD COLUMN status TEXT NOT NULL DEFAULT 'disconnected'",
             [],
         )?;
-        
+
         // Add error column to obs_connections table
-        conn.execute(
-            "ALTER TABLE obs_connections ADD COLUMN error TEXT",
-            [],
-        )?;
-        
+        conn.execute("ALTER TABLE obs_connections ADD COLUMN error TEXT", [])?;
+
         log::info!("Migration 12: Added status and error columns to obs_connections table");
         Ok(())
     }
 
     fn down(&self, _conn: &Connection) -> SqliteResult<()> {
         // SQLite does not support DROP COLUMN; no-op but log warning
-        log::warn!(" Migration 12 rollback: Cannot drop columns status, error due to SQLite limitations");
+        log::warn!(
+            " Migration 12 rollback: Cannot drop columns status, error due to SQLite limitations"
+        );
         Ok(())
     }
 }
@@ -2223,28 +2524,28 @@ impl Migration for Migration13 {
     fn version(&self) -> u32 {
         13
     }
-    
+
     fn description(&self) -> &str {
         "Add creation_mode field to pss_matches and update match_number to string"
     }
-    
+
     fn up(&self, conn: &Connection) -> SqliteResult<()> {
         // Add creation_mode column to pss_matches table
         conn.execute(
             "ALTER TABLE pss_matches ADD COLUMN creation_mode TEXT NOT NULL DEFAULT 'Automatic'",
             [],
         )?;
-        
+
         // Update existing records to have 'Automatic' creation_mode
         conn.execute(
             "UPDATE pss_matches SET creation_mode = 'Automatic' WHERE creation_mode IS NULL",
             [],
         )?;
-        
+
         log::info!("Successfully added creation_mode field to pss_matches table");
         Ok(())
     }
-    
+
     fn down(&self, _conn: &Connection) -> SqliteResult<()> {
         // Note: SQLite doesn't support dropping columns, so we can't easily rollback
         // This is a limitation of SQLite
@@ -2260,18 +2561,18 @@ impl Migration for Migration14 {
     fn version(&self) -> u32 {
         14
     }
-    
+
     fn description(&self) -> &str {
         "Change match_number column from INTEGER to TEXT to support non-integer match numbers"
     }
-    
+
     fn up(&self, conn: &Connection) -> SqliteResult<()> {
         // Disable foreign key constraints temporarily
         conn.execute("PRAGMA foreign_keys = OFF", [])?;
-        
+
         // Drop the temporary table if it exists from a previous failed migration
         let _ = conn.execute("DROP TABLE IF EXISTS pss_matches_new", []);
-        
+
         // SQLite doesn't support ALTER COLUMN TYPE, so we need to recreate the table
         // First, create a temporary table with the new schema
         conn.execute(
@@ -2292,7 +2593,7 @@ impl Migration for Migration14 {
             )",
             [],
         )?;
-        
+
         // Copy data from old table to new table, converting match_number to TEXT
         conn.execute(
             "INSERT INTO pss_matches_new 
@@ -2308,27 +2609,27 @@ impl Migration for Migration14 {
              FROM pss_matches",
             [],
         )?;
-        
+
         // Drop the old table
         conn.execute("DROP TABLE pss_matches", [])?;
-        
+
         // Rename the new table to the original name
         conn.execute("ALTER TABLE pss_matches_new RENAME TO pss_matches", [])?;
-        
+
         // Re-enable foreign key constraints
         conn.execute("PRAGMA foreign_keys = ON", [])?;
-        
+
         log::info!("Successfully changed match_number column from INTEGER to TEXT");
         Ok(())
     }
-    
+
     fn down(&self, conn: &Connection) -> SqliteResult<()> {
         // Disable foreign key constraints temporarily
         conn.execute("PRAGMA foreign_keys = OFF", [])?;
-        
+
         // Drop the temporary table if it exists from a previous failed migration
         let _ = conn.execute("DROP TABLE IF EXISTS pss_matches_old", []);
-        
+
         // Revert back to INTEGER (this might lose data if match_number contains non-numeric values)
         conn.execute(
             "CREATE TABLE pss_matches_old (
@@ -2348,7 +2649,7 @@ impl Migration for Migration14 {
             )",
             [],
         )?;
-        
+
         // Copy data back, converting TEXT to INTEGER where possible
         conn.execute(
             "INSERT INTO pss_matches_old 
@@ -2365,16 +2666,16 @@ impl Migration for Migration14 {
              FROM pss_matches",
             [],
         )?;
-        
+
         // Drop the new table
         conn.execute("DROP TABLE pss_matches", [])?;
-        
+
         // Rename the old table back
         conn.execute("ALTER TABLE pss_matches_old RENAME TO pss_matches", [])?;
-        
+
         // Re-enable foreign key constraints
         conn.execute("PRAGMA foreign_keys = ON", [])?;
-        
+
         log::info!("Successfully reverted match_number column back to INTEGER");
         Ok(())
     }
@@ -2432,8 +2733,14 @@ impl Migration for Migration19 {
         conn.execute("ALTER TABLE pss_matches_new RENAME TO pss_matches", [])?;
 
         // Recreate indexes
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_matches_match_id ON pss_matches(match_id)", [])?;
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_matches_created_at ON pss_matches(created_at)", [])?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_matches_match_id ON pss_matches(match_id)",
+            [],
+        )?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_matches_created_at ON pss_matches(created_at)",
+            [],
+        )?;
 
         // Re-enable foreign keys
         conn.execute("PRAGMA foreign_keys = ON", [])?;
@@ -2478,7 +2785,10 @@ impl Migration for Migration19 {
         conn.execute("ALTER TABLE pss_matches_old RENAME TO pss_matches", [])?;
 
         conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_pss_matches_match_id_unique ON pss_matches(match_id)", [])?;
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_matches_created_at ON pss_matches(created_at)", [])?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_matches_created_at ON pss_matches(created_at)",
+            [],
+        )?;
 
         conn.execute("PRAGMA foreign_keys = ON", [])?;
         Ok(())
@@ -2493,8 +2803,12 @@ pub struct MigrationManager {
 pub struct Migration20;
 
 impl Migration for Migration20 {
-    fn version(&self) -> u32 { 20 }
-    fn description(&self) -> &str { "Add recorded_videos table for linking videos to matches and events" }
+    fn version(&self) -> u32 {
+        20
+    }
+    fn description(&self) -> &str {
+        "Add recorded_videos table for linking videos to matches and events"
+    }
     fn up(&self, conn: &Connection) -> SqliteResult<()> {
         conn.execute(
             "CREATE TABLE IF NOT EXISTS recorded_videos (
@@ -2515,10 +2829,19 @@ impl Migration for Migration20 {
             )",
             [],
         )?;
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_recorded_videos_match ON recorded_videos(match_id)", [])?;
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_recorded_videos_event ON recorded_videos(event_id)", [])?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_recorded_videos_match ON recorded_videos(match_id)",
+            [],
+        )?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_recorded_videos_event ON recorded_videos(event_id)",
+            [],
+        )?;
         conn.execute("CREATE INDEX IF NOT EXISTS idx_recorded_videos_day ON recorded_videos(tournament_day_id)", [])?;
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_recorded_videos_start ON recorded_videos(start_time)", [])?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_recorded_videos_start ON recorded_videos(start_time)",
+            [],
+        )?;
         Ok(())
     }
     fn down(&self, conn: &Connection) -> SqliteResult<()> {
@@ -2531,8 +2854,12 @@ impl Migration for Migration20 {
 pub struct Migration21;
 
 impl Migration for Migration21 {
-    fn version(&self) -> u32 { 21 }
-    fn description(&self) -> &str { "Add recorded_video_events table and file metadata (size, checksum)" }
+    fn version(&self) -> u32 {
+        21
+    }
+    fn description(&self) -> &str {
+        "Add recorded_video_events table and file metadata (size, checksum)"
+    }
     fn up(&self, conn: &Connection) -> SqliteResult<()> {
         // Add file_size and checksum to recorded_videos if missing
         let mut stmt = conn.prepare("PRAGMA table_info('recorded_videos')")?;
@@ -2541,11 +2868,18 @@ impl Migration for Migration21 {
         let mut rows = stmt.query([])?;
         while let Some(row) = rows.next()? {
             let col_name: String = row.get(1)?;
-            if col_name == "file_size" { has_file_size = true; }
-            if col_name == "checksum" { has_checksum = true; }
+            if col_name == "file_size" {
+                has_file_size = true;
+            }
+            if col_name == "checksum" {
+                has_checksum = true;
+            }
         }
         if !has_file_size {
-            let _ = conn.execute("ALTER TABLE recorded_videos ADD COLUMN file_size INTEGER", []);
+            let _ = conn.execute(
+                "ALTER TABLE recorded_videos ADD COLUMN file_size INTEGER",
+                [],
+            );
         }
         if !has_checksum {
             let _ = conn.execute("ALTER TABLE recorded_videos ADD COLUMN checksum TEXT", []);
@@ -2565,8 +2899,14 @@ impl Migration for Migration21 {
             )",
             [],
         )?;
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_rve_video ON recorded_video_events(recorded_video_id)", [])?;
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_rve_event ON recorded_video_events(event_id)", [])?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_rve_video ON recorded_video_events(recorded_video_id)",
+            [],
+        )?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_rve_event ON recorded_video_events(event_id)",
+            [],
+        )?;
         Ok(())
     }
     fn down(&self, conn: &Connection) -> SqliteResult<()> {
@@ -2579,7 +2919,9 @@ impl Migration for Migration21 {
 pub struct Migration22;
 
 impl Migration for Migration22 {
-    fn version(&self) -> u32 { 22 }
+    fn version(&self) -> u32 {
+        22
+    }
 
     fn description(&self) -> &str {
         "Add lookup tables for manual match creation and extend pss_matches with lookup FKs"
@@ -2675,15 +3017,29 @@ impl Migration for Migration22 {
         )?;
 
         // Indexes for lookups
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_lg_code ON look_genders(code)", [])?;
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_ld_code ON look_disciplines(code)", [])?;
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_lag_code ON look_age_groups(code)", [])?;
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_ldv_code ON look_divisions(code)", [])?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_lg_code ON look_genders(code)",
+            [],
+        )?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_ld_code ON look_disciplines(code)",
+            [],
+        )?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_lag_code ON look_age_groups(code)",
+            [],
+        )?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_ldv_code ON look_divisions(code)",
+            [],
+        )?;
         conn.execute("CREATE INDEX IF NOT EXISTS idx_lwc_scopes ON look_weight_classes(discipline_id, gender_id, age_group_id)", [])?;
 
         // Seed minimal lookup data if empty
         let now = chrono::Utc::now().to_rfc3339();
-        let gcount: i64 = conn.query_row("SELECT COUNT(1) FROM look_genders", [], |r| r.get(0)).unwrap_or(0);
+        let gcount: i64 = conn
+            .query_row("SELECT COUNT(1) FROM look_genders", [], |r| r.get(0))
+            .unwrap_or(0);
         if gcount == 0 {
             let _ = conn.execute(
                 "INSERT OR IGNORE INTO look_genders(code, name, created_at) VALUES
@@ -2691,7 +3047,9 @@ impl Migration for Migration22 {
                 [&now, &now],
             );
         }
-        let dcount: i64 = conn.query_row("SELECT COUNT(1) FROM look_disciplines", [], |r| r.get(0)).unwrap_or(0);
+        let dcount: i64 = conn
+            .query_row("SELECT COUNT(1) FROM look_disciplines", [], |r| r.get(0))
+            .unwrap_or(0);
         if dcount == 0 {
             let _ = conn.execute(
                 "INSERT OR IGNORE INTO look_disciplines(code, name, created_at) VALUES
@@ -2699,7 +3057,9 @@ impl Migration for Migration22 {
                 [&now, &now],
             );
         }
-        let agcount: i64 = conn.query_row("SELECT COUNT(1) FROM look_age_groups", [], |r| r.get(0)).unwrap_or(0);
+        let agcount: i64 = conn
+            .query_row("SELECT COUNT(1) FROM look_age_groups", [], |r| r.get(0))
+            .unwrap_or(0);
         if agcount == 0 {
             let _ = conn.execute(
                 "INSERT OR IGNORE INTO look_age_groups(code, name, min_age, max_age, authority, created_at) VALUES
@@ -2715,8 +3075,14 @@ impl Migration for Migration22 {
         // Extend pss_matches with lookup FKs and optional bracket stage
         let _ = conn.execute("ALTER TABLE pss_matches ADD COLUMN discipline_id INTEGER REFERENCES look_disciplines(id)", [])?;
         let _ = conn.execute("ALTER TABLE pss_matches ADD COLUMN age_group_id INTEGER REFERENCES look_age_groups(id)", [])?;
-        let _ = conn.execute("ALTER TABLE pss_matches ADD COLUMN gender_id INTEGER REFERENCES look_genders(id)", [])?;
-        let _ = conn.execute("ALTER TABLE pss_matches ADD COLUMN division_id INTEGER REFERENCES look_divisions(id)", [])?;
+        let _ = conn.execute(
+            "ALTER TABLE pss_matches ADD COLUMN gender_id INTEGER REFERENCES look_genders(id)",
+            [],
+        )?;
+        let _ = conn.execute(
+            "ALTER TABLE pss_matches ADD COLUMN division_id INTEGER REFERENCES look_divisions(id)",
+            [],
+        )?;
         let _ = conn.execute("ALTER TABLE pss_matches ADD COLUMN weight_class_id INTEGER REFERENCES look_weight_classes(id)", [])?;
         let _ = conn.execute("ALTER TABLE pss_matches ADD COLUMN bracket_stage TEXT", [])?;
 
@@ -2743,7 +3109,9 @@ impl Migration for Migration22 {
 pub struct Migration23;
 
 impl Migration for Migration23 {
-    fn version(&self) -> u32 { 23 }
+    fn version(&self) -> u32 {
+        23
+    }
 
     fn description(&self) -> &str {
         "Add OVR provider, tournament, and category tables with indexes and linking bridge"
@@ -2825,8 +3193,14 @@ impl Migration for Migration23 {
 
         // Indexes
         conn.execute("CREATE INDEX IF NOT EXISTS idx_ovr_tournaments_provider ON ovr_tournaments(provider_id)", [])?;
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_ovr_tournaments_name ON ovr_tournaments(name)", [])?;
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_ovr_tournaments_start ON ovr_tournaments(start_date)", [])?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_ovr_tournaments_name ON ovr_tournaments(name)",
+            [],
+        )?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_ovr_tournaments_start ON ovr_tournaments(start_date)",
+            [],
+        )?;
         conn.execute("CREATE INDEX IF NOT EXISTS idx_ovr_categories_tournament ON ovr_categories(tournament_id)", [])?;
 
         // Seed known providers
@@ -2894,63 +3268,82 @@ impl MigrationManager {
         migrations.push(Box::new(Migration38)); // Drop tournament_days and remove tournament_day_id columns
         migrations.push(Box::new(Migration39)); // Drop tournament_day_id from event_triggers and obs_recording_sessions
         migrations.push(Box::new(Migration40)); // Add integer created/updated to obs_recording_sessions and backfill
-        
+
         Self { migrations }
     }
-    
+
     /// Get the current schema version from the database
     pub fn get_current_version(&self, conn: &Connection) -> DatabaseResult<u32> {
         // Check if schema_version table exists
-        let table_exists: i32 = conn.query_row(
-            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='schema_version'",
-            [],
-            |row| row.get(0),
-        ).unwrap_or(0);
-        
+        let table_exists: i32 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='schema_version'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap_or(0);
+
         if table_exists == 0 {
             return Ok(0);
         }
-        
+
         // Get the highest version number
-        let version: u32 = conn.query_row(
-            "SELECT MAX(version) FROM schema_version",
-            [],
-            |row| row.get(0),
-        ).unwrap_or(0);
-        
+        let version: u32 = conn
+            .query_row("SELECT MAX(version) FROM schema_version", [], |row| {
+                row.get(0)
+            })
+            .unwrap_or(0);
+
         Ok(version)
     }
-    
+
     /// Apply all pending migrations
     pub fn migrate(&self, conn: &Connection) -> DatabaseResult<()> {
         let current_version = self.get_current_version(conn)?;
         let target_version = CURRENT_SCHEMA_VERSION;
-        
+
         if current_version == target_version {
-            log::info!("Database schema is up to date (version {})", current_version);
+            log::info!(
+                "Database schema is up to date (version {})",
+                current_version
+            );
             return Ok(());
         }
-        
+
         if current_version > target_version {
             return Err(DatabaseError::SchemaVersion(format!(
                 "Schema version mismatch: expected {}, actual {}",
                 target_version, current_version
             )));
         }
-        
-        log::info!("Migrating database from version {} to {}", current_version, target_version);
-        
+
+        log::info!(
+            "Migrating database from version {} to {}",
+            current_version,
+            target_version
+        );
+
         // Apply migrations in order
         for migration in &self.migrations {
             if migration.version() > current_version && migration.version() <= target_version {
-                log::info!("Applying migration {}: {}", migration.version(), migration.description());
-                
+                log::info!(
+                    "Applying migration {}: {}",
+                    migration.version(),
+                    migration.description()
+                );
+
                 // Apply the migration
-                migration.up(conn)
-                    .map_err(|e| DatabaseError::Migration(format!("Failed to apply migration {}: {}", migration.version(), e)))?;
-                
+                migration.up(conn).map_err(|e| {
+                    DatabaseError::Migration(format!(
+                        "Failed to apply migration {}: {}",
+                        migration.version(),
+                        e
+                    ))
+                })?;
+
                 // Record the migration
-                let schema_version = SchemaVersion::new(migration.version(), migration.description().to_string());
+                let schema_version =
+                    SchemaVersion::new(migration.version(), migration.description().to_string());
                 conn.execute(
                     "INSERT INTO schema_version (version, applied_at, description) VALUES (?, ?, ?)",
                     [
@@ -2959,59 +3352,84 @@ impl MigrationManager {
                         &schema_version.description,
                     ],
                 ).map_err(|e| DatabaseError::Migration(format!("Failed to record migration {}: {}", migration.version(), e)))?;
-                
+
                 log::info!("Successfully applied migration {}", migration.version());
             }
         }
-        
+
         log::info!("Database migration completed successfully");
         Ok(())
     }
-    
+
     /// Rollback to a specific version
     pub fn rollback(&self, conn: &Connection, target_version: u32) -> DatabaseResult<()> {
         let current_version = self.get_current_version(conn)?;
-        
+
         if current_version <= target_version {
-            log::info!("Database is already at or below target version {}", target_version);
+            log::info!(
+                "Database is already at or below target version {}",
+                target_version
+            );
             return Ok(());
         }
-        
-        log::info!("Rolling back database from version {} to {}", current_version, target_version);
-        
+
+        log::info!(
+            "Rolling back database from version {} to {}",
+            current_version,
+            target_version
+        );
+
         // Rollback migrations in reverse order
         for migration in self.migrations.iter().rev() {
             if migration.version() <= current_version && migration.version() > target_version {
-                log::info!("Rolling back migration {}: {}", migration.version(), migration.description());
-                
+                log::info!(
+                    "Rolling back migration {}: {}",
+                    migration.version(),
+                    migration.description()
+                );
+
                 // Rollback the migration
-                migration.down(conn)
-                    .map_err(|e| DatabaseError::Migration(format!("Failed to rollback migration {}: {}", migration.version(), e)))?;
-                
+                migration.down(conn).map_err(|e| {
+                    DatabaseError::Migration(format!(
+                        "Failed to rollback migration {}: {}",
+                        migration.version(),
+                        e
+                    ))
+                })?;
+
                 // Remove the migration record
                 conn.execute(
                     "DELETE FROM schema_version WHERE version = ?",
                     [migration.version()],
-                ).map_err(|e| DatabaseError::Migration(format!("Failed to remove migration record {}: {}", migration.version(), e)))?;
-                
+                )
+                .map_err(|e| {
+                    DatabaseError::Migration(format!(
+                        "Failed to remove migration record {}: {}",
+                        migration.version(),
+                        e
+                    ))
+                })?;
+
                 log::info!("Successfully rolled back migration {}", migration.version());
             }
         }
-        
+
         log::info!("Database rollback completed successfully");
         Ok(())
     }
-    
+
     /// Get migration history
     pub fn get_migration_history(&self, conn: &Connection) -> DatabaseResult<Vec<SchemaVersion>> {
-        let mut stmt = conn.prepare("SELECT id, version, applied_at, description FROM schema_version ORDER BY version")?;
+        let mut stmt = conn.prepare(
+            "SELECT id, version, applied_at, description FROM schema_version ORDER BY version",
+        )?;
         let rows = stmt.query_map([], |row| SchemaVersion::from_row(row))?;
-        
+
         let mut history = Vec::new();
         for row in rows {
             history.push(row?);
         }
-        
+
         Ok(history)
     }
 }
@@ -3023,11 +3441,11 @@ impl Migration for Migration15 {
     fn version(&self) -> u32 {
         15
     }
-    
+
     fn description(&self) -> &str {
         "Add secure configuration storage with SHA256 encryption and audit logging"
     }
-    
+
     fn up(&self, conn: &Connection) -> SqliteResult<()> {
         // Create secure_config table for encrypted configuration storage
         conn.execute(
@@ -3048,25 +3466,25 @@ impl Migration for Migration15 {
             )",
             [],
         )?;
-        
+
         // Create index on config_key for fast lookups
         conn.execute(
             "CREATE UNIQUE INDEX IF NOT EXISTS idx_secure_config_key ON secure_config(config_key)",
             [],
         )?;
-        
+
         // Create index on category for grouped queries
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_secure_config_category ON secure_config(category)",
             [],
         )?;
-        
+
         // Create index on is_sensitive for filtering
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_secure_config_sensitive ON secure_config(is_sensitive)",
             [],
         )?;
-        
+
         // Create config_audit table for security audit logging
         conn.execute(
             "CREATE TABLE IF NOT EXISTS config_audit (
@@ -3082,25 +3500,25 @@ impl Migration for Migration15 {
             )",
             [],
         )?;
-        
+
         // Create index on config_key for audit queries
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_config_audit_key ON config_audit(config_key)",
             [],
         )?;
-        
+
         // Create index on action for audit filtering
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_config_audit_action ON config_audit(action)",
             [],
         )?;
-        
+
         // Create index on timestamp for time-based queries
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_config_audit_timestamp ON config_audit(timestamp)",
             [],
         )?;
-        
+
         // Create security_sessions table for session management
         conn.execute(
             "CREATE TABLE IF NOT EXISTS security_sessions (
@@ -3117,19 +3535,19 @@ impl Migration for Migration15 {
             )",
             [],
         )?;
-        
+
         // Create index on session_id for session lookups
         conn.execute(
             "CREATE UNIQUE INDEX IF NOT EXISTS idx_security_sessions_id ON security_sessions(session_id)",
             [],
         )?;
-        
+
         // Create index on expires_at for cleanup
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_security_sessions_expires ON security_sessions(expires_at)",
             [],
         )?;
-        
+
         // Create config_categories table for configuration organization
         conn.execute(
             "CREATE TABLE IF NOT EXISTS config_categories (
@@ -3144,19 +3562,67 @@ impl Migration for Migration15 {
             )",
             [],
         )?;
-        
+
         // Insert default configuration categories
         let categories = [
-            ("obs_credentials", "OBS Credentials", "OBS WebSocket passwords and authentication", "configuration", true),
-            ("api_keys", "API Keys", "Third-party service API keys and tokens", "administrator", true),
-            ("database_config", "Database Configuration", "Database connection and settings", "administrator", true),
-            ("network_secrets", "Network Secrets", "Network authentication and certificates", "administrator", true),
-            ("license_info", "License Information", "License keys and activation data", "administrator", true),
-            ("user_preferences", "User Preferences", "User-specific configuration settings", "read_only", false),
-            ("system_config", "System Configuration", "System-level configuration settings", "administrator", true),
-            ("encryption_keys", "Encryption Keys", "Encryption and security keys", "administrator", true),
+            (
+                "obs_credentials",
+                "OBS Credentials",
+                "OBS WebSocket passwords and authentication",
+                "configuration",
+                true,
+            ),
+            (
+                "api_keys",
+                "API Keys",
+                "Third-party service API keys and tokens",
+                "administrator",
+                true,
+            ),
+            (
+                "database_config",
+                "Database Configuration",
+                "Database connection and settings",
+                "administrator",
+                true,
+            ),
+            (
+                "network_secrets",
+                "Network Secrets",
+                "Network authentication and certificates",
+                "administrator",
+                true,
+            ),
+            (
+                "license_info",
+                "License Information",
+                "License keys and activation data",
+                "administrator",
+                true,
+            ),
+            (
+                "user_preferences",
+                "User Preferences",
+                "User-specific configuration settings",
+                "read_only",
+                false,
+            ),
+            (
+                "system_config",
+                "System Configuration",
+                "System-level configuration settings",
+                "administrator",
+                true,
+            ),
+            (
+                "encryption_keys",
+                "Encryption Keys",
+                "Encryption and security keys",
+                "administrator",
+                true,
+            ),
         ];
-        
+
         for (name, display, desc, access, is_system) in categories {
             conn.execute(
                 "INSERT OR IGNORE INTO config_categories 
@@ -3165,10 +3631,10 @@ impl Migration for Migration15 {
                 [name, display, desc, access, if is_system { "1" } else { "0" }],
             )?;
         }
-        
+
         Ok(())
     }
-    
+
     fn down(&self, conn: &Connection) -> SqliteResult<()> {
         conn.execute("DROP TABLE IF EXISTS config_categories", [])?;
         conn.execute("DROP TABLE IF EXISTS security_sessions", [])?;
@@ -3185,11 +3651,11 @@ impl Migration for Migration16 {
     fn version(&self) -> u32 {
         16
     }
-    
+
     fn description(&self) -> &str {
         "Add OBS recording configuration and session management tables"
     }
-    
+
     fn up(&self, conn: &Connection) -> SqliteResult<()> {
         // Create obs_recording_config table
         conn.execute(
@@ -3217,7 +3683,10 @@ impl Migration for Migration16 {
         let mut rows = stmt.query([])?;
         while let Some(row) = rows.next()? {
             let col_name: String = row.get(1)?;
-            if col_name == "folder_pattern" { has_folder_pattern = true; break; }
+            if col_name == "folder_pattern" {
+                has_folder_pattern = true;
+                break;
+            }
         }
         if !has_folder_pattern {
             let _ = conn.execute(
@@ -3225,7 +3694,7 @@ impl Migration for Migration16 {
                 [],
             );
         }
-        
+
         // Create obs_recording_sessions table
         conn.execute(
             "CREATE TABLE IF NOT EXISTS obs_recording_sessions (
@@ -3258,53 +3727,53 @@ impl Migration for Migration16 {
             )",
             [],
         )?;
-        
+
         // Create indexes for efficient querying
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_obs_recording_config_connection ON obs_recording_config(obs_connection_name)",
             [],
         )?;
-        
+
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_obs_recording_config_active ON obs_recording_config(is_active)",
             [],
         )?;
-        
+
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_obs_recording_sessions_connection ON obs_recording_sessions(obs_connection_name)",
             [],
         )?;
-        
+
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_obs_recording_sessions_status ON obs_recording_sessions(status)",
             [],
         )?;
-        
+
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_obs_recording_sessions_tournament ON obs_recording_sessions(tournament_id, tournament_day_id)",
             [],
         )?;
-        
+
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_obs_recording_sessions_match ON obs_recording_sessions(match_id)",
             [],
         )?;
-        
+
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_obs_recording_sessions_created ON obs_recording_sessions(created_at)",
             [],
         )?;
-        
+
         Ok(())
     }
-    
+
     fn down(&self, conn: &Connection) -> SqliteResult<()> {
         // Drop the tables
         conn.execute("DROP TABLE IF EXISTS obs_recording_sessions", [])?;
         conn.execute("DROP TABLE IF EXISTS obs_recording_config", [])?;
         Ok(())
     }
-} 
+}
 
 // Migration 17 was consolidated into Migration16 and superseded by a new Migration17 below
 
@@ -3312,8 +3781,12 @@ impl Migration for Migration16 {
 pub struct Migration17;
 
 impl Migration for Migration17 {
-    fn version(&self) -> u32 { 17 }
-    fn description(&self) -> &str { "Drop unused recording_quality/bitrate/resolution from obs_recording_config" }
+    fn version(&self) -> u32 {
+        17
+    }
+    fn description(&self) -> &str {
+        "Drop unused recording_quality/bitrate/resolution from obs_recording_config"
+    }
     fn up(&self, conn: &Connection) -> SqliteResult<()> {
         // Create new table without the removed columns
         conn.execute(
@@ -3352,7 +3825,10 @@ impl Migration for Migration17 {
 
         // Replace old table
         conn.execute("DROP TABLE IF EXISTS obs_recording_config", [])?;
-        conn.execute("ALTER TABLE obs_recording_config_new RENAME TO obs_recording_config", [])?;
+        conn.execute(
+            "ALTER TABLE obs_recording_config_new RENAME TO obs_recording_config",
+            [],
+        )?;
         Ok(())
     }
     fn down(&self, _conn: &Connection) -> SqliteResult<()> {
@@ -3365,20 +3841,35 @@ impl Migration for Migration17 {
 pub struct Migration18;
 
 impl Migration for Migration18 {
-    fn version(&self) -> u32 { 18 }
-    fn description(&self) -> &str { "Add condition and action columns to event_triggers (Triggers v2)" }
+    fn version(&self) -> u32 {
+        18
+    }
+    fn description(&self) -> &str {
+        "Add condition and action columns to event_triggers (Triggers v2)"
+    }
     fn up(&self, conn: &Connection) -> SqliteResult<()> {
         // Helper to add a column if it does not exist
-        fn add_column_if_missing(conn: &Connection, table: &str, col: &str, ddl: &str) -> SqliteResult<()> {
+        fn add_column_if_missing(
+            conn: &Connection,
+            table: &str,
+            col: &str,
+            ddl: &str,
+        ) -> SqliteResult<()> {
             let mut has_col = false;
             let mut stmt = conn.prepare(&format!("PRAGMA table_info('{}')", table))?;
             let mut rows = stmt.query([])?;
             while let Some(row) = rows.next()? {
                 let name: String = row.get(1)?;
-                if name == col { has_col = true; break; }
+                if name == col {
+                    has_col = true;
+                    break;
+                }
             }
             if !has_col {
-                let _ = conn.execute(&format!("ALTER TABLE {} ADD COLUMN {} {}", table, col, ddl), []);
+                let _ = conn.execute(
+                    &format!("ALTER TABLE {} ADD COLUMN {} {}", table, col, ddl),
+                    [],
+                );
             }
             Ok(())
         }
@@ -3388,8 +3879,18 @@ impl Migration for Migration18 {
         add_column_if_missing(conn, "event_triggers", "obs_connection_name", "TEXT")?;
         add_column_if_missing(conn, "event_triggers", "condition_round", "INTEGER")?;
         add_column_if_missing(conn, "event_triggers", "condition_once_per", "TEXT")?; // 'round'|'match'
-        add_column_if_missing(conn, "event_triggers", "debounce_ms", "INTEGER NOT NULL DEFAULT 0")?;
-        add_column_if_missing(conn, "event_triggers", "cooldown_ms", "INTEGER NOT NULL DEFAULT 0")?;
+        add_column_if_missing(
+            conn,
+            "event_triggers",
+            "debounce_ms",
+            "INTEGER NOT NULL DEFAULT 0",
+        )?;
+        add_column_if_missing(
+            conn,
+            "event_triggers",
+            "cooldown_ms",
+            "INTEGER NOT NULL DEFAULT 0",
+        )?;
 
         log::info!("Migration 18: Added Triggers v2 columns to event_triggers");
         Ok(())
@@ -3405,7 +3906,9 @@ impl Migration for Migration18 {
 pub struct Migration26;
 
 impl Migration for Migration26 {
-    fn version(&self) -> u32 { 26 }
+    fn version(&self) -> u32 {
+        26
+    }
 
     fn description(&self) -> &str {
         "Convert flag_mappings to UUID TEXT id and add integer created/updated with legacy backfill"
@@ -3452,7 +3955,9 @@ impl Migration for Migration26 {
 pub struct Migration28;
 
 impl Migration for Migration28 {
-    fn version(&self) -> u32 { 28 }
+    fn version(&self) -> u32 {
+        28
+    }
 
     fn description(&self) -> &str {
         "Add integer created/updated to tournaments and tournament_days; keep existing PKs/FKs"
@@ -3495,7 +4000,10 @@ impl Migration for Migration28 {
             "UPDATE recorded_videos SET created = COALESCE(created, strftime('%s', created_at))",
             [],
         );
-        let _ = conn.execute("ALTER TABLE recorded_video_events ADD COLUMN created INTEGER", []);
+        let _ = conn.execute(
+            "ALTER TABLE recorded_video_events ADD COLUMN created INTEGER",
+            [],
+        );
         let _ = conn.execute(
             "UPDATE recorded_video_events SET created = COALESCE(created, strftime('%s', created_at))",
             [],
@@ -3511,71 +4019,156 @@ impl Migration for Migration28 {
         let _ = conn.execute("ALTER TABLE app_config ADD COLUMN updated INTEGER", []);
         let _ = conn.execute("UPDATE app_config SET created = strftime('%s', created_at), updated = strftime('%s', updated_at)", []);
         // network_interfaces
-        let _ = conn.execute("ALTER TABLE network_interfaces ADD COLUMN created INTEGER", []);
-        let _ = conn.execute("ALTER TABLE network_interfaces ADD COLUMN updated INTEGER", []);
+        let _ = conn.execute(
+            "ALTER TABLE network_interfaces ADD COLUMN created INTEGER",
+            [],
+        );
+        let _ = conn.execute(
+            "ALTER TABLE network_interfaces ADD COLUMN updated INTEGER",
+            [],
+        );
         let _ = conn.execute("UPDATE network_interfaces SET created = strftime('%s', created_at), updated = strftime('%s', updated_at)", []);
         // udp_server_configs
-        let _ = conn.execute("ALTER TABLE udp_server_configs ADD COLUMN created INTEGER", []);
-        let _ = conn.execute("ALTER TABLE udp_server_configs ADD COLUMN updated INTEGER", []);
+        let _ = conn.execute(
+            "ALTER TABLE udp_server_configs ADD COLUMN created INTEGER",
+            [],
+        );
+        let _ = conn.execute(
+            "ALTER TABLE udp_server_configs ADD COLUMN updated INTEGER",
+            [],
+        );
         let _ = conn.execute("UPDATE udp_server_configs SET created = strftime('%s', created_at), updated = strftime('%s', updated_at)", []);
         // udp_server_sessions (derive integer timestamps from start_time/end_time since created_at/updated_at don't exist)
-        let _ = conn.execute("ALTER TABLE udp_server_sessions ADD COLUMN created INTEGER", []);
-        let _ = conn.execute("ALTER TABLE udp_server_sessions ADD COLUMN updated INTEGER", []);
+        let _ = conn.execute(
+            "ALTER TABLE udp_server_sessions ADD COLUMN created INTEGER",
+            [],
+        );
+        let _ = conn.execute(
+            "ALTER TABLE udp_server_sessions ADD COLUMN updated INTEGER",
+            [],
+        );
         let _ = conn.execute(
             "UPDATE udp_server_sessions SET 
                 created = COALESCE(created, strftime('%s', start_time)),
                 updated = COALESCE(updated, strftime('%s', COALESCE(end_time, start_time)))",
-            []);
+            [],
+        );
         // udp_client_connections
-        let _ = conn.execute("ALTER TABLE udp_client_connections ADD COLUMN created INTEGER", []);
-        let _ = conn.execute("UPDATE udp_client_connections SET created = strftime('%s', created_at)", []);
+        let _ = conn.execute(
+            "ALTER TABLE udp_client_connections ADD COLUMN created INTEGER",
+            [],
+        );
+        let _ = conn.execute(
+            "UPDATE udp_client_connections SET created = strftime('%s', created_at)",
+            [],
+        );
         // pss_event_types
         let _ = conn.execute("ALTER TABLE pss_event_types ADD COLUMN created INTEGER", []);
-        let _ = conn.execute("UPDATE pss_event_types SET created = strftime('%s', created_at)", []);
+        let _ = conn.execute(
+            "UPDATE pss_event_types SET created = strftime('%s', created_at)",
+            [],
+        );
         // pss_athletes
         let _ = conn.execute("ALTER TABLE pss_athletes ADD COLUMN created INTEGER", []);
         let _ = conn.execute("ALTER TABLE pss_athletes ADD COLUMN updated INTEGER", []);
         let _ = conn.execute("UPDATE pss_athletes SET created = strftime('%s', created_at), updated = strftime('%s', updated_at)", []);
         // pss_match_athletes
-        let _ = conn.execute("ALTER TABLE pss_match_athletes ADD COLUMN created INTEGER", []);
-        let _ = conn.execute("UPDATE pss_match_athletes SET created = strftime('%s', created_at)", []);
+        let _ = conn.execute(
+            "ALTER TABLE pss_match_athletes ADD COLUMN created INTEGER",
+            [],
+        );
+        let _ = conn.execute(
+            "UPDATE pss_match_athletes SET created = strftime('%s', created_at)",
+            [],
+        );
         // pss_rounds
         let _ = conn.execute("ALTER TABLE pss_rounds ADD COLUMN created INTEGER", []);
-        let _ = conn.execute("UPDATE pss_rounds SET created = strftime('%s', created_at)", []);
+        let _ = conn.execute(
+            "UPDATE pss_rounds SET created = strftime('%s', created_at)",
+            [],
+        );
         // pss_event_details
-        let _ = conn.execute("ALTER TABLE pss_event_details ADD COLUMN created INTEGER", []);
-        let _ = conn.execute("UPDATE pss_event_details SET created = strftime('%s', created_at)", []);
+        let _ = conn.execute(
+            "ALTER TABLE pss_event_details ADD COLUMN created INTEGER",
+            [],
+        );
+        let _ = conn.execute(
+            "UPDATE pss_event_details SET created = strftime('%s', created_at)",
+            [],
+        );
         // pss_scores
         let _ = conn.execute("ALTER TABLE pss_scores ADD COLUMN created INTEGER", []);
-        let _ = conn.execute("UPDATE pss_scores SET created = strftime('%s', created_at)", []);
+        let _ = conn.execute(
+            "UPDATE pss_scores SET created = strftime('%s', created_at)",
+            [],
+        );
         // pss_warnings
         let _ = conn.execute("ALTER TABLE pss_warnings ADD COLUMN created INTEGER", []);
-        let _ = conn.execute("UPDATE pss_warnings SET created = strftime('%s', created_at)", []);
+        let _ = conn.execute(
+            "UPDATE pss_warnings SET created = strftime('%s', created_at)",
+            [],
+        );
         // pss_event_recognition_history
-        let _ = conn.execute("ALTER TABLE pss_event_recognition_history ADD COLUMN created INTEGER", []);
-        let _ = conn.execute("UPDATE pss_event_recognition_history SET created = strftime('%s', created_at)", []);
+        let _ = conn.execute(
+            "ALTER TABLE pss_event_recognition_history ADD COLUMN created INTEGER",
+            [],
+        );
+        let _ = conn.execute(
+            "UPDATE pss_event_recognition_history SET created = strftime('%s', created_at)",
+            [],
+        );
         // pss_unknown_events
-        let _ = conn.execute("ALTER TABLE pss_unknown_events ADD COLUMN created INTEGER", []);
-        let _ = conn.execute("ALTER TABLE pss_unknown_events ADD COLUMN updated INTEGER", []);
+        let _ = conn.execute(
+            "ALTER TABLE pss_unknown_events ADD COLUMN created INTEGER",
+            [],
+        );
+        let _ = conn.execute(
+            "ALTER TABLE pss_unknown_events ADD COLUMN updated INTEGER",
+            [],
+        );
         let _ = conn.execute("UPDATE pss_unknown_events SET created = strftime('%s', created_at), updated = strftime('%s', updated_at)", []);
         // pss_event_validation_rules
-        let _ = conn.execute("ALTER TABLE pss_event_validation_rules ADD COLUMN created INTEGER", []);
-        let _ = conn.execute("ALTER TABLE pss_event_validation_rules ADD COLUMN updated INTEGER", []);
+        let _ = conn.execute(
+            "ALTER TABLE pss_event_validation_rules ADD COLUMN created INTEGER",
+            [],
+        );
+        let _ = conn.execute(
+            "ALTER TABLE pss_event_validation_rules ADD COLUMN updated INTEGER",
+            [],
+        );
         let _ = conn.execute("UPDATE pss_event_validation_rules SET created = strftime('%s', created_at), updated = strftime('%s', updated_at)", []);
         // pss_event_validation_results
-        let _ = conn.execute("ALTER TABLE pss_event_validation_results ADD COLUMN created INTEGER", []);
-        let _ = conn.execute("UPDATE pss_event_validation_results SET created = strftime('%s', created_at)", []);
+        let _ = conn.execute(
+            "ALTER TABLE pss_event_validation_results ADD COLUMN created INTEGER",
+            [],
+        );
+        let _ = conn.execute(
+            "UPDATE pss_event_validation_results SET created = strftime('%s', created_at)",
+            [],
+        );
         // pss_event_statistics
-        let _ = conn.execute("ALTER TABLE pss_event_statistics ADD COLUMN created INTEGER", []);
-        let _ = conn.execute("ALTER TABLE pss_event_statistics ADD COLUMN updated INTEGER", []);
+        let _ = conn.execute(
+            "ALTER TABLE pss_event_statistics ADD COLUMN created INTEGER",
+            [],
+        );
+        let _ = conn.execute(
+            "ALTER TABLE pss_event_statistics ADD COLUMN updated INTEGER",
+            [],
+        );
         let _ = conn.execute("UPDATE pss_event_statistics SET created = strftime('%s', created_at), updated = strftime('%s', updated_at)", []);
         // obs_scenes
         let _ = conn.execute("ALTER TABLE obs_scenes ADD COLUMN created INTEGER", []);
         let _ = conn.execute("ALTER TABLE obs_scenes ADD COLUMN updated INTEGER", []);
         let _ = conn.execute("UPDATE obs_scenes SET created = strftime('%s', created_at), updated = strftime('%s', updated_at)", []);
         // overlay_templates
-        let _ = conn.execute("ALTER TABLE overlay_templates ADD COLUMN created INTEGER", []);
-        let _ = conn.execute("ALTER TABLE overlay_templates ADD COLUMN updated INTEGER", []);
+        let _ = conn.execute(
+            "ALTER TABLE overlay_templates ADD COLUMN created INTEGER",
+            [],
+        );
+        let _ = conn.execute(
+            "ALTER TABLE overlay_templates ADD COLUMN updated INTEGER",
+            [],
+        );
         let _ = conn.execute("UPDATE overlay_templates SET created = strftime('%s', created_at), updated = strftime('%s', updated_at)", []);
         // event_triggers
         let _ = conn.execute("ALTER TABLE event_triggers ADD COLUMN created INTEGER", []);
@@ -3594,21 +4187,31 @@ impl Migration for Migration28 {
         let _ = conn.execute("ALTER TABLE ovr_categories ADD COLUMN updated INTEGER", []);
         let _ = conn.execute("UPDATE ovr_categories SET created = strftime('%s', created_at), updated = strftime('%s', updated_at)", []);
         // ovr_to_local_tournament
-        let _ = conn.execute("ALTER TABLE ovr_to_local_tournament ADD COLUMN created INTEGER", []);
-        let _ = conn.execute("UPDATE ovr_to_local_tournament SET created = strftime('%s', created_at)", []);
+        let _ = conn.execute(
+            "ALTER TABLE ovr_to_local_tournament ADD COLUMN created INTEGER",
+            [],
+        );
+        let _ = conn.execute(
+            "UPDATE ovr_to_local_tournament SET created = strftime('%s', created_at)",
+            [],
+        );
 
         // flags and lookups, security handled in Migration29 up to keep order; safe to return
         Ok(())
     }
 
-    fn down(&self, _conn: &Connection) -> SqliteResult<()> { Ok(()) }
+    fn down(&self, _conn: &Connection) -> SqliteResult<()> {
+        Ok(())
+    }
 }
 
 /// Migration 29: Add triggers to auto-populate integer created/updated from created_at/updated_at
 pub struct Migration29;
 
 impl Migration for Migration29 {
-    fn version(&self) -> u32 { 29 }
+    fn version(&self) -> u32 {
+        29
+    }
 
     fn description(&self) -> &str {
         "Create SQLite triggers to automatically set created/updated integer columns from ISO fields"
@@ -3616,8 +4219,14 @@ impl Migration for Migration29 {
 
     fn up(&self, conn: &Connection) -> SqliteResult<()> {
         // Explicitly drop legacy udp_server_sessions triggers that referenced created_at/updated_at
-        let _ = conn.execute("DROP TRIGGER IF EXISTS trg_udp_server_sessions_created_int", []);
-        let _ = conn.execute("DROP TRIGGER IF EXISTS trg_udp_server_sessions_updated_int", []);
+        let _ = conn.execute(
+            "DROP TRIGGER IF EXISTS trg_udp_server_sessions_created_int",
+            [],
+        );
+        let _ = conn.execute(
+            "DROP TRIGGER IF EXISTS trg_udp_server_sessions_updated_int",
+            [],
+        );
 
         // Helper to create triggers for a table with created_at/updated_at
         let with_updated = [
@@ -3644,8 +4253,14 @@ impl Migration for Migration29 {
 
         for table in with_updated.iter() {
             // Remove legacy triggers; do not recreate (we set created/updated from code/migrations now)
-            let _ = conn.execute(&format!("DROP TRIGGER IF EXISTS trg_{table}_created_int"), []);
-            let _ = conn.execute(&format!("DROP TRIGGER IF EXISTS trg_{table}_updated_int"), []);
+            let _ = conn.execute(
+                &format!("DROP TRIGGER IF EXISTS trg_{table}_created_int"),
+                [],
+            );
+            let _ = conn.execute(
+                &format!("DROP TRIGGER IF EXISTS trg_{table}_updated_int"),
+                [],
+            );
         }
 
         // Helper for tables with only created_at
@@ -3679,7 +4294,10 @@ impl Migration for Migration29 {
 
         for table in with_created_only.iter() {
             // Drop old created trigger if present; do not recreate
-            let _ = conn.execute(&format!("DROP TRIGGER IF EXISTS trg_{table}_created_int"), []);
+            let _ = conn.execute(
+                &format!("DROP TRIGGER IF EXISTS trg_{table}_created_int"),
+                [],
+            );
         }
 
         Ok(())
@@ -3692,7 +4310,9 @@ impl Migration for Migration29 {
             "DROP TRIGGER IF EXISTS trg_tournaments_created_int",
             "DROP TRIGGER IF EXISTS trg_tournaments_updated_int",
         ];
-        for sql in drop_list.iter() { let _ = conn.execute(sql, []); }
+        for sql in drop_list.iter() {
+            let _ = conn.execute(sql, []);
+        }
         Ok(())
     }
 }
@@ -3701,8 +4321,12 @@ impl Migration for Migration29 {
 pub struct Migration30;
 
 impl Migration for Migration30 {
-    fn version(&self) -> u32 { 30 }
-    fn description(&self) -> &str { "Add uuid TEXT columns to tournaments and tournament_days and backfill" }
+    fn version(&self) -> u32 {
+        30
+    }
+    fn description(&self) -> &str {
+        "Add uuid TEXT columns to tournaments and tournament_days and backfill"
+    }
     fn up(&self, conn: &Connection) -> SqliteResult<()> {
         // Add uuid to tournaments
         let _ = conn.execute("ALTER TABLE tournaments ADD COLUMN uuid TEXT", []);
@@ -3712,8 +4336,14 @@ impl Migration for Migration30 {
         let _ = conn.execute("UPDATE tournaments SET uuid = COALESCE(uuid, lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-4'||substr(hex(randomblob(2)),2)||'-'||substr('AB89',abs(random())%4+1,1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))))", []);
         let _ = conn.execute("UPDATE tournament_days SET uuid = COALESCE(uuid, lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-4'||substr(hex(randomblob(2)),2)||'-'||substr('AB89',abs(random())%4+1,1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))))", []);
         // Ensure uniqueness indexes
-        let _ = conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_tournaments_uuid ON tournaments(uuid)", []);
-        let _ = conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_tournament_days_uuid ON tournament_days(uuid)", []);
+        let _ = conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_tournaments_uuid ON tournaments(uuid)",
+            [],
+        );
+        let _ = conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_tournament_days_uuid ON tournament_days(uuid)",
+            [],
+        );
         Ok(())
     }
     fn down(&self, conn: &Connection) -> SqliteResult<()> {
@@ -3728,8 +4358,12 @@ impl Migration for Migration30 {
 pub struct Migration31;
 
 impl Migration for Migration31 {
-    fn version(&self) -> u32 { 31 }
-    fn description(&self) -> &str { "Add tournament_uuid and tournament_day_uuid FKs and backfill" }
+    fn version(&self) -> u32 {
+        31
+    }
+    fn description(&self) -> &str {
+        "Add tournament_uuid and tournament_day_uuid FKs and backfill"
+    }
     fn up(&self, conn: &Connection) -> SqliteResult<()> {
         // Ensure we are operating on the expected PSS events table name.
         if !table_exists(conn, "pss_events_v2")? {
@@ -3766,14 +4400,32 @@ impl Migration for Migration31 {
         }
 
         // Add uuid FKs to pss_matches
-        let _ = conn.execute("ALTER TABLE pss_matches ADD COLUMN tournament_uuid TEXT", []);
-        let _ = conn.execute("ALTER TABLE pss_matches ADD COLUMN tournament_day_uuid TEXT", []);
+        let _ = conn.execute(
+            "ALTER TABLE pss_matches ADD COLUMN tournament_uuid TEXT",
+            [],
+        );
+        let _ = conn.execute(
+            "ALTER TABLE pss_matches ADD COLUMN tournament_day_uuid TEXT",
+            [],
+        );
         // Add uuid FKs to pss_events_v2
-        let _ = conn.execute("ALTER TABLE pss_events_v2 ADD COLUMN tournament_uuid TEXT", []);
-        let _ = conn.execute("ALTER TABLE pss_events_v2 ADD COLUMN tournament_day_uuid TEXT", []);
+        let _ = conn.execute(
+            "ALTER TABLE pss_events_v2 ADD COLUMN tournament_uuid TEXT",
+            [],
+        );
+        let _ = conn.execute(
+            "ALTER TABLE pss_events_v2 ADD COLUMN tournament_day_uuid TEXT",
+            [],
+        );
         // Add uuid FKs to recorded_videos
-        let _ = conn.execute("ALTER TABLE recorded_videos ADD COLUMN tournament_uuid TEXT", []);
-        let _ = conn.execute("ALTER TABLE recorded_videos ADD COLUMN tournament_day_uuid TEXT", []);
+        let _ = conn.execute(
+            "ALTER TABLE recorded_videos ADD COLUMN tournament_uuid TEXT",
+            [],
+        );
+        let _ = conn.execute(
+            "ALTER TABLE recorded_videos ADD COLUMN tournament_day_uuid TEXT",
+            [],
+        );
 
         // Backfill from int FKs
         let _ = conn.execute(
@@ -3826,19 +4478,35 @@ impl Migration for Migration31 {
 pub struct Migration32;
 
 impl Migration for Migration32 {
-    fn version(&self) -> u32 { 32 }
-    fn description(&self) -> &str { "Add match_uuid and tournament UUIDs to rounds/scores/warnings/match_athletes/event_details" }
+    fn version(&self) -> u32 {
+        32
+    }
+    fn description(&self) -> &str {
+        "Add match_uuid and tournament UUIDs to rounds/scores/warnings/match_athletes/event_details"
+    }
     fn up(&self, conn: &Connection) -> SqliteResult<()> {
         // Add match_uuid to pss_rounds, pss_scores, pss_warnings, pss_match_athletes
         let _ = conn.execute("ALTER TABLE pss_rounds ADD COLUMN match_uuid TEXT", []);
         let _ = conn.execute("ALTER TABLE pss_scores ADD COLUMN match_uuid TEXT", []);
         let _ = conn.execute("ALTER TABLE pss_warnings ADD COLUMN match_uuid TEXT", []);
-        let _ = conn.execute("ALTER TABLE pss_match_athletes ADD COLUMN match_uuid TEXT", []);
+        let _ = conn.execute(
+            "ALTER TABLE pss_match_athletes ADD COLUMN match_uuid TEXT",
+            [],
+        );
         // Add tournament context UUIDs where tables already carry int ids
         let _ = conn.execute("ALTER TABLE pss_scores ADD COLUMN tournament_uuid TEXT", []);
-        let _ = conn.execute("ALTER TABLE pss_scores ADD COLUMN tournament_day_uuid TEXT", []);
-        let _ = conn.execute("ALTER TABLE pss_warnings ADD COLUMN tournament_uuid TEXT", []);
-        let _ = conn.execute("ALTER TABLE pss_warnings ADD COLUMN tournament_day_uuid TEXT", []);
+        let _ = conn.execute(
+            "ALTER TABLE pss_scores ADD COLUMN tournament_day_uuid TEXT",
+            [],
+        );
+        let _ = conn.execute(
+            "ALTER TABLE pss_warnings ADD COLUMN tournament_uuid TEXT",
+            [],
+        );
+        let _ = conn.execute(
+            "ALTER TABLE pss_warnings ADD COLUMN tournament_day_uuid TEXT",
+            [],
+        );
         // Event details link to events; no direct match/tournament, skip
 
         // Backfill match_uuid via pss_matches
@@ -3869,26 +4537,44 @@ impl Migration for Migration32 {
             []);
 
         // Indexes
-        let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_rounds_match_uuid ON pss_rounds(match_uuid)", []);
-        let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_scores_match_uuid ON pss_scores(match_uuid)", []);
-        let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_warnings_match_uuid ON pss_warnings(match_uuid)", []);
+        let _ = conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_rounds_match_uuid ON pss_rounds(match_uuid)",
+            [],
+        );
+        let _ = conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_scores_match_uuid ON pss_scores(match_uuid)",
+            [],
+        );
+        let _ = conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_warnings_match_uuid ON pss_warnings(match_uuid)",
+            [],
+        );
         Ok(())
     }
-    fn down(&self, _conn: &Connection) -> SqliteResult<()> { Ok(()) }
+    fn down(&self, _conn: &Connection) -> SqliteResult<()> {
+        Ok(())
+    }
 }
 
 /// Migration 33: Add uuid to pss_matches and backfill child match_uuid from it
 pub struct Migration33;
 
 impl Migration for Migration33 {
-    fn version(&self) -> u32 { 33 }
-    fn description(&self) -> &str { "Add uuid TEXT to pss_matches and backfill match_uuid in child tables" }
+    fn version(&self) -> u32 {
+        33
+    }
+    fn description(&self) -> &str {
+        "Add uuid TEXT to pss_matches and backfill match_uuid in child tables"
+    }
     fn up(&self, conn: &Connection) -> SqliteResult<()> {
         // Add uuid to pss_matches
         let _ = conn.execute("ALTER TABLE pss_matches ADD COLUMN uuid TEXT", []);
         // Backfill
         let _ = conn.execute("UPDATE pss_matches SET uuid = COALESCE(uuid, lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-4'||substr(hex(randomblob(2)),2)||'-'||substr('AB89',abs(random())%4+1,1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))))", []);
-        let _ = conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_pss_matches_uuid ON pss_matches(uuid)", []);
+        let _ = conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_pss_matches_uuid ON pss_matches(uuid)",
+            [],
+        );
         // Re-backfill child match_uuid from pss_matches.uuid
         let _ = conn.execute("UPDATE pss_rounds SET match_uuid = (SELECT m.uuid FROM pss_matches m WHERE m.id = pss_rounds.match_id)", []);
         let _ = conn.execute("UPDATE pss_scores SET match_uuid = (SELECT m.uuid FROM pss_matches m WHERE m.id = pss_scores.match_id)", []);
@@ -3896,15 +4582,21 @@ impl Migration for Migration33 {
         let _ = conn.execute("UPDATE pss_match_athletes SET match_uuid = (SELECT m.uuid FROM pss_matches m WHERE m.id = pss_match_athletes.match_id)", []);
         Ok(())
     }
-    fn down(&self, _conn: &Connection) -> SqliteResult<()> { Ok(()) }
+    fn down(&self, _conn: &Connection) -> SqliteResult<()> {
+        Ok(())
+    }
 }
 
 /// Migration 34: Transition FKs to TEXT UUID `table_id` with preserved int columns as *_int
 pub struct Migration34;
 
 impl Migration for Migration34 {
-    fn version(&self) -> u32 { 34 }
-    fn description(&self) -> &str { "Rename int FKs to *_int and add TEXT *_id from UUIDs for core tables" }
+    fn version(&self) -> u32 {
+        34
+    }
+    fn description(&self) -> &str {
+        "Rename int FKs to *_int and add TEXT *_id from UUIDs for core tables"
+    }
     fn up(&self, conn: &Connection) -> SqliteResult<()> {
         let events_table = if table_exists(conn, "pss_events_v2")? {
             "pss_events_v2".to_string()
@@ -3912,7 +4604,9 @@ impl Migration for Migration34 {
             log::info!("Migration 34: Operating on legacy `pss_events` table");
             "pss_events".to_string()
         } else {
-            log::warn!("Migration 34: No PSS events table found; creating `pss_events_v2` placeholder");
+            log::warn!(
+                "Migration 34: No PSS events table found; creating `pss_events_v2` placeholder"
+            );
             conn.execute(
                 "CREATE TABLE IF NOT EXISTS pss_events_v2 (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -3941,16 +4635,40 @@ impl Migration for Migration34 {
         };
 
         // pss_matches: tournament_id INTEGER -> tournament_id TEXT; keep old as tournament_id_int
-        let _ = conn.execute("ALTER TABLE pss_matches ADD COLUMN tournament_id_text TEXT", []);
-        let _ = conn.execute("UPDATE pss_matches SET tournament_id_text = tournament_uuid", []);
+        let _ = conn.execute(
+            "ALTER TABLE pss_matches ADD COLUMN tournament_id_text TEXT",
+            [],
+        );
+        let _ = conn.execute(
+            "UPDATE pss_matches SET tournament_id_text = tournament_uuid",
+            [],
+        );
         // Keep original integer under *_int via view approach (SQLite lacks rename column). We'll duplicate value into a new *_int column.
-        let _ = conn.execute("ALTER TABLE pss_matches ADD COLUMN tournament_id_int INTEGER", []);
-        let _ = conn.execute("UPDATE pss_matches SET tournament_id_int = tournament_id", []);
+        let _ = conn.execute(
+            "ALTER TABLE pss_matches ADD COLUMN tournament_id_int INTEGER",
+            [],
+        );
+        let _ = conn.execute(
+            "UPDATE pss_matches SET tournament_id_int = tournament_id",
+            [],
+        );
 
-        let _ = conn.execute("ALTER TABLE pss_matches ADD COLUMN tournament_day_id_text TEXT", []);
-        let _ = conn.execute("UPDATE pss_matches SET tournament_day_id_text = tournament_day_uuid", []);
-        let _ = conn.execute("ALTER TABLE pss_matches ADD COLUMN tournament_day_id_int INTEGER", []);
-        let _ = conn.execute("UPDATE pss_matches SET tournament_day_id_int = tournament_day_id", []);
+        let _ = conn.execute(
+            "ALTER TABLE pss_matches ADD COLUMN tournament_day_id_text TEXT",
+            [],
+        );
+        let _ = conn.execute(
+            "UPDATE pss_matches SET tournament_day_id_text = tournament_day_uuid",
+            [],
+        );
+        let _ = conn.execute(
+            "ALTER TABLE pss_matches ADD COLUMN tournament_day_id_int INTEGER",
+            [],
+        );
+        let _ = conn.execute(
+            "UPDATE pss_matches SET tournament_day_id_int = tournament_day_id",
+            [],
+        );
 
         // pss_events_v2
         add_column_if_missing(conn, &events_table, "tournament_id_text", "TEXT")?;
@@ -3992,15 +4710,39 @@ impl Migration for Migration34 {
         }
 
         // recorded_videos
-        let _ = conn.execute("ALTER TABLE recorded_videos ADD COLUMN tournament_id_text TEXT", []);
-        let _ = conn.execute("UPDATE recorded_videos SET tournament_id_text = tournament_uuid", []);
-        let _ = conn.execute("ALTER TABLE recorded_videos ADD COLUMN tournament_id_int INTEGER", []);
-        let _ = conn.execute("UPDATE recorded_videos SET tournament_id_int = tournament_id", []);
+        let _ = conn.execute(
+            "ALTER TABLE recorded_videos ADD COLUMN tournament_id_text TEXT",
+            [],
+        );
+        let _ = conn.execute(
+            "UPDATE recorded_videos SET tournament_id_text = tournament_uuid",
+            [],
+        );
+        let _ = conn.execute(
+            "ALTER TABLE recorded_videos ADD COLUMN tournament_id_int INTEGER",
+            [],
+        );
+        let _ = conn.execute(
+            "UPDATE recorded_videos SET tournament_id_int = tournament_id",
+            [],
+        );
 
-        let _ = conn.execute("ALTER TABLE recorded_videos ADD COLUMN tournament_day_id_text TEXT", []);
-        let _ = conn.execute("UPDATE recorded_videos SET tournament_day_id_text = tournament_day_uuid", []);
-        let _ = conn.execute("ALTER TABLE recorded_videos ADD COLUMN tournament_day_id_int INTEGER", []);
-        let _ = conn.execute("UPDATE recorded_videos SET tournament_day_id_int = tournament_day_id", []);
+        let _ = conn.execute(
+            "ALTER TABLE recorded_videos ADD COLUMN tournament_day_id_text TEXT",
+            [],
+        );
+        let _ = conn.execute(
+            "UPDATE recorded_videos SET tournament_day_id_text = tournament_day_uuid",
+            [],
+        );
+        let _ = conn.execute(
+            "ALTER TABLE recorded_videos ADD COLUMN tournament_day_id_int INTEGER",
+            [],
+        );
+        let _ = conn.execute(
+            "UPDATE recorded_videos SET tournament_day_id_int = tournament_day_id",
+            [],
+        );
 
         // Indexes for new TEXT ids
         let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_matches_tournament_id_text ON pss_matches(tournament_id_text)", []);
@@ -4008,34 +4750,36 @@ impl Migration for Migration34 {
         let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_recorded_videos_tournament_id_text ON recorded_videos(tournament_id_text)", []);
         Ok(())
     }
-    fn down(&self, _conn: &Connection) -> SqliteResult<()> { Ok(()) }
+    fn down(&self, _conn: &Connection) -> SqliteResult<()> {
+        Ok(())
+    }
 }
 
 /// Migration 35: Finalize UUID transition - canonical TEXT *_id, remove legacy columns
 pub struct Migration35;
 
 impl Migration for Migration35 {
-    fn version(&self) -> u32 { 35 }
-    fn description(&self) -> &str { "Recreate core tables to use TEXT *_id columns and drop legacy *_uuid/*_int/*_text" }
+    fn version(&self) -> u32 {
+        35
+    }
+    fn description(&self) -> &str {
+        "Recreate core tables to use TEXT *_id columns and drop legacy *_uuid/*_int/*_text"
+    }
     fn up(&self, conn: &Connection) -> SqliteResult<()> {
         // Legacy installations may still have data under the original `pss_events` table name.
         // Ensure we have a `pss_events_v2` table to work with before the migration logic runs.
-        let has_pss_events_v2: bool = conn
-            .query_row(
-                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='pss_events_v2'",
-                [],
-                |row| row.get::<_, i32>(0),
-            )?
-            > 0;
+        let has_pss_events_v2: bool = conn.query_row(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='pss_events_v2'",
+            [],
+            |row| row.get::<_, i32>(0),
+        )? > 0;
 
         if !has_pss_events_v2 {
-            let has_pss_events: bool = conn
-                .query_row(
-                    "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='pss_events'",
-                    [],
-                    |row| row.get::<_, i32>(0),
-                )?
-                > 0;
+            let has_pss_events: bool = conn.query_row(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='pss_events'",
+                [],
+                |row| row.get::<_, i32>(0),
+            )? > 0;
 
             if has_pss_events {
                 log::info!(
@@ -4089,7 +4833,12 @@ impl Migration for Migration35 {
         add_column_if_missing(conn, "pss_events_v2", "parsed_data", "TEXT")?;
         add_column_if_missing(conn, "pss_events_v2", "event_sequence", "INTEGER DEFAULT 0")?;
         add_column_if_missing(conn, "pss_events_v2", "processing_time_ms", "INTEGER")?;
-        add_column_if_missing(conn, "pss_events_v2", "is_valid", "BOOLEAN NOT NULL DEFAULT 1")?;
+        add_column_if_missing(
+            conn,
+            "pss_events_v2",
+            "is_valid",
+            "BOOLEAN NOT NULL DEFAULT 1",
+        )?;
         add_column_if_missing(conn, "pss_events_v2", "error_message", "TEXT")?;
         add_column_if_missing(conn, "pss_events_v2", "match_id", "INTEGER")?;
         if column_exists(conn, "pss_events_v2", "tournament_id_text")?
@@ -4127,39 +4876,56 @@ impl Migration for Migration35 {
 
         // Ensure integer timestamps exist before selecting them (idempotent best-effort)
         let _ = conn.execute("ALTER TABLE pss_matches ADD COLUMN created INTEGER", []);
-        let _ = conn.execute("UPDATE pss_matches SET created = strftime('%s', created_at) WHERE created IS NULL", []);
+        let _ = conn.execute(
+            "UPDATE pss_matches SET created = strftime('%s', created_at) WHERE created IS NULL",
+            [],
+        );
         let _ = conn.execute("ALTER TABLE pss_matches ADD COLUMN updated INTEGER", []);
-        let _ = conn.execute("UPDATE pss_matches SET updated = strftime('%s', updated_at) WHERE updated IS NULL", []);
+        let _ = conn.execute(
+            "UPDATE pss_matches SET updated = strftime('%s', updated_at) WHERE updated IS NULL",
+            [],
+        );
 
         let _ = conn.execute("ALTER TABLE pss_events_v2 ADD COLUMN created INTEGER", []);
-        let _ = conn.execute("UPDATE pss_events_v2 SET created = strftime('%s', created_at) WHERE created IS NULL", []);
+        let _ = conn.execute(
+            "UPDATE pss_events_v2 SET created = strftime('%s', created_at) WHERE created IS NULL",
+            [],
+        );
 
         let _ = conn.execute("ALTER TABLE recorded_videos ADD COLUMN created INTEGER", []);
-        let _ = conn.execute("UPDATE recorded_videos SET created = strftime('%s', created_at) WHERE created IS NULL", []);
+        let _ = conn.execute(
+            "UPDATE recorded_videos SET created = strftime('%s', created_at) WHERE created IS NULL",
+            [],
+        );
 
         // Helper to recreate a table with new schema and copy data
         // pss_matches: keep id (rowid), uuid, and canonical TEXT tournament_id/tournament_day_id
-        let matches_tournament_id_expr = if column_exists(conn, "pss_matches", "tournament_id_text")? {
-            "COALESCE(tournament_id_text, tournament_uuid, CAST(tournament_id AS TEXT))".to_string()
-        } else if column_exists(conn, "pss_matches", "tournament_uuid")? {
-            "COALESCE(tournament_uuid, CAST(tournament_id AS TEXT))".to_string()
-        } else if column_exists(conn, "pss_matches", "tournament_id")? {
-            "CAST(tournament_id AS TEXT)".to_string()
-        } else {
-            "NULL".to_string()
-        };
-
-        let matches_tournament_day_expr =
-            if column_exists(conn, "pss_matches", "tournament_day_id_text")? {
-                "COALESCE(tournament_day_id_text, tournament_day_uuid, CAST(tournament_day_id AS TEXT))"
+        let matches_tournament_id_expr =
+            if column_exists(conn, "pss_matches", "tournament_id_text")? {
+                "COALESCE(tournament_id_text, tournament_uuid, CAST(tournament_id AS TEXT))"
                     .to_string()
-            } else if column_exists(conn, "pss_matches", "tournament_day_uuid")? {
-                "COALESCE(tournament_day_uuid, CAST(tournament_day_id AS TEXT))".to_string()
-            } else if column_exists(conn, "pss_matches", "tournament_day_id")? {
-                "CAST(tournament_day_id AS TEXT)".to_string()
+            } else if column_exists(conn, "pss_matches", "tournament_uuid")? {
+                "COALESCE(tournament_uuid, CAST(tournament_id AS TEXT))".to_string()
+            } else if column_exists(conn, "pss_matches", "tournament_id")? {
+                "CAST(tournament_id AS TEXT)".to_string()
             } else {
                 "NULL".to_string()
             };
+
+        let matches_tournament_day_expr = if column_exists(
+            conn,
+            "pss_matches",
+            "tournament_day_id_text",
+        )? {
+            "COALESCE(tournament_day_id_text, tournament_day_uuid, CAST(tournament_day_id AS TEXT))"
+                .to_string()
+        } else if column_exists(conn, "pss_matches", "tournament_day_uuid")? {
+            "COALESCE(tournament_day_uuid, CAST(tournament_day_id AS TEXT))".to_string()
+        } else if column_exists(conn, "pss_matches", "tournament_day_id")? {
+            "CAST(tournament_day_id AS TEXT)".to_string()
+        } else {
+            "NULL".to_string()
+        };
 
         let matches_select = format!(
             "CREATE TABLE IF NOT EXISTS _tmp_pss_matches AS
@@ -4177,10 +4943,7 @@ impl Migration for Migration35 {
             tournament_day_expr = matches_tournament_day_expr
         );
 
-        conn.execute(
-            &matches_select,
-            [],
-        )?;
+        conn.execute(&matches_select, [])?;
         conn.execute("DROP TABLE IF EXISTS pss_matches", [])?;
         conn.execute(
             "CREATE TABLE pss_matches (
@@ -4205,36 +4968,38 @@ impl Migration for Migration35 {
             )",
             [],
         )?;
-        conn.execute(
-            "INSERT INTO pss_matches SELECT * FROM _tmp_pss_matches",
-            [],
-        )?;
+        conn.execute("INSERT INTO pss_matches SELECT * FROM _tmp_pss_matches", [])?;
         conn.execute("DROP TABLE IF EXISTS _tmp_pss_matches", [])?;
         conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_matches_tournament_id ON pss_matches(tournament_id)", [])?;
         conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_matches_tournament_day_id ON pss_matches(tournament_day_id)", [])?;
 
         // pss_events_v2: canonical TEXT tournament_id/tournament_day_id
-        let events_tournament_id_expr = if column_exists(conn, "pss_events_v2", "tournament_id_text")? {
-            "COALESCE(tournament_id_text, tournament_uuid, CAST(tournament_id AS TEXT))".to_string()
-        } else if column_exists(conn, "pss_events_v2", "tournament_uuid")? {
-            "COALESCE(tournament_uuid, CAST(tournament_id AS TEXT))".to_string()
-        } else if column_exists(conn, "pss_events_v2", "tournament_id")? {
-            "CAST(tournament_id AS TEXT)".to_string()
-        } else {
-            "NULL".to_string()
-        };
-
-        let events_tournament_day_expr =
-            if column_exists(conn, "pss_events_v2", "tournament_day_id_text")? {
-                "COALESCE(tournament_day_id_text, tournament_day_uuid, CAST(tournament_day_id AS TEXT))"
+        let events_tournament_id_expr =
+            if column_exists(conn, "pss_events_v2", "tournament_id_text")? {
+                "COALESCE(tournament_id_text, tournament_uuid, CAST(tournament_id AS TEXT))"
                     .to_string()
-            } else if column_exists(conn, "pss_events_v2", "tournament_day_uuid")? {
-                "COALESCE(tournament_day_uuid, CAST(tournament_day_id AS TEXT))".to_string()
-            } else if column_exists(conn, "pss_events_v2", "tournament_day_id")? {
-                "CAST(tournament_day_id AS TEXT)".to_string()
+            } else if column_exists(conn, "pss_events_v2", "tournament_uuid")? {
+                "COALESCE(tournament_uuid, CAST(tournament_id AS TEXT))".to_string()
+            } else if column_exists(conn, "pss_events_v2", "tournament_id")? {
+                "CAST(tournament_id AS TEXT)".to_string()
             } else {
                 "NULL".to_string()
             };
+
+        let events_tournament_day_expr = if column_exists(
+            conn,
+            "pss_events_v2",
+            "tournament_day_id_text",
+        )? {
+            "COALESCE(tournament_day_id_text, tournament_day_uuid, CAST(tournament_day_id AS TEXT))"
+                .to_string()
+        } else if column_exists(conn, "pss_events_v2", "tournament_day_uuid")? {
+            "COALESCE(tournament_day_uuid, CAST(tournament_day_id AS TEXT))".to_string()
+        } else if column_exists(conn, "pss_events_v2", "tournament_day_id")? {
+            "CAST(tournament_day_id AS TEXT)".to_string()
+        } else {
+            "NULL".to_string()
+        };
 
         let events_select = format!(
             "CREATE TABLE IF NOT EXISTS _tmp_pss_events_v2 AS
@@ -4247,10 +5012,7 @@ impl Migration for Migration35 {
             tournament_day_expr = events_tournament_day_expr
         );
 
-        conn.execute(
-            &events_select,
-            [],
-        )?;
+        conn.execute(&events_select, [])?;
         conn.execute("DROP TABLE IF EXISTS pss_events_v2", [])?;
         conn.execute(
             "CREATE TABLE pss_events_v2 (
@@ -4277,7 +5039,10 @@ impl Migration for Migration35 {
             )",
             [],
         )?;
-        conn.execute("INSERT INTO pss_events_v2 SELECT * FROM _tmp_pss_events_v2", [])?;
+        conn.execute(
+            "INSERT INTO pss_events_v2 SELECT * FROM _tmp_pss_events_v2",
+            [],
+        )?;
         conn.execute("DROP TABLE IF EXISTS _tmp_pss_events_v2", [])?;
         conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_events_v2_tournament_id ON pss_events_v2(tournament_id)", [])?;
         conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_events_v2_tournament_day_id ON pss_events_v2(tournament_day_id)", [])?;
@@ -4295,17 +5060,20 @@ impl Migration for Migration35 {
                 "NULL".to_string()
             };
 
-        let recorded_tournament_day_expr =
-            if column_exists(conn, "recorded_videos", "tournament_day_id_text")? {
-                "COALESCE(tournament_day_id_text, tournament_day_uuid, CAST(tournament_day_id AS TEXT))"
-                    .to_string()
-            } else if column_exists(conn, "recorded_videos", "tournament_day_uuid")? {
-                "COALESCE(tournament_day_uuid, CAST(tournament_day_id AS TEXT))".to_string()
-            } else if column_exists(conn, "recorded_videos", "tournament_day_id")? {
-                "CAST(tournament_day_id AS TEXT)".to_string()
-            } else {
-                "NULL".to_string()
-            };
+        let recorded_tournament_day_expr = if column_exists(
+            conn,
+            "recorded_videos",
+            "tournament_day_id_text",
+        )? {
+            "COALESCE(tournament_day_id_text, tournament_day_uuid, CAST(tournament_day_id AS TEXT))"
+                .to_string()
+        } else if column_exists(conn, "recorded_videos", "tournament_day_uuid")? {
+            "COALESCE(tournament_day_uuid, CAST(tournament_day_id AS TEXT))".to_string()
+        } else if column_exists(conn, "recorded_videos", "tournament_day_id")? {
+            "CAST(tournament_day_id AS TEXT)".to_string()
+        } else {
+            "NULL".to_string()
+        };
 
         let recorded_select = format!(
             "CREATE TABLE IF NOT EXISTS _tmp_recorded_videos AS
@@ -4340,28 +5108,43 @@ impl Migration for Migration35 {
             )",
             [],
         )?;
-        conn.execute("INSERT INTO recorded_videos SELECT * FROM _tmp_recorded_videos", [])?;
+        conn.execute(
+            "INSERT INTO recorded_videos SELECT * FROM _tmp_recorded_videos",
+            [],
+        )?;
         conn.execute("DROP TABLE IF EXISTS _tmp_recorded_videos", [])?;
         conn.execute("CREATE INDEX IF NOT EXISTS idx_recorded_videos_tournament_id ON recorded_videos(tournament_id)", [])?;
         conn.execute("CREATE INDEX IF NOT EXISTS idx_recorded_videos_tournament_day_id ON recorded_videos(tournament_day_id)", [])?;
 
         Ok(())
     }
-    fn down(&self, _conn: &Connection) -> SqliteResult<()> { Ok(()) }
+    fn down(&self, _conn: &Connection) -> SqliteResult<()> {
+        Ok(())
+    }
 }
 
 /// Migration 36: Finalize UUID transition for scores/warnings/rounds/match_athletes
 pub struct Migration36;
 
 impl Migration for Migration36 {
-    fn version(&self) -> u32 { 36 }
-    fn description(&self) -> &str { "Recreate pss_scores, pss_warnings, pss_rounds, pss_match_athletes with TEXT match_id and TEXT tournament_id fields where applicable" }
+    fn version(&self) -> u32 {
+        36
+    }
+    fn description(&self) -> &str {
+        "Recreate pss_scores, pss_warnings, pss_rounds, pss_match_athletes with TEXT match_id and TEXT tournament_id fields where applicable"
+    }
     fn up(&self, conn: &Connection) -> SqliteResult<()> {
         // Ensure created integer columns exist before selecting them into temp tables (idempotent)
         let _ = conn.execute("ALTER TABLE pss_scores ADD COLUMN created INTEGER", []);
-        let _ = conn.execute("UPDATE pss_scores SET created = strftime('%s', created_at) WHERE created IS NULL", []);
+        let _ = conn.execute(
+            "UPDATE pss_scores SET created = strftime('%s', created_at) WHERE created IS NULL",
+            [],
+        );
         let _ = conn.execute("ALTER TABLE pss_warnings ADD COLUMN created INTEGER", []);
-        let _ = conn.execute("UPDATE pss_warnings SET created = strftime('%s', created_at) WHERE created IS NULL", []);
+        let _ = conn.execute(
+            "UPDATE pss_warnings SET created = strftime('%s', created_at) WHERE created IS NULL",
+            [],
+        );
         // pss_scores
         conn.execute(
             "CREATE TABLE IF NOT EXISTS _tmp_pss_scores AS
@@ -4394,8 +5177,14 @@ impl Migration for Migration36 {
         )?;
         conn.execute("INSERT INTO pss_scores (id, match_id, round_id, athlete_position, score_type, score_value, timestamp, tournament_id, tournament_day_id, created_at, created) SELECT id, match_id, round_id, athlete_position, score_type, score_value, timestamp, tournament_id, tournament_day_id, created_at, created FROM _tmp_pss_scores", [])?;
         conn.execute("DROP TABLE IF EXISTS _tmp_pss_scores", [])?;
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_scores_match_id ON pss_scores(match_id)", [])?;
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_scores_tournament_id ON pss_scores(tournament_id)", [])?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_scores_match_id ON pss_scores(match_id)",
+            [],
+        )?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_scores_tournament_id ON pss_scores(tournament_id)",
+            [],
+        )?;
 
         // pss_warnings
         conn.execute(
@@ -4429,7 +5218,10 @@ impl Migration for Migration36 {
         )?;
         conn.execute("INSERT INTO pss_warnings (id, match_id, round_id, athlete_position, warning_type, warning_count, timestamp, tournament_id, tournament_day_id, created_at, created) SELECT id, match_id, round_id, athlete_position, warning_type, warning_count, timestamp, tournament_id, tournament_day_id, created_at, created FROM _tmp_pss_warnings", [])?;
         conn.execute("DROP TABLE IF EXISTS _tmp_pss_warnings", [])?;
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_warnings_match_id ON pss_warnings(match_id)", [])?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_warnings_match_id ON pss_warnings(match_id)",
+            [],
+        )?;
         conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_warnings_tournament_id ON pss_warnings(tournament_id)", [])?;
 
         // pss_rounds: carry TEXT match_id for joins
@@ -4455,7 +5247,10 @@ impl Migration for Migration36 {
         )?;
         conn.execute("INSERT INTO pss_rounds (id, match_id, round_number, start_time, end_time, duration, winner_athlete_position, created_at) SELECT id, match_id, round_number, start_time, end_time, duration, winner_athlete_position, created_at FROM _tmp_pss_rounds", [])?;
         conn.execute("DROP TABLE IF EXISTS _tmp_pss_rounds", [])?;
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_rounds_match_id ON pss_rounds(match_id)", [])?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_rounds_match_id ON pss_rounds(match_id)",
+            [],
+        )?;
 
         // pss_match_athletes: TEXT match_id
         conn.execute(
@@ -4483,23 +5278,47 @@ impl Migration for Migration36 {
 
         Ok(())
     }
-    fn down(&self, _conn: &Connection) -> SqliteResult<()> { Ok(()) }
+    fn down(&self, _conn: &Connection) -> SqliteResult<()> {
+        Ok(())
+    }
 }
 
 /// Migration 37: Rename pss_events_v2 to pss_events and drop legacy pss_events
 pub struct Migration37;
 
 impl Migration for Migration37 {
-    fn version(&self) -> u32 { 37 }
-    fn description(&self) -> &str { "Rename pss_events_v2 to pss_events and drop legacy pss_events" }
+    fn version(&self) -> u32 {
+        37
+    }
+    fn description(&self) -> &str {
+        "Rename pss_events_v2 to pss_events and drop legacy pss_events"
+    }
     fn up(&self, conn: &Connection) -> SqliteResult<()> {
         // Safety: drop legacy triggers that may reference removed created_at/updated_at or NEW.created
-        let _ = conn.execute("DROP TRIGGER IF EXISTS trg_udp_server_sessions_created_int", []);
-        let _ = conn.execute("DROP TRIGGER IF EXISTS trg_udp_server_sessions_updated_int", []);
-        let _ = conn.execute("DROP TRIGGER IF EXISTS trg_obs_recording_config_created_int", []);
-        let _ = conn.execute("DROP TRIGGER IF EXISTS trg_obs_recording_config_updated_int", []);
-        let _ = conn.execute("DROP TRIGGER IF EXISTS trg_obs_recording_sessions_created_int", []);
-        let _ = conn.execute("DROP TRIGGER IF EXISTS trg_obs_recording_sessions_updated_int", []);
+        let _ = conn.execute(
+            "DROP TRIGGER IF EXISTS trg_udp_server_sessions_created_int",
+            [],
+        );
+        let _ = conn.execute(
+            "DROP TRIGGER IF EXISTS trg_udp_server_sessions_updated_int",
+            [],
+        );
+        let _ = conn.execute(
+            "DROP TRIGGER IF EXISTS trg_obs_recording_config_created_int",
+            [],
+        );
+        let _ = conn.execute(
+            "DROP TRIGGER IF EXISTS trg_obs_recording_config_updated_int",
+            [],
+        );
+        let _ = conn.execute(
+            "DROP TRIGGER IF EXISTS trg_obs_recording_sessions_created_int",
+            [],
+        );
+        let _ = conn.execute(
+            "DROP TRIGGER IF EXISTS trg_obs_recording_sessions_updated_int",
+            [],
+        );
         let _ = conn.execute("DROP TRIGGER IF EXISTS trg_pss_events_v2_created_int", []);
         let _ = conn.execute("DROP TRIGGER IF EXISTS trg_pss_events_created_int", []);
         let _ = conn.execute("DROP TRIGGER IF EXISTS trg_pss_events_updated_int", []);
@@ -4526,7 +5345,10 @@ impl Migration for Migration37 {
 
         if v2_exists && pss_events_exists {
             // Backup legacy then promote v2
-            let _ = conn.execute("ALTER TABLE pss_events RENAME TO pss_events_legacy_backup", []);
+            let _ = conn.execute(
+                "ALTER TABLE pss_events RENAME TO pss_events_legacy_backup",
+                [],
+            );
             let _ = conn.execute("DROP TABLE IF EXISTS pss_events", []);
             let _ = conn.execute("DROP VIEW IF EXISTS pss_events", []);
             conn.execute("ALTER TABLE pss_events_v2 RENAME TO pss_events", [])?;
@@ -4538,10 +5360,22 @@ impl Migration for Migration37 {
         }
 
         // Best-effort index creation on common columns; avoid tournament_day_id here to support future schema
-        let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_events_timestamp ON pss_events(timestamp)", []);
-        let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_events_match_id ON pss_events(match_id)", []);
-        let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_events_session_id ON pss_events(session_id)", [])?;
-        let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_events_created_at ON pss_events(created_at)", []);
+        let _ = conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_events_timestamp ON pss_events(timestamp)",
+            [],
+        );
+        let _ = conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_events_match_id ON pss_events(match_id)",
+            [],
+        );
+        let _ = conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_events_session_id ON pss_events(session_id)",
+            [],
+        )?;
+        let _ = conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_events_created_at ON pss_events(created_at)",
+            [],
+        );
         Ok(())
     }
     fn down(&self, conn: &Connection) -> SqliteResult<()> {
@@ -4551,7 +5385,9 @@ impl Migration for Migration37 {
             .exists([])?;
         if exists {
             let conflict: bool = conn
-                .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='pss_events_v2'")?
+                .prepare(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name='pss_events_v2'",
+                )?
                 .exists([])?;
             if !conflict {
                 let _ = conn.execute("ALTER TABLE pss_events RENAME TO pss_events_v2", []);
@@ -4563,7 +5399,10 @@ impl Migration for Migration37 {
             .exists([])?;
         if backup_exists {
             let _ = conn.execute("DROP TABLE IF EXISTS pss_events", []);
-            let _ = conn.execute("ALTER TABLE pss_events_legacy_backup RENAME TO pss_events", []);
+            let _ = conn.execute(
+                "ALTER TABLE pss_events_legacy_backup RENAME TO pss_events",
+                [],
+            );
         }
         Ok(())
     }
@@ -4573,8 +5412,12 @@ impl Migration for Migration37 {
 pub struct Migration38;
 
 impl Migration for Migration38 {
-    fn version(&self) -> u32 { 38 }
-    fn description(&self) -> &str { "Drop tournament_days and remove tournament_day_id columns from pss_matches, pss_events, pss_scores, pss_warnings, recorded_videos" }
+    fn version(&self) -> u32 {
+        38
+    }
+    fn description(&self) -> &str {
+        "Drop tournament_days and remove tournament_day_id columns from pss_matches, pss_events, pss_scores, pss_warnings, recorded_videos"
+    }
     fn up(&self, conn: &Connection) -> SqliteResult<()> {
         // pss_matches: recreate without tournament_day_id
         let _ = conn.execute(
@@ -4606,7 +5449,10 @@ impl Migration for Migration38 {
             )",
             [],
         )?;
-        conn.execute("INSERT INTO pss_matches SELECT * FROM _tmp_pss_matches2", [])?;
+        conn.execute(
+            "INSERT INTO pss_matches SELECT * FROM _tmp_pss_matches2",
+            [],
+        )?;
         conn.execute("DROP TABLE IF EXISTS _tmp_pss_matches2", [])?;
         conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_matches_tournament_id ON pss_matches(tournament_id)", [])?;
 
@@ -4644,7 +5490,10 @@ impl Migration for Migration38 {
         )?;
         conn.execute("INSERT INTO pss_events SELECT * FROM _tmp_pss_events2", [])?;
         conn.execute("DROP TABLE IF EXISTS _tmp_pss_events2", [])?;
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_events_tournament_id ON pss_events(tournament_id)", [])?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pss_events_tournament_id ON pss_events(tournament_id)",
+            [],
+        )?;
 
         // pss_scores: recreate without tournament_day_id
         let _ = conn.execute(
@@ -4695,7 +5544,10 @@ impl Migration for Migration38 {
             )",
             [],
         )?;
-        conn.execute("INSERT INTO pss_warnings SELECT * FROM _tmp_pss_warnings2", [])?;
+        conn.execute(
+            "INSERT INTO pss_warnings SELECT * FROM _tmp_pss_warnings2",
+            [],
+        )?;
         conn.execute("DROP TABLE IF EXISTS _tmp_pss_warnings2", [])?;
 
         // recorded_videos: recreate without tournament_day_id
@@ -4725,22 +5577,31 @@ impl Migration for Migration38 {
             )",
             [],
         )?;
-        conn.execute("INSERT INTO recorded_videos SELECT * FROM _tmp_recorded_videos2", [])?;
+        conn.execute(
+            "INSERT INTO recorded_videos SELECT * FROM _tmp_recorded_videos2",
+            [],
+        )?;
         conn.execute("DROP TABLE IF EXISTS _tmp_recorded_videos2", [])?;
 
         // Finally drop tournament_days
         let _ = conn.execute("DROP TABLE IF EXISTS tournament_days", []);
         Ok(())
     }
-    fn down(&self, _conn: &Connection) -> SqliteResult<()> { Ok(()) }
+    fn down(&self, _conn: &Connection) -> SqliteResult<()> {
+        Ok(())
+    }
 }
 
 /// Migration 39: Remove tournament_day_id from event_triggers and obs_recording_sessions
 pub struct Migration39;
 
 impl Migration for Migration39 {
-    fn version(&self) -> u32 { 39 }
-    fn description(&self) -> &str { "Remove tournament_day_id from event_triggers and obs_recording_sessions" }
+    fn version(&self) -> u32 {
+        39
+    }
+    fn description(&self) -> &str {
+        "Remove tournament_day_id from event_triggers and obs_recording_sessions"
+    }
     fn up(&self, conn: &Connection) -> SqliteResult<()> {
         // event_triggers: recreate without tournament_day_id
         let _ = conn.execute(
@@ -4776,7 +5637,10 @@ impl Migration for Migration39 {
             )",
             [],
         )?;
-        conn.execute("INSERT INTO event_triggers SELECT * FROM _tmp_event_triggers", [])?;
+        conn.execute(
+            "INSERT INTO event_triggers SELECT * FROM _tmp_event_triggers",
+            [],
+        )?;
         conn.execute("DROP TABLE IF EXISTS _tmp_event_triggers", [])?;
 
         // obs_recording_sessions: recreate without tournament_day_id
@@ -4819,20 +5683,29 @@ impl Migration for Migration39 {
             )",
             [],
         )?;
-        conn.execute("INSERT INTO obs_recording_sessions SELECT * FROM _tmp_obs_recording_sessions", [])?;
+        conn.execute(
+            "INSERT INTO obs_recording_sessions SELECT * FROM _tmp_obs_recording_sessions",
+            [],
+        )?;
         conn.execute("DROP TABLE IF EXISTS _tmp_obs_recording_sessions", [])?;
 
         Ok(())
     }
-    fn down(&self, _conn: &Connection) -> SqliteResult<()> { Ok(()) }
+    fn down(&self, _conn: &Connection) -> SqliteResult<()> {
+        Ok(())
+    }
 }
 
 /// Migration 40: Add integer created/updated to obs_recording_sessions and backfill from created_at/updated_at
 pub struct Migration40;
 
 impl Migration for Migration40 {
-    fn version(&self) -> u32 { 40 }
-    fn description(&self) -> &str { "Drop created_at/updated_at TEXT columns from obs_recording_sessions; keep only INTEGER" }
+    fn version(&self) -> u32 {
+        40
+    }
+    fn description(&self) -> &str {
+        "Drop created_at/updated_at TEXT columns from obs_recording_sessions; keep only INTEGER"
+    }
     fn up(&self, conn: &Connection) -> SqliteResult<()> {
         // Check if obs_recording_sessions table exists
         let table_exists: i32 = conn.query_row(
@@ -4889,7 +5762,10 @@ impl Migration for Migration40 {
                 )",
                 [],
             )?;
-            conn.execute("INSERT INTO obs_recording_sessions SELECT * FROM _tmp_obs_recording_sessions", [])?;
+            conn.execute(
+                "INSERT INTO obs_recording_sessions SELECT * FROM _tmp_obs_recording_sessions",
+                [],
+            )?;
             conn.execute("DROP TABLE IF EXISTS _tmp_obs_recording_sessions", [])?;
         } else {
             // Table doesn't exist, just create it with the new structure
@@ -4931,7 +5807,9 @@ impl Migration for Migration40 {
 
         Ok(())
     }
-    fn down(&self, _conn: &Connection) -> SqliteResult<()> { Ok(()) }
+    fn down(&self, _conn: &Connection) -> SqliteResult<()> {
+        Ok(())
+    }
 }
 
 // (removed duplicate Migration38 minimal drop version; replaced by comprehensive recreate above)

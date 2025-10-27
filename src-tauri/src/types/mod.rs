@@ -161,27 +161,30 @@ pub enum AppView {
 pub enum AppError {
     #[error("OBS connection failed: {0}")]
     ObsConnectionError(String),
-    
+
     #[error("Video playback error: {0}")]
     VideoError(String),
-    
+
     #[error("PSS protocol error: {0}")]
     PssError(String),
-    
+
     #[error("Configuration error: {0}")]
     ConfigError(String),
-    
+
     #[error("IO error: {0}")]
     IoError(#[from] std::io::Error),
-    
+
     #[error("Network error: {0}")]
     NetworkError(String),
-    
+
     #[error("Serialization error: {0}")]
     SerializationError(#[from] serde_json::Error),
-    
+
     #[error("Security error: {0}")]
     SecurityError(String),
+
+    #[error("OpenAPI error: {0}")]
+    OpenApiError(String),
 }
 
 impl From<Box<dyn std::error::Error>> for AppError {
@@ -222,4 +225,4 @@ pub type AppResult<T> = Result<T, AppError>;
 pub const DEFAULT_OBS_PORT: u16 = 4455;
 pub const DEFAULT_OBS_PASSWORD: &str = "cekPIbj@245";
 pub const DEFAULT_VIDEO_VOLUME: f64 = 1.0;
-pub const DEFAULT_PLAYBACK_RATE: f64 = 1.0; 
+pub const DEFAULT_PLAYBACK_RATE: f64 = 1.0;

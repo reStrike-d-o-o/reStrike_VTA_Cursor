@@ -76,8 +76,6 @@ pub struct ObsSettings {
     pub behavior: ObsBehaviorSettings,
 }
 
-
-
 /// Individual OBS connection configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ObsConnectionConfig {
@@ -712,14 +710,14 @@ impl Default for AppConfig {
                 },
             },
             udp: UdpSettings {
-                        listener: UdpListenerSettings {
-            port: 8888,
-            bind_address: "127.0.0.1".to_string(),
-            enabled: false,
-            buffer_size: 8192,
-            timeout_seconds: 30,
-            network_interface: NetworkInterfaceSettings::default(),
-        },
+                listener: UdpListenerSettings {
+                    port: 8888,
+                    bind_address: "127.0.0.1".to_string(),
+                    enabled: false,
+                    buffer_size: 8192,
+                    timeout_seconds: 30,
+                    network_interface: NetworkInterfaceSettings::default(),
+                },
                 pss: PssSettings {
                     schema_file: "protocol/pss_v2.3.txt".to_string(),
                     enabled: true,
@@ -816,7 +814,10 @@ impl Default for AppConfig {
                     sidebar_width: 300,
                     status_bar_visible: true,
                     task_bar_visible: true,
-                    window_size: WindowSize { width: 1200, height: 800 },
+                    window_size: WindowSize {
+                        width: 1200,
+                        height: 800,
+                    },
                     window_position: WindowPosition { x: 100, y: 100 },
                 },
                 animations: AnimationSettings {
@@ -904,4 +905,4 @@ impl Default for AppConfig {
             },
         }
     }
-} 
+}

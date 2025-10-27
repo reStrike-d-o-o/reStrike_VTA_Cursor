@@ -7,20 +7,22 @@ pub mod commands;
 pub mod config;
 pub mod core;
 pub mod database;
-pub mod security;
-pub mod types;
+pub mod logging;
+pub mod openapi;
 pub mod plugins;
+pub mod security;
 pub mod tauri_commands;
-pub mod tauri_commands_triggers;
-pub mod tauri_commands_overlays;
-pub mod tauri_commands_obs_connections;
 pub mod tauri_commands_manual_mode;
-pub mod tauri_commands_security;
+pub mod tauri_commands_obs_connections;
 #[cfg(feature = "obs-obws")]
 pub mod tauri_commands_obws;
-pub mod logging;
-pub mod utils;
+pub mod tauri_commands_openapi;
+pub mod tauri_commands_overlays;
+pub mod tauri_commands_security;
+pub mod tauri_commands_triggers;
+pub mod types;
 pub mod ui_settings;
+pub mod utils;
 
 // Re-export commonly used items
 pub use core::app::App;

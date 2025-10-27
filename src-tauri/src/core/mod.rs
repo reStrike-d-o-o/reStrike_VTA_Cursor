@@ -19,5 +19,3 @@ pub fn init() -> AppResult<()> {
     log::info!("Core systems initialized");
     Ok(())
 }
- 
-

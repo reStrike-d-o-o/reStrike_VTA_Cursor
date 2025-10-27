@@ -1,0 +1,2 @@
+"use strict";(self.webpackChunkrestrike_vta_ui=self.webpackChunkrestrike_vta_ui||[]).push([[511],{511:(e,t,n)=>{n.d(t,{open:()=>o,save:()=>a});var i=n(133);async function o(){let e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:{};return"object"===typeof e&&Object.freeze(e),await(0,i.invoke)("plugin:dialog|open",{options:e})}async function a(){let e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:{};return"object"===typeof e&&Object.freeze(e),await(0,i.invoke)("plugin:dialog|save",{options:e})}}}]);
+//# sourceMappingURL=511.1474ead2.chunk.js.map

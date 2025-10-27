@@ -1,15 +1,15 @@
 //! Security audit logging module for reStrike VTA
-//! 
+//!
 //! Provides comprehensive audit logging for all security-related operations
 //! including configuration access, authentication events, and system changes.
 
-use std::sync::Arc;
-use serde::{Serialize, Deserialize};
 use chrono::{DateTime, Utc};
 use rusqlite::params;
+use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
-use crate::security::SecurityResult;
 use crate::database::DatabaseConnection;
+use crate::security::SecurityResult;
 
 /// Audit action types
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -19,23 +19,23 @@ pub enum AuditAction {
     SessionDestroy,
     AuthenticationSuccess,
     AuthenticationFailure,
-    
+
     // Configuration actions
     ConfigRead,
     ConfigCreate,
     ConfigUpdate,
     ConfigDelete,
-    
+
     // System actions
     EncryptionKeyRotation,
     DatabaseMigration,
     SecuritySettingsChange,
-    
+
     // Access control actions
     AccessGranted,
     AccessDenied,
     PrivilegeEscalation,
-    
+
     // Security events
     SuspiciousActivity,
     SecurityViolation,
@@ -64,7 +64,7 @@ impl AuditAction {
             Self::IntrusionAttempt => "intrusion_attempt",
         }
     }
-    
+
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
             "session_create" => Some(Self::SessionCreate),
@@ -87,13 +87,23 @@ impl AuditAction {
             _ => None,
         }
     }
-    
+
     pub fn severity_level(&self) -> SeverityLevel {
         match self {
-            Self::SessionCreate | Self::SessionDestroy | Self::AuthenticationSuccess | Self::ConfigRead => SeverityLevel::Info,
-            Self::ConfigCreate | Self::ConfigUpdate | Self::ConfigDelete | Self::AccessGranted => SeverityLevel::Low,
-            Self::EncryptionKeyRotation | Self::DatabaseMigration | Self::SecuritySettingsChange | Self::AccessDenied => SeverityLevel::Medium,
-            Self::AuthenticationFailure | Self::PrivilegeEscalation | Self::SuspiciousActivity => SeverityLevel::High,
+            Self::SessionCreate
+            | Self::SessionDestroy
+            | Self::AuthenticationSuccess
+            | Self::ConfigRead => SeverityLevel::Info,
+            Self::ConfigCreate | Self::ConfigUpdate | Self::ConfigDelete | Self::AccessGranted => {
+                SeverityLevel::Low
+            }
+            Self::EncryptionKeyRotation
+            | Self::DatabaseMigration
+            | Self::SecuritySettingsChange
+            | Self::AccessDenied => SeverityLevel::Medium,
+            Self::AuthenticationFailure | Self::PrivilegeEscalation | Self::SuspiciousActivity => {
+                SeverityLevel::High
+            }
             Self::SecurityViolation | Self::IntrusionAttempt => SeverityLevel::Critical,
         }
     }
@@ -119,7 +129,7 @@ impl SeverityLevel {
             Self::Critical => "critical",
         }
     }
-    
+
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
             "info" => Some(Self::Info),
@@ -157,7 +167,7 @@ impl AuditEntry {
         error_message: Option<String>,
     ) -> Self {
         let severity = action.severity_level();
-        
+
         Self {
             id: None,
             config_key: None,
@@ -172,17 +182,17 @@ impl AuditEntry {
             session_id: None,
         }
     }
-    
+
     pub fn with_config_key(mut self, config_key: String) -> Self {
         self.config_key = Some(config_key);
         self
     }
-    
+
     pub fn with_source_ip(mut self, source_ip: String) -> Self {
         self.source_ip = Some(source_ip);
         self
     }
-    
+
     pub fn with_session_id(mut self, session_id: String) -> Self {
         self.session_id = Some(session_id);
         self
@@ -199,7 +209,7 @@ impl SecurityAudit {
     pub fn new(database: Arc<DatabaseConnection>) -> SecurityResult<Self> {
         Ok(Self { database })
     }
-    
+
     /// Log a security event
     pub async fn log_security_event(
         &self,
@@ -216,10 +226,10 @@ impl SecurityAudit {
             success,
             error_message.map(|s| s.to_string()),
         );
-        
+
         self.log_entry(&entry).await
     }
-    
+
     /// Log a configuration access event
     pub async fn log_config_access(
         &self,
@@ -236,15 +246,16 @@ impl SecurityAudit {
             Some(details.to_string()),
             success,
             error_message.map(|s| s.to_string()),
-        ).with_config_key(config_key.to_string());
-        
+        )
+        .with_config_key(config_key.to_string());
+
         self.log_entry(&entry).await
     }
-    
+
     /// Log an audit entry
     pub async fn log_entry(&self, entry: &AuditEntry) -> SecurityResult<i64> {
         let conn = self.database.get_connection().await?;
-        
+
         let _row_id = conn.execute(
             "INSERT INTO config_audit 
             (config_key, action, user_context, source_ip, timestamp, details, success, error_message)
@@ -260,7 +271,7 @@ impl SecurityAudit {
                 entry.error_message,
             ],
         )?;
-        
+
         // Log high-severity events to application log as well
         if entry.severity >= SeverityLevel::High {
             log::warn!(
@@ -270,12 +281,12 @@ impl SecurityAudit {
                 entry.details.as_deref().unwrap_or("No details"),
                 entry.success
             );
-            
+
             if let Some(error) = &entry.error_message {
                 log::error!("Security error: {}", error);
             }
         }
-        
+
         // Log critical events with additional details
         if entry.severity == SeverityLevel::Critical {
             log::error!(
@@ -286,10 +297,10 @@ impl SecurityAudit {
                 entry.details.as_deref().unwrap_or("No details")
             );
         }
-        
+
         Ok(conn.last_insert_rowid())
     }
-    
+
     /// Get audit entries for a specific configuration key
     pub async fn get_config_audit_history(
         &self,
@@ -297,28 +308,28 @@ impl SecurityAudit {
         limit: Option<i64>,
     ) -> SecurityResult<Vec<AuditEntry>> {
         let conn = self.database.get_connection().await?;
-        
+
         let query = match limit {
             Some(_) => "SELECT id, config_key, action, user_context, source_ip, timestamp, details, success, error_message 
                        FROM config_audit WHERE config_key = ? ORDER BY timestamp DESC LIMIT ?",
             None => "SELECT id, config_key, action, user_context, source_ip, timestamp, details, success, error_message 
                     FROM config_audit WHERE config_key = ? ORDER BY timestamp DESC",
         };
-        
+
         let mut stmt = conn.prepare(query)?;
         let rows = match limit {
             Some(l) => stmt.query_map(params![config_key, l], Self::audit_entry_from_row)?,
             None => stmt.query_map(params![config_key], Self::audit_entry_from_row)?,
         };
-        
+
         let mut entries = Vec::new();
         for row in rows {
             entries.push(row?);
         }
-        
+
         Ok(entries)
     }
-    
+
     /// Get audit entries by user context
     pub async fn get_user_audit_history(
         &self,
@@ -326,28 +337,28 @@ impl SecurityAudit {
         limit: Option<i64>,
     ) -> SecurityResult<Vec<AuditEntry>> {
         let conn = self.database.get_connection().await?;
-        
+
         let query = match limit {
             Some(_) => "SELECT id, config_key, action, user_context, source_ip, timestamp, details, success, error_message 
                        FROM config_audit WHERE user_context = ? ORDER BY timestamp DESC LIMIT ?",
             None => "SELECT id, config_key, action, user_context, source_ip, timestamp, details, success, error_message 
                     FROM config_audit WHERE user_context = ? ORDER BY timestamp DESC",
         };
-        
+
         let mut stmt = conn.prepare(query)?;
         let rows = match limit {
             Some(l) => stmt.query_map(params![user_context, l], Self::audit_entry_from_row)?,
             None => stmt.query_map(params![user_context], Self::audit_entry_from_row)?,
         };
-        
+
         let mut entries = Vec::new();
         for row in rows {
             entries.push(row?);
         }
-        
+
         Ok(entries)
     }
-    
+
     /// Get audit entries by action type
     pub async fn get_action_audit_history(
         &self,
@@ -355,54 +366,57 @@ impl SecurityAudit {
         limit: Option<i64>,
     ) -> SecurityResult<Vec<AuditEntry>> {
         let conn = self.database.get_connection().await?;
-        
+
         let query = match limit {
             Some(_) => "SELECT id, config_key, action, user_context, source_ip, timestamp, details, success, error_message 
                        FROM config_audit WHERE action = ? ORDER BY timestamp DESC LIMIT ?",
             None => "SELECT id, config_key, action, user_context, source_ip, timestamp, details, success, error_message 
                     FROM config_audit WHERE action = ? ORDER BY timestamp DESC",
         };
-        
+
         let mut stmt = conn.prepare(query)?;
         let rows = match limit {
             Some(l) => stmt.query_map(params![action.as_str(), l], Self::audit_entry_from_row)?,
             None => stmt.query_map(params![action.as_str()], Self::audit_entry_from_row)?,
         };
-        
+
         let mut entries = Vec::new();
         for row in rows {
             entries.push(row?);
         }
-        
+
         Ok(entries)
     }
-    
+
     /// Get recent security events (high and critical severity)
     pub async fn get_security_events(&self, hours: i64) -> SecurityResult<Vec<AuditEntry>> {
         let conn = self.database.get_connection().await?;
         let since = Utc::now() - chrono::Duration::hours(hours);
-        
+
         let mut stmt = conn.prepare(
             "SELECT id, config_key, action, user_context, source_ip, timestamp, details, success, error_message 
              FROM config_audit 
              WHERE timestamp >= ? AND action IN ('auth_failure', 'privilege_escalation', 'suspicious_activity', 'security_violation', 'intrusion_attempt')
              ORDER BY timestamp DESC"
         )?;
-        
+
         let rows = stmt.query_map(params![since.to_rfc3339()], Self::audit_entry_from_row)?;
-        
+
         let mut entries = Vec::new();
         for row in rows {
             entries.push(row?);
         }
-        
+
         Ok(entries)
     }
-    
+
     /// Get audit statistics
-    pub async fn get_audit_statistics(&self, hours: Option<i64>) -> SecurityResult<AuditStatistics> {
+    pub async fn get_audit_statistics(
+        &self,
+        hours: Option<i64>,
+    ) -> SecurityResult<AuditStatistics> {
         let conn = self.database.get_connection().await?;
-        
+
         let (where_clause, params) = match hours {
             Some(h) => {
                 let since = Utc::now() - chrono::Duration::hours(h);
@@ -410,37 +424,46 @@ impl SecurityAudit {
             }
             None => ("", vec![]),
         };
-        
+
         // Total events
         let total_events: i64 = conn.query_row(
             &format!("SELECT COUNT(*) FROM config_audit {}", where_clause),
             rusqlite::params_from_iter(&params),
             |row| row.get(0),
         )?;
-        
+
         // Failed events
         let failed_events: i64 = conn.query_row(
-            &format!("SELECT COUNT(*) FROM config_audit {} {}", 
-                    where_clause, 
-                    if where_clause.is_empty() { "WHERE" } else { "AND" }),
+            &format!(
+                "SELECT COUNT(*) FROM config_audit {} {}",
+                where_clause,
+                if where_clause.is_empty() {
+                    "WHERE"
+                } else {
+                    "AND"
+                }
+            ),
             rusqlite::params_from_iter(params.iter().chain(std::iter::once(&"0".to_string()))),
             |row| row.get(0),
         )?;
-        
+
         // Unique users
         let unique_users: i64 = conn.query_row(
-            &format!("SELECT COUNT(DISTINCT user_context) FROM config_audit {}", where_clause),
+            &format!(
+                "SELECT COUNT(DISTINCT user_context) FROM config_audit {}",
+                where_clause
+            ),
             rusqlite::params_from_iter(&params),
             |row| row.get(0),
         )?;
-        
+
         // Most active user
         let most_active_user = conn.query_row(
             &format!("SELECT user_context, COUNT(*) as count FROM config_audit {} GROUP BY user_context ORDER BY count DESC LIMIT 1", where_clause),
             rusqlite::params_from_iter(&params),
             |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?)),
         ).ok();
-        
+
         Ok(AuditStatistics {
             total_events: total_events as u64,
             failed_events: failed_events as u64,
@@ -448,32 +471,43 @@ impl SecurityAudit {
             most_active_user: most_active_user.map(|(user, count)| (user, count as u64)),
         })
     }
-    
+
     /// Clean up old audit entries
     pub async fn cleanup_old_entries(&self, retention_days: u32) -> SecurityResult<u64> {
         let conn = self.database.get_connection().await?;
         let cutoff = Utc::now() - chrono::Duration::days(retention_days as i64);
-        
+
         let deleted = conn.execute(
             "DELETE FROM config_audit WHERE timestamp < ?",
             params![cutoff.to_rfc3339()],
         )?;
-        
-        log::info!("Cleaned up {} old audit entries older than {} days", deleted, retention_days);
+
+        log::info!(
+            "Cleaned up {} old audit entries older than {} days",
+            deleted,
+            retention_days
+        );
         Ok(deleted as u64)
     }
-    
+
     /// Helper function to create AuditEntry from database row
     fn audit_entry_from_row(row: &rusqlite::Row) -> rusqlite::Result<AuditEntry> {
         let action_str: String = row.get(2)?;
-        let action = AuditAction::from_str(&action_str)
-            .ok_or_else(|| rusqlite::Error::InvalidColumnType(2, "action".to_string(), rusqlite::types::Type::Text))?;
-        
+        let action = AuditAction::from_str(&action_str).ok_or_else(|| {
+            rusqlite::Error::InvalidColumnType(2, "action".to_string(), rusqlite::types::Type::Text)
+        })?;
+
         let timestamp_str: String = row.get(5)?;
         let timestamp = DateTime::parse_from_rfc3339(&timestamp_str)
-            .map_err(|_| rusqlite::Error::InvalidColumnType(5, "timestamp".to_string(), rusqlite::types::Type::Text))?
+            .map_err(|_| {
+                rusqlite::Error::InvalidColumnType(
+                    5,
+                    "timestamp".to_string(),
+                    rusqlite::types::Type::Text,
+                )
+            })?
             .with_timezone(&Utc);
-        
+
         Ok(AuditEntry {
             id: Some(row.get(0)?),
             config_key: row.get(1)?,
@@ -504,62 +538,74 @@ mod tests {
     use super::*;
 
     use crate::database::DatabaseConnection;
-    
+
     async fn create_test_audit() -> SecurityAudit {
         // Use default database connection for testing
         let database = Arc::new(DatabaseConnection::new().unwrap());
-        
+
         SecurityAudit::new(database).unwrap()
     }
-    
+
     #[tokio::test]
     async fn test_audit_logging() {
         let audit = create_test_audit().await;
-        
-        let entry_id = audit.log_security_event(
-            AuditAction::AuthenticationSuccess,
-            "test_user",
-            "User logged in successfully",
-            true,
-            None,
-        ).await.unwrap();
-        
+
+        let entry_id = audit
+            .log_security_event(
+                AuditAction::AuthenticationSuccess,
+                "test_user",
+                "User logged in successfully",
+                true,
+                None,
+            )
+            .await
+            .unwrap();
+
         assert!(entry_id > 0);
     }
-    
+
     #[tokio::test]
     async fn test_config_audit() {
         let audit = create_test_audit().await;
-        
-        audit.log_config_access(
-            "obs.password",
-            AuditAction::ConfigUpdate,
-            "test_user",
-            "Updated OBS password",
-            true,
-            None,
-        ).await.unwrap();
-        
-        let history = audit.get_config_audit_history("obs.password", Some(10)).await.unwrap();
+
+        audit
+            .log_config_access(
+                "obs.password",
+                AuditAction::ConfigUpdate,
+                "test_user",
+                "Updated OBS password",
+                true,
+                None,
+            )
+            .await
+            .unwrap();
+
+        let history = audit
+            .get_config_audit_history("obs.password", Some(10))
+            .await
+            .unwrap();
         assert_eq!(history.len(), 1);
         assert_eq!(history[0].action, AuditAction::ConfigUpdate);
     }
-    
+
     #[tokio::test]
     async fn test_audit_statistics() {
         let audit = create_test_audit().await;
-        
+
         // Add some test entries
         for i in 0..5 {
-            audit.log_security_event(
-                AuditAction::ConfigRead,
-                &format!("user_{}", i % 2),
-                "Test event",
-                i < 4, // One failure
-                if i >= 4 { Some("Test error") } else { None },
-            ).await.unwrap();
+            audit
+                .log_security_event(
+                    AuditAction::ConfigRead,
+                    &format!("user_{}", i % 2),
+                    "Test event",
+                    i < 4, // One failure
+                    if i >= 4 { Some("Test error") } else { None },
+                )
+                .await
+                .unwrap();
         }
-        
+
         let stats = audit.get_audit_statistics(Some(24)).await.unwrap();
         assert_eq!(stats.total_events, 5);
         assert_eq!(stats.failed_events, 1);

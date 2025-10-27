@@ -211,12 +211,27 @@ pub enum ObsEvent {
     ReplayBufferSaved,
     VirtualCameraStarted,
     VirtualCameraStopped,
-    SceneChanged { scene_name: String },
-    SourceCreated { source_name: String, source_type: String },
-    SourceRemoved { source_name: String },
-    SourceRenamed { old_name: String, new_name: String },
-    StudioModeSwitched { enabled: bool },
-    Custom { event_type: String, data: serde_json::Value },
+    SceneChanged {
+        scene_name: String,
+    },
+    SourceCreated {
+        source_name: String,
+        source_type: String,
+    },
+    SourceRemoved {
+        source_name: String,
+    },
+    SourceRenamed {
+        old_name: String,
+        new_name: String,
+    },
+    StudioModeSwitched {
+        enabled: bool,
+    },
+    Custom {
+        event_type: String,
+        data: serde_json::Value,
+    },
 }
 
 /// OBS operation result

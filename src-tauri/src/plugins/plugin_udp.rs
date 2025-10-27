@@ -1,18 +1,16 @@
+use crate::database::models::{PssEventV2 as DbPssEvent, UdpServerConfig as DbUdpServerConfig};
+use crate::plugins::performance_monitor::PerformanceMonitor;
+use crate::plugins::plugin_database::DatabasePlugin;
+use crate::plugins::plugin_websocket::WebSocketServer;
+use crate::plugins::ProtocolManager;
+use crate::types::{AppError, AppResult};
+use chrono::Utc;
+use serde::{Deserialize, Serialize};
+use std::collections::VecDeque;
 use std::net::UdpSocket;
 use std::sync::{Arc, Mutex};
-use std::collections::VecDeque;
-use tokio::sync::mpsc;
-use serde::{Deserialize, Serialize};
-use crate::types::{AppError, AppResult};
-use crate::plugins::ProtocolManager;
-use crate::plugins::plugin_database::DatabasePlugin;
-use crate::plugins::performance_monitor::PerformanceMonitor;
-use crate::plugins::plugin_websocket::WebSocketServer;
-use crate::database::models::{
-    UdpServerConfig as DbUdpServerConfig, PssEventV2 as DbPssEvent,
-};
-use chrono::Utc;
 use std::time::{Duration, Instant};
+use tokio::sync::mpsc;
 
 /// Initialize the UDP plugin
 pub fn init() -> Result<(), Box<dyn std::error::Error>> {
@@ -28,56 +26,56 @@ pub type UdpPlugin = UdpServer;
 pub enum PssEvent {
     // Points events
     Points {
-        athlete: u8,      // 1 or 2
-        point_type: u8,   // 1=punch, 2=body, 3=head, 4=tech_body, 5=tech_head
+        athlete: u8,    // 1 or 2
+        point_type: u8, // 1=punch, 2=body, 3=head, 4=tech_body, 5=tech_head
     },
-    
+
     // Hit level events
     HitLevel {
-        athlete: u8,      // 1 or 2
-        level: u8,        // 1-100
+        athlete: u8, // 1 or 2
+        level: u8,   // 1-100
     },
-    
+
     // Warnings/Gam-jeom events
     Warnings {
         athlete1_warnings: u8,
         athlete2_warnings: u8,
     },
-    
+
     // Injury time events
     Injury {
-        athlete: u8,      // 0=unidentified, 1=athlete1, 2=athlete2
-        time: String,     // format: "m:ss"
+        athlete: u8,            // 0=unidentified, 1=athlete1, 2=athlete2
+        time: String,           // format: "m:ss"
         action: Option<String>, // show, hide, reset
     },
-    
+
     // Challenge/IVR events
     Challenge {
-        source: u8,       // 0=referee, 1=athlete1, 2=athlete2
+        source: u8, // 0=referee, 1=athlete1, 2=athlete2
         accepted: Option<bool>,
         won: Option<bool>,
         canceled: bool,
     },
-    
+
     // Break events
     Break {
-        time: String,     // format: "m:ss" or just seconds
+        time: String,           // format: "m:ss" or just seconds
         action: Option<String>, // stop, stopEnd
     },
-    
+
     // Winner rounds events
     WinnerRounds {
         round1_winner: u8, // 0=none, 1=athlete1, 2=athlete2
         round2_winner: u8,
         round3_winner: u8,
     },
-    
+
     // Final winner events
     Winner {
         name: String,
         classification: Option<String>,
     },
-    
+
     // Match info events
     Athletes {
         athlete1_short: String,
@@ -87,7 +85,7 @@ pub enum PssEvent {
         athlete2_long: String,
         athlete2_country: String,
     },
-    
+
     // Match configuration
     MatchConfig {
         number: String, // Changed from u32 to String to support values like "245.A"
@@ -103,7 +101,7 @@ pub enum PssEvent {
         count_up: u32,
         format: u8,
     },
-    
+
     // Scores
     Scores {
         athlete1_r1: u8,
@@ -113,33 +111,33 @@ pub enum PssEvent {
         athlete1_r3: u8,
         athlete2_r3: u8,
     },
-    
+
     // Current scores
     CurrentScores {
         athlete1_score: u8,
         athlete2_score: u8,
     },
-    
+
     // Clock events
     Clock {
-        time: String,     // format: "m:ss"
+        time: String,           // format: "m:ss"
         action: Option<String>, // start, stop
     },
-    
+
     // Round events
     Round {
         current_round: u8,
     },
-    
+
     // System events
     FightLoaded,
     FightReady,
-    
+
     // Supremacy events
     Supremacy {
         value: u8, // Supremacy value
     },
-    
+
     // Raw message for unrecognized patterns
     Raw(String),
 }
@@ -189,7 +187,7 @@ pub struct UdpServer {
     recent_hit_levels: Arc<Mutex<std::collections::HashMap<u8, Vec<(u8, std::time::SystemTime)>>>>, // athlete -> [(level, timestamp)]
     // Tournament context tracking
     current_tournament_id: Arc<Mutex<Option<i64>>>,
-    
+
     // Phase 1 Optimization: Event batching for high-volume processing
     event_batch: Arc<Mutex<Vec<PssEvent>>>,
     batch_processor_task: Arc<Mutex<Option<tokio::task::JoinHandle<()>>>>,
@@ -201,8 +199,6 @@ pub struct UdpServer {
 }
 
 // Phase 1 Optimization: Performance monitoring structs
-
-
 
 #[derive(Debug, Clone, Default)]
 pub struct UdpStats {
@@ -219,16 +215,16 @@ pub struct UdpStats {
 
 impl UdpServer {
     pub fn new(
-        event_tx: mpsc::UnboundedSender<PssEvent>, 
+        event_tx: mpsc::UnboundedSender<PssEvent>,
         protocol_manager: Arc<ProtocolManager>,
         database: Arc<DatabasePlugin>,
     ) -> Self {
         let (batch_tx, batch_rx) = mpsc::unbounded_channel::<PssEvent>();
         let performance_monitor = Arc::new(PerformanceMonitor::new());
-        
+
         // Create WebSocket server for real-time event broadcasting
         let websocket_server = Arc::new(WebSocketServer::new(event_tx.clone()));
-        
+
         let server = Self {
             status: Arc::new(Mutex::new(UdpServerStatus::Stopped)),
             event_tx,
@@ -244,14 +240,14 @@ impl UdpServer {
             listener_task: Arc::new(Mutex::new(None)),
             recent_hit_levels: Arc::new(Mutex::new(std::collections::HashMap::new())),
             current_tournament_id: Arc::new(Mutex::new(None)),
-            
+
             event_batch: Arc::new(Mutex::new(Vec::new())),
             batch_processor_task: Arc::new(Mutex::new(None)),
             batch_tx,
             performance_monitor: performance_monitor.clone(),
             websocket_server,
         };
-        
+
         // Start batch processor
         let server_clone = server.clone_for_batch_processor();
         let batch_task = tokio::spawn(async move {
@@ -260,7 +256,7 @@ impl UdpServer {
         if let Ok(mut task_guard) = server.batch_processor_task.lock() {
             *task_guard = Some(batch_task);
         }
-        
+
         server
     }
 
@@ -281,7 +277,7 @@ impl UdpServer {
             listener_task: self.listener_task.clone(),
             recent_hit_levels: self.recent_hit_levels.clone(),
             current_tournament_id: self.current_tournament_id.clone(),
-            
+
             event_batch: self.event_batch.clone(),
             batch_processor_task: self.batch_processor_task.clone(),
             batch_tx: mpsc::unbounded_channel().0, // Dummy channel for clone
@@ -291,45 +287,44 @@ impl UdpServer {
     }
 
     /// Phase 1 Optimization: Batch processor loop for high-volume event processing
-    async fn batch_processor_loop(
-        mut batch_rx: mpsc::UnboundedReceiver<PssEvent>,
-        server: Self,
-    ) {
+    async fn batch_processor_loop(mut batch_rx: mpsc::UnboundedReceiver<PssEvent>, server: Self) {
         const BATCH_SIZE: usize = 100; // Process 100 events per batch
         const BATCH_TIMEOUT: Duration = Duration::from_millis(500); // 500ms timeout
-        
+
         let mut batch = Vec::with_capacity(BATCH_SIZE);
         let mut last_batch_time = Instant::now();
-        
+
         log::info!("Starting batch processor for high-volume event processing");
-        
+
         while let Some(event) = batch_rx.recv().await {
             batch.push(event);
-            
-            let should_process = batch.len() >= BATCH_SIZE || 
-                               last_batch_time.elapsed() >= BATCH_TIMEOUT;
-            
+
+            let should_process =
+                batch.len() >= BATCH_SIZE || last_batch_time.elapsed() >= BATCH_TIMEOUT;
+
             if should_process {
-                let events_to_process = std::mem::replace(&mut batch, Vec::with_capacity(BATCH_SIZE));
+                let events_to_process =
+                    std::mem::replace(&mut batch, Vec::with_capacity(BATCH_SIZE));
                 last_batch_time = Instant::now();
-                
+
                 // Process batch asynchronously
                 let server_clone = server.clone_for_batch_processor();
                 tokio::spawn(async move {
-                    if let Err(e) = Self::process_event_batch(server_clone, events_to_process).await {
+                    if let Err(e) = Self::process_event_batch(server_clone, events_to_process).await
+                    {
                         log::error!("Batch processing failed: {}", e);
                     }
                 });
             }
         }
-        
+
         // Process remaining events
         if !batch.is_empty() {
             if let Err(e) = Self::process_event_batch(server, batch).await {
                 log::error!("Final batch processing failed: {}", e);
             }
         }
-        
+
         log::info!("Batch processor stopped");
     }
 
@@ -337,12 +332,12 @@ impl UdpServer {
     async fn process_event_batch(server: Self, events: Vec<PssEvent>) -> AppResult<()> {
         let start_time = Instant::now();
         let batch_size = events.len();
-        
+
         log::debug!("Processing batch of {} events", batch_size);
-        
+
         // Phase 1 Optimization: Update memory usage
         server.performance_monitor.update_memory_usage();
-        
+
         // Use a single transaction for the entire batch
         let database = server.database.clone();
         let current_session_id = server.current_session_id.clone();
@@ -351,8 +346,7 @@ impl UdpServer {
         let event_type_cache = server.event_type_cache.clone();
         let recent_hit_levels = server.recent_hit_levels.clone();
         let current_tournament_id = server.current_tournament_id.clone();
-        
-        
+
         // Process events in parallel within the batch
         let mut tasks = Vec::new();
         for event in events {
@@ -363,9 +357,9 @@ impl UdpServer {
             let event_type_clone = event_type_cache.clone();
             let hit_levels_clone = recent_hit_levels.clone();
             let tournament_clone = current_tournament_id.clone();
-            
+
             let websocket_server_clone = server.websocket_server.clone();
-            
+
             let task = tokio::spawn(async move {
                 Self::store_event_in_database(
                     &db_clone,
@@ -377,11 +371,12 @@ impl UdpServer {
                     &hit_levels_clone,
                     &tournament_clone,
                     &websocket_server_clone,
-                ).await
+                )
+                .await
             });
             tasks.push(task);
         }
-        
+
         // Wait for all tasks to complete
         let mut success_count = 0;
         let mut error_count = 0;
@@ -402,44 +397,51 @@ impl UdpServer {
                 }
             }
         }
-        
+
         let processing_time = start_time.elapsed();
-        
+
         // Phase 1 Optimization: Record batch processing metrics
-        server.performance_monitor.record_event_processed(processing_time.as_millis() as u64);
-        
-        log::info!("Batch processed: {}/{} events in {:?} ({} errors)", 
-                  success_count, batch_size, processing_time, error_count);
-        
+        server
+            .performance_monitor
+            .record_event_processed(processing_time.as_millis() as u64);
+
+        log::info!(
+            "Batch processed: {}/{} events in {:?} ({} errors)",
+            success_count,
+            batch_size,
+            processing_time,
+            error_count
+        );
+
         // Update statistics
         if let Ok(mut stats) = server.stats.lock() {
             stats.packets_parsed += success_count as u64;
             stats.parse_errors += error_count as u64;
         }
-        
+
         Ok(())
     }
 
     pub async fn start(&self, config: &crate::config::types::AppConfig) -> AppResult<()> {
         log::info!("Starting UDP server...");
-        
+
         // Update status
         {
             let mut status = self.status.lock().unwrap();
             *status = UdpServerStatus::Starting;
         }
-        
+
         // WebSocket server is started by the core app, no need to start it here
         log::info!("WebSocket server will be managed by core app");
-        
+
         // Initialize event type cache
         if let Err(e) = self.initialize_event_type_cache().await {
             log::error!("Failed to initialize event type cache: {}", e);
             return Err(e);
         }
-        
+
         let network_settings = &config.udp.listener.network_interface;
-        
+
         // Check if already running
         {
             let status = self.status.lock().unwrap();
@@ -447,12 +449,12 @@ impl UdpServer {
                 return Ok(()); // Already running
             }
         }
-        
+
         // Use app config settings instead of internal config
         let port = config.udp.listener.port;
         let bind_address = config.udp.listener.bind_address.clone();
         let enabled = config.udp.listener.enabled;
-        
+
         // Create database session first
         let db_config = DbUdpServerConfig {
             id: None,
@@ -471,7 +473,7 @@ impl UdpServer {
 
         let config_id = self.database.upsert_udp_server_config(&db_config).await?;
         let session_id = self.database.create_udp_server_session(config_id).await?;
-        
+
         {
             let mut current_session = self.current_session_id.lock().unwrap();
             *current_session = Some(session_id);
@@ -494,10 +496,10 @@ impl UdpServer {
             log::info!("Using configured bind address: {}", bind_address);
             bind_address.clone()
         };
-        
+
         let bind_addr = format!("{}:{}", bind_ip, port);
         log::info!("Attempting to bind UDP server to: {}", bind_addr);
-        
+
         // Update status to starting
         {
             let mut status = self.status.lock().unwrap();
@@ -507,7 +509,9 @@ impl UdpServer {
         // Try to bind the socket
         let socket = match UdpSocket::bind(&bind_addr) {
             Ok(socket) => {
-                socket.set_nonblocking(true).map_err(|e| AppError::ConfigError(e.to_string()))?;
+                socket
+                    .set_nonblocking(true)
+                    .map_err(|e| AppError::ConfigError(e.to_string()))?;
                 socket
             }
             Err(e) => {
@@ -529,7 +533,7 @@ impl UdpServer {
             let mut status = self.status.lock().unwrap();
             *status = UdpServerStatus::Running;
         }
-        
+
         // Set server start time
         {
             let mut stats = self.stats.lock().unwrap();
@@ -550,16 +554,16 @@ impl UdpServer {
         let event_type_cache_clone = self.event_type_cache.clone();
         let recent_hit_levels_clone = self.recent_hit_levels.clone();
         let tournament_id_clone = self.current_tournament_id.clone();
-        
+
         let websocket_server_clone = self.websocket_server.clone();
 
         let listener_task = tokio::spawn(async move {
             Self::listen_loop_async(
-                socket_clone, 
-                event_tx, 
-                status_clone, 
-                stats_clone, 
-                protocol_manager, 
+                socket_clone,
+                event_tx,
+                status_clone,
+                stats_clone,
+                protocol_manager,
                 recent_events_clone,
                 database_clone,
                 current_session_id_clone,
@@ -569,7 +573,8 @@ impl UdpServer {
                 recent_hit_levels_clone,
                 tournament_id_clone,
                 websocket_server_clone,
-            ).await;
+            )
+            .await;
         });
 
         {
@@ -578,69 +583,80 @@ impl UdpServer {
         }
 
         log::info!("UDP server started on {}", bind_addr);
-        
+
         // Log server start for Live Data panel
         let start_log_message = format!(" UDP server started on {}", bind_addr);
         crate::core::app::App::emit_log_event(start_log_message);
-        
+
         Ok(())
     }
 
     pub async fn stop(&self) -> AppResult<()> {
         log::info!("Stopping UDP server...");
-        
+
         // Update status
         {
             let mut status = self.status.lock().unwrap();
             *status = UdpServerStatus::Stopped;
         }
-        
+
         // Stop WebSocket server
         if let Err(e) = self.websocket_server.stop().await {
             log::warn!("Failed to stop WebSocket server: {}", e);
         } else {
             log::info!("WebSocket server stopped");
         }
-        
+
         // Stop listener task
         if let Ok(mut task_guard) = self.listener_task.lock() {
             if let Some(task) = task_guard.take() {
                 task.abort();
             }
         }
-        
+
         // Stop batch processor task
         if let Ok(mut task_guard) = self.batch_processor_task.lock() {
             if let Some(task) = task_guard.take() {
                 task.abort();
             }
         }
-        
+
         // Close socket
         {
             if let Ok(mut socket_guard) = self.socket.lock() {
                 *socket_guard = None;
             }
         }
-        
+
         log::info!("UDP server stopped successfully");
         Ok(())
     }
 
     pub fn get_status(&self) -> UdpServerStatus {
-        self.status.lock().map(|status| status.clone()).unwrap_or(UdpServerStatus::Stopped)
+        self.status
+            .lock()
+            .map(|status| status.clone())
+            .unwrap_or(UdpServerStatus::Stopped)
     }
 
     pub fn get_stats(&self) -> UdpStats {
-        self.stats.lock().map(|stats| stats.clone()).unwrap_or_default()
+        self.stats
+            .lock()
+            .map(|stats| stats.clone())
+            .unwrap_or_default()
     }
 
     pub fn get_recent_events(&self) -> Vec<PssEvent> {
-        self.recent_events.lock().map(|events| events.iter().cloned().collect()).unwrap_or_default()
+        self.recent_events
+            .lock()
+            .map(|events| events.iter().cloned().collect())
+            .unwrap_or_default()
     }
 
     /// Phase 1 Optimization: Get performance metrics
-    pub fn get_performance_metrics(&self) -> crate::plugins::performance_monitor::PerformanceMetrics {
+    pub fn get_performance_metrics(
+        &self,
+    ) -> crate::plugins::performance_monitor::PerformanceMetrics {
         self.performance_monitor.get_performance_metrics()
     }
 
@@ -665,18 +681,22 @@ impl UdpServer {
         if let Err(e) = self.batch_tx.send(event) {
             log::error!("Failed to send event to batch processor: {}", e);
         }
-        
+
         // Removed duplicate event_tx.send() to prevent event duplication
     }
 
     pub async fn update_config(&self, port: u16, bind_address: String) {
-        log::info!("Updating UDP server configuration to port: {} and bind address: {}", port, bind_address);
+        log::info!(
+            "Updating UDP server configuration to port: {} and bind address: {}",
+            port,
+            bind_address
+        );
         // Note: The actual configuration update will be handled in the start() method
         // This method is called to log the configuration change
     }
 
     async fn initialize_event_type_cache(&self) -> AppResult<()> {
-                match self.database.get_pss_event_types().await {
+        match self.database.get_pss_event_types().await {
             Ok(event_types) => {
                 if let Ok(mut cache) = self.event_type_cache.lock() {
                     for event_type in event_types {
@@ -689,7 +709,10 @@ impl UdpServer {
                 Ok(())
             }
             Err(e) => {
-                log::warn!("Failed to initialize event type cache: {}. Continuing without cache.", e);
+                log::warn!(
+                    "Failed to initialize event type cache: {}. Continuing without cache.",
+                    e
+                );
                 // Don't fail the entire UDP server startup if event type cache fails
                 Ok(())
             }
@@ -703,12 +726,14 @@ impl UdpServer {
         _athlete_cache: &Arc<Mutex<std::collections::HashMap<String, i64>>>,
         event_type_cache: &Arc<Mutex<std::collections::HashMap<String, i64>>>,
         event: &PssEvent,
-        recent_hit_levels: &Arc<Mutex<std::collections::HashMap<u8, Vec<(u8, std::time::SystemTime)>>>>,
+        recent_hit_levels: &Arc<
+            Mutex<std::collections::HashMap<u8, Vec<(u8, std::time::SystemTime)>>>,
+        >,
         current_tournament_id: &Arc<Mutex<Option<i64>>>,
         websocket_server: &Arc<WebSocketServer>,
     ) -> AppResult<()> {
         let start_time = Instant::now();
-        
+
         // Do not filter persistence: keep all events (including Clock) so time/round can be reconstructed accurately.
 
         // Get session ID
@@ -716,7 +741,7 @@ impl UdpServer {
             let session_guard = current_session_id.lock().unwrap();
             session_guard.ok_or_else(|| AppError::ConfigError("No active session".to_string()))?
         };
-        
+
         // Ensure a current match exists so every event is attached to a valid match
         {
             let has_match = { current_match_id.lock().unwrap().is_some() };
@@ -725,15 +750,22 @@ impl UdpServer {
                 // Always insert a new row for a new match context
                 if let Ok(conn_guard) = database.get_connection().await {
                     let conn = &*conn_guard;
-                    let mut pss_match = crate::database::models::PssMatch::new(auto_match_key.clone());
+                    let mut pss_match =
+                        crate::database::models::PssMatch::new(auto_match_key.clone());
                     pss_match.creation_mode = "Automatic".to_string();
-                    let new_id = crate::database::operations::PssUdpOperations::insert_pss_match(conn, &pss_match)
-                        .unwrap_or_else(|_| -1);
+                    let new_id = crate::database::operations::PssUdpOperations::insert_pss_match(
+                        conn, &pss_match,
+                    )
+                    .unwrap_or_else(|_| -1);
                     if new_id > 0 {
                         let mut guard = current_match_id.lock().unwrap();
                         *guard = Some(new_id);
                         websocket_server.set_current_match_db_id(Some(new_id));
-                        log::info!("ensure_current_match: created match {} (db id {})", auto_match_key, new_id);
+                        log::info!(
+                            "ensure_current_match: created match {} (db id {})",
+                            auto_match_key,
+                            new_id
+                        );
 
                         // Apply tournament context if available
                         let tid_opt = { current_tournament_id.lock().unwrap().clone() };
@@ -758,14 +790,21 @@ impl UdpServer {
                 let auto_match_key = format!("auto_{}", Utc::now().format("%Y%m%d%H%M%S%3f"));
                 if let Ok(conn_guard) = database.get_connection().await {
                     let conn = &*conn_guard;
-                    let mut pss_match = crate::database::models::PssMatch::new(auto_match_key.clone());
+                    let mut pss_match =
+                        crate::database::models::PssMatch::new(auto_match_key.clone());
                     pss_match.creation_mode = "Automatic".to_string();
-                    match crate::database::operations::PssUdpOperations::insert_pss_match(conn, &pss_match) {
+                    match crate::database::operations::PssUdpOperations::insert_pss_match(
+                        conn, &pss_match,
+                    ) {
                         Ok(db_match_id) => {
                             let mut guard = current_match_id.lock().unwrap();
                             *guard = Some(db_match_id);
                             websocket_server.set_current_match_db_id(Some(db_match_id));
-                            log::info!("FightLoaded: started new match {} (db id {})", auto_match_key, db_match_id);
+                            log::info!(
+                                "FightLoaded: started new match {} (db id {})",
+                                auto_match_key,
+                                db_match_id
+                            );
 
                             // Apply tournament context if available
                             let tid_opt = { current_tournament_id.lock().unwrap().clone() };
@@ -777,7 +816,11 @@ impl UdpServer {
                                 );
                             }
                         }
-                        Err(e) => log::warn!("FightLoaded: failed to insert match {}: {}", auto_match_key, e),
+                        Err(e) => log::warn!(
+                            "FightLoaded: failed to insert match {}: {}",
+                            auto_match_key,
+                            e
+                        ),
                     }
                 }
             }
@@ -794,11 +837,12 @@ impl UdpServer {
                 ..
             } => {
                 // Determine effective match identifier (fallback to number when match_id is empty/null)
-                let effective_match_id = if match_id.trim().is_empty() || match_id.eq_ignore_ascii_case("null") {
-                    format!("mch:{}", number)
-                } else {
-                    match_id.clone()
-                };
+                let effective_match_id =
+                    if match_id.trim().is_empty() || match_id.eq_ignore_ascii_case("null") {
+                        format!("mch:{}", number)
+                    } else {
+                        match_id.clone()
+                    };
 
                 // Update only the metadata of the existing current match row.
                 let db_match_id = {
@@ -817,7 +861,11 @@ impl UdpServer {
                         Ok(tx) => {
                             let _ = tx.execute(
                                 "UPDATE pss_matches SET match_id = ?, updated_at = ? WHERE id = ?",
-                                rusqlite::params![ &effective_match_id, Utc::now().to_rfc3339(), db_match_id ],
+                                rusqlite::params![
+                                    &effective_match_id,
+                                    Utc::now().to_rfc3339(),
+                                    db_match_id
+                                ],
                             );
                             let _ = tx.commit();
                             false
@@ -825,12 +873,17 @@ impl UdpServer {
                         Err(_) => true,
                     };
                     if need_fallback {
-                        let _ = crate::database::operations::PssUdpOperations::rename_pss_match_id(conn, db_match_id, &effective_match_id);
+                        let _ = crate::database::operations::PssUdpOperations::rename_pss_match_id(
+                            conn,
+                            db_match_id,
+                            &effective_match_id,
+                        );
                     }
                 }
 
                 // Update match metadata
-                let mut pss_match = crate::database::models::PssMatch::new(effective_match_id.clone());
+                let mut pss_match =
+                    crate::database::models::PssMatch::new(effective_match_id.clone());
                 pss_match.id = Some(db_match_id);
                 pss_match.match_number = Some(number.clone());
                 pss_match.category = Some(category.clone());
@@ -845,8 +898,16 @@ impl UdpServer {
                 if let Err(e) = database.update_pss_match(db_match_id, &pss_match).await {
                     log::warn!("Failed to update PSS match {}: {}", effective_match_id, e);
                 } else {
-                    log::info!("Current match set: {} (db id {})", effective_match_id, db_match_id);
-                    log::info!("Current match set: {} (db id {})", effective_match_id, db_match_id);
+                    log::info!(
+                        "Current match set: {} (db id {})",
+                        effective_match_id,
+                        db_match_id
+                    );
+                    log::info!(
+                        "Current match set: {} (db id {})",
+                        effective_match_id,
+                        db_match_id
+                    );
 
                     // Ensure tournament context is present on the match
                     if let Ok(conn_guard) = database.get_connection().await {
@@ -866,8 +927,13 @@ impl UdpServer {
                 let (pending_a1, pending_a2) = {
                     // Read pending ids without holding the lock across await
                     if let Ok(cache) = _athlete_cache.lock() {
-                        (cache.get("__PENDING_A1_ID").copied(), cache.get("__PENDING_A2_ID").copied())
-                    } else { (None, None) }
+                        (
+                            cache.get("__PENDING_A1_ID").copied(),
+                            cache.get("__PENDING_A2_ID").copied(),
+                        )
+                    } else {
+                        (None, None)
+                    }
                 };
 
                 if let (Some(a1_id), Some(a2_id)) = (pending_a1, pending_a2) {
@@ -921,7 +987,10 @@ impl UdpServer {
                                 }
                             }
                         }
-                        Err(e) => log::warn!("Failed to get DB connection for pending athlete linking: {}", e),
+                        Err(e) => log::warn!(
+                            "Failed to get DB connection for pending athlete linking: {}",
+                            e
+                        ),
                     }
                 }
             }
@@ -934,20 +1003,34 @@ impl UdpServer {
                 athlete2_country,
             } => {
                 // Create or get athletes
-                let a1_id = database.get_or_create_pss_athlete(athlete1_short, athlete1_long).await?;
-                let a2_id = database.get_or_create_pss_athlete(athlete2_short, athlete2_long).await?;
+                let a1_id = database
+                    .get_or_create_pss_athlete(athlete1_short, athlete1_long)
+                    .await?;
+                let a2_id = database
+                    .get_or_create_pss_athlete(athlete2_short, athlete2_long)
+                    .await?;
 
                 // Persist extended athlete info (long name, country)
                 {
-                    let mut a1 = crate::database::models::PssAthlete::new(athlete1_short.clone(), athlete1_short.clone());
+                    let mut a1 = crate::database::models::PssAthlete::new(
+                        athlete1_short.clone(),
+                        athlete1_short.clone(),
+                    );
                     a1.long_name = Some(athlete1_long.clone());
                     a1.country_code = Some(athlete1_country.clone());
-                    if let Err(e) = database.update_pss_athlete(a1_id, &a1).await { log::warn!("Failed to update athlete1 info: {}", e); }
+                    if let Err(e) = database.update_pss_athlete(a1_id, &a1).await {
+                        log::warn!("Failed to update athlete1 info: {}", e);
+                    }
 
-                    let mut a2 = crate::database::models::PssAthlete::new(athlete2_short.clone(), athlete2_short.clone());
+                    let mut a2 = crate::database::models::PssAthlete::new(
+                        athlete2_short.clone(),
+                        athlete2_short.clone(),
+                    );
                     a2.long_name = Some(athlete2_long.clone());
                     a2.country_code = Some(athlete2_country.clone());
-                    if let Err(e) = database.update_pss_athlete(a2_id, &a2).await { log::warn!("Failed to update athlete2 info: {}", e); }
+                    if let Err(e) = database.update_pss_athlete(a2_id, &a2).await {
+                        log::warn!("Failed to update athlete2 info: {}", e);
+                    }
                 }
 
                 // Cache athlete ids by short code for quick lookup
@@ -1005,11 +1088,17 @@ impl UdpServer {
                                 log::info!("Linked athletes to match {}", mid);
                             }
                         }
-                        Err(e) => log::warn!("Failed to get DB connection for athlete linking: {}", e),
+                        Err(e) => {
+                            log::warn!("Failed to get DB connection for athlete linking: {}", e)
+                        }
                     }
                 } else {
-                    log::info!("Athletes received before match configured; will link once match is set");
-                    log::info!("Athletes received before match configured; will link once match is set");
+                    log::info!(
+                        "Athletes received before match configured; will link once match is set"
+                    );
+                    log::info!(
+                        "Athletes received before match configured; will link once match is set"
+                    );
                     // Stash pending athlete ids for later linking on MatchConfig
                     if let Ok(mut cache) = _athlete_cache.lock() {
                         cache.insert("__PENDING_A1_ID".to_string(), a1_id);
@@ -1028,8 +1117,9 @@ impl UdpServer {
             event_type_cache,
             database,
             current_tournament_id,
-        ).await?;
-        
+        )
+        .await?;
+
         // Store event in database only when session and match context are valid
         if event_model.session_id <= 0 {
             log::warn!("Skip storing event: missing session_id");
@@ -1045,16 +1135,20 @@ impl UdpServer {
 
         if let Some(details) = Self::extract_event_details(event, recent_hit_levels) {
             if let Err(e) = database.store_pss_event_details(event_id, &details).await {
-                log::warn!("Skipping event details for event {} due to error: {}", event_id, e);
+                log::warn!(
+                    "Skipping event details for event {} due to error: {}",
+                    event_id,
+                    e
+                );
             }
         }
-        
+
         // Note: WebSocket broadcast happens immediately after parsing to preserve order
-        
+
         // Update performance metrics
         let processing_time = start_time.elapsed().as_millis() as i32;
         log::debug!("Event processed in {}ms: {:?}", processing_time, event);
-        
+
         Ok(())
     }
 
@@ -1066,29 +1160,29 @@ impl UdpServer {
             PssEvent::Points { point_type, .. } => {
                 // Map point types to specific event codes according to PSS protocol
                 match point_type {
-                    1 => "P".to_string(),   // Punch
+                    1 => "P".to_string(),  // Punch
                     2 => "K".to_string(),  // Body point (Kick) - CHANGED from TB to K
                     3 => "H".to_string(),  // Head point
                     4 => "TB".to_string(), // Technical Body
                     5 => "TH".to_string(), // Technical Head
                     _ => "P".to_string(),  // Default to Punch
                 }
-            },
+            }
             PssEvent::HitLevel { .. } => "HL".to_string(), // Hit Level stored distinctly for review
-            PssEvent::Warnings { .. } => "R".to_string(), // Warning/Gam-jeom
+            PssEvent::Warnings { .. } => "R".to_string(),  // Warning/Gam-jeom
             PssEvent::Challenge { .. } => "R".to_string(), // Challenge/IVR
-            PssEvent::Injury { .. } => "O".to_string(), // Injury time -> Other
-            PssEvent::Break { .. } => "O".to_string(), // Break -> Other
+            PssEvent::Injury { .. } => "O".to_string(),    // Injury time -> Other
+            PssEvent::Break { .. } => "O".to_string(),     // Break -> Other
             PssEvent::WinnerRounds { .. } => "O".to_string(), // Winner rounds -> Other
-            PssEvent::Winner { .. } => "O".to_string(), // Winner -> Other
-            PssEvent::Athletes { .. } => "O".to_string(), // Athletes info (pre-match)
+            PssEvent::Winner { .. } => "O".to_string(),    // Winner -> Other
+            PssEvent::Athletes { .. } => "O".to_string(),  // Athletes info (pre-match)
             PssEvent::MatchConfig { .. } => "O".to_string(), // Match config (pre-match)
-            PssEvent::Scores { .. } => "O".to_string(), // Scores (system event)
+            PssEvent::Scores { .. } => "O".to_string(),    // Scores (system event)
             PssEvent::CurrentScores { .. } => "O".to_string(), // Current scores (system event)
             PssEvent::Clock { .. } => "CLK".to_string(), // Clock (system event) - CHANGED from O to CLK
             PssEvent::Round { .. } => "RND".to_string(), // Round (system event) - CHANGED from O to RND
-            PssEvent::FightLoaded => "O".to_string(), // Fight loaded (pre-match)
-            PssEvent::FightReady => "O".to_string(), // Fight ready (pre-match)
+            PssEvent::FightLoaded => "O".to_string(),    // Fight loaded (pre-match)
+            PssEvent::FightReady => "O".to_string(),     // Fight ready (pre-match)
             PssEvent::Supremacy { .. } => "O".to_string(), // Supremacy (system event)
             PssEvent::Raw(raw_msg) => {
                 // Try to extract event code from raw messages for better categorization
@@ -1107,7 +1201,7 @@ impl UdpServer {
                 } else {
                     "O".to_string()
                 }
-            },
+            }
         }
     }
 
@@ -1124,15 +1218,15 @@ impl UdpServer {
         // Check cache first without holding the lock across await
         let event_type_id = {
             let cached_id = {
-            let cache = event_type_cache.lock().unwrap();
+                let cache = event_type_cache.lock().unwrap();
                 cache.get(&event_code).copied()
             };
-            
+
             if let Some(id) = cached_id {
                 id
             } else {
                 // Get or create event type
-        let event_type = database.get_pss_event_type_by_code(&event_code).await?;
+                let event_type = database.get_pss_event_type_by_code(&event_code).await?;
                 let id = if let Some(et) = event_type {
                     et.id.unwrap_or(0)
                 } else {
@@ -1145,7 +1239,7 @@ impl UdpServer {
                     );
                     database.upsert_pss_event_type(&new_event_type).await?
                 };
-                
+
                 // Update cache after the async operation
                 {
                     let mut cache = event_type_cache.lock().unwrap();
@@ -1173,14 +1267,14 @@ impl UdpServer {
             event_type_id,
             Utc::now(),
             format!("{:?}", event), // Raw data representation
-            0, // Event sequence will be set by database
+            0,                      // Event sequence will be set by database
         );
 
         // Set match, round, and tournament IDs
         let mut db_event = db_event;
         db_event.match_id = match_id;
         db_event.round_id = None; // TODO: Track current round
-        // Defer tournament UUID binding; match context will set it, and events can be updated downstream if needed
+                                  // Defer tournament UUID binding; match context will set it, and events can be updated downstream if needed
         db_event.tournament_id = None;
 
         // Set parsed data as JSON
@@ -1194,13 +1288,16 @@ impl UdpServer {
     pub fn convert_pss_event_to_json(event: &PssEvent) -> serde_json::Value {
         // Add defensive programming to handle any potential issues
         let event_code = Self::get_event_code(event);
-        
+
         match event {
-            PssEvent::Points { athlete, point_type } => {
+            PssEvent::Points {
+                athlete,
+                point_type,
+            } => {
                 let athlete_str = match athlete {
                     1 => "blue",
                     2 => "red",
-                    _ => "unknown"
+                    _ => "unknown",
                 };
                 serde_json::json!({
                     "type": "points",
@@ -1215,7 +1312,7 @@ impl UdpServer {
                 let athlete_str = match athlete {
                     1 => "blue",
                     2 => "red",
-                    _ => "unknown"
+                    _ => "unknown",
                 };
                 serde_json::json!({
                     "type": "hit_level",
@@ -1226,7 +1323,10 @@ impl UdpServer {
                     "timestamp": chrono::Utc::now().timestamp_millis()
                 })
             }
-            PssEvent::Warnings { athlete1_warnings, athlete2_warnings } => {
+            PssEvent::Warnings {
+                athlete1_warnings,
+                athlete2_warnings,
+            } => {
                 serde_json::json!({
                     "type": "warnings",
                     "event_code": event_code,
@@ -1237,12 +1337,16 @@ impl UdpServer {
                     "timestamp": chrono::Utc::now().timestamp_millis()
                 })
             }
-            PssEvent::Injury { athlete, time, action } => {
+            PssEvent::Injury {
+                athlete,
+                time,
+                action,
+            } => {
                 let athlete_str = match athlete {
                     0 => "unknown",
                     1 => "blue",
                     2 => "red",
-                    _ => "unknown"
+                    _ => "unknown",
                 };
                 serde_json::json!({
                     "type": "injury",
@@ -1255,12 +1359,17 @@ impl UdpServer {
                     "timestamp": chrono::Utc::now().timestamp_millis()
                 })
             }
-            PssEvent::Challenge { source, accepted, won, canceled } => {
+            PssEvent::Challenge {
+                source,
+                accepted,
+                won,
+                canceled,
+            } => {
                 let athlete_str = match source {
                     0 => "yellow",
                     1 => "blue",
                     2 => "red",
-                    _ => "unknown"
+                    _ => "unknown",
                 };
                 serde_json::json!({
                     "type": "challenge",
@@ -1286,7 +1395,11 @@ impl UdpServer {
                     "timestamp": chrono::Utc::now().timestamp_millis()
                 })
             }
-            PssEvent::WinnerRounds { round1_winner, round2_winner, round3_winner } => {
+            PssEvent::WinnerRounds {
+                round1_winner,
+                round2_winner,
+                round3_winner,
+            } => {
                 serde_json::json!({
                     "type": "winner_rounds",
                     "event_code": event_code,
@@ -1298,7 +1411,10 @@ impl UdpServer {
                     "timestamp": chrono::Utc::now().timestamp_millis()
                 })
             }
-            PssEvent::Winner { name, classification } => {
+            PssEvent::Winner {
+                name,
+                classification,
+            } => {
                 serde_json::json!({
                     "type": "winner",
                     "event_code": event_code,
@@ -1309,7 +1425,14 @@ impl UdpServer {
                     "timestamp": chrono::Utc::now().timestamp_millis()
                 })
             }
-            PssEvent::Athletes { athlete1_short, athlete1_long, athlete1_country, athlete2_short, athlete2_long, athlete2_country } => {
+            PssEvent::Athletes {
+                athlete1_short,
+                athlete1_long,
+                athlete1_country,
+                athlete2_short,
+                athlete2_long,
+                athlete2_country,
+            } => {
                 serde_json::json!({
                     "type": "athletes",
                     "event_code": event_code,
@@ -1328,7 +1451,20 @@ impl UdpServer {
                     "timestamp": chrono::Utc::now().timestamp_millis()
                 })
             }
-            PssEvent::MatchConfig { number, category, weight, rounds, colors: _, match_id, division, total_rounds, round_duration, countdown_type, count_up, format } => {
+            PssEvent::MatchConfig {
+                number,
+                category,
+                weight,
+                rounds,
+                colors: _,
+                match_id,
+                division,
+                total_rounds,
+                round_duration,
+                countdown_type,
+                count_up,
+                format,
+            } => {
                 serde_json::json!({
                     "type": "match_config",
                     "event_code": event_code,
@@ -1348,7 +1484,14 @@ impl UdpServer {
                     "timestamp": chrono::Utc::now().timestamp_millis()
                 })
             }
-            PssEvent::Scores { athlete1_r1, athlete2_r1, athlete1_r2, athlete2_r2, athlete1_r3, athlete2_r3 } => {
+            PssEvent::Scores {
+                athlete1_r1,
+                athlete2_r1,
+                athlete1_r2,
+                athlete2_r2,
+                athlete1_r3,
+                athlete2_r3,
+            } => {
                 serde_json::json!({
                     "type": "scores",
                     "event_code": event_code,
@@ -1359,12 +1502,15 @@ impl UdpServer {
                     "athlete2_r2": athlete2_r2,
                     "athlete1_r3": athlete1_r3,
                     "athlete2_r3": athlete2_r3,
-                    "description": format!("Scores - A1: R1={}, R2={}, R3={} | A2: R1={}, R2={}, R3={}", 
+                    "description": format!("Scores - A1: R1={}, R2={}, R3={} | A2: R1={}, R2={}, R3={}",
                         athlete1_r1, athlete1_r2, athlete1_r3, athlete2_r1, athlete2_r2, athlete2_r3),
                     "timestamp": chrono::Utc::now().timestamp_millis()
                 })
             }
-            PssEvent::CurrentScores { athlete1_score, athlete2_score } => {
+            PssEvent::CurrentScores {
+                athlete1_score,
+                athlete2_score,
+            } => {
                 serde_json::json!({
                     "type": "current_scores",
                     "event_code": event_code,
@@ -1380,7 +1526,7 @@ impl UdpServer {
                 let safe_time = time.as_str();
                 let safe_action = action.as_ref().map(|a| a.as_str()).unwrap_or("");
                 let description = format!("Clock: {} {:?}", safe_time, safe_action);
-                
+
                 serde_json::json!({
                     "type": "clock",
                     "event_code": event_code,
@@ -1435,7 +1581,7 @@ impl UdpServer {
                 // Defensive programming for raw messages
                 let safe_message = message.as_str();
                 let description = format!("Raw message: {}", safe_message);
-                
+
                 serde_json::json!({
                     "type": "raw",
                     "event_code": event_code,
@@ -1448,93 +1594,328 @@ impl UdpServer {
         }
     }
 
-    fn extract_event_details(event: &PssEvent, _recent_hit_levels: &Arc<Mutex<std::collections::HashMap<u8, Vec<(u8, std::time::SystemTime)>>>>) -> Option<Vec<(String, Option<String>, String)>> {
+    fn extract_event_details(
+        event: &PssEvent,
+        _recent_hit_levels: &Arc<
+            Mutex<std::collections::HashMap<u8, Vec<(u8, std::time::SystemTime)>>>,
+        >,
+    ) -> Option<Vec<(String, Option<String>, String)>> {
         match event {
-            PssEvent::Points { athlete, point_type } => {
+            PssEvent::Points {
+                athlete,
+                point_type,
+            } => {
                 let details = vec![
-                ("athlete".to_string(), Some(athlete.to_string()), "u8".to_string()),
-                ("point_type".to_string(), Some(point_type.to_string()), "u8".to_string()),
+                    (
+                        "athlete".to_string(),
+                        Some(athlete.to_string()),
+                        "u8".to_string(),
+                    ),
+                    (
+                        "point_type".to_string(),
+                        Some(point_type.to_string()),
+                        "u8".to_string(),
+                    ),
                 ];
                 Some(details)
-            },
+            }
             PssEvent::HitLevel { athlete, level } => Some(vec![
-                ("athlete".to_string(), Some(athlete.to_string()), "u8".to_string()),
-                ("level".to_string(), Some(level.to_string()), "u8".to_string()),
+                (
+                    "athlete".to_string(),
+                    Some(athlete.to_string()),
+                    "u8".to_string(),
+                ),
+                (
+                    "level".to_string(),
+                    Some(level.to_string()),
+                    "u8".to_string(),
+                ),
             ]),
-            PssEvent::Warnings { athlete1_warnings, athlete2_warnings } => Some(vec![
-                ("athlete1_warnings".to_string(), Some(athlete1_warnings.to_string()), "u8".to_string()),
-                ("athlete2_warnings".to_string(), Some(athlete2_warnings.to_string()), "u8".to_string()),
+            PssEvent::Warnings {
+                athlete1_warnings,
+                athlete2_warnings,
+            } => Some(vec![
+                (
+                    "athlete1_warnings".to_string(),
+                    Some(athlete1_warnings.to_string()),
+                    "u8".to_string(),
+                ),
+                (
+                    "athlete2_warnings".to_string(),
+                    Some(athlete2_warnings.to_string()),
+                    "u8".to_string(),
+                ),
             ]),
-            PssEvent::Injury { athlete, time, action } => Some(vec![
-                ("athlete".to_string(), Some(athlete.to_string()), "u8".to_string()),
+            PssEvent::Injury {
+                athlete,
+                time,
+                action,
+            } => Some(vec![
+                (
+                    "athlete".to_string(),
+                    Some(athlete.to_string()),
+                    "u8".to_string(),
+                ),
                 ("time".to_string(), Some(time.clone()), "String".to_string()),
-                ("action".to_string(), action.as_ref().map(|a| a.clone()), "Option<String>".to_string()),
+                (
+                    "action".to_string(),
+                    action.as_ref().map(|a| a.clone()),
+                    "Option<String>".to_string(),
+                ),
             ]),
-            PssEvent::Challenge { source, accepted, won, canceled } => Some(vec![
-                ("source".to_string(), Some(source.to_string()), "u8".to_string()),
-                ("accepted".to_string(), accepted.map(|a| a.to_string()), "Option<bool>".to_string()),
-                ("won".to_string(), won.map(|w| w.to_string()), "Option<bool>".to_string()),
-                ("canceled".to_string(), Some(canceled.to_string()), "bool".to_string()),
+            PssEvent::Challenge {
+                source,
+                accepted,
+                won,
+                canceled,
+            } => Some(vec![
+                (
+                    "source".to_string(),
+                    Some(source.to_string()),
+                    "u8".to_string(),
+                ),
+                (
+                    "accepted".to_string(),
+                    accepted.map(|a| a.to_string()),
+                    "Option<bool>".to_string(),
+                ),
+                (
+                    "won".to_string(),
+                    won.map(|w| w.to_string()),
+                    "Option<bool>".to_string(),
+                ),
+                (
+                    "canceled".to_string(),
+                    Some(canceled.to_string()),
+                    "bool".to_string(),
+                ),
             ]),
             PssEvent::Break { time, action } => Some(vec![
                 ("time".to_string(), Some(time.clone()), "String".to_string()),
-                ("action".to_string(), action.as_ref().map(|a| a.clone()), "Option<String>".to_string()),
+                (
+                    "action".to_string(),
+                    action.as_ref().map(|a| a.clone()),
+                    "Option<String>".to_string(),
+                ),
             ]),
-            PssEvent::WinnerRounds { round1_winner, round2_winner, round3_winner } => Some(vec![
-                ("round1_winner".to_string(), Some(round1_winner.to_string()), "u8".to_string()),
-                ("round2_winner".to_string(), Some(round2_winner.to_string()), "u8".to_string()),
-                ("round3_winner".to_string(), Some(round3_winner.to_string()), "u8".to_string()),
+            PssEvent::WinnerRounds {
+                round1_winner,
+                round2_winner,
+                round3_winner,
+            } => Some(vec![
+                (
+                    "round1_winner".to_string(),
+                    Some(round1_winner.to_string()),
+                    "u8".to_string(),
+                ),
+                (
+                    "round2_winner".to_string(),
+                    Some(round2_winner.to_string()),
+                    "u8".to_string(),
+                ),
+                (
+                    "round3_winner".to_string(),
+                    Some(round3_winner.to_string()),
+                    "u8".to_string(),
+                ),
             ]),
-            PssEvent::Winner { name, classification } => Some(vec![
+            PssEvent::Winner {
+                name,
+                classification,
+            } => Some(vec![
                 ("name".to_string(), Some(name.clone()), "String".to_string()),
-                ("classification".to_string(), classification.as_ref().map(|c| c.clone()), "Option<String>".to_string()),
+                (
+                    "classification".to_string(),
+                    classification.as_ref().map(|c| c.clone()),
+                    "Option<String>".to_string(),
+                ),
             ]),
-            PssEvent::Athletes { athlete1_short, athlete1_long, athlete1_country, athlete2_short, athlete2_long, athlete2_country } => Some(vec![
-                ("athlete1_short".to_string(), Some(athlete1_short.clone()), "String".to_string()),
-                ("athlete1_long".to_string(), Some(athlete1_long.clone()), "String".to_string()),
-                ("athlete1_country".to_string(), Some(athlete1_country.clone()), "String".to_string()),
-                ("athlete2_short".to_string(), Some(athlete2_short.clone()), "String".to_string()),
-                ("athlete2_long".to_string(), Some(athlete2_long.clone()), "String".to_string()),
-                ("athlete2_country".to_string(), Some(athlete2_country.clone()), "String".to_string()),
+            PssEvent::Athletes {
+                athlete1_short,
+                athlete1_long,
+                athlete1_country,
+                athlete2_short,
+                athlete2_long,
+                athlete2_country,
+            } => Some(vec![
+                (
+                    "athlete1_short".to_string(),
+                    Some(athlete1_short.clone()),
+                    "String".to_string(),
+                ),
+                (
+                    "athlete1_long".to_string(),
+                    Some(athlete1_long.clone()),
+                    "String".to_string(),
+                ),
+                (
+                    "athlete1_country".to_string(),
+                    Some(athlete1_country.clone()),
+                    "String".to_string(),
+                ),
+                (
+                    "athlete2_short".to_string(),
+                    Some(athlete2_short.clone()),
+                    "String".to_string(),
+                ),
+                (
+                    "athlete2_long".to_string(),
+                    Some(athlete2_long.clone()),
+                    "String".to_string(),
+                ),
+                (
+                    "athlete2_country".to_string(),
+                    Some(athlete2_country.clone()),
+                    "String".to_string(),
+                ),
             ]),
-            PssEvent::MatchConfig { number, category, weight, rounds, colors: _, match_id, division, total_rounds, round_duration, countdown_type, count_up, format } => Some(vec![
-                ("number".to_string(), Some(number.to_string()), "u32".to_string()),
-                ("category".to_string(), Some(category.clone()), "String".to_string()),
-                ("weight".to_string(), Some(weight.clone()), "String".to_string()),
-                ("rounds".to_string(), Some(rounds.to_string()), "u8".to_string()),
-                ("match_id".to_string(), Some(match_id.clone()), "String".to_string()),
-                ("division".to_string(), Some(division.clone()), "String".to_string()),
-                ("total_rounds".to_string(), Some(total_rounds.to_string()), "u8".to_string()),
-                ("round_duration".to_string(), Some(round_duration.to_string()), "u32".to_string()),
-                ("countdown_type".to_string(), Some(countdown_type.clone()), "String".to_string()),
-                ("count_up".to_string(), Some(count_up.to_string()), "u32".to_string()),
-                ("format".to_string(), Some(format.to_string()), "u8".to_string()),
+            PssEvent::MatchConfig {
+                number,
+                category,
+                weight,
+                rounds,
+                colors: _,
+                match_id,
+                division,
+                total_rounds,
+                round_duration,
+                countdown_type,
+                count_up,
+                format,
+            } => Some(vec![
+                (
+                    "number".to_string(),
+                    Some(number.to_string()),
+                    "u32".to_string(),
+                ),
+                (
+                    "category".to_string(),
+                    Some(category.clone()),
+                    "String".to_string(),
+                ),
+                (
+                    "weight".to_string(),
+                    Some(weight.clone()),
+                    "String".to_string(),
+                ),
+                (
+                    "rounds".to_string(),
+                    Some(rounds.to_string()),
+                    "u8".to_string(),
+                ),
+                (
+                    "match_id".to_string(),
+                    Some(match_id.clone()),
+                    "String".to_string(),
+                ),
+                (
+                    "division".to_string(),
+                    Some(division.clone()),
+                    "String".to_string(),
+                ),
+                (
+                    "total_rounds".to_string(),
+                    Some(total_rounds.to_string()),
+                    "u8".to_string(),
+                ),
+                (
+                    "round_duration".to_string(),
+                    Some(round_duration.to_string()),
+                    "u32".to_string(),
+                ),
+                (
+                    "countdown_type".to_string(),
+                    Some(countdown_type.clone()),
+                    "String".to_string(),
+                ),
+                (
+                    "count_up".to_string(),
+                    Some(count_up.to_string()),
+                    "u32".to_string(),
+                ),
+                (
+                    "format".to_string(),
+                    Some(format.to_string()),
+                    "u8".to_string(),
+                ),
             ]),
-            PssEvent::Scores { athlete1_r1, athlete2_r1, athlete1_r2, athlete2_r2, athlete1_r3, athlete2_r3 } => Some(vec![
-                ("athlete1_r1".to_string(), Some(athlete1_r1.to_string()), "u8".to_string()),
-                ("athlete2_r1".to_string(), Some(athlete2_r1.to_string()), "u8".to_string()),
-                ("athlete1_r2".to_string(), Some(athlete1_r2.to_string()), "u8".to_string()),
-                ("athlete2_r2".to_string(), Some(athlete2_r2.to_string()), "u8".to_string()),
-                ("athlete1_r3".to_string(), Some(athlete1_r3.to_string()), "u8".to_string()),
-                ("athlete2_r3".to_string(), Some(athlete2_r3.to_string()), "u8".to_string()),
+            PssEvent::Scores {
+                athlete1_r1,
+                athlete2_r1,
+                athlete1_r2,
+                athlete2_r2,
+                athlete1_r3,
+                athlete2_r3,
+            } => Some(vec![
+                (
+                    "athlete1_r1".to_string(),
+                    Some(athlete1_r1.to_string()),
+                    "u8".to_string(),
+                ),
+                (
+                    "athlete2_r1".to_string(),
+                    Some(athlete2_r1.to_string()),
+                    "u8".to_string(),
+                ),
+                (
+                    "athlete1_r2".to_string(),
+                    Some(athlete1_r2.to_string()),
+                    "u8".to_string(),
+                ),
+                (
+                    "athlete2_r2".to_string(),
+                    Some(athlete2_r2.to_string()),
+                    "u8".to_string(),
+                ),
+                (
+                    "athlete1_r3".to_string(),
+                    Some(athlete1_r3.to_string()),
+                    "u8".to_string(),
+                ),
+                (
+                    "athlete2_r3".to_string(),
+                    Some(athlete2_r3.to_string()),
+                    "u8".to_string(),
+                ),
             ]),
-            PssEvent::CurrentScores { athlete1_score, athlete2_score } => Some(vec![
-                ("athlete1_score".to_string(), Some(athlete1_score.to_string()), "u8".to_string()),
-                ("athlete2_score".to_string(), Some(athlete2_score.to_string()), "u8".to_string()),
+            PssEvent::CurrentScores {
+                athlete1_score,
+                athlete2_score,
+            } => Some(vec![
+                (
+                    "athlete1_score".to_string(),
+                    Some(athlete1_score.to_string()),
+                    "u8".to_string(),
+                ),
+                (
+                    "athlete2_score".to_string(),
+                    Some(athlete2_score.to_string()),
+                    "u8".to_string(),
+                ),
             ]),
             PssEvent::Clock { time, action } => Some(vec![
                 ("time".to_string(), Some(time.clone()), "String".to_string()),
-                ("action".to_string(), action.as_ref().map(|a| a.clone()), "Option<String>".to_string()),
+                (
+                    "action".to_string(),
+                    action.as_ref().map(|a| a.clone()),
+                    "Option<String>".to_string(),
+                ),
             ]),
-            PssEvent::Round { current_round } => Some(vec![
-                ("current_round".to_string(), Some(current_round.to_string()), "u8".to_string()),
-            ]),
-            PssEvent::Supremacy { value } => Some(vec![
-                ("value".to_string(), Some(value.to_string()), "u8".to_string()),
-            ]),
-            PssEvent::Raw(message) => Some(vec![
-                ("message".to_string(), Some(message.clone()), "String".to_string()),
-            ]),
+            PssEvent::Round { current_round } => Some(vec![(
+                "current_round".to_string(),
+                Some(current_round.to_string()),
+                "u8".to_string(),
+            )]),
+            PssEvent::Supremacy { value } => Some(vec![(
+                "value".to_string(),
+                Some(value.to_string()),
+                "u8".to_string(),
+            )]),
+            PssEvent::Raw(message) => Some(vec![(
+                "message".to_string(),
+                Some(message.clone()),
+                "String".to_string(),
+            )]),
             _ => None,
         }
     }
@@ -1553,14 +1934,16 @@ impl UdpServer {
         current_match_id: Arc<Mutex<Option<i64>>>,
         athlete_cache: Arc<Mutex<std::collections::HashMap<String, i64>>>,
         event_type_cache: Arc<Mutex<std::collections::HashMap<String, i64>>>,
-        recent_hit_levels: Arc<Mutex<std::collections::HashMap<u8, Vec<(u8, std::time::SystemTime)>>>>,
+        recent_hit_levels: Arc<
+            Mutex<std::collections::HashMap<u8, Vec<(u8, std::time::SystemTime)>>>,
+        >,
         tournament_id: Arc<Mutex<Option<i64>>>,
         websocket_server: Arc<WebSocketServer>,
     ) {
         log::info!("UDP PSS Server listening loop started (async)");
-        
+
         let mut buffer = [0u8; 8192];
-        
+
         loop {
             // Check if we should stop
             {
@@ -1569,7 +1952,7 @@ impl UdpServer {
                     break;
                 }
             }
-            
+
             // Get socket reference and try to receive data
             let recv_result = {
                 let socket_guard = socket.lock().unwrap();
@@ -1581,7 +1964,7 @@ impl UdpServer {
                     }
                 }
             };
-            
+
             match recv_result {
                 Ok((len, src_addr)) => {
                     // Update stats
@@ -1590,157 +1973,170 @@ impl UdpServer {
                         stats_guard.packets_received += 1;
                         stats_guard.last_packet_time = Some(std::time::SystemTime::now());
                         stats_guard.total_bytes_received += len as u64;
-                        
+
                         // Update average packet size
                         let total_packets = stats_guard.packets_received;
                         let total_bytes = stats_guard.total_bytes_received;
                         stats_guard.average_packet_size = total_bytes as f64 / total_packets as f64;
-                        
+
                         // Track active connections
-                        stats_guard.active_connections.insert(src_addr, std::time::SystemTime::now());
+                        stats_guard
+                            .active_connections
+                            .insert(src_addr, std::time::SystemTime::now());
                         stats_guard.connected_clients = stats_guard.active_connections.len();
                     }
-                    
+
                     // Convert received data to string
                     let message = match String::from_utf8_lossy(&buffer[..len]).to_string() {
                         msg if msg.trim().is_empty() => continue,
                         msg => msg,
                     };
-                    
+
                     log::debug!("Received PSS message from {}: {}", src_addr, message);
-                    
+
                     // Log raw UDP message for Live Data panel
                     let raw_log_message = format!(" Raw UDP message: {}", message);
                     crate::core::app::App::emit_log_event(raw_log_message);
-                    
+
                     // Parse the message with panic protection
                     let parse_result = std::panic::catch_unwind(|| {
                         Self::parse_pss_message(&message, &protocol_manager)
                     });
-                    
+
                     match parse_result {
                         Ok(parse_result) => {
                             match parse_result {
-                        Ok(event) => {
-                            // Update stats
-                            {
-                                let mut stats_guard = stats.lock().unwrap();
-                                stats_guard.packets_parsed += 1;
-                            }
+                                Ok(event) => {
+                                    // Update stats
+                                    {
+                                        let mut stats_guard = stats.lock().unwrap();
+                                        stats_guard.packets_parsed += 1;
+                                    }
 
                                     // Track hit level events for statistics
                                     match &event {
                                         PssEvent::HitLevel { .. } => { /* no aggregation needed */ }
-                                        PssEvent::FightLoaded | PssEvent::FightReady => { /* nothing to clear */ }
+                                        PssEvent::FightLoaded | PssEvent::FightReady => { /* nothing to clear */
+                                        }
                                         _ => {}
                                     }
 
-                            // Broadcast to WebSocket clients immediately to preserve event order
-                            if let Err(e) = websocket_server.broadcast_event(&event) {
-                                log::warn!("Failed to broadcast event to WebSocket: {}", e);
-                            }
-
-                            // Store event in database asynchronously (do not block IO path)
-                            let event_clone = event.clone();
-                            let database_clone = database.clone();
-                            let current_session_id_clone = current_session_id.clone();
-                            let current_match_id_clone = current_match_id.clone();
-                            let athlete_cache_clone = athlete_cache.clone();
-                            let event_type_cache_clone = event_type_cache.clone();
-                            let recent_hit_levels_clone = recent_hit_levels.clone();
-                            let tournament_id_clone = tournament_id.clone();
-                            let websocket_server_clone = websocket_server.clone();
-                            tokio::spawn(async move {
-                                if let Err(e) = Self::store_event_in_database(
-                                    &database_clone,
-                                    &current_session_id_clone,
-                                    &current_match_id_clone,
-                                    &athlete_cache_clone,
-                                    &event_type_cache_clone,
-                                    &event_clone,
-                                    &recent_hit_levels_clone,
-                                    &tournament_id_clone,
-                                    &websocket_server_clone,
-                                ).await {
-                                    log::error!("Failed to store event in database: {}", e);
-                                }
-                            });
-
-                            // Add event to recent events storage
-                            {
-                                let mut events_guard = match recent_events.lock() {
-                                    Ok(g) => g,
-                                    Err(poisoned) => {
-                                        log::warn!("recent_events mutex poisoned; recovering");
-                                        poisoned.into_inner()
+                                    // Broadcast to WebSocket clients immediately to preserve event order
+                                    if let Err(e) = websocket_server.broadcast_event(&event) {
+                                        log::warn!("Failed to broadcast event to WebSocket: {}", e);
                                     }
-                                };
-                                events_guard.push_back(event.clone());
-                                
-                                // Keep only the last 100 events
-                                if events_guard.len() > 100 {
-                                    events_guard.pop_front();
-                                }
-                            }
+
+                                    // Store event in database asynchronously (do not block IO path)
+                                    let event_clone = event.clone();
+                                    let database_clone = database.clone();
+                                    let current_session_id_clone = current_session_id.clone();
+                                    let current_match_id_clone = current_match_id.clone();
+                                    let athlete_cache_clone = athlete_cache.clone();
+                                    let event_type_cache_clone = event_type_cache.clone();
+                                    let recent_hit_levels_clone = recent_hit_levels.clone();
+                                    let tournament_id_clone = tournament_id.clone();
+                                    let websocket_server_clone = websocket_server.clone();
+                                    tokio::spawn(async move {
+                                        if let Err(e) = Self::store_event_in_database(
+                                            &database_clone,
+                                            &current_session_id_clone,
+                                            &current_match_id_clone,
+                                            &athlete_cache_clone,
+                                            &event_type_cache_clone,
+                                            &event_clone,
+                                            &recent_hit_levels_clone,
+                                            &tournament_id_clone,
+                                            &websocket_server_clone,
+                                        )
+                                        .await
+                                        {
+                                            log::error!("Failed to store event in database: {}", e);
+                                        }
+                                    });
+
+                                    // Add event to recent events storage
+                                    {
+                                        let mut events_guard = match recent_events.lock() {
+                                            Ok(g) => g,
+                                            Err(poisoned) => {
+                                                log::warn!(
+                                                    "recent_events mutex poisoned; recovering"
+                                                );
+                                                poisoned.into_inner()
+                                            }
+                                        };
+                                        events_guard.push_back(event.clone());
+
+                                        // Keep only the last 100 events
+                                        if events_guard.len() > 100 {
+                                            events_guard.pop_front();
+                                        }
+                                    }
 
                                     // Send event to frontend via Tauri events
                                     let event_json = Self::convert_pss_event_to_json(&event);
-                                    
+
                                     // Log the parsed event and JSON for debugging
                                     log::info!("Parsed PSS event: {:?}", event);
-                                    
+
                                     // Safely serialize JSON with error handling
                                     match serde_json::to_string(&event_json) {
                                         Ok(json_string) => {
                                             log::info!("Emitting event JSON: {}", json_string);
-                                            
+
                                             // Emit to Tauri frontend
                                             if let Err(e) = event_tx.send(event.clone()) {
                                                 log::warn!("Failed to send PSS event to internal channel: {}", e);
                                             }
-                                            
+
                                             // Emit to frontend (Tauri) only to avoid double WebSocket broadcast
                                             // WebSocket broadcasting is already handled directly below via websocket_server.broadcast_event(event)
-                                            crate::core::app::App::emit_custom_event("pss_event", event_json);
-                                            
+                                            crate::core::app::App::emit_custom_event(
+                                                "pss_event",
+                                                event_json,
+                                            );
+
                                             // Stream log to frontend for Live Data panel
                                             let log_message = format!(" UDP-EVENT: {:?}", event);
                                             crate::core::app::App::emit_log_event(log_message);
                                         }
                                         Err(e) => {
-                                            log::error!("Failed to serialize PSS event to JSON: {}", e);
+                                            log::error!(
+                                                "Failed to serialize PSS event to JSON: {}",
+                                                e
+                                            );
                                             log::error!("Event that failed: {:?}", event);
-                                            
+
                                             // Still try to send the event to internal channel
                                             if let Err(e) = event_tx.send(event.clone()) {
                                                 log::warn!("Failed to send PSS event to internal channel: {}", e);
                                             }
                                         }
                                     }
-                        }
-                        Err(e) => {
-                            // Update error stats
-                            {
-                                let mut stats_guard = stats.lock().unwrap();
-                                stats_guard.parse_errors += 1;
-                            }
-                            
-                            log::warn!("Failed to parse PSS message '{}': {}", message, e);
-                                    
+                                }
+                                Err(e) => {
+                                    // Update error stats
+                                    {
+                                        let mut stats_guard = stats.lock().unwrap();
+                                        stats_guard.parse_errors += 1;
+                                    }
+
+                                    log::warn!("Failed to parse PSS message '{}': {}", message, e);
+
                                     // Create raw event and add to storage
                                     let raw_event = PssEvent::Raw(message.clone());
-                                    
+
                                     // Add raw event to recent events storage
                                     {
                                         let mut events_guard = recent_events.lock().unwrap();
                                         events_guard.push_back(raw_event.clone());
-                                        
+
                                         // Keep only the last 100 events
                                         if events_guard.len() > 100 {
                                             events_guard.pop_front();
                                         }
                                     }
-                                    
+
                                     // Send raw message as fallback (ignore errors if no receiver)
                                     if let Err(_) = event_tx.send(raw_event) {
                                         // Don't break the loop, just continue
@@ -1750,28 +2146,32 @@ impl UdpServer {
                         }
                         Err(panic_info) => {
                             // Handle panic in parsing
-                            log::error!("Panic occurred while parsing message '{}': {:?}", message, panic_info);
-                            
+                            log::error!(
+                                "Panic occurred while parsing message '{}': {:?}",
+                                message,
+                                panic_info
+                            );
+
                             // Update error stats
                             {
                                 let mut stats_guard = stats.lock().unwrap();
                                 stats_guard.parse_errors += 1;
                             }
-                            
+
                             // Create raw event and add to storage
                             let raw_event = PssEvent::Raw(message.clone());
-                            
+
                             // Add raw event to recent events storage
                             {
                                 let mut events_guard = recent_events.lock().unwrap();
                                 events_guard.push_back(raw_event.clone());
-                                
+
                                 // Keep only the last 100 events
                                 if events_guard.len() > 100 {
                                     events_guard.pop_front();
                                 }
                             }
-                            
+
                             // Send raw message as fallback (ignore errors if no receiver)
                             if let Err(_) = event_tx.send(raw_event) {
                                 // Don't break the loop, just continue
@@ -1783,14 +2183,14 @@ impl UdpServer {
                     if e.kind() != std::io::ErrorKind::WouldBlock {
                         let error_msg = format!("UDP receive error: {}", e);
                         log::error!("{}", error_msg);
-                        
+
                         let mut status_guard = status.lock().unwrap();
                         *status_guard = UdpServerStatus::Error(error_msg);
                         break;
                     }
                 }
             }
-            
+
             // Small sleep to make the loop responsive to stop requests
             tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
         }
@@ -1798,18 +2198,16 @@ impl UdpServer {
         log::info!("UDP PSS Server listening loop ended");
     }
 
-
-
     fn parse_pss_message(message: &str, protocol_manager: &ProtocolManager) -> AppResult<PssEvent> {
         // Log the incoming message for debugging
         log::debug!("Parsing PSS message: '{}'", message);
-        
+
         // Clean the message: trim whitespace first, then remove trailing semicolons, and split
         let clean_message = message.trim();
         let clean_message = clean_message.trim_end_matches(';');
         // Split and drop empty segments (e.g., trailing ';' producing an empty token)
         let parts: Vec<&str> = clean_message.split(';').filter(|p| !p.is_empty()).collect();
-        
+
         // Handle empty or whitespace-only messages
         if clean_message.is_empty() {
             log::warn!("Received empty message, returning Raw event");
@@ -1817,7 +2215,9 @@ impl UdpServer {
         }
 
         // Handle connection status messages (not PSS events)
-        if message.contains("Udp Port") && (message.contains("connected") || message.contains("disconnected")) {
+        if message.contains("Udp Port")
+            && (message.contains("connected") || message.contains("disconnected"))
+        {
             log::debug!("Connection status message: {}", message);
             return Ok(PssEvent::Raw(message.to_string()));
         }
@@ -1854,50 +2254,72 @@ impl UdpServer {
         let get_part = |index: usize| -> Option<&str> {
             if index < parts.len() {
                 Some(parts[index])
-                } else {
+            } else {
                 None
             }
         };
 
         // Helper function to safely parse a part as u8 with validation
         let parse_u8 = |index: usize, field_name: &str, min: u8, max: u8| -> AppResult<u8> {
-            let value = get_part(index)
-                .ok_or_else(|| AppError::ConfigError(format!("Missing {} at position {}", field_name, index)))?;
-            
-            let parsed = value.parse::<u8>()
-                .map_err(|_| AppError::ConfigError(format!("Invalid {}: '{}' (not a valid u8)", field_name, value)))?;
-            
+            let value = get_part(index).ok_or_else(|| {
+                AppError::ConfigError(format!("Missing {} at position {}", field_name, index))
+            })?;
+
+            let parsed = value.parse::<u8>().map_err(|_| {
+                AppError::ConfigError(format!(
+                    "Invalid {}: '{}' (not a valid u8)",
+                    field_name, value
+                ))
+            })?;
+
             if parsed < min || parsed > max {
-                return Err(AppError::ConfigError(format!("{} value {} is out of range [{}, {}]", field_name, parsed, min, max)));
+                return Err(AppError::ConfigError(format!(
+                    "{} value {} is out of range [{}, {}]",
+                    field_name, parsed, min, max
+                )));
             }
-            
+
             Ok(parsed)
         };
 
         // Helper function to safely parse a part as u32 with validation
         let parse_u32 = |index: usize, field_name: &str, min: u32, max: u32| -> AppResult<u32> {
-            let value = get_part(index)
-                .ok_or_else(|| AppError::ConfigError(format!("Missing {} at position {}", field_name, index)))?;
-            
-            let parsed = value.parse::<u32>()
-                .map_err(|_| AppError::ConfigError(format!("Invalid {}: '{}' (not a valid u32)", field_name, value)))?;
-            
+            let value = get_part(index).ok_or_else(|| {
+                AppError::ConfigError(format!("Missing {} at position {}", field_name, index))
+            })?;
+
+            let parsed = value.parse::<u32>().map_err(|_| {
+                AppError::ConfigError(format!(
+                    "Invalid {}: '{}' (not a valid u32)",
+                    field_name, value
+                ))
+            })?;
+
             if parsed < min || parsed > max {
-                return Err(AppError::ConfigError(format!("{} value {} is out of range [{}, {}]", field_name, parsed, min, max)));
+                return Err(AppError::ConfigError(format!(
+                    "{} value {} is out of range [{}, {}]",
+                    field_name, parsed, min, max
+                )));
             }
-            
+
             Ok(parsed)
         };
 
         // Helper function to safely get a string part with validation
         let get_string = |index: usize, field_name: &str, max_length: usize| -> AppResult<String> {
-            let value = get_part(index)
-                .ok_or_else(|| AppError::ConfigError(format!("Missing {} at position {}", field_name, index)))?;
-            
+            let value = get_part(index).ok_or_else(|| {
+                AppError::ConfigError(format!("Missing {} at position {}", field_name, index))
+            })?;
+
             if value.len() > max_length {
-                return Err(AppError::ConfigError(format!("{} too long: {} chars (max {})", field_name, value.len(), max_length)));
+                return Err(AppError::ConfigError(format!(
+                    "{} too long: {} chars (max {})",
+                    field_name,
+                    value.len(),
+                    max_length
+                )));
             }
-            
+
             Ok(value.to_string())
         };
 
@@ -1909,8 +2331,9 @@ impl UdpServer {
                 if parts.len() != 2 {
                     return false;
                 }
-                parts.get(0).unwrap_or(&"0").parse::<u8>().is_ok() && parts.get(1).unwrap_or(&"0").parse::<u8>().is_ok()
-                } else {
+                parts.get(0).unwrap_or(&"0").parse::<u8>().is_ok()
+                    && parts.get(1).unwrap_or(&"0").parse::<u8>().is_ok()
+            } else {
                 // Format: ss
                 time.parse::<u8>().is_ok()
             }
@@ -1918,7 +2341,9 @@ impl UdpServer {
 
         // Helper function to validate color format (#RRGGBB)
         let validate_color_format = |color: &str| -> bool {
-            color.starts_with('#') && color.len() == 7 && color[1..].chars().all(|c| c.is_ascii_hexdigit())
+            color.starts_with('#')
+                && color.len() == 7
+                && color[1..].chars().all(|c| c.is_ascii_hexdigit())
         };
 
         // Helper function to safely parse with fallback to raw
@@ -1926,7 +2351,11 @@ impl UdpServer {
             match result {
                 Ok(event) => Ok(event),
                 Err(e) => {
-                    log::warn!("Parsing failed for '{}': {}. Returning as Raw event.", message, e);
+                    log::warn!(
+                        "Parsing failed for '{}': {}. Returning as Raw event.",
+                        message,
+                        e
+                    );
                     Ok(PssEvent::Raw(message.to_string()))
                 }
             }
@@ -1938,47 +2367,67 @@ impl UdpServer {
             "pt1" => {
                 let point_type = parse_u8(1, "point type", 1, 5)?;
                 log::debug!("Parsed Points event: athlete=1, type={}", point_type);
-                Ok(PssEvent::Points { athlete: 1, point_type })
+                Ok(PssEvent::Points {
+                    athlete: 1,
+                    point_type,
+                })
             }
             "pt2" => {
                 let point_type = parse_u8(1, "point type", 1, 5)?;
                 log::debug!("Parsed Points event: athlete=2, type={}", point_type);
-                Ok(PssEvent::Points { athlete: 2, point_type })
+                Ok(PssEvent::Points {
+                    athlete: 2,
+                    point_type,
+                })
             }
 
             // Hit level events (hl1, hl2)
             "hl1" => {
                 let level = parse_u8(1, "hit level", 1, 100)?;
                 log::debug!("Parsed HitLevel event: athlete=1, level={}", level);
-                    Ok(PssEvent::HitLevel { athlete: 1, level })
+                Ok(PssEvent::HitLevel { athlete: 1, level })
             }
             "hl2" => {
                 let level = parse_u8(1, "hit level", 1, 100)?;
                 log::debug!("Parsed HitLevel event: athlete=2, level={}", level);
-                    Ok(PssEvent::HitLevel { athlete: 2, level })
+                Ok(PssEvent::HitLevel { athlete: 2, level })
             }
 
             // Warnings/Gam-jeom events (wg1, wg2)
             "wg1" => {
                 // Parse warnings: wg1;1;wg2;2;
                 let athlete1_warnings = parse_u8(1, "athlete1 warnings", 0, 10)?;
-                let athlete2_warnings = if parts.len() >= 4 && *parts.get(2).unwrap_or(&"") == "wg2" {
+                let athlete2_warnings = if parts.len() >= 4 && *parts.get(2).unwrap_or(&"") == "wg2"
+                {
                     parse_u8(3, "athlete2 warnings", 0, 10)?
                 } else {
                     0
                 };
-                log::debug!("Parsed Warnings event: a1={}, a2={}", athlete1_warnings, athlete2_warnings);
-                    Ok(PssEvent::Warnings { athlete1_warnings, athlete2_warnings })
+                log::debug!(
+                    "Parsed Warnings event: a1={}, a2={}",
+                    athlete1_warnings,
+                    athlete2_warnings
+                );
+                Ok(PssEvent::Warnings {
+                    athlete1_warnings,
+                    athlete2_warnings,
+                })
             }
             "wg2" => {
                 // Handle wg2 as part of wg1 event or standalone
                 if parts.len() >= 2 {
                     let athlete2_warnings = parse_u8(1, "athlete2 warnings", 0, 10)?;
                     log::debug!("Parsed Warnings event: a1=0, a2={}", athlete2_warnings);
-                    Ok(PssEvent::Warnings { athlete1_warnings: 0, athlete2_warnings })
+                    Ok(PssEvent::Warnings {
+                        athlete1_warnings: 0,
+                        athlete2_warnings,
+                    })
                 } else {
                     log::warn!("Incomplete wg2 event, defaulting to 0 warnings");
-                    Ok(PssEvent::Warnings { athlete1_warnings: 0, athlete2_warnings: 0 })
+                    Ok(PssEvent::Warnings {
+                        athlete1_warnings: 0,
+                        athlete2_warnings: 0,
+                    })
                 }
             }
 
@@ -1990,18 +2439,18 @@ impl UdpServer {
                     "ij2" => 2,
                     _ => 0,
                 };
-                
+
                 if parts.len() < 2 {
                     log::warn!("Incomplete injury event, missing time");
                     return Ok(PssEvent::Raw(message.to_string()));
                 }
-                
+
                 let time = get_string(1, "injury time", 10)?;
                 if !validate_time_format(&time) {
                     log::warn!("Invalid injury time format: '{}'", time);
                     return Ok(PssEvent::Raw(message.to_string()));
                 }
-                
+
                 let action = if parts.len() > 2 {
                     let action_str = get_string(2, "injury action", 10)?;
                     match action_str.as_str() {
@@ -2011,12 +2460,21 @@ impl UdpServer {
                             None
                         }
                     }
-                    } else {
-                        None
-                    };
+                } else {
+                    None
+                };
 
-                log::debug!("Parsed Injury event: athlete={}, time={}, action={:?}", athlete, time, action);
-                    Ok(PssEvent::Injury { athlete, time, action })
+                log::debug!(
+                    "Parsed Injury event: athlete={}, time={}, action={:?}",
+                    athlete,
+                    time,
+                    action
+                );
+                Ok(PssEvent::Injury {
+                    athlete,
+                    time,
+                    action,
+                })
             }
 
             // Challenge/IVR events (ch0, ch1, ch2)
@@ -2027,27 +2485,39 @@ impl UdpServer {
                     "ch2" => 2, // Athlete 2
                     _ => 0,
                 };
-                
+
                 let accepted = if parts.len() > 1 {
                     let val = parse_u8(1, "challenge accepted", 0, 255)?;
-                    if val == 255 { // -1 in u8 representation
+                    if val == 255 {
+                        // -1 in u8 representation
                         Some(false)
-                        } else {
+                    } else {
                         Some(val == 1)
                     }
                 } else {
                     None
                 };
-                
+
                 let won = if parts.len() > 2 {
                     Some(parse_u8(2, "challenge won", 0, 1)? == 1)
                 } else {
                     None
                 };
-                
+
                 let canceled = accepted == Some(false);
-                log::debug!("Parsed Challenge event: source={}, accepted={:?}, won={:?}, canceled={}", source, accepted, won, canceled);
-                Ok(PssEvent::Challenge { source, accepted, won, canceled })
+                log::debug!(
+                    "Parsed Challenge event: source={}, accepted={:?}, won={:?}, canceled={}",
+                    source,
+                    accepted,
+                    won,
+                    canceled
+                );
+                Ok(PssEvent::Challenge {
+                    source,
+                    accepted,
+                    won,
+                    canceled,
+                })
             }
 
             // Break events (brk)
@@ -2056,13 +2526,13 @@ impl UdpServer {
                     log::warn!("Incomplete break event, missing time");
                     return Ok(PssEvent::Raw(message.to_string()));
                 }
-                
+
                 let time = get_string(1, "break time", 10)?;
                 if !validate_time_format(&time) {
                     log::warn!("Invalid break time format: '{}'", time);
                     return Ok(PssEvent::Raw(message.to_string()));
                 }
-                
+
                 let action = if parts.len() > 2 {
                     let action_str = get_string(2, "break action", 10)?;
                     match action_str.as_str() {
@@ -2072,12 +2542,12 @@ impl UdpServer {
                             None
                         }
                     }
-                    } else {
-                        None
-                    };
+                } else {
+                    None
+                };
 
                 log::debug!("Parsed Break event: time={}, action={:?}", time, action);
-                    Ok(PssEvent::Break { time, action })
+                Ok(PssEvent::Break { time, action })
             }
 
             // Winner rounds events (wrd)
@@ -2086,7 +2556,7 @@ impl UdpServer {
                 let mut round1_winner = 0;
                 let mut round2_winner = 0;
                 let mut round3_winner = 0;
-                
+
                 for i in 1..parts.len() {
                     match *parts.get(i).unwrap_or(&"") {
                         "rd1" if i + 1 < parts.len() => {
@@ -2101,9 +2571,18 @@ impl UdpServer {
                         _ => {}
                     }
                 }
-                
-                log::debug!("Parsed WinnerRounds event: r1={}, r2={}, r3={}", round1_winner, round2_winner, round3_winner);
-                Ok(PssEvent::WinnerRounds { round1_winner, round2_winner, round3_winner })
+
+                log::debug!(
+                    "Parsed WinnerRounds event: r1={}, r2={}, r3={}",
+                    round1_winner,
+                    round2_winner,
+                    round3_winner
+                );
+                Ok(PssEvent::WinnerRounds {
+                    round1_winner,
+                    round2_winner,
+                    round3_winner,
+                })
             }
 
             // Winner events (wmh)
@@ -2112,16 +2591,23 @@ impl UdpServer {
                     log::warn!("Incomplete winner event, missing name");
                     return Ok(PssEvent::Raw(message.to_string()));
                 }
-                
+
                 let name = get_string(1, "winner name", 100)?;
                 let classification = if parts.len() > 2 {
                     Some(get_string(2, "classification", 50)?)
-                    } else {
-                        None
-                    };
+                } else {
+                    None
+                };
 
-                log::debug!("Parsed Winner event: name={}, classification={:?}", name, classification);
-                    Ok(PssEvent::Winner { name, classification })
+                log::debug!(
+                    "Parsed Winner event: name={}, classification={:?}",
+                    name,
+                    classification
+                );
+                Ok(PssEvent::Winner {
+                    name,
+                    classification,
+                })
             }
 
             // Athletes events (at1)
@@ -2134,10 +2620,15 @@ impl UdpServer {
                     let athlete2_short = get_string(5, "athlete2 short", 50)?;
                     let athlete2_long = get_string(6, "athlete2 long", 100)?;
                     let athlete2_country = get_string(7, "athlete2 country", 10)?;
-                    
-                    log::debug!("Parsed Athletes event: a1='{}'({}), a2='{}'({})", 
-                               athlete1_short, athlete1_country, athlete2_short, athlete2_country);
-                    
+
+                    log::debug!(
+                        "Parsed Athletes event: a1='{}'({}), a2='{}'({})",
+                        athlete1_short,
+                        athlete1_country,
+                        athlete2_short,
+                        athlete2_country
+                    );
+
                     Ok(PssEvent::Athletes {
                         athlete1_short,
                         athlete1_long,
@@ -2147,7 +2638,10 @@ impl UdpServer {
                         athlete2_country,
                     })
                 } else {
-                    log::warn!("Incomplete athletes event, expected 7+ parts, got {}", parts.len());
+                    log::warn!(
+                        "Incomplete athletes event, expected 7+ parts, got {}",
+                        parts.len()
+                    );
                     Ok(PssEvent::Raw(message.to_string()))
                 }
             }
@@ -2171,15 +2665,24 @@ impl UdpServer {
                     let countdown_type = get_string(13, "countdown_type", 20)?;
                     let count_up = parse_u32(14, "count_up", 0, 999)?;
                     let format = parse_u8(15, "format", 1, 10)?;
-                    
+
                     // Validate color formats
-                    if !validate_color_format(&bg1) || !validate_color_format(&fg1) || 
-                       !validate_color_format(&bg2) || !validate_color_format(&fg2) {
+                    if !validate_color_format(&bg1)
+                        || !validate_color_format(&fg1)
+                        || !validate_color_format(&bg2)
+                        || !validate_color_format(&fg2)
+                    {
                         log::warn!("Invalid color format in match config");
                     }
-                    
-                    log::debug!("Parsed MatchConfig event: #{} {} {} ({} rounds)", number, category, weight, total_rounds);
-                    
+
+                    log::debug!(
+                        "Parsed MatchConfig event: #{} {} {} ({} rounds)",
+                        number,
+                        category,
+                        weight,
+                        total_rounds
+                    );
+
                     Ok(PssEvent::MatchConfig {
                         number,
                         category,
@@ -2195,7 +2698,10 @@ impl UdpServer {
                         format,
                     })
                 } else {
-                    log::warn!("Incomplete match config event, expected 15+ parts, got {}", parts.len());
+                    log::warn!(
+                        "Incomplete match config event, expected 15+ parts, got {}",
+                        parts.len()
+                    );
                     Ok(PssEvent::Raw(message.to_string()))
                 }
             }
@@ -2209,35 +2715,55 @@ impl UdpServer {
                 let mut athlete2_r2 = 0;
                 let mut athlete1_r3 = 0;
                 let mut athlete2_r3 = 0;
-                
+
                 // Parse all score parts in the message
                 for i in 0..parts.len() {
                     match *parts.get(i).unwrap_or(&"") {
                         "s11" if i + 1 < parts.len() => {
-                            athlete1_r1 = parse_u8(i + 1, "athlete1 round1 score", 0, 50).unwrap_or(0);
+                            athlete1_r1 =
+                                parse_u8(i + 1, "athlete1 round1 score", 0, 50).unwrap_or(0);
                         }
                         "s21" if i + 1 < parts.len() => {
-                            athlete2_r1 = parse_u8(i + 1, "athlete2 round1 score", 0, 50).unwrap_or(0);
+                            athlete2_r1 =
+                                parse_u8(i + 1, "athlete2 round1 score", 0, 50).unwrap_or(0);
                         }
                         "s12" if i + 1 < parts.len() => {
-                            athlete1_r2 = parse_u8(i + 1, "athlete1 round2 score", 0, 50).unwrap_or(0);
+                            athlete1_r2 =
+                                parse_u8(i + 1, "athlete1 round2 score", 0, 50).unwrap_or(0);
                         }
                         "s22" if i + 1 < parts.len() => {
-                            athlete2_r2 = parse_u8(i + 1, "athlete2 round2 score", 0, 50).unwrap_or(0);
+                            athlete2_r2 =
+                                parse_u8(i + 1, "athlete2 round2 score", 0, 50).unwrap_or(0);
                         }
                         "s13" if i + 1 < parts.len() => {
-                            athlete1_r3 = parse_u8(i + 1, "athlete1 round3 score", 0, 50).unwrap_or(0);
+                            athlete1_r3 =
+                                parse_u8(i + 1, "athlete1 round3 score", 0, 50).unwrap_or(0);
                         }
                         "s23" if i + 1 < parts.len() => {
-                            athlete2_r3 = parse_u8(i + 1, "athlete2 round3 score", 0, 50).unwrap_or(0);
+                            athlete2_r3 =
+                                parse_u8(i + 1, "athlete2 round3 score", 0, 50).unwrap_or(0);
                         }
                         _ => {}
                     }
                 }
-                
-                log::debug!("Parsed Scores event: r1(a1={},a2={}), r2(a1={},a2={}), r3(a1={},a2={})", 
-                           athlete1_r1, athlete2_r1, athlete1_r2, athlete2_r2, athlete1_r3, athlete2_r3);
-                Ok(PssEvent::Scores { athlete1_r1, athlete2_r1, athlete1_r2, athlete2_r2, athlete1_r3, athlete2_r3 })
+
+                log::debug!(
+                    "Parsed Scores event: r1(a1={},a2={}), r2(a1={},a2={}), r3(a1={},a2={})",
+                    athlete1_r1,
+                    athlete2_r1,
+                    athlete1_r2,
+                    athlete2_r2,
+                    athlete1_r3,
+                    athlete2_r3
+                );
+                Ok(PssEvent::Scores {
+                    athlete1_r1,
+                    athlete2_r1,
+                    athlete1_r2,
+                    athlete2_r2,
+                    athlete1_r3,
+                    athlete2_r3,
+                })
             }
 
             // Current scores events (sc1, sc2)
@@ -2245,7 +2771,7 @@ impl UdpServer {
                 // Handle combined score messages like "sc1;0;sc2;1"
                 let mut athlete1_score = 0;
                 let mut athlete2_score = 0;
-                
+
                 // Parse all score parts in the message
                 for i in 0..parts.len() {
                     match *parts.get(i).unwrap_or(&"") {
@@ -2258,9 +2784,16 @@ impl UdpServer {
                         _ => {}
                     }
                 }
-                
-                log::debug!("Parsed CurrentScores event: a1={}, a2={}", athlete1_score, athlete2_score);
-                Ok(PssEvent::CurrentScores { athlete1_score, athlete2_score })
+
+                log::debug!(
+                    "Parsed CurrentScores event: a1={}, a2={}",
+                    athlete1_score,
+                    athlete2_score
+                );
+                Ok(PssEvent::CurrentScores {
+                    athlete1_score,
+                    athlete2_score,
+                })
             }
 
             // Clock events (clk)
@@ -2269,13 +2802,13 @@ impl UdpServer {
                     log::warn!("Incomplete clock event, missing time");
                     return Ok(PssEvent::Raw(message.to_string()));
                 }
-                
+
                 let time = get_string(1, "clock time", 10)?;
                 if !validate_time_format(&time) {
                     log::warn!("Invalid clock time format: '{}'", time);
                     return Ok(PssEvent::Raw(message.to_string()));
                 }
-                
+
                 let action = if parts.len() > 2 {
                     let action_str = get_string(2, "clock action", 10)?;
                     match action_str.as_str() {
@@ -2285,19 +2818,19 @@ impl UdpServer {
                             None
                         }
                     }
-                    } else {
-                        None
-                    };
+                } else {
+                    None
+                };
 
                 log::debug!("Parsed Clock event: time={}, action={:?}", time, action);
-                    Ok(PssEvent::Clock { time, action })
+                Ok(PssEvent::Clock { time, action })
             }
 
             // Round events (rnd)
             "rnd" => {
                 let current_round = parse_u8(1, "current round", 1, 10)?;
                 log::debug!("Parsed Round event: round={}", current_round);
-                    Ok(PssEvent::Round { current_round })
+                Ok(PssEvent::Round { current_round })
             }
 
             // Fight loaded events (pre)
@@ -2338,7 +2871,10 @@ impl UdpServer {
                         log::warn!("Unknown winner value: '{}'", winner);
                     }
                     log::debug!("Parsed Winner event: {}", winner);
-                    Ok(PssEvent::Winner { name: winner, classification: None })
+                    Ok(PssEvent::Winner {
+                        name: winner,
+                        classification: None,
+                    })
                 } else {
                     log::warn!("Incomplete win event, missing winner");
                     Ok(PssEvent::Raw(message.to_string()))
@@ -2372,7 +2908,11 @@ impl UdpServer {
 
             // Handle any other unknown event types gracefully
             unknown_event => {
-                log::info!("Unknown PSS event type: '{}' in message: '{}'", unknown_event, message);
+                log::info!(
+                    "Unknown PSS event type: '{}' in message: '{}'",
+                    unknown_event,
+                    message
+                );
                 Ok(PssEvent::Raw(message.to_string()))
             }
         };
@@ -2387,7 +2927,7 @@ impl UdpServer {
             let mut tournament_guard = self.current_tournament_id.lock().unwrap();
             *tournament_guard = tournament_id;
         }
-        
+
         log::info!("Tournament context set: tournament_id={:?}", tournament_id);
         Ok(())
     }
@@ -2398,7 +2938,7 @@ impl UdpServer {
             let guard = self.current_tournament_id.lock().unwrap();
             *guard
         };
-        
+
         tournament_id
     }
 
@@ -2407,8 +2947,6 @@ impl UdpServer {
         self.set_tournament_context(None).await
     }
 }
-
-
 
 #[cfg(test)]
 mod tests {
@@ -2424,7 +2962,10 @@ mod tests {
         let protocol_manager = create_mock_protocol_manager();
         let event = UdpServer::parse_pss_message("pt1;3;", &protocol_manager).unwrap();
         match event {
-            PssEvent::Points { athlete, point_type } => {
+            PssEvent::Points {
+                athlete,
+                point_type,
+            } => {
                 assert_eq!(athlete, 1);
                 assert_eq!(point_type, 3);
             }
@@ -2437,7 +2978,10 @@ mod tests {
         let protocol_manager = create_mock_protocol_manager();
         let event = UdpServer::parse_pss_message("wg1;1;wg2;2;", &protocol_manager).unwrap();
         match event {
-            PssEvent::Warnings { athlete1_warnings, athlete2_warnings } => {
+            PssEvent::Warnings {
+                athlete1_warnings,
+                athlete2_warnings,
+            } => {
                 assert_eq!(athlete1_warnings, 1);
                 assert_eq!(athlete2_warnings, 2);
             }
@@ -2458,4 +3002,3 @@ mod tests {
         }
     }
 }
-

@@ -2,7 +2,7 @@ pub mod logger;
 pub mod network;
 pub mod simulation_env;
 
-pub use network::*; 
+pub use network::*;
 
 /// Generate a new UUID v4 string
 pub fn new_uuid() -> String {

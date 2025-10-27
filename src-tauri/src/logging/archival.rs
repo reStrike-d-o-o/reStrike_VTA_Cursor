@@ -1,19 +1,19 @@
+use chrono::Utc;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
-use std::collections::HashMap;
 use zip::{write::FileOptions, ZipWriter};
-use chrono::Utc;
-use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ArchiveSchedule {
     Weekly,
     Monthly,
-    Quarterly,  // Every 3 months
-    Biannual,   // Every 6 months  
-    Annual,     // Every 12 months
+    Quarterly, // Every 3 months
+    Biannual,  // Every 6 months
+    Annual,    // Every 12 months
 }
 
 impl ArchiveSchedule {
@@ -26,7 +26,7 @@ impl ArchiveSchedule {
             ArchiveSchedule::Annual => 365,
         }
     }
-    
+
     pub fn to_string(&self) -> String {
         match self {
             ArchiveSchedule::Weekly => "Weekly".to_string(),
@@ -47,7 +47,6 @@ pub struct AutoArchiveConfig {
     pub last_archive_time: Option<String>, // ISO 8601 timestamp
 }
 
-
 pub struct LogArchiver {
     retention_days: u32,
     archive_dir: String,
@@ -64,42 +63,43 @@ impl Clone for LogArchiver {
 
 impl LogArchiver {
     pub fn new(retention_days: u32) -> Self {
-        Self { 
+        Self {
             retention_days,
             archive_dir: "logs/archives".to_string(),
         }
     }
-    
+
     pub fn new_with_archive_dir(retention_days: u32, archive_dir: String) -> Self {
-        Self { 
+        Self {
             retention_days,
             archive_dir,
         }
     }
-    
+
     pub fn cleanup_old_logs(&self, log_dir: &str) -> io::Result<()> {
         let log_path = Path::new(log_dir);
-        
+
         if !log_path.exists() {
             return Ok(());
         }
-        
+
         // Create archive directory if it doesn't exist
         let archive_path = Path::new(&self.archive_dir);
         fs::create_dir_all(archive_path)?;
-        
+
         let cutoff_time = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
-            .as_secs() - (self.retention_days as u64 * 24 * 60 * 60);
-        
+            .as_secs()
+            - (self.retention_days as u64 * 24 * 60 * 60);
+
         // Group files by subsystem for archiving
         let mut files_to_archive: HashMap<String, Vec<PathBuf>> = HashMap::new();
-        
+
         for entry in fs::read_dir(log_path)? {
             let entry = entry?;
             let path = entry.path();
-            
+
             if path.is_file() {
                 if let Ok(metadata) = fs::metadata(&path) {
                     if let Ok(modified) = metadata.modified() {
@@ -122,12 +122,12 @@ impl LogArchiver {
                 }
             }
         }
-        
+
         // Archive files by subsystem
         for (subsystem, files) in files_to_archive {
             if !files.is_empty() {
                 self.archive_subsystem_files(&subsystem, &files)?;
-                
+
                 // Delete original files after successful archiving
                 for file_path in files {
                     if let Err(e) = fs::remove_file(&file_path) {
@@ -138,10 +138,10 @@ impl LogArchiver {
                 }
             }
         }
-        
+
         Ok(())
     }
-    
+
     fn extract_subsystem_name(&self, filename: &str) -> String {
         // Extract subsystem name from filenames like:
         // "pss_20241219_143022_0" -> "pss"
@@ -153,66 +153,66 @@ impl LogArchiver {
             filename.to_string()
         }
     }
-    
+
     fn archive_subsystem_files(&self, subsystem: &str, files: &[PathBuf]) -> io::Result<()> {
         let timestamp = Utc::now().format("%Y%m%d_%H%M%S");
         let archive_filename = format!("{}_{}_archive.zip", subsystem, timestamp);
         let archive_path = Path::new(&self.archive_dir).join(&archive_filename);
-        
+
         // Create ZIP archive
         let file = fs::File::create(&archive_path)?;
         let mut zip = ZipWriter::new(file);
-        
+
         let options = FileOptions::default()
             .compression_method(zip::CompressionMethod::Deflated)
             .compression_level(Some(6));
-        
+
         for file_path in files {
             if let Some(file_name) = file_path.file_name() {
                 if let Some(name_str) = file_name.to_str() {
                     zip.start_file(name_str, options)?;
-                    
+
                     // Read and write file content
                     let content = fs::read(file_path)?;
                     zip.write_all(&content)?;
                 }
             }
         }
-        
+
         zip.finish()?;
         log::info!("Created archive: {:?}", archive_path);
-        
+
         Ok(())
     }
-    
+
     pub fn get_retention_days(&self) -> u32 {
         self.retention_days
     }
-    
+
     pub fn set_retention_days(&mut self, days: u32) {
         self.retention_days = days;
     }
-    
+
     pub fn get_archive_dir(&self) -> &str {
         &self.archive_dir
     }
-    
+
     pub fn set_archive_dir(&mut self, archive_dir: String) {
         self.archive_dir = archive_dir;
     }
-    
+
     /// List all archive files
     pub fn list_archives(&self) -> io::Result<Vec<String>> {
         let archive_path = Path::new(&self.archive_dir);
         if !archive_path.exists() {
             return Ok(Vec::new());
         }
-        
+
         let mut archives = Vec::new();
         for entry in fs::read_dir(archive_path)? {
             let entry = entry?;
             let path = entry.path();
-            
+
             if path.is_file() {
                 if let Some(file_name) = path.file_name() {
                     if let Some(name_str) = file_name.to_str() {
@@ -223,28 +223,28 @@ impl LogArchiver {
                 }
             }
         }
-        
+
         archives.sort();
         Ok(archives)
     }
-    
+
     /// Extract a specific archive
     pub fn extract_archive(&self, archive_name: &str) -> io::Result<()> {
         let archive_path = Path::new(&self.archive_dir).join(archive_name);
         if !archive_path.exists() {
             return Err(io::Error::new(io::ErrorKind::NotFound, "Archive not found"));
         }
-        
+
         let extract_dir = Path::new(&self.archive_dir).join("extracted");
         fs::create_dir_all(&extract_dir)?;
-        
+
         let file = fs::File::open(&archive_path)?;
         let mut archive = zip::ZipArchive::new(file)?;
-        
+
         for i in 0..archive.len() {
             let mut file = archive.by_index(i)?;
             let outpath = extract_dir.join(file.name());
-            
+
             if file.name().ends_with('/') {
                 fs::create_dir_all(&outpath)?;
             } else {
@@ -257,52 +257,55 @@ impl LogArchiver {
                 io::copy(&mut file, &mut outfile)?;
             }
         }
-        
+
         log::info!("Extracted archive {:?} to {:?}", archive_path, extract_dir);
         Ok(())
     }
-    
+
     /// Download a specific archive (read file contents)
     pub fn download_archive(&self, archive_name: &str) -> io::Result<Vec<u8>> {
         let archive_path = Path::new(&self.archive_dir).join(archive_name);
         if !archive_path.exists() {
             return Err(io::Error::new(io::ErrorKind::NotFound, "Archive not found"));
         }
-        
+
         fs::read(&archive_path)
     }
-    
+
     /// Create a complete archive of ALL current logs (for user-requested archiving)
     pub fn create_complete_log_archive(&self, log_dir: &str) -> io::Result<PathBuf> {
         let log_path = Path::new(log_dir);
         if !log_path.exists() {
-            return Err(io::Error::new(io::ErrorKind::NotFound, "Log directory not found"));
+            return Err(io::Error::new(
+                io::ErrorKind::NotFound,
+                "Log directory not found",
+            ));
         }
-        
+
         // Create archive directory if it doesn't exist
         let archive_path = Path::new(&self.archive_dir);
         fs::create_dir_all(archive_path)?;
-        
+
         let timestamp = Utc::now().format("%Y%m%d_%H%M%S");
         let archive_filename = format!("complete_logs_archive_{}.zip", timestamp);
         let archive_file_path = archive_path.join(&archive_filename);
-        
+
         // Create ZIP archive
         let file = fs::File::create(&archive_file_path)?;
         let mut zip = ZipWriter::new(file);
-        
+
         let options = FileOptions::default()
             .compression_method(zip::CompressionMethod::Deflated)
             .compression_level(Some(6));
-        
+
         let mut file_count = 0;
         let mut total_size = 0u64;
-        
+
         // Add all log files to the archive
         for entry in fs::read_dir(log_path)? {
             let entry = entry?;
             let path = entry.path();
-            
+
             if path.is_file() {
                 if let Some(file_name) = path.file_name() {
                     if let Some(name_str) = file_name.to_str() {
@@ -310,9 +313,9 @@ impl LogArchiver {
                         if name_str.ends_with(".zip") {
                             continue;
                         }
-                        
+
                         zip.start_file(name_str, options)?;
-                        
+
                         // Read and write file content
                         let content = fs::read(&path)?;
                         total_size += content.len() as u64;
@@ -322,85 +325,92 @@ impl LogArchiver {
                 }
             }
         }
-        
+
         zip.finish()?;
-        
-        log::info!("Created complete log archive: {} ({} files, {} bytes)", 
-                  archive_filename, file_count, total_size);
-        
+
+        log::info!(
+            "Created complete log archive: {} ({} files, {} bytes)",
+            archive_filename,
+            file_count,
+            total_size
+        );
+
         Ok(archive_file_path)
     }
-    
+
     /// Check if auto-archiving should be performed based on schedule
     pub fn should_auto_archive(&self, config: &AutoArchiveConfig) -> bool {
         if !config.enabled {
             return false;
         }
-        
+
         let Some(last_archive_str) = &config.last_archive_time else {
             // No previous archive, should archive now
             return true;
         };
-        
+
         let Ok(last_archive) = chrono::DateTime::parse_from_rfc3339(last_archive_str) else {
             // Invalid timestamp, should archive now
             return true;
         };
-        
+
         let now = Utc::now();
         let schedule_days = config.schedule.to_days();
         let time_since_last = now.signed_duration_since(last_archive.with_timezone(&Utc));
-        
+
         time_since_last.num_days() >= schedule_days as i64
     }
-    
+
     /// Get the next scheduled archive time as a human-readable string
     pub fn get_next_archive_time(&self, config: &AutoArchiveConfig) -> Option<String> {
         if !config.enabled {
             return None;
         }
-        
+
         let last_archive = if let Some(last_str) = &config.last_archive_time {
-            chrono::DateTime::parse_from_rfc3339(last_str).ok()?.with_timezone(&Utc)
+            chrono::DateTime::parse_from_rfc3339(last_str)
+                .ok()?
+                .with_timezone(&Utc)
         } else {
             Utc::now()
         };
-        
+
         let schedule_days = config.schedule.to_days();
         let next_archive = last_archive + chrono::Duration::days(schedule_days as i64);
-        
+
         Some(next_archive.format("%Y-%m-%d %H:%M:%S UTC").to_string())
     }
-    
+
     /// Delete a specific archive file
     pub fn delete_archive(&self, archive_name: &str) -> io::Result<()> {
         let archive_path = Path::new(&self.archive_dir).join(archive_name);
         if !archive_path.exists() {
             return Err(io::Error::new(io::ErrorKind::NotFound, "Archive not found"));
         }
-        
+
         fs::remove_file(&archive_path)?;
         log::info!("Deleted archive: {}", archive_name);
         Ok(())
     }
-    
+
     /// Get archive file information
     pub fn get_archive_info(&self, archive_name: &str) -> io::Result<ArchiveInfo> {
         let archive_path = Path::new(&self.archive_dir).join(archive_name);
         if !archive_path.exists() {
             return Err(io::Error::new(io::ErrorKind::NotFound, "Archive not found"));
         }
-        
+
         let metadata = fs::metadata(&archive_path)?;
-        let modified = metadata.modified()?
+        let modified = metadata
+            .modified()?
             .duration_since(UNIX_EPOCH)
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?
             .as_secs();
-        
+
         let modified_iso = chrono::DateTime::from_timestamp(modified as i64, 0)
             .unwrap_or_else(|| Utc::now())
             .to_rfc3339();
-        
+
         Ok(ArchiveInfo {
             name: archive_name.to_string(),
             size: metadata.len(),
@@ -416,4 +426,4 @@ pub struct ArchiveInfo {
     pub size: u64,
     pub created: String,
     pub file_path: PathBuf,
-} 
+}
