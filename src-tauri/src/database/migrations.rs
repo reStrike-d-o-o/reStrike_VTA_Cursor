@@ -9,6 +9,40 @@ pub trait Migration: Send + Sync {
     fn down(&self, conn: &Connection) -> SqliteResult<()>;
 }
 
+fn table_exists(conn: &Connection, table: &str) -> SqliteResult<bool> {
+    let count: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?1",
+        [table],
+        |row| row.get(0),
+    )?;
+    Ok(count > 0)
+}
+
+fn column_exists(conn: &Connection, table: &str, column: &str) -> SqliteResult<bool> {
+    let mut stmt = conn.prepare(&format!("PRAGMA table_info('{table}')"))?;
+    let mut rows = stmt.query([])?;
+    while let Some(row) = rows.next()? {
+        let col_name: String = row.get(1)?;
+        if col_name.eq_ignore_ascii_case(column) {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
+fn add_column_if_missing(
+    conn: &Connection,
+    table: &str,
+    column: &str,
+    column_type_and_attrs: &str,
+) -> SqliteResult<()> {
+    if !column_exists(conn, table, column)? {
+        let sql = format!("ALTER TABLE {table} ADD COLUMN {column} {column_type_and_attrs}");
+        conn.execute(&sql, []).map(|_| ())?;
+    }
+    Ok(())
+}
+
 /// Migration 24: Settings tables - add integer created/updated timestamps
 pub struct Migration24;
 
@@ -3697,6 +3731,40 @@ impl Migration for Migration31 {
     fn version(&self) -> u32 { 31 }
     fn description(&self) -> &str { "Add tournament_uuid and tournament_day_uuid FKs and backfill" }
     fn up(&self, conn: &Connection) -> SqliteResult<()> {
+        // Ensure we are operating on the expected PSS events table name.
+        if !table_exists(conn, "pss_events_v2")? {
+            if table_exists(conn, "pss_events")? {
+                log::info!("Migration 31: Renaming legacy `pss_events` table to `pss_events_v2`");
+                let _ = conn.execute("ALTER TABLE pss_events RENAME TO pss_events_v2", []);
+            } else {
+                log::warn!("Migration 31: No `pss_events` table found; creating empty `pss_events_v2` table for migration continuity");
+                conn.execute(
+                    "CREATE TABLE IF NOT EXISTS pss_events_v2 (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        session_id INTEGER NOT NULL,
+                        match_id INTEGER,
+                        round_id INTEGER,
+                        event_type_id INTEGER NOT NULL,
+                        timestamp TEXT NOT NULL,
+                        raw_data TEXT NOT NULL,
+                        parsed_data TEXT,
+                        event_sequence INTEGER,
+                        processing_time_ms INTEGER,
+                        is_valid BOOLEAN NOT NULL DEFAULT 1,
+                        error_message TEXT,
+                        recognition_status TEXT,
+                        protocol_version TEXT,
+                        parser_confidence REAL,
+                        validation_errors TEXT,
+                        tournament_id INTEGER,
+                        tournament_day_id INTEGER,
+                        created_at TEXT NOT NULL
+                    )",
+                    [],
+                )?;
+            }
+        }
+
         // Add uuid FKs to pss_matches
         let _ = conn.execute("ALTER TABLE pss_matches ADD COLUMN tournament_uuid TEXT", []);
         let _ = conn.execute("ALTER TABLE pss_matches ADD COLUMN tournament_day_uuid TEXT", []);
@@ -3838,6 +3906,40 @@ impl Migration for Migration34 {
     fn version(&self) -> u32 { 34 }
     fn description(&self) -> &str { "Rename int FKs to *_int and add TEXT *_id from UUIDs for core tables" }
     fn up(&self, conn: &Connection) -> SqliteResult<()> {
+        let events_table = if table_exists(conn, "pss_events_v2")? {
+            "pss_events_v2".to_string()
+        } else if table_exists(conn, "pss_events")? {
+            log::info!("Migration 34: Operating on legacy `pss_events` table");
+            "pss_events".to_string()
+        } else {
+            log::warn!("Migration 34: No PSS events table found; creating `pss_events_v2` placeholder");
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS pss_events_v2 (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    session_id INTEGER NOT NULL,
+                    match_id INTEGER,
+                    round_id INTEGER,
+                    event_type_id INTEGER NOT NULL,
+                    timestamp TEXT NOT NULL,
+                    raw_data TEXT NOT NULL,
+                    parsed_data TEXT,
+                    event_sequence INTEGER,
+                    processing_time_ms INTEGER,
+                    is_valid BOOLEAN NOT NULL DEFAULT 1,
+                    error_message TEXT,
+                    recognition_status TEXT,
+                    protocol_version TEXT,
+                    parser_confidence REAL,
+                    validation_errors TEXT,
+                    tournament_id INTEGER,
+                    tournament_day_id INTEGER,
+                    created_at TEXT NOT NULL
+                )",
+                [],
+            )?;
+            "pss_events_v2".to_string()
+        };
+
         // pss_matches: tournament_id INTEGER -> tournament_id TEXT; keep old as tournament_id_int
         let _ = conn.execute("ALTER TABLE pss_matches ADD COLUMN tournament_id_text TEXT", []);
         let _ = conn.execute("UPDATE pss_matches SET tournament_id_text = tournament_uuid", []);
@@ -3851,15 +3953,43 @@ impl Migration for Migration34 {
         let _ = conn.execute("UPDATE pss_matches SET tournament_day_id_int = tournament_day_id", []);
 
         // pss_events_v2
-        let _ = conn.execute("ALTER TABLE pss_events_v2 ADD COLUMN tournament_id_text TEXT", []);
-        let _ = conn.execute("UPDATE pss_events_v2 SET tournament_id_text = tournament_uuid", []);
-        let _ = conn.execute("ALTER TABLE pss_events_v2 ADD COLUMN tournament_id_int INTEGER", []);
-        let _ = conn.execute("UPDATE pss_events_v2 SET tournament_id_int = tournament_id", []);
+        add_column_if_missing(conn, &events_table, "tournament_id_text", "TEXT")?;
+        if column_exists(conn, &events_table, "tournament_uuid")? {
+            let _ = conn.execute(
+                &format!(
+                    "UPDATE {events_table} SET tournament_id_text = tournament_uuid WHERE tournament_id_text IS NULL OR tournament_id_text = ''"
+                ),
+                [],
+            );
+        }
+        add_column_if_missing(conn, &events_table, "tournament_id_int", "INTEGER")?;
+        if column_exists(conn, &events_table, "tournament_id")? {
+            let _ = conn.execute(
+                &format!(
+                    "UPDATE {events_table} SET tournament_id_int = tournament_id WHERE tournament_id_int IS NULL"
+                ),
+                [],
+            );
+        }
 
-        let _ = conn.execute("ALTER TABLE pss_events_v2 ADD COLUMN tournament_day_id_text TEXT", []);
-        let _ = conn.execute("UPDATE pss_events_v2 SET tournament_day_id_text = tournament_day_uuid", []);
-        let _ = conn.execute("ALTER TABLE pss_events_v2 ADD COLUMN tournament_day_id_int INTEGER", []);
-        let _ = conn.execute("UPDATE pss_events_v2 SET tournament_day_id_int = tournament_day_id", []);
+        add_column_if_missing(conn, &events_table, "tournament_day_id_text", "TEXT")?;
+        if column_exists(conn, &events_table, "tournament_day_uuid")? {
+            let _ = conn.execute(
+                &format!(
+                    "UPDATE {events_table} SET tournament_day_id_text = tournament_day_uuid WHERE tournament_day_id_text IS NULL OR tournament_day_id_text = ''"
+                ),
+                [],
+            );
+        }
+        add_column_if_missing(conn, &events_table, "tournament_day_id_int", "INTEGER")?;
+        if column_exists(conn, &events_table, "tournament_day_id")? {
+            let _ = conn.execute(
+                &format!(
+                    "UPDATE {events_table} SET tournament_day_id_int = tournament_day_id WHERE tournament_day_id_int IS NULL"
+                ),
+                [],
+            );
+        }
 
         // recorded_videos
         let _ = conn.execute("ALTER TABLE recorded_videos ADD COLUMN tournament_id_text TEXT", []);
@@ -3874,7 +4004,7 @@ impl Migration for Migration34 {
 
         // Indexes for new TEXT ids
         let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_matches_tournament_id_text ON pss_matches(tournament_id_text)", []);
-        let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_pss_events_v2_tournament_id_text ON pss_events_v2(tournament_id_text)", []);
+        let _ = conn.execute(&format!("CREATE INDEX IF NOT EXISTS idx_pss_events_v2_tournament_id_text ON {events_table}(tournament_id_text)"), []);
         let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_recorded_videos_tournament_id_text ON recorded_videos(tournament_id_text)", []);
         Ok(())
     }
@@ -3946,6 +4076,46 @@ impl Migration for Migration35 {
                     [],
                 )?;
             }
+        }
+
+        // Ensure required columns exist before transformation
+        add_column_if_missing(conn, "pss_events_v2", "tournament_uuid", "TEXT")?;
+        add_column_if_missing(conn, "pss_events_v2", "tournament_day_uuid", "TEXT")?;
+        add_column_if_missing(conn, "pss_events_v2", "tournament_id_text", "TEXT")?;
+        add_column_if_missing(conn, "pss_events_v2", "tournament_day_id_text", "TEXT")?;
+        add_column_if_missing(conn, "pss_events_v2", "tournament_id_int", "INTEGER")?;
+        add_column_if_missing(conn, "pss_events_v2", "tournament_day_id_int", "INTEGER")?;
+        if column_exists(conn, "pss_events_v2", "tournament_id_text")?
+            && column_exists(conn, "pss_events_v2", "tournament_uuid")?
+        {
+            let _ = conn.execute(
+                "UPDATE pss_events_v2 SET tournament_id_text = tournament_uuid WHERE tournament_id_text IS NULL OR tournament_id_text = ''",
+                [],
+            );
+        }
+        if column_exists(conn, "pss_events_v2", "tournament_day_id_text")?
+            && column_exists(conn, "pss_events_v2", "tournament_day_uuid")?
+        {
+            let _ = conn.execute(
+                "UPDATE pss_events_v2 SET tournament_day_id_text = tournament_day_uuid WHERE tournament_day_id_text IS NULL OR tournament_day_id_text = ''",
+                [],
+            );
+        }
+        if column_exists(conn, "pss_events_v2", "tournament_id_int")?
+            && column_exists(conn, "pss_events_v2", "tournament_id")?
+        {
+            let _ = conn.execute(
+                "UPDATE pss_events_v2 SET tournament_id_int = tournament_id WHERE tournament_id_int IS NULL",
+                [],
+            );
+        }
+        if column_exists(conn, "pss_events_v2", "tournament_day_id_int")?
+            && column_exists(conn, "pss_events_v2", "tournament_day_id")?
+        {
+            let _ = conn.execute(
+                "UPDATE pss_events_v2 SET tournament_day_id_int = tournament_day_id WHERE tournament_day_id_int IS NULL",
+                [],
+            );
         }
 
         // Ensure integer timestamps exist before selecting them (idempotent best-effort)
