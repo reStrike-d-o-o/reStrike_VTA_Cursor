@@ -9,6 +9,7 @@ use super::types::{
 };
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use tokio::net::TcpStream;
 use tokio::time::{timeout, Duration};
 use std::collections::HashMap;
 use futures_util::StreamExt;
@@ -51,6 +52,34 @@ impl ObsClient {
         self.status = ObsConnectionStatus::Connecting;
         
         let timeout_duration = Duration::from_secs(self.config.timeout_seconds);
+        let endpoint = format!("{}:{}", self.config.host, self.config.port);
+
+        // Fast preflight check to provide clearer feedback when OBS WebSocket is offline.
+        match timeout(timeout_duration, TcpStream::connect(&endpoint)).await {
+            Ok(Ok(stream)) => {
+                // Successfully opened a TCP socket; drop the probe before performing the real handshake.
+                drop(stream);
+            }
+            Ok(Err(err)) => {
+                let error_msg = format!(
+                    "OBS WebSocket not reachable at {} ({}). Ensure OBS is running and the WebSocket server is enabled.",
+                    endpoint,
+                    err
+                );
+                self.status = ObsConnectionStatus::Error(error_msg.clone());
+                log::warn!("{}", error_msg);
+                return Err(AppError::ConfigError(error_msg));
+            }
+            Err(_) => {
+                let error_msg = format!(
+                    "Timed out while checking OBS WebSocket availability at {}. Ensure OBS is running and reachable.",
+                    endpoint
+                );
+                self.status = ObsConnectionStatus::Error(error_msg.clone());
+                log::warn!("{}", error_msg);
+                return Err(AppError::ConfigError(error_msg));
+            }
+        }
         
         let connect_result = timeout(
             timeout_duration,

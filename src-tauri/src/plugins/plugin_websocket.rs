@@ -127,13 +127,33 @@ impl WebSocketServer {
     }
     
     pub async fn start(&self, port: u16) -> AppResult<()> {
-        log::info!("🔌 Starting WebSocket server on port {}", port);
+        log::info!("Starting WebSocket server on port {}", port);
+        let addr = format!("127.0.0.1:{}", port);
+
+        let listener = match TcpListener::bind(&addr).await {
+            Ok(listener) => listener,
+            Err(err) if err.kind() == std::io::ErrorKind::AddrInUse => {
+                let message = format!(
+                    "WebSocket port {} is already in use. Another instance may be running; skipping overlay server startup.",
+                    port
+                );
+                log::warn!("{}", message);
+                self.broadcast_error(message.clone());
+                return Err(AppError::ConfigError(message));
+            }
+            Err(err) => {
+                let message = format!("Failed to bind WebSocket server on {}: {}", addr, err);
+                log::error!("{}", message);
+                self.broadcast_error(message.clone());
+                return Err(AppError::ConfigError(message));
+            }
+        };
         
         let clients = self.clients.clone();
         let event_tx = self.event_tx.clone();
         
         let task = tokio::spawn(async move {
-            if let Err(e) = Self::run_server(port, clients, event_tx).await {
+            if let Err(e) = Self::run_server(listener, clients, event_tx).await {
                 log::error!("WebSocket server error: {}", e);
             }
         });
@@ -143,7 +163,7 @@ impl WebSocketServer {
         }
         Ok(())
     }
-    
+
     pub async fn stop(&self) -> AppResult<()> {
         log::info!("🔌 Stopping WebSocket server");
         
@@ -161,18 +181,18 @@ impl WebSocketServer {
     }
     
     async fn run_server(
-        port: u16,
+        listener: TcpListener,
         clients: Arc<Mutex<Vec<WebSocketClient>>>,
         event_tx: mpsc::UnboundedSender<PssEvent>,
     ) -> AppResult<()> {
-        let addr = format!("127.0.0.1:{}", port);
-        let listener = TcpListener::bind(&addr).await
-            .map_err(|e| AppError::ConfigError(format!("Failed to bind WebSocket server: {}", e)))?;
-        
-        log::info!("🔌 WebSocket server listening on {}", addr);
+        if let Ok(addr) = listener.local_addr() {
+            log::info!("WebSocket server listening on {}", addr);
+        } else {
+            log::info!("WebSocket server listening (address unavailable)");
+        }
         
         while let Ok((stream, addr)) = listener.accept().await {
-            log::info!("🔌 New WebSocket connection from {}", addr);
+            log::info!("New WebSocket connection from {}", addr);
             
             let clients_clone = clients.clone();
             let event_tx_clone = event_tx.clone();
@@ -186,7 +206,7 @@ impl WebSocketServer {
         
         Ok(())
     }
-    
+
     async fn handle_client(
         stream: tokio::net::TcpStream,
         addr: std::net::SocketAddr,
@@ -291,6 +311,16 @@ impl WebSocketServer {
         Ok(())
     }
     
+    fn broadcast_error(&self, message: String) {
+        let error_msg = WebSocketMessage::Error {
+            message: message.clone(),
+            timestamp: chrono::Utc::now().to_rfc3339(),
+        };
+        if let Err(err) = self.broadcast_message(error_msg) {
+            log::warn!("Failed to broadcast WebSocket error notification: {}", err);
+        }
+    }
+
     pub fn broadcast_event(&self, event: &PssEvent) -> AppResult<()> {
         let message = self.convert_pss_event_to_ws_message(event);
         self.broadcast_message(message)
