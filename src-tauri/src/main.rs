@@ -37,26 +37,23 @@ async fn main() -> AppResult<()> {
 
         let timestamp = chrono::Local::now().format("%Y-%m-%d %H:%M:%S%.3f");
         let level_code = re_strike_vta::logging::level_code(record.level());
-        let prefix = format!("{} [{}] ", timestamp, level_code);
+        let prefix = format!("[{}] [{}] - ", timestamp, level_code);
 
         let message = format!("{}", record.args());
         let sanitized = re_strike_vta::logging::sanitize_message(&message);
         let formatted_message =
             re_strike_vta::logging::align_multiline(prefix.len(), sanitized.as_ref());
 
+        let mut style = buf.style();
         match record.level() {
-            Level::Warn => {
-                let mut style = buf.style();
-                style.set_color(Color::Yellow);
-                writeln!(buf, "{}{}", prefix, style.value(formatted_message))
-            }
-            Level::Error => {
-                let mut style = buf.style();
-                style.set_color(Color::Red);
-                writeln!(buf, "{}{}", prefix, style.value(formatted_message))
-            }
-            _ => writeln!(buf, "{}{}", prefix, formatted_message),
-        }
+            Level::Error => style.set_color(Color::Red),
+            Level::Warn => style.set_color(Color::Yellow),
+            Level::Info => style.set_color(Color::Green),
+            Level::Debug => style.set_color(Color::Cyan),
+            Level::Trace => style.set_color(Color::Magenta),
+        };
+
+        writeln!(buf, "{}{}", prefix, style.value(formatted_message))
     });
     logger_builder.init();
     

@@ -1846,7 +1846,7 @@ pub async fn obs_obws_save_full_config(
         .map_err(|e| TauriError::from(anyhow::anyhow!(format!("Invalid full config payload: {}", e))))?;
 
     println!(
-        "💾 obs_obws_save_full_config(conn='{}', path='{}', fmt='{}', tmpl='{}', enabled={}, stop_delay={}, include_rb={}, rb_dur={:?}, stop_on_end={}, stop_on_winner={}, start_rec={}, start_replay={})",
+        " obs_obws_save_full_config(conn='{}', path='{}', fmt='{}', tmpl='{}', enabled={}, stop_delay={}, include_rb={}, rb_dur={:?}, stop_on_end={}, stop_on_winner={}, start_rec={}, start_replay={})",
         cfg.connection_name,
         cfg.recording_path,
         cfg.recording_format,
@@ -1971,7 +1971,7 @@ pub async fn obs_obws_get_full_config(
     let auto_stop_on_match_end = UIOps::get_ui_setting(&*conn, "obs.auto.stop_on_match_end").ok().flatten().map(|v| v=="true").unwrap_or(true);
     let auto_stop_on_winner = UIOps::get_ui_setting(&*conn, "obs.auto.stop_on_winner").ok().flatten().map(|v| v=="true").unwrap_or(true);
 
-    println!("📥 obs_obws_get_full_config(conn='{}')", resolved_conn);
+    println!(" obs_obws_get_full_config(conn='{}')", resolved_conn);
 
     Ok(ObsObwsConnectionResponse {
         success: true,
@@ -2334,7 +2334,7 @@ pub async fn obs_obws_start_monitoring(
                 // Start monitoring (subscribe to events)
                 match client.start_monitoring().await {
                     Ok(_) => {
-                        log::info!("✅ Started monitoring for connection: {}", connection_name);
+                        log::info!("Started monitoring for connection: {}", connection_name);
                         Ok(serde_json::json!({
                             "success": true,
                             "connection_name": connection_name,
@@ -2387,7 +2387,7 @@ pub async fn obs_obws_stop_monitoring(
 
                 match client.stop_monitoring().await {
                     Ok(_) => {
-                        log::info!("✅ Stopped monitoring for connection: {}", connection_name);
+                        log::info!("Stopped monitoring for connection: {}", connection_name);
                         Ok(serde_json::json!({
                             "success": true,
                             "connection_name": connection_name,

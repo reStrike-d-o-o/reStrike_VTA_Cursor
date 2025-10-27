@@ -139,7 +139,7 @@ impl EventDistributor {
 
     /// Start the event distributor
     pub async fn start(&mut self) -> AppResult<()> {
-        log::info!("🚀 Starting Event Distributor...");
+        log::info!("Starting Event Distributor...");
         
         // Start health check task
         let servers = self.servers.clone();
@@ -152,13 +152,13 @@ impl EventDistributor {
         let mut health_check_task = self.health_check_task.write().await;
         *health_check_task = Some(health_check_handle);
 
-        log::info!("✅ Event Distributor started");
+        log::info!("Event Distributor started");
         Ok(())
     }
 
     /// Stop the event distributor
     pub async fn stop(&self) -> AppResult<()> {
-        log::info!("🛑 Stopping Event Distributor...");
+        log::info!("Stopping Event Distributor...");
         
         // Stop health check task
         if let Some(health_check_handle) = self.health_check_task.write().await.take() {
@@ -171,7 +171,7 @@ impl EventDistributor {
             server.is_active = false;
         }
 
-        log::info!("✅ Event Distributor stopped");
+        log::info!("Event Distributor stopped");
         Ok(())
     }
 
@@ -217,7 +217,7 @@ impl EventDistributor {
         // Update load balancer
         self.load_balancer.add_server(server_id).await;
         
-        log::info!("➕ Added UDP server: {}:{}", bind_address.clone(), port);
+        log::info!("Added UDP server: {}:{}", bind_address.clone(), port);
         Ok(())
     }
 
@@ -231,7 +231,7 @@ impl EventDistributor {
             // Update load balancer
             self.load_balancer.remove_server(server_id).await;
             
-            log::info!("➖ Removed UDP server: {}", server_id);
+            log::info!("Removed UDP server: {}", server_id);
             Ok(())
         } else {
             Err(crate::AppError::ConfigError(
@@ -258,7 +258,7 @@ impl EventDistributor {
                 let distribution_time = start_time.elapsed();
                 self.update_distributor_statistics(distribution_time).await;
                 
-                log::debug!("📤 Distributed event to server: {}", server_id);
+                log::debug!("Distributed event to server: {}", server_id);
                 Ok(())
             } else {
                 Err(crate::AppError::ConfigError(
@@ -304,7 +304,7 @@ impl EventDistributor {
                 // Update server status based on health
                 server.is_active = server.health.is_healthy;
                 
-                log::debug!("🏥 Health check for server {}: {}", server_id, server.health.is_healthy);
+                log::debug!("Health check for server {}: {}", server_id, server.health.is_healthy);
             }
         }
     }

@@ -1671,7 +1671,7 @@ impl Migration for Migration7 {
         conn.execute("CREATE INDEX IF NOT EXISTS idx_schema_version_version ON schema_version(version)", [])?;
         conn.execute("CREATE INDEX IF NOT EXISTS idx_schema_version_applied_at ON schema_version(applied_at)", [])?;
 
-        log::info!("✅ Database indexes created successfully");
+        log::info!("Database indexes created successfully");
         Ok(())
     }
 
@@ -1701,7 +1701,7 @@ impl Migration for Migration7 {
             }
         }
 
-        log::info!("✅ Database indexes dropped successfully");
+        log::info!("Database indexes dropped successfully");
         Ok(())
     }
 }
@@ -1968,7 +1968,7 @@ impl Migration for Migration8 {
             )?;
         }
 
-        log::info!("✅ Migration 8 completed: PSS Event Status Mark System added");
+        log::info!("Migration 8 completed: PSS Event Status Mark System added");
         Ok(())
     }
 
@@ -1982,7 +1982,7 @@ impl Migration for Migration8 {
 
         // Note: SQLite doesn't support DROP COLUMN, so we can't remove the added columns
         // The columns will remain but won't affect functionality
-        log::warn!("⚠️ Migration 8 rollback: New columns in pss_events_v2 table cannot be removed (SQLite limitation)");
+        log::warn!("Migration 8 rollback: New columns in pss_events_v2 table cannot be removed (SQLite limitation)");
         
         Ok(())
     }
@@ -2110,7 +2110,7 @@ impl Migration for Migration9 {
             [&now, &now, &now, &now, &now, &now, &now, &now, &now, &now],
         )?;
 
-        log::info!("✅ Migration 9: Trigger system tables created successfully");
+        log::info!("Migration 9: Trigger system tables created successfully");
         Ok(())
     }
 
@@ -2120,7 +2120,7 @@ impl Migration for Migration9 {
         conn.execute("DROP TABLE IF EXISTS overlay_templates", [])?;
         conn.execute("DROP TABLE IF EXISTS obs_scenes", [])?;
 
-        log::warn!("⚠️ Migration 9 rollback: Trigger system tables dropped");
+        log::warn!("Migration 9 rollback: Trigger system tables dropped");
         Ok(())
     }
 }
@@ -2142,13 +2142,13 @@ impl Migration for Migration10 {
         conn.execute("ALTER TABLE event_triggers ADD COLUMN target_type TEXT NOT NULL DEFAULT 'scene'", [])?;
         conn.execute("ALTER TABLE event_triggers ADD COLUMN delay_ms INTEGER NOT NULL DEFAULT 0", [])?;
 
-        log::info!("✅ Migration 10: Added action, target_type, delay_ms columns to event_triggers");
+        log::info!("Migration 10: Added action, target_type, delay_ms columns to event_triggers");
         Ok(())
     }
 
     fn down(&self, _conn: &Connection) -> SqliteResult<()> {
         // SQLite does not support DROP COLUMN; no-op but log warning
-        log::warn!("⚠️  Migration 10 rollback: Cannot drop columns action, target_type, delay_ms due to SQLite limitations");
+        log::warn!(" Migration 10 rollback: Cannot drop columns action, target_type, delay_ms due to SQLite limitations");
         Ok(())
     }
 }
@@ -2171,13 +2171,13 @@ impl Migration for Migration11 {
         // Add url column to overlay_templates table
         conn.execute("ALTER TABLE overlay_templates ADD COLUMN url TEXT", [])?;
         
-        log::info!("✅ Migration 11: Added url column to overlay_templates and cleared existing data");
+        log::info!("Migration 11: Added url column to overlay_templates and cleared existing data");
         Ok(())
     }
 
     fn down(&self, _conn: &Connection) -> SqliteResult<()> {
         // SQLite does not support DROP COLUMN; no-op but log warning
-        log::warn!("⚠️  Migration 11 rollback: Cannot drop url column due to SQLite limitations");
+        log::warn!(" Migration 11 rollback: Cannot drop url column due to SQLite limitations");
         Ok(())
     }
 }
@@ -2206,13 +2206,13 @@ impl Migration for Migration12 {
             [],
         )?;
         
-        log::info!("✅ Migration 12: Added status and error columns to obs_connections table");
+        log::info!("Migration 12: Added status and error columns to obs_connections table");
         Ok(())
     }
 
     fn down(&self, _conn: &Connection) -> SqliteResult<()> {
         // SQLite does not support DROP COLUMN; no-op but log warning
-        log::warn!("⚠️  Migration 12 rollback: Cannot drop columns status, error due to SQLite limitations");
+        log::warn!(" Migration 12 rollback: Cannot drop columns status, error due to SQLite limitations");
         Ok(())
     }
 }
@@ -3391,12 +3391,12 @@ impl Migration for Migration18 {
         add_column_if_missing(conn, "event_triggers", "debounce_ms", "INTEGER NOT NULL DEFAULT 0")?;
         add_column_if_missing(conn, "event_triggers", "cooldown_ms", "INTEGER NOT NULL DEFAULT 0")?;
 
-        log::info!("✅ Migration 18: Added Triggers v2 columns to event_triggers");
+        log::info!("Migration 18: Added Triggers v2 columns to event_triggers");
         Ok(())
     }
     fn down(&self, _conn: &Connection) -> SqliteResult<()> {
         // SQLite cannot drop columns; no-op
-        log::warn!("⚠️ Migration 18 rollback: cannot drop added columns due to SQLite limitations");
+        log::warn!("Migration 18 rollback: cannot drop added columns due to SQLite limitations");
         Ok(())
     }
 }

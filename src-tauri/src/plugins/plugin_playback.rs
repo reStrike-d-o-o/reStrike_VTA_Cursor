@@ -8,7 +8,7 @@ use crate::types::{AppError, AppResult};
 
 /// Initialize the playback plugin
 pub fn init() -> Result<(), Box<dyn std::error::Error>> {
-    println!("🔧 Initializing playback plugin...");
+    log::info!("Initializing playback plugin...");
     Ok(())
 }
 
@@ -202,7 +202,7 @@ impl VideoPlayer {
                 // Start monitoring thread
                 self.start_monitor_thread(clip.id);
 
-                println!("🎬 Started playing: {} ({})", clip.name, clip.path);
+                log::info!("Started playing: {} ({})", clip.name, clip.path);
                 Ok(())
             }
             Err(e) => {
@@ -262,7 +262,7 @@ impl VideoPlayer {
             *current = None;
         }
 
-        println!("⏹️ Playback stopped");
+        log::info!("Playback stopped");
         Ok(())
     }
 
@@ -279,7 +279,7 @@ impl VideoPlayer {
 
         if let Some(clip) = current_clip {
             let _ = self.event_tx.send(PlaybackEvent::Paused { clip_id: clip.id });
-            println!("⏸️ Playback paused: {}", clip.name);
+            log::info!("Playback paused: {}", clip.name);
         }
 
         Ok(())
@@ -296,7 +296,7 @@ impl VideoPlayer {
 
         if let Some(clip) = current_clip {
             let _ = self.event_tx.send(PlaybackEvent::Resumed { clip_id: clip.id });
-            println!("▶️ Playback resumed: {}", clip.name);
+            log::info!("Playback resumed: {}", clip.name);
         }
 
         Ok(())
@@ -314,7 +314,7 @@ impl VideoPlayer {
         // Send event
         let _ = self.event_tx.send(PlaybackEvent::VolumeChanged { volume: clamped_volume });
 
-        println!("🔊 Volume set to: {:.0}%", clamped_volume * 100.0);
+        log::info!("Volume set to: {:.0}%", clamped_volume * 100.0);
         Ok(())
     }
 
@@ -330,7 +330,7 @@ impl VideoPlayer {
                 clip_id: clip.id, 
                 position 
             });
-            println!("⏭️ Seeked to: {:.1}s", position);
+            log::info!("Seeked to: {:.1}s", position);
         }
 
         Ok(())
@@ -372,7 +372,7 @@ impl VideoPlayer {
     pub fn toggle_fullscreen(&self) -> AppResult<()> {
         // In a full implementation, you'd send IPC command to mpv
         // For now, just log the action
-        println!("🖥️ Toggling fullscreen mode");
+        log::info!("Toggling fullscreen mode");
         Ok(())
     }
 
@@ -421,7 +421,7 @@ impl VideoPlayer {
                     // Send ended event
                     let _ = event_tx.send(PlaybackEvent::ClipEnded { clip_id: clip_id.clone() });
                     
-                    println!("🎬 Playback ended for clip: {}", clip_id);
+                    log::info!("Playback ended for clip: {}", clip_id);
                     break;
                 }
             }
@@ -513,7 +513,7 @@ pub fn create_video_player() -> (VideoPlayer, mpsc::UnboundedReceiver<PlaybackEv
 }
 
 pub fn playback_clip(clip_path: &str, clip_name: &str) -> AppResult<()> {
-    println!("🎬 Starting playback of: {} ({})", clip_name, clip_path);
+    log::info!("Starting playback of: {} ({})", clip_name, clip_path);
     
     // Validate the video file
     if !VideoUtils::validate_video_file(clip_path) {
@@ -550,18 +550,18 @@ pub fn playback_clip(clip_path: &str, clip_name: &str) -> AppResult<()> {
         while let Some(event) = event_rx.recv().await {
             match event {
                 PlaybackEvent::Started { clip_id } => {
-                    println!("🎬 Playback started: {}", clip_id);
+                    log::info!("Playback started: {}", clip_id);
                 }
                 PlaybackEvent::ClipEnded { clip_id } => {
-                    println!("🎬 Playback ended: {}", clip_id);
+                    log::info!("Playback ended: {}", clip_id);
                     break;
                 }
                 PlaybackEvent::Error { clip_id, error } => {
-                    println!("❌ Playback error for {}: {}", clip_id, error);
+                    log::error!("Playback error for {}: {}", clip_id, error);
                     break;
                 }
                 _ => {
-                    println!("🎬 Playback event: {:?}", event);
+                    log::info!("Playback event: {:?}", event);
                 }
             }
         }

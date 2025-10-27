@@ -211,9 +211,9 @@ impl DrivePlugin {
         log_entry.push_str("=== CRITICAL ERROR END ===\n");
         
         // Log to multiple locations
-        log::error!("🚨 CRITICAL: {} - {}", context, error);
+        log::error!("CRITICAL: {} - {}", context, error);
         if let Some(detail_info) = details {
-            log::error!("🔍 Details: {}", detail_info);
+            log::error!("Details: {}", detail_info);
         }
         
         // Force write to multiple log files
@@ -929,10 +929,10 @@ impl DrivePlugin {
         
         // Log all request headers for debugging
         log::info!("Request headers:");
-        log::info!("  Authorization: Bearer [{}...{}]", &token[..10.min(token.len())], &token[token.len().saturating_sub(10)..]);
-        log::info!("  Content-Type: application/json; charset=UTF-8");
-        log::info!("  X-Upload-Content-Type: application/zip");
-        log::info!("  X-Upload-Content-Length: {}", file_size);
+        log::info!(" Authorization: Bearer [{}...{}]", &token[..10.min(token.len())], &token[token.len().saturating_sub(10)..]);
+        log::info!(" Content-Type: application/json; charset=UTF-8");
+        log::info!(" X-Upload-Content-Type: application/zip");
+        log::info!(" X-Upload-Content-Length: {}", file_size);
         
         // Step 3: Send initiation request
         log::info!("Step 3: Sending resumable upload initiation request...");
@@ -956,7 +956,7 @@ impl DrivePlugin {
         // Log all response headers for debugging
         log::info!("Response headers:");
         for (name, value) in initiate_response.headers() {
-            log::info!("  {}: {:?}", name, value);
+            log::info!(" {}: {:?}", name, value);
         }
         
         // Step 4: Check response status
@@ -1029,7 +1029,7 @@ impl DrivePlugin {
             }
         };
         
-        log::info!("✅ Got resumable session URI: {}", session_uri);
+        log::info!("Got resumable session URI: {}", session_uri);
         log::info!("Session URI length: {} characters", session_uri.len());
         
         // Validate session URI format
@@ -1086,7 +1086,7 @@ impl DrivePlugin {
             };
             
             if bytes_read == 0 {
-                log::info!("✅ File reading complete - uploaded {} chunks totaling {} bytes", chunk_count, uploaded);
+                log::info!("File reading complete - uploaded {} chunks totaling {} bytes", chunk_count, uploaded);
                 break; // End of file
             }
             
@@ -1096,7 +1096,7 @@ impl DrivePlugin {
             
             // Prepare Content-Range header
             let content_range = format!("bytes {}-{}/{}", uploaded, chunk_end, file_size);
-            log::info!("📤 Uploading chunk {}: {} ({:.1}%)", chunk_count, content_range, (uploaded as f64 / file_size as f64) * 100.0);
+            log::info!("Uploading chunk {}: {} ({:.1}%)", chunk_count, content_range, (uploaded as f64 / file_size as f64) * 100.0);
             
             // Upload this chunk with retries
             let mut retry_count = 0;
@@ -1120,7 +1120,7 @@ impl DrivePlugin {
                         match status.as_u16() {
                             200 | 201 => {
                                 // Upload complete!
-                                log::info!("🎉 Upload completed successfully after {} chunks!", chunk_count);
+                                log::info!("Upload completed successfully after {} chunks!", chunk_count);
                                 let file_data: serde_json::Value = response.json().await
                                     .map_err(|e| {
                                         let error_msg = format!("Failed to parse final upload response: {}", e);
@@ -1144,13 +1144,13 @@ impl DrivePlugin {
                             },
                             308 => {
                                 // Continue upload - this is expected for chunks
-                                log::info!("✅ Chunk {} uploaded successfully, continuing...", chunk_count);
+                                log::info!("Chunk {} uploaded successfully, continuing...", chunk_count);
                                 uploaded += bytes_read as u64;
                                 
                                 // Log progress periodically
                                 if chunk_count % 10 == 0 || uploaded == file_size {
                                     let progress_percent = (uploaded as f64 / file_size as f64) * 100.0;
-                                    log::info!("📊 Upload progress: {}/{} bytes ({:.1}%) - {} chunks completed", uploaded, file_size, progress_percent, chunk_count);
+                                    log::info!("Upload progress: {}/{} bytes ({:.1}%) - {} chunks completed", uploaded, file_size, progress_percent, chunk_count);
                                 }
                                 break; // Exit retry loop, continue to next chunk
                             },
@@ -1164,7 +1164,7 @@ impl DrivePlugin {
                                 }
                                 
                                 let backoff_seconds = 2u64.pow(retry_count as u32);
-                                log::warn!("⚠️  Rate limited - retrying chunk {} in {} seconds (attempt {}/{})", chunk_count, backoff_seconds, retry_count + 1, max_retries + 1);
+                                log::warn!(" Rate limited - retrying chunk {} in {} seconds (attempt {}/{})", chunk_count, backoff_seconds, retry_count + 1, max_retries + 1);
                                 tokio::time::sleep(Duration::from_secs(backoff_seconds)).await;
                                 continue; // Retry this chunk
                             },
@@ -1189,7 +1189,7 @@ impl DrivePlugin {
                         }
                         
                         let backoff_seconds = 2u64.pow(retry_count as u32);
-                        log::warn!("⚠️  Network error uploading chunk {} - retrying in {} seconds (attempt {}/{}): {}", chunk_count, backoff_seconds, retry_count + 1, max_retries + 1, e);
+                        log::warn!(" Network error uploading chunk {} - retrying in {} seconds (attempt {}/{}): {}", chunk_count, backoff_seconds, retry_count + 1, max_retries + 1, e);
                         tokio::time::sleep(Duration::from_secs(backoff_seconds)).await;
                         continue; // Retry this chunk
                     }
@@ -1379,6 +1379,6 @@ pub fn drive_plugin() -> &'static DrivePlugin {
 pub fn init() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize the drive plugin
     let _plugin = drive_plugin();
-    println!("✅ Google Drive plugin initialized");
+    log::info!("Google Drive plugin initialized");
     Ok(())
 } 

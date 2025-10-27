@@ -133,7 +133,7 @@ impl LogArchiver {
                     if let Err(e) = fs::remove_file(&file_path) {
                         eprintln!("Failed to delete archived log file {:?}: {}", file_path, e);
                     } else {
-                        println!("Archived and deleted old log file: {:?}", file_path);
+                        log::info!("Archived and deleted old log file: {:?}", file_path);
                     }
                 }
             }
@@ -180,7 +180,7 @@ impl LogArchiver {
         }
         
         zip.finish()?;
-        println!("Created archive: {:?}", archive_path);
+        log::info!("Created archive: {:?}", archive_path);
         
         Ok(())
     }
@@ -258,7 +258,7 @@ impl LogArchiver {
             }
         }
         
-        println!("Extracted archive {:?} to {:?}", archive_path, extract_dir);
+        log::info!("Extracted archive {:?} to {:?}", archive_path, extract_dir);
         Ok(())
     }
     

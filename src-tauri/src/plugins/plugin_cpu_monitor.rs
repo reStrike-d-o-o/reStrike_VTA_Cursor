@@ -9,7 +9,7 @@ use log;
 
 /// Initialize the CPU monitoring plugin
 pub fn init() -> Result<(), Box<dyn std::error::Error>> {
-    log::info!("🔧 Initializing CPU monitoring plugin...");
+    log::info!("Initializing CPU monitoring plugin...");
     Ok(())
 }
 

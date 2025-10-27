@@ -2378,7 +2378,7 @@ impl DataArchivalOperations {
 
         let duration = start_time.elapsed();
         log::info!(
-            "📦 Archived {} events and {} details in {:?} (deleted {} events and {} details)",
+            " Archived {} events and {} details in {:?} (deleted {} events and {} details)",
             archived_count,
             archived_details,
             duration,
@@ -2466,7 +2466,7 @@ impl DataArchivalOperations {
 
         let duration = start_time.elapsed();
         log::info!(
-            "🔄 Restored {} events and {} details from archive in {:?}",
+            " Restored {} events and {} details from archive in {:?}",
             restored_events,
             restored_details,
             duration
@@ -2495,7 +2495,7 @@ impl DataArchivalOperations {
 
         let duration = start_time.elapsed();
         log::info!(
-            "🗑️ Cleaned up {} archived events and {} details in {:?}",
+            " Cleaned up {} archived events and {} details in {:?}",
             deleted_events,
             deleted_details,
             duration
@@ -2506,7 +2506,7 @@ impl DataArchivalOperations {
 
     /// Optimize archive tables
     pub fn optimize_archive_tables(conn: &mut rusqlite::Connection) -> DatabaseResult<()> {
-        log::info!("🔧 Optimizing archive tables...");
+        log::info!("Optimizing archive tables...");
 
         // VACUUM archive tables
         conn.execute("VACUUM pss_events_archive", [])?;
@@ -2520,7 +2520,7 @@ impl DataArchivalOperations {
         conn.execute("REINDEX pss_events_archive", [])?;
         conn.execute("REINDEX pss_event_details_archive", [])?;
 
-        log::info!("✅ Archive tables optimized successfully");
+        log::info!("Archive tables optimized successfully");
         Ok(())
     }
 }
@@ -3251,7 +3251,7 @@ impl ObsRecordingOperations {
             ],
         )?;
 
-        log::info!("🎬 Started recording session {} at {}", session_id, now);
+        log::info!("Started recording session {} at {}", session_id, now);
         Ok(())
     }
 
@@ -3289,7 +3289,7 @@ impl ObsRecordingOperations {
             ],
         )?;
 
-        log::info!("⏹️ Stopped recording session {} at {} (duration: {}s)", session_id, now, duration_seconds);
+        log::info!("Stopped recording session {} at {} (duration: {}s)", session_id, now, duration_seconds);
         Ok(())
     }
     

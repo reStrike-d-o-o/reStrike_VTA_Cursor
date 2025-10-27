@@ -285,7 +285,7 @@ impl AdvancedAnalytics {
 
     /// Start the analytics system
     pub async fn start(&mut self) -> AppResult<()> {
-        log::info!("🚀 Starting Advanced Analytics...");
+        log::info!("Starting Advanced Analytics...");
         
         let cache = self.cache.clone();
         let config = self.config.clone();
@@ -313,19 +313,19 @@ impl AdvancedAnalytics {
         let mut analytics_task = self.analytics_task.write().await;
         *analytics_task = Some(analytics_handle);
 
-        log::info!("✅ Advanced Analytics started");
+        log::info!("Advanced Analytics started");
         Ok(())
     }
 
     /// Stop the analytics system
     pub async fn stop(&self) -> AppResult<()> {
-        log::info!("🛑 Stopping Advanced Analytics...");
+        log::info!("Stopping Advanced Analytics...");
         
         if let Some(analytics_handle) = self.analytics_task.write().await.take() {
             analytics_handle.abort();
         }
 
-        log::info!("✅ Advanced Analytics stopped");
+        log::info!("Advanced Analytics stopped");
         Ok(())
     }
 
@@ -375,25 +375,25 @@ impl AdvancedAnalytics {
             // Update tournament analytics
             if config.enable_tournament_analytics {
                 if let Err(e) = Self::update_tournament_analytics(&cache, &tournament_analytics).await {
-                    log::warn!("⚠️ Failed to update tournament analytics: {}", e);
+                    log::warn!("Failed to update tournament analytics: {}", e);
                 }
             }
 
             // Update performance analytics
             if config.enable_performance_analytics {
                 if let Err(e) = Self::update_performance_analytics(&cache, &performance_analytics).await {
-                    log::warn!("⚠️ Failed to update performance analytics: {}", e);
+                    log::warn!("Failed to update performance analytics: {}", e);
                 }
             }
 
             // Update athlete analytics
             if let Err(e) = Self::update_athlete_analytics(&cache, &athlete_analytics).await {
-                log::warn!("⚠️ Failed to update athlete analytics: {}", e);
+                log::warn!("Failed to update athlete analytics: {}", e);
             }
 
             // Update match analytics
             if let Err(e) = Self::update_match_analytics(&cache, &match_analytics).await {
-                log::warn!("⚠️ Failed to update match analytics: {}", e);
+                log::warn!("Failed to update match analytics: {}", e);
             }
 
             // Store analytics snapshot
@@ -405,7 +405,7 @@ impl AdvancedAnalytics {
                 &analytics_history,
                 &config,
             ).await {
-                log::warn!("⚠️ Failed to store analytics snapshot: {}", e);
+                log::warn!("Failed to store analytics snapshot: {}", e);
             }
         }
     }

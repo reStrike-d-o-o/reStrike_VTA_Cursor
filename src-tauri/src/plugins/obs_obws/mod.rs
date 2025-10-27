@@ -31,7 +31,7 @@ static MANAGER: OnceLock<Arc<Mutex<ObsManager>>> = OnceLock::new();
 /// Initialize the OBS WebSocket plugin
 pub fn init() -> AppResult<()> {
     MANAGER.get_or_init(|| Arc::new(Mutex::new(ObsManager::new())));
-    log::info!("✅ OBS WebSocket plugin initialized");
+    log::info!("OBS WebSocket plugin initialized");
     Ok(())
 }
 
@@ -42,7 +42,7 @@ pub async fn shutdown() -> AppResult<()> {
             manager.shutdown().await?;
         }
     }
-    log::info!("✅ OBS WebSocket plugin shutdown");
+    log::info!("OBS WebSocket plugin shutdown");
     Ok(())
 }
 

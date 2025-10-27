@@ -101,7 +101,7 @@ impl ConfigMigrationTool {
     pub async fn migrate_all_configurations(&mut self) -> SecurityResult<MigrationStats> {
         let start_time = std::time::Instant::now();
         
-        log::info!("🔄 Starting configuration migration to encrypted storage");
+        log::info!("Starting configuration migration to encrypted storage");
         
         // Create admin session for migration
         let session = self.config_manager.create_session(
@@ -143,7 +143,7 @@ impl ConfigMigrationTool {
         ).await?;
         
         log::info!(
-            "✅ Configuration migration completed in {}ms: {} configs migrated",
+            " Configuration migration completed in {}ms: {} configs migrated",
             self.stats.migration_duration_ms,
             self.stats.configs_migrated
         );
@@ -153,7 +153,7 @@ impl ConfigMigrationTool {
     
     /// Migrate JSON configuration files
     async fn migrate_json_config_files(&mut self, session_id: &str) -> SecurityResult<()> {
-        log::info!("📄 Migrating JSON configuration files...");
+        log::info!("Migrating JSON configuration files...");
         
         let config_files = [
             "src-tauri/config/app_config.json",
@@ -172,7 +172,7 @@ impl ConfigMigrationTool {
     
     /// Migrate a single JSON configuration file
     async fn migrate_json_file(&mut self, session_id: &str, file_path: &str) -> SecurityResult<()> {
-        log::info!("📄 Processing configuration file: {}", file_path);
+        log::info!("Processing configuration file: {}", file_path);
         
         // Read and parse the JSON file
         let content = fs::read_to_string(file_path)
@@ -221,7 +221,7 @@ impl ConfigMigrationTool {
                                 
                                 self.stats.credentials_migrated += 1;
                                 
-                                log::info!("🔐 Migrated OBS password for connection: {}", name);
+                                log::info!("Migrated OBS password for connection: {}", name);
                             }
                         }
                         
@@ -284,7 +284,7 @@ impl ConfigMigrationTool {
                         
                         self.stats.api_keys_migrated += 1;
                         
-                        log::info!("🔑 Migrated {} API key for service: {}", key_field, service);
+                        log::info!("Migrated {} API key for service: {}", key_field, service);
                     }
                 }
             }
@@ -307,7 +307,7 @@ impl ConfigMigrationTool {
                     ).await?;
                     
                     self.stats.credentials_migrated += 1;
-                    log::info!("🗄️ Migrated database connection string");
+                    log::info!("Migrated database connection string");
                 }
             }
             
@@ -322,7 +322,7 @@ impl ConfigMigrationTool {
                     ).await?;
                     
                     self.stats.credentials_migrated += 1;
-                    log::info!("🔐 Migrated database password");
+                    log::info!("Migrated database password");
                 }
             }
         }
@@ -344,7 +344,7 @@ impl ConfigMigrationTool {
                     ).await?;
                     
                     self.stats.credentials_migrated += 1;
-                    log::info!("🌐 Migrated network auth token");
+                    log::info!("Migrated network auth token");
                 }
             }
         }
@@ -354,7 +354,7 @@ impl ConfigMigrationTool {
     
     /// Migrate hardcoded credentials from source code
     async fn migrate_hardcoded_credentials(&mut self, session_id: &str) -> SecurityResult<()> {
-        log::info!("🔍 Migrating hardcoded credentials from codebase...");
+        log::info!("Migrating hardcoded credentials from codebase...");
         
         // Known hardcoded credentials that need to be migrated
         let hardcoded_credentials = [
@@ -374,7 +374,7 @@ impl ConfigMigrationTool {
             
             self.stats.credentials_migrated += 1;
             
-            log::warn!("⚠️ Migrated hardcoded credential: {}", key);
+            log::warn!("Migrated hardcoded credential: {}", key);
         }
         
         Ok(())
@@ -382,7 +382,7 @@ impl ConfigMigrationTool {
     
     /// Migrate frontend store configurations
     async fn migrate_frontend_stores(&mut self, session_id: &str) -> SecurityResult<()> {
-        log::info!("🎨 Migrating frontend store configurations...");
+        log::info!("Migrating frontend store configurations...");
         
         // Read frontend store files if they exist
         let store_files = [
@@ -417,7 +417,7 @@ impl ConfigMigrationTool {
             
             self.stats.credentials_migrated += 1;
             
-            log::warn!("⚠️ Migrated hardcoded password from frontend store");
+            log::warn!("Migrated hardcoded password from frontend store");
         }
         
         Ok(())
@@ -425,7 +425,7 @@ impl ConfigMigrationTool {
     
     /// Migrate environment variables
     async fn migrate_environment_variables(&mut self, session_id: &str) -> SecurityResult<()> {
-        log::info!("🌍 Checking environment variables for sensitive data...");
+        log::info!("Checking environment variables for sensitive data...");
         
         // Check for sensitive environment variables
         let env_vars = [
@@ -457,7 +457,7 @@ impl ConfigMigrationTool {
                     
                     self.stats.credentials_migrated += 1;
                     
-                    log::info!("🌍 Migrated environment variable: {}", env_var);
+                    log::info!("Migrated environment variable: {}", env_var);
                 }
             }
         }
@@ -474,14 +474,14 @@ impl ConfigMigrationTool {
         
         self.stats.files_backed_up += 1;
         
-        log::info!("💾 Backed up configuration file: {} -> {}", file_path, backup_path);
+        log::info!("Backed up configuration file: {} -> {}", file_path, backup_path);
         
         Ok(())
     }
     
     /// Verify migration completeness
     pub async fn verify_migration(&self, session_id: &str) -> SecurityResult<bool> {
-        log::info!("🔍 Verifying migration completeness...");
+        log::info!("Verifying migration completeness...");
         
         // Check that key configurations were migrated
         let required_configs = [
@@ -494,19 +494,19 @@ impl ConfigMigrationTool {
             match self.config_manager.get_config(session_id, config_key).await? {
                 Some(value) => {
                     if value.is_empty() {
-                        log::error!("❌ Verification failed: {} is empty", config_key);
+                        log::error!("Verification failed: {} is empty", config_key);
                         return Ok(false);
                     }
-                    log::info!("✅ Verified migration of: {}", config_key);
+                    log::info!("Verified migration of: {}", config_key);
                 }
                 None => {
-                    log::error!("❌ Verification failed: {} not found", config_key);
+                    log::error!("Verification failed: {} not found", config_key);
                     return Ok(false);
                 }
             }
         }
         
-        log::info!("✅ Migration verification successful");
+        log::info!("Migration verification successful");
         Ok(true)
     }
     
@@ -540,7 +540,7 @@ impl ConfigMigrationTool {
 4. Set up regular key rotation schedule
 5. Monitor audit logs for any security issues
 
-## Migration Completed Successfully ✅
+## Migration Completed Successfully 
 Date: {}
 "#,
             self.stats.total_configs_found,

@@ -92,7 +92,7 @@ impl DatabaseMaintenance {
     pub async fn run_vacuum(&mut self, db_conn: &DatabaseConnection) -> DatabaseResult<()> {
         let start_time = Instant::now();
         
-        log::info!("🧹 Starting database VACUUM operation...");
+        log::info!("Starting database VACUUM operation...");
         
         // Check if VACUUM is needed
         let page_count: i64 = db_conn.read_transaction(|tx| {
@@ -106,12 +106,12 @@ impl DatabaseMaintenance {
         }).await?;
         
         if freelist_count == 0 {
-            log::info!("📊 No fragmentation detected, VACUUM not needed");
+            log::info!("No fragmentation detected, VACUUM not needed");
             return Ok(());
         }
         
         let fragmentation_percentage = (freelist_count as f64 / page_count as f64) * 100.0;
-        log::info!("📊 Fragmentation detected: {:.2}% ({} free pages out of {} total)", 
+        log::info!("Fragmentation detected: {:.2}% ({} free pages out of {} total)", 
                   fragmentation_percentage, freelist_count, page_count);
         
         // Run VACUUM operation
@@ -128,7 +128,7 @@ impl DatabaseMaintenance {
         self.total_maintenance_time += duration;
         self.stats.total_maintenance_time_secs = self.total_maintenance_time.as_secs();
         
-        log::info!("✅ Database VACUUM completed successfully in {:.2?}", duration);
+        log::info!("Database VACUUM completed successfully in {:.2?}", duration);
         Ok(())
     }
     
@@ -136,7 +136,7 @@ impl DatabaseMaintenance {
     pub async fn run_integrity_check(&mut self, db_conn: &DatabaseConnection) -> DatabaseResult<bool> {
         let start_time = Instant::now();
         
-        log::info!("🔍 Starting database integrity check...");
+        log::info!("Starting database integrity check...");
         
         let integrity_ok: String = db_conn.read_transaction(|tx| {
             tx.query_row("PRAGMA integrity_check", [], |row| row.get(0))
@@ -154,9 +154,9 @@ impl DatabaseMaintenance {
         self.stats.total_maintenance_time_secs = self.total_maintenance_time.as_secs();
         
         if is_ok {
-            log::info!("✅ Database integrity check passed in {:.2?}", duration);
+            log::info!("Database integrity check passed in {:.2?}", duration);
         } else {
-            log::error!("❌ Database integrity check failed: {}", integrity_ok);
+            log::error!("Database integrity check failed: {}", integrity_ok);
         }
         
         Ok(is_ok)
@@ -166,7 +166,7 @@ impl DatabaseMaintenance {
     pub async fn run_analyze(&mut self, db_conn: &DatabaseConnection) -> DatabaseResult<()> {
         let start_time = Instant::now();
         
-        log::info!("📈 Starting database ANALYZE operation...");
+        log::info!("Starting database ANALYZE operation...");
         
         db_conn.transaction(|tx| {
             tx.execute("ANALYZE", [])
@@ -181,7 +181,7 @@ impl DatabaseMaintenance {
         self.total_maintenance_time += duration;
         self.stats.total_maintenance_time_secs = self.total_maintenance_time.as_secs();
         
-        log::info!("✅ Database ANALYZE completed successfully in {:.2?}", duration);
+        log::info!("Database ANALYZE completed successfully in {:.2?}", duration);
         Ok(())
     }
     
@@ -189,7 +189,7 @@ impl DatabaseMaintenance {
     pub async fn run_optimize(&mut self, db_conn: &DatabaseConnection) -> DatabaseResult<()> {
         let start_time = Instant::now();
         
-        log::info!("⚡ Starting database OPTIMIZE operation...");
+        log::info!("Starting database OPTIMIZE operation...");
         
         db_conn.transaction(|tx| {
             tx.execute("PRAGMA optimize", [])
@@ -204,7 +204,7 @@ impl DatabaseMaintenance {
         self.total_maintenance_time += duration;
         self.stats.total_maintenance_time_secs = self.total_maintenance_time.as_secs();
         
-        log::info!("✅ Database OPTIMIZE completed successfully in {:.2?}", duration);
+        log::info!("Database OPTIMIZE completed successfully in {:.2?}", duration);
         Ok(())
     }
     
@@ -212,13 +212,13 @@ impl DatabaseMaintenance {
     pub async fn run_full_maintenance(&mut self, db_conn: &DatabaseConnection) -> DatabaseResult<MaintenanceResult> {
         let start_time = Instant::now();
         
-        log::info!("🔧 Starting full database maintenance cycle...");
+        log::info!("Starting full database maintenance cycle...");
         
         // Run integrity check first
         let integrity_check_passed = self.run_integrity_check(db_conn).await?;
         
         if !integrity_check_passed {
-            log::error!("❌ Integrity check failed, aborting maintenance");
+            log::error!("Integrity check failed, aborting maintenance");
             return Ok(MaintenanceResult {
                 integrity_check_passed: false,
                 analyze_success: false,
@@ -239,7 +239,7 @@ impl DatabaseMaintenance {
         
         let total_duration = start_time.elapsed();
         
-        log::info!("🎉 Full database maintenance completed in {:.2?}", total_duration);
+        log::info!("Full database maintenance completed in {:.2?}", total_duration);
         
         Ok(MaintenanceResult {
             integrity_check_passed,

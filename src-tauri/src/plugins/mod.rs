@@ -167,7 +167,7 @@ pub use event_stream::EventStreamProcessor;
 
 /// Initialize all plugins
 pub async fn init() -> Result<(), Box<dyn std::error::Error>> {
-    log::info!("🔧 Initializing all plugins...");
+    log::info!("Initializing all plugins...");
     
     // Initialize core plugins
     plugin_udp::init()?;           // UDP PSS event handling
@@ -186,13 +186,13 @@ pub async fn init() -> Result<(), Box<dyn std::error::Error>> {
     obs_obws::init()?;
     // YouTube API plugin will be initialized when needed (requires OAuth setup)
     
-    println!("✅ All plugins initialized successfully");
+    log::info!("All plugins initialized successfully");
     Ok(())
 }
 
 /// Shutdown all plugins
 pub async fn shutdown() -> Result<(), Box<dyn std::error::Error>> {
-    log::info!("🔧 Shutting down all plugins...");
+    log::info!("Shutting down all plugins...");
     
     // Shutdown plugins in reverse order
     #[cfg(feature = "obs-obws")]
@@ -212,6 +212,6 @@ pub async fn shutdown() -> Result<(), Box<dyn std::error::Error>> {
     // plugin_store::shutdown()?;
     // plugin_udp::shutdown()?;
     
-    println!("✅ All plugins shut down successfully");
+    log::info!("All plugins shut down successfully");
     Ok(())
 } 

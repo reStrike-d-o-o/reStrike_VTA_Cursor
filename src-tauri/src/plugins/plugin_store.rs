@@ -5,7 +5,7 @@ pub fn store_data() {
 
 /// Initialize the store plugin
 pub fn init() -> Result<(), Box<dyn std::error::Error>> {
-    println!("🔧 Initializing store plugin...");
+    log::info!("Initializing store plugin...");
     Ok(())
 }
 

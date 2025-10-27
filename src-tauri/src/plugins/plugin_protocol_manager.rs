@@ -73,7 +73,7 @@ impl ProtocolManager {
 
     /// Initialize the protocol manager
     pub async fn init(&self) -> AppResult<()> {
-        log::info!("🔧 Initializing Protocol Manager...");
+        log::info!("Initializing Protocol Manager...");
         
         // Scan for existing protocol files
         self.scan_protocol_files().await?;
@@ -81,7 +81,7 @@ impl ProtocolManager {
         // Load the active protocol
         self.load_active_protocol().await?;
         
-        log::info!("✅ Protocol Manager initialized successfully");
+        log::info!("Protocol Manager initialized successfully");
         Ok(())
     }
 
@@ -241,52 +241,52 @@ impl ProtocolManager {
         // Load the new active protocol
         self.load_active_protocol().await?;
 
-        log::info!("✅ Set active protocol version to {}", version);
+        log::info!("Set active protocol version to {}", version);
         Ok(())
     }
 
     /// Upload a new protocol file
     pub async fn upload_protocol_file(&self, file_content: Vec<u8>, filename: &str) -> AppResult<String> {
-        log::info!("📤 Starting upload of protocol file: {}", filename);
+        log::info!("Starting upload of protocol file: {}", filename);
         
         // Validate file content
         if file_content.is_empty() {
-            log::error!("❌ File content is empty");
+            log::error!("File content is empty");
             return Err(AppError::ConfigError("File content is empty".to_string()));
         }
 
         // Extract version from filename
         let version = self.extract_version_from_filename(filename);
-        log::info!("📋 Extracted version: {} from filename: {}", version, filename);
+        log::info!("Extracted version: {} from filename: {}", version, filename);
         
         // Check if version already exists
         if self.versions.lock().unwrap().contains_key(&version) {
-            log::error!("❌ Protocol version {} already exists", version);
+            log::error!("Protocol version {} already exists", version);
             return Err(AppError::ConfigError(format!("Protocol version {} already exists", version)));
         }
 
         // Create file path
         let file_path = self.protocols_dir.join(filename);
-        log::info!("📁 File path: {}", file_path.display());
+        log::info!("File path: {}", file_path.display());
         
         // Write file
         match fs::write(&file_path, &file_content) {
-            Ok(_) => log::info!("✅ File written successfully"),
+            Ok(_) => log::info!("File written successfully"),
             Err(e) => {
-                log::error!("❌ Failed to write protocol file: {}", e);
+                log::error!("Failed to write protocol file: {}", e);
                 return Err(AppError::ConfigError(format!("Failed to write protocol file: {}", e)));
             }
         }
 
         // Parse the protocol file to validate it
-        log::info!("🔍 Parsing protocol file for validation...");
+        log::info!("Parsing protocol file for validation...");
         let protocol_file = match self.parse_protocol_file(&file_path.to_string_lossy()).await {
             Ok(file) => {
-                log::info!("✅ Protocol file parsed successfully");
+                log::info!("Protocol file parsed successfully");
                 file
             }
             Err(e) => {
-                log::error!("❌ Failed to parse protocol file: {}", e);
+                log::error!("Failed to parse protocol file: {}", e);
                 // Clean up the file we just wrote
                 let _ = fs::remove_file(&file_path);
                 return Err(e);
@@ -297,7 +297,7 @@ impl ProtocolManager {
         let metadata = match fs::metadata(&file_path) {
             Ok(meta) => meta,
             Err(e) => {
-                log::error!("❌ Failed to get file metadata: {}", e);
+                log::error!("Failed to get file metadata: {}", e);
                 return Err(AppError::ConfigError(format!("Failed to get file metadata: {}", e)));
             }
         };
@@ -319,10 +319,10 @@ impl ProtocolManager {
         {
             let mut versions = self.versions.lock().unwrap();
             versions.insert(version.clone(), protocol_version);
-            log::info!("✅ Added protocol version to registry");
+            log::info!("Added protocol version to registry");
         }
 
-        log::info!("✅ Successfully uploaded protocol file: {} (version {})", filename, version);
+        log::info!("Successfully uploaded protocol file: {} (version {})", filename, version);
         Ok(version)
     }
 
@@ -352,7 +352,7 @@ impl ProtocolManager {
                 versions.remove(version);
             }
 
-            log::info!("✅ Deleted protocol version: {}", version);
+            log::info!("Deleted protocol version: {}", version);
             Ok(())
         } else {
             Err(AppError::ConfigError(format!("Protocol version {} not found", version)))
@@ -557,6 +557,6 @@ impl ProtocolManager {
 
 /// Initialize the Protocol Manager plugin
 pub fn init() -> Result<ProtocolManager, Box<dyn std::error::Error>> {
-    log::info!("🔧 Initializing Protocol Manager plugin...");
+    log::info!("Initializing Protocol Manager plugin...");
     ProtocolManager::new().map_err(|e| e.into())
 } 

@@ -19,7 +19,7 @@ impl MigrationStrategy {
 
     /// Perform complete migration from JSON to database
     pub async fn migrate_json_to_database(&self, conn: &mut Connection) -> AppResult<MigrationResult> {
-        log::info!("🔄 Starting JSON to database migration...");
+        log::info!("Starting JSON to database migration...");
         
         let mut result = MigrationResult {
             total_settings: 0,
@@ -32,23 +32,23 @@ impl MigrationStrategy {
         let json_settings = self.load_json_settings().await?;
         result.total_settings = json_settings.len();
         
-        log::info!("📊 Found {} settings in JSON configuration", result.total_settings);
+        log::info!("Found {} settings in JSON configuration", result.total_settings);
 
         // Step 2: Initialize database settings table
         UiSettingsOperations::initialize_ui_settings(conn)?;
-        log::info!("✅ Database settings table initialized");
+        log::info!("Database settings table initialized");
 
         // Step 3: Migrate each setting
         for (key, value) in json_settings {
             match self.migrate_setting(conn, &key, &value).await {
                 Ok(_) => {
                     result.migrated_settings += 1;
-                    log::debug!("✅ Migrated setting: {}", key);
+                    log::debug!("Migrated setting: {}", key);
                 }
                 Err(e) => {
                     result.failed_settings += 1;
                     result.errors.push(format!("Failed to migrate '{}': {}", key, e));
-                    log::warn!("❌ Failed to migrate setting '{}': {}", key, e);
+                    log::warn!("Failed to migrate setting '{}': {}", key, e);
                 }
             }
         }
@@ -57,7 +57,7 @@ impl MigrationStrategy {
         self.validate_migration(conn, &result).await?;
 
         log::info!(
-            "🎉 Migration completed: {}/{} settings migrated successfully",
+            " Migration completed: {}/{} settings migrated successfully",
             result.migrated_settings,
             result.total_settings
         );
@@ -130,7 +130,7 @@ impl MigrationStrategy {
         conn: &mut Connection,
         _result: &MigrationResult,
     ) -> AppResult<()> {
-        log::info!("🔍 Validating migration...");
+        log::info!("Validating migration...");
 
         let json_settings = self.load_json_settings().await?;
         let db_settings_vec = UiSettingsOperations::get_all_ui_settings(conn)?;
@@ -154,9 +154,9 @@ impl MigrationStrategy {
         }
 
         if !validation_errors.is_empty() {
-            log::warn!("⚠️ Migration validation found {} issues:", validation_errors.len());
+            log::warn!("Migration validation found {} issues:", validation_errors.len());
             for error in &validation_errors {
-                log::warn!("  - {}", error);
+                log::warn!(" - {}", error);
             }
             return Err(crate::types::AppError::ConfigError(format!(
                 "Migration validation failed: {} errors",
@@ -164,7 +164,7 @@ impl MigrationStrategy {
             )));
         }
 
-        log::info!("✅ Migration validation passed");
+        log::info!("Migration validation passed");
         Ok(())
     }
 
@@ -205,7 +205,7 @@ impl MigrationStrategy {
         zip.finish()
             .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to finalize ZIP: {}", e)))?;
 
-        log::info!("💾 JSON settings backup created: {}", backup_path.display());
+        log::info!("JSON settings backup created: {}", backup_path.display());
         Ok(backup_path.to_string_lossy().to_string())
     }
 
@@ -224,12 +224,12 @@ impl MigrationStrategy {
         let settings: HashMap<String, String> = serde_json::from_str(&backup_data)
             .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to parse backup: {}", e)))?;
 
-        log::info!("🔄 Restoring {} settings from backup...", settings.len());
+        log::info!("Restoring {} settings from backup...", settings.len());
 
         // TODO: Implement restoration logic
         // This would involve updating the config manager with the restored settings
 
-        log::info!("✅ Settings restored from backup");
+        log::info!("Settings restored from backup");
         Ok(())
     }
 }

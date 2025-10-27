@@ -174,7 +174,7 @@ impl TriggerPlugin {
     
     /// Initialize the trigger plugin
     pub async fn initialize(&self) -> AppResult<()> {
-        log::info!("🎯 Initializing Trigger Plugin");
+        log::info!("Initializing Trigger Plugin");
         // Register global shortcuts for pause/resume
         // Store global reference
         let _ = TRIGGER_PLUGIN_GLOBAL.set(std::sync::Arc::new(self.clone()));
@@ -201,7 +201,7 @@ impl TriggerPlugin {
         // Initialize default overlay templates if none exist
         self.initialize_default_overlay_templates().await?;
         
-        log::info!("✅ Trigger Plugin initialized successfully");
+        log::info!("Trigger Plugin initialized successfully");
         Ok(())
     }
     
@@ -235,7 +235,7 @@ impl TriggerPlugin {
         
         // Day-specific triggers removed
         
-        log::info!("📋 Loaded {} trigger types with {} total triggers", triggers.len(), triggers.values().map(|v| v.len()).sum::<usize>());
+        log::info!("Loaded {} trigger types with {} total triggers", triggers.len(), triggers.values().map(|v| v.len()).sum::<usize>());
         Ok(())
     }
     
@@ -246,7 +246,7 @@ impl TriggerPlugin {
             return Ok(());
         }
         
-        log::info!("🎨 Creating default overlay templates");
+        log::info!("Creating default overlay templates");
         
         let default_templates = vec![
             OverlayTemplate {
@@ -320,7 +320,7 @@ impl TriggerPlugin {
             self.db.insert_overlay_template(template).await?;
         }
         
-        log::info!("✅ Created {} default overlay templates", default_templates.len());
+        log::info!("Created {} default overlay templates", default_templates.len());
         Ok(())
     }
     
@@ -409,7 +409,7 @@ impl TriggerPlugin {
         let event_type = match self.parse_pss_message(message) {
             Some(event) => event,
             None => {
-                log::debug!("⚠️ Could not parse PSS message: {}", message);
+                log::debug!("Could not parse PSS message: {}", message);
                 return Ok(results);
             }
         };
@@ -480,11 +480,11 @@ impl TriggerPlugin {
         drop(triggers);
         
         if event_triggers.is_empty() {
-            log::debug!("📭 No triggers found for event type: {}", event_type_str);
+            log::debug!("No triggers found for event type: {}", event_type_str);
             return Ok(results);
         }
         
-        log::info!("🎯 Processing {} triggers for event: {}", event_triggers.len(), event_type_str);
+        log::info!("Processing {} triggers for event: {}", event_triggers.len(), event_type_str);
         
         // Execute each trigger
         for trigger in event_triggers {
@@ -508,11 +508,11 @@ impl TriggerPlugin {
                     result.success = true;
                     // mark fired
                     if let Some(id) = trigger.id { self.mark_fired(id).await; }
-                    log::info!("✅ Trigger {} executed successfully", trigger.id.unwrap_or(0));
+                    log::info!("Trigger {} executed successfully", trigger.id.unwrap_or(0));
                 }
                 Err(e) => {
                     result.error_message = Some(e.to_string());
-                    log::error!("❌ Trigger {} failed: {}", trigger.id.unwrap_or(0), e);
+                    log::error!("Trigger {} failed: {}", trigger.id.unwrap_or(0), e);
                 }
             }
             
@@ -521,7 +521,7 @@ impl TriggerPlugin {
         }
         
         let total_time = start_time.elapsed();
-        log::info!("🎯 Processed {} triggers in {:?}", results.len(), total_time);
+        log::info!("Processed {} triggers in {:?}", results.len(), total_time);
         
         Ok(results)
     }
@@ -659,7 +659,7 @@ impl TriggerPlugin {
         let conn_name = trigger.obs_connection_name.as_deref().unwrap_or("default");
         self.obs_manager.set_current_scene(&scene.scene_name, Some(conn_name)).await?;
         
-        log::info!("🎬 Changed OBS scene to: {}", scene.scene_name);
+        log::info!("Changed OBS scene to: {}", scene.scene_name);
         Ok(())
     }
 
@@ -667,10 +667,10 @@ impl TriggerPlugin {
         let conn_name = trigger.obs_connection_name.as_deref().unwrap_or("OBS_REC");
         if start {
             self.obs_manager.start_recording(Some(conn_name)).await?;
-            log::info!("🎥 Started recording on {}", conn_name);
+            log::info!("Started recording on {}", conn_name);
         } else {
             self.obs_manager.stop_recording(Some(conn_name)).await?;
-            log::info!("🛑 Stopped recording on {}", conn_name);
+            log::info!("Stopped recording on {}", conn_name);
         }
         Ok(())
     }
@@ -682,7 +682,7 @@ impl TriggerPlugin {
             log::warn!("Failed to save replay buffer on {}: {}", conn_name, e);
             return Err(e);
         }
-        log::info!("💾 Save Replay Buffer executed on {}", conn_name);
+        log::info!("Save Replay Buffer executed on {}", conn_name);
         Ok(())
     }
     
@@ -707,7 +707,7 @@ impl TriggerPlugin {
         // Execute overlay animation
         self.execute_overlay_animation(template, event).await?;
         
-        log::info!("🎨 Executed overlay animation: {}", template.name);
+        log::info!("Executed overlay animation: {}", template.name);
         Ok(())
     }
     
@@ -715,7 +715,7 @@ impl TriggerPlugin {
     async fn execute_overlay_animation(&self, template: &OverlayTemplate, _event: &PssEventType) -> AppResult<()> {
         // This would integrate with the existing overlay system
         // For now, we'll log the animation details
-        log::info!("🎨 Overlay Animation: {} ({}) - Duration: {}ms", 
+        log::info!("Overlay Animation: {} ({}) - Duration: {}ms", 
             template.name, 
             template.animation_type, 
             template.duration_ms
@@ -738,7 +738,7 @@ impl TriggerPlugin {
         // Reload triggers for new context
         self.load_enabled_triggers().await?;
         
-        log::info!("🎯 Set tournament context: tournament_id={:?}", tournament_id);
+        log::info!("Set tournament context: tournament_id={:?}", tournament_id);
         Ok(())
     }
     
@@ -747,7 +747,7 @@ impl TriggerPlugin {
         // Update database with current OBS scenes
         self.db.sync_obs_scenes(&scene_names).await?;
         
-        log::info!("🔄 Synced {} OBS scenes", scene_names.len());
+        log::info!("Synced {} OBS scenes", scene_names.len());
         Ok(())
     }
     
@@ -777,7 +777,7 @@ impl TriggerPlugin {
 
 /// Initialize the trigger plugin
 pub fn init() -> Result<(), Box<dyn std::error::Error>> {
-    println!("🎯 Initializing Trigger Plugin");
+    log::info!("Initializing Trigger Plugin");
     // The actual initialization happens when the plugin is created
     Ok(())
 } 

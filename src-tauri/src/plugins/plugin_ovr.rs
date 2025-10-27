@@ -13,7 +13,7 @@ pub struct OvrScraperPlugin {
 }
 
 pub fn init() -> Result<(), Box<dyn std::error::Error>> {
-    log::info!("🛰️ Initializing OVR Scraper Plugin...");
+    log::info!("Initializing OVR Scraper Plugin...");
     Ok(())
 }
 

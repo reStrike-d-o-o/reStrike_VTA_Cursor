@@ -8,9 +8,9 @@ use rusqlite::params;
 
 /// Initialize the tournament plugin
 pub fn init() -> Result<(), Box<dyn std::error::Error>> {
-    println!("🏆 Initializing Tournament Plugin...");
+    log::info!("Initializing Tournament Plugin...");
     // Tournament plugin doesn't need special initialization
-    println!("✅ Tournament Plugin initialized successfully");
+    log::info!("Tournament Plugin initialized successfully");
     Ok(())
 }
 

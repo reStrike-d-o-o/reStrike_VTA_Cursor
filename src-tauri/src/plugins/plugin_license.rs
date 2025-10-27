@@ -13,7 +13,7 @@ use crate::types::{AppError, AppResult};
 
 /// Initialize the license plugin
 pub fn init() -> Result<(), Box<dyn std::error::Error>> {
-    println!("🔧 Initializing license plugin...");
+    log::info!("Initializing license plugin...");
     Ok(())
 }
 

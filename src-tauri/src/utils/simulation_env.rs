@@ -89,7 +89,7 @@ pub fn get_simulation_main_py() -> Result<PathBuf, SimulationEnvError> {
     log::error!("Simulation main.py not found. Attempted paths:");
     for path in &possible_paths {
         if let Some(path) = path {
-            log::error!("  - {:?} (exists: {})", path, path.exists());
+            log::error!(" - {:?} (exists: {})", path, path.exists());
         }
     }
 
@@ -130,7 +130,7 @@ pub fn get_simulation_requirements() -> Result<PathBuf, SimulationEnvError> {
     log::error!("Simulation requirements.txt not found. Attempted paths:");
     for path in &possible_paths {
         if let Some(path) = path {
-            log::error!("  - {:?} (exists: {})", path, path.exists());
+            log::error!(" - {:?} (exists: {})", path, path.exists());
         }
     }
     

@@ -40,7 +40,7 @@ impl ObsManager {
             *default = Some(config.name.clone());
         }
         
-        log::info!("✅ Added OBS connection: {}", config.name);
+        log::info!("Added OBS connection: {}", config.name);
         Ok(())
     }
 
@@ -99,7 +99,7 @@ impl ObsManager {
             }
         }
         
-        log::info!("✅ Updated OBS connection: {} -> {}", old_name, new_config.name);
+        log::info!("Updated OBS connection: {} -> {}", old_name, new_config.name);
         Ok(())
     }
 
@@ -121,7 +121,7 @@ impl ObsManager {
                 }
             }
             
-            log::info!("✅ Removed OBS connection: {}", name);
+            log::info!("Removed OBS connection: {}", name);
             Ok(())
         } else {
             Err(AppError::ConfigError(format!("Connection '{}' not found", name)))
@@ -134,7 +134,7 @@ impl ObsManager {
         if let Some(client_arc) = clients.get(name) {
             let mut client = client_arc.lock().await;
             client.connect().await?;
-            log::info!("✅ Connected to OBS: {}", name);
+            log::info!("Connected to OBS: {}", name);
             Ok(())
         } else {
             Err(AppError::ConfigError(format!("Connection '{}' not found", name)))
@@ -147,7 +147,7 @@ impl ObsManager {
         if let Some(client_arc) = clients.get(name) {
             let mut client = client_arc.lock().await;
             client.disconnect().await?;
-            log::info!("✅ Disconnected from OBS: {}", name);
+            log::info!("Disconnected from OBS: {}", name);
             Ok(())
         } else {
             Err(AppError::ConfigError(format!("Connection '{}' not found", name)))
@@ -204,7 +204,7 @@ impl ObsManager {
         
         let mut default = self.default_connection.lock().await;
         *default = Some(name.to_string());
-        log::info!("✅ Set default OBS connection: {}", name);
+        log::info!("Set default OBS connection: {}", name);
         Ok(())
     }
 
@@ -415,7 +415,7 @@ impl ObsManager {
         let mut default = self.default_connection.lock().await;
         *default = None;
         
-        log::info!("✅ OBS Manager shutdown complete");
+        log::info!("OBS Manager shutdown complete");
         Ok(())
     }
 

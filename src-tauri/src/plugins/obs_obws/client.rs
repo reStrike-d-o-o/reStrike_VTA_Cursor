@@ -94,19 +94,19 @@ impl ObsClient {
             Ok(Ok(client)) => {
                 self.client = Some(client);
                 self.status = ObsConnectionStatus::Authenticated;
-                log::info!("✅ Connected to OBS at {}:{}", self.config.host, self.config.port);
+                log::info!("Connected to OBS at {}:{}", self.config.host, self.config.port);
                 Ok(())
             }
             Ok(Err(e)) => {
                 let error_msg = format!("Failed to connect to OBS: {}", e);
                 self.status = ObsConnectionStatus::Error(error_msg.clone());
-                log::error!("❌ {}", error_msg);
+                log::error!("{}", error_msg);
                 Err(AppError::ConfigError(error_msg))
             }
             Err(_) => {
                 let error_msg = format!("Connection timeout to OBS at {}:{}", self.config.host, self.config.port);
                 self.status = ObsConnectionStatus::Error(error_msg.clone());
-                log::error!("❌ {}", error_msg);
+                log::error!("{}", error_msg);
                 Err(AppError::ConfigError(error_msg))
             }
         }
@@ -117,7 +117,7 @@ impl ObsClient {
         if let Some(_client) = self.client.take() {
             // The obws Client doesn't have an explicit disconnect method
             // It will be dropped when we take() it
-            log::info!("🔌 Disconnected from OBS at {}:{}", self.config.host, self.config.port);
+            log::info!("Disconnected from OBS at {}:{}", self.config.host, self.config.port);
         }
         self.status = ObsConnectionStatus::Disconnected;
         Ok(())
@@ -141,7 +141,7 @@ impl ObsClient {
         client.recording().start().await.map_err(|e| {
             AppError::ConfigError(format!("Failed to start recording: {}", e))
         })?;
-        log::info!("🎬 Recording started");
+        log::info!("Recording started");
         Ok(())
     }
 
@@ -151,7 +151,7 @@ impl ObsClient {
         client.recording().stop().await.map_err(|e| {
             AppError::ConfigError(format!("Failed to stop recording: {}", e))
         })?;
-        log::info!("⏹️ Recording stopped");
+        log::info!("Recording stopped");
         Ok(())
     }
 
@@ -175,7 +175,7 @@ impl ObsClient {
         client.streaming().start().await.map_err(|e| {
             AppError::ConfigError(format!("Failed to start streaming: {}", e))
         })?;
-        log::info!("📡 Streaming started");
+        log::info!("Streaming started");
         Ok(())
     }
 
@@ -185,7 +185,7 @@ impl ObsClient {
         client.streaming().stop().await.map_err(|e| {
             AppError::ConfigError(format!("Failed to stop streaming: {}", e))
         })?;
-        log::info!("⏹️ Streaming stopped");
+        log::info!("Streaming stopped");
         Ok(())
     }
 
@@ -210,7 +210,7 @@ impl ObsClient {
             AppError::ConfigError(format!("Failed to start replay buffer: {}", e))
         })?;
 
-        log::info!("🔄 Replay buffer started");
+        log::info!("Replay buffer started");
 
         // Emit notification for replay started
         println!("NOTIFICATION:replay_started:{}", serde_json::json!({
@@ -228,7 +228,7 @@ impl ObsClient {
             AppError::ConfigError(format!("Failed to stop replay buffer: {}", e))
         })?;
 
-        log::info!("⏹️ Replay buffer stopped");
+        log::info!("Replay buffer stopped");
 
         // Emit notification for replay stopped
         println!("NOTIFICATION:replay_stopped:{}", serde_json::json!({
@@ -246,7 +246,7 @@ impl ObsClient {
             AppError::ConfigError(format!("Failed to save replay buffer: {}", e))
         })?;
 
-        log::info!("💾 Replay buffer saved");
+        log::info!("Replay buffer saved");
 
         // Emit notification for replay saved
         println!("NOTIFICATION:replay_saved:{}", serde_json::json!({
@@ -281,7 +281,7 @@ impl ObsClient {
         client.virtual_cam().start().await.map_err(|e| {
             AppError::ConfigError(format!("Failed to start virtual camera: {}", e))
         })?;
-        log::info!("📹 Virtual camera started");
+        log::info!("Virtual camera started");
         Ok(())
     }
 
@@ -291,7 +291,7 @@ impl ObsClient {
         client.virtual_cam().stop().await.map_err(|e| {
             AppError::ConfigError(format!("Failed to stop virtual camera: {}", e))
         })?;
-        log::info!("⏹️ Virtual camera stopped");
+        log::info!("Virtual camera stopped");
         Ok(())
     }
 
@@ -317,7 +317,7 @@ impl ObsClient {
         client.scenes().set_current_program_scene(scene_name).await.map_err(|e| {
             AppError::ConfigError(format!("Failed to set current scene to '{}': {}", scene_name, e))
         })?;
-        log::info!("🎭 Scene changed to: {}", scene_name);
+        log::info!("Scene changed to: {}", scene_name);
         Ok(())
     }
 
@@ -673,7 +673,7 @@ impl ObsClient {
         }
 
         // For now, always return success since studio mode isn't supported
-        log::info!("🎭 Studio mode {} (not supported by obws)", if enabled { "enable requested" } else { "disable requested" });
+        log::info!("Studio mode {} (not supported by obws)", if enabled { "enable requested" } else { "disable requested" });
         Ok(())
     }
 
@@ -713,10 +713,10 @@ impl ObsClient {
     pub async fn set_record_directory(&self, directory: &str) -> AppResult<()> {
         let client = self.get_client()?;
         // Prefer official obws Config API
-        println!("🛰️ obws.config.set_record_directory directory='{}'", directory);
+        println!(" obws.config.set_record_directory directory='{}'", directory);
         match client.config().set_record_directory(directory).await {
             Ok(_) => {
-                log::info!("📁 Recording directory set via Config API: {}", directory);
+                log::info!("Recording directory set via Config API: {}", directory);
                 return Ok(());
             }
             Err(e) => {
@@ -724,7 +724,7 @@ impl ObsClient {
             }
         }
         // Fallback to profile parameter because some OBS profiles store RecFilePath there
-        println!("🛰️ obws.profiles.set_parameter category=Output name=RecFilePath value='{}'", directory);
+        println!(" obws.profiles.set_parameter category=Output name=RecFilePath value='{}'", directory);
         client
             .profiles()
             .set_parameter(obws::requests::profiles::SetParameter {
@@ -735,7 +735,7 @@ impl ObsClient {
             .await
             .map_err(|e| AppError::ConfigError(format!("Failed to set record directory: {}", e)))?;
         // Try alternative advanced output key as well, but do not fail the call if it errors
-        println!("🛰️ obws.profiles.set_parameter category=AdvOut name=RecFilePath value='{}'", directory);
+        println!(" obws.profiles.set_parameter category=AdvOut name=RecFilePath value='{}'", directory);
         let _ = client
             .profiles()
             .set_parameter(obws::requests::profiles::SetParameter {
@@ -744,7 +744,7 @@ impl ObsClient {
                 value: Some(directory),
             })
             .await;
-        log::info!("📁 Recording directory set (fallback): {}", directory);
+        log::info!("Recording directory set (fallback): {}", directory);
         Ok(())
     }
 
@@ -754,7 +754,7 @@ impl ObsClient {
         // Use profile.set_parameter for filename formatting. Key commonly "FilenameFormatting" under "Output" or "AdvOut".
         // We set both likely keys to improve compatibility; ignore errors on the second set.
         println!(
-            "🛰️ obws.profiles.set_parameter {{category='Output', name='FilenameFormatting', value='{}'}}",
+            " obws.profiles.set_parameter {{category='Output', name='FilenameFormatting', value='{}'}}",
             formatting
         );
         client
@@ -768,7 +768,7 @@ impl ObsClient {
             .map_err(|e| AppError::ConfigError(format!("Failed to set filename formatting: {}", e)))?;
         // Try alternative advanced key without failing whole call if it errors
         println!(
-            "🛰️ obws.profiles.set_parameter {{category='AdvOut', name='FilenameFormatting', value='{}'}}",
+            " obws.profiles.set_parameter {{category='AdvOut', name='FilenameFormatting', value='{}'}}",
             formatting
         );
         let _ = client
@@ -779,7 +779,7 @@ impl ObsClient {
                 value: Some(formatting),
             })
             .await;
-        log::info!("🧾 Filename formatting set to: {}", formatting);
+        log::info!("Filename formatting set to: {}", formatting);
         Ok(())
     }
 
@@ -928,7 +928,7 @@ impl ObsClient {
                     }
                     // Handle shutdown signal
                     _ = shutdown_notify.notified() => {
-                        log::debug!("📡 Monitoring task received shutdown signal");
+                        log::debug!("Monitoring task received shutdown signal");
                         break;
                     }
                 }
@@ -938,14 +938,14 @@ impl ObsClient {
         // Store the task handle
         self.monitoring_task = Some(monitoring_task);
 
-        log::info!("📡 Started monitoring OBS events");
+        log::info!("Started monitoring OBS events");
         Ok(())
     }
 
     /// Stop monitoring for OBS events
     pub async fn stop_monitoring(&mut self) -> AppResult<()> {
         if let Some(task) = self.monitoring_task.take() {
-            log::info!("⏹️ Stopping monitoring for OBS connection");
+            log::info!("Stopping monitoring for OBS connection");
 
             // Signal the monitoring task to stop
             self.monitoring_shutdown.notify_waiters();
@@ -956,9 +956,9 @@ impl ObsClient {
             // Give the task a moment to clean up
             tokio::time::sleep(std::time::Duration::from_millis(100)).await;
 
-            log::info!("✅ Monitoring task stopped");
+            log::info!("Monitoring task stopped");
         } else {
-            log::debug!("📡 No monitoring task was running");
+            log::debug!("No monitoring task was running");
         }
 
         Ok(())
@@ -983,7 +983,7 @@ impl ObsClient {
             }
         });
         
-        log::info!("✅ Status listener set up successfully");
+        log::info!("Status listener set up successfully");
         Ok(())
     }
 }
@@ -991,11 +991,11 @@ impl ObsClient {
 impl Drop for ObsClient {
     fn drop(&mut self) {
         // Clean up any resources when the client is dropped
-        log::debug!("🧹 Dropping ObsClient");
+        log::debug!("Dropping ObsClient");
 
         // Stop monitoring if it's still running
         if self.monitoring_task.is_some() {
-            log::debug!("📡 Stopping monitoring task during client drop");
+            log::debug!("Stopping monitoring task during client drop");
             // Signal shutdown and abort the task
             self.monitoring_shutdown.notify_waiters();
             if let Some(task) = self.monitoring_task.take() {

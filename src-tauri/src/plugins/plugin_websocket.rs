@@ -165,7 +165,7 @@ impl WebSocketServer {
     }
 
     pub async fn stop(&self) -> AppResult<()> {
-        log::info!("🔌 Stopping WebSocket server");
+        log::info!("Stopping WebSocket server");
         
         if let Ok(mut task_guard) = self.server_task.lock() {
             if let Some(task) = task_guard.take() {
@@ -214,7 +214,7 @@ impl WebSocketServer {
         _event_tx: mpsc::UnboundedSender<PssEvent>,
     ) -> AppResult<()> {
         let client_id = format!("client_{}", addr);
-        log::info!("🔌 New WebSocket client connected: {}", client_id);
+        log::info!("New WebSocket client connected: {}", client_id);
         
         // Accept the WebSocket connection
         let ws_stream = accept_async(stream).await
@@ -306,7 +306,7 @@ impl WebSocketServer {
         if let Ok(mut clients_guard) = clients_clone.lock() {
             clients_guard.retain(|c| c.id != client_id);
         }
-        log::info!("🔌 Client {} disconnected", client_id);
+        log::info!("Client {} disconnected", client_id);
         
         Ok(())
     }
@@ -372,7 +372,7 @@ impl WebSocketServer {
             .map_err(|e| AppError::ConfigError(format!("Failed to lock clients mutex: {}", e)))?;
         
         let client_count = clients.len();
-        log::info!("🔌 Broadcasting message to {} connected clients", client_count);
+        log::info!("Broadcasting message to {} connected clients", client_count);
         
         let mut disconnected_clients = Vec::new();
         
@@ -442,7 +442,7 @@ impl WebSocketServer {
         // Collect indices of disconnected clients
         for (index, client) in clients.iter().enumerate() {
             if let Err(_) = client.send_raw_json(overlay_message.clone()) {
-                log::warn!("🔌 Client {} disconnected during broadcast", client.id);
+                log::warn!("Client {} disconnected during broadcast", client.id);
                 disconnected_clients.push(index);
             }
         }
@@ -456,7 +456,7 @@ impl WebSocketServer {
                     clients.remove(index);
                 }
             }
-            log::info!("🔌 Removed {} disconnected clients, {} remaining", disconnected_clients.len(), clients.len());
+            log::info!("Removed {} disconnected clients, {} remaining", disconnected_clients.len(), clients.len());
         }
         
         Ok(())
@@ -538,13 +538,13 @@ impl WebSocketServer {
                 // Only update current_time when we receive a valid Clock event
                 if let Ok(mut time_guard) = self.current_time.lock() {
                     *time_guard = Some(time.clone());
-                    log::info!("🕐 Updated current_time to: {}", time);
+                    log::info!("Updated current_time to: {}", time);
                 }
                 // Mark match as started when we see clk;{round_duration};start
                 if self.is_match_start_time(&time) && action.as_deref() == Some("start") {
                     if let Ok(mut match_guard) = self.match_started.lock() {
                         *match_guard = true;
-                        log::info!("🏁 Match started! (clk;{};start detected)", time);
+                        log::info!("Match started! (clk;{};start detected)", time);
                     }
                 }
                 
@@ -601,7 +601,7 @@ impl WebSocketServer {
                 
                 // Log important events with raw message
                 if ["K", "P", "H", "TH", "TB", "R"].contains(&event_code.as_str()) {
-                    log::info!("🎯 IMPORTANT EVENT - {}: athlete={}, point_type={}, raw=pt{}, time={}", event_code, athlete, point_type, point_type, get_event_time(None));
+                    log::info!("IMPORTANT EVENT - {}: athlete={}, point_type={}, raw=pt{}, time={}", event_code, athlete, point_type, point_type, get_event_time(None));
                 }
                 
                 // Create appropriate description based on point type
@@ -635,7 +635,7 @@ impl WebSocketServer {
             
             PssEvent::Warnings { athlete1_warnings, athlete2_warnings } => {
                 // Log important events with raw message
-                log::info!("🎯 IMPORTANT EVENT - R: athlete1_warnings={}, athlete2_warnings={}, raw=wg1;{};wg2;{}, time={}", athlete1_warnings, athlete2_warnings, athlete1_warnings, athlete2_warnings, get_event_time(None));
+                log::info!("IMPORTANT EVENT - R: athlete1_warnings={}, athlete2_warnings={}, raw=wg1;{};wg2;{}, time={}", athlete1_warnings, athlete2_warnings, athlete1_warnings, athlete2_warnings, get_event_time(None));
                 
                 WebSocketMessage::PssEvent {
                     event_type: "warnings".to_string(),
@@ -662,7 +662,7 @@ impl WebSocketServer {
                 };
                 
                 // Log important events with raw message
-                log::info!("🎯 IMPORTANT EVENT - O: athlete={}, level={}, raw=hl{};{};", athlete, level, athlete, level);
+                log::info!("IMPORTANT EVENT - O: athlete={}, level={}, raw=hl{};{};", athlete, level, athlete, level);
                 
                 WebSocketMessage::PssEvent {
                     event_type: "hit_level".to_string(),
@@ -690,7 +690,7 @@ impl WebSocketServer {
                 };
                 
                 // Log important events with raw message
-                log::info!("🎯 IMPORTANT EVENT - R: source={}, accepted={:?}, won={:?}, canceled={}, raw=ch{};", source, accepted, won, canceled, source);
+                log::info!("IMPORTANT EVENT - R: source={}, accepted={:?}, won={:?}, canceled={}, raw=ch{};", source, accepted, won, canceled, source);
                 
                 WebSocketMessage::PssEvent {
                     event_type: "challenge".to_string(),
@@ -868,13 +868,13 @@ impl WebSocketServer {
                 // Reset time when a new fight is loaded
                 if let Ok(mut time_guard) = self.current_time.lock() {
                     *time_guard = None;
-                    log::info!("🔄 Reset current_time for new fight");
+                    log::info!("Reset current_time for new fight");
                 }
                 
                 // Reset round when a new fight is loaded
                 if let Ok(mut round_guard) = self.current_round.lock() {
                     *round_guard = None;
-                    log::info!("🔄 Reset current_round for new fight");
+                    log::info!("Reset current_round for new fight");
                 }
                 
                 // Reset match configuration state
@@ -890,7 +890,7 @@ impl WebSocketServer {
                 if let Ok(mut format_guard) = self.format.lock() {
                     *format_guard = None;
                 }
-                log::info!("🔄 Reset match configuration state for new fight");
+                log::info!("Reset match configuration state for new fight");
                 
                 WebSocketMessage::PssEvent {
                     event_type: "fight_loaded".to_string(),
@@ -1055,7 +1055,7 @@ impl WebSocketServer {
     pub fn reset_time(&self) -> AppResult<()> {
         if let Ok(mut time_guard) = self.current_time.lock() {
             *time_guard = None;
-            log::info!("🔄 Reset current_time manually");
+            log::info!("Reset current_time manually");
         }
         Ok(())
     }
@@ -1064,7 +1064,7 @@ impl WebSocketServer {
     pub fn reset_round(&self) -> AppResult<()> {
         if let Ok(mut round_guard) = self.current_round.lock() {
             *round_guard = None;
-            log::info!("🔄 Reset current_round manually");
+            log::info!("Reset current_round manually");
         }
         Ok(())
     }
@@ -1093,7 +1093,7 @@ impl WebSocketServer {
         if let Ok(mut format_guard) = self.format.lock() {
             *format_guard = None;
         }
-        log::info!("🔄 Reset complete match state (time, round, match_started, config)");
+        log::info!("Reset complete match state (time, round, match_started, config)");
         Ok(())
     }
     

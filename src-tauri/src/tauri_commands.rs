@@ -100,8 +100,8 @@ pub async fn start_udp_server(app: State<'_, Arc<App>>) -> Result<(), TauriError
     app.udp_plugin().start(&config).await.map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
     // Ensure UDP event handler is running so PSS events reach auto-recording
     app.inner().start_udp_event_handler().await;
-    log::info!("✅ UDP event handler started (manual start)");
-    println!("✅ UDP event handler started (manual start)");
+    log::info!("UDP event handler started (manual start)");
+    log::info!("UDP event handler started (manual start)");
     Ok(())
 }
 
@@ -142,8 +142,8 @@ pub async fn update_udp_settings(settings: serde_json::Value, app: State<'_, Arc
         app.udp_plugin().start(&config).await.map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
         // Re-ensure event handler is started after restart
         app.inner().start_udp_event_handler().await;
-        log::info!("✅ UDP event handler started (restart)");
-        println!("✅ UDP event handler started (restart)");
+        log::info!("UDP event handler started (restart)");
+        log::info!("UDP event handler started (restart)");
     }
     
     Ok(())
@@ -210,14 +210,14 @@ pub async fn obs_get_connection_status(
 
 #[tauri::command]
 pub async fn obs_get_connections(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
-    log::info!("🔍 OBS get connections called");
+    log::info!("OBS get connections called");
     let res = crate::tauri_commands_obws::obs_obws_get_connections(app.clone()).await?;
     Ok(serde_json::json!({ "success": res.success, "data": res.data, "error": res.error }))
 }
 
 #[tauri::command]
 pub async fn obs_disconnect(connection_name: String, app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
-    log::info!("🔍 OBS disconnect called for connection: '{}'", connection_name);
+    log::info!("OBS disconnect called for connection: '{}'", connection_name);
     if connection_name.is_empty() { return Err(TauriError::from(anyhow::anyhow!("Connection name cannot be empty"))); }
     let res = crate::tauri_commands_obws::obs_obws_disconnect(connection_name, app.clone()).await?;
     Ok(serde_json::json!({ "success": res.success, "data": res.data, "error": res.error }))
@@ -1629,37 +1629,37 @@ pub async fn obs_get_recent_events(_app: State<'_, Arc<App>>) -> Result<serde_js
 // CPU Monitoring Commands
 #[tauri::command]
 pub async fn cpu_get_process_data(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
-    // println!("🚨 [CPU_CMD] ===== CPU GET PROCESS DATA CALLED =====");
+    // println!(" [CPU_CMD] ===== CPU GET PROCESS DATA CALLED =====");
     log::info!("[CPU_CMD] ===== CPU GET PROCESS DATA CALLED =====");
     
-    // println!("🚨 [CPU_CMD] Triggering immediate data collection...");
+    // println!(" [CPU_CMD] Triggering immediate data collection...");
     log::info!("[CPU_CMD] Triggering immediate data collection...");
     
     match app.cpu_monitor_plugin().update_cpu_data().await {
         Ok(_) => {
-            // println!("🚨 [CPU_CMD] Data collection successful");
+            // println!(" [CPU_CMD] Data collection successful");
             log::info!("[CPU_CMD] Data collection successful");
         },
         Err(e) => {
-            // println!("🚨 [CPU_CMD] Failed to update CPU data: {}", e);
+            // println!(" [CPU_CMD] Failed to update CPU data: {}", e);
             log::error!("[CPU_CMD] Failed to update CPU data: {}", e);
         },
     }
     
     let process_data = app.cpu_monitor_plugin().get_process_cpu_data().await;
     
-    // println!("🚨 [CPU_CMD] Process data count: {}", process_data.len());
+    // println!(" [CPU_CMD] Process data count: {}", process_data.len());
     log::info!("[CPU_CMD] Process data count: {}", process_data.len());
     
     // Log first few processes for debugging
     for (i, process) in process_data.iter().take(3).enumerate() {
-        // println!("🚨 [CPU_CMD] Process {}: {} - CPU: {:.1}%, Memory: {:.1}MB", 
+        // println!(" [CPU_CMD] Process {}: {} - CPU: {:.1}%, Memory: {:.1}MB", 
         //     i, process.process_name, process.cpu_percent, process.memory_mb);
         log::debug!("[CPU_CMD] Process {}: {} - CPU: {:.1}%, Memory: {:.1}MB", 
             i, process.process_name, process.cpu_percent, process.memory_mb);
     }
     
-    // println!("🚨 [CPU_CMD] Returning result with {} processes", process_data.len());
+    // println!(" [CPU_CMD] Returning result with {} processes", process_data.len());
     log::info!("[CPU_CMD] Returning result with {} processes", process_data.len());
     
     Ok(serde_json::json!({
@@ -1670,25 +1670,25 @@ pub async fn cpu_get_process_data(app: State<'_, Arc<App>>) -> Result<serde_json
 
 #[tauri::command]
 pub async fn cpu_get_system_data(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
-    // println!("🚨 [CPU_CMD] ===== CPU GET SYSTEM DATA CALLED =====");
+    // println!(" [CPU_CMD] ===== CPU GET SYSTEM DATA CALLED =====");
     log::info!("[CPU_CMD] ===== CPU GET SYSTEM DATA CALLED =====");
     
     // Trigger immediate data collection
-    // println!("🚨 [CPU_CMD] Triggering immediate data collection...");
+    // println!(" [CPU_CMD] Triggering immediate data collection...");
     log::info!("[CPU_CMD] Triggering immediate data collection...");
     match app.cpu_monitor_plugin().update_cpu_data().await {
         Ok(_) => {
-            // println!("🚨 [CPU_CMD] Data collection successful");
+            // println!(" [CPU_CMD] Data collection successful");
             log::info!("[CPU_CMD] Data collection successful");
         },
         Err(e) => {
-            // println!("🚨 [CPU_CMD] Failed to update CPU data: {}", e);
+            // println!(" [CPU_CMD] Failed to update CPU data: {}", e);
             log::error!("[CPU_CMD] Failed to update CPU data: {}", e);
         },
     }
     
     let system_data = app.cpu_monitor_plugin().get_system_cpu_data().await;
-    // println!("🚨 [CPU_CMD] System data available: {}", system_data.is_some());
+    // println!(" [CPU_CMD] System data available: {}", system_data.is_some());
     log::info!("[CPU_CMD] System data available: {}", system_data.is_some());
     
     let result = serde_json::json!({
@@ -1696,7 +1696,7 @@ pub async fn cpu_get_system_data(app: State<'_, Arc<App>>) -> Result<serde_json:
         "system": system_data
     });
     
-    // println!("🚨 [CPU_CMD] Returning system data");
+    // println!(" [CPU_CMD] Returning system data");
     log::info!("[CPU_CMD] Returning system data");
     Ok(result)
 }
@@ -2039,19 +2039,19 @@ pub async fn get_best_ip_address_for_interface(interface_name: String) -> Result
 // PSS Event Emission Command
 #[tauri::command]
 pub async fn pss_emit_event(event_data: serde_json::Value, window: tauri::Window) -> Result<(), TauriError> {
-    log::info!("🧪 Emitting PSS event via hybrid approach: {:?}", event_data);
+    log::info!("Emitting PSS event via hybrid approach: {:?}", event_data);
     
     // HYBRID APPROACH: Real-time emission to both systems
     // 1. Emit to Tauri frontend (React components) - Real-time
     if let Err(e) = window.emit("pss_event", event_data.clone()) {
-        log::error!("❌ Failed to emit PSS event to Tauri frontend: {}", e);
+        log::error!("Failed to emit PSS event to Tauri frontend: {}", e);
         return Err(TauriError::from(anyhow::anyhow!("{}", e)));
     }
     
     // 2. Broadcast to WebSocket overlays (HTML overlays) - Real-time
     crate::core::app::App::emit_pss_event(event_data);
     
-    log::info!("✅ Successfully emitted PSS event via hybrid approach");
+    log::info!("Successfully emitted PSS event via hybrid approach");
     Ok(())
 }
 
@@ -2253,7 +2253,7 @@ pub async fn pss_setup_event_listener(_window: tauri::Window) -> Result<(), Taur
     
     // Note: This command is no longer needed since we're using the original working mechanism
     // The frontend will fetch events via pss_get_events or they will be emitted via pss_emit_event
-    log::info!("✅ PSS event listener setup complete (using original mechanism)");
+    log::info!("PSS event listener setup complete (using original mechanism)");
     
     Ok(())
 } 
@@ -2273,17 +2273,17 @@ pub async fn websocket_broadcast_pss_event(
 }
 #[tauri::command]
 pub async fn obs_setup_status_listener(window: tauri::Window, app: State<'_, Arc<App>>) -> Result<(), TauriError> {
-    log::info!("🔧 Setting up OBS status listener for frontend - COMMAND CALLED");
+    log::info!("Setting up OBS status listener for frontend - COMMAND CALLED");
 
     let window_clone = window.clone();
     let app_arc = app.inner().clone();
     // Spawn background task (using cloned Arc<App>)
     tokio::spawn(async move {
-        log::info!("🔧 OBS status listener background task started");
+        log::info!("OBS status listener background task started");
         let mut last_payload = serde_json::Value::Null;
         loop {
             // Fetch current status
-            log::debug!("🔧 Fetching OBS status...");
+            log::debug!("Fetching OBS status...");
             let status_result = app_arc.obs_obws_plugin().get_status(None).await;
             if let Ok(status) = status_result {
                 let payload = serde_json::json!({
@@ -2297,7 +2297,7 @@ pub async fn obs_setup_status_listener(window: tauri::Window, app: State<'_, Arc
                 });
                 // Emit only if changed
                 if payload != last_payload {
-                    log::info!("🔧 Emitting OBS status update: {:?}", payload);
+                    log::info!("Emitting OBS status update: {:?}", payload);
                     if let Err(e) = window_clone.emit("obs_status", payload.clone()) {
                         log::error!("Failed to emit obs_status: {}", e);
                     }
@@ -4639,7 +4639,7 @@ pub async fn archive_old_events(
     log::info!("Archiving events older than {} days", days_old);
     let archived_count = app.database_plugin().archive_old_events(days_old).await
         .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
-    log::info!("✅ Archived {} events", archived_count);
+    log::info!("Archived {} events", archived_count);
     Ok(archived_count)
 }
 
@@ -4665,7 +4665,7 @@ pub async fn restore_from_archive(
     log::info!("Restoring events from archive between {} and {}", start_date, end_date);
     let restored_count = app.database_plugin().restore_from_archive(&start_date, &end_date).await
         .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
-    log::info!("✅ Restored {} events from archive", restored_count);
+    log::info!("Restored {} events from archive", restored_count);
     Ok(restored_count)
 }
 /// Phase 2 Optimization: Clean up old archive data
@@ -4677,7 +4677,7 @@ pub async fn cleanup_old_archive_data(
     log::info!("Cleaning up archive data older than {} days", days_old);
     let deleted_count = app.database_plugin().cleanup_old_archive_data(days_old).await
         .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
-    log::info!("✅ Cleaned up {} archived events", deleted_count);
+    log::info!("Cleaned up {} archived events", deleted_count);
     Ok(deleted_count)
 }
 
@@ -4689,7 +4689,7 @@ pub async fn optimize_archive_tables(
     log::info!("Optimizing archive tables");
     app.database_plugin().optimize_archive_tables().await
         .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
-    log::info!("✅ Archive tables optimized successfully");
+    log::info!("Archive tables optimized successfully");
     Ok(())
 }
 
@@ -4711,7 +4711,7 @@ pub async fn cleanup_database_pool(
 ) -> Result<(), TauriError> {
     log::info!("Cleaning up database connection pool");
     app.database_plugin().cleanup_pool();
-    log::info!("✅ Database pool cleaned up");
+    log::info!("Database pool cleaned up");
     Ok(())
 }
 

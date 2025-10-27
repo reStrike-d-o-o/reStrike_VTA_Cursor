@@ -107,7 +107,7 @@ pub async fn security_migrate_configurations(
     request: MigrationRequest,
     app: State<'_, Arc<App>>,
 ) -> Result<MigrationStats, TauriSecurityError> {
-    log::info!("🔄 Starting security configuration migration");
+    log::info!("Starting security configuration migration");
     
     // Get database connection from app
     let database = app.database_plugin().get_database_connection();
@@ -130,7 +130,7 @@ pub async fn security_migrate_configurations(
         .await
         .map_err(TauriSecurityError::from)?;
     
-    log::info!("✅ Security configuration migration completed successfully");
+    log::info!("Security configuration migration completed successfully");
     Ok(stats)
 }
 
@@ -141,7 +141,7 @@ pub async fn security_verify_migration(
     master_password: String,
     app: State<'_, Arc<App>>,
 ) -> Result<bool, TauriSecurityError> {
-    log::info!("🔍 Verifying security configuration migration");
+    log::info!("Verifying security configuration migration");
     
     let database = app.database_plugin().get_database_connection();
     
@@ -161,7 +161,7 @@ pub async fn security_verify_migration(
         .await
         .map_err(TauriSecurityError::from)?;
     
-    log::info!("📊 Migration verification result: {}", is_verified);
+    log::info!("Migration verification result: {}", is_verified);
     Ok(is_verified)
 }
 
@@ -172,7 +172,7 @@ pub async fn security_create_session(
     master_password: String,
     app: State<'_, Arc<App>>,
 ) -> Result<SessionResponse, TauriSecurityError> {
-    log::info!("🔐 Creating security session for user: {}", request.user_context);
+    log::info!("Creating security session for user: {}", request.user_context);
     
     let database = app.database_plugin().get_database_connection();
     
@@ -209,7 +209,7 @@ pub async fn security_create_session(
         is_active: session.is_active,
     };
     
-    log::info!("✅ Security session created successfully");
+    log::info!("Security session created successfully");
     Ok(response)
 }
 
@@ -426,7 +426,7 @@ pub async fn security_clear_cache(
     // Clear cache
     config_manager.clear_cache().await;
     
-    log::info!("🧹 Security configuration cache cleared");
+    log::info!("Security configuration cache cleared");
     Ok(true)
 }
 
@@ -455,7 +455,7 @@ pub async fn security_test_system(
     master_password: String,
     app: State<'_, Arc<App>>,
 ) -> Result<bool, TauriSecurityError> {
-    log::info!("🧪 Testing security system...");
+    log::info!("Testing security system...");
     
     let database = app.database_plugin().get_database_connection();
     
@@ -503,6 +503,6 @@ pub async fn security_test_system(
         .await
         .map_err(TauriSecurityError::from)?;
     
-    log::info!("🧪 Security system test result: {}", if test_passed { "PASSED" } else { "FAILED" });
+    log::info!("Security system test result: {}", if test_passed { "PASSED" } else { "FAILED" });
     Ok(test_passed)
 }

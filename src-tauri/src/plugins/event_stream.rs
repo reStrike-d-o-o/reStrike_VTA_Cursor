@@ -100,7 +100,7 @@ impl EventStreamProcessor {
 
     /// Start the event stream processor
     pub async fn start(&mut self) -> AppResult<()> {
-        log::info!("🚀 Starting Event Stream Processor...");
+        log::info!("Starting Event Stream Processor...");
         
         // Start event processing loop
         let event_rx = self.event_rx.take().unwrap();
@@ -140,13 +140,13 @@ impl EventStreamProcessor {
             processors.push(processor_handle);
         }
 
-        log::info!("✅ Event Stream Processor started with {} workers", self.config.max_concurrent_processors);
+        log::info!("Event Stream Processor started with {} workers", self.config.max_concurrent_processors);
         Ok(())
     }
 
     /// Stop the event stream processor
     pub async fn stop(&self) -> AppResult<()> {
-        log::info!("🛑 Stopping Event Stream Processor...");
+        log::info!("Stopping Event Stream Processor...");
         
         // Stop analytics task
         if let Some(analytics_handle) = self.analytics_task.write().await.take() {
@@ -159,7 +159,7 @@ impl EventStreamProcessor {
             processor.abort();
         }
 
-        log::info!("✅ Event Stream Processor stopped");
+        log::info!("Event Stream Processor stopped");
         Ok(())
     }
 
@@ -209,7 +209,7 @@ impl EventStreamProcessor {
                             }
                         }
                         None => {
-                            log::info!("📡 Event stream closed");
+                            log::info!("Event stream closed");
                             break;
                         }
                     }
@@ -245,12 +245,12 @@ impl EventStreamProcessor {
         for event in events {
             // Broadcast event to all subscribers
             if let Err(e) = broadcast_tx.send(event.clone()) {
-                log::warn!("⚠️ Failed to broadcast event: {}", e);
+                log::warn!("Failed to broadcast event: {}", e);
             }
 
             // Update cache based on event type
             if let Err(e) = Self::update_cache_for_event(cache, event).await {
-                log::warn!("⚠️ Failed to update cache for event: {}", e);
+                log::warn!("Failed to update cache for event: {}", e);
             }
         }
     }
@@ -262,7 +262,7 @@ impl EventStreamProcessor {
         cache: Arc<EventCache>,
         statistics: Arc<RwLock<StreamStatistics>>,
     ) {
-        log::info!("🔧 Event processor worker {} started", worker_id);
+        log::info!("Event processor worker {} started", worker_id);
         
         let mut processing_times = Vec::new();
         
@@ -271,7 +271,7 @@ impl EventStreamProcessor {
             
             // Process the event
             if let Err(e) = Self::process_single_event(&cache, &event).await {
-                log::error!("❌ Worker {} failed to process event: {}", worker_id, e);
+                log::error!("Worker {} failed to process event: {}", worker_id, e);
             }
             
             let processing_time = start_time.elapsed();
@@ -287,7 +287,7 @@ impl EventStreamProcessor {
             stats.average_processing_time_ms = processing_times.iter().sum::<f64>() / processing_times.len() as f64;
         }
         
-        log::info!("🔧 Event processor worker {} stopped", worker_id);
+        log::info!("Event processor worker {} stopped", worker_id);
     }
 
     /// Analytics update loop
@@ -299,7 +299,7 @@ impl EventStreamProcessor {
             
             // Update real-time analytics
             if let Err(e) = Self::update_real_time_analytics(&cache).await {
-                log::warn!("⚠️ Failed to update analytics: {}", e);
+                log::warn!("Failed to update analytics: {}", e);
             }
         }
     }
@@ -393,7 +393,7 @@ impl EventStreamProcessor {
     async fn update_real_time_analytics(_cache: &Arc<EventCache>) -> AppResult<()> {
         // This would implement comprehensive real-time analytics
         // For now, we'll just log that analytics are being updated
-        log::debug!("📊 Updating real-time analytics...");
+        log::debug!("Updating real-time analytics...");
         Ok(())
     }
 }
