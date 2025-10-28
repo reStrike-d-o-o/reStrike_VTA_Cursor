@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Tab from '../atoms/Tab';
 
 interface TabItem {
@@ -24,6 +24,19 @@ export const TabGroup: React.FC<TabGroupProps> = ({
   onTabChange,
   className = '',
 }) => {
+  const [mountedTabs, setMountedTabs] = useState<Set<string>>(() => new Set([activeTab]));
+
+  useEffect(() => {
+    setMountedTabs((prev) => {
+      if (prev.has(activeTab)) {
+        return prev;
+      }
+      const next = new Set(prev);
+      next.add(activeTab);
+      return next;
+    });
+  }, [activeTab]);
+
   return (
     <div className={`${className}`}>
       {/* Tab Navigation */}
@@ -43,11 +56,16 @@ export const TabGroup: React.FC<TabGroupProps> = ({
       
       {/* Tab Content - keep all mounted to preserve state across tab switches */}
       <div className="min-h-0">
-        {tabs.map(tab => (
-          <div key={tab.id} className={activeTab === tab.id ? '' : 'hidden'}>
-            {tab.content}
-          </div>
-        ))}
+        {tabs.map((tab) => {
+          if (!mountedTabs.has(tab.id)) {
+            return null;
+          }
+          return (
+            <div key={tab.id} className={activeTab === tab.id ? '' : 'hidden'}>
+              {tab.content}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

@@ -126,7 +126,7 @@ const MedalCeremonyPanel: React.FC = () => {
 
   useEffect(() => {
     syncExternalState();
-  }, [detail, preparedDivisions, flagAssets, anthemAssets, syncExternalState]);
+  }, [syncExternalState]);
 
   useEffect(() => {
     if (!detail) {
