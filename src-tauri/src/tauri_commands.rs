@@ -3946,6 +3946,7 @@ pub async fn get_flag_mappings_data(
         "count": mappings.len()
     }))
 }
+
 fn normalize_country_name(name: &str) -> String {
     let trimmed = name.trim();
     if trimmed.is_empty() {
@@ -3967,7 +3968,8 @@ fn normalize_country_name(name: &str) -> String {
                             Some(first) => {
                                 let mut out = String::new();
                                 out.extend(first.to_uppercase());
-                                out.push_str(&chars.as_str().to_lowercase());
+                                let rest = chars.as_str().to_lowercase();
+                                out.push_str(&rest);
                                 out
                             }
                             None => String::new(),
@@ -4120,7 +4122,6 @@ fn update_flags_from_reports(conn: &rusqlite::Connection) -> anyhow::Result<Flag
         applied_updates: updated,
     })
 }
-
 #[tauri::command]
 pub async fn scan_and_populate_flags(
     app: State<'_, Arc<App>>,

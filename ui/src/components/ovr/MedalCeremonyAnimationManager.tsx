@@ -67,7 +67,7 @@ const MedalCeremonyAnimationManager: React.FC = () => {
     );
   }, [flagAssets, search]);
 
-  const handleEdit = useCallback((asset: FlagAnimationAsset) => {
+  const handleRowSelect = useCallback((asset: FlagAnimationAsset) => {
     setForm({
       id: asset.id,
       ioc_code: asset.ioc_code,
@@ -126,9 +126,26 @@ const MedalCeremonyAnimationManager: React.FC = () => {
         return;
       }
       await deleteFlagAsset(asset.id);
+      setMessage('Animation deleted successfully.');
+      setForm(defaultForm);
     },
-    [deleteFlagAsset],
+    [deleteFlagAsset, setMessage],
   );
+
+  const handleDeleteFromForm = useCallback(async () => {
+    if (!form.id) return;
+    await handleDelete({
+      id: form.id || undefined,
+      ioc_code: form.ioc_code,
+      file_name: form.file_name,
+      file_path: form.file_path,
+      display_name: form.display_name,
+      duration_ms: form.duration_ms,
+      is_default: form.is_default,
+      created_at: undefined,
+      updated_at: undefined,
+    } as FlagAnimationAsset);
+  }, [form, handleDelete]);
 
   const handleSetDefault = useCallback(
     async (asset: FlagAnimationAsset) => {
@@ -175,28 +192,46 @@ const MedalCeremonyAnimationManager: React.FC = () => {
           </Button>
         </div>
 
-        <div className="overflow-hidden rounded-md border border-gray-700">
+        <div className="max-h-96 overflow-auto rounded-md border border-gray-700">
           <table className="min-w-full divide-y divide-gray-700 text-sm">
-            <thead className="bg-gray-900/80 text-xs uppercase tracking-wide text-gray-400">
+            <thead className="sticky top-0 z-10 bg-gray-900/95 text-xs uppercase tracking-wide text-gray-200 backdrop-blur shadow-lg shadow-blue-900/20 border-b border-blue-700/50">
               <tr>
                 <th className="px-3 py-2 text-left">IOC</th>
                 <th className="px-3 py-2 text-left">Display name</th>
                 <th className="px-3 py-2 text-left">File</th>
                 <th className="px-3 py-2 text-left">Duration (ms)</th>
                 <th className="px-3 py-2 text-left">Default</th>
-                <th className="px-3 py-2 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-800 bg-gray-950/40">
-              {filteredAssets.map((asset) => (
-                <tr key={asset.id ?? `${asset.ioc_code}-${asset.file_name}`}>
-                  <td className="px-3 py-2 text-gray-200">{asset.ioc_code}</td>
-                  <td className="px-3 py-2 text-gray-300">{asset.display_name || 'N/A'}</td>
-                  <td className="px-3 py-2 text-gray-400 truncate max-w-xs" title={asset.file_path}>
-                    {asset.file_name}
-                  </td>
-                  <td className="px-3 py-2 text-gray-200">{asset.duration_ms ?? 'N/A'}</td>
-                  <td className="px-3 py-2 text-gray-200">
+              {filteredAssets.map((asset) => {
+                const isSelected =
+                  (form.id && asset.id && form.id === asset.id) ||
+                  (!form.id &&
+                    !asset.id &&
+                    form.ioc_code.trim().toUpperCase() === asset.ioc_code.toUpperCase());
+
+                return (
+                  <tr
+                    key={asset.id ?? `${asset.ioc_code}-${asset.file_name}`}
+                    onClick={() => handleRowSelect(asset)}
+                    className={`cursor-pointer transition-colors ${
+                      isSelected
+                        ? 'bg-blue-900/25 border-l-4 border-blue-500'
+                        : 'hover:bg-gray-800/60'
+                    }`}
+                  >
+                    <td className="px-3 py-2 text-gray-200">{asset.ioc_code}</td>
+                    <td className="px-3 py-2 text-gray-300">{asset.display_name || 'N/A'}</td>
+                    <td className="px-3 py-2 text-gray-400 truncate max-w-xs" title={asset.file_path}>
+                      {asset.file_name}
+                    </td>
+                    <td className="px-3 py-2 text-gray-200">
+                      {asset.duration_ms !== null && asset.duration_ms !== undefined
+                        ? asset.duration_ms
+                        : 'N/A'}
+                    </td>
+                    <td className="px-3 py-2 text-gray-200">
                     {asset.is_default ? (
                       <span className="rounded bg-green-600/20 px-2 py-1 text-xs text-green-300">
                         Default
@@ -205,27 +240,21 @@ const MedalCeremonyAnimationManager: React.FC = () => {
                       <Button
                         variant="secondary"
                         size="sm"
-                        onClick={() => handleSetDefault(asset)}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleSetDefault(asset);
+                        }}
                       >
                         Set default
                       </Button>
                     )}
                   </td>
-                  <td className="px-3 py-2 text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button variant="secondary" size="sm" onClick={() => handleEdit(asset)}>
-                        Edit
-                      </Button>
-                      <Button variant="danger" size="sm" onClick={() => handleDelete(asset)}>
-                        Delete
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                  </tr>
+                );
+              })}
               {filteredAssets.length === 0 && (
                 <tr>
-                  <td className="px-3 py-4 text-center text-gray-400" colSpan={6}>
+                  <td className="px-3 py-4 text-center text-gray-400" colSpan={5}>
                     No animations found.
                   </td>
                 </tr>
@@ -303,13 +332,20 @@ const MedalCeremonyAnimationManager: React.FC = () => {
             />
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="primary" onClick={handleSubmit} disabled={saving}>
-            {saving ? 'Saving...' : form.id ? 'Update animation' : 'Add animation'}
-          </Button>
-          <Button variant="secondary" onClick={handleReset} disabled={saving}>
-            Reset
-          </Button>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={handleReset} disabled={saving}>
+              Add
+            </Button>
+            <Button variant="primary" onClick={handleSubmit} disabled={saving}>
+              {saving ? 'Saving...' : 'Save'}
+            </Button>
+          </div>
+          {form.id && (
+            <Button variant="danger" onClick={handleDeleteFromForm} disabled={saving}>
+              Delete
+            </Button>
+          )}
         </div>
       </div>
     </div>

@@ -257,7 +257,6 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
             t('flags.success.country_updates', 'Updated metadata for {count} flags', { count: result.country_updates })
           );
         }
-
         setSuccess(messageParts.join(' '));
         
         const errorParts: string[] = [];
@@ -524,8 +523,10 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
               </div>
 
               {selectedFlag.countryName && (
-                <div className="text-4xl font-bold uppercase tracking-widest text-gray-100 md:text-right">
-                  {selectedFlag.countryName}
+                <div className="flex-1 text-center">
+                  <span className="font-bold uppercase tracking-widest text-gray-100 text-[2.5rem] md:text-[2.5rem]">
+                    {selectedFlag.countryName}
+                  </span>
                 </div>
               )}
             </div>
