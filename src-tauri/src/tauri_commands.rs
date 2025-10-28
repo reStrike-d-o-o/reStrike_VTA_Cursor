@@ -4082,8 +4082,7 @@ fn update_flags_from_reports(conn: &rusqlite::Connection) -> anyhow::Result<Flag
         anyhow::bail!("No IOC country entries parsed from reports");
     }
 
-    let tx = conn.transaction()?;
-    let mut stmt = tx.prepare(
+    let mut stmt = conn.prepare(
         "UPDATE flags
          SET country_name = ?2,
              recognition_status = 'RECOGNIZED',
@@ -4115,8 +4114,6 @@ fn update_flags_from_reports(conn: &rusqlite::Connection) -> anyhow::Result<Flag
             }
         }
     }
-
-    tx.commit()?;
 
     Ok(FlagCountryUpdateStats {
         mapping_entries: country_map.len(),
@@ -4285,6 +4282,14 @@ pub async fn scan_and_populate_flags(
             }
         };
 
+    if country_updates > 0 {
+        log::info!(
+            "Applied country metadata to {} flags using {} IOC mappings",
+            country_updates,
+            country_map_entries
+        );
+    }
+
     Ok(serde_json::json!({
         "success": true,
         "processed_count": processed_count,
@@ -4362,7 +4367,9 @@ pub async fn get_flags_data(app: State<'_, Arc<App>>) -> Result<serde_json::Valu
             for row in rows {
                 let (status, count) = row
                     .map_err(|e| TauriError::from(anyhow::anyhow!("Failed to get stats: {}", e)))?;
-                stats_map.insert(status, count);
+                let key = status.to_lowercase();
+                let entry = stats_map.entry(key).or_insert(0);
+                *entry += count;
             }
             stats_map
         }
@@ -4375,9 +4382,9 @@ pub async fn get_flags_data(app: State<'_, Arc<App>>) -> Result<serde_json::Valu
         "count": flags.len(),
         "statistics": {
             "total": flags.len(),
-            "recognized": stats.get("recognized").unwrap_or(&0),
-            "pending": stats.get("pending").unwrap_or(&0),
-            "failed": stats.get("failed").unwrap_or(&0)
+            "recognized": stats.get("recognized").copied().unwrap_or(0),
+            "pending": stats.get("pending").copied().unwrap_or(0),
+            "failed": stats.get("failed").or(stats.get("error")).copied().unwrap_or(0)
         }
     }))
 }

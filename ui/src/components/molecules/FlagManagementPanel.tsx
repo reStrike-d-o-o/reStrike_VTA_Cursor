@@ -17,7 +17,6 @@ interface FlagInfo {
   id?: number;
   filename?: string;
   recognition_status?: string;
-  recognition_confidence?: number;
   upload_date?: string;
   file_size?: number;
 }
@@ -113,17 +112,6 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
         const handleResultToState = (res: any) => {
           const dbFlags: FlagInfo[] = (res.flags || []).map((flag: any) => {
             const iocCode = flag.ioc_code || flag.filename?.replace(/\.svg$/i, '') || '';
-            const rawConfidence = flag.recognition_confidence;
-            let confidence: number | undefined;
-            if (typeof rawConfidence === 'number') {
-              confidence = rawConfidence;
-            } else if (rawConfidence !== null && rawConfidence !== undefined) {
-              const parsed = Number(rawConfidence);
-              if (!Number.isNaN(parsed)) {
-                confidence = parsed;
-              }
-            }
-
             const filename = flag.filename || `${iocCode}.svg`;
 
             return {
@@ -137,7 +125,6 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
               recognition_status: typeof flag.recognition_status === 'string'
                 ? flag.recognition_status
                 : '',
-              recognition_confidence: confidence,
               upload_date: flag.upload_date,
               file_size: flag.file_size
             };
@@ -300,12 +287,6 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
 
   const normalizedSelectedStatus =
     (selectedFlag?.recognition_status || '').toLowerCase();
-  const normalizedSelectedConfidence =
-    selectedFlag && typeof selectedFlag.recognition_confidence === 'number'
-      ? selectedFlag.recognition_confidence > 1
-        ? selectedFlag.recognition_confidence
-        : selectedFlag.recognition_confidence * 100
-      : undefined;
 
   const clearFlagsDatabase = async () => {
     if (!window.__TAURI__) {
@@ -525,32 +506,29 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
         <div className="p-6 bg-gradient-to-br from-gray-800/80 to-gray-900/90 backdrop-blur-sm rounded-lg border border-gray-600/30 shadow-lg">
           <h3 className="text-lg font-semibold mb-4 text-gray-100">{t('flags.details.title', 'Flag Details')}</h3>
           <div className="space-y-4">
-            <div className="flex items-center space-x-4">
-              <img
-                src={getFlagUrl(selectedFlag.iocCode)}
-                alt={`${selectedFlag.countryName} flag`}
-                className="w-16 h-12 object-cover rounded border border-gray-600"
-                onError={(e) => handleFlagError(e, selectedFlag.iocCode)}
-              />
-              <span className="text-3xl">{getFlagConfig(selectedFlag.iocCode).fallbackEmoji}</span>
-              <div>
-                <div className="text-lg font-medium text-gray-200">
+            <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+              <div className="flex items-center space-x-4">
+                <img
+                  src={getFlagUrl(selectedFlag.iocCode)}
+                  alt={`${selectedFlag.countryName || selectedFlag.iocCode} flag`}
+                  className="w-16 h-12 object-cover rounded border border-gray-600"
+                  onError={(e) => handleFlagError(e, selectedFlag.iocCode)}
+                />
+                <span className="text-3xl">{getFlagConfig(selectedFlag.iocCode).fallbackEmoji}</span>
+                <div className="space-y-1">
+                  <div className="text-sm text-gray-400">{t('flags.details.ioc_code', 'IOC Code')}: {selectedFlag.iocCode}</div>
+                  {selectedFlag.filename && (
+                    <div className="text-xs text-gray-500">{t('flags.details.file', 'File')}: {selectedFlag.filename}</div>
+                  )}
+                </div>
+              </div>
+
+              {selectedFlag.countryName && (
+                <div className="text-4xl font-bold uppercase tracking-widest text-gray-100 md:text-right">
                   {selectedFlag.countryName}
                 </div>
-                <div className="text-sm text-gray-400">{t('flags.details.ioc_code', 'IOC Code')}: {selectedFlag.iocCode}</div>
-                {selectedFlag.filename && (
-                  <div className="text-xs text-gray-500">{t('flags.details.file', 'File')}: {selectedFlag.filename}</div>
-                )}
-              </div>
+              )}
             </div>
-
-            {selectedFlag.countryName && (
-              <div className="mt-6 rounded-lg border border-blue-700/40 bg-blue-900/20 px-6 py-8 text-center shadow-inner">
-                <span className="text-4xl font-bold uppercase tracking-widest text-blue-100">
-                  {selectedFlag.countryName}
-                </span>
-              </div>
-            )}
 
             {/* Database Information */}
             {selectedFlag.id && (
@@ -574,12 +552,6 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
                         {selectedFlag.recognition_status || 'unknown'}
                       </span>
                     </div>
-                    {normalizedSelectedConfidence !== undefined && (
-                      <div className="flex justify-between">
-                        <span className="text-xs text-gray-400">{t('flags.db.confidence', 'Confidence')}:</span>
-                        <span className="text-xs text-gray-300">{normalizedSelectedConfidence.toFixed(1)}%</span>
-                      </div>
-                    )}
                   </div>
                   <div className="space-y-2">
                     {selectedFlag.upload_date && (
