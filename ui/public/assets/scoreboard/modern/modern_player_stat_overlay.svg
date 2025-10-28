@@ -122,10 +122,10 @@
           <path class="cls-10" d="M19.012386,343.240308h517.128591c10.234554,0,18.5313-8.296746,18.5313-18.5313v-46.115429H.481136v46.115479c0,10.234527,8.296723,18.53125,18.53125,18.53125Z"/>
           <line class="cls-2" x1="144.461699" y1="290.327064" x2="144.461699" y2="331.690842"/>
           <line class="cls-3" x1="410.691713" y1="290.327064" x2="410.691713" y2="331.690842"/>
-          <text id="player2" class="cls-15" transform="translate(433.426392 328.41748)"><tspan x="0" y="0">118</tspan></text>
-          <text class="cls-18" transform="translate(504.325806 318.902832) scale(.583)"><tspan x="0" y="0">CM</tspan></text>
+          <text text-anchor="end" id="player2" class="cls-15" transform="translate(433.426392 328.41748)"><tspan x="70" y="0">118</tspan></text>
+          <text text-anchor="start" class="cls-18" transform="translate(504.325806 318.902832) scale(.583)"><tspan x="3" y="0">CM</tspan></text>
           <g id="player1">
-            <text class="cls-15" transform="translate(22.896622 328.41748)"><tspan x="0" y="0">110</tspan></text>
+            <text text-anchor="end" class="cls-15" transform="translate(22.896622 328.41748)"><tspan x="70" y="0">110</tspan></text>
             <text class="cls-18" transform="translate(95.396133 318.902832) scale(.583)"><tspan x="0" y="0">CM</tspan></text>
           </g>
           <text class="cls-11" transform="translate(158.809082 324.4552)"><tspan x="0" y="0">LEG LENGHT</tspan></text>
@@ -134,10 +134,10 @@
           <rect class="cls-10" x="-.00001" y="209.13037" width="554.672383" height="64.462709" transform="translate(554.672363 482.72345) rotate(180)"/>
           <line class="cls-2" x1="144.461699" y1="220.771846" x2="144.461699" y2="262.135624"/>
           <line class="cls-3" x1="410.691713" y1="220.771846" x2="410.691713" y2="262.135624"/>
-          <text id="player2-2" data-name="player2" class="cls-15" transform="translate(430.176392 258.862305)"><tspan x="0" y="0">197</tspan></text>
+          <text text-anchor="end" id="player2-2" data-name="player2" class="cls-15" transform="translate(430.176392 258.862305)"><tspan x="75" y="0">197</tspan></text>
           <text class="cls-18" transform="translate(507.575317 249.347656) scale(.583)"><tspan x="0" y="0">CM</tspan></text>
           <g id="player1-2" data-name="player1">
-            <text class="cls-15" transform="translate(23.221817 258.862305)"><tspan x="0" y="0">191</tspan></text>
+            <text text-anchor="end" class="cls-15" transform="translate(23.221817 258.862305)"><tspan x="70" y="0">191</tspan></text>
             <text class="cls-17" transform="translate(95.070938 249.347656) scale(.583)"><tspan x="0" y="0">CM</tspan></text>
           </g>
           <text class="cls-11" transform="translate(204.844238 254.900513)"><tspan x="0" y="0">HEIGHT</tspan></text>
@@ -146,11 +146,11 @@
           <rect class="cls-10" x="-.00001" y="139.667162" width="554.672383" height="64.462709"/>
           <line class="cls-2" x1="144.461699" y1="151.216627" x2="144.461699" y2="192.580405"/>
           <line class="cls-3" x1="410.691713" y1="151.216627" x2="410.691713" y2="192.580405"/>
-          <text id="player2-3" data-name="player2" class="cls-15" transform="translate(437.834595 189.398926)"><tspan x="0" y="0">80</tspan></text>
-          <text class="cls-17" transform="translate(501.633911 179.884277) scale(.583)"><tspan x="0" y="0">KG</tspan></text>
+          <text text-anchor="end" id="player2-3" data-name="player2" class="cls-15" transform="translate(437.834595 189.398926)"><tspan x="70" y="0">80</tspan></text>
+          <text text-anchor="start" class="cls-17" transform="translate(501.633911 179.884277) scale(.583)"><tspan x="15" y="0">KG</tspan></text>
           <g id="player1-3" data-name="player1">
-            <text class="cls-15" transform="translate(28.104141 189.398926)"><tspan x="0" y="0">80</tspan></text>
-            <text class="cls-17" transform="translate(91.903458 179.884277) scale(.583)"><tspan x="0" y="0">KG</tspan></text>
+            <text text-anchor="end" class="cls-15" transform="translate(28.104141 189.398926)"><tspan x="70" y="0">80</tspan></text>
+            <text text-anchor="start" class="cls-17" transform="translate(91.903458 179.884277) scale(.583)"><tspan x="15" y="0">KG</tspan></text>
           </g>
           <text class="cls-11" transform="translate(201.971191 185.43689)"><tspan x="0" y="0">WEIGHT</tspan></text>
         </g>
@@ -158,9 +158,9 @@
           <polygon class="cls-10" points="554.191227 70.019933 .000137 70.019933 .000087 70.019983 .000087 112.952306 .000087 134.666662 554.191227 134.666662 554.191227 112.952306 554.191227 70.019933"/>
           <line class="cls-2" x1="144.461699" y1="81.661408" x2="144.461699" y2="123.025186"/>
           <line class="cls-3" x1="410.691713" y1="81.661408" x2="410.691713" y2="123.025186"/>
-          <text id="player2-4" data-name="player2" class="cls-15" transform="translate(453.410278 120.143066)"><tspan x="0" y="0">22</tspan></text>
+          <text text-anchor="middle" id="player2-4" data-name="player2" class="cls-15" transform="translate(453.410278 120.143066)"><tspan x="25" y="0">22</tspan></text>
           <g id="player1-4" data-name="player1">
-            <text class="cls-15" transform="translate(49.430801 120.143066)"><tspan x="0" y="0">21</tspan></text>
+            <text text-anchor="middle" class="cls-15" transform="translate(49.430801 120.143066)"><tspan x="20" y="0">21</tspan></text>
           </g>
           <text class="cls-11" transform="translate(239.456543 115.881958)"><tspan x="0" y="0">AGE</tspan></text>
         </g>
@@ -168,8 +168,8 @@
           <path class="cls-14" d="M475.653971-.000123L78.53738.000056c-10.234554.000004-18.531297,8.296752-18.531294,18.531306l.000008,24.401073.000008,21.714355,434.179141-.000192-.000008-21.714355-.000008-24.401123c-.000004-10.234527-8.29673-18.531247-18.531256-18.531244Z"/>
           <path class="cls-22" d="M116.756005,39.171611v-21.982733C116.756005,7.695655,109.060232-.000123,99.567014-.000123H17.189102C7.695871-.000123.000087,7.695665.000087,17.188901v52.831082h277.095578v-5.189306h-134.680607c-14.171104,0-25.659053-11.487955-25.659053-25.659067Z"/>
           <path class="cls-20" d="M437.435325,39.171611v-21.982733c0-9.493223,7.695774-17.189001,17.188992-17.189001h82.377912c9.493231,0,17.189015,7.695788,17.189015,17.189024v47.641776s0,5.189306,0,5.189306h-277.095578v-5.189306h134.680607c14.171104,0,25.659053-11.487955,25.659053-25.659066Z"/>
-          <text class="cls-9" transform="translate(224.768188 43.849609)"><tspan x="0" y="0">-80KG</tspan></text>
-          <text id="player2Country" class="cls-16" transform="translate(453.23645 48.379639)"><tspan x="0" y="0">CRO</tspan></text>
+          <text text-anchor="middle" class="cls-9" transform="translate(224.768188 43.849609)"><tspan x="50" y="0">-80KG</tspan></text>
+          <text text-anchor="middle" id="player2Country" class="cls-16" transform="translate(453.23645 48.379639)"><tspan x="40" y="0">CRO</tspan></text>
           <g id="rightPlayerFlagPlaceholder">
             <rect class="cls-5" x="346.701172" y="10.660156" width="64.490234" height="43.32666"/>
             <path class="cls-10" d="M410.691711,11.159973v42.326721h-63.490112V11.159973h63.490112M411.691711,10.159973h-65.490112v44.326721h65.490112V10.159973h0Z"/>
@@ -456,7 +456,7 @@
               </g>
             </g>
           </g>
-          <text id="player1Country" class="cls-16" transform="translate(20.390747 48.379639)"><tspan x="0" y="0">AUT</tspan></text>
+          <text text-anchor="middle" id="player1Country" class="cls-16" transform="translate(20.390747 48.379639)"><tspan x="35" y="0">AUT</tspan></text>
           <g id="leftPlayerFlagPlaceholder">
             <rect class="cls-5" x="143.961914" y="10.660156" width="64.489746" height="43.32666"/>
             <path class="cls-10" d="M207.951797,11.159973v42.326721h-63.490097V11.159973h63.490097M208.951797,10.159973h-65.490097v44.326721h65.490097V10.159973h0Z"/>

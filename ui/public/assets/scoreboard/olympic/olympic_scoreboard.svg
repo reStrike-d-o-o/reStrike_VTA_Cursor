@@ -77,7 +77,7 @@
       }
 
       .cls-24 {
-        fill: none;
+        fill: #ccc;
       }
 
       .cls-20 {
@@ -154,27 +154,24 @@
     <clipPath id="clippath">
       <rect class="cls-1" x="134.924696" y="176.746501" width="46.821856" height="31.214571"/>
     </clipPath>
-    <clipPath id="clippath_p1">
-      <rect class="cls-1" x="134.924696" y="128.074079" width="46.821856" height="31.214571"/>
-    </clipPath>
   </defs>
   <!-- Generator: Adobe Illustrator 28.7.5, SVG Export Plug-In . SVG Version: 1.2.0 Build 176)  -->
   <g>
     <g id="scoreboard">
-      <rect id="BG" class="cls-24" width="683.338133" height="337.757576"/>
+
       <g id="scoreboard-2" data-name="scoreboard">
         <rect id="injury_x5F_time_x5F_bg" class="cls-36" x="301.805193" y="71.211027" width="97.344844" height="35.330959"/>
-        <text id="injuryTime" class="cls-10" text-anchor="middle" dominant-baseline="central" alignment-baseline="central" transform="translate(350.477615 91.000000)"><tspan x="0" y="0">0:33</tspan></text>
+        <text text-anchor="middle" id="injury_x5F_time" class="cls-10" transform="translate(322.360777 97.863102)"><tspan x="25" y="0">0:33</tspan></text>
         <rect id="time_x5F_bg" class="cls-21" x="181.746552" y="71.211027" width="120.058641" height="35.330959"/>
-        <text id="matchTimer" class="cls-8" text-anchor="middle" dominant-baseline="central" alignment-baseline="central" transform="translate(241.775872 91.000000)"><tspan x="0" y="0">1:54</tspan></text>
+        <text text-anchor="middle" id="time" class="cls-8" transform="translate(217.246519 97.7215)"><tspan x="25" y="0">1:54</tspan></text>
         <rect id="round_x5F_bg" class="cls-25" x="125.367663" y="71.211027" width="56.378889" height="35.330959"/>
-        <text id="currentRound" class="cls-19" text-anchor="middle" dominant-baseline="central" alignment-baseline="central" transform="translate(153.557107 91.000000)"><tspan x="0" y="0">1st</tspan></text>
+        <text text-anchor="end" id="round" class="cls-19" transform="translate(138.622496 97.278629)"><tspan x="30" y="0">1st</tspan></text>
         <rect id="tournament_x5F_name_x5F_bg" class="cls-25" x="125.367663" y="229.493164" width="225.109952" height="35.330959"/>
-        <text id="matchInfo" class="cls-20" text-anchor="middle" dominant-baseline="middle" transform="translate(237.922639 247.159644)"><tspan class="cls-9" x="0" y="0">Men’s under 68kg</tspan></text>
+        <text id="tournament_x5F_name" class="cls-20" transform="translate(134.92523 254.078434)"><tspan text-anchor="start" class="cls-9" x="0" y="0">Men’s under</tspan><tspan text-anchor="start" class="cls-22" x="127.598633" y="0" xml:space="preserve"> 68kg</tspan></text>
         <rect id="match_x5F_bg" class="cls-21" x="350.477615" y="229.493164" width="97.344844" height="35.330959"/>
-        <text id="match" class="cls-8" transform="translate(360.913984 256.003239)"><tspan x="0" y="0">00123</tspan></text>
+        <text text-anchor="middle" id="match" class="cls-8" transform="translate(360.913984 256.003239)"><tspan x="40" y="0">00123</tspan></text>
         <g id="tournament_x5F_logo">
-          <rect class="cls-12" x="460.625626" y="119.345153" width="97.344844" height="97.344844"/>
+
           <g>
             <path class="cls-29" d="M481.821262,156.11871c2.226787,0,4.040259-2.355054,4.040259-5.263746,0-2.907554-1.813472-5.261654-4.040259-5.261654-2.232078,0-4.044407,2.3541-4.044407,5.261654,0,2.908693,1.812329,5.263746,4.044407,5.263746"/>
             <path class="cls-5" d="M480.848056,169.008902c.006771.035381.006771.074481.009537.107334l.009107-.005817c.468197,1.885855,1.680294,3.886291,3.76594,6.006173.238891.143001.612819.229831.928766-.233026.842604-1.78162,3.511934-5.976181,15.185636-12.440633-5.789691,2.390005-13.044107,4.64769-20.093627,4.820678-.007915.569958.054025,1.15412.194641,1.745291"/>
@@ -185,7 +182,7 @@
             <path d="M488.496854,199.15802c4.309619-5.670009,18.069874-25.088209,22.425125-36.714849-1.616733,4.319632-5.977325,7.930079-14.433583,13.407068l-3.246531,8.665777-5.363361,14.314853c.026084.168797.30846.73484.618351.327152"/>
           </g>
         </g>
-        <g id="logo_x5F_position2" class="cls-34" data-logo-scale="1.3">
+        <g id="logo_x5F_position2" class="cls-34">
           <path class="cls-12" d="M328.201155,83.71011v3.470968h-8.531416c-.105949,0-.185441.079369-.185441.185441v11.710499h-3.470844v-11.710499c0-2.013646,1.642763-3.656409,3.656286-3.656409h8.531416Z"/>
           <path class="cls-12" d="M347.568651,87.366519v5.775881h-12.134665v2.278456c0,.106072.079493.185441.185441.185441h11.949224v3.470721h-11.949224c-2.013646,0-3.656286-1.642516-3.656286-3.656162v-8.054337c0-2.013646,1.64264-3.656409,3.656286-3.656409h8.292938c2.013646,0,3.656286,1.642763,3.656286,3.656409ZM344.097807,89.644976v-2.278456c0-.106072-.079493-.185441-.185441-.185441h-8.292938c-.105949,0-.185441.079369-.185441.185441v2.278456h8.663821Z"/>
           <path class="cls-12" d="M371.360284,85.140728h-3.523881v-1.457322c0-.105825-.079493-.185441-.158985-.185441h-11.710746c-.105949,0-.185441.079616-.185441.185441v3.921467c0,.105825.079493.185441.185441.185441h11.710746c2.013646,0,3.682866,1.642763,3.682866,3.682618v3.921467c0,2.040102-1.66922,3.682618-3.682866,3.682618h-11.710746c-2.040102,0-3.682742-1.642516-3.682742-3.682618v-1.457322h3.497301v1.457322c0,.105825.079493.185441.185441.185441h11.710746c.079493,0,.158985-.079616.158985-.185441v-3.921467c0-.105825-.079493-.185441-.158985-.185441h-11.710746c-2.040102,0-3.682742-1.642516-3.682742-3.682618v-3.921467c0-2.039855,1.64264-3.682618,3.682742-3.682618h11.710746c2.013646,0,3.682866,1.642763,3.682866,3.682618v1.457322Z"/>
@@ -195,7 +192,7 @@
           <path class="cls-12" d="M429.249888,83.71011v.900751l-6.147011,6.782704,6.147011,6.782704v.900751h-3.735778l-5.484614-5.934618h-2.728708v5.934618h-3.470968v-20.401023h3.470968v10.968981h2.728708l5.484614-5.934866h3.735778Z"/>
           <path class="cls-12" d="M447.822459,87.366519v5.775881h-12.134541v2.278456c0,.106072.079369.185441.185441.185441h11.9491v3.470721h-11.9491c-2.013646,0-3.656162-1.642516-3.656162-3.656162v-8.054337c0-2.013646,1.642516-3.656409,3.656162-3.656409h8.292938c2.013646,0,3.656162,1.642763,3.656162,3.656409ZM444.351738,89.644976v-2.278456c0-.106072-.079369-.185441-.185441-.185441h-8.292938c-.106072,0-.185441.079369-.185441.185441v2.278456h8.663821Z"/>
         </g>
-        <g id="logo_x5F_position1" data-logo-scale="1.3">
+        <g id="logo_x5F_position1">
           <path class="cls-12" d="M438.349166,83.71011v3.470968h-8.531416c-.105949,0-.185441.079369-.185441.185441v11.710499h-3.470844v-11.710499c0-2.013646,1.642763-3.656409,3.656286-3.656409h8.531416Z"/>
           <path class="cls-12" d="M457.716662,87.366519v5.775881h-12.134665v2.278456c0,.106072.079493.185441.185441.185441h11.949224v3.470721h-11.949224c-2.013646,0-3.656286-1.642516-3.656286-3.656162v-8.054337c0-2.013646,1.64264-3.656409,3.656286-3.656409h8.292938c2.013646,0,3.656286,1.642763,3.656286,3.656409ZM454.245818,89.644976v-2.278456c0-.106072-.079493-.185441-.185441-.185441h-8.292938c-.105949,0-.185441.079369-.185441.185441v2.278456h8.663821Z"/>
           <path class="cls-12" d="M481.508295,85.140728h-3.523881v-1.457322c0-.105825-.079493-.185441-.158985-.185441h-11.710746c-.105949,0-.185441.079616-.185441.185441v3.921467c0,.105825.079493.185441.185441.185441h11.710746c2.013646,0,3.682866,1.642763,3.682866,3.682618v3.921467c0,2.040102-1.66922,3.682618-3.682866,3.682618h-11.710746c-2.040102,0-3.682742-1.642516-3.682742-3.682618v-1.457322h3.497301v1.457322c0,.105825.079493.185441.185441.185441h11.710746c.079493,0,.158985-.079616.158985-.185441v-3.921467c0-.105825-.079493-.185441-.158985-.185441h-11.710746c-2.040102,0-3.682742-1.642516-3.682742-3.682618v-3.921467c0-2.039855,1.64264-3.682618,3.682742-3.682618h11.710746c2.013646,0,3.682866,1.642763,3.682866,3.682618v1.457322Z"/>
@@ -210,15 +207,17 @@
           <rect class="cls-28" x="301.805193" y="168.017575" width="48.672422" height="48.672422"/>
           <rect class="cls-21" x="350.477615" y="168.017575" width="48.672422" height="48.672422"/>
           <rect class="cls-36" x="399.150037" y="168.017575" width="48.672422" height="48.672422"/>
-          <text id="player2Fouls" class="cls-18" transform="translate(415.510923 201.853092)"><tspan x="0" y="0">1</tspan></text>
-          <text id="player2Rounds" class="cls-13" text-anchor="middle" dominant-baseline="central" alignment-baseline="central" transform="translate(374.45358 195.000000)"><tspan x="0" y="0">0</tspan></text>
-          <g id="player2Score"><text class="cls-6" text-anchor="middle" dominant-baseline="central" alignment-baseline="central" transform="translate(326.141804 196.000000)"><tspan x="0" y="0">2</tspan></text></g>
-          <text id="player2Name" class="cls-11" transform="translate(203.027525 204.853092)"><tspan x="0" y="0">CRO</tspan></text>
+          <text text-anchor="middle" id="player2_x5F_fouls" class="cls-18" transform="translate(418.756529 201.853092)"><tspan x="5" y="0">1</tspan></text>
+          <text text-anchor="middle" id="player2_x5F_round" class="cls-13" transform="translate(367.117369 201.853092)"><tspan x="8" y="0">0</tspan></text>
+          <g id="player2_x5F_score">
+            <text text-anchor="middle" class="cls-6" transform="translate(316.961607 204.853092)"><tspan x="9" y="0">2</tspan></text>
+          </g>
+          <text text-anchor="middle" id="player2_x5F_name" class="cls-11" transform="translate(203.027525 204.853092)"><tspan x="40" y="0">CRO</tspan></text>
           <g>
             <rect class="cls-24" x="134.674864" y="176.496952" width="47.321777" height="31.713867"/>
             <path class="cls-25" d="M181.74655,176.746525v31.214539h-46.821869v-31.214539h46.821869M182.24655,176.246525h-47.821869v32.214539h47.821869v-32.214539h0Z"/>
           </g>
-          <g id="player2Flag" class="cls-35">
+          <g class="cls-35">
             <g>
               <rect class="cls-17" x="127.121039" y="176.746494" width="62.429169" height="31.214585"/>
               <rect class="cls-12" x="127.121039" y="176.746494" width="62.429169" height="20.809723"/>
@@ -504,17 +503,17 @@
           <rect class="cls-32" x="301.805193" y="119.345153" width="48.672422" height="48.672422"/>
           <rect class="cls-21" x="350.477615" y="119.345153" width="48.672422" height="48.672422"/>
           <rect class="cls-36" x="399.150037" y="119.345153" width="48.672422" height="48.672422"/>
-          <g id="player1Flag" clip-path="url(#clippath_p1)">
-            <rect class="cls-27" x="127.121039" y="128.074079" width="62.429169" height="31.214571"/>
-            <rect class="cls-12" x="127.121039" y="138.478936" width="62.429169" height="10.404857"/>
-          </g>
-          <text id="player1Fouls" class="cls-18" transform="translate(414.510923 153.072208)"><tspan x="0" y="0">3</tspan></text>
-          <text id="player1Rounds" class="cls-13" text-anchor="middle" dominant-baseline="central" alignment-baseline="central" transform="translate(374.142846 146.000000)"><tspan x="0" y="0">0</tspan></text>
-          <text id="player1Score" class="cls-7" text-anchor="middle" dominant-baseline="central" alignment-baseline="central" transform="translate(323.959404 147.000000)"><tspan x="0" y="0">0</tspan></text>
-          <text id="player1Name" class="cls-11" transform="translate(204.027525 155.966251)"><tspan x="0" y="0">AUT</tspan></text>
+          <text text-anchor="middle" id="player1_x5F_fouls" class="cls-18" transform="translate(414.510923 153.072208)"><tspan x="9" y="0">3</tspan></text>
+          <text text-anchor="middle" id="player1_x5F_round" class="cls-13" transform="translate(366.101744 153.180607)"><tspan x="9" y="0">0</tspan></text>
+          <text text-anchor="middle" id="player1_x5F_score" class="cls-7" transform="translate(314.464048 156.180607)"><tspan x="11" y="0">0</tspan></text>
+          <text text-anchor="middle" id="player1_x5F_name" class="cls-11" transform="translate(206.788267 155.966251)"><tspan x="35" y="0">AUT</tspan></text>
           <g id="flag1_x5F_placeholder">
             <rect class="cls-24" x="134.674864" y="127.8241" width="47.321777" height="31.714355"/>
             <path class="cls-25" d="M181.74655,128.07407v31.214569h-46.821869v-31.214569h46.821869M182.24655,127.57407h-47.821869v32.214569h47.821869v-32.214569h0Z"/>
+          </g>
+          <g id="flag1">
+            <rect class="cls-27" x="134.924696" y="128.074079" width="46.821856" height="31.214571"/>
+            <rect class="cls-12" x="134.924696" y="138.478936" width="46.821856" height="10.404857"/>
           </g>
         </g>
         <g id="divider">

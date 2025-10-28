@@ -104,7 +104,7 @@
       <g id="players_x5F_overlay">
         <g id="player2_x5F_red">
           <rect id="player2_x5F_bg" class="cls-18" x="879.949353" y=".339072" width="654.828957" height="65.999524" transform="translate(2414.727663 66.677669) rotate(180)"/>
-          <text id="player2Country" class="cls-11" transform="translate(1413.594635 49.984619)"><tspan x="0" y="0">CRO</tspan></text>
+          <text text-anchor="middle" id="player2Country" class="cls-11" transform="translate(1413.594635 49.984619)"><tspan x="55" y="0">CRO</tspan></text>
           <rect class="cls-15" x="945.948813" y=".339072" width="65.99946" height="65.999524" transform="translate(1957.897087 66.677669) rotate(180)"/>
           <g id="rightPlayerFlagPlaceholder">
             <rect class="cls-3" x="1331.991211" y="11.836426" width="64.167969" height="43.004395"/>
@@ -392,12 +392,12 @@
               </g>
             </g>
           </g>
-          <text id="player2Name" class="cls-9" transform="translate(1138.577301 46.014893)"><tspan x="0" y="0">M. NILSEN</tspan></text>
+          <text text-anchor="end" id="player2Name" class="cls-9" transform="translate(1138.577301 46.014893)"><tspan x="170" y="0">M. NILSEN</tspan></text>
           <rect class="cls-2" x="879.949353" y=".339072" width="654.828957" height="65.999524" transform="translate(2414.727663 66.677669) rotate(180)"/>
         </g>
         <g id="player1_x5F_blue">
           <rect id="player1_x5F_bg" class="cls-18" x=".677989" y=".339106" width="654.828957" height="65.99946"/>
-          <text id="player1Country" class="cls-11" transform="translate(21.567543 49.997314)"><tspan x="0" y="0">AUT</tspan></text>
+          <text text-anchor="middle" id="player1Country" class="cls-11" transform="translate(21.567543 49.997314)"><tspan x="45" y="0">AUT</tspan></text>
           <rect class="cls-17" x="523.508025" y=".339106" width="65.99946" height="65.99946"/>
           <g id="leftPlayerFlagPlaceholder">
             <rect class="cls-3" x="139.296875" y="11.836426" width="64.167969" height="43.004395"/>
@@ -407,7 +407,7 @@
             <rect class="cls-14" x="139.635835" y="12.175468" width="63.490106" height="42.326737"/>
             <rect class="cls-12" x="139.635835" y="26.28438" width="63.490106" height="14.108912"/>
           </g>
-          <text id="player1Name" class="cls-10" transform="translate(228.391273 46.026611)"><tspan x="0" y="0">L. ANDRICH</tspan></text>
+          <text text-anchor="start" id="player1Name" class="cls-10" transform="translate(228.391273 46.026611)"><tspan x="0" y="0">L. ANDRICH</tspan></text>
           <rect class="cls-2" x=".677989" y=".339106" width="654.828957" height="65.99946"/>
         </g>
       </g>

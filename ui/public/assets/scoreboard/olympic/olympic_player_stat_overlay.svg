@@ -112,11 +112,11 @@
           <rect class="cls-21" x="144.899184" y="272.462302" width="266.230014" height="65.99946"/>
           <rect class="cls-2" x=".677999" y="272.462302" width="554.672383" height="65.99946"/>
           <text class="cls-8" transform="translate(149.592773 320.505249)"><tspan x="0" y="0">LEG LENGHT</tspan></text>
-          <text id="player2" class="cls-11" transform="translate(435.673584 322.962158)"><tspan x="0" y="0">118</tspan></text>
-          <text class="cls-12" transform="translate(506.572998 313.44751) scale(.583)"><tspan x="0" y="0">CM</tspan></text>
+          <text text-anchor="end" id="player2" class="cls-11" transform="translate(435.673584 322.962158)"><tspan x="75" y="0">118</tspan></text>
+          <text text-anchor="start" class="cls-12" transform="translate(506.572998 313.44751) scale(.583)"><tspan x="10" y="0">CM</tspan></text>
           <g id="player1">
-            <text class="cls-11" transform="translate(24.422272 322.962158)"><tspan x="0" y="0">110</tspan></text>
-            <text class="cls-12" transform="translate(96.921783 313.44751) scale(.583)"><tspan x="0" y="0">CM</tspan></text>
+            <text text-anchor="end" class="cls-11" transform="translate(24.422272 322.962158)"><tspan x="70" y="0">110</tspan></text>
+            <text text-anchor="start" class="cls-12" transform="translate(96.921783 313.44751) scale(.583)"><tspan x="5" y="0">CM</tspan></text>
           </g>
         </g>
         <g id="height">
@@ -124,11 +124,11 @@
           <rect class="cls-21" x="144.899184" y="206.462841" width="266.230014" height="65.99946"/>
           <rect class="cls-2" x=".677999" y="206.462841" width="554.672383" height="65.99946"/>
           <text class="cls-8" transform="translate(200.742188 254.50647)"><tspan x="0" y="0">HEIGHT</tspan></text>
-          <text id="player2-2" data-name="player2" class="cls-11" transform="translate(432.424072 256.963135)"><tspan x="0" y="0">197</tspan></text>
-          <text class="cls-12" transform="translate(509.822998 247.448486) scale(.583)"><tspan x="0" y="0">CM</tspan></text>
+          <text text-anchor="end" id="player2-2" data-name="player2" class="cls-11" transform="translate(432.424072 256.963135)"><tspan x="80" y="0">197</tspan></text>
+          <text text-anchor="start" class="cls-12" transform="translate(509.822998 247.448486) scale(.583)"><tspan x="5" y="0">CM</tspan></text>
           <g id="player1-2" data-name="player1">
-            <text class="cls-11" transform="translate(24.746979 256.963135)"><tspan x="0" y="0">191</tspan></text>
-            <text class="cls-12" transform="translate(96.596588 247.448486) scale(.583)"><tspan x="0" y="0">CM</tspan></text>
+            <text text-anchor="end" class="cls-11" transform="translate(24.746979 256.963135)"><tspan x="70" y="0">191</tspan></text>
+            <text text-anchor="start" class="cls-12" transform="translate(96.596588 247.448486) scale(.583)"><tspan x="5" y="0">CM</tspan></text>
           </g>
         </g>
         <g id="weight">
@@ -136,11 +136,11 @@
           <rect class="cls-21" x="144.899184" y="140.463381" width="266.230014" height="65.99946"/>
           <rect class="cls-2" x=".677999" y="140.463381" width="554.672383" height="65.99946"/>
           <text class="cls-8" transform="translate(196.049805 188.50647)"><tspan x="0" y="0">WEIGHT</tspan></text>
-          <text id="player2-3" data-name="player2" class="cls-11" transform="translate(440.5896 190.963135)"><tspan x="0" y="0">80</tspan></text>
-          <text class="cls-12" transform="translate(504.389404 181.448486) scale(.583)"><tspan x="0" y="0">KG</tspan></text>
+          <text text-anchor="end" id="player2-3" data-name="player2" class="cls-11" transform="translate(440.5896 190.963135)"><tspan x="70" y="0">82</tspan></text>
+          <text text-anchor="start" class="cls-12" transform="translate(504.389404 181.448486) scale(.583)"><tspan x="15" y="0">KG</tspan></text>
           <g id="player1-3" data-name="player1">
-            <text class="cls-11" transform="translate(30.138092 190.963135)"><tspan x="0" y="0">80</tspan></text>
-            <text class="cls-12" transform="translate(93.937897 181.448486) scale(.583)"><tspan x="0" y="0">KG</tspan></text>
+            <text text-anchor="end" class="cls-11" transform="translate(30.138092 190.963135)"><tspan x="70" y="0">80</tspan></text>
+            <text text-anchor="start" class="cls-12" transform="translate(93.937897 181.448486) scale(.583)"><tspan x="15" y="0">KG</tspan></text>
           </g>
         </g>
         <g id="age">
@@ -148,9 +148,9 @@
           <rect class="cls-21" x="144.899184" y="74.463921" width="266.230014" height="65.99946"/>
           <rect class="cls-2" x=".677999" y="74.463921" width="554.672383" height="65.99946"/>
           <text class="cls-8" transform="translate(236.463867 122.50769)"><tspan x="0" y="0">AGE</tspan></text>
-          <text id="player2-4" data-name="player2" class="cls-11" transform="translate(455.707275 125.263916)"><tspan x="0" y="0">22</tspan></text>
+          <text text-anchor="middle" id="player2-4" data-name="player2" class="cls-11" transform="translate(455.707275 125.263916)"><tspan x="30" y="0">22</tspan></text>
           <g id="player1-4" data-name="player1">
-            <text class="cls-11" transform="translate(49.580963 125.263916)"><tspan x="0" y="0">21</tspan></text>
+            <text text-anchor="middle" class="cls-11" transform="translate(49.580963 125.263916)"><tspan x="20" y="0">21</tspan></text>
           </g>
         </g>
         <g id="title_x5F_info">
@@ -158,9 +158,9 @@
             <rect class="cls-19" x="1.356445" y=".678223" width="553.316406" height="63.106445"/>
             <path class="cls-19" d="M553.994385,1.356201v61.750732H2.033976V1.356201h551.960408M555.350403.000214H.677976v64.462708h554.672426V.000214h0Z"/>
           </g>
-          <text class="cls-9" transform="translate(225.211853 43.758057)"><tspan x="0" y="0">-80KG</tspan></text>
+          <text text-anchor="middle" class="cls-9" transform="translate(225.211853 43.758057)"><tspan x="50" y="0">-80KG</tspan></text>
           <g id="country2">
-            <text class="cls-7" transform="translate(430.695801 48.889893)"><tspan x="0" y="0">CRO</tspan></text>
+            <text text-anchor="middle" class="cls-7" transform="translate(430.695801 48.889893)"><tspan x="55" y="0">CRO</tspan></text>
           </g>
           <g id="flag2_x5F_placeholder">
             <rect class="cls-3" x="347.299805" y="10.729492" width="64.167969" height="43.004395"/>
@@ -448,7 +448,7 @@
               </g>
             </g>
           </g>
-          <text id="country1" class="cls-7" transform="translate(25.35321 48.889893)"><tspan x="0" y="0">AUT</tspan></text>
+          <text text-anchor="middle" id="country1" class="cls-7" transform="translate(25.35321 48.889893)"><tspan x="45" y="0">AUT</tspan></text>
           <g id="flag1_x5F_placeholder">
             <rect class="cls-3" x="144.560547" y="10.729492" width="64.16748" height="43.004395"/>
             <path class="cls-10" d="M208.389282,11.068207v42.326721h-63.490097V11.068207h63.490097M209.067291,10.390198h-64.8461v43.682739h64.8461V10.390198h0Z"/>
