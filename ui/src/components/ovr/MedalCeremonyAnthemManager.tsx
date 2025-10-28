@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Button from '../atoms/Button';
 import Input from '../atoms/Input';
 import Label from '../atoms/Label';
@@ -51,8 +51,13 @@ const MedalCeremonyAnthemManager: React.FC = () => {
   const [form, setForm] = useState<AnthemForm>(defaultAnthemForm);
   const [message, setMessage] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const hasLoadedRef = useRef(false);
 
   useEffect(() => {
+    if (hasLoadedRef.current) {
+      return;
+    }
+    hasLoadedRef.current = true;
     void loadAssets();
   }, [loadAssets]);
 
