@@ -59,6 +59,7 @@ export interface MedalCeremonyStore {
   detail: MedalCeremonyDetail | null;
   flagAssets: FlagAnimationAsset[];
   anthemAssets: AnthemAsset[];
+  assetsInitialized: boolean;
   preparedDivisions: MedalCeremonyDivision[];
   divisionOptions: MedalCeremonyDivisionOption[];
   athleteOptions: Record<string, MedalCeremonyAthleteOption[]>;
@@ -80,7 +81,7 @@ export interface MedalCeremonyStore {
   markDivisionPlayed: (divisionId: string) => Promise<void>;
   resetPlayback: (id?: string) => Promise<void>;
   toggleExternalDisplay: (enabled: boolean) => Promise<void>;
-  loadAssets: () => Promise<void>;
+  loadAssets: (force?: boolean) => Promise<void>;
   loadDivisionOptions: () => Promise<void>;
   loadAthletesForDivision: (division: string) => Promise<MedalCeremonyAthleteOption[]>;
   saveFlagAsset: (asset: FlagAnimationAsset) => Promise<string | null>;
@@ -117,6 +118,7 @@ export const useMedalCeremonyStore = create<MedalCeremonyStore>((set, get) => ({
   detail: null,
   flagAssets: [],
   anthemAssets: [],
+  assetsInitialized: false,
   preparedDivisions: [],
   divisionOptions: [],
   athleteOptions: {},
@@ -299,14 +301,22 @@ export const useMedalCeremonyStore = create<MedalCeremonyStore>((set, get) => ({
     }
   },
 
-  loadAssets: async () => {
+  loadAssets: async (force = false) => {
+    const { assetsInitialized } = get();
+    if (assetsInitialized && !force) {
+      return;
+    }
     set({ loading: true, error: null });
     try {
       const [flags, anthems] = await Promise.all([
         medalCeremonyCommands.listFlagAssets(),
         medalCeremonyCommands.listAnthemAssets(),
       ]);
-      set({ flagAssets: flags, anthemAssets: anthems });
+      set({
+        flagAssets: flags,
+        anthemAssets: anthems,
+        assetsInitialized: true,
+      });
       broadcastStateSnapshot(get());
     } catch (error) {
       console.error('Failed to load medal ceremony assets', error);
@@ -357,7 +367,7 @@ export const useMedalCeremonyStore = create<MedalCeremonyStore>((set, get) => ({
     set({ saving: true, error: null });
     try {
       const id = await medalCeremonyCommands.saveFlagAsset(asset);
-      await get().loadAssets();
+      await get().loadAssets(true);
       return id;
     } catch (error) {
       console.error('Failed to save flag animation asset', error);
@@ -372,7 +382,7 @@ export const useMedalCeremonyStore = create<MedalCeremonyStore>((set, get) => ({
     set({ loading: true, error: null });
     try {
       await medalCeremonyCommands.deleteFlagAsset(assetId);
-      await get().loadAssets();
+      await get().loadAssets(true);
     } catch (error) {
       console.error('Failed to delete flag animation asset', error);
       set({ error: error instanceof Error ? error.message : String(error) });
@@ -385,7 +395,7 @@ export const useMedalCeremonyStore = create<MedalCeremonyStore>((set, get) => ({
     set({ saving: true, error: null });
     try {
       const id = await medalCeremonyCommands.saveAnthemAsset(asset);
-      await get().loadAssets();
+      await get().loadAssets(true);
       return id;
     } catch (error) {
       console.error('Failed to save anthem asset', error);
@@ -400,7 +410,7 @@ export const useMedalCeremonyStore = create<MedalCeremonyStore>((set, get) => ({
     set({ loading: true, error: null });
     try {
       await medalCeremonyCommands.deleteAnthemAsset(assetId);
-      await get().loadAssets();
+      await get().loadAssets(true);
     } catch (error) {
       console.error('Failed to delete anthem asset', error);
       set({ error: error instanceof Error ? error.message : String(error) });

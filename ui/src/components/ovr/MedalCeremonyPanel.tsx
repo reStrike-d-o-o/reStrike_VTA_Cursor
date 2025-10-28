@@ -55,6 +55,7 @@ const MedalCeremonyPanel: React.FC = () => {
   const loading = useMedalCeremonyStore((state) => state.loading);
   const saving = useMedalCeremonyStore((state) => state.saving);
   const error = useMedalCeremonyStore((state) => state.error);
+  const assetsInitialized = useMedalCeremonyStore((state) => state.assetsInitialized);
 
   const loadCeremonies = useMedalCeremonyStore((state) => state.loadCeremonies);
   const selectCeremony = useMedalCeremonyStore((state) => state.selectCeremony);
@@ -114,9 +115,14 @@ const MedalCeremonyPanel: React.FC = () => {
 
   useEffect(() => {
     void loadCeremonies();
-    void loadAssets();
     void loadDivisionOptions();
-  }, [loadAssets, loadCeremonies, loadDivisionOptions]);
+  }, [loadCeremonies, loadDivisionOptions]);
+
+  useEffect(() => {
+    if (!assetsInitialized) {
+      void loadAssets();
+    }
+  }, [assetsInitialized, loadAssets]);
 
   useEffect(() => {
     if (detail) {

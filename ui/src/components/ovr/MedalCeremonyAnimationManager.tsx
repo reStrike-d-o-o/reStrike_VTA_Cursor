@@ -36,6 +36,7 @@ const MedalCeremonyAnimationManager: React.FC = () => {
   const loading = useMedalCeremonyStore((state) => state.loading);
   const error = useMedalCeremonyStore((state) => state.error);
   const setError = useMedalCeremonyStore((state) => state.setError);
+  const assetsInitialized = useMedalCeremonyStore((state) => state.assetsInitialized);
 
   const [form, setForm] = useState<FlagAssetForm>(defaultForm);
   const [message, setMessage] = useState<string | null>(null);
@@ -46,9 +47,13 @@ const MedalCeremonyAnimationManager: React.FC = () => {
     if (hasLoadedRef.current) {
       return;
     }
+    if (assetsInitialized) {
+      hasLoadedRef.current = true;
+      return;
+    }
     hasLoadedRef.current = true;
     void loadAssets();
-  }, [loadAssets]);
+  }, [assetsInitialized, loadAssets]);
 
   const filteredAssets = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -161,7 +166,7 @@ const MedalCeremonyAnimationManager: React.FC = () => {
             <Input
               id="flag-search"
               value={search}
-              placeholder="Filter by IOC code or name…"
+              placeholder="Filter by IOC code or name..."
               onChange={(event) => setSearch(event.target.value)}
             />
           </div>
@@ -186,11 +191,11 @@ const MedalCeremonyAnimationManager: React.FC = () => {
               {filteredAssets.map((asset) => (
                 <tr key={asset.id ?? `${asset.ioc_code}-${asset.file_name}`}>
                   <td className="px-3 py-2 text-gray-200">{asset.ioc_code}</td>
-                  <td className="px-3 py-2 text-gray-300">{asset.display_name || '—'}</td>
+                  <td className="px-3 py-2 text-gray-300">{asset.display_name || 'N/A'}</td>
                   <td className="px-3 py-2 text-gray-400 truncate max-w-xs" title={asset.file_path}>
                     {asset.file_name}
                   </td>
-                  <td className="px-3 py-2 text-gray-200">{asset.duration_ms ?? '—'}</td>
+                  <td className="px-3 py-2 text-gray-200">{asset.duration_ms ?? 'N/A'}</td>
                   <td className="px-3 py-2 text-gray-200">
                     {asset.is_default ? (
                       <span className="rounded bg-green-600/20 px-2 py-1 text-xs text-green-300">
@@ -300,7 +305,7 @@ const MedalCeremonyAnimationManager: React.FC = () => {
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="primary" onClick={handleSubmit} disabled={saving}>
-            {saving ? 'Saving…' : form.id ? 'Update animation' : 'Add animation'}
+            {saving ? 'Saving...' : form.id ? 'Update animation' : 'Add animation'}
           </Button>
           <Button variant="secondary" onClick={handleReset} disabled={saving}>
             Reset

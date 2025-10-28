@@ -28,25 +28,15 @@ const defaultAnthemForm: AnthemForm = {
 };
 
 const MedalCeremonyAnthemManager: React.FC = () => {
-  const {
-    anthemAssets,
-    loadAssets,
-    saveAnthemAsset,
-    deleteAnthemAsset,
-    saving,
-    loading,
-    error,
-    setError,
-  } = useMedalCeremonyStore((state) => ({
-    anthemAssets: state.anthemAssets,
-    loadAssets: state.loadAssets,
-    saveAnthemAsset: state.saveAnthemAsset,
-    deleteAnthemAsset: state.deleteAnthemAsset,
-    saving: state.saving,
-    loading: state.loading,
-    error: state.error,
-    setError: state.setError,
-  }));
+  const anthemAssets = useMedalCeremonyStore((state) => state.anthemAssets);
+  const loadAssets = useMedalCeremonyStore((state) => state.loadAssets);
+  const saveAnthemAsset = useMedalCeremonyStore((state) => state.saveAnthemAsset);
+  const deleteAnthemAsset = useMedalCeremonyStore((state) => state.deleteAnthemAsset);
+  const saving = useMedalCeremonyStore((state) => state.saving);
+  const loading = useMedalCeremonyStore((state) => state.loading);
+  const error = useMedalCeremonyStore((state) => state.error);
+  const setError = useMedalCeremonyStore((state) => state.setError);
+  const assetsInitialized = useMedalCeremonyStore((state) => state.assetsInitialized);
 
   const [form, setForm] = useState<AnthemForm>(defaultAnthemForm);
   const [message, setMessage] = useState<string | null>(null);
@@ -57,9 +47,13 @@ const MedalCeremonyAnthemManager: React.FC = () => {
     if (hasLoadedRef.current) {
       return;
     }
+    if (assetsInitialized) {
+      hasLoadedRef.current = true;
+      return;
+    }
     hasLoadedRef.current = true;
     void loadAssets();
-  }, [loadAssets]);
+  }, [assetsInitialized, loadAssets]);
 
   const filteredAnthems = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -170,7 +164,7 @@ const MedalCeremonyAnthemManager: React.FC = () => {
             <Input
               id="anthem-search"
               value={search}
-              placeholder="Filter by IOC code or name…"
+              placeholder="Filter by IOC code or name..."
               onChange={(event) => setSearch(event.target.value)}
             />
           </div>
@@ -195,11 +189,11 @@ const MedalCeremonyAnthemManager: React.FC = () => {
               {filteredAnthems.map((asset) => (
                 <tr key={asset.id ?? `${asset.ioc_code}-${asset.file_name}`}>
                   <td className="px-3 py-2 text-gray-200">{asset.ioc_code}</td>
-                  <td className="px-3 py-2 text-gray-300">{asset.display_name || '—'}</td>
+                  <td className="px-3 py-2 text-gray-300">{asset.display_name || 'N/A'}</td>
                   <td className="px-3 py-2 text-gray-400 truncate max-w-xs" title={asset.file_path}>
                     {asset.file_name}
                   </td>
-                  <td className="px-3 py-2 text-gray-200">{asset.duration_ms ?? '—'}</td>
+                  <td className="px-3 py-2 text-gray-200">{asset.duration_ms ?? 'N/A'}</td>
                   <td className="px-3 py-2 text-gray-200">
                     {asset.is_default ? (
                       <span className="rounded bg-green-600/20 px-2 py-1 text-xs text-green-300">
@@ -309,7 +303,7 @@ const MedalCeremonyAnthemManager: React.FC = () => {
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="primary" onClick={handleSubmit} disabled={saving}>
-            {saving ? 'Saving…' : form.id ? 'Update anthem' : 'Add anthem'}
+            {saving ? 'Saving...' : form.id ? 'Update anthem' : 'Add anthem'}
           </Button>
           <Button variant="secondary" onClick={handleReset} disabled={saving}>
             Reset
