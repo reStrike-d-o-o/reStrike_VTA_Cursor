@@ -59,6 +59,9 @@ use dirs;
 use once_cell::sync::{Lazy, OnceCell};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::fs;
+use std::path::Path;
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tauri::{Emitter, Error as TauriError, State};
@@ -3944,6 +3947,184 @@ pub async fn get_flag_mappings_data(
         "count": mappings.len()
     }))
 }
+fn normalize_country_name(name: &str) -> String {
+    let trimmed = name.trim();
+    if trimmed.is_empty() {
+        return String::new();
+    }
+
+    let has_lowercase = trimmed.chars().any(|c| c.is_lowercase());
+
+    trimmed
+        .split_whitespace()
+        .map(|word| {
+            word.split('-')
+                .map(|segment| {
+                    if !has_lowercase || segment.chars().all(|c| !c.is_lowercase()) {
+                        segment.to_string()
+                    } else {
+                        let mut chars = segment.chars();
+                        match chars.next() {
+                            Some(first) => {
+                                let mut out = String::new();
+                                out.extend(first.to_uppercase());
+                                out.push_str(&chars.as_str().to_lowercase());
+                                out
+                            }
+                            None => String::new(),
+                        }
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join("-")
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn load_country_map_from_report(
+    path: &Path,
+    code_col: usize,
+    name_col: usize,
+) -> anyhow::Result<HashMap<String, String>> {
+    let mut map = HashMap::new();
+    let content = fs::read_to_string(path)?;
+
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if !trimmed.starts_with('|') {
+            continue;
+        }
+        if trimmed.contains("---") {
+            continue;
+        }
+
+        let cells: Vec<String> = trimmed
+            .trim_matches('|')
+            .split('|')
+            .map(|c| c.trim().to_string())
+            .collect();
+
+        if cells.len() <= code_col || cells.len() <= name_col {
+            continue;
+        }
+
+        if cells[code_col]
+            .eq_ignore_ascii_case("ioc code")
+            || cells[name_col].eq_ignore_ascii_case("country")
+        {
+            continue;
+        }
+
+        let code = cells[code_col].trim();
+        let name = cells[name_col].trim();
+
+        if code.is_empty() || name.is_empty() {
+            continue;
+        }
+
+        map.insert(
+            code.to_ascii_uppercase(),
+            normalize_country_name(name).trim().to_string(),
+        );
+    }
+
+    Ok(map)
+}
+
+struct FlagCountryUpdateStats {
+    mapping_entries: usize,
+    applied_updates: usize,
+}
+
+fn update_flags_from_reports(conn: &rusqlite::Connection) -> anyhow::Result<FlagCountryUpdateStats> {
+    let base_dir = Path::new("../ui/build/assets/flags");
+    let official_path = base_dir.join("OFFICIAL_IOC_FLAGS_DOWNLOAD_REPORT.md");
+    let fallback_path = base_dir.join("IOC_FLAGS_DOWNLOAD_REPORT.md");
+
+    if !official_path.exists() && !fallback_path.exists() {
+        anyhow::bail!("IOC flag reports not found in {}", base_dir.display());
+    }
+
+    let mut country_map = HashMap::new();
+    if official_path.exists() {
+        match load_country_map_from_report(&official_path, 0, 1) {
+            Ok(map) => {
+                country_map.extend(map);
+            }
+            Err(err) => {
+                log::warn!(
+                    "Failed parsing official IOC report ({}): {}",
+                    official_path.display(),
+                    err
+                );
+            }
+        }
+    }
+
+    if fallback_path.exists() {
+        match load_country_map_from_report(&fallback_path, 0, 1) {
+            Ok(map) => {
+                for (code, name) in map {
+                    country_map.entry(code).or_insert(name);
+                }
+            }
+            Err(err) => {
+                log::warn!(
+                    "Failed parsing IOC report ({}): {}",
+                    fallback_path.display(),
+                    err
+                );
+            }
+        }
+    }
+
+    if country_map.is_empty() {
+        anyhow::bail!("No IOC country entries parsed from reports");
+    }
+
+    let tx = conn.transaction()?;
+    let mut stmt = tx.prepare(
+        "UPDATE flags
+         SET country_name = ?2,
+             recognition_status = 'RECOGNIZED',
+             recognition_confidence = 100.0,
+             is_recognized = 1,
+             last_modified = CURRENT_TIMESTAMP
+         WHERE UPPER(TRIM(COALESCE(ioc_code, ''))) = ?1
+            OR UPPER(REPLACE(REPLACE(TRIM(filename), '.SVG', ''), '.svg', '')) = ?1",
+    )?;
+
+    let mut updated = 0usize;
+    for (code, name) in &country_map {
+        let code_key = code.trim().to_ascii_uppercase();
+        if code_key.is_empty() {
+            continue;
+        }
+        match stmt.execute(rusqlite::params![&code_key, name]) {
+            Ok(affected) => {
+                if affected > 0 {
+                    updated += affected as usize;
+                }
+            }
+            Err(err) => {
+                log::warn!(
+                    "Failed updating flag metadata for IOC {}: {}",
+                    code_key,
+                    err
+                );
+            }
+        }
+    }
+
+    tx.commit()?;
+
+    Ok(FlagCountryUpdateStats {
+        mapping_entries: country_map.len(),
+        applied_updates: updated,
+    })
+}
+
 #[tauri::command]
 pub async fn scan_and_populate_flags(
     app: State<'_, Arc<App>>,
@@ -4096,12 +4277,24 @@ pub async fn scan_and_populate_flags(
         errors.len()
     );
 
+    let (country_map_entries, country_updates, country_error) =
+        match update_flags_from_reports(&conn) {
+            Ok(stats) => (stats.mapping_entries, stats.applied_updates, None),
+            Err(err) => {
+                log::warn!("Failed to update flag recognition metadata: {}", err);
+                (0, 0, Some(err.to_string()))
+            }
+        };
+
     Ok(serde_json::json!({
         "success": true,
         "processed_count": processed_count,
         "skipped_count": skipped_count,
         "errors": errors,
-        "message": format!("Successfully processed {} flag files", processed_count)
+        "message": format!("Successfully processed {} flag files", processed_count),
+        "country_updates": country_updates,
+        "country_mapping_entries": country_map_entries,
+        "country_update_error": country_error
     }))
 }
 

@@ -111,22 +111,58 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
         const result = await window.__TAURI__.core.invoke('get_flags_data') as any;
 
         const handleResultToState = (res: any) => {
-          const dbFlags: FlagInfo[] = (res.flags || []).map((flag: any) => ({
-            iocCode: flag.ioc_code || flag.filename?.replace('.svg', '') || '',
-            countryName: flag.country_name || '',
-            flagPath: `/assets/flags/svg/${flag.filename}`,
-            hasCustomMapping: !!flag.ioc_code,
-            pssCode: flag.ioc_code,
-            id: flag.id,
-            filename: flag.filename,
-            recognition_status: flag.recognition_status,
-            recognition_confidence: flag.recognition_confidence,
-            upload_date: flag.upload_date,
-            file_size: flag.file_size
-          }));
+          const dbFlags: FlagInfo[] = (res.flags || []).map((flag: any) => {
+            const iocCode = flag.ioc_code || flag.filename?.replace(/\.svg$/i, '') || '';
+            const rawConfidence = flag.recognition_confidence;
+            let confidence: number | undefined;
+            if (typeof rawConfidence === 'number') {
+              confidence = rawConfidence;
+            } else if (rawConfidence !== null && rawConfidence !== undefined) {
+              const parsed = Number(rawConfidence);
+              if (!Number.isNaN(parsed)) {
+                confidence = parsed;
+              }
+            }
+
+            const filename = flag.filename || `${iocCode}.svg`;
+
+            return {
+              iocCode,
+              countryName: flag.country_name || '',
+              flagPath: `/assets/flags/svg/${filename}`,
+              hasCustomMapping: !!flag.ioc_code,
+              pssCode: flag.ioc_code,
+              id: flag.id,
+              filename,
+              recognition_status: typeof flag.recognition_status === 'string'
+                ? flag.recognition_status
+                : '',
+              recognition_confidence: confidence,
+              upload_date: flag.upload_date,
+              file_size: flag.file_size
+            };
+          });
+
+          const statsSource = res.statistics || {};
+          const aggregatedStats = Object.entries(statsSource).reduce<Record<string, number>>(
+            (acc, [statusKey, value]) => {
+              if (!statusKey) return acc;
+              const key = statusKey.toString().toLowerCase();
+              const numericValue = Number(value);
+              acc[key] = (acc[key] || 0) + (Number.isNaN(numericValue) ? 0 : numericValue);
+              return acc;
+            },
+            {}
+          );
+
           setFlags(dbFlags);
           setFilteredFlags(dbFlags);
-          setStatistics(res.statistics || { total: dbFlags.length, recognized: 0, pending: 0, failed: 0 });
+          setStatistics({
+            total: res.count ?? dbFlags.length,
+            recognized: aggregatedStats['recognized'] || 0,
+            pending: aggregatedStats['pending'] || 0,
+            failed: aggregatedStats['failed'] || aggregatedStats['error'] || 0
+          });
           return dbFlags.length;
         };
 
@@ -225,10 +261,29 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
       const result = await window.__TAURI__.core.invoke('scan_and_populate_flags');
       
       if (result.success) {
-        setSuccess(t('flags.success.scan', 'Successfully scanned and populated flags! Processed: {p}, Skipped: {s}', { p: result.processed_count, s: result.skipped_count }));
+        const messageParts: string[] = [
+          t('flags.success.scan', 'Successfully scanned and populated flags! Processed: {p}, Skipped: {s}', { p: result.processed_count, s: result.skipped_count })
+        ];
+
+        if (result.country_updates && result.country_updates > 0) {
+          messageParts.push(
+            t('flags.success.country_updates', 'Updated metadata for {count} flags', { count: result.country_updates })
+          );
+        }
+
+        setSuccess(messageParts.join(' '));
         
+        const errorParts: string[] = [];
         if (result.errors && result.errors.length > 0) {
-          setError(t('flags.err.some', 'Some errors occurred: {err}', { err: result.errors.join(', ') }));
+          errorParts.push(t('flags.err.some', 'Some errors occurred: {err}', { err: result.errors.join(', ') }));
+        }
+        if (result.country_update_error) {
+          errorParts.push(
+            t('flags.err.country_update', 'Country metadata update issue: {msg}', { msg: result.country_update_error })
+          );
+        }
+        if (errorParts.length > 0) {
+          setError(errorParts.join(' '));
         }
         
         // Reload flags after scanning

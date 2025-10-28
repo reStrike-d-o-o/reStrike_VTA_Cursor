@@ -228,27 +228,27 @@
 
 | IOC Code | Country | Reason |
 |----------|---------|--------|
-| BWI | british west indies | Download failed |
-| TCH | czechoslovakia | Download failed |
-| GDR | east germany | Download failed |
-| EUN | unified team | Download failed |
-| YUG | yugoslavia | Download failed |
-| AHO | netherlands antilles | Download failed |
-| SCG | serbia and montenegro | Download failed |
-| NCL | new caledonia | Download failed |
-| WLF | wallis and futuna | Download failed |
-| IOP | independent olympic participants | Download failed |
-| IST | independent states team | Download failed |
-| ZZX | mixed teams | Download failed |
-| OAR | olympic athletes from russia | Download failed |
-| ROT | refugee olympic team | Download failed |
-| ROC | russian olympic committee | Download failed |
-| IPP | independent paralympic participants | Download failed |
-| MPT | mixed paralympic team | Download failed |
-| RPC | paralympic athletes from russia | Download failed |
-| RPT | refugee paralympic team | Download failed |
-| WGA | world games | Download failed |
-| IWGA | international world games association | Download failed |
+| BWI | British West Indies | Download failed |
+| TCH | Czechoslovakia | Download failed |
+| GDR | East Germany | Download failed |
+| EUN | Unified team | Download failed |
+| YUG | Yugoslavia | Download failed |
+| AHO | Netherlands Antilles | Download failed |
+| SCG | Serbia and Montenegro | Download failed |
+| NCL | New caledonia | Download failed |
+| WLF | Wallis and Futuna | Download failed |
+| IOP | Independent Olympic Participants | Download failed |
+| IST | Independent States team | Download failed |
+| ZZX | Mixed teams | Download failed |
+| OAR | Olympic athletes from russia | Download failed |
+| ROT | Refugee Olympic Team | Download failed |
+| ROC | Russian Olympic Committee | Download failed |
+| IPP | Independent Paralympic Participants | Download failed |
+| MPT | Mixed Paralympic Team | Download failed |
+| RPC | Paralympic Athletes from Russia | Download failed |
+| RPT | Refugee Paralympic Team | Download failed |
+| WGA | World Games | Download failed |
+| IWGA | International World Games Association | Download failed |
 
 ## Missing Flag URLs (Need Alternative Sources)
 
