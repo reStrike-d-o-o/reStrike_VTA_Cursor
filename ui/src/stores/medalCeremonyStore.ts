@@ -143,6 +143,14 @@ export const useMedalCeremonyStore = create<MedalCeremonyStore>((set, get) => ({
     try {
       const data = await medalCeremonyCommands.list();
       set({ ceremonies: data });
+      const state = get();
+      if (!state.selectedId) {
+        if (data.length > 0) {
+          await get().selectCeremony(data[0].id);
+        } else if (!state.detail) {
+          set({ detail: createDraftCeremony(), preparedDivisions: [] });
+        }
+      }
     } catch (error) {
       console.error('Failed to load medal ceremonies', error);
       set({ error: error instanceof Error ? error.message : String(error) });
