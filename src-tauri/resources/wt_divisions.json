@@ -1,0 +1,2672 @@
+{
+  "generated_at": "2025-10-28T13:02:46.357479+00:00",
+  "genders": [
+    {
+      "code": "M",
+      "name": "Men"
+    },
+    {
+      "code": "F",
+      "name": "Women"
+    },
+    {
+      "code": "MX",
+      "name": "Mixed"
+    },
+    {
+      "code": "MP",
+      "name": "Mixed Pair"
+    },
+    {
+      "code": "MTM",
+      "name": "Men Team"
+    },
+    {
+      "code": "WTM",
+      "name": "Women Team"
+    },
+    {
+      "code": "MT",
+      "name": "Mixed Team"
+    }
+  ],
+  "disciplines": [
+    {
+      "code": "KY",
+      "name": "Kyorugi",
+      "category": "kyorugi"
+    },
+    {
+      "code": "TK",
+      "name": "Team Kyorugi",
+      "category": "team_kyorugi"
+    },
+    {
+      "code": "POREC",
+      "name": "Poomsae Recognized",
+      "category": "poomsae"
+    },
+    {
+      "code": "POFR",
+      "name": "Poomsae Freestyle",
+      "category": "poomsae"
+    },
+    {
+      "code": "PK44",
+      "name": "Para Kyorugi K44",
+      "category": "para_kyorugi"
+    },
+    {
+      "code": "PPP11",
+      "name": "Para Poomsae P11",
+      "category": "para_poomsae"
+    },
+    {
+      "code": "PPP12",
+      "name": "Para Poomsae P12",
+      "category": "para_poomsae"
+    },
+    {
+      "code": "PPP21",
+      "name": "Para Poomsae P21",
+      "category": "para_poomsae"
+    },
+    {
+      "code": "PPP22",
+      "name": "Para Poomsae P22",
+      "category": "para_poomsae"
+    },
+    {
+      "code": "PPP23",
+      "name": "Para Poomsae P23",
+      "category": "para_poomsae"
+    },
+    {
+      "code": "PPP31",
+      "name": "Para Poomsae P31",
+      "category": "para_poomsae"
+    },
+    {
+      "code": "PPP32",
+      "name": "Para Poomsae P32",
+      "category": "para_poomsae"
+    },
+    {
+      "code": "PPP33",
+      "name": "Para Poomsae P33",
+      "category": "para_poomsae"
+    },
+    {
+      "code": "PPP34",
+      "name": "Para Poomsae P34",
+      "category": "para_poomsae"
+    },
+    {
+      "code": "PPP35",
+      "name": "Para Poomsae P35",
+      "category": "para_poomsae"
+    },
+    {
+      "code": "PPP40",
+      "name": "Para Poomsae P40",
+      "category": "para_poomsae"
+    },
+    {
+      "code": "PPP41",
+      "name": "Para Poomsae P41",
+      "category": "para_poomsae"
+    },
+    {
+      "code": "PPP42",
+      "name": "Para Poomsae P42",
+      "category": "para_poomsae"
+    },
+    {
+      "code": "PPP43",
+      "name": "Para Poomsae P43",
+      "category": "para_poomsae"
+    },
+    {
+      "code": "PPP44",
+      "name": "Para Poomsae P44",
+      "category": "para_poomsae"
+    },
+    {
+      "code": "PPP45",
+      "name": "Para Poomsae P45",
+      "category": "para_poomsae"
+    },
+    {
+      "code": "PPP50",
+      "name": "Para Poomsae P50",
+      "category": "para_poomsae"
+    },
+    {
+      "code": "PPP51",
+      "name": "Para Poomsae P51",
+      "category": "para_poomsae"
+    },
+    {
+      "code": "PPP52",
+      "name": "Para Poomsae P52",
+      "category": "para_poomsae"
+    },
+    {
+      "code": "PPP53",
+      "name": "Para Poomsae P53",
+      "category": "para_poomsae"
+    },
+    {
+      "code": "PPP60",
+      "name": "Para Poomsae P60",
+      "category": "para_poomsae"
+    },
+    {
+      "code": "PPP72",
+      "name": "Para Poomsae P72",
+      "category": "para_poomsae"
+    }
+  ],
+  "age_groups": [
+    {
+      "code": "SENIOR",
+      "name": "Senior",
+      "min_age": 17,
+      "max_age": null,
+      "authority": "WT"
+    },
+    {
+      "code": "U21",
+      "name": "U21",
+      "min_age": 18,
+      "max_age": 20,
+      "authority": "WT"
+    },
+    {
+      "code": "OLYMPICS",
+      "name": "Olympics",
+      "min_age": 17,
+      "max_age": null,
+      "authority": "WT"
+    },
+    {
+      "code": "YOUTH_OLYMPICS",
+      "name": "Youth Olympics",
+      "min_age": 14,
+      "max_age": 18,
+      "authority": "WT"
+    },
+    {
+      "code": "JUNIOR",
+      "name": "Junior",
+      "min_age": 15,
+      "max_age": 17,
+      "authority": "WT"
+    },
+    {
+      "code": "CADET",
+      "name": "Cadet",
+      "min_age": 12,
+      "max_age": 14,
+      "authority": "WT"
+    },
+    {
+      "code": "TEAM_TOTAL_300_KG_4_ATHLETES",
+      "name": "Team total <=300 kg (4 athletes)",
+      "min_age": null,
+      "max_age": null,
+      "authority": "WT"
+    },
+    {
+      "code": "TEAM_TOTAL_260_KG_4_ATHLETES",
+      "name": "Team total <=260 kg (4 athletes)",
+      "min_age": null,
+      "max_age": null,
+      "authority": "WT"
+    },
+    {
+      "code": "2_MEN_160_KG_2_WOMEN_135_KG_4_ATHLETES",
+      "name": "2 Men <=160 kg & 2 Women <=135 kg (4 athletes)",
+      "min_age": null,
+      "max_age": null,
+      "authority": "WT"
+    },
+    {
+      "code": "CADET_12_14",
+      "name": "Cadet (12-14)",
+      "min_age": 12,
+      "max_age": 14,
+      "authority": "WT"
+    },
+    {
+      "code": "JUNIOR_15_17",
+      "name": "Junior (15-17)",
+      "min_age": 15,
+      "max_age": 17,
+      "authority": "WT"
+    },
+    {
+      "code": "UNDER_30_18_30",
+      "name": "Under 30 (18-30)",
+      "min_age": 18,
+      "max_age": 30,
+      "authority": "WT"
+    },
+    {
+      "code": "UNDER_40_31_40",
+      "name": "Under 40 (31-40)",
+      "min_age": 31,
+      "max_age": 40,
+      "authority": "WT"
+    },
+    {
+      "code": "UNDER_50_41_50",
+      "name": "Under 50 (41-50)",
+      "min_age": 41,
+      "max_age": 50,
+      "authority": "WT"
+    },
+    {
+      "code": "UNDER_60_51_60",
+      "name": "Under 60 (51-60)",
+      "min_age": 51,
+      "max_age": 60,
+      "authority": "WT"
+    },
+    {
+      "code": "UNDER_65_61_65",
+      "name": "Under 65 (61-65)",
+      "min_age": 61,
+      "max_age": 65,
+      "authority": "WT"
+    },
+    {
+      "code": "OVER_65_66",
+      "name": "Over 65 (66+)",
+      "min_age": 66,
+      "max_age": null,
+      "authority": "WT"
+    },
+    {
+      "code": "UNDER_50_31_50",
+      "name": "Under 50 (31-50)",
+      "min_age": 31,
+      "max_age": 50,
+      "authority": "WT"
+    },
+    {
+      "code": "OVER_60_61",
+      "name": "Over 60 (61+)",
+      "min_age": 61,
+      "max_age": null,
+      "authority": "WT"
+    },
+    {
+      "code": "UNDER_17_12_17",
+      "name": "Under 17 (12-17)",
+      "min_age": 12,
+      "max_age": 17,
+      "authority": "WT"
+    },
+    {
+      "code": "OVER_17_18",
+      "name": "Over 17 (18+)",
+      "min_age": 18,
+      "max_age": null,
+      "authority": "WT"
+    },
+    {
+      "code": "PARA_KYORUGI_K44",
+      "name": "Para Kyorugi K44",
+      "min_age": null,
+      "max_age": null,
+      "authority": "WT"
+    },
+    {
+      "code": "JUNIOR_14_17",
+      "name": "Junior (14-17)",
+      "min_age": 14,
+      "max_age": 17,
+      "authority": "WT"
+    },
+    {
+      "code": "SENIOR_16",
+      "name": "Senior (16+)",
+      "min_age": 16,
+      "max_age": null,
+      "authority": "WT"
+    }
+  ],
+  "classes": [
+    {
+      "gender_code": "M",
+      "discipline_code": "KY",
+      "age_code": "SENIOR",
+      "code": "54_KG",
+      "name": "-54 kg",
+      "min_kg": null,
+      "max_kg": 54.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "KY",
+      "age_code": "SENIOR",
+      "code": "58_KG",
+      "name": "-58 kg",
+      "min_kg": null,
+      "max_kg": 58.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "KY",
+      "age_code": "SENIOR",
+      "code": "63_KG",
+      "name": "-63 kg",
+      "min_kg": null,
+      "max_kg": 63.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "KY",
+      "age_code": "SENIOR",
+      "code": "68_KG",
+      "name": "-68 kg",
+      "min_kg": null,
+      "max_kg": 68.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "KY",
+      "age_code": "SENIOR",
+      "code": "74_KG",
+      "name": "-74 kg",
+      "min_kg": null,
+      "max_kg": 74.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "KY",
+      "age_code": "SENIOR",
+      "code": "80_KG",
+      "name": "-80 kg",
+      "min_kg": null,
+      "max_kg": 80.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "KY",
+      "age_code": "SENIOR",
+      "code": "87_KG",
+      "name": "-87 kg",
+      "min_kg": null,
+      "max_kg": 87.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "KY",
+      "age_code": "SENIOR",
+      "code": "87_KG",
+      "name": "+87 kg",
+      "min_kg": 87.0,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "KY",
+      "age_code": "SENIOR",
+      "code": "46_KG",
+      "name": "-46 kg",
+      "min_kg": null,
+      "max_kg": 46.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "KY",
+      "age_code": "SENIOR",
+      "code": "49_KG",
+      "name": "-49 kg",
+      "min_kg": null,
+      "max_kg": 49.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "KY",
+      "age_code": "SENIOR",
+      "code": "53_KG",
+      "name": "-53 kg",
+      "min_kg": null,
+      "max_kg": 53.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "KY",
+      "age_code": "SENIOR",
+      "code": "57_KG",
+      "name": "-57 kg",
+      "min_kg": null,
+      "max_kg": 57.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "KY",
+      "age_code": "SENIOR",
+      "code": "62_KG",
+      "name": "-62 kg",
+      "min_kg": null,
+      "max_kg": 62.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "KY",
+      "age_code": "SENIOR",
+      "code": "67_KG",
+      "name": "-67 kg",
+      "min_kg": null,
+      "max_kg": 67.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "KY",
+      "age_code": "SENIOR",
+      "code": "73_KG",
+      "name": "-73 kg",
+      "min_kg": null,
+      "max_kg": 73.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "KY",
+      "age_code": "SENIOR",
+      "code": "73_KG",
+      "name": "+73 kg",
+      "min_kg": 73.0,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "KY",
+      "age_code": "U21",
+      "code": "54_KG",
+      "name": "-54 kg",
+      "min_kg": null,
+      "max_kg": 54.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "KY",
+      "age_code": "U21",
+      "code": "58_KG",
+      "name": "-58 kg",
+      "min_kg": null,
+      "max_kg": 58.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "KY",
+      "age_code": "U21",
+      "code": "63_KG",
+      "name": "-63 kg",
+      "min_kg": null,
+      "max_kg": 63.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "KY",
+      "age_code": "U21",
+      "code": "68_KG",
+      "name": "-68 kg",
+      "min_kg": null,
+      "max_kg": 68.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "KY",
+      "age_code": "U21",
+      "code": "74_KG",
+      "name": "-74 kg",
+      "min_kg": null,
+      "max_kg": 74.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "KY",
+      "age_code": "U21",
+      "code": "80_KG",
+      "name": "-80 kg",
+      "min_kg": null,
+      "max_kg": 80.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "KY",
+      "age_code": "U21",
+      "code": "87_KG",
+      "name": "-87 kg",
+      "min_kg": null,
+      "max_kg": 87.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "KY",
+      "age_code": "U21",
+      "code": "+87_KG",
+      "name": "+87 kg",
+      "min_kg": 87.0,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "KY",
+      "age_code": "U21",
+      "code": "46_KG",
+      "name": "-46 kg",
+      "min_kg": null,
+      "max_kg": 46.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "KY",
+      "age_code": "U21",
+      "code": "49_KG",
+      "name": "-49 kg",
+      "min_kg": null,
+      "max_kg": 49.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "KY",
+      "age_code": "U21",
+      "code": "53_KG",
+      "name": "-53 kg",
+      "min_kg": null,
+      "max_kg": 53.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "KY",
+      "age_code": "U21",
+      "code": "57_KG",
+      "name": "-57 kg",
+      "min_kg": null,
+      "max_kg": 57.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "KY",
+      "age_code": "U21",
+      "code": "62_KG",
+      "name": "-62 kg",
+      "min_kg": null,
+      "max_kg": 62.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "KY",
+      "age_code": "U21",
+      "code": "67_KG",
+      "name": "-67 kg",
+      "min_kg": null,
+      "max_kg": 67.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "KY",
+      "age_code": "U21",
+      "code": "73_KG",
+      "name": "-73 kg",
+      "min_kg": null,
+      "max_kg": 73.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "KY",
+      "age_code": "U21",
+      "code": "+73_KG",
+      "name": "+73 kg",
+      "min_kg": 73.0,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "KY",
+      "age_code": "OLYMPICS",
+      "code": "58_KG",
+      "name": "-58 kg",
+      "min_kg": null,
+      "max_kg": 58.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "KY",
+      "age_code": "OLYMPICS",
+      "code": "68_KG",
+      "name": "-68 kg",
+      "min_kg": null,
+      "max_kg": 68.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "KY",
+      "age_code": "OLYMPICS",
+      "code": "80_KG",
+      "name": "-80 kg",
+      "min_kg": null,
+      "max_kg": 80.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "KY",
+      "age_code": "OLYMPICS",
+      "code": "+80_KG",
+      "name": "+80 kg",
+      "min_kg": 80.0,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "KY",
+      "age_code": "OLYMPICS",
+      "code": "49_KG",
+      "name": "-49 kg",
+      "min_kg": null,
+      "max_kg": 49.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "KY",
+      "age_code": "OLYMPICS",
+      "code": "57_KG",
+      "name": "-57 kg",
+      "min_kg": null,
+      "max_kg": 57.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "KY",
+      "age_code": "OLYMPICS",
+      "code": "67_KG",
+      "name": "-67 kg",
+      "min_kg": null,
+      "max_kg": 67.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "KY",
+      "age_code": "OLYMPICS",
+      "code": "+67_KG",
+      "name": "+67 kg",
+      "min_kg": 67.0,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "KY",
+      "age_code": "YOUTH_OLYMPICS",
+      "code": "48_KG",
+      "name": "-48 kg",
+      "min_kg": null,
+      "max_kg": 48.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "KY",
+      "age_code": "YOUTH_OLYMPICS",
+      "code": "55_KG",
+      "name": "-55 kg",
+      "min_kg": null,
+      "max_kg": 55.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "KY",
+      "age_code": "YOUTH_OLYMPICS",
+      "code": "63_KG",
+      "name": "-63 kg",
+      "min_kg": null,
+      "max_kg": 63.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "KY",
+      "age_code": "YOUTH_OLYMPICS",
+      "code": "73_KG",
+      "name": "-73 kg",
+      "min_kg": null,
+      "max_kg": 73.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "KY",
+      "age_code": "YOUTH_OLYMPICS",
+      "code": "+73_KG",
+      "name": "+73 kg",
+      "min_kg": 73.0,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "KY",
+      "age_code": "YOUTH_OLYMPICS",
+      "code": "44_KG",
+      "name": "-44 kg",
+      "min_kg": null,
+      "max_kg": 44.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "KY",
+      "age_code": "YOUTH_OLYMPICS",
+      "code": "49_KG",
+      "name": "-49 kg",
+      "min_kg": null,
+      "max_kg": 49.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "KY",
+      "age_code": "YOUTH_OLYMPICS",
+      "code": "55_KG",
+      "name": "-55 kg",
+      "min_kg": null,
+      "max_kg": 55.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "KY",
+      "age_code": "YOUTH_OLYMPICS",
+      "code": "63_KG",
+      "name": "-63 kg",
+      "min_kg": null,
+      "max_kg": 63.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "KY",
+      "age_code": "YOUTH_OLYMPICS",
+      "code": "+63_KG",
+      "name": "+63 kg",
+      "min_kg": 63.0,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "KY",
+      "age_code": "JUNIOR",
+      "code": "45_KG",
+      "name": "-45 kg",
+      "min_kg": null,
+      "max_kg": 45.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "KY",
+      "age_code": "JUNIOR",
+      "code": "48_KG",
+      "name": "-48 kg",
+      "min_kg": null,
+      "max_kg": 48.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "KY",
+      "age_code": "JUNIOR",
+      "code": "51_KG",
+      "name": "-51 kg",
+      "min_kg": null,
+      "max_kg": 51.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "KY",
+      "age_code": "JUNIOR",
+      "code": "55_KG",
+      "name": "-55 kg",
+      "min_kg": null,
+      "max_kg": 55.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "KY",
+      "age_code": "JUNIOR",
+      "code": "59_KG",
+      "name": "-59 kg",
+      "min_kg": null,
+      "max_kg": 59.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "KY",
+      "age_code": "JUNIOR",
+      "code": "63_KG",
+      "name": "-63 kg",
+      "min_kg": null,
+      "max_kg": 63.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "KY",
+      "age_code": "JUNIOR",
+      "code": "68_KG",
+      "name": "-68 kg",
+      "min_kg": null,
+      "max_kg": 68.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "KY",
+      "age_code": "JUNIOR",
+      "code": "73_KG",
+      "name": "-73 kg",
+      "min_kg": null,
+      "max_kg": 73.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "KY",
+      "age_code": "JUNIOR",
+      "code": "78_KG",
+      "name": "-78 kg",
+      "min_kg": null,
+      "max_kg": 78.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "KY",
+      "age_code": "JUNIOR",
+      "code": "+78_KG",
+      "name": "+78 kg",
+      "min_kg": 78.0,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "KY",
+      "age_code": "JUNIOR",
+      "code": "42_KG",
+      "name": "-42 kg",
+      "min_kg": null,
+      "max_kg": 42.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "KY",
+      "age_code": "JUNIOR",
+      "code": "44_KG",
+      "name": "-44 kg",
+      "min_kg": null,
+      "max_kg": 44.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "KY",
+      "age_code": "JUNIOR",
+      "code": "46_KG",
+      "name": "-46 kg",
+      "min_kg": null,
+      "max_kg": 46.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "KY",
+      "age_code": "JUNIOR",
+      "code": "49_KG",
+      "name": "-49 kg",
+      "min_kg": null,
+      "max_kg": 49.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "KY",
+      "age_code": "JUNIOR",
+      "code": "52_KG",
+      "name": "-52 kg",
+      "min_kg": null,
+      "max_kg": 52.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "KY",
+      "age_code": "JUNIOR",
+      "code": "55_KG",
+      "name": "-55 kg",
+      "min_kg": null,
+      "max_kg": 55.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "KY",
+      "age_code": "JUNIOR",
+      "code": "59_KG",
+      "name": "-59 kg",
+      "min_kg": null,
+      "max_kg": 59.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "KY",
+      "age_code": "JUNIOR",
+      "code": "63_KG",
+      "name": "-63 kg",
+      "min_kg": null,
+      "max_kg": 63.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "KY",
+      "age_code": "JUNIOR",
+      "code": "68_KG",
+      "name": "-68 kg",
+      "min_kg": null,
+      "max_kg": 68.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "KY",
+      "age_code": "JUNIOR",
+      "code": "+68_KG",
+      "name": "+68 kg",
+      "min_kg": 68.0,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "KY",
+      "age_code": "CADET",
+      "code": "33_KG",
+      "name": "-33 kg",
+      "min_kg": null,
+      "max_kg": 33.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "KY",
+      "age_code": "CADET",
+      "code": "37_KG",
+      "name": "-37 kg",
+      "min_kg": null,
+      "max_kg": 37.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "KY",
+      "age_code": "CADET",
+      "code": "41_KG",
+      "name": "-41 kg",
+      "min_kg": null,
+      "max_kg": 41.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "KY",
+      "age_code": "CADET",
+      "code": "45_KG",
+      "name": "-45 kg",
+      "min_kg": null,
+      "max_kg": 45.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "KY",
+      "age_code": "CADET",
+      "code": "49_KG",
+      "name": "-49 kg",
+      "min_kg": null,
+      "max_kg": 49.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "KY",
+      "age_code": "CADET",
+      "code": "53_KG",
+      "name": "-53 kg",
+      "min_kg": null,
+      "max_kg": 53.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "KY",
+      "age_code": "CADET",
+      "code": "57_KG",
+      "name": "-57 kg",
+      "min_kg": null,
+      "max_kg": 57.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "KY",
+      "age_code": "CADET",
+      "code": "61_KG",
+      "name": "-61 kg",
+      "min_kg": null,
+      "max_kg": 61.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "KY",
+      "age_code": "CADET",
+      "code": "65_KG",
+      "name": "-65 kg",
+      "min_kg": null,
+      "max_kg": 65.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "KY",
+      "age_code": "CADET",
+      "code": "+65_KG",
+      "name": "+65 kg",
+      "min_kg": 65.0,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "KY",
+      "age_code": "CADET",
+      "code": "29_KG",
+      "name": "-29 kg",
+      "min_kg": null,
+      "max_kg": 29.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "KY",
+      "age_code": "CADET",
+      "code": "33_KG",
+      "name": "-33 kg",
+      "min_kg": null,
+      "max_kg": 33.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "KY",
+      "age_code": "CADET",
+      "code": "37_KG",
+      "name": "-37 kg",
+      "min_kg": null,
+      "max_kg": 37.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "KY",
+      "age_code": "CADET",
+      "code": "41_KG",
+      "name": "-41 kg",
+      "min_kg": null,
+      "max_kg": 41.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "KY",
+      "age_code": "CADET",
+      "code": "44_KG",
+      "name": "-44 kg",
+      "min_kg": null,
+      "max_kg": 44.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "KY",
+      "age_code": "CADET",
+      "code": "47_KG",
+      "name": "-47 kg",
+      "min_kg": null,
+      "max_kg": 47.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "KY",
+      "age_code": "CADET",
+      "code": "51_KG",
+      "name": "-51 kg",
+      "min_kg": null,
+      "max_kg": 51.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "KY",
+      "age_code": "CADET",
+      "code": "55_KG",
+      "name": "-55 kg",
+      "min_kg": null,
+      "max_kg": 55.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "KY",
+      "age_code": "CADET",
+      "code": "59_KG",
+      "name": "-59 kg",
+      "min_kg": null,
+      "max_kg": 59.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "KY",
+      "age_code": "CADET",
+      "code": "+59_KG",
+      "name": "+59 kg",
+      "min_kg": 59.0,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "TK",
+      "age_code": "TEAM_TOTAL_300_KG_4_ATHLETES",
+      "code": "TEAM_TOTAL_300_KG_4_ATHLETES",
+      "name": "Team total <=300 kg (4 athletes)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "TK",
+      "age_code": "TEAM_TOTAL_260_KG_4_ATHLETES",
+      "code": "TEAM_TOTAL_260_KG_4_ATHLETES",
+      "name": "Team total <=260 kg (4 athletes)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "MX",
+      "discipline_code": "TK",
+      "age_code": "2_MEN_160_KG_2_WOMEN_135_KG_4_ATHLETES",
+      "code": "2_MEN_160_KG_2_WOMEN_135_KG_4_ATHLETES",
+      "name": "2 Men <=160 kg & 2 Women <=135 kg (4 athletes)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "POREC",
+      "age_code": "CADET_12_14",
+      "code": "CADET_12_14",
+      "name": "Cadet (12-14)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "POREC",
+      "age_code": "JUNIOR_15_17",
+      "code": "JUNIOR_15_17",
+      "name": "Junior (15-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "POREC",
+      "age_code": "UNDER_30_18_30",
+      "code": "UNDER_30_18_30",
+      "name": "Under 30 (18-30)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "POREC",
+      "age_code": "UNDER_40_31_40",
+      "code": "UNDER_40_31_40",
+      "name": "Under 40 (31-40)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "POREC",
+      "age_code": "UNDER_50_41_50",
+      "code": "UNDER_50_41_50",
+      "name": "Under 50 (41-50)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "POREC",
+      "age_code": "UNDER_60_51_60",
+      "code": "UNDER_60_51_60",
+      "name": "Under 60 (51-60)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "POREC",
+      "age_code": "UNDER_65_61_65",
+      "code": "UNDER_65_61_65",
+      "name": "Under 65 (61-65)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "POREC",
+      "age_code": "OVER_65_66",
+      "code": "OVER_65_66",
+      "name": "Over 65 (66+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "POREC",
+      "age_code": "CADET_12_14",
+      "code": "CADET_12_14",
+      "name": "Cadet (12-14)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "POREC",
+      "age_code": "JUNIOR_15_17",
+      "code": "JUNIOR_15_17",
+      "name": "Junior (15-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "POREC",
+      "age_code": "UNDER_30_18_30",
+      "code": "UNDER_30_18_30",
+      "name": "Under 30 (18-30)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "POREC",
+      "age_code": "UNDER_40_31_40",
+      "code": "UNDER_40_31_40",
+      "name": "Under 40 (31-40)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "POREC",
+      "age_code": "UNDER_50_41_50",
+      "code": "UNDER_50_41_50",
+      "name": "Under 50 (41-50)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "POREC",
+      "age_code": "UNDER_60_51_60",
+      "code": "UNDER_60_51_60",
+      "name": "Under 60 (51-60)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "POREC",
+      "age_code": "UNDER_65_61_65",
+      "code": "UNDER_65_61_65",
+      "name": "Under 65 (61-65)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "POREC",
+      "age_code": "OVER_65_66",
+      "code": "OVER_65_66",
+      "name": "Over 65 (66+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "MP",
+      "discipline_code": "POREC",
+      "age_code": "CADET_12_14",
+      "code": "CADET_12_14",
+      "name": "Cadet (12-14)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "MP",
+      "discipline_code": "POREC",
+      "age_code": "JUNIOR_15_17",
+      "code": "JUNIOR_15_17",
+      "name": "Junior (15-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "MP",
+      "discipline_code": "POREC",
+      "age_code": "UNDER_30_18_30",
+      "code": "UNDER_30_18_30",
+      "name": "Under 30 (18-30)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "MP",
+      "discipline_code": "POREC",
+      "age_code": "UNDER_50_31_50",
+      "code": "UNDER_50_31_50",
+      "name": "Under 50 (31-50)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "MP",
+      "discipline_code": "POREC",
+      "age_code": "UNDER_60_51_60",
+      "code": "UNDER_60_51_60",
+      "name": "Under 60 (51-60)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "MP",
+      "discipline_code": "POREC",
+      "age_code": "OVER_60_61",
+      "code": "OVER_60_61",
+      "name": "Over 60 (61+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "MTM",
+      "discipline_code": "POREC",
+      "age_code": "CADET_12_14",
+      "code": "CADET_12_14",
+      "name": "Cadet (12-14)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "MTM",
+      "discipline_code": "POREC",
+      "age_code": "JUNIOR_15_17",
+      "code": "JUNIOR_15_17",
+      "name": "Junior (15-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "MTM",
+      "discipline_code": "POREC",
+      "age_code": "UNDER_30_18_30",
+      "code": "UNDER_30_18_30",
+      "name": "Under 30 (18-30)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "MTM",
+      "discipline_code": "POREC",
+      "age_code": "UNDER_50_31_50",
+      "code": "UNDER_50_31_50",
+      "name": "Under 50 (31-50)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "MTM",
+      "discipline_code": "POREC",
+      "age_code": "UNDER_60_51_60",
+      "code": "UNDER_60_51_60",
+      "name": "Under 60 (51-60)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "MTM",
+      "discipline_code": "POREC",
+      "age_code": "OVER_60_61",
+      "code": "OVER_60_61",
+      "name": "Over 60 (61+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "WTM",
+      "discipline_code": "POREC",
+      "age_code": "CADET_12_14",
+      "code": "CADET_12_14",
+      "name": "Cadet (12-14)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "WTM",
+      "discipline_code": "POREC",
+      "age_code": "JUNIOR_15_17",
+      "code": "JUNIOR_15_17",
+      "name": "Junior (15-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "WTM",
+      "discipline_code": "POREC",
+      "age_code": "UNDER_30_18_30",
+      "code": "UNDER_30_18_30",
+      "name": "Under 30 (18-30)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "WTM",
+      "discipline_code": "POREC",
+      "age_code": "UNDER_50_31_50",
+      "code": "UNDER_50_31_50",
+      "name": "Under 50 (31-50)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "WTM",
+      "discipline_code": "POREC",
+      "age_code": "UNDER_60_51_60",
+      "code": "UNDER_60_51_60",
+      "name": "Under 60 (51-60)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "WTM",
+      "discipline_code": "POREC",
+      "age_code": "OVER_60_61",
+      "code": "OVER_60_61",
+      "name": "Over 60 (61+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "POFR",
+      "age_code": "UNDER_17_12_17",
+      "code": "UNDER_17_12_17",
+      "name": "Under 17 (12-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "POFR",
+      "age_code": "OVER_17_18",
+      "code": "OVER_17_18",
+      "name": "Over 17 (18+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "POFR",
+      "age_code": "UNDER_17_12_17",
+      "code": "UNDER_17_12_17",
+      "name": "Under 17 (12-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "POFR",
+      "age_code": "OVER_17_18",
+      "code": "OVER_17_18",
+      "name": "Over 17 (18+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "MP",
+      "discipline_code": "POFR",
+      "age_code": "UNDER_17_12_17",
+      "code": "UNDER_17_12_17",
+      "name": "Under 17 (12-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "MP",
+      "discipline_code": "POFR",
+      "age_code": "OVER_17_18",
+      "code": "OVER_17_18",
+      "name": "Over 17 (18+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "MT",
+      "discipline_code": "POFR",
+      "age_code": "UNDER_17_12_17",
+      "code": "UNDER_17_12_17",
+      "name": "Under 17 (12-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "MT",
+      "discipline_code": "POFR",
+      "age_code": "OVER_17_18",
+      "code": "OVER_17_18",
+      "name": "Over 17 (18+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "PK44",
+      "age_code": "PARA_KYORUGI_K44",
+      "code": "58_KG",
+      "name": "-58 kg",
+      "min_kg": null,
+      "max_kg": 58.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "PK44",
+      "age_code": "PARA_KYORUGI_K44",
+      "code": "63_KG",
+      "name": "-63 kg",
+      "min_kg": null,
+      "max_kg": 63.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "PK44",
+      "age_code": "PARA_KYORUGI_K44",
+      "code": "70_KG",
+      "name": "-70 kg",
+      "min_kg": null,
+      "max_kg": 70.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "PK44",
+      "age_code": "PARA_KYORUGI_K44",
+      "code": "80_KG",
+      "name": "-80 kg",
+      "min_kg": null,
+      "max_kg": 80.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "PK44",
+      "age_code": "PARA_KYORUGI_K44",
+      "code": "+80_KG",
+      "name": "+80 kg",
+      "min_kg": 80.0,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "PK44",
+      "age_code": "PARA_KYORUGI_K44",
+      "code": "47_KG",
+      "name": "-47 kg",
+      "min_kg": null,
+      "max_kg": 47.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "PK44",
+      "age_code": "PARA_KYORUGI_K44",
+      "code": "52_KG",
+      "name": "-52 kg",
+      "min_kg": null,
+      "max_kg": 52.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "PK44",
+      "age_code": "PARA_KYORUGI_K44",
+      "code": "57_KG",
+      "name": "-57 kg",
+      "min_kg": null,
+      "max_kg": 57.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "PK44",
+      "age_code": "PARA_KYORUGI_K44",
+      "code": "65_KG",
+      "name": "-65 kg",
+      "min_kg": null,
+      "max_kg": 65.0,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "PK44",
+      "age_code": "PARA_KYORUGI_K44",
+      "code": "+65_KG",
+      "name": "+65 kg",
+      "min_kg": 65.0,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "PPP11",
+      "age_code": "JUNIOR_14_17",
+      "code": "JUNIOR_14_17",
+      "name": "Junior (14-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "PPP11",
+      "age_code": "JUNIOR_14_17",
+      "code": "JUNIOR_14_17",
+      "name": "Junior (14-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "PPP11",
+      "age_code": "SENIOR_16",
+      "code": "SENIOR_16",
+      "name": "Senior (16+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "PPP11",
+      "age_code": "SENIOR_16",
+      "code": "SENIOR_16",
+      "name": "Senior (16+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "PPP12",
+      "age_code": "JUNIOR_14_17",
+      "code": "JUNIOR_14_17",
+      "name": "Junior (14-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "PPP12",
+      "age_code": "JUNIOR_14_17",
+      "code": "JUNIOR_14_17",
+      "name": "Junior (14-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "PPP12",
+      "age_code": "SENIOR_16",
+      "code": "SENIOR_16",
+      "name": "Senior (16+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "PPP12",
+      "age_code": "SENIOR_16",
+      "code": "SENIOR_16",
+      "name": "Senior (16+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "PPP21",
+      "age_code": "JUNIOR_14_17",
+      "code": "JUNIOR_14_17",
+      "name": "Junior (14-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "PPP21",
+      "age_code": "JUNIOR_14_17",
+      "code": "JUNIOR_14_17",
+      "name": "Junior (14-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "PPP21",
+      "age_code": "SENIOR_16",
+      "code": "SENIOR_16",
+      "name": "Senior (16+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "PPP21",
+      "age_code": "SENIOR_16",
+      "code": "SENIOR_16",
+      "name": "Senior (16+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "PPP22",
+      "age_code": "JUNIOR_14_17",
+      "code": "JUNIOR_14_17",
+      "name": "Junior (14-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "PPP22",
+      "age_code": "JUNIOR_14_17",
+      "code": "JUNIOR_14_17",
+      "name": "Junior (14-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "PPP22",
+      "age_code": "SENIOR_16",
+      "code": "SENIOR_16",
+      "name": "Senior (16+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "PPP22",
+      "age_code": "SENIOR_16",
+      "code": "SENIOR_16",
+      "name": "Senior (16+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "PPP23",
+      "age_code": "JUNIOR_14_17",
+      "code": "JUNIOR_14_17",
+      "name": "Junior (14-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "PPP23",
+      "age_code": "JUNIOR_14_17",
+      "code": "JUNIOR_14_17",
+      "name": "Junior (14-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "PPP23",
+      "age_code": "SENIOR_16",
+      "code": "SENIOR_16",
+      "name": "Senior (16+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "PPP23",
+      "age_code": "SENIOR_16",
+      "code": "SENIOR_16",
+      "name": "Senior (16+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "PPP31",
+      "age_code": "JUNIOR_14_17",
+      "code": "JUNIOR_14_17",
+      "name": "Junior (14-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "PPP31",
+      "age_code": "JUNIOR_14_17",
+      "code": "JUNIOR_14_17",
+      "name": "Junior (14-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "PPP31",
+      "age_code": "SENIOR_16",
+      "code": "SENIOR_16",
+      "name": "Senior (16+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "PPP31",
+      "age_code": "SENIOR_16",
+      "code": "SENIOR_16",
+      "name": "Senior (16+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "PPP32",
+      "age_code": "JUNIOR_14_17",
+      "code": "JUNIOR_14_17",
+      "name": "Junior (14-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "PPP32",
+      "age_code": "JUNIOR_14_17",
+      "code": "JUNIOR_14_17",
+      "name": "Junior (14-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "PPP32",
+      "age_code": "SENIOR_16",
+      "code": "SENIOR_16",
+      "name": "Senior (16+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "PPP32",
+      "age_code": "SENIOR_16",
+      "code": "SENIOR_16",
+      "name": "Senior (16+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "PPP33",
+      "age_code": "JUNIOR_14_17",
+      "code": "JUNIOR_14_17",
+      "name": "Junior (14-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "PPP33",
+      "age_code": "JUNIOR_14_17",
+      "code": "JUNIOR_14_17",
+      "name": "Junior (14-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "PPP33",
+      "age_code": "SENIOR_16",
+      "code": "SENIOR_16",
+      "name": "Senior (16+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "PPP33",
+      "age_code": "SENIOR_16",
+      "code": "SENIOR_16",
+      "name": "Senior (16+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "PPP34",
+      "age_code": "JUNIOR_14_17",
+      "code": "JUNIOR_14_17",
+      "name": "Junior (14-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "PPP34",
+      "age_code": "JUNIOR_14_17",
+      "code": "JUNIOR_14_17",
+      "name": "Junior (14-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "PPP34",
+      "age_code": "SENIOR_16",
+      "code": "SENIOR_16",
+      "name": "Senior (16+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "PPP34",
+      "age_code": "SENIOR_16",
+      "code": "SENIOR_16",
+      "name": "Senior (16+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "PPP35",
+      "age_code": "JUNIOR_14_17",
+      "code": "JUNIOR_14_17",
+      "name": "Junior (14-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "PPP35",
+      "age_code": "JUNIOR_14_17",
+      "code": "JUNIOR_14_17",
+      "name": "Junior (14-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "PPP35",
+      "age_code": "SENIOR_16",
+      "code": "SENIOR_16",
+      "name": "Senior (16+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "PPP35",
+      "age_code": "SENIOR_16",
+      "code": "SENIOR_16",
+      "name": "Senior (16+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "PPP40",
+      "age_code": "JUNIOR_14_17",
+      "code": "JUNIOR_14_17",
+      "name": "Junior (14-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "PPP40",
+      "age_code": "JUNIOR_14_17",
+      "code": "JUNIOR_14_17",
+      "name": "Junior (14-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "PPP40",
+      "age_code": "SENIOR_16",
+      "code": "SENIOR_16",
+      "name": "Senior (16+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "PPP40",
+      "age_code": "SENIOR_16",
+      "code": "SENIOR_16",
+      "name": "Senior (16+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "PPP41",
+      "age_code": "JUNIOR_14_17",
+      "code": "JUNIOR_14_17",
+      "name": "Junior (14-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "PPP41",
+      "age_code": "JUNIOR_14_17",
+      "code": "JUNIOR_14_17",
+      "name": "Junior (14-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "PPP41",
+      "age_code": "SENIOR_16",
+      "code": "SENIOR_16",
+      "name": "Senior (16+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "PPP41",
+      "age_code": "SENIOR_16",
+      "code": "SENIOR_16",
+      "name": "Senior (16+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "PPP42",
+      "age_code": "JUNIOR_14_17",
+      "code": "JUNIOR_14_17",
+      "name": "Junior (14-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "PPP42",
+      "age_code": "JUNIOR_14_17",
+      "code": "JUNIOR_14_17",
+      "name": "Junior (14-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "PPP42",
+      "age_code": "SENIOR_16",
+      "code": "SENIOR_16",
+      "name": "Senior (16+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "PPP42",
+      "age_code": "SENIOR_16",
+      "code": "SENIOR_16",
+      "name": "Senior (16+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "PPP43",
+      "age_code": "JUNIOR_14_17",
+      "code": "JUNIOR_14_17",
+      "name": "Junior (14-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "PPP43",
+      "age_code": "JUNIOR_14_17",
+      "code": "JUNIOR_14_17",
+      "name": "Junior (14-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "PPP43",
+      "age_code": "SENIOR_16",
+      "code": "SENIOR_16",
+      "name": "Senior (16+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "PPP43",
+      "age_code": "SENIOR_16",
+      "code": "SENIOR_16",
+      "name": "Senior (16+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "PPP44",
+      "age_code": "JUNIOR_14_17",
+      "code": "JUNIOR_14_17",
+      "name": "Junior (14-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "PPP44",
+      "age_code": "JUNIOR_14_17",
+      "code": "JUNIOR_14_17",
+      "name": "Junior (14-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "PPP44",
+      "age_code": "SENIOR_16",
+      "code": "SENIOR_16",
+      "name": "Senior (16+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "PPP44",
+      "age_code": "SENIOR_16",
+      "code": "SENIOR_16",
+      "name": "Senior (16+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "PPP45",
+      "age_code": "JUNIOR_14_17",
+      "code": "JUNIOR_14_17",
+      "name": "Junior (14-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "PPP45",
+      "age_code": "JUNIOR_14_17",
+      "code": "JUNIOR_14_17",
+      "name": "Junior (14-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "PPP45",
+      "age_code": "SENIOR_16",
+      "code": "SENIOR_16",
+      "name": "Senior (16+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "PPP45",
+      "age_code": "SENIOR_16",
+      "code": "SENIOR_16",
+      "name": "Senior (16+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "PPP50",
+      "age_code": "JUNIOR_14_17",
+      "code": "JUNIOR_14_17",
+      "name": "Junior (14-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "PPP50",
+      "age_code": "JUNIOR_14_17",
+      "code": "JUNIOR_14_17",
+      "name": "Junior (14-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "PPP50",
+      "age_code": "SENIOR_16",
+      "code": "SENIOR_16",
+      "name": "Senior (16+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "PPP50",
+      "age_code": "SENIOR_16",
+      "code": "SENIOR_16",
+      "name": "Senior (16+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "PPP51",
+      "age_code": "JUNIOR_14_17",
+      "code": "JUNIOR_14_17",
+      "name": "Junior (14-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "PPP51",
+      "age_code": "JUNIOR_14_17",
+      "code": "JUNIOR_14_17",
+      "name": "Junior (14-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "PPP51",
+      "age_code": "SENIOR_16",
+      "code": "SENIOR_16",
+      "name": "Senior (16+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "PPP51",
+      "age_code": "SENIOR_16",
+      "code": "SENIOR_16",
+      "name": "Senior (16+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "PPP52",
+      "age_code": "JUNIOR_14_17",
+      "code": "JUNIOR_14_17",
+      "name": "Junior (14-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "PPP52",
+      "age_code": "JUNIOR_14_17",
+      "code": "JUNIOR_14_17",
+      "name": "Junior (14-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "PPP52",
+      "age_code": "SENIOR_16",
+      "code": "SENIOR_16",
+      "name": "Senior (16+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "PPP52",
+      "age_code": "SENIOR_16",
+      "code": "SENIOR_16",
+      "name": "Senior (16+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "PPP53",
+      "age_code": "JUNIOR_14_17",
+      "code": "JUNIOR_14_17",
+      "name": "Junior (14-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "PPP53",
+      "age_code": "JUNIOR_14_17",
+      "code": "JUNIOR_14_17",
+      "name": "Junior (14-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "PPP53",
+      "age_code": "SENIOR_16",
+      "code": "SENIOR_16",
+      "name": "Senior (16+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "PPP53",
+      "age_code": "SENIOR_16",
+      "code": "SENIOR_16",
+      "name": "Senior (16+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "PPP60",
+      "age_code": "JUNIOR_14_17",
+      "code": "JUNIOR_14_17",
+      "name": "Junior (14-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "PPP60",
+      "age_code": "JUNIOR_14_17",
+      "code": "JUNIOR_14_17",
+      "name": "Junior (14-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "PPP60",
+      "age_code": "SENIOR_16",
+      "code": "SENIOR_16",
+      "name": "Senior (16+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "PPP60",
+      "age_code": "SENIOR_16",
+      "code": "SENIOR_16",
+      "name": "Senior (16+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "PPP72",
+      "age_code": "JUNIOR_14_17",
+      "code": "JUNIOR_14_17",
+      "name": "Junior (14-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "PPP72",
+      "age_code": "JUNIOR_14_17",
+      "code": "JUNIOR_14_17",
+      "name": "Junior (14-17)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "M",
+      "discipline_code": "PPP72",
+      "age_code": "SENIOR_16",
+      "code": "SENIOR_16",
+      "name": "Senior (16+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    },
+    {
+      "gender_code": "F",
+      "discipline_code": "PPP72",
+      "age_code": "SENIOR_16",
+      "code": "SENIOR_16",
+      "name": "Senior (16+)",
+      "min_kg": null,
+      "max_kg": null,
+      "authority": "WT"
+    }
+  ]
+}

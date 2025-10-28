@@ -1,5 +1,7 @@
 use crate::database::{DatabaseError, DatabaseResult, SchemaVersion, CURRENT_SCHEMA_VERSION};
 use rusqlite::{Connection, Result as SqliteResult};
+use serde::Deserialize;
+use std::collections::{HashMap, HashSet};
 
 /// Migration trait for database schema updates
 pub trait Migration: Send + Sync {
@@ -3270,6 +3272,7 @@ impl MigrationManager {
         migrations.push(Box::new(Migration40)); // Add integer created/updated to obs_recording_sessions and backfill
         migrations.push(Box::new(Migration41)); // Medal ceremony schema and OVR asset registries
         migrations.push(Box::new(Migration42)); // Animation library table seeded from flags
+        migrations.push(Box::new(Migration43)); // Seed WT divisions and weight classes
 
         Self { migrations }
     }
@@ -6113,6 +6116,301 @@ impl Migration for Migration42 {
 
     fn down(&self, conn: &Connection) -> SqliteResult<()> {
         conn.execute("DROP TABLE IF EXISTS animations", [])?;
+        Ok(())
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct WtGenderEntry {
+    code: String,
+    name: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct WtDisciplineEntry {
+    code: String,
+    name: String,
+    category: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct WtAgeEntry {
+    code: String,
+    name: String,
+    min_age: Option<i64>,
+    max_age: Option<i64>,
+    authority: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct WtClassEntry {
+    gender_code: String,
+    discipline_code: String,
+    age_code: String,
+    code: String,
+    name: String,
+    min_kg: Option<f64>,
+    max_kg: Option<f64>,
+    authority: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct WtDivisionDataset {
+    #[allow(dead_code)]
+    generated_at: Option<String>,
+    genders: Vec<WtGenderEntry>,
+    disciplines: Vec<WtDisciplineEntry>,
+    age_groups: Vec<WtAgeEntry>,
+    classes: Vec<WtClassEntry>,
+}
+
+/// Migration 43: Seed official WT divisions, age groups, and weight classes
+pub struct Migration43;
+
+impl Migration for Migration43 {
+    fn version(&self) -> u32 {
+        43
+    }
+
+    fn description(&self) -> &str {
+        "Seed WT divisions, genders, age groups, and weight classes from official list"
+    }
+
+    fn up(&self, conn: &Connection) -> SqliteResult<()> {
+        let dataset: WtDivisionDataset = serde_json::from_str(include_str!("../../resources/wt_divisions.json"))
+            .expect("Failed to parse wt_divisions.json");
+        let now = chrono::Utc::now().to_rfc3339();
+
+        for gender in &dataset.genders {
+            conn.execute(
+                "INSERT INTO look_genders (code, name, created_at)
+                 VALUES (?1, ?2, ?3)
+                 ON CONFLICT(code) DO UPDATE SET name = excluded.name",
+                rusqlite::params![&gender.code, &gender.name, &now],
+            )?;
+        }
+
+        for discipline in &dataset.disciplines {
+            conn.execute(
+                "INSERT INTO look_disciplines (code, name, created_at)
+                 VALUES (?1, ?2, ?3)
+                 ON CONFLICT(code) DO UPDATE SET name = excluded.name",
+                rusqlite::params![&discipline.code, &discipline.name, &now],
+            )?;
+        }
+
+        for discipline in &dataset.disciplines {
+            let division_type = match discipline.category.as_str() {
+                "poomsae" | "para_poomsae" => "poomsae",
+                "para_kyorugi" => "para",
+                _ => "kyorugi",
+            };
+            conn.execute(
+                "INSERT INTO look_divisions (code, name, division_type, authority, created_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5)
+                 ON CONFLICT(code) DO UPDATE SET
+                    name = excluded.name,
+                    division_type = excluded.division_type,
+                    authority = excluded.authority",
+                rusqlite::params![
+                    &discipline.code,
+                    &discipline.name,
+                    division_type,
+                    "WT",
+                    &now
+                ],
+            )?;
+        }
+
+        for age in &dataset.age_groups {
+            let authority = age.authority.as_deref().unwrap_or("WT");
+            conn.execute(
+                "INSERT INTO look_age_groups (code, name, min_age, max_age, authority, effective_from, effective_to, created_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
+                 ON CONFLICT(code) DO UPDATE SET
+                    name = excluded.name,
+                    min_age = excluded.min_age,
+                    max_age = excluded.max_age,
+                    authority = excluded.authority",
+                rusqlite::params![
+                    &age.code,
+                    &age.name,
+                    age.min_age,
+                    age.max_age,
+                    authority,
+                    Option::<String>::None,
+                    Option::<String>::None,
+                    &now,
+                ],
+            )?;
+        }
+
+        let mut discipline_ids: HashMap<String, i64> = HashMap::new();
+        {
+            let mut stmt = conn.prepare("SELECT code, id FROM look_disciplines")?;
+            let rows = stmt.query_map([], |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?)))?;
+            for row in rows {
+                let (code, id) = row?;
+                discipline_ids.insert(code.to_uppercase(), id);
+            }
+        }
+
+        let mut gender_ids: HashMap<String, i64> = HashMap::new();
+        {
+            let mut stmt = conn.prepare("SELECT code, id FROM look_genders")?;
+            let rows = stmt.query_map([], |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?)))?;
+            for row in rows {
+                let (code, id) = row?;
+                gender_ids.insert(code.to_uppercase(), id);
+            }
+        }
+
+        let mut age_ids: HashMap<String, i64> = HashMap::new();
+        {
+            let mut stmt = conn.prepare("SELECT code, id FROM look_age_groups")?;
+            let rows = stmt.query_map([], |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?)))?;
+            for row in rows {
+                let (code, id) = row?;
+                age_ids.insert(code.to_uppercase(), id);
+            }
+        }
+
+        for class in &dataset.classes {
+            let discipline_id = match discipline_ids.get(&class.discipline_code.to_uppercase()) {
+                Some(id) => *id,
+                None => continue,
+            };
+            let gender_id = match gender_ids.get(&class.gender_code.to_uppercase()) {
+                Some(id) => *id,
+                None => continue,
+            };
+            let age_group_id = match age_ids.get(&class.age_code.to_uppercase()) {
+                Some(id) => *id,
+                None => continue,
+            };
+            conn.execute(
+                "INSERT INTO look_weight_classes (
+                    discipline_id,
+                    gender_id,
+                    age_group_id,
+                    code,
+                    name,
+                    min_kg,
+                    max_kg,
+                    authority,
+                    effective_from,
+                    effective_to,
+                    created_at
+                )
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
+                 ON CONFLICT(discipline_id, gender_id, age_group_id, code) DO UPDATE SET
+                    name = excluded.name,
+                    min_kg = excluded.min_kg,
+                    max_kg = excluded.max_kg,
+                    authority = excluded.authority",
+                rusqlite::params![
+                    discipline_id,
+                    gender_id,
+                    age_group_id,
+                    &class.code,
+                    &class.name,
+                    class.min_kg,
+                    class.max_kg,
+                    class.authority.as_deref().unwrap_or("WT"),
+                    Option::<String>::None,
+                    Option::<String>::None,
+                    &now,
+                ],
+            )?;
+        }
+
+        Ok(())
+    }
+
+    fn down(&self, conn: &Connection) -> SqliteResult<()> {
+        let dataset: WtDivisionDataset = serde_json::from_str(include_str!("../../resources/wt_divisions.json"))
+            .expect("Failed to parse wt_divisions.json");
+
+        let baseline_gender: HashSet<&str> = ["M", "F"].into_iter().collect();
+        let baseline_disciplines: HashSet<&str> = ["KY", "PO"].into_iter().collect();
+        let baseline_divisions: HashSet<&str> = ["KY"].into_iter().collect();
+        let baseline_age: HashSet<&str> = ["SR", "JR", "CD", "U21", "MS"].into_iter().collect();
+
+        for class in &dataset.classes {
+            conn.execute(
+                "DELETE FROM look_weight_classes
+                 WHERE code = ?1
+                   AND discipline_id IN (SELECT id FROM look_disciplines WHERE code = ?2)
+                   AND gender_id IN (SELECT id FROM look_genders WHERE code = ?3)
+                   AND age_group_id IN (SELECT id FROM look_age_groups WHERE code = ?4)",
+                rusqlite::params![&class.code, &class.discipline_code, &class.gender_code, &class.age_code],
+            )?;
+        }
+
+        for age in &dataset.age_groups {
+            if baseline_age.contains(age.code.as_str()) {
+                let authority = age.authority.as_deref().unwrap_or("WT");
+                conn.execute(
+                    "UPDATE look_age_groups
+                     SET name = ?2, min_age = ?3, max_age = ?4, authority = ?5
+                     WHERE code = ?1",
+                    rusqlite::params![&age.code, &age.name, age.min_age, age.max_age, authority],
+                )?;
+            } else {
+                conn.execute(
+                    "DELETE FROM look_age_groups WHERE code = ?1",
+                    rusqlite::params![&age.code],
+                )?;
+            }
+        }
+
+        for discipline in &dataset.disciplines {
+            if baseline_disciplines.contains(discipline.code.as_str()) {
+                conn.execute(
+                    "UPDATE look_disciplines
+                     SET name = ?2
+                     WHERE code = ?1",
+                    rusqlite::params![&discipline.code, &discipline.name],
+                )?;
+            } else {
+                conn.execute(
+                    "DELETE FROM look_disciplines WHERE code = ?1",
+                    rusqlite::params![&discipline.code],
+                )?;
+            }
+
+            if baseline_divisions.contains(discipline.code.as_str()) {
+                conn.execute(
+                    "UPDATE look_divisions
+                     SET name = ?2, division_type = 'kyorugi', authority = 'WT'
+                     WHERE code = ?1",
+                    rusqlite::params![&discipline.code, &discipline.name],
+                )?;
+            } else {
+                conn.execute(
+                    "DELETE FROM look_divisions WHERE code = ?1",
+                    rusqlite::params![&discipline.code],
+                )?;
+            }
+        }
+
+        for gender in &dataset.genders {
+            if baseline_gender.contains(gender.code.as_str()) {
+                conn.execute(
+                    "UPDATE look_genders SET name = ?2 WHERE code = ?1",
+                    rusqlite::params![&gender.code, &gender.name],
+                )?;
+            } else {
+                conn.execute(
+                    "DELETE FROM look_genders WHERE code = ?1",
+                    rusqlite::params![&gender.code],
+                )?;
+            }
+        }
+
+        conn.execute("UPDATE look_genders SET name = 'Male' WHERE code = 'M'", [])?;
+        conn.execute("UPDATE look_genders SET name = 'Female' WHERE code = 'F'", [])?;
+
         Ok(())
     }
 }
