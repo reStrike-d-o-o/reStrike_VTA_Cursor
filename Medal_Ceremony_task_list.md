@@ -9,26 +9,26 @@ Tracks milestones for the Medal Ceremony module: backend data/model work, UI, ex
 - [ ] Document asset requirements (flag animations, anthem files) and sourcing guidelines.
 
 ## 2. Backend Foundations
-- [ ] Add database schema (medal_ceremonies, divisions, medalists, global settings) with migrations.
-- [ ] Implement Rust models/services for CRUD, playlist preparation, playback state, asset discovery.
-- [ ] Expose Tauri commands for Medal Ceremony CRUD, playlist prepare/save, playback controls, asset listings.
-- [ ] Manage external screen window lifecycle and data pipeline for ceremony playback.
+- [x] Add database schema (medal_ceremonies, divisions, medalists, global settings) with migrations.
+- [x] Implement Rust models/services for CRUD, playlist preparation, playback state, asset discovery.
+- [x] Expose Tauri commands for Medal Ceremony CRUD, playlist prepare/save, playback controls, asset listings.
+- [x] Manage external screen window lifecycle and data pipeline for ceremony playback. *(Added Tauri commands, event broadcasting, and external display listeners.)*
 
 ## 3. Frontend OVR Module
-- [ ] Create Medal Ceremony tab replicating OVR Integration styling with Background/Break selectors.
-- [ ] Implement expandable division fieldsets with medalist selectors, order editing, validation, CRUD.
-- [ ] Add global settings controls (animation duration, speed, photo time) and action buttons (Prepare, Show external, Play Next).
-- [ ] Build Zustand store for ceremony state, playlist, and playback status.
+- [x] Create Medal Ceremony tab replicating OVR Integration styling with Background/Break selectors. *(Implemented in `ui/src/components/ovr/MedalCeremonyPanel.tsx` with background/break pickers.)*
+- [x] Implement expandable division fieldsets with medalist selectors, order editing, validation, CRUD. *(Dynamic fieldsets using searchable dropdowns, order inputs, and medalist CRUD.)*
+- [x] Add global settings controls (animation duration, speed, photo time) and action buttons (Prepare, Show external, Play Next). *(Controls wired to store; actions trigger backend.)*
+- [x] Build Zustand store for ceremony state, playlist, and playback status. *(Extended store with asset/playlist management and Tauri event broadcasting.)*
 
 ## 4. Asset Management UI
-- [ ] Introduce OVR → Animation Management (Lottie flag assets) with CRUD/upload.
-- [ ] Introduce OVR → Anthem Management with CRUD/upload.
-- [ ] Auto-link flag/anthem fields to asset libraries (filter by IOC code).
+- [x] Introduce OVR Animation Management (Lottie flag assets) with CRUD/upload. *(New `MedalCeremonyAnimationManager` tab.)*
+- [x] Introduce OVR Anthem Management with CRUD/upload. *(New `MedalCeremonyAnthemManager` tab.)*
+- [x] Auto-link flag/anthem fields to asset libraries (filter by IOC code). *(Medalist selection auto-populates default assets and dropdowns filter by IOC.)*
 
 ## 5. External Screen Playback
-- [ ] Create full-screen window rendering backgrounds, animations, anthem playback, transitions.
-- [ ] Implement playlist execution (Play Next), handle show/hide toggle, and item state (played/unplayed).
-- [ ] Support global settings for animation duration/speed and photo countdown.
+- [x] Create full-screen window rendering backgrounds, animations, anthem playback, transitions. *(Initial React external display with background/phase handling.)*
+- [x] Implement playlist execution (Play Next), handle show/hide toggle, and item state (played/unplayed). *(Emit playback events, auto-open window, update state.)*
+- [~] Support global settings for animation duration/speed and photo countdown. *(Animation duration & photo time applied; animation speed integration pending follow-up.)*
 
 ## 6. Testing & QA
 - [ ] Backend unit/integration tests (playlist generation, DB persistence, command responses).

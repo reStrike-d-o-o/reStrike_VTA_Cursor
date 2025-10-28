@@ -1,6 +1,6 @@
 // Tauri command utilities for reStrike VTA
 
-import { TauriCommandResponse, ObsConnection, VideoClip, PssEvent, OpenApiStateResponse, OpenApiSaveResponse, OpenApiUploadResponse, OpenApiValidateResponse, SchemaFormat } from '../types';
+import { TauriCommandResponse, ObsConnection, VideoClip, PssEvent, OpenApiStateResponse, OpenApiSaveResponse, OpenApiUploadResponse, OpenApiValidateResponse, SchemaFormat, MedalCeremonySummary, MedalCeremonyDetail, FlagAnimationAsset, AnthemAsset, MedalCeremonyDivision, MedalCeremonyDivisionOption, MedalCeremonyAthleteOption } from '../types';
 
 // Tauri v2 invoke function that uses the core module
 const safeInvoke = async (command: string, args?: any) => {
@@ -113,6 +113,131 @@ export const openApiCommands = {
       throw new Error('Tauri not available');
     }
     await safeInvoke('openapi_export_schema', { request: { path, format } });
+  },
+};
+
+// ============================================================================
+// Medal Ceremony Commands
+// ============================================================================
+
+export const medalCeremonyCommands = {
+  async listDivisionOptions(): Promise<MedalCeremonyDivisionOption[]> {
+    if (!isTauriAvailable()) {
+      throw new Error('Tauri not available');
+    }
+    const result = await safeInvoke('medal_ceremony_list_divisions');
+    return (Array.isArray(result) ? result : []) as MedalCeremonyDivisionOption[];
+  },
+
+  async listAthletes(division: string): Promise<MedalCeremonyAthleteOption[]> {
+    if (!isTauriAvailable()) {
+      throw new Error('Tauri not available');
+    }
+    const result = await safeInvoke('medal_ceremony_list_athletes', { division });
+    return (Array.isArray(result) ? result : []) as MedalCeremonyAthleteOption[];
+  },
+
+  async list(): Promise<MedalCeremonySummary[]> {
+    if (!isTauriAvailable()) {
+      throw new Error('Tauri not available');
+    }
+    const result = await safeInvoke('medal_ceremony_list');
+    return (Array.isArray(result) ? result : []) as MedalCeremonySummary[];
+  },
+
+  async get(ceremonyId: string): Promise<MedalCeremonyDetail | null> {
+    if (!isTauriAvailable()) {
+      throw new Error('Tauri not available');
+    }
+    const detail = await safeInvoke('medal_ceremony_get', { ceremonyId });
+    return (detail ?? null) as MedalCeremonyDetail | null;
+  },
+
+  async save(detail: MedalCeremonyDetail): Promise<string> {
+    if (!isTauriAvailable()) {
+      throw new Error('Tauri not available');
+    }
+    return await safeInvoke('medal_ceremony_save', { payload: detail }) as string;
+  },
+
+  async remove(ceremonyId: string): Promise<void> {
+    if (!isTauriAvailable()) {
+      throw new Error('Tauri not available');
+    }
+    await safeInvoke('medal_ceremony_delete', { ceremonyId });
+  },
+
+  async prepare(ceremonyId: string): Promise<MedalCeremonyDivision[]> {
+    if (!isTauriAvailable()) {
+      throw new Error('Tauri not available');
+    }
+    const result = await safeInvoke('medal_ceremony_prepare', { ceremonyId });
+    return (Array.isArray(result) ? result : []) as MedalCeremonyDivision[];
+  },
+
+  async markDivisionPlayed(divisionId: string): Promise<void> {
+    if (!isTauriAvailable()) {
+      throw new Error('Tauri not available');
+    }
+    await safeInvoke('medal_ceremony_mark_division_played', { divisionId });
+  },
+
+  async resetPlayback(ceremonyId: string): Promise<void> {
+    if (!isTauriAvailable()) {
+      throw new Error('Tauri not available');
+    }
+    await safeInvoke('medal_ceremony_reset_playback', { ceremonyId });
+  },
+
+  async setShowExternal(ceremonyId: string, enabled: boolean): Promise<void> {
+    if (!isTauriAvailable()) {
+      throw new Error('Tauri not available');
+    }
+    await safeInvoke('medal_ceremony_set_show_external', { ceremonyId, enabled });
+  },
+
+  async listFlagAssets(): Promise<FlagAnimationAsset[]> {
+    if (!isTauriAvailable()) {
+      throw new Error('Tauri not available');
+    }
+    const result = await safeInvoke('medal_ceremony_list_flag_assets');
+    return (Array.isArray(result) ? result : []) as FlagAnimationAsset[];
+  },
+
+  async saveFlagAsset(asset: FlagAnimationAsset): Promise<string> {
+    if (!isTauriAvailable()) {
+      throw new Error('Tauri not available');
+    }
+    return await safeInvoke('medal_ceremony_save_flag_asset', { asset }) as string;
+  },
+
+  async deleteFlagAsset(assetId: string): Promise<void> {
+    if (!isTauriAvailable()) {
+      throw new Error('Tauri not available');
+    }
+    await safeInvoke('medal_ceremony_delete_flag_asset', { assetId });
+  },
+
+  async listAnthemAssets(): Promise<AnthemAsset[]> {
+    if (!isTauriAvailable()) {
+      throw new Error('Tauri not available');
+    }
+    const result = await safeInvoke('medal_ceremony_list_anthems');
+    return (Array.isArray(result) ? result : []) as AnthemAsset[];
+  },
+
+  async saveAnthemAsset(asset: AnthemAsset): Promise<string> {
+    if (!isTauriAvailable()) {
+      throw new Error('Tauri not available');
+    }
+    return await safeInvoke('medal_ceremony_save_anthem', { asset }) as string;
+  },
+
+  async deleteAnthemAsset(assetId: string): Promise<void> {
+    if (!isTauriAvailable()) {
+      throw new Error('Tauri not available');
+    }
+    await safeInvoke('medal_ceremony_delete_anthem', { assetId });
   },
 };
 

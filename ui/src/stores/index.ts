@@ -338,3 +338,4 @@ export const useAppStore = create<AppStore>()(
 export { useObsStore } from './obsStore';
 export { useLiveDataStore } from './liveDataStore';
 export { usePssMatchStore } from './pssMatchStore';
+export { useMedalCeremonyStore } from './medalCeremonyStore';

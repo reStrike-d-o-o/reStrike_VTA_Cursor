@@ -9,10 +9,11 @@ use crate::database::{
         MedalCeremonyMedalist, OvrAnthemAsset, OvrFlagAnimationAsset, Tournament, TournamentDay,
         UdpClientConnection, UdpServerConfig, UdpServerSession,
     },
-    DatabaseConnection, DatabaseResult,
+    DatabaseConnection, DatabaseError, DatabaseResult,
 };
 use chrono::{DateTime, Utc};
 use rusqlite::{params, Connection, OptionalExtension, Result as SqliteResult};
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 /// UI Settings Operations for managing UI configuration
@@ -4000,6 +4001,583 @@ impl OvrOperations {
 		)?;
         tx.commit()?;
         Ok(local_id)
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MedalCeremonyDivisionOption {
+    pub name: String,
+    pub category: Option<String>,
+    pub gender: Option<String>,
+    pub weight_class: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MedalCeremonyAthleteOption {
+    pub id: i64,
+    pub full_name: String,
+    pub short_name: Option<String>,
+    pub country_code: Option<String>,
+    pub ioc_code: Option<String>,
+    pub athlete_code: Option<String>,
+}
+
+pub struct MedalCeremonyOperations;
+
+impl MedalCeremonyOperations {
+    fn now() -> String {
+        Utc::now().to_rfc3339()
+    }
+
+    pub fn list_division_options(
+        conn: &Connection,
+    ) -> DatabaseResult<Vec<MedalCeremonyDivisionOption>> {
+        let mut stmt = conn.prepare(
+            "SELECT DISTINCT name, category, gender, weight_class
+             FROM (
+                SELECT
+                    TRIM(division) AS name,
+                    TRIM(category) AS category,
+                    NULL AS gender,
+                    TRIM(weight_class) AS weight_class
+                FROM pss_matches
+                WHERE division IS NOT NULL AND TRIM(division) <> ''
+                UNION
+                SELECT
+                    TRIM(division) AS name,
+                    TRIM(age_group) AS category,
+                    TRIM(gender) AS gender,
+                    TRIM(weight_class) AS weight_class
+                FROM ovr_categories
+                WHERE division IS NOT NULL AND TRIM(division) <> ''
+             )
+             WHERE name IS NOT NULL AND name <> ''
+             ORDER BY LOWER(name), LOWER(IFNULL(category,'')), LOWER(IFNULL(gender,'')), LOWER(IFNULL(weight_class,''))",
+        )?;
+        let options = stmt
+            .query_map([], |row| {
+                Ok(MedalCeremonyDivisionOption {
+                    name: row.get::<_, String>("name")?,
+                    category: row.get("category")?,
+                    gender: row.get("gender")?,
+                    weight_class: row.get("weight_class")?,
+                })
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(options)
+    }
+
+    pub fn list_athlete_options(
+        conn: &Connection,
+        division_name: &str,
+    ) -> DatabaseResult<Vec<MedalCeremonyAthleteOption>> {
+        let mut stmt = conn.prepare(
+            "SELECT DISTINCT
+                a.id AS athlete_id,
+                COALESCE(NULLIF(TRIM(a.long_name), ''), TRIM(a.short_name)) AS full_name,
+                a.short_name,
+                a.country_code,
+                a.country_code AS ioc_code,
+                a.athlete_code
+             FROM pss_match_athletes ma
+             JOIN pss_matches m ON ma.match_id = m.id
+             JOIN pss_athletes a ON ma.athlete_id = a.id
+             WHERE m.division IS NOT NULL
+               AND TRIM(m.division) <> ''
+               AND LOWER(TRIM(m.division)) = LOWER(TRIM(?1))
+             ORDER BY LOWER(full_name), LOWER(IFNULL(a.short_name,''))",
+        )?;
+        let options = stmt
+            .query_map([division_name], |row| {
+                Ok(MedalCeremonyAthleteOption {
+                    id: row.get("athlete_id")?,
+                    full_name: row
+                        .get::<_, Option<String>>("full_name")?
+                        .unwrap_or_else(|| "Unknown athlete".to_string()),
+                    short_name: row.get("short_name")?,
+                    country_code: row.get("country_code")?,
+                    ioc_code: row.get("ioc_code")?,
+                    athlete_code: row.get("athlete_code")?,
+                })
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(options)
+    }
+
+    fn fetch_divisions_with_medalists(
+        conn: &Connection,
+        ceremony_id: &str,
+    ) -> DatabaseResult<Vec<MedalCeremonyDivisionDetail>> {
+        let mut stmt = conn.prepare(
+            "SELECT * FROM medal_ceremony_divisions WHERE ceremony_id = ?1 ORDER BY order_index ASC, created_at ASC",
+        )?;
+        let divisions = stmt
+            .query_map([ceremony_id], |row| MedalCeremonyDivision::from_row(row))?
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let mut details = Vec::with_capacity(divisions.len());
+        let mut medal_stmt = conn.prepare(
+            "SELECT * FROM medal_ceremony_medalists WHERE division_entry_id = ?1 ORDER BY medal_rank ASC",
+        )?;
+
+        for division in divisions {
+            let medalists = medal_stmt
+                .query_map([division.id.as_str()], |row| MedalCeremonyMedalist::from_row(row))?
+                .collect::<Result<Vec<_>, _>>()?;
+
+            details.push(MedalCeremonyDivisionDetail {
+                division,
+                medalists,
+            });
+        }
+
+        Ok(details)
+    }
+
+    pub fn list_ceremonies(conn: &Connection) -> DatabaseResult<Vec<MedalCeremony>> {
+        let mut stmt = conn.prepare(
+            "SELECT * FROM medal_ceremonies ORDER BY datetime(created_at) DESC, name ASC",
+        )?;
+        let items = stmt
+            .query_map([], |row| MedalCeremony::from_row(row))?
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(items)
+    }
+
+    pub fn get_ceremony_detail(
+        conn: &Connection,
+        ceremony_id: &str,
+    ) -> DatabaseResult<Option<MedalCeremonyDetail>> {
+        let mut stmt =
+            conn.prepare("SELECT * FROM medal_ceremonies WHERE id = ?1 LIMIT 1")?;
+        let ceremony = stmt
+            .query_row([ceremony_id], |row| MedalCeremony::from_row(row))
+            .optional()?;
+
+        if let Some(ceremony) = ceremony {
+            let divisions = Self::fetch_divisions_with_medalists(conn, &ceremony.id)?;
+            Ok(Some(MedalCeremonyDetail { ceremony, divisions }))
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub fn upsert_ceremony(
+        conn: &mut Connection,
+        payload: &MedalCeremonyDetail,
+    ) -> DatabaseResult<String> {
+        let tx = conn.transaction()?;
+        let now = Self::now();
+        let ceremony = payload.ceremony.clone();
+        let ceremony_id = if ceremony.id.trim().is_empty() {
+            Uuid::new_v4().to_string()
+        } else {
+            ceremony.id.clone()
+        };
+
+        let show_external = if ceremony.show_external { 1 } else { 0 };
+        let is_new = payload.ceremony.id.trim().is_empty();
+
+        if is_new {
+            tx.execute(
+                "INSERT INTO medal_ceremonies (
+                    id, tournament_id, name, background_path, break_path,
+                    animation_duration, animation_speed, photo_time,
+                    prepared_at, prepared_version, show_external,
+                    created_at, updated_at
+                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, NULL, ?9, ?10, ?11, ?12)",
+                params![
+                    ceremony_id,
+                    ceremony.tournament_id,
+                    ceremony.name,
+                    ceremony.background_path,
+                    ceremony.break_path,
+                    ceremony.animation_duration,
+                    ceremony.animation_speed,
+                    ceremony.photo_time,
+                    ceremony.prepared_version,
+                    show_external,
+                    now,
+                    now
+                ],
+            )?;
+        } else {
+            tx.execute(
+                "UPDATE medal_ceremonies SET
+                    tournament_id = ?1,
+                    name = ?2,
+                    background_path = ?3,
+                    break_path = ?4,
+                    animation_duration = ?5,
+                    animation_speed = ?6,
+                    photo_time = ?7,
+                    prepared_at = NULL,
+                    prepared_version = ?8,
+                    show_external = ?9,
+                    updated_at = ?10
+                 WHERE id = ?11",
+                params![
+                    ceremony.tournament_id,
+                    ceremony.name,
+                    ceremony.background_path,
+                    ceremony.break_path,
+                    ceremony.animation_duration,
+                    ceremony.animation_speed,
+                    ceremony.photo_time,
+                    ceremony.prepared_version,
+                    show_external,
+                    now,
+                    ceremony_id
+                ],
+            )?;
+        }
+
+        tx.execute(
+            "DELETE FROM medal_ceremony_medalists
+             WHERE division_entry_id IN (
+                SELECT id FROM medal_ceremony_divisions WHERE ceremony_id = ?1
+             )",
+            params![ceremony_id],
+        )?;
+        tx.execute(
+            "DELETE FROM medal_ceremony_divisions WHERE ceremony_id = ?1",
+            params![ceremony_id],
+        )?;
+
+        for (idx, division_detail) in payload.divisions.iter().enumerate() {
+            let mut division = division_detail.division.clone();
+            if division.id.trim().is_empty() {
+                division.id = Uuid::new_v4().to_string();
+            }
+            let order_index = if division.order_index > 0 {
+                division.order_index
+            } else {
+                (idx + 1) as i64
+            };
+
+            tx.execute(
+                "INSERT INTO medal_ceremony_divisions (
+                    id, ceremony_id, division_id, division_name,
+                    order_index, played_at, created_at, updated_at
+                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+                params![
+                    division.id,
+                    ceremony_id,
+                    division.division_id,
+                    division.division_name,
+                    order_index,
+                    overv_dt(division.played_at),
+                    now,
+                    now
+                ],
+            )?;
+
+            for medalist in &division_detail.medalists {
+                let mut record = medalist.clone();
+                if record.id.trim().is_empty() {
+                    record.id = Uuid::new_v4().to_string();
+                }
+                tx.execute(
+                    "INSERT INTO medal_ceremony_medalists (
+                        id, division_entry_id, medal_type, medal_rank,
+                        athlete_id, athlete_name, athlete_short_name,
+                        ioc_code, flag_asset, anthem_asset,
+                        created_at, updated_at
+                    ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
+                    params![
+                        record.id,
+                        division.id,
+                        record.medal_type,
+                        record.medal_rank,
+                        record.athlete_id,
+                        record.athlete_name,
+                        record.athlete_short_name,
+                        record.ioc_code,
+                        record.flag_asset,
+                        record.anthem_asset,
+                        now,
+                        now
+                    ],
+                )?;
+            }
+        }
+
+        tx.commit()?;
+        Ok(ceremony_id)
+    }
+
+    pub fn delete_ceremony(conn: &mut Connection, ceremony_id: &str) -> DatabaseResult<()> {
+        conn.execute("DELETE FROM medal_ceremonies WHERE id = ?1", params![ceremony_id])?;
+        Ok(())
+    }
+
+    pub fn prepare_playlist(
+        conn: &mut Connection,
+        ceremony_id: &str,
+    ) -> DatabaseResult<Vec<MedalCeremonyDivisionDetail>> {
+        let tx = conn.transaction()?;
+        let now = Self::now();
+        let current_version: Option<i64> = tx
+            .query_row(
+                "SELECT prepared_version FROM medal_ceremonies WHERE id = ?1",
+                params![ceremony_id],
+                |row| row.get(0),
+            )
+            .optional()?;
+
+        let version = current_version.ok_or_else(|| {
+            DatabaseError::Config(format!("Medal ceremony {} not found", ceremony_id))
+        })?;
+
+        tx.execute(
+            "UPDATE medal_ceremonies
+             SET prepared_at = ?1, prepared_version = ?2, updated_at = ?1
+             WHERE id = ?3",
+            params![now, version + 1, ceremony_id],
+        )?;
+        tx.commit()?;
+
+        let detail = Self::get_ceremony_detail(conn, ceremony_id)?;
+        Ok(detail.map(|d| d.divisions).unwrap_or_default())
+    }
+
+    pub fn mark_division_played(
+        conn: &mut Connection,
+        division_id: &str,
+    ) -> DatabaseResult<()> {
+        let tx = conn.transaction()?;
+        let now = Self::now();
+        let ceremony_id: Option<String> = tx
+            .query_row(
+                "SELECT ceremony_id FROM medal_ceremony_divisions WHERE id = ?1",
+                params![division_id],
+                |row| row.get(0),
+            )
+            .optional()?;
+
+        let ceremony_id = ceremony_id.ok_or_else(|| {
+            DatabaseError::Config(format!("Medal ceremony division {} not found", division_id))
+        })?;
+
+        tx.execute(
+            "UPDATE medal_ceremony_divisions SET played_at = ?1, updated_at = ?1 WHERE id = ?2",
+            params![now, division_id],
+        )?;
+        tx.execute(
+            "UPDATE medal_ceremonies SET updated_at = ?1 WHERE id = ?2",
+            params![now, ceremony_id],
+        )?;
+        tx.commit()?;
+        Ok(())
+    }
+
+    pub fn reset_playback(
+        conn: &mut Connection,
+        ceremony_id: &str,
+    ) -> DatabaseResult<()> {
+        let now = Self::now();
+        conn.execute(
+            "UPDATE medal_ceremony_divisions SET played_at = NULL, updated_at = ?1 WHERE ceremony_id = ?2",
+            params![now, ceremony_id],
+        )?;
+        conn.execute(
+            "UPDATE medal_ceremonies SET prepared_at = NULL, updated_at = ?1 WHERE id = ?2",
+            params![Self::now(), ceremony_id],
+        )?;
+        Ok(())
+    }
+
+    pub fn update_show_external(
+        conn: &mut Connection,
+        ceremony_id: &str,
+        enabled: bool,
+    ) -> DatabaseResult<()> {
+        let now = Self::now();
+        conn.execute(
+            "UPDATE medal_ceremonies SET show_external = ?1, updated_at = ?2 WHERE id = ?3",
+            params![if enabled { 1 } else { 0 }, now, ceremony_id],
+        )?;
+        Ok(())
+    }
+
+    pub fn list_flag_animations(
+        conn: &Connection,
+    ) -> DatabaseResult<Vec<OvrFlagAnimationAsset>> {
+        let mut stmt = conn.prepare(
+            "SELECT * FROM ovr_flag_animations ORDER BY ioc_code ASC, file_name ASC",
+        )?;
+        let assets = stmt
+            .query_map([], |row| OvrFlagAnimationAsset::from_row(row))?
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(assets)
+    }
+
+    pub fn upsert_flag_animation(
+        conn: &mut Connection,
+        asset: &OvrFlagAnimationAsset,
+    ) -> DatabaseResult<String> {
+        let tx = conn.transaction()?;
+        let now = Self::now();
+        let asset_id = if asset.id.trim().is_empty() {
+            Uuid::new_v4().to_string()
+        } else {
+            asset.id.clone()
+        };
+
+        let exists: Option<String> = tx
+            .query_row(
+                "SELECT id FROM ovr_flag_animations WHERE id = ?1",
+                params![asset_id.as_str()],
+                |row| row.get(0),
+            )
+            .optional()?;
+
+        if exists.is_some() {
+            tx.execute(
+                "UPDATE ovr_flag_animations
+                 SET ioc_code = ?1, file_name = ?2, file_path = ?3,
+                     display_name = ?4, duration_ms = ?5, is_default = ?6,
+                     updated_at = ?7
+                 WHERE id = ?8",
+                params![
+                    asset.ioc_code,
+                    asset.file_name,
+                    asset.file_path,
+                    asset.display_name,
+                    asset.duration_ms,
+                    if asset.is_default { 1 } else { 0 },
+                    now,
+                    asset_id
+                ],
+            )?;
+        } else {
+            tx.execute(
+                "INSERT INTO ovr_flag_animations (
+                    id, ioc_code, file_name, file_path, display_name,
+                    duration_ms, is_default, created_at, updated_at
+                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+                params![
+                    asset_id,
+                    asset.ioc_code,
+                    asset.file_name,
+                    asset.file_path,
+                    asset.display_name,
+                    asset.duration_ms,
+                    if asset.is_default { 1 } else { 0 },
+                    now.clone(),
+                    now.clone()
+                ],
+            )?;
+        }
+
+        if asset.is_default {
+            tx.execute(
+                "UPDATE ovr_flag_animations
+                 SET is_default = 0, updated_at = ?1
+                 WHERE ioc_code = ?2 AND id != ?3",
+                params![Self::now(), asset.ioc_code, asset_id],
+            )?;
+        }
+
+        tx.commit()?;
+        Ok(asset_id)
+    }
+
+    pub fn delete_flag_animation(
+        conn: &mut Connection,
+        asset_id: &str,
+    ) -> DatabaseResult<()> {
+        conn.execute(
+            "DELETE FROM ovr_flag_animations WHERE id = ?1",
+            params![asset_id],
+        )?;
+        Ok(())
+    }
+
+    pub fn list_anthems(conn: &Connection) -> DatabaseResult<Vec<OvrAnthemAsset>> {
+        let mut stmt = conn.prepare(
+            "SELECT * FROM ovr_anthems ORDER BY ioc_code ASC, file_name ASC",
+        )?;
+        let assets = stmt
+            .query_map([], |row| OvrAnthemAsset::from_row(row))?
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(assets)
+    }
+
+    pub fn upsert_anthem(
+        conn: &mut Connection,
+        asset: &OvrAnthemAsset,
+    ) -> DatabaseResult<String> {
+        let tx = conn.transaction()?;
+        let now = Self::now();
+        let asset_id = if asset.id.trim().is_empty() {
+            Uuid::new_v4().to_string()
+        } else {
+            asset.id.clone()
+        };
+
+        let exists: Option<String> = tx
+            .query_row(
+                "SELECT id FROM ovr_anthems WHERE id = ?1",
+                params![asset_id.as_str()],
+                |row| row.get(0),
+            )
+            .optional()?;
+
+        if exists.is_some() {
+            tx.execute(
+                "UPDATE ovr_anthems
+                 SET ioc_code = ?1, file_name = ?2, file_path = ?3,
+                     display_name = ?4, duration_ms = ?5, is_default = ?6,
+                     updated_at = ?7
+                 WHERE id = ?8",
+                params![
+                    asset.ioc_code,
+                    asset.file_name,
+                    asset.file_path,
+                    asset.display_name,
+                    asset.duration_ms,
+                    if asset.is_default { 1 } else { 0 },
+                    now,
+                    asset_id
+                ],
+            )?;
+        } else {
+            tx.execute(
+                "INSERT INTO ovr_anthems (
+                    id, ioc_code, file_name, file_path, display_name,
+                    duration_ms, is_default, created_at, updated_at
+                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+                params![
+                    asset_id,
+                    asset.ioc_code,
+                    asset.file_name,
+                    asset.file_path,
+                    asset.display_name,
+                    asset.duration_ms,
+                    if asset.is_default { 1 } else { 0 },
+                    now.clone(),
+                    now.clone()
+                ],
+            )?;
+        }
+
+        if asset.is_default {
+            tx.execute(
+                "UPDATE ovr_anthems
+                 SET is_default = 0, updated_at = ?1
+                 WHERE ioc_code = ?2 AND id != ?3",
+                params![Self::now(), asset.ioc_code, asset_id],
+            )?;
+        }
+
+        tx.commit()?;
+        Ok(asset_id)
+    }
+
+    pub fn delete_anthem(conn: &mut Connection, asset_id: &str) -> DatabaseResult<()> {
+        conn.execute("DELETE FROM ovr_anthems WHERE id = ?1", params![asset_id])?;
+        Ok(())
     }
 }
 

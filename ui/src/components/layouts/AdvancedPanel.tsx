@@ -14,6 +14,9 @@ import DatabaseMigrationPanel from '../molecules/DatabaseMigrationPanel';
 import FlagManagementPanel from '../molecules/FlagManagementPanel';
 import TournamentManagementPanel from '../molecules/TournamentManagementPanel';
 import ExternalSourcesPanel from '../ovr/ExternalSourcesPanel';
+import MedalCeremonyPanel from '../ovr/MedalCeremonyPanel';
+import MedalCeremonyAnimationManager from '../ovr/MedalCeremonyAnimationManager';
+import MedalCeremonyAnthemManager from '../ovr/MedalCeremonyAnthemManager';
 import ScoreboardManager from '../molecules/ScoreboardManager';
 import ObsWebSocketManager from '../organisms/ObsWebSocketManager';
 import ObsIntegrationPanel from '../molecules/ObsIntegrationPanel';
@@ -157,6 +160,12 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
                 )
               },
               {
+                id: 'medal',
+                label: t('ovr.tabs.medal', 'Medal Ceremony'),
+                icon: <LottieIcon animationData={plansAnimation} size={32} />,
+                content: <MedalCeremonyPanel />
+              },
+              {
                 id: 'tournament',
                 label: t('ovr.tabs.tournament', 'Tournament Management'),
                 icon: <LottieIcon animationData={tournamentAnimation} size={32} />,
@@ -167,6 +176,18 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
                 label: t('ovr.tabs.external', 'External sources'),
                 icon: <LottieIcon animationData={businessAnimation} size={32} />,
                 content: <ExternalSourcesPanel />
+              },
+              {
+                id: 'animation-management',
+                label: t('ovr.tabs.animations', 'Animation management'),
+                icon: <LottieIcon animationData={watcherAnimation} size={32} />,
+                content: <MedalCeremonyAnimationManager />
+              },
+              {
+                id: 'anthem-management',
+                label: t('ovr.tabs.anthems', 'Anthem management'),
+                icon: <LottieIcon animationData={mixerAnimation} size={32} />,
+                content: <MedalCeremonyAnthemManager />
               }
             ]}
             activeTab={ovrTab}

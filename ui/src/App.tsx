@@ -12,6 +12,7 @@ import { useTriggersStore } from './stores/triggersStore';
 import PausedOverlay from './components/molecules/PausedOverlay';
 import GlobalModals from './components/molecules/GlobalModals';
 import { useSettingsStore } from './stores/settingsStore';
+import MedalCeremonyExternalDisplay from './components/ovr/MedalCeremonyExternalDisplay';
 
 const App: React.FC = () => {
   const isAdvancedPanelOpen = useAppStore((state) => state.isAdvancedPanelOpen);
@@ -22,6 +23,7 @@ const App: React.FC = () => {
   const paused = useTriggersStore((s) => s.paused);
   const theme = useSettingsStore((s)=>s.theme);
   const sharp = useSettingsStore((s)=>s.sharp);
+  const [externalMode, setExternalMode] = React.useState<'medal' | null>(null);
   // Initialize PSS event listener for real-time events
   const { setupEventListener, fetchPendingEvents } = usePssEvents();
   
@@ -30,6 +32,15 @@ const App: React.FC = () => {
   
   // Initialize OBS status listener for real-time status updates
   const { setupStatusListener } = useEnvironmentObs();
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const external = params.get('external');
+    if (external === 'medal') {
+      setExternalMode('medal');
+    }
+  }, []);
   
   // Debug environment detection
   React.useEffect(() => {
@@ -93,6 +104,10 @@ const App: React.FC = () => {
     }
   }, [tauriAvailable, isLoading, setupEventListener, fetchPendingEvents, setupStatusListener]);
   
+  if (externalMode === 'medal') {
+    return <MedalCeremonyExternalDisplay />;
+  }
+
   return (
     <div className="h-screen flex flex-col bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white overflow-hidden">
       {paused && <PausedOverlay />}

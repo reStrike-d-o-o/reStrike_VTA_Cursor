@@ -245,6 +245,98 @@ export interface OpenApiValidateResponse {
 }
 
 // ============================================================================
+// Medal Ceremony Types
+// ============================================================================
+
+export type MedalType = 'gold' | 'silver' | 'bronze';
+
+export interface MedalCeremonySummary {
+  id: string;
+  tournament_id?: number | null;
+  name: string;
+  prepared_at?: string | null;
+  prepared_version: number;
+  show_external: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MedalCeremonyRecord {
+  id?: string | null;
+  tournament_id?: number | null;
+  name: string;
+  background_path?: string | null;
+  break_path?: string | null;
+  animation_duration: number;
+  animation_speed: number;
+  photo_time: number;
+  prepared_at?: string | null;
+  prepared_version: number;
+  show_external: boolean;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface MedalCeremonyMedalist {
+  id?: string | null;
+  medal_type: MedalType | string;
+  medal_rank: number;
+  athlete_id?: number | null;
+  athlete_name: string;
+  athlete_short_name?: string | null;
+  ioc_code?: string | null;
+  flag_asset?: string | null;
+  anthem_asset?: string | null;
+}
+
+export interface MedalCeremonyDivision {
+  id?: string | null;
+  division_id?: number | null;
+  division_name: string;
+  order_index: number;
+  played_at?: string | null;
+  medalists: MedalCeremonyMedalist[];
+}
+
+export interface MedalCeremonyDetail {
+  ceremony: MedalCeremonyRecord;
+  divisions: MedalCeremonyDivision[];
+}
+
+export interface MedalCeremonyPlaylistEntry {
+  division_id: string;
+  division_name: string;
+  order_index: number;
+  gold_flag_asset?: string | null;
+  gold_anthem_asset?: string | null;
+  played_at?: string | null;
+}
+
+export interface FlagAnimationAsset {
+  id?: string | null;
+  ioc_code: string;
+  file_name: string;
+  file_path: string;
+  display_name?: string | null;
+  duration_ms?: number | null;
+  is_default: boolean;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface AnthemAsset {
+  id?: string | null;
+  ioc_code: string;
+  file_name: string;
+  file_path: string;
+  display_name?: string | null;
+  duration_ms?: number | null;
+  is_default: boolean;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+// ============================================================================
 // Flag System Types
 // ============================================================================
 
@@ -253,6 +345,22 @@ export interface FlagInfo {
   name: string;
   emoji: string;
   imagePath?: string;
+}
+
+export interface MedalCeremonyDivisionOption {
+  name: string;
+  category?: string | null;
+  gender?: string | null;
+  weight_class?: string | null;
+}
+
+export interface MedalCeremonyAthleteOption {
+  id: number;
+  full_name: string;
+  short_name?: string | null;
+  country_code?: string | null;
+  ioc_code?: string | null;
+  athlete_code?: string | null;
 }
 
 // ============================================================================

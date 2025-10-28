@@ -14,6 +14,7 @@ pub mod security;
 pub mod tauri_commands;
 pub mod tauri_commands_manual_mode;
 pub mod tauri_commands_obs_connections;
+pub mod tauri_commands_medal_ceremony;
 #[cfg(feature = "obs-obws")]
 pub mod tauri_commands_obws;
 pub mod tauri_commands_openapi;
