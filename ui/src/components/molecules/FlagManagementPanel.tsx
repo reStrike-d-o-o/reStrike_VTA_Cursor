@@ -298,6 +298,15 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
     }
   };
 
+  const normalizedSelectedStatus =
+    (selectedFlag?.recognition_status || '').toLowerCase();
+  const normalizedSelectedConfidence =
+    selectedFlag && typeof selectedFlag.recognition_confidence === 'number'
+      ? selectedFlag.recognition_confidence > 1
+        ? selectedFlag.recognition_confidence
+        : selectedFlag.recognition_confidence * 100
+      : undefined;
+
   const clearFlagsDatabase = async () => {
     if (!window.__TAURI__) {
       setError(t('flags.err.nodb', 'Database functionality not available in this environment'));
@@ -535,6 +544,14 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
               </div>
             </div>
 
+            {selectedFlag.countryName && (
+              <div className="mt-6 rounded-lg border border-blue-700/40 bg-blue-900/20 px-6 py-8 text-center shadow-inner">
+                <span className="text-4xl font-bold uppercase tracking-widest text-blue-100">
+                  {selectedFlag.countryName}
+                </span>
+              </div>
+            )}
+
             {/* Database Information */}
             {selectedFlag.id && (
               <div className="border-t border-gray-600/30 pt-4">
@@ -548,19 +565,19 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
                     <div className="flex justify-between">
                       <span className="text-xs text-gray-400">{t('flags.db.status', 'Status')}:</span>
                       <span className={`text-xs px-2 py-1 rounded ${
-                        selectedFlag.recognition_status === 'recognized' 
+                        normalizedSelectedStatus === 'recognized' 
                           ? 'bg-green-900/30 text-green-300 border border-green-600/30'
-                          : selectedFlag.recognition_status === 'pending'
+                          : normalizedSelectedStatus === 'pending'
                           ? 'bg-yellow-900/30 text-yellow-300 border border-yellow-600/30'
                           : 'bg-red-900/30 text-red-300 border border-red-600/30'
                       }`}>
                         {selectedFlag.recognition_status || 'unknown'}
                       </span>
                     </div>
-                    {selectedFlag.recognition_confidence && (
+                    {normalizedSelectedConfidence !== undefined && (
                       <div className="flex justify-between">
                         <span className="text-xs text-gray-400">{t('flags.db.confidence', 'Confidence')}:</span>
-                        <span className="text-xs text-gray-300">{(selectedFlag.recognition_confidence * 100).toFixed(1)}%</span>
+                        <span className="text-xs text-gray-300">{normalizedSelectedConfidence.toFixed(1)}%</span>
                       </div>
                     )}
                   </div>
