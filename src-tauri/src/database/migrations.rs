@@ -3268,6 +3268,7 @@ impl MigrationManager {
         migrations.push(Box::new(Migration38)); // Drop tournament_days and remove tournament_day_id columns
         migrations.push(Box::new(Migration39)); // Drop tournament_day_id from event_triggers and obs_recording_sessions
         migrations.push(Box::new(Migration40)); // Add integer created/updated to obs_recording_sessions and backfill
+        migrations.push(Box::new(Migration41)); // Medal ceremony schema and OVR asset registries
 
         Self { migrations }
     }
@@ -5813,3 +5814,159 @@ impl Migration for Migration40 {
 }
 
 // (removed duplicate Migration38 minimal drop version; replaced by comprehensive recreate above)
+
+/// Migration 41: Medal ceremony core tables and OVR asset registries
+pub struct Migration41;
+
+impl Migration for Migration41 {
+    fn version(&self) -> u32 {
+        41
+    }
+
+    fn description(&self) -> &str {
+        "Create medal ceremony tables and OVR asset registries for animations/anthems"
+    }
+
+    fn up(&self, conn: &Connection) -> SqliteResult<()> {
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS medal_ceremonies (
+                id TEXT PRIMARY KEY,
+                tournament_id INTEGER,
+                name TEXT NOT NULL,
+                background_path TEXT,
+                break_path TEXT,
+                animation_duration INTEGER NOT NULL DEFAULT 45000,
+                animation_speed REAL NOT NULL DEFAULT 1.0,
+                photo_time INTEGER NOT NULL DEFAULT 10,
+                prepared_at TEXT,
+                prepared_version INTEGER NOT NULL DEFAULT 0,
+                show_external INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (tournament_id) REFERENCES tournaments(id) ON DELETE SET NULL
+            )",
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS medal_ceremony_divisions (
+                id TEXT PRIMARY KEY,
+                ceremony_id TEXT NOT NULL,
+                division_id INTEGER,
+                division_name TEXT NOT NULL,
+                order_index INTEGER NOT NULL,
+                played_at TEXT,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (ceremony_id) REFERENCES medal_ceremonies(id) ON DELETE CASCADE,
+                FOREIGN KEY (division_id) REFERENCES look_divisions(id) ON DELETE SET NULL,
+                UNIQUE(ceremony_id, order_index)
+            )",
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS medal_ceremony_medalists (
+                id TEXT PRIMARY KEY,
+                division_entry_id TEXT NOT NULL,
+                medal_type TEXT NOT NULL,
+                medal_rank INTEGER NOT NULL,
+                athlete_id INTEGER,
+                athlete_name TEXT NOT NULL,
+                athlete_short_name TEXT,
+                ioc_code TEXT,
+                flag_asset TEXT,
+                anthem_asset TEXT,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (division_entry_id) REFERENCES medal_ceremony_divisions(id) ON DELETE CASCADE,
+                FOREIGN KEY (athlete_id) REFERENCES pss_athletes(id) ON DELETE SET NULL,
+                UNIQUE(division_entry_id, medal_type)
+            )",
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS ovr_flag_animations (
+                id TEXT PRIMARY KEY,
+                ioc_code TEXT NOT NULL,
+                file_name TEXT NOT NULL,
+                file_path TEXT NOT NULL,
+                display_name TEXT,
+                duration_ms INTEGER,
+                is_default INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )",
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS ovr_anthems (
+                id TEXT PRIMARY KEY,
+                ioc_code TEXT NOT NULL,
+                file_name TEXT NOT NULL,
+                file_path TEXT NOT NULL,
+                display_name TEXT,
+                duration_ms INTEGER,
+                is_default INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )",
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_medal_ceremony_divisions_ceremony_order
+             ON medal_ceremony_divisions(ceremony_id, order_index)",
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_medal_ceremony_medalists_division
+             ON medal_ceremony_medalists(division_entry_id)",
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_medal_ceremony_medalists_athlete
+             ON medal_ceremony_medalists(athlete_id)",
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_ovr_flag_animations_ioc
+             ON ovr_flag_animations(ioc_code)",
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_ovr_flag_animations_unique
+             ON ovr_flag_animations(ioc_code, file_name)",
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_ovr_anthems_ioc
+             ON ovr_anthems(ioc_code)",
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_ovr_anthems_unique
+             ON ovr_anthems(ioc_code, file_name)",
+            [],
+        )?;
+
+        Ok(())
+    }
+
+    fn down(&self, conn: &Connection) -> SqliteResult<()> {
+        conn.execute("DROP TABLE IF EXISTS medal_ceremony_medalists", [])?;
+        conn.execute("DROP TABLE IF EXISTS medal_ceremony_divisions", [])?;
+        conn.execute("DROP TABLE IF EXISTS medal_ceremonies", [])?;
+        conn.execute("DROP TABLE IF EXISTS ovr_flag_animations", [])?;
+        conn.execute("DROP TABLE IF EXISTS ovr_anthems", [])?;
+        Ok(())
+    }
+}

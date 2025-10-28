@@ -242,6 +242,18 @@ fn parse_datetime_from_db(date_str: &str, field_name: &str) -> rusqlite::Result<
         })
 }
 
+fn parse_optional_datetime_from_db(
+    value: Option<String>,
+    field_name: &str,
+) -> rusqlite::Result<Option<DateTime<Utc>>> {
+    match value {
+        Some(date_str) if !date_str.is_empty() => {
+            Ok(Some(parse_datetime_from_db(&date_str, field_name)?))
+        }
+        _ => Ok(None),
+    }
+}
+
 /// PSS Event model for storing raw PSS events
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PssEvent {
@@ -2285,6 +2297,182 @@ impl OvrToLocalTournament {
             ovr_tournament_id: row.get("ovr_tournament_id")?,
             local_tournament_id: row.get("local_tournament_id")?,
             created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
+        })
+    }
+}
+
+/// Medal Ceremony models
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MedalCeremony {
+    pub id: String,
+    pub tournament_id: Option<i64>,
+    pub name: String,
+    pub background_path: Option<String>,
+    pub break_path: Option<String>,
+    pub animation_duration: i64,
+    pub animation_speed: f64,
+    pub photo_time: i64,
+    pub prepared_at: Option<DateTime<Utc>>,
+    pub prepared_version: i64,
+    pub show_external: bool,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+impl MedalCeremony {
+    pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
+        Ok(Self {
+            id: row.get("id")?,
+            tournament_id: row.get("tournament_id")?,
+            name: row.get("name")?,
+            background_path: row.get("background_path")?,
+            break_path: row.get("break_path")?,
+            animation_duration: row.get::<_, i64>("animation_duration").unwrap_or(45_000),
+            animation_speed: row.get::<_, f64>("animation_speed").unwrap_or(1.0),
+            photo_time: row.get::<_, i64>("photo_time").unwrap_or(10),
+            prepared_at: parse_optional_datetime_from_db(
+                row.get::<_, Option<String>>("prepared_at")?,
+                "prepared_at",
+            )?,
+            prepared_version: row.get::<_, i64>("prepared_version").unwrap_or(0),
+            show_external: row.get::<_, i64>("show_external").unwrap_or(0) != 0,
+            created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
+            updated_at: parse_datetime_from_db(&row.get::<_, String>("updated_at")?, "updated_at")?,
+        })
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MedalCeremonyDivision {
+    pub id: String,
+    pub ceremony_id: String,
+    pub division_id: Option<i64>,
+    pub division_name: String,
+    pub order_index: i64,
+    pub played_at: Option<DateTime<Utc>>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+impl MedalCeremonyDivision {
+    pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
+        Ok(Self {
+            id: row.get("id")?,
+            ceremony_id: row.get("ceremony_id")?,
+            division_id: row.get("division_id")?,
+            division_name: row.get("division_name")?,
+            order_index: row.get::<_, i64>("order_index").unwrap_or(0),
+            played_at: parse_optional_datetime_from_db(
+                row.get::<_, Option<String>>("played_at")?,
+                "played_at",
+            )?,
+            created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
+            updated_at: parse_datetime_from_db(&row.get::<_, String>("updated_at")?, "updated_at")?,
+        })
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MedalCeremonyMedalist {
+    pub id: String,
+    pub division_entry_id: String,
+    pub medal_type: String,
+    pub medal_rank: i64,
+    pub athlete_id: Option<i64>,
+    pub athlete_name: String,
+    pub athlete_short_name: Option<String>,
+    pub ioc_code: Option<String>,
+    pub flag_asset: Option<String>,
+    pub anthem_asset: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+impl MedalCeremonyMedalist {
+    pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
+        Ok(Self {
+            id: row.get("id")?,
+            division_entry_id: row.get("division_entry_id")?,
+            medal_type: row.get("medal_type")?,
+            medal_rank: row.get::<_, i64>("medal_rank").unwrap_or(0),
+            athlete_id: row.get("athlete_id")?,
+            athlete_name: row.get("athlete_name")?,
+            athlete_short_name: row.get("athlete_short_name")?,
+            ioc_code: row.get("ioc_code")?,
+            flag_asset: row.get("flag_asset")?,
+            anthem_asset: row.get("anthem_asset")?,
+            created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
+            updated_at: parse_datetime_from_db(&row.get::<_, String>("updated_at")?, "updated_at")?,
+        })
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MedalCeremonyDivisionDetail {
+    pub division: MedalCeremonyDivision,
+    pub medalists: Vec<MedalCeremonyMedalist>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MedalCeremonyDetail {
+    pub ceremony: MedalCeremony,
+    pub divisions: Vec<MedalCeremonyDivisionDetail>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OvrFlagAnimationAsset {
+    pub id: String,
+    pub ioc_code: String,
+    pub file_name: String,
+    pub file_path: String,
+    pub display_name: Option<String>,
+    pub duration_ms: Option<i64>,
+    pub is_default: bool,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+impl OvrFlagAnimationAsset {
+    pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
+        Ok(Self {
+            id: row.get("id")?,
+            ioc_code: row.get("ioc_code")?,
+            file_name: row.get("file_name")?,
+            file_path: row.get("file_path")?,
+            display_name: row.get("display_name")?,
+            duration_ms: row.get("duration_ms")?,
+            is_default: row.get::<_, i64>("is_default").unwrap_or(0) != 0,
+            created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
+            updated_at: parse_datetime_from_db(&row.get::<_, String>("updated_at")?, "updated_at")?,
+        })
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OvrAnthemAsset {
+    pub id: String,
+    pub ioc_code: String,
+    pub file_name: String,
+    pub file_path: String,
+    pub display_name: Option<String>,
+    pub duration_ms: Option<i64>,
+    pub is_default: bool,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+impl OvrAnthemAsset {
+    pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
+        Ok(Self {
+            id: row.get("id")?,
+            ioc_code: row.get("ioc_code")?,
+            file_name: row.get("file_name")?,
+            file_path: row.get("file_path")?,
+            display_name: row.get("display_name")?,
+            duration_ms: row.get("duration_ms")?,
+            is_default: row.get::<_, i64>("is_default").unwrap_or(0) != 0,
+            created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
+            updated_at: parse_datetime_from_db(&row.get::<_, String>("updated_at")?, "updated_at")?,
         })
     }
 }

@@ -5,12 +5,15 @@ use crate::database::{
         PssEventDetail, PssEventRecognitionHistory, PssEventStatistics, PssEventType, PssEventV2,
         PssEventValidationResult, PssEventValidationRule, PssMatch, PssMatchAthlete, PssScore,
         PssUnknownEvent, PssWarning, SettingsCategory, SettingsHistory, SettingsKey, SettingsValue,
-        Tournament, TournamentDay, UdpClientConnection, UdpServerConfig, UdpServerSession,
+        MedalCeremony, MedalCeremonyDetail, MedalCeremonyDivision, MedalCeremonyDivisionDetail,
+        MedalCeremonyMedalist, OvrAnthemAsset, OvrFlagAnimationAsset, Tournament, TournamentDay,
+        UdpClientConnection, UdpServerConfig, UdpServerSession,
     },
     DatabaseConnection, DatabaseResult,
 };
 use chrono::{DateTime, Utc};
 use rusqlite::{params, Connection, OptionalExtension, Result as SqliteResult};
+use uuid::Uuid;
 
 /// UI Settings Operations for managing UI configuration
 pub struct UiSettingsOperations;
