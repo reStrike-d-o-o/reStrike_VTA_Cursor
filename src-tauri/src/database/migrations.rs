@@ -3273,6 +3273,7 @@ impl MigrationManager {
         migrations.push(Box::new(Migration41)); // Medal ceremony schema and OVR asset registries
         migrations.push(Box::new(Migration42)); // Animation library table seeded from flags
         migrations.push(Box::new(Migration43)); // Seed WT divisions and weight classes
+        migrations.push(Box::new(Migration44)); // Extend round configs with golden and kyeshi durations
 
         Self { migrations }
     }
@@ -6410,6 +6411,65 @@ impl Migration for Migration43 {
 
         conn.execute("UPDATE look_genders SET name = 'Male' WHERE code = 'M'", [])?;
         conn.execute("UPDATE look_genders SET name = 'Female' WHERE code = 'F'", [])?;
+
+        Ok(())
+    }
+}
+
+/// Migration 44: Extend round configs with golden round and kyeshi durations
+pub struct Migration44;
+
+impl Migration for Migration44 {
+    fn version(&self) -> u32 {
+        44
+    }
+
+    fn description(&self) -> &str {
+        "Add golden_round_duration and kyeshi_duration columns to look_round_configs"
+    }
+
+    fn up(&self, conn: &Connection) -> SqliteResult<()> {
+        add_column_if_missing(
+            conn,
+            "look_round_configs",
+            "golden_round_duration",
+            "INTEGER",
+        )?;
+        add_column_if_missing(conn, "look_round_configs", "kyeshi_duration", "INTEGER")?;
+
+        Ok(())
+    }
+
+    fn down(&self, conn: &Connection) -> SqliteResult<()> {
+        if !table_exists(conn, "look_round_configs")? {
+            return Ok(());
+        }
+
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS __tmp_look_round_configs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL UNIQUE,
+                rounds INTEGER NOT NULL,
+                round_duration INTEGER,
+                rest_duration INTEGER,
+                golden_round BOOLEAN NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL
+            )",
+            [],
+        )?;
+
+        conn.execute(
+            "INSERT INTO __tmp_look_round_configs (id, name, rounds, round_duration, rest_duration, golden_round, created_at)
+             SELECT id, name, rounds, round_duration, rest_duration, golden_round, created_at
+             FROM look_round_configs",
+            [],
+        )?;
+
+        conn.execute("DROP TABLE look_round_configs", [])?;
+        conn.execute(
+            "ALTER TABLE __tmp_look_round_configs RENAME TO look_round_configs",
+            [],
+        )?;
 
         Ok(())
     }
