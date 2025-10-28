@@ -5006,6 +5006,12 @@ pub async fn tournament_update(
         status,
         start_date: start_date_parsed,
         end_date: end_date_parsed,
+        ranking_id: None,
+        location: serde_json::json!({}),
+        contact: serde_json::json!({}),
+        oc: serde_json::json!({}),
+        officials: serde_json::json!({}),
+        banner: None,
         created_at: chrono::Utc::now(), // This will be ignored in update
         updated_at: chrono::Utc::now(),
         created: None,

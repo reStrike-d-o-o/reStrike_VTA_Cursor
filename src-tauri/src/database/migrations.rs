@@ -3274,6 +3274,7 @@ impl MigrationManager {
         migrations.push(Box::new(Migration42)); // Animation library table seeded from flags
         migrations.push(Box::new(Migration43)); // Seed WT divisions and weight classes
         migrations.push(Box::new(Migration44)); // Extend round configs with golden and kyeshi durations
+        migrations.push(Box::new(Migration45)); // Tournament schema expansion (rankings, octagons, athletes)
 
         Self { migrations }
     }
@@ -6471,6 +6472,284 @@ impl Migration for Migration44 {
             [],
         )?;
 
+        Ok(())
+    }
+}
+
+/// Migration 45: Tournament schema expansion (rankings, octagons, athletes)
+pub struct Migration45;
+
+impl Migration for Migration45 {
+    fn version(&self) -> u32 {
+        45
+    }
+
+    fn description(&self) -> &str {
+        "Extend tournaments with ranking metadata and add octagons/athletes tables"
+    }
+
+    fn up(&self, conn: &Connection) -> SqliteResult<()> {
+        // Tournament rankings lookup
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS tournament_rankings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                code TEXT NOT NULL UNIQUE,
+                label TEXT NOT NULL,
+                is_para INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )",
+            [],
+        )?;
+
+        let ranking_rows = [
+            ("LOCAL", "Local Tournament", 0),
+            ("NATIONAL", "National Tournament", 0),
+            ("OPEN", "Open Tournament", 0),
+            ("WT_CHALLENGE", "World Taekwondo Challenge Tournament", 0),
+            ("G1", "World Taekwondo G1", 0),
+            ("G2", "World Taekwondo G2", 0),
+            ("G3", "World Taekwondo G3", 0),
+            ("G4", "World Taekwondo G4", 0),
+            ("G6", "World Taekwondo Grand Prix", 0),
+            ("G8", "World Taekwondo Grand Prix Final / World Championships", 0),
+            ("E1", "European Taekwondo E1", 0),
+            ("E2", "European Taekwondo E2", 0),
+            ("E3", "European Taekwondo E3", 0),
+            ("P_G1", "Para Taekwondo G1", 1),
+            ("P_G2", "Para Taekwondo G2", 1),
+            ("P_G6", "Para Taekwondo Grand Prix", 1),
+        ];
+
+        for (code, label, is_para) in ranking_rows {
+            conn.execute(
+                "INSERT INTO tournament_rankings (code, label, is_para)
+                 VALUES (?1, ?2, ?3)
+                 ON CONFLICT(code) DO UPDATE SET
+                    label = excluded.label,
+                    is_para = excluded.is_para,
+                    updated_at = CURRENT_TIMESTAMP",
+                rusqlite::params![code, label, is_para],
+            )?;
+        }
+
+        // Recreate tournaments table with extended metadata if needed
+        if !column_exists(conn, "tournaments", "ranking_id")? {
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS tournaments_new (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    uuid TEXT UNIQUE,
+                    name TEXT NOT NULL UNIQUE,
+                    duration_days INTEGER NOT NULL DEFAULT 1,
+                    city TEXT NOT NULL,
+                    country TEXT NOT NULL,
+                    country_code TEXT,
+                    logo_path TEXT,
+                    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','running','ended')),
+                    start_date TEXT,
+                    end_date TEXT,
+                    ranking_id INTEGER,
+                    location TEXT NOT NULL DEFAULT '{}',
+                    contact TEXT NOT NULL DEFAULT '{}',
+                    oc TEXT NOT NULL DEFAULT '{}',
+                    officials TEXT NOT NULL DEFAULT '{}',
+                    banner TEXT,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    created INTEGER,
+                    updated INTEGER,
+                    FOREIGN KEY(ranking_id) REFERENCES tournament_rankings(id)
+                )",
+                [],
+            )?;
+
+            conn.execute(
+                "INSERT INTO tournaments_new (
+                    id, uuid, name, duration_days, city, country, country_code, logo_path,
+                    status, start_date, end_date, ranking_id, location, contact, oc, officials,
+                    banner, created_at, updated_at, created, updated
+                )
+                SELECT
+                    id,
+                    uuid,
+                    name,
+                    duration_days,
+                    city,
+                    country,
+                    country_code,
+                    logo_path,
+                    CASE status
+                        WHEN 'active' THEN 'running'
+                        WHEN 'completed' THEN 'ended'
+                        ELSE status
+                    END,
+                    start_date,
+                    end_date,
+                    NULL,
+                    '{}',
+                    '{}',
+                    '{}',
+                    '{}',
+                    NULL,
+                    created_at,
+                    updated_at,
+                    created,
+                    updated
+                FROM tournaments",
+                [],
+            )?;
+
+            conn.execute("DROP TABLE tournaments", [])?;
+            conn.execute("ALTER TABLE tournaments_new RENAME TO tournaments", [])?;
+
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_tournaments_status ON tournaments(status)", [])?;
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_tournaments_city_country ON tournaments(city, country)",
+                [],
+            )?;
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_tournaments_name ON tournaments(name)",
+                [],
+            )?;
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_tournaments_start_date ON tournaments(start_date)",
+                [],
+            )?;
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_tournaments_created_at ON tournaments(created_at)",
+                [],
+            )?;
+            conn.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_tournaments_uuid ON tournaments(uuid)",
+                [],
+            )?;
+        }
+
+        // Ensure location/contact JSON defaults are present
+        conn.execute("UPDATE tournaments SET location = '{}' WHERE location IS NULL OR location = ''", [])?;
+        conn.execute("UPDATE tournaments SET contact = '{}' WHERE contact IS NULL OR contact = ''", [])?;
+        conn.execute("UPDATE tournaments SET oc = '{}' WHERE oc IS NULL OR oc = ''", [])?;
+        conn.execute("UPDATE tournaments SET officials = '{}' WHERE officials IS NULL OR officials = ''", [])?;
+
+        // Guarantee tournament_days table exists with expected schema
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS tournament_days (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                uuid TEXT UNIQUE,
+                tournament_id INTEGER NOT NULL,
+                day_number INTEGER NOT NULL,
+                date TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','running','ended')),
+                start_time TEXT,
+                end_time TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                created INTEGER,
+                updated INTEGER,
+                FOREIGN KEY(tournament_id) REFERENCES tournaments(id) ON DELETE CASCADE
+            )",
+            [],
+        )?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_tournament_days_tournament_id
+             ON tournament_days(tournament_id)",
+            [],
+        )?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_tournament_days_status
+             ON tournament_days(status)",
+            [],
+        )?;
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_tournament_days_unique
+             ON tournament_days(tournament_id, date)",
+            [],
+        )?;
+        conn.execute(
+            "UPDATE tournament_days
+             SET status = CASE status
+                 WHEN 'active' THEN 'running'
+                 WHEN 'completed' THEN 'ended'
+                 ELSE status
+             END",
+            [],
+        )?;
+
+        // Octagons table (per-day court assignments)
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS octagons (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tournament_id INTEGER NOT NULL,
+                tournament_day_id INTEGER NOT NULL,
+                octagon_number TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(tournament_id) REFERENCES tournaments(id) ON DELETE CASCADE,
+                FOREIGN KEY(tournament_day_id) REFERENCES tournament_days(id) ON DELETE CASCADE
+            )",
+            [],
+        )?;
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_octagons_day_number
+             ON octagons(tournament_day_id, octagon_number)",
+            [],
+        )?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_octagons_tournament
+             ON octagons(tournament_id)",
+            [],
+        )?;
+
+        // Athletes master roster
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS athletes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                wtid TEXT,
+                look_age_group_id INTEGER,
+                look_division_id INTEGER,
+                look_gender_id INTEGER,
+                look_weight_class_id INTEGER,
+                first_name TEXT,
+                last_name TEXT,
+                display_name TEXT,
+                image TEXT,
+                history TEXT NOT NULL DEFAULT '[]',
+                country TEXT,
+                country_code TEXT,
+                ioc_code TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(look_age_group_id) REFERENCES look_age_groups(id) ON DELETE SET NULL,
+                FOREIGN KEY(look_division_id) REFERENCES look_divisions(id) ON DELETE SET NULL,
+                FOREIGN KEY(look_gender_id) REFERENCES look_genders(id) ON DELETE SET NULL,
+                FOREIGN KEY(look_weight_class_id) REFERENCES look_weight_classes(id) ON DELETE SET NULL
+            )",
+            [],
+        )?;
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_athletes_wtid
+             ON athletes(wtid) WHERE wtid IS NOT NULL",
+            [],
+        )?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_athletes_ioc_display
+             ON athletes(ioc_code, display_name)",
+            [],
+        )?;
+
+        Ok(())
+    }
+
+    fn down(&self, conn: &Connection) -> SqliteResult<()> {
+        conn.execute("DROP INDEX IF EXISTS idx_tournament_days_unique", [])?;
+        conn.execute("DROP INDEX IF EXISTS idx_athletes_wtid", [])?;
+        conn.execute("DROP INDEX IF EXISTS idx_athletes_ioc_display", [])?;
+        conn.execute("DROP TABLE IF EXISTS athletes", [])?;
+        conn.execute("DROP INDEX IF EXISTS idx_octagons_day_number", [])?;
+        conn.execute("DROP INDEX IF EXISTS idx_octagons_tournament", [])?;
+        conn.execute("DROP TABLE IF EXISTS octagons", [])?;
+        conn.execute("DROP TABLE IF EXISTS tournament_rankings", [])?;
+        log::warn!("Migration 45 rollback keeps newly added tournament columns (SQLite cannot drop columns).");
         Ok(())
     }
 }

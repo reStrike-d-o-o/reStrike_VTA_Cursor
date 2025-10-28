@@ -2805,7 +2805,7 @@ pub async fn ivr_import_recorded_videos(
     // tournament_days removed; resolve tournament id via active tournament or parameterization
     let tournament_id: i64 = conn
         .query_row(
-            "SELECT id FROM tournaments WHERE status = 'active' ORDER BY created_at DESC LIMIT 1",
+            "SELECT id FROM tournaments WHERE status = 'running' ORDER BY created_at DESC LIMIT 1",
             [],
             |r| r.get(0),
         )

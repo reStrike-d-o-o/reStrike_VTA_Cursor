@@ -7,7 +7,8 @@ use crate::database::{
         PssEventRecognitionHistory, PssEventStatistics, PssEventType, PssEventV2,
         PssEventValidationResult, PssEventValidationRule, PssMatch, PssMatchAthlete, PssScore,
         PssUnknownEvent, PssWarning, SettingsCategory, SettingsHistory, SettingsKey, SettingsValue,
-        Tournament, TournamentDay, UdpClientConnection, UdpServerConfig, UdpServerSession,
+        Athlete, Octagon, Tournament, TournamentDay, TournamentRanking, UdpClientConnection,
+        UdpServerConfig, UdpServerSession,
     },
     DatabaseConnection, DatabaseError, DatabaseResult,
 };
@@ -1633,8 +1634,41 @@ impl TournamentOperations {
             ));
         }
 
+        let location_json =
+            serde_json::to_string(&tournament.location).unwrap_or_else(|_| "{}".to_string());
+        let contact_json =
+            serde_json::to_string(&tournament.contact).unwrap_or_else(|_| "{}".to_string());
+        let oc_json = serde_json::to_string(&tournament.oc).unwrap_or_else(|_| "{}".to_string());
+        let officials_json =
+            serde_json::to_string(&tournament.officials).unwrap_or_else(|_| "{}".to_string());
+
         conn.execute(
-            "INSERT INTO tournaments (uuid, name, duration_days, city, country, country_code, logo_path, status, start_date, end_date, created_at, updated_at, created, updated) VALUES (COALESCE(?, lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-4'||substr(hex(randomblob(2)),2)||'-'||substr('AB89',abs(random())%4+1,1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6)))), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO tournaments (
+                uuid,
+                name,
+                duration_days,
+                city,
+                country,
+                country_code,
+                logo_path,
+                status,
+                start_date,
+                end_date,
+                ranking_id,
+                location,
+                contact,
+                oc,
+                officials,
+                banner,
+                created_at,
+                updated_at,
+                created,
+                updated
+            )
+            VALUES (
+                COALESCE(?, lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-4'||substr(hex(randomblob(2)),2)||'-'||substr('AB89',abs(random())%4+1,1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6)))),
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+            )",
             params![
                 tournament.uuid,
                 tournament.name,
@@ -1646,11 +1680,17 @@ impl TournamentOperations {
                 tournament.status,
                 tournament.start_date.map(|d| d.to_rfc3339()),
                 tournament.end_date.map(|d| d.to_rfc3339()),
+                tournament.ranking_id,
+                location_json,
+                contact_json,
+                oc_json,
+                officials_json,
+                tournament.banner,
                 tournament.created_at.to_rfc3339(),
                 tournament.updated_at.to_rfc3339(),
                 tournament.created,
                 tournament.updated,
-            ]
+            ],
         )?;
         // Return the actual inserted row id, not affected rows count
         Ok(conn.last_insert_rowid())
@@ -1659,7 +1699,30 @@ impl TournamentOperations {
     /// Get all tournaments
     pub fn get_tournaments(conn: &Connection) -> DatabaseResult<Vec<Tournament>> {
         let mut stmt = conn.prepare(
-            "SELECT id, name, duration_days, city, country, country_code, logo_path, status, start_date, end_date, created_at, updated_at, created, updated FROM tournaments ORDER BY created DESC"
+            "SELECT
+                id,
+                uuid,
+                name,
+                duration_days,
+                city,
+                country,
+                country_code,
+                logo_path,
+                status,
+                start_date,
+                end_date,
+                ranking_id,
+                location,
+                contact,
+                oc,
+                officials,
+                banner,
+                created_at,
+                updated_at,
+                created,
+                updated
+            FROM tournaments
+            ORDER BY created DESC"
         )?;
 
         let rows = stmt.query_map([], |row| Tournament::from_row(row))?;
@@ -1678,7 +1741,29 @@ impl TournamentOperations {
         tournament_id: i64,
     ) -> DatabaseResult<Option<Tournament>> {
         let tournament = conn.query_row(
-            "SELECT id, name, duration_days, city, country, country_code, logo_path, status, start_date, end_date, created_at, updated_at, created, updated FROM tournaments WHERE id = ?",
+            "SELECT
+                id,
+                uuid,
+                name,
+                duration_days,
+                city,
+                country,
+                country_code,
+                logo_path,
+                status,
+                start_date,
+                end_date,
+                ranking_id,
+                location,
+                contact,
+                oc,
+                officials,
+                banner,
+                created_at,
+                updated_at,
+                created,
+                updated
+            FROM tournaments WHERE id = ?",
             params![tournament_id],
             |row| Tournament::from_row(row)
         ).optional()?;
@@ -1692,8 +1777,34 @@ impl TournamentOperations {
         tournament_id: i64,
         tournament: &Tournament,
     ) -> DatabaseResult<()> {
+        let location_json =
+            serde_json::to_string(&tournament.location).unwrap_or_else(|_| "{}".to_string());
+        let contact_json =
+            serde_json::to_string(&tournament.contact).unwrap_or_else(|_| "{}".to_string());
+        let oc_json = serde_json::to_string(&tournament.oc).unwrap_or_else(|_| "{}".to_string());
+        let officials_json =
+            serde_json::to_string(&tournament.officials).unwrap_or_else(|_| "{}".to_string());
+
         conn.execute(
-            "UPDATE tournaments SET name = ?, duration_days = ?, city = ?, country = ?, country_code = ?, logo_path = ?, status = ?, start_date = ?, end_date = ?, updated_at = ?, updated = strftime('%s','now') WHERE id = ?",
+            "UPDATE tournaments
+             SET name = ?,
+                 duration_days = ?,
+                 city = ?,
+                 country = ?,
+                 country_code = ?,
+                 logo_path = ?,
+                 status = ?,
+                 start_date = ?,
+                 end_date = ?,
+                 ranking_id = ?,
+                 location = ?,
+                 contact = ?,
+                 oc = ?,
+                 officials = ?,
+                 banner = ?,
+                 updated_at = ?,
+                 updated = strftime('%s','now')
+             WHERE id = ?",
             params![
                 tournament.name,
                 tournament.duration_days,
@@ -1704,6 +1815,12 @@ impl TournamentOperations {
                 tournament.status,
                 tournament.start_date.map(|d| d.to_rfc3339()),
                 tournament.end_date.map(|d| d.to_rfc3339()),
+                tournament.ranking_id,
+                location_json,
+                contact_json,
+                oc_json,
+                officials_json,
+                tournament.banner,
                 Utc::now().to_rfc3339(),
                 tournament_id,
             ]
@@ -1861,7 +1978,32 @@ impl TournamentOperations {
     /// Get active tournament
     pub fn get_active_tournament(conn: &Connection) -> DatabaseResult<Option<Tournament>> {
         let tournament = conn.query_row(
-            "SELECT id, name, duration_days, city, country, country_code, logo_path, status, start_date, end_date, created_at, updated_at FROM tournaments WHERE status = 'active' ORDER BY created DESC LIMIT 1",
+            "SELECT
+                id,
+                uuid,
+                name,
+                duration_days,
+                city,
+                country,
+                country_code,
+                logo_path,
+                status,
+                start_date,
+                end_date,
+                ranking_id,
+                location,
+                contact,
+                oc,
+                officials,
+                banner,
+                created_at,
+                updated_at,
+                created,
+                updated
+            FROM tournaments
+            WHERE status = 'running'
+            ORDER BY created DESC
+            LIMIT 1",
             [],
             |row| Tournament::from_row(row)
         ).optional()?;
@@ -1875,7 +2017,23 @@ impl TournamentOperations {
         tournament_id: i64,
     ) -> DatabaseResult<Option<TournamentDay>> {
         let day = conn.query_row(
-            "SELECT id, tournament_id, day_number, date, status, start_time, end_time, created_at, updated_at FROM tournament_days WHERE tournament_id = ? AND status = 'active' ORDER BY day_number DESC LIMIT 1",
+            "SELECT
+                id,
+                uuid,
+                tournament_id,
+                day_number,
+                date,
+                status,
+                start_time,
+                end_time,
+                created_at,
+                updated_at,
+                created,
+                updated
+            FROM tournament_days
+            WHERE tournament_id = ? AND status = 'running'
+            ORDER BY day_number DESC
+            LIMIT 1",
             params![tournament_id],
             |row| TournamentDay::from_row(row)
         ).optional()?;
@@ -1895,6 +2053,163 @@ impl TournamentOperations {
         )?;
 
         Ok(())
+    }
+}
+
+/// Tournament ranking lookup operations
+pub struct TournamentRankingOperations;
+
+impl TournamentRankingOperations {
+    pub fn list_all(conn: &Connection) -> DatabaseResult<Vec<TournamentRanking>> {
+        let mut stmt = conn.prepare(
+            "SELECT id, code, label, is_para, created_at, updated_at
+             FROM tournament_rankings
+             ORDER BY code",
+        )?;
+
+        let rows = stmt.query_map([], |row| TournamentRanking::from_row(row))?;
+        let mut rankings = Vec::new();
+        for row in rows {
+            rankings.push(row?);
+        }
+        Ok(rankings)
+    }
+
+    pub fn get_by_code(conn: &Connection, code: &str) -> DatabaseResult<Option<TournamentRanking>> {
+        let ranking = conn
+            .query_row(
+                "SELECT id, code, label, is_para, created_at, updated_at
+                 FROM tournament_rankings
+                 WHERE code = ?1",
+                params![code],
+                |row| TournamentRanking::from_row(row),
+            )
+            .optional()?;
+        Ok(ranking)
+    }
+}
+
+/// Operations for managing tournament octagons
+pub struct OctagonOperations;
+
+impl OctagonOperations {
+    pub fn list_for_day(conn: &Connection, tournament_day_id: i64) -> DatabaseResult<Vec<Octagon>> {
+        let mut stmt = conn.prepare(
+            "SELECT id, tournament_id, tournament_day_id, octagon_number, created_at, updated_at
+             FROM octagons
+             WHERE tournament_day_id = ?1
+             ORDER BY octagon_number",
+        )?;
+
+        let rows = stmt.query_map(params![tournament_day_id], |row| Octagon::from_row(row))?;
+        let mut octagons = Vec::new();
+        for row in rows {
+            octagons.push(row?);
+        }
+        Ok(octagons)
+    }
+
+    pub fn insert(
+        conn: &mut Connection,
+        tournament_id: i64,
+        tournament_day_id: i64,
+        octagon_number: &str,
+    ) -> DatabaseResult<i64> {
+        let octagon = Octagon::new(
+            tournament_id,
+            tournament_day_id,
+            octagon_number.trim().to_string(),
+        );
+
+        conn.execute(
+            "INSERT INTO octagons (tournament_id, tournament_day_id, octagon_number, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5)",
+            params![
+                octagon.tournament_id,
+                octagon.tournament_day_id,
+                octagon.octagon_number,
+                octagon.created_at.to_rfc3339(),
+                octagon.updated_at.to_rfc3339(),
+            ],
+        )?;
+
+        Ok(conn.last_insert_rowid())
+    }
+}
+
+/// Athlete master roster operations
+pub struct AthleteOperations;
+
+impl AthleteOperations {
+    pub fn list_all(conn: &Connection, limit: Option<i64>) -> DatabaseResult<Vec<Athlete>> {
+        let mut sql = String::from(
+            "SELECT
+                id,
+                wtid,
+                look_age_group_id,
+                look_division_id,
+                look_gender_id,
+                look_weight_class_id,
+                first_name,
+                last_name,
+                display_name,
+                image,
+                history,
+                country,
+                country_code,
+                ioc_code,
+                created_at,
+                updated_at
+             FROM athletes
+             ORDER BY created_at DESC",
+        );
+
+        if limit.is_some() {
+            sql.push_str(" LIMIT ?1");
+        }
+
+        let mut stmt = conn.prepare(&sql)?;
+        let mapper = |row: &rusqlite::Row<'_>| Athlete::from_row(row);
+        let rows = if let Some(limit) = limit {
+            stmt.query_map(params![limit], mapper)?
+        } else {
+            stmt.query_map([], mapper)?
+        };
+
+        let mut athletes = Vec::new();
+        for row in rows {
+            athletes.push(row?);
+        }
+        Ok(athletes)
+    }
+
+    pub fn find_by_wtid(conn: &Connection, wtid: &str) -> DatabaseResult<Option<Athlete>> {
+        let athlete = conn
+            .query_row(
+                "SELECT
+                    id,
+                    wtid,
+                    look_age_group_id,
+                    look_division_id,
+                    look_gender_id,
+                    look_weight_class_id,
+                    first_name,
+                    last_name,
+                    display_name,
+                    image,
+                    history,
+                    country,
+                    country_code,
+                    ioc_code,
+                    created_at,
+                    updated_at
+                 FROM athletes
+                 WHERE wtid = ?1",
+                params![wtid],
+                |row| Athlete::from_row(row),
+            )
+            .optional()?;
+        Ok(athlete)
     }
 }
 

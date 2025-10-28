@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 use rusqlite::Row;
 use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
 
 /// OBS Recording Configuration model
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -252,6 +253,18 @@ fn parse_optional_datetime_from_db(
         }
         _ => Ok(None),
     }
+}
+
+fn parse_json_object(value: Option<String>) -> Value {
+    value
+        .and_then(|raw| serde_json::from_str(&raw).ok())
+        .unwrap_or_else(|| json!({}))
+}
+
+fn parse_json_array(value: Option<String>) -> Value {
+    value
+        .and_then(|raw| serde_json::from_str(&raw).ok())
+        .unwrap_or_else(|| json!([]))
 }
 
 /// PSS Event model for storing raw PSS events
@@ -1842,9 +1855,15 @@ pub struct Tournament {
     pub country: String,
     pub country_code: Option<String>,
     pub logo_path: Option<String>,
-    pub status: String, // 'pending', 'active', 'ended'
+    pub status: String, // 'pending', 'running', 'ended'
     pub start_date: Option<DateTime<Utc>>,
     pub end_date: Option<DateTime<Utc>>,
+    pub ranking_id: Option<i64>,
+    pub location: Value,
+    pub contact: Value,
+    pub oc: Value,
+    pub officials: Value,
+    pub banner: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub created: Option<i64>,
@@ -1873,6 +1892,12 @@ impl Tournament {
             status: "pending".to_string(),
             start_date: None,
             end_date: None,
+            ranking_id: None,
+            location: serde_json::json!({}),
+            contact: serde_json::json!({}),
+            oc: serde_json::json!({}),
+            officials: serde_json::json!({}),
+            banner: None,
             created_at: now,
             updated_at: now,
             created: Some(crate::utils::now_unix()),
@@ -1900,6 +1925,12 @@ impl Tournament {
                 .get::<_, Option<String>>("end_date")?
                 .map(|s| parse_datetime_from_db(&s, "end_date"))
                 .transpose()?,
+            ranking_id: row.get("ranking_id").unwrap_or(None),
+            location: parse_json_object(row.get::<_, Option<String>>("location").ok().flatten()),
+            contact: parse_json_object(row.get::<_, Option<String>>("contact").ok().flatten()),
+            oc: parse_json_object(row.get::<_, Option<String>>("oc").ok().flatten()),
+            officials: parse_json_object(row.get::<_, Option<String>>("officials").ok().flatten()),
+            banner: row.get("banner")?,
             created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
             updated_at: parse_datetime_from_db(&row.get::<_, String>("updated_at")?, "updated_at")?,
             created: row.get("created")?,
@@ -1916,7 +1947,7 @@ pub struct TournamentDay {
     pub tournament_id: i64,
     pub day_number: i32,
     pub date: DateTime<Utc>,
-    pub status: String, // 'pending', 'active', 'completed'
+    pub status: String, // 'pending', 'running', 'ended'
     pub start_time: Option<DateTime<Utc>>,
     pub end_time: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
@@ -1966,6 +1997,110 @@ impl TournamentDay {
             updated_at: parse_datetime_from_db(&row.get::<_, String>("updated_at")?, "updated_at")?,
             created: row.get("created")?,
             updated: row.get("updated")?,
+        })
+    }
+}
+
+/// Tournament ranking lookup entry
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TournamentRanking {
+    pub id: Option<i64>,
+    pub code: String,
+    pub label: String,
+    pub is_para: bool,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+impl TournamentRanking {
+    pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
+        Ok(Self {
+            id: row.get("id")?,
+            code: row.get("code")?,
+            label: row.get("label")?,
+            is_para: row.get::<_, i64>("is_para")? != 0,
+            created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
+            updated_at: parse_datetime_from_db(&row.get::<_, String>("updated_at")?, "updated_at")?,
+        })
+    }
+}
+
+/// Octagon assignment for a tournament day
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Octagon {
+    pub id: Option<i64>,
+    pub tournament_id: i64,
+    pub tournament_day_id: i64,
+    pub octagon_number: String,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+impl Octagon {
+    pub fn new(tournament_id: i64, tournament_day_id: i64, octagon_number: String) -> Self {
+        let now = Utc::now();
+        Self {
+            id: None,
+            tournament_id,
+            tournament_day_id,
+            octagon_number,
+            created_at: now,
+            updated_at: now,
+        }
+    }
+
+    pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
+        Ok(Self {
+            id: row.get("id")?,
+            tournament_id: row.get("tournament_id")?,
+            tournament_day_id: row.get("tournament_day_id")?,
+            octagon_number: row.get("octagon_number")?,
+            created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
+            updated_at: parse_datetime_from_db(&row.get::<_, String>("updated_at")?, "updated_at")?,
+        })
+    }
+}
+
+/// Athlete master record
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Athlete {
+    pub id: Option<i64>,
+    pub wtid: Option<String>,
+    pub look_age_group_id: Option<i64>,
+    pub look_division_id: Option<i64>,
+    pub look_gender_id: Option<i64>,
+    pub look_weight_class_id: Option<i64>,
+    pub first_name: Option<String>,
+    pub last_name: Option<String>,
+    pub display_name: Option<String>,
+    pub image: Option<String>,
+    pub history: Value,
+    pub country: Option<String>,
+    pub country_code: Option<String>,
+    pub ioc_code: String,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+impl Athlete {
+    pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
+        Ok(Self {
+            id: row.get("id")?,
+            wtid: row.get("wtid")?,
+            look_age_group_id: row.get("look_age_group_id")?,
+            look_division_id: row.get("look_division_id")?,
+            look_gender_id: row.get("look_gender_id")?,
+            look_weight_class_id: row.get("look_weight_class_id")?,
+            first_name: row.get("first_name")?,
+            last_name: row.get("last_name")?,
+            display_name: row.get("display_name")?,
+            image: row.get("image")?,
+            history: parse_json_array(row.get::<_, Option<String>>("history").ok().flatten()),
+            country: row.get("country")?,
+            country_code: row.get("country_code")?,
+            ioc_code: row.get("ioc_code")?,
+            created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
+            updated_at: parse_datetime_from_db(&row.get::<_, String>("updated_at")?, "updated_at")?,
         })
     }
 }

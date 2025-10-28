@@ -1,0 +1,784 @@
+# Failed Anthem Downloads
+
+- https://nationalanthems.info/abk.mp3 - No IOC mapping for 'Abkhazia'
+- https://nationalanthems.info/aca.mp3 - No IOC mapping for 'Acadia'
+- https://nationalanthems.info/ax.mp3 - No IOC mapping for 'Aland Islands'
+- https://nationalanthems.info/ai.mp3 - No IOC mapping for 'Anguilla'
+- https://nationalanthems.info/art.mp3 - No IOC mapping for 'Artsakh'
+- https://nationalanthems.info/asy.mp3 - No IOC mapping for 'Assyria'
+- https://nationalanthems.info/ath.mp3 - No IOC mapping for 'Austria-Hungary'
+- https://nationalanthems.info/aco.mp3 - No IOC mapping for 'Azores'
+- https://nationalanthems.info/eus.mp3 - No IOC mapping for 'Basque Country'
+- https://nationalanthems.info/bav.mp3 - No IOC mapping for 'Bavaria'
+- https://nationalanthems.info/bia.mp3 - No IOC mapping for 'Biafra'
+- https://nationalanthems.info/bnr.mp3 - No IOC mapping for 'Bonaire'
+- https://nationalanthems.info/bpt.mp3 - No IOC mapping for 'Bophuthatswana'
+- https://nationalanthems.info/bgv.mp3 - No IOC mapping for 'Bougainville'
+- https://nationalanthems.info/bri.mp3 - No IOC mapping for 'Brittany'
+- https://nationalanthems.info/ic.mp3 - No IOC mapping for 'Canary Islands'
+- https://nationalanthems.info/cat.mp3 - No IOC mapping for 'Catalonia'
+- https://nationalanthems.info/che-04.mp3 - No IOC mapping for 'Chechnya (1992-2004)'
+- https://nationalanthems.info/che.mp3 - No IOC mapping for 'Chechnya'
+- https://nationalanthems.info/cn-49.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/cis.mp3 - No IOC mapping for 'Ciskei'
+- https://nationalanthems.info/csa.mp3 - No IOC mapping for 'Confederate States of America'
+- https://nationalanthems.info/cor.mp3 - No IOC mapping for 'Cornwall'
+- https://nationalanthems.info/cri.mp3 - No IOC mapping for 'Crimea'
+- https://nationalanthems.info/cw.mp3 - No IOC mapping for 'Curaçao'
+- https://nationalanthems.info/cy.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/dnz.mp3 - No IOC mapping for 'Danzig'
+- https://nationalanthems.info/eng_lhg.mp3 - No IOC mapping for 'England (“Land of Hope and Glory”)'
+- https://nationalanthems.info/eng_jeru.mp3 - No IOC mapping for 'England (“Jerusalem”)'
+- https://nationalanthems.info/esn.mp3 - No IOC mapping for 'Esperanto'
+- https://nationalanthems.info/eu.mp3 - No IOC mapping for 'Europe'
+- https://nationalanthems.info/fk.mp3 - No IOC mapping for 'Falkland Islands'
+- https://nationalanthems.info/fla.mp3 - No IOC mapping for 'Flanders'
+- https://nationalanthems.info/gf.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/fri.mp3 - No IOC mapping for 'Frisia'
+- https://nationalanthems.info/gal.mp3 - No IOC mapping for 'Galicia'
+- https://nationalanthems.info/frg.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/gi.mp3 - No IOC mapping for 'Gibraltar'
+- https://nationalanthems.info/gl.mp3 - No IOC mapping for 'Greenland'
+- https://nationalanthems.info/gp.mp3 - Download failed: HTTP 503
+- https://nationalanthems.info/gg.mp3 - No IOC mapping for 'Guernsey'
+- https://nationalanthems.info/hwi-76.mp3 - No IOC mapping for 'Hawaii (1866-1876)'
+- https://nationalanthems.info/hwi.mp3 - No IOC mapping for 'Hawaii (1876-1893)'
+- https://nationalanthems.info/hk.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/iq-81.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/im.mp3 - No IOC mapping for 'Isle of Man'
+- https://nationalanthems.info/je-08.mp3 - No IOC mapping for 'Jersey (1836-2008)'
+- https://nationalanthems.info/je.mp3 - No IOC mapping for 'Jersey'
+- https://nationalanthems.info/kar-ssr.mp3 - No IOC mapping for 'Karelia (1950s-1956)'
+- https://nationalanthems.info/kar.mp3 - No IOC mapping for 'Karelia'
+- https://nationalanthems.info/kat.mp3 - No IOC mapping for 'Katanga'
+- https://nationalanthems.info/kor.mp3 - No IOC mapping for 'Korean Empire'
+- https://nationalanthems.info/krd.mp3 - No IOC mapping for 'Kurdistan'
+- https://nationalanthems.info/mo.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/mad.mp3 - No IOC mapping for 'Madeira Islands'
+- https://nationalanthems.info/mch-42.mp3 - No IOC mapping for 'Manchukuo (1933-1942)'
+- https://nationalanthems.info/mch.mp3 - No IOC mapping for 'Manchukuo (1942-1945)'
+- https://nationalanthems.info/mq.mp3 - No IOC mapping for 'Martinique'
+- https://nationalanthems.info/yt.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ms.mp3 - No IOC mapping for 'Montserrat'
+- https://nationalanthems.info/art.mp3 - No IOC mapping for 'Artsakh'
+- https://nationalanthems.info/nfl.mp3 - No IOC mapping for 'Newfoundland'
+- https://nationalanthems.info/nie.mp3 - No IOC mapping for 'Northern Ireland'
+- https://nationalanthems.info/oly.mp3 - No IOC mapping for 'Olympics'
+- https://nationalanthems.info/ofs.mp3 - No IOC mapping for 'Orange Free State'
+- https://nationalanthems.info/ote.mp3 - No IOC mapping for 'Ottoman Empire (1829-1839, 1918-1922)'
+- https://nationalanthems.info/ote-61.mp3 - No IOC mapping for 'Ottoman Empire (1839-1861)'
+- https://nationalanthems.info/ote-76.mp3 - No IOC mapping for 'Ottoman Empire (1861-1876)'
+- https://nationalanthems.info/ote-09.mp3 - No IOC mapping for 'Ottoman Empire (1876-1909)'
+- https://nationalanthems.info/ote-18.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/per-09.mp3 - No IOC mapping for 'Persia (to 1909)'
+- https://nationalanthems.info/per.mp3 - No IOC mapping for 'Persia (1909-1933)'
+- https://nationalanthems.info/pn.mp3 - No IOC mapping for 'Pitcairn Islands'
+- https://nationalanthems.info/re.mp3 - No IOC mapping for 'Réunion'
+- https://nationalanthems.info/rho.mp3 - No IOC mapping for 'Rhodesia'
+- https://nationalanthems.info/ru-22.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/sar.mp3 - No IOC mapping for 'Saarland'
+- https://nationalanthems.info/sba.mp3 - No IOC mapping for 'Saba'
+- https://nationalanthems.info/bl.mp3 - No IOC mapping for 'St. Barthélemy'
+- https://nationalanthems.info/sh.mp3 - No IOC mapping for 'St. Helena'
+- https://nationalanthems.info/kn.mp3 - No IOC mapping for 'St. Kitts and Nevis'
+- https://nationalanthems.info/lc.mp3 - No IOC mapping for 'St. Lucia'
+- https://nationalanthems.info/mf.mp3 - No IOC mapping for 'St. Martin'
+- https://nationalanthems.info/pm.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/vc.mp3 - No IOC mapping for 'St. Vincent and the Grenadines'
+- https://nationalanthems.info/sco.mp3 - No IOC mapping for 'Scotland'
+- https://nationalanthems.info/sea.mp3 - No IOC mapping for 'Sealand'
+- https://nationalanthems.info/sx.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/sol-60.mp3 - No IOC mapping for 'Somaliland (1960)'
+- https://nationalanthems.info/sol.mp3 - No IOC mapping for 'Somaliland'
+- https://nationalanthems.info/oss.mp3 - No IOC mapping for 'South Ossetia'
+- https://nationalanthems.info/smm.mp3 - No IOC mapping for 'Sovereign Military Order of Malta'
+- https://nationalanthems.info/srp.mp3 - No IOC mapping for 'Srpska'
+- https://nationalanthems.info/tw_.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/tw.mp3 - No IOC mapping for 'Taiwan (national anthem)'
+- https://nationalanthems.info/tib.mp3 - No IOC mapping for 'Tibet'
+- https://nationalanthems.info/tsk.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/pmr.mp3 - No IOC mapping for 'Transnistria'
+- https://nationalanthems.info/tvl.mp3 - No IOC mapping for 'Transvaal'
+- https://nationalanthems.info/tc.mp3 - No IOC mapping for 'Turks and Caicos Islands'
+- https://nationalanthems.info/sun-44.mp3 - No IOC mapping for 'Union of Soviet Socialist Republics (1922-1944)'
+- https://nationalanthems.info/sun.mp3 - No IOC mapping for 'Union of Soviet Socialist Republics (1944-1991)'
+- https://nationalanthems.info/ufp.mp3 - No IOC mapping for 'United Federation of Planets'
+- https://nationalanthems.info/uno.mp3 - No IOC mapping for 'United Nations'
+- https://nationalanthems.info/vnd.mp3 - No IOC mapping for 'Venda'
+- https://nationalanthems.info/vi.mp3 - No IOC mapping for 'U. S. Virgin Islands'
+- https://nationalanthems.info/wal.mp3 - No IOC mapping for 'Wales'
+- https://nationalanthems.info/wf.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/wln.mp3 - No IOC mapping for 'Wallonia'
+- https://nationalanthems.info/wpa.mp3 - No IOC mapping for 'West Papua'
+- https://nationalanthems.info/eh.mp3 - No IOC mapping for 'Western Sahara'
+- https://nationalanthems.info/yen-62.mp3 - No IOC mapping for 'North Yemen (to 1962)'
+- https://nationalanthems.info/yen-78.mp3 - No IOC mapping for 'North Yemen (1962-1978)'
+- https://nationalanthems.info/yen.mp3 - No IOC mapping for 'North Yemen (1978-1990)'
+- https://nationalanthems.info/yes-79.mp3 - No IOC mapping for 'South Yemen (1967-1979)'
+- https://nationalanthems.info/yes.mp3 - No IOC mapping for 'South Yemen (1979-1990)'
+- https://nationalanthems.info/zre.mp3 - No IOC mapping for 'Zaire'
+- https://nationalanthems.info/znz-90.mp3 - No IOC mapping for 'Zanzibar (to 1890)'
+- https://nationalanthems.info/znz-64.mp3 - No IOC mapping for 'Zanzibar (1911-1964)'
+- https://nationalanthems.info/znz.mp3 - No IOC mapping for 'Zanzibar'
+- https://nationalanthems.info/abk~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/aca~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/af-43~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/af-73~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/af-78~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/af-92~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/af~1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/af~2.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/al_.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/al~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/dz~1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/dz~2.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/as~1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/as~2.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/as~3.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ad~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ao~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ag-81.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ag~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ar-00.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ar~1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ar~2.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ar~3.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ar~4.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ar~5.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/am-ssr~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/am~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/art~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/asy~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/au_.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/au_3.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/au~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/at-29~1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/at-29~2.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/de~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/at~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/az-ssr~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/aco~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/bs~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/bh-02'.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/bh~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/bd~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/bb~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/eus.mp3 - No IOC mapping for 'Basque Country'
+- https://nationalanthems.info/eus~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/bav-18.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/bav-80.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/bav~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/by~1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/by~2.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/be~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/bz~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/bj~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/bm~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/bia~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/bo~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ba'.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ba~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/bw~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/bri~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/bn~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/bg^44~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/bg-44~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/bg_'.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/bg-90'.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/bg~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/bf~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/mm~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/bi~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/kh-75~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/cm~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ca_tbr.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ca_mepm.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ca_abr.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ca_rws.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ic~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/cat~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ky~1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ky~2.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ky~3.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ky~4.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/cf~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/td~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/che-04~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/che~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/cl-47.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/cl_.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/cl~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/cn-12~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/cn-16~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/cn-28~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/tw~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/cn-82'.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/cn~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/csa~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/cg-91~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/cg~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ck~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/cor!bgat.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/cor~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/cr~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ci~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/cri~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/hr~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/cu~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/gr~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/cz~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/csk~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/dnz~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/dk^~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/dk~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/dj~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/dm~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ec~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/eg-58~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/eg-79~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/eg~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/sv~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/gq~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/esn~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ee-ssr56.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ee-ssr~1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ee-ssr~2.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ee~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/et-75~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/et-92~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/eu.mp3 - No IOC mapping for 'Europe'
+- https://nationalanthems.info/eu~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/fi~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/fla~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/fr-30^.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/fr-48~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/fr-52~1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/fr-52~2.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/fr-70~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/fr!ff.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/fr~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/pf~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/fri~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/gal~1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/gal~2.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ge-ssr'1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ge-ssr~1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ge-ssr~2.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ge-04~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/gb~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/de-naz~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/de_.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ddr~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/frg-50~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/gh-60.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/gh-66.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/gh~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/gl~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/gd-74.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/gd~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/gt-34.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/gn~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/hwi-66'.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/hwi-76~1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/hwi-76~2.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/hwi~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/hu~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/is~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/in_'.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/in~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/id_.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/id-58.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/id~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ir-79~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ir~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/iq-58~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/iq-65~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ie_.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ie~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/im~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/il_'.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/il~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/it!piave.mp3 - HTML title fetch failed; https://nationalanthems.info/it!piave.htm: HTML request failed with HTTP 404; https://nationalanthems.info/it!piave.html: HTML request failed with HTTP 404; https://nationalanthems.info/it!piave: HTML request failed with HTTP 404
+- https://nationalanthems.info/it-46~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/it-gio~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/it~1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/it~2.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ci~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/jm~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/jp~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/je-08~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/je~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/kar~1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/kar~2.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/kar~3.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/kat~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/kz-06~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/kz~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ke~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ki~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/kp~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/kr~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/kor-jp'.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/kos~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/kw-78~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/kw~1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/kw~2.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/kg-ssr~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/la-75'.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/la-75~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/la~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/lv-ssr~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/lv~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/lb~1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/lb~2.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/lr~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ly-11~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ly-69'.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ly~1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ly~2.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/li-63.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/lt-ssr~1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/lt-ssr~2.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/lt-ssr~3.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/lt~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/lu^~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/lu_.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/lu~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/mg~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/mad~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/mw~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/my~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/mv~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ml-sn.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/mt~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/mch-42~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/mch~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/mh~1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/mh~2.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/mh~3.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/mu~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/mx-43.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/mx~1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/mx~2.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/fm~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/md-ssr~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/md_'.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/md~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/mc fr.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/mc~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/mn-61'.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/mn-90'.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/mn-06'.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/mn~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/me-18~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/me~1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/me~2.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/me~3.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ms-13.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ms~1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ms~2.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ma~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/mm~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/art~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/nr~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/np-06~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/np~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/nl-32~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/nl~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ant~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/nfl~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/nz!cwlth.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/nz~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ni-93.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ni-10.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ni-39.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ni~1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ni~2.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ni~3.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ne-23~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ng-24~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ng~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/nf~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/mk~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/mp~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/no-20~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/no-64~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/no~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/om-70'.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/om-20'.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/om~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ofs~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ote~1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ote~2.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/pa~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/py-46.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/py-46%20es.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/py~1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/py~2.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/py~3.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/py~4.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/per-09_new'.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/per-09~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/per~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/pe~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ph-38.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ph-46.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ph-56.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ph~1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ph~2.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/pn-70.mp3 - HTML title fetch failed; https://nationalanthems.info/pn-70.htm: HTML request failed with HTTP 404; https://nationalanthems.info/pn-70.html: HTML request failed with HTTP 404; https://nationalanthems.info/pn-70: HTML request failed with HTTP 404
+- https://nationalanthems.info/pn-70~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/pn~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/pl_'.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/pt-34~1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/pt-34~2.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/pt-34~3.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/pt-10~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/pt~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/pr_.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/pr~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/qa~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ro-47~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ro-53~1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ro-53~2.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ro-77~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ro-90_'.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ro-90~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ro_'.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ro~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ru-17~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ru-pg!h'.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ru-pg!h~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ru-pg!w'.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/sun-44_.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/sun-44~1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/sun-44~2.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ru-00'.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ru-00~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ru~1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ru~2.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/rw~1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/rw~2.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/rw~3.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/rw~4.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/sar-03.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/sar~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/kn~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/lc~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/vc~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ws~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/sm-94.mp3 - HTML title fetch failed; https://nationalanthems.info/sm-94.htm: HTML request failed with HTTP 404; https://nationalanthems.info/sm-94.html: HTML request failed with HTTP 404; https://nationalanthems.info/sm-94: HTML request failed with HTTP 404
+- https://nationalanthems.info/sm~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/sa-84'.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/sa~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/sco!stb~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/sco!stb.mp3 - HTML title fetch failed; https://nationalanthems.info/sco!stb.htm: HTML request failed with HTTP 404; https://nationalanthems.info/sco!stb.html: HTML request failed with HTTP 404; https://nationalanthems.info/sco!stb: HTML request failed with HTTP 404
+- https://nationalanthems.info/sco~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/sn~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/rs~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/yug_sk'.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/sc-78~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/sk~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/si_'.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/si~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/za-97b_.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/za~1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/za~2.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/za~3.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/za~4.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/oss~1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/oss~2.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/svn-55'.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/svn-75~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/svn~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/es-39~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/es-31.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/es-75.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/es~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/lk~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/srp-08'.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/sr_.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/sr~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/se^-93.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/se^!g3.mp3 - HTML title fetch failed; https://nationalanthems.info/se^!g3.htm: HTML request failed with HTTP 404; https://nationalanthems.info/se^!g3.html: HTML request failed with HTTP 404; https://nationalanthems.info/se^!g3: HTML request failed with HTTP 404
+- https://nationalanthems.info/se^~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/se~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ch~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/sy~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/tw!~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/tj~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/tz~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/th^~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/th~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/tib~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/tg-91~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/tg~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/to~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/pmr_'.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/pmr~1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/pmr~2.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/tt_wi.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/tt~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/tn-57~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/tn-87~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/tn~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/tr~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/tm-08~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ug~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ua-ssr~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ua_'.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ua-03'.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ua~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/us-31~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/us~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/uvo~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/uy_.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/uy~1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/uy~2.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/uy~3.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/uy~4.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/uy~5.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/uz~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/va-it.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/va~1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/va~2.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/va~3.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ve~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/vn~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/vi~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/wln_.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ye~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/yug_sk'.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/zw~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/bl.mp3 - No IOC mapping for 'St. Barthélemy'
+- https://nationalanthems.info/aco.mp3 - No IOC mapping for 'Azores'
+- https://nationalanthems.info/tib.mp3 - No IOC mapping for 'Tibet'
+- https://nationalanthems.info/bav.mp3 - No IOC mapping for 'Bavaria'
+- https://nationalanthems.info/nfl.mp3 - No IOC mapping for 'Newfoundland'
+- https://nationalanthems.info/sco.mp3 - No IOC mapping for 'Scotland'
+- https://nationalanthems.info/eus.mp3 - No IOC mapping for 'Basque Country'
+- https://nationalanthems.info/krd.mp3 - No IOC mapping for 'Kurdistan'
+- https://nationalanthems.info/asy.mp3 - HTML title fetch failed; https://nationalanthems.info/asy.htm: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')); https://nationalanthems.info/asy.html: HTML request failed with HTTP 404; https://nationalanthems.info/asy: HTML request failed with HTTP 404
+- https://nationalanthems.info/ath.mp3 - No IOC mapping for 'Austria-Hungary'
+- https://nationalanthems.info/esn.mp3 - No IOC mapping for 'Esperanto'
+- https://nationalanthems.info/ufp.mp3 - No IOC mapping for 'United Federation of Planets'
+- https://nationalanthems.info/eu.mp3 - No IOC mapping for 'Europe'
+- https://nationalanthems.info/sea.mp3 - No IOC mapping for 'Sealand'
+- https://nationalanthems.info/iq-81.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/yen-78.mp3 - No IOC mapping for 'North Yemen (1962-1978)'
+- https://nationalanthems.info/ote.mp3 - No IOC mapping for 'Ottoman Empire (1829-1839, 1918-1922)'
+- https://nationalanthems.info/ote-61.mp3 - No IOC mapping for 'Ottoman Empire (1839-1861)'
+- https://nationalanthems.info/ote-76.mp3 - No IOC mapping for 'Ottoman Empire (1861-1876)'
+- https://nationalanthems.info/sol-60.mp3 - No IOC mapping for 'Somaliland (1960)'
+- https://nationalanthems.info/yes-79.mp3 - No IOC mapping for 'South Yemen (1967-1979)'
+- https://nationalanthems.info/znz-90.mp3 - No IOC mapping for 'Zanzibar (to 1890)'
+- https://nationalanthems.info/znz-64.mp3 - No IOC mapping for 'Zanzibar (1911-1964)'
+- https://nationalanthems.info/bgv.mp3 - No IOC mapping for 'Bougainville'
+- https://nationalanthems.info/pn.mp3 - No IOC mapping for 'Pitcairn Islands'
+- https://nationalanthems.info/sun-44.mp3 - No IOC mapping for 'Union of Soviet Socialist Republics (1922-1944)'
+- https://nationalanthems.info/sun.mp3 - No IOC mapping for 'Union of Soviet Socialist Republics (1944-1991)'
+- https://nationalanthems.info/cy.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/wal.mp3 - No IOC mapping for 'Wales'
+- https://nationalanthems.info/cor.mp3 - No IOC mapping for 'Cornwall'
+- https://nationalanthems.info/bri.mp3 - No IOC mapping for 'Brittany'
+- https://nationalanthems.info/cis.mp3 - No IOC mapping for 'Ciskei'
+- https://nationalanthems.info/tsk.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/rho.mp3 - No IOC mapping for 'Rhodesia'
+- https://nationalanthems.info/id_.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/id-58.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/id~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/am~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/pl_'.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/srp.mp3 - No IOC mapping for 'Srpska'
+- https://nationalanthems.info/rs~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/me~1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/me~2.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/me~3.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/aco~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/tib~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/bav-18.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/bav-80.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/bav~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/eng_jeru.mp3 - No IOC mapping for 'England (“Jerusalem”)'
+- https://nationalanthems.info/nfl~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/sco!stb~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/sco!stb.mp3 - HTML title fetch failed; https://nationalanthems.info/sco!stb.htm: HTML request failed with HTTP 404; https://nationalanthems.info/sco!stb.html: HTML request failed with HTTP 404; https://nationalanthems.info/sco!stb: HTML request failed with HTTP 404
+- https://nationalanthems.info/sco~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/eus.mp3 - No IOC mapping for 'Basque Country'
+- https://nationalanthems.info/eus~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/de~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/frg.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ddr~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/esn~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/hwi-76.mp3 - No IOC mapping for 'Hawaii (1866-1876)'
+- https://nationalanthems.info/gb~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ru-22.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/fr!ff.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/fr~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/us~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/de_.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ca_tbr.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ca_mepm.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ca_abr.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ca_rws.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/bia.mp3 - No IOC mapping for 'Biafra'
+- https://nationalanthems.info/fi~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ie_.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/nie.mp3 - No IOC mapping for 'Northern Ireland'
+- https://nationalanthems.info/ie~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/es-31.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/es-75.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/es~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ba'.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/eu.mp3 - No IOC mapping for 'Europe'
+- https://nationalanthems.info/eu~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/kos~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/sm-94.mp3 - HTML title fetch failed; https://nationalanthems.info/sm-94.htm: HTML request failed with HTTP 404; https://nationalanthems.info/sm-94.html: HTML request failed with HTTP 404; https://nationalanthems.info/sm-94: HTML request failed with HTTP 404
+- https://nationalanthems.info/sm~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/af-43~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/eg-58~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/iq-58~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/iq-65~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/eg-79~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/it!piave.mp3 - HTML title fetch failed; https://nationalanthems.info/it!piave.htm: HTML request failed with HTTP 404; https://nationalanthems.info/it!piave.html: HTML request failed with HTTP 404; https://nationalanthems.info/it!piave: HTML request failed with HTTP 404
+- https://nationalanthems.info/it-46~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/kw-78~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/yen.mp3 - No IOC mapping for 'North Yemen (1978-1990)'
+- https://nationalanthems.info/ote~1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ote~2.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ote-09.mp3 - No IOC mapping for 'Ottoman Empire (1876-1909)'
+- https://nationalanthems.info/ru-00'.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ru-00~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/yes.mp3 - No IOC mapping for 'South Yemen (1979-1990)'
+- https://nationalanthems.info/ar~1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ar~2.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ar~3.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ar~4.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ar~5.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ec~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/sv~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/uy_.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/uy~1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/uy~2.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/uy~3.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/uy~4.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/uy~5.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/au_.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/au_3.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/au~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/pn-70.mp3 - HTML title fetch failed; https://nationalanthems.info/pn-70.htm: HTML request failed with HTTP 404; https://nationalanthems.info/pn-70.html: HTML request failed with HTTP 404; https://nationalanthems.info/pn-70: HTML request failed with HTTP 404
+- https://nationalanthems.info/pn-70~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/pn~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/fm~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/sun-44~1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/sun-44~2.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/pmr.mp3 - No IOC mapping for 'Transnistria'
+- https://nationalanthems.info/ru~1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ru~2.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/jp~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/in_'.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/in~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ke~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ml-sn.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/sn~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/bh-02'.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/gr~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/cor!bgat.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/cor~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/bri~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ee~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/tz~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/za-97b_.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/li-63.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ch~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/th~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/th^~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/dk~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/dk^~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/nz!cwlth.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/nz~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/kz~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/az-ssr~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/am-ssr~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ua_'.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ua-03'.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ua~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/srp-08'.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/hr~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/pt~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/cn-82'.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/cn~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/eng_lhg.mp3 - No IOC mapping for 'England (“Land of Hope and Glory”)'
+- https://nationalanthems.info/af~1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/af~2.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/hwi-66'.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/hwi.mp3 - No IOC mapping for 'Hawaii (1876-1893)'
+- https://nationalanthems.info/hwi-76~1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/hwi-76~2.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ru-pg!h'.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ru-pg!h~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ru-pg!w'.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/sun-44_.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ru-17~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/de-naz~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/bia~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/es-39~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/af-73~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/sy~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/it-gio~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/it~1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/it~2.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/kw~1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/kw~2.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ote-18.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/qa~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/che.mp3 - No IOC mapping for 'Chechnya'
+- https://nationalanthems.info/cri.mp3 - No IOC mapping for 'Crimea'
+- https://nationalanthems.info/kar.mp3 - No IOC mapping for 'Karelia'
+- https://nationalanthems.info/ye~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/nf~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/frg-50~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/pmr_'.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/pmr~1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/pmr~2.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ua-ssr~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/bd~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/cf~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/tr~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ee-ssr56.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ee-ssr~1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ee-ssr~2.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/eg~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/za~1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/za~2.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/za~3.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/za~4.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/zw~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/se^-93.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/se^!g3.mp3 - HTML title fetch failed; https://nationalanthems.info/se^!g3.htm: HTML request failed with HTTP 404; https://nationalanthems.info/se^!g3.html: HTML request failed with HTTP 404; https://nationalanthems.info/se^!g3: HTML request failed with HTTP 404
+- https://nationalanthems.info/se^~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/kz-06~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/hwi~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/fr-30^.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/af-78~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/che~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/cri~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/kar-ssr.mp3 - No IOC mapping for 'Karelia (1950s-1956)'
+- https://nationalanthems.info/kar~1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/kar~2.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/kar~3.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/md_'.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/md~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/md-ssr~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ph-38.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ph-46.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ph-56.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ph~1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ph~2.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/fr-48~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/af-92~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ro_'.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/ro~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/fr-52~1.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/fr-52~2.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/fr-70~.mp3 - Download failed: HTTP 404
