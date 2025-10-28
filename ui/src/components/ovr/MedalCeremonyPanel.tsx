@@ -3,6 +3,7 @@ import Button from '../atoms/Button';
 import Input from '../atoms/Input';
 import Label from '../atoms/Label';
 import Toggle from '../atoms/Toggle';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../atoms/Select';
 import {
   AnthemAsset,
   FlagAnimationAsset,
@@ -43,63 +44,34 @@ const MEDAL_ORDER: Array<{ type: MedalType; rank: number }> = [
 ];
 
 const MedalCeremonyPanel: React.FC = () => {
-  const {
-    ceremonies,
-    selectedId,
-    detail,
-    divisionOptions,
-    flagAssets,
-    anthemAssets,
-    preparedDivisions,
-    athleteOptions,
-    loading,
-    saving,
-    error,
-    loadCeremonies,
-    selectCeremony,
-    setDetail,
-    saveCeremony,
-    deleteCeremony,
-    prepareCeremony,
-    markDivisionPlayed,
-    resetPlayback,
-    toggleExternalDisplay,
-    loadAssets,
-    loadDivisionOptions,
-    loadAthletesForDivision,
-    refreshDetail,
-    setError,
-    syncExternalState,
-    emitPlaybackEvent,
-  } = useMedalCeremonyStore((state) => ({
-    ceremonies: state.ceremonies,
-    selectedId: state.selectedId,
-    detail: state.detail,
-    divisionOptions: state.divisionOptions,
-    flagAssets: state.flagAssets,
-    anthemAssets: state.anthemAssets,
-    preparedDivisions: state.preparedDivisions,
-    athleteOptions: state.athleteOptions,
-    loading: state.loading,
-    saving: state.saving,
-    error: state.error,
-    loadCeremonies: state.loadCeremonies,
-    selectCeremony: state.selectCeremony,
-    setDetail: state.setDetail,
-    saveCeremony: state.saveCeremony,
-    deleteCeremony: state.deleteCeremony,
-    prepareCeremony: state.prepareCeremony,
-    markDivisionPlayed: state.markDivisionPlayed,
-    resetPlayback: state.resetPlayback,
-    toggleExternalDisplay: state.toggleExternalDisplay,
-    loadAssets: state.loadAssets,
-    loadDivisionOptions: state.loadDivisionOptions,
-    loadAthletesForDivision: state.loadAthletesForDivision,
-    refreshDetail: state.refreshDetail,
-    setError: state.setError,
-    syncExternalState: state.syncExternalState,
-    emitPlaybackEvent: state.emitPlaybackEvent,
-  }));
+  const ceremonies = useMedalCeremonyStore((state) => state.ceremonies);
+  const selectedId = useMedalCeremonyStore((state) => state.selectedId);
+  const detail = useMedalCeremonyStore((state) => state.detail);
+  const divisionOptions = useMedalCeremonyStore((state) => state.divisionOptions);
+  const flagAssets = useMedalCeremonyStore((state) => state.flagAssets);
+  const anthemAssets = useMedalCeremonyStore((state) => state.anthemAssets);
+  const preparedDivisions = useMedalCeremonyStore((state) => state.preparedDivisions);
+  const athleteOptions = useMedalCeremonyStore((state) => state.athleteOptions);
+  const loading = useMedalCeremonyStore((state) => state.loading);
+  const saving = useMedalCeremonyStore((state) => state.saving);
+  const error = useMedalCeremonyStore((state) => state.error);
+
+  const loadCeremonies = useMedalCeremonyStore((state) => state.loadCeremonies);
+  const selectCeremony = useMedalCeremonyStore((state) => state.selectCeremony);
+  const setDetail = useMedalCeremonyStore((state) => state.setDetail);
+  const saveCeremony = useMedalCeremonyStore((state) => state.saveCeremony);
+  const deleteCeremony = useMedalCeremonyStore((state) => state.deleteCeremony);
+  const prepareCeremony = useMedalCeremonyStore((state) => state.prepareCeremony);
+  const markDivisionPlayed = useMedalCeremonyStore((state) => state.markDivisionPlayed);
+  const resetPlayback = useMedalCeremonyStore((state) => state.resetPlayback);
+  const toggleExternalDisplay = useMedalCeremonyStore((state) => state.toggleExternalDisplay);
+  const loadAssets = useMedalCeremonyStore((state) => state.loadAssets);
+  const loadDivisionOptions = useMedalCeremonyStore((state) => state.loadDivisionOptions);
+  const loadAthletesForDivision = useMedalCeremonyStore((state) => state.loadAthletesForDivision);
+  const refreshDetail = useMedalCeremonyStore((state) => state.refreshDetail);
+  const setError = useMedalCeremonyStore((state) => state.setError);
+  const syncExternalState = useMedalCeremonyStore((state) => state.syncExternalState);
+  const emitPlaybackEvent = useMedalCeremonyStore((state) => state.emitPlaybackEvent);
 
   const [localMessage, setLocalMessage] = useState<string | null>(null);
   const [snapshot, setSnapshot] = useState<string>('');
@@ -154,7 +126,24 @@ const MedalCeremonyPanel: React.FC = () => {
 
   useEffect(() => {
     syncExternalState();
-  }, [syncExternalState]);
+  }, [detail, preparedDivisions, flagAssets, anthemAssets, syncExternalState]);
+
+  useEffect(() => {
+    if (!detail) {
+      return;
+    }
+    detail.divisions.forEach((division) => {
+      const name = division.division_name.trim();
+      if (!name) {
+        return;
+      }
+      const cacheKey = name.toLowerCase();
+      if (athleteOptions[cacheKey]) {
+        return;
+      }
+      void loadAthletesForDivision(name);
+    });
+  }, [athleteOptions, detail, loadAthletesForDivision]);
 
   const isDirty = detail ? snapshot !== JSON.stringify(detail) : false;
 
@@ -313,6 +302,13 @@ const MedalCeremonyPanel: React.FC = () => {
       const selectedAnthemAssetId: string = medalist.anthem_asset ?? '';
 
       const handleAthleteSelect = (value: string) => {
+        if (value === '') {
+          updateMedalist(divisionIndex, medalIndex, (current) => ({
+            ...current,
+            athlete_id: null,
+          }));
+          return;
+        }
         const selected = athleteList.find(
           (athlete: MedalCeremonyAthleteOption) => String(athlete.id) === value,
         );
@@ -362,77 +358,89 @@ const MedalCeremonyPanel: React.FC = () => {
             </div>
             <div>
               <Label>Select athlete</Label>
-              <select
-                className="w-full rounded-md border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-gray-200"
+              <Select
                 value={medalist.athlete_id ? String(medalist.athlete_id) : ''}
-                onFocus={() => {
-                  if (divisionName) void loadAthletesForDivision(divisionName);
-                }}
-                onChange={(event) => handleAthleteSelect(event.target.value)}
+                onValueChange={(value) => handleAthleteSelect(value)}
+                className="w-full"
               >
-                <option value="">Manual entry</option>
-                {athleteList.map((athlete: MedalCeremonyAthleteOption) => (
-                  <option key={athlete.id} value={athlete.id}>
-                    {athlete.full_name}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger className="bg-gray-900 border border-gray-700 text-sm text-gray-200">
+                  <SelectValue placeholder="Manual entry" />
+                </SelectTrigger>
+                <SelectContent className="bg-gray-900 border border-gray-700">
+                  <SelectItem value="">Manual entry</SelectItem>
+                  {athleteList.map((athlete: MedalCeremonyAthleteOption) => (
+                    <SelectItem key={athlete.id} value={String(athlete.id)}>
+                      {athlete.full_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label>Flag animation</Label>
-              <select
-                className="w-full rounded-md border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-gray-200"
+              <Select
                 value={selectedFlagAssetId}
-                onChange={(event) =>
+                onValueChange={(value) =>
                   updateMedalist(divisionIndex, medalIndex, (current) => ({
                     ...current,
-                    flag_asset: event.target.value || null,
+                    flag_asset: value || null,
                   }))
                 }
+                className="w-full"
               >
-                <option value="">None</option>
-                {flagAssets
-                  .filter(
-                    (asset: FlagAnimationAsset): asset is FlagAnimationAsset & { id: string } =>
-                      typeof asset.id === 'string' && asset.id.length > 0,
-                  )
-                  .map((asset) => (
-                    <option key={asset.id} value={asset.id}>
-                      {asset.display_name || asset.file_name}
-                    </option>
-                  ))}
-              </select>
+                <SelectTrigger className="bg-gray-900 border border-gray-700 text-sm text-gray-200">
+                  <SelectValue placeholder="Select flag animation" />
+                </SelectTrigger>
+                <SelectContent className="bg-gray-900 border border-gray-700">
+                  <SelectItem value="">None</SelectItem>
+                  {flagAssets
+                    .filter(
+                      (asset: FlagAnimationAsset): asset is FlagAnimationAsset & { id: string } =>
+                        typeof asset.id === 'string' && asset.id.length > 0,
+                    )
+                    .map((asset) => (
+                      <SelectItem key={asset.id} value={asset.id}>
+                        {asset.display_name || asset.file_name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label>Anthem</Label>
-              <select
-                className="w-full rounded-md border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-gray-200"
+              <Select
                 value={selectedAnthemAssetId}
-                onChange={(event) =>
+                onValueChange={(value) =>
                   updateMedalist(divisionIndex, medalIndex, (current) => ({
                     ...current,
-                    anthem_asset: event.target.value || null,
+                    anthem_asset: value || null,
                   }))
                 }
+                className="w-full"
               >
-                <option value="">None</option>
-                {anthemAssets
-                  .filter(
-                    (asset: AnthemAsset): asset is AnthemAsset & { id: string } =>
-                      typeof asset.id === 'string' && asset.id.length > 0,
-                  )
-                  .map((asset) => (
-                    <option key={asset.id} value={asset.id}>
-                      {asset.display_name || asset.file_name}
-                    </option>
-                  ))}
-              </select>
+                <SelectTrigger className="bg-gray-900 border border-gray-700 text-sm text-gray-200">
+                  <SelectValue placeholder="Select anthem" />
+                </SelectTrigger>
+                <SelectContent className="bg-gray-900 border border-gray-700">
+                  <SelectItem value="">None</SelectItem>
+                  {anthemAssets
+                    .filter(
+                      (asset: AnthemAsset): asset is AnthemAsset & { id: string } =>
+                        typeof asset.id === 'string' && asset.id.length > 0,
+                    )
+                    .map((asset) => (
+                      <SelectItem key={asset.id} value={asset.id}>
+                        {asset.display_name || asset.file_name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </div>
       );
     },
-    [athleteOptions, detail, findAnthemAssetByIoc, findFlagAssetByIoc, loadAthletesForDivision, updateMedalist],
+    [athleteOptions, detail, findAnthemAssetByIoc, findFlagAssetByIoc, updateMedalist],
   );
 
   if (!detail) {
