@@ -28,25 +28,14 @@ const defaultForm: FlagAssetForm = {
 };
 
 const MedalCeremonyAnimationManager: React.FC = () => {
-  const {
-    flagAssets,
-    loadAssets,
-    saveFlagAsset,
-    deleteFlagAsset,
-    saving,
-    loading,
-    error,
-    setError,
-  } = useMedalCeremonyStore((state) => ({
-    flagAssets: state.flagAssets,
-    loadAssets: state.loadAssets,
-    saveFlagAsset: state.saveFlagAsset,
-    deleteFlagAsset: state.deleteFlagAsset,
-    saving: state.saving,
-    loading: state.loading,
-    error: state.error,
-    setError: state.setError,
-  }));
+  const flagAssets = useMedalCeremonyStore((state) => state.flagAssets);
+  const loadAssets = useMedalCeremonyStore((state) => state.loadAssets);
+  const saveFlagAsset = useMedalCeremonyStore((state) => state.saveFlagAsset);
+  const deleteFlagAsset = useMedalCeremonyStore((state) => state.deleteFlagAsset);
+  const saving = useMedalCeremonyStore((state) => state.saving);
+  const loading = useMedalCeremonyStore((state) => state.loading);
+  const error = useMedalCeremonyStore((state) => state.error);
+  const setError = useMedalCeremonyStore((state) => state.setError);
 
   const [form, setForm] = useState<FlagAssetForm>(defaultForm);
   const [message, setMessage] = useState<string | null>(null);
@@ -63,11 +52,13 @@ const MedalCeremonyAnimationManager: React.FC = () => {
 
   const filteredAssets = useMemo(() => {
     const term = search.trim().toLowerCase();
-    if (!term) return flagAssets;
+    if (!term) {
+      return flagAssets;
+    }
     return flagAssets.filter((asset) =>
       [asset.ioc_code, asset.display_name, asset.file_name]
         .filter(Boolean)
-        .some((value) => value!.toLowerCase().includes(term)),
+        .some((value) => (value ?? '').toLowerCase().includes(term)),
     );
   }, [flagAssets, search]);
 
