@@ -56,10 +56,11 @@ use crate::logging::archival::{ArchiveSchedule, AutoArchiveConfig};
 use crate::plugins::obs_obws::types::ObsOperationRequest;
 use crate::utils::simulation_env::ensure_simulation_env;
 use dirs;
-use once_cell::sync::OnceCell;
+use once_cell::sync::{Lazy, OnceCell};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 use tauri::{Emitter, Error as TauriError, State};
 use tokio::sync::Mutex as AsyncMutex;
 
@@ -6130,7 +6131,7 @@ pub async fn simulation_run_automated(
 pub async fn simulation_get_detailed_status(
     _app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!("Getting detailed simulation status");
+    log::debug!("Getting detailed simulation status");
 
     // Check if Python process is running
     let process_result = std::process::Command::new("tasklist")
@@ -6145,23 +6146,8 @@ pub async fn simulation_get_detailed_status(
         Err(_) => false,
     };
 
-    // Always try to get scenarios
-    let scenarios = match ensure_simulation_env() {
-        Ok((python_cmd, sim_main)) => {
-            let scenarios_result = std::process::Command::new(&python_cmd)
-                .args(&[sim_main.to_str().unwrap(), "--list-scenarios"])
-                .output();
-
-            match scenarios_result {
-                Ok(output) => {
-                    let output_str = String::from_utf8_lossy(&output.stdout);
-                    parse_scenarios_from_output(&output_str)
-                }
-                Err(_) => vec![],
-            }
-        }
-        Err(_) => vec![],
-    };
+    // Retrieve scenarios with caching to avoid repeated filesystem/process churn
+    let scenarios = cached_scenarios();
 
     Ok(serde_json::json!({
         "success": true,
@@ -6383,11 +6369,15 @@ pub async fn simulation_run_selective_self_test(
     }
 }
 // Helper function to parse scenarios from command output
+static SCENARIOS_CACHE: Lazy<std::sync::Mutex<Option<(Instant, Vec<serde_json::Value>)>>> =
+    Lazy::new(|| std::sync::Mutex::new(None));
+const SCENARIOS_CACHE_TTL: Duration = Duration::from_secs(60);
+
 fn parse_scenarios_from_output(output: &str) -> Vec<serde_json::Value> {
     let mut scenarios = Vec::new();
     let lines: Vec<&str> = output.lines().collect();
 
-    log::info!("Parsing {} lines from output", lines.len());
+    log::debug!("Parsing {} lines from output", lines.len());
     log::debug!("Raw output: {}", output);
 
     let mut current_scenario = serde_json::Map::new();
@@ -6480,8 +6470,42 @@ fn parse_scenarios_from_output(output: &str) -> Vec<serde_json::Value> {
         log::debug!("Added final scenario: {:?}", current_scenario);
     }
 
-    log::info!("Parsed {} scenarios successfully", scenarios.len());
+    log::debug!("Parsed {} scenarios successfully", scenarios.len());
     scenarios
+}
+
+fn cached_scenarios() -> Vec<serde_json::Value> {
+    if let Some((timestamp, scenarios)) = SCENARIOS_CACHE.lock().unwrap().clone() {
+        if timestamp.elapsed() < SCENARIOS_CACHE_TTL {
+            log::debug!("Using cached simulation scenarios ({} entries).", scenarios.len());
+            return scenarios;
+        }
+    }
+
+    match ensure_simulation_env() {
+        Ok((python_cmd, sim_main)) => {
+            match std::process::Command::new(&python_cmd)
+                .args(&[sim_main.to_str().unwrap(), "--list-scenarios"])
+                .output()
+            {
+                Ok(output) => {
+                    let output_str = String::from_utf8_lossy(&output.stdout);
+                    let scenarios = parse_scenarios_from_output(&output_str);
+                    let mut cache = SCENARIOS_CACHE.lock().unwrap();
+                    *cache = Some((Instant::now(), scenarios.clone()));
+                    scenarios
+                }
+                Err(err) => {
+                    log::warn!("Failed to execute scenario listing command: {}", err);
+                    Vec::new()
+                }
+            }
+        }
+        Err(err) => {
+            log::warn!("Simulation environment unavailable for scenario listing: {:?}", err);
+            Vec::new()
+        }
+    }
 }
 
 // (legacy streaming accounts/channels/events removed)

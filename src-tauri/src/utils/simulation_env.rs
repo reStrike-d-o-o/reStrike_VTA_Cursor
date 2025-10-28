@@ -1,6 +1,8 @@
+use once_cell::sync::Lazy;
 use std::io;
 use std::path::PathBuf;
 use std::process::Command;
+use std::sync::Mutex;
 
 #[derive(Debug)]
 pub enum SimulationEnvError {
@@ -198,7 +200,20 @@ pub fn install_python_requirements(
 }
 
 /// Ensure simulation environment is ready (python, version, dependencies)
+static SIM_ENV_CACHE: Lazy<Mutex<Option<(String, PathBuf)>>> = Lazy::new(|| Mutex::new(None));
+
 pub fn ensure_simulation_env() -> Result<(String, PathBuf), SimulationEnvError> {
+    // Reuse cached environment when available and healthy
+    if let Some((cached_python, cached_main)) = SIM_ENV_CACHE.lock().unwrap().clone() {
+        if check_python_package(&cached_python, "requests") {
+            log::debug!("Simulation environment already verified; using cached configuration.");
+            return Ok((cached_python, cached_main));
+        } else {
+            log::warn!("Cached simulation environment missing required packages; reinitializing.");
+            *SIM_ENV_CACHE.lock().unwrap() = None;
+        }
+    }
+
     log::info!("Ensuring simulation environment is ready...");
 
     // Detect Python
@@ -231,5 +246,12 @@ pub fn ensure_simulation_env() -> Result<(String, PathBuf), SimulationEnvError> 
     }
 
     log::info!("Simulation environment is ready");
+
+    // Cache successful detection for subsequent calls to avoid repeated checks
+    {
+        let mut cache = SIM_ENV_CACHE.lock().unwrap();
+        *cache = Some((python_cmd.clone(), sim_main.clone()));
+    }
+
     Ok((python_cmd, sim_main))
 }

@@ -1,36 +1,35 @@
-openapi: 3.1.0
+components:
+  schemas: {}
 info:
+  description: |
+    Programmatic interface for reStrike VTA integrations. This schema can be edited from the desktop application. Validate every change before publishing to ensure interoperability.
   title: reStrike VTA External API
-  version: "1.0.0"
-  description: >
-    Programmatic interface for reStrike VTA integrations. This schema can be edited from the
-    desktop application. Validate every change before publishing to ensure interoperability.
-servers:
-  - url: http://127.0.0.1:8787/api
-    description: Local development server
+  version: 1.0.0
+openapi: 3.1.0
 paths:
   /health:
     get:
-      summary: API health check
-      operationId: getHealth
       description: |
         Returns a simple status payload that clients can use to verify connectivity.
+      operationId: getHealth
       responses:
-        "200":
-          description: Health status payload
+        '200':
           content:
             application/json:
               schema:
-                type: object
                 properties:
                   status:
-                    type: string
                     example: ok
-                  timestamp:
                     type: string
+                  timestamp:
                     format: date-time
+                    type: string
                 required:
-                  - status
-                  - timestamp
-components:
-  schemas: {}
+                - status
+                - timestamp
+                type: object
+          description: Health status payload
+      summary: API health check
+servers:
+- description: Local development server
+  url: http://127.0.0.1:8787/api

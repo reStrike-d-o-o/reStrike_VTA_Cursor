@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import Icon from '../atoms/Icon';
 import SelfTestPanel from './SelfTestPanel';
 import { useSimulationStore } from '../../stores/simulationStore';
@@ -13,15 +13,35 @@ import { useI18n } from '../../i18n/index';
 interface SimulationPanelProps { className?: string; }
 
 const SimulationPanelV2: React.FC<SimulationPanelProps> = ({ className = '' }) => {
-  const store = useSimulationStore();
+  const {
+    loadStatus,
+    loadScenarios,
+    status,
+    showAutomated,
+    showSelfTest,
+    showArcade,
+    loading,
+  } = useSimulationStore();
+  const shouldPoll = useMemo(() => status.isRunning || loading, [status.isRunning, loading]);
   const { t } = useI18n();
-  useEffect(() => { store.loadStatus(); store.loadScenarios(); }, []);
-  useEffect(() => { const t = setInterval(() => store.loadStatus(), 2000); return () => clearInterval(t); }, [store]);
+
+  useEffect(() => {
+    loadStatus();
+    loadScenarios();
+  }, [loadStatus, loadScenarios]);
+
+  useEffect(() => {
+    if (!shouldPoll) {
+      return;
+    }
+    const timer = setInterval(() => loadStatus(), 2000);
+    return () => clearInterval(timer);
+  }, [shouldPoll, loadStatus]);
 
   const renderBody = () => {
-    if (store.showAutomated) return <AutomatedPanel />;
-    if (store.showSelfTest) return <SelfTestPanel />;
-    if (store.showArcade) return <ArcadeModePanel />;
+    if (showAutomated) return <AutomatedPanel />;
+    if (showSelfTest) return <SelfTestPanel />;
+    if (showArcade) return <ArcadeModePanel />;
     return <ManualPanel />;
   };
 
