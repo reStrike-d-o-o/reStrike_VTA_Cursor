@@ -6,13 +6,13 @@
 use crate::security::constants::*;
 use aes_gcm::{
     aead::{Aead, KeyInit},
-    Aes256Gcm, Key, Nonce,
+    Aes256Gcm, Nonce,
 };
 use base64::{engine::general_purpose, Engine as _};
 use ring::rand::SecureRandom;
 use ring::{pbkdf2, rand};
 use serde::{Deserialize, Serialize};
-use std::fmt;
+use std::{convert::TryInto, fmt};
 
 /// Security error types
 #[derive(Debug, thiserror::Error)]
@@ -185,13 +185,18 @@ impl SecureConfig {
 
         // Derive encryption key
         let key_bytes = self.derive_key(&salt)?;
-        let key = Key::<Aes256Gcm>::from_slice(&key_bytes);
-        let nonce = Nonce::from_slice(&nonce_bytes);
+        let cipher = Aes256Gcm::new_from_slice(&key_bytes).map_err(|e| {
+            SecurityError::Encryption(format!("Failed to initialize cipher: {:?}", e))
+        })?;
+        let nonce_array: [u8; 12] = nonce_bytes
+            .as_slice()
+            .try_into()
+            .map_err(|_| SecurityError::Encryption("Invalid nonce length".to_string()))?;
+        let nonce = Nonce::from(nonce_array);
 
         // Encrypt the data
-        let cipher = Aes256Gcm::new(key);
         let ciphertext = cipher
-            .encrypt(nonce, plaintext.as_bytes())
+            .encrypt(&nonce, plaintext.as_bytes())
             .map_err(|e| SecurityError::Encryption(format!("AES encryption failed: {:?}", e)))?;
 
         // Encode to base64
@@ -233,13 +238,18 @@ impl SecureConfig {
 
         // Derive decryption key
         let key_bytes = self.derive_key(&salt)?;
-        let key = Key::<Aes256Gcm>::from_slice(&key_bytes);
-        let nonce = Nonce::from_slice(&nonce_bytes);
+        let cipher = Aes256Gcm::new_from_slice(&key_bytes).map_err(|e| {
+            SecurityError::Decryption(format!("Failed to initialize cipher: {:?}", e))
+        })?;
+        let nonce_array: [u8; 12] = nonce_bytes
+            .as_slice()
+            .try_into()
+            .map_err(|_| SecurityError::Decryption("Invalid nonce length".to_string()))?;
+        let nonce = Nonce::from(nonce_array);
 
         // Decrypt the data
-        let cipher = Aes256Gcm::new(key);
         let plaintext = cipher
-            .decrypt(nonce, ciphertext.as_ref())
+            .decrypt(&nonce, ciphertext.as_ref())
             .map_err(|e| SecurityError::Decryption(format!("AES decryption failed: {:?}", e)))?;
 
         // Convert to string

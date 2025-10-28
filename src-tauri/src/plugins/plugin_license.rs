@@ -8,6 +8,7 @@ use rand::RngCore;
 use ring::signature;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use std::convert::TryInto;
 use std::fs;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -97,7 +98,7 @@ impl LicensePlugin {
         let mut hasher = Sha256::new();
         hasher.update(uid.as_bytes());
         hasher.update(LICENSE_STORAGE_SALT.as_bytes());
-        Ok(format!("{:x}", hasher.finalize()))
+        Ok(hex::encode(hasher.finalize()))
     }
 
     fn storage_path() -> AppResult<PathBuf> {
@@ -257,8 +258,12 @@ impl LicensePlugin {
             let ct_bytes = base64::engine::general_purpose::STANDARD
                 .decode(stored.c)
                 .map_err(|e| AppError::ConfigError(format!("Invalid ciphertext: {}", e)))?;
-            let nonce = aes_gcm::Nonce::from_slice(&nonce_bytes);
-            match cipher.decrypt(nonce, ct_bytes.as_ref()) {
+            let nonce_array: [u8; 12] = nonce_bytes
+                .as_slice()
+                .try_into()
+                .map_err(|_| AppError::ConfigError("Invalid nonce length".into()))?;
+            let nonce = aes_gcm::Nonce::from(nonce_array);
+            match cipher.decrypt(&nonce, ct_bytes.as_ref()) {
                 Ok(pt) => {
                     return String::from_utf8(pt)
                         .map_err(|e| AppError::ConfigError(format!("Invalid UTF-8: {}", e)));

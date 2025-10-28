@@ -130,7 +130,7 @@ fn cmd_fingerprint() {
     let mut hasher = Sha256::new();
     hasher.update(uid.as_bytes());
     hasher.update(b"rst_vta_license_v1");
-    let mh = format!("{:x}", hasher.finalize());
+    let mh = hex::encode(hasher.finalize());
     println!("{}", mh);
 }
 
