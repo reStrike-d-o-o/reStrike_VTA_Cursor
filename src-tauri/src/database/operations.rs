@@ -1,13 +1,13 @@
 use crate::database::{
     models::{
-        EventTrigger, NetworkInterface, ObsConnection, ObsRecordingConfig, ObsRecordingSession,
-        ObsScene, OverlayTemplate, OvrCategory, OvrProvider, OvrTournament, PssAthlete,
-        PssEventDetail, PssEventRecognitionHistory, PssEventStatistics, PssEventType, PssEventV2,
+        EventTrigger, MedalCeremony, MedalCeremonyDetail, MedalCeremonyDivision,
+        MedalCeremonyDivisionDetail, MedalCeremonyMedalist, NetworkInterface, ObsConnection,
+        ObsRecordingConfig, ObsRecordingSession, ObsScene, OverlayTemplate, OvrAnthemAsset,
+        OvrCategory, OvrFlagAnimationAsset, OvrProvider, OvrTournament, PssAthlete, PssEventDetail,
+        PssEventRecognitionHistory, PssEventStatistics, PssEventType, PssEventV2,
         PssEventValidationResult, PssEventValidationRule, PssMatch, PssMatchAthlete, PssScore,
         PssUnknownEvent, PssWarning, SettingsCategory, SettingsHistory, SettingsKey, SettingsValue,
-        MedalCeremony, MedalCeremonyDetail, MedalCeremonyDivision, MedalCeremonyDivisionDetail,
-        MedalCeremonyMedalist, OvrAnthemAsset, OvrFlagAnimationAsset, Tournament, TournamentDay,
-        UdpClientConnection, UdpServerConfig, UdpServerSession,
+        Tournament, TournamentDay, UdpClientConnection, UdpServerConfig, UdpServerSession,
     },
     DatabaseConnection, DatabaseError, DatabaseResult,
 };
@@ -173,7 +173,7 @@ impl UiSettingsOperations {
         for (key_name, display_name, data_type, default_value, validation_rules) in ui_settings {
             Self::create_setting_key_if_not_exists(
                 &tx,
-                ui_category_id,
+                &ui_category_id,
                 key_name,
                 display_name,
                 data_type,
@@ -192,9 +192,8 @@ impl UiSettingsOperations {
         name: &str,
         description: &str,
         display_order: i32,
-    ) -> DatabaseResult<i64> {
-        // Try to get existing category
-        let category_id: Option<i64> = conn
+    ) -> DatabaseResult<String> {
+        let category_id: Option<String> = conn
             .query_row(
                 "SELECT id FROM settings_categories WHERE name = ?",
                 params![name],
@@ -205,17 +204,22 @@ impl UiSettingsOperations {
         if let Some(id) = category_id {
             Ok(id)
         } else {
-            // Create new category
-            let category = SettingsCategory::new(
+            let mut category = SettingsCategory::new(
                 name.to_string(),
                 Some(description.to_string()),
                 display_order,
             );
 
-            let category_id = conn.execute(
-                "INSERT INTO settings_categories (id, name, description, display_order, created) VALUES (COALESCE(?, printf('%s', hex(randomblob(16)))), ?, ?, ?, ?)",
+            let new_id = category
+                .id
+                .clone()
+                .unwrap_or_else(|| Uuid::new_v4().to_string());
+            category.id = Some(new_id.clone());
+
+            conn.execute(
+                "INSERT INTO settings_categories (id, name, description, display_order, created) VALUES (?, ?, ?, ?, ?)",
                 params![
-                    category.id,
+                    new_id,
                     category.name,
                     category.description,
                     category.display_order,
@@ -223,14 +227,14 @@ impl UiSettingsOperations {
                 ]
             )?;
 
-            Ok(category_id as i64)
+            Ok(category.id.expect("settings category id"))
         }
     }
 
     /// Create a setting key if it doesn't exist
     fn create_setting_key_if_not_exists(
         conn: &Connection,
-        category_id: i64,
+        category_id: &str,
         key_name: &str,
         display_name: &str,
         data_type: &str,
@@ -305,7 +309,7 @@ impl UiSettingsOperations {
             Self::get_or_create_category(conn, "ui", "User Interface Settings", 5)?;
         Self::create_setting_key_if_not_exists(
             conn,
-            ui_category_id,
+            &ui_category_id,
             key_name,
             display_name,
             data_type,
@@ -4122,7 +4126,9 @@ impl MedalCeremonyOperations {
 
         for division in divisions {
             let medalists = medal_stmt
-                .query_map([division.id.as_str()], |row| MedalCeremonyMedalist::from_row(row))?
+                .query_map([division.id.as_str()], |row| {
+                    MedalCeremonyMedalist::from_row(row)
+                })?
                 .collect::<Result<Vec<_>, _>>()?;
 
             details.push(MedalCeremonyDivisionDetail {
@@ -4148,15 +4154,17 @@ impl MedalCeremonyOperations {
         conn: &Connection,
         ceremony_id: &str,
     ) -> DatabaseResult<Option<MedalCeremonyDetail>> {
-        let mut stmt =
-            conn.prepare("SELECT * FROM medal_ceremonies WHERE id = ?1 LIMIT 1")?;
+        let mut stmt = conn.prepare("SELECT * FROM medal_ceremonies WHERE id = ?1 LIMIT 1")?;
         let ceremony = stmt
             .query_row([ceremony_id], |row| MedalCeremony::from_row(row))
             .optional()?;
 
         if let Some(ceremony) = ceremony {
             let divisions = Self::fetch_divisions_with_medalists(conn, &ceremony.id)?;
-            Ok(Some(MedalCeremonyDetail { ceremony, divisions }))
+            Ok(Some(MedalCeremonyDetail {
+                ceremony,
+                divisions,
+            }))
         } else {
             Ok(None)
         }
@@ -4307,7 +4315,10 @@ impl MedalCeremonyOperations {
     }
 
     pub fn delete_ceremony(conn: &mut Connection, ceremony_id: &str) -> DatabaseResult<()> {
-        conn.execute("DELETE FROM medal_ceremonies WHERE id = ?1", params![ceremony_id])?;
+        conn.execute(
+            "DELETE FROM medal_ceremonies WHERE id = ?1",
+            params![ceremony_id],
+        )?;
         Ok(())
     }
 
@@ -4341,10 +4352,7 @@ impl MedalCeremonyOperations {
         Ok(detail.map(|d| d.divisions).unwrap_or_default())
     }
 
-    pub fn mark_division_played(
-        conn: &mut Connection,
-        division_id: &str,
-    ) -> DatabaseResult<()> {
+    pub fn mark_division_played(conn: &mut Connection, division_id: &str) -> DatabaseResult<()> {
         let tx = conn.transaction()?;
         let now = Self::now();
         let ceremony_id: Option<String> = tx
@@ -4371,10 +4379,7 @@ impl MedalCeremonyOperations {
         Ok(())
     }
 
-    pub fn reset_playback(
-        conn: &mut Connection,
-        ceremony_id: &str,
-    ) -> DatabaseResult<()> {
+    pub fn reset_playback(conn: &mut Connection, ceremony_id: &str) -> DatabaseResult<()> {
         let now = Self::now();
         conn.execute(
             "UPDATE medal_ceremony_divisions SET played_at = NULL, updated_at = ?1 WHERE ceremony_id = ?2",
@@ -4400,11 +4405,20 @@ impl MedalCeremonyOperations {
         Ok(())
     }
 
-    pub fn list_flag_animations(
-        conn: &Connection,
-    ) -> DatabaseResult<Vec<OvrFlagAnimationAsset>> {
+    pub fn list_flag_animations(conn: &Connection) -> DatabaseResult<Vec<OvrFlagAnimationAsset>> {
         let mut stmt = conn.prepare(
-            "SELECT * FROM ovr_flag_animations ORDER BY ioc_code ASC, file_name ASC",
+            "SELECT
+                id,
+                ioc_code,
+                file_name,
+                file_path,
+                COALESCE(display_name, country_name) AS display_name,
+                duration_ms,
+                is_default,
+                created_at,
+                updated_at
+             FROM animations
+             ORDER BY ioc_code ASC, file_name ASC",
         )?;
         let assets = stmt
             .query_map([], |row| OvrFlagAnimationAsset::from_row(row))?
@@ -4426,7 +4440,7 @@ impl MedalCeremonyOperations {
 
         let exists: Option<String> = tx
             .query_row(
-                "SELECT id FROM ovr_flag_animations WHERE id = ?1",
+                "SELECT id FROM animations WHERE id = ?1",
                 params![asset_id.as_str()],
                 |row| row.get(0),
             )
@@ -4434,36 +4448,60 @@ impl MedalCeremonyOperations {
 
         if exists.is_some() {
             tx.execute(
-                "UPDATE ovr_flag_animations
-                 SET ioc_code = ?1, file_name = ?2, file_path = ?3,
-                     display_name = ?4, duration_ms = ?5, is_default = ?6,
-                     updated_at = ?7
-                 WHERE id = ?8",
+                "UPDATE animations
+                 SET ioc_code = ?1,
+                     country_name = ?2,
+                     file_name = ?3,
+                     file_path = ?4,
+                     filename = ?5,
+                     display_name = ?6,
+                     duration_ms = ?7,
+                     is_default = ?8,
+                     last_modified = ?9,
+                     updated_at = ?9
+                 WHERE id = ?10",
                 params![
                     asset.ioc_code,
+                    asset.display_name,
                     asset.file_name,
                     asset.file_path,
+                    asset.file_name,
                     asset.display_name,
                     asset.duration_ms,
                     if asset.is_default { 1 } else { 0 },
                     now,
-                    asset_id
+                    asset_id,
                 ],
             )?;
         } else {
             tx.execute(
-                "INSERT INTO ovr_flag_animations (
-                    id, ioc_code, file_name, file_path, display_name,
-                    duration_ms, is_default, created_at, updated_at
-                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+                "INSERT INTO animations (
+                    id,
+                    ioc_code,
+                    country_name,
+                    file_name,
+                    file_path,
+                    filename,
+                    display_name,
+                    duration_ms,
+                    is_default,
+                    upload_date,
+                    last_modified,
+                    created_at,
+                    updated_at
+                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?10, ?10, ?10)",
                 params![
                     asset_id,
                     asset.ioc_code,
+                    asset.display_name,
                     asset.file_name,
                     asset.file_path,
+                    asset.file_name,
                     asset.display_name,
                     asset.duration_ms,
                     if asset.is_default { 1 } else { 0 },
+                    now.clone(),
+                    now.clone(),
                     now.clone(),
                     now.clone()
                 ],
@@ -4472,7 +4510,7 @@ impl MedalCeremonyOperations {
 
         if asset.is_default {
             tx.execute(
-                "UPDATE ovr_flag_animations
+                "UPDATE animations
                  SET is_default = 0, updated_at = ?1
                  WHERE ioc_code = ?2 AND id != ?3",
                 params![Self::now(), asset.ioc_code, asset_id],
@@ -4483,31 +4521,21 @@ impl MedalCeremonyOperations {
         Ok(asset_id)
     }
 
-    pub fn delete_flag_animation(
-        conn: &mut Connection,
-        asset_id: &str,
-    ) -> DatabaseResult<()> {
-        conn.execute(
-            "DELETE FROM ovr_flag_animations WHERE id = ?1",
-            params![asset_id],
-        )?;
+    pub fn delete_flag_animation(conn: &mut Connection, asset_id: &str) -> DatabaseResult<()> {
+        conn.execute("DELETE FROM animations WHERE id = ?1", params![asset_id])?;
         Ok(())
     }
 
     pub fn list_anthems(conn: &Connection) -> DatabaseResult<Vec<OvrAnthemAsset>> {
-        let mut stmt = conn.prepare(
-            "SELECT * FROM ovr_anthems ORDER BY ioc_code ASC, file_name ASC",
-        )?;
+        let mut stmt =
+            conn.prepare("SELECT * FROM ovr_anthems ORDER BY ioc_code ASC, file_name ASC")?;
         let assets = stmt
             .query_map([], |row| OvrAnthemAsset::from_row(row))?
             .collect::<Result<Vec<_>, _>>()?;
         Ok(assets)
     }
 
-    pub fn upsert_anthem(
-        conn: &mut Connection,
-        asset: &OvrAnthemAsset,
-    ) -> DatabaseResult<String> {
+    pub fn upsert_anthem(conn: &mut Connection, asset: &OvrAnthemAsset) -> DatabaseResult<String> {
         let tx = conn.transaction()?;
         let now = Self::now();
         let asset_id = if asset.id.trim().is_empty() {

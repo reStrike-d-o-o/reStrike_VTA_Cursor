@@ -3269,6 +3269,7 @@ impl MigrationManager {
         migrations.push(Box::new(Migration39)); // Drop tournament_day_id from event_triggers and obs_recording_sessions
         migrations.push(Box::new(Migration40)); // Add integer created/updated to obs_recording_sessions and backfill
         migrations.push(Box::new(Migration41)); // Medal ceremony schema and OVR asset registries
+        migrations.push(Box::new(Migration42)); // Animation library table seeded from flags
 
         Self { migrations }
     }
@@ -5967,6 +5968,151 @@ impl Migration for Migration41 {
         conn.execute("DROP TABLE IF EXISTS medal_ceremonies", [])?;
         conn.execute("DROP TABLE IF EXISTS ovr_flag_animations", [])?;
         conn.execute("DROP TABLE IF EXISTS ovr_anthems", [])?;
+        Ok(())
+    }
+}
+
+/// Migration 42: Animations table cloned from flags metadata
+pub struct Migration42;
+
+impl Migration for Migration42 {
+    fn version(&self) -> u32 {
+        42
+    }
+
+    fn description(&self) -> &str {
+        "Create animations table derived from flags assets for OVR management"
+    }
+
+    fn up(&self, conn: &Connection) -> SqliteResult<()> {
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS animations (
+                id TEXT PRIMARY KEY,
+                ioc_code TEXT,
+                country_name TEXT,
+                file_name TEXT NOT NULL,
+                file_path TEXT NOT NULL,
+                filename TEXT,
+                display_name TEXT,
+                duration_ms INTEGER,
+                is_default INTEGER NOT NULL DEFAULT 0,
+                recognition_status TEXT DEFAULT 'pending',
+                recognition_confidence REAL,
+                upload_date TEXT DEFAULT CURRENT_TIMESTAMP,
+                last_modified TEXT DEFAULT CURRENT_TIMESTAMP,
+                file_size INTEGER,
+                is_recognized INTEGER DEFAULT 0,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )",
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_animations_ioc ON animations(ioc_code)",
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_animations_unique
+             ON animations(ioc_code, file_name)",
+            [],
+        )?;
+
+        conn.execute(
+            r#"
+            INSERT INTO animations (
+                id,
+                ioc_code,
+                country_name,
+                file_name,
+                file_path,
+                filename,
+                display_name,
+                duration_ms,
+                is_default,
+                recognition_status,
+                recognition_confidence,
+                upload_date,
+                last_modified,
+                file_size,
+                is_recognized,
+                created_at,
+                updated_at
+            )
+            SELECT
+                lower(hex(randomblob(16))) AS id,
+                ioc_code,
+                country_name,
+                REPLACE(REPLACE(filename, '.SVG', '.json'), '.svg', '.json') AS file_name,
+                REPLACE(
+                    REPLACE(
+                        REPLACE(
+                            REPLACE(
+                                REPLACE(file_path, '\\', '/'),
+                                '../ui/',
+                                'ui/'
+                            ),
+                            'assets/flags/svg',
+                            'assets/animations'
+                        ),
+                        '.SVG',
+                        '.json'
+                    ),
+                    '.svg',
+                    '.json'
+                ) AS file_path,
+                REPLACE(REPLACE(filename, '.SVG', '.json'), '.svg', '.json') AS filename,
+                country_name AS display_name,
+                NULL AS duration_ms,
+                CASE WHEN is_recognized THEN 1 ELSE 0 END AS is_default,
+                recognition_status,
+                recognition_confidence,
+                upload_date,
+                last_modified,
+                file_size,
+                is_recognized,
+                COALESCE(upload_date, CURRENT_TIMESTAMP),
+                COALESCE(last_modified, CURRENT_TIMESTAMP)
+            FROM flags
+            WHERE NOT EXISTS (SELECT 1 FROM animations LIMIT 1)
+            "#,
+            [],
+        )?;
+
+        conn.execute(
+            r#"
+            UPDATE animations
+            SET
+                file_name = REPLACE(REPLACE(file_name, '.SVG', '.json'), '.svg', '.json'),
+                filename = REPLACE(REPLACE(filename, '.SVG', '.json'), '.svg', '.json'),
+                file_path = REPLACE(
+                    REPLACE(
+                        REPLACE(
+                            REPLACE(
+                                REPLACE(file_path, '\\', '/'),
+                                '../ui/',
+                                'ui/'
+                            ),
+                            'assets/flags/svg',
+                            'assets/animations'
+                        ),
+                        '.SVG',
+                        '.json'
+                    ),
+                    '.svg',
+                    '.json'
+                ),
+                country_name = COALESCE(country_name, display_name)
+            "#,
+            [],
+        )?;
+
+        Ok(())
+    }
+
+    fn down(&self, conn: &Connection) -> SqliteResult<()> {
+        conn.execute("DROP TABLE IF EXISTS animations", [])?;
         Ok(())
     }
 }

@@ -6477,7 +6477,10 @@ fn parse_scenarios_from_output(output: &str) -> Vec<serde_json::Value> {
 fn cached_scenarios() -> Vec<serde_json::Value> {
     if let Some((timestamp, scenarios)) = SCENARIOS_CACHE.lock().unwrap().clone() {
         if timestamp.elapsed() < SCENARIOS_CACHE_TTL {
-            log::debug!("Using cached simulation scenarios ({} entries).", scenarios.len());
+            log::debug!(
+                "Using cached simulation scenarios ({} entries).",
+                scenarios.len()
+            );
             return scenarios;
         }
     }
@@ -6502,7 +6505,10 @@ fn cached_scenarios() -> Vec<serde_json::Value> {
             }
         }
         Err(err) => {
-            log::warn!("Simulation environment unavailable for scenario listing: {:?}", err);
+            log::warn!(
+                "Simulation environment unavailable for scenario listing: {:?}",
+                err
+            );
             Vec::new()
         }
     }

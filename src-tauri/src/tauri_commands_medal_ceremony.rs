@@ -1,4 +1,3 @@
-
 use crate::{
     core::app::App,
     database::{
@@ -6,7 +5,9 @@ use crate::{
             MedalCeremony, MedalCeremonyDetail, MedalCeremonyDivision, MedalCeremonyDivisionDetail,
             MedalCeremonyMedalist, OvrAnthemAsset, OvrFlagAnimationAsset,
         },
-        operations::{MedalCeremonyAthleteOption, MedalCeremonyDivisionOption, MedalCeremonyOperations},
+        operations::{
+            MedalCeremonyAthleteOption, MedalCeremonyDivisionOption, MedalCeremonyOperations,
+        },
     },
 };
 use anyhow::anyhow;
@@ -278,11 +279,17 @@ fn dto_to_ceremony_detail(dto: &MedalCeremonyDetailDto) -> MedalCeremonyDetail {
                 })
                 .collect::<Vec<_>>();
 
-            MedalCeremonyDivisionDetail { division, medalists }
+            MedalCeremonyDivisionDetail {
+                division,
+                medalists,
+            }
         })
         .collect::<Vec<_>>();
 
-    MedalCeremonyDetail { ceremony, divisions }
+    MedalCeremonyDetail {
+        ceremony,
+        divisions,
+    }
 }
 
 fn flag_asset_to_dto(asset: &OvrFlagAnimationAsset) -> FlagAnimationAssetDto {
