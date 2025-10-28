@@ -179,12 +179,12 @@
           </g>
         </g>
         <path id="round_x5F_bg" class="cls-21" d="M442.349213,234.495054H181.342771v31.237061c0,5.249512,4.255554,9.505005,9.504944,9.505005h251.501498v-40.742065Z"/>
-        <text id="time" class="cls-18" transform="translate(109.657927 267.102421)"><tspan x="0" y="0">1:54</tspan></text>
+        <text text-anchor="start" id="time" class="cls-18" transform="translate(109.657927 267.102421)"><tspan x="0" y="0">1:54</tspan></text>
         <path id="injury_x5F_bg" class="cls-11" d="M437.742366,275.237134h-118.400584c-5.24939,0-9.504944-4.255493-9.504944-9.505005v-31.237061h137.410472v31.237061c0,5.249512-4.255493,9.505005-9.504944,9.505005Z"/>
-        <text id="injury_x5F_time" class="cls-5" transform="translate(333.254988 267.235966)"><tspan x="0" y="0">0:33</tspan></text>
-        <text id="match" class="cls-18" transform="translate(323.965925 126.49329)"><tspan x="0" y="0">00123</tspan></text>
-        <text class="cls-7" transform="translate(203.920492 265.747684)"><tspan x="0" y="0">ROUND 1</tspan></text>
-        <text class="cls-4" transform="translate(93.800383 125.030643)"><tspan class="cls-17" x="0" y="0">Men’s under</tspan><tspan class="cls-9" x="117.598145" y="0" xml:space="preserve"> 68kg</tspan></text>
+        <text text-anchor="start" id="injury_x5F_time" class="cls-5" transform="translate(333.254988 267.235966)"><tspan x="0" y="0">0:33</tspan></text>
+        <text text-anchor="middle" id="match" class="cls-18" transform="translate(323.965925 126.49329)"><tspan x="35" y="0">0123</tspan></text>
+        <text text-anchor="start" class="cls-7" transform="translate(203.920492 265.747684)"><tspan x="0" y="0">ROUND 1</tspan></text>
+        <text text-anchor="start" class="cls-4" transform="translate(93.800383 125.030643)"><tspan class="cls-17" x="0" y="0">Men’s under</tspan><tspan text-anchor="start" class="cls-9" x="150.598145" y="0" xml:space="preserve"> 68kg</tspan></text>
         <g id="tournament_x5F_logo">
           <path class="cls-21" d="M590.981425,234.495004h-86.574208v-92.262092h86.574312c5.249411,0,9.5049,4.255489,9.5049,9.5049v73.252187c0,5.249469-4.255536,9.505005-9.505005,9.505005Z"/>
           <g>
@@ -200,14 +200,14 @@
         <g id="player2_x5F_red">
           <rect id="player2_x5F_bg" class="cls-6" x="82.851703" y="190.864241" width="421.555415" height="43.630764"/>
           <path id="player2_x5F_red_x5F_bg" class="cls-29" d="M408.327906,256.445991v9.286195c0,5.24943,4.255504,9.504934,9.504934,9.504934h77.069443c5.24943,0,9.504934-4.255504,9.504934-9.504934v-31.237182H82.851822v7.762394h311.287491c7.836144,0,14.188593,6.35245,14.188593,14.188593Z"/>
-          <text id="player2Name" class="cls-20" transform="translate(144.778532 222.166874)"><tspan x="0" y="0">M. NILSEN</tspan></text>
-          <text id="player2Score" class="cls-15" transform="translate(449.261557 267.366825)"><tspan x="0" y="0">1</tspan></text>
+          <text text-anchor="start" id="player2Name" class="cls-20" transform="translate(144.778532 222.166874)"><tspan x="0" y="0">M. NILSEN</tspan></text>
+          <text text-anchor="middle" id="player2Score" class="cls-15" transform="translate(449.261557 267.366825)"><tspan x="8" y="0">25</tspan></text>
           <g id="divider">
             <line class="cls-3" x1="408.327906" y1="199.621339" x2="408.327906" y2="225.737906"/>
             <line class="cls-3" x1="456.36816" y1="199.621339" x2="456.36816" y2="225.737906"/>
           </g>
-          <text id="player2Rounds" class="cls-10" transform="translate(423.635588 222.665653)"><tspan x="0" y="0">0</tspan></text>
-          <text id="player2Fouls" class="cls-8" transform="translate(471.675375 222.665653)"><tspan x="0" y="0">0</tspan></text>
+          <text text-anchor="middle" id="player2Rounds" class="cls-10" transform="translate(423.635588 222.665653)"><tspan x="9" y="0">22</tspan></text>
+          <text text-anchor="middle" id="player2Fouls" class="cls-8" transform="translate(471.675375 222.665653)"><tspan x="9" y="0">55</tspan></text>
           <g id="player2FlagPlaceholder">
             <rect class="cls-26" x="93.550352" y="200.066288" width="37.59082" height="25.226562"/>
             <path class="cls-21" d="M130.891386,200.316044v24.727173h-37.09082v-24.727173h37.09082M131.391386,199.816044h-38.09082v25.727173h38.09082v-25.727173h0Z"/>
@@ -498,14 +498,14 @@
         <g id="player1_x5F_blue">
           <rect id="player1_x5F_bg" class="cls-6" x="82.851703" y="142.232912" width="421.555415" height="43.630764"/>
           <path id="player1_x5F_blue_x5F_bg" class="cls-33" d="M408.327906,120.281925v-9.286195c0-5.24943,4.255504-9.504934,9.504934-9.504934h77.069443c5.24943,0,9.504934,4.255504,9.504934,9.504934v31.237182H82.851822v-7.762394h311.287491c7.836144,0,14.188593-6.35245,14.188593-14.188593Z"/>
-          <text id="player1Name" class="cls-19" transform="translate(144.778532 173.535282)"><tspan x="0" y="0">L. ANDRICH</tspan></text>
-          <text id="player1Score" class="cls-16" transform="translate(444.689779 134.362186)"><tspan x="0" y="0">0</tspan></text>
+          <text text-anchor="start" id="player1Name" class="cls-19" transform="translate(144.778532 173.535282)"><tspan x="0" y="0">L. ANDRICH</tspan></text>
+          <text text-anchor="middle" id="player1Score" class="cls-16" transform="translate(444.689779 134.362186)"><tspan x="8" y="0">22</tspan></text>
           <g id="divider-2" data-name="divider">
             <line class="cls-2" x1="408.327906" y1="150.990011" x2="408.327906" y2="177.106577"/>
             <line class="cls-2" x1="456.36816" y1="150.990011" x2="456.36816" y2="177.106577"/>
           </g>
-          <text id="player1Rounds" class="cls-10" transform="translate(423.635588 174.034305)"><tspan x="0" y="0">0</tspan></text>
-          <text id="player1Fouls" class="cls-8" transform="translate(471.675375 174.034305)"><tspan x="0" y="0">0</tspan></text>
+          <text text-anchor="middle" id="player1Rounds" class="cls-10" transform="translate(423.635588 174.034305)"><tspan x="9" y="0">0</tspan></text>
+          <text text-anchor="middle" id="player1Fouls" class="cls-8" transform="translate(471.675375 174.034305)"><tspan x="9" y="0">0</tspan></text>
           <g id="player1FlagPlaceholder">
             <rect class="cls-26" x="93.550352" y="151.434452" width="37.59082" height="25.227539"/>
             <path class="cls-21" d="M130.891386,151.684696v24.727234h-37.09082v-24.727234h37.09082M131.391386,151.184696h-38.09082v25.727234h38.09082v-25.727234h0Z"/>

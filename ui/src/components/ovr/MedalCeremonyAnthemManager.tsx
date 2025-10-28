@@ -203,7 +203,7 @@ const MedalCeremonyAnthemManager: React.FC = () => {
                     ) : (
                       <Button
                         variant="secondary"
-                        size="xs"
+                        size="sm"
                         onClick={() => handleSetDefault(asset)}
                       >
                         Set default
@@ -212,10 +212,10 @@ const MedalCeremonyAnthemManager: React.FC = () => {
                   </td>
                   <td className="px-3 py-2 text-right">
                     <div className="flex justify-end gap-2">
-                      <Button variant="secondary" size="xs" onClick={() => handleEdit(asset)}>
+                      <Button variant="secondary" size="sm" onClick={() => handleEdit(asset)}>
                         Edit
                       </Button>
-                      <Button variant="danger" size="xs" onClick={() => handleDelete(asset)}>
+                      <Button variant="danger" size="sm" onClick={() => handleDelete(asset)}>
                         Delete
                       </Button>
                     </div>

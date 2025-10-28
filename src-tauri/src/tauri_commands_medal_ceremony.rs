@@ -13,7 +13,7 @@ use anyhow::anyhow;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use tauri::{AppHandle, Error as TauriError, Manager, State, WindowUrl};
+use tauri::{Error as TauriError, State};
 
 fn map_db_error(context: &str, err: impl std::fmt::Display) -> TauriError {
     TauriError::from(anyhow!("{}: {}", context, err))
@@ -339,36 +339,6 @@ fn dto_to_anthem(dto: &AnthemAssetDto) -> OvrAnthemAsset {
         created_at: parse_optional_datetime(&dto.created_at).unwrap_or_else(Utc::now),
         updated_at: parse_optional_datetime(&dto.updated_at).unwrap_or_else(Utc::now),
     }
-}
-
-#[tauri::command]
-pub async fn medal_ceremony_open_external_window(app_handle: AppHandle) -> Result<(), TauriError> {
-    if app_handle.get_window("medal-ceremony-display").is_some() {
-        return Ok(());
-    }
-    tauri::WindowBuilder::new(
-        &app_handle,
-        "medal-ceremony-display",
-        WindowUrl::App("index.html?external=medal".into()),
-    )
-    .title("Medal Ceremony Display")
-    .decorations(false)
-    .fullscreen(true)
-    .resizable(false)
-    .transparent(false)
-    .build()
-    .map(|_| ())
-    .map_err(|e| TauriError::from(anyhow!("Failed to open medal ceremony window: {}", e)))
-}
-
-#[tauri::command]
-pub async fn medal_ceremony_close_external_window(app_handle: AppHandle) -> Result<(), TauriError> {
-    if let Some(window) = app_handle.get_window("medal-ceremony-display") {
-        window
-            .close()
-            .map_err(|e| TauriError::from(anyhow!("Failed to close medal ceremony window: {}", e)))?;
-    }
-    Ok(())
 }
 
 #[tauri::command]

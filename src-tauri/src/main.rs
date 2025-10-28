@@ -162,8 +162,6 @@ async fn main() -> AppResult<()> {
             re_strike_vta::tauri_commands_openapi::openapi_validate_schema,
             re_strike_vta::tauri_commands_openapi::openapi_upload_schema,
             re_strike_vta::tauri_commands_openapi::openapi_export_schema,
-            re_strike_vta::tauri_commands_medal_ceremony::medal_ceremony_open_external_window,
-            re_strike_vta::tauri_commands_medal_ceremony::medal_ceremony_close_external_window,
             re_strike_vta::tauri_commands_medal_ceremony::medal_ceremony_list_divisions,
             re_strike_vta::tauri_commands_medal_ceremony::medal_ceremony_list_athletes,
             re_strike_vta::tauri_commands_medal_ceremony::medal_ceremony_list,

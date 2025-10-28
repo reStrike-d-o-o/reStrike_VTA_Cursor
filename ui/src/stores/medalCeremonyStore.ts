@@ -53,7 +53,7 @@ export const createDraftCeremony = (): MedalCeremonyDetail => ({
   divisions: [createEmptyDivision()],
 });
 
-interface MedalCeremonyStore {
+export interface MedalCeremonyStore {
   ceremonies: MedalCeremonySummary[];
   selectedId: string | null;
   detail: MedalCeremonyDetail | null;
