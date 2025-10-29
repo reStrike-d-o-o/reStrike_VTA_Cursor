@@ -31,10 +31,10 @@ const defaultForm: FlagAssetForm = {
 };
 
 const readAnimationFile = async (path: string): Promise<string> => {
-  if (!canInvokeTauri()) {
-    throw new Error('Animation preview requires the desktop runtime.');
+  if (canInvokeTauri()) {
+    return invokeTauri<string>('plugin:fs|read_text_file', { path });
   }
-  return invokeTauri<string>('read_animation_file', { path });
+  throw new Error('Animation preview requires the desktop runtime.');
 };
 
 const MedalCeremonyAnimationManager: React.FC = () => {

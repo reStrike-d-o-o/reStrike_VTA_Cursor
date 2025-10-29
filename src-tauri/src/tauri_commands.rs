@@ -61,13 +61,14 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use path_clean::PathClean;
 
-fn resolve_clean_path(path: &str) -> Result<PathBuf, TauriError> {
+#[tauri::command]
+pub async fn normalize_fs_path(path: String) -> Result<String, TauriError> {
     if path.trim().is_empty() {
         return Err(TauriError::from(anyhow::anyhow!("Path cannot be empty")));
     }
 
-    let raw_path = PathBuf::from(path);
-    let joined = if raw_path.is_absolute() {
+    let raw_path = PathBuf::from(&path);
+    let mut resolved = if raw_path.is_absolute() {
         raw_path
     } else {
         std::env::current_dir()
@@ -75,49 +76,17 @@ fn resolve_clean_path(path: &str) -> Result<PathBuf, TauriError> {
             .join(raw_path)
     };
 
-    Ok(joined.clean())
-}
+    let normalized = match std::fs::canonicalize(&resolved) {
+        Ok(canonical) => canonical,
+        Err(_) => resolved.clean(),
+    };
 
-fn canonicalize_or_clean(path: PathBuf) -> PathBuf {
-    std::fs::canonicalize(&path).unwrap_or_else(|_| path.clean())
-}
-
-fn normalize_path_string(path: &str) -> Result<String, TauriError> {
-    let cleaned = resolve_clean_path(path)?;
-    let canonical = canonicalize_or_clean(cleaned);
-
-    let mut result = canonical.to_string_lossy().to_string();
+    let mut result = normalized.to_string_lossy().to_string();
     if cfg!(target_os = "windows") && result.starts_with("\\\\?\\") {
         result = result.trim_start_matches("\\\\?\\").to_string();
     }
 
     Ok(result)
-}
-
-#[tauri::command]
-pub async fn normalize_fs_path(path: String) -> Result<String, TauriError> {
-    normalize_path_string(&path)
-}
-
-#[tauri::command]
-pub async fn read_animation_file(path: String) -> Result<String, TauriError> {
-    let animation_root = canonicalize_or_clean(resolve_clean_path("../ui/public/assets/animations")?);
-    let target_path = canonicalize_or_clean(resolve_clean_path(&path)?);
-
-    if !target_path.starts_with(&animation_root) {
-        return Err(TauriError::from(anyhow::anyhow!(
-            "Access to paths outside the animations directory is not permitted"
-        )));
-    }
-
-    let contents = std::fs::read_to_string(&target_path).map_err(|e| {
-        TauriError::from(anyhow::anyhow!(format!(
-            "Failed to read animation file: {}",
-            e
-        )))
-    })?;
-
-    Ok(contents)
 }
 use std::collections::HashMap;
 use std::fs;

@@ -152,8 +152,6 @@ async fn main() -> AppResult<()> {
             // Core app commands
             tauri_commands::get_app_status,
             tauri_commands::shutdown_app,
-            tauri_commands::normalize_fs_path,
-            tauri_commands::read_animation_file,
             // UDP commands
             tauri_commands::start_udp_server,
             tauri_commands::stop_udp_server,
