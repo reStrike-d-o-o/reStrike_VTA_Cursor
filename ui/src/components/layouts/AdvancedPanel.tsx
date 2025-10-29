@@ -88,15 +88,9 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
   const drawer = DRAWERS.find(d => d.key === activeDrawer);
 
   return (
-    <div className={`relative h-full ${className}`} {...rest}>
-      <div
-        className="absolute inset-0 bg-cover bg-center"
-        style={{ backgroundImage: "url('/assets/img/advances-bg.png')" }}
-      />
-      <div className="absolute inset-0 bg-gray-950/80 backdrop-blur-sm" />
-      <div className="relative flex h-full min-h-0 min-w-[320px] max-w-[100%] shadow-xl overflow-hidden z-20 border-l border-white/10">
+    <div className={`flex h-full min-h-0 min-w-[320px] max-w-[100%] bg-gradient-to-br from-gray-900/95 to-gray-800/90 backdrop-blur-sm shadow-xl overflow-hidden z-20 ${className}`} {...rest}>
       {/* Drawer Sidebar */}
-      <nav className="h-full min-h-0 flex flex-col justify-center items-center py-0 px-3 bg-gray-900/75 backdrop-blur-sm border-r border-gray-600/30 w-28">
+      <nav className="h-full min-h-0 flex flex-col justify-center items-center py-0 px-3 bg-gradient-to-b from-gray-800/90 to-gray-900/95 backdrop-blur-sm border-r border-gray-600/30 w-28">
         <div className="flex flex-col items-center space-y-4">
           {DRAWERS.map(d => (
             <button
@@ -267,7 +261,6 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
           </>
         )}
       </main>
-    </div>
     </div>
   );
 };
