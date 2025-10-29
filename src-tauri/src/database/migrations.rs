@@ -3274,7 +3274,8 @@ impl MigrationManager {
         migrations.push(Box::new(Migration42)); // Animation library table seeded from flags
         migrations.push(Box::new(Migration43)); // Seed WT divisions and weight classes
         migrations.push(Box::new(Migration44)); // Extend round configs with golden and kyeshi durations
-        migrations.push(Box::new(Migration45)); // Tournament schema expansion (rankings, octagons, athletes)
+        migrations.push(Box::new(Migration45));
+        migrations.push(Box::new(Migration46)); // Tournament schema expansion (rankings, octagons, athletes)
 
         Self { migrations }
     }
@@ -6750,6 +6751,26 @@ impl Migration for Migration45 {
         conn.execute("DROP TABLE IF EXISTS octagons", [])?;
         conn.execute("DROP TABLE IF EXISTS tournament_rankings", [])?;
         log::warn!("Migration 45 rollback keeps newly added tournament columns (SQLite cannot drop columns).");
+        Ok(())
+    }
+}
+/// Migration 46: no-op to align schema version
+pub struct Migration46;
+
+impl Migration for Migration46 {
+    fn version(&self) -> u32 {
+        46
+    }
+
+    fn description(&self) -> &str {
+        "No-op migration to align schema version"
+    }
+
+    fn up(&self, _conn: &Connection) -> SqliteResult<()> {
+        Ok(())
+    }
+
+    fn down(&self, _conn: &Connection) -> SqliteResult<()> {
         Ok(())
     }
 }
