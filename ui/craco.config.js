@@ -5,6 +5,25 @@ import ForkTsCheckerWebpackPlugin from 'fork-ts-checker-webpack-plugin';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+if (typeof process !== 'undefined' && typeof process.emitWarning === 'function') {
+  const originalEmitWarning = process.emitWarning.bind(process);
+  process.emitWarning = (warning, ...args) => {
+    const message =
+      typeof warning === 'string'
+        ? warning
+        : warning && typeof warning.message === 'string'
+          ? warning.message
+          : null;
+    if (
+      message &&
+      (message.includes('onAfterSetupMiddleware') || message.includes('onBeforeSetupMiddleware'))
+    ) {
+      return;
+    }
+    return originalEmitWarning(warning, ...args);
+  };
+}
+
 export default {
   webpack: {
     configure: (webpackConfig) => {
