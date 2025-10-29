@@ -7,9 +7,10 @@
     "core:event:default",
     "shell:allow-open",
     "dialog:allow-message",
-    "dialog:allow-confirm"
+    "dialog:allow-confirm",
+    "fs:allow-read-text-file"
   ],
   "remote": {
     "urls": ["http://localhost:3000"]
   }
-} 
+}
