@@ -1,5 +1,6 @@
 {
     "terminal.integrated.sendKeybindingsToShell": true,
     "github.branchProtection": true,
-    "github.gitProtocol": "https"
+    "github.gitProtocol": "https",
+    "github.copilot.nextEditSuggestions.enabled": true
 }
