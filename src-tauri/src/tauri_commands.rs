@@ -59,6 +59,7 @@ use dirs;
 use once_cell::sync::{Lazy, OnceCell};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use path_clean::PathClean;
 
 #[tauri::command]
 pub async fn normalize_fs_path(path: String) -> Result<String, TauriError> {
@@ -75,12 +76,12 @@ pub async fn normalize_fs_path(path: String) -> Result<String, TauriError> {
             .join(raw_path)
     };
 
-    resolved = match std::fs::canonicalize(&resolved) {
+    let normalized = match std::fs::canonicalize(&resolved) {
         Ok(canonical) => canonical,
-        Err(_) => resolved,
+        Err(_) => resolved.clean(),
     };
 
-    let mut result = resolved.to_string_lossy().to_string();
+    let mut result = normalized.to_string_lossy().to_string();
     if cfg!(target_os = "windows") && result.starts_with("\\\\?\\") {
         result = result.trim_start_matches("\\\\?\\").to_string();
     }
