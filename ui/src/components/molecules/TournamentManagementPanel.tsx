@@ -1092,7 +1092,7 @@ const TournamentManagementPanel: React.FC = () => {
                               <td className="px-4 py-3 align-middle">
                                 <span className={`inline-flex items-center justify-center rounded-full px-3 py-1 text-sm font-semibold uppercase tracking-wide ${medalBadgeTone}`}>
                                   {medalLabel}
-                              </span>
+                                </span>
                               </td>
                               <td className="px-4 py-3 text-sm text-gray-300 align-middle">
                                 <div className="flex flex-col">
