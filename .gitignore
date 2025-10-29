@@ -17,3 +17,4 @@ src-tauri/Cargo.lock
 Thumbs.db
 src-tauri/config/app_config.backup.json
 src-tauri/config/app_config.json
+src-tauri/restrike_vta.db*
