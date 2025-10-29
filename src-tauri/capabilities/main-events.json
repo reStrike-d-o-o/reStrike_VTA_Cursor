@@ -8,7 +8,14 @@
     "shell:allow-open",
     "dialog:allow-message",
     "dialog:allow-confirm",
-    "fs:allow-read-text-file"
+    {
+      "identifier": "fs:allow-read-text-file",
+      "allow": [
+        {
+          "path": "**"
+        }
+      ]
+    }
   ],
   "remote": {
     "urls": ["http://localhost:3000"]

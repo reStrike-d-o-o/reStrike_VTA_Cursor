@@ -131,6 +131,28 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
     setOverlaySettings(newSettings);
   };
 
+  const getOverlayUrl = (relativePath: string) => {
+    if (typeof window === 'undefined') {
+      return relativePath;
+    }
+    return `${window.location.origin}${relativePath}`;
+  };
+
+  const openOverlayExternally = async (relativePath: string) => {
+    const url = getOverlayUrl(relativePath);
+
+    try {
+      if ((window as any).__TAURI__?.shell?.open) {
+        await (window as any).__TAURI__.shell.open(url);
+        return;
+      }
+    } catch (error) {
+      console.warn('Failed to open overlay via Tauri shell; falling back to window.open.', error);
+    }
+
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
   // Update overlay content with PSS data
   const updateOverlayContent = (svg: SVGElement, settings: OverlaySettings) => {
     if (!isLoaded) return;
@@ -258,21 +280,21 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
                         <Label className="text-xs text-gray-300">{t('ovr.urls.scoreboard', 'Scoreboard Overlay')}</Label>
                         <div className="flex items-center space-x-2">
                           <Input
-                            value={`${window.location.origin}/overlays/olympic/scoreboard.html`}
+                            value={getOverlayUrl('/overlays/olympic/scoreboard.html')}
                             readOnly
                             className="flex-1 text-xs"
                           />
                           <Button
                             size="sm"
                             variant="secondary"
-                            onClick={() => window.open(`${window.location.origin}/overlays/olympic/scoreboard.html`, '_blank')}
+                            onClick={() => openOverlayExternally('/overlays/olympic/scoreboard.html')}
                           >
                             {t('common.open_browser', 'Open in Browser')}
                           </Button>
                           <Button
                             size="sm"
                             variant="secondary"
-                            onClick={() => navigator.clipboard.writeText(`${window.location.origin}/overlays/olympic/scoreboard.html`)}
+                            onClick={() => navigator.clipboard.writeText(getOverlayUrl('/overlays/olympic/scoreboard.html'))}
                           >
                             {t('common.copy', 'Copy')}
                           </Button>
@@ -282,21 +304,21 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
                         <Label className="text-xs text-gray-300">{t('ovr.urls.player_intro', 'Player Introduction Overlay')}</Label>
                         <div className="flex items-center space-x-2">
                           <Input
-                            value={`${window.location.origin}/overlays/olympic/intro.html`}
+                            value={getOverlayUrl('/overlays/olympic/intro.html')}
                             readOnly
                             className="flex-1 text-xs"
                           />
                           <Button
                             size="sm"
                             variant="secondary"
-                            onClick={() => window.open(`${window.location.origin}/overlays/olympic/intro.html`, '_blank')}
+                            onClick={() => openOverlayExternally('/overlays/olympic/intro.html')}
                           >
                             {t('common.open_browser', 'Open in Browser')}
                           </Button>
                           <Button
                             size="sm"
                             variant="secondary"
-                            onClick={() => navigator.clipboard.writeText(`${window.location.origin}/overlays/olympic/intro.html`)}
+                            onClick={() => navigator.clipboard.writeText(getOverlayUrl('/overlays/olympic/intro.html'))}
                           >
                             {t('common.copy', 'Copy')}
                           </Button>
@@ -314,24 +336,48 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
                         <Label className="text-xs text-gray-300">{t('ovr.urls.scoreboard', 'Scoreboard Overlay')}</Label>
                         <div className="flex items-center space-x-2">
                           <Input
-                            value={`${window.location.origin}/overlays/modern/scoreboard.html`}
+                            value={getOverlayUrl('/overlays/modern/scoreboard.html')}
                             readOnly
                             className="flex-1 text-xs"
                           />
-                          <Button size="sm" variant="secondary" onClick={() => window.open(`${window.location.origin}/overlays/modern/scoreboard.html`, '_blank')}>{t('common.open_browser', 'Open in Browser')}</Button>
-                          <Button size="sm" variant="secondary" onClick={() => navigator.clipboard.writeText(`${window.location.origin}/overlays/modern/scoreboard.html`)}>{t('common.copy', 'Copy')}</Button>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => openOverlayExternally('/overlays/modern/scoreboard.html')}
+                          >
+                            {t('common.open_browser', 'Open in Browser')}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => navigator.clipboard.writeText(getOverlayUrl('/overlays/modern/scoreboard.html'))}
+                          >
+                            {t('common.copy', 'Copy')}
+                          </Button>
                         </div>
                       </div>
                       <div>
                         <Label className="text-xs text-gray-300">{t('ovr.urls.player_intro', 'Player Introduction Overlay')}</Label>
                         <div className="flex items-center space-x-2">
                           <Input
-                            value={`${window.location.origin}/overlays/modern/intro.html`}
+                            value={getOverlayUrl('/overlays/modern/intro.html')}
                             readOnly
                             className="flex-1 text-xs"
                           />
-                          <Button size="sm" variant="secondary" onClick={() => window.open(`${window.location.origin}/overlays/modern/intro.html`, '_blank')}>{t('common.open_browser', 'Open in Browser')}</Button>
-                          <Button size="sm" variant="secondary" onClick={() => navigator.clipboard.writeText(`${window.location.origin}/overlays/modern/intro.html`)}>{t('common.copy', 'Copy')}</Button>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => openOverlayExternally('/overlays/modern/intro.html')}
+                          >
+                            {t('common.open_browser', 'Open in Browser')}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => navigator.clipboard.writeText(getOverlayUrl('/overlays/modern/intro.html'))}
+                          >
+                            {t('common.copy', 'Copy')}
+                          </Button>
                         </div>
                       </div>
                     </div>
@@ -345,17 +391,49 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
                       <div>
                         <Label className="text-xs text-gray-300">{t('ovr.urls.scoreboard', 'Scoreboard Overlay')}</Label>
                         <div className="flex items-center space-x-2">
-                          <Input value={`${window.location.origin}/overlays/arcade/scoreboard.html`} readOnly className="flex-1 text-xs" />
-                          <Button size="sm" variant="secondary" onClick={() => window.open(`${window.location.origin}/overlays/arcade/scoreboard.html`, '_blank')}>{t('common.open_browser', 'Open in Browser')}</Button>
-                          <Button size="sm" variant="secondary" onClick={() => navigator.clipboard.writeText(`${window.location.origin}/overlays/arcade/scoreboard.html`)}>{t('common.copy', 'Copy')}</Button>
+                          <Input
+                            value={getOverlayUrl('/overlays/arcade/scoreboard.html')}
+                            readOnly
+                            className="flex-1 text-xs"
+                          />
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => openOverlayExternally('/overlays/arcade/scoreboard.html')}
+                          >
+                            {t('common.open_browser', 'Open in Browser')}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => navigator.clipboard.writeText(getOverlayUrl('/overlays/arcade/scoreboard.html'))}
+                          >
+                            {t('common.copy', 'Copy')}
+                          </Button>
                         </div>
                       </div>
                       <div>
                         <Label className="text-xs text-gray-300">{t('ovr.urls.player_intro', 'Player Introduction Overlay')}</Label>
                         <div className="flex items-center space-x-2">
-                          <Input value={`${window.location.origin}/overlays/arcade/intro.html`} readOnly className="flex-1 text-xs" />
-                          <Button size="sm" variant="secondary" onClick={() => window.open(`${window.location.origin}/overlays/arcade/intro.html`, '_blank')}>{t('common.open_browser', 'Open in Browser')}</Button>
-                          <Button size="sm" variant="secondary" onClick={() => navigator.clipboard.writeText(`${window.location.origin}/overlays/arcade/intro.html`)}>{t('common.copy', 'Copy')}</Button>
+                          <Input
+                            value={getOverlayUrl('/overlays/arcade/intro.html')}
+                            readOnly
+                            className="flex-1 text-xs"
+                          />
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => openOverlayExternally('/overlays/arcade/intro.html')}
+                          >
+                            {t('common.open_browser', 'Open in Browser')}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => navigator.clipboard.writeText(getOverlayUrl('/overlays/arcade/intro.html'))}
+                          >
+                            {t('common.copy', 'Copy')}
+                          </Button>
                         </div>
                       </div>
                     </div>

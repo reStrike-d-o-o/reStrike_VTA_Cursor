@@ -7,7 +7,7 @@ use re_strike_vta::core::app::App;
 use re_strike_vta::tauri_commands;
 #[cfg(feature = "obs-obws")]
 use re_strike_vta::tauri_commands_obws;
-use re_strike_vta::types::AppResult;
+use re_strike_vta::types::{AppError, AppResult};
 use std::sync::Arc;
 
 #[tokio::main]
@@ -143,7 +143,7 @@ async fn main() -> AppResult<()> {
     // Optional: legacy status poller removed to avoid mixing APIs
 
     // Create Tauri app builder
-    tauri::Builder::default()
+    let tauri_result = tauri::Builder::default()
         .manage(app)
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
@@ -734,8 +734,15 @@ async fn main() -> AppResult<()> {
 
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .run(tauri::generate_context!());
+
+    if let Err(err) = tauri_result {
+        log::error!("Tauri runtime exited with an error: {}", err);
+        return Err(AppError::ConfigError(format!(
+            "Tauri runtime failed: {}",
+            err
+        )));
+    }
 
     Ok(())
 }

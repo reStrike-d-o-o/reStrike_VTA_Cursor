@@ -83,4 +83,33 @@ export default {
       return webpackConfig;
     },
   },
+  devServer: (devServerConfig) => {
+    if (!devServerConfig) {
+      return devServerConfig;
+    }
+
+    const originalSetupMiddlewares = devServerConfig.setupMiddlewares;
+    const { onBeforeSetupMiddleware, onAfterSetupMiddleware } = devServerConfig;
+
+    devServerConfig.setupMiddlewares = (middlewares, devServer) => {
+      if (typeof onBeforeSetupMiddleware === 'function') {
+        onBeforeSetupMiddleware(devServer);
+      }
+
+      if (typeof originalSetupMiddlewares === 'function') {
+        middlewares = originalSetupMiddlewares(middlewares, devServer);
+      }
+
+      if (typeof onAfterSetupMiddleware === 'function') {
+        onAfterSetupMiddleware(devServer);
+      }
+
+      return middlewares;
+    };
+
+    delete devServerConfig.onBeforeSetupMiddleware;
+    delete devServerConfig.onAfterSetupMiddleware;
+
+    return devServerConfig;
+  },
 }; 
