@@ -442,139 +442,196 @@ impl TournamentPlugin {
         }
 
         let mut champions: Vec<TournamentChampion> = Vec::new();
-        let mut champion_stmt = conn
+        let mut medal_stmt = conn
             .prepare(
-            r#"
-            SELECT m.id, m.uuid, m.match_id, m.category
-            FROM pss_matches m
-            JOIN (
-                SELECT category, MAX(match_id) AS max_match_id
-                FROM pss_matches
-                WHERE tournament_id = ?
-                GROUP BY category
-            ) latest ON latest.category = m.category AND latest.max_match_id = m.match_id
-            WHERE m.tournament_id = ? AND m.category IS NOT NULL"#,
-        )
-            .map_err(|e| AppError::ConfigError(format!("Failed to prepare champion query: {}", e)))?;
-
-        let mut score_stmt = conn
-            .prepare(
-                "SELECT athlete_position, score_value FROM pss_scores WHERE match_id = ? AND score_type = 'total'",
+                r#"
+                SELECT category,
+                       match_uuid,
+                       match_id,
+                       winner_color,
+                       winner_name,
+                       winner_country_code,
+                       blue_score,
+                       red_score,
+                       medal_type,
+                       medal_rank
+                FROM tournament_champions
+                WHERE tournament_uuid = ?
+                ORDER BY COALESCE(category, ''), medal_rank ASC, match_id ASC
+                "#,
             )
-            .map_err(|e| AppError::ConfigError(format!("Failed to prepare score query: {}", e)))?;
-        let mut winner_stmt = conn
-            .prepare(
-                "SELECT a.display_name, a.country_code FROM pss_match_athletes ma JOIN athletes a ON a.id = ma.athlete_id WHERE ma.match_id = ? AND ma.athlete_position = ?",
-            )
-            .map_err(|e| AppError::ConfigError(format!("Failed to prepare winner query: {}", e)))?;
-        let mut final_event_stmt = conn
-            .prepare(
-                "SELECT raw_data FROM pss_events WHERE match_id = ? AND event_type_id = (SELECT id FROM pss_event_types WHERE event_code = 'MATCH_FINISHED') ORDER BY event_sequence DESC LIMIT 1",
-            )
-            .map_err(|e| AppError::ConfigError(format!("Failed to prepare final event query: {}", e)))?;
-
-        let champion_rows = champion_stmt
-            .query_map(
-            params![tournament_uuid.clone(), tournament_uuid.clone()],
-            |row| {
-                Ok((
-                    row.get::<_, i64>(0)?,
-                    row.get::<_, String>(1)?,
-                    row.get::<_, String>(2)?,
-                    row.get::<_, Option<String>>(3)?,
-                ))
-            },
-        )
-            .map_err(|e| AppError::ConfigError(format!("Failed to iterate champion rows: {}", e)))?;
-
-        for row_result in champion_rows {
-            let (match_db_id, match_uuid, external_match_id, category) = row_result
-                .map_err(|e| AppError::ConfigError(format!("Failed to read champion row: {}", e)))?;
-            let mut blue_score: i64 = 0;
-            let mut red_score: i64 = 0;
-
-            let scores = score_stmt
-                .query_map(params![match_uuid.clone()], |row| {
-                    Ok((row.get::<_, i64>(0)?, row.get::<_, i64>(1)?))
+            .map_err(|e| AppError::ConfigError(format!("Failed to prepare medalist query: {}", e)))?;
+        let medal_rows = medal_stmt
+            .query_map(params![tournament_uuid.clone()], |row| {
+                let winner_color: String = row.get(3)?;
+                let medal_type: String = row.get(8)?;
+                Ok(TournamentChampion {
+                    category: row.get(0)?,
+                    match_uuid: row.get(1)?,
+                    match_id: row.get(2)?,
+                    winner_color: winner_color.to_uppercase(),
+                    winner_name: row.get(4)?,
+                    winner_country_code: row.get(5)?,
+                    blue_score: row.get(6)?,
+                    red_score: row.get(7)?,
+                    medal_type,
+                    medal_rank: row.get(9)?,
                 })
-                .map_err(|e| AppError::ConfigError(format!("Failed to query match scores: {}", e)))?;
-            for score in scores {
-                let (position, value) = score
-                    .map_err(|e| AppError::ConfigError(format!("Failed to read score row: {}", e)))?;
-                match position {
-                    1 => blue_score = value,
-                    2 => red_score = value,
-                    _ => {}
-                }
-            }
+            })
+            .map_err(|e| AppError::ConfigError(format!("Failed to iterate medalist rows: {}", e)))?;
+        for row in medal_rows {
+            champions.push(
+                row.map_err(|e| AppError::ConfigError(format!("Failed to read medalist row: {}", e)))?,
+            );
+        }
 
-            let mut winner_color = if blue_score >= red_score {
-                "BLUE".to_string()
-            } else {
-                "RED".to_string()
-            };
-            if blue_score == red_score {
-                if let Some(raw) = final_event_stmt
-                    .query_row(params![match_db_id], |row| row.get::<_, String>(0))
-                    .optional()
-                    .map_err(|e| {
-                        AppError::ConfigError(format!("Failed to resolve final event payload: {}", e))
-                    })?
-                {
-                    if let Ok(value) = serde_json::from_str::<Value>(&raw) {
-                        if let Some(entry) = value.get("entry_value").and_then(|v| v.as_str()) {
-                            let upper = entry.to_uppercase();
-                            if upper.starts_with("BLUE") {
-                                winner_color = "BLUE".to_string();
-                            } else if upper.starts_with("RED") {
-                                winner_color = "RED".to_string();
+        if champions.is_empty() {
+            let mut champion_stmt = conn
+                .prepare(
+                    r#"
+                    SELECT m.id, m.uuid, m.match_id, m.category
+                    FROM pss_matches m
+                    JOIN (
+                        SELECT category, MAX(match_id) AS max_match_id
+                        FROM pss_matches
+                        WHERE tournament_id = ?
+                        GROUP BY category
+                    ) latest ON latest.category = m.category AND latest.max_match_id = m.match_id
+                    WHERE m.tournament_id = ? AND m.category IS NOT NULL"#,
+                )
+                .map_err(|e| AppError::ConfigError(format!("Failed to prepare champion fallback query: {}", e)))?;
+
+            let mut score_stmt = conn
+                .prepare(
+                    "SELECT athlete_position, score_value FROM pss_scores WHERE match_id = ? AND score_type = 'total'",
+                )
+                .map_err(|e| AppError::ConfigError(format!("Failed to prepare score query: {}", e)))?;
+            let mut winner_stmt = conn
+                .prepare(
+                    "SELECT a.display_name, a.country_code FROM pss_match_athletes ma JOIN athletes a ON a.id = ma.athlete_id WHERE ma.match_id = ? AND ma.athlete_position = ?",
+                )
+                .map_err(|e| AppError::ConfigError(format!("Failed to prepare winner query: {}", e)))?;
+            let mut final_event_stmt = conn
+                .prepare(
+                    "SELECT raw_data FROM pss_events WHERE match_id = ? AND event_type_id = (SELECT id FROM pss_event_types WHERE event_code = 'MATCH_FINISHED') ORDER BY event_sequence DESC LIMIT 1",
+                )
+                .map_err(|e| AppError::ConfigError(format!("Failed to prepare final event query: {}", e)))?;
+
+            let champion_rows = champion_stmt
+                .query_map(
+                    params![tournament_uuid.clone(), tournament_uuid.clone()],
+                    |row| {
+                        Ok((
+                            row.get::<_, i64>(0)?,
+                            row.get::<_, String>(1)?,
+                            row.get::<_, String>(2)?,
+                            row.get::<_, Option<String>>(3)?,
+                        ))
+                    },
+                )
+                .map_err(|e| AppError::ConfigError(format!("Failed to iterate champion rows: {}", e)))?;
+
+            for row_result in champion_rows {
+                let (match_db_id, match_uuid, external_match_id, category) = row_result.map_err(|e| {
+                    AppError::ConfigError(format!("Failed to read champion row: {}", e))
+                })?;
+                let mut blue_score: i64 = 0;
+                let mut red_score: i64 = 0;
+
+                let scores = score_stmt
+                    .query_map(params![match_uuid.clone()], |row| {
+                        Ok((row.get::<_, i64>(0)?, row.get::<_, i64>(1)?))
+                    })
+                    .map_err(|e| AppError::ConfigError(format!("Failed to query match scores: {}", e)))?;
+                for score in scores {
+                    let (position, value) =
+                        score.map_err(|e| AppError::ConfigError(format!("Failed to read score row: {}", e)))?;
+                    match position {
+                        1 => blue_score = value,
+                        2 => red_score = value,
+                        _ => {}
+                    }
+                }
+
+                let mut winner_color = if blue_score >= red_score {
+                    "BLUE".to_string()
+                } else {
+                    "RED".to_string()
+                };
+                if blue_score == red_score {
+                    if let Some(raw) = final_event_stmt
+                        .query_row(params![match_db_id], |row| row.get::<_, String>(0))
+                        .optional()
+                        .map_err(|e| {
+                            AppError::ConfigError(format!("Failed to resolve final event payload: {}", e))
+                        })?
+                    {
+                        if let Ok(value) = serde_json::from_str::<Value>(&raw) {
+                            if let Some(entry) = value.get("entry_value").and_then(|v| v.as_str()) {
+                                let upper = entry.to_uppercase();
+                                if upper.starts_with("BLUE") {
+                                    winner_color = "BLUE".to_string();
+                                } else if upper.starts_with("RED") {
+                                    winner_color = "RED".to_string();
+                                }
                             }
-                        }
-                        if let Some(snapshot) = value.get("score_snapshot") {
-                            blue_score = snapshot
-                                .get("blue")
-                                .and_then(|v| v.as_i64())
-                                .unwrap_or(blue_score);
-                            red_score = snapshot
-                                .get("red")
-                                .and_then(|v| v.as_i64())
-                                .unwrap_or(red_score);
+                            if let Some(snapshot) = value.get("score_snapshot") {
+                                blue_score = snapshot
+                                    .get("blue")
+                                    .and_then(|v| v.as_i64())
+                                    .unwrap_or(blue_score);
+                                red_score = snapshot
+                                    .get("red")
+                                    .and_then(|v| v.as_i64())
+                                    .unwrap_or(red_score);
+                            }
                         }
                     }
                 }
+
+                let winner_position = if winner_color.eq_ignore_ascii_case("RED") {
+                    2
+                } else {
+                    1
+                };
+                let winner_info = winner_stmt
+                    .query_row(params![match_uuid.clone(), winner_position], |row| {
+                        Ok((
+                            row.get::<_, Option<String>>(0)?,
+                            row.get::<_, Option<String>>(1)?,
+                        ))
+                    })
+                    .optional()
+                    .map_err(|e| AppError::ConfigError(format!("Failed to resolve winner info: {}", e)))?;
+
+                let (winner_name, winner_country) = match winner_info {
+                    Some(data) => data,
+                    None => (None, None),
+                };
+
+                champions.push(TournamentChampion {
+                    category,
+                    match_uuid: match_uuid.clone(),
+                    match_id: external_match_id,
+                    winner_color: winner_color.to_uppercase(),
+                    winner_name,
+                    winner_country_code: winner_country,
+                    blue_score,
+                    red_score,
+                    medal_type: "gold".to_string(),
+                    medal_rank: 1,
+                });
             }
-
-            let winner_position = if winner_color.eq_ignore_ascii_case("RED") {
-                2
-            } else {
-                1
-            };
-            let winner_info = winner_stmt
-                .query_row(params![match_uuid.clone(), winner_position], |row| {
-                    Ok((
-                        row.get::<_, Option<String>>(0)?,
-                        row.get::<_, Option<String>>(1)?,
-                    ))
-                })
-                .optional()
-                .map_err(|e| AppError::ConfigError(format!("Failed to resolve winner info: {}", e)))?;
-
-            let (winner_name, winner_country) = match winner_info {
-                Some(data) => data,
-                None => (None, None),
-            };
-
-            champions.push(TournamentChampion {
-                category,
-                match_uuid: match_uuid.clone(),
-                match_id: external_match_id,
-                winner_color: winner_color.to_uppercase(),
-                winner_name,
-                winner_country_code: winner_country,
-                blue_score,
-                red_score,
-            });
         }
+
+        champions.sort_by(|a, b| {
+            let category_a = a.category.as_deref().unwrap_or("");
+            let category_b = b.category.as_deref().unwrap_or("");
+            category_a
+                .cmp(category_b)
+                .then(a.medal_rank.cmp(&b.medal_rank))
+                .then(a.match_id.cmp(&b.match_id))
+        });
 
         Ok(TournamentStatistics {
             total_matches,
@@ -627,6 +684,8 @@ pub struct TournamentChampion {
     pub winner_country_code: Option<String>,
     pub blue_score: i64,
     pub red_score: i64,
+    pub medal_type: String,
+    pub medal_rank: i64,
 }
 
 /// Request for creating a tournament

@@ -32,10 +32,11 @@ import re
 import sqlite3
 import sys
 import uuid
+from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, DefaultDict, Dict, Iterable, List, Optional, Sequence, Tuple
 
 # Ensure repository root is on PYTHONPATH for intra-project imports
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -51,6 +52,8 @@ _FINAL_PATTERN = re.compile(r"\bFINAL(S)?\b")
 _NON_CHAMPIONSHIP_PATTERN = re.compile(
     r"\b(SEMI|QUARTER|BRONZE|QUAL(?:IFIER)?|ELIMINATION)\s*FINAL(S)?\b"
 )
+_SEMIFINAL_PATTERN = re.compile(r"\bSEMI[-\s]?FINAL(S)?\b")
+_BRONZE_PATTERN = re.compile(r"\bBRONZE\b")
 
 
 def _utc_now_iso() -> str:
@@ -91,6 +94,20 @@ class MatchRecord:
     events: Sequence[Dict[str, Any]]
     round_snapshots: List[RoundSnapshot]
     final_snapshot: FinalSnapshot
+
+
+@dataclass
+class MedalistEntry:
+    category: Optional[str]
+    match_uuid: str
+    match_id: str
+    corner_color: str
+    athlete_name: Optional[str]
+    athlete_country: Optional[str]
+    blue_score: int
+    red_score: int
+    medal_type: str
+    medal_rank: int
 
 
 def _round_duration_seconds(config: Dict[str, Any]) -> Optional[int]:
@@ -280,12 +297,29 @@ def _ensure_champions_table(conn: sqlite3.Connection) -> None:
             winner_country_code TEXT,
             blue_score INTEGER NOT NULL,
             red_score INTEGER NOT NULL,
+            medal_type TEXT NOT NULL DEFAULT 'gold',
+            medal_rank INTEGER NOT NULL DEFAULT 1,
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         )
         """
     )
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_tournament_champions_tournament ON tournament_champions(tournament_uuid)"
+    )
+    existing_columns = {
+        row[1] for row in conn.execute("PRAGMA table_info(tournament_champions)")
+    }
+    if "medal_type" not in existing_columns:
+        conn.execute(
+            "ALTER TABLE tournament_champions ADD COLUMN medal_type TEXT NOT NULL DEFAULT 'gold'"
+        )
+    if "medal_rank" not in existing_columns:
+        conn.execute(
+            "ALTER TABLE tournament_champions ADD COLUMN medal_rank INTEGER NOT NULL DEFAULT 1"
+        )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_tournament_champions_category_rank "
+        "ON tournament_champions(tournament_uuid, category, medal_rank)"
     )
 
 
@@ -299,47 +333,45 @@ def _pick_metadata_str(metadata: Dict[str, Any], *keys: str) -> Optional[str]:
     return None
 
 
-def _is_final_phase(value: Optional[str]) -> bool:
+def _normalize_phase(value: Optional[str]) -> str:
     if not value:
-        return False
-
+        return ""
     normalized = re.sub(r"[^A-Z0-9\s]", " ", value.upper())
     normalized = re.sub(r"\s+", " ", normalized).strip()
+    return normalized
+
+
+def _is_final_phase(value: Optional[str]) -> bool:
+    normalized = _normalize_phase(value)
     if not normalized:
         return False
-
     if _NON_CHAMPIONSHIP_PATTERN.search(normalized):
         return False
 
     return bool(_FINAL_PATTERN.search(normalized))
 
 
-def _store_champion_if_final(
-    conn: sqlite3.Connection,
-    *,
-    tournament_uuid: str,
-    match: MatchRecord,
-    match_ref: str,
-) -> None:
-    phase = _pick_metadata_str(
-        match.metadata,
-        "phase",
-        "phaseName",
-        "phase_name",
-        "phase_label",
-        "stage",
-    )
-    if not _is_final_phase(phase):
-        return
+def _is_semifinal_phase(value: Optional[str]) -> bool:
+    normalized = _normalize_phase(value)
+    if not normalized:
+        return False
+    return bool(_SEMIFINAL_PATTERN.search(normalized))
 
-    category = _pick_metadata_str(
-        match.metadata,
-        "category",
-        "categoryName",
-        "category_name",
-        "weight_class",
-    )
 
+def _is_bronze_phase(value: Optional[str]) -> bool:
+    normalized = _normalize_phase(value)
+    if not normalized:
+        return False
+    if not _BRONZE_PATTERN.search(normalized):
+        return False
+    # Treat any explicit bronze finals/medal matches as bronze phases.
+    if "FINAL" in normalized or "MEDAL" in normalized:
+        return True
+    # Fallback: keep bronze-only phases (e.g., "BRONZE MATCH").
+    return True
+
+
+def _resolve_winner_color(match: MatchRecord) -> str:
     winner_color = (
         _pick_metadata_str(
             match.metadata,
@@ -350,51 +382,216 @@ def _store_champion_if_final(
         )
         or ""
     ).upper()
+
     blue_score = int(match.final_snapshot.blue_score)
     red_score = int(match.final_snapshot.red_score)
 
-    if winner_color not in {'BLUE', 'RED'}:
+    if winner_color not in {"BLUE", "RED"}:
         if blue_score > red_score:
-            winner_color = 'BLUE'
+            winner_color = "BLUE"
         elif red_score > blue_score:
-            winner_color = 'RED'
+            winner_color = "RED"
         else:
-            winner_color = 'BLUE'
+            winner_color = "BLUE"
+    return winner_color
 
-    winner_corner = 'blue' if winner_color == 'BLUE' else 'red'
-    corner_info = match.athletes.get(winner_corner, {})
-    winner_name = corner_info.get('name')
-    winner_country = corner_info.get('nation')
 
-    if category:
-        conn.execute(
-            "DELETE FROM tournament_champions WHERE tournament_uuid = ? AND category = ?",
-            (tournament_uuid, category),
+def _resolve_corner_info(match: MatchRecord, corner_color: str) -> Tuple[Optional[str], Optional[str]]:
+    corner_key = "blue" if corner_color.upper() == "BLUE" else "red"
+    corner_info = match.athletes.get(corner_key, {})
+    return corner_info.get("name"), corner_info.get("nation")
+
+
+def _build_medalist_entry(
+    *,
+    category: Optional[str],
+    match: MatchRecord,
+    match_uuid: str,
+    corner_color: str,
+    medal_type: str,
+    medal_rank: int,
+) -> MedalistEntry:
+    name, nation = _resolve_corner_info(match, corner_color)
+    return MedalistEntry(
+        category=category,
+        match_uuid=match_uuid,
+        match_id=match.match_id,
+        corner_color=corner_color.upper(),
+        athlete_name=name,
+        athlete_country=nation,
+        blue_score=int(match.final_snapshot.blue_score),
+        red_score=int(match.final_snapshot.red_score),
+        medal_type=medal_type,
+        medal_rank=medal_rank,
+    )
+
+
+def _match_order_key(match: MatchRecord) -> Tuple[int, str, str]:
+    match_number = match.metadata.get("match_number")
+    if isinstance(match_number, str):
+        try:
+            match_number = int(match_number)
+        except ValueError:
+            match_number = None
+    if not isinstance(match_number, int):
+        match_number = -1
+    timestamp = match.final_snapshot.timestamp_iso or ""
+    return match_number, timestamp, match.match_id
+
+
+def _select_latest_match(entries: Sequence[Tuple[MatchRecord, str]]) -> Optional[Tuple[MatchRecord, str]]:
+    if not entries:
+        return None
+    return max(entries, key=lambda pair: _match_order_key(pair[0]))
+
+
+def _derive_medalists_for_category(
+    category: Optional[str],
+    matches: Sequence[Tuple[MatchRecord, str]],
+) -> List[MedalistEntry]:
+    finals: List[Tuple[MatchRecord, str]] = []
+    bronze_matches: List[Tuple[MatchRecord, str]] = []
+    semifinals: List[Tuple[MatchRecord, str]] = []
+
+    for match, match_uuid in matches:
+        phase = _pick_metadata_str(
+            match.metadata,
+            "phase",
+            "phaseName",
+            "phase_name",
+            "phase_label",
+            "stage",
         )
-    else:
-        conn.execute(
-            "DELETE FROM tournament_champions WHERE tournament_uuid = ? AND category IS NULL",
-            (tournament_uuid,),
-        )
+        if _is_final_phase(phase):
+            finals.append((match, match_uuid))
+        elif _is_bronze_phase(phase):
+            bronze_matches.append((match, match_uuid))
+        elif _is_semifinal_phase(phase):
+            semifinals.append((match, match_uuid))
 
+    selected_final = _select_latest_match(finals)
+    if not selected_final:
+        return []
+
+    final_match, final_uuid = selected_final
+    winner_color = _resolve_winner_color(final_match)
+    loser_color = "BLUE" if winner_color == "RED" else "RED"
+
+    medalists: List[MedalistEntry] = [
+        _build_medalist_entry(
+            category=category,
+            match=final_match,
+            match_uuid=final_uuid,
+            corner_color=winner_color,
+            medal_type="gold",
+            medal_rank=1,
+        ),
+        _build_medalist_entry(
+            category=category,
+            match=final_match,
+            match_uuid=final_uuid,
+            corner_color=loser_color,
+            medal_type="silver",
+            medal_rank=2,
+        ),
+    ]
+
+    selected_bronze = _select_latest_match(bronze_matches)
+    if selected_bronze:
+        bronze_match, bronze_uuid = selected_bronze
+        bronze_winner = _resolve_winner_color(bronze_match)
+        bronze_loser = "BLUE" if bronze_winner == "RED" else "RED"
+        medalists.append(
+            _build_medalist_entry(
+                category=category,
+                match=bronze_match,
+                match_uuid=bronze_uuid,
+                corner_color=bronze_winner,
+                medal_type="bronze1",
+                medal_rank=3,
+            )
+        )
+        medalists.append(
+            _build_medalist_entry(
+                category=category,
+                match=bronze_match,
+                match_uuid=bronze_uuid,
+                corner_color=bronze_loser,
+                medal_type="bronze2",
+                medal_rank=4,
+            )
+        )
+        return medalists
+
+    if semifinals:
+        semifinal_sorted = sorted(semifinals, key=lambda pair: _match_order_key(pair[0]))
+        bronze_entries: List[MedalistEntry] = []
+        for idx, (match, match_uuid) in enumerate(semifinal_sorted):
+            winner = _resolve_winner_color(match)
+            loser = "BLUE" if winner == "RED" else "RED"
+            medal_type = "bronze1" if idx == 0 else "bronze2"
+            medal_rank = 3 if idx == 0 else 4
+            bronze_entries.append(
+                _build_medalist_entry(
+                    category=category,
+                    match=match,
+                    match_uuid=match_uuid,
+                    corner_color=loser,
+                    medal_type=medal_type,
+                    medal_rank=medal_rank,
+                )
+            )
+            if len(bronze_entries) == 2:
+                break
+        medalists.extend(bronze_entries)
+
+    return medalists
+
+
+def _store_medalists_for_tournament(
+    conn: sqlite3.Connection,
+    *,
+    tournament_uuid: str,
+    category_matches: DefaultDict[Optional[str], List[Tuple[MatchRecord, str]]],
+) -> None:
     conn.execute(
-        """
-        INSERT INTO tournament_champions (
-            tournament_uuid, category, match_uuid, match_id, winner_color, winner_name, winner_country_code, blue_score, red_score, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-        """,
+        "DELETE FROM tournament_champions WHERE tournament_uuid = ?",
+        (tournament_uuid,),
+    )
+    entries: List[MedalistEntry] = []
+    for category, matches in category_matches.items():
+        entries.extend(_derive_medalists_for_category(category, matches))
+
+    if not entries:
+        return
+
+    payload = [
         (
             tournament_uuid,
-            category,
-            match_ref,
-            match.match_id,
-            winner_color,
-            winner_name,
-            winner_country,
-            blue_score,
-            red_score,
-        ),
+            entry.category,
+            entry.match_uuid,
+            entry.match_id,
+            entry.corner_color,
+            entry.athlete_name,
+            entry.athlete_country,
+            entry.blue_score,
+            entry.red_score,
+            entry.medal_type,
+            entry.medal_rank,
+        )
+        for entry in entries
+    ]
+
+    conn.executemany(
+        """
+        INSERT INTO tournament_champions (
+            tournament_uuid, category, match_uuid, match_id, winner_color, winner_name,
+            winner_country_code, blue_score, red_score, medal_type, medal_rank, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        """,
+        payload,
     )
+
 
 def _lookup_tournament(conn: sqlite3.Connection, name: str) -> Tuple[int, str]:
     row = conn.execute("SELECT id, uuid FROM tournaments WHERE name = ?", (name,)).fetchone()
@@ -767,6 +964,7 @@ def apply_matches(
     _ = _fetch_octagon_map(conn, tournament_db_id)  # Reserved for future use
     inserted = 0
     updated = 0
+    category_matches: DefaultDict[Optional[str], List[Tuple[MatchRecord, str]]] = defaultdict(list)
 
     for match in matches:
         # Validate day mapping
@@ -792,9 +990,20 @@ def apply_matches(
         _store_rounds(conn, match_ref=match_ref, match=match)
         _store_scores(conn, match_ref=match_ref, match=match, tournament_uuid=tournament_uuid)
         _store_warnings(conn, match_ref=match_ref, match=match, tournament_uuid=tournament_uuid)
-        _store_champion_if_final(conn, tournament_uuid=tournament_uuid, match=match, match_ref=match_ref)
-        _store_scores(conn, match_ref=match_ref, match=match, tournament_uuid=tournament_uuid)
-        _store_warnings(conn, match_ref=match_ref, match=match, tournament_uuid=tournament_uuid)
+        category_key = _pick_metadata_str(
+            match.metadata,
+            "category",
+            "categoryName",
+            "category_name",
+            "weight_class",
+        )
+        category_matches[category_key].append((match, match_ref))
+
+    _store_medalists_for_tournament(
+        conn,
+        tournament_uuid=tournament_uuid,
+        category_matches=category_matches,
+    )
     conn.commit()
     return {"inserted_matches": inserted, "updated_matches": updated}
 

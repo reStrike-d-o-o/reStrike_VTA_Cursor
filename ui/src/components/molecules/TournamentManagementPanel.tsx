@@ -45,6 +45,8 @@ interface TournamentChampion {
   winner_country_code?: string | null;
   blue_score: number;
   red_score: number;
+  medal_type: string;
+  medal_rank: number;
 }
 
 interface TournamentDay {
@@ -1018,6 +1020,9 @@ const TournamentManagementPanel: React.FC = () => {
                           {t('tournament.champion.category', 'Category')}
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-300">
+                          {t('tournament.champion.medal', 'Medal')}
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-300">
                           {t('tournament.champion.match', 'Match')}
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-300">
@@ -1029,46 +1034,97 @@ const TournamentManagementPanel: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-800">
-                      {tournamentOverview.champions.map((champ) => {
-                        const flagCode = champ.winner_country_code?.toUpperCase();
-                        return (
-                          <tr
-                            key={champ.match_uuid}
-                            className="hover:bg-gray-800/40 transition-colors"
-                          >
-                            <td className="px-4 py-3 text-sm text-gray-100">
-                              {champ.category || t('tournament.unknown_category', 'Unknown Category')}
-                            </td>
-                            <td className="px-4 py-3 text-sm text-gray-300">
-                              <div className="flex flex-col">
-                                <span className="font-semibold text-gray-100">
-                                  {champ.winner_name || t('common.unknown', 'Unknown')}
-                                </span>
-                                <span className="text-xs text-gray-400">
-                                  {t('tournament.match_label', 'Match {id}', { id: champ.match_id })}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 text-gray-100">
-                              <span className="text-2xl font-semibold text-blue-300">{champ.blue_score}</span>
-                              <span className="mx-2 text-xl text-gray-400 font-semibold">:</span>
-                              <span className="text-2xl font-semibold text-red-300">{champ.red_score}</span>
-                            </td>
-                            <td className="px-4 py-3">
-                              {flagCode ? (
-                                <FlagImage
-                                  countryCode={flagCode}
-                                  className="w-10 h-6 rounded-md shadow-md ring-1 ring-white/30"
-                                />
-                              ) : (
-                                <span className="text-xs text-gray-500">
-                                  {t('tournament.champion.no_flag', 'No flag')}
-                                </span>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
+                      {(() => {
+                        let previousCategory: string | null = null;
+                        return tournamentOverview.champions.map((champ) => {
+                          const flagCode = champ.winner_country_code?.toUpperCase();
+                          const categoryLabel = champ.category || t('tournament.unknown_category', 'Unknown Category');
+                          const showCategory = previousCategory !== categoryLabel;
+                          previousCategory = categoryLabel;
+                          const medalLabel = (() => {
+                            switch (champ.medal_type.toLowerCase()) {
+                              case 'gold':
+                                return 'G';
+                              case 'silver':
+                                return 'S';
+                              case 'bronze1':
+                                return 'B';
+                              case 'bronze2':
+                                return 'B';
+                              default:
+                                return champ.medal_type.slice(0, 1).toUpperCase();
+                            }
+                          })();
+                          const medalTint = (() => {
+                            switch (champ.medal_type.toLowerCase()) {
+                              case 'gold':
+                                return 'bg-yellow-500/10';
+                              case 'silver':
+                                return 'bg-slate-400/10';
+                              case 'bronze1':
+                              case 'bronze2':
+                                return 'bg-amber-600/10';
+                              default:
+                                return '';
+                            }
+                          })();
+                          const medalBadgeTone = (() => {
+                            switch (champ.medal_type.toLowerCase()) {
+                              case 'gold':
+                                return 'bg-yellow-500/20 border border-yellow-400/40 text-yellow-200';
+                              case 'silver':
+                                return 'bg-slate-400/20 border border-slate-300/40 text-slate-50';
+                              case 'bronze1':
+                              case 'bronze2':
+                                return 'bg-amber-600/20 border border-amber-500/40 text-amber-200';
+                              default:
+                                return 'bg-gray-600/30 border border-gray-500/40 text-gray-100';
+                            }
+                          })();
+                          return (
+                            <tr
+                              key={`${champ.match_uuid}-${champ.medal_type}-${champ.medal_rank}`}
+                              className={`hover:bg-gray-800/40 transition-colors ${medalTint}`}
+                            >
+                              <td className="px-4 py-3 text-base font-semibold text-gray-100 align-middle">
+                                {showCategory ? categoryLabel : ''}
+                              </td>
+                              <td className="px-4 py-3 align-middle">
+                                <span className={`inline-flex items-center justify-center rounded-full px-3 py-1 text-sm font-semibold uppercase tracking-wide ${medalBadgeTone}`}>
+                                  {medalLabel}
+                              </span>
+                              </td>
+                              <td className="px-4 py-3 text-sm text-gray-300 align-middle">
+                                <div className="flex flex-col">
+                                  <span className={`font-semibold ${champ.medal_type.toLowerCase() === 'gold' ? 'text-yellow-100' : 'text-gray-100'}`}>
+                                    {champ.winner_name || t('common.unknown', 'Unknown')}
+                                  </span>
+                                  <span className="text-xs text-gray-400">
+                                    {t('tournament.match_label', 'Match {id}', { id: champ.match_id })}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 text-gray-100 align-middle">
+                                <span className="text-2xl font-semibold text-blue-300">{champ.blue_score}</span>
+                                <span className="mx-2 text-xl text-gray-400 font-semibold">:</span>
+                                <span className="text-2xl font-semibold text-red-300">{champ.red_score}</span>
+                              </td>
+                              <td className="px-4 py-3 align-middle">
+                                {flagCode ? (
+                                  <FlagImage
+                                    countryCode={flagCode}
+                                    className="w-10 h-6 rounded-md shadow-md ring-1 ring-white/30"
+                                  />
+                                ) : (
+                                  <span className="text-xs text-gray-500">
+                                    {t('tournament.champion.no_flag', 'No flag')}
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        });
+                      })()}
                     </tbody>
                   </table>
                 </div>
