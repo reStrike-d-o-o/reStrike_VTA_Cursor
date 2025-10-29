@@ -36,6 +36,7 @@
   - Migration-safe loader to populate tournaments/days/matches and link to athletes/divisions.
   - Idempotent operations keyed by match uuid / timestamp hash.
   - 2025-10-29: Introduced scaffold loader (`scripts/tournament/scaffold_loader.py`) to seed tournaments, days, octagons, and athlete roster directly from GO2025 archives with logging and idempotent upserts.
+  - 2025-10-29: Added match loader (`scripts/tournament/match_loader.py`) to ingest canonical bouts into `pss_matches`, `pss_match_athletes`, `pss_rounds`, `pss_scores`, and `pss_warnings` (904 live bouts; skipped 6 test artefacts with non-numeric match numbers).
 - [ ] **Replay integration**
   - Extend simulation module to stream canonical events with controllable tempo.
   - UI/UX hooks for selecting matches/divisions and monitoring playback state.
@@ -51,6 +52,7 @@
 - _2025-10-28_: seeded "German Open - Hamburg 2025" via `cargo run --bin seed_german_open` (location/contact/OC JSON, banner, days, and Court01-Court12 octagons per day).
 - _2025-10-29_: Parser now logs operations, enriches timeline events with UDP reconstruction metadata, and supports archive summaries with streaming-aware statistics.
 - _2025-10-29_: Scaffold loader ingested GO2025 logs into the live DB (`German Open - Hamburg 2025` tournament, days, octagons, 962 athletes) ensuring idempotent upserts aligned with new schema.
+- _2025-10-29_: Match loader populated 904 authentic bouts (pss_matches/match_athletes/rounds/scores/warnings) with per-round snapshots and final score/penalty totals; skipped 6 `*-test` artefacts containing malformed match numbers.
 - _2025-10-29_: Scripted archive scan confirms 910 match pairs, enumerated event taxonomy, and produced canonical JSON output for downstream ingestion experiments.
 
 ### Sample Match Dataset (Court01 · 2025-09-13 · Match 101)
