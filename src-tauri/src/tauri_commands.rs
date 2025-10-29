@@ -58,6 +58,35 @@ use crate::utils::simulation_env::ensure_simulation_env;
 use dirs;
 use once_cell::sync::{Lazy, OnceCell};
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
+
+#[tauri::command]
+pub async fn normalize_fs_path(path: String) -> Result<String, TauriError> {
+    if path.trim().is_empty() {
+        return Err(TauriError::from(anyhow::anyhow!("Path cannot be empty")));
+    }
+
+    let raw_path = PathBuf::from(&path);
+    let mut resolved = if raw_path.is_absolute() {
+        raw_path
+    } else {
+        std::env::current_dir()
+            .map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to determine current directory: {}", e))))?
+            .join(raw_path)
+    };
+
+    resolved = match std::fs::canonicalize(&resolved) {
+        Ok(canonical) => canonical,
+        Err(_) => resolved,
+    };
+
+    let mut result = resolved.to_string_lossy().to_string();
+    if cfg!(target_os = "windows") && result.starts_with("\\\\?\\") {
+        result = result.trim_start_matches("\\\\?\\").to_string();
+    }
+
+    Ok(result)
+}
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
