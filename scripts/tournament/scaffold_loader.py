@@ -60,6 +60,10 @@ class AthleteInfo:
     last_name: Optional[str]
     country: Optional[str]
     country_code: Optional[str]
+    gender: Optional[str] = None
+    age_group: Optional[str] = None
+    division: Optional[str] = None
+    weight_class: Optional[str] = None
 
 
 @dataclass
@@ -78,6 +82,73 @@ class ArchiveSummary:
     def total_athletes(self) -> int:
         return len(self.athletes)
 
+
+def _normalize_gender(value: Optional[str]) -> Optional[str]:
+    if not value:
+        return None
+    val = value.strip().upper()
+    if val in {"F", "FEMALE", "W", "WOMEN", "WOMAN"}:
+        return "WOMEN"
+    if val in {"M", "MALE", "MEN", "MAN"}:
+        return "MEN"
+    return None
+
+
+def _normalize_age_group(value: Optional[str]) -> Optional[str]:
+    if not value:
+        return None
+    val = value.strip().title()
+    replacements = {
+        "Juniors": "Junior",
+        "Senior": "Senior",
+        "Seniors": "Senior",
+        "Cadets": "Cadet",
+        "Olympic Games": "Olympics",
+    }
+    return replacements.get(val, val)
+
+
+def _normalize_division(value: Optional[str]) -> Optional[str]:
+    return _normalize_age_group(value)
+
+
+def _normalize_weight_class(value: Optional[str]) -> Optional[str]:
+    if not value:
+        return None
+    import re
+
+    val = value.strip().upper()
+    sign_match = re.search(r"([+-]\d+)\s*KG", val)
+    if sign_match:
+        number = sign_match.group(1)
+        return f"{number} kg"
+    plus_match = re.search(r"\+\s*(\d+)\s*KG", val)
+    if plus_match:
+        return f"+{plus_match.group(1)} kg"
+    under_match = re.search(r"UNDER\s*(\d+)\s*KG", val)
+    if under_match:
+        return f"-{under_match.group(1)} kg"
+    if "HEAVY" in val or "OVER" in val or "OPEN" in val:
+        return "+87 kg"
+    return None
+
+
+
+
+def _fetch_lookup_map(conn: sqlite3.Connection, table: str) -> Dict[str, int]:
+    rows = conn.execute(f"SELECT id, name FROM {table}").fetchall()
+    mapping: Dict[str, int] = {}
+    for row in rows:
+        name = (row[1] or "").strip().upper()
+        if name:
+            mapping[name] = int(row[0])
+    return mapping
+
+
+def _lookup_id(mapping: Dict[str, int], key: Optional[str]) -> Optional[int]:
+    if not key:
+        return None
+    return mapping.get(key.upper())
 
 def _parse_date_from_filename(filename: str) -> Optional[str]:
     # Expect YYYYMMDDhhmmss-xxx
@@ -148,6 +219,15 @@ def collect_archive_summary(root: Path) -> ArchiveSummary:
             display = name
             key = AthleteKey(wtid=wtid, ioc_code=ioc, display_name=display)
             if key in athletes:
+                existing = athletes[key]
+                if not existing.gender:
+                    existing.gender = match_row.get("categoryGender", "").strip() or None
+                if not existing.age_group:
+                    existing.age_group = match_row.get("subCategoryName", "").strip() or None
+                if not existing.division:
+                    existing.division = match_row.get("subCategoryName", "").strip() or None
+                if not existing.weight_class:
+                    existing.weight_class = match_row.get("categoryName", "").strip() or None
                 continue
             first_name, last_name = _split_name(name)
             country = match_row.get(f"{corner}AthleteFlagName", "").strip() or None
@@ -158,6 +238,10 @@ def collect_archive_summary(root: Path) -> ArchiveSummary:
                 last_name=last_name,
                 country=country,
                 country_code=country_code,
+                gender=match_row.get("categoryGender", "").strip() or None,
+                age_group=match_row.get("subCategoryName", "").strip() or None,
+                division=match_row.get("subCategoryName", "").strip() or None,
+                weight_class=match_row.get("categoryName", "").strip() or None,
             )
 
     start_date = min(start_dates) if start_dates else None
@@ -367,7 +451,11 @@ def _ensure_octagons(
             )
 
 
-def _ensure_athlete(conn: sqlite3.Connection, info: AthleteInfo) -> int:
+def _ensure_athlete(
+    conn: sqlite3.Connection,
+    info: AthleteInfo,
+    lookups: Dict[str, Dict[str, int]],
+) -> int:
     key = info.key
     if key.wtid:
         row = conn.execute(
@@ -380,6 +468,13 @@ def _ensure_athlete(conn: sqlite3.Connection, info: AthleteInfo) -> int:
             (key.ioc_code, key.display_name),
         ).fetchone()
 
+    gender_id = _lookup_id(lookups["gender"], _normalize_gender(info.gender))
+    age_group_id = _lookup_id(lookups["age_group"], _normalize_age_group(info.age_group))
+    division_id = _lookup_id(lookups["division"], _normalize_division(info.division))
+    weight_class_id = _lookup_id(
+        lookups["weight_class"], _normalize_weight_class(info.weight_class)
+    )
+
     payload = {
         "wtid": key.wtid,
         "first_name": info.first_name,
@@ -388,6 +483,10 @@ def _ensure_athlete(conn: sqlite3.Connection, info: AthleteInfo) -> int:
         "country": info.country,
         "country_code": info.country_code,
         "ioc_code": key.ioc_code,
+        "look_gender_id": gender_id,
+        "look_age_group_id": age_group_id,
+        "look_division_id": division_id,
+        "look_weight_class_id": weight_class_id,
     }
 
     if row:
@@ -399,6 +498,10 @@ def _ensure_athlete(conn: sqlite3.Connection, info: AthleteInfo) -> int:
                 country = COALESCE(:country, country),
                 country_code = COALESCE(:country_code, country_code),
                 display_name = :display_name,
+                look_gender_id = COALESCE(:look_gender_id, look_gender_id),
+                look_age_group_id = COALESCE(:look_age_group_id, look_age_group_id),
+                look_division_id = COALESCE(:look_division_id, look_division_id),
+                look_weight_class_id = COALESCE(:look_weight_class_id, look_weight_class_id),
                 updated_at = CURRENT_TIMESTAMP
             WHERE id = :id
             """,
@@ -410,10 +513,14 @@ def _ensure_athlete(conn: sqlite3.Connection, info: AthleteInfo) -> int:
         """
         INSERT INTO athletes (
             wtid, first_name, last_name, display_name, history,
-            country, country_code, ioc_code, created_at, updated_at
+            country, country_code, ioc_code,
+            look_gender_id, look_age_group_id, look_division_id, look_weight_class_id,
+            created_at, updated_at
         ) VALUES (
             :wtid, :first_name, :last_name, :display_name, '[]',
-            :country, :country_code, :ioc_code, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+            :country, :country_code, :ioc_code,
+            :look_gender_id, :look_age_group_id, :look_division_id, :look_weight_class_id,
+            CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
         )
         """,
         payload,
@@ -425,9 +532,15 @@ def _ensure_athlete(conn: sqlite3.Connection, info: AthleteInfo) -> int:
 
 
 def _ensure_athletes(conn: sqlite3.Connection, summary: ArchiveSummary) -> int:
+    lookups = {
+        'gender': _fetch_lookup_map(conn, 'look_genders'),
+        'age_group': _fetch_lookup_map(conn, 'look_age_groups'),
+        'division': _fetch_lookup_map(conn, 'look_divisions'),
+        'weight_class': _fetch_lookup_map(conn, 'look_weight_classes'),
+    }
     processed = 0
     for info in summary.athletes.values():
-        athlete_id = _ensure_athlete(conn, info)
+        athlete_id = _ensure_athlete(conn, info, lookups)
         if athlete_id:
             processed += 1
     LOGGER.info("Ensured %d athlete records", processed)

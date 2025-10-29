@@ -1143,5 +1143,11 @@
   "triggers.show_recent": "Letzte anzeigen",
   "triggers.target": "Ziel",
   "triggers.target_type": "Zieltyp",
-  "triggers.test": "Prüfen"
+  "triggers.test": "Prüfen",
+  "tournament.day.matches": "Kämpfe: {count}",
+  "tournament.day.female": "Athletinnen: {count}",
+  "tournament.day.male": "Athleten: {count}",
+  "tournament.champions": "Champions",
+  "tournament.unknown_category": "Unbekannte Kategorie",
+  "tournament.match_label": "Kampf {id}"
 }

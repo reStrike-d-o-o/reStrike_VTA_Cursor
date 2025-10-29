@@ -1,14 +1,14 @@
 use crate::database::{
     models::{
-        EventTrigger, MedalCeremony, MedalCeremonyDetail, MedalCeremonyDivision,
+        Athlete, EventTrigger, MedalCeremony, MedalCeremonyDetail, MedalCeremonyDivision,
         MedalCeremonyDivisionDetail, MedalCeremonyMedalist, NetworkInterface, ObsConnection,
-        ObsRecordingConfig, ObsRecordingSession, ObsScene, OverlayTemplate, OvrAnthemAsset,
-        OvrCategory, OvrFlagAnimationAsset, OvrProvider, OvrTournament, PssAthlete, PssEventDetail,
-        PssEventRecognitionHistory, PssEventStatistics, PssEventType, PssEventV2,
+        ObsRecordingConfig, ObsRecordingSession, ObsScene, Octagon, OverlayTemplate,
+        OvrAnthemAsset, OvrCategory, OvrFlagAnimationAsset, OvrProvider, OvrTournament, PssAthlete,
+        PssEventDetail, PssEventRecognitionHistory, PssEventStatistics, PssEventType, PssEventV2,
         PssEventValidationResult, PssEventValidationRule, PssMatch, PssMatchAthlete, PssScore,
         PssUnknownEvent, PssWarning, SettingsCategory, SettingsHistory, SettingsKey, SettingsValue,
-        Athlete, Octagon, Tournament, TournamentDay, TournamentRanking, UdpClientConnection,
-        UdpServerConfig, UdpServerSession,
+        Tournament, TournamentDay, TournamentRanking, UdpClientConnection, UdpServerConfig,
+        UdpServerSession,
     },
     DatabaseConnection, DatabaseError, DatabaseResult,
 };
@@ -1722,7 +1722,7 @@ impl TournamentOperations {
                 created,
                 updated
             FROM tournaments
-            ORDER BY created DESC"
+            ORDER BY created DESC",
         )?;
 
         let rows = stmt.query_map([], |row| Tournament::from_row(row))?;
@@ -1740,8 +1740,9 @@ impl TournamentOperations {
         conn: &Connection,
         tournament_id: i64,
     ) -> DatabaseResult<Option<Tournament>> {
-        let tournament = conn.query_row(
-            "SELECT
+        let tournament = conn
+            .query_row(
+                "SELECT
                 id,
                 uuid,
                 name,
@@ -1764,9 +1765,10 @@ impl TournamentOperations {
                 created,
                 updated
             FROM tournaments WHERE id = ?",
-            params![tournament_id],
-            |row| Tournament::from_row(row)
-        ).optional()?;
+                params![tournament_id],
+                |row| Tournament::from_row(row),
+            )
+            .optional()?;
 
         Ok(tournament)
     }
@@ -1823,7 +1825,7 @@ impl TournamentOperations {
                 tournament.banner,
                 Utc::now().to_rfc3339(),
                 tournament_id,
-            ]
+            ],
         )?;
 
         Ok(())
@@ -1877,7 +1879,8 @@ impl TournamentOperations {
         tournament_id: i64,
     ) -> DatabaseResult<Vec<TournamentDay>> {
         let mut stmt = conn.prepare(
-            "SELECT id, tournament_id, day_number, date, status, start_time, end_time, created_at, updated_at FROM tournament_days WHERE tournament_id = ? ORDER BY day_number"
+            "SELECT id, uuid, tournament_id, day_number, date, status, start_time, end_time, created_at, updated_at, created, updated \
+             FROM tournament_days WHERE tournament_id = ? ORDER BY day_number"
         )?;
 
         let rows = stmt.query_map(params![tournament_id], |row| TournamentDay::from_row(row))?;
@@ -1977,8 +1980,9 @@ impl TournamentOperations {
 
     /// Get active tournament
     pub fn get_active_tournament(conn: &Connection) -> DatabaseResult<Option<Tournament>> {
-        let tournament = conn.query_row(
-            "SELECT
+        let tournament = conn
+            .query_row(
+                "SELECT
                 id,
                 uuid,
                 name,
@@ -2004,9 +2008,10 @@ impl TournamentOperations {
             WHERE status = 'running'
             ORDER BY created DESC
             LIMIT 1",
-            [],
-            |row| Tournament::from_row(row)
-        ).optional()?;
+                [],
+                |row| Tournament::from_row(row),
+            )
+            .optional()?;
 
         Ok(tournament)
     }
@@ -2016,8 +2021,9 @@ impl TournamentOperations {
         conn: &Connection,
         tournament_id: i64,
     ) -> DatabaseResult<Option<TournamentDay>> {
-        let day = conn.query_row(
-            "SELECT
+        let day = conn
+            .query_row(
+                "SELECT
                 id,
                 uuid,
                 tournament_id,
@@ -2034,9 +2040,10 @@ impl TournamentOperations {
             WHERE tournament_id = ? AND status = 'running'
             ORDER BY day_number DESC
             LIMIT 1",
-            params![tournament_id],
-            |row| TournamentDay::from_row(row)
-        ).optional()?;
+                params![tournament_id],
+                |row| TournamentDay::from_row(row),
+            )
+            .optional()?;
 
         Ok(day)
     }

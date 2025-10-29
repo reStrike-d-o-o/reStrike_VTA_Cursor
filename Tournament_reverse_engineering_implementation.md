@@ -38,12 +38,17 @@
   - 2025-10-29: Introduced scaffold loader (`scripts/tournament/scaffold_loader.py`) to seed tournaments, days, octagons, and athlete roster directly from GO2025 archives with logging and idempotent upserts.
   - 2025-10-29: Added match loader (`scripts/tournament/match_loader.py`) to ingest canonical bouts into `pss_matches`, `pss_match_athletes`, `pss_rounds`, `pss_scores`, and `pss_warnings` (904 live bouts; skipped 6 test artefacts with non-numeric match numbers).
   - 2025-10-29: Event loader (`scripts/tournament/event_loader.py`) reconstructs 83,367 timeline entries into `pss_events` / `pss_event_details`, creating a dedicated UDP replay session, inserting WT UDP mapping metadata, and remaining idempotent per match.
+  - 2025-10-29: Scaffold/match loaders now normalize athlete metadata into look tables (age group/division/gender/weight) and capture Final champions for each category via `tournament_champions`.
 - [ ] **Replay integration**
-  - Extend simulation module to stream canonical events with controllable tempo.
+- Extend simulation module to stream canonical events with controllable tempo.
   - UI/UX hooks for selecting matches/divisions and monitoring playback state.
 - [ ] **QA & Documentation**
   - Automated tests for parser & loader.
   - Operational guide covering dataset prep, replay commands, troubleshooting.
+
+### Upcoming Work
+- Implement UDP replay emitter that rehydrates `pss_events`/`pss_event_details` into WT packets with tempo controls and optional batching.
+- Wire CLI/UI hooks so operators can choose tournament/match, launch replays, and observe status/telemetry across modules (OBS, scoreboard, automated QA).
 
 ## Recently Completed / Notes
 - _2025-10-28_: catalogued directory naming scheme and documented matchLog/matchLogItems field groups for Court01 sample.
@@ -55,7 +60,9 @@
 - _2025-10-29_: Scaffold loader ingested GO2025 logs into the live DB (`German Open - Hamburg 2025` tournament, days, octagons, 962 athletes) ensuring idempotent upserts aligned with new schema.
 - _2025-10-29_: Match loader populated 904 authentic bouts (pss_matches/match_athletes/rounds/scores/warnings) with per-round snapshots and final score/penalty totals; skipped 6 `*-test` artefacts containing malformed match numbers.
 - _2025-10-29_: Event loader seeded 83,367 canonical events + 80,665 UDP detail rows, establishing a replay-only UDP session and mapping every event type to `pss_event_types`.
+- _2025-10-29_: Athlete roster now mapped to WT look tables (age/division/gender/weight) and final matches record champions in `tournament_champions` for tournament timelines.
 - _2025-10-29_: Scripted archive scan confirms 910 match pairs, enumerated event taxonomy, and produced canonical JSON output for downstream ingestion experiments.
+- _2025-10-30_: Champion seeding now normalizes phase strings and only accepts true finals (excludes semi/bronze stages) before updating `tournament_champions`.
 
 ### Sample Match Dataset (Court01 · 2025-09-13 · Match 101)
 ```json

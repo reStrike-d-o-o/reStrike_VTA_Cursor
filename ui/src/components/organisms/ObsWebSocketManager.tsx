@@ -9,6 +9,7 @@ import { StatusDot } from '../atoms/StatusDot';
 import { useObsStore, ObsConnection } from '../../stores/obsStore';
 import { obsObwsCommands } from '../../utils/tauriCommandsObws';
 import { configCommands } from '../../utils/tauriCommands';
+import { canListenTauri, listenTauri } from '../../utils/tauriBridge';
 import { useI18n } from '../../i18n/index';
 
 // Use the proper Tauri v2 invoke function with fallback
@@ -229,15 +230,15 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
     console.log('🔧 ObsWebSocketManager: Setting up OBS status listener...');
 
     let unlistenPromise: Promise<() => void> = Promise.resolve(() => {});
-    if (window.__TAURI__?.event) {
+    if (canListenTauri()) {
       console.log('🔧 ObsWebSocketManager: Listening for obs_status events...');
-      unlistenPromise = window.__TAURI__.event.listen('obs_status', (event: any) => {
+      unlistenPromise = listenTauri('obs_status', (event: any) => {
         console.log('🔧 ObsWebSocketManager: Received obs_status event:', event);
         if (event && event.payload) {
           console.log('🔧 ObsWebSocketManager: Updating OBS status with payload:', event.payload);
           updateObsStatus(event.payload);
         }
-      });
+      }).catch(() => Promise.resolve(() => {}));
     }
 
     return () => {
@@ -271,8 +272,13 @@ const ObsWebSocketManager: React.FC<ObsWebSocketManagerProps> = ({ mode }) => {
     };
 
     // Listen for OBS events
-    const unsubscribe: Promise<() => void> = window.__TAURI__?.event?.listen ? window.__TAURI__.event.listen('obs_event', handleObsEvent) : Promise.resolve(() => {});
-    
+    let unsubscribe: Promise<() => void>;
+    if (canListenTauri()) {
+      unsubscribe = listenTauri('obs_event', handleObsEvent).catch(() => Promise.resolve(() => {}));
+    } else {
+      unsubscribe = Promise.resolve(() => {});
+    }
+
     return () => {
       unsubscribe.then((unsub: () => void) => unsub());
     };

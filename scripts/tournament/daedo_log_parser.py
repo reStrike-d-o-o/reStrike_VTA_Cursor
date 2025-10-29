@@ -111,7 +111,10 @@ def _parse_optional_int(value: str) -> Optional[int]:
     value = value.strip()
     if not value:
         return None
-    return int(value)
+    try:
+        return int(value)
+    except ValueError:
+        return None
 
 
 def _parse_score(value: str) -> Tuple[int, int]:

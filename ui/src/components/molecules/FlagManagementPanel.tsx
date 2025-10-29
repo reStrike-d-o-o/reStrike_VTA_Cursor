@@ -6,6 +6,7 @@ import StatusDot from '../atoms/StatusDot';
 import { Progress } from '../atoms/Progress';
 import { getFlagConfig, getFlagUrl, handleFlagError, FLAG_CONFIGS } from '../../utils/flagUtils';
 import { useI18n } from '../../i18n/index';
+import { canInvokeTauri, invokeTauri } from '../../utils/tauriBridge';
 
 interface FlagInfo {
   iocCode: string;
@@ -86,11 +87,13 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
   }, [selectedFlag]);
 
   const loadFlagMappings = async () => {
-    if (!window.__TAURI__) return;
+    if (!canInvokeTauri()) {
+      return;
+    }
 
     try {
-      const result = await window.__TAURI__.core.invoke('get_flag_mappings_data');
-      if (result.success) {
+      const result = await invokeTauri<{ success: boolean; count?: number }>('get_flag_mappings_data');
+      if (result?.success) {
         setFlagMappingsCount(result.count || 0);
       }
     } catch (error) {
@@ -105,9 +108,9 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
     setError('');
     
     try {
-      if (window.__TAURI__) {
+      if (canInvokeTauri()) {
         // Load flags from database
-        const result = await window.__TAURI__.core.invoke('get_flags_data') as any;
+        const result = await invokeTauri<any>('get_flags_data');
 
         const handleResultToState = (res: any) => {
           const dbFlags: FlagInfo[] = (res.flags || []).map((flag: any) => {
@@ -158,9 +161,9 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
           if (initialCount === 0) {
             // Try to auto-populate from assets and retry
             try {
-              const scan = await window.__TAURI__.core.invoke('scan_and_populate_flags') as any;
+              const scan = await invokeTauri<any>('scan_and_populate_flags');
               if (scan && scan.success) {
-                const afterScan = await window.__TAURI__.core.invoke('get_flags_data') as any;
+                const afterScan = await invokeTauri<any>('get_flags_data');
                 if (afterScan.success) {
                   const finalCount = handleResultToState(afterScan);
                   if (finalCount === 0) {
@@ -235,7 +238,7 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
   }, []);
 
   const scanAndPopulateFlags = async () => {
-    if (!window.__TAURI__) {
+    if (!canInvokeTauri()) {
       setError(t('flags.err.nodb', 'Database functionality not available in this environment'));
       return;
     }
@@ -245,7 +248,7 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
     setSuccess('');
 
     try {
-      const result = await window.__TAURI__.core.invoke('scan_and_populate_flags');
+      const result = await invokeTauri<any>('scan_and_populate_flags');
       
       if (result.success) {
         const messageParts: string[] = [
@@ -288,7 +291,7 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
     (selectedFlag?.recognition_status || '').toLowerCase();
 
   const clearFlagsDatabase = async () => {
-    if (!window.__TAURI__) {
+    if (!canInvokeTauri()) {
       setError(t('flags.err.nodb', 'Database functionality not available in this environment'));
       return;
     }
@@ -301,7 +304,7 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
     setError('');
 
     try {
-      const result = await window.__TAURI__.core.invoke('clear_flags_table');
+      const result = await invokeTauri<{ success: boolean; deleted_count?: number }>('clear_flags_table');
       
       if (result.success) {
         setSuccess(t('flags.success.cleared', 'Successfully cleared flags database! Deleted: {n} entries', { n: result.deleted_count }));

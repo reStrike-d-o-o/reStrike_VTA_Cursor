@@ -1151,5 +1151,11 @@
   "triggers.show_recent": "Show Recent",
   "triggers.target": "Target",
   "triggers.target_type": "Target Type",
-  "triggers.test": "Test"
+  "triggers.test": "Test",
+  "tournament.day.matches": "Matches: {count}",
+  "tournament.day.female": "Female athletes: {count}",
+  "tournament.day.male": "Male athletes: {count}",
+  "tournament.champions": "Champions",
+  "tournament.unknown_category": "Unknown Category",
+  "tournament.match_label": "Match {id}"
 }

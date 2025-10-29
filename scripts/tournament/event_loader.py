@@ -115,16 +115,16 @@ def _fetch_match_lookup(conn: sqlite3.Connection, tournament_name: str) -> Dict[
         """
         SELECT pm.id, pm.uuid, pm.match_id, pm.tournament_id
         FROM pss_matches pm
-        JOIN tournaments t ON pm.tournament_id = CAST(t.id AS TEXT)
+        JOIN tournaments t ON pm.tournament_id = t.uuid
         WHERE t.name = ?
         """,
         (tournament_name,),
     ).fetchall()
-    for match_id, uuid_value, external_id, tournament_id in rows:
+    for match_id, uuid_value, external_id, tournament_uuid in rows:
         lookup[external_id] = {
             "match_db_id": int(match_id),
             "match_uuid": uuid_value,
-            "tournament_id": tournament_id,
+            "tournament_uuid": tournament_uuid,
         }
     return lookup
 
@@ -169,7 +169,7 @@ def _insert_event(
     round_map: Dict[int, int],
     event: Dict[str, any],
     event_type_id: int,
-    tournament_id: Optional[str],
+    tournament_uuid: Optional[str],
 ) -> Optional[int]:
     timestamp = _normalize_timestamp(event)
     if not timestamp:
@@ -205,7 +205,7 @@ def _insert_event(
             DEFAULT_RECOGNITION_STATUS,
             DEFAULT_PROTOCOL_VERSION,
             1.0,
-            tournament_id,
+            tournament_uuid,
             _utc_now_iso(),
         ),
     )
@@ -220,7 +220,7 @@ def _ingest_match_events(
     match_context: Dict[str, any],
 ) -> Tuple[int, int]:
     match_db_id = match_context["match_db_id"]
-    tournament_id = match_context["tournament_id"]
+    tournament_uuid = match_context['tournament_uuid']
     round_map = _fetch_round_lookup(conn, match_db_id)
     _delete_existing_events(conn, match_db_id)
 
@@ -237,7 +237,7 @@ def _ingest_match_events(
             round_map=round_map,
             event=event,
             event_type_id=event_type_id,
-            tournament_id=tournament_id,
+            tournament_uuid=tournament_uuid,
         )
         if event_id is None:
             skipped += 1
@@ -254,6 +254,7 @@ def apply_events(
     matches: Sequence[MatchRecord],
     tournament_name: str,
 ) -> Dict[str, int]:
+    conn.execute("PRAGMA busy_timeout = 5000")
     lookup = _fetch_match_lookup(conn, tournament_name)
     if not lookup:
         raise RuntimeError(f"No pss_matches found for tournament '{tournament_name}'. Run match_loader first.")
@@ -341,4 +342,3 @@ def main(argv: Optional[Iterable[str]] = None) -> None:
 
 if __name__ == "__main__":  # pragma: no cover
     main()
-

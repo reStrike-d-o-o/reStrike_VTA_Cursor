@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Lottie from 'lottie-react';
 import Button from '../atoms/Button';
 import Input from '../atoms/Input';
 import Label from '../atoms/Label';
@@ -6,6 +7,7 @@ import Toggle from '../atoms/Toggle';
 import { useMedalCeremonyStore } from '../../stores/medalCeremonyStore';
 import { FlagAnimationAsset } from '../../types';
 import { pickFilePath } from '../../utils/filePicker';
+import { FlagImage } from '../../utils/flagUtils';
 
 interface FlagAssetForm {
   id?: string | null;
@@ -27,6 +29,14 @@ const defaultForm: FlagAssetForm = {
   is_default: false,
 };
 
+const readAnimationFile = async (path: string): Promise<string> => {
+  const reader = window.__TAURI__?.fs?.readTextFile;
+  if (reader) {
+    return reader(path);
+  }
+  throw new Error('Animation preview requires the desktop runtime.');
+};
+
 const MedalCeremonyAnimationManager: React.FC = () => {
   const flagAssets = useMedalCeremonyStore((state) => state.flagAssets);
   const loadAssets = useMedalCeremonyStore((state) => state.loadAssets);
@@ -41,6 +51,10 @@ const MedalCeremonyAnimationManager: React.FC = () => {
   const [form, setForm] = useState<FlagAssetForm>(defaultForm);
   const [message, setMessage] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [previewData, setPreviewData] = useState<any | null>(null);
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
   const hasLoadedRef = useRef(false);
 
   useEffect(() => {
@@ -96,6 +110,29 @@ const MedalCeremonyAnimationManager: React.FC = () => {
     }));
   }, []);
 
+  const handlePreview = useCallback(async () => {
+    const path = form.file_path.trim();
+    if (!path) {
+      setError('Select an animation file before previewing.');
+      return;
+    }
+    setIsPreviewOpen(true);
+    setIsLoadingPreview(true);
+    setPreviewError(null);
+    setPreviewData(null);
+    try {
+      const raw = await readAnimationFile(path);
+      const json = JSON.parse(raw);
+      setPreviewData(json);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      setPreviewError(message);
+      setError(`Failed to load animation preview: ${message}`);
+    } finally {
+      setIsLoadingPreview(false);
+    }
+  }, [form.file_path, setError]);
+
   const handleSubmit = useCallback(async () => {
     if (!form.ioc_code.trim() || !form.file_path.trim()) {
       setError('IOC code and file path are required.');
@@ -118,6 +155,13 @@ const MedalCeremonyAnimationManager: React.FC = () => {
       setForm(defaultForm);
     }
   }, [form, saveFlagAsset, setError]);
+
+  const handleClosePreview = useCallback(() => {
+    setIsPreviewOpen(false);
+    setPreviewData(null);
+    setIsLoadingPreview(false);
+    setPreviewError(null);
+  }, []);
 
   const handleDelete = useCallback(
     async (asset: FlagAnimationAsset) => {
@@ -160,7 +204,8 @@ const MedalCeremonyAnimationManager: React.FC = () => {
   );
 
   return (
-    <div className="space-y-6">
+    <>
+      <div className="space-y-6">
       {(error || message) && (
         <div className="space-y-2">
           {error && (
@@ -196,7 +241,7 @@ const MedalCeremonyAnimationManager: React.FC = () => {
           <table className="min-w-full divide-y divide-gray-700 text-sm">
             <thead className="sticky top-0 z-10 bg-gray-900/95 text-xs uppercase tracking-wide text-gray-200 backdrop-blur shadow-lg shadow-blue-900/20 border-b border-blue-700/50">
               <tr>
-                <th className="px-3 py-2 text-left">IOC</th>
+                <th className="px-3 py-2 text-left">Nation</th>
                 <th className="px-3 py-2 text-left">Display name</th>
                 <th className="px-3 py-2 text-left">File</th>
                 <th className="px-3 py-2 text-left">Duration (ms)</th>
@@ -221,7 +266,19 @@ const MedalCeremonyAnimationManager: React.FC = () => {
                         : 'hover:bg-gray-800/60'
                     }`}
                   >
-                    <td className="px-3 py-2 text-gray-200">{asset.ioc_code}</td>
+                    <td className="px-3 py-2 text-gray-200">
+                      {asset.ioc_code ? (
+                        <div className="flex items-center gap-2">
+                          <FlagImage
+                            countryCode={asset.ioc_code.toUpperCase()}
+                            className="w-10 h-6 rounded-md shadow-md ring-1 ring-white/30"
+                          />
+                          <span>{asset.ioc_code.toUpperCase()}</span>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-500">N/A</span>
+                      )}
+                    </td>
                     <td className="px-3 py-2 text-gray-300">{asset.display_name || 'N/A'}</td>
                     <td className="px-3 py-2 text-gray-400 truncate max-w-xs" title={asset.file_path}>
                       {asset.file_name}
@@ -337,6 +394,13 @@ const MedalCeremonyAnimationManager: React.FC = () => {
             <Button variant="secondary" onClick={handleReset} disabled={saving}>
               Add
             </Button>
+            <Button
+              variant="secondary"
+              onClick={handlePreview}
+              disabled={saving || !form.file_path || isLoadingPreview}
+            >
+              {isLoadingPreview ? 'Previewing...' : 'Preview'}
+            </Button>
             <Button variant="primary" onClick={handleSubmit} disabled={saving}>
               {saving ? 'Saving...' : 'Save'}
             </Button>
@@ -348,7 +412,61 @@ const MedalCeremonyAnimationManager: React.FC = () => {
           )}
         </div>
       </div>
-    </div>
+      </div>
+
+      {isPreviewOpen && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+          <div className="theme-card shadow-xl w-full max-w-3xl max-h-[80vh] flex flex-col overflow-hidden">
+            <div className="flex items-start justify-between gap-4 px-6 pt-6">
+              <div>
+                <h3 className="text-xl font-semibold text-gray-100">
+                  {form.display_name || form.ioc_code || 'Animation Preview'}
+                </h3>
+                {form.ioc_code && (
+                  <div className="mt-2 flex items-center gap-2 text-sm text-gray-400">
+                    <FlagImage
+                      countryCode={form.ioc_code.toUpperCase()}
+                      className="w-10 h-6 rounded-md shadow-md ring-1 ring-white/30"
+                    />
+                    <span>{form.ioc_code.toUpperCase()}</span>
+                  </div>
+                )}
+              </div>
+              <Button
+                onClick={handleClosePreview}
+                className="bg-gray-600 hover:bg-gray-700 text-white"
+              >
+                Close
+              </Button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-6 pb-6">
+              {previewError && (
+                <div className="mb-4 rounded border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                  {previewError}
+                </div>
+              )}
+              {isLoadingPreview && (
+                <div className="py-12 text-center text-sm text-gray-300">Loading animation...</div>
+              )}
+              {!isLoadingPreview && previewData && (
+                <div className="flex items-center justify-center rounded-lg bg-gray-900/40 p-6">
+                  <Lottie
+                    animationData={previewData}
+                    loop
+                    style={{ width: '100%', maxWidth: 420, height: 'auto' }}
+                  />
+                </div>
+              )}
+              {!isLoadingPreview && !previewData && !previewError && (
+                <div className="py-12 text-center text-sm text-gray-400">
+                  Select an animation to preview.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 

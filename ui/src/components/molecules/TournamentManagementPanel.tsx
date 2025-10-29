@@ -7,6 +7,7 @@ import Label from '../atoms/Label';
 import StatusDot from '../atoms/StatusDot';
 import Icon from '../atoms/Icon';
 import { useI18n } from '../../i18n/index';
+import { FlagImage } from '../../utils/flagUtils';
 
 interface Tournament {
   id: number;
@@ -25,12 +26,33 @@ interface Tournament {
   updated?: number;
 }
 
+interface TournamentDayStats {
+  day_id: number;
+  day_number: number;
+  date: string;
+  status: 'pending' | 'active' | 'completed' | 'ended';
+  total_matches: number;
+  female_athletes: number;
+  male_athletes: number;
+}
+
+interface TournamentChampion {
+  category?: string | null;
+  match_uuid: string;
+  match_id: string;
+  winner_color: string;
+  winner_name?: string | null;
+  winner_country_code?: string | null;
+  blue_score: number;
+  red_score: number;
+}
+
 interface TournamentDay {
   id: number;
   tournament_id: number;
   day_number: number;
   date: string;
-  status: 'pending' | 'active' | 'completed';
+  status: 'pending' | 'active' | 'completed' | 'ended';
   start_time?: string;
   end_time?: string;
   created_at: string;
@@ -46,6 +68,8 @@ interface TournamentOverview {
   total_events: number;
   total_scores: number;
   total_warnings: number;
+  day_stats: TournamentDayStats[];
+  champions: TournamentChampion[];
   active_day?: TournamentDay;
   completed_days: number;
   pending_days: number;
@@ -226,7 +250,8 @@ const TournamentManagementPanel: React.FC = () => {
       const stats = statsData.statistics;
       
       // Calculate overview data
-      const completedDays = days.filter((day: TournamentDay) => day.status === 'completed').length;
+      const completedStatuses = ['completed', 'ended'];
+      const completedDays = days.filter((day: TournamentDay) => completedStatuses.includes(day.status)).length;
       const pendingDays = days.filter((day: TournamentDay) => day.status === 'pending').length;
       const activeDay = days.find((day: TournamentDay) => day.status === 'active');
       
@@ -237,6 +262,8 @@ const TournamentManagementPanel: React.FC = () => {
         total_events: stats.total_events || 0,
         total_scores: stats.total_scores || 0,
         total_warnings: stats.total_warnings || 0,
+        day_stats: stats.day_stats || [],
+        champions: stats.champions || [],
         active_day: activeDay,
         completed_days: completedDays,
         pending_days: pendingDays,
@@ -871,21 +898,10 @@ const TournamentManagementPanel: React.FC = () => {
 
       {/* Tournament Overview Modal */}
       {showOverview && tournamentOverview && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="theme-card shadow-xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-semibold text-gray-100">{t('tournament.overview.title', 'Tournament Overview')}</h3>
-              <Button
-                onClick={() => setShowOverview(false)}
-                className="bg-gray-600 hover:bg-gray-700 text-white"
-              >
-                {t('common.close', 'Close')}
-              </Button>
-            </div>
-            
-            {/* Tournament Header */}
-            <div className="theme-surface-2 rounded-lg p-6 mb-6">
-              <div className="flex items-center space-x-4 mb-4">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+          <div className="theme-card shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+            <div className="flex flex-wrap items-start justify-between gap-4 px-6 pt-6">
+              <div className="flex items-start gap-4 flex-wrap">
                 {tournamentOverview.tournament.logo_path && (
                   <img
                     src={tournamentOverview.tournament.logo_path}
@@ -894,23 +910,28 @@ const TournamentManagementPanel: React.FC = () => {
                   />
                 )}
                 <div>
-                  <h4 className="text-2xl font-bold text-gray-100">{tournamentOverview.tournament.name}</h4>
+                  <h3 className="text-2xl font-bold text-gray-100">{tournamentOverview.tournament.name}</h3>
                   <p className="text-gray-400">
                     {tournamentOverview.tournament.city}, {tournamentOverview.tournament.country}
                   </p>
-                  <div className="flex items-center space-x-2 mt-2">
-                    <StatusDot color={getStatusColor(tournamentOverview.tournament.status)} />
-                    <span className="text-gray-300">{getStatusText(tournamentOverview.tournament.status)}</span>
-                  </div>
                 </div>
               </div>
-              
+              <Button
+                onClick={() => setShowOverview(false)}
+                className="bg-gray-600 hover:bg-gray-700 text-white"
+              >
+                {t('common.close', 'Close')}
+              </Button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-6">
               {/* Tournament Statistics */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-gray-700/30 rounded-lg p-4 text-center">
-                  <div className="text-2xl font-bold text-blue-400">{tournamentOverview.total_matches}</div>
-                  <div className="text-sm text-gray-400">{t('tournament.stats.total_matches', 'Total Matches')}</div>
-                </div>
+              <div className="theme-surface-2 rounded-lg p-6">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="bg-gray-700/30 rounded-lg p-4 text-center">
+                    <div className="text-2xl font-bold text-blue-400">{tournamentOverview.total_matches}</div>
+                    <div className="text-sm text-gray-400">{t('tournament.stats.total_matches', 'Total Matches')}</div>
+                  </div>
                 <div className="bg-gray-700/30 rounded-lg p-4 text-center">
                   <div className="text-2xl font-bold text-green-400">{tournamentOverview.total_events}</div>
                   <div className="text-sm text-gray-400">{t('tournament.stats.total_events', 'Total Events')}</div>
@@ -927,8 +948,7 @@ const TournamentManagementPanel: React.FC = () => {
             </div>
             
             {/* Tournament Days Overview */}
-            <div className="theme-surface-2 rounded-lg p-6 mb-6">
-              <h5 className="text-lg font-semibold text-gray-100 mb-4">{t('tournament.days.progress', 'Tournament Days Progress')}</h5>
+            <div className="theme-surface-2 rounded-lg p-6">
               <div className="grid grid-cols-3 gap-4 mb-4">
                 <div className="text-center">
                   <div className="text-2xl font-bold text-yellow-400">{tournamentOverview.pending_days}</div>
@@ -946,70 +966,119 @@ const TournamentManagementPanel: React.FC = () => {
                 </div>
               </div>
               
-              <div className="space-y-3">
-                {tournamentOverview.days.map((day) => (
-                  <div
-                    key={day.id}
-                    className="p-3 rounded-lg border border-gray-600/30 bg-gray-700/30"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h6 className="font-medium text-gray-100">Day {day.day_number}</h6>
-                        <p className="text-sm text-gray-400">
-                          {new Date(day.date).toLocaleDateString()}
-                          {day.start_time && ` • ${t('started_at')}: ${new Date(day.start_time).toLocaleTimeString()}`}
-                          {day.end_time && ` • ${t('ended_at')}: ${new Date(day.end_time).toLocaleTimeString()}`}
-                        </p>
+              <div className="space-y-4">
+                {tournamentOverview.days.map((day) => {
+                  const dayStats =
+                    tournamentOverview.day_stats?.find((stat) => stat.day_number === day.day_number) || {
+                      total_matches: 0,
+                      female_athletes: 0,
+                      male_athletes: 0,
+                    };
+                  const totalAthletes = dayStats.female_athletes + dayStats.male_athletes;
+                  return (
+                    <div key={day.id} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div className="bg-gray-700/30 rounded-lg p-4 text-center lg:text-left">
+                        <div className="text-2xl font-bold text-green-400">
+                          {t('tournament.day.label', 'Day {n}', { n: day.day_number })}
+                        </div>
+                        <div className="text-sm text-gray-400">{formatDate(day.date)}</div>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <StatusDot color={getDayStatusColor(day.status)} />
-                        <span className="text-sm text-gray-400 capitalize">{day.status}</span>
+                      <div className="bg-gray-700/30 rounded-lg p-4 text-center">
+                        <div className="text-2xl font-bold text-blue-400">{totalAthletes}</div>
+                        <div className="text-sm text-gray-400">
+                          {t('tournament.day.total_athletes', 'Total Athletes')}
+                        </div>
+                      </div>
+                      <div className="bg-gray-700/30 rounded-lg p-4 text-center">
+                        <div className="text-2xl font-bold text-pink-400">{dayStats.female_athletes}</div>
+                        <div className="text-sm text-gray-400">
+                          {t('tournament.day.female', 'Female Athletes')}
+                        </div>
+                      </div>
+                      <div className="bg-gray-700/30 rounded-lg p-4 text-center">
+                        <div className="text-2xl font-bold text-cyan-400">{dayStats.male_athletes}</div>
+                        <div className="text-sm text-gray-400">
+                          {t('tournament.day.male', 'Male Athletes')}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
             
-            {/* Tournament Timeline */}
-            <div className="theme-surface-2 rounded-lg p-6">
-              <h5 className="text-lg font-semibold text-gray-100 mb-4">{t('tournament.timeline', 'Tournament Timeline')}</h5>
-              <div className="space-y-3">
-                <div className="flex items-center space-x-3">
-                  <div className="w-3 h-3 bg-green-400 rounded-full"></div>
-                  <div>
-                    <div className="text-gray-100">{t('tournament.created', 'Created')}</div>
-						<div className="text-sm text-gray-400">
-							{tournamentOverview.tournament.created != null
-								? new Date(tournamentOverview.tournament.created * 1000).toLocaleString()
-								: formatDateTime(tournamentOverview.tournament.created_at)}
-						</div>
-                  </div>
+            {/* Champions Table */}
+            <div className="theme-surface-2 rounded-lg p-0">
+              {tournamentOverview.champions.length > 0 ? (
+                <div className="max-h-80 overflow-y-auto">
+                  <table className="min-w-full divide-y divide-gray-700">
+                    <thead className="sticky top-0 z-10 bg-gray-800/80 backdrop-blur">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-300">
+                          {t('tournament.champion.category', 'Category')}
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-300">
+                          {t('tournament.champion.match', 'Match')}
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-300">
+                          {t('tournament.champion.score', 'Score')}
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-300">
+                          {t('tournament.champion.nation', 'Nation')}
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-800">
+                      {tournamentOverview.champions.map((champ) => {
+                        const flagCode = champ.winner_country_code?.toUpperCase();
+                        return (
+                          <tr
+                            key={champ.match_uuid}
+                            className="hover:bg-gray-800/40 transition-colors"
+                          >
+                            <td className="px-4 py-3 text-sm text-gray-100">
+                              {champ.category || t('tournament.unknown_category', 'Unknown Category')}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-300">
+                              <div className="flex flex-col">
+                                <span className="font-semibold text-gray-100">
+                                  {champ.winner_name || t('common.unknown', 'Unknown')}
+                                </span>
+                                <span className="text-xs text-gray-400">
+                                  {t('tournament.match_label', 'Match {id}', { id: champ.match_id })}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-300">
+                              <span className="text-blue-300 font-semibold">{champ.blue_score}</span>
+                              <span className="mx-1 text-gray-500">:</span>
+                              <span className="text-red-300 font-semibold">{champ.red_score}</span>
+                            </td>
+                            <td className="px-4 py-3">
+                              {flagCode ? (
+                                <FlagImage
+                                  countryCode={flagCode}
+                                  className="w-10 h-6 rounded-md shadow-md ring-1 ring-white/30"
+                                />
+                              ) : (
+                                <span className="text-xs text-gray-500">
+                                  {t('tournament.champion.no_flag', 'No flag')}
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
-                {tournamentOverview.tournament.start_date && (
-                  <div className="flex items-center space-x-3">
-                    <div className="w-3 h-3 bg-blue-400 rounded-full"></div>
-                    <div>
-                      <div className="text-gray-100">{t('tournament.started', 'Started')}</div>
-                      <div className="text-sm text-gray-400">
-                        {formatDateTime(tournamentOverview.tournament.start_date)}
-                      </div>
-                    </div>
-                  </div>
-                )}
-                {tournamentOverview.tournament.end_date && (
-                  <div className="flex items-center space-x-3">
-                    <div className="w-3 h-3 bg-red-400 rounded-full"></div>
-                    <div>
-                      <div className="text-gray-100">{t('tournament.ended', 'Ended')}</div>
-                      <div className="text-sm text-gray-400">
-                        {formatDateTime(tournamentOverview.tournament.end_date)}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
+              ) : (
+                <div className="p-6 text-sm text-gray-400">
+                  {t('tournament.champion.none', 'No champions recorded yet.')}
+                </div>
+              )}
             </div>
+          </div>
           </div>
         </div>
       )}

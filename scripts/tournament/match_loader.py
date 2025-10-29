@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import re
 import sqlite3
 import sys
 import uuid
@@ -45,6 +46,11 @@ from scripts.tournament import daedo_log_parser  # type: ignore  # pylint: disab
 
 
 LOGGER = logging.getLogger("match_loader")
+
+_FINAL_PATTERN = re.compile(r"\bFINAL(S)?\b")
+_NON_CHAMPIONSHIP_PATTERN = re.compile(
+    r"\b(SEMI|QUARTER|BRONZE|QUAL(?:IFIER)?|ELIMINATION)\s*FINAL(S)?\b"
+)
 
 
 def _utc_now_iso() -> str:
@@ -219,6 +225,9 @@ def _extract_round_snapshots(
 def load_matches(archive_root: Path) -> List[MatchRecord]:
     matches: List[MatchRecord] = []
     for match_log_path in sorted(archive_root.rglob("*-matchLog.csv")):
+        if "-test" in match_log_path.name.lower():
+            LOGGER.debug("Skipping test artefact %s", match_log_path.name)
+            continue
         try:
             match_row = daedo_log_parser.parse_match_log(match_log_path)
             item_rows = daedo_log_parser.parse_match_log_items(
@@ -254,6 +263,138 @@ def load_matches(archive_root: Path) -> List[MatchRecord]:
     LOGGER.info("Loaded %d matches from archive", len(matches))
     return matches
 
+
+
+
+def _ensure_champions_table(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS tournament_champions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tournament_uuid TEXT NOT NULL,
+            category TEXT,
+            match_uuid TEXT NOT NULL,
+            match_id TEXT NOT NULL,
+            winner_color TEXT NOT NULL,
+            winner_name TEXT,
+            winner_country_code TEXT,
+            blue_score INTEGER NOT NULL,
+            red_score INTEGER NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_tournament_champions_tournament ON tournament_champions(tournament_uuid)"
+    )
+
+
+def _pick_metadata_str(metadata: Dict[str, Any], *keys: str) -> Optional[str]:
+    for key in keys:
+        raw = metadata.get(key)
+        if raw:
+            value = str(raw).strip()
+            if value:
+                return value
+    return None
+
+
+def _is_final_phase(value: Optional[str]) -> bool:
+    if not value:
+        return False
+
+    normalized = re.sub(r"[^A-Z0-9\s]", " ", value.upper())
+    normalized = re.sub(r"\s+", " ", normalized).strip()
+    if not normalized:
+        return False
+
+    if _NON_CHAMPIONSHIP_PATTERN.search(normalized):
+        return False
+
+    return bool(_FINAL_PATTERN.search(normalized))
+
+
+def _store_champion_if_final(
+    conn: sqlite3.Connection,
+    *,
+    tournament_uuid: str,
+    match: MatchRecord,
+    match_ref: str,
+) -> None:
+    phase = _pick_metadata_str(
+        match.metadata,
+        "phase",
+        "phaseName",
+        "phase_name",
+        "phase_label",
+        "stage",
+    )
+    if not _is_final_phase(phase):
+        return
+
+    category = _pick_metadata_str(
+        match.metadata,
+        "category",
+        "categoryName",
+        "category_name",
+        "weight_class",
+    )
+
+    winner_color = (
+        _pick_metadata_str(
+            match.metadata,
+            "winner",
+            "matchWinner",
+            "match_winner",
+            "matchWinnerColor",
+        )
+        or ""
+    ).upper()
+    blue_score = int(match.final_snapshot.blue_score)
+    red_score = int(match.final_snapshot.red_score)
+
+    if winner_color not in {'BLUE', 'RED'}:
+        if blue_score > red_score:
+            winner_color = 'BLUE'
+        elif red_score > blue_score:
+            winner_color = 'RED'
+        else:
+            winner_color = 'BLUE'
+
+    winner_corner = 'blue' if winner_color == 'BLUE' else 'red'
+    corner_info = match.athletes.get(winner_corner, {})
+    winner_name = corner_info.get('name')
+    winner_country = corner_info.get('nation')
+
+    if category:
+        conn.execute(
+            "DELETE FROM tournament_champions WHERE tournament_uuid = ? AND category = ?",
+            (tournament_uuid, category),
+        )
+    else:
+        conn.execute(
+            "DELETE FROM tournament_champions WHERE tournament_uuid = ? AND category IS NULL",
+            (tournament_uuid,),
+        )
+
+    conn.execute(
+        """
+        INSERT INTO tournament_champions (
+            tournament_uuid, category, match_uuid, match_id, winner_color, winner_name, winner_country_code, blue_score, red_score, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        """,
+        (
+            tournament_uuid,
+            category,
+            match_ref,
+            match.match_id,
+            winner_color,
+            winner_name,
+            winner_country,
+            blue_score,
+            red_score,
+        ),
+    )
 
 def _lookup_tournament(conn: sqlite3.Connection, name: str) -> Tuple[int, str]:
     row = conn.execute("SELECT id, uuid FROM tournaments WHERE name = ?", (name,)).fetchone()
@@ -305,7 +446,8 @@ def _find_athlete_id(conn: sqlite3.Connection, entry: Dict[str, Optional[str]]) 
 def _ensure_match(
     conn: sqlite3.Connection,
     *,
-    tournament_id: int,
+    tournament_db_id: int,
+    tournament_uuid: str,
     match: MatchRecord,
 ) -> Tuple[int, str, bool]:
     row = conn.execute("SELECT id, uuid FROM pss_matches WHERE match_id = ?", (match.match_id,)).fetchone()
@@ -339,7 +481,7 @@ def _ensure_match(
             WHERE id = ?
             """,
             (
-                str(tournament_id),
+                tournament_uuid,
                 str(match_number) if match_number is not None else None,
                 category,
                 weight_class,
@@ -366,7 +508,7 @@ def _ensure_match(
         """,
         (
             match_uuid,
-            str(tournament_id),
+            tournament_uuid,
             match.match_id,
             str(match_number) if match_number is not None else None,
             category,
@@ -447,7 +589,7 @@ def _store_scores(
     *,
     match_ref: str,
     match: MatchRecord,
-    tournament_id: int,
+    tournament_uuid: str,
 ) -> None:
     conn.execute("DELETE FROM pss_scores WHERE match_id = ?", (match_ref,))
     rows = []
@@ -463,7 +605,7 @@ def _store_scores(
                     f"round{snapshot.round_number}",
                     snapshot.blue_score,
                     timestamp,
-                    str(tournament_id),
+                    tournament_uuid,
                     _utc_now_iso(),
                 )
             )
@@ -476,7 +618,7 @@ def _store_scores(
                     f"round{snapshot.round_number}",
                     snapshot.red_score,
                     timestamp,
-                    str(tournament_id),
+                    tournament_uuid,
                     _utc_now_iso(),
                 )
             )
@@ -491,7 +633,7 @@ def _store_scores(
                 "total",
                 match.final_snapshot.blue_score,
                 final_ts,
-                str(tournament_id),
+                tournament_uuid,
                 _utc_now_iso(),
             ),
             (
@@ -501,7 +643,7 @@ def _store_scores(
                 "total",
                 match.final_snapshot.red_score,
                 final_ts,
-                str(tournament_id),
+                tournament_uuid,
                 _utc_now_iso(),
             ),
             (
@@ -511,7 +653,7 @@ def _store_scores(
                 "current",
                 match.final_snapshot.blue_score,
                 final_ts,
-                str(tournament_id),
+                tournament_uuid,
                 _utc_now_iso(),
             ),
             (
@@ -521,7 +663,7 @@ def _store_scores(
                 "current",
                 match.final_snapshot.red_score,
                 final_ts,
-                str(tournament_id),
+                tournament_uuid,
                 _utc_now_iso(),
             ),
         ]
@@ -542,7 +684,7 @@ def _store_warnings(
     *,
     match_ref: str,
     match: MatchRecord,
-    tournament_id: int,
+    tournament_uuid: str,
 ) -> None:
     conn.execute("DELETE FROM pss_warnings WHERE match_id = ?", (match_ref,))
     rows = []
@@ -558,7 +700,7 @@ def _store_warnings(
                     "gam_jeom",
                     snapshot.blue_penalties,
                     timestamp,
-                    str(tournament_id),
+                    tournament_uuid,
                     _utc_now_iso(),
                 )
             )
@@ -571,7 +713,7 @@ def _store_warnings(
                     "gam_jeom",
                     snapshot.red_penalties,
                     timestamp,
-                    str(tournament_id),
+                    tournament_uuid,
                     _utc_now_iso(),
                 )
             )
@@ -586,7 +728,7 @@ def _store_warnings(
                 "gam_jeom",
                 match.final_snapshot.blue_penalties,
                 final_ts,
-                str(tournament_id),
+                tournament_uuid,
                 _utc_now_iso(),
             ),
             (
@@ -596,7 +738,7 @@ def _store_warnings(
                 "gam_jeom",
                 match.final_snapshot.red_penalties,
                 final_ts,
-                str(tournament_id),
+                tournament_uuid,
                 _utc_now_iso(),
             ),
         ]
@@ -618,10 +760,11 @@ def apply_matches(
     matches: Sequence[MatchRecord],
     tournament_name: str,
 ) -> Dict[str, int]:
-    tournament_id, _ = _lookup_tournament(conn, tournament_name)
-    day_map = _fetch_day_map(conn, tournament_id)
-    _ = _fetch_octagon_map(conn, tournament_id)  # Reserved for future use
-
+    conn.execute("PRAGMA busy_timeout = 5000")
+    tournament_db_id, tournament_uuid = _lookup_tournament(conn, tournament_name)
+    _ensure_champions_table(conn)
+    day_map = _fetch_day_map(conn, tournament_db_id)
+    _ = _fetch_octagon_map(conn, tournament_db_id)  # Reserved for future use
     inserted = 0
     updated = 0
 
@@ -636,7 +779,8 @@ def apply_matches(
             LOGGER.warning("No tournament day mapped for %s (match %s)", date_value, match.match_id)
         _, match_ref, created = _ensure_match(
             conn,
-            tournament_id=tournament_id,
+            tournament_db_id=tournament_db_id,
+            tournament_uuid=tournament_uuid,
             match=match,
         )
         if created:
@@ -646,9 +790,11 @@ def apply_matches(
 
         _store_match_athletes(conn, match_ref=match_ref, match=match)
         _store_rounds(conn, match_ref=match_ref, match=match)
-        _store_scores(conn, match_ref=match_ref, match=match, tournament_id=tournament_id)
-        _store_warnings(conn, match_ref=match_ref, match=match, tournament_id=tournament_id)
-
+        _store_scores(conn, match_ref=match_ref, match=match, tournament_uuid=tournament_uuid)
+        _store_warnings(conn, match_ref=match_ref, match=match, tournament_uuid=tournament_uuid)
+        _store_champion_if_final(conn, tournament_uuid=tournament_uuid, match=match, match_ref=match_ref)
+        _store_scores(conn, match_ref=match_ref, match=match, tournament_uuid=tournament_uuid)
+        _store_warnings(conn, match_ref=match_ref, match=match, tournament_uuid=tournament_uuid)
     conn.commit()
     return {"inserted_matches": inserted, "updated_matches": updated}
 
