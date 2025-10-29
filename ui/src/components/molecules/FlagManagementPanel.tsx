@@ -248,9 +248,9 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
     setSuccess('');
 
     try {
-      const result = await invokeTauri<any>('scan_and_populate_flags');
+      const result: any = await invokeTauri('scan_and_populate_flags');
       
-      if (result.success) {
+      if (result?.success) {
         const messageParts: string[] = [
           t('flags.success.scan', 'Successfully scanned and populated flags! Processed: {p}, Skipped: {s}', { p: result.processed_count, s: result.skipped_count })
         ];
@@ -278,7 +278,7 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
         // Reload flags after scanning
         await loadFlags();
       } else {
-        setError(result.error || t('flags.err.scan_populate', 'Failed to scan and populate flags'));
+        setError(result?.error || t('flags.err.scan_populate', 'Failed to scan and populate flags'));
       }
     } catch (error) {
       setError(t('flags.err.scan', 'Failed to scan flags: {msg}', { msg: error instanceof Error ? error.message : 'Unknown error' }));
@@ -304,15 +304,15 @@ const FlagManagementPanel: React.FC<FlagManagementPanelProps> = ({ className = '
     setError('');
 
     try {
-      const result = await invokeTauri<{ success: boolean; deleted_count?: number }>('clear_flags_table');
+      const result: any = await invokeTauri('clear_flags_table');
       
-      if (result.success) {
-        setSuccess(t('flags.success.cleared', 'Successfully cleared flags database! Deleted: {n} entries', { n: result.deleted_count }));
+      if (result?.success) {
+        setSuccess(t('flags.success.cleared', 'Successfully cleared flags database! Deleted: {n} entries', { n: result.deleted_count ?? 0 }));
         
         // Reload flags after clearing
         await loadFlags();
       } else {
-        setError(result.error || t('flags.err.clear_db', 'Failed to clear flags database'));
+        setError(result?.error || t('flags.err.clear_db', 'Failed to clear flags database'));
       }
     } catch (error) {
       setError(t('flags.err.clear', 'Failed to clear flags: {msg}', { msg: error instanceof Error ? error.message : 'Unknown error' }));

@@ -6,11 +6,11 @@ declare global {
       fs?: {
         readTextFile?: (path: string) => Promise<string>;
       };
-      core?: {
+      core: {
         invoke: (command: string, args?: Record<string, unknown>) => Promise<any>;
       };
-      event?: {
-        listen?: (
+      event: {
+        listen: (
           event: string,
           handler: (payload: any) => void
         ) => Promise<() => void>;

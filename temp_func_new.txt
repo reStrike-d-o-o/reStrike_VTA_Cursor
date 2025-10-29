@@ -1,32 +1,4 @@
-import { useEffect, useRef } from 'react';
-import { usePssMatchStore } from '../stores/pssMatchStore';
-import { handlePssEvent } from '../utils/pssEventHandler';
-import { useLiveDataStore } from '../stores/liveDataStore';
-import { pssCommands } from '../utils/tauriCommands';
-import { canListenTauri, listenTauri } from '../utils/tauriBridge';
-
-export interface PssEvent {
-  type: string;
-  description: string;
-  [key: string]: any;
-}
-
-export const usePssEvents = () => {
-  const {
-    setMatchLoaded,
-    updateAthletes,
-    updateMatchConfig,
-    updateScores,
-    updateCurrentScores,
-    updateWinnerRounds,
-    resetMatchData,
-  } = usePssMatchStore();
-
-  const listenerRef = useRef<any>(null);
-  const isListeningRef = useRef(false);
-
-  // Set up real-time PSS event listener using Tauri v2
-  const setupEventListener = async () => {
+const setupEventListener = async () => {
   if (isListeningRef.current) {
     return;
   }
@@ -90,7 +62,7 @@ export const usePssEvents = () => {
         } else if (choice === 'next') {
           const m = typeof cont?.day === 'string' ? cont.day.match(/Day\s*(\d+)/i) : null;
           const currentNum = m && m[1] ? parseInt(m[1], 10) : 0;
-          const nextDay = `Day ${currentNum > 0 ? currentNum + 1 : 1}`;
+          const nextDay = Day ;
           await obsObwsCommands.applyPathDecision(cont.tournament, nextDay);
         } else if (choice === 'new') {
           await obsObwsCommands.applyPathDecision(nw.tournament, 'Day 1');
@@ -108,83 +80,4 @@ export const usePssEvents = () => {
     // Failed to setup PSS event listener
   }
 };
-
-// Clean up event listener
-const cleanupEventListener = () => {
-    if (listenerRef.current) {
-      try {
-        listenerRef.current();
-        listenerRef.current = null;
-        isListeningRef.current = false;
-        // PSS event listener cleaned up
-      } catch (error) {
-        // Error cleaning up PSS event listener
-      }
-    }
-  };
-
-  // Fetch any pending events (fallback for missed events)
-  const fetchPendingEvents = async () => {
-    try {
-      // Fetching pending events...
-      const result = await pssCommands.getEvents();
-      
-      if (result && result.success && result.data && Array.isArray(result.data)) {
-        // Fetching pending events
-        result.data.forEach((event: PssEvent) => {
-          handlePssEvent(event);
-        });
-      } else {
-        // No pending events to fetch or invalid response
-      }
-    } catch (error) {
-      // Error fetching pending events
-    }
-  };
-
-  // Emit a test event to verify the system is working
-  const emitTestEvent = async (eventData: any) => {
-    try {
-      // Emitting test event
-      await pssCommands.emitEvent(eventData);
-      // Test event emitted successfully
-    } catch (error) {
-      // Failed to emit test event
-    }
-  };
-
-  // Emit any pending events
-  const emitPendingEvents = async () => {
-    try {
-      // Emitting pending events...
-      await pssCommands.emitPendingEvents();
-      // Pending events emitted
-    } catch (error) {
-      // Error emitting pending events
-    }
-  };
-
-  // Set up event listener on mount
-  useEffect(() => {
-    // usePssEvents hook mounted
-    setupEventListener();
-    
-    // Clean up on unmount
-    return () => {
-      // usePssEvents hook unmounting
-      cleanupEventListener();
-    };
-  }, []);
-
-  return {
-    setupEventListener,
-    cleanupEventListener,
-    fetchPendingEvents,
-    emitTestEvent,
-    emitPendingEvents,
-  };
-}; 
-
-
-
 

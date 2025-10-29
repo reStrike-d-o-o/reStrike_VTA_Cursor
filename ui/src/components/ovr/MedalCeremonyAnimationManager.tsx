@@ -8,6 +8,7 @@ import { useMedalCeremonyStore } from '../../stores/medalCeremonyStore';
 import { FlagAnimationAsset } from '../../types';
 import { pickFilePath } from '../../utils/filePicker';
 import { FlagImage } from '../../utils/flagUtils';
+import { canInvokeTauri, invokeTauri } from '../../utils/tauriBridge';
 
 interface FlagAssetForm {
   id?: string | null;
@@ -30,9 +31,8 @@ const defaultForm: FlagAssetForm = {
 };
 
 const readAnimationFile = async (path: string): Promise<string> => {
-  const reader = window.__TAURI__?.fs?.readTextFile;
-  if (reader) {
-    return reader(path);
+  if (canInvokeTauri()) {
+    return invokeTauri<string>('plugin:fs|read_text_file', { path });
   }
   throw new Error('Animation preview requires the desktop runtime.');
 };

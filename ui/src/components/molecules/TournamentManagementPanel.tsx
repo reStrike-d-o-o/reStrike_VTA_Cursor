@@ -1049,10 +1049,10 @@ const TournamentManagementPanel: React.FC = () => {
                                 </span>
                               </div>
                             </td>
-                            <td className="px-4 py-3 text-sm text-gray-300">
-                              <span className="text-blue-300 font-semibold">{champ.blue_score}</span>
-                              <span className="mx-1 text-gray-500">:</span>
-                              <span className="text-red-300 font-semibold">{champ.red_score}</span>
+                            <td className="px-4 py-3 text-gray-100">
+                              <span className="text-2xl font-semibold text-blue-300">{champ.blue_score}</span>
+                              <span className="mx-2 text-xl text-gray-400 font-semibold">:</span>
+                              <span className="text-2xl font-semibold text-red-300">{champ.red_score}</span>
                             </td>
                             <td className="px-4 py-3">
                               {flagCode ? (
