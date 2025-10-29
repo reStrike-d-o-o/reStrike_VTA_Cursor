@@ -2,5 +2,9 @@
     "terminal.integrated.sendKeybindingsToShell": true,
     "github.branchProtection": true,
     "github.gitProtocol": "https",
-    "github.copilot.nextEditSuggestions.enabled": true
+    "github.copilot.nextEditSuggestions.enabled": true,
+    "editor.acceptSuggestionOnCommitCharacter": true,
+    "git.enableSmartCommit": false,
+    "github.copilot.chat.customInstructionsInSystemMessage": true,
+    "testing.showAllMessages": false
 }
