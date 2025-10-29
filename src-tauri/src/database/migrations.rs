@@ -3275,7 +3275,6 @@ impl MigrationManager {
         migrations.push(Box::new(Migration43)); // Seed WT divisions and weight classes
         migrations.push(Box::new(Migration44)); // Extend round configs with golden and kyeshi durations
         migrations.push(Box::new(Migration45)); // Tournament schema expansion (rankings, octagons, athletes)
-        migrations.push(Box::new(Migration46)); // Clean misclassified weight classes without weight boundaries
 
         Self { migrations }
     }
@@ -6279,10 +6278,6 @@ impl Migration for Migration43 {
         }
 
         for class in &dataset.classes {
-            if class.min_kg.is_none() && class.max_kg.is_none() {
-                // Skip entries that only encode age group information (no weight boundaries)
-                continue;
-            }
             let discipline_id = match discipline_ids.get(&class.discipline_code.to_uppercase()) {
                 Some(id) => *id,
                 None => continue,
@@ -6330,12 +6325,6 @@ impl Migration for Migration43 {
                 ],
             )?;
         }
-
-        // Remove legacy entries that were incorrectly stored without any weight boundaries.
-        conn.execute(
-            "DELETE FROM look_weight_classes WHERE min_kg IS NULL AND max_kg IS NULL",
-            [],
-        )?;
 
         Ok(())
     }
@@ -6761,32 +6750,6 @@ impl Migration for Migration45 {
         conn.execute("DROP TABLE IF EXISTS octagons", [])?;
         conn.execute("DROP TABLE IF EXISTS tournament_rankings", [])?;
         log::warn!("Migration 45 rollback keeps newly added tournament columns (SQLite cannot drop columns).");
-        Ok(())
-    }
-}
-
-/// Migration 46: Remove weight class rows that actually represent age groups
-pub struct Migration46;
-
-impl Migration for Migration46 {
-    fn version(&self) -> u32 {
-        46
-    }
-
-    fn description(&self) -> &str {
-        "Remove misclassified WT age group rows from look_weight_classes"
-    }
-
-    fn up(&self, conn: &Connection) -> SqliteResult<()> {
-        conn.execute(
-            "DELETE FROM look_weight_classes WHERE min_kg IS NULL AND max_kg IS NULL",
-            [],
-        )?;
-        Ok(())
-    }
-
-    fn down(&self, _conn: &Connection) -> SqliteResult<()> {
-        // No rollback – the deleted entries were incorrect age-group records.
         Ok(())
     }
 }
