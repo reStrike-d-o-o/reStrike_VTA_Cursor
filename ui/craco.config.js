@@ -91,25 +91,26 @@ export default {
     const originalSetupMiddlewares = devServerConfig.setupMiddlewares;
     const { onBeforeSetupMiddleware, onAfterSetupMiddleware } = devServerConfig;
 
-    devServerConfig.setupMiddlewares = (middlewares, devServer) => {
-      if (typeof onBeforeSetupMiddleware === 'function') {
-        onBeforeSetupMiddleware(devServer);
-      }
+    return {
+      ...devServerConfig,
+      setupMiddlewares: (middlewares, devServer) => {
+        if (typeof onBeforeSetupMiddleware === 'function') {
+          onBeforeSetupMiddleware(devServer);
+        }
 
-      if (typeof originalSetupMiddlewares === 'function') {
-        middlewares = originalSetupMiddlewares(middlewares, devServer);
-      }
+        const applied =
+          typeof originalSetupMiddlewares === 'function'
+            ? originalSetupMiddlewares(middlewares, devServer)
+            : middlewares;
 
-      if (typeof onAfterSetupMiddleware === 'function') {
-        onAfterSetupMiddleware(devServer);
-      }
+        if (typeof onAfterSetupMiddleware === 'function') {
+          onAfterSetupMiddleware(devServer);
+        }
 
-      return middlewares;
+        return applied;
+      },
+      onBeforeSetupMiddleware: undefined,
+      onAfterSetupMiddleware: undefined,
     };
-
-    delete devServerConfig.onBeforeSetupMiddleware;
-    delete devServerConfig.onAfterSetupMiddleware;
-
-    return devServerConfig;
   },
-}; 
+};

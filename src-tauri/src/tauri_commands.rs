@@ -68,7 +68,7 @@ pub async fn normalize_fs_path(path: String) -> Result<String, TauriError> {
     }
 
     let raw_path = PathBuf::from(&path);
-    let mut resolved = if raw_path.is_absolute() {
+    let resolved = if raw_path.is_absolute() {
         raw_path
     } else {
         std::env::current_dir()
