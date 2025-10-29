@@ -1,7 +1,7 @@
 {
   "app": {
     "version": "0.1.0",
-    "last_save": "2025-10-28T22:01:19.568807800+00:00",
+    "last_save": "2025-10-29T01:42:40.213617500+00:00",
     "startup": {
       "auto_start_udp": false,
       "auto_connect_obs": false,
@@ -205,7 +205,7 @@
     "expiration_date": null,
     "auto_renewal": false,
     "offline_grace_days": 7,
-    "last_validation": "2025-10-28T22:01:19.567680400+00:00"
+    "last_validation": "2025-10-29T01:42:40.212530300+00:00"
   },
   "flags": {
     "storage": {
