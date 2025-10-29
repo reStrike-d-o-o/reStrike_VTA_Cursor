@@ -113,6 +113,15 @@ const App: React.FC = () => {
       {paused && <PausedOverlay />}
       <GlobalModals />
 
+      {!isAdvancedPanelOpen && (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center z-30">
+          <div className="text-center text-gray-500">
+            <div className="text-2xl mb-2">Click "Advanced" to open settings</div>
+            <div className="text-sm">WebSocket connections, protocol settings, and more</div>
+          </div>
+        </div>
+      )}
+
       {/* Subtle background pattern overlay */}
       <div className="absolute inset-0 bg-gradient-to-br from-gray-800/20 to-gray-900/30 opacity-50"></div>
       
@@ -133,12 +142,7 @@ const App: React.FC = () => {
           {isAdvancedPanelOpen ? (
             <AdvancedPanel className="h-full" />
           ) : (
-            <div className="h-full flex items-center justify-center text-gray-500">
-              <div className="text-center">
-                <div className="text-2xl mb-2">Click "Advanced" to open settings</div>
-                <div className="text-sm">WebSocket connections, protocol settings, and more</div>
-              </div>
-            </div>
+            <div className="h-full" />
           )}
         </div>
       </div>

@@ -88,20 +88,15 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
   const drawer = DRAWERS.find(d => d.key === activeDrawer);
 
   return (
-    <div
-      className={`relative h-full ${className}`}
-      style={{
-        backgroundImage: "url('/assets/img/advances-bg.png')",
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
-      }}
-      {...rest}
-    >
-      <div className="absolute inset-0 bg-gray-950/35" />
-      <div className="relative flex h-full min-h-0 min-w-[320px] max-w-[100%] shadow-xl overflow-hidden border-l border-white/10">
+    <div className={`relative h-full ${className}`} {...rest}>
+      <div
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: "url('/assets/img/advances-bg.png')" }}
+      />
+      <div className="absolute inset-0 bg-gray-950/60" />
+      <div className="relative flex h-full min-h-0 min-w-[320px] max-w-[100%] shadow-xl overflow-hidden z-20 border-l border-white/10">
       {/* Drawer Sidebar */}
-      <nav className="h-full min-h-0 flex flex-col justify-center items-center py-0 px-3 backdrop-blur-sm bg-gray-900/75 border-r border-gray-600/30 w-28">
+      <nav className="h-full min-h-0 flex flex-col justify-center items-center py-0 px-3 bg-gray-900/65 border-r border-gray-600/30 w-28">
         <div className="flex flex-col items-center space-y-4">
           {DRAWERS.map(d => (
             <button
@@ -126,7 +121,7 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
         </div>
       </nav>
       {/* Drawer Content */}
-      <main className="flex-1 flex flex-col p-8 overflow-y-auto min-h-0 bg-gradient-to-br from-gray-900/70 to-gray-900/60 backdrop-blur-sm overflow-hidden">
+      <main className="flex-1 flex flex-col p-8 overflow-y-auto min-h-0 bg-gradient-to-br from-gray-800/60 to-gray-900/80 backdrop-blur-sm overflow-hidden">
         {/* Placeholder for each drawer's content */}
         {drawer?.key === 'pss' && (
           <PssDrawer />
@@ -272,6 +267,7 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
           </>
         )}
       </main>
+    </div>
     </div>
   );
 };
