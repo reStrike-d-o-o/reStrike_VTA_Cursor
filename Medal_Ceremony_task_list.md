@@ -43,4 +43,4 @@ Tracks milestones for the Medal Ceremony module: backend data/model work, UI, ex
 ## Notes
 - Assets live under `ui/public/assets/animations` and `ui/public/assets/anthems`; ensure consistent naming with IOC codes.
 - Ensure migrations handle existing deployments cleanly (no downtime).
-- Consider feature flag to hide module until fully tested. 
+- Consider feature flag to hide module until fully tested.
