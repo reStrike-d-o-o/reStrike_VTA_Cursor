@@ -109,9 +109,18 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white overflow-hidden">
+    <div className="relative h-screen flex flex-col bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white overflow-hidden">
       {paused && <PausedOverlay />}
       <GlobalModals />
+
+      {!isAdvancedPanelOpen && (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center z-30">
+          <div className="text-center text-gray-500">
+            <div className="text-2xl mb-2">Click "Advanced" to open settings</div>
+            <div className="text-sm">WebSocket connections, protocol settings, and more</div>
+          </div>
+        </div>
+      )}
 
       {/* Subtle background pattern overlay */}
       <div className="absolute inset-0 bg-gradient-to-br from-gray-800/20 to-gray-900/30 opacity-50"></div>
@@ -131,19 +140,9 @@ const App: React.FC = () => {
         {/* AdvancedPanel (right) - flexible width with enhanced styling */}
         <div className="flex-1 min-h-0 relative z-10">
           {isAdvancedPanelOpen ? (
-            <>
-              <div className="absolute inset-0 bg-gradient-to-br from-gray-800/90 to-gray-900/95 backdrop-blur-sm shadow-inner"></div>
-              <div className="relative z-10 h-full">
-                <AdvancedPanel className="h-full" />
-              </div>
-            </>
+            <AdvancedPanel className="h-full" />
           ) : (
-            <div className="h-full flex items-center justify-center text-gray-500">
-              <div className="text-center">
-                <div className="text-2xl mb-2">Click "Advanced" to open settings</div>
-                <div className="text-sm">WebSocket connections, protocol settings, and more</div>
-              </div>
-            </div>
+            <div className="h-full" />
           )}
         </div>
       </div>

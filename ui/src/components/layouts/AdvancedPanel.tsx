@@ -90,13 +90,13 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
   return (
     <div className={`relative h-full ${className}`} {...rest}>
       <div
-        className="absolute inset-0 bg-cover bg-center"
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
         style={{ backgroundImage: "url('/assets/img/advances-bg.png')" }}
       />
-      <div className="absolute inset-0 bg-gray-950/80 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-gray-950/60" />
       <div className="relative flex h-full min-h-0 min-w-[320px] max-w-[100%] shadow-xl overflow-hidden z-20 border-l border-white/10">
       {/* Drawer Sidebar */}
-      <nav className="h-full min-h-0 flex flex-col justify-center items-center py-0 px-3 bg-gray-900/75 backdrop-blur-sm border-r border-gray-600/30 w-28">
+      <nav className="h-full min-h-0 flex flex-col justify-center items-center py-0 px-3 bg-gray-900/65 border-r border-gray-600/30 w-28">
         <div className="flex flex-col items-center space-y-4">
           {DRAWERS.map(d => (
             <button
