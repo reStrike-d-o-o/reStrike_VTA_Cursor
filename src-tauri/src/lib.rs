@@ -7,6 +7,7 @@ pub mod commands;
 pub mod config;
 pub mod core;
 pub mod database;
+pub mod importers;
 pub mod logging;
 pub mod openapi;
 pub mod plugins;

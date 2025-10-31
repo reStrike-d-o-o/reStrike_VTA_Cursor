@@ -1,3 +1,7 @@
+use std::path::{Path, PathBuf};
+
+use crate::importers::daedo::{import_tournament, ImportRequest};
+
 #[tauri::command]
 pub async fn validate_tournament_pss_integrity(
     app: State<'_, Arc<App>>,
@@ -58,7 +62,6 @@ use crate::utils::simulation_env::ensure_simulation_env;
 use dirs;
 use once_cell::sync::{Lazy, OnceCell};
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
 use path_clean::PathClean;
 
 #[tauri::command]
@@ -90,7 +93,6 @@ pub async fn normalize_fs_path(path: String) -> Result<String, TauriError> {
 }
 use std::collections::HashMap;
 use std::fs;
-use std::path::Path;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tauri::{Emitter, Error as TauriError, State};
@@ -4887,6 +4889,42 @@ pub async fn tournament_create(
             "error": e.to_string()
         })),
     }
+}
+
+#[tauri::command]
+pub async fn tournament_import_from_directory(
+    folder_path: String,
+    tournament_name: String,
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
+    log::info!(
+        "Importing tournament '{}' from folder {}",
+        tournament_name,
+        folder_path
+    );
+
+    let db_path = app
+        .database_plugin()
+        .get_database_path()
+        .map_err(|e| TauriError::from(anyhow::anyhow!(format!(
+            "Failed to resolve database path: {}",
+            e
+        ))))?;
+
+    let request = ImportRequest {
+        archive_root: PathBuf::from(&folder_path),
+        tournament_name: tournament_name.clone(),
+    };
+
+    let stats = tokio::task::spawn_blocking(move || import_tournament(Path::new(&db_path), request))
+        .await
+        .map_err(|e| TauriError::from(anyhow::anyhow!(format!("Import task panicked: {}", e))))?
+        .map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to import tournament: {}", e))))?;
+
+    Ok(serde_json::json!({
+        "success": true,
+        "stats": stats,
+    }))
 }
 
 #[tauri::command]

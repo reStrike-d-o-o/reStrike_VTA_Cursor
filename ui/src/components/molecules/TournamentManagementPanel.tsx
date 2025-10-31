@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { formatDate, formatDateTime } from '../../utils/format';
 import { invoke } from '@tauri-apps/api/core';
+import { open } from '@tauri-apps/plugin-dialog';
 import Button from '../atoms/Button';
 import Input from '../atoms/Input';
 import Label from '../atoms/Label';
 import StatusDot from '../atoms/StatusDot';
 import Icon from '../atoms/Icon';
+import Modal from '../atoms/Modal';
 import { useI18n } from '../../i18n/index';
 import { FlagImage } from '../../utils/flagUtils';
 
@@ -141,6 +143,13 @@ const TournamentManagementPanel: React.FC = () => {
   const [showStartDayModal, setShowStartDayModal] = useState(false);
   const [showEndDayModal, setShowEndDayModal] = useState(false);
   const [selectedDay, setSelectedDay] = useState<TournamentDay | null>(null);
+
+  // Tournament import state
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importFolder, setImportFolder] = useState('');
+  const [importName, setImportName] = useState('');
+  const [isImporting, setIsImporting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
 
   // Load tournaments on component mount
   useEffect(() => {
@@ -367,6 +376,67 @@ const TournamentManagementPanel: React.FC = () => {
       setError(`Error uploading logo: ${err}`);
     } finally {
       setIsUploadingLogo(false);
+    }
+  };
+
+  const openImportDialog = async () => {
+    try {
+      const selection = await open({
+        directory: true,
+        multiple: false,
+        title: t('tournament.import.select_folder', 'Select tournament archive folder'),
+      });
+
+      if (!selection) {
+        return;
+      }
+
+      const folder = Array.isArray(selection) ? selection[0] : selection;
+      if (!folder) {
+        return;
+      }
+
+      setImportFolder(folder);
+      setImportName(selectedTournament?.name || '');
+      setImportError(null);
+      setShowImportModal(true);
+    } catch (err) {
+      setError(`Failed to open folder dialog: ${err}`);
+    }
+  };
+
+  const confirmImport = async () => {
+    if (!importFolder) {
+      setImportError(t('tournament.import.missing_folder', 'Please select an archive folder.'));
+      return;
+    }
+    if (!importName.trim()) {
+      setImportError(t('tournament.import.missing_name', 'Please enter a tournament name.'));
+      return;
+    }
+
+    try {
+      setIsImporting(true);
+      setImportError(null);
+
+      const result = await invoke('tournament_import_from_directory', {
+        folderPath: importFolder,
+        tournamentName: importName.trim(),
+      });
+      const data = result as any;
+
+      if (!data?.success) {
+        throw new Error(data?.error || 'Import failed');
+      }
+
+      setShowImportModal(false);
+      setImportFolder('');
+      setImportName('');
+      await loadTournaments();
+    } catch (err) {
+      setImportError(`${err}`);
+    } finally {
+      setIsImporting(false);
     }
   };
 
@@ -638,6 +708,7 @@ const TournamentManagementPanel: React.FC = () => {
           <h3 className="text-lg font-semibold text-gray-100">{t('tournament.title', 'Tournaments')}</h3>
           <div className="flex items-center gap-2">
             <Button onClick={() => setShowAddForm(true)} disabled={isLoading} className="bg-blue-600 hover:bg-blue-700 text-white">{t('tournament.add', 'Add Tournament')}</Button>
+            <Button onClick={openImportDialog} disabled={isLoading} className="bg-emerald-600 hover:bg-emerald-700 text-white">{t('tournament.import', 'Import Tournament')}</Button>
             <Button onClick={() => loadTournaments()} disabled={isLoading} className="bg-gray-600 hover:bg-gray-700 text-white">{t('common.refresh','Refresh')}</Button>
           </div>
         </div>
@@ -1369,9 +1440,71 @@ const TournamentManagementPanel: React.FC = () => {
                 {isLoading ? t('common.updating', 'Updating...') : t('tournament.update', 'Update Tournament')}
               </Button>
             </div>
+      </div>
+    </div>
+  )}
+
+      <Modal
+        isOpen={showImportModal}
+        onClose={() => {
+          if (!isImporting) {
+            setShowImportModal(false);
+            setImportError(null);
+          }
+        }}
+        title={t('tournament.import.title', 'Import Tournament')}
+        className="max-w-xl"
+      >
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="import-folder">{t('tournament.import.folder', 'Archive Folder')}</Label>
+            <Input
+              id="import-folder"
+              value={importFolder}
+              readOnly
+              className="bg-gray-800/50 border-gray-700 text-gray-300"
+            />
+            <Button onClick={openImportDialog} disabled={isImporting} className="bg-gray-600 hover:bg-gray-700 text-white">
+              {t('tournament.import.change_folder', 'Choose Different Folder')}
+            </Button>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="import-name">{t('tournament.import.name', 'Tournament Name')}</Label>
+            <Input
+              id="import-name"
+              value={importName}
+              onChange={(e) => setImportName(e.target.value)}
+              placeholder={t('tournament.import.name_placeholder', 'Enter tournament name')}
+            />
+          </div>
+          {importError && (
+            <div className="p-3 bg-red-900/40 border border-red-600/40 rounded text-red-200 text-sm">
+              {importError}
+            </div>
+          )}
+          <div className="flex justify-end space-x-3">
+            <Button
+              onClick={() => {
+                if (!isImporting) {
+                  setShowImportModal(false);
+                  setImportError(null);
+                }
+              }}
+              className="bg-gray-600 hover:bg-gray-700 text-white"
+              disabled={isImporting}
+            >
+              {t('common.cancel', 'Cancel')}
+            </Button>
+            <Button
+              onClick={confirmImport}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              disabled={isImporting}
+            >
+              {isImporting ? t('tournament.import.importing', 'Importing...') : t('tournament.import.start', 'Start Import')}
+            </Button>
           </div>
         </div>
-      )}
+      </Modal>
 
       {/* Start Day Confirmation Modal */}
       {showStartDayModal && selectedDay && (

@@ -566,6 +566,7 @@ async fn main() -> AppResult<()> {
             tauri_commands::get_flag_mappings_data,
             // Tournament Management commands
             tauri_commands::tournament_create,
+            tauri_commands::tournament_import_from_directory,
             tauri_commands::tournament_get_all,
             tauri_commands::tournament_get,
             tauri_commands::tournament_update,

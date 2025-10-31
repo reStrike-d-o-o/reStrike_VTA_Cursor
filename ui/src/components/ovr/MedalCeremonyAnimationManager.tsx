@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import Lottie from 'lottie-react';
 import Button from '../atoms/Button';
 import Input from '../atoms/Input';
@@ -30,11 +30,73 @@ const defaultForm: FlagAssetForm = {
   is_default: false,
 };
 
+const PREVIEW_PADDING_PX = 10;
+const PREVIEW_HEADER_HEIGHT = 68;
+const TARGET_ANIMATION_WIDTH = 450;
+const SHELL_WIDTH_OFFSET = 20;
+const DEFAULT_ANIMATION_HEIGHT = 320;
+const MIN_ANIMATION_WIDTH = TARGET_ANIMATION_WIDTH;
+const MIN_ANIMATION_HEIGHT = 160;
+
 const readAnimationFile = async (path: string): Promise<string> => {
-  if (canInvokeTauri()) {
-    return invokeTauri<string>('plugin:fs|read_text_file', { path });
+  if (!canInvokeTauri()) {
+    throw new Error('Animation preview requires the desktop runtime.');
   }
-  throw new Error('Animation preview requires the desktop runtime.');
+
+  const raw = await invokeTauri<any>('plugin:fs|read_text_file', {
+    path,
+    options: { encoding: 'utf-8' },
+  });
+
+  if (typeof raw === 'string') {
+    return raw;
+  }
+  if (raw instanceof Uint8Array) {
+    return new TextDecoder('utf-8').decode(raw);
+  }
+  if (raw instanceof ArrayBuffer) {
+    return new TextDecoder('utf-8').decode(raw);
+  }
+  if (Array.isArray(raw)) {
+    return new TextDecoder('utf-8').decode(Uint8Array.from(raw));
+  }
+  if (raw && typeof raw === 'object' && 'buffer' in raw && raw.buffer instanceof ArrayBuffer) {
+    const view = raw as { buffer: ArrayBuffer; byteOffset?: number; byteLength?: number };
+    const offset = typeof view.byteOffset === 'number' ? view.byteOffset : 0;
+    const length = typeof view.byteLength === 'number' ? view.byteLength : undefined;
+    const slice =
+      typeof length === 'number'
+        ? new Uint8Array(view.buffer, offset, length)
+        : new Uint8Array(view.buffer);
+    return new TextDecoder('utf-8').decode(slice);
+  }
+  if (raw && typeof raw === 'object' && 'data' in raw) {
+    const data = (raw as any).data;
+    if (typeof data === 'string') {
+      return data;
+    }
+    if (data instanceof Uint8Array) {
+      return new TextDecoder('utf-8').decode(data);
+    }
+    if (data instanceof ArrayBuffer) {
+      return new TextDecoder('utf-8').decode(data);
+    }
+    if (Array.isArray(data)) {
+      return new TextDecoder('utf-8').decode(Uint8Array.from(data));
+    }
+    if (data && typeof data === 'object' && 'buffer' in data && data.buffer instanceof ArrayBuffer) {
+      const view = data as { buffer: ArrayBuffer; byteOffset?: number; byteLength?: number };
+      const offset = typeof view.byteOffset === 'number' ? view.byteOffset : 0;
+      const length = typeof view.byteLength === 'number' ? view.byteLength : undefined;
+      const slice =
+        typeof length === 'number'
+          ? new Uint8Array(view.buffer, offset, length)
+          : new Uint8Array(view.buffer);
+      return new TextDecoder('utf-8').decode(slice);
+    }
+  }
+
+  throw new Error('Unable to decode animation file as UTF-8 text.');
 };
 
 const MedalCeremonyAnimationManager: React.FC = () => {
@@ -43,7 +105,6 @@ const MedalCeremonyAnimationManager: React.FC = () => {
   const saveFlagAsset = useMedalCeremonyStore((state) => state.saveFlagAsset);
   const deleteFlagAsset = useMedalCeremonyStore((state) => state.deleteFlagAsset);
   const saving = useMedalCeremonyStore((state) => state.saving);
-  const loading = useMedalCeremonyStore((state) => state.loading);
   const error = useMedalCeremonyStore((state) => state.error);
   const setError = useMedalCeremonyStore((state) => state.setError);
   const assetsInitialized = useMedalCeremonyStore((state) => state.assetsInitialized);
@@ -56,6 +117,54 @@ const MedalCeremonyAnimationManager: React.FC = () => {
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const hasLoadedRef = useRef(false);
+  const animationContainerRef = useRef<HTMLDivElement | null>(null);
+  const [animationBox, setAnimationBox] = useState<{ width: number; height: number } | null>(null);
+  const [previewShellSize, setPreviewShellSize] = useState<{ width: number; height: number } | null>(null);
+  const lastMeasuredRef = useRef<{ width: number; height: number } | null>(null);
+  const initialBoxRef = useRef<{ width: number; height: number } | null>(null);
+  const coerceDimension = useCallback((value: unknown): number | null => {
+    if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+      return value;
+    }
+    if (typeof value === 'string') {
+      const parsed = Number(value);
+      if (Number.isFinite(parsed) && parsed > 0) {
+        return parsed;
+      }
+    }
+    return null;
+  }, []);
+
+  const applyMeasuredDimensions = useCallback(
+    (rawWidth: number, rawHeight: number) => {
+      if (!Number.isFinite(rawWidth) || !Number.isFinite(rawHeight)) {
+        return;
+      }
+      const width = Math.max(Math.round(rawWidth), MIN_ANIMATION_WIDTH);
+      const height = Math.max(Math.round(rawHeight), MIN_ANIMATION_HEIGHT);
+
+      if (!initialBoxRef.current) {
+        initialBoxRef.current = { width, height };
+      } else {
+        const prev = initialBoxRef.current;
+        if (width < prev.width * 0.6 || height < prev.height * 0.6) {
+          return;
+        }
+        if (width > prev.width || height > prev.height) {
+          initialBoxRef.current = { width, height };
+        }
+      }
+
+      const last = lastMeasuredRef.current;
+      if (last && last.width === width && last.height === height) {
+        return;
+      }
+
+      lastMeasuredRef.current = { width, height };
+      setAnimationBox({ width, height });
+    },
+    [],
+  );
 
   useEffect(() => {
     if (hasLoadedRef.current) {
@@ -69,6 +178,62 @@ const MedalCeremonyAnimationManager: React.FC = () => {
     void loadAssets();
   }, [assetsInitialized, loadAssets]);
 
+  useLayoutEffect(() => {
+    if (!isPreviewOpen) {
+      return;
+    }
+    const node = animationContainerRef.current;
+    if (!node || typeof ResizeObserver === 'undefined') {
+      return;
+    }
+    const observer = new ResizeObserver((entries) => {
+      if (!entries.length) {
+        return;
+      }
+      const { width, height } = entries[0].contentRect;
+      if (!width || !height) {
+        return;
+      }
+      applyMeasuredDimensions(width, height);
+    });
+    observer.observe(node);
+    return () => {
+      observer.disconnect();
+    };
+  }, [applyMeasuredDimensions, isPreviewOpen, previewData]);
+
+  useEffect(() => {
+    if (!isPreviewOpen) {
+      return;
+    }
+    const widthFromBox = animationBox?.width;
+    const heightFromBox = animationBox?.height;
+    const widthFromData = coerceDimension(previewData?.w);
+    const heightFromData = coerceDimension(previewData?.h);
+
+    const scaledHeightFromBox =
+      widthFromBox && heightFromBox
+        ? (heightFromBox / Math.max(widthFromBox, 1)) * TARGET_ANIMATION_WIDTH
+        : null;
+    const scaledHeightFromData =
+      widthFromData && heightFromData
+        ? (heightFromData / Math.max(widthFromData, 1)) * TARGET_ANIMATION_WIDTH
+        : null;
+
+    const baseWidth = TARGET_ANIMATION_WIDTH;
+    const baseHeight = Math.max(
+      scaledHeightFromBox ?? scaledHeightFromData ?? DEFAULT_ANIMATION_HEIGHT,
+      MIN_ANIMATION_HEIGHT,
+    );
+
+    const targetWidth = Math.max(
+      Math.round(baseWidth + PREVIEW_PADDING_PX * 2 + SHELL_WIDTH_OFFSET),
+      baseWidth,
+    );
+    const targetHeight = Math.round(baseHeight + PREVIEW_PADDING_PX * 2 + PREVIEW_HEADER_HEIGHT);
+    setPreviewShellSize({ width: targetWidth, height: targetHeight });
+  }, [animationBox, coerceDimension, isPreviewOpen, previewData]);
+
   const filteredAssets = useMemo(() => {
     const term = search.trim().toLowerCase();
     if (!term) {
@@ -80,6 +245,33 @@ const MedalCeremonyAnimationManager: React.FC = () => {
         .some((value) => (value ?? '').toLowerCase().includes(term)),
     );
   }, [flagAssets, search]);
+
+  const resolvedAnimationWidth = TARGET_ANIMATION_WIDTH;
+  const resolvedAnimationHeight = Math.max(
+    (() => {
+      const widthFromBox = animationBox?.width;
+      const heightFromBox = animationBox?.height;
+      if (widthFromBox && heightFromBox) {
+        return (heightFromBox / Math.max(widthFromBox, 1)) * TARGET_ANIMATION_WIDTH;
+      }
+      const widthFromData = coerceDimension(previewData?.w);
+      const heightFromData = coerceDimension(previewData?.h);
+      if (widthFromData && heightFromData) {
+        return (heightFromData / Math.max(widthFromData, 1)) * TARGET_ANIMATION_WIDTH;
+      }
+      return DEFAULT_ANIMATION_HEIGHT;
+    })(),
+    MIN_ANIMATION_HEIGHT,
+  );
+  const shellWidth = Math.max(
+    previewShellSize?.width ?? 0,
+    resolvedAnimationWidth + PREVIEW_PADDING_PX * 2 + SHELL_WIDTH_OFFSET,
+    resolvedAnimationWidth,
+  );
+  const shellHeight = Math.max(
+    previewShellSize?.height ?? 0,
+    resolvedAnimationHeight + PREVIEW_PADDING_PX * 2 + PREVIEW_HEADER_HEIGHT,
+  );
 
   const handleRowSelect = useCallback((asset: FlagAnimationAsset) => {
     setForm({
@@ -120,10 +312,19 @@ const MedalCeremonyAnimationManager: React.FC = () => {
     setIsLoadingPreview(true);
     setPreviewError(null);
     setPreviewData(null);
+    setPreviewShellSize(null);
+    setAnimationBox(null);
+    lastMeasuredRef.current = null;
+    initialBoxRef.current = null;
     try {
       const raw = await readAnimationFile(path);
       const json = JSON.parse(raw);
       setPreviewData(json);
+      const widthFromJson = coerceDimension((json as any)?.w);
+      const heightFromJson = coerceDimension((json as any)?.h);
+      if (widthFromJson && heightFromJson) {
+        applyMeasuredDimensions(widthFromJson, heightFromJson);
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       setPreviewError(message);
@@ -131,7 +332,7 @@ const MedalCeremonyAnimationManager: React.FC = () => {
     } finally {
       setIsLoadingPreview(false);
     }
-  }, [form.file_path, setError]);
+  }, [applyMeasuredDimensions, coerceDimension, form.file_path, setError]);
 
   const handleSubmit = useCallback(async () => {
     if (!form.ioc_code.trim() || !form.file_path.trim()) {
@@ -161,14 +362,25 @@ const MedalCeremonyAnimationManager: React.FC = () => {
     setPreviewData(null);
     setIsLoadingPreview(false);
     setPreviewError(null);
+    setPreviewShellSize(null);
+    setAnimationBox(null);
+    lastMeasuredRef.current = null;
+    initialBoxRef.current = null;
   }, []);
 
   const handleDelete = useCallback(
     async (asset: FlagAnimationAsset) => {
       if (!asset.id) return;
-      if (!window.confirm(`Delete animation for ${asset.ioc_code}?`)) {
-        return;
-      }
+        const confirmFn =
+          typeof globalThis !== 'undefined' && typeof (globalThis as any).confirm === 'function'
+            ? (globalThis as any).confirm.bind(globalThis)
+            : undefined;
+        if (!confirmFn) {
+          return;
+        }
+        if (!confirmFn(`Delete animation for ${asset.ioc_code}?`)) {
+          return;
+        }
       await deleteFlagAsset(asset.id);
       setMessage('Animation deleted successfully.');
       setForm(defaultForm);
@@ -415,52 +627,69 @@ const MedalCeremonyAnimationManager: React.FC = () => {
       </div>
 
       {isPreviewOpen && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-          <div className="theme-card shadow-xl w-full max-w-3xl max-h-[80vh] flex flex-col overflow-hidden">
-            <div className="flex items-start justify-between gap-4 px-6 pt-6">
-              <div>
-                <h3 className="text-xl font-semibold text-gray-100">
-                  {form.display_name || form.ioc_code || 'Animation Preview'}
-                </h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-6 py-6">
+          <div
+            className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-slate-700 bg-slate-950/95 text-gray-100 shadow-[0_20px_60px_rgba(0,0,0,0.45)]"
+            style={{
+              width: `${shellWidth}px`,
+              height: `${shellHeight}px`,
+            }}
+          >
+            <div className="flex items-center justify-between gap-3 border-b border-slate-800 bg-slate-900/80 px-4 py-3">
+              <div className="flex items-center gap-2">
                 {form.ioc_code && (
-                  <div className="mt-2 flex items-center gap-2 text-sm text-gray-400">
-                    <FlagImage
-                      countryCode={form.ioc_code.toUpperCase()}
-                      className="w-10 h-6 rounded-md shadow-md ring-1 ring-white/30"
-                    />
-                    <span>{form.ioc_code.toUpperCase()}</span>
-                  </div>
+                  <FlagImage
+                    countryCode={form.ioc_code.toUpperCase()}
+                    className="h-7 w-11 rounded-md border border-white/20"
+                  />
                 )}
+                <div className="flex flex-col leading-tight">
+                  <span className="text-[11px] text-slate-300 uppercase tracking-wide">
+                    {form.ioc_code ? form.ioc_code.toUpperCase() : 'Preview'}
+                  </span>
+                  <span className="text-sm font-semibold text-white">
+                    {form.display_name || form.ioc_code || 'Animation Preview'}
+                  </span>
+                </div>
               </div>
               <Button
                 onClick={handleClosePreview}
-                className="bg-gray-600 hover:bg-gray-700 text-white"
+                className="bg-slate-700 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white transition hover:bg-slate-600"
               >
                 Close
               </Button>
             </div>
-            <div className="flex-1 overflow-y-auto px-6 pb-6">
+            <div
+              className="flex flex-1 items-center justify-center"
+              style={{ padding: PREVIEW_PADDING_PX }}
+            >
               {previewError && (
-                <div className="mb-4 rounded border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                <div className="max-w-md rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
                   {previewError}
                 </div>
               )}
-              {isLoadingPreview && (
-                <div className="py-12 text-center text-sm text-gray-300">Loading animation...</div>
+              {!previewError && isLoadingPreview && (
+                <div className="text-sm text-gray-300">Loading animation…</div>
               )}
-              {!isLoadingPreview && previewData && (
-                <div className="flex items-center justify-center rounded-lg bg-gray-900/40 p-6">
+              {!previewError && !isLoadingPreview && previewData && (
+                <div
+                  ref={previewData ? animationContainerRef : undefined}
+                  className="flex items-center justify-center rounded-lg bg-slate-950/80 shadow-inner overflow-hidden"
+                  style={{
+                    width: `${resolvedAnimationWidth}px`,
+                    height: `${resolvedAnimationHeight}px`,
+                    flex: '0 0 auto',
+                  }}
+                >
                   <Lottie
                     animationData={previewData}
                     loop
-                    style={{ width: '100%', maxWidth: 420, height: 'auto' }}
+                    style={{ width: '100%', height: '100%' }}
                   />
                 </div>
               )}
-              {!isLoadingPreview && !previewData && !previewError && (
-                <div className="py-12 text-center text-sm text-gray-400">
-                  Select an animation to preview.
-                </div>
+              {!previewError && !isLoadingPreview && !previewData && (
+                <div className="text-sm text-gray-400">Select an animation to preview.</div>
               )}
             </div>
           </div>
@@ -471,3 +700,32 @@ const MedalCeremonyAnimationManager: React.FC = () => {
 };
 
 export default MedalCeremonyAnimationManager;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

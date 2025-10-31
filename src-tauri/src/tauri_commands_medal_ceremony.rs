@@ -13,6 +13,8 @@ use crate::{
 use anyhow::anyhow;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
+use std::path::PathBuf;
 use std::sync::Arc;
 use tauri::{Error as TauriError, State};
 
@@ -33,6 +35,81 @@ fn datetime_to_string(dt: &DateTime<Utc>) -> String {
 
 fn optional_datetime_to_string(value: &Option<DateTime<Utc>>) -> Option<String> {
     value.as_ref().map(datetime_to_string)
+}
+
+fn resolve_asset_path(
+    raw: &str,
+    fallback_segments: &[&str],
+    fallback_file_name: Option<&str>,
+) -> String {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return String::new();
+    }
+
+    let normalized = trimmed.replace('\\', "/");
+    let raw_path = PathBuf::from(&normalized);
+
+    if raw_path.is_absolute() {
+        if raw_path.exists() {
+            if let Ok(resolved) = raw_path.canonicalize() {
+                return resolved.to_string_lossy().into_owned();
+            }
+        }
+        return raw_path.to_string_lossy().into_owned();
+    }
+
+    let mut candidates: Vec<PathBuf> = Vec::new();
+    candidates.push(PathBuf::from(&normalized));
+
+    if let Ok(cwd) = std::env::current_dir() {
+        for ancestor in cwd.ancestors() {
+            let base = PathBuf::from(ancestor);
+            candidates.push(base.join(&normalized));
+
+            if normalized.starts_with("ui/") {
+                let trimmed_ui = &normalized["ui/".len()..];
+                candidates.push(base.join("ui").join(trimmed_ui));
+            }
+
+            if normalized.starts_with("public/") {
+                candidates.push(base.join("ui").join(&normalized));
+            }
+
+            if normalized.starts_with("assets/") {
+                candidates.push(base.join("ui").join("public").join(&normalized));
+            }
+
+            if let Some(file) = fallback_file_name {
+                let mut fallback_path = base.clone();
+                for segment in fallback_segments {
+                    fallback_path.push(segment);
+                }
+                fallback_path.push(file);
+                candidates.push(fallback_path);
+
+                let mut resource_path = base.clone();
+                resource_path.push("resources");
+                for segment in fallback_segments {
+                    resource_path.push(segment);
+                }
+                resource_path.push(file);
+                candidates.push(resource_path);
+            }
+        }
+    }
+
+    let mut seen: HashSet<PathBuf> = HashSet::new();
+    for candidate in candidates {
+        if seen.insert(candidate.clone()) && candidate.exists() {
+            if let Ok(resolved) = candidate.canonicalize() {
+                return resolved.to_string_lossy().into_owned();
+            }
+            return candidate.to_string_lossy().into_owned();
+        }
+    }
+
+    normalized
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -293,11 +370,21 @@ fn dto_to_ceremony_detail(dto: &MedalCeremonyDetailDto) -> MedalCeremonyDetail {
 }
 
 fn flag_asset_to_dto(asset: &OvrFlagAnimationAsset) -> FlagAnimationAssetDto {
+    let resolved_path = resolve_asset_path(
+        &asset.file_path,
+        &["ui", "public", "assets", "animations"],
+        if asset.file_name.is_empty() {
+            None
+        } else {
+            Some(asset.file_name.as_str())
+        },
+    );
+
     FlagAnimationAssetDto {
         id: Some(asset.id.clone()),
         ioc_code: asset.ioc_code.clone(),
         file_name: asset.file_name.clone(),
-        file_path: asset.file_path.clone(),
+        file_path: resolved_path,
         display_name: asset.display_name.clone(),
         duration_ms: asset.duration_ms,
         is_default: asset.is_default,
@@ -321,11 +408,21 @@ fn dto_to_flag_asset(dto: &FlagAnimationAssetDto) -> OvrFlagAnimationAsset {
 }
 
 fn anthem_to_dto(asset: &OvrAnthemAsset) -> AnthemAssetDto {
+    let resolved_path = resolve_asset_path(
+        &asset.file_path,
+        &["ui", "public", "assets", "anthems"],
+        if asset.file_name.is_empty() {
+            None
+        } else {
+            Some(asset.file_name.as_str())
+        },
+    );
+
     AnthemAssetDto {
         id: Some(asset.id.clone()),
         ioc_code: asset.ioc_code.clone(),
         file_name: asset.file_name.clone(),
-        file_path: asset.file_path.clone(),
+        file_path: resolved_path,
         display_name: asset.display_name.clone(),
         duration_ms: asset.duration_ms,
         is_default: asset.is_default,

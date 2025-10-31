@@ -1,769 +1,236 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import Button from '../atoms/Button';
 import Input from '../atoms/Input';
 import Label from '../atoms/Label';
-import Toggle from '../atoms/Toggle';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../atoms/Select';
-import {
-  AnthemAsset,
-  FlagAnimationAsset,
-  MedalCeremonyAthleteOption,
-  MedalCeremonyDetail,
-  MedalCeremonyDivision,
-  MedalCeremonyDivisionOption,
-  MedalCeremonyMedalist,
-  MedalCeremonySummary,
-  MedalType,
-} from '../../types';
-import { useMedalCeremonyStore, createEmptyDivision } from '../../stores/medalCeremonyStore';
-import { pickFilePath } from '../../utils/filePicker';
-
-const normalizeIocCode = (value?: string | null): string | null => {
-  if (!value) {
-    return null;
-  }
-  const trimmed = value.trim();
-  return trimmed ? trimmed.toUpperCase() : null;
-};
-
-const formatDivisionSummary = (option: MedalCeremonyDivisionOption): string => {
-  const parts = [option.category, option.gender, option.weight_class]
-    .map((part) => (part ? part.trim() : ''))
-    .filter(Boolean);
-  return parts.join(' / ');
-};
-
-type DivisionUpdater = (division: MedalCeremonyDivision) => MedalCeremonyDivision;
-type MedalistUpdater = (medalist: MedalCeremonyMedalist) => MedalCeremonyMedalist;
-
-const MEDAL_ORDER: Array<{ type: MedalType; rank: number }> = [
-  { type: 'gold', rank: 1 },
-  { type: 'silver', rank: 2 },
-  { type: 'bronze', rank: 3 },
-  { type: 'bronze', rank: 4 },
-];
 
 const MedalCeremonyPanel: React.FC = () => {
-  const ceremonies = useMedalCeremonyStore((state) => state.ceremonies);
-  const selectedId = useMedalCeremonyStore((state) => state.selectedId);
-  const detail = useMedalCeremonyStore((state) => state.detail);
-  const divisionOptions = useMedalCeremonyStore((state) => state.divisionOptions);
-  const flagAssets = useMedalCeremonyStore((state) => state.flagAssets);
-  const anthemAssets = useMedalCeremonyStore((state) => state.anthemAssets);
-  const preparedDivisions = useMedalCeremonyStore((state) => state.preparedDivisions);
-  const athleteOptions = useMedalCeremonyStore((state) => state.athleteOptions);
-  const loading = useMedalCeremonyStore((state) => state.loading);
-  const saving = useMedalCeremonyStore((state) => state.saving);
-  const error = useMedalCeremonyStore((state) => state.error);
-  const assetsInitialized = useMedalCeremonyStore((state) => state.assetsInitialized);
+  const medalistPlaceholders = Array.from({ length: 4 });
+  const [calendarDate, setCalendarDate] = useState(() => {
+    const now = new Date();
+    return { month: now.getMonth(), year: now.getFullYear() };
+  });
 
-  const loadCeremonies = useMedalCeremonyStore((state) => state.loadCeremonies);
-  const selectCeremony = useMedalCeremonyStore((state) => state.selectCeremony);
-  const setDetail = useMedalCeremonyStore((state) => state.setDetail);
-  const saveCeremony = useMedalCeremonyStore((state) => state.saveCeremony);
-  const deleteCeremony = useMedalCeremonyStore((state) => state.deleteCeremony);
-  const prepareCeremony = useMedalCeremonyStore((state) => state.prepareCeremony);
-  const markDivisionPlayed = useMedalCeremonyStore((state) => state.markDivisionPlayed);
-  const resetPlayback = useMedalCeremonyStore((state) => state.resetPlayback);
-  const toggleExternalDisplay = useMedalCeremonyStore((state) => state.toggleExternalDisplay);
-  const loadAssets = useMedalCeremonyStore((state) => state.loadAssets);
-  const loadDivisionOptions = useMedalCeremonyStore((state) => state.loadDivisionOptions);
-  const loadAthletesForDivision = useMedalCeremonyStore((state) => state.loadAthletesForDivision);
-  const refreshDetail = useMedalCeremonyStore((state) => state.refreshDetail);
-  const setError = useMedalCeremonyStore((state) => state.setError);
-  const syncExternalState = useMedalCeremonyStore((state) => state.syncExternalState);
-  const emitPlaybackEvent = useMedalCeremonyStore((state) => state.emitPlaybackEvent);
+  const calendarMatrix = useMemo(() => {
+    const { month, year } = calendarDate;
+    const firstOfMonth = new Date(year, month, 1);
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const leadingEmpty = (firstOfMonth.getDay() + 6) % 7; // Monday as first day
+    const totalCells = Math.ceil((leadingEmpty + daysInMonth) / 7) * 7;
+    const matrix: Array<Array<{ label: number; inMonth: boolean }>> = [];
 
-  const [localMessage, setLocalMessage] = useState<string | null>(null);
-  const [snapshot, setSnapshot] = useState<string>('');
-
-  const findFlagAssetByIoc = useCallback(
-    (code?: string | null): FlagAnimationAsset | undefined => {
-      const normalized = normalizeIocCode(code);
-      if (!normalized) {
-        return undefined;
-      }
-      const matches = flagAssets.filter(
-        (asset: FlagAnimationAsset) => normalizeIocCode(asset.ioc_code) === normalized,
-      );
-      if (!matches.length) {
-        return undefined;
-      }
-      const preferred = matches.find((asset: FlagAnimationAsset) => asset.is_default);
-      return preferred ?? matches[0];
-    },
-    [flagAssets],
-  );
-
-  const findAnthemAssetByIoc = useCallback(
-    (code?: string | null): AnthemAsset | undefined => {
-      const normalized = normalizeIocCode(code);
-      if (!normalized) {
-        return undefined;
-      }
-      const matches = anthemAssets.filter(
-        (asset: AnthemAsset) => normalizeIocCode(asset.ioc_code) === normalized,
-      );
-      if (!matches.length) {
-        return undefined;
-      }
-      const preferred = matches.find((asset: AnthemAsset) => asset.is_default);
-      return preferred ?? matches[0];
-    },
-    [anthemAssets],
-  );
-
-  useEffect(() => {
-    void loadCeremonies();
-    void loadDivisionOptions();
-  }, [loadCeremonies, loadDivisionOptions]);
-
-  useEffect(() => {
-    if (!assetsInitialized) {
-      void loadAssets();
-    }
-  }, [assetsInitialized, loadAssets]);
-
-  useEffect(() => {
-    if (detail) {
-      setSnapshot(JSON.stringify(detail));
-    }
-  }, [detail]);
-
-  useEffect(() => {
-    syncExternalState();
-  }, [syncExternalState]);
-
-  useEffect(() => {
-    if (!detail) {
-      return;
-    }
-    detail.divisions.forEach((division) => {
-      const name = division.division_name.trim();
-      if (!name) {
-        return;
-      }
-      const cacheKey = name.toLowerCase();
-      if (athleteOptions[cacheKey]) {
-        return;
-      }
-      void loadAthletesForDivision(name);
-    });
-  }, [athleteOptions, detail, loadAthletesForDivision]);
-
-  const isDirty = detail ? snapshot !== JSON.stringify(detail) : false;
-
-  const divisionOptionItems = useMemo<MedalCeremonyDivisionOption[]>(
-    () => divisionOptions,
-    [divisionOptions],
-  );
-
-  const updateCeremony = useCallback(
-    <K extends keyof MedalCeremonyDetail['ceremony']>(key: K, value: MedalCeremonyDetail['ceremony'][K]) => {
-      if (!detail) return;
-      setDetail((current: MedalCeremonyDetail) => ({
-        ...current,
-        ceremony: {
-          ...current.ceremony,
-          [key]: value,
-        },
-      }));
-    },
-    [detail, setDetail],
-  );
-
-  const updateDivision = useCallback(
-    (index: number, updater: DivisionUpdater) => {
-      if (!detail) return;
-      setDetail((current: MedalCeremonyDetail) => {
-        const divisions = [...current.divisions];
-        if (!divisions[index]) {
-          return current;
-        }
-        divisions[index] = updater({ ...divisions[index] });
-        return { ...current, divisions };
-      });
-    },
-    [detail, setDetail],
-  );
-
-  const updateMedalist = useCallback(
-    (divisionIndex: number, medalIndex: number, updater: MedalistUpdater) => {
-      updateDivision(divisionIndex, (division) => {
-        const medalists = [...division.medalists];
-        if (!medalists[medalIndex]) {
-          return division;
-        }
-        medalists[medalIndex] = updater({ ...medalists[medalIndex] });
-        return { ...division, medalists };
-      });
-    },
-    [updateDivision],
-  );
-
-  const handleCreateNew = useCallback(() => {
-    setError(null);
-    setLocalMessage(null);
-    void selectCeremony(null);
-  }, [selectCeremony, setError]);
-
-  const handleSave = useCallback(async () => {
-    if (!detail) return;
-    const id = await saveCeremony();
-    if (id) {
-      setLocalMessage('Medal ceremony saved.');
-      await selectCeremony(id);
-      syncExternalState();
-    }
-  }, [detail, saveCeremony, selectCeremony, syncExternalState]);
-
-  const handleDelete = useCallback(async () => {
-    if (!detail?.ceremony.id) return;
-    if (!window.confirm('Delete this medal ceremony?')) {
-      return;
-    }
-    await deleteCeremony(detail.ceremony.id);
-    setLocalMessage('Medal ceremony removed.');
-  }, [deleteCeremony, detail]);
-
-  const handlePrepare = useCallback(async () => {
-    if (!detail?.ceremony.id) {
-      setLocalMessage('Save the ceremony before preparing.');
-      return;
-    }
-    if (isDirty) {
-      setLocalMessage('Please save changes before preparing.');
-      return;
-    }
-    await prepareCeremony(detail.ceremony.id);
-    await refreshDetail();
-    syncExternalState();
-    setLocalMessage('Playlist prepared.');
-  }, [detail?.ceremony.id, isDirty, prepareCeremony, refreshDetail, syncExternalState]);
-
-  const nextDivision = useMemo(
-    () => preparedDivisions.find((division: MedalCeremonyDivision) => !division.played_at),
-    [preparedDivisions],
-  );
-
-  const handlePlayNext = useCallback(async () => {
-    if (!nextDivision) {
-      return;
-    }
-    if (!nextDivision.id) {
-      setError('Prepared division is missing an identifier.');
-      return;
-    }
-    await emitPlaybackEvent(nextDivision);
-    await markDivisionPlayed(nextDivision.id);
-    syncExternalState();
-    setLocalMessage(`Marked ${nextDivision.division_name} as played.`);
-  }, [emitPlaybackEvent, markDivisionPlayed, nextDivision, setError, syncExternalState]);
-
-  const handleResetPlayback = useCallback(async () => {
-    if (!detail?.ceremony.id) return;
-    await resetPlayback(detail.ceremony.id);
-    syncExternalState();
-    setLocalMessage('Playback state reset.');
-  }, [detail?.ceremony.id, resetPlayback, syncExternalState]);
-
-  const handleAddDivision = useCallback(() => {
-    if (!detail) return;
-    setDetail((current: MedalCeremonyDetail) => ({
-      ...current,
-      divisions: [...current.divisions, createEmptyDivision(current.divisions.length + 1)],
-    }));
-  }, [detail, setDetail]);
-
-  const handleRemoveDivision = useCallback(
-    (index: number) => {
-      if (!detail) return;
-      setDetail((current: MedalCeremonyDetail) => {
-        const divisions = [...current.divisions];
-        divisions.splice(index, 1);
-        return { ...current, divisions };
-      });
-    },
-    [detail, setDetail],
-  );
-
-  const handlePickImage = useCallback(
-    async (field: 'background_path' | 'break_path') => {
-      const path = await pickFilePath(['png', 'jpg', 'jpeg', 'webp']);
-      if (path) {
-        updateCeremony(field, path);
-      }
-    },
-    [updateCeremony],
-  );
-
-  const renderMedalist = useCallback(
-    (divisionIndex: number, medalist: MedalCeremonyMedalist, medalIndex: number) => {
-      const division = detail?.divisions[divisionIndex];
-      const divisionName = division?.division_name ?? '';
-      const athleteList: MedalCeremonyAthleteOption[] = divisionName
-        ? athleteOptions[divisionName.trim().toLowerCase()] ?? []
-        : [];
-      const selectedFlagAssetId: string = medalist.flag_asset ?? '';
-      const selectedAnthemAssetId: string = medalist.anthem_asset ?? '';
-
-      const handleAthleteSelect = (value: string) => {
-        if (value === '') {
-          updateMedalist(divisionIndex, medalIndex, (current) => ({
-            ...current,
-            athlete_id: null,
-          }));
-          return;
-        }
-        const selected = athleteList.find(
-          (athlete: MedalCeremonyAthleteOption) => String(athlete.id) === value,
-        );
-        if (!selected) {
-          return;
-        }
-        const inferredIoc = normalizeIocCode(selected.ioc_code || selected.country_code || null);
-        const inferredFlag = findFlagAssetByIoc(inferredIoc);
-        const inferredAnthem = findAnthemAssetByIoc(inferredIoc);
-
-        updateMedalist(divisionIndex, medalIndex, (current) => {
-          const next: MedalCeremonyMedalist = {
-            ...current,
-            athlete_id: selected.id,
-            athlete_name: selected.full_name,
-            athlete_short_name: selected.short_name ?? null,
-            ioc_code: inferredIoc,
-          };
-          if (!current.flag_asset && inferredFlag?.id) {
-            next.flag_asset = inferredFlag.id;
-          }
-          if (!current.anthem_asset && inferredAnthem?.id) {
-            next.anthem_asset = inferredAnthem.id;
-          }
-          return next;
+    for (let index = 0; index < totalCells; index += 7) {
+      const week: Array<{ label: number; inMonth: boolean }> = [];
+      for (let cell = 0; cell < 7; cell++) {
+        const dayIndex = index + cell - leadingEmpty + 1;
+        week.push({
+          label: dayIndex,
+          inMonth: dayIndex >= 1 && dayIndex <= daysInMonth,
         });
-      };
+      }
+      matrix.push(week);
+    }
 
-      return (
-        <div key={medalist.id ?? `${divisionIndex}-${medalIndex}`} className="rounded border border-gray-800 bg-gray-950/40 p-3 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-semibold text-gray-100">{MEDAL_ORDER[medalIndex].type.toUpperCase()}</span>
-            {medalist.athlete_id && <span className="text-xs text-gray-500">#{medalist.athlete_id}</span>}
-          </div>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <div>
-              <Label>Medalist name</Label>
-              <Input
-                value={medalist.athlete_name}
-                onChange={(event) =>
-                  updateMedalist(divisionIndex, medalIndex, (current) => ({
-                    ...current,
-                    athlete_name: event.target.value,
-                  }))
-                }
-              />
-            </div>
-            <div>
-              <Label>Select athlete</Label>
-              <Select
-                value={medalist.athlete_id ? String(medalist.athlete_id) : ''}
-                onValueChange={(value) => handleAthleteSelect(value)}
-                className="w-full"
-              >
-                <SelectTrigger className="bg-gray-900 border border-gray-700 text-sm text-gray-200">
-                  <SelectValue placeholder="Manual entry" />
-                </SelectTrigger>
-                <SelectContent className="bg-gray-900 border border-gray-700">
-                  <SelectItem value="">Manual entry</SelectItem>
-                  {athleteList.map((athlete: MedalCeremonyAthleteOption) => (
-                    <SelectItem key={athlete.id} value={String(athlete.id)}>
-                      {athlete.full_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Flag animation</Label>
-              <Select
-                value={selectedFlagAssetId}
-                onValueChange={(value) =>
-                  updateMedalist(divisionIndex, medalIndex, (current) => ({
-                    ...current,
-                    flag_asset: value || null,
-                  }))
-                }
-                className="w-full"
-              >
-                <SelectTrigger className="bg-gray-900 border border-gray-700 text-sm text-gray-200">
-                  <SelectValue placeholder="Select flag animation" />
-                </SelectTrigger>
-                <SelectContent className="bg-gray-900 border border-gray-700">
-                  <SelectItem value="">None</SelectItem>
-                  {flagAssets
-                    .filter(
-                      (asset: FlagAnimationAsset): asset is FlagAnimationAsset & { id: string } =>
-                        typeof asset.id === 'string' && asset.id.length > 0,
-                    )
-                    .map((asset) => (
-                      <SelectItem key={asset.id} value={asset.id}>
-                        {asset.display_name || asset.file_name}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Anthem</Label>
-              <Select
-                value={selectedAnthemAssetId}
-                onValueChange={(value) =>
-                  updateMedalist(divisionIndex, medalIndex, (current) => ({
-                    ...current,
-                    anthem_asset: value || null,
-                  }))
-                }
-                className="w-full"
-              >
-                <SelectTrigger className="bg-gray-900 border border-gray-700 text-sm text-gray-200">
-                  <SelectValue placeholder="Select anthem" />
-                </SelectTrigger>
-                <SelectContent className="bg-gray-900 border border-gray-700">
-                  <SelectItem value="">None</SelectItem>
-                  {anthemAssets
-                    .filter(
-                      (asset: AnthemAsset): asset is AnthemAsset & { id: string } =>
-                        typeof asset.id === 'string' && asset.id.length > 0,
-                    )
-                    .map((asset) => (
-                      <SelectItem key={asset.id} value={asset.id}>
-                        {asset.display_name || asset.file_name}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </div>
-      );
-    },
-    [athleteOptions, detail, findAnthemAssetByIoc, findFlagAssetByIoc, updateMedalist],
-  );
+    return matrix;
+  }, [calendarDate]);
 
-  if (!detail) {
-    return <div className="theme-card p-6">Loading medal ceremonies...</div>;
-  }
+  const goToPreviousMonth = () => {
+    setCalendarDate(({ month, year }) => {
+      if (month === 0) {
+        return { month: 11, year: year - 1 };
+      }
+      return { month: month - 1, year };
+    });
+  };
+
+  const goToNextMonth = () => {
+    setCalendarDate(({ month, year }) => {
+      if (month === 11) {
+        return { month: 0, year: year + 1 };
+      }
+      return { month: month + 1, year };
+    });
+  };
+
+  const monthYearLabel = useMemo(() => {
+    const formatter = new Intl.DateTimeFormat(undefined, {
+      month: 'long',
+      year: 'numeric',
+    });
+    return formatter.format(new Date(calendarDate.year, calendarDate.month, 1));
+  }, [calendarDate]);
 
   return (
-    <div className="space-y-6">
-      {(error || localMessage) && (
-        <div className="space-y-2">
-          {error && (
-            <div className="rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
-              {error}
-            </div>
-          )}
-          {localMessage && (
-            <div className="rounded-md border border-blue-500/40 bg-blue-500/10 px-3 py-2 text-sm text-blue-200">
-              {localMessage}
-            </div>
-          )}
-        </div>
-      )}
+    <div className="grid gap-6 xl:grid-cols-[280px,minmax(0,1fr)] xl:auto-rows-max">
+      <section className="theme-card flex h-full flex-col space-y-4 p-4 xl:row-span-2">
+        <header className="border-b border-gray-800 pb-3">
+          <h2 className="text-lg font-semibold text-gray-100">Ceremony playlist</h2>
+        </header>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[320px,1fr]">
-        <div className="theme-card p-4 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-100">Medal Ceremonies</h3>
-            <Button variant="primary" size="sm" onClick={handleCreateNew}>
-              New
-            </Button>
+        <div className="flex-1 space-y-4">
+          <div className="rounded-md border border-gray-800 bg-gray-950/50">
+            <div className="border-b border-gray-800 px-3 py-2 text-sm font-medium text-gray-200">
+              Division title
+            </div>
+            <div className="px-3 py-3 space-y-2 text-sm text-gray-300">
+              <div>G · Athlete · IOC · Flag</div>
+              <div>S · Athlete · IOC · Flag</div>
+              <div>B · Athlete · IOC · Flag</div>
+              <div>B · Athlete · IOC · Flag</div>
+            </div>
           </div>
-          <div className="space-y-2 max-h-[520px] overflow-y-auto pr-1">
-            {ceremonies.map((ceremony: MedalCeremonySummary) => (
-              <button
-                key={ceremony.id}
-                type="button"
-                onClick={() => selectCeremony(ceremony.id)}
-                className={`w-full rounded-md border px-3 py-2 text-left text-sm transition ${
-                  selectedId === ceremony.id
-                    ? 'border-blue-500 bg-blue-500/20 text-blue-100'
-                    : 'border-gray-700 bg-gray-900/70 text-gray-200 hover:border-blue-500/80 hover:bg-gray-800'
-                }`}
-              >
-                <div className="font-medium">{ceremony.name}</div>
-                <div className="text-xs text-gray-400">
-                  {ceremony.prepared_at ? `Prepared ${ceremony.prepared_at}` : 'Not prepared'}
-                </div>
-              </button>
-            ))}
-            {!ceremonies.length && (
-              <div className="rounded-md border border-dashed border-gray-700 bg-gray-900/80 px-3 py-8 text-center text-sm text-gray-400">
-                No medal ceremonies yet. Create a new ceremony to begin.
-              </div>
-            )}
+
+          <div className="flex items-center justify-between gap-3">
+            <Label className="text-sm text-gray-300">Position</Label>
+            <Input className="w-24" type="number" min={1} defaultValue={1} />
           </div>
         </div>
+      </section>
 
-        <div className="space-y-6">
-          <div className="theme-card p-6 space-y-6">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <h3 className="text-xl font-semibold text-gray-100">Ceremony configuration</h3>
-                <p className="text-xs text-gray-400">
-                  {detail.ceremony.prepared_at
-                    ? `Prepared at ${detail.ceremony.prepared_at}`
-                    : 'Not prepared'}
-                </p>
+      <section className="theme-card space-y-6 p-4 xl:col-start-2 xl:row-start-1">
+        <header className="border-b border-gray-800 pb-3">
+          <h2 className="text-lg font-semibold text-gray-100">Settings</h2>
+        </header>
+
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,200px)_minmax(0,1fr)]">
+          <div className="space-y-4">
+            <div className="flex flex-col gap-2">
+              <Label className="text-sm text-gray-300">Background image</Label>
+              <div className="flex h-28 items-center justify-center rounded-lg border border-dashed border-gray-700 bg-gray-900/60 text-center text-xs text-gray-400">
+                Double-click to select background image
               </div>
-              <div className="flex flex-wrap gap-2">
-                <Button variant="secondary" size="sm" onClick={() => refreshDetail()}>
-                  Refresh
-                </Button>
-                <Button variant="primary" size="sm" disabled={saving} onClick={handleSave}>
-                  {saving ? 'Saving...' : 'Save'}
-                </Button>
-                {detail.ceremony.id && (
-                  <Button variant="danger" size="sm" onClick={handleDelete}>
-                    Delete
-                  </Button>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label className="text-sm text-gray-300">Break image</Label>
+              <div className="flex h-28 items-center justify-center rounded-lg border border-dashed border-gray-700 bg-gray-900/60 text-center text-xs text-gray-400">
+                Double-click to select break image
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-sm text-gray-300">Duration</Label>
+              <Input type="number" min={0} defaultValue={12} className="w-full" />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm text-gray-300">Transition</Label>
+              <Input type="number" min={0} defaultValue={12} className="w-full" />
+            </div>
+            <div className="grid gap-2">
+              <Button variant="primary">Play/Pause</Button>
+              <Button variant="secondary">Stop</Button>
+              <Button variant="secondary">Next</Button>
+              <Button variant="secondary">Reset</Button>
+              <Button variant="secondary">Show/Hide</Button>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="rounded-lg border border-gray-800 bg-gray-950/40 p-4 text-sm text-gray-300">
+              <div className="mb-3 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={goToPreviousMonth}
+                  className="rounded-md border border-gray-700 px-2 py-1 text-xs text-gray-200 transition hover:bg-gray-800"
+                  aria-label="Previous month"
+                >
+                  ‹
+                </button>
+                <div className="font-medium text-gray-100">{monthYearLabel}</div>
+                <button
+                  type="button"
+                  onClick={goToNextMonth}
+                  className="rounded-md border border-gray-700 px-2 py-1 text-xs text-gray-200 transition hover:bg-gray-800"
+                  aria-label="Next month"
+                >
+                  ›
+                </button>
+              </div>
+
+              <div className="grid grid-cols-7 gap-1 text-center text-[11px] uppercase tracking-wide text-gray-400">
+                {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => (
+                  <div key={day} className="py-1">
+                    {day}
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-1 grid grid-cols-7 gap-1 text-center text-sm">
+                {calendarMatrix.map((week, weekIndex) =>
+                  week.map((day, dayIndex) => (
+                    <div
+                      key={`${weekIndex}-${dayIndex}`}
+                      className={`rounded-md py-2 ${
+                        day.inMonth
+                          ? 'bg-gray-900/70 text-gray-100'
+                          : 'bg-gray-900/30 text-gray-600'
+                      }`}
+                    >
+                      {day.label}
+                    </div>
+                  )),
                 )}
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="md:col-span-2">
-                <Label htmlFor="ceremony-name">Tournament name</Label>
-                <Input
-                  id="ceremony-name"
-                  value={detail.ceremony.name}
-                  onChange={(event) => updateCeremony('name', event.target.value)}
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label>Background (Full HD)</Label>
-                <div className="flex gap-2">
-                  <Input value={detail.ceremony.background_path ?? ''} readOnly className="flex-1" />
-                  <Button variant="secondary" size="sm" onClick={() => handlePickImage('background_path')}>
-                    Open
-                  </Button>
-                  {detail.ceremony.background_path && (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => updateCeremony('background_path', null)}
-                    >
-                      Clear
-                    </Button>
-                  )}
-                </div>
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label>Break image (Full HD)</Label>
-                <div className="flex gap-2">
-                  <Input value={detail.ceremony.break_path ?? ''} readOnly className="flex-1" />
-                  <Button variant="secondary" size="sm" onClick={() => handlePickImage('break_path')}>
-                    Open
-                  </Button>
-                  {detail.ceremony.break_path && (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => updateCeremony('break_path', null)}
-                    >
-                      Clear
-                    </Button>
-                  )}
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="animation-duration">Animation duration (ms)</Label>
-                <Input
-                  id="animation-duration"
-                  type="number"
-                  min={1000}
-                  step={500}
-                  value={detail.ceremony.animation_duration}
-                  onChange={(event) => updateCeremony('animation_duration', Math.max(1000, Number(event.target.value) || 0))}
-                />
-              </div>
-              <div>
-                <Label htmlFor="animation-speed">Animation speed</Label>
-                <Input
-                  id="animation-speed"
-                  type="number"
-                  min={0.1}
-                  step={0.1}
-                  value={detail.ceremony.animation_speed}
-                  onChange={(event) => updateCeremony('animation_speed', Math.max(0.1, Number(event.target.value) || 0))}
-                />
-              </div>
-              <div>
-                <Label htmlFor="photo-time">Photo time (seconds)</Label>
-                <Input
-                  id="photo-time"
-                  type="number"
-                  min={0}
-                  value={detail.ceremony.photo_time}
-                  onChange={(event) => updateCeremony('photo_time', Math.max(0, Number(event.target.value) || 0))}
-                />
-              </div>
-              <div className="flex items-end">
-                <Toggle
-                  label="Show external screen"
-                  checked={detail.ceremony.show_external}
-                  onChange={(event) => {
-                    const enabled = event.currentTarget.checked;
-                    void toggleExternalDisplay(enabled);
-                    if (enabled) {
-                      syncExternalState();
-                    }
-                  }}
-                />
-              </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="secondary">New</Button>
+              <Button variant="primary">Save</Button>
+              <Button variant="danger">Delete</Button>
             </div>
+          </div>
+        </div>
+      </section>
 
-            {isDirty && (
-              <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
-                Unsaved changes detected. Save before preparing the playlist.
-              </div>
-            )}
+      <section className="theme-card space-y-5 p-4 xl:col-start-2 xl:row-start-2">
+        <header className="border-b border-gray-800 pb-3">
+          <h2 className="text-lg font-semibold text-gray-100">Ceremony playlist items</h2>
+        </header>
 
-            <div className="flex flex-wrap gap-3">
-              <Button variant="primary" disabled={loading || isDirty || !detail.ceremony.id} onClick={handlePrepare}>
-                Prepare ceremony
-              </Button>
-              <Button variant="secondary" disabled={!detail.ceremony.id} onClick={handleResetPlayback}>
-    Reset playback
-              </Button>
-              <Button variant="success" disabled={!nextDivision} onClick={handlePlayNext}>
-                Play next
-              </Button>
+        <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,220px)]">
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label className="text-sm text-gray-300">Tournament / Day</Label>
+              <Input placeholder="Tournament name · Day" />
             </div>
-
-            <div className="space-y-4">
-              {detail.divisions.map((division: MedalCeremonyDivision, index: number) => {
-                const athletePool = division.division_name
-                  ? athleteOptions[division.division_name.trim().toLowerCase()] ?? []
-                  : [];
-                return (
-                  <div key={division.id ?? `division-${index}`} className="rounded-lg border border-gray-700 bg-gray-900/70 p-4 space-y-4">
-                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-700 pb-3">
-                      <div className="flex-1 space-y-2">
-                        <Label>Division name</Label>
-                        <Input
-                          value={division.division_name}
-                          onChange={(event) =>
-                            updateDivision(index, (current) => ({
-                              ...current,
-                              division_name: event.target.value,
-                            }))
-                          }
-                          onBlur={() => {
-                            if (division.division_name.trim()) {
-                              void loadAthletesForDivision(division.division_name);
-                            }
-                          }}
-                          list={`division-options-${index}`}
-                        />
-                        <datalist id={`division-options-${index}`}>
-                          {divisionOptionItems.map((option: MedalCeremonyDivisionOption) => {
-                            const summary = formatDivisionSummary(option);
-                            const label = summary ? `${option.name} (${summary})` : option.name;
-                            return (
-                              <option
-                                key={`${option.name}-${option.weight_class ?? 'none'}`}
-                                value={option.name}
-                              >
-                                {label}
-                              </option>
-                            );
-                          })}
-                        </datalist>
-                      </div>
-                      <div className="flex items-end gap-2">
-                        <div>
-                          <Label>Order #</Label>
-                          <Input
-                            type="number"
-                            min={1}
-                            value={division.order_index}
-                            onChange={(event) =>
-                              updateDivision(index, (current) => ({
-                                ...current,
-                                order_index: Math.max(1, Number(event.target.value) || 1),
-                              }))
-                            }
-                          />
-                        </div>
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          disabled={detail.divisions.length === 1}
-                          onClick={() => handleRemoveDivision(index)}
-                        >
-                          Remove
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3">
-                      {division.medalists.map((medalist: MedalCeremonyMedalist, medalIndex: number) =>
-                        renderMedalist(index, medalist, medalIndex),
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="space-y-2">
+              <Label className="text-sm text-gray-300">Division</Label>
+              <Input placeholder="Division name" />
             </div>
-
-            <Button variant="secondary" onClick={handleAddDivision}>
-              Add division
+          </div>
+          <div className="flex h-full items-end">
+            <Button variant="secondary" className="w-full">
+              Populate automatically from tournament
             </Button>
           </div>
-
-          {preparedDivisions.length > 0 && (
-            <div className="theme-card p-4">
-              <h4 className="text-md font-semibold text-gray-100 mb-3">Prepared playlist</h4>
-              <div className="overflow-hidden rounded-md border border-gray-800">
-                <table className="min-w-full divide-y divide-gray-800 text-sm">
-                  <thead className="bg-gray-900/70 text-xs uppercase tracking-wide text-gray-400">
-                    <tr>
-                      <th className="px-3 py-2 text-left">Order</th>
-                      <th className="px-3 py-2 text-left">Division</th>
-                      <th className="px-3 py-2 text-left">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-800 bg-gray-950/40">
-                    {preparedDivisions.map((division: MedalCeremonyDivision) => (
-                      <tr key={division.id}>
-                        <td className="px-3 py-2 text-gray-200">{division.order_index}</td>
-                        <td className="px-3 py-2 text-gray-200">{division.division_name}</td>
-                        <td className="px-3 py-2 text-gray-200">
-                          {division.played_at ? (
-                            <span className="text-green-400">Played</span>
-                          ) : (
-                            <span className="text-yellow-300">Pending</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
         </div>
-      </div>
+
+        <div className="space-y-3 rounded-lg border border-gray-800 bg-gray-950/40 p-4">
+          {medalistPlaceholders.map((_, index) => (
+            <div
+              key={index}
+              className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_160px_140px]"
+            >
+              <Input placeholder="Medalist name (free input)" />
+              <Button variant="secondary" className="w-full">
+                IOC animation
+              </Button>
+              <Button variant="secondary" className="w-full">
+                Anthem
+              </Button>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="secondary">New</Button>
+          <Button variant="primary">Save</Button>
+          <Button variant="danger">Delete</Button>
+        </div>
+      </section>
     </div>
   );
 };
 
 export default MedalCeremonyPanel;
-
-
-
-
-
-
-
-
