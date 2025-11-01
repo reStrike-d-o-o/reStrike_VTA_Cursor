@@ -191,14 +191,19 @@ impl NetworkDetector {
 
         for line in lines {
             let line = line.trim();
+            if line.is_empty() {
+                continue;
+            }
+            let line_lower = line.to_lowercase();
 
             // Interface name (ends with colon and contains adapter name)
             if line.ends_with(':')
-                && !line.contains("IPv4")
-                && !line.contains("IPv6")
-                && !line.contains("Subnet Mask")
-                && !line.contains("Default Gateway")
-                && !line.contains("DNS Suffix")
+                && line_lower.contains("adapter")
+                && !line_lower.contains("ipv4")
+                && !line_lower.contains("ipv6")
+                && !line_lower.contains("subnet mask")
+                && !line_lower.contains("default gateway")
+                && !line_lower.contains("dns suffix")
             {
                 // Save previous interface if it exists
                 if let Some(interface) = current_interface.take() {
@@ -331,16 +336,15 @@ impl NetworkDetector {
 
         // Final pass: ensure interfaces with IP addresses are marked as connected
         for interface in &mut interfaces {
-            if !interface.ip_addresses.is_empty()
-                && !interface.ip_addresses.iter().any(|ip| ip.is_loopback())
+            if interface.media_state != MediaState::Disconnected
+                && ((!interface.ip_addresses.is_empty()
+                    && !interface.ip_addresses.iter().any(|ip| ip.is_loopback()))
+                    || interface.default_gateway.is_some())
             {
                 interface.media_state = MediaState::Connected;
                 interface.is_up = true;
-            }
-            // Fallback: if interface has a gateway but no IP addresses, mark as connected
-            else if interface.default_gateway.is_some() && interface.ip_addresses.is_empty() {
-                interface.media_state = MediaState::Connected;
-                interface.is_up = true;
+            } else if interface.media_state == MediaState::Disconnected {
+                interface.is_up = false;
             }
         }
 

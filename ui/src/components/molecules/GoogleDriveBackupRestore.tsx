@@ -9,7 +9,7 @@ import LottieIcon from '../atoms/LottieIcon';
 import { floppyDiscAnimation, downloadAnimation } from '../../assets/icons/json';
 import { useI18n } from '../../i18n/index';
 
-interface BackupFileInfo {
+interface SqliteBackupInfo {
   name: string;
   path: string;
   size: number;
@@ -19,65 +19,77 @@ interface BackupFileInfo {
 export const GoogleDriveBackupRestore: React.FC = () => {
   const { t } = useI18n();
   const [activeTab, setActiveTab] = useState('local');
-  const [backupFiles, setBackupFiles] = useState<BackupFileInfo[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [sqliteBackups, setSqliteBackups] = useState<SqliteBackupInfo[]>([]);
+  const [sqliteLoading, setSqliteLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
   // Load backup files on component mount
   useEffect(() => {
-    loadBackupFiles();
+    loadSqliteBackups();
   }, []);
 
-  const loadBackupFiles = async () => {
+  const loadSqliteBackups = async () => {
     try {
-      const result = await invoke<BackupFileInfo[]>('list_backup_files');
-      setBackupFiles(result);
-    } catch (error) {
-      console.error('Failed to load backup files:', error);
+      setSqliteLoading(true);
+      const result = await invoke<{ success: boolean; backups?: SqliteBackupInfo[]; error?: string }>('db_list_sqlite_backups');
+      if (result?.success) {
+        setSqliteBackups(result.backups || []);
+      } else {
+        setError(result?.error || t('backup.error.load_files', 'Failed to load backup files'));
+      }
+    } catch (err) {
+      console.error('Failed to load SQLite backups:', err);
       setError(t('backup.error.load_files', 'Failed to load backup files'));
+    } finally {
+      setSqliteLoading(false);
     }
   };
 
-  const createJsonBackup = async () => {
+  const createSqliteBackup = async () => {
     try {
-      const result = await invoke<{ success: boolean; message?: string; error?: string }>('create_json_backup');
-      if (result.success) {
-        setSuccess(result.message || t('backup.create_ok', 'Backup created successfully'));
-        await loadBackupFiles(); // Refresh the backup files list
+      setSqliteLoading(true);
+      setError(null);
+      setSuccess(null);
+      const result = await invoke<{ success: boolean; path?: string; error?: string }>('db_create_sqlite_backup', { name: null });
+      if (result?.success) {
+        setSuccess(t('backup.create_ok', 'Backup created successfully'));
+        await loadSqliteBackups();
       } else {
-        setError(result.error || t('backup.create_failed', 'Failed to create backup'));
+        setError(result?.error || t('backup.create_failed', 'Failed to create backup'));
       }
     } catch (error) {
-      console.error('Error creating backup:', error);
+      console.error('Error creating SQLite backup:', error);
       setError(t('backup.create_failed', 'Failed to create backup'));
+    } finally {
+      setSqliteLoading(false);
     }
   };
 
-  const handleRestoreBackup = async (backupPath: string) => {
+  const handleRestoreSqliteBackup = async (backupPath: string) => {
     if (!confirm(t('backup.confirm_restore', 'Are you sure you want to restore from this backup? This will overwrite current settings.'))) {
       return;
     }
 
-    setLoading(true);
+    setSqliteLoading(true);
     setError(null);
     setSuccess(null);
 
     try {
-      const result = await invoke<{ success: boolean; message?: string; error?: string }>('restore_from_backup', {
+      const result = await invoke<{ success: boolean; error?: string }>('db_restore_sqlite_backup', {
         backupPath
       });
       
-      if (result.success) {
-        setSuccess(result.message || t('backup.restore_ok', 'Backup restored successfully'));
+      if (result?.success) {
+        setSuccess(t('backup.restore_ok', 'Backup restored successfully'));
       } else {
-        setError(result.error || t('backup.restore_failed', 'Failed to restore backup'));
+        setError(result?.error || t('backup.restore_failed', 'Failed to restore backup'));
       }
     } catch (error) {
-      console.error('Error restoring backup:', error);
+      console.error('Error restoring SQLite backup:', error);
       setError(t('backup.restore_failed', 'Failed to restore backup'));
     } finally {
-      setLoading(false);
+      setSqliteLoading(false);
     }
   };
 
@@ -124,83 +136,82 @@ export const GoogleDriveBackupRestore: React.FC = () => {
             content: (
               <div className="space-y-4">
                 {/* Local Backup Controls */}
-                <div className="theme-card p-6 shadow-lg">
-                  <div className="flex justify-between items-center mb-4">
+                <div className="theme-card p-6 shadow-lg space-y-6">
+                  <div className="flex justify-between items-center">
                     <h3 className="text-lg font-semibold text-blue-300">{t('backup.local.title', 'Local Backup')}</h3>
                     <Button
-                      onClick={async () => {
-                        setLoading(true);
-                        setError(null);
-                        setSuccess(null);
-                        try {
-                          await createJsonBackup();
-                        } catch (error) {
-                          setError('Failed to create backup');
-                          console.error('❌ Error creating backup:', error);
-                        } finally {
-                          setLoading(false);
-                        }
-                      }}
-                      disabled={loading}
+                      onClick={createSqliteBackup}
+                      disabled={sqliteLoading}
                       variant="primary"
                       size="sm"
                     >
-                      {loading ? t('common.creating', 'Creating...') : t('backup.local.create', 'Create Backup')}
+                      {sqliteLoading ? t('common.creating', 'Creating...') : t('backup.local.create', 'Create Backup')}
                     </Button>
                   </div>
 
-                  {/* Backup Files List */}
-                  <div className="max-h-64 overflow-y-auto border border-gray-700 rounded">
-                    <table className="min-w-full text-left text-sm text-gray-200">
-                      <thead className="theme-surface-2 sticky top-0 z-10">
-                        <tr>
-                          <th className="px-3 py-2 font-semibold">{t('backup.table.file', 'File Name')}</th>
-                          <th className="px-3 py-2 font-semibold">{t('backup.table.size', 'Size')}</th>
-                          <th className="px-3 py-2 font-semibold">{t('backup.table.modified', 'Modified')}</th>
-                          <th className="px-3 py-2 font-semibold">{t('backup.table.action', 'Action')}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {backupFiles.length === 0 ? (
+                  <div>
+                    <h4 className="text-sm font-semibold text-gray-200 mb-2 uppercase tracking-wide">
+                      {t('backup.local.sqlite_heading', 'Full Database Backups')}
+                    </h4>
+                    <div className="max-h-64 overflow-y-auto border border-gray-700 rounded">
+                      <table className="min-w-full text-left text-sm text-gray-200">
+                        <thead className="theme-surface-2 sticky top-0 z-10">
                           <tr>
-                            <td colSpan={4} className="px-3 py-2 text-gray-400 text-center">
-                              {t('backup.none', 'No backup files found')}
-                              <br />
-                              <span className="text-xs">{t('backup.none_hint', 'Create a backup to see files here')}</span>
-                            </td>
+                            <th className="px-3 py-2 font-semibold">{t('backup.table.file', 'File Name')}</th>
+                            <th className="px-3 py-2 font-semibold">{t('backup.table.size', 'Size')}</th>
+                            <th className="px-3 py-2 font-semibold">{t('backup.table.modified', 'Modified')}</th>
+                            <th className="px-3 py-2 font-semibold">{t('backup.table.action', 'Action')}</th>
                           </tr>
-                        ) : (
-                          backupFiles.map((file, index) => (
-                            <tr
-                              key={index}
-                              className="hover:bg-blue-900 transition-colors"
-                            >
-                              <td className="px-3 py-2 whitespace-nowrap">
-                                {file.name}
-                              </td>
-                              <td className="px-3 py-2 whitespace-nowrap">
-                                {formatFileSize(file.size)}
-                              </td>
-                              <td className="px-3 py-2 whitespace-nowrap">
-                                {file.modified}
-                              </td>
-                              <td className="px-3 py-2 whitespace-nowrap">
-                                <Button
-                                  onClick={() => handleRestoreBackup(file.path)}
-                                  variant="ghost"
-                                  size="sm"
-                                  className="text-blue-400 hover:text-blue-300"
-                                  disabled={loading}
-                                >
-                                  {loading ? t('backup.restoring', 'Restoring...') : t('backup.restore', 'Restore')}
-                                </Button>
+                        </thead>
+                        <tbody>
+                          {sqliteLoading && sqliteBackups.length === 0 ? (
+                            <tr>
+                              <td colSpan={4} className="px-3 py-2 text-gray-400 text-center">
+                                {t('common.loading', 'Loading...')}
                               </td>
                             </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
+                          ) : sqliteBackups.length === 0 ? (
+                            <tr>
+                              <td colSpan={4} className="px-3 py-2 text-gray-400 text-center">
+                                {t('backup.none', 'No backup files found')}
+                                <br />
+                                <span className="text-xs">{t('backup.none_hint', 'Create a backup to see files here')}</span>
+                              </td>
+                            </tr>
+                          ) : (
+                            sqliteBackups.map((file, index) => (
+                              <tr
+                                key={`${file.path}-${index}`}
+                                className="hover:bg-blue-900 transition-colors"
+                              >
+                                <td className="px-3 py-2 whitespace-nowrap">
+                                  {file.name}
+                                </td>
+                                <td className="px-3 py-2 whitespace-nowrap">
+                                  {formatFileSize(file.size)}
+                                </td>
+                                <td className="px-3 py-2 whitespace-nowrap">
+                                  {file.modified}
+                                </td>
+                                <td className="px-3 py-2 whitespace-nowrap">
+                                  <Button
+                                    onClick={() => handleRestoreSqliteBackup(file.path)}
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-blue-400 hover:text-blue-300"
+                                    disabled={sqliteLoading}
+                                  >
+                                    {sqliteLoading ? t('backup.restoring', 'Restoring...') : t('backup.restore', 'Restore')}
+                                  </Button>
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
+
                 </div>
               </div>
             )

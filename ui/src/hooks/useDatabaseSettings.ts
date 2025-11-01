@@ -38,23 +38,13 @@ export interface DatabaseSettingsActions {
   getAllUiSettings: () => Promise<any>;
   getDatabaseInfo: () => Promise<any>;
   migrateJsonToDatabase: () => Promise<any>;
-  createJsonBackup: () => Promise<any>;
-  restoreFromJsonBackup: (backupPath: string) => Promise<any>;
   getMigrationStatus: () => Promise<any>;
   enableDatabaseMode: () => Promise<any>;
-  listBackupFiles: () => Promise<BackupFileInfo[]>;
   getDatabasePreview: () => Promise<any>;
   getDatabaseTables: () => Promise<any>;
   getTableData: (tableName: string) => Promise<any>;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
-}
-
-export interface BackupFileInfo {
-  name: string;
-  path: string;
-  size: number;
-  modified: string;
 }
 
 export function useDatabaseSettings(): DatabaseSettingsState & DatabaseSettingsActions {
@@ -210,16 +200,6 @@ export function useDatabaseSettings(): DatabaseSettingsState & DatabaseSettingsA
     }
   }, [getAllUiSettings]);
 
-  const listBackupFiles = async (): Promise<BackupFileInfo[]> => {
-    try {
-      const result = await safeInvoke('list_backup_files');
-      return result || [];
-    } catch (error) {
-      console.error('❌ Failed to list backup files:', error);
-      return [];
-    }
-  };
-
   const migrateJsonToDatabase = useCallback(async (): Promise<any> => {
     setLoading(true);
     setError(null);
@@ -237,52 +217,6 @@ export function useDatabaseSettings(): DatabaseSettingsState & DatabaseSettingsA
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       setError(errorMessage);
       console.error('❌ Failed to migrate JSON to database:', errorMessage);
-      return { success: false, error: errorMessage };
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const createJsonBackup = useCallback(async (): Promise<any> => {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const result = await safeInvoke('create_json_backup') as { success: boolean; message?: string; error?: string };
-      
-      if (result.success) {
-        console.log('✅ JSON backup created:', result.message);
-        return result;
-      } else {
-        throw new Error(result.error || 'Failed to create JSON backup');
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-      setError(errorMessage);
-      console.error('❌ Failed to create JSON backup:', errorMessage);
-      return { success: false, error: errorMessage };
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const restoreFromJsonBackup = useCallback(async (backupPath: string): Promise<any> => {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const result = await safeInvoke('restore_from_json_backup', { backupPath }) as { success: boolean; message?: string; error?: string };
-      
-      if (result.success) {
-        console.log('✅ Backup restored successfully:', result.message);
-        return result;
-      } else {
-        throw new Error(result.error || 'Failed to restore from backup');
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-      setError(errorMessage);
-      console.error('❌ Failed to restore from backup:', errorMessage);
       return { success: false, error: errorMessage };
     } finally {
       setLoading(false);
@@ -394,10 +328,7 @@ export function useDatabaseSettings(): DatabaseSettingsState & DatabaseSettingsA
     setUiSetting,
     getAllUiSettings,
     getDatabaseInfo,
-    listBackupFiles,
     migrateJsonToDatabase,
-    createJsonBackup,
-    restoreFromJsonBackup,
     getMigrationStatus,
     enableDatabaseMode,
     getDatabasePreview,

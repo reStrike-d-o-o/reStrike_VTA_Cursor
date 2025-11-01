@@ -377,7 +377,12 @@ impl LogManager {
         // Upload to Google Drive
         let drive_plugin = crate::plugins::plugin_drive::drive_plugin();
         let file_id = drive_plugin
-            .upload_file_streaming(&archive_info.file_path, &archive_info.name)
+            .upload_file_streaming(
+                &archive_info.file_path,
+                &archive_info.name,
+                "application/zip",
+                None,
+            )
             .await
             .map_err(|e| format!("Failed to upload to Google Drive: {}", e))?;
 
@@ -411,7 +416,12 @@ impl LogManager {
         // Upload to Google Drive
         let drive_plugin = crate::plugins::plugin_drive::drive_plugin();
         let file_id = drive_plugin
-            .upload_file_streaming(&archive_info.file_path, &archive_info.name)
+            .upload_file_streaming(
+                &archive_info.file_path,
+                &archive_info.name,
+                "application/zip",
+                None,
+            )
             .await
             .map_err(|e| format!("Failed to upload to Google Drive: {}", e))?;
 

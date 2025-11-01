@@ -6180,8 +6180,9 @@ impl Migration for Migration43 {
     }
 
     fn up(&self, conn: &Connection) -> SqliteResult<()> {
-        let dataset: WtDivisionDataset = serde_json::from_str(include_str!("../../resources/wt_divisions.json"))
-            .expect("Failed to parse wt_divisions.json");
+        let dataset: WtDivisionDataset =
+            serde_json::from_str(include_str!("../../resources/wt_divisions.json"))
+                .expect("Failed to parse wt_divisions.json");
         let now = chrono::Utc::now().to_rfc3339();
 
         for gender in &dataset.genders {
@@ -6251,7 +6252,9 @@ impl Migration for Migration43 {
         let mut discipline_ids: HashMap<String, i64> = HashMap::new();
         {
             let mut stmt = conn.prepare("SELECT code, id FROM look_disciplines")?;
-            let rows = stmt.query_map([], |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?)))?;
+            let rows = stmt.query_map([], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))
+            })?;
             for row in rows {
                 let (code, id) = row?;
                 discipline_ids.insert(code.to_uppercase(), id);
@@ -6261,7 +6264,9 @@ impl Migration for Migration43 {
         let mut gender_ids: HashMap<String, i64> = HashMap::new();
         {
             let mut stmt = conn.prepare("SELECT code, id FROM look_genders")?;
-            let rows = stmt.query_map([], |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?)))?;
+            let rows = stmt.query_map([], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))
+            })?;
             for row in rows {
                 let (code, id) = row?;
                 gender_ids.insert(code.to_uppercase(), id);
@@ -6271,7 +6276,9 @@ impl Migration for Migration43 {
         let mut age_ids: HashMap<String, i64> = HashMap::new();
         {
             let mut stmt = conn.prepare("SELECT code, id FROM look_age_groups")?;
-            let rows = stmt.query_map([], |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?)))?;
+            let rows = stmt.query_map([], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))
+            })?;
             for row in rows {
                 let (code, id) = row?;
                 age_ids.insert(code.to_uppercase(), id);
@@ -6331,8 +6338,9 @@ impl Migration for Migration43 {
     }
 
     fn down(&self, conn: &Connection) -> SqliteResult<()> {
-        let dataset: WtDivisionDataset = serde_json::from_str(include_str!("../../resources/wt_divisions.json"))
-            .expect("Failed to parse wt_divisions.json");
+        let dataset: WtDivisionDataset =
+            serde_json::from_str(include_str!("../../resources/wt_divisions.json"))
+                .expect("Failed to parse wt_divisions.json");
 
         let baseline_gender: HashSet<&str> = ["M", "F"].into_iter().collect();
         let baseline_disciplines: HashSet<&str> = ["KY", "PO"].into_iter().collect();
@@ -6346,7 +6354,12 @@ impl Migration for Migration43 {
                    AND discipline_id IN (SELECT id FROM look_disciplines WHERE code = ?2)
                    AND gender_id IN (SELECT id FROM look_genders WHERE code = ?3)
                    AND age_group_id IN (SELECT id FROM look_age_groups WHERE code = ?4)",
-                rusqlite::params![&class.code, &class.discipline_code, &class.gender_code, &class.age_code],
+                rusqlite::params![
+                    &class.code,
+                    &class.discipline_code,
+                    &class.gender_code,
+                    &class.age_code
+                ],
             )?;
         }
 
@@ -6412,7 +6425,10 @@ impl Migration for Migration43 {
         }
 
         conn.execute("UPDATE look_genders SET name = 'Male' WHERE code = 'M'", [])?;
-        conn.execute("UPDATE look_genders SET name = 'Female' WHERE code = 'F'", [])?;
+        conn.execute(
+            "UPDATE look_genders SET name = 'Female' WHERE code = 'F'",
+            [],
+        )?;
 
         Ok(())
     }
@@ -6513,7 +6529,11 @@ impl Migration for Migration45 {
             ("G3", "World Taekwondo G3", 0),
             ("G4", "World Taekwondo G4", 0),
             ("G6", "World Taekwondo Grand Prix", 0),
-            ("G8", "World Taekwondo Grand Prix Final / World Championships", 0),
+            (
+                "G8",
+                "World Taekwondo Grand Prix Final / World Championships",
+                0,
+            ),
             ("E1", "European Taekwondo E1", 0),
             ("E2", "European Taekwondo E2", 0),
             ("E3", "European Taekwondo E3", 0),
@@ -6603,7 +6623,10 @@ impl Migration for Migration45 {
             conn.execute("DROP TABLE tournaments", [])?;
             conn.execute("ALTER TABLE tournaments_new RENAME TO tournaments", [])?;
 
-            conn.execute("CREATE INDEX IF NOT EXISTS idx_tournaments_status ON tournaments(status)", [])?;
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_tournaments_status ON tournaments(status)",
+                [],
+            )?;
             conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_tournaments_city_country ON tournaments(city, country)",
                 [],
@@ -6627,10 +6650,22 @@ impl Migration for Migration45 {
         }
 
         // Ensure location/contact JSON defaults are present
-        conn.execute("UPDATE tournaments SET location = '{}' WHERE location IS NULL OR location = ''", [])?;
-        conn.execute("UPDATE tournaments SET contact = '{}' WHERE contact IS NULL OR contact = ''", [])?;
-        conn.execute("UPDATE tournaments SET oc = '{}' WHERE oc IS NULL OR oc = ''", [])?;
-        conn.execute("UPDATE tournaments SET officials = '{}' WHERE officials IS NULL OR officials = ''", [])?;
+        conn.execute(
+            "UPDATE tournaments SET location = '{}' WHERE location IS NULL OR location = ''",
+            [],
+        )?;
+        conn.execute(
+            "UPDATE tournaments SET contact = '{}' WHERE contact IS NULL OR contact = ''",
+            [],
+        )?;
+        conn.execute(
+            "UPDATE tournaments SET oc = '{}' WHERE oc IS NULL OR oc = ''",
+            [],
+        )?;
+        conn.execute(
+            "UPDATE tournaments SET officials = '{}' WHERE officials IS NULL OR officials = ''",
+            [],
+        )?;
 
         // Guarantee tournament_days table exists with expected schema
         conn.execute(

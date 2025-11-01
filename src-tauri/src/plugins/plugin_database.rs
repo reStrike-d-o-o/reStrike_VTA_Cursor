@@ -188,18 +188,6 @@ impl DatabasePlugin {
             .await
     }
 
-    /// Create JSON backup
-    pub async fn create_json_backup(&self) -> AppResult<String> {
-        self.migration_strategy.create_json_backup().await
-    }
-
-    /// Restore from JSON backup
-    pub async fn restore_from_json_backup(&self, backup_path: &str) -> AppResult<()> {
-        self.migration_strategy
-            .restore_from_json_backup(backup_path)
-            .await
-    }
-
     /// Get migration status
     pub async fn get_migration_status(&self) -> AppResult<MigrationStatus> {
         let settings_count = self

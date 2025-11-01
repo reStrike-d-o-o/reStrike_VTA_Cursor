@@ -785,15 +785,18 @@ pub async fn get_migration_status(&self) -> AppResult<MigrationStatus>
 
 ## 🔄 Backup and Recovery
 
-### **JSON Backup System**
+### **SQLite Backup System**
 ```rust
-// Create JSON backup
-pub async fn create_json_backup(&self) -> AppResult<String>
+// Create on-disk SQLite snapshot (stored under <app-data>/reStrikeVTA/backups)
+pub fn create_backup(&self, backup_name: Option<&str>) -> DatabaseResult<PathBuf>
 
-// Restore from backup
-pub async fn restore_from_json_backup(&self, backup_path: &str) -> AppResult<()>
+// Restore database from a snapshot (creates a safety copy automatically)
+pub async fn restore_from_backup(&self, backup_path: &PathBuf) -> DatabaseResult<()>
 
-// Google Drive integration
+// Tauri command helpers
+db_create_sqlite_backup / db_list_sqlite_backups / db_restore_sqlite_backup
+
+// Google Drive integration (uploads/downloading the latest .db snapshot)
 pub async fn drive_upload_backup_archive() -> Result<serde_json::Value, String>
 ```
 

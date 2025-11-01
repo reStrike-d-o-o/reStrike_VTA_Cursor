@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Button from '../atoms/Button';
 import StatusDot from '../atoms/StatusDot';
 import { Icon } from '../atoms/Icon';
@@ -38,14 +38,67 @@ interface CpuMonitoringSectionProps {
   className?: string;
 }
 
+const normalizeNumber = (value: number | undefined, precision = 1) => {
+  if (!value && value !== 0) {
+    return 0;
+  }
+  const factor = Math.pow(10, precision);
+  return Math.round(value * factor) / factor;
+};
+
+const areProcessesEquivalent = (a: CpuProcessData[], b: CpuProcessData[]) => {
+  if (a.length !== b.length) {
+    return false;
+  }
+  for (let i = 0; i < a.length; i += 1) {
+    const left = a[i];
+    const right = b[i];
+    if (left.process_name !== right.process_name) {
+      return false;
+    }
+    if (normalizeNumber(left.cpu_percent) !== normalizeNumber(right.cpu_percent)) {
+      return false;
+    }
+    if (normalizeNumber(left.memory_mb) !== normalizeNumber(right.memory_mb)) {
+      return false;
+    }
+  }
+  return true;
+};
+
+const isSystemDataEquivalent = (a: SystemCpuData | null, b: SystemCpuData | null) => {
+  if (!a && !b) {
+    return true;
+  }
+  if (!a || !b) {
+    return false;
+  }
+  if (normalizeNumber(a.total_cpu_percent) !== normalizeNumber(b.total_cpu_percent)) {
+    return false;
+  }
+  const coresA = a.cores || [];
+  const coresB = b.cores || [];
+  if (coresA.length !== coresB.length) {
+    return false;
+  }
+  for (let i = 0; i < coresA.length; i += 1) {
+    if (normalizeNumber(coresA[i]) !== normalizeNumber(coresB[i])) {
+      return false;
+    }
+  }
+  return true;
+};
+
 export const CpuMonitoringSection: React.FC<CpuMonitoringSectionProps> = ({ className = '' }) => {
   const { t } = useI18n();
   const [processData, setProcessData] = useState<CpuProcessData[]>([]);
   const [systemData, setSystemData] = useState<SystemCpuData | null>(null);
   const [isMonitoring, setIsMonitoring] = useState<boolean>(false); // Start disabled
-  const [refreshMs, setRefreshMs] = useState<number>(2000);
-  const [topN, setTopN] = useState<number>(20);
+  const [refreshMs, setRefreshMs] = useState<number>(5000);
+  const [topN, setTopN] = useState<number>(10);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+  const processDataRef = useRef<CpuProcessData[]>([]);
+  const systemDataRef = useRef<SystemCpuData | null>(null);
 
   // Check monitoring status on mount
   useEffect(() => {
@@ -66,11 +119,17 @@ export const CpuMonitoringSection: React.FC<CpuMonitoringSectionProps> = ({ clas
   // Fetch CPU data
   const fetchCpuData = async () => {
     try {
+      let updated = false;
       // Get process data
       const processResult = await safeInvoke('cpu_get_process_data');
       if (processResult && typeof processResult === 'object' && 'success' in processResult && processResult.success) {
         if ('processes' in processResult && Array.isArray(processResult.processes)) {
-          setProcessData(processResult.processes as CpuProcessData[]);
+          const nextProcesses = (processResult.processes as CpuProcessData[]).map((proc) => ({ ...proc }));
+          if (!areProcessesEquivalent(processDataRef.current, nextProcesses)) {
+            processDataRef.current = nextProcesses;
+            setProcessData(nextProcesses);
+            updated = true;
+          }
         }
       }
 
@@ -78,15 +137,31 @@ export const CpuMonitoringSection: React.FC<CpuMonitoringSectionProps> = ({ clas
       const systemResult = await safeInvoke('cpu_get_system_data');
       if (systemResult && typeof systemResult === 'object' && 'success' in systemResult && systemResult.success) {
         if ('system' in systemResult && systemResult.system) {
-          setSystemData(systemResult.system as SystemCpuData);
+          const nextSystem = systemResult.system as SystemCpuData;
+          if (!isSystemDataEquivalent(systemDataRef.current, nextSystem)) {
+            systemDataRef.current = nextSystem;
+            setSystemData(nextSystem);
+            updated = true;
+          }
         }
       }
 
-      setLastUpdate(new Date());
+      if (updated) {
+        setLastUpdate(new Date());
+      }
     } catch (error) {
       console.error('Failed to fetch CPU data:', error);
     }
   };
+
+  const sortedProcesses = useMemo(() => {
+    if (!processData.length) {
+      return [];
+    }
+    return [...processData]
+      .sort((a, b) => (b.cpu_percent || 0) - (a.cpu_percent || 0))
+      .slice(0, topN);
+  }, [processData, topN]);
 
   // Toggle monitoring
   const toggleMonitoring = async () => {
@@ -96,6 +171,8 @@ export const CpuMonitoringSection: React.FC<CpuMonitoringSectionProps> = ({ clas
         await safeInvoke('cpu_disable_monitoring');
         setIsMonitoring(false);
         // Clear frontend data when stopping
+        processDataRef.current = [];
+        systemDataRef.current = null;
         setProcessData([]);
         setSystemData(null);
         setLastUpdate(new Date());
@@ -180,7 +257,7 @@ export const CpuMonitoringSection: React.FC<CpuMonitoringSectionProps> = ({ clas
           <option value={10000}>10s</option>
         </select>
         <span className="text-sm text-gray-300 ml-4">{t('cpu.top', 'Top')}</span>
-        <select className="theme-surface-2 px-2 py-1" value={topN} onChange={(e)=>setTopN(parseInt(e.target.value)||20)}
+        <select className="theme-surface-2 px-2 py-1" value={topN} onChange={(e)=>setTopN(parseInt(e.target.value) || 10)}
           aria-label={t('cpu.top', 'Top')} title={t('cpu.top', 'Top')}>
           <option value={5}>5</option>
           <option value={10}>10</option>
@@ -224,12 +301,9 @@ export const CpuMonitoringSection: React.FC<CpuMonitoringSectionProps> = ({ clas
       {/* Process List */}
       <div className="space-y-2">
         <h4 className="text-md font-medium text-white mb-2">{t('cpu.all_processes', 'All Running Processes ({n})', { n: processData.length })}</h4>
-        {processData.length > 0 ? (
+        {sortedProcesses.length > 0 ? (
           <div className="space-y-2 max-h-64 overflow-y-auto">
-            {processData
-              .sort((a, b) => (b.cpu_percent || 0) - (a.cpu_percent || 0)) // Sort by CPU usage (highest first)
-              .slice(0, topN)
-              .map((process, index) => (
+            {sortedProcesses.map((process, index) => (
               <div key={index} className="flex items-center justify-between p-2 bg-gray-700 rounded">
                 <div className="flex items-center space-x-3">
                   <span className="text-sm font-medium text-white min-w-[120px] truncate">

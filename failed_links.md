@@ -39,7 +39,7 @@
 - https://nationalanthems.info/frg.mp3 - Download failed: HTTP 404
 - https://nationalanthems.info/gi.mp3 - No IOC mapping for 'Gibraltar'
 - https://nationalanthems.info/gl.mp3 - No IOC mapping for 'Greenland'
-- https://nationalanthems.info/gp.mp3 - Download failed: HTTP 503
+- https://nationalanthems.info/gp.mp3 - Download failed: HTTP 404
 - https://nationalanthems.info/gg.mp3 - No IOC mapping for 'Guernsey'
 - https://nationalanthems.info/hwi-76.mp3 - No IOC mapping for 'Hawaii (1866-1876)'
 - https://nationalanthems.info/hwi.mp3 - No IOC mapping for 'Hawaii (1876-1893)'
@@ -97,7 +97,7 @@
 - https://nationalanthems.info/tw.mp3 - No IOC mapping for 'Taiwan (national anthem)'
 - https://nationalanthems.info/tib.mp3 - No IOC mapping for 'Tibet'
 - https://nationalanthems.info/tsk.mp3 - Download failed: HTTP 404
-- https://nationalanthems.info/pmr.mp3 - No IOC mapping for 'Transnistria'
+- https://nationalanthems.info/pmr.mp3 - HTML title fetch failed; https://nationalanthems.info/pmr.htm: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')); https://nationalanthems.info/pmr.html: HTML request failed with HTTP 404; https://nationalanthems.info/pmr: HTML request failed with HTTP 404
 - https://nationalanthems.info/tvl.mp3 - No IOC mapping for 'Transvaal'
 - https://nationalanthems.info/tc.mp3 - No IOC mapping for 'Turks and Caicos Islands'
 - https://nationalanthems.info/sun-44.mp3 - No IOC mapping for 'Union of Soviet Socialist Republics (1922-1944)'
@@ -507,7 +507,7 @@
 - https://nationalanthems.info/sy~.mp3 - Download failed: HTTP 404
 - https://nationalanthems.info/tw!~.mp3 - Download failed: HTTP 404
 - https://nationalanthems.info/tj~.mp3 - Download failed: HTTP 404
-- https://nationalanthems.info/tz~.mp3 - Download failed: HTTP 404
+- https://nationalanthems.info/tz~.mp3 - Download failed: HTTP 503
 - https://nationalanthems.info/th^~.mp3 - Download failed: HTTP 404
 - https://nationalanthems.info/th~.mp3 - Download failed: HTTP 404
 - https://nationalanthems.info/tib~.mp3 - Download failed: HTTP 404
@@ -551,14 +551,14 @@
 - https://nationalanthems.info/yug_sk'.mp3 - Download failed: HTTP 404
 - https://nationalanthems.info/zw~.mp3 - Download failed: HTTP 404
 - https://nationalanthems.info/bl.mp3 - No IOC mapping for 'St. Barthélemy'
-- https://nationalanthems.info/aco.mp3 - No IOC mapping for 'Azores'
+- https://nationalanthems.info/aco.mp3 - Download failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
 - https://nationalanthems.info/tib.mp3 - No IOC mapping for 'Tibet'
 - https://nationalanthems.info/bav.mp3 - No IOC mapping for 'Bavaria'
 - https://nationalanthems.info/nfl.mp3 - No IOC mapping for 'Newfoundland'
 - https://nationalanthems.info/sco.mp3 - No IOC mapping for 'Scotland'
 - https://nationalanthems.info/eus.mp3 - No IOC mapping for 'Basque Country'
 - https://nationalanthems.info/krd.mp3 - No IOC mapping for 'Kurdistan'
-- https://nationalanthems.info/asy.mp3 - HTML title fetch failed; https://nationalanthems.info/asy.htm: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')); https://nationalanthems.info/asy.html: HTML request failed with HTTP 404; https://nationalanthems.info/asy: HTML request failed with HTTP 404
+- https://nationalanthems.info/asy.mp3 - No IOC mapping for 'Assyria'
 - https://nationalanthems.info/ath.mp3 - No IOC mapping for 'Austria-Hungary'
 - https://nationalanthems.info/esn.mp3 - No IOC mapping for 'Esperanto'
 - https://nationalanthems.info/ufp.mp3 - No IOC mapping for 'United Federation of Planets'

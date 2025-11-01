@@ -20,11 +20,12 @@ import logging
 import re
 import sys
 import time
+import shutil
 import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Set
-from urllib.parse import urlparse
+from urllib.parse import unquote, urljoin, urlparse
 
 import requests
 
@@ -53,6 +54,12 @@ MP3_HEADERS = {
 
 
 @dataclass
+class CountryPage:
+    title: str
+    mp3_urls: List[str]
+
+
+@dataclass
 class AnthemResult:
     url: str
     success: bool
@@ -60,6 +67,10 @@ class AnthemResult:
     reason: Optional[str] = None
     country_name: Optional[str] = None
     ioc_code: Optional[str] = None
+    version_index: Optional[int] = None
+
+
+VERSION_FILENAME_RE = re.compile(r"^(?P<ioc>[a-z]{3})-v(?P<version>\d+)\.mp3$", re.IGNORECASE)
 
 
 def parse_args() -> argparse.Namespace:
@@ -77,7 +88,7 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=Path(
             r"C:\Users\Damjan\source\repos\reStrikeVTA_WO\reStrike_VTA_Cursor"
-            r"\ui\build\assets\anthems"
+            r"\ui\public\assets\anthems"
         ),
         help="Directory where MP3 files will be stored.",
     )
@@ -91,14 +102,14 @@ def parse_args() -> argparse.Namespace:
         "--official-report",
         type=Path,
         default=Path(
-            "ui/build/assets/flags/OFFICIAL_IOC_FLAGS_DOWNLOAD_REPORT.md"
+            "ui/public/assets/flags/OFFICIAL_IOC_FLAGS_DOWNLOAD_REPORT.md"
         ),
         help="Primary IOC mapping markdown report.",
     )
     parser.add_argument(
         "--fallback-report",
         type=Path,
-        default=Path("ui/build/assets/flags/IOC_FLAGS_DOWNLOAD_REPORT.md"),
+        default=Path("ui/public/assets/flags/IOC_FLAGS_DOWNLOAD_REPORT.md"),
         help="Fallback IOC mapping markdown report.",
     )
     parser.add_argument(
@@ -233,6 +244,22 @@ def sanitize_filename(name: str) -> str:
     return text
 
 
+def normalize_mp3_url(url: str) -> str:
+    parsed = urlparse(url)
+    path = unquote(parsed.path or "")
+    return path.strip().lower()
+
+
+def existing_version_max(output_dir: Path, ioc_code: str) -> int:
+    prefix = ioc_code.lower()
+    max_version = 0
+    for candidate in output_dir.glob(f"{prefix}-v*.mp3"):
+        match = VERSION_FILENAME_RE.match(candidate.name)
+        if match and match.group("ioc").lower() == prefix:
+            max_version = max(max_version, int(match.group("version")))
+    return max_version
+
+
 def ensure_directory(path: Path) -> None:
     path.mkdir(parents=True, exist_ok=True)
 
@@ -251,11 +278,12 @@ def download_file(session: requests.Session, url: str, destination: Path) -> Non
             raise RuntimeError("Downloaded size mismatch")
 
 
-def fetch_country_title(session: requests.Session, url: str) -> str:
+def fetch_country_page(session: requests.Session, url: str) -> CountryPage:
     response = session.get(url, headers=HTML_HEADERS, timeout=30)
     if response.status_code != 200:
         raise RuntimeError(f"HTML request failed with HTTP {response.status_code}")
-    match = re.search(r"<title>(.*?)</title>", response.text, re.IGNORECASE | re.DOTALL)
+    text = response.text
+    match = re.search(r"<title>(.*?)</title>", text, re.IGNORECASE | re.DOTALL)
     if not match:
         raise RuntimeError("No <title> found in HTML")
     title = html.unescape(match.group(1)).strip()
@@ -264,7 +292,23 @@ def fetch_country_title(session: requests.Session, url: str) -> str:
     elif " - " in title:
         title = title.split(" - ", 1)[0].strip()
     title = re.sub(r"\s+", " ", title)
-    return title
+
+    mp3_candidates: List[str] = []
+    for href_match in re.finditer(r"""href=["']([^"']+\.mp3)["']""", text, re.IGNORECASE):
+        href = html.unescape(href_match.group(1))
+        absolute = urljoin(url, href)
+        mp3_candidates.append(absolute)
+
+    ordered_links: List[str] = []
+    seen: Set[str] = set()
+    for candidate in mp3_candidates:
+        norm = normalize_mp3_url(candidate)
+        if not norm or norm in seen:
+            continue
+        seen.add(norm)
+        ordered_links.append(candidate)
+
+    return CountryPage(title=title, mp3_urls=ordered_links)
 
 
 def resolve_html_url(mp3_url: str) -> List[str]:
@@ -302,7 +346,6 @@ def process_url(
     parsed_name = Path(filename)
     if parsed_name.suffix.lower() != ".mp3":
         return AnthemResult(url=url, success=False, final_path=None, reason="Not an MP3 link")
-    slug = parsed_name.stem
     temp_path = output_dir / parsed_name.name
 
     try:
@@ -312,18 +355,17 @@ def process_url(
             temp_path.unlink(missing_ok=True)
         return AnthemResult(url=url, success=False, final_path=None, reason=f"Download failed: {exc}")
 
-    # Fetch HTML title to determine the country name.
-    html_title: Optional[str] = None
+    country_page: Optional[CountryPage] = None
     html_errors: List[str] = []
     for html_url in resolve_html_url(url):
         try:
-            html_title = fetch_country_title(session, html_url)
+            country_page = fetch_country_page(session, html_url)
             break
         except Exception as exc:
             html_errors.append(f"{html_url}: {exc}")
             continue
 
-    if not html_title:
+    if not country_page:
         temp_path.unlink(missing_ok=True)
         return AnthemResult(
             url=url,
@@ -332,34 +374,60 @@ def process_url(
             reason="; ".join(["HTML title fetch failed"] + html_errors),
         )
 
-    sanitized = sanitize_filename(html_title)
-    country_path = output_dir / f"{sanitized}.mp3"
-    if country_path.exists():
-        # Remove existing to avoid name collisions.
-        country_path.unlink()
-    temp_path.rename(country_path)
+    sanitized = sanitize_filename(country_page.title)
+    interim_path = output_dir / f"{sanitized}.mp3"
+    if interim_path.exists():
+        interim_path.unlink()
+    temp_path.rename(interim_path)
 
-    ioc_code = map_country_to_ioc(html_title, mapping)
+    ioc_code = map_country_to_ioc(country_page.title, mapping)
     if not ioc_code:
         return AnthemResult(
             url=url,
             success=False,
-            final_path=country_path,
-            reason=f"No IOC mapping for '{html_title}'",
-            country_name=html_title,
+            final_path=interim_path,
+            reason=f"No IOC mapping for '{country_page.title}'",
+            country_name=country_page.title,
         )
 
-    final_path = output_dir / f"{ioc_code}.mp3"
-    if final_path.exists():
-        final_path.unlink()
-    country_path.rename(final_path)
+    normalized_links = [normalize_mp3_url(link) for link in country_page.mp3_urls]
+    current_norm = normalize_mp3_url(url)
+    if current_norm in normalized_links:
+        version_index = normalized_links.index(current_norm) + 1
+    else:
+        version_index = existing_version_max(output_dir, ioc_code) + 1
+        logging.debug(
+            "URL %s not located in HTML list for %s; assigning version %d",
+            url,
+            country_page.title,
+            version_index,
+        )
+
+    version_filename = f"{ioc_code.lower()}-v{version_index}.mp3"
+    version_path = output_dir / version_filename
+    if version_path.exists():
+        if overwrite:
+            version_path.unlink()
+        else:
+            interim_path.unlink(missing_ok=True)
+            return AnthemResult(
+                url=url,
+                success=True,
+                final_path=version_path,
+                country_name=country_page.title,
+                ioc_code=ioc_code,
+                version_index=version_index,
+            )
+
+    interim_path.rename(version_path)
 
     return AnthemResult(
         url=url,
         success=True,
-        final_path=final_path,
-        country_name=html_title,
+        final_path=version_path,
+        country_name=country_page.title,
         ioc_code=ioc_code,
+        version_index=version_index,
     )
 
 
@@ -430,6 +498,28 @@ def main() -> int:
         time.sleep(max(args.delay, 0.0))
 
     write_failure_report(args.failed_log, failures)
+
+    # Ensure the latest version for each IOC is copied to the canonical filename.
+    latest_by_ioc: Dict[str, AnthemResult] = {}
+    for result in successes:
+        if not result.ioc_code or result.version_index is None:
+            continue
+        key = result.ioc_code.upper()
+        current = latest_by_ioc.get(key)
+        if current is None or (result.version_index or 0) > (current.version_index or 0):
+            latest_by_ioc[key] = result
+
+    for ioc_code, latest in latest_by_ioc.items():
+        current_path = args.output_dir / f"{ioc_code}.mp3"
+        if current_path.exists():
+            current_path.unlink()
+        shutil.copy2(latest.final_path, current_path)
+        logging.info(
+            "Set current anthem for %s to version v%d (%s)",
+            ioc_code,
+            latest.version_index or 0,
+            current_path.name,
+        )
 
     logging.info("Completed: %d success, %d failures.", len(successes), len(failures))
     if failures:

@@ -7,6 +7,7 @@ use crate::types::{AppError, AppResult};
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
+use std::io;
 use std::net::UdpSocket;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -497,29 +498,68 @@ impl UdpServer {
             bind_address.clone()
         };
 
-        let bind_addr = format!("{}:{}", bind_ip, port);
-        log::info!("Attempting to bind UDP server to: {}", bind_addr);
+        let mut bind_candidates = Vec::new();
+        bind_candidates.push(bind_ip.clone());
+        if bind_ip != bind_address {
+            bind_candidates.push(bind_address.clone());
+        }
+        if network_settings.fallback_to_localhost
+            && !bind_candidates
+                .iter()
+                .any(|candidate| candidate == "127.0.0.1")
+        {
+            bind_candidates.push("127.0.0.1".to_string());
+        }
 
-        // Update status to starting
         {
             let mut status = self.status.lock().unwrap();
             *status = UdpServerStatus::Starting;
         }
 
-        // Try to bind the socket
-        let socket = match UdpSocket::bind(&bind_addr) {
-            Ok(socket) => {
-                socket
-                    .set_nonblocking(true)
-                    .map_err(|e| AppError::ConfigError(e.to_string()))?;
-                socket
+        let mut last_error: Option<io::Error> = None;
+        let mut bind_addr = String::new();
+        let mut socket: Option<UdpSocket> = None;
+
+        for candidate in bind_candidates {
+            let candidate_addr = format!("{}:{}", candidate, port);
+            log::info!("Attempting to bind UDP server to: {}", candidate_addr);
+
+            match UdpSocket::bind(&candidate_addr) {
+                Ok(s) => {
+                    if let Err(e) = s.set_nonblocking(true) {
+                        log::warn!(
+                            "Failed to configure UDP socket for {}: {}",
+                            candidate_addr,
+                            e
+                        );
+                        last_error = Some(e);
+                        continue;
+                    }
+                    bind_addr = candidate_addr;
+                    socket = Some(s);
+                    break;
+                }
+                Err(e) => {
+                    log::warn!("Failed to bind UDP socket to {}: {}", candidate_addr, e);
+                    last_error = Some(e);
+                }
             }
-            Err(e) => {
-                let error_msg = format!("Failed to bind UDP socket to {}: {}", bind_addr, e);
-                let mut status = self.status.lock().unwrap();
-                *status = UdpServerStatus::Error(error_msg.clone());
-                return Err(AppError::ConfigError(error_msg));
-            }
+        }
+
+        let socket = if let Some(socket) = socket {
+            socket
+        } else {
+            let error_msg = if let Some(e) = last_error {
+                format!(
+                    "Failed to bind UDP socket after trying all candidates: {}",
+                    e
+                )
+            } else {
+                "Failed to bind UDP socket: no candidates available".to_string()
+            };
+            let mut status = self.status.lock().unwrap();
+            *status = UdpServerStatus::Error(error_msg.clone());
+            return Err(AppError::ConfigError(error_msg));
         };
 
         // Store the socket
@@ -1993,6 +2033,24 @@ impl UdpServer {
                     };
 
                     log::debug!("Received PSS message from {}: {}", src_addr, message);
+
+                    let is_connection_event = message.contains("Udp Port")
+                        && (message.contains("connected") || message.contains("disconnected"));
+                    if is_connection_event && message.contains("disconnected") {
+                        if let Ok(mut stats_guard) = stats.lock() {
+                            stats_guard.active_connections.remove(&src_addr);
+                            stats_guard.connected_clients = stats_guard.active_connections.len();
+                        }
+                        {
+                            if let Ok(mut match_guard) = current_match_id.lock() {
+                                *match_guard = None;
+                            }
+                        }
+                        if let Err(e) = websocket_server.reset_match_state() {
+                            log::debug!("Failed to reset match state after disconnect: {}", e);
+                        }
+                        log::info!("PSS connection {} reported disconnect", src_addr);
+                    }
 
                     // Log raw UDP message for Live Data panel
                     let raw_log_message = format!(" Raw UDP message: {}", message);

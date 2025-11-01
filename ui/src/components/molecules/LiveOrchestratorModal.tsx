@@ -51,8 +51,16 @@ const LiveOrchestratorModal: React.FC<LiveOrchestratorModalProps> = ({ isOpen, o
     try {
       // UDP server status
       try {
-        const status = await invoke<string>('get_udp_status');
-        setUdpStatus(status && status.includes('Running') ? 'ok' : 'warn');
+        const statusRes = await invoke<any>('get_udp_status');
+        if (statusRes && typeof statusRes === 'object') {
+          const isRunning = Boolean(statusRes.is_running);
+          const hasError = Boolean(statusRes.error);
+          setUdpStatus(hasError ? 'error' : isRunning ? 'ok' : 'warn');
+        } else if (typeof statusRes === 'string') {
+          setUdpStatus(statusRes.includes('Running') ? 'ok' : 'warn');
+        } else {
+          setUdpStatus('warn');
+        }
       } catch {
         setUdpStatus('error');
       }
@@ -320,5 +328,4 @@ const DriveQuotaRow: React.FC = () => {
     <StatusRow label={t('live_orch.drive_quota', 'Drive Quota')} right={text} />
   );
 };
-
 

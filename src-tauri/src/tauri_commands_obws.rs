@@ -2770,12 +2770,17 @@ pub async fn ivr_upload_recorded_videos(
     );
     let file_id = if let Some(fid) = folder_id.as_ref() {
         crate::plugins::drive_plugin()
-            .upload_file_streaming_to_folder(&zip_path, &file_name, Some(fid.as_str()))
+            .upload_file_streaming_to_folder(
+                &zip_path,
+                &file_name,
+                "application/zip",
+                Some(fid.as_str()),
+            )
             .await
             .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?
     } else {
         crate::plugins::drive_plugin()
-            .upload_file_streaming(&zip_path, &file_name)
+            .upload_file_streaming(&zip_path, &file_name, "application/zip", None)
             .await
             .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?
     };

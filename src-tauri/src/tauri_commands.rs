@@ -61,8 +61,8 @@ use crate::plugins::obs_obws::types::ObsOperationRequest;
 use crate::utils::simulation_env::ensure_simulation_env;
 use dirs;
 use once_cell::sync::{Lazy, OnceCell};
-use serde::{Deserialize, Serialize};
 use path_clean::PathClean;
+use serde::{Deserialize, Serialize};
 
 #[tauri::command]
 pub async fn normalize_fs_path(path: String) -> Result<String, TauriError> {
@@ -75,7 +75,12 @@ pub async fn normalize_fs_path(path: String) -> Result<String, TauriError> {
         raw_path
     } else {
         std::env::current_dir()
-            .map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to determine current directory: {}", e))))?
+            .map_err(|e| {
+                TauriError::from(anyhow::anyhow!(format!(
+                    "Failed to determine current directory: {}",
+                    e
+                )))
+            })?
             .join(raw_path)
     };
 
@@ -170,18 +175,22 @@ pub async fn stop_udp_server(app: State<'_, Arc<App>>) -> Result<(), TauriError>
 }
 
 #[tauri::command]
-pub async fn get_udp_status(app: State<'_, Arc<App>>) -> Result<String, TauriError> {
+pub async fn get_udp_status(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting UDP status");
     let status = app.udp_plugin().get_status();
-    let status_str = match status {
-        crate::plugins::plugin_udp::UdpServerStatus::Stopped => "Stopped",
-        crate::plugins::plugin_udp::UdpServerStatus::Starting => "Starting",
-        crate::plugins::plugin_udp::UdpServerStatus::Running => "Running",
-        crate::plugins::plugin_udp::UdpServerStatus::Error(e) => {
-            return Err(TauriError::from(anyhow::anyhow!("{}", e)))
-        }
+
+    let (status_str, is_running, error_msg) = match status {
+        crate::plugins::plugin_udp::UdpServerStatus::Stopped => ("Stopped", false, None),
+        crate::plugins::plugin_udp::UdpServerStatus::Starting => ("Starting", false, None),
+        crate::plugins::plugin_udp::UdpServerStatus::Running => ("Running", true, None),
+        crate::plugins::plugin_udp::UdpServerStatus::Error(e) => ("Error", false, Some(e)),
     };
-    Ok(status_str.to_string())
+
+    Ok(serde_json::json!({
+        "status": status_str,
+        "is_running": is_running,
+        "error": error_msg
+    }))
 }
 
 #[tauri::command]
@@ -1882,7 +1891,7 @@ pub async fn drive_upload_zip_to_folder(
         .unwrap_or("archive.zip")
         .to_string();
     let id = crate::plugins::drive_plugin()
-        .upload_file_streaming_to_folder(&p, &file_name, folder_id.as_deref())
+        .upload_file_streaming_to_folder(&p, &file_name, "application/zip", folder_id.as_deref())
         .await
         .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
     Ok(serde_json::json!({"success": true, "file_id": id}))
@@ -3194,68 +3203,6 @@ pub async fn db_run_migrations(app: State<'_, Arc<App>>) -> Result<serde_json::V
     }
 }
 
-#[tauri::command]
-pub async fn create_json_backup(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
-    log::info!("Creating JSON settings backup");
-
-    match app.database_plugin().create_json_backup().await {
-        Ok(backup_path) => Ok(serde_json::json!({
-            "success": true,
-            "backup_path": backup_path
-        })),
-        Err(e) => Ok(serde_json::json!({
-            "success": false,
-            "error": e.to_string()
-        })),
-    }
-}
-
-#[tauri::command]
-pub async fn restore_from_json_backup(
-    app: State<'_, Arc<App>>,
-    backup_path: String,
-) -> Result<serde_json::Value, TauriError> {
-    log::info!("Restoring from JSON backup: {}", backup_path);
-
-    match app
-        .database_plugin()
-        .restore_from_json_backup(&backup_path)
-        .await
-    {
-        Ok(_) => Ok(serde_json::json!({
-            "success": true,
-            "message": "Settings restored successfully"
-        })),
-        Err(e) => Ok(serde_json::json!({
-            "success": false,
-            "error": e.to_string()
-        })),
-    }
-}
-
-#[tauri::command]
-pub async fn restore_from_backup(
-    app: State<'_, Arc<App>>,
-    backup_path: String,
-) -> Result<serde_json::Value, TauriError> {
-    log::info!("Restoring from backup: {}", backup_path);
-
-    match app
-        .database_plugin()
-        .restore_from_json_backup(&backup_path)
-        .await
-    {
-        Ok(_) => Ok(serde_json::json!({
-            "success": true,
-            "message": "Backup restored successfully"
-        })),
-        Err(e) => Ok(serde_json::json!({
-            "success": false,
-            "error": e.to_string()
-        })),
-    }
-}
-
 // === SQLite DB Backup (reuse existing DatabaseConnection helpers; no duplication) ===
 #[derive(serde::Serialize)]
 pub struct SqliteBackupInfo {
@@ -3632,55 +3579,6 @@ pub async fn drive_save_credentials(id: String, secret: String) -> Result<(), Ta
 }
 
 #[tauri::command]
-pub async fn list_backup_files() -> Result<Vec<BackupFileInfo>, TauriError> {
-    // Use the backups directory outside the project
-    let backup_dir = match dirs::data_dir() {
-        Some(data_dir) => data_dir.join("reStrikeVTA").join("backups"),
-        None => std::path::PathBuf::from("backups"),
-    };
-
-    log::info!("=== LIST_BACKUP_FILES START ===");
-    log::info!("Looking for backup files in: {}", backup_dir.display());
-
-    let mut backup_files = Vec::new();
-
-    if let Ok(entries) = std::fs::read_dir(&backup_dir) {
-        for entry in entries {
-            if let Ok(entry) = entry {
-                let path = entry.path();
-                if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("zip") {
-                    if let Ok(metadata) = entry.metadata() {
-                        if let Ok(modified) = metadata.modified() {
-                            let modified_time: chrono::DateTime<chrono::Local> =
-                                chrono::DateTime::from(modified);
-                            backup_files.push(BackupFileInfo {
-                                name: path.file_name().unwrap().to_string_lossy().to_string(),
-                                path: path.to_string_lossy().to_string(),
-                                size: metadata.len(),
-                                modified: modified_time.format("%Y-%m-%d %H:%M:%S").to_string(),
-                            });
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // Sort by modification time (newest first)
-    backup_files.sort_by(|a, b| b.modified.cmp(&a.modified));
-
-    Ok(backup_files)
-}
-
-#[derive(serde::Serialize)]
-pub struct BackupFileInfo {
-    pub name: String,
-    pub path: String,
-    pub size: u64,
-    pub modified: String,
-}
-
-#[tauri::command]
 pub async fn drive_list_files() -> Result<serde_json::Value, TauriError> {
     log::info!("Listing Google Drive files");
 
@@ -4042,8 +3940,7 @@ fn load_country_map_from_report(
             continue;
         }
 
-        if cells[code_col]
-            .eq_ignore_ascii_case("ioc code")
+        if cells[code_col].eq_ignore_ascii_case("ioc code")
             || cells[name_col].eq_ignore_ascii_case("country")
         {
             continue;
@@ -4070,8 +3967,10 @@ struct FlagCountryUpdateStats {
     applied_updates: usize,
 }
 
-fn update_flags_from_reports(conn: &rusqlite::Connection) -> anyhow::Result<FlagCountryUpdateStats> {
-    let base_dir = Path::new("../ui/build/assets/flags");
+fn update_flags_from_reports(
+    conn: &rusqlite::Connection,
+) -> anyhow::Result<FlagCountryUpdateStats> {
+    let base_dir = Path::new("../ui/public/assets/flags");
     let official_path = base_dir.join("OFFICIAL_IOC_FLAGS_DOWNLOAD_REPORT.md");
     let fallback_path = base_dir.join("IOC_FLAGS_DOWNLOAD_REPORT.md");
 
@@ -4903,23 +4802,28 @@ pub async fn tournament_import_from_directory(
         folder_path
     );
 
-    let db_path = app
-        .database_plugin()
-        .get_database_path()
-        .map_err(|e| TauriError::from(anyhow::anyhow!(format!(
+    let db_path = app.database_plugin().get_database_path().map_err(|e| {
+        TauriError::from(anyhow::anyhow!(format!(
             "Failed to resolve database path: {}",
             e
-        ))))?;
+        )))
+    })?;
 
     let request = ImportRequest {
         archive_root: PathBuf::from(&folder_path),
         tournament_name: tournament_name.clone(),
     };
 
-    let stats = tokio::task::spawn_blocking(move || import_tournament(Path::new(&db_path), request))
-        .await
-        .map_err(|e| TauriError::from(anyhow::anyhow!(format!("Import task panicked: {}", e))))?
-        .map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to import tournament: {}", e))))?;
+    let stats =
+        tokio::task::spawn_blocking(move || import_tournament(Path::new(&db_path), request))
+            .await
+            .map_err(|e| TauriError::from(anyhow::anyhow!(format!("Import task panicked: {}", e))))?
+            .map_err(|e| {
+                TauriError::from(anyhow::anyhow!(format!(
+                    "Failed to import tournament: {}",
+                    e
+                )))
+            })?;
 
     Ok(serde_json::json!({
         "success": true,

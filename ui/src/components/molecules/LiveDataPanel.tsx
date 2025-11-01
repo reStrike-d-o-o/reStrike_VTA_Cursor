@@ -1,322 +1,160 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { diagLogsCommands, configCommands } from '../../utils/tauriCommands';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useEnvironment } from '../../hooks/useEnvironment';
-import { useLiveDataStore } from '../../stores/liveDataStore';
+import { useLiveDataStore, LiveLogEntry } from '../../stores/liveDataStore';
 import Toggle from '../atoms/Toggle';
 import { useLiveDataEvents } from '../../hooks/useLiveDataEvents';
 import { useI18n } from '../../i18n/index';
 
-// Use the proper Tauri v2 invoke function
 const invoke = async (command: string, args?: any) => {
-  try {
-    // Use the global window.__TAURI__.core.invoke for Tauri v2
-    if (typeof window !== 'undefined' && window.__TAURI__ && window.__TAURI__.core) {
-      return await window.__TAURI__.core.invoke(command, args);
-    }
+  if (typeof window === 'undefined' || !window.__TAURI__?.core) {
     throw new Error('Tauri v2 core module not available - ensure app is running in desktop mode');
-  } catch (error) {
-    console.error('Tauri invoke failed:', error);
-    throw error;
   }
+  return window.__TAURI__.core.invoke(command, args);
+};
+
+const levelColors: Record<string, string> = {
+  INFO: 'text-emerald-300',
+  WARN: 'text-yellow-300',
+  ERROR: 'text-red-400',
+  DEBUG: 'text-sky-300',
+  TRACE: 'text-slate-300',
+};
+
+const parseLogLine = (entry: LiveLogEntry) => {
+  const pattern = /^\[(?<stamp>[^\]]+)\]\s+\[(?<level>[^\]]+)\]\s+-\s+(?<body>.*)$/;
+  const match = pattern.exec(entry.message);
+
+  if (match?.groups) {
+    return {
+      stamp: match.groups.stamp,
+      level: match.groups.level.toUpperCase(),
+      body: match.groups.body,
+    };
+  }
+
+  return {
+    stamp: new Date(entry.timestamp).toLocaleTimeString(),
+    level: entry.level.toUpperCase(),
+    body: entry.message,
+  };
 };
 
 const LiveDataPanel: React.FC = () => {
-  const { tauriAvailable, environment, isWindows, isWeb } = useEnvironment();
-  const { 
-    events, 
-    currentRound, 
-    currentRoundTime, 
-    isConnected
-  } = useLiveDataStore();
+  const { tauriAvailable } = useEnvironment();
+  const logs = useLiveDataStore((state) => state.logs);
+  const clearLogs = useLiveDataStore((state) => state.clearLogs);
+  const { isConnected: wsConnected } = useLiveDataEvents();
   const { t } = useI18n();
-  
-  // Use the new live data events hook
-  const { isConnected: wsConnected, eventCount } = useLiveDataEvents();
-  
-  const [showFullEvents, setShowFullEvents] = useState(false);
-  const [isLoadingSettings, setIsLoadingSettings] = useState(true);
+
   const liveDataRef = useRef<HTMLDivElement>(null);
-  const [autoScroll, setAutoScroll] = useState(false);
+  const [autoScroll, setAutoScroll] = useState(true);
 
-  // Load live data settings from configuration
-  const loadLiveDataSettings = async () => {
-    try {
-      setIsLoadingSettings(true);
-      const result = await configCommands.getSettings();
-      if (result.success && result.data?.logging?.live_data) {
-        const liveDataSettings = result.data.logging.live_data;
-        // Note: Live data is now automatically managed by the PSS event system
-      }
-    } catch (error) {
-      console.error('Failed to load live data settings:', error);
-    } finally {
-      setIsLoadingSettings(false);
-    }
-  };
-
-  // Save live data settings to configuration
-  const saveLiveDataSettings = async (newEnabled: boolean) => {
-    try {
-      const result = await configCommands.getSettings();
-      if (result.success) {
-        const updatedSettings = {
-          ...result.data,
-          logging: {
-            ...result.data.logging,
-            live_data: {
-              ...result.data.logging.live_data,
-              enabled: newEnabled,
-            },
-          },
-        };
-        await configCommands.updateSettings(updatedSettings);
-        console.log('Live data settings saved successfully');
-      }
-    } catch (error) {
-      console.error('Failed to save live data settings:', error);
-    }
-  };
-
-  // Load settings on component mount
-  useEffect(() => {
-    loadLiveDataSettings();
-  }, []);
-
-  // Load full events setting on mount
-  useEffect(() => {
-    const loadFullEventsSetting = async () => {
-      try {
-        const result = await configCommands.getSettings();
-        if (result.success && result.data?.logging?.full_events !== undefined) {
-          setShowFullEvents(result.data.logging.full_events);
-        }
-      } catch (error) {
-        console.error('Failed to load full events setting:', error);
-      }
-    };
-
-    loadFullEventsSetting();
-  }, []);
-
-  // Save full events setting
-  const handleFullEventsToggle = async () => {
-    const newValue = !showFullEvents;
-    setShowFullEvents(newValue);
-    
-    try {
-      // Call the backend Tauri command to toggle full events
-      if (tauriAvailable) {
-        await invoke('obs_toggle_full_events', { enabled: newValue });
-        console.log('Full events toggle command sent to backend');
-      }
-      
-      // Also save to config for persistence
-      const result = await configCommands.getSettings();
-      if (result.success) {
-        const updatedSettings = {
-          ...result.data,
-          logging: {
-            ...result.data.logging,
-            full_events: newValue,
-          },
-        };
-        await configCommands.updateSettings(updatedSettings);
-        console.log('Full events setting saved successfully');
-      }
-    } catch (error) {
-      console.error('Failed to save full events setting:', error);
-      // Revert the toggle if it failed
-      setShowFullEvents(!newValue);
-    }
-  };
-
-  // Format live data for display
-  const formatLiveData = (data: any): string => {
-    if (typeof data === 'string') {
-      return data;
-    }
-    
-    if (typeof data === 'object') {
-      try {
-        return JSON.stringify(data, null, 2);
-      } catch {
-        return String(data);
-      }
-    }
-    
-    return String(data);
-  };
-
-  // Auto-scroll to bottom when new events arrive
   useEffect(() => {
     if (autoScroll && liveDataRef.current) {
       liveDataRef.current.scrollTop = liveDataRef.current.scrollHeight;
     }
-  }, [events, autoScroll]);
-
-  // Polling removed – no longer required
+  }, [logs, autoScroll]);
 
   const handleToggle = async () => {
+    if (!tauriAvailable) {
+      return;
+    }
+
     try {
-      if (tauriAvailable) {
-        // Toggle live data streaming for the selected subsystem
-        const currentType = document.querySelector('select[aria-label="Select live data type"]') as HTMLSelectElement;
-        const subsystem = currentType?.value || 'pss';
-        
-        // For now, we'll enable/disable based on current connection status
-        const shouldEnable = !wsConnected;
-        
-        await invoke('set_live_data_streaming', { 
-          subsystem: subsystem, 
-          enabled: shouldEnable 
-        });
-        
-        console.log(`Live data streaming ${shouldEnable ? 'enabled' : 'disabled'} for ${subsystem}`);
+      const shouldEnable = !wsConnected;
+      await invoke('set_live_data_streaming', {
+        subsystem: 'pss',
+        enabled: shouldEnable,
+      });
+      if (!shouldEnable) {
+        clearLogs();
       }
     } catch (error) {
       console.error('Failed to toggle live data streaming:', error);
     }
   };
 
-  const handleTypeChange = async (newType: string) => {
-    try {
-      if (tauriAvailable) {
-        // Stop current streaming and start new one for the selected type
-        await invoke('set_live_data_streaming', { 
-          subsystem: newType, 
-          enabled: true 
-        });
-        
-        console.log(`Live data streaming switched to ${newType}`);
-      }
-    } catch (error) {
-      console.error('Failed to change live data type:', error);
-    }
-  };
+  const renderedLogs = useMemo(() => {
+    return logs.map((entry) => {
+      const parsed = parseLogLine(entry);
+      const levelClass =
+        levelColors[parsed.level] ?? levelColors[entry.level] ?? levelColors.INFO;
 
-  const scrollToTop = () => {
-    if (liveDataRef.current) {
-      liveDataRef.current.scrollTop = 0;
-    }
-  };
-
-  const scrollToBottom = () => {
-    if (liveDataRef.current) {
-      liveDataRef.current.scrollTop = liveDataRef.current.scrollHeight;
-    }
-  };
-
-  if (isLoadingSettings) {
-    return (
-      <div className="theme-card p-4 shadow-lg">
-        <h3 className="text-lg font-semibold mb-2 text-blue-300">{t('live.title', 'LIVE DATA')}</h3>
-        <div className="text-sm text-gray-400">{t('live.loading_settings', 'Loading settings...')}</div>
-      </div>
-    );
-  }
+      return (
+        <div
+          key={entry.id}
+          className="whitespace-pre leading-relaxed font-mono text-sm flex gap-2"
+        >
+          <span className="text-slate-500 min-w-[7.5rem]">{parsed.stamp}</span>
+          <span className={`${levelClass} min-w-[3.5rem]`}>{`[${parsed.level}]`}</span>
+          <span className="text-gray-200 flex-1">{parsed.body}</span>
+        </div>
+      );
+    });
+  }, [logs]);
 
   return (
-    <div className="theme-card p-4 shadow-lg">
+    <div className="theme-card p-4 shadow-lg relative">
       <h3 className="text-lg font-semibold mb-2 text-blue-300">{t('live.title', 'LIVE DATA')}</h3>
-      
 
-      
-      <div className="flex items-center gap-3 mb-3">
-        <Toggle
-          checked={wsConnected} 
-          onChange={handleToggle} 
-          label={t('common.enabled', 'Enabled')}
-          labelPosition="right"
-          disabled={false}
-        />
-        <span className="text-gray-200 font-medium" id="live-type-label">{t('live.type', 'Type:')}</span>
-        <select
-        className="theme-surface-2 rounded px-2 py-1"
-          value="pss"
-          onChange={e => handleTypeChange(e.target.value)}
-          aria-labelledby="live-type-label"
-          title={t('live.select_type', 'Select live data type')}
-          aria-label={t('live.select_type', 'Select live data type')}
-          disabled={false}
-        >
-          <option value="pss">PSS</option>
-          <option value="udp">UDP</option>
-          <option value="obs">OBS</option>
-        </select>
-        <Toggle
-          checked={showFullEvents}
-          onChange={handleFullEventsToggle}
-          label={t('live.full_events', 'Full Events')}
-          labelPosition="right"
-          disabled={false}
-          className="ml-4"
-        />
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+        <div className="flex items-center gap-3">
+          <Toggle
+            checked={wsConnected}
+            onChange={handleToggle}
+            label={t('live.feed_enabled', 'Feed Enabled')}
+            labelPosition="right"
+          />
+          <span className="flex items-center gap-2 text-sm">
+            <span
+              className={`w-2 h-2 rounded-full ${
+                wsConnected ? 'bg-green-500' : 'bg-red-500'
+              }`}
+            />
+            <span className={wsConnected ? 'text-emerald-300' : 'text-red-300'}>
+              {wsConnected ? t('common.connected', 'Connected') : t('common.disconnected', 'Disconnected')}
+            </span>
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={clearLogs}
+            className="px-2 py-1 text-xs rounded bg-gray-700 hover:bg-gray-600 text-gray-100"
+          >
+            {t('common.clear', 'Clear')}
+          </button>
+          <Toggle
+            checked={autoScroll}
+            onChange={() => setAutoScroll((prev) => !prev)}
+            label={t('live.auto_scroll', 'Auto-scroll')}
+            labelPosition="right"
+          />
+        </div>
       </div>
 
-      {/* Connection Status */}
-      <div className="flex items-center gap-2 mb-3 text-sm">
-        <span className={`w-2 h-2 rounded-full ${wsConnected ? 'bg-green-500' : 'bg-red-500'}`}></span>
-        <span className="text-gray-300">
-          {wsConnected ? t('common.connected', 'Connected') : t('common.disconnected', 'Disconnected')} | 
-          {t('live.events', 'Events')}: {eventCount} | 
-          {t('common.round', 'Round')}: {currentRound} | 
-          {t('common.time', 'Time')}: {currentRoundTime}
-        </span>
-      </div>
-
-      {/* Live Data Display */}
-      <div 
+      <div
         ref={liveDataRef}
-        className="flex-1 theme-surface-2 rounded p-3 overflow-y-auto text-sm font-mono max-h-[400px] min-h-[200px]"
+        className="bg-black/60 border border-gray-700 rounded p-3 h-64 overflow-y-auto space-y-1"
       >
-        {events.length === 0 ? (
-          <div className="text-gray-500 text-center py-8">
-            {t('live.no_events', 'No PSS events available.')} 
-            {!wsConnected && ` ${t('live.ws_not_connected', 'WebSocket not connected.')}`}
+        {logs.length === 0 ? (
+          <div className="text-center text-gray-500 text-sm">
+            {wsConnected
+              ? t('live.waiting_logs', 'Waiting for live data ...')
+              : t('live.feed_disabled', 'Live feed disabled. Enable to stream logs.')}
           </div>
         ) : (
-          events.map((event, index) => {
-            const color = 'text-green-400';
-            const emoji = '📡';
-            return (
-              <div key={event.id} className={`${color} mb-1`}>
-                <span className="text-gray-500">[{index + 1}]</span> {emoji} {event.description}
-                <div className="text-gray-400 ml-4 text-xs">
-                  {t('common.round', 'Round')}: {event.round} | {t('common.time', 'Time')}: {event.time} | {t('common.type', 'Type')}: {event.eventCode}
-                </div>
-              </div>
-            );
-          })
+          renderedLogs
         )}
       </div>
-      
-      {events.length > 0 && (
-        <div className="absolute top-2 right-2 flex gap-1">
-          <button
-            onClick={scrollToTop}
-            className="bg-gray-700 hover:bg-gray-600 text-white px-2 py-1 rounded text-xs"
-            title={t('common.scroll_top', 'Scroll to top')}
-          >
-            ↑
-          </button>
-          <button
-            onClick={scrollToBottom}
-            className="bg-gray-700 hover:bg-gray-600 text-white px-2 py-1 rounded text-xs"
-            title={t('common.scroll_bottom', 'Scroll to bottom')}
-          >
-            ↓
-          </button>
-          <button
-            onClick={() => setAutoScroll(!autoScroll)}
-            className={`px-2 py-1 rounded text-xs ${autoScroll ? 'bg-blue-600 text-white' : 'bg-gray-700 text-white hover:bg-gray-600'}`}
-            title={t('live.toggle_autoscroll', 'Toggle auto-scroll')}
-          >
-            🔄
-          </button>
-        </div>
-      )}
+
+      <div className="mt-3 text-xs text-gray-400 flex items-center justify-between">
+        <span>
+          {t('live.lines', 'Lines')}: {logs.length}
+        </span>
+        <span>{t('live.auto_scroll_hint', 'Toggle auto-scroll to pause the feed')}</span>
+      </div>
     </div>
   );
 };
 
-export default LiveDataPanel; 
+export default LiveDataPanel;

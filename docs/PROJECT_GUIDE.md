@@ -63,6 +63,15 @@ Notable behaviour:
 * **Ceremony playlist items panel** sits directly to the right and stretches to the viewport edge.
 * **Animation preview modal** keeps flag animations at a fixed 450 px width while shrinking surrounding chrome so the close button and header never overlap the animation.
 
+## Anthem Asset Downloader
+
+Use `scripts/download_national_anthems.py` when refreshing anthem audio:
+
+* The downloader requests each country’s `nationalanthems.info` page, parses the list of MP3 variants in the order shown on the site, and downloads every file.
+* Each variant is saved as `<ioc>-vN.mp3` (e.g. `cro-v1.mp3`, `cro-v2.mp3`), preserving historical anthems.
+* The newest entry on the site is copied to the canonical uppercase filename (`CRO.mp3`) so the app always plays the current anthem.
+* Failed downloads and missing IOC mappings are recorded in `failed_links.md`.
+
 ## Logging & Conventions
 
 * Prefer `log::info!`, `log::warn!`, `log::error!` in Rust; they are routed through the custom `env_logger` formatter.

@@ -101,6 +101,7 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
   const [udpEnabled, setUdpEnabled] = useState(false);
   const [udpPort, setUdpPort] = useState(8888);
   const [udpStatus, setUdpStatus] = useState<string>('Stopped');
+  const [udpStatusDetail, setUdpStatusDetail] = useState<string>('');
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   
   // Network settings state
@@ -130,7 +131,7 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
   useEffect(() => {
     const interval = setInterval(() => {
       loadUdpStatus();
-    }, 2000); // Refresh every 2 seconds
+    }, 5000); // Refresh every 5 seconds to reduce UI churn
 
     return () => clearInterval(interval);
   }, []);
@@ -240,15 +241,28 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
   const loadUdpStatus = async () => {
     try {
       const status = await invoke('get_udp_status');
-      const statusStr = status as string;
-      
-      setUdpStatus(statusStr);
-      
-      // Sync the toggle state with actual server status
-      const isRunning = statusStr.includes("Running");
-      setUdpEnabled(isRunning);
+
+      if (status && typeof status === 'object' && 'status' in (status as any)) {
+        const statusObj = status as { status?: string; is_running?: boolean; error?: string };
+        const statusStr = statusObj.status ?? 'Unknown';
+        setUdpStatus(statusStr);
+        setUdpEnabled(Boolean(statusObj.is_running));
+        setUdpStatusDetail(statusObj.error ? String(statusObj.error) : '');
+      } else if (typeof status === 'string') {
+        setUdpStatus(status);
+        setUdpEnabled(status.toLowerCase().includes('running'));
+        setUdpStatusDetail('');
+      } else {
+        setUdpStatus('Unknown');
+        setUdpEnabled(false);
+        setUdpStatusDetail('');
+      }
     } catch (err) {
       console.error('Error loading UDP status:', err);
+      setUdpStatus('Error');
+      setUdpEnabled(false);
+      const message = err instanceof Error ? err.message : 'Failed to load UDP status';
+      setUdpStatusDetail(message);
     }
   };
 
@@ -529,13 +543,22 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
               <p className="text-xs text-gray-400">{t('pss.udp.port', 'Port')}: {udpPort}</p>
             </div>
             <div className="flex items-center space-x-3">
-              <span className={`px-2 py-1 rounded text-xs font-medium ${
-                udpStatus === 'Running' 
-                  ? 'bg-green-900/30 text-green-300 border border-green-600/30' 
-                  : 'bg-red-900/30 text-red-300 border border-red-600/30'
-              }`}>
-                {udpStatus}
-              </span>
+              <div className="flex flex-col">
+                <span className={`px-2 py-1 rounded text-xs font-medium ${
+                  udpStatus === 'Running' 
+                    ? 'bg-green-900/30 text-green-300 border border-green-600/30' 
+                    : udpStatus === 'Starting'
+                      ? 'bg-yellow-900/30 text-yellow-300 border border-yellow-600/30'
+                      : 'bg-red-900/30 text-red-300 border border-red-600/30'
+                }`}>
+                  {udpStatus}
+                </span>
+                {udpStatusDetail && (
+                  <span className="mt-1 text-xs text-red-300 max-w-xs truncate">
+                    {udpStatusDetail}
+                  </span>
+                )}
+              </div>
               <Toggle
                 id="udp-enabled"
                 checked={udpEnabled}
@@ -709,8 +732,8 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
                       aria-label={t('pss.udp.select_interface_aria', 'Select network interface')}
                     >
                       <option value="">{t('pss.udp.select_interface_placeholder', 'Select an interface...')}</option>
-                      {networkInterfaces.map((iface) => (
-                        <option key={iface.name} value={iface.name}>
+                      {networkInterfaces.map((iface, idx) => (
+                        <option key={`${iface.name}-${idx}`} value={iface.name}>
                           {iface.name} ({iface.type}) - {iface.media_state === 'connected' ? t('common.connected', 'Connected') : t('common.disconnected', 'Disconnected')} - {iface.ip_addresses.join(', ')}
                         </option>
                       ))}
@@ -744,9 +767,9 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
             <div className="mt-6">
               <h5 className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-3">{t('pss.udp.available_ifaces', 'Available Interfaces')}</h5>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {networkInterfaces.map((iface) => (
+                {networkInterfaces.map((iface, idx) => (
                   <div
-                    key={iface.name}
+                    key={`${iface.name}-${idx}`}
                   className={`p-3 border text-xs ${
                       bestInterface?.name === iface.name
                         ? 'border-green-500 bg-green-900/20'
@@ -775,7 +798,7 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
                         <div>
                           <div className="font-medium text-gray-300">{t('pss.udp.ip_addresses', 'IP Addresses:')}</div>
                           {iface.ip_addresses.map((ip, index) => (
-                            <div key={index} className="text-xs text-left">
+                            <div key={`${iface.name}-${ip}-${index}`} className="text-xs text-left">
                               {ip}
                               {iface.subnet_masks[index] && (
                                 <span className="text-gray-500 ml-1">/ {iface.subnet_masks[index]}</span>

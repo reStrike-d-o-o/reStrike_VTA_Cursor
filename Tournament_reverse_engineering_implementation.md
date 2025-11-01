@@ -11,7 +11,7 @@
   - Folder hierarchy encodes tournament/day/court metadata (to be documented).
 - **Supporting references**
   - WT division dataset imported earlier (migration 43).
-  - IOC flag/anthem mapping (Reports in `ui/build/assets/flags`).
+  - IOC flag/anthem mapping (Reports in `ui/public/assets/flags`).
   - Existing DB schema (`pss_*`, `tournaments`, `medal_ceremonies`, `ovr_*`).
 
 ## Workstream Breakdown

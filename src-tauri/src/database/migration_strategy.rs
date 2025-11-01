@@ -3,8 +3,6 @@ use crate::database::operations::UiSettingsOperations;
 use crate::types::AppResult;
 use rusqlite::Connection;
 use std::collections::HashMap;
-use std::io::Write;
-use std::path::Path;
 
 /// Migration strategy for transitioning from JSON to database settings
 #[derive(Clone)]
@@ -218,78 +216,6 @@ impl MigrationStrategy {
         }
 
         log::info!("Migration validation passed");
-        Ok(())
-    }
-
-    /// Create backup of JSON settings before migration
-    pub async fn create_json_backup(&self) -> AppResult<String> {
-        let settings = self.load_json_settings().await?;
-        let backup_data = serde_json::to_string_pretty(&settings).map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to serialize backup: {}", e))
-        })?;
-
-        // Create backups directory in external data directory (same as list_backup_files)
-        let backup_dir = match dirs::data_dir() {
-            Some(data_dir) => data_dir.join("reStrikeVTA").join("backups"),
-            None => std::path::PathBuf::from("backups"),
-        };
-
-        if !backup_dir.exists() {
-            std::fs::create_dir_all(&backup_dir).map_err(|e| crate::types::AppError::IoError(e))?;
-        }
-
-        let backup_filename = format!(
-            "json_settings_backup_{}.zip",
-            chrono::Utc::now().timestamp()
-        );
-        let backup_path = backup_dir.join(&backup_filename);
-
-        // Create a ZIP archive with the JSON data
-        let file =
-            std::fs::File::create(&backup_path).map_err(|e| crate::types::AppError::IoError(e))?;
-        let mut zip = zip::ZipWriter::new(file);
-
-        let options = zip::write::FileOptions::default()
-            .compression_method(zip::CompressionMethod::Deflated)
-            .unix_permissions(0o644);
-
-        zip.start_file("settings.json", options).map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to create ZIP entry: {}", e))
-        })?;
-        zip.write_all(backup_data.as_bytes())
-            .map_err(|e| crate::types::AppError::IoError(e))?;
-
-        zip.finish().map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to finalize ZIP: {}", e))
-        })?;
-
-        log::info!("JSON settings backup created: {}", backup_path.display());
-        Ok(backup_path.to_string_lossy().to_string())
-    }
-
-    /// Restore settings from JSON backup
-    pub async fn restore_from_json_backup(&self, backup_path: &str) -> AppResult<()> {
-        if !Path::new(backup_path).exists() {
-            return Err(crate::types::AppError::ConfigError(format!(
-                "Backup file not found: {}",
-                backup_path
-            )));
-        }
-
-        let backup_data =
-            std::fs::read_to_string(backup_path).map_err(|e| crate::types::AppError::IoError(e))?;
-
-        let settings: HashMap<String, String> =
-            serde_json::from_str(&backup_data).map_err(|e| {
-                crate::types::AppError::ConfigError(format!("Failed to parse backup: {}", e))
-            })?;
-
-        log::info!("Restoring {} settings from backup...", settings.len());
-
-        // TODO: Implement restoration logic
-        // This would involve updating the config manager with the restored settings
-
-        log::info!("Settings restored from backup");
         Ok(())
     }
 }

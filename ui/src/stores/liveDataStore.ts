@@ -1,6 +1,9 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 
+const MAX_EVENT_HISTORY = 250;
+const MAX_LOG_HISTORY = 500;
+
 // PSS Event types based on protocol specification
 export interface PssEventData {
   id: string;
@@ -17,8 +20,18 @@ export interface PssEventData {
   structuredData?: any;
 }
 
+export type LiveLogLevel = 'INFO' | 'WARN' | 'ERROR' | 'DEBUG' | 'TRACE';
+
+export interface LiveLogEntry {
+  id: string;
+  message: string;
+  timestamp: number;
+  level: LiveLogLevel;
+}
+
 interface LiveDataState {
   events: PssEventData[];
+  logs: LiveLogEntry[];
   currentRound: number;
   currentRoundTime: string;
   isConnected: boolean;
@@ -27,6 +40,8 @@ interface LiveDataState {
   addEvent: (event: PssEventData) => void;
   clearEvents: () => void;
   setEvents: (events: PssEventData[]) => void;
+  addLog: (message: string, timestamp?: number) => void;
+  clearLogs: () => void;
   storeEventsToDatabase: (matchId: string) => Promise<void>;
   setCurrentRound: (round: number) => void;
   setCurrentRoundTime: (time: string) => void;
@@ -41,6 +56,7 @@ interface LiveDataState {
 export const useLiveDataStore = create<LiveDataState>()(
   subscribeWithSelector((set, get) => ({
     events: [],
+    logs: [],
     currentRound: 1,
     currentRoundTime: '0:00',
     isConnected: false,
@@ -48,7 +64,7 @@ export const useLiveDataStore = create<LiveDataState>()(
     
     addEvent: (event: PssEventData) => {
       set((state) => ({
-        events: [event, ...state.events], // Prepend new event to show newest at top
+        events: [event, ...state.events].slice(0, MAX_EVENT_HISTORY),
         lastUpdate: new Date().toISOString(),
       }));
     },
@@ -62,7 +78,51 @@ export const useLiveDataStore = create<LiveDataState>()(
 
     setEvents: (events: PssEventData[]) => {
       set({
-        events,
+        events: events.slice(0, MAX_EVENT_HISTORY),
+        lastUpdate: new Date().toISOString(),
+      });
+    },
+
+    addLog: (message: string, ts?: number) => {
+      const parseLogLevel = (text: string): LiveLogLevel => {
+        if (text.includes('[ERR')) {
+          return 'ERROR';
+        }
+        if (text.includes('[WAR') || text.includes('[WRN')) {
+          return 'WARN';
+        }
+        if (text.includes('[DBG')) {
+          return 'DEBUG';
+        }
+        if (text.includes('[TRC')) {
+          return 'TRACE';
+        }
+        return 'INFO';
+      };
+
+      const timestamp = typeof ts === 'number' && !Number.isNaN(ts) ? ts : Date.now();
+      const entry: LiveLogEntry = {
+        id: `${timestamp}-${Math.random().toString(36).slice(2, 8)}`,
+        message,
+        timestamp,
+        level: parseLogLevel(message),
+      };
+
+      set((state) => {
+        const nextLogs = [...state.logs, entry];
+        if (nextLogs.length > MAX_LOG_HISTORY) {
+          nextLogs.splice(0, nextLogs.length - MAX_LOG_HISTORY);
+        }
+        return {
+          logs: nextLogs,
+          lastUpdate: new Date().toISOString(),
+        };
+      });
+    },
+
+    clearLogs: () => {
+      set({
+        logs: [],
         lastUpdate: new Date().toISOString(),
       });
     },

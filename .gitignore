@@ -18,3 +18,13 @@ Thumbs.db
 src-tauri/config/app_config.backup.json
 src-tauri/config/app_config.json
 src-tauri/restrike_vta.db*
+
+# Frontend build output
+ui/build/
+
+# Large dynamic assets (generated/downloaded at runtime)
+ui/public/assets/anthems/
+
+# Local backups and cache artefacts
+src-tauri/backups/
+scripts/__pycache__/

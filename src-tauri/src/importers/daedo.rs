@@ -195,7 +195,10 @@ fn collect_archive_summary(root: &Path) -> Result<ArchiveSummary, ImportError> {
             .map_err(|e| ImportError::Parse(format!("{}: {}", entry.display(), e)))?;
 
         if let Some(day) = bundle.day_folder {
-            day_courts.entry(day.clone()).or_default().insert(bundle.court.clone());
+            day_courts
+                .entry(day.clone())
+                .or_default()
+                .insert(bundle.court.clone());
         }
 
         start_date = reduce_min_date(start_date, bundle.match_start);
@@ -299,12 +302,14 @@ fn ensure_tournament(
     request: &ImportRequest,
     summary: &ArchiveSummary,
 ) -> Result<(i64, String), ImportError> {
-    let start_date = summary
-        .start_date
-        .map(|d| Utc.from_utc_datetime(&d.and_hms_opt(0, 0, 0).unwrap()).to_rfc3339());
-    let end_date = summary
-        .end_date
-        .map(|d| Utc.from_utc_datetime(&d.and_hms_opt(23, 59, 59).unwrap()).to_rfc3339());
+    let start_date = summary.start_date.map(|d| {
+        Utc.from_utc_datetime(&d.and_hms_opt(0, 0, 0).unwrap())
+            .to_rfc3339()
+    });
+    let end_date = summary.end_date.map(|d| {
+        Utc.from_utc_datetime(&d.and_hms_opt(23, 59, 59).unwrap())
+            .to_rfc3339()
+    });
 
     let duration_days = summary.day_courts.len().max(1) as i32;
     let default_city = "Unknown City".to_string();
@@ -332,7 +337,14 @@ fn ensure_tournament(
                 updated_at = CURRENT_TIMESTAMP
             WHERE id = ?1
             "#,
-            params![id, duration_days, default_city, default_country, start_date, end_date],
+            params![
+                id,
+                duration_days,
+                default_city,
+                default_country,
+                start_date,
+                end_date
+            ],
         )?;
         (id, uuid)
     } else {
@@ -596,7 +608,10 @@ fn store_match_athletes(
     match_uuid: &str,
     athletes: &HashMap<String, AthleteStub>,
 ) -> Result<(), ImportError> {
-    tx.execute("DELETE FROM pss_match_athletes WHERE match_id = ?", params![match_uuid])?;
+    tx.execute(
+        "DELETE FROM pss_match_athletes WHERE match_id = ?",
+        params![match_uuid],
+    )?;
 
     let mut rows = Vec::new();
     if let Some(blue) = athletes.get("blue") {
@@ -641,14 +656,13 @@ fn find_athlete_id(tx: &Transaction<'_>, stub: &AthleteStub) -> Result<Option<i6
         }
     }
 
-    tx
-        .query_row(
-            "SELECT id FROM athletes WHERE display_name = ?1",
-            params![stub.display_name],
-            |row| row.get(0),
-        )
-        .optional()
-        .map_err(ImportError::from)
+    tx.query_row(
+        "SELECT id FROM athletes WHERE display_name = ?1",
+        params![stub.display_name],
+        |row| row.get(0),
+    )
+    .optional()
+    .map_err(ImportError::from)
 }
 
 fn store_rounds(
@@ -656,7 +670,10 @@ fn store_rounds(
     match_uuid: &str,
     rounds: &[RoundSnapshot],
 ) -> Result<(), ImportError> {
-    tx.execute("DELETE FROM pss_rounds WHERE match_id = ?", params![match_uuid])?;
+    tx.execute(
+        "DELETE FROM pss_rounds WHERE match_id = ?",
+        params![match_uuid],
+    )?;
     let mut stmt = tx.prepare(
         r#"
         INSERT INTO pss_rounds (
@@ -681,7 +698,10 @@ fn store_scores(
     tournament_uuid: &str,
     record: &MatchRecord,
 ) -> Result<(), ImportError> {
-    tx.execute("DELETE FROM pss_scores WHERE match_id = ?", params![match_uuid])?;
+    tx.execute(
+        "DELETE FROM pss_scores WHERE match_id = ?",
+        params![match_uuid],
+    )?;
 
     let mut stmt = tx.prepare(
         r#"
@@ -697,10 +717,26 @@ fn store_scores(
             .clone()
             .unwrap_or_else(|| Utc::now().to_rfc3339());
         if let Some(score) = snapshot.blue_score {
-            stmt.execute(params![match_uuid, snapshot.round_number, 1, "round", score, ts, tournament_uuid])?;
+            stmt.execute(params![
+                match_uuid,
+                snapshot.round_number,
+                1,
+                "round",
+                score,
+                ts,
+                tournament_uuid
+            ])?;
         }
         if let Some(score) = snapshot.red_score {
-            stmt.execute(params![match_uuid, snapshot.round_number, 2, "round", score, ts, tournament_uuid])?;
+            stmt.execute(params![
+                match_uuid,
+                snapshot.round_number,
+                2,
+                "round",
+                score,
+                ts,
+                tournament_uuid
+            ])?;
         }
     }
 
@@ -738,7 +774,10 @@ fn store_warnings(
     tournament_uuid: &str,
     record: &MatchRecord,
 ) -> Result<(), ImportError> {
-    tx.execute("DELETE FROM pss_warnings WHERE match_id = ?", params![match_uuid])?;
+    tx.execute(
+        "DELETE FROM pss_warnings WHERE match_id = ?",
+        params![match_uuid],
+    )?;
 
     let mut stmt = tx.prepare(
         r#"
@@ -754,10 +793,24 @@ fn store_warnings(
             .clone()
             .unwrap_or_else(|| Utc::now().to_rfc3339());
         if let Some(w) = snapshot.blue_penalties {
-            stmt.execute(params![match_uuid, snapshot.round_number, 1, w, ts.clone(), tournament_uuid])?;
+            stmt.execute(params![
+                match_uuid,
+                snapshot.round_number,
+                1,
+                w,
+                ts.clone(),
+                tournament_uuid
+            ])?;
         }
         if let Some(w) = snapshot.red_penalties {
-            stmt.execute(params![match_uuid, snapshot.round_number, 2, w, ts.clone(), tournament_uuid])?;
+            stmt.execute(params![
+                match_uuid,
+                snapshot.round_number,
+                2,
+                w,
+                ts.clone(),
+                tournament_uuid
+            ])?;
         }
     }
 
@@ -798,9 +851,15 @@ fn store_events(
         .collect::<Result<Vec<_>, _>>()?;
 
     for event_id in existing {
-        tx.execute("DELETE FROM pss_event_details WHERE event_id = ?", params![event_id])?;
+        tx.execute(
+            "DELETE FROM pss_event_details WHERE event_id = ?",
+            params![event_id],
+        )?;
     }
-    tx.execute("DELETE FROM pss_events WHERE match_id = ?", params![match_id])?;
+    tx.execute(
+        "DELETE FROM pss_events WHERE match_id = ?",
+        params![match_id],
+    )?;
 
     let mut inserted = 0;
     for event in &record.events {
@@ -810,8 +869,8 @@ fn store_events(
             .clone()
             .unwrap_or_else(|| Utc::now().to_rfc3339());
 
-        let raw_payload = serde_json::to_string(&event.raw_row)
-            .map_err(|e| ImportError::Parse(e.to_string()))?;
+        let raw_payload =
+            serde_json::to_string(&event.raw_row).map_err(|e| ImportError::Parse(e.to_string()))?;
 
         tx.execute(
             r#"
@@ -878,10 +937,7 @@ fn ensure_event_type(tx: &Transaction<'_>, event_code: &str) -> Result<i64, Impo
 
 fn walk_match_logs(root: &Path) -> Result<Vec<PathBuf>, ImportError> {
     let mut results = Vec::new();
-    for entry in WalkDir::new(root)
-        .into_iter()
-        .filter_map(|e| e.ok())
-    {
+    for entry in WalkDir::new(root).into_iter().filter_map(|e| e.ok()) {
         if !entry.file_type().is_file() {
             continue;
         }
@@ -943,7 +999,9 @@ fn parse_match_bundle(path: &Path) -> Result<(MatchRecord, BundleSummary), anyho
 
     let record = MatchRecord {
         match_id: match_id.clone(),
-        day_folder: day_folder.clone().unwrap_or_else(|| "unknown-day".to_string()),
+        day_folder: day_folder
+            .clone()
+            .unwrap_or_else(|| "unknown-day".to_string()),
         court: court.clone(),
         metadata,
         athletes: athlete_stubs,
@@ -1055,9 +1113,7 @@ fn build_events(
             .cloned()
             .unwrap_or_else(|| "UNKNOWN".to_string());
 
-        let round_number = row
-            .get("roundNumber")
-            .and_then(|v| v.parse::<i64>().ok());
+        let round_number = row.get("roundNumber").and_then(|v| v.parse::<i64>().ok());
 
         let score_snapshot = parse_score_snapshot(row);
         let blue_total_penalties = row
@@ -1070,9 +1126,7 @@ fn build_events(
         let event = CanonicalEvent {
             sequence: idx + 1,
             event_type: event_type.clone(),
-            event_time_iso: row
-                .get("eventTimeMs")
-                .and_then(|v| ms_to_iso8601(v)),
+            event_time_iso: row.get("eventTimeMs").and_then(|v| ms_to_iso8601(v)),
             round_number,
             blue_total_penalties,
             red_total_penalties,
@@ -1189,9 +1243,9 @@ fn build_athletes(
                 .filter(|s| !s.is_empty())
                 .unwrap_or_else(|| "UNK".to_string()),
             gender: match_row
-            .get("categoryGender")
-            .cloned()
-            .or_else(|| match_row.get("gender").cloned()),
+                .get("categoryGender")
+                .cloned()
+                .or_else(|| match_row.get("gender").cloned()),
         },
         first_name: None,
         last_name: None,
@@ -1293,10 +1347,12 @@ fn upsert_athlete(
         .as_ref()
         .and_then(|value| lookups.division.get(&value.trim().to_uppercase()).copied());
 
-    let weight_id = profile
-        .weight_class
-        .as_ref()
-        .and_then(|value| lookups.weight_class.get(&value.trim().to_uppercase()).copied());
+    let weight_id = profile.weight_class.as_ref().and_then(|value| {
+        lookups
+            .weight_class
+            .get(&value.trim().to_uppercase())
+            .copied()
+    });
 
     let mut candidates: Vec<i64> = Vec::new();
 
@@ -1458,8 +1514,8 @@ fn update_athlete(
         }));
     }
 
-    let history_json = serde_json::to_string(&history)
-        .map_err(|e| ImportError::Parse(e.to_string()))?;
+    let history_json =
+        serde_json::to_string(&history).map_err(|e| ImportError::Parse(e.to_string()))?;
 
     tx.execute(
         r#"

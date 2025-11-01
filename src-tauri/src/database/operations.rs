@@ -1076,7 +1076,7 @@ impl PssUdpOperations {
                 recognition_status, protocol_version, parser_confidence, validation_errors,
                 tournament_id, created_at, created
             ) VALUES (
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, strftime('%s','now')
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
             )",
             params![
                 event.session_id,
@@ -1095,7 +1095,10 @@ impl PssUdpOperations {
                 event.parser_confidence,
                 event.validation_errors,
                 event.tournament_id,
-                event.created_at.to_rfc3339()
+                event.created_at.to_rfc3339(),
+                event
+                    .created
+                    .unwrap_or_else(|| event.created_at.timestamp())
             ],
         )?;
         Ok(conn.last_insert_rowid())
@@ -2237,7 +2240,7 @@ impl PssEventStatusOperations {
                 parsed_data, event_sequence, processing_time_ms, is_valid, error_message,
                 recognition_status, protocol_version, parser_confidence, validation_errors,
                 tournament_id, created_at, created
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, strftime('%s','now'))",
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             params![
                 event.session_id,
                 event.match_id,
@@ -2255,7 +2258,10 @@ impl PssEventStatusOperations {
                 event.parser_confidence,
                 event.validation_errors,
                 event.tournament_id,
-                event.created_at.to_rfc3339()
+                event.created_at.to_rfc3339(),
+                event
+                    .created
+                    .unwrap_or_else(|| event.created_at.timestamp())
             ],
         )?;
 

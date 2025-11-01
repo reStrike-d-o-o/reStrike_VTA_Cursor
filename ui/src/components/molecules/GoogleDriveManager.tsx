@@ -181,7 +181,7 @@ export const GoogleDriveManager: React.FC = () => {
     setOperationStatus({
       type: 'upload',
       loading: true,
-      message: 'Creating backup archive...',
+      message: 'Preparing backup upload...',
     });
 
     try {
@@ -192,7 +192,7 @@ export const GoogleDriveManager: React.FC = () => {
         setOperationStatus({
           type: 'upload',
           loading: false,
-          message: result.message || 'Backup archive uploaded successfully!',
+          message: result.message || 'Backup uploaded successfully!',
         });
         await listFiles(); // Refresh file list
       } else {
@@ -219,7 +219,7 @@ export const GoogleDriveManager: React.FC = () => {
     setOperationStatus({
       type: 'download',
       loading: true,
-      message: 'Downloading backup archive...',
+      message: 'Downloading backup...',
     });
 
     try {
@@ -231,7 +231,7 @@ export const GoogleDriveManager: React.FC = () => {
         setOperationStatus({
           type: 'download',
           loading: false,
-          message: result.message || 'Backup archive downloaded successfully!',
+          message: result.message || 'Backup downloaded successfully!',
         });
       } else {
         setOperationStatus({
@@ -255,7 +255,7 @@ export const GoogleDriveManager: React.FC = () => {
     setOperationStatus({
       type: 'restore',
       loading: true,
-      message: 'Restoring from backup archive...',
+      message: 'Restoring from backup...',
     });
 
     try {
@@ -288,7 +288,7 @@ export const GoogleDriveManager: React.FC = () => {
   };
 
   const deleteBackupArchive = async (fileId: string) => {
-    if (!confirm('Are you sure you want to delete this backup archive?')) {
+    if (!confirm('Are you sure you want to delete this backup from Google Drive?')) {
       return;
     }
 
@@ -300,10 +300,10 @@ export const GoogleDriveManager: React.FC = () => {
       if (result.success) {
         await listFiles(); // Refresh file list
       } else {
-        alert(`Failed to delete archive: ${result.error || 'Unknown error'}`);
+        alert(`Failed to delete backup: ${result.error || 'Unknown error'}`);
       }
     } catch (error) {
-      alert(`Failed to delete archive: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      alert(`Failed to delete backup: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -324,8 +324,8 @@ export const GoogleDriveManager: React.FC = () => {
     }
   };
 
-  const backupFiles = driveStatus.files.filter(file => 
-    file.name.endsWith('.zip') && file.name.includes('backup')
+  const backupFiles = driveStatus.files.filter(file =>
+    file.name.toLowerCase().endsWith('.db') && file.name.toLowerCase().includes('backup')
   );
 
   return (
@@ -438,10 +438,10 @@ export const GoogleDriveManager: React.FC = () => {
             )}
           </div>
 
-          {/* Right Column - Backup Archives */}
+          {/* Right Column - Cloud Backups */}
           <Card className="theme-surface-2">
             <CardHeader>
-              <CardTitle>Backup Archives ({backupFiles.length})</CardTitle>
+              <CardTitle>Cloud Backups ({backupFiles.length})</CardTitle>
             </CardHeader>
             <CardContent>
               {driveStatus.error && (
@@ -449,7 +449,7 @@ export const GoogleDriveManager: React.FC = () => {
               )}
 
               {backupFiles.length === 0 ? (
-                <p className="text-xs theme-text-muted">No backup archives found</p>
+                <p className="text-xs theme-text-muted">No backups found</p>
               ) : (
                 <div className="max-h-64 overflow-y-auto border border-gray-700 rounded">
                   <table className="min-w-full text-left text-xs theme-text">

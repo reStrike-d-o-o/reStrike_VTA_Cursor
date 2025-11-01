@@ -8,8 +8,7 @@ use serde_json::json;
 use uuid::Uuid;
 
 use re_strike_vta::database::{
-    connection::DatabaseConnection,
-    migrations::MigrationManager,
+    connection::DatabaseConnection, migrations::MigrationManager,
     operations::TournamentRankingOperations,
 };
 
@@ -199,8 +198,8 @@ fn read_and_encode_banner(path: &Path) -> Result<Option<String>> {
         return Ok(None);
     }
     let data = fs::read(path).with_context(|| format!("Failed to read {}", path.display()))?;
-use base64::engine::general_purpose::STANDARD;
-use base64::Engine;
+    use base64::engine::general_purpose::STANDARD;
+    use base64::Engine;
     Ok(Some(STANDARD.encode(data)))
 }
 

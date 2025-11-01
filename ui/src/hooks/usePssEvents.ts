@@ -63,8 +63,22 @@ export const usePssEvents = () => {
       }
     });
 
-    const logUnlisten = await listenTauri('log_event', (_event: any) => {
-      // Reserved for future log handling
+    const logUnlisten = await listenTauri('log_event', (event: any) => {
+      try {
+        const payload = event?.payload;
+        if (!payload || typeof payload !== 'object') {
+          return;
+        }
+        const message = typeof payload.message === 'string' ? payload.message : '';
+        if (!message) {
+          return;
+        }
+        const timestamp =
+          typeof payload.timestamp === 'number' ? payload.timestamp : Date.now();
+        useLiveDataStore.getState().addLog(message, timestamp);
+      } catch (error) {
+        console.warn('Failed to process log_event payload', error);
+      }
     });
 
     const pathDecisionUnlisten2 = await listenTauri('obs_path_decision_needed', async (event: any) => {
@@ -184,7 +198,6 @@ const cleanupEventListener = () => {
     emitPendingEvents,
   };
 }; 
-
 
 
 

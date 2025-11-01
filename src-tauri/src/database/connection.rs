@@ -1,5 +1,5 @@
 use crate::database::{DatabaseError, DatabaseResult, DATABASE_FILE};
-use rusqlite::{Connection, Result as SqliteResult};
+use rusqlite::{Connection, DatabaseName, OpenFlags, Result as SqliteResult};
 use std::collections::VecDeque;
 use std::fs;
 use std::path::PathBuf;
@@ -317,40 +317,61 @@ impl DatabaseConnection {
         Ok(())
     }
 
-    /// Get the database file path
+    /// Get the database file path. Attempts to resolve the active SQLite file by checking the
+    /// current working directory, the executable directory (and its `data/` subfolder), and the
+    /// user's application data directory. Falls back to creating the database in the current
+    /// working directory when no existing file is found.
     pub fn get_database_path() -> DatabaseResult<PathBuf> {
-        let mut path = std::env::current_exe()
-            .map_err(|e| {
-                DatabaseError::Initialization(format!("Failed to get executable path: {}", e))
-            })?
-            .parent()
-            .ok_or_else(|| {
-                DatabaseError::Initialization("Failed to get executable directory".to_string())
-            })?
-            .to_path_buf();
+        let mut candidates: Vec<PathBuf> = Vec::new();
 
-        path.push("data");
-        path.push(DATABASE_FILE);
+        if let Ok(current_dir) = std::env::current_dir() {
+            candidates.push(current_dir.join(DATABASE_FILE));
+        }
 
-        Ok(path)
+        if let Ok(exe_path) = std::env::current_exe() {
+            if let Some(exe_dir) = exe_path.parent() {
+                candidates.push(exe_dir.join(DATABASE_FILE));
+                candidates.push(exe_dir.join("data").join(DATABASE_FILE));
+            }
+        }
+
+        if let Some(data_dir) = dirs::data_dir() {
+            candidates.push(data_dir.join("reStrikeVTA").join(DATABASE_FILE));
+        }
+
+        // Return the first existing candidate
+        if let Some(existing) = candidates.iter().find(|p| p.exists()) {
+            return Ok(existing.clone());
+        }
+
+        // Otherwise, pick the first candidate (prefer current directory) and ensure the folder exists
+        if let Some(fallback) = candidates.into_iter().next() {
+            if let Some(parent) = fallback.parent() {
+                fs::create_dir_all(parent).map_err(|e| {
+                    DatabaseError::Initialization(format!(
+                        "Failed to create database directory {:?}: {}",
+                        parent, e
+                    ))
+                })?;
+            }
+            return Ok(fallback);
+        }
+
+        Err(DatabaseError::Initialization(
+            "Unable to determine database path".to_string(),
+        ))
     }
 
     /// Get the backup directory path
     pub fn get_backup_directory() -> DatabaseResult<PathBuf> {
-        let mut path = std::env::current_exe()
-            .map_err(|e| {
-                DatabaseError::Initialization(format!("Failed to get executable path: {}", e))
-            })?
+        let db_path = Self::get_database_path()?;
+        let backup_dir = db_path
             .parent()
+            .map(|parent| parent.join("backups"))
             .ok_or_else(|| {
-                DatabaseError::Initialization("Failed to get executable directory".to_string())
-            })?
-            .to_path_buf();
-
-        path.push("data");
-        path.push("backups");
-
-        Ok(path)
+                DatabaseError::Initialization("Failed to resolve backup directory".to_string())
+            })?;
+        Ok(backup_dir)
     }
 
     /// Get a reference to the underlying connection
@@ -502,6 +523,29 @@ impl DatabaseConnection {
         fs::copy(backup_path, &db_path)
             .map_err(|e| DatabaseError::Connection(format!("Failed to restore database: {}", e)))?;
 
+        // Remove old WAL/SHM files so SQLite rebuilds them for the restored database
+        let wal_path = db_path.with_extension("db-wal");
+        if wal_path.exists() {
+            if let Err(e) = fs::remove_file(&wal_path) {
+                log::warn!(
+                    "Failed to remove WAL file during restore ({}): {}",
+                    wal_path.display(),
+                    e
+                );
+            }
+        }
+
+        let shm_path = db_path.with_extension("db-shm");
+        if shm_path.exists() {
+            if let Err(e) = fs::remove_file(&shm_path) {
+                log::warn!(
+                    "Failed to remove SHM file during restore ({}): {}",
+                    shm_path.display(),
+                    e
+                );
+            }
+        }
+
         log::info!("Database restored from backup: {:?}", backup_path);
         log::info!("Previous database backed up to: {:?}", current_backup);
 
@@ -566,9 +610,24 @@ impl DatabaseConnection {
         let backup_path = backup_dir.join(backup_filename);
         let db_path = Self::get_database_path()?;
 
-        // Create backup by copying the database file
-        fs::copy(&db_path, &backup_path)
-            .map_err(|e| DatabaseError::Connection(format!("Failed to create backup: {}", e)))?;
+        // Use SQLite backup API to capture a consistent snapshot (includes WAL contents)
+        let source = Connection::open_with_flags(&db_path, OpenFlags::SQLITE_OPEN_READ_ONLY)
+            .map_err(|e| {
+                DatabaseError::Connection(format!("Failed to open database for backup: {}", e))
+            })?;
+        source
+            .backup(DatabaseName::Main, &backup_path, None)
+            .map_err(|e| DatabaseError::Connection(format!("SQLite backup failed: {}", e)))?;
+
+        // Ensure destination is flushed and uses WAL mode to mirror source settings
+        let destination = Connection::open(&backup_path).map_err(|e| {
+            DatabaseError::Connection(format!("Failed to reopen backup file: {}", e))
+        })?;
+        destination
+            .pragma_update(None, "journal_mode", &"WAL")
+            .map_err(|e| {
+                DatabaseError::Connection(format!("Failed to enable WAL on backup: {}", e))
+            })?;
 
         log::info!("Database backup created: {:?}", backup_path);
         Ok(backup_path)

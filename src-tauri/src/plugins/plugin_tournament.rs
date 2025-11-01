@@ -372,7 +372,9 @@ impl TournamentPlugin {
                 |row| row.get(0),
             )
             .optional()
-            .map_err(|e| AppError::ConfigError(format!("Failed to resolve female gender id: {}", e)))?;
+            .map_err(|e| {
+                AppError::ConfigError(format!("Failed to resolve female gender id: {}", e))
+            })?;
         let male_gender_id: Option<i64> = conn
             .query_row(
                 "SELECT id FROM look_genders WHERE UPPER(name) = 'MEN'",
@@ -380,7 +382,9 @@ impl TournamentPlugin {
                 |row| row.get(0),
             )
             .optional()
-            .map_err(|e| AppError::ConfigError(format!("Failed to resolve male gender id: {}", e)))?;
+            .map_err(|e| {
+                AppError::ConfigError(format!("Failed to resolve male gender id: {}", e))
+            })?;
 
         let tournament_days = TournamentOperations::get_tournament_days(&*conn, tournament_id)?;
         let mut day_stats: Vec<TournamentDayStats> = Vec::new();
@@ -460,7 +464,9 @@ impl TournamentPlugin {
                 ORDER BY COALESCE(category, ''), medal_rank ASC, match_id ASC
                 "#,
             )
-            .map_err(|e| AppError::ConfigError(format!("Failed to prepare medalist query: {}", e)))?;
+            .map_err(|e| {
+                AppError::ConfigError(format!("Failed to prepare medalist query: {}", e))
+            })?;
         let medal_rows = medal_stmt
             .query_map(params![tournament_uuid.clone()], |row| {
                 let winner_color: String = row.get(3)?;
@@ -478,11 +484,13 @@ impl TournamentPlugin {
                     medal_rank: row.get(9)?,
                 })
             })
-            .map_err(|e| AppError::ConfigError(format!("Failed to iterate medalist rows: {}", e)))?;
+            .map_err(|e| {
+                AppError::ConfigError(format!("Failed to iterate medalist rows: {}", e))
+            })?;
         for row in medal_rows {
-            champions.push(
-                row.map_err(|e| AppError::ConfigError(format!("Failed to read medalist row: {}", e)))?,
-            );
+            champions.push(row.map_err(|e| {
+                AppError::ConfigError(format!("Failed to read medalist row: {}", e))
+            })?);
         }
 
         if champions.is_empty() {
@@ -499,7 +507,12 @@ impl TournamentPlugin {
                     ) latest ON latest.category = m.category AND latest.max_match_id = m.match_id
                     WHERE m.tournament_id = ? AND m.category IS NOT NULL"#,
                 )
-                .map_err(|e| AppError::ConfigError(format!("Failed to prepare champion fallback query: {}", e)))?;
+                .map_err(|e| {
+                    AppError::ConfigError(format!(
+                        "Failed to prepare champion fallback query: {}",
+                        e
+                    ))
+                })?;
 
             let mut score_stmt = conn
                 .prepare(
@@ -529,12 +542,15 @@ impl TournamentPlugin {
                         ))
                     },
                 )
-                .map_err(|e| AppError::ConfigError(format!("Failed to iterate champion rows: {}", e)))?;
+                .map_err(|e| {
+                    AppError::ConfigError(format!("Failed to iterate champion rows: {}", e))
+                })?;
 
             for row_result in champion_rows {
-                let (match_db_id, match_uuid, external_match_id, category) = row_result.map_err(|e| {
-                    AppError::ConfigError(format!("Failed to read champion row: {}", e))
-                })?;
+                let (match_db_id, match_uuid, external_match_id, category) =
+                    row_result.map_err(|e| {
+                        AppError::ConfigError(format!("Failed to read champion row: {}", e))
+                    })?;
                 let mut blue_score: i64 = 0;
                 let mut red_score: i64 = 0;
 
@@ -542,10 +558,13 @@ impl TournamentPlugin {
                     .query_map(params![match_uuid.clone()], |row| {
                         Ok((row.get::<_, i64>(0)?, row.get::<_, i64>(1)?))
                     })
-                    .map_err(|e| AppError::ConfigError(format!("Failed to query match scores: {}", e)))?;
+                    .map_err(|e| {
+                        AppError::ConfigError(format!("Failed to query match scores: {}", e))
+                    })?;
                 for score in scores {
-                    let (position, value) =
-                        score.map_err(|e| AppError::ConfigError(format!("Failed to read score row: {}", e)))?;
+                    let (position, value) = score.map_err(|e| {
+                        AppError::ConfigError(format!("Failed to read score row: {}", e))
+                    })?;
                     match position {
                         1 => blue_score = value,
                         2 => red_score = value,
@@ -563,7 +582,10 @@ impl TournamentPlugin {
                         .query_row(params![match_db_id], |row| row.get::<_, String>(0))
                         .optional()
                         .map_err(|e| {
-                            AppError::ConfigError(format!("Failed to resolve final event payload: {}", e))
+                            AppError::ConfigError(format!(
+                                "Failed to resolve final event payload: {}",
+                                e
+                            ))
                         })?
                     {
                         if let Ok(value) = serde_json::from_str::<Value>(&raw) {
@@ -602,7 +624,9 @@ impl TournamentPlugin {
                         ))
                     })
                     .optional()
-                    .map_err(|e| AppError::ConfigError(format!("Failed to resolve winner info: {}", e)))?;
+                    .map_err(|e| {
+                        AppError::ConfigError(format!("Failed to resolve winner info: {}", e))
+                    })?;
 
                 let (winner_name, winner_country) = match winner_info {
                     Some(data) => data,
