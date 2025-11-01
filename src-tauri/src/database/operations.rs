@@ -1422,7 +1422,7 @@ impl PssUdpOperations {
         match_athlete: &PssMatchAthlete,
     ) -> DatabaseResult<i64> {
         conn.execute(
-            "INSERT INTO pss_match_athletes (match_id, athlete_id, athlete_position, bg_color, fg_color, created_at, created) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO pss_match_athletes (match_id, athlete_id, athlete_position, bg_color, fg_color, created_at) VALUES (?, ?, ?, ?, ?, ?)",
             params![
                 match_athlete.match_id,
                 match_athlete.athlete_id,
@@ -1430,7 +1430,6 @@ impl PssUdpOperations {
                 match_athlete.bg_color,
                 match_athlete.fg_color,
                 match_athlete.created_at.to_rfc3339(),
-                crate::utils::now_unix(),
             ],
         )?;
         Ok(conn.last_insert_rowid())

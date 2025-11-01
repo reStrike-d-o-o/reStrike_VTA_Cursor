@@ -83,11 +83,11 @@ const LiveDataPanel: React.FC = () => {
       return (
         <div
           key={entry.id}
-          className="whitespace-pre leading-relaxed font-mono text-sm flex gap-2"
+          className="whitespace-pre-wrap leading-relaxed font-mono text-sm flex gap-2 min-w-0"
         >
-          <span className="text-slate-500 min-w-[7.5rem]">{parsed.stamp}</span>
+          <span className="text-slate-500 min-w-[7.5rem] shrink-0">{parsed.stamp}</span>
           <span className={`${levelClass} min-w-[3.5rem]`}>{`[${parsed.level}]`}</span>
-          <span className="text-gray-200 flex-1">{parsed.body}</span>
+          <span className="text-gray-200 flex-1 break-all">{parsed.body}</span>
         </div>
       );
     });
@@ -134,7 +134,7 @@ const LiveDataPanel: React.FC = () => {
 
       <div
         ref={liveDataRef}
-        className="bg-black/60 border border-gray-700 rounded p-3 h-64 overflow-y-auto space-y-1"
+        className="bg-black/60 border border-gray-700 rounded p-3 h-64 overflow-y-auto overflow-x-auto space-y-1 max-w-full w-full"
       >
         {logs.length === 0 ? (
           <div className="text-center text-gray-500 text-sm">
