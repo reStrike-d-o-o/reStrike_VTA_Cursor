@@ -192,18 +192,17 @@ export const useIvrMatchHistorySync = () => {
       return;
     }
 
-    const hydrationState = hydrationStateRef.current[selectedDate];
     const storeSnapshot = useIvrMatchHistoryStore.getState();
     const existingMatches = storeSnapshot.getMatchesForDate(selectedDate);
     const existingSignature = computeSignature(existingMatches);
 
-    if (existingMatches.length > 0 && hydrationState?.signature === existingSignature) {
-      hydrationStateRef.current[selectedDate] = { status: 'hydrated', signature: existingSignature };
-      return undefined;
+    const existingState = hydrationStateRef.current[selectedDate];
+    if (existingState?.status === 'hydrated' && existingState.signature === existingSignature) {
+      return;
     }
 
-    if (hydrationState?.status === 'hydrating') {
-      return undefined;
+    if (existingState?.status === 'hydrating') {
+      return;
     }
 
     let cancelled = false;
@@ -223,12 +222,13 @@ export const useIvrMatchHistorySync = () => {
         }
 
         const matches = mapSnapshotMatches(result.data.matches);
-        const signature = computeSignature(matches);
         const nextStore = useIvrMatchHistoryStore.getState();
         const current = nextStore.getMatchesForDate(selectedDate);
         if (!matchesEqual(current, matches)) {
           nextStore.setSnapshotForDate(selectedDate, matches);
         }
+        const persisted = nextStore.getMatchesForDate(selectedDate);
+        const signature = computeSignature(persisted);
         hydrationStateRef.current[selectedDate] = { status: 'hydrated', signature };
       } catch (error) {
         console.warn('Failed to hydrate IVR match history snapshot:', error);
@@ -246,7 +246,6 @@ export const useIvrMatchHistorySync = () => {
       }
     };
   }, [selectedDate]);
-
   useEffect(() => {
     if (!canListenTauri()) {
       return;
