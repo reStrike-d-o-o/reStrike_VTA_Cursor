@@ -3004,6 +3004,39 @@ impl UdpServer {
     pub async fn clear_tournament_context(&self) -> AppResult<()> {
         self.set_tournament_context(None).await
     }
+
+    pub fn websocket_client_count(&self) -> usize {
+        self.websocket_server.get_client_count()
+    }
+
+    pub fn match_in_progress(&self) -> bool {
+        if self.websocket_server.get_match_started() {
+            true
+        } else {
+            self.current_match_id
+                .lock()
+                .map(|guard| guard.is_some())
+                .unwrap_or(false)
+        }
+    }
+
+    pub fn current_match_db_id(&self) -> Option<i64> {
+        self.websocket_server
+            .get_current_match_db_id()
+            .or_else(|| {
+                self.current_match_id
+                    .lock()
+                    .ok()
+                    .and_then(|guard| *guard)
+            })
+    }
+
+    pub fn status_snapshot(&self) -> UdpServerStatus {
+        self.status
+            .lock()
+            .map(|guard| guard.clone())
+            .unwrap_or_else(|_| UdpServerStatus::Error("Unknown".to_string()))
+    }
 }
 
 #[cfg(test)]

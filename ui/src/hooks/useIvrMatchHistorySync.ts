@@ -131,59 +131,83 @@ const mapSnapshotMatches = (matches: SnapshotMatch[] | undefined): IvrMatchCard[
   });
 };
 
-export const useIvrMatchHistorySync = () => {
-  const selectedDate = useIvrMatchHistoryStore((state) => state.selectedDate);
-  const hydratedDateRef = useRef<string | null>(null);
-
-  const matchesEqual = (a: IvrMatchCard[], b: IvrMatchCard[]): boolean => {
-    if (a.length !== b.length) return false;
-    for (let i = 0; i < a.length; i += 1) {
-      const left = a[i];
-      const right = b[i];
+const matchesEqual = (a: IvrMatchCard[], b: IvrMatchCard[]): boolean => {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i += 1) {
+    const left = a[i];
+    const right = b[i];
+    if (
+      left.matchKey !== right.matchKey ||
+      left.matchDbId !== right.matchDbId ||
+      left.matchId !== right.matchId ||
+      left.matchNumber !== right.matchNumber ||
+      left.category !== right.category ||
+      left.weight !== right.weight ||
+      left.division !== right.division
+    ) {
+      return false;
+    }
+    if (left.videos.length !== right.videos.length) return false;
+    for (let v = 0; v < left.videos.length; v += 1) {
+      const lv = left.videos[v];
+      const rv = right.videos[v];
       if (
-        left.matchKey !== right.matchKey ||
-        left.matchDbId !== right.matchDbId ||
-        left.matchId !== right.matchId ||
-        left.matchNumber !== right.matchNumber ||
-        left.category !== right.category ||
-        left.weight !== right.weight ||
-        left.division !== right.division
+        lv.id !== rv.id ||
+        lv.recordedVideoId !== rv.recordedVideoId ||
+        lv.type !== rv.type ||
+        lv.label !== rv.label ||
+        lv.filePath !== rv.filePath ||
+        lv.startTime !== rv.startTime ||
+        lv.durationSeconds !== rv.durationSeconds
       ) {
         return false;
       }
-      if (left.videos.length !== right.videos.length) return false;
-      for (let v = 0; v < left.videos.length; v += 1) {
-        const lv = left.videos[v];
-        const rv = right.videos[v];
-        if (
-          lv.id !== rv.id ||
-          lv.recordedVideoId !== rv.recordedVideoId ||
-          lv.type !== rv.type ||
-          lv.label !== rv.label ||
-          lv.filePath !== rv.filePath ||
-          lv.startTime !== rv.startTime ||
-          lv.durationSeconds !== rv.durationSeconds
-        ) {
-          return false;
-        }
-      }
     }
-    return true;
-  };
+  }
+  return true;
+};
+
+const computeSignature = (matches: IvrMatchCard[]): string =>
+  matches
+    .map((match) => {
+      const base =
+        `${match.matchKey ?? ''}|${match.matchDbId ?? ''}|${match.matchId ?? ''}|${match.matchNumber ?? ''}|` +
+        `${match.category ?? ''}|${match.weight ?? ''}|${match.division ?? ''}`;
+      const videoHash = match.videos
+        .map(
+          (video) =>
+            `${video.type}:${video.recordedVideoId ?? video.id}:${video.label ?? ''}:${video.filePath ?? ''}:${video.startTime ?? ''}:${video.durationSeconds ?? ''}`,
+        )
+        .join(',');
+      return `${base}|${videoHash}`;
+    })
+    .join('||');
+
+export const useIvrMatchHistorySync = () => {
+  const selectedDate = useIvrMatchHistoryStore((state) => state.selectedDate);
+  const hydrationStateRef = useRef<Record<string, { status: 'hydrating' | 'hydrated'; signature?: string }>>({});
 
   useEffect(() => {
     if (!canListenTauri()) {
       return;
     }
 
-    let cancelled = false;
+    const hydrationState = hydrationStateRef.current[selectedDate];
+    const storeSnapshot = useIvrMatchHistoryStore.getState();
+    const existingMatches = storeSnapshot.getMatchesForDate(selectedDate);
+    const existingSignature = computeSignature(existingMatches);
 
-    if (hydratedDateRef.current === selectedDate) {
-      return () => {
-        cancelled = true;
-      };
+    if (existingMatches.length > 0 && hydrationState?.signature === existingSignature) {
+      hydrationStateRef.current[selectedDate] = { status: 'hydrated', signature: existingSignature };
+      return undefined;
     }
-    hydratedDateRef.current = selectedDate;
+
+    if (hydrationState?.status === 'hydrating') {
+      return undefined;
+    }
+
+    let cancelled = false;
+    hydrationStateRef.current[selectedDate] = { status: 'hydrating' };
 
     const hydrate = async () => {
       try {
@@ -191,16 +215,24 @@ export const useIvrMatchHistorySync = () => {
           'ivr_match_history_snapshot',
           { limit: 80, date: selectedDate },
         );
-        if (!cancelled && result?.success && result.data?.matches) {
-          const matches = mapSnapshotMatches(result.data.matches);
-          const store = useIvrMatchHistoryStore.getState();
-          const current = store.getMatchesForDate(selectedDate);
-          if (!matchesEqual(current, matches)) {
-            store.setSnapshotForDate(selectedDate, matches);
+        if (cancelled || !result?.success || !result.data?.matches) {
+          if (cancelled) {
+            delete hydrationStateRef.current[selectedDate];
           }
+          return;
         }
+
+        const matches = mapSnapshotMatches(result.data.matches);
+        const signature = computeSignature(matches);
+        const nextStore = useIvrMatchHistoryStore.getState();
+        const current = nextStore.getMatchesForDate(selectedDate);
+        if (!matchesEqual(current, matches)) {
+          nextStore.setSnapshotForDate(selectedDate, matches);
+        }
+        hydrationStateRef.current[selectedDate] = { status: 'hydrated', signature };
       } catch (error) {
         console.warn('Failed to hydrate IVR match history snapshot:', error);
+        delete hydrationStateRef.current[selectedDate];
       }
     };
 
@@ -208,6 +240,10 @@ export const useIvrMatchHistorySync = () => {
 
     return () => {
       cancelled = true;
+      const state = hydrationStateRef.current[selectedDate];
+      if (state?.status === 'hydrating') {
+        delete hydrationStateRef.current[selectedDate];
+      }
     };
   }, [selectedDate]);
 

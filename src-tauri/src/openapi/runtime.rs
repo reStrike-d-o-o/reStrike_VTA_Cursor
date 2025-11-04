@@ -63,6 +63,10 @@ impl OpenApiRuntime {
     pub fn yaml_endpoint(&self) -> String {
         format!("{}/openapi.yaml", self.http_base_url())
     }
+
+    pub fn shutdown(&self) {
+        self.server_handle.abort();
+    }
 }
 
 impl Drop for OpenApiRuntime {

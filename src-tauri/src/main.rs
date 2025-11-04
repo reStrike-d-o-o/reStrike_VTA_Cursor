@@ -9,6 +9,7 @@ use re_strike_vta::tauri_commands;
 use re_strike_vta::tauri_commands_obws;
 use re_strike_vta::types::{AppError, AppResult};
 use std::sync::Arc;
+use tauri::Manager;
 
 #[tokio::main]
 async fn main() -> AppResult<()> {
@@ -143,8 +144,33 @@ async fn main() -> AppResult<()> {
     // Optional: legacy status poller removed to avoid mixing APIs
 
     // Create Tauri app builder
+    let managed_app = app.clone();
+    let shutdown_app = app.clone();
+
     let tauri_result = tauri::Builder::default()
-        .manage(app)
+        .manage(managed_app)
+        .on_window_event({
+            let shutdown_app = shutdown_app.clone();
+            move |window, event| {
+                if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                    api.prevent_close();
+
+                    let app = shutdown_app.clone();
+                    if !app.begin_shutdown() {
+                        log::info!("Shutdown already in progress; ignoring duplicate close request");
+                        return;
+                    }
+
+                    let window = window.clone();
+                    tauri::async_runtime::spawn(async move {
+                        if let Err(err) = app.stop().await {
+                            log::error!("Failed to stop application cleanly: {}", err);
+                        }
+                        window.app_handle().exit(0);
+                    });
+                }
+            }
+        })
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())

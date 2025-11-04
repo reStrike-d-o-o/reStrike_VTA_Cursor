@@ -17,10 +17,14 @@ use crate::logging::LogManager;
 use crate::plugins::obs_obws::manager::ObsManager as ObsObwsManager; // Use new obws-based OBS manager
 #[cfg(feature = "obs-obws")]
 use crate::plugins::obs_obws::ObsRecordingEventHandler; // Use new recording event handler
+use serde::Serialize;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::process::Child;
-use std::sync::Arc;
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
 use tauri::{Emitter, Manager};
 use tokio::sync::{broadcast, Mutex, RwLock};
 
@@ -30,6 +34,24 @@ static PSS_EVENT_BROADCASTER: std::sync::OnceLock<broadcast::Sender<serde_json::
 
 // Global Tauri app handle for real-time event emission to frontend
 static TAURI_APP_HANDLE: std::sync::OnceLock<tauri::AppHandle> = std::sync::OnceLock::new();
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ShutdownContext {
+    pub recording_active: bool,
+    pub recording_state: Option<String>,
+    pub recording_match: Option<String>,
+    pub recording_connection: Option<String>,
+    pub match_in_progress: bool,
+    pub match_db_id: Option<i64>,
+    pub websocket_clients: usize,
+    pub udp_status: String,
+}
+
+impl ShutdownContext {
+    pub fn requires_confirmation(&self) -> bool {
+        self.recording_active || self.match_in_progress || self.websocket_clients > 0
+    }
+}
 
 /// Main application class that orchestrates all systems
 pub struct App {
@@ -67,6 +89,7 @@ pub struct App {
     advanced_analytics: Arc<AdvancedAnalytics>,
     // Track last launched mpv process to close it when match resumes or challenge is resolved
     mpv_child: Arc<Mutex<Option<Child>>>,
+    shutdown_prompted: Arc<AtomicBool>,
 }
 
 impl App {
@@ -336,6 +359,7 @@ impl App {
             event_distributor,
             advanced_analytics,
             mpv_child: Arc::new(Mutex::new(None)),
+            shutdown_prompted: Arc::new(AtomicBool::new(false)),
         })
     }
 
@@ -398,10 +422,29 @@ impl App {
     pub async fn stop(&self) -> AppResult<()> {
         log::info!("Stopping application...");
 
+        {
+            let websocket_plugin = self.websocket_plugin.lock().await;
+            if let Err(err) = websocket_plugin.stop().await {
+                log::warn!("Failed to stop WebSocket server cleanly: {}", err);
+            }
+        }
+
         self.udp_plugin.stop().await?;
+
+        #[cfg(feature = "obs-obws")]
+        self.obs_obws_manager.shutdown().await?;
+
+        self.openapi_runtime.shutdown();
 
         log::info!("Application stopped successfully");
         Ok(())
+    }
+
+    /// Attempt to mark shutdown as in-progress. Returns true if this caller initiated it.
+    pub fn begin_shutdown(&self) -> bool {
+        self.shutdown_prompted
+            .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+            .is_ok()
     }
 
     /// Get application state
