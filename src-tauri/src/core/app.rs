@@ -1,6 +1,7 @@
 //! Main application class and lifecycle management
 
 use crate::openapi::{OpenApiManager, OpenApiRuntime};
+use crate::database::operations::PssUdpOperations;
 use crate::plugins::plugin_triggers::TriggerPlugin;
 #[cfg(feature = "youtube")]
 use crate::plugins::YouTubeApiPlugin;
@@ -43,6 +44,8 @@ pub struct ShutdownContext {
     pub recording_connection: Option<String>,
     pub match_in_progress: bool,
     pub match_db_id: Option<i64>,
+    pub match_number: Option<String>,
+    pub match_description: Option<String>,
     pub websocket_clients: usize,
     pub udp_status: String,
 }
@@ -445,6 +448,123 @@ impl App {
         self.shutdown_prompted
             .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
             .is_ok()
+    }
+
+    /// Collect a snapshot of long-running activities that should block shutdown.
+    pub async fn shutdown_context(&self) -> ShutdownContext {
+        let websocket_clients = self.udp_plugin.websocket_client_count();
+        let match_in_progress = self.udp_plugin.match_in_progress();
+        let match_db_id = self.udp_plugin.current_match_db_id();
+        let udp_status = match self.udp_plugin.status_snapshot() {
+            crate::plugins::plugin_udp::UdpServerStatus::Stopped => "Stopped".to_string(),
+            crate::plugins::plugin_udp::UdpServerStatus::Starting => "Starting".to_string(),
+            crate::plugins::plugin_udp::UdpServerStatus::Running => "Running".to_string(),
+            crate::plugins::plugin_udp::UdpServerStatus::Error(err) => {
+                format!("Error: {}", err)
+            }
+        };
+
+        let mut match_number: Option<String> = None;
+        let mut match_description: Option<String> = None;
+
+        if let Some(match_id) = match_db_id {
+            match self.database_plugin.get_connection().await {
+                Ok(conn_guard) => {
+                    if let Ok(Some(pss_match)) =
+                        PssUdpOperations::get_pss_match_by_id(&*conn_guard, match_id)
+                    {
+                        match_number = pss_match
+                            .match_number
+                            .clone()
+                            .filter(|value| !value.trim().is_empty())
+                            .or_else(|| Some(pss_match.match_id.clone()));
+
+                        let mut parts: Vec<String> = Vec::new();
+                        if let Some(category) = pss_match
+                            .category
+                            .as_ref()
+                            .map(|value| value.trim())
+                            .filter(|value| !value.is_empty())
+                        {
+                            parts.push(category.to_string());
+                        }
+                        if let Some(weight) = pss_match
+                            .weight_class
+                            .as_ref()
+                            .map(|value| value.trim())
+                            .filter(|value| !value.is_empty())
+                        {
+                            parts.push(weight.to_string());
+                        }
+                        if let Some(division) = pss_match
+                            .division
+                            .as_ref()
+                            .map(|value| value.trim())
+                            .filter(|value| !value.is_empty())
+                        {
+                            parts.push(division.to_string());
+                        }
+                        if !parts.is_empty() {
+                            match_description = Some(parts.join(" • "));
+                        }
+                    }
+                }
+                Err(err) => {
+                    log::warn!(
+                        "Failed to acquire database connection for shutdown context: {}",
+                        err
+                    );
+                }
+            }
+        }
+
+        let mut recording_active = false;
+        let mut recording_state = None;
+        let recording_connection = None;
+
+        #[cfg(feature = "obs-obws")]
+        {
+            use crate::plugins::obs_obws::types::ObsRecordingStatus;
+            match self.obs_obws_manager.get_recording_status(None).await {
+                Ok(status) => {
+                    recording_state = Some(format!("{:?}", status));
+                    recording_active = matches!(
+                        status,
+                        ObsRecordingStatus::Recording
+                            | ObsRecordingStatus::Starting
+                            | ObsRecordingStatus::Stopping
+                    );
+                }
+                Err(err) => {
+                    log::warn!(
+                        "Failed to query OBS recording status during shutdown: {}",
+                        err
+                    );
+                }
+            }
+        }
+
+        ShutdownContext {
+            recording_active,
+            recording_state,
+            recording_match: if recording_active {
+                match_number.clone()
+            } else {
+                None
+            },
+            recording_connection,
+            match_in_progress,
+            match_db_id,
+            match_number,
+            match_description,
+            websocket_clients,
+            udp_status,
+        }
+    }
+
+    /// Reset shutdown latch so the user can try again later.
+    pub fn cancel_shutdown(&self) {
+        self.shutdown_prompted.store(false, Ordering::SeqCst);
     }
 
     /// Get application state

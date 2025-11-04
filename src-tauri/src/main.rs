@@ -10,6 +10,8 @@ use re_strike_vta::tauri_commands_obws;
 use re_strike_vta::types::{AppError, AppResult};
 use std::sync::Arc;
 use tauri::Manager;
+use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
+use tokio::sync::oneshot;
 
 #[tokio::main]
 async fn main() -> AppResult<()> {
@@ -163,8 +165,72 @@ async fn main() -> AppResult<()> {
 
                     let window = window.clone();
                     tauri::async_runtime::spawn(async move {
+                        let context = app.shutdown_context().await;
+                        if context.requires_confirmation() {
+                            let mut warnings: Vec<String> = Vec::new();
+
+                            if context.recording_active {
+                                let state = context
+                                    .recording_state
+                                    .clone()
+                                    .unwrap_or_else(|| "Recording in progress".to_string());
+                                warnings.push(format!("• OBS recording is still running ({state})."));
+                            }
+
+                            if context.match_in_progress {
+                                let match_label = context
+                                    .match_number
+                                    .clone()
+                                    .unwrap_or_else(|| "Current match".to_string());
+                                if let Some(description) = context.match_description.as_ref() {
+                                    warnings.push(format!(
+                                        "• Match {match_label} is still active ({description})."
+                                    ));
+                                } else {
+                                    warnings.push(format!("• Match {match_label} is still active."));
+                                }
+                            }
+
+                            if context.websocket_clients > 0 {
+                                warnings.push(format!(
+                                    "• {} overlay client(s) are still connected.",
+                                    context.websocket_clients
+                                ));
+                            }
+
+                            if warnings.is_empty() {
+                                warnings.push("• Active tasks detected.".to_string());
+                            }
+
+                            let message = format!(
+                                "The application detected ongoing tasks:\n{}\n\nShutting down now may interrupt recordings or live data feeds. Do you want to exit anyway?",
+                                warnings.join("\n")
+                            );
+                            let (tx, rx) = oneshot::channel();
+                            window
+                                .dialog()
+                                .message(message)
+                                .title("Confirm Shutdown")
+                                .kind(MessageDialogKind::Warning)
+                                .buttons(MessageDialogButtons::OkCancelCustom(
+                                    "Shut Down".to_string(),
+                                    "Cancel".to_string(),
+                                ))
+                                .show(move |confirmed| {
+                                    let _ = tx.send(confirmed);
+                                });
+
+                            let confirmed = rx.await.unwrap_or(false);
+                            if !confirmed {
+                                app.cancel_shutdown();
+                                return;
+                            }
+                        }
+
                         if let Err(err) = app.stop().await {
                             log::error!("Failed to stop application cleanly: {}", err);
+                            app.cancel_shutdown();
+                            return;
                         }
                         window.app_handle().exit(0);
                     });
