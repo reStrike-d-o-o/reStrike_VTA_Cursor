@@ -1794,9 +1794,8 @@ The OBS integration system provides WebSocket-based control of OBS Studio instan
 - **✅ Error Handling**: Comprehensive error handling and user feedback
 - **✅ OBS Recording Integration**: Complete automatic OBS recording system with PSS event integration, path generation, and real folder creation
 
-## IVR History & Drive Browser
-- Molecule: `DriveBrowser.tsx` provides breadcrumb navigation, New Folder, and Choose here; integrates with Tauri commands `drive_list_children` and `drive_create_folder`.
-- Progress & Cancel: `IvrHistoryPanel` listens to progress events (`ivr_*_progress`) and shows a cancellable ProgressToast; cancel uses `ivr_cancel_job`.
+## IVR History & Drive Browser (Retired)
+- Legacy `DriveBrowser` and `IvrHistoryPanel` components were removed along with their progress events and cancel flow. A placeholder “Match history” tab now sits next to the IVR replay settings until the new workflow is scoped and implemented.
 
 ## Event-to-Video Offsets
-- On indexing, backend populates `recorded_video_events` with offsets; UI uses `VideoEventPicker` to display events and open videos precisely via `ivr_open_recorded_video(recorded_video_id, event_id)`.
+- The previous offset picker (`VideoEventPicker` + `ivr_open_recorded_video`) shipped with Match History and has been removed. Review-mode playback now relies solely on `ivr_open_event_video`.

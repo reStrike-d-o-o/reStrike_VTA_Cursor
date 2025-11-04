@@ -782,27 +782,15 @@ Replace this legacy section with obws-based plugin structure or mark as archived
 - Backend
   - `ivr_open_event_video(event_id)`: resolves correct recording and opens at exact offset.
   - `open_video_at(path, offset_seconds)`: centralized mpv launcher with offset.
-  - `ivr_open_video_path(path, offset_seconds?)`: open video directly.
-  - `ivr_open_recorded_video(recorded_video_id, event_id?)`: computes precise offset from `recorded_videos.start_time` and chosen/linked event.
-  - `ivr_upload_recorded_videos(ids)`: zips selected videos with `zip` crate and uploads via Drive plugin’s `upload_file_streaming`.
-  - `ivr_import_recorded_videos(source, path_or_id, tournament_day_id, match_id)`: extracts local/Drive zip into Tournament/Day folder and indexes rows.
+  - Legacy match-history helpers (`ivr_open_video_path`, `ivr_open_recorded_video`, `ivr_upload_recorded_videos`, `ivr_import_recorded_videos`) were removed during the IVR cleanup; a streamlined import/export flow will replace them in a future milestone.
 
 - Frontend
-  - IVR drawer “Match history” organism:
-    - Lists Days → Matches → Events and Recorded Videos.
-    - Multi‑select Recorded Videos; Delete removes DB rows + local files.
-    - Upload/Import actions wired (local and Drive import supported via Drive file id).
-    - Double‑click events open at exact offset. Double‑click videos open at computed offset.
-    - VideoEventPicker molecule: optional popover to choose a specific event to open within a video.
-  - Event Table (DockBar): double‑click gated to review mode only (disabled when live match).
+- Legacy IVR Match History drawer, VideoEventPicker, and DriveBrowser components were removed. The drawer now shows a lightweight “Match history” placeholder tab alongside the active replay settings while the redesigned workflow is prepared.
+  - Event Table (DockBar): double-click remains gated to review mode (disabled when a live match is active) and invokes `ivr_open_event_video`.
 
 - Notes
-  - All new UI follows atomic components and existing theme styling.
-  - core/app.rs warnings cleaned in new changes (no non‑Send captures in new task spawns). 
+  - Remaining IVR UI continues to use the shared atomic component library and existing theme styling.
+  - `core/app.rs` warnings stay resolved (no non-`Send` captures in async tasks). 
 
-## IVR History, Drive Integration, and Precise Offsets – Completed
-- DriveBrowser modal with breadcrumb navigation, folder creation (Drive), and choose-here target selection. Uses `drive_list_children`, `drive_create_folder`.
-- Folder‑targeted uploads: `ivr_upload_recorded_videos` accepts `folder_id` and uses folder‑aware resumable upload.
-- Import flow bulk‑links events to recordings: `recorded_video_events(recorded_video_id, event_id, offset_ms)` populated on import and record index.
-- Progress & cancel: backend emits zip/upload/download/extract/index events with `job_id`; UI shows ProgressToast with Cancel wired to `ivr_cancel_job`.
-- UI parity: Match history tables styled like Local Backup; IVR Replay Settings and DriveBrowser match theme. 
+## IVR History, Drive Integration, and Precise Offsets – Retired
+- Historical notes above document the removed implementation; refer to future specs for the replacement flow once defined.

@@ -95,7 +95,7 @@
 - [x] Session persistence: Recording sessions with start/end time and effective paths
 - [x] Event offsets computation: Precise offset calculation relative to recording start
 - [x] IVR command: `ivr_open_event_video(event_id)` with exact offset computation
-- [x] Match history UI: Tournament/Day → Matches → Events → Videos table implementation
+- [x] Match history UI: legacy Tournament/Day → Matches → Events → Videos table implementation (removed in November 2025; replacement pending)
 - [x] Video management: Delete/Upload/Import actions with proper guards
 - [x] Video linking: Automatic event-to-video linking for precise seeking
 
@@ -133,7 +133,7 @@
 - **OBS Integration**: Complete migration to native Rust obws with real-time WebSocket communication
 - **Control Room**: Production-ready security system with bcrypt authentication and session management
 - **Recording System**: Full PSS event-driven recording with session persistence and event offsets
-- **IVR System**: Complete replay buffer system with precise video seeking and match history
+- **IVR System**: Replay buffer system with precise event playback; legacy Match History tooling retired pending redesign
 - **Trigger System**: PSS event-driven OBS automation with role-based connection management
 - **Database Schema**: Schema version 40 with integer timestamps and optimized structure
 - **Frontend Integration**: Complete UI with real-time updates and role-based status indicators

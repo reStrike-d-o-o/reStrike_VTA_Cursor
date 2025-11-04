@@ -28,7 +28,6 @@ import LottieIcon from '../atoms/LottieIcon';
 import { useAppStore } from '../../stores';
 import { configCommands } from '../../utils/tauriCommands';
 import { flowChartAnimation, spyAnimation, plansAnimation, watcherAnimation, taekwondoAnimation, liveStreamingAnimation, settingsAnimation, robotAnimation, noConnectionAnimation, businessAnimation, tournamentAnimation, mixerAnimation } from '../../assets/icons/json';
-import IvrHistoryPanel from '../molecules/IvrHistoryPanel';
 import { useI18n } from '../../i18n/index';
 
 type AdvancedPanelProps = React.ComponentProps<'div'>;
@@ -44,7 +43,7 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
   // OVR horizontal drawer state
   const [ovrTab, setOvrTab] = useState('external');
   // IVR horizontal drawer state
-  const [ivrTab, setIvrTab] = useState('history');
+  const [ivrTab, setIvrTab] = useState('replay-settings');
   
   const DRAWERS = [
     {
@@ -199,13 +198,17 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
             tabs={[
               {
                 id: 'history',
-                label: t('ivr.tabs.history', 'Match History'),
-                icon: <LottieIcon animationData={businessAnimation} size={32} />,
-                content: <IvrHistoryPanel />
+                label: t('ivr.tabs.history', 'Match history'),
+                icon: <LottieIcon animationData={spyAnimation} size={32} />,
+                content: (
+                  <div className="theme-card p-6 shadow-lg flex items-center justify-center text-gray-300">
+                    {t('ivr.history.placeholder', 'Match history redesign in progress. Check back soon!')}
+                  </div>
+                )
               },
               {
-                id: 'settings',
-                label: t('ivr.tabs.settings', 'IVR Video Settings'),
+                id: 'replay-settings',
+                label: t('ivr.tabs.replaySettings', 'IVR replay settings'),
                 icon: <LottieIcon animationData={watcherAnimation} size={32} />,
                 content: <IvrReplaySettings />
               }

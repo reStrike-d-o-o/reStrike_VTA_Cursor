@@ -1,10 +1,8 @@
 # TODO - Streamlined Backlog
 
-## Completed: IVR History & Drive Integration
-- DriveBrowser with breadcrumbs, New Folder, Choose here; list_children/create_folder
-- Folder-targeted uploads with progress/cancel; import with progress; job_id and ivr_cancel_job
-- Bulk event→video offsets via recorded_video_events; precise playback
-- Match history UI parity; IVR replay settings styling consistent with app
+## Completed
+- IVR replay buffer configuration (`ivr_get_replay_settings`, `ivr_save_replay_settings`, `ivr_round_replay_now`) remains available.
+- Legacy Match History + Drive integration (DriveBrowser, progress toasts, `ivr_*` upload/import commands) was removed in the November 2025 cleanup pending a redesigned workflow.
 
 ## Backlog
 - Control Room: real audio/scenes APIs; bulk ops polish
@@ -12,6 +10,5 @@
 - Analytics: live dashboards, historical analysis, export
 
 ## Notes
-See IMPLEMENTATION_SUMMARY.md and IVR_REPLAY_MATCH_HISTORY.md for full details.
-
+See IMPLEMENTATION_SUMMARY.md for the current IVR scope; legacy Match History documentation was retired.
 
