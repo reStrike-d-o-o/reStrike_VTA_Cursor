@@ -1794,8 +1794,8 @@ The OBS integration system provides WebSocket-based control of OBS Studio instan
 - **✅ Error Handling**: Comprehensive error handling and user feedback
 - **✅ OBS Recording Integration**: Complete automatic OBS recording system with PSS event integration, path generation, and real folder creation
 
-## IVR History & Drive Browser (Retired)
-- Legacy `DriveBrowser` and `IvrHistoryPanel` components were removed along with their progress events and cancel flow. A placeholder “Match history” tab now sits next to the IVR replay settings until the new workflow is scoped and implemented.
+## IVR Match History
+- The legacy DriveBrowser/import panels remain retired, replaced by a live Match History tab that persists cards in SQLite, hydrates on launch, streams updates when replays or full recordings finish, and supports search + date filters for reviewing specific tournament days.
 
 ## Event-to-Video Offsets
 - The previous offset picker (`VideoEventPicker` + `ivr_open_recorded_video`) shipped with Match History and has been removed. Review-mode playback now relies solely on `ivr_open_event_video`.

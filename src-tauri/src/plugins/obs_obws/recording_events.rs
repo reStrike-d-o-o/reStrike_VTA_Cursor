@@ -1,4 +1,5 @@
 use crate::database::operations::{PssUdpOperations, TournamentOperations};
+use crate::core::app::App;
 use crate::plugins::obs_obws::manager::ObsManager;
 use crate::plugins::obs_obws::types::ObsReplayBufferStatus;
 use crate::plugins::obs_obws::ObsPathGenerator;
@@ -515,7 +516,7 @@ impl ObsRecordingEventHandler {
                         None
                     };
                     if let Some(match_db_id) = match_db_id_opt {
-                        let _ = conn_ref.execute(
+                        let insert_result = conn_ref.execute(
                             "INSERT INTO recorded_videos (match_id, event_id, tournament_id, tournament_day_id, video_type, file_path, record_directory, filename_formatting, start_time, duration_seconds, created_at, created)\n                             SELECT ?, NULL, (SELECT uuid FROM tournaments WHERE id = ?), (SELECT uuid FROM tournament_days WHERE id = ?), 'recording', ?, ?, NULL, ?, ?, ?, strftime('%s','now')\n                             WHERE NOT EXISTS (SELECT 1 FROM recorded_videos rv WHERE rv.match_id = ? AND rv.start_time = ?)",
                             rusqlite::params![
                                 match_db_id,
@@ -534,6 +535,33 @@ impl ObsRecordingEventHandler {
                                 start_time.to_rfc3339()
                             ],
                         );
+                        if let Ok(rows) = insert_result {
+                            if rows > 0 {
+                                let recorded_video_id = conn_ref.last_insert_rowid();
+                                let match_number: Option<String> = conn_ref
+                                    .query_row(
+                                        "SELECT match_number FROM pss_matches WHERE id = ?",
+                                        rusqlite::params![match_db_id],
+                                        |row| row.get::<_, Option<String>>(0),
+                                    )
+                                    .unwrap_or(None);
+                                App::emit_custom_event(
+                                    "ivr_recording_saved",
+                                    serde_json::json!({
+                                        "recorded_video_id": recorded_video_id,
+                                        "match_db_id": match_db_id,
+                                        "match_number": match_number,
+                                        "match_id": prev.match_id,
+                                        "video_type": "recording",
+                                        "file_path": full_path,
+                                        "record_directory": dir,
+                                        "start_time": start_time.to_rfc3339(),
+                                        "duration_seconds": duration,
+                                        "created_at": created.to_rfc3339(),
+                                    }),
+                                );
+                            }
+                        }
                         // Link only important events (K,P,H,TH,TB,R) within window
                         let _ = conn_ref.execute(
                             "INSERT OR IGNORE INTO recorded_video_events (recorded_video_id, event_id, offset_ms, created_at, created)\n                             SELECT rv.id, e.id, CAST((julianday(e.timestamp) - julianday(?)) * 86400000 AS INTEGER), ?, strftime('%s','now')\n                             FROM recorded_videos rv\n                             JOIN pss_events e ON e.match_id = rv.match_id\n                             JOIN pss_event_types t ON t.id = e.event_type_id\n                             WHERE rv.file_path = ? AND e.timestamp >= ? AND e.timestamp <= ?\n                               AND (rv.tournament_id IS NULL OR e.tournament_id = rv.tournament_id)\n                               AND (rv.tournament_day_id IS NULL OR e.tournament_day_id = rv.tournament_day_id)\n                               AND t.event_code IN ('K','P','H','TH','TB','R')\n                             ORDER BY e.timestamp ASC",

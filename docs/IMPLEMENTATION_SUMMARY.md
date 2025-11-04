@@ -785,7 +785,7 @@ Replace this legacy section with obws-based plugin structure or mark as archived
   - Legacy match-history helpers (`ivr_open_video_path`, `ivr_open_recorded_video`, `ivr_upload_recorded_videos`, `ivr_import_recorded_videos`) were removed during the IVR cleanup; a streamlined import/export flow will replace them in a future milestone.
 
 - Frontend
-- Legacy IVR Match History drawer, VideoEventPicker, and DriveBrowser components were removed. The drawer now shows a lightweight “Match history” placeholder tab alongside the active replay settings while the redesigned workflow is prepared.
+- IVR drawer now exposes a live Match History tab: cards persist via database snapshots, hydrate on launch, stream updates when replays/full recordings are saved, and support search + date filters for reviewing past days.
   - Event Table (DockBar): double-click remains gated to review mode (disabled when a live match is active) and invokes `ivr_open_event_video`.
 
 - Notes

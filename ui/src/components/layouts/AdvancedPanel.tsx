@@ -21,6 +21,7 @@ import ScoreboardManager from '../molecules/ScoreboardManager';
 import ObsWebSocketManager from '../organisms/ObsWebSocketManager';
 import ObsIntegrationPanel from '../molecules/ObsIntegrationPanel';
 import IvrReplaySettings from '../molecules/IvrReplaySettings';
+import IvrMatchHistoryPanel from '../molecules/IvrMatchHistoryPanel';
 import Toggle from '../atoms/Toggle';
 import TabGroup from '../molecules/TabGroup';
 import TabIcons from '../atoms/TabIcons';
@@ -29,6 +30,7 @@ import { useAppStore } from '../../stores';
 import { configCommands } from '../../utils/tauriCommands';
 import { flowChartAnimation, spyAnimation, plansAnimation, watcherAnimation, taekwondoAnimation, liveStreamingAnimation, settingsAnimation, robotAnimation, noConnectionAnimation, businessAnimation, tournamentAnimation, mixerAnimation } from '../../assets/icons/json';
 import { useI18n } from '../../i18n/index';
+import { useIvrMatchHistorySync } from '../../hooks/useIvrMatchHistorySync';
 
 type AdvancedPanelProps = React.ComponentProps<'div'>;
 
@@ -44,6 +46,8 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
   const [ovrTab, setOvrTab] = useState('external');
   // IVR horizontal drawer state
   const [ivrTab, setIvrTab] = useState('replay-settings');
+
+  useIvrMatchHistorySync();
   
   const DRAWERS = [
     {
@@ -200,11 +204,7 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
                 id: 'history',
                 label: t('ivr.tabs.history', 'Match history'),
                 icon: <LottieIcon animationData={spyAnimation} size={32} />,
-                content: (
-                  <div className="theme-card p-6 shadow-lg flex items-center justify-center text-gray-300">
-                    {t('ivr.history.placeholder', 'Match history redesign in progress. Check back soon!')}
-                  </div>
-                )
+                content: <IvrMatchHistoryPanel />
               },
               {
                 id: 'replay-settings',

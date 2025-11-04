@@ -200,6 +200,140 @@ pub async fn ivr_validate_mpv_path(
     }
 }
 
+/// Snapshot of recent matches with recorded videos for IVR history panel
+#[tauri::command]
+pub async fn ivr_match_history_snapshot(
+    limit: Option<u32>,
+    date: Option<String>,
+    app: State<'_, Arc<App>>,
+) -> Result<ObsObwsConnectionResponse, TauriError> {
+    let conn = app.database_plugin().get_connection().await?;
+    let limit = limit.unwrap_or(40).min(200) as i64;
+    let selected_date = date
+        .as_ref()
+        .and_then(|d| chrono::NaiveDate::parse_from_str(d, "%Y-%m-%d").ok())
+        .unwrap_or_else(|| chrono::Utc::now().date_naive())
+        .format("%Y-%m-%d")
+        .to_string();
+
+    let mut match_stmt = conn
+        .prepare(
+            "SELECT id, match_id, match_number, category, weight, division, created_at
+             FROM pss_matches
+             WHERE date(created_at) = ?
+                OR EXISTS (
+                    SELECT 1 FROM recorded_videos rv
+                    WHERE rv.match_id = pss_matches.id
+                      AND date(rv.start_time) = ?
+                )
+             ORDER BY created_at DESC
+             LIMIT ?",
+        )
+        .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+
+    let match_rows = match_stmt
+        .query_map(rusqlite::params![selected_date.clone(), selected_date.clone(), limit], |row| {
+            Ok((
+                row.get::<_, i64>(0)?,
+                row.get::<_, Option<String>>(1)?,
+                row.get::<_, Option<String>>(2)?,
+                row.get::<_, Option<String>>(3)?,
+                row.get::<_, Option<String>>(4)?,
+                row.get::<_, Option<String>>(5)?,
+                row.get::<_, Option<String>>(6)?,
+            ))
+        })
+        .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+
+    let mut video_stmt = conn
+        .prepare(
+            "SELECT id, video_type, file_path, record_directory, start_time, duration_seconds, created_at
+             FROM recorded_videos
+             WHERE match_id = ? AND date(start_time) = ?
+             ORDER BY start_time ASC",
+        )
+        .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+
+    use crate::database::operations::PssUdpOperations as PssOps;
+
+    let mut matches_json = Vec::with_capacity(match_rows.len());
+    for (match_db_id, match_id, match_number, category, weight, division, created_at) in match_rows {
+        let athletes = PssOps::get_pss_match_athletes(&*conn, match_db_id)
+            .unwrap_or_default()
+            .into_iter()
+            .map(|(match_athlete, athlete)| {
+                serde_json::json!({
+                    "id": athlete.id,
+                    "name": athlete.long_name,
+                    "short_name": athlete.short_name,
+                    "country_code": athlete.country_code,
+                    "position": match_athlete.athlete_position,
+                })
+            })
+            .collect::<Vec<_>>();
+
+        let videos = video_stmt
+            .query_map(rusqlite::params![match_db_id, selected_date.clone()], |row| {
+                Ok(serde_json::json!({
+                    "id": row.get::<_, i64>(0)?,
+                    "video_type": row.get::<_, String>(1)?,
+                    "file_path": row.get::<_, Option<String>>(2)?,
+                    "record_directory": row.get::<_, Option<String>>(3)?,
+                    "start_time": row.get::<_, Option<String>>(4)?,
+                    "duration_seconds": row.get::<_, Option<i32>>(5)?,
+                    "created_at": row.get::<_, Option<String>>(6)?,
+                }))
+            })
+            .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+
+        matches_json.push(serde_json::json!({
+            "match_db_id": match_db_id,
+            "match_id": match_id,
+            "match_number": match_number,
+            "category": category,
+            "weight": weight,
+            "division": division,
+            "created_at": created_at,
+            "athletes": athletes,
+            "videos": videos,
+        }));
+    }
+
+    Ok(ObsObwsConnectionResponse {
+        success: true,
+        data: Some(serde_json::json!({ "matches": matches_json })),
+        error: None,
+    })
+}
+
+/// Open a recorded video file at an optional offset
+#[tauri::command]
+pub async fn ivr_open_video_file(
+    file_path: String,
+    offset_seconds: Option<i64>,
+    app: State<'_, Arc<App>>,
+) -> Result<ObsObwsConnectionResponse, TauriError> {
+    match app
+        .open_video_at(file_path, offset_seconds.unwrap_or(0))
+        .await
+    {
+        Ok(()) => Ok(ObsObwsConnectionResponse {
+            success: true,
+            data: Some(serde_json::json!({"opened": true})),
+            error: None,
+        }),
+        Err(e) => Ok(ObsObwsConnectionResponse {
+            success: false,
+            data: None,
+            error: Some(e.to_string()),
+        }),
+    }
+}
+
 // ============================================================================
 // OBS Profile Read-backs
 // ============================================================================

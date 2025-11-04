@@ -377,6 +377,8 @@ async fn main() -> AppResult<()> {
             tauri_commands_obws::ivr_save_replay_settings,
             tauri_commands_obws::ivr_round_replay_now,
             tauri_commands_obws::ivr_open_event_video,
+            tauri_commands_obws::ivr_match_history_snapshot,
+            tauri_commands_obws::ivr_open_video_file,
             tauri_commands_obws::ivr_validate_mpv_path,
             tauri_commands_obws::obs_obws_get_record_directory,
             tauri_commands_obws::obs_obws_get_filename_formatting,

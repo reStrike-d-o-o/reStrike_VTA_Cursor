@@ -3,6 +3,8 @@ import { useLiveDataStore, LiveDataWebSocket, parsePssEvent, PssEventData } from
 import { useAppStore } from '../stores/index';
 import { canListenTauri, listenTauri } from '../utils/tauriBridge';
 import { pssCommands } from '../utils/tauriCommands';
+import { useIvrMatchHistoryStore, deriveMatchKey } from '../stores/ivrMatchHistoryStore';
+import { usePssMatchStore } from '../stores/pssMatchStore';
 
 // Singleton WebSocket instance to prevent multiple connections
 let globalWebSocket: LiveDataWebSocket | null = null;
@@ -60,6 +62,43 @@ export const useLiveDataEvents = () => {
       }
       if (data.type === 'pss_event' && data.data) {
         const eventData = data.data;
+
+        const eventTypeKey = String(eventData.type ?? eventData.event_type ?? '').toLowerCase();
+        if (eventTypeKey === 'match_config') {
+          const matchNumberRaw = eventData.number ?? eventData.match_number ?? eventData.matchId;
+          const matchIdRaw = eventData.match_id ?? eventData.matchId ?? null;
+          const matchKey = deriveMatchKey(undefined, matchNumberRaw ?? null, matchIdRaw ?? null);
+          const historyStore = useIvrMatchHistoryStore.getState();
+          const todayKey = historyStore.today;
+          historyStore.ensureMatchExists({ date: todayKey, matchKey });
+          historyStore.upsertMatchMetadata({
+            date: todayKey,
+            matchKey,
+            matchId: matchIdRaw ?? undefined,
+            matchNumber: matchNumberRaw ? String(matchNumberRaw).trim() : undefined,
+            category: eventData.category ?? undefined,
+            weight: eventData.weight ?? undefined,
+            division: eventData.division ?? undefined,
+          });
+          const pssState = usePssMatchStore.getState();
+          const athletes = pssState.matchData.athletes;
+          if (athletes) {
+            historyStore.updateAthletes({
+              date: todayKey,
+              matchKey,
+              blue: {
+                name: athletes.athlete1?.long ?? athletes.athlete1?.short,
+                shortName: athletes.athlete1?.short,
+                flag: athletes.athlete1?.iocCode?.toUpperCase() ?? athletes.athlete1?.country ?? null,
+              },
+              red: {
+                name: athletes.athlete2?.long ?? athletes.athlete2?.short,
+                shortName: athletes.athlete2?.short,
+                flag: athletes.athlete2?.iocCode?.toUpperCase() ?? athletes.athlete2?.country ?? null,
+              },
+            });
+          }
+        }
 
         if (typeof eventData.event_code !== 'string' || !eventData.event_code) {
           return;

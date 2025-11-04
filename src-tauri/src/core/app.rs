@@ -729,7 +729,7 @@ impl App {
             // Acquire a fresh short-lived connection only for DB writes to avoid holding across await
             if let Ok(conn2) = self.database_plugin().get_pooled_connection() {
                 let conn_ref2 = &*conn2;
-                let _ = if let Some(dbid) = match_id_db {
+                let inserted_rows = if let Some(dbid) = match_id_db {
                     conn_ref2.execute(
                         "INSERT INTO recorded_videos (match_id, event_id, tournament_id, video_type, file_path, record_directory, filename_formatting, start_time, duration_seconds, created_at, created) VALUES (?, NULL, (SELECT uuid FROM tournaments WHERE id = ?), 'replay', ?, ?, NULL, ?, ?, ?, strftime('%s','now'))",
                         rusqlite::params![ dbid, tid_opt, file_path_str, directory, start_time.to_rfc3339(), seconds_from_end as i32, created.to_rfc3339() ]
@@ -741,6 +741,43 @@ impl App {
                         rusqlite::params![ tid_opt, file_path_str, directory, start_time.to_rfc3339(), seconds_from_end as i32, created.to_rfc3339() ]
                     )
                 };
+                if let Ok(rows) = inserted_rows {
+                    if rows > 0 {
+                        let recorded_video_id = conn_ref2.last_insert_rowid();
+                        let mut match_db_id_resolved = match_id_db;
+                        let mut match_number_resolved: Option<String> = None;
+                        if let Some(dbid) = match_db_id_resolved {
+                            match_number_resolved = conn_ref2
+                                .query_row(
+                                    "SELECT match_number FROM pss_matches WHERE id = ?",
+                                    rusqlite::params![dbid],
+                                    |row| row.get::<_, Option<String>>(0),
+                                )
+                                .unwrap_or(None);
+                        } else if let Ok((id, num)) = conn_ref2.query_row(
+                            "SELECT id, match_number FROM pss_matches ORDER BY created_at DESC LIMIT 1",
+                            [],
+                            |row| Ok((row.get::<_, i64>(0)?, row.get::<_, Option<String>>(1)?)),
+                        ) {
+                            match_db_id_resolved = Some(id);
+                            match_number_resolved = num;
+                        }
+                        Self::emit_custom_event(
+                            "ivr_replay_saved",
+                            serde_json::json!({
+                                "recorded_video_id": recorded_video_id,
+                                "match_db_id": match_db_id_resolved,
+                                "match_number": match_number_resolved,
+                                "video_type": "replay",
+                                "file_path": file_path_str,
+                                "record_directory": directory,
+                                "start_time": start_time.to_rfc3339(),
+                                "duration_seconds": seconds_from_end as i32,
+                                "created_at": created.to_rfc3339(),
+                            }),
+                        );
+                    }
+                }
             }
         }
 
