@@ -321,7 +321,7 @@ export function handleFlagError(event: React.SyntheticEvent<HTMLImageElement, Ev
 export function FlagImage({ countryCode, className = "w-8 h-6 object-cover rounded-sm shadow-sm" }: {
   countryCode: string;
   className?: string;
-}): JSX.Element {
+}): React.ReactElement {
   const [hadError, setHadError] = React.useState(false);
   const config = getFlagConfig(countryCode);
 

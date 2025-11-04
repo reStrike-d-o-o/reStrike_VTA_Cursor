@@ -135,6 +135,42 @@ export const useIvrMatchHistorySync = () => {
   const selectedDate = useIvrMatchHistoryStore((state) => state.selectedDate);
   const hydratedDateRef = useRef<string | null>(null);
 
+  const matchesEqual = (a: IvrMatchCard[], b: IvrMatchCard[]): boolean => {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i += 1) {
+      const left = a[i];
+      const right = b[i];
+      if (
+        left.matchKey !== right.matchKey ||
+        left.matchDbId !== right.matchDbId ||
+        left.matchId !== right.matchId ||
+        left.matchNumber !== right.matchNumber ||
+        left.category !== right.category ||
+        left.weight !== right.weight ||
+        left.division !== right.division
+      ) {
+        return false;
+      }
+      if (left.videos.length !== right.videos.length) return false;
+      for (let v = 0; v < left.videos.length; v += 1) {
+        const lv = left.videos[v];
+        const rv = right.videos[v];
+        if (
+          lv.id !== rv.id ||
+          lv.recordedVideoId !== rv.recordedVideoId ||
+          lv.type !== rv.type ||
+          lv.label !== rv.label ||
+          lv.filePath !== rv.filePath ||
+          lv.startTime !== rv.startTime ||
+          lv.durationSeconds !== rv.durationSeconds
+        ) {
+          return false;
+        }
+      }
+    }
+    return true;
+  };
+
   useEffect(() => {
     if (!canListenTauri()) {
       return;
@@ -157,9 +193,11 @@ export const useIvrMatchHistorySync = () => {
         );
         if (!cancelled && result?.success && result.data?.matches) {
           const matches = mapSnapshotMatches(result.data.matches);
-          useIvrMatchHistoryStore
-            .getState()
-            .setSnapshotForDate(selectedDate, matches);
+          const store = useIvrMatchHistoryStore.getState();
+          const current = store.getMatchesForDate(selectedDate);
+          if (!matchesEqual(current, matches)) {
+            store.setSnapshotForDate(selectedDate, matches);
+          }
         }
       } catch (error) {
         console.warn('Failed to hydrate IVR match history snapshot:', error);

@@ -12,7 +12,7 @@ import { useObsStore } from '../stores/obsStore';
 export const useEnvironmentObs = () => {
   const { isWindows, tauriAvailable } = useEnvironment();
   const { updateObsStatus } = useObsStore();
-  const statusIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const statusIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const connectToObs = useCallback(async (
     connection: ObsConnection

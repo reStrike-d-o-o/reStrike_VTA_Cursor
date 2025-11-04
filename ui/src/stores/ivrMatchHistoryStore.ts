@@ -82,10 +82,28 @@ const upsertMatchArray = (matches: IvrMatchCard[], card: IvrMatchCard): IvrMatch
 
 const normalizeVideo = (video: IvrVideoEntry): IvrVideoEntry => ({ ...video });
 
+const sortMatches = (matches: IvrMatchCard[]): IvrMatchCard[] =>
+  [...matches].sort((a, b) => {
+    const left = a.createdAt ?? '';
+    const right = b.createdAt ?? '';
+    if (left === right) {
+      return (b.matchKey || '').localeCompare(a.matchKey || '');
+    }
+    return right.localeCompare(left);
+  });
+
 const normalizeMatch = (match: IvrMatchCard): IvrMatchCard => ({
   ...match,
   videos: match.videos.map(normalizeVideo),
 });
+
+const metadataEquals = (a: IvrMatchCard, b: IvrMatchCard): boolean =>
+  a.matchDbId === b.matchDbId &&
+  a.matchId === b.matchId &&
+  a.matchNumber === b.matchNumber &&
+  a.category === b.category &&
+  a.weight === b.weight &&
+  a.division === b.division;
 
 const areVideosEqual = (a: IvrVideoEntry[], b: IvrVideoEntry[]): boolean => {
   if (a.length !== b.length) return false;
@@ -197,16 +215,19 @@ export const useIvrMatchHistoryStore = create<IvrMatchHistoryState>((set, get) =
 
   setSnapshotForDate: (date, matches) => {
     const normalized = toDateKey(date);
-    set((state) => ({
-      matchesByDate: {
-        ...state.matchesByDate,
-        [normalized]: matches.map((match) => ({
-          ...match,
-          updatedAt: match.updatedAt ?? match.createdAt ?? undefined,
-          videos: match.videos.map((video) => ({ ...video })),
-        })),
-      },
-    }));
+    const normalizedMatches = sortMatches(matches.map(normalizeMatch));
+    set((state) => {
+      const existing = state.matchesByDate[normalized] ?? [];
+      if (areMatchesEqual(existing, normalizedMatches)) {
+        return state;
+      }
+      return {
+        matchesByDate: {
+          ...state.matchesByDate,
+          [normalized]: normalizedMatches,
+        },
+      };
+    });
   },
 
   ensureMatchExists: ({ date, matchKey }) => {
@@ -233,12 +254,19 @@ export const useIvrMatchHistoryStore = create<IvrMatchHistoryState>((set, get) =
       const matches = [...(state.matchesByDate[normalized] ?? [])];
       const idx = matches.findIndex((m) => m.matchKey === matchKey);
       let card = idx === -1 ? createMatchCard(matchKey) : { ...matches[idx] };
+      const before = idx === -1 ? undefined : matches[idx];
+
       if (matchDbId) card.matchDbId = matchDbId;
       if (matchId !== undefined) card.matchId = matchId;
       if (matchNumber !== undefined) card.matchNumber = matchNumber;
       if (category !== undefined) card.category = category;
       if (weight !== undefined) card.weight = weight;
       if (division !== undefined) card.division = division;
+
+      if (before && metadataEquals(before, card)) {
+        return state;
+      }
+
       card.updatedAt = new Date().toISOString();
       const next = upsertMatchArray(matches, card);
       return {
