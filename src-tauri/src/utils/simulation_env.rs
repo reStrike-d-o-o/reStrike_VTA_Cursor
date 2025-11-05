@@ -61,7 +61,7 @@ pub fn check_python_version(python_cmd: &str) -> Result<(), SimulationEnvError> 
 /// Resolve the simulation path relative to the executable or current working directory
 pub fn get_simulation_main_py() -> Result<PathBuf, SimulationEnvError> {
     // Try multiple possible paths for both development and production modes
-    let possible_paths = vec![
+    let possible_paths = [
         // Development mode: relative to current working directory
         std::env::current_dir()
             .map(|p| p.join("simulation/main.py"))
@@ -109,7 +109,7 @@ pub fn get_simulation_main_py() -> Result<PathBuf, SimulationEnvError> {
 /// Resolve the requirements.txt path
 pub fn get_simulation_requirements() -> Result<PathBuf, SimulationEnvError> {
     // Try multiple possible paths for both development and production modes
-    let possible_paths = vec![
+    let possible_paths = [
         // Development mode: relative to current working directory
         std::env::current_dir()
             .map(|p| p.join("simulation/requirements.txt"))
