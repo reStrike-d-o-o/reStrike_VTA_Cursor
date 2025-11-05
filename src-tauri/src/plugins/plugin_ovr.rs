@@ -14,6 +14,7 @@ type TpssEventMetadata = Option<(
     Option<chrono::DateTime<Utc>>,
 )>;
 
+#[derive(Clone)]
 pub struct OvrScraperPlugin {
     database: Arc<DatabaseConnection>,
 }
