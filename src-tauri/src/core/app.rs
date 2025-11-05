@@ -93,6 +93,8 @@ pub struct App {
     // Track last launched mpv process to close it when match resumes or challenge is resolved
     mpv_child: Arc<Mutex<Option<Child>>>,
     shutdown_prompted: Arc<AtomicBool>,
+    pss_websocket_task: Arc<tokio::sync::Mutex<Option<tokio::task::JoinHandle<()>>>>,
+    udp_event_task: Arc<tokio::sync::Mutex<Option<tokio::task::JoinHandle<()>>>>,
 }
 
 impl App {
@@ -363,6 +365,8 @@ impl App {
             advanced_analytics,
             mpv_child: Arc::new(Mutex::new(None)),
             shutdown_prompted: Arc::new(AtomicBool::new(false)),
+            pss_websocket_task: Arc::new(tokio::sync::Mutex::new(None)),
+            udp_event_task: Arc::new(tokio::sync::Mutex::new(None)),
         })
     }
 
@@ -384,17 +388,25 @@ impl App {
 
         // Start WebSocket server for HTML overlays
         log::info!("Starting WebSocket server for HTML overlays...");
-        let websocket_plugin = self.websocket_plugin().lock().await;
-        if let Err(e) = websocket_plugin.start(3001).await {
-            log::warn!("Failed to start WebSocket server: {}", e);
-        } else {
-            log::info!("WebSocket server started successfully");
+        let mut websocket_started = false;
+        {
+            let websocket_plugin = self.websocket_plugin().lock().await;
+            if let Err(e) = websocket_plugin.start(3001).await {
+                log::warn!("Failed to start WebSocket server: {}", e);
+            } else {
+                log::info!("WebSocket server started successfully");
+                websocket_started = true;
+            }
+        }
 
+        if websocket_started {
             if let Some(pss_receiver) = Self::subscribe_to_pss_events() {
                 let websocket_plugin_clone = self.websocket_plugin().clone();
-                tokio::task::spawn(async move {
+                let handle = tokio::task::spawn(async move {
                     Self::handle_pss_to_websocket(pss_receiver, websocket_plugin_clone).await;
                 });
+                let mut guard = self.pss_websocket_task.lock().await;
+                *guard = Some(handle);
                 log::info!("WebSocket plugin connected to PSS event broadcaster");
             }
         }
@@ -409,9 +421,11 @@ impl App {
 
                 if let Some(udp_event_rx) = self.udp_event_rx.lock().await.take() {
                     let log_manager_clone = self.log_manager().clone();
-                    tokio::task::spawn(async move {
+                    let handle = tokio::task::spawn(async move {
                         Self::handle_udp_events(udp_event_rx, log_manager_clone).await;
                     });
+                    let mut guard = self.udp_event_task.lock().await;
+                    *guard = Some(handle);
                     log::info!("UDP event handler started");
                 }
             }
@@ -424,6 +438,20 @@ impl App {
     /// Stop the application
     pub async fn stop(&self) -> AppResult<()> {
         log::info!("Stopping application...");
+
+        {
+            let mut task_guard = self.pss_websocket_task.lock().await;
+            if let Some(task) = task_guard.take() {
+                task.abort();
+            }
+        }
+
+        {
+            let mut task_guard = self.udp_event_task.lock().await;
+            if let Some(task) = task_guard.take() {
+                task.abort();
+            }
+        }
 
         {
             let websocket_plugin = self.websocket_plugin.lock().await;
