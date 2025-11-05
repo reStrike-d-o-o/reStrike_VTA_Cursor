@@ -15,17 +15,19 @@ use crate::database::{
     UiSettingsOperations,
 };
 use crate::entity::{
-    event, event_type, matches, udp_client_connection, udp_server_config, udp_server_session,
+    athlete, event, event_type, matches, tournament, udp_client_connection, udp_server_config,
+    udp_server_session,
 };
 use crate::types::{AppError, AppResult};
 use chrono::{Duration as ChronoDuration, TimeZone, Utc};
 use sea_orm::{
-    ActiveModelTrait, ActiveValue::Set, ColumnTrait, DbErr, EntityTrait, PaginatorTrait,
-    QueryFilter, QueryOrder, QuerySelect, TransactionTrait,
+    ActiveModelTrait, ActiveValue::Set, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter,
+    QueryOrder, QuerySelect,
 };
 use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use uuid::Uuid;
 
 /// Phase 2 Optimization: Enhanced Database Plugin with Connection Pooling
 /// Thread-safe database operations using connection pooling
@@ -676,16 +678,31 @@ impl DatabasePlugin {
 
     /// Get or create PSS match
     pub async fn get_or_create_pss_match(&self, match_id: &str) -> AppResult<i64> {
-        let mut conn = self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
-        })?;
-        crate::database::operations::PssUdpOperations::get_or_create_pss_match(&mut *conn, match_id)
-            .map_err(|e| {
-                crate::types::AppError::ConfigError(format!(
-                    "Failed to get or create PSS match: {}",
-                    e
-                ))
-            })
+        let sea = self.seaorm_connection.clone();
+        if let Some(existing) = matches::Entity::find()
+            .filter(matches::Column::MatchCode.eq(match_id))
+            .one(&sea)
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to lookup match: {}", e)))?
+        {
+            return Ok(existing.id as i64);
+        }
+
+        let now = Utc::now().naive_utc();
+        let inserted = matches::ActiveModel {
+            uuid: Set(Uuid::new_v4().to_string()),
+            match_code: Set(match_id.to_string()),
+            total_rounds: Set(Some(3)),
+            creation_mode: Set(Some("Automatic".to_string())),
+            created_at: Set(now),
+            updated_at: Set(now),
+            ..Default::default()
+        }
+        .insert(&sea)
+        .await
+        .map_err(|e| AppError::ConfigError(format!("Failed to create match: {}", e)))?;
+
+        Ok(inserted.id as i64)
     }
 
     /// Update PSS match information
@@ -694,15 +711,52 @@ impl DatabasePlugin {
         match_id: i64,
         match_data: &crate::database::models::PssMatch,
     ) -> AppResult<()> {
-        let mut conn = self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
-        })?;
-        crate::database::operations::PssUdpOperations::update_pss_match(
-            &mut *conn, match_id, match_data,
-        )
-        .map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to update PSS match: {}", e))
-        })
+        let sea = self.seaorm_connection.clone();
+        let existing = matches::Entity::find_by_id(match_id as i32)
+            .one(&sea)
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to load match {}: {}", match_id, e)))?
+            .ok_or_else(|| AppError::ConfigError(format!("Match {} not found", match_id)))?;
+
+        let mut active: matches::ActiveModel = existing.into();
+
+        if let Some(uuid) = match_data.uuid.clone() {
+            active.uuid = Set(uuid);
+        }
+        active.match_code = Set(match_data.match_id.clone());
+        active.match_number = Set(match_data.match_number.clone());
+        active.category = Set(match_data.category.clone());
+        active.weight_class_code = Set(match_data.weight_class.clone());
+        active.division_code = Set(match_data.division.clone());
+        active.total_rounds = Set(Some(match_data.total_rounds));
+        active.round_duration = Set(match_data.round_duration);
+        active.countdown_type = Set(match_data.countdown_type.clone());
+        active.format_type = Set(match_data.format_type);
+        active.creation_mode = Set(Some(match_data.creation_mode.clone()));
+        active.created_at = Set(match_data.created_at.naive_utc());
+        active.updated_at = Set(match_data.updated_at.naive_utc());
+
+        if let Some(ref tournament_uuid) = match_data.tournament_id {
+            let tournament_id = tournament::Entity::find()
+                .filter(tournament::Column::Uuid.eq(tournament_uuid.clone()))
+                .one(&sea)
+                .await
+                .map_err(|e| {
+                    AppError::ConfigError(format!(
+                        "Failed to resolve tournament '{}' for match: {}",
+                        tournament_uuid, e
+                    ))
+                })?
+                .map(|model| model.id);
+            active.tournament_id = Set(tournament_id);
+        }
+
+        active
+            .update(&sea)
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to update PSS match: {}", e)))?;
+
+        Ok(())
     }
 
     /// Get or create PSS athlete
@@ -711,20 +765,33 @@ impl DatabasePlugin {
         athlete_code: &str,
         short_name: &str,
     ) -> AppResult<i64> {
-        let mut conn = self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
-        })?;
-        crate::database::operations::PssUdpOperations::get_or_create_pss_athlete(
-            &mut *conn,
-            athlete_code,
-            short_name,
-        )
-        .map_err(|e| {
-            crate::types::AppError::ConfigError(format!(
-                "Failed to get or create PSS athlete: {}",
-                e
-            ))
-        })
+        let sea = self.seaorm_connection.clone();
+        if let Some(existing) = athlete::Entity::find()
+            .filter(athlete::Column::PssCode.eq(Some(athlete_code.to_string())))
+            .one(&sea)
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to lookup athlete: {}", e)))?
+        {
+            return Ok(existing.id as i64);
+        }
+
+        let now = Utc::now().naive_utc();
+        let active = athlete::ActiveModel {
+            uuid: Set(Uuid::new_v4().to_string()),
+            pss_code: Set(Some(athlete_code.to_string())),
+            short_name: Set(Some(short_name.to_string())),
+            display_name: Set(Some(short_name.to_string())),
+            created_at: Set(now),
+            updated_at: Set(now),
+            ..Default::default()
+        };
+
+        let inserted = active
+            .insert(&sea)
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to create athlete: {}", e)))?;
+
+        Ok(inserted.id as i64)
     }
 
     /// Update PSS athlete information
@@ -733,17 +800,28 @@ impl DatabasePlugin {
         athlete_id: i64,
         athlete_data: &crate::database::models::PssAthlete,
     ) -> AppResult<()> {
-        let mut conn = self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
-        })?;
-        crate::database::operations::PssUdpOperations::update_pss_athlete(
-            &mut *conn,
-            athlete_id,
-            athlete_data,
-        )
-        .map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to update PSS athlete: {}", e))
-        })
+        let sea = self.seaorm_connection.clone();
+        let existing = athlete::Entity::find_by_id(athlete_id as i32)
+            .one(&sea)
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to load athlete {}: {}", athlete_id, e)))?
+            .ok_or_else(|| AppError::ConfigError(format!("Athlete {} not found", athlete_id)))?;
+
+        let mut active: athlete::ActiveModel = existing.into();
+        active.pss_code = Set(Some(athlete_data.athlete_code.clone()));
+        active.short_name = Set(Some(athlete_data.short_name.clone()));
+        active.display_name = Set(athlete_data.long_name.clone().or_else(|| Some(athlete_data.short_name.clone())));
+        active.country_code = Set(athlete_data.country_code.clone());
+        active.flag_id = Set(athlete_data.flag_id.map(|v| v as i32));
+        active.updated_at = Set(athlete_data.updated_at.naive_utc());
+        active.created_at = Set(athlete_data.created_at.naive_utc());
+
+        active
+            .update(&sea)
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to update athlete: {}", e)))?;
+
+        Ok(())
     }
 
     /// Store PSS event
