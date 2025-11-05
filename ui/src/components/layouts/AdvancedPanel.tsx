@@ -30,7 +30,6 @@ import { useAppStore } from '../../stores';
 import { configCommands } from '../../utils/tauriCommands';
 import { flowChartAnimation, spyAnimation, plansAnimation, watcherAnimation, taekwondoAnimation, liveStreamingAnimation, settingsAnimation, robotAnimation, noConnectionAnimation, businessAnimation, tournamentAnimation, mixerAnimation } from '../../assets/icons/json';
 import { useI18n } from '../../i18n/index';
-import { useIvrMatchHistorySync } from '../../hooks/useIvrMatchHistorySync';
 
 type AdvancedPanelProps = React.ComponentProps<'div'>;
 
@@ -47,8 +46,6 @@ const AdvancedPanel: React.FC<AdvancedPanelProps> = ({ className = '', ...rest }
   // IVR horizontal drawer state
   const [ivrTab, setIvrTab] = useState('replay-settings');
 
-  useIvrMatchHistorySync();
-  
   const DRAWERS = [
     {
       key: 'pss',

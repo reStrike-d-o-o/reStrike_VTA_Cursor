@@ -1,12 +1,106 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import {
   useIvrMatchHistoryStore,
   IvrMatchCard,
   IvrVideoEntry,
+  deriveMatchKey,
 } from '../../stores/ivrMatchHistoryStore';
 import Input from '../atoms/Input';
 import Button from '../atoms/Button';
 import { FlagImage } from '../../utils/flagUtils';
+import { canListenTauri } from '../../utils/tauriBridge';
+
+interface SnapshotMatchAthlete {
+  position?: number | null;
+  country_code?: string | null;
+  name?: string | null;
+  short_name?: string | null;
+}
+
+interface SnapshotMatchVideo {
+  id?: number;
+  video_type?: string | null;
+  file_path?: string | null;
+  record_directory?: string | null;
+  start_time?: string | null;
+  duration_seconds?: number | null;
+  created_at?: string | null;
+}
+
+interface SnapshotMatch {
+  match_db_id?: number;
+  match_id?: string | null;
+  match_number?: string | null;
+  category?: string | null;
+  weight?: string | null;
+  division?: string | null;
+  created_at?: string | null;
+  athletes?: SnapshotMatchAthlete[];
+  videos?: SnapshotMatchVideo[];
+}
+
+interface ObsCommandResponse<T = unknown> {
+  success: boolean;
+  data?: T | null;
+  error?: string | null;
+}
+
+const mapSnapshotMatches = (matches: SnapshotMatch[] | undefined): IvrMatchCard[] => {
+  const snapshot = matches ?? [];
+  return snapshot.map((match) => {
+    const resolvedKey = deriveMatchKey(match.match_db_id, match.match_number, match.match_id);
+
+    const athleteMap: IvrMatchCard['athletes'] = {
+      blue: {},
+      red: {},
+    };
+    (match.athletes ?? []).forEach((athlete) => {
+      const position = athlete.position === 2 ? 'red' : 'blue';
+      athleteMap[position] = {
+        name: athlete.name ?? undefined,
+        shortName: athlete.short_name ?? undefined,
+        flag: athlete.country_code ?? undefined,
+      };
+    });
+
+    const safeMatchNumber = (match.match_number ?? 'MATCH').toString().trim();
+    const videos: IvrVideoEntry[] = (match.videos ?? []).map((video, index) => {
+      const type: IvrVideoEntry['type'] =
+        video.video_type === 'recording' ? 'recording' : 'replay';
+      const label =
+        type === 'recording'
+          ? (match.match_number ? `${safeMatchNumber}# - FULL MATCH RECORDING` : 'FULL MATCH RECORDING')
+          : 'IVR video';
+      const stableId = video.id !== undefined ? `snapshot-${video.id}` : `snapshot-temp-${index}`;
+      return {
+        id: stableId,
+        recordedVideoId: video.id,
+        type,
+        label,
+        filePath: video.file_path ?? undefined,
+        recordDirectory: video.record_directory ?? undefined,
+        startTime: video.start_time ?? undefined,
+        durationSeconds: video.duration_seconds ?? undefined,
+        createdAt: video.created_at ?? undefined,
+      };
+    });
+
+    return {
+      matchKey: resolvedKey,
+      matchDbId: match.match_db_id,
+      matchId: match.match_id ?? undefined,
+      matchNumber: match.match_number ?? undefined,
+      category: match.category ?? undefined,
+      weight: match.weight ?? undefined,
+      division: match.division ?? undefined,
+      createdAt: match.created_at ?? undefined,
+      updatedAt: match.created_at ?? undefined,
+      athletes: athleteMap,
+      videos,
+    };
+  });
+};
 
 const renderAthleteBlock = (athlete?: { name?: string | null; flag?: string | null }, fallback?: string) => {
   const displayName = athlete?.name || fallback || 'Unknown';
@@ -125,6 +219,7 @@ const MatchCard: React.FC<{ match: IvrMatchCard }> = ({ match }) => {
 };
 
 export const IvrMatchHistoryPanel: React.FC = () => {
+  const hydrationStatusRef = useRef<Map<string, 'hydrating' | 'hydrated'>>(new Map());
   const {
     matches,
     searchTerm,
@@ -142,6 +237,58 @@ export const IvrMatchHistoryPanel: React.FC = () => {
     resetToToday: state.resetToToday,
     today: state.today,
   }));
+
+  useEffect(() => {
+    if (!canListenTauri()) {
+      return;
+    }
+
+    const status = hydrationStatusRef.current.get(selectedDate);
+    if (status === 'hydrated' || status === 'hydrating') {
+      return;
+    }
+
+    if (matches.length > 0) {
+      hydrationStatusRef.current.set(selectedDate, 'hydrated');
+      return;
+    }
+
+    hydrationStatusRef.current.set(selectedDate, 'hydrating');
+    let cancelled = false;
+
+    const hydrate = async () => {
+      try {
+        const result = await invoke<ObsCommandResponse<{ matches?: SnapshotMatch[] }>>(
+          'ivr_match_history_snapshot',
+          { limit: 80, date: selectedDate },
+        );
+
+        if (cancelled) {
+          return;
+        }
+
+        if (result?.success && result.data?.matches) {
+          const parsed = mapSnapshotMatches(result.data.matches);
+          useIvrMatchHistoryStore.getState().setSnapshotForDate(selectedDate, parsed);
+          hydrationStatusRef.current.set(selectedDate, 'hydrated');
+        } else {
+          hydrationStatusRef.current.set(selectedDate, 'hydrated');
+        }
+      } catch (error) {
+        console.warn('Failed to hydrate IVR match history snapshot:', error);
+        hydrationStatusRef.current.delete(selectedDate);
+      }
+    };
+
+    hydrate();
+
+    return () => {
+      cancelled = true;
+      if (hydrationStatusRef.current.get(selectedDate) === 'hydrating') {
+        hydrationStatusRef.current.delete(selectedDate);
+      }
+    };
+  }, [selectedDate, matches.length]);
 
   const filteredMatches = useMemo(() => {
     if (!searchTerm) {
