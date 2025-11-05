@@ -8,6 +8,13 @@ use std::sync::Arc;
 use std::time::Duration;
 
 #[derive(Clone)]
+type TpssEventMetadata = Option<(
+    Option<String>,
+    Option<String>,
+    Option<chrono::DateTime<Utc>>,
+    Option<chrono::DateTime<Utc>>,
+)>;
+
 pub struct OvrScraperPlugin {
     database: Arc<DatabaseConnection>,
 }
@@ -628,14 +635,7 @@ impl OvrScraperPlugin {
         out
     }
 
-    fn parse_tpss_detail(
-        html: &str,
-    ) -> Option<(
-        Option<String>,
-        Option<String>,
-        Option<chrono::DateTime<Utc>>,
-        Option<chrono::DateTime<Utc>>,
-    )> {
+    fn parse_tpss_detail(html: &str) -> TpssEventMetadata {
         let city = Regex::new(r"City[^\[]*\[([^\(\]]+)(?:\(([^\)]+)\))?")
             .ok()
             .and_then(|re| {

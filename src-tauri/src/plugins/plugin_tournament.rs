@@ -615,10 +615,8 @@ impl TournamentPlugin {
                         AppError::ConfigError(format!("Failed to resolve winner info: {e}"))
                     })?;
 
-                let (winner_name, winner_country) = match winner_info {
-                    Some(data) => data,
-                    None => (None, None),
-                };
+                let (winner_name, winner_country): (Option<String>, Option<String>) =
+                    winner_info.unwrap_or_default();
 
                 champions.push(TournamentChampion {
                     category,

@@ -358,12 +358,12 @@ impl DrivePlugin {
         let parent = parent_id.map(|p| p.to_string());
 
         self.with_drive("create_folder", move |drive| {
-            let mut metadata = objects::File::default();
-            metadata.name = Some(name);
-            metadata.mime_type = Some("application/vnd.google-apps.folder".to_string());
-            if let Some(parent_id) = parent {
-                metadata.parents = Some(vec![parent_id]);
-            }
+            let metadata = objects::File {
+                name: Some(name),
+                mime_type: Some("application/vnd.google-apps.folder".to_string()),
+                parents: parent.map(|parent_id| vec![parent_id]),
+                ..Default::default()
+            };
 
             let file = drive
                 .files
@@ -678,12 +678,12 @@ impl DrivePlugin {
         let parent = parent_id.map(|p| p.to_string());
 
         self.with_drive("upload_file_streaming", move |drive| {
-            let mut metadata = objects::File::default();
-            metadata.name = Some(file_name.clone());
-            metadata.mime_type = Some(mime_type.clone());
-            if let Some(parent_id) = parent {
-                metadata.parents = Some(vec![parent_id]);
-            }
+            let metadata = objects::File {
+                name: Some(file_name),
+                mime_type: Some(mime_type),
+                parents: parent.map(|parent_id| vec![parent_id]),
+                ..Default::default()
+            };
 
             let uploaded = drive
                 .files
