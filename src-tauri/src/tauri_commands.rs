@@ -4847,6 +4847,7 @@ pub async fn tournament_get(
 
 #[tauri::command]
 #[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments)]
 pub async fn tournament_update(
     tournament_id: i64,
     name: String,
@@ -8175,6 +8176,7 @@ pub async fn ovr_clear_all_tournaments(
 }
 
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 #[allow(clippy::too_many_arguments)]
 pub async fn ovr_list_tournaments(
     app: State<'_, Arc<App>>,

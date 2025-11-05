@@ -1522,6 +1522,7 @@ pub async fn obs_obws_get_windows_videos_folder(
 /// Test path generation with sample data
 #[tauri::command]
 #[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments)]
 pub async fn obs_obws_test_path_generation(
     match_id: String,
     tournament_name: Option<String>,
@@ -1719,6 +1720,7 @@ pub async fn obs_obws_apply_path_decision(
 
 /// Create test folders in Windows (actually creates the directory structure)
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 #[allow(clippy::too_many_arguments)]
 pub async fn obs_obws_create_test_folders(
     match_id: String,
