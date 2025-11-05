@@ -247,7 +247,7 @@ pub async fn get_current_warnings_for_match(
         .collect()
 }
 
-fn map_event(model: event::Model) -> Result<PssEventV2, DbErr> {
+pub(crate) fn map_event(model: event::Model) -> Result<PssEventV2, DbErr> {
     let timestamp = parse_rfc3339(&model.timestamp, "timestamp")?;
     let created_at = Utc.from_utc_datetime(&model.created_at);
 
@@ -379,7 +379,7 @@ async fn resolve_match_identifier(
     )))
 }
 
-fn to_i32(value: i64, field: &str) -> Result<i32, DbErr> {
+pub(crate) fn to_i32(value: i64, field: &str) -> Result<i32, DbErr> {
     i32::try_from(value).map_err(|_| {
         DbErr::Custom(format!(
             "{} value {} exceeds supported range for SeaORM operations",
@@ -388,19 +388,19 @@ fn to_i32(value: i64, field: &str) -> Result<i32, DbErr> {
     })
 }
 
-fn opt_i64_to_i32(value: Option<i64>, field: &str) -> Result<Option<i32>, DbErr> {
+pub(crate) fn opt_i64_to_i32(value: Option<i64>, field: &str) -> Result<Option<i32>, DbErr> {
     value
         .map(|inner| to_i32(inner, field))
         .transpose()
 }
 
-fn parse_rfc3339(value: &str, field: &str) -> Result<ChronoDateTime<Utc>, DbErr> {
+pub(crate) fn parse_rfc3339(value: &str, field: &str) -> Result<ChronoDateTime<Utc>, DbErr> {
     ChronoDateTime::parse_from_rfc3339(value)
         .map(|dt| dt.with_timezone(&Utc))
         .map_err(|err| DbErr::Custom(format!("Invalid {} '{}': {}", field, value, err)))
 }
 
-fn position_to_side(position: i32) -> Result<String, DbErr> {
+pub(crate) fn position_to_side(position: i32) -> Result<String, DbErr> {
     match position {
         1 => Ok("blue".to_string()),
         2 => Ok("red".to_string()),
@@ -411,14 +411,14 @@ fn position_to_side(position: i32) -> Result<String, DbErr> {
     }
 }
 
-fn side_to_position(side: &str) -> i32 {
+pub(crate) fn side_to_position(side: &str) -> i32 {
     match side.to_ascii_lowercase().as_str() {
         "red" => 2,
         _ => 1,
     }
 }
 
-fn sanitize_limit(limit: Option<i64>) -> u64 {
+pub(crate) fn sanitize_limit(limit: Option<i64>) -> u64 {
     match limit {
         Some(value) if value > 0 => value as u64,
         _ => 100,

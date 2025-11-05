@@ -1,36 +1,35 @@
 # SeaORM Migration Tracker
 
-This document tracks the remaining work needed to migrate the backend from the legacy `rusqlite` operations layer to the canonical SeaORM entities. It is meant to be the single source of truth so we can take subsystems one by one until the legacy layer can be retired.
+This log keeps track of every subsystem that still touches the legacy `rusqlite` layer so we can migrate them one by one to the canonical SeaORM entities. When a row is marked **Done** the subsystem writes exclusively through the new helpers and legacy call sites can be retired.
 
-| Area / Feature | Current Persistence Usage | SeaORM Coverage | Notes / Next Steps |
+| Area / Feature | Current Usage | SeaORM Coverage | Notes / Next Steps |
 | --- | --- | --- | --- |
-| **PSS Events (core rows)** | `PssUdpOperations::store_pss_event` and friends | ✅ `seaorm_ops::pss::insert_event` (plugin paths updated) | Done via `plugins::plugin_database::store_pss_event` & migration script. |
-| **PSS Event Details** | Legacy table `pss_event_details` | ✅ `seaorm_ops::pss::insert_event_details` | Duplicate-key semantics handled via upsert. |
-| **PSS Scores / Warnings** | `pss_scores` / `pss_warnings` | ✅ SeaORM insert/fetch helpers; plugin switched | Final verification after UDP pipeline migration. |
-| **Event Status / Validation / Unknown Events** | `PssEventStatusOperations` (rusqlite heavy) | ⛔ Not migrated | Needs SeaORM equivalents for history, statistics, validation results, unknown caches. |
-| **Match Catalogue (match, match_participant)** | `PssUdpOperations` + ad-hoc SQL in `operations.rs` | ⛔ Not migrated | Create `seaorm_ops::matches`, update tournament + UDP flows, ensure manual mode already uses SeaORM. |
-| **Athletes** | `operations.rs` + legacy tables | ⛔ Not migrated | Manual mode writes via SeaORM, but general path (PSS ingest, UI) still using rusqlite. |
-| **Tournament / Days / Ranking / Champions** | Multiple helpers in `operations.rs` | ⛔ Not migrated | Required for OBS overlays, reporting, medal ceremony tooling. |
-| **UI Settings** | `UiSettingsOperations` in `operations.rs` | ⛔ Not migrated | Provide SeaORM backed key/value service; update Tauri commands & React settings views. |
-| **OBS Connections & Recording Config** | `operations.rs::ObsRecordingOperations` | ⛔ Not migrated | Add SeaORM helpers for `obs_connection`, `obs_recording_*` entities; switch `plugin_websocket`, `tauri_commands_obws`. |
-| **UDP Server Config / Sessions / Clients** | Partially using SeaORM (`plugin_database::get_udp_server_configs`) | ⚠️ Partial | Reads use SeaORM; writes/sessions still rely on rusqlite operations. Finish migration and remove dual path. |
-| **Overlay Providers / Flags / Anthems** | `operations.rs` overlay section | ⛔ Not migrated | Needed for overlays UI and OBS. |
-| **Security Keys / Encryption** | `security::key_manager` / `security::encryption` with rusqlite | ⛔ Not migrated | Must ensure SeaORM provides secure storage semantics. |
-| **Maintenance / Archives** | `maintenance.rs`, `operations.rs::DataArchivalOperations` | ⛔ Not migrated | Evaluate whether to keep as raw SQL or expose minimal SeaORM wrappers. |
-| **Docs & Schema Reference** | Migration script `20251105_schema_unification.sql` | ✅ Bundled via `include_str!` | Update once new SeaORM modules land to keep docs aligned. |
+| PSS events (core rows) | `PssUdpOperations::store_pss_event` etc. | **Done** (`seaorm_ops::pss::insert_event`) | Plugin paths updated and migration script seeds the canonical table. |
+| PSS event details | `pss_event_details` table | **Done** (`seaorm_ops::pss::insert_event_details`) | Handles duplicate keys via update-or-insert. |
+| PSS scores / warnings | `pss_scores`, `pss_warnings` | **Done** (SeaORM helpers + plugin rewired) | Pending full UDP pipeline switch to confirm end-to-end behaviour. |
+| Event status / validation / unknown events | `PssEventStatusOperations` | **Done** (`seaorm_ops::pss_status`) | Includes recognition history, statistics, validation results, and unknown cache. |
+| Match catalogue (match, match_participant) | `PssUdpOperations`, raw SQL in `operations.rs` | **Pending** | Create `seaorm_ops::matches`, update tournament + UDP flows, verify manual mode still works. |
+| Athletes | `operations.rs` | **Pending** | Manual mode already SeaORM; ingest/UI still relies on rusqlite. |
+| Tournaments / days / ranking / champions | `operations.rs` | **Pending** | Needed for OBS overlays, reporting, medal ceremony tooling. |
+| UI settings | `UiSettingsOperations` | **Pending** | Build SeaORM-backed key/value service; update Tauri commands & React settings views. |
+| OBS connections & recording config | `operations.rs::ObsRecordingOperations` | **Pending** | Add SeaORM helpers for `obs_connection`, `obs_recording_*`; switch `plugin_websocket`, `tauri_commands_obws`. |
+| UDP server config / sessions / clients | Mixed (SeaORM reads, rusqlite writes) | **Partial** | Finish SeaORM writes for sessions/clients and remove fallback ops. |
+| Overlay providers / flags / anthems | `operations.rs` | **Pending** | Required for overlays UI and OBS scene builder. |
+| Security keys / encryption | `security::key_manager`, `security::encryption` | **Pending** | Migrate secure storage semantics before dropping rusqlite. |
+| Maintenance / archives | `maintenance.rs`, `operations.rs::DataArchivalOperations` | **Pending** | Decide whether to keep raw SQL or add thin SeaORM wrappers. |
+| Docs & schema reference | `20251105_schema_unification.sql` | **Done** (`include_str!`) | Keep docs aligned as new SeaORM modules land. |
 
 ## Working Approach
 
-1. **Pick the next subsystem** – preferably one that unblocks multiple UI paths (e.g. match/athlete catalogue or tournament scaffolding).  
-2. **Introduce a dedicated SeaORM operations module** (similar to `seaorm_ops::pss`). Keep them small and feature-focused.  
-3. **Update the relevant plugin / Tauri command** to call the new helper. Avoid touching unrelated code.  
-4. **Document completion** by changing the table above to ✅ and removing the legacy callsites.  
-5. **Iterate** until all rows are checked off, then delete `operations.rs` (or reduce it to thin wrappers) and drop the legacy views.
+1. Pick the next subsystem with the biggest downstream impact (match catalogue, tournaments, UI settings, etc.).
+2. Add a focused `seaorm_ops::*` module that exposes high-level helpers returning the existing model structs.
+3. Switch the relevant plugin / Tauri command to call the new helper and delete the rusqlite call site.
+4. Update this tracker to mark the row **Done** (or **Partial** while both paths coexist).
+5. Repeat until every row is complete, then remove `database::operations` and the legacy compatibility views.
 
 ## Immediate Candidates
 
-- **Event Status / Validation**: natural follow-up to the event core migration; still blocks the dashboard and analytics.  
-- **Match & Athlete catalogue**: most other subsystems (tournaments, overlays, OBS) depend on this data, so migrating it early pays dividends.  
-- **UI Settings**: high-surface-area API used throughout the frontend; migrating it removes a large chunk of `operations.rs`.
+- Match & athlete catalogue — unblocks tournaments, overlays, OBS, and analytics.
+- UI settings — high touch area across the desktop UI; removing rusqlite here eliminates a large portion of `operations.rs`.
 
-Keep this file updated whenever a subsystem is migrated so we always know what remains before declaring SeaORM as the sole backend layer.
+Keep this document current so the team always knows what remains before we can declare the SeaORM rollout finished.

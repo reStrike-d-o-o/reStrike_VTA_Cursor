@@ -8,7 +8,10 @@ use crate::database::{
         UdpServerConfig as DbUdpServerConfig, UdpServerSession as DbUdpServerSession,
     },
     seaorm::{connect as seaorm_connect, SeaOrmConnection},
-    seaorm_ops::pss as sea_pss,
+    seaorm_ops::{
+        pss as sea_pss,
+        pss_status as sea_status,
+    },
     DatabaseError,
     HybridSettingsProvider,
     MigrationResult,
@@ -980,18 +983,10 @@ impl DatabasePlugin {
         &self,
         event: &crate::database::models::PssEventV2,
     ) -> AppResult<i64> {
-        let mut conn = self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
-        })?;
-        crate::database::operations::PssEventStatusOperations::store_pss_event_with_status(
-            &mut *conn, event,
-        )
-        .map_err(|e| {
-            crate::types::AppError::ConfigError(format!(
-                "Failed to store PSS event with status: {}",
-                e
-            ))
-        })
+        let sea = self.seaorm_connection.clone();
+        sea_status::store_event_with_status(&sea, event)
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to store PSS event with status: {}", e)))
     }
 
     /// Update event recognition status and record history
@@ -1002,22 +997,10 @@ impl DatabasePlugin {
         changed_by: &str,
         change_reason: Option<&str>,
     ) -> AppResult<()> {
-        let mut conn = self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
-        })?;
-        crate::database::operations::PssEventStatusOperations::update_event_recognition_status(
-            &mut *conn,
-            event_id,
-            new_status,
-            changed_by,
-            change_reason,
-        )
-        .map_err(|e| {
-            crate::types::AppError::ConfigError(format!(
-                "Failed to update event recognition status: {}",
-                e
-            ))
-        })
+        let sea = self.seaorm_connection.clone();
+        sea_status::update_event_recognition_status(&sea, event_id, new_status, changed_by, change_reason)
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to update event recognition status: {}", e)))
     }
 
     /// Store unknown event
@@ -1025,16 +1008,10 @@ impl DatabasePlugin {
         &self,
         unknown_event: &crate::database::models::PssUnknownEvent,
     ) -> AppResult<i64> {
-        let mut conn = self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
-        })?;
-        crate::database::operations::PssEventStatusOperations::store_unknown_event(
-            &mut *conn,
-            unknown_event,
-        )
-        .map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to store unknown event: {}", e))
-        })
+        let sea = self.seaorm_connection.clone();
+        sea_status::store_unknown_event(&sea, unknown_event)
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to store unknown event: {}", e)))
     }
 
     /// Get validation rules for an event type
@@ -1043,17 +1020,10 @@ impl DatabasePlugin {
         event_code: &str,
         protocol_version: &str,
     ) -> AppResult<Vec<crate::database::models::PssEventValidationRule>> {
-        let conn = self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
-        })?;
-        crate::database::operations::PssEventStatusOperations::get_validation_rules(
-            &*conn,
-            event_code,
-            protocol_version,
-        )
-        .map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get validation rules: {}", e))
-        })
+        let sea = self.seaorm_connection.clone();
+        sea_status::get_validation_rules(&sea, event_code, protocol_version)
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to get validation rules: {}", e)))
     }
 
     /// Store validation result
@@ -1061,16 +1031,10 @@ impl DatabasePlugin {
         &self,
         validation_result: &crate::database::models::PssEventValidationResult,
     ) -> AppResult<i64> {
-        let mut conn = self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
-        })?;
-        crate::database::operations::PssEventStatusOperations::store_validation_result(
-            &mut *conn,
-            validation_result,
-        )
-        .map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to store validation result: {}", e))
-        })
+        let sea = self.seaorm_connection.clone();
+        sea_status::store_validation_result(&sea, validation_result)
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to store validation result: {}", e)))
     }
 
     /// Update event statistics
@@ -1081,19 +1045,16 @@ impl DatabasePlugin {
         recognition_status: &str,
         processing_time_ms: Option<i32>,
     ) -> AppResult<()> {
-        let mut conn = self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
-        })?;
-        crate::database::operations::PssEventStatusOperations::update_event_statistics(
-            &mut *conn,
+        let sea = self.seaorm_connection.clone();
+        sea_status::update_event_statistics(
+            &sea,
             session_id,
             event_type_id,
             recognition_status,
             processing_time_ms,
         )
-        .map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to update event statistics: {}", e))
-        })
+        .await
+        .map_err(|e| AppError::ConfigError(format!("Failed to update event statistics: {}", e)))
     }
 
     /// Get event statistics for a session
@@ -1101,15 +1062,10 @@ impl DatabasePlugin {
         &self,
         session_id: i64,
     ) -> AppResult<Vec<crate::database::models::PssEventStatistics>> {
-        let conn = self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
-        })?;
-        crate::database::operations::PssEventStatusOperations::get_session_statistics(
-            &*conn, session_id,
-        )
-        .map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get session statistics: {}", e))
-        })
+        let sea = self.seaorm_connection.clone();
+        sea_status::get_session_statistics(&sea, session_id)
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to get session statistics: {}", e)))
     }
 
     /// Get unknown events for analysis
@@ -1118,15 +1074,10 @@ impl DatabasePlugin {
         session_id: Option<i64>,
         limit: Option<i64>,
     ) -> AppResult<Vec<crate::database::models::PssUnknownEvent>> {
-        let conn = self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
-        })?;
-        crate::database::operations::PssEventStatusOperations::get_unknown_events(
-            &*conn, session_id, limit,
-        )
-        .map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get unknown events: {}", e))
-        })
+        let sea = self.seaorm_connection.clone();
+        sea_status::get_unknown_events(&sea, session_id, limit)
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to get unknown events: {}", e)))
     }
 
     /// Get recognition history for an event
@@ -1134,18 +1085,10 @@ impl DatabasePlugin {
         &self,
         event_id: i64,
     ) -> AppResult<Vec<crate::database::models::PssEventRecognitionHistory>> {
-        let conn = self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
-        })?;
-        crate::database::operations::PssEventStatusOperations::get_event_recognition_history(
-            &*conn, event_id,
-        )
-        .map_err(|e| {
-            crate::types::AppError::ConfigError(format!(
-                "Failed to get event recognition history: {}",
-                e
-            ))
-        })
+        let sea = self.seaorm_connection.clone();
+        sea_status::get_event_recognition_history(&sea, event_id)
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to get event recognition history: {}", e)))
     }
 
     /// Get events by recognition status
@@ -1155,18 +1098,10 @@ impl DatabasePlugin {
         recognition_status: &str,
         limit: Option<i64>,
     ) -> AppResult<Vec<crate::database::models::PssEventV2>> {
-        let conn = self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
-        })?;
-        crate::database::operations::PssEventStatusOperations::get_events_by_status(
-            &*conn,
-            session_id,
-            recognition_status,
-            limit,
-        )
-        .map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get events by status: {}", e))
-        })
+        let sea = self.seaorm_connection.clone();
+        sea_status::get_events_by_status(&sea, session_id, recognition_status, limit)
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to get events by status: {}", e)))
     }
 
     /// Get comprehensive event statistics with status breakdown
@@ -1174,18 +1109,10 @@ impl DatabasePlugin {
         &self,
         session_id: i64,
     ) -> AppResult<serde_json::Value> {
-        let conn = self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
-        })?;
-        crate::database::operations::PssEventStatusOperations::get_comprehensive_event_statistics(
-            &*conn, session_id,
-        )
-        .map_err(|e| {
-            crate::types::AppError::ConfigError(format!(
-                "Failed to get comprehensive event statistics: {}",
-                e
-            ))
-        })
+        let sea = self.seaorm_connection.clone();
+        sea_status::get_comprehensive_event_statistics(&sea, session_id)
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to get comprehensive event statistics: {}", e)))
     }
 
     // Phase 2: Data Archival Operations
