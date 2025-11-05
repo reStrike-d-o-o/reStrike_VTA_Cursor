@@ -183,25 +183,38 @@ const computeSignature = (matches: IvrMatchCard[]): string =>
     })
     .join('||');
 
+const EMPTY_MATCHES: IvrMatchCard[] = [];
+
 export const useIvrMatchHistorySync = () => {
   const selectedDate = useIvrMatchHistoryStore((state) => state.selectedDate);
+  const matchesForSelected = useIvrMatchHistoryStore((state) => {
+    const normalized = state.selectedDate;
+    return state.matchesByDate[normalized] ?? EMPTY_MATCHES;
+  });
   const hydratedSignatureRef = useRef<Record<string, string>>({});
   const inflightRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    const known = hydratedSignatureRef.current[selectedDate];
+    if (known === undefined) {
+      return;
+    }
+    const signature = computeSignature(matchesForSelected);
+    if (signature !== known) {
+      hydratedSignatureRef.current[selectedDate] = signature;
+    }
+  }, [matchesForSelected, selectedDate]);
 
   useEffect(() => {
     if (!canListenTauri()) {
       return;
     }
 
-    if (inflightRef.current.has(selectedDate)) {
+    if (hydratedSignatureRef.current[selectedDate] !== undefined) {
       return;
     }
 
-    const storeSnapshot = useIvrMatchHistoryStore.getState();
-    const currentSignature = computeSignature(storeSnapshot.getMatchesForDate(selectedDate));
-    const knownSignature = hydratedSignatureRef.current[selectedDate];
-
-    if (knownSignature !== undefined && knownSignature === currentSignature) {
+    if (inflightRef.current.has(selectedDate)) {
       return;
     }
 
@@ -215,28 +228,25 @@ export const useIvrMatchHistorySync = () => {
           { limit: 80, date: selectedDate },
         );
 
-        if (cancelled || !result?.success || !result.data?.matches) {
-          inflightRef.current.delete(selectedDate);
-          if (!cancelled) {
-            hydratedSignatureRef.current[selectedDate] = currentSignature;
-          }
+        if (cancelled) {
           return;
         }
 
-        const matches = mapSnapshotMatches(result.data.matches);
-        const nextStore = useIvrMatchHistoryStore.getState();
-        const current = nextStore.getMatchesForDate(selectedDate);
-        if (!matchesEqual(current, matches)) {
-          nextStore.setSnapshotForDate(selectedDate, matches);
+        if (result?.success && result.data?.matches) {
+          const matches = mapSnapshotMatches(result.data.matches);
+          const store = useIvrMatchHistoryStore.getState();
+          const current = store.getMatchesForDate(selectedDate);
+          if (!matchesEqual(current, matches)) {
+            store.setSnapshotForDate(selectedDate, matches);
+          }
         }
-        const persisted = nextStore.getMatchesForDate(selectedDate);
-        const signature = computeSignature(persisted);
-        hydratedSignatureRef.current[selectedDate] = signature;
+
+        const snapshot = useIvrMatchHistoryStore.getState().getMatchesForDate(selectedDate);
+        hydratedSignatureRef.current[selectedDate] = computeSignature(snapshot);
       } catch (error) {
         console.warn('Failed to hydrate IVR match history snapshot:', error);
-        if (!cancelled) {
-          hydratedSignatureRef.current[selectedDate] = currentSignature;
-        }
+        const snapshot = useIvrMatchHistoryStore.getState().getMatchesForDate(selectedDate);
+        hydratedSignatureRef.current[selectedDate] = computeSignature(snapshot);
       } finally {
         inflightRef.current.delete(selectedDate);
       }
