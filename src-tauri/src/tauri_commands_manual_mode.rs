@@ -46,7 +46,7 @@ pub async fn manual_create_match(
     log::info!("Creating manual match: {match_data:?}");
 
     let sea = app.database_plugin().seaorm();
-    let mut txn = sea
+    let txn = sea
         .begin()
         .await
         .map_err(|e| format!("Failed to start database transaction: {e}"))?;
