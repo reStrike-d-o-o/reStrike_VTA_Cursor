@@ -51,7 +51,7 @@ Global `PRAGMA foreign_key_check;` raises expected warnings for `legacy_octagon`
 
 ## Follow-up actions
 
-1. Port the Rust backend to SeaORM entities that align with the canonical tables and retire the raw SQL accessors. Compatibility views can then be removed in stages.
+1. Port the Rust backend to the new SeaORM entities (`src-tauri/src/entity`) and retire the raw SQL accessors. Compatibility views can then be removed in stages.
 2. Add end-to-end migration tests (or at least scripted checks) that run `PRAGMA foreign_key_check` on every canonical table and verify row counts before/after.
 3. Once all code paths rely on the canonical schema, drop the `legacy_*` tables and remove the temp mapping structures from the migration script.
 4. Keep the docs (`target_model.md`, `rename_dictionary.md`, `AGENTS.md`) updated whenever additional tables are surfaced or renamed so the schema stays the single source of truth.
