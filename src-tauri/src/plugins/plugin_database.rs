@@ -8,6 +8,7 @@ use crate::database::{
         UdpServerConfig as DbUdpServerConfig, UdpServerSession as DbUdpServerSession,
     },
     seaorm::{connect as seaorm_connect, SeaOrmConnection},
+    seaorm_ops::pss as sea_pss,
     DatabaseError,
     HybridSettingsProvider,
     MigrationResult,
@@ -28,6 +29,11 @@ use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use uuid::Uuid;
+
+const SCHEMA_UNIFICATION_SQL: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../scripts/db_migrations/20251105_schema_unification.sql"
+));
 
 /// Phase 2 Optimization: Enhanced Database Plugin with Connection Pooling
 /// Thread-safe database operations using connection pooling
@@ -84,6 +90,11 @@ impl DatabasePlugin {
                 "Database migration failed: {}",
                 e
             )));
+        }
+
+        if let Err(err) = plugin.ensure_canonical_pss_schema().await {
+            log::error!("Failed to ensure canonical SeaORM schema: {}", err);
+            return Err(err);
         }
 
         Ok(plugin)
@@ -829,12 +840,10 @@ impl DatabasePlugin {
         &self,
         event: &crate::database::models::PssEventV2,
     ) -> AppResult<i64> {
-        let mut conn = self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
-        })?;
-        crate::database::operations::PssUdpOperations::store_pss_event(&mut *conn, event).map_err(
-            |e| crate::types::AppError::ConfigError(format!("Failed to store PSS event: {}", e)),
-        )
+        let sea = self.seaorm_connection.clone();
+        sea_pss::insert_event(&sea, event)
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to store PSS event: {}", e)))
     }
 
     /// Get PSS events for a session
@@ -843,18 +852,10 @@ impl DatabasePlugin {
         session_id: i64,
         limit: Option<i64>,
     ) -> AppResult<Vec<crate::database::models::PssEventV2>> {
-        let conn = self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
-        })?;
-        crate::database::operations::PssUdpOperations::get_pss_events_for_session(
-            &*conn, session_id, limit,
-        )
-        .map_err(|e| {
-            crate::types::AppError::ConfigError(format!(
-                "Failed to get PSS events for session: {}",
-                e
-            ))
-        })
+        let sea = self.seaorm_connection.clone();
+        sea_pss::get_events_for_session(&sea, session_id, limit)
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to get PSS events for session: {}", e)))
     }
 
     /// Get PSS events for a match
@@ -863,18 +864,10 @@ impl DatabasePlugin {
         match_id: i64,
         limit: Option<i64>,
     ) -> AppResult<Vec<crate::database::models::PssEventV2>> {
-        let conn = self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
-        })?;
-        crate::database::operations::PssUdpOperations::get_pss_events_for_match(
-            &*conn, match_id, limit,
-        )
-        .map_err(|e| {
-            crate::types::AppError::ConfigError(format!(
-                "Failed to get PSS events for match: {}",
-                e
-            ))
-        })
+        let sea = self.seaorm_connection.clone();
+        sea_pss::get_events_for_match(&sea, match_id, limit)
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to get PSS events for match: {}", e)))
     }
 
     /// Store PSS event details
@@ -883,15 +876,10 @@ impl DatabasePlugin {
         event_id: i64,
         details: &[(String, Option<String>, String)],
     ) -> AppResult<()> {
-        let mut conn = self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
-        })?;
-        crate::database::operations::PssUdpOperations::store_pss_event_details(
-            &mut *conn, event_id, details,
-        )
-        .map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to store PSS event details: {}", e))
-        })
+        let sea = self.seaorm_connection.clone();
+        sea_pss::insert_event_details(&sea, event_id, details)
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to store PSS event details: {}", e)))
     }
 
     /// Get PSS event details
@@ -899,16 +887,10 @@ impl DatabasePlugin {
         &self,
         event_id: i64,
     ) -> AppResult<Vec<crate::database::models::PssEventDetail>> {
-        let conn = self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
-        })?;
-        crate::database::operations::PssUdpOperations::get_pss_event_details(&*conn, event_id)
-            .map_err(|e| {
-                crate::types::AppError::ConfigError(format!(
-                    "Failed to get PSS event details: {}",
-                    e
-                ))
-            })
+        let sea = self.seaorm_connection.clone();
+        sea_pss::get_event_details(&sea, event_id)
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to get PSS event details: {}", e)))
     }
 
     /// Store PSS score
@@ -916,12 +898,10 @@ impl DatabasePlugin {
         &self,
         score: &crate::database::models::PssScore,
     ) -> AppResult<i64> {
-        let mut conn = self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
-        })?;
-        crate::database::operations::PssUdpOperations::store_pss_score(&mut *conn, score).map_err(
-            |e| crate::types::AppError::ConfigError(format!("Failed to store PSS score: {}", e)),
-        )
+        let sea = self.seaorm_connection.clone();
+        sea_pss::insert_score(&sea, score)
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to store PSS score: {}", e)))
     }
 
     /// Get current scores for a match
@@ -929,18 +909,10 @@ impl DatabasePlugin {
         &self,
         match_id: i64,
     ) -> AppResult<Vec<crate::database::models::PssScore>> {
-        let conn = self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
-        })?;
-        crate::database::operations::PssUdpOperations::get_current_scores_for_match(
-            &*conn, match_id,
-        )
-        .map_err(|e| {
-            crate::types::AppError::ConfigError(format!(
-                "Failed to get current scores for match: {}",
-                e
-            ))
-        })
+        let sea = self.seaorm_connection.clone();
+        sea_pss::get_current_scores_for_match(&sea, match_id)
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to get current scores for match: {}", e)))
     }
 
     /// Store PSS warning
@@ -948,13 +920,10 @@ impl DatabasePlugin {
         &self,
         warning: &crate::database::models::PssWarning,
     ) -> AppResult<i64> {
-        let mut conn = self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
-        })?;
-        crate::database::operations::PssUdpOperations::store_pss_warning(&mut *conn, warning)
-            .map_err(|e| {
-                crate::types::AppError::ConfigError(format!("Failed to store PSS warning: {}", e))
-            })
+        let sea = self.seaorm_connection.clone();
+        sea_pss::insert_warning(&sea, warning)
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to store PSS warning: {}", e)))
     }
 
     /// Get current warnings for a match
@@ -962,18 +931,10 @@ impl DatabasePlugin {
         &self,
         match_id: i64,
     ) -> AppResult<Vec<crate::database::models::PssWarning>> {
-        let conn = self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
-        })?;
-        crate::database::operations::PssUdpOperations::get_current_warnings_for_match(
-            &*conn, match_id,
-        )
-        .map_err(|e| {
-            crate::types::AppError::ConfigError(format!(
-                "Failed to get current warnings for match: {}",
-                e
-            ))
-        })
+        let sea = self.seaorm_connection.clone();
+        sea_pss::get_current_warnings_for_match(&sea, match_id)
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to get current warnings for match: {}", e)))
     }
 
     /// Get UDP server statistics
@@ -1304,6 +1265,65 @@ impl DatabasePlugin {
         &crate::database::operations::ObsRecordingOperations
     }
 
+    async fn ensure_canonical_pss_schema(&self) -> AppResult<()> {
+        let conn = self.connection.get_connection().await.map_err(|e| {
+            crate::types::AppError::ConfigError(format!(
+                "Failed to get database connection: {}",
+                e
+            ))
+        })?;
+
+        let has_match = table_exists(&*conn, "match").map_err(|e| {
+            crate::types::AppError::ConfigError(format!(
+                "Failed to inspect schema for canonical match table: {}",
+                e
+            ))
+        })?;
+        let has_event = table_exists(&*conn, "event").map_err(|e| {
+            crate::types::AppError::ConfigError(format!(
+                "Failed to inspect schema for canonical event table: {}",
+                e
+            ))
+        })?;
+
+        if has_match && has_event {
+            return Ok(());
+        }
+
+        let legacy_matches = table_exists(&*conn, "pss_matches").map_err(|e| {
+            crate::types::AppError::ConfigError(format!(
+                "Failed to inspect legacy match schema: {}",
+                e
+            ))
+        })?;
+        let legacy_events = table_exists(&*conn, "pss_events").map_err(|e| {
+            crate::types::AppError::ConfigError(format!(
+                "Failed to inspect legacy event schema: {}",
+                e
+            ))
+        })?;
+
+        if !(legacy_matches && legacy_events) {
+            log::warn!(
+                "Legacy PSS tables not found; skipping canonical schema migration (matches={}, events={})",
+                legacy_matches,
+                legacy_events
+            );
+            return Ok(());
+        }
+
+        log::info!("Migrating legacy PSS data into canonical SeaORM schema");
+        conn.execute_batch(SCHEMA_UNIFICATION_SQL).map_err(|e| {
+            crate::types::AppError::ConfigError(format!(
+                "Failed to execute schema unification migration: {}",
+                e
+            ))
+        })?;
+        log::info!("Canonical SeaORM schema migration completed successfully");
+
+        Ok(())
+    }
+
     /// Internal method to run database migrations
     async fn run_migrations_internal(connection: Arc<DatabaseConnection>) -> AppResult<()> {
         let mut conn = connection.get_connection().await.map_err(|e| {
@@ -1494,4 +1514,11 @@ pub struct DatabaseStatistics {
 pub fn init() -> Result<(), Box<dyn std::error::Error>> {
     log::info!("Initializing database plugin");
     Ok(())
+}
+
+fn table_exists(conn: &rusqlite::Connection, table: &str) -> rusqlite::Result<bool> {
+    let mut stmt = conn.prepare(
+        "SELECT 1 FROM sqlite_master WHERE type IN ('table', 'view') AND name = ?1 LIMIT 1",
+    )?;
+    stmt.exists([table])
 }

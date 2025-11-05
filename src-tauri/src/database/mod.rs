@@ -15,6 +15,7 @@ pub mod migrations;
 pub mod models;
 pub mod operations;
 pub mod seaorm;
+pub mod seaorm_ops;
 
 pub use async_connection::AsyncDatabaseConnection;
 pub use connection::DatabaseConnection;
