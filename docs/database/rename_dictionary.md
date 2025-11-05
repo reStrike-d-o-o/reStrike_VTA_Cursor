@@ -37,6 +37,10 @@ This file tracks the canonical naming for tables and columns as we migrate away 
 | `tournament_days` | `tournament_day` | Rename. |
 | `tournament_rankings` | `tournament_ranking` | Rename. |
 | `tournament_champions` | `tournament_champion` | Rename. |
+| `medal_ceremonies` | `medal_ceremony` | Rename + view keeps legacy column order. |
+| `medal_ceremony_divisions` | `medal_ceremony_division` | Rename. |
+| `medal_ceremony_medalists` | `medal_ceremony_medalist` | Rename; athlete FK now points at canonical `athlete`. |
+| `octagons` | `octagon` | Rename. |
 | `ovr_categories` | `overlay_category` | Rename. |
 | `ovr_flag_animations` | `overlay_flag_animation` | Rename. |
 | `ovr_anthems` | `overlay_anthem` | Rename. |
@@ -61,6 +65,9 @@ This file tracks the canonical naming for tables and columns as we migrate away 
 | `athlete` | `wtid` | `wt_id` | Snake case with underscore. |
 | `athlete` | `display_name` / `short_name` | Keep but add `pss_code` for former `athlete_code`. |
 | `tournament` | `oc` | `organizing_committee` | Expand abbreviation. |
+| `tournament_champion` | `winner_color` | `winner_side` | Convert to lowercase `red`/`blue`. |
+| `tournament_champion` | `match_id` | `match_code` | Preserve legacy string identifier. |
+| `octagon` | `octagon_number` | `number` | Numeric/text slot identifier. |
 | `flag` | `recognition_status` | Keep; ensure `flag_recognition_history` foreign key renamed accordingly. |
 | `round` | `winner_position` | `winner_side` | Convert integer to constrained text. |
 | `score` | `score_value` | `value` | Optional clean-up. |
