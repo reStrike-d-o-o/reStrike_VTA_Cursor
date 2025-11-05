@@ -1269,7 +1269,7 @@ impl DatabasePlugin {
 
     /// Internal method to run database migrations
     async fn run_migrations_internal(connection: Arc<DatabaseConnection>) -> AppResult<()> {
-        let mut conn = connection.get_connection().await.map_err(|e| {
+        let conn = connection.get_connection().await.map_err(|e| {
             crate::types::AppError::ConfigError(format!("Failed to get database connection: {e}"))
         })?;
 
@@ -1277,7 +1277,7 @@ impl DatabasePlugin {
         use crate::database::migrations::MigrationManager;
 
         let migration_manager = MigrationManager::new();
-        migration_manager.migrate(&mut conn).map_err(|e| {
+        migration_manager.migrate(&conn).map_err(|e| {
             crate::types::AppError::ConfigError(format!("Failed to run database migrations: {e}"))
         })?;
 
@@ -1291,7 +1291,7 @@ impl DatabasePlugin {
         use crate::database::migrations::MigrationManager;
 
         let migration_manager = MigrationManager::new();
-        migration_manager.migrate(conn).map_err(|e| {
+        migration_manager.migrate(&*conn).map_err(|e| {
             crate::types::AppError::ConfigError(format!("Failed to run database migrations: {e}"))
         })?;
 
