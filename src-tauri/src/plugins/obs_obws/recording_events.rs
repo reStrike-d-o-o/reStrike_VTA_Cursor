@@ -1,4 +1,4 @@
-use crate::database::operations::{PssUdpOperations, TournamentOperations};
+use crate::database::operations::TournamentOperations;
 use crate::core::app::App;
 use crate::plugins::obs_obws::manager::ObsManager;
 use crate::plugins::obs_obws::types::ObsReplayBufferStatus;
@@ -368,8 +368,13 @@ impl ObsRecordingEventHandler {
         let mut match_id = self.get_current_match_id().await?;
         if match_id.is_none() {
             // Fallback: use most recent match from DB
-            let conn = self.database.get_connection().await?;
-            let latest = PssUdpOperations::get_pss_matches(&*conn, Some(1)).unwrap_or_default();
+            let latest = match self.database.get_pss_matches(Some(1)).await {
+                Ok(matches) => matches,
+                Err(e) => {
+                    log::warn!("Failed to fetch recent matches for OBS context: {}", e);
+                    Vec::new()
+                }
+            };
             match_id = latest.into_iter().next().map(|m| m.match_id);
         }
 
@@ -1344,7 +1349,8 @@ impl ObsRecordingEventHandler {
 
     /// Generate recording path for current match
     pub async fn generate_recording_path(&self, match_id: &str) -> AppResult<()> {
-        let conn = self.database.get_connection().await?;
+        let conn_guard = self.database.get_connection().await?;
+        let conn = &*conn_guard;
 
         // Resolve Videos root and path generator settings first (we must verify folders on disk)
         let (videos_root, recording_format, folder_pattern) = {
@@ -1355,18 +1361,19 @@ impl ObsRecordingEventHandler {
                 cfg.obs_connection_name.clone().or_else(|| {
                     // Use the default connection name for now - this will be resolved later
                     // when we actually need to connect to OBS
-                    log::warn!("No connection name in config for replay; will resolve recording role connection at runtime");
+                    log::warn!(
+                        "No connection name in config for replay; will resolve recording role connection at runtime"
+                    );
                     None
                 }).unwrap_or_else(|| "OBS_REC".to_string())
             };
-            if let Ok(Some(cfg)) = RecOps::get_recording_config(&*conn, &conn_name) {
+            if let Ok(Some(cfg)) = RecOps::get_recording_config(conn, &conn_name) {
                 (
                     std::path::PathBuf::from(cfg.recording_root_path),
                     cfg.recording_format,
                     Some(cfg.folder_pattern),
                 )
             } else {
-                // Fallback to default Videos folder
                 (
                     PathGeneratorConfig::detect_windows_videos_folder(),
                     "mp4".to_string(),
@@ -1376,15 +1383,22 @@ impl ObsRecordingEventHandler {
         };
 
         // Determine tournament/day from DB and always use them; ensure folders exist instead of demoting
-        let tournament = TournamentOperations::get_active_tournament(&*conn)?;
+        let tournament = TournamentOperations::get_active_tournament(conn)?;
         let tournament_day = if let Some(ref t) = tournament {
-            TournamentOperations::get_active_tournament_day(&*conn, t.id.unwrap()).ok()
+            TournamentOperations::get_active_tournament_day(conn, t.id.unwrap()).ok()
         } else {
             None
         };
 
+        // Release the synchronous connection before awaiting further DB work.
+        drop(conn_guard);
+
         // Get match details (support both raw db IDs and mch:<number> keys)
-        let matches = PssUdpOperations::get_pss_matches(&*conn, Some(200))?;
+        let matches = self
+            .database
+            .get_pss_matches(Some(200))
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to get matches: {}", e)))?;
         let match_info = matches
             .into_iter()
             .find(|m| {
@@ -1400,27 +1414,41 @@ impl ObsRecordingEventHandler {
         let mut db_player2_name: Option<String> = None;
         let mut db_player2_flag: Option<String> = None;
         for _ in 0..20 {
-            // up to ~3s
-            let match_athletes = PssUdpOperations::get_pss_match_athletes(&*conn, match_db_id)?;
-            let mut found1 = false;
-            let mut found2 = false;
-            for (match_athlete, athlete) in &match_athletes {
-                match match_athlete.athlete_position {
-                    1 => {
-                        db_player1_name = Some(athlete.short_name.clone());
-                        db_player1_flag = athlete.country_code.clone(); // Option<String>
-                        found1 = true;
+            match self
+                .database
+                .get_pss_match_athletes(match_db_id)
+                .await
+            {
+                Ok(match_athletes) => {
+                    let mut found1 = false;
+                    let mut found2 = false;
+                    for (match_athlete, athlete) in &match_athletes {
+                        match match_athlete.athlete_position {
+                            1 => {
+                                db_player1_name = Some(athlete.short_name.clone());
+                                db_player1_flag = athlete.country_code.clone();
+                                found1 = true;
+                            }
+                            2 => {
+                                db_player2_name = Some(athlete.short_name.clone());
+                                db_player2_flag = athlete.country_code.clone();
+                                found2 = true;
+                            }
+                            _ => {}
+                        }
                     }
-                    2 => {
-                        db_player2_name = Some(athlete.short_name.clone());
-                        db_player2_flag = athlete.country_code.clone(); // Option<String>
-                        found2 = true;
+                    if found1 && found2 {
+                        break;
                     }
-                    _ => {}
                 }
-            }
-            if found1 && found2 {
-                break;
+                Err(e) => {
+                    log::warn!(
+                        "Failed to fetch match athletes for {}: {}",
+                        match_db_id,
+                        e
+                    );
+                    break;
+                }
             }
             tokio::time::sleep(std::time::Duration::from_millis(150)).await;
         }
@@ -1718,20 +1746,19 @@ impl ObsRecordingEventHandler {
         }
         .ok_or_else(|| AppError::ConfigError("No active recording session".to_string()))?;
 
-        let conn = self.database.get_connection().await?;
         // Build generator from config
         let (videos_root, recording_format, folder_pattern) = {
             use crate::database::operations::ObsRecordingOperations as RecOps;
+            let conn_guard = self.database.get_connection().await?;
+            let conn = &*conn_guard;
             let conn_name = {
                 let cfg = self.config.lock().unwrap();
                 cfg.obs_connection_name.clone().or_else(|| {
-                    // Use the default connection name for now - this will be resolved later
-                    // when we actually need to connect to OBS
                     log::warn!("No connection name in config for manual recording; will resolve recording role connection at runtime");
                     None
                 }).unwrap_or_else(|| "OBS_REC".to_string())
             };
-            if let Ok(Some(cfg)) = RecOps::get_recording_config(&*conn, &conn_name) {
+            if let Ok(Some(cfg)) = RecOps::get_recording_config(conn, &conn_name) {
                 (
                     std::path::PathBuf::from(cfg.recording_root_path),
                     cfg.recording_format,
@@ -1754,13 +1781,20 @@ impl ObsRecordingEventHandler {
         let path_generator = ObsPathGenerator::new(Some(gen_cfg));
 
         // Fetch match info for filename fields
-        let matches = PssUdpOperations::get_pss_matches(&*conn, Some(100))?;
+        let matches = self
+            .database
+            .get_pss_matches(Some(100))
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to get matches: {}", e)))?;
         let match_info = matches
             .into_iter()
             .find(|m| m.match_id == match_id)
             .ok_or_else(|| AppError::ConfigError("Match not found for override".to_string()))?;
-        let match_athletes =
-            PssUdpOperations::get_pss_match_athletes(&*conn, match_info.id.unwrap())?;
+        let match_athletes = self
+            .database
+            .get_pss_match_athletes(match_info.id.unwrap())
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to load match athletes: {}", e)))?;
         let mut player1_name = None;
         let mut player1_flag = None;
         let mut player2_name = None;
@@ -1808,9 +1842,6 @@ impl ObsRecordingEventHandler {
                 session.updated_at = Utc::now();
             }
         }
-
-        // Release DB connection before awaiting any OBS/profile calls to avoid pool deadlocks
-        drop(conn);
 
         // Apply directory to OBS (re-evaluate day boundary) and release the wait flag
         if let Some(session) = self.get_current_session() {
@@ -1974,8 +2005,13 @@ impl ObsRecordingEventHandler {
         }
 
         // Fallback: most recent match from DB
-        let conn = self.database.get_connection().await?;
-        let matches = PssUdpOperations::get_pss_matches(&*conn, Some(1)).unwrap_or_default();
+        let matches = match self.database.get_pss_matches(Some(1)).await {
+            Ok(matches) => matches,
+            Err(e) => {
+                log::warn!("Failed to fetch recent matches for OBS context: {}", e);
+                Vec::new()
+            }
+        };
         Ok(matches.into_iter().next().map(|m| m.match_id))
     }
 

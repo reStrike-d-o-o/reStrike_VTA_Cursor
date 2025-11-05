@@ -4,12 +4,14 @@ use crate::database::{
     // models::*,
     // operations::*,
     models::{
-        PssEventType as DbPssEventType, UdpClientConnection as DbUdpClientConnection,
+        PssAthlete as DbPssAthlete, PssEventType as DbPssEventType, PssMatch as DbPssMatch,
+        PssMatchAthlete as DbPssMatchAthlete, UdpClientConnection as DbUdpClientConnection,
         UdpServerConfig as DbUdpServerConfig, UdpServerSession as DbUdpServerSession,
     },
     seaorm::{connect as seaorm_connect, SeaOrmConnection},
     seaorm_ops::{
         pss as sea_pss,
+        pss_catalog as sea_catalog,
         pss_status as sea_status,
     },
     DatabaseError,
@@ -19,8 +21,7 @@ use crate::database::{
     UiSettingsOperations,
 };
 use crate::entity::{
-    athlete, event, event_type, matches, tournament, udp_client_connection, udp_server_config,
-    udp_server_session,
+    athlete, event, event_type, matches, udp_client_connection, udp_server_config, udp_server_session,
 };
 use crate::types::{AppError, AppResult};
 use chrono::{Duration as ChronoDuration, TimeZone, Utc};
@@ -692,31 +693,9 @@ impl DatabasePlugin {
 
     /// Get or create PSS match
     pub async fn get_or_create_pss_match(&self, match_id: &str) -> AppResult<i64> {
-        let sea = self.seaorm_connection.clone();
-        if let Some(existing) = matches::Entity::find()
-            .filter(matches::Column::MatchCode.eq(match_id))
-            .one(&sea)
+        sea_catalog::get_or_create_match(&self.seaorm_connection, match_id)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to lookup match: {}", e)))?
-        {
-            return Ok(existing.id as i64);
-        }
-
-        let now = Utc::now().naive_utc();
-        let inserted = matches::ActiveModel {
-            uuid: Set(Uuid::new_v4().to_string()),
-            match_code: Set(match_id.to_string()),
-            total_rounds: Set(Some(3)),
-            creation_mode: Set(Some("Automatic".to_string())),
-            created_at: Set(now),
-            updated_at: Set(now),
-            ..Default::default()
-        }
-        .insert(&sea)
-        .await
-        .map_err(|e| AppError::ConfigError(format!("Failed to create match: {}", e)))?;
-
-        Ok(inserted.id as i64)
+            .map_err(|e| AppError::ConfigError(format!("Failed to get/create match: {}", e)))
     }
 
     /// Update PSS match information
@@ -725,52 +704,102 @@ impl DatabasePlugin {
         match_id: i64,
         match_data: &crate::database::models::PssMatch,
     ) -> AppResult<()> {
-        let sea = self.seaorm_connection.clone();
-        let existing = matches::Entity::find_by_id(match_id as i32)
-            .one(&sea)
+        sea_catalog::update_match(&self.seaorm_connection, match_id, match_data)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to load match {}: {}", match_id, e)))?
-            .ok_or_else(|| AppError::ConfigError(format!("Match {} not found", match_id)))?;
+            .map_err(|e| AppError::ConfigError(format!("Failed to update PSS match: {}", e)))
+    }
 
-        let mut active: matches::ActiveModel = existing.into();
-
-        if let Some(uuid) = match_data.uuid.clone() {
-            active.uuid = Set(uuid);
-        }
-        active.match_code = Set(match_data.match_id.clone());
-        active.match_number = Set(match_data.match_number.clone());
-        active.category = Set(match_data.category.clone());
-        active.weight_class_code = Set(match_data.weight_class.clone());
-        active.division_code = Set(match_data.division.clone());
-        active.total_rounds = Set(Some(match_data.total_rounds));
-        active.round_duration = Set(match_data.round_duration);
-        active.countdown_type = Set(match_data.countdown_type.clone());
-        active.format_type = Set(match_data.format_type);
-        active.creation_mode = Set(Some(match_data.creation_mode.clone()));
-        active.created_at = Set(match_data.created_at.naive_utc());
-        active.updated_at = Set(match_data.updated_at.naive_utc());
-
-        if let Some(ref tournament_uuid) = match_data.tournament_id {
-            let tournament_id = tournament::Entity::find()
-                .filter(tournament::Column::Uuid.eq(tournament_uuid.clone()))
-                .one(&sea)
-                .await
-                .map_err(|e| {
-                    AppError::ConfigError(format!(
-                        "Failed to resolve tournament '{}' for match: {}",
-                        tournament_uuid, e
-                    ))
-                })?
-                .map(|model| model.id);
-            active.tournament_id = Set(tournament_id);
-        }
-
-        active
-            .update(&sea)
+    /// Fetch match metadata by database id
+    pub async fn get_pss_match_by_id(
+        &self,
+        match_id: i64,
+    ) -> AppResult<Option<DbPssMatch>> {
+        sea_catalog::get_match_by_id(&self.seaorm_connection, match_id)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to update PSS match: {}", e)))?;
+            .map_err(|e| AppError::ConfigError(format!("Failed to load match {}: {}", match_id, e)))
+    }
 
-        Ok(())
+    /// Fetch match metadata by match_code
+    pub async fn get_pss_match_by_match_id(
+        &self,
+        match_code: &str,
+    ) -> AppResult<Option<DbPssMatch>> {
+        sea_catalog::get_match_by_code(&self.seaorm_connection, match_code)
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to load match {}: {}", match_code, e)))
+    }
+
+    /// List recent matches
+    pub async fn get_pss_matches(
+        &self,
+        limit: Option<i64>,
+    ) -> AppResult<Vec<DbPssMatch>> {
+        sea_catalog::get_matches(&self.seaorm_connection, limit)
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to list PSS matches: {}", e)))
+    }
+
+    /// Insert a new match row
+    pub async fn insert_pss_match(
+        &self,
+        match_data: &DbPssMatch,
+    ) -> AppResult<i64> {
+        sea_catalog::insert_match(&self.seaorm_connection, match_data)
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to insert PSS match: {}", e)))
+    }
+
+    /// Rename match identifier
+    pub async fn rename_pss_match_id(
+        &self,
+        match_db_id: i64,
+        new_match_id: &str,
+    ) -> AppResult<()> {
+        sea_catalog::rename_match_id(&self.seaorm_connection, match_db_id, new_match_id)
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to rename match {}: {}", match_db_id, e)))
+    }
+
+    /// Attach tournament context
+    pub async fn set_pss_match_tournament_context(
+        &self,
+        match_db_id: i64,
+        tournament_id: Option<i64>,
+    ) -> AppResult<()> {
+        sea_catalog::set_match_tournament_context(&self.seaorm_connection, match_db_id, tournament_id)
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to set match tournament context: {}", e)))
+    }
+
+    /// Reassign events from one match to another
+    pub async fn reassign_events_between_matches(
+        &self,
+        from_match_id: i64,
+        to_match_id: i64,
+    ) -> AppResult<usize> {
+        sea_catalog::reassign_events_between_matches(&self.seaorm_connection, from_match_id, to_match_id)
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to reassign events: {}", e)))
+    }
+
+    /// Fetch match participants and associated athletes
+    pub async fn get_pss_match_athletes(
+        &self,
+        match_id: i64,
+    ) -> AppResult<Vec<(DbPssMatchAthlete, DbPssAthlete)>> {
+        sea_catalog::get_match_athletes(&self.seaorm_connection, match_id)
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to get match athletes: {}", e)))
+    }
+
+    /// Link an athlete to a match
+    pub async fn insert_pss_match_athlete(
+        &self,
+        match_athlete: &DbPssMatchAthlete,
+    ) -> AppResult<i64> {
+        sea_catalog::insert_match_athlete(&self.seaorm_connection, match_athlete)
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to insert match athlete: {}", e)))
     }
 
     /// Get or create PSS athlete

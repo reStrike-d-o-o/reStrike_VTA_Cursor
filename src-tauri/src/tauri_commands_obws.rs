@@ -207,7 +207,9 @@ pub async fn ivr_match_history_snapshot(
     date: Option<String>,
     app: State<'_, Arc<App>>,
 ) -> Result<ObsObwsConnectionResponse, TauriError> {
-    let conn = app.database_plugin().get_connection().await?;
+    use crate::database::seaorm_ops::pss_catalog;
+
+    let sea = app.database_plugin().seaorm();
     let limit = limit.unwrap_or(40).min(200) as i64;
     let selected_date = date
         .as_ref()
@@ -216,52 +218,26 @@ pub async fn ivr_match_history_snapshot(
         .format("%Y-%m-%d")
         .to_string();
 
-    let mut match_stmt = conn
-        .prepare(
-            "SELECT id, match_id, match_number, category, weight_class AS weight, division, created_at
-             FROM pss_matches
-             WHERE date(created_at) = ?
-                OR EXISTS (
-                    SELECT 1 FROM recorded_videos rv
-                    WHERE rv.match_id = pss_matches.id
-                      AND date(rv.start_time) = ?
-                )
-             ORDER BY created_at DESC
-             LIMIT ?",
-        )
-        .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    let history_entries = pss_catalog::get_match_history_with_videos(&sea, &selected_date, limit)
+        .await
+        .map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to load match history: {}", e))))?;
 
-    let match_rows = match_stmt
-        .query_map(rusqlite::params![selected_date.clone(), selected_date.clone(), limit], |row| {
-            Ok((
-                row.get::<_, i64>(0)?,
-                row.get::<_, Option<String>>(1)?,
-                row.get::<_, Option<String>>(2)?,
-                row.get::<_, Option<String>>(3)?,
-                row.get::<_, Option<String>>(4)?,
-                row.get::<_, Option<String>>(5)?,
-                row.get::<_, Option<String>>(6)?,
-            ))
-        })
-        .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    let mut matches_json = Vec::with_capacity(history_entries.len());
+    for entry in history_entries {
+        let match_db_id = entry.match_row.id;
+        let athletes_raw = match app
+            .database_plugin()
+            .get_pss_match_athletes(match_db_id)
+            .await
+        {
+            Ok(list) => list,
+            Err(e) => {
+                log::warn!("Failed to load match athletes for {}: {}", match_db_id, e);
+                Vec::new()
+            }
+        };
 
-    let mut video_stmt = conn
-        .prepare(
-            "SELECT id, video_type, file_path, record_directory, start_time, duration_seconds, created_at
-             FROM recorded_videos
-             WHERE match_id = ? AND date(start_time) = ?
-             ORDER BY start_time ASC",
-        )
-        .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
-
-    use crate::database::operations::PssUdpOperations as PssOps;
-
-    let mut matches_json = Vec::with_capacity(match_rows.len());
-    for (match_db_id, match_id, match_number, category, weight, division, created_at) in match_rows {
-        let athletes = PssOps::get_pss_match_athletes(&*conn, match_db_id)
-            .unwrap_or_default()
+        let athletes = athletes_raw
             .into_iter()
             .map(|(match_athlete, athlete)| {
                 serde_json::json!({
@@ -274,30 +250,30 @@ pub async fn ivr_match_history_snapshot(
             })
             .collect::<Vec<_>>();
 
-        let videos = video_stmt
-            .query_map(rusqlite::params![match_db_id, selected_date.clone()], |row| {
-                Ok(serde_json::json!({
-                    "id": row.get::<_, i64>(0)?,
-                    "video_type": row.get::<_, String>(1)?,
-                    "file_path": row.get::<_, Option<String>>(2)?,
-                    "record_directory": row.get::<_, Option<String>>(3)?,
-                    "start_time": row.get::<_, Option<String>>(4)?,
-                    "duration_seconds": row.get::<_, Option<i32>>(5)?,
-                    "created_at": row.get::<_, Option<String>>(6)?,
-                }))
+        let videos = entry
+            .videos
+            .into_iter()
+            .map(|video| {
+                serde_json::json!({
+                    "id": video.id,
+                    "video_type": video.video_type,
+                    "file_path": video.file_path,
+                    "record_directory": video.record_directory,
+                    "start_time": video.start_time,
+                    "duration_seconds": video.duration_seconds,
+                    "created_at": video.created_at,
+                })
             })
-            .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+            .collect::<Vec<_>>();
 
         matches_json.push(serde_json::json!({
             "match_db_id": match_db_id,
-            "match_id": match_id,
-            "match_number": match_number,
-            "category": category,
-            "weight": weight,
-            "division": division,
-            "created_at": created_at,
+            "match_id": entry.match_row.match_code,
+            "match_number": entry.match_row.match_number,
+            "category": entry.match_row.category,
+            "weight": entry.match_row.weight_class,
+            "division": entry.match_row.division,
+            "created_at": entry.match_row.created_at,
             "athletes": athletes,
             "videos": videos,
         }));
@@ -1411,8 +1387,13 @@ pub async fn obs_obws_generate_recording_path(
         None
     };
 
+    drop(conn);
+
     // Get match details
-    let matches = crate::database::operations::PssUdpOperations::get_pss_matches(&*conn, Some(100))
+    let matches = app
+        .database_plugin()
+        .get_pss_matches(Some(100))
+        .await
         .map_err(|e| {
             TauriError::from(std::io::Error::new(
                 std::io::ErrorKind::Other,
@@ -1431,16 +1412,16 @@ pub async fn obs_obws_generate_recording_path(
         })?;
 
     // Get match athletes
-    let match_athletes = crate::database::operations::PssUdpOperations::get_pss_match_athletes(
-        &*conn,
-        match_info.id.unwrap(),
-    )
-    .map_err(|e| {
-        TauriError::from(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!("Failed to get match athletes: {}", e),
-        ))
-    })?;
+    let match_athletes = app
+        .database_plugin()
+        .get_pss_match_athletes(match_info.id.unwrap())
+        .await
+        .map_err(|e| {
+            TauriError::from(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("Failed to get match athletes: {}", e),
+            ))
+        })?;
 
     // Extract player information
     let mut player1_name = None;

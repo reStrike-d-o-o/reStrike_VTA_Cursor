@@ -1,7 +1,6 @@
 //! Main application class and lifecycle management
 
 use crate::openapi::{OpenApiManager, OpenApiRuntime};
-use crate::database::operations::PssUdpOperations;
 use crate::plugins::plugin_triggers::TriggerPlugin;
 #[cfg(feature = "youtube")]
 use crate::plugins::YouTubeApiPlugin;
@@ -644,50 +643,52 @@ impl App {
         let mut match_description: Option<String> = None;
 
         if let Some(match_id) = match_db_id {
-            match self.database_plugin.get_connection().await {
-                Ok(conn_guard) => {
-                    if let Ok(Some(pss_match)) =
-                        PssUdpOperations::get_pss_match_by_id(&*conn_guard, match_id)
-                    {
-                        match_number = pss_match
-                            .match_number
-                            .clone()
-                            .filter(|value| !value.trim().is_empty())
-                            .or_else(|| Some(pss_match.match_id.clone()));
+            match self
+                .database_plugin
+                .get_pss_match_by_id(match_id)
+                .await
+            {
+                Ok(Some(pss_match)) => {
+                    match_number = pss_match
+                        .match_number
+                        .clone()
+                        .filter(|value| !value.trim().is_empty())
+                        .or_else(|| Some(pss_match.match_id.clone()));
 
-                        let mut parts: Vec<String> = Vec::new();
-                        if let Some(category) = pss_match
-                            .category
-                            .as_ref()
-                            .map(|value| value.trim())
-                            .filter(|value| !value.is_empty())
-                        {
-                            parts.push(category.to_string());
-                        }
-                        if let Some(weight) = pss_match
-                            .weight_class
-                            .as_ref()
-                            .map(|value| value.trim())
-                            .filter(|value| !value.is_empty())
-                        {
-                            parts.push(weight.to_string());
-                        }
-                        if let Some(division) = pss_match
-                            .division
-                            .as_ref()
-                            .map(|value| value.trim())
-                            .filter(|value| !value.is_empty())
-                        {
-                            parts.push(division.to_string());
-                        }
-                        if !parts.is_empty() {
-                            match_description = Some(parts.join(" • "));
-                        }
+                    let mut parts: Vec<String> = Vec::new();
+                    if let Some(category) = pss_match
+                        .category
+                        .as_ref()
+                        .map(|value| value.trim())
+                        .filter(|value| !value.is_empty())
+                    {
+                        parts.push(category.to_string());
+                    }
+                    if let Some(weight) = pss_match
+                        .weight_class
+                        .as_ref()
+                        .map(|value| value.trim())
+                        .filter(|value| !value.is_empty())
+                    {
+                        parts.push(weight.to_string());
+                    }
+                    if let Some(division) = pss_match
+                        .division
+                        .as_ref()
+                        .map(|value| value.trim())
+                        .filter(|value| !value.is_empty())
+                    {
+                        parts.push(division.to_string());
+                    }
+                    if !parts.is_empty() {
+                        match_description = Some(parts.join(" • "));
                     }
                 }
+                Ok(None) => {}
                 Err(err) => {
                     log::warn!(
-                        "Failed to acquire database connection for shutdown context: {}",
+                        "Failed to load match {} for shutdown context: {}",
+                        match_id,
                         err
                     );
                 }

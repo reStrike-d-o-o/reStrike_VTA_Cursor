@@ -11,7 +11,7 @@ fn main() {
     // Ensure simulation directory exists and is accessible
     let simulation_dir = std::path::Path::new("../simulation");
     if !simulation_dir.exists() {
-        panic!("Simulation directory not found at {:?}. Please ensure the simulation files are present.", simulation_dir);
+        panic!("Simulation directory not found at {simulation_dir:?}. Please ensure the simulation files are present.");
     }
 
     // Check for critical simulation files
@@ -27,7 +27,7 @@ fn main() {
     for file in &critical_files {
         let file_path = simulation_dir.join(file);
         if !file_path.exists() {
-            panic!("Critical simulation file not found: {:?}. Please ensure all simulation files are present.", file_path);
+            panic!("Critical simulation file not found: {file_path:?}. Please ensure all simulation files are present.");
         }
     }
 

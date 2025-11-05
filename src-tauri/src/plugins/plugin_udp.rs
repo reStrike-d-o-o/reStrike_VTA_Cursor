@@ -1,4 +1,6 @@
-use crate::database::models::{PssEventV2 as DbPssEvent, UdpServerConfig as DbUdpServerConfig};
+use crate::database::models::{
+    PssEventV2 as DbPssEvent, PssMatch, PssMatchAthlete, UdpServerConfig as DbUdpServerConfig,
+};
 use crate::plugins::performance_monitor::PerformanceMonitor;
 use crate::plugins::plugin_database::DatabasePlugin;
 use crate::plugins::plugin_websocket::WebSocketServer;
@@ -787,19 +789,14 @@ impl UdpServer {
             let has_match = { current_match_id.lock().unwrap().is_some() };
             if !has_match {
                 let auto_match_key = format!("auto_{}", Utc::now().format("%Y%m%d%H%M%S%3f"));
-                // Always insert a new row for a new match context
-                if let Ok(conn_guard) = database.get_connection().await {
-                    let conn = &*conn_guard;
-                    let mut pss_match =
-                        crate::database::models::PssMatch::new(auto_match_key.clone());
-                    pss_match.creation_mode = "Automatic".to_string();
-                    let new_id = crate::database::operations::PssUdpOperations::insert_pss_match(
-                        conn, &pss_match,
-                    )
-                    .unwrap_or_else(|_| -1);
-                    if new_id > 0 {
-                        let mut guard = current_match_id.lock().unwrap();
-                        *guard = Some(new_id);
+                let mut pss_match = PssMatch::new(auto_match_key.clone());
+                pss_match.creation_mode = "Automatic".to_string();
+                match database.insert_pss_match(&pss_match).await {
+                    Ok(new_id) if new_id > 0 => {
+                        {
+                            let mut guard = current_match_id.lock().unwrap();
+                            *guard = Some(new_id);
+                        }
                         websocket_server.set_current_match_db_id(Some(new_id));
                         log::info!(
                             "ensure_current_match: created match {} (db id {})",
@@ -807,16 +804,28 @@ impl UdpServer {
                             new_id
                         );
 
-                        // Apply tournament context if available
-                        let tid_opt = { current_tournament_id.lock().unwrap().clone() };
-                        if tid_opt.is_some() {
-                            let _ = crate::database::operations::PssUdpOperations::set_pss_match_tournament_context(
-                                conn,
-                                new_id,
-                                tid_opt,
-                            );
+                        let tournament_id_snapshot = {
+                            let guard = current_tournament_id.lock().unwrap();
+                            *guard
+                        };
+                        if let Some(tid) = tournament_id_snapshot {
+                            if let Err(err) =
+                                database.set_pss_match_tournament_context(new_id, Some(tid)).await
+                            {
+                                log::warn!(
+                                    "Failed to apply tournament context to match {}: {}",
+                                    new_id,
+                                    err
+                                );
+                            }
                         }
                     }
+                    Ok(_) => {}
+                    Err(e) => log::warn!(
+                        "ensure_current_match: failed to insert match {}: {}",
+                        auto_match_key,
+                        e
+                    ),
                 }
             }
         }
@@ -828,40 +837,44 @@ impl UdpServer {
             PssEvent::FightLoaded => {
                 // Always create a brand new match row for each fight instance
                 let auto_match_key = format!("auto_{}", Utc::now().format("%Y%m%d%H%M%S%3f"));
-                if let Ok(conn_guard) = database.get_connection().await {
-                    let conn = &*conn_guard;
-                    let mut pss_match =
-                        crate::database::models::PssMatch::new(auto_match_key.clone());
-                    pss_match.creation_mode = "Automatic".to_string();
-                    match crate::database::operations::PssUdpOperations::insert_pss_match(
-                        conn, &pss_match,
-                    ) {
-                        Ok(db_match_id) => {
+                let mut pss_match = PssMatch::new(auto_match_key.clone());
+                pss_match.creation_mode = "Automatic".to_string();
+                match database.insert_pss_match(&pss_match).await {
+                    Ok(db_match_id) if db_match_id > 0 => {
+                        {
                             let mut guard = current_match_id.lock().unwrap();
                             *guard = Some(db_match_id);
-                            websocket_server.set_current_match_db_id(Some(db_match_id));
-                            log::info!(
-                                "FightLoaded: started new match {} (db id {})",
-                                auto_match_key,
-                                db_match_id
-                            );
+                        }
+                        websocket_server.set_current_match_db_id(Some(db_match_id));
+                        log::info!(
+                            "FightLoaded: started new match {} (db id {})",
+                            auto_match_key,
+                            db_match_id
+                        );
 
-                            // Apply tournament context if available
-                            let tid_opt = { current_tournament_id.lock().unwrap().clone() };
-                            if tid_opt.is_some() {
-                                let _ = crate::database::operations::PssUdpOperations::set_pss_match_tournament_context(
-                                    conn,
+                        let tournament_id_snapshot = {
+                            let guard = current_tournament_id.lock().unwrap();
+                            *guard
+                        };
+                        if let Some(tid) = tournament_id_snapshot {
+                            if let Err(err) = database
+                                .set_pss_match_tournament_context(db_match_id, Some(tid))
+                                .await
+                            {
+                                log::warn!(
+                                    "Failed to set tournament context for match {}: {}",
                                     db_match_id,
-                                    tid_opt,
+                                    err
                                 );
                             }
                         }
-                        Err(e) => log::warn!(
-                            "FightLoaded: failed to insert match {}: {}",
-                            auto_match_key,
-                            e
-                        ),
                     }
+                    Ok(_) => {}
+                    Err(e) => log::warn!(
+                        "FightLoaded: failed to insert match {}: {}",
+                        auto_match_key,
+                        e
+                    ),
                 }
             }
             PssEvent::MatchConfig {
@@ -893,32 +906,16 @@ impl UdpServer {
                     log::warn!("MatchConfig without current match id; ignoring metadata update");
                     return Ok(());
                 }
-                // Rename the current row's match_id string to the effective identifier for readability
-                if let Ok(mut conn_guard) = database.get_connection().await {
-                    let conn = &mut *conn_guard;
-                    // Try transactional rename; compute fallback flag so the transaction borrow ends before fallback
-                    let need_fallback = match conn.transaction() {
-                        Ok(tx) => {
-                            let _ = tx.execute(
-                                "UPDATE pss_matches SET match_id = ?, updated_at = ? WHERE id = ?",
-                                rusqlite::params![
-                                    &effective_match_id,
-                                    Utc::now().to_rfc3339(),
-                                    db_match_id
-                                ],
-                            );
-                            let _ = tx.commit();
-                            false
-                        }
-                        Err(_) => true,
-                    };
-                    if need_fallback {
-                        let _ = crate::database::operations::PssUdpOperations::rename_pss_match_id(
-                            conn,
-                            db_match_id,
-                            &effective_match_id,
-                        );
-                    }
+                if let Err(err) = database
+                    .rename_pss_match_id(db_match_id, &effective_match_id)
+                    .await
+                {
+                    log::warn!(
+                        "Failed to rename match {} to {}: {}",
+                        db_match_id,
+                        effective_match_id,
+                        err
+                    );
                 }
 
                 // Update match metadata
@@ -949,15 +946,19 @@ impl UdpServer {
                         db_match_id
                     );
 
-                    // Ensure tournament context is present on the match
-                    if let Ok(conn_guard) = database.get_connection().await {
-                        let conn = &*conn_guard;
-                        let tid_opt = { current_tournament_id.lock().unwrap().clone() };
-                        if tid_opt.is_some() {
-                            let _ = crate::database::operations::PssUdpOperations::set_pss_match_tournament_context(
-                                conn,
+                    let tournament_id_snapshot = {
+                        let guard = current_tournament_id.lock().unwrap();
+                        *guard
+                    };
+                    if let Some(tid) = tournament_id_snapshot {
+                        if let Err(err) = database
+                            .set_pss_match_tournament_context(db_match_id, Some(tid))
+                            .await
+                        {
+                            log::warn!(
+                                "Failed to set tournament context for match {}: {}",
                                 db_match_id,
-                                tid_opt,
+                                err
                             );
                         }
                     }
@@ -977,15 +978,13 @@ impl UdpServer {
                 };
 
                 if let (Some(a1_id), Some(a2_id)) = (pending_a1, pending_a2) {
-                    match database.get_connection().await {
-                        Ok(conn_guard) => {
-                            let conn = &*conn_guard;
-                            let existing = crate::database::operations::PssUdpOperations::get_pss_match_athletes(conn, db_match_id).unwrap_or_default();
+                    match database.get_pss_match_athletes(db_match_id).await {
+                        Ok(existing) => {
                             let mut have1 = existing.iter().any(|(ma, _)| ma.athlete_position == 1);
                             let mut have2 = existing.iter().any(|(ma, _)| ma.athlete_position == 2);
 
                             if !have1 {
-                                let ma = crate::database::models::PssMatchAthlete {
+                                let ma = PssMatchAthlete {
                                     id: None,
                                     match_id: db_match_id,
                                     athlete_id: a1_id,
@@ -994,15 +993,18 @@ impl UdpServer {
                                     fg_color: None,
                                     created_at: Utc::now(),
                                 };
-                                if let Err(e) = crate::database::operations::PssUdpOperations::insert_pss_match_athlete(conn, &ma) {
-                                    log::warn!("Failed to link pending athlete1 to match {}: {}", db_match_id, e);
-                                } else {
+                                if database.insert_pss_match_athlete(&ma).await.is_ok() {
                                     have1 = true;
+                                } else {
+                                    log::warn!(
+                                        "Failed to link pending athlete1 to match {}",
+                                        db_match_id
+                                    );
                                 }
                             }
 
                             if !have2 {
-                                let ma = crate::database::models::PssMatchAthlete {
+                                let ma = PssMatchAthlete {
                                     id: None,
                                     match_id: db_match_id,
                                     athlete_id: a2_id,
@@ -1011,10 +1013,13 @@ impl UdpServer {
                                     fg_color: None,
                                     created_at: Utc::now(),
                                 };
-                                if let Err(e) = crate::database::operations::PssUdpOperations::insert_pss_match_athlete(conn, &ma) {
-                                    log::warn!("Failed to link pending athlete2 to match {}: {}", db_match_id, e);
-                                } else {
+                                if database.insert_pss_match_athlete(&ma).await.is_ok() {
                                     have2 = true;
+                                } else {
+                                    log::warn!(
+                                        "Failed to link pending athlete2 to match {}",
+                                        db_match_id
+                                    );
                                 }
                             }
 
@@ -1028,7 +1033,8 @@ impl UdpServer {
                             }
                         }
                         Err(e) => log::warn!(
-                            "Failed to get DB connection for pending athlete linking: {}",
+                            "Failed to fetch match athletes for {}: {}",
+                            db_match_id,
                             e
                         ),
                     }
@@ -1082,15 +1088,13 @@ impl UdpServer {
                 // If we already have a current match, link athletes to match (positions 1 and 2)
                 let mid_opt = { current_match_id.lock().unwrap().clone() };
                 if let Some(mid) = mid_opt {
-                    match database.get_connection().await {
-                        Ok(conn_guard) => {
-                            let conn = &*conn_guard;
-                            let existing = crate::database::operations::PssUdpOperations::get_pss_match_athletes(conn, mid).unwrap_or_default();
+                    match database.get_pss_match_athletes(mid).await {
+                        Ok(existing) => {
                             let mut have1 = existing.iter().any(|(ma, _)| ma.athlete_position == 1);
                             let mut have2 = existing.iter().any(|(ma, _)| ma.athlete_position == 2);
 
                             if !have1 {
-                                let ma = crate::database::models::PssMatchAthlete {
+                                let ma = PssMatchAthlete {
                                     id: None,
                                     match_id: mid,
                                     athlete_id: a1_id,
@@ -1099,15 +1103,15 @@ impl UdpServer {
                                     fg_color: None,
                                     created_at: Utc::now(),
                                 };
-                                if let Err(e) = crate::database::operations::PssUdpOperations::insert_pss_match_athlete(conn, &ma) {
-                                    log::warn!("Failed to link athlete1 to match {}: {}", mid, e);
-                                } else {
+                                if database.insert_pss_match_athlete(&ma).await.is_ok() {
                                     have1 = true;
+                                } else {
+                                    log::warn!("Failed to link athlete1 to match {}", mid);
                                 }
                             }
 
                             if !have2 {
-                                let ma = crate::database::models::PssMatchAthlete {
+                                let ma = PssMatchAthlete {
                                     id: None,
                                     match_id: mid,
                                     athlete_id: a2_id,
@@ -1116,10 +1120,10 @@ impl UdpServer {
                                     fg_color: None,
                                     created_at: Utc::now(),
                                 };
-                                if let Err(e) = crate::database::operations::PssUdpOperations::insert_pss_match_athlete(conn, &ma) {
-                                    log::warn!("Failed to link athlete2 to match {}: {}", mid, e);
-                                } else {
+                                if database.insert_pss_match_athlete(&ma).await.is_ok() {
                                     have2 = true;
+                                } else {
+                                    log::warn!("Failed to link athlete2 to match {}", mid);
                                 }
                             }
 
@@ -1129,7 +1133,7 @@ impl UdpServer {
                             }
                         }
                         Err(e) => {
-                            log::warn!("Failed to get DB connection for athlete linking: {}", e)
+                            log::warn!("Failed to fetch match athletes for {}: {}", mid, e)
                         }
                     }
                 } else {
