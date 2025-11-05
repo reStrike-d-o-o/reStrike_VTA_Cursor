@@ -23,6 +23,7 @@ pub struct ObsRecordingConfig {
 
 impl ObsRecordingConfig {
     /// Create a new OBS recording configuration
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         obs_connection_name: String,
         recording_root_path: String,

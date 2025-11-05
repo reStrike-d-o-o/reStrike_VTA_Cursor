@@ -3224,6 +3224,12 @@ impl Migration for Migration23 {
     }
 }
 
+impl Default for MigrationManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MigrationManager {
     /// Create a new migration manager
     pub fn new() -> Self {

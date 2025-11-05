@@ -323,8 +323,8 @@ impl UiSettingsOperations {
     pub fn get_ui_setting(conn: &Connection, key_name: &str) -> DatabaseResult<Option<String>> {
         let value: Option<String> = conn
             .query_row(
-                "SELECT sv.value FROM settings_values sv 
-             JOIN settings_keys sk ON sv.key_id = sk.id 
+                "SELECT sv.value FROM settings_values sv
+             JOIN settings_keys sk ON sv.key_id = sk.id
              WHERE sk.key_name = ?",
                 params![key_name],
                 |row| row.get(0),
@@ -434,10 +434,10 @@ impl UiSettingsOperations {
     /// Get all UI settings
     pub fn get_all_ui_settings(conn: &Connection) -> DatabaseResult<Vec<(String, String)>> {
         let mut stmt = conn.prepare(
-            "SELECT sk.key_name, sv.value FROM settings_keys sk 
-             LEFT JOIN settings_values sv ON sk.id = sv.key_id 
-             JOIN settings_categories sc ON sk.category_id = sc.id 
-             WHERE sc.name = 'ui' 
+            "SELECT sk.key_name, sv.value FROM settings_keys sk
+             LEFT JOIN settings_values sv ON sk.id = sv.key_id
+             JOIN settings_categories sc ON sk.category_id = sc.id
+             WHERE sc.name = 'ui'
              ORDER BY sk.key_name",
         )?;
 
@@ -495,9 +495,9 @@ impl PssUdpOperations {
         let interface_id = if let Some(id) = interface.id {
             // Update existing interface
             tx.execute(
-                "UPDATE network_interfaces SET 
-                    name = ?, address = ?, netmask = ?, broadcast = ?, is_loopback = ?, 
-                    is_active = ?, is_recommended = ?, speed_mbps = ?, mtu = ?, 
+                "UPDATE network_interfaces SET
+                    name = ?, address = ?, netmask = ?, broadcast = ?, is_loopback = ?,
+                    is_active = ?, is_recommended = ?, speed_mbps = ?, mtu = ?,
                     mac_address = ?, interface_type = ?, updated_at = ?
                 WHERE id = ?",
                 params![
@@ -586,9 +586,9 @@ impl PssUdpOperations {
         let config_id = if let Some(id) = config.id {
             // Update existing config
             tx.execute(
-                "UPDATE udp_server_configs SET 
-                    name = ?, port = ?, bind_address = ?, network_interface_id = ?, 
-                    enabled = ?, auto_start = ?, max_packet_size = ?, buffer_size = ?, 
+                "UPDATE udp_server_configs SET
+                    name = ?, port = ?, bind_address = ?, network_interface_id = ?,
+                    enabled = ?, auto_start = ?, max_packet_size = ?, buffer_size = ?,
                     timeout_ms = ?, updated_at = ?
                 WHERE id = ?",
                 params![
@@ -619,9 +619,9 @@ impl PssUdpOperations {
             if let Some(existing_id) = existing_id {
                 // Update existing config
                 tx.execute(
-                    "UPDATE udp_server_configs SET 
-                        port = ?, bind_address = ?, network_interface_id = ?, 
-                        enabled = ?, auto_start = ?, max_packet_size = ?, buffer_size = ?, 
+                    "UPDATE udp_server_configs SET
+                        port = ?, bind_address = ?, network_interface_id = ?,
+                        enabled = ?, auto_start = ?, max_packet_size = ?, buffer_size = ?,
                         timeout_ms = ?, updated_at = ?
                     WHERE id = ?",
                     params![
@@ -701,6 +701,7 @@ impl PssUdpOperations {
     }
 
     /// Update UDP server session statistics
+    #[allow(clippy::too_many_arguments)]
     pub fn update_udp_server_session_stats(
         conn: &mut Connection,
         session_id: i64,
@@ -714,8 +715,8 @@ impl PssUdpOperations {
         unique_clients_count: i32,
     ) -> DatabaseResult<()> {
         conn.execute(
-            "UPDATE udp_server_sessions SET 
-                packets_received = ?, packets_parsed = ?, parse_errors = ?, 
+            "UPDATE udp_server_sessions SET
+                packets_received = ?, packets_parsed = ?, parse_errors = ?,
                 total_bytes_received = ?, average_packet_size = ?, max_packet_size_seen = ?,
                 min_packet_size_seen = ?, unique_clients_count = ?
             WHERE id = ?",
@@ -743,7 +744,7 @@ impl PssUdpOperations {
         error_message: Option<&str>,
     ) -> DatabaseResult<()> {
         conn.execute(
-            "UPDATE udp_server_sessions SET 
+            "UPDATE udp_server_sessions SET
                 end_time = ?, status = ?, error_message = ?
             WHERE id = ?",
             params![Utc::now().to_rfc3339(), status, error_message, session_id],
@@ -795,7 +796,7 @@ impl PssUdpOperations {
         let client_id = if let Some(id) = client.id {
             // Update existing client connection
             tx.execute(
-                "UPDATE udp_client_connections SET 
+                "UPDATE udp_client_connections SET
                     last_seen = ?, packets_received = ?, total_bytes_received = ?, is_active = ?
                 WHERE id = ?",
                 params![
@@ -929,7 +930,7 @@ impl PssUdpOperations {
         match_data: &PssMatch,
     ) -> DatabaseResult<()> {
         conn.execute(
-            "UPDATE pss_matches SET 
+            "UPDATE pss_matches SET
                 match_number = ?, category = ?, weight_class = ?, division = ?,
                 total_rounds = ?, round_duration = ?, countdown_type = ?, format_type = ?, updated_at = ?, updated = strftime('%s','now')
             WHERE id = ?",
@@ -1050,7 +1051,7 @@ impl PssUdpOperations {
         athlete_data: &PssAthlete,
     ) -> DatabaseResult<()> {
         conn.execute(
-            "UPDATE pss_athletes SET 
+            "UPDATE pss_athletes SET
                 long_name = ?, country_code = ?, flag_id = ?, updated_at = ?
             WHERE id = ?",
             params![
@@ -1383,7 +1384,7 @@ impl PssUdpOperations {
         tournament_id: Option<i64>,
     ) -> DatabaseResult<()> {
         conn.execute(
-            "UPDATE pss_matches SET 
+            "UPDATE pss_matches SET
                 tournament_id = COALESCE((SELECT uuid FROM tournaments WHERE id = ?), tournament_id),
                 updated_at = ?
              WHERE id = ?",
@@ -1438,7 +1439,7 @@ impl PssUdpOperations {
     ) -> DatabaseResult<usize> {
         let sql = r#"
             UPDATE pss_matches AS m
-            SET 
+            SET
                 tournament_id = COALESCE(
                     m.tournament_id,
                     (
@@ -1463,7 +1464,7 @@ impl PssUdpOperations {
     pub fn backfill_events_tournament_from_matches(conn: &mut Connection) -> DatabaseResult<usize> {
         let sql = r#"
             UPDATE pss_events AS e
-            SET 
+            SET
                 tournament_id = COALESCE(
                     e.tournament_id,
                     (
@@ -1557,7 +1558,7 @@ impl PssUdpOperations {
     pub fn get_all_settings(conn: &Connection) -> DatabaseResult<serde_json::Value> {
         // Get all settings from the normalized settings system
         let mut stmt = conn.prepare(
-            "SELECT c.name as category, k.key_name, k.display_name, v.value, k.data_type 
+            "SELECT c.name as category, k.key_name, k.display_name, v.value, k.data_type
              FROM settings_categories c
              JOIN settings_keys k ON c.id = k.category_id
              LEFT JOIN settings_values v ON k.id = v.key_id
@@ -1583,7 +1584,7 @@ impl PssUdpOperations {
 
     pub fn get_obs_connections(conn: &Connection) -> DatabaseResult<Vec<ObsConnection>> {
         let mut stmt = conn.prepare(
-            "SELECT id, name, host, port, password, is_active, status, error, created_at, updated_at 
+            "SELECT id, name, host, port, password, is_active, status, error, created_at, updated_at
              FROM obs_connections ORDER BY name"
         )?;
 
@@ -1855,7 +1856,7 @@ impl TournamentOperations {
             tx.execute(
                 "INSERT INTO tournament_days (uuid, tournament_id, day_number, date, status, start_time, end_time, created_at, updated_at, created, updated) VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-4'||substr(hex(randomblob(2)),2)||'-'||substr('AB89',abs(random())%4+1,1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), ?, ?, ?, ?, ?, ?, ?, ?, strftime('%s','now'), strftime('%s','now'))",
                 params![
-                    
+
                     tournament_day.tournament_id,
                     tournament_day.day_number,
                     tournament_day.date.to_rfc3339(),
@@ -2232,7 +2233,7 @@ impl PssEventStatusOperations {
 
         let event_id = tx.execute(
             "INSERT INTO pss_events (
-                session_id, match_id, round_id, event_type_id, timestamp, raw_data, 
+                session_id, match_id, round_id, event_type_id, timestamp, raw_data,
                 parsed_data, event_sequence, processing_time_ms, is_valid, error_message,
                 recognition_status, protocol_version, parser_confidence, validation_errors,
                 tournament_id, created_at, created
@@ -2299,7 +2300,7 @@ impl PssEventStatusOperations {
 
         tx.execute(
             "INSERT INTO pss_event_recognition_history (
-                event_id, old_status, new_status, changed_by, change_reason, 
+                event_id, old_status, new_status, changed_by, change_reason,
                 protocol_version, raw_data, parsed_data, created_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             params![
@@ -2338,7 +2339,7 @@ impl PssEventStatusOperations {
         if let Some(existing_id) = existing_id {
             // Update existing record
             tx.execute(
-                "UPDATE pss_unknown_events SET 
+                "UPDATE pss_unknown_events SET
                     last_seen = ?, occurrence_count = occurrence_count + 1, updated_at = ?
                 WHERE id = ?",
                 params![
@@ -2382,9 +2383,9 @@ impl PssEventStatusOperations {
         protocol_version: &str,
     ) -> DatabaseResult<Vec<PssEventValidationRule>> {
         let mut stmt = conn.prepare(
-            "SELECT id, event_code, protocol_version, rule_name, rule_type, rule_definition, 
-                    error_message, is_active, created_at, updated_at 
-             FROM pss_event_validation_rules 
+            "SELECT id, event_code, protocol_version, rule_name, rule_type, rule_definition,
+                    error_message, is_active, created_at, updated_at
+             FROM pss_event_validation_rules
              WHERE event_code = ? AND protocol_version = ? AND is_active = 1
              ORDER BY rule_name",
         )?;
@@ -2454,10 +2455,10 @@ impl PssEventStatusOperations {
 
             tx.execute(
                 &format!(
-                    "UPDATE pss_event_statistics SET 
-                    total_events = total_events + 1, 
-                    {update_sql}, 
-                    updated_at = ? 
+                    "UPDATE pss_event_statistics SET
+                    total_events = total_events + 1,
+                    {update_sql},
+                    updated_at = ?
                     WHERE id = ?"
                 ),
                 params![chrono::Utc::now().to_rfc3339(), stats_id],
@@ -2466,15 +2467,15 @@ impl PssEventStatusOperations {
             // Update processing time statistics if available
             if let Some(processing_time) = processing_time_ms {
                 tx.execute(
-                    "UPDATE pss_event_statistics SET 
+                    "UPDATE pss_event_statistics SET
                         average_processing_time_ms = (
                             (average_processing_time_ms * total_events + ?) / (total_events + 1)
                         ),
-                        min_processing_time_ms = CASE 
-                            WHEN min_processing_time_ms IS NULL OR ? < min_processing_time_ms 
+                        min_processing_time_ms = CASE
+                            WHEN min_processing_time_ms IS NULL OR ? < min_processing_time_ms
                             THEN ? ELSE min_processing_time_ms END,
-                        max_processing_time_ms = CASE 
-                            WHEN max_processing_time_ms IS NULL OR ? > max_processing_time_ms 
+                        max_processing_time_ms = CASE
+                            WHEN max_processing_time_ms IS NULL OR ? > max_processing_time_ms
                             THEN ? ELSE max_processing_time_ms END
                     WHERE id = ?",
                     params![
@@ -2544,7 +2545,7 @@ impl PssEventStatusOperations {
                     partial_events, deprecated_events, validation_errors, parsing_errors,
                     average_processing_time_ms, min_processing_time_ms, max_processing_time_ms,
                     created_at, updated_at
-             FROM pss_event_statistics 
+             FROM pss_event_statistics
              WHERE session_id = ?
              ORDER BY total_events DESC",
         )?;
@@ -2570,14 +2571,14 @@ impl PssEventStatusOperations {
         let sql = if let Some(_session_id) = session_id {
             "SELECT id, session_id, raw_data, first_seen, last_seen, occurrence_count,
                     pattern_hash, suggested_event_type, notes, created_at, updated_at
-             FROM pss_unknown_events 
+             FROM pss_unknown_events
              WHERE session_id = ?
              ORDER BY occurrence_count DESC, last_seen DESC
              LIMIT ?"
         } else {
             "SELECT id, session_id, raw_data, first_seen, last_seen, occurrence_count,
                     pattern_hash, suggested_event_type, notes, created_at, updated_at
-             FROM pss_unknown_events 
+             FROM pss_unknown_events
              ORDER BY occurrence_count DESC, last_seen DESC
              LIMIT ?"
         };
@@ -2606,7 +2607,7 @@ impl PssEventStatusOperations {
         let mut stmt = conn.prepare(
             "SELECT id, event_id, old_status, new_status, changed_by, change_reason,
                     protocol_version, raw_data, parsed_data, created_at
-             FROM pss_event_recognition_history 
+             FROM pss_event_recognition_history
              WHERE event_id = ?
              ORDER BY created DESC",
         )?;
@@ -2636,7 +2637,7 @@ impl PssEventStatusOperations {
             "SELECT id, session_id, match_id, round_id, event_type_id, timestamp, raw_data,
                     parsed_data, event_sequence, processing_time_ms, is_valid, error_message,
                     recognition_status, protocol_version, parser_confidence, validation_errors, created_at
-             FROM pss_events 
+             FROM pss_events
              WHERE session_id = ? AND recognition_status = ?
              ORDER BY created DESC
              LIMIT ?"
@@ -2661,7 +2662,7 @@ impl PssEventStatusOperations {
     ) -> DatabaseResult<serde_json::Value> {
         // Get overall statistics
         let overall_stats = conn.query_row(
-            "SELECT 
+            "SELECT
                 COUNT(*) as total_events,
                 SUM(CASE WHEN recognition_status = 'recognized' THEN 1 ELSE 0 END) as recognized_events,
                 SUM(CASE WHEN recognition_status = 'unknown' THEN 1 ELSE 0 END) as unknown_events,
@@ -2671,7 +2672,7 @@ impl PssEventStatusOperations {
                 AVG(processing_time_ms) as avg_processing_time,
                 MIN(processing_time_ms) as min_processing_time,
                 MAX(processing_time_ms) as max_processing_time
-            FROM pss_events 
+            FROM pss_events
             WHERE session_id = ?",
             params![session_id],
             |row| {
@@ -2691,7 +2692,7 @@ impl PssEventStatusOperations {
 
         // Get statistics by event type
         let mut event_type_stats = conn.prepare(
-            "SELECT 
+            "SELECT
                 et.event_code,
                 et.event_name,
                 COUNT(*) as total,
@@ -2727,10 +2728,10 @@ impl PssEventStatusOperations {
 
         // Get validation error breakdown
         let mut validation_errors = conn.prepare(
-            "SELECT 
+            "SELECT
                 validation_errors,
                 COUNT(*) as count
-            FROM pss_events 
+            FROM pss_events
             WHERE session_id = ? AND validation_errors IS NOT NULL
             GROUP BY validation_errors
             ORDER BY count DESC
@@ -2752,11 +2753,11 @@ impl PssEventStatusOperations {
         // Get unknown events summary
         let unknown_events_summary = conn
             .query_row(
-                "SELECT 
+                "SELECT
                 COUNT(*) as total_unknown,
                 COUNT(DISTINCT pattern_hash) as unique_patterns,
                 MAX(occurrence_count) as max_occurrences
-            FROM pss_unknown_events 
+            FROM pss_unknown_events
             WHERE session_id = ?",
                 params![session_id],
                 |row| {
@@ -2794,8 +2795,8 @@ impl PssEventOperations {
         event_code: &str,
     ) -> DatabaseResult<Option<PssEventType>> {
         let mut stmt = conn.prepare(
-            "SELECT id, event_code, event_name, description, category, is_active, created_at 
-             FROM pss_event_types 
+            "SELECT id, event_code, event_name, description, category, is_active, created_at
+             FROM pss_event_types
              WHERE event_code = ?",
         )?;
 
@@ -2827,7 +2828,7 @@ impl PssEventOperations {
         let event_type_id = if let Some(id) = existing_id {
             // Update existing event type - note: pss_event_types table doesn't have updated_at
             tx.execute(
-                "UPDATE pss_event_types SET 
+                "UPDATE pss_event_types SET
                     event_name = ?, description = ?, category = ?, is_active = ?
                 WHERE id = ?",
                 params![
@@ -2864,8 +2865,8 @@ impl PssEventOperations {
     /// Get all PSS event types
     pub fn get_all_pss_event_types(conn: &Connection) -> DatabaseResult<Vec<PssEventType>> {
         let mut stmt = conn.prepare(
-            "SELECT id, event_code, event_name, description, category, is_active, created_at 
-             FROM pss_event_types 
+            "SELECT id, event_code, event_name, description, category, is_active, created_at
+             FROM pss_event_types
              ORDER BY event_code",
         )?;
 
@@ -2939,25 +2940,25 @@ impl DataArchivalOperations {
 
         // Archive events older than specified days
         let archived_count = conn.execute(
-            "INSERT INTO pss_events_archive 
-             SELECT * FROM pss_events 
+            "INSERT INTO pss_events_archive
+             SELECT * FROM pss_events
              WHERE created_at < datetime('now', '-{} days')",
             [days_old],
         )?;
 
         // Delete archived events from main table
         let deleted_count = conn.execute(
-            "DELETE FROM pss_events 
+            "DELETE FROM pss_events
              WHERE created_at < datetime('now', '-{} days')",
             [days_old],
         )?;
 
         // Archive related event details
         let archived_details = conn.execute(
-            "INSERT INTO pss_event_details_archive 
-             SELECT * FROM pss_event_details 
+            "INSERT INTO pss_event_details_archive
+             SELECT * FROM pss_event_details
              WHERE event_id IN (
-                 SELECT id FROM pss_events_archive 
+                 SELECT id FROM pss_events_archive
                  WHERE created_at < datetime('now', '-{} days')
              )",
             [days_old],
@@ -2965,9 +2966,9 @@ impl DataArchivalOperations {
 
         // Delete archived event details from main table
         let deleted_details = conn.execute(
-            "DELETE FROM pss_event_details 
+            "DELETE FROM pss_event_details
              WHERE event_id IN (
-                 SELECT id FROM pss_events_archive 
+                 SELECT id FROM pss_events_archive
                  WHERE created_at < datetime('now', '-{} days')
              )",
             [days_old],
@@ -3033,18 +3034,18 @@ impl DataArchivalOperations {
 
         // Restore events from archive
         let restored_events = conn.execute(
-            "INSERT INTO pss_events 
-             SELECT * FROM pss_events_archive 
+            "INSERT INTO pss_events
+             SELECT * FROM pss_events_archive
              WHERE created_at BETWEEN ? AND ?",
             [start_date, end_date],
         )?;
 
         // Restore event details
         let restored_details = conn.execute(
-            "INSERT INTO pss_event_details 
-             SELECT * FROM pss_event_details_archive 
+            "INSERT INTO pss_event_details
+             SELECT * FROM pss_event_details_archive
              WHERE event_id IN (
-                 SELECT id FROM pss_events_v2 
+                 SELECT id FROM pss_events_v2
                  WHERE created_at BETWEEN ? AND ?
              )",
             [start_date, end_date],
@@ -3052,7 +3053,7 @@ impl DataArchivalOperations {
 
         // Remove restored events from archive
         let _removed_from_archive = conn.execute(
-            "DELETE FROM pss_events_archive 
+            "DELETE FROM pss_events_archive
              WHERE created_at BETWEEN ? AND ?",
             [start_date, end_date],
         )?;
@@ -3074,14 +3075,14 @@ impl DataArchivalOperations {
 
         // Delete old archived events
         let deleted_events = conn.execute(
-            "DELETE FROM pss_events_archive 
+            "DELETE FROM pss_events_archive
              WHERE created_at < datetime('now', '-{} days')",
             [days_old],
         )?;
 
         // Delete old archived event details
         let deleted_details = conn.execute(
-            "DELETE FROM pss_event_details_archive 
+            "DELETE FROM pss_event_details_archive
              WHERE event_id NOT IN (SELECT id FROM pss_events_archive)",
             [],
         )?;
@@ -3180,7 +3181,7 @@ impl DatabaseConnection {
         let now = chrono::Utc::now().to_rfc3339();
 
         let id = conn.execute(
-            "INSERT OR REPLACE INTO obs_scenes (scene_name, scene_id, is_active, last_seen_at, created_at, updated_at) 
+            "INSERT OR REPLACE INTO obs_scenes (scene_name, scene_id, is_active, last_seen_at, created_at, updated_at)
              VALUES (?, ?, ?, ?, ?, ?)",
             [
                 &scene.scene_name,
@@ -3320,7 +3321,7 @@ impl DatabaseConnection {
         let now = chrono::Utc::now().to_rfc3339();
 
         conn.execute(
-            "UPDATE overlay_templates SET description = ?, theme = ?, colors = ?, animation_type = ?, duration_ms = ?, is_active = ?, url = ?, updated_at = ? 
+            "UPDATE overlay_templates SET description = ?, theme = ?, colors = ?, animation_type = ?, duration_ms = ?, is_active = ?, url = ?, updated_at = ?
              WHERE id = ?",
             [
                 &template.description.as_deref().unwrap_or("").to_string(),
@@ -3467,12 +3468,12 @@ impl DatabaseConnection {
 
         use rusqlite::params;
         conn.execute(
-            "UPDATE event_triggers SET 
+            "UPDATE event_triggers SET
                 tournament_id = ?, event_type = ?, trigger_type = ?,
                 obs_scene_id = ?, overlay_template_id = ?,
                 action_kind = ?, obs_connection_name = ?,
                 condition_round = ?, condition_once_per = ?, debounce_ms = ?, cooldown_ms = ?,
-                is_enabled = ?, priority = ?, updated_at = ? 
+                is_enabled = ?, priority = ?, updated_at = ?
              WHERE id = ?",
             params![
                 trigger.tournament_id,
@@ -3605,7 +3606,7 @@ impl DatabaseConnection {
         let now = chrono::Utc::now().to_rfc3339();
 
         let id = conn.execute(
-            "INSERT OR REPLACE INTO obs_connections (name, host, port, password, is_active, status, error, created_at, updated_at) 
+            "INSERT OR REPLACE INTO obs_connections (name, host, port, password, is_active, status, error, created_at, updated_at)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             [
                 &connection.name,
@@ -4174,6 +4175,7 @@ impl OvrOperations {
         Ok(id)
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn list_tournaments(
         conn: &Connection,
         provider_id: Option<i64>,
