@@ -300,15 +300,15 @@ export const IvrMatchHistoryPanel: React.FC = () => {
       return;
     }
 
-    if (matches.length > 0) {
+    const storeMatches = useIvrMatchHistoryStore.getState().getMatchesForDate(selectedDate);
+    if (storeMatches.length > 0) {
       hydrationStatusRef.current.set(selectedDate, 'hydrated');
       return;
     }
 
-    if (!status || status === 'idle') {
-      void loadMatchesForDate(selectedDate);
-    }
-  }, [selectedDate, loadMatchesForDate, matches.length]);
+    hydrationStatusRef.current.set(selectedDate, 'idle');
+    void loadMatchesForDate(selectedDate);
+  }, [selectedDate, loadMatchesForDate]);
 
   const handleDateChange = useCallback(
     (value: string) => {
