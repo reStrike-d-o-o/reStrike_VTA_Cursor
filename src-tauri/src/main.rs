@@ -232,6 +232,10 @@ async fn main() -> AppResult<()> {
                             app.cancel_shutdown();
                             return;
                         }
+
+                        if let Err(err) = window.close() {
+                            log::warn!("Failed to close main window gracefully: {}", err);
+                        }
                         window.app_handle().exit(0);
                     });
                 }

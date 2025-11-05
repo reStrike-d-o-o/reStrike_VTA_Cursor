@@ -6,7 +6,7 @@ use futures_util::{SinkExt, StreamExt};
 use serde_json;
 use std::sync::{Arc, Mutex};
 use tokio::net::TcpListener;
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, Notify};
 use tokio_tungstenite::accept_async;
 use tokio_tungstenite::tungstenite::Message;
 
@@ -77,6 +77,7 @@ pub struct WebSocketServer {
     clients: Arc<Mutex<Vec<WebSocketClient>>>,
     event_tx: mpsc::UnboundedSender<PssEvent>,
     server_task: Arc<Mutex<Option<tokio::task::JoinHandle<()>>>>,
+    shutdown_notify: Arc<Mutex<Option<Arc<Notify>>>>,
     current_time: Arc<Mutex<Option<String>>>, // Track current time from Clock events - changed to Option to handle no time set
     current_round: Arc<Mutex<Option<u8>>>, // Track current round - changed to Option to handle no round set
     match_started: Arc<Mutex<bool>>, // Track if match has started (after clk;{round_duration};start)
@@ -124,6 +125,7 @@ impl WebSocketServer {
             clients: Arc::new(Mutex::new(Vec::new())),
             event_tx,
             server_task: Arc::new(Mutex::new(None)),
+            shutdown_notify: Arc::new(Mutex::new(None)),
             current_time: Arc::new(Mutex::new(None)), // Initialize as None instead of "2:00"
             current_round: Arc::new(Mutex::new(None)), // Initialize as None instead of 1
             match_started: Arc::new(Mutex::new(false)), // Match starts as not ready
@@ -161,10 +163,24 @@ impl WebSocketServer {
 
         let clients = self.clients.clone();
         let event_tx = self.event_tx.clone();
+        let shutdown_notify = {
+            let notify = Arc::new(Notify::new());
+            if let Ok(mut guard) = self.shutdown_notify.lock() {
+                *guard = Some(notify.clone());
+            } else {
+                log::error!("Failed to store WebSocket shutdown notifier; graceful shutdown may be degraded");
+            }
+            notify
+        };
 
-        let task = tokio::spawn(async move {
-            if let Err(e) = Self::run_server(listener, clients, event_tx).await {
-                log::error!("WebSocket server error: {}", e);
+        let task = tokio::spawn({
+            let shutdown_notify = shutdown_notify.clone();
+            async move {
+                if let Err(e) =
+                    Self::run_server(listener, clients, event_tx, shutdown_notify).await
+                {
+                    log::error!("WebSocket server error: {}", e);
+                }
             }
         });
 
@@ -177,16 +193,35 @@ impl WebSocketServer {
     pub async fn stop(&self) -> AppResult<()> {
         log::info!("Stopping WebSocket server");
 
-        if let Ok(mut task_guard) = self.server_task.lock() {
-            if let Some(task) = task_guard.take() {
-                task.abort();
+        self.notify_clients_of_shutdown();
+
+        let shutdown_notify = if let Ok(mut guard) = self.shutdown_notify.lock() {
+            guard.take()
+        } else {
+            None
+        };
+        if let Some(notify) = shutdown_notify {
+            notify.notify_waiters();
+        }
+
+        let task = if let Ok(mut task_guard) = self.server_task.lock() {
+            task_guard.take()
+        } else {
+            None
+        };
+
+        if let Some(task) = task {
+            match task.await {
+                Ok(_) => log::info!("WebSocket server task exited cleanly"),
+                Err(err) if err.is_cancelled() => {
+                    log::warn!("WebSocket server task was cancelled before completing");
+                }
+                Err(err) => {
+                    log::warn!("WebSocket server task ended with error: {}", err);
+                }
             }
         }
 
-        // Clear all clients
-        if let Ok(mut clients_guard) = self.clients.lock() {
-            clients_guard.clear();
-        }
         Ok(())
     }
 
@@ -194,6 +229,7 @@ impl WebSocketServer {
         listener: TcpListener,
         clients: Arc<Mutex<Vec<WebSocketClient>>>,
         event_tx: mpsc::UnboundedSender<PssEvent>,
+        shutdown_notify: Arc<Notify>,
     ) -> AppResult<()> {
         if let Ok(addr) = listener.local_addr() {
             log::info!("WebSocket server listening on {}", addr);
@@ -201,21 +237,38 @@ impl WebSocketServer {
             log::info!("WebSocket server listening (address unavailable)");
         }
 
-        while let Ok((stream, addr)) = listener.accept().await {
-            log::info!("New WebSocket connection from {}", addr);
-
-            let clients_clone = clients.clone();
-            let event_tx_clone = event_tx.clone();
-
-            tokio::spawn(async move {
-                if let Err(e) =
-                    Self::handle_client(stream, addr, clients_clone, event_tx_clone).await
-                {
-                    log::error!("Client handler error: {}", e);
+        loop {
+            tokio::select! {
+                _ = shutdown_notify.notified() => {
+                    log::info!("WebSocket server shutdown signal received; stopping accept loop");
+                    break;
                 }
-            });
+                accept_result = listener.accept() => {
+                    match accept_result {
+                        Ok((stream, addr)) => {
+                            log::info!("New WebSocket connection from {}", addr);
+
+                            let clients_clone = clients.clone();
+                            let event_tx_clone = event_tx.clone();
+
+                            tokio::spawn(async move {
+                                if let Err(e) =
+                                    Self::handle_client(stream, addr, clients_clone, event_tx_clone).await
+                                {
+                                    log::error!("Client handler error: {}", e);
+                                }
+                            });
+                        }
+                        Err(err) => {
+                            log::warn!("WebSocket listener accept error: {}", err);
+                            break;
+                        }
+                    }
+                }
+            }
         }
 
+        log::info!("WebSocket server accept loop terminated");
         Ok(())
     }
 
@@ -250,6 +303,8 @@ impl WebSocketServer {
         if let Err(e) = tx.send(status_msg) {
             log::error!("Failed to send connection status: {}", e);
         }
+
+        drop(tx);
 
         // Split the WebSocket stream
         let (mut ws_sender, mut ws_receiver) = ws_stream.split();
@@ -305,6 +360,14 @@ impl WebSocketServer {
                     break;
                 }
             }
+
+            if let Err(e) = ws_sender.close().await {
+                log::debug!(
+                    "Failed to close WebSocket connection {} cleanly: {}",
+                    client_id_send,
+                    e
+                );
+            }
             Ok::<(), AppError>(())
         });
 
@@ -321,6 +384,42 @@ impl WebSocketServer {
         log::info!("Client {} disconnected", client_id);
 
         Ok(())
+    }
+
+    fn notify_clients_of_shutdown(&self) {
+        let timestamp = chrono::Utc::now().to_rfc3339();
+        match self.clients.lock() {
+            Ok(mut clients_guard) => {
+                if clients_guard.is_empty() {
+                    log::info!("No WebSocket clients connected during shutdown");
+                    return;
+                }
+                let client_count = clients_guard.len();
+                log::info!(
+                    "Notifying {} WebSocket client(s) of shutdown",
+                    client_count
+                );
+                for client in clients_guard.iter() {
+                    if let Err(err) = client.send(WebSocketMessage::ConnectionStatus {
+                        connected: false,
+                        timestamp: timestamp.clone(),
+                    }) {
+                        log::warn!(
+                            "Failed to send shutdown notification to {}: {}",
+                            client.id,
+                            err
+                        );
+                    }
+                }
+                clients_guard.clear();
+            }
+            Err(err) => {
+                log::warn!(
+                    "Failed to lock WebSocket clients during shutdown notification: {}",
+                    err
+                );
+            }
+        }
     }
 
     fn broadcast_error(&self, message: String) {
