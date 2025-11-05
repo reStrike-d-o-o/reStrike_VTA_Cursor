@@ -218,7 +218,7 @@ pub async fn ivr_match_history_snapshot(
 
     let mut match_stmt = conn
         .prepare(
-            "SELECT id, match_id, match_number, category, weight, division, created_at
+            "SELECT id, match_id, match_number, category, weight_class AS weight, division, created_at
              FROM pss_matches
              WHERE date(created_at) = ?
                 OR EXISTS (

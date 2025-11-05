@@ -228,23 +228,13 @@ export const IvrMatchHistoryPanel: React.FC = () => {
   const inflightDatesRef = useRef<Set<string>>(new Set());
   const [loadingDate, setLoadingDate] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const {
-    matches,
-    searchTerm,
-    setSearchTerm,
-    selectedDate,
-    setSelectedDate,
-    resetToToday,
-    today,
-  } = useIvrMatchHistoryStore((state) => ({
-    matches: state.getMatchesForDate(state.selectedDate),
-    searchTerm: state.searchTerm,
-    setSearchTerm: state.setSearchTerm,
-    selectedDate: state.selectedDate,
-    setSelectedDate: state.setSelectedDate,
-    resetToToday: state.resetToToday,
-    today: state.today,
-  }));
+  const matches = useIvrMatchHistoryStore((state) => state.getMatchesForDate(state.selectedDate));
+  const searchTerm = useIvrMatchHistoryStore((state) => state.searchTerm);
+  const setSearchTerm = useIvrMatchHistoryStore((state) => state.setSearchTerm);
+  const selectedDate = useIvrMatchHistoryStore((state) => state.selectedDate);
+  const setSelectedDate = useIvrMatchHistoryStore((state) => state.setSelectedDate);
+  const resetToToday = useIvrMatchHistoryStore((state) => state.resetToToday);
+  const today = useIvrMatchHistoryStore((state) => state.today);
 
   useEffect(() => {
     if (matches.length > 0) {
