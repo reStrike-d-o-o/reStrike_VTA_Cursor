@@ -332,10 +332,12 @@ impl DatabasePlugin {
             .await
             .map_err(|e| AppError::ConfigError(format!("Failed to get UDP server configs: {}", e)))?;
 
-        records
+        let configs = records
             .into_iter()
             .map(map_udp_server_config_model)
-            .collect()
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(configs)
     }
 
     /// Get UDP server configuration by ID
@@ -522,10 +524,12 @@ impl DatabasePlugin {
                 AppError::ConfigError(format!("Failed to get recent UDP server sessions: {}", e))
             })?;
 
-        records
+        let sessions = records
             .into_iter()
             .map(map_udp_server_session_model)
-            .collect()
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(sessions)
     }
 
     /// Add or update UDP client connection
@@ -588,10 +592,12 @@ impl DatabasePlugin {
                 AppError::ConfigError(format!("Failed to get active client connections: {}", e))
             })?;
 
-        records
+        let clients = records
             .into_iter()
             .map(map_udp_client_connection_model)
-            .collect()
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(clients)
     }
 
     /// Get all PSS event types
